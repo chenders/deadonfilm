@@ -3,15 +3,14 @@ html, body {
     height: 100%;
 }
 
-.vertical-center {
-    display: none;
+.movie-input {
+    margin-top: 10%;
+    margin-bottom: 20px;
 }
-#dead-row div.row {
+
+.dead-row {
     padding-bottom: 5px;
     padding-top: 5px;
-}
-#dead-row div.row:last-child {
-    border-bottom: none;
 }
 .pasto {
     font-weight: bold;
@@ -21,6 +20,15 @@ html, body {
     font-weight: normal;
     font-style: italic;
 }
+.died {
+    text-align: right;
+}
+
+.form-control {
+    height: auto;
+
+}
+
 #spinner {
     display: none;
     margin-left: 10px;
@@ -38,18 +46,11 @@ html, body {
     }
 }
 
-#dead-row {
-    margin-top: 15px;
-}
-
-.form-control {
-    height: auto;
-
-}
 .typeahead,
 .tt-query,
 .tt-hint {
     font-size: 22px;
+    width: 100%;
 }
 input.typeahead {
     line-height: normal;
