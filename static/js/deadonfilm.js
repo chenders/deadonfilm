@@ -25,11 +25,13 @@ $('.typeahead').typeahead({
     $.ajax({
         url: '/died/' + datum.id,
         type: 'GET',
+        complete: function() {
+            $('#spinner').hide();
+        },
         error: function() {
-            $('#dead-row').html('<div class="row">Error! :(</div>');
+            $('.container').append('<div class="row dead-row col-sm-offset-3 col-sm-4">Error! :(</div>');
         },
         success: function(data) {
-            $('#spinner').hide();
             if (Object.keys(data).length > 0) {
                 var pastos = '';
                 $.each(data, function (idx, el) {
