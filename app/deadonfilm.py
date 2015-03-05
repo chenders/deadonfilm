@@ -3,7 +3,6 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 
-from dateutil import parser
 from flask import (
     Flask,
     make_response,
@@ -11,8 +10,8 @@ from flask import (
     send_from_directory,
     render_template
 )
-
 import imdb
+from mx.DateTime import Parser
 import psycopg2
 import psycopg2.extras
 
@@ -85,7 +84,7 @@ def died(movie_id):
     for person in cursor.fetchall():
         pastos[str(person['person_id'])] = {
             'person_id': person['person_id'],
-            'death': parser.parse(person['death_date']).strftime('%b %d, %Y'),
+            'death': Parser.DateFromString(person['death_date']).strftime('%b %d, %Y'),
             'character': person['character'],
             'name': person['name']
         }
