@@ -47,7 +47,7 @@ def search():
     m = i.search_movie(movie)
     resp = make_response(json.dumps(
         [{
-             'value': '%s (%s)' % (mt['title'], mt['year'] if 'year' in mt.keys() else ''),
+             'value': mt['long imdb title'],
              'id': mt.getID()
          } for mt in m if mt.get('kind') == 'movie']))
     resp.headers['Content-Type'] = 'application/json'

@@ -20,6 +20,9 @@ $('.typeahead').typeahead({
 ).on('typeahead:selected', function(obj, datum) {
     $('.dead-row').remove();
     $('#spinner').show();
+    if (!datum.nohash) {
+        window.location.hash = $.param({title: datum.value, id: datum.id});
+    }
     $.ajax({
         url: '/died/' + datum.id,
         type: 'GET',
@@ -46,6 +49,12 @@ $('.typeahead').typeahead({
     });
 });
 $(document).ready(function () {
+    var hash = window.location.hash.substring(1);
+    if (hash != '') {
+        datum = deparam(hash);
+        datum.nohash = true;
+        $('#movie-name').typeahead('val', datum.title).trigger('typeahead:selected', [datum]);
+    }
     // IE9 and below do not have native support. :(
     if ($.fn.placeholder) {
         $('input').placeholder();
