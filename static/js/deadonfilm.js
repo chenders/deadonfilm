@@ -17,9 +17,7 @@ $('.typeahead').typeahead({
         displayKey: 'value',
         source: engine.ttAdapter()
     }
-).on('typeahead:opened', function (obj, datum) {
-    $('.dead-row').remove();
-}).on('typeahead:selected', function(obj, datum) {
+).on('typeahead:selected', function(obj, datum) {
     $('.dead-row').remove();
     $('#spinner').show();
     $.ajax({
@@ -52,5 +50,10 @@ $(document).ready(function () {
     if ($.fn.placeholder) {
         $('input').placeholder();
     }
+    $('#movie-name').on('keyup keydown change focus search mousedown', function(e) {
+        if ($(this).val() == '') {
+            $('.dead-row').remove();
+        }
+    });
     $('input.typeahead').focus();
 });
