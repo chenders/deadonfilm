@@ -24,8 +24,9 @@ $('.typeahead').typeahead({
         window.location.hash = $.param({title: datum.value, id: datum.id});
     }
     $.ajax({
-        url: '/died/' + datum.id,
-        type: 'GET',
+        url: '/died/',
+        type: 'POST',
+        data: {title: datum.value},
         complete: function() {
             $('#spinner').hide();
         },
@@ -52,6 +53,7 @@ $(document).ready(function () {
     var hash = window.location.hash.substring(1);
     if (hash != '') {
         datum = deparam(hash);
+        datum.value = datum.title;
         datum.nohash = true;
         $('#movie-name').typeahead('val', datum.title).trigger('typeahead:selected', [datum]);
     }

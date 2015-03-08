@@ -54,17 +54,17 @@ def search():
     resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
 
-@app.route('/died/<movie_id>')
-def died(movie_id):
+@app.route('/died/', methods=['POST'])
+def died():
     """
-    Who died from the movie with IMDb id ``movie_id``?
+    Who died from the movie with IMDb long title of POST var ``title``?
 
     We use the local SQL database for this because it takes forever otherwise.
     """
-    movie = i.get_movie(movie_id)
-    app.logger.info('Who died in %s?' % movie['long imdb title'])
-    # Convert IMDb movie id to the local movie id.
-    m = hashlib.md5(movie['long imdb title'])
+    movie_title = request.form['title']
+    app.logger.info('Who died in %s?' % movie_title)
+    # We can look up the movie id in our database using a md5 hash of the title
+    m = hashlib.md5(movie_title)
     cursor.execute("SELECT id FROM title WHERE md5sum = %s", (m.hexdigest(),))
     movie_id = cursor.fetchone()['id']
     # info_type_id = 23 is linked to "death date", so we are selecting character name, real name
@@ -102,5 +102,4 @@ if __name__ == '__main__':
     def send_css(path):
         return send_from_directory('../static/css', path)
 
-    app.debug = True
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', debug=True)
