@@ -1,10 +1,20 @@
 html, body {
     background-color: #eee;
     height: 100%;
+    font-size:101%;
+    font-family: 'Rambla', sans-serif;
+    letter-spacing: .3px;
+}
+
+h1 {
+    font-family: 'Smythe', cursive;
+    text-align: center;
+    font-size:400%;
+    text-shadow: 2px 2px #b94e4c;
+
 }
 
 .movie-input {
-    margin-top: 10%;
     margin-bottom: 5px;
 }
 
@@ -12,8 +22,18 @@ html, body {
     padding-bottom: 5px;
     padding-top: 5px;
 }
+
+.dead-row:nth-child(odd) {
+    background: -webkit-linear-gradient(left, #eee 15%, #ebe8e1 25%, #ded8d5 40%, #ebe8e1 75%, #eee 85%); /* For Safari 5.1 to 6.0 */
+    background: -o-linear-gradient(right, #eee 15%, #ebe8e1 25%, #ded8d5 40%, #ebe8e1 75%, #eee 85%); /* For Opera 11.1 to 12.0 */
+    background: -moz-linear-gradient(right, #eee 15%, #ebe8e1 25%, #ded8d5 40%, #ebe8e1 75%, #eee 85%); /* For Firefox 3.6 to 15 */
+    background: linear-gradient(to right, #eee 15%, #ebe8e1 25%, #ded8d5 40%, #ebe8e1 75%, #eee 85%); /* Standard syntax (must be last) */
+}
+
+}
+
 .pasto {
-    font-weight: bold;
+    font-weight: 600;
 }
 .pasto span {
     margin-left: 5px;
@@ -27,6 +47,18 @@ html, body {
 .form-control {
     height: auto;
 
+}
+
+.form-control:focus {
+    border-color: #973d3b;
+    box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.075) inset, 0px 0px 8px rgba(185, 78, 76, 0.6);
+}
+
+#skull {
+    width: 50%;
+    min-width: 350px;
+    margin-top:10%;
+    margin-bottom: -2%;
 }
 
 .spinner {
@@ -102,6 +134,7 @@ html, body {
 input.typeahead {
     line-height: normal;
 }
+
 span.twitter-typeahead .tt-dropdown-menu {
     position: absolute;
     top: 100%;

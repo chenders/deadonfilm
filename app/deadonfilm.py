@@ -101,5 +101,9 @@ if __name__ == '__main__':
     @app.route('/static/css/<path:path>')
     def send_css(path):
         return send_from_directory('../static/css', path)
-
+    
+    @app.route('/static/images/<path:path>')
+    def send_img(path):
+        return send_from_directory('../static/images', path)
+    
     app.run(host='0.0.0.0', debug=True)
