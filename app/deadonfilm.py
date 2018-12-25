@@ -1,41 +1,53 @@
-import hashlib
+import imdb
 import json
+import os
 import logging
 from logging.handlers import RotatingFileHandler
 
+from urllib.parse import urlparse
+
 from flask import (
     Flask,
+    redirect,
     make_response,
     request,
     send_from_directory,
     render_template
 )
-import imdb
-from mx.DateTime import Parser
-import psycopg2
 import psycopg2.extras
 
-app = Flask(__name__, template_folder='../templates/')
+url = urlparse(os.environ.get('IMDB_DB'))
+insecure_redirect = os.environ.get('SECURE_REDIRECT_URL', False)
 
-# We use the live imdb server for movie title search, because it's infinitely better.
+app = Flask(__name__, root_path='./')
 i = imdb.IMDb()
 
-conn = psycopg2.connect('dbname=imdb')
+conn = psycopg2.connect(
+    database=url.path[1:],
+    user=url.username,
+    password=url.password,
+    host=url.hostname,
+    port=url.port
+)
 conn.autocommit = True
 cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
+
 @app.before_first_request
 def setup_logging():
-    logger = RotatingFileHandler('logs/deadonfilm.log', maxBytes=1000000, backupCount=2)
-    formatter = logging.Formatter('%(asctime)s %(message)s', '%Y-%m-%d %H:%M:%S')
-    logger.setFormatter(formatter)
+    logger = RotatingFileHandler('app/logs/deadonfilm.log', maxBytes=1000000, backupCount=2)
+    logger = logging.getLogger('deadonfilm')
     logger.setLevel(logging.DEBUG)
     app.logger.addHandler(logger)
     app.logger.setLevel(logging.DEBUG)
 
+
 @app.route('/')
 def index():
+    if insecure_redirect and not request.is_secure:
+        return redirect(insecure_redirect, code=301)
     return render_template('index.html')
+
 
 @app.route('/search/')
 def search():
@@ -47,63 +59,62 @@ def search():
     m = i.search_movie(movie)
     resp = make_response(json.dumps(
         [{
-             'value': mt['long imdb title'],
-             'id': mt.getID()
+            'value': mt['long imdb title'],
+            'id': mt.getID()
          } for mt in m if mt.get('kind') == 'movie']))
     resp.headers['Content-Type'] = 'application/json'
     resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
 
+
 @app.route('/died/', methods=['POST'])
 def died():
     """
-    Who died from the movie with IMDb long title of POST var ``title``?
-
-    We use the local SQL database for this because it takes forever otherwise.
+    Who died from the movie with the given IMDb id?
     """
-    movie_title = request.form['title']
-    app.logger.info('Who died in %s?' % movie_title)
-    # We can look up the movie id in our database using a md5 hash of the title
-    m = hashlib.md5(movie_title)
-    cursor.execute("SELECT id FROM title WHERE md5sum = %s", (m.hexdigest(),))
-    movie_id = cursor.fetchone()['id']
-    # info_type_id = 23 is linked to "death date", so we are selecting character name, real name
-    # from the local SQL db where a person has a "death date" entry.
-    cursor.execute("SELECT \
-                      char_name.name AS character, \
-                      name.name, \
-                      info as death_date, \
-                      person_info.person_id \
-                   FROM cast_info \
-                      INNER JOIN char_name ON cast_info.person_role_id = char_name.id \
-                      INNER JOIN person_info ON cast_info.person_id = person_info.person_id \
-                      INNER JOIN name ON name.id = person_info.person_id \
-                   WHERE \
-                      movie_id = %s and person_info.info_type_id = 23", (movie_id,))
-    pastos = {}
-    for person in cursor.fetchall():
-        pastos[str(person['person_id'])] = {
-            'person_id': person['person_id'],
-            'death': Parser.DateFromString(person['death_date']).strftime('%b %d, %Y'),
-            'character': person['character'],
-            'name': person['name']
-        }
-    resp = make_response(json.dumps(pastos))
-    resp.headers['Content-Type'] = 'application/json'
-    resp.headers['Access-Control-Allow-Origin'] = '*'
+    movie_id = request.form['id']
+    movie = i.get_movie(movie_id, info=["full credits"])
+    if movie is None:
+        resp = make_response("Movie not found: {}".format(movie_id, 404))
+    else:
+        actors = movie.data['cast']
+        actors_by_id = {}
+        for actor in actors:
+            actors_by_id[int(actor.getID())] = actor
+        cursor.execute("""SELECT 
+                          * from name_basics WHERE 
+                          person_id IN %s AND 
+                          death_year NOTNULL
+                          """, (tuple(actors_by_id.keys()),))
+        pastos = []
+        for person in cursor.fetchall():
+            person_id = person['person_id']
+            character = str(actors_by_id[person_id].currentRole)
+            pastos.append({
+                'person_id': person['person_id'],
+                'death': person['death_year'],
+                'character': character,
+                'name': person['primary_name']
+            })
+        pastos = sorted(pastos, key=lambda pasto: pasto['death'], reverse=True)
+        resp = make_response(json.dumps(pastos))
+        resp.headers['Content-Type'] = 'application/json'
+        resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
+
 
 if __name__ == '__main__':
     @app.route('/static/js/<path:path>')
     def send_js(path):
-        return send_from_directory('../static/js', path)
+        return send_from_directory('./static/js', path)
 
     @app.route('/static/css/<path:path>')
     def send_css(path):
-        return send_from_directory('../static/css', path)
-    
+        return send_from_directory('./static/css', path)
+
     @app.route('/static/images/<path:path>')
     def send_img(path):
-        return send_from_directory('../static/images', path)
-    
-    app.run(host='0.0.0.0', debug=True)
+        return send_from_directory('./static/images', path)
+
+    app.run()
+

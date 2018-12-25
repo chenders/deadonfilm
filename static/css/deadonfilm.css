@@ -1,207 +1,258 @@
-html, body {
-    background-color: #eee;
-    height: 100%;
-    font-size:101%;
-    font-family: 'Rambla', sans-serif;
-    letter-spacing: .3px;
+html,
+body {
+  background-color: #eee;
+  height: 100%;
+  font-size: 101%;
+  font-family: "Rambla", sans-serif;
+  letter-spacing: 0.3px;
 }
 
 h1 {
-    font-family: 'Smythe', cursive;
-    text-align: center;
-    font-size:400%;
-    text-shadow: 2px 2px #b94e4c;
-
+  font-family: "Smythe", cursive;
+  text-align: center;
+  font-size: 400%;
+  text-shadow: 2px 2px #b94e4c;
 }
 
+#sitename {
+  margin-bottom: 0;
+}
 .movie-input {
-    margin-bottom: 5px;
+  margin-bottom: 5px;
 }
 
 .dead-row {
-    padding-bottom: 5px;
-    padding-top: 5px;
+  padding-bottom: 5px;
+  padding-top: 5px;
 }
 
 .dead-row:nth-child(odd) {
-    background: -webkit-linear-gradient(left, #eee 15%, #ebe8e1 25%, #ded8d5 40%, #ebe8e1 75%, #eee 85%); /* For Safari 5.1 to 6.0 */
-    background: -o-linear-gradient(right, #eee 15%, #ebe8e1 25%, #ded8d5 40%, #ebe8e1 75%, #eee 85%); /* For Opera 11.1 to 12.0 */
-    background: -moz-linear-gradient(right, #eee 15%, #ebe8e1 25%, #ded8d5 40%, #ebe8e1 75%, #eee 85%); /* For Firefox 3.6 to 15 */
-    background: linear-gradient(to right, #eee 15%, #ebe8e1 25%, #ded8d5 40%, #ebe8e1 75%, #eee 85%); /* Standard syntax (must be last) */
-}
-
+  background: -webkit-linear-gradient(
+    left,
+    #eee 15%,
+    #ebe8e1 25%,
+    #ded8d5 40%,
+    #ebe8e1 75%,
+    #eee 85%
+  ); /* For Safari 5.1 to 6.0 */
+  background: -o-linear-gradient(
+    right,
+    #eee 15%,
+    #ebe8e1 25%,
+    #ded8d5 40%,
+    #ebe8e1 75%,
+    #eee 85%
+  ); /* For Opera 11.1 to 12.0 */
+  background: -moz-linear-gradient(
+    right,
+    #eee 15%,
+    #ebe8e1 25%,
+    #ded8d5 40%,
+    #ebe8e1 75%,
+    #eee 85%
+  ); /* For Firefox 3.6 to 15 */
+  background: linear-gradient(
+    to right,
+    #eee 15%,
+    #ebe8e1 25%,
+    #ded8d5 40%,
+    #ebe8e1 75%,
+    #eee 85%
+  ); /* Standard syntax (must be last) */
 }
 
 .pasto {
-    font-weight: 600;
+  font-weight: 600;
 }
 .pasto span {
-    margin-left: 5px;
-    font-weight: normal;
-    font-style: italic;
+  margin-left: 5px;
+  font-weight: normal;
+  font-style: italic;
 }
 .died {
-    text-align: right;
+  text-align: right;
 }
 
 .form-control {
-    height: auto;
-
+  height: auto;
 }
 
 .form-control:focus {
-    border-color: #973d3b;
-    box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.075) inset, 0px 0px 8px rgba(185, 78, 76, 0.6);
+  border-color: #973d3b;
+  box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.075) inset,
+    0px 0px 8px rgba(185, 78, 76, 0.6);
 }
 
 #skull {
-    width: 50%;
-    min-width: 350px;
-    margin-top:10%;
-    margin-bottom: -2%;
+  margin-top: 10%;
+  margin-bottom: -2%;
 }
-
+@media screen and (max-width: 767px) {
+  #skull {
+    max-width: 100%;
+  }
+}
+@media screen and (min-width: 768px) {
+  #skull {
+    width: 50%;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    min-width: 360px;
+  }
+}
 .spinner {
-    margin: 10px;
+  margin: 10px;
 }
 #spinner {
-    display: none;
-    width: 15px;
-    height: 15px;
-    -webkit-animation: rotation 1s infinite linear;
-    -moz-animation: rotation 1s infinite linear;
-    -ms-animation: rotation 1s infinite linear;
-    -o-animation: rotation 1s infinite linear;
-    animation: rotation 1s infinite linear;
-    border-left: 6px solid rgba(0, 0, 0, .15);
-    border-right: 6px solid rgba(0, 0, 0, .15);
-    border-bottom: 6px solid rgba(0, 0, 0, .15);
-    border-top: 6px solid rgba(0, 0, 0, .8);
-    border-radius: 100%;
+  display: none;
+  width: 15px;
+  height: 15px;
+  -webkit-animation: rotation 1s infinite linear;
+  -moz-animation: rotation 1s infinite linear;
+  -ms-animation: rotation 1s infinite linear;
+  -o-animation: rotation 1s infinite linear;
+  animation: rotation 1s infinite linear;
+  border-left: 6px solid rgba(0, 0, 0, 0.15);
+  border-right: 6px solid rgba(0, 0, 0, 0.15);
+  border-bottom: 6px solid rgba(0, 0, 0, 0.15);
+  border-top: 6px solid rgba(0, 0, 0, 0.8);
+  border-radius: 100%;
 }
 
 @-webkit-keyframes rotation {
-    from {
-        -webkit-transform: rotate(0deg);
-    }
-    to {
-        -webkit-transform: rotate(359deg);
-    }
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+  to {
+    -webkit-transform: rotate(359deg);
+  }
 }
 
 @-moz-keyframes rotation {
-    from {
-        -moz-transform: rotate(0deg);
-    }
-    to {
-        -moz-transform: rotate(359deg);
-    }
+  from {
+    -moz-transform: rotate(0deg);
+  }
+  to {
+    -moz-transform: rotate(359deg);
+  }
 }
 
 @-ms-keyframes rotation {
-    from {
-        -ms-transform: rotate(0deg);
-    }
-    to {
-        -ms-transform: rotate(359deg);
-    }
+  from {
+    -ms-transform: rotate(0deg);
+  }
+  to {
+    -ms-transform: rotate(359deg);
+  }
 }
 
 @-o-keyframes rotation {
-    from {
-        -o-transform: rotate(0deg);
-    }
-    to {
-        -o-transform: rotate(359deg);
-    }
+  from {
+    -o-transform: rotate(0deg);
+  }
+  to {
+    -o-transform: rotate(359deg);
+  }
 }
 
 @keyframes rotation {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(359deg);
-    }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(359deg);
+  }
 }
 
 .typeahead,
 .tt-query,
 .tt-hint {
-    font-size: 22px;
-    width: 100%;
+  font-size: 22px;
+  width: 100%;
 }
 input.typeahead {
-    line-height: normal;
+  line-height: normal;
 }
 
 span.twitter-typeahead .tt-dropdown-menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    z-index: 1000;
-    display: none;
-    float: left;
-    min-width: 160px;
-    padding: 5px 0;
-    margin: 2px 0 0;
-    list-style: none;
-    font-size: 20px;
-    text-align: left;
-    background-color: #ffffff;
-    border: 1px solid #cccccc;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    border-radius: 4px;
-    -webkit-box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
-    background-clip: padding-box;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  display: none;
+  float: left;
+  min-width: 160px;
+  padding: 5px 0;
+  margin: 2px 0 0;
+  list-style: none;
+  font-size: 20px;
+  text-align: left;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  -webkit-box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+  background-clip: padding-box;
 }
 
 span.twitter-typeahead .tt-suggestion > p {
-    display: block;
-    padding: 3px 20px;
-    margin-bottom: 0px;
-    clear: both;
-    font-weight: normal;
-    line-height: 1.42857143;
-    color: #333333;
-    white-space: nowrap;
+  display: block;
+  padding: 3px 20px;
+  margin-bottom: 0px;
+  clear: both;
+  font-weight: normal;
+  line-height: 1.42857143;
+  color: #333333;
+  white-space: nowrap;
 }
 
 span.twitter-typeahead .tt-suggestion > p:hover,
 span.twitter-typeahead .tt-suggestion > p:focus {
-    color: #ffffff;
-    text-decoration: none;
-    outline: 0;
-    background-color: #428bca;
+  color: #ffffff;
+  text-decoration: none;
+  outline: 0;
+  background-color: #428bca;
 }
 
 span.twitter-typeahead .tt-suggestion.tt-cursor {
-    color: #ffffff;
-    background-color: #428bca;
+  color: #ffffff;
+  background-color: #428bca;
 }
 
 span.twitter-typeahead {
-    width: 100%;
+  width: 100%;
 }
 
 .input-group span.twitter-typeahead {
-    display: block !important;
+  display: block !important;
 }
 
 .input-group span.twitter-typeahead .tt-dropdown-menu {
-    top: 32px !important;
+  top: 32px !important;
 }
 
 .input-group.input-group-lg span.twitter-typeahead .tt-dropdown-menu {
-    top: 44px !important;
+  top: 44px !important;
 }
 
 .input-group.input-group-sm span.twitter-typeahead .tt-dropdown-menu {
-    top: 28px !important;
+  top: 28px !important;
 }
 
 input[type="search"]::-webkit-search-cancel-button {
-    -webkit-appearance: searchfield-cancel-button;
+  -webkit-appearance: searchfield-cancel-button;
+}
+
+.container {
+  padding-bottom: 25px;
+}
+#footer {
+  font-family: "Rambla, sans-serif";
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  margin-bottom: 10px;
 }
