@@ -53,3 +53,7 @@ docs/_build/
 
 # PyBuilder
 target/
+
+bin/imdb_tmp
+dist/
+node_modules/

@@ -8,3 +8,5 @@ alter table name_basics add column death_date text;
 alter table name_basics rename column "primaryName" to primary_name;
 alter table name_basics drop column "knownForTitles";
 alter table name_basics rename column "deathYear" to death_year;
+alter table name_basics add column birth_date text;
+alter table name_basics rename column "birthYear" to birth_year;

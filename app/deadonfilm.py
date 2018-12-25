@@ -92,6 +92,7 @@ def died():
             character = str(actors_by_id[person_id].currentRole)
             pastos.append({
                 'person_id': person['person_id'],
+                'birth': person['birth_year'],
                 'death': person['death_year'],
                 'character': character,
                 'name': person['primary_name']
@@ -115,6 +116,11 @@ if __name__ == '__main__':
     @app.route('/static/images/<path:path>')
     def send_img(path):
         return send_from_directory('./static/images', path)
+
+    @app.route('/dist/<path:path>')
+    def send_dist(path):
+        return send_from_directory('./dist', path)
+
 
     app.run()
 

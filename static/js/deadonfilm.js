@@ -47,6 +47,14 @@ $(".typeahead")
         let pastos = "";
         if (Object.keys(data).length > 0) {
           $.each(data, function(idx, el) {
+            let death = el.birth
+              ? "(" + el.birth + " - " + el.death + ")"
+              : el.death;
+            let title = "";
+            if (el.birth) {
+              title =
+                death + " - " + (Number(el.death) - Number(el.birth)) + "yrs";
+            }
             pastos +=
               '<div class="row dead-row">' +
               '<div class="pasto col-sm-offset-3 col-sm-4">' +
@@ -54,7 +62,9 @@ $(".typeahead")
               " <span>(" +
               el.character +
               ")</span></div>" +
-              '<div class="died col-sm-2">' +
+              '<div class="died col-sm-2" title="' +
+              title +
+              '">' +
               el.death +
               "</div>" +
               "</div>";
