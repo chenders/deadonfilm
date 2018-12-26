@@ -1,4 +1,5 @@
 import React from "react";
+import axios from "axios";
 
 const EveryonesAlive = () => {
   return (
@@ -35,17 +36,14 @@ class ResultElement extends React.Component {
     this.state = {
       retrieved: false
     };
-    fetch("/died/", {
-      method: "POST",
-      body: new URLSearchParams(`id=${props.id}`)
-    })
-      .then(resp => resp.json())
-      .then(elements => {
-        this.setState({
-          retrieved: true,
-          results: elements
-        });
+    const params = new URLSearchParams();
+    params.append("id", props.id);
+    axios.post("/died/", params).then(elements => {
+      this.setState({
+        retrieved: true,
+        results: elements.data
       });
+    });
   }
 
   render() {

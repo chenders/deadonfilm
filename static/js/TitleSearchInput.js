@@ -1,8 +1,12 @@
 import React from "react";
 import "react-bootstrap-typeahead/css/Typeahead.css";
 import { AsyncTypeahead } from "react-bootstrap-typeahead";
+import axios from "axios";
 
 const SEARCH_URI = "/search/";
+
+const CancelToken = axios.CancelToken;
+let source;
 
 class TitleSearchInput extends React.Component {
   state = {
@@ -16,6 +20,7 @@ class TitleSearchInput extends React.Component {
     return (
       <AsyncTypeahead
         {...this.state}
+        delay={800}
         autoFocus={!initialValue}
         isLoading={isSearching}
         onChange={this._handleSelected}
@@ -47,18 +52,28 @@ class TitleSearchInput extends React.Component {
   _handleSearch = query => {
     const { onSearching } = this.props;
     onSearching(true);
-    fetch(`${SEARCH_URI}?q=${query}`)
-      .then(resp => resp.json())
-      .then(el => {
-        return el;
+    if (source) {
+      source.cancel("Cancelling");
+    }
+    source = CancelToken.source();
+    axios
+      .get(`${SEARCH_URI}?q=${query}`, {
+        cancelToken: source.token
       })
       .then(resp => {
         this.setState(
           {
-            options: resp
+            options: resp.data
           },
           () => onSearching(false)
         );
+      })
+      .catch(function(thrown) {
+        if (axios.isCancel(thrown)) {
+          console.log("Request canceled", thrown.message);
+        } else {
+          // handle error
+        }
       });
   };
 }
