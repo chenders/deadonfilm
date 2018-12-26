@@ -15,12 +15,17 @@ class TitleSearchInput extends React.Component {
     multiple: false
   };
 
+  setInput = ref => {
+    this.inputEl = ref;
+  };
+
   render() {
     const { isSearching, initialValue } = this.props;
     return (
       <AsyncTypeahead
         {...this.state}
         delay={800}
+        ref={this.setInput}
         autoFocus={!initialValue}
         isLoading={isSearching}
         onChange={this._handleSelected}
@@ -46,6 +51,7 @@ class TitleSearchInput extends React.Component {
     newHash.append("id", selectedResult.id);
     newHash.append("title", selectedResult.value);
     window.location.hash = newHash.toString();
+    this.inputEl.getInstance().blur();
     onResults(selectedResult);
   };
 
