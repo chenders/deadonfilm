@@ -35,7 +35,6 @@ class ResultElement extends React.Component {
     this.state = {
       retrieved: false
     };
-
     fetch("/died/", {
       method: "POST",
       body: new URLSearchParams(`id=${props.id}`)
@@ -51,6 +50,15 @@ class ResultElement extends React.Component {
 
   render() {
     const { retrieved, results } = this.state;
+    if (!retrieved) {
+      return (
+        <div className="row spinner">
+          <div className="col-sm-offset-3 col-sm-8">
+            <div id="spinner" />
+          </div>
+        </div>
+      );
+    }
     if (!retrieved) return null;
     if (results.length === 0) {
       return <EveryonesAlive />;

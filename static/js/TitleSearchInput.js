@@ -12,16 +12,19 @@ class TitleSearchInput extends React.Component {
   };
 
   render() {
-    const { isSearching } = this.props;
+    const { isSearching, initialValue } = this.props;
     return (
       <AsyncTypeahead
         {...this.state}
-        autoFocus
+        autoFocus={!initialValue}
         isLoading={isSearching}
         onChange={this._handleSelected}
         id="movie-name"
+        flip={true}
         labelKey="value"
+        defaultInputValue={initialValue}
         placeholder="Movie name"
+        bsSize="large"
         minLength={2}
         onSearch={this._handleSearch}
         renderMenuItemChildren={(option, props) => {
@@ -33,7 +36,12 @@ class TitleSearchInput extends React.Component {
 
   _handleSelected = selected => {
     const { onResults } = this.props;
-    onResults(selected[0]);
+    const newHash = new URLSearchParams();
+    const selectedResult = selected[0];
+    newHash.append("id", selectedResult.id);
+    newHash.append("title", selectedResult.value);
+    window.location.hash = newHash.toString();
+    onResults(selectedResult);
   };
 
   _handleSearch = query => {
