@@ -25,6 +25,8 @@ class TitleSearchInput extends React.Component {
       <AsyncTypeahead
         {...this.state}
         delay={800}
+        clearButton
+        paginate={false}
         ref={this.setInput}
         autoFocus={!initialValue}
         isLoading={isSearching}
@@ -35,7 +37,6 @@ class TitleSearchInput extends React.Component {
         defaultInputValue={initialValue}
         placeholder="Movie name"
         bsSize="large"
-        minLength={2}
         onSearch={this._handleSearch}
         renderMenuItemChildren={(option, props) => {
           return <div key={option.id}>{option.value}</div>;
@@ -46,13 +47,19 @@ class TitleSearchInput extends React.Component {
 
   _handleSelected = selected => {
     const { onResults } = this.props;
-    const newHash = new URLSearchParams();
-    const selectedResult = selected[0];
-    newHash.append("id", selectedResult.id);
-    newHash.append("title", selectedResult.value);
-    window.location.hash = newHash.toString();
-    this.inputEl.getInstance().blur();
-    onResults(selectedResult);
+    if (!selected || selected.length === 0) {
+      window.location.hash = "";
+      onResults(null);
+      this.inputEl.getInstance().focus();
+    } else {
+      const newHash = new URLSearchParams();
+      const selectedResult = selected[0];
+      newHash.append("id", selectedResult.id);
+      newHash.append("title", selectedResult.value);
+      window.location.hash = newHash.toString();
+      this.inputEl.getInstance().blur();
+      onResults(selectedResult);
+    }
   };
 
   _handleSearch = query => {

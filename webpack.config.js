@@ -6,6 +6,7 @@ const UglifyJsPlugin = require("uglifyjs-webpack-plugin");
 
 module.exports = {
   entry: "./static/js/index.js",
+  devtool: "cheap-source-map",
   output: {
     filename: "main.js",
     path: path.resolve(__dirname, "dist")
