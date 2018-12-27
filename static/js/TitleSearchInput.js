@@ -15,8 +15,8 @@ class TitleSearchInput extends React.Component {
     multiple: false
   };
 
-  setInput = ref => {
-    this.inputEl = ref;
+  setInputRef = ref => {
+    this.inputEl = ref.getInstance();
   };
 
   render() {
@@ -24,20 +24,22 @@ class TitleSearchInput extends React.Component {
     return (
       <AsyncTypeahead
         {...this.state}
-        delay={800}
         clearButton
-        paginate={false}
-        ref={this.setInput}
+        flip
         autoFocus={!initialValue}
-        isLoading={isSearching}
-        onChange={this._handleSelected}
-        id="movie-name"
-        flip={true}
-        labelKey="value"
-        defaultInputValue={initialValue}
-        placeholder="Movie name"
+        allowNew={false}
         bsSize="large"
+        defaultInputValue={initialValue}
+        delay={800}
+        id="movie-name"
+        isLoading={isSearching}
+        labelKey="value"
+        multiple={false}
+        onChange={this._handleSelected}
         onSearch={this._handleSearch}
+        paginate={false}
+        placeholder="Movie name"
+        ref={this.setInputRef}
         renderMenuItemChildren={(option, props) => {
           return <div key={option.id}>{option.value}</div>;
         }}
@@ -50,14 +52,14 @@ class TitleSearchInput extends React.Component {
     if (!selected || selected.length === 0) {
       window.location.hash = "";
       onResults(null);
-      this.inputEl.getInstance().focus();
+      this.inputEl.focus();
     } else {
       const newHash = new URLSearchParams();
       const selectedResult = selected[0];
       newHash.append("id", selectedResult.id);
       newHash.append("title", selectedResult.value);
       window.location.hash = newHash.toString();
-      this.inputEl.getInstance().blur();
+      this.inputEl.blur();
       onResults(selectedResult);
     }
   };
