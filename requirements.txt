@@ -1,5 +1,0 @@
-Flask==1.0.2
-gunicorn==19.9.0
-IMDbPY==6.6
-psycopg2-binary==2.7.6.1
-dateparser==0.7.0

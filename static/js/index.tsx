@@ -3,7 +3,8 @@ import ReactDOM from "react-dom";
 import App from "./App";
 
 const hash = window.location.hash.substring(1);
-let searchTitle, searchId;
+let searchTitle;
+let searchId;
 if (hash !== "") {
   // Run the search with the data in the hash onload
   const searchParams = new URLSearchParams(hash);
@@ -11,7 +12,4 @@ if (hash !== "") {
   searchId = searchParams.get("id");
 }
 
-ReactDOM.render(
-  <App searchTitle={searchTitle} searchId={searchId} />,
-  document.getElementById("container")
-);
+ReactDOM.render(<App searchTitle={searchTitle} searchId={searchId} />, document.getElementById("container"));
