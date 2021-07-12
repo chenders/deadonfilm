@@ -1,13 +1,23 @@
 {
-  "parser": "babel-eslint",
+  "root": true,
   "parserOptions": {
     "ecmaVersion": 6,
     "sourceType": "module",
     "ecmaFeatures": {
       "jsx": true
-    }
+    },
+    "project": "./tsconfig.json"
   },
   "extends": [
+    "airbnb-typescript",
     "plugin:prettier/recommended"
-  ]
+  ],
+  "rules": {
+    "prettier/prettier": ["error", {
+      "printWidth": 120
+    }],
+    "quotes": ["error", "double", { "avoidEscape": true, "allowTemplateLiterals": false }],
+    "react/destructuring-assignment": 0,
+    "react/jsx-props-no-spreading": 0
+  }
 }

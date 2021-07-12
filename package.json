@@ -7,8 +7,8 @@
   "scripts": {
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development --watch",
-    "lint": "eslint static/js",
-    "lint:fix": "eslint --fix static/js"
+    "lint": "eslint static/js --ext .js,.ts,.tsx",
+    "lint:fix": "eslint --fix static/js --ext .js,.ts,.tsx"
   },
   "dependencies": {
     "@babel/core": "^7.2.2",
@@ -21,31 +21,43 @@
     "@types/react": "^16.7.18",
     "@types/react-dom": "^16.0.11",
     "autoprefixer": "^9.4.3",
-    "axios": "^0.18.0",
-    "babel-eslint": "^10.0.1",
-    "babel-loader": "^8.0.4",
+    "axios": "^0.21.1",
+    "babel-eslint": "^10.1.0",
+    "babel-loader": "^8.2.2",
     "css-loader": "^2.0.2",
-    "eslint": "^5.11.0",
-    "eslint-config-prettier": "^3.3.0",
-    "eslint-plugin-import": "^2.14.0",
-    "eslint-plugin-prettier": "^3.0.0",
-    "eslint-plugin-react": "^7.11.1",
+    "eslint": "7",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "eslint-plugin-react": "^7.20.3",
     "mini-css-extract-plugin": "^0.5.0",
     "optimize-css-assets-webpack-plugin": "^5.0.1",
     "postcss-loader": "^3.0.0",
-    "prettier": "^1.15.3",
-    "react": "^16.7.0",
-    "react-bootstrap-typeahead": "^3.2.4",
-    "react-dom": "^16.7.0",
+    "prettier": "^2.3.2",
+    "react": "^17.0.2",
+    "react-bootstrap-typeahead": "^5.2.0",
+    "react-dom": "^17.0.2",
     "style-loader": "^0.23.1",
-    "tslint": "^5.12.0",
-    "tslint-config-standard": "^8.0.1",
-    "tslint-react": "^3.6.0",
-    "typescript": "^3.2.2",
-    "uglifyjs-webpack-plugin": "^2.1.0",
+    "tslint": "^6.1.3",
+    "tslint-config-standard": "^9.0.0",
+    "tslint-react": "^5.0.0",
+    "typescript": "^4.3.5",
+    "uglifyjs-webpack-plugin": "^2.2.0",
     "webpack": "^4.28.2",
     "webpack-bundle-analyzer": "^3.0.3",
     "webpack-cli": "^3.1.2"
   },
-  "browserslist": "> 0.25%, not dead"
+  "browserslist": "> 0.25%, not dead",
+  "prettier": {
+    "printWidth": 120
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.4.1",
+    "eslint-config-airbnb-typescript": "^12.3.1",
+    "eslint-config-standard-with-typescript": "^20.0.0",
+    "eslint-plugin-jsx-a11y": "^6.3.1",
+    "eslint-plugin-node": "11",
+    "eslint-plugin-promise": "4",
+    "eslint-plugin-react-hooks": "^4.0.8"
+  }
 }

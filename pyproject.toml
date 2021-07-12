@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "deadonfilm"
+version = "0.1.0"
+description = ""
+authors = ["<chris@waitingforthefuture.org>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+Flask = "1.0.2"
+gunicorn = "19.9.0"
+IMDbPY = "6.6"
+psycopg2-binary = "^2.9.1"
+dateparser = "0.7.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

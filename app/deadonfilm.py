@@ -2,7 +2,6 @@ import imdb
 import json
 import os
 import logging
-from logging.handlers import RotatingFileHandler
 
 from urllib.parse import urlparse
 
@@ -35,7 +34,6 @@ cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
 @app.before_first_request
 def setup_logging():
-    logger = RotatingFileHandler('app/logs/deadonfilm.log', maxBytes=1000000, backupCount=2)
     logger = logging.getLogger('deadonfilm')
     logger.setLevel(logging.DEBUG)
     app.logger.addHandler(logger)
@@ -61,7 +59,7 @@ def search():
         [{
             'value': mt['long imdb title'],
             'id': mt.getID()
-         } for mt in m if mt.get('kind') == 'movie']))
+        } for mt in m if mt.get('kind') == 'movie']))
     resp.headers['Content-Type'] = 'application/json'
     resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
@@ -109,13 +107,16 @@ if __name__ == '__main__':
     def send_js(path):
         return send_from_directory('./static/js', path)
 
+
     @app.route('/static/css/<path:path>')
     def send_css(path):
         return send_from_directory('./static/css', path)
 
+
     @app.route('/static/images/<path:path>')
     def send_img(path):
         return send_from_directory('./static/images', path)
+
 
     @app.route('/dist/<path:path>')
     def send_dist(path):
@@ -123,4 +124,3 @@ if __name__ == '__main__':
 
 
     app.run()
-
