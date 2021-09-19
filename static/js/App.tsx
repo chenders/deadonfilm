@@ -30,6 +30,7 @@ class App extends React.Component<Props, State> {
         title: searchTitle,
       };
     }
+    this.state = state;
   }
 
   render() {
