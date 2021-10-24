@@ -12,18 +12,11 @@
     "format": "eslint --fix static/js --ext .js,.ts,.tsx"
   },
   "dependencies": {
-    "@babel/core": "^7.2.2",
-    "@babel/plugin-proposal-class-properties": "^7.2.3",
-    "@babel/polyfill": "^7.2.5",
-    "@babel/preset-env": "^7.2.3",
-    "@babel/preset-react": "^7.0.0",
-    "@babel/preset-typescript": "^7.1.0",
     "@types/jest": "^23.3.10",
     "@types/react": "^16.7.18",
     "@types/react-dom": "^16.0.11",
     "autoprefixer": "^10.3.7",
     "axios": "^0.21.1",
-    "babel-loader": "^8.2.2",
     "css-loader": "^6.4.0",
     "mini-css-extract-plugin": "^2.4.3",
     "postcss-loader": "^6.2.0",
@@ -43,10 +36,8 @@
     "printWidth": 120
   },
   "devDependencies": {
-    "@babel/plugin-proposal-optional-chaining": "^7.14.5",
     "@typescript-eslint/eslint-plugin": "^5.1.0",
     "@typescript-eslint/parser": "^5.1.0",
-    "babel-eslint": "^10.1.0",
     "browserslist": "^4.17.5",
     "caniuse-lite": "^1.0.30001271",
     "core-js": "3",
@@ -58,7 +49,9 @@
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-react": "^7.26.1",
     "eslint-plugin-react-hooks": "^4.0.8",
+    "fork-ts-checker-webpack-plugin": "^6.4.0",
     "terser-webpack-plugin": "^5.2.4",
+    "ts-loader": "^9.2.6",
     "typescript": "^4.4.4",
     "yarn-deduplicate": "^3.1.0"
   }

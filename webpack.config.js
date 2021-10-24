@@ -1,6 +1,7 @@
 const path = require("path");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 module.exports = {
   entry: "./static/js/index.tsx",
@@ -21,6 +22,7 @@ module.exports = {
     minimizer: [new TerserPlugin()],
   },
   plugins: [
+    new ForkTsCheckerWebpackPlugin(),
     // new BundleAnalyzerPlugin(),
     new MiniCssExtractPlugin({
       // Options similar to the same options in webpackOptions.output
@@ -34,7 +36,11 @@ module.exports = {
       {
         test: /\.([tj])?sx?$/,
         exclude: /node_modules/,
-        loader: "babel-loader",
+        loader: "ts-loader",
+        options: {
+          // disable type checker - we will use it in fork plugin
+          transpileOnly: true,
+        },
       },
       {
         test: /\.css$/,
