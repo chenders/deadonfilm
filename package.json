@@ -5,6 +5,7 @@
   "author": "Chris Henderson <chris@waitingforthefuture.org>",
   "license": "MIT",
   "scripts": {
+    "start": "yarn build & poetry run app/deadonfilm.py",
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development --watch",
     "lint": "eslint static/js --ext .js,.ts,.tsx",
