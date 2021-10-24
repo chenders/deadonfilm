@@ -8,7 +8,7 @@
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development --watch",
     "lint": "eslint static/js --ext .js,.ts,.tsx",
-    "lint:fix": "eslint --fix static/js --ext .js,.ts,.tsx"
+    "format": "eslint --fix static/js --ext .js,.ts,.tsx"
   },
   "dependencies": {
     "@babel/core": "^7.2.2",
