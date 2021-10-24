@@ -47,7 +47,9 @@
     "webpack-bundle-analyzer": "^3.0.3",
     "webpack-cli": "^3.1.2"
   },
-  "browserslist": ["defaults"],
+  "browserslist": [
+    "defaults"
+  ],
   "prettier": {
     "printWidth": 120
   },
