@@ -38,10 +38,9 @@ class App extends React.Component<Props, State> {
     return (
       <>
         <a href="/">
-          <img alt="skull" id="skull" src="/static/images/skull.png" />
+          <img alt="skull" id="skull" src="/static/images/skull.png" width="497" height="152" />
         </a>
         <h1 id="sitename">Dead on Film</h1>
-        <div id="footer">Last updated: December 24th, 2018</div>
         <div className="row movie-input">
           <div className="col-sm-12">
             <div className="col-sm-offset-3 col-sm-6" id="movie-name">
@@ -56,7 +55,7 @@ class App extends React.Component<Props, State> {
                     };
                   })
                 }
-                onResults={(_results) => this.setState({ results: _results })}
+                onResults={(_results) => this.setState({ hasSearched: true, results: _results })}
                 initialValue={this.props.searchTitle}
               />
             </div>

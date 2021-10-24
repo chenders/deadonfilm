@@ -48,7 +48,7 @@ class DeadPeople extends React.Component<DeadPeopleProps, DeadPeopleState> {
     return (
       <>
         {results.map((elData) => (
-          <Person {...elData} />
+          <Person key={elData.person_id} {...elData} />
         ))}
       </>
     );

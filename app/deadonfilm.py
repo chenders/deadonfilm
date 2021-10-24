@@ -16,7 +16,7 @@ from flask import (
 )
 import psycopg2.extras
 
-url = urlparse(os.environ.get('IMDB_DB'))
+url = urlparse(os.environ.get('IMDB_DB', "postgresql://@localhost/imdb"))
 insecure_redirect = os.environ.get('SECURE_REDIRECT_URL', False)
 
 app = Flask(__name__, root_path='./')

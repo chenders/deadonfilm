@@ -22,7 +22,7 @@ interface State {
 }
 
 class TitleSearchInput extends React.Component<Props, State> {
-  inputEl: any;
+  inputEl = React.createRef<HTMLInputElement>();
 
   constructor(props) {
     super(props);
@@ -33,23 +33,19 @@ class TitleSearchInput extends React.Component<Props, State> {
     };
   }
 
-  setInputRef = (ref) => {
-    this.inputEl = ref;
-  };
-
   handleSelected = (selected) => {
     const { onResults } = this.props;
     if (!selected || selected.length === 0) {
       window.location.hash = "";
       onResults(null);
-      this.inputEl.focus();
+      this.inputEl.current?.focus();
     } else {
       const newHash = new URLSearchParams();
       const selectedResult = selected[0];
       newHash.append("id", selectedResult.id);
       newHash.append("title", selectedResult.value);
       window.location.hash = newHash.toString();
-      this.inputEl.blur();
+      this.inputEl.current?.blur();
       onResults(selectedResult);
     }
   };
@@ -103,7 +99,7 @@ class TitleSearchInput extends React.Component<Props, State> {
         onSearch={this.handleSearch}
         paginate={false}
         placeholder="Movie name"
-        ref={this.setInputRef}
+        ref={this.inputEl}
         renderMenuItemChildren={(option) => {
           return <div key={option.id}>{option.value}</div>;
         }}
