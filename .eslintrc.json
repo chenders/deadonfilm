@@ -1,23 +1,24 @@
 {
   "root": true,
   "parserOptions": {
-    "ecmaVersion": 6,
+    "ecmaVersion": 2021,
     "sourceType": "module",
     "ecmaFeatures": {
       "jsx": true
     },
     "project": "./tsconfig.json"
   },
+  "plugins": ["react", "react-hooks", "prettier", "import", "jsx-a11y"],
+  "parser": "@typescript-eslint/parser",
   "extends": [
-    "airbnb-typescript",
-    "plugin:prettier/recommended"
+    "airbnb-typescript"
   ],
   "rules": {
     "prettier/prettier": ["error", {
       "printWidth": 120
     }],
-    "quotes": ["error", "double", { "avoidEscape": true, "allowTemplateLiterals": false }],
-    "react/destructuring-assignment": 0,
-    "react/jsx-props-no-spreading": 0
+    "quotes": 0,
+    "@typescript-eslint/quotes": ["error", "double", { "avoidEscape": true, "allowTemplateLiterals": false }],
+    "@typescript-eslint/comma-dangle": 0
   }
 }
