@@ -54,11 +54,15 @@
   "devDependencies": {
     "@babel/plugin-proposal-optional-chaining": "^7.14.5",
     "@typescript-eslint/eslint-plugin": "^4.4.1",
+    "browserslist": "^4.17.5",
+    "caniuse-lite": "^1.0.30001271",
+    "core-js": "3",
     "eslint-config-airbnb-typescript": "^12.3.1",
     "eslint-config-standard-with-typescript": "^20.0.0",
     "eslint-plugin-jsx-a11y": "^6.3.1",
     "eslint-plugin-node": "11",
     "eslint-plugin-promise": "4",
-    "eslint-plugin-react-hooks": "^4.0.8"
+    "eslint-plugin-react-hooks": "^4.0.8",
+    "yarn-deduplicate": "^3.1.0"
   }
 }
