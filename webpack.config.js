@@ -36,7 +36,7 @@ module.exports = {
       {
         test: /\.([tj])?sx?$/,
         exclude: /node_modules/,
-        loader: "ts-loader",
+        loader: require.resolve("ts-loader"),
         options: {
           // disable type checker - we will use it in fork plugin
           transpileOnly: true,
@@ -46,15 +46,15 @@ module.exports = {
         test: /\.css$/,
         use: [
           {
-            loader: MiniCssExtractPlugin.loader,
+            loader: require.resolve(MiniCssExtractPlugin.loader),
             options: {
               // you can specify a publicPath here
               // by default it use publicPath in webpackOptions.output
               publicPath: "../",
             },
           },
-          "css-loader",
-          "postcss-loader",
+          require.resolve("css-loader"),
+          require.resolve("postcss-loader"),
         ],
       },
     ],
