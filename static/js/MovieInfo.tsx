@@ -3,10 +3,10 @@ import axios from "axios";
 import Person from "./Person";
 import { DeadPeopleProps, DeadPeopleState } from "./constants";
 
-const EveryonesAlive = () => {
+export const ErrorMessage: React.FC<{}> = ({ children }) => {
   return (
     <div className="row dead-row">
-      <div className="col-sm-offset-3 col-sm-6">Everyone&apos;s still alive!</div>
+      <div className="col-sm-offset-3 col-sm-6">{children}</div>
     </div>
   );
 };
@@ -42,9 +42,15 @@ class DeadPeople extends React.Component<DeadPeopleProps, DeadPeopleState> {
         </div>
       );
     }
-    if (results.length === 0) {
-      return <EveryonesAlive />;
+
+    if ("error" in results) {
+      return <ErrorMessage>{results.error}</ErrorMessage>;
     }
+
+    if (results.length === 0) {
+      return <ErrorMessage>Everyone&apos;s still alive!</ErrorMessage>;
+    }
+
     return (
       <>
         {results.map((elData) => (

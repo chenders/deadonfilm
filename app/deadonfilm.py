@@ -74,26 +74,29 @@ def died():
     movie_id = request.form['id']
     movie = i.get_movie(movie_id, info=["full credits"])
     if movie is None:
-        resp = make_response("Movie not found: {}".format(movie_id, 404))
+        resp = make_response(json.dumps({"error": "Movie not found: {}".format(movie_id, 404)}))
     else:
-        actors = movie.data['cast']
-        actors_by_id = {}
-        for actor in actors:
-            actors_by_id[int(actor.getID())] = actor
-        cursor.execute("SELECT * FROM dead_actors WHERE person_id IN %s", (tuple(actors_by_id.keys()),))
-        pastos = []
-        for person in cursor.fetchall():
-            person_id = person['person_id']
-            character = str(actors_by_id[person_id].currentRole)
-            pastos.append({
-                'person_id': person['person_id'],
-                'birth': person['birth'],
-                'death': person['death'],
-                'character': character,
-                'name': person['name']
-            })
-        pastos = sorted(pastos, key=lambda pasto: pasto['death'], reverse=True)
-        resp = make_response(json.dumps(pastos))
+        actors = movie.data.get('cast', None)
+        if actors is None:
+          resp = make_response(json.dumps({"error": "No cast reported"}))
+        else:
+          actors_by_id = {}
+          for actor in actors:
+              actors_by_id[int(actor.getID())] = actor
+          cursor.execute("SELECT * FROM dead_actors WHERE person_id IN %s", (tuple(actors_by_id.keys()),))
+          pastos = []
+          for person in cursor.fetchall():
+              person_id = person['person_id']
+              character = str(actors_by_id[person_id].currentRole)
+              pastos.append({
+                  'person_id': person['person_id'],
+                  'birth': person['birth'],
+                  'death': person['death'],
+                  'character': character,
+                  'name': person['name']
+              })
+          pastos = sorted(pastos, key=lambda pasto: pasto['death'], reverse=True)
+          resp = make_response(json.dumps(pastos))
         resp.headers['Content-Type'] = 'application/json'
         resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
