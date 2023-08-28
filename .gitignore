@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 .idea
 .DS_Store
+*.iml
 # C extensions
 *.so
 
@@ -66,3 +67,4 @@ node_modules/
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+/frontend/frontend.iml
