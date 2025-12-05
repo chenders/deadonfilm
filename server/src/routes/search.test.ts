@@ -32,8 +32,8 @@ describe('searchMovies route', () => {
     statusSpy = vi.fn().mockReturnThis()
 
     mockRes = {
-      json: jsonSpy,
-      status: statusSpy,
+      json: jsonSpy as Response['json'],
+      status: statusSpy as Response['status'],
     }
   })
 
@@ -87,6 +87,7 @@ describe('searchMovies route', () => {
           release_date: '2020-01-01',
           poster_path: null,
           overview: '',
+          genre_ids: [],
         },
         {
           id: 2,
@@ -95,6 +96,7 @@ describe('searchMovies route', () => {
           release_date: '2020-01-01',
           poster_path: null,
           overview: '',
+          genre_ids: [],
         },
         {
           id: 3,
@@ -103,6 +105,7 @@ describe('searchMovies route', () => {
           release_date: '2020-01-01',
           poster_path: null,
           overview: '',
+          genre_ids: [],
         },
       ],
       total_pages: 1,
@@ -141,6 +144,7 @@ describe('searchMovies route', () => {
         release_date: '2020-01-01',
         poster_path: null,
         overview: '',
+        genre_ids: [],
       })),
       total_pages: 1,
       total_results: 20,
