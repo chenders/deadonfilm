@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dead-on-film
+  namespace: dead-on-film
+  labels:
+    app: dead-on-film
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dead-on-film
+  template:
+    metadata:
+      labels:
+        app: dead-on-film
+    spec:
+      containers:
+        - name: dead-on-film
+          image: gcr.io/PROJECT_ID/dead-on-film:latest
+          ports:
+            - containerPort: 8080
+              name: api
+            - containerPort: 3000
+              name: frontend
+          env:
+            - name: PORT
+              value: "8080"
+            - name: NODE_ENV
+              value: "production"
+            - name: TMDB_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: dead-on-film-secrets
+                  key: TMDB_API_TOKEN
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-cream: #f5f0e8;
+  --color-beige: #e8dcc8;
+  --color-brown-dark: #3d2914;
+  --color-brown-medium: #6b4423;
+  --color-accent: #8b0000;
+}
+
+body {
+  @apply bg-cream text-text-primary font-body;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar for vintage feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-beige;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-brown-medium rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-brown-dark;
+}
