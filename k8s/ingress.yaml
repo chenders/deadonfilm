@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dead-on-film-ingress
+  namespace: dead-on-film
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "dead-on-film-ip"
+    networking.gke.io/managed-certificates: "dead-on-film-cert"
+spec:
+  rules:
+    - host: deadonfilm.com
+      http:
+        paths:
+          - path: /api/*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: dead-on-film-api
+                port:
+                  number: 8080
+          - path: /*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: dead-on-film-frontend
+                port:
+                  number: 80
+
+---
+# Managed certificate for HTTPS
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: dead-on-film-cert
+  namespace: dead-on-film
+spec:
+  domains:
+    - deadonfilm.com
+    - www.deadonfilm.com
