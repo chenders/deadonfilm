@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express'
 import { searchMovies as tmdbSearch } from '../lib/tmdb.js'
-import { getCachedOrFetch, CACHE_KEYS, CACHE_TTL } from '../lib/cache.js'
 
 export async function searchMovies(req: Request, res: Response) {
   const query = req.query.q as string
@@ -10,9 +9,7 @@ export async function searchMovies(req: Request, res: Response) {
   }
 
   try {
-    const cacheKey = CACHE_KEYS.search(query)
-
-    const data = await getCachedOrFetch(cacheKey, CACHE_TTL.SEARCH, () => tmdbSearch(query))
+    const data = await tmdbSearch(query)
 
     // Sort by popularity (highest first) then take top 10
     const sortedResults = [...data.results]

@@ -7,16 +7,6 @@ vi.mock('../lib/tmdb.js', () => ({
   searchMovies: vi.fn(),
 }))
 
-vi.mock('../lib/cache.js', () => ({
-  getCachedOrFetch: vi.fn((key, ttl, fetchFn) => fetchFn()),
-  CACHE_KEYS: {
-    search: (query: string) => `search:${query.toLowerCase().trim()}`,
-  },
-  CACHE_TTL: {
-    SEARCH: 86400,
-  },
-}))
-
 import { searchMovies as tmdbSearch } from '../lib/tmdb.js'
 
 describe('searchMovies route', () => {
