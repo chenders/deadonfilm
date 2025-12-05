@@ -1,7 +1,6 @@
 import type { Request, Response } from 'express'
 import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from '../lib/tmdb.js'
 import { getCauseOfDeath } from '../lib/wikidata.js'
-import { cache, CACHE_KEYS, CACHE_TTL } from '../lib/cache.js'
 import {
   getDeceasedPersons,
   batchUpsertDeceasedPersons,
@@ -48,7 +47,6 @@ interface MovieResponse {
     mortalityPercentage: number
   }
   lastSurvivor: LivingActor | null
-  cached: boolean
   enrichmentPending?: boolean
 }
 
@@ -62,14 +60,6 @@ export async function getMovie(req: Request, res: Response) {
   }
 
   try {
-    // Check full response cache first
-    const cacheKey = CACHE_KEYS.movieFull(movieId)
-    const cached = cache.get<MovieResponse>(cacheKey)
-
-    if (cached) {
-      return res.json({ ...cached, cached: true })
-    }
-
     // Fetch movie details and credits in parallel
     const [movie, credits] = await Promise.all([getMovieDetails(movieId), getMovieCredits(movieId)])
 
@@ -181,14 +171,10 @@ export async function getMovie(req: Request, res: Response) {
         mortalityPercentage,
       },
       lastSurvivor,
-      cached: false,
     }
 
     // Check if any actors need enrichment
     const needsEnrichment = deceased.some((actor) => !actor.causeOfDeath && !actor.wikipediaUrl)
-
-    // Cache the response immediately (without cause of death)
-    cache.set(cacheKey, response, CACHE_TTL.MOVIE_CREDITS)
 
     // Start Wikidata enrichment in background (don't await)
     if (needsEnrichment) {
@@ -220,20 +206,8 @@ function calculateAge(birthday: string | null): number | null {
   return age
 }
 
-// Store for background enrichment results
-const deathInfoCache = new Map<string, DeathInfo>()
-
 // Track movies with pending enrichment
 const pendingEnrichment = new Map<number, Promise<void>>()
-
-interface DeathInfo {
-  causeOfDeath: string | null
-  wikipediaUrl: string | null
-}
-
-function getDeathInfoCacheKey(movieId: number, personId: number): string {
-  return `death:${movieId}:${personId}`
-}
 
 // Helper to safely get deceased persons from database (returns empty map if DB unavailable)
 async function getDeceasedPersonsIfAvailable(
@@ -269,7 +243,7 @@ function updateDeathInfoInDb(
   })
 }
 
-async function enrichWithWikidata(movieId: number, deceased: DeceasedActor[]): Promise<void> {
+async function enrichWithWikidata(_movieId: number, deceased: DeceasedActor[]): Promise<void> {
   // Only enrich actors that don't already have cause of death
   const toEnrich = deceased.filter((actor) => !actor.causeOfDeath).slice(0, 15)
 
@@ -280,68 +254,24 @@ async function enrichWithWikidata(movieId: number, deceased: DeceasedActor[]): P
     toEnrich.map((actor) => getCauseOfDeath(actor.name, actor.birthday, actor.deathday))
   )
 
-  // Store results in dedicated cache and database
-  let hasUpdates = false
+  // Store results in database
   for (let i = 0; i < toEnrich.length; i++) {
     const result = results[i]
     const actor = toEnrich[i]
-    const cacheKey = getDeathInfoCacheKey(movieId, actor.id)
 
     if (result.status === 'fulfilled') {
       const { causeOfDeath, wikipediaUrl } = result.value
-
-      deathInfoCache.set(cacheKey, { causeOfDeath, wikipediaUrl })
 
       // Update the deceased actor in the array
       if (causeOfDeath || wikipediaUrl) {
         actor.causeOfDeath = causeOfDeath
         actor.wikipediaUrl = wikipediaUrl
-        hasUpdates = true
       }
 
       // Save to database for permanent storage
       updateDeathInfoInDb(actor.id, causeOfDeath, wikipediaUrl)
-    } else {
-      // Cache negative result to avoid re-fetching
-      deathInfoCache.set(cacheKey, {
-        causeOfDeath: null,
-        wikipediaUrl: null,
-      })
     }
   }
-
-  // Update the main response cache with enriched data
-  if (hasUpdates) {
-    const responseCacheKey = CACHE_KEYS.movieFull(movieId)
-    const cachedResponse = cache.get<MovieResponse>(responseCacheKey)
-    if (cachedResponse) {
-      // Update deceased actors with new death info
-      for (const actor of cachedResponse.deceased) {
-        const deathCacheKey = getDeathInfoCacheKey(movieId, actor.id)
-        const deathInfo = deathInfoCache.get(deathCacheKey)
-        if (deathInfo) {
-          actor.causeOfDeath = deathInfo.causeOfDeath
-          actor.wikipediaUrl = deathInfo.wikipediaUrl
-        }
-      }
-      cache.set(responseCacheKey, cachedResponse, CACHE_TTL.MOVIE_CREDITS)
-    }
-  }
-}
-
-// Export function to get death info for a movie's actors
-export function getDeathInfo(movieId: number, personIds: number[]): Map<number, DeathInfo> {
-  const results = new Map<number, DeathInfo>()
-
-  for (const personId of personIds) {
-    const cacheKey = getDeathInfoCacheKey(movieId, personId)
-    const cached = deathInfoCache.get(cacheKey)
-    if (cached) {
-      results.set(personId, cached)
-    }
-  }
-
-  return results
 }
 
 // Endpoint to poll for enrichment updates

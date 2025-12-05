@@ -75,7 +75,6 @@ export interface MovieResponse {
     mortalityPercentage: number
   }
   lastSurvivor: LivingActor | null
-  cached: boolean
   enrichmentPending?: boolean
 }
 

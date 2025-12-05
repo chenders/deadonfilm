@@ -1,22 +1,25 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Request, Response } from 'express'
 import { getDeathInfoRoute } from './death-info.js'
 
-// Mock the movie module
-vi.mock('./movie.js', () => ({
-  getDeathInfo: vi.fn(),
+// Mock the db module
+vi.mock('../lib/db.js', () => ({
+  getDeceasedPersons: vi.fn(),
 }))
 
-import { getDeathInfo } from './movie.js'
+import { getDeceasedPersons } from '../lib/db.js'
 
 describe('getDeathInfoRoute', () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
   let jsonSpy: ReturnType<typeof vi.fn>
   let statusSpy: ReturnType<typeof vi.fn>
+  const originalEnv = process.env.DATABASE_URL
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Set DATABASE_URL so getDeceasedPersonsIfAvailable calls the mocked function
+    process.env.DATABASE_URL = 'postgresql://test'
 
     jsonSpy = vi.fn()
     statusSpy = vi.fn().mockReturnThis()
@@ -24,6 +27,15 @@ describe('getDeathInfoRoute', () => {
     mockRes = {
       json: jsonSpy as Response['json'],
       status: statusSpy as Response['status'],
+    }
+  })
+
+  afterEach(() => {
+    // Restore original env
+    if (originalEnv) {
+      process.env.DATABASE_URL = originalEnv
+    } else {
+      delete process.env.DATABASE_URL
     }
   })
 
@@ -70,12 +82,12 @@ describe('getDeathInfoRoute', () => {
   })
 
   it('returns death info for valid request', async () => {
-    const mockDeathInfo = new Map([
-      [123, { causeOfDeath: 'lung cancer', wikipediaUrl: 'https://en.wikipedia.org/wiki/Actor1' }],
-      [456, { causeOfDeath: 'heart attack', wikipediaUrl: null }],
+    const mockDbRecords = new Map([
+      [123, { tmdb_id: 123, name: 'Actor1', cause_of_death: 'lung cancer', wikipedia_url: 'https://en.wikipedia.org/wiki/Actor1' }],
+      [456, { tmdb_id: 456, name: 'Actor2', cause_of_death: 'heart attack', wikipedia_url: null }],
     ])
 
-    vi.mocked(getDeathInfo).mockReturnValue(mockDeathInfo)
+    vi.mocked(getDeceasedPersons).mockResolvedValue(mockDbRecords as any)
 
     mockReq = {
       params: { id: '389' },
@@ -84,20 +96,18 @@ describe('getDeathInfoRoute', () => {
 
     await getDeathInfoRoute(mockReq as Request, mockRes as Response)
 
-    expect(getDeathInfo).toHaveBeenCalledWith(389, [123, 456])
+    expect(getDeceasedPersons).toHaveBeenCalledWith([123, 456])
     expect(jsonSpy).toHaveBeenCalledWith({
-      movieId: 389,
+      pending: false,
       deathInfo: {
         123: { causeOfDeath: 'lung cancer', wikipediaUrl: 'https://en.wikipedia.org/wiki/Actor1' },
         456: { causeOfDeath: 'heart attack', wikipediaUrl: null },
       },
-      found: 2,
-      requested: 2,
     })
   })
 
   it('handles empty results', async () => {
-    vi.mocked(getDeathInfo).mockReturnValue(new Map())
+    vi.mocked(getDeceasedPersons).mockResolvedValue(new Map())
 
     mockReq = {
       params: { id: '389' },
@@ -107,15 +117,13 @@ describe('getDeathInfoRoute', () => {
     await getDeathInfoRoute(mockReq as Request, mockRes as Response)
 
     expect(jsonSpy).toHaveBeenCalledWith({
-      movieId: 389,
+      pending: false,
       deathInfo: {},
-      found: 0,
-      requested: 2,
     })
   })
 
   it('filters out invalid person IDs', async () => {
-    vi.mocked(getDeathInfo).mockReturnValue(new Map())
+    vi.mocked(getDeceasedPersons).mockResolvedValue(new Map())
 
     mockReq = {
       params: { id: '389' },
@@ -124,18 +132,15 @@ describe('getDeathInfoRoute', () => {
 
     await getDeathInfoRoute(mockReq as Request, mockRes as Response)
 
-    expect(getDeathInfo).toHaveBeenCalledWith(389, [123, 456])
-    expect(jsonSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        requested: 2, // Only valid IDs counted
-      })
-    )
+    expect(getDeceasedPersons).toHaveBeenCalledWith([123, 456])
   })
 
   it('handles single person ID', async () => {
-    const mockDeathInfo = new Map([[123, { causeOfDeath: 'stroke', wikipediaUrl: null }]])
+    const mockDbRecords = new Map([
+      [123, { tmdb_id: 123, name: 'Actor', cause_of_death: 'stroke', wikipedia_url: null }],
+    ])
 
-    vi.mocked(getDeathInfo).mockReturnValue(mockDeathInfo)
+    vi.mocked(getDeceasedPersons).mockResolvedValue(mockDbRecords as any)
 
     mockReq = {
       params: { id: '100' },
@@ -144,24 +149,22 @@ describe('getDeathInfoRoute', () => {
 
     await getDeathInfoRoute(mockReq as Request, mockRes as Response)
 
-    expect(getDeathInfo).toHaveBeenCalledWith(100, [123])
+    expect(getDeceasedPersons).toHaveBeenCalledWith([123])
     expect(jsonSpy).toHaveBeenCalledWith({
-      movieId: 100,
+      pending: false,
       deathInfo: {
         123: { causeOfDeath: 'stroke', wikipediaUrl: null },
       },
-      found: 1,
-      requested: 1,
     })
   })
 
   it('handles partial results (some IDs found, some not)', async () => {
-    const mockDeathInfo = new Map([
-      [123, { causeOfDeath: 'cancer', wikipediaUrl: 'https://example.com' }],
-      // 456 not found
+    const mockDbRecords = new Map([
+      [123, { tmdb_id: 123, name: 'Actor', cause_of_death: 'cancer', wikipedia_url: 'https://example.com' }],
+      // 456 and 789 not found
     ])
 
-    vi.mocked(getDeathInfo).mockReturnValue(mockDeathInfo)
+    vi.mocked(getDeceasedPersons).mockResolvedValue(mockDbRecords as any)
 
     mockReq = {
       params: { id: '200' },
@@ -171,12 +174,10 @@ describe('getDeathInfoRoute', () => {
     await getDeathInfoRoute(mockReq as Request, mockRes as Response)
 
     expect(jsonSpy).toHaveBeenCalledWith({
-      movieId: 200,
+      pending: false,
       deathInfo: {
         123: { causeOfDeath: 'cancer', wikipediaUrl: 'https://example.com' },
       },
-      found: 1,
-      requested: 3,
     })
   })
 })
