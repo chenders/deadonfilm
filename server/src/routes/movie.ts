@@ -49,6 +49,7 @@ interface MovieResponse {
   }
   lastSurvivor: LivingActor | null
   cached: boolean
+  enrichmentPending?: boolean
 }
 
 const CAST_LIMIT = 30
@@ -183,11 +184,19 @@ export async function getMovie(req: Request, res: Response) {
       cached: false,
     }
 
+    // Check if any actors need enrichment
+    const needsEnrichment = deceased.some((actor) => !actor.causeOfDeath && !actor.wikipediaUrl)
+
     // Cache the response immediately (without cause of death)
     cache.set(cacheKey, response, CACHE_TTL.MOVIE_CREDITS)
 
     // Start Wikidata enrichment in background (don't await)
-    enrichWithWikidata(movieId, deceased)
+    if (needsEnrichment) {
+      const enrichmentPromise = enrichWithWikidata(movieId, deceased)
+      pendingEnrichment.set(movieId, enrichmentPromise)
+      enrichmentPromise.finally(() => pendingEnrichment.delete(movieId))
+      response.enrichmentPending = true
+    }
 
     res.json(response)
   } catch (error) {
@@ -213,6 +222,9 @@ function calculateAge(birthday: string | null): number | null {
 
 // Store for background enrichment results
 const deathInfoCache = new Map<string, DeathInfo>()
+
+// Track movies with pending enrichment
+const pendingEnrichment = new Map<number, Promise<void>>()
 
 interface DeathInfo {
   causeOfDeath: string | null
@@ -269,6 +281,7 @@ async function enrichWithWikidata(movieId: number, deceased: DeceasedActor[]): P
   )
 
   // Store results in dedicated cache and database
+  let hasUpdates = false
   for (let i = 0; i < toEnrich.length; i++) {
     const result = results[i]
     const actor = toEnrich[i]
@@ -279,6 +292,13 @@ async function enrichWithWikidata(movieId: number, deceased: DeceasedActor[]): P
 
       deathInfoCache.set(cacheKey, { causeOfDeath, wikipediaUrl })
 
+      // Update the deceased actor in the array
+      if (causeOfDeath || wikipediaUrl) {
+        actor.causeOfDeath = causeOfDeath
+        actor.wikipediaUrl = wikipediaUrl
+        hasUpdates = true
+      }
+
       // Save to database for permanent storage
       updateDeathInfoInDb(actor.id, causeOfDeath, wikipediaUrl)
     } else {
@@ -287,6 +307,24 @@ async function enrichWithWikidata(movieId: number, deceased: DeceasedActor[]): P
         causeOfDeath: null,
         wikipediaUrl: null,
       })
+    }
+  }
+
+  // Update the main response cache with enriched data
+  if (hasUpdates) {
+    const responseCacheKey = CACHE_KEYS.movieFull(movieId)
+    const cachedResponse = cache.get<MovieResponse>(responseCacheKey)
+    if (cachedResponse) {
+      // Update deceased actors with new death info
+      for (const actor of cachedResponse.deceased) {
+        const deathCacheKey = getDeathInfoCacheKey(movieId, actor.id)
+        const deathInfo = deathInfoCache.get(deathCacheKey)
+        if (deathInfo) {
+          actor.causeOfDeath = deathInfo.causeOfDeath
+          actor.wikipediaUrl = deathInfo.wikipediaUrl
+        }
+      }
+      cache.set(responseCacheKey, cachedResponse, CACHE_TTL.MOVIE_CREDITS)
     }
   }
 }
@@ -304,4 +342,46 @@ export function getDeathInfo(movieId: number, personIds: number[]): Map<number, 
   }
 
   return results
+}
+
+// Endpoint to poll for enrichment updates
+export async function getMovieDeathInfo(req: Request, res: Response) {
+  const movieId = parseInt(req.params.id, 10)
+  const personIdsParam = req.query.personIds as string
+
+  if (!movieId || isNaN(movieId)) {
+    return res.status(400).json({ error: { message: 'Invalid movie ID' } })
+  }
+
+  if (!personIdsParam) {
+    return res.status(400).json({ error: { message: 'personIds query parameter required' } })
+  }
+
+  const personIds = personIdsParam
+    .split(',')
+    .map((id) => parseInt(id, 10))
+    .filter((id) => !isNaN(id))
+
+  // Check if enrichment is still pending
+  const isPending = pendingEnrichment.has(movieId)
+
+  // Query database directly for the latest death info
+  const dbRecords = await getDeceasedPersonsIfAvailable(personIds)
+
+  // Return death info for requested actors
+  const deathInfo: Record<number, { causeOfDeath: string | null; wikipediaUrl: string | null }> = {}
+  for (const personId of personIds) {
+    const record = dbRecords.get(personId)
+    if (record) {
+      deathInfo[personId] = {
+        causeOfDeath: record.cause_of_death,
+        wikipediaUrl: record.wikipedia_url,
+      }
+    }
+  }
+
+  res.json({
+    pending: isPending,
+    deathInfo,
+  })
 }

@@ -162,3 +162,19 @@ export async function updateDeathInfo(
     [tmdbId, causeOfDeath, wikipediaUrl]
   )
 }
+
+// Get deceased persons who died on a specific month/day (for "On This Day" feature)
+export async function getDeceasedByMonthDay(
+  month: number,
+  day: number
+): Promise<DeceasedPersonRecord[]> {
+  const db = getPool()
+  const result = await db.query<DeceasedPersonRecord>(
+    `SELECT * FROM deceased_persons
+     WHERE EXTRACT(MONTH FROM deathday) = $1
+       AND EXTRACT(DAY FROM deathday) = $2
+     ORDER BY deathday DESC`,
+    [month, day]
+  )
+  return result.rows
+}

@@ -144,6 +144,22 @@ export async function getPersonDetails(personId: number): Promise<TMDBPerson> {
   return tmdbFetch<TMDBPerson>(`/person/${personId}?language=en-US`)
 }
 
+export interface TMDBPersonCredits {
+  id: number
+  cast: Array<{
+    id: number
+    title: string
+    release_date: string
+    character: string
+    popularity: number
+    poster_path: string | null
+  }>
+}
+
+export async function getPersonCredits(personId: number): Promise<TMDBPersonCredits> {
+  return tmdbFetch<TMDBPersonCredits>(`/person/${personId}/movie_credits?language=en-US`)
+}
+
 // Batch fetch person details with chunking to respect rate limits
 export async function batchGetPersonDetails(
   personIds: number[],

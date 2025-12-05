@@ -4,10 +4,14 @@ import DeathInfo from './DeathInfo'
 
 interface DeceasedCardProps {
   actor: DeceasedActor
+  isPolling?: boolean
 }
 
-export default function DeceasedCard({ actor }: DeceasedCardProps) {
+export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardProps) {
   const profileUrl = getProfileUrl(actor.profile_path, 'w185')
+
+  // Show loading indicator only for actors without cause/wikipedia info while polling
+  const showLoading = isPolling && !actor.causeOfDeath && !actor.wikipediaUrl
 
   return (
     <div className="bg-white border border-brown-medium/20 rounded-lg p-4 flex gap-4 items-start">
@@ -35,6 +39,7 @@ export default function DeceasedCard({ actor }: DeceasedCardProps) {
             birthday={actor.birthday}
             causeOfDeath={actor.causeOfDeath}
             wikipediaUrl={actor.wikipediaUrl}
+            isLoading={showLoading}
           />
         </div>
       </div>

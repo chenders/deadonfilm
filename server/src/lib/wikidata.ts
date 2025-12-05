@@ -200,7 +200,7 @@ function isNameMatch(tmdbName: string, wikidataName: string): boolean {
   return tmdbLast === wikiLast
 }
 
-// Wikipedia API fallback for cause of death from infobox
+// Wikipedia API fallback for cause of death from infobox or article text
 async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<string | null> {
   try {
     // Extract article title from URL
@@ -232,30 +232,45 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
     const content = pages[pageId]?.revisions?.[0]?.slots?.main?.['*']
     if (!content) return null
 
-    // Look for death_cause or cause of death in infobox
-    // Common patterns: | death_cause = ..., | cause_of_death = ...
-    const patterns = [
+    // 1. First try infobox fields
+    const infoboxPatterns = [
       /\|\s*death_cause\s*=\s*([^\n|]+)/i,
       /\|\s*cause_of_death\s*=\s*([^\n|]+)/i,
       /\|\s*death cause\s*=\s*([^\n|]+)/i,
     ]
 
-    for (const pattern of patterns) {
+    for (const pattern of infoboxPatterns) {
       const match = content.match(pattern)
       if (match && match[1]) {
-        // Clean up the result - remove wiki markup
-        const cause = match[1]
-          .replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g, '$2') // [[link|text]] -> text
-          .replace(/\{\{[^}]+\}\}/g, '') // Remove templates
-          .replace(/<[^>]+>/g, '') // Remove HTML tags
-          .replace(/&nbsp;/g, ' ')
-          .trim()
-
-        // Skip if it's just a reference or empty
-        if (cause && cause.length > 0 && !cause.startsWith('<')) {
-          return cause
-        }
+        const cause = cleanWikiMarkup(match[1])
+        if (cause) return cause
       }
+    }
+
+    // 2. Try to extract from death-related sections
+    // Match various section titles that might contain death info
+    const sectionPatterns = [
+      /==\s*Death(?:\s+and\s+[\w\s]+)?\s*==\s*([\s\S]*?)(?:==\s*\w|$)/i,
+      /==\s*(?:Personal\s+life|Later\s+(?:life|years)|Final\s+years)(?:\s+and\s+[\w\s]+)?\s*==\s*([\s\S]*?)(?:==\s*\w|$)/i,
+    ]
+
+    for (const sectionPattern of sectionPatterns) {
+      const sectionMatch = content.match(sectionPattern)
+      if (sectionMatch) {
+        const sectionText = cleanWikiMarkup(sectionMatch[1])
+        const extracted = extractCauseFromText(sectionText)
+        if (extracted) return extracted
+      }
+    }
+
+    // 3. Try opening paragraph for "died of X" or "died from X"
+    // Skip past infobox to get to actual article content
+    const afterInfobox = content.replace(/\{\{Infobox[\s\S]*?\}\}/gi, '')
+    const firstParagraph = afterInfobox.match(/'''[^']+'''.{0,500}/s)
+    if (firstParagraph) {
+      const paragraphText = cleanWikiMarkup(firstParagraph[0])
+      const extracted = extractCauseFromText(paragraphText)
+      if (extracted) return extracted
     }
 
     return null
@@ -263,6 +278,55 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
     console.log('Wikipedia fallback error:', error)
     return null
   }
+}
+
+// Clean wiki markup from text
+function cleanWikiMarkup(text: string): string {
+  return text
+    .replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g, '$2') // [[link|text]] -> text
+    .replace(/\{\{[^}]*\}\}/g, '') // Remove templates
+    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '') // Remove references
+    .replace(/<ref[^/]*\/>/gi, '') // Remove self-closing refs
+    .replace(/<[^>]+>/g, '') // Remove HTML tags
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Extract cause of death from natural language text
+function extractCauseFromText(text: string): string | null {
+  // Common patterns for cause of death in article text
+  const patterns = [
+    // "died of X" or "died from X"
+    /died (?:of|from) (?:a |an )?([^,.;()]+?)(?:\.|,|;| at | in | on |\()/i,
+    // "death was caused by X"
+    /death was (?:caused by|due to|attributed to) (?:a |an )?([^,.;()]+?)(?:\.|,|;|\()/i,
+    // "cause of death was X"
+    /cause of death (?:was|is) (?:a |an )?([^,.;()]+?)(?:\.|,|;|\()/i,
+    // "died in his/her sleep"
+    /(died in (?:his|her|their) sleep)/i,
+    // "succumbed to X"
+    /succumbed to (?:a |an )?([^,.;()]+?)(?:\.|,|;|\()/i,
+    // "killed by X" or "killed in X"
+    /(?:was |were )?killed (?:by|in) (?:a |an )?([^,.;()]+?)(?:\.|,|;|\()/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match && match[1]) {
+      let cause = match[1].trim()
+      // Clean up common trailing words
+      cause = cause
+        .replace(/\s+(?:aged?|at age|years old|after|following|while|when).*$/i, '')
+        .trim()
+      // Skip if too short or just contains common filler
+      if (cause.length >= 3 && !/^(the|his|her|their|a|an)$/i.test(cause)) {
+        return cause
+      }
+    }
+  }
+
+  return null
 }
 
 interface WikipediaApiResponse {

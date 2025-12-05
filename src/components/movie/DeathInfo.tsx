@@ -5,6 +5,21 @@ interface DeathInfoProps {
   birthday: string | null
   causeOfDeath: string | null
   wikipediaUrl: string | null
+  isLoading?: boolean
+}
+
+function LoadingEllipsis() {
+  return (
+    <span className="inline-flex">
+      <span className="animate-pulse">.</span>
+      <span className="animate-pulse" style={{ animationDelay: '0.2s' }}>
+        .
+      </span>
+      <span className="animate-pulse" style={{ animationDelay: '0.4s' }}>
+        .
+      </span>
+    </span>
+  )
 }
 
 export default function DeathInfo({
@@ -12,6 +27,7 @@ export default function DeathInfo({
   birthday,
   causeOfDeath,
   wikipediaUrl,
+  isLoading = false,
 }: DeathInfoProps) {
   const ageAtDeath = calculateAge(birthday, deathday)
 
@@ -39,14 +55,25 @@ export default function DeathInfo({
       )}
 
       {!causeOfDeath && wikipediaUrl && (
-        <a
-          href={wikipediaUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-brown-medium underline hover:text-brown-dark"
-        >
-          Wikipedia
-        </a>
+        <p className="text-sm text-text-muted mt-1">
+          <span className="italic">(cause unknown)</span>
+          {' - '}
+          <a
+            href={wikipediaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brown-medium underline hover:text-brown-dark"
+          >
+            Wikipedia
+          </a>
+        </p>
+      )}
+
+      {!causeOfDeath && !wikipediaUrl && isLoading && (
+        <p className="text-sm text-text-muted mt-1 italic">
+          Looking up cause
+          <LoadingEllipsis />
+        </p>
       )}
     </div>
   )

@@ -4,9 +4,10 @@ import DeceasedCard from './DeceasedCard'
 interface DeceasedListProps {
   actors: DeceasedActor[]
   movieTitle: string
+  isPolling?: boolean
 }
 
-export default function DeceasedList({ actors, movieTitle }: DeceasedListProps) {
+export default function DeceasedList({ actors, movieTitle, isPolling = false }: DeceasedListProps) {
   if (actors.length === 0) {
     return (
       <div className="text-center py-8">
@@ -21,7 +22,7 @@ export default function DeceasedList({ actors, movieTitle }: DeceasedListProps) 
 
       <div className="space-y-3">
         {actors.map((actor) => (
-          <DeceasedCard key={actor.id} actor={actor} />
+          <DeceasedCard key={actor.id} actor={actor} isPolling={isPolling} />
         ))}
       </div>
     </div>
