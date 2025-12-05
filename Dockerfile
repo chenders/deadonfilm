@@ -39,8 +39,14 @@ RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'wait' >> /app/start.sh && \
     chmod +x /app/start.sh
 
+# Ensure app files are owned by the non-root node user
+RUN chown -R node:node /app
+
 # Expose ports
 EXPOSE 8080 3000
+
+# Switch to non-root user
+USER node
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
