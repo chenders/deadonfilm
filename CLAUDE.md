@@ -11,11 +11,13 @@ dates, and causes of death (via Wikidata).
 
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
 - **Backend**: Node.js + Express.js + TypeScript
+- **Database**: PostgreSQL 16
+- **Reverse Proxy**: Nginx (local dev via Docker Compose)
 - **State Management**: TanStack Query (React Query)
 - **Routing**: React Router v6
 - **Deployment**: Google Kubernetes Engine (GKE)
-- **Caching**: In-memory (resets on container restart)
-- **Data Sources**: TMDB API, Wikidata SPARQL
+- **Caching**: In-memory + PostgreSQL for persistent storage
+- **Data Sources**: TMDB API, Wikidata SPARQL, Claude API (optional)
 
 ## Project Structure
 
@@ -37,7 +39,10 @@ dates, and causes of death (via Wikidata).
 │   ├── secret.yaml
 │   ├── deployment.yaml
 │   ├── service.yaml
-│   └── ingress.yaml
+│   ├── ingress.yaml
+│   └── nginx-configmap.yaml  # Optional nginx config for k8s
+├── docker-compose.yml      # Local development with Docker
+├── nginx.conf              # Nginx reverse proxy config
 ├── Dockerfile              # Multi-stage Docker build
 └── public/                 # Static assets
 ```
@@ -75,9 +80,38 @@ cd server && npm run format  # Backend - auto-fix
 # Testing
 npm test                     # Frontend unit tests
 
-# Docker
+# Docker (standalone)
 npm run docker:build
 npm run docker:run
+
+# Docker Compose (recommended for local development)
+docker compose up -d        # Start all services (nginx, app, postgres)
+docker compose down         # Stop all services
+docker compose logs -f      # View logs
+docker compose logs app     # View app logs only
+```
+
+## Local Development with Docker Compose
+
+The recommended way to run locally is with Docker Compose, which starts:
+- **nginx** - Reverse proxy on port 8000
+- **app** - Frontend (port 3000) + Backend (port 8080)
+- **db** - PostgreSQL on port 5437
+
+Access the app at **http://localhost:8000**
+
+```bash
+# Start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+
+# Rebuild after code changes
+docker compose up -d --build
 ```
 
 ## API Endpoints
@@ -94,6 +128,8 @@ Create a `.env` file in the `server/` directory:
 ```
 TMDB_API_TOKEN=your_token_here
 PORT=8080
+DATABASE_URL=postgresql://deadonfilm:deadonfilm@localhost:5437/deadonfilm
+ANTHROPIC_API_KEY=your_anthropic_key  # Optional - improves cause of death accuracy
 ```
 
 ## GKE Deployment

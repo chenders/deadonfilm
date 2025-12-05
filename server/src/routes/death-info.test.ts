@@ -22,8 +22,8 @@ describe('getDeathInfoRoute', () => {
     statusSpy = vi.fn().mockReturnThis()
 
     mockRes = {
-      json: jsonSpy,
-      status: statusSpy,
+      json: jsonSpy as Response['json'],
+      status: statusSpy as Response['status'],
     }
   })
 
