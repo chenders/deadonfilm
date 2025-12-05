@@ -103,38 +103,65 @@ PORT=8080
 - Google Cloud SDK (`gcloud`)
 - `kubectl` configured for your cluster
 - Docker
+- GKE Autopilot cluster created
+- Artifact Registry repository created
 
-### Deploy Steps
+### Quick Deploy (Recommended)
 
-1. **Set your project ID**:
+Use the automated deployment script:
+
+```bash
+GCP_PROJECT_ID=your-project-id ./scripts/deploy.sh
+```
+
+This will:
+1. Configure Docker authentication for Artifact Registry
+2. Build and push the Docker image
+3. Get GKE credentials
+4. Apply all Kubernetes manifests
+5. Wait for rollout to complete
+
+### Manual Deploy Steps
+
+1. **Set environment variables**:
    ```bash
    export PROJECT_ID=your-gcp-project-id
+   export REGION=us-central1
    ```
 
-2. **Build and push Docker image**:
+2. **Configure Docker for Artifact Registry**:
    ```bash
-   docker build -t gcr.io/$PROJECT_ID/dead-on-film:latest .
-   docker push gcr.io/$PROJECT_ID/dead-on-film:latest
+   gcloud auth configure-docker ${REGION}-docker.pkg.dev
    ```
 
-3. **Update deployment.yaml** with your PROJECT_ID
+3. **Build and push Docker image**:
+   ```bash
+   docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/deadonfilm-repo/dead-on-film:latest .
+   docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/deadonfilm-repo/dead-on-film:latest
+   ```
 
-4. **Create namespace and secret**:
+4. **Get GKE credentials**:
+   ```bash
+   gcloud container clusters get-credentials deadonfilm-cluster --region ${REGION}
+   ```
+
+5. **Create namespace and secrets**:
    ```bash
    kubectl apply -f k8s/namespace.yaml
    kubectl create secret generic dead-on-film-secrets \
      --namespace=dead-on-film \
-     --from-literal=TMDB_API_TOKEN=your_token_here
+     --from-literal=TMDB_API_TOKEN=your_tmdb_token \
+     --from-literal=ANTHROPIC_API_KEY=your_anthropic_key
    ```
 
-5. **Deploy**:
+6. **Update deployment.yaml** with your PROJECT_ID, then deploy:
    ```bash
    kubectl apply -f k8s/deployment.yaml
    kubectl apply -f k8s/service.yaml
    kubectl apply -f k8s/ingress.yaml
    ```
 
-6. **Reserve static IP** (for ingress):
+7. **Reserve static IP** (for ingress with custom domain):
    ```bash
    gcloud compute addresses create dead-on-film-ip --global
    ```
