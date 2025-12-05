@@ -5,7 +5,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **Dead on Film** - A website to look up movies and see which actors have passed away. Shows mortality statistics, death
-dates, and causes of death (via Wikidata).
+dates, and causes of death.
+
+## Cause of Death Lookup Priority
+
+**IMPORTANT**: When looking up cause of death for deceased actors, the priority order is:
+
+1. **Claude API (primary)** - Most accurate, should always be tried first
+2. **Wikidata SPARQL (fallback)** - Only if Claude returns null or a vague answer
+3. **Wikipedia infobox (last resort)** - Parse `death_cause` field from Wikipedia article
+
+Wikipedia should NEVER be the first method used. Claude should always be tried first.
 
 ## Tech Stack
 
@@ -17,7 +27,7 @@ dates, and causes of death (via Wikidata).
 - **Routing**: React Router v6
 - **Deployment**: Google Kubernetes Engine (GKE)
 - **Caching**: In-memory + PostgreSQL for persistent storage
-- **Data Sources**: TMDB API, Wikidata SPARQL, Claude API (optional)
+- **Data Sources**: TMDB API, Claude API (primary for cause of death), Wikidata SPARQL (fallback)
 
 ## Project Structure
 

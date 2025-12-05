@@ -1,4 +1,4 @@
-import type { SearchResponse, MovieResponse, OnThisDayResponse } from '@/types'
+import type { SearchResponse, MovieResponse, OnThisDayResponse, DeathInfoResponse } from '@/types'
 
 const API_BASE = '/api'
 
@@ -28,6 +28,13 @@ export async function getMovie(movieId: number): Promise<MovieResponse> {
 
 export async function getOnThisDay(): Promise<OnThisDayResponse> {
   return fetchJson('/on-this-day')
+}
+
+export async function getDeathInfo(
+  movieId: number,
+  personIds: number[]
+): Promise<DeathInfoResponse> {
+  return fetchJson(`/movie/${movieId}/death-info?personIds=${personIds.join(',')}`)
 }
 
 // TMDB image URL helpers

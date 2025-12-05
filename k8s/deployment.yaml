@@ -19,7 +19,7 @@ spec:
         - name: dead-on-film
           # Update PROJECT_ID and REGION before deploying:
           # us-central1-docker.pkg.dev/PROJECT_ID/deadonfilm-repo/dead-on-film:latest
-          image: us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:amd64-v1
+          image: us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -41,6 +41,11 @@ spec:
                 secretKeyRef:
                   name: dead-on-film-secrets
                   key: ANTHROPIC_API_KEY
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: dead-on-film-secrets
+                  key: DATABASE_URL
           resources:
             requests:
               memory: "256Mi"

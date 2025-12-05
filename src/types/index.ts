@@ -76,6 +76,12 @@ export interface MovieResponse {
   }
   lastSurvivor: LivingActor | null
   cached: boolean
+  enrichmentPending?: boolean
+}
+
+export interface DeathInfoResponse {
+  pending: boolean
+  deathInfo: Record<number, { causeOfDeath: string | null; wikipediaUrl: string | null }>
 }
 
 export interface OnThisDayResponse {

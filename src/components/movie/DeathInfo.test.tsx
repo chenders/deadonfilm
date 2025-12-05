@@ -68,7 +68,7 @@ describe('DeathInfo', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('displays Wikipedia link when no cause of death but URL exists', () => {
+  it('displays cause unknown with Wikipedia link when no cause of death but URL exists', () => {
     render(
       <DeathInfo
         deathday="1993-01-20"
@@ -78,6 +78,7 @@ describe('DeathInfo', () => {
       />
     )
 
+    expect(screen.getByText('(cause unknown)')).toBeInTheDocument()
     const link = screen.getByRole('link', { name: 'Wikipedia' })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute('href', 'https://en.wikipedia.org/wiki/Some_Actor')
@@ -106,5 +107,49 @@ describe('DeathInfo', () => {
     // Should only have the date
     expect(screen.getByText('Jan 1, 2000')).toBeInTheDocument()
     expect(container.querySelectorAll('a').length).toBe(0)
+  })
+
+  it('shows loading indicator when isLoading is true and no cause/wikipedia', () => {
+    render(
+      <DeathInfo
+        deathday="2000-01-01"
+        birthday={null}
+        causeOfDeath={null}
+        wikipediaUrl={null}
+        isLoading={true}
+      />
+    )
+
+    expect(screen.getByText(/Looking up cause/)).toBeInTheDocument()
+  })
+
+  it('does not show loading indicator when cause of death exists', () => {
+    render(
+      <DeathInfo
+        deathday="2000-01-01"
+        birthday={null}
+        causeOfDeath="heart attack"
+        wikipediaUrl={null}
+        isLoading={true}
+      />
+    )
+
+    expect(screen.queryByText(/Looking up cause/)).not.toBeInTheDocument()
+    expect(screen.getByText('heart attack')).toBeInTheDocument()
+  })
+
+  it('does not show loading indicator when wikipedia URL exists', () => {
+    render(
+      <DeathInfo
+        deathday="2000-01-01"
+        birthday={null}
+        causeOfDeath={null}
+        wikipediaUrl="https://en.wikipedia.org/wiki/Test"
+        isLoading={true}
+      />
+    )
+
+    expect(screen.queryByText(/Looking up cause/)).not.toBeInTheDocument()
+    expect(screen.getByText('(cause unknown)')).toBeInTheDocument()
   })
 })

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useMovie } from '@/hooks/useMovie'
+import { useDeathInfoPolling } from '@/hooks/useDeathInfoPolling'
 import { extractMovieId } from '@/utils/slugify'
 import { getYear } from '@/utils/formatDate'
 import MovieHeader from '@/components/movie/MovieHeader'
@@ -19,6 +20,13 @@ export default function MoviePage() {
   const { data, isLoading, error } = useMovie(movieId)
   const [showLiving, setShowLiving] = useState(false)
 
+  // Poll for death info updates if enrichment is pending
+  const { enrichedDeceased, isPolling } = useDeathInfoPolling({
+    movieId,
+    deceased: data?.deceased ?? [],
+    enrichmentPending: data?.enrichmentPending,
+  })
+
   if (!movieId) {
     return <ErrorMessage message="Invalid movie URL" />
   }
@@ -35,7 +43,7 @@ export default function MoviePage() {
     return <ErrorMessage message="Movie not found" />
   }
 
-  const { movie, deceased, living, stats, lastSurvivor } = data
+  const { movie, living, stats, lastSurvivor } = data
   const year = getYear(movie.release_date)
   const title = `${movie.title} (${year})`
 
@@ -74,7 +82,7 @@ export default function MoviePage() {
         {showLiving ? (
           <LivingList actors={living} />
         ) : (
-          <DeceasedList actors={deceased} movieTitle={movie.title} />
+          <DeceasedList actors={enrichedDeceased} movieTitle={movie.title} isPolling={isPolling} />
         )}
       </div>
     </>
