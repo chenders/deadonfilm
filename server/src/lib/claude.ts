@@ -78,9 +78,24 @@ If you don't know or aren't confident, respond with:
       return { causeOfDeath: null, details: null }
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      cause: string | null
-      details: string | null
+    let parsed: { cause: string | null; details: string | null }
+
+    try {
+      parsed = JSON.parse(jsonMatch[0])
+    } catch {
+      // JSON parsing failed - try to extract values with regex as fallback
+      // This handles cases where Claude includes unescaped quotes in the values
+      console.log(`Claude JSON parse failed for ${name}, trying regex fallback: ${jsonMatch[0]}`)
+
+      const causeMatch = jsonMatch[0].match(/"cause"\s*:\s*"([^"]*)"/)
+      const detailsMatch = jsonMatch[0].match(/"details"\s*:\s*"([^"]*)"/)
+      const causeNullMatch = jsonMatch[0].match(/"cause"\s*:\s*null/)
+      const detailsNullMatch = jsonMatch[0].match(/"details"\s*:\s*null/)
+
+      parsed = {
+        cause: causeMatch ? causeMatch[1] : causeNullMatch ? null : null,
+        details: detailsMatch ? detailsMatch[1] : detailsNullMatch ? null : null,
+      }
     }
 
     console.log(`Claude result for ${name}: cause="${parsed.cause}", details="${parsed.details}"`)

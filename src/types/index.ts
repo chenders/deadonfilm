@@ -46,6 +46,7 @@ export interface DeceasedActor {
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   wikipediaUrl: string | null
+  tmdbUrl: string
 }
 
 export interface LivingActor {
