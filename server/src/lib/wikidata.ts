@@ -19,6 +19,7 @@ interface WikidataBinding {
 
 export interface CauseOfDeathResult {
   causeOfDeath: string | null
+  causeOfDeathDetails: string | null
   wikipediaUrl: string | null
 }
 
@@ -38,13 +39,18 @@ export async function getCauseOfDeath(
     console.log(`Claude result for ${name}: cause="${claudeResult.causeOfDeath}"`)
     return {
       causeOfDeath: claudeResult.causeOfDeath,
+      causeOfDeathDetails: claudeResult.details,
       wikipediaUrl: wikiUrl,
     }
   }
 
   // 2. Fall back to Wikidata/Wikipedia if Claude unavailable or returned vague answer
   if (!birthday) {
-    return { causeOfDeath: claudeResult.causeOfDeath, wikipediaUrl: null }
+    return {
+      causeOfDeath: claudeResult.causeOfDeath,
+      causeOfDeathDetails: claudeResult.details,
+      wikipediaUrl: null,
+    }
   }
 
   const query = buildSparqlQuery(name, birthYear!, deathYear)
@@ -61,7 +67,11 @@ export async function getCauseOfDeath(
 
     if (!response.ok) {
       console.log(`Wikidata error: ${response.status} ${response.statusText}`)
-      return { causeOfDeath: claudeResult.causeOfDeath, wikipediaUrl: null }
+      return {
+        causeOfDeath: claudeResult.causeOfDeath,
+        causeOfDeathDetails: claudeResult.details,
+        wikipediaUrl: null,
+      }
     }
 
     const data = (await response.json()) as WikidataSparqlResponse
@@ -72,6 +82,7 @@ export async function getCauseOfDeath(
     // Use Claude's answer if we got one, otherwise try Wikidata's
     if (claudeResult.causeOfDeath) {
       result.causeOfDeath = claudeResult.causeOfDeath
+      result.causeOfDeathDetails = claudeResult.details
     } else if (result.wikipediaUrl && !result.causeOfDeath) {
       // Try Wikipedia infobox as last resort
       const wikiCause = await getWikipediaInfoboxCauseOfDeath(result.wikipediaUrl)
@@ -88,7 +99,11 @@ export async function getCauseOfDeath(
     return result
   } catch (error) {
     console.log(`Wikidata error for ${name}:`, error)
-    return { causeOfDeath: claudeResult.causeOfDeath, wikipediaUrl: null }
+    return {
+      causeOfDeath: claudeResult.causeOfDeath,
+      causeOfDeathDetails: claudeResult.details,
+      wikipediaUrl: null,
+    }
   }
 }
 
@@ -153,7 +168,7 @@ function parseWikidataResult(
   deathYear: number
 ): CauseOfDeathResult {
   if (bindings.length === 0) {
-    return { causeOfDeath: null, wikipediaUrl: null }
+    return { causeOfDeath: null, causeOfDeathDetails: null, wikipediaUrl: null }
   }
 
   for (const binding of bindings) {
@@ -172,11 +187,12 @@ function parseWikidataResult(
 
     return {
       causeOfDeath: binding.causeOfDeathLabel?.value || null,
+      causeOfDeathDetails: null, // Wikidata doesn't have detailed descriptions
       wikipediaUrl: binding.article?.value || null,
     }
   }
 
-  return { causeOfDeath: null, wikipediaUrl: null }
+  return { causeOfDeath: null, causeOfDeathDetails: null, wikipediaUrl: null }
 }
 
 function isNameMatch(tmdbName: string, wikidataName: string): boolean {
