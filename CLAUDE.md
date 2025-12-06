@@ -91,6 +91,7 @@ npm test                     # Frontend unit tests
 - `GET /api/movie/{id}` - Get movie with deceased cast
 - `GET /api/movie/{id}/death-info?personIds=1,2,3` - Poll for cause of death updates
 - `GET /api/on-this-day` - Deaths on current date
+- `GET /api/random` - Get a random movie (redirects to movie page)
 - `GET /health` - Health check for Kubernetes
 
 ## Environment Variables
@@ -116,7 +117,9 @@ deceased_persons (
   birthday DATE,
   deathday DATE NOT NULL,
   cause_of_death TEXT,
-  cause_of_death_details TEXT,  -- Detailed explanation for tooltip
+  cause_of_death_source TEXT,     -- 'claude', 'wikidata', or 'wikipedia'
+  cause_of_death_details TEXT,    -- Detailed explanation for tooltip
+  cause_of_death_details_source TEXT,  -- Source of the details
   wikipedia_url TEXT,
   updated_at TIMESTAMP DEFAULT NOW()
 )

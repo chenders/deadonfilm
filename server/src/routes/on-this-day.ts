@@ -2,6 +2,16 @@ import type { Request, Response } from "express"
 import { getDeceasedByMonthDay } from "../lib/db.js"
 import { getPersonCredits, getPersonDetails } from "../lib/tmdb.js"
 
+function formatDeathDate(dateValue: string | Date): string {
+  // PostgreSQL DATE columns come back as Date objects from pg driver
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue + "T00:00:00")
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })
+}
+
 interface OnThisDayDeath {
   actor: {
     id: number
@@ -59,11 +69,12 @@ export async function getOnThisDay(_req: Request, res: Response) {
       return res.json(response)
     }
 
-    // Fetch notable films for each actor (limit to top 10 actors to avoid too many API calls)
+    // Pick one random actor from the list
+    const randomIndex = Math.floor(Math.random() * deceasedOnThisDay.length)
+    const person = deceasedOnThisDay[randomIndex]
     const deaths: OnThisDayDeath[] = []
-    const actorsToProcess = deceasedOnThisDay.slice(0, 10)
 
-    for (const person of actorsToProcess) {
+    {
       try {
         // Get their filmography from TMDB
         const [credits, personDetails] = await Promise.all([
@@ -88,7 +99,7 @@ export async function getOnThisDay(_req: Request, res: Response) {
             id: person.tmdb_id,
             name: person.name,
             profile_path: personDetails?.profile_path || null,
-            deathday: person.deathday,
+            deathday: formatDeathDate(person.deathday),
             causeOfDeath: person.cause_of_death,
           },
           notableFilms,
@@ -101,7 +112,7 @@ export async function getOnThisDay(_req: Request, res: Response) {
             id: person.tmdb_id,
             name: person.name,
             profile_path: null,
-            deathday: person.deathday,
+            deathday: formatDeathDate(person.deathday),
             causeOfDeath: person.cause_of_death,
           },
           notableFilms: [],
@@ -114,11 +125,6 @@ export async function getOnThisDay(_req: Request, res: Response) {
       month: today.toLocaleDateString("en-US", { month: "long" }),
       day: today.toLocaleDateString("en-US", { day: "numeric" }),
       deaths,
-    }
-
-    // Add message if there are more actors than we displayed
-    if (deceasedOnThisDay.length > 10) {
-      response.message = `Showing 10 of ${deceasedOnThisDay.length} actors who died on this day.`
     }
 
     res.json(response)
