@@ -17,9 +17,13 @@ interface WikidataBinding {
   article?: { value: string }
 }
 
+export type DeathInfoSource = "claude" | "wikipedia" | null
+
 export interface CauseOfDeathResult {
   causeOfDeath: string | null
+  causeOfDeathSource: DeathInfoSource
   causeOfDeathDetails: string | null
+  causeOfDeathDetailsSource: DeathInfoSource
   wikipediaUrl: string | null
 }
 
@@ -37,9 +41,25 @@ export async function getCauseOfDeath(
     // Get Wikipedia URL from Wikidata for linking
     const wikiUrl = await getWikipediaUrl(name, birthYear, deathYear)
     console.log(`Claude result for ${name}: cause="${claudeResult.causeOfDeath}"`)
+
+    // If Claude provided cause but no details, try to get details from Wikipedia
+    let details = claudeResult.details
+    let detailsSource: DeathInfoSource = claudeResult.details ? "claude" : null
+
+    if (!details && wikiUrl) {
+      const wikiDetails = await getWikipediaDeathDetails(wikiUrl)
+      if (wikiDetails) {
+        details = wikiDetails
+        detailsSource = "wikipedia"
+        console.log(`Wikipedia details for ${name}: "${wikiDetails}"`)
+      }
+    }
+
     return {
       causeOfDeath: claudeResult.causeOfDeath,
-      causeOfDeathDetails: claudeResult.details,
+      causeOfDeathSource: "claude",
+      causeOfDeathDetails: details,
+      causeOfDeathDetailsSource: detailsSource,
       wikipediaUrl: wikiUrl,
     }
   }
@@ -48,7 +68,9 @@ export async function getCauseOfDeath(
   if (!birthday) {
     return {
       causeOfDeath: claudeResult.causeOfDeath,
+      causeOfDeathSource: claudeResult.causeOfDeath ? "claude" : null,
       causeOfDeathDetails: claudeResult.details,
+      causeOfDeathDetailsSource: claudeResult.details ? "claude" : null,
       wikipediaUrl: null,
     }
   }
@@ -69,7 +91,9 @@ export async function getCauseOfDeath(
       console.log(`Wikidata error: ${response.status} ${response.statusText}`)
       return {
         causeOfDeath: claudeResult.causeOfDeath,
+        causeOfDeathSource: claudeResult.causeOfDeath ? "claude" : null,
         causeOfDeathDetails: claudeResult.details,
+        causeOfDeathDetailsSource: claudeResult.details ? "claude" : null,
         wikipediaUrl: null,
       }
     }
@@ -77,31 +101,61 @@ export async function getCauseOfDeath(
     const data = (await response.json()) as WikidataSparqlResponse
     console.log(`Wikidata results for ${name}: ${data.results.bindings.length} bindings`)
 
-    const result = parseWikidataResult(data.results.bindings, name, deathYear)
+    const wikidataResult = parseWikidataResult(data.results.bindings, name, deathYear)
+
+    // Build final result with source tracking
+    let causeOfDeath: string | null = null
+    let causeOfDeathSource: DeathInfoSource = null
+    let causeOfDeathDetails: string | null = null
+    let causeOfDeathDetailsSource: DeathInfoSource = null
 
     // Use Claude's answer if we got one, otherwise try Wikidata's
     if (claudeResult.causeOfDeath) {
-      result.causeOfDeath = claudeResult.causeOfDeath
-      result.causeOfDeathDetails = claudeResult.details
-    } else if (result.wikipediaUrl && !result.causeOfDeath) {
+      causeOfDeath = claudeResult.causeOfDeath
+      causeOfDeathSource = "claude"
+      causeOfDeathDetails = claudeResult.details
+      causeOfDeathDetailsSource = claudeResult.details ? "claude" : null
+    } else if (wikidataResult.causeOfDeath) {
+      causeOfDeath = wikidataResult.causeOfDeath
+      causeOfDeathSource = "wikipedia"
+    } else if (wikidataResult.wikipediaUrl) {
       // Try Wikipedia infobox as last resort
-      const wikiCause = await getWikipediaInfoboxCauseOfDeath(result.wikipediaUrl)
+      const wikiCause = await getWikipediaInfoboxCauseOfDeath(wikidataResult.wikipediaUrl)
       if (wikiCause) {
-        result.causeOfDeath = wikiCause
+        causeOfDeath = wikiCause
+        causeOfDeathSource = "wikipedia"
         console.log(`Wikipedia fallback for ${name}: cause="${wikiCause}"`)
       }
     }
 
+    // If we have a cause but no details, try to get details from Wikipedia
+    if (causeOfDeath && !causeOfDeathDetails && wikidataResult.wikipediaUrl) {
+      const wikiDetails = await getWikipediaDeathDetails(wikidataResult.wikipediaUrl)
+      if (wikiDetails) {
+        causeOfDeathDetails = wikiDetails
+        causeOfDeathDetailsSource = "wikipedia"
+        console.log(`Wikipedia details for ${name}: "${wikiDetails}"`)
+      }
+    }
+
     console.log(
-      `Final result for ${name}: cause="${result.causeOfDeath}", url="${result.wikipediaUrl}"`
+      `Final result for ${name}: cause="${causeOfDeath}" (${causeOfDeathSource}), url="${wikidataResult.wikipediaUrl}"`
     )
 
-    return result
+    return {
+      causeOfDeath,
+      causeOfDeathSource,
+      causeOfDeathDetails,
+      causeOfDeathDetailsSource,
+      wikipediaUrl: wikidataResult.wikipediaUrl,
+    }
   } catch (error) {
     console.log(`Wikidata error for ${name}:`, error)
     return {
       causeOfDeath: claudeResult.causeOfDeath,
+      causeOfDeathSource: claudeResult.causeOfDeath ? "claude" : null,
       causeOfDeathDetails: claudeResult.details,
+      causeOfDeathDetailsSource: claudeResult.details ? "claude" : null,
       wikipediaUrl: null,
     }
   }
@@ -162,13 +216,18 @@ function buildSparqlQuery(name: string, birthYear: number, deathYear: number): s
   `
 }
 
+interface WikidataParseResult {
+  causeOfDeath: string | null
+  wikipediaUrl: string | null
+}
+
 function parseWikidataResult(
   bindings: WikidataBinding[],
   targetName: string,
   deathYear: number
-): CauseOfDeathResult {
+): WikidataParseResult {
   if (bindings.length === 0) {
-    return { causeOfDeath: null, causeOfDeathDetails: null, wikipediaUrl: null }
+    return { causeOfDeath: null, wikipediaUrl: null }
   }
 
   for (const binding of bindings) {
@@ -187,12 +246,11 @@ function parseWikidataResult(
 
     return {
       causeOfDeath: binding.causeOfDeathLabel?.value || null,
-      causeOfDeathDetails: null, // Wikidata doesn't have detailed descriptions
       wikipediaUrl: binding.article?.value || null,
     }
   }
 
-  return { causeOfDeath: null, causeOfDeathDetails: null, wikipediaUrl: null }
+  return { causeOfDeath: null, wikipediaUrl: null }
 }
 
 function isNameMatch(tmdbName: string, wikidataName: string): boolean {
@@ -344,6 +402,94 @@ function extractCauseFromText(text: string): string | null {
 
   return null
 }
+
+// Get death details from Wikipedia article (1-2 sentences about circumstances)
+async function getWikipediaDeathDetails(wikipediaUrl: string): Promise<string | null> {
+  try {
+    // Extract article title from URL
+    const urlMatch = wikipediaUrl.match(/\/wiki\/(.+)$/)
+    if (!urlMatch) return null
+
+    const title = decodeURIComponent(urlMatch[1])
+
+    // Use Wikipedia API to get wikitext of the article
+    const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=revisions&rvprop=content&rvslots=main&format=json&origin=*`
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
+      },
+    })
+
+    if (!response.ok) return null
+
+    const data = (await response.json()) as WikipediaApiResponse
+    const pages = data.query?.pages
+
+    if (!pages) return null
+
+    // Get the first (and only) page
+    const pageId = Object.keys(pages)[0]
+    if (!pageId || pageId === "-1") return null
+
+    const content = pages[pageId]?.revisions?.[0]?.slots?.main?.["*"]
+    if (!content) return null
+
+    // Look for death-related sections and extract details
+    const sectionPatterns = [
+      /==\s*Death(?:\s+and\s+[\w\s]+)?\s*==\s*([\s\S]*?)(?:==\s*\w|$)/i,
+      /==\s*(?:Personal\s+life|Later\s+(?:life|years)|Final\s+years)(?:\s+and\s+[\w\s]+)?\s*==\s*([\s\S]*?)(?:==\s*\w|$)/i,
+    ]
+
+    for (const sectionPattern of sectionPatterns) {
+      const sectionMatch = content.match(sectionPattern)
+      if (sectionMatch) {
+        const sectionText = cleanWikiMarkup(sectionMatch[1])
+        // Get first 1-2 sentences that mention death
+        const sentences = sectionText.split(/(?<=[.!?])\s+/)
+        const deathSentences = sentences.filter((s) =>
+          /died|death|passed away|succumbed|fatal|killed/i.test(s)
+        )
+
+        if (deathSentences.length > 0) {
+          // Take first 1-2 relevant sentences, max 200 chars
+          let details = deathSentences.slice(0, 2).join(" ")
+          if (details.length > 200) {
+            details = details.substring(0, 197) + "..."
+          }
+          return details
+        }
+      }
+    }
+
+    // Try opening paragraph for death details
+    const afterInfobox = content.replace(/\{\{Infobox[\s\S]*?\}\}/gi, "")
+    const firstParagraph = afterInfobox.match(/'''[^']+'''.{0,1000}/s)
+    if (firstParagraph) {
+      const paragraphText = cleanWikiMarkup(firstParagraph[0])
+      const sentences = paragraphText.split(/(?<=[.!?])\s+/)
+      const deathSentences = sentences.filter((s) =>
+        /died|death|passed away|succumbed|fatal|killed/i.test(s)
+      )
+
+      if (deathSentences.length > 0) {
+        let details = deathSentences.slice(0, 2).join(" ")
+        if (details.length > 200) {
+          details = details.substring(0, 197) + "..."
+        }
+        return details
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.log("Wikipedia details error:", error)
+    return null
+  }
+}
+
+// Export for use in backfill script
+export { getWikipediaDeathDetails }
 
 interface WikipediaApiResponse {
   query?: {
