@@ -356,15 +356,64 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
 
 // Clean wiki markup from text
 function cleanWikiMarkup(text: string): string {
-  return text
-    .replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g, "$2") // [[link|text]] -> text
-    .replace(/\{\{[^}]*\}\}/g, "") // Remove templates
-    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, "") // Remove references
-    .replace(/<ref[^/]*\/>/gi, "") // Remove self-closing refs
-    .replace(/<[^>]+>/g, "") // Remove HTML tags
+  let cleaned = text
+    // Remove nested templates (handle up to 3 levels of nesting)
+    .replace(/\{\{[^{}]*\}\}/g, "")
+    .replace(/\{\{[^{}]*\}\}/g, "")
+    .replace(/\{\{[^{}]*\}\}/g, "")
+    // Remove any remaining template fragments
+    .replace(/\{\{[^}]*$/g, "")
+    .replace(/^[^{]*\}\}/g, "")
+    // Remove file/image links entirely: [[File:...|...]] or [[Image:...]]
+    .replace(/\[\[(?:File|Image):[^\]]*\]\]/gi, "")
+    // Remove category links
+    .replace(/\[\[Category:[^\]]*\]\]/gi, "")
+    // Convert wiki links to plain text: [[link|text]] -> text, [[link]] -> link
+    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2")
+    .replace(/\[\[([^\]]+)\]\]/g, "$1")
+    // Remove any remaining [[ or ]] fragments
+    .replace(/\[\[|\]\]/g, "")
+    // Remove image/thumb markup that might be floating
+    .replace(/thumb\|[^|]*\|?/gi, "")
+    .replace(/\|?thumb\|?/gi, "")
+    .replace(/upright=[0-9.]+\|?/gi, "")
+    .replace(/\|right|\|left|\|center/gi, "")
+    .replace(/\d+px\|?/gi, "")
+    // Remove references
+    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, "")
+    .replace(/<ref[^/]*\/>/gi, "")
+    .replace(/<ref[^>]*>/gi, "")
+    // Remove HTML tags
+    .replace(/<[^>]+>/g, "")
+    // Remove bold/italic wiki markup
+    .replace(/'{2,5}/g, "")
+    // Remove section headers
+    .replace(/^=+\s*|\s*=+$/gm, "")
+    // Clean up entities and whitespace
     .replace(/&nbsp;/g, " ")
+    .replace(/&ndash;/g, "–")
+    .replace(/&mdash;/g, "—")
+    .replace(/&amp;/g, "&")
+    // Remove leading pipes or equals (from partially parsed templates)
+    .replace(/^\s*[|=]\s*/gm, "")
+    // Collapse multiple spaces/newlines
     .replace(/\s+/g, " ")
     .trim()
+
+  // Remove any sentence fragments that look like leftover markup
+  // (starting with lowercase after period, or very short fragments)
+  const sentences = cleaned.split(/(?<=[.!?])\s+/)
+  const cleanSentences = sentences.filter((s) => {
+    const trimmed = s.trim()
+    // Skip empty or very short fragments
+    if (trimmed.length < 10) return false
+    // Skip fragments that look like markup residue
+    if (/^[a-z]/.test(trimmed) && trimmed.length < 30) return false
+    if (/^\d+$/.test(trimmed)) return false
+    return true
+  })
+
+  return cleanSentences.join(" ").trim()
 }
 
 // Extract cause of death from natural language text
