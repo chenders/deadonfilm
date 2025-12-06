@@ -160,6 +160,22 @@ export async function getPersonCredits(personId: number): Promise<TMDBPersonCred
   return tmdbFetch<TMDBPersonCredits>(`/person/${personId}/movie_credits?language=en-US`)
 }
 
+export async function discoverMoviesByYear(
+  startYear: number,
+  endYear: number,
+  page: number = 1
+): Promise<TMDBSearchResponse> {
+  return tmdbFetch<TMDBSearchResponse>(
+    `/discover/movie?` +
+      `primary_release_date.gte=${startYear}-01-01&` +
+      `primary_release_date.lte=${endYear}-12-31&` +
+      `sort_by=popularity.desc&` +
+      `include_adult=false&` +
+      `language=en-US&` +
+      `page=${page}`
+  )
+}
+
 // Batch fetch person details with chunking to respect rate limits
 export async function batchGetPersonDetails(
   personIds: number[],
