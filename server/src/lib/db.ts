@@ -1,4 +1,4 @@
-import pg from 'pg'
+import pg from "pg"
 
 const { Pool } = pg
 
@@ -8,7 +8,7 @@ export function getPool(): pg.Pool {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL
     if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is not set')
+      throw new Error("DATABASE_URL environment variable is not set")
     }
     pool = new Pool({ connectionString })
   }
@@ -38,7 +38,7 @@ export async function initDatabase(): Promise<void> {
     ON deceased_persons(tmdb_id)
   `)
 
-  console.log('Database initialized')
+  console.log("Database initialized")
 }
 
 export interface DeceasedPersonRecord {
@@ -54,7 +54,7 @@ export interface DeceasedPersonRecord {
 export async function getDeceasedPerson(tmdbId: number): Promise<DeceasedPersonRecord | null> {
   const db = getPool()
   const result = await db.query<DeceasedPersonRecord>(
-    'SELECT * FROM deceased_persons WHERE tmdb_id = $1',
+    "SELECT * FROM deceased_persons WHERE tmdb_id = $1",
     [tmdbId]
   )
   return result.rows[0] || null
@@ -67,7 +67,7 @@ export async function getDeceasedPersons(
   if (tmdbIds.length === 0) return new Map()
 
   const db = getPool()
-  const placeholders = tmdbIds.map((_, i) => `$${i + 1}`).join(', ')
+  const placeholders = tmdbIds.map((_, i) => `$${i + 1}`).join(", ")
   const result = await db.query<DeceasedPersonRecord>(
     `SELECT * FROM deceased_persons WHERE tmdb_id IN (${placeholders})`,
     tmdbIds
@@ -113,7 +113,7 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
   // Use a transaction for batch insert
   const client = await db.connect()
   try {
-    await client.query('BEGIN')
+    await client.query("BEGIN")
 
     for (const person of persons) {
       await client.query(
@@ -137,9 +137,9 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
       )
     }
 
-    await client.query('COMMIT')
+    await client.query("COMMIT")
   } catch (error) {
-    await client.query('ROLLBACK')
+    await client.query("ROLLBACK")
     throw error
   } finally {
     client.release()

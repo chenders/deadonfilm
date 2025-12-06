@@ -1,5 +1,5 @@
-import type { LivingActor } from '@/types'
-import { getProfileUrl } from '@/services/api'
+import type { LivingActor } from "@/types"
+import { getProfileUrl } from "@/services/api"
 
 interface LastSurvivorProps {
   actor: LivingActor
@@ -7,7 +7,7 @@ interface LastSurvivorProps {
 }
 
 export default function LastSurvivor({ actor, totalLiving }: LastSurvivorProps) {
-  const profileUrl = getProfileUrl(actor.profile_path, 'w185')
+  const profileUrl = getProfileUrl(actor.profile_path, "w185")
 
   if (totalLiving > 3) {
     // Don't show "last survivor" if there are still several living
@@ -15,7 +15,7 @@ export default function LastSurvivor({ actor, totalLiving }: LastSurvivorProps) 
   }
 
   const title =
-    totalLiving === 1 ? 'Last Surviving Cast Member' : `${totalLiving} Surviving Cast Members`
+    totalLiving === 1 ? "Last Surviving Cast Member" : `${totalLiving} Surviving Cast Members`
 
   return (
     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">

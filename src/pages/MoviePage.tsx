@@ -1,18 +1,18 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Helmet } from 'react-helmet-async'
-import { useMovie } from '@/hooks/useMovie'
-import { useDeathInfoPolling } from '@/hooks/useDeathInfoPolling'
-import { extractMovieId } from '@/utils/slugify'
-import { getYear } from '@/utils/formatDate'
-import MovieHeader from '@/components/movie/MovieHeader'
-import MortalityScore from '@/components/movie/MortalityScore'
-import CastToggle from '@/components/movie/CastToggle'
-import DeceasedList from '@/components/movie/DeceasedList'
-import LivingList from '@/components/movie/LivingList'
-import LastSurvivor from '@/components/movie/LastSurvivor'
-import LoadingSpinner from '@/components/common/LoadingSpinner'
-import ErrorMessage from '@/components/common/ErrorMessage'
+import { useState } from "react"
+import { useParams } from "react-router-dom"
+import { Helmet } from "react-helmet-async"
+import { useMovie } from "@/hooks/useMovie"
+import { useDeathInfoPolling } from "@/hooks/useDeathInfoPolling"
+import { extractMovieId } from "@/utils/slugify"
+import { getYear } from "@/utils/formatDate"
+import MovieHeader from "@/components/movie/MovieHeader"
+import MortalityScore from "@/components/movie/MortalityScore"
+import CastToggle from "@/components/movie/CastToggle"
+import DeceasedList from "@/components/movie/DeceasedList"
+import LivingList from "@/components/movie/LivingList"
+import LastSurvivor from "@/components/movie/LastSurvivor"
+import LoadingSpinner from "@/components/common/LoadingSpinner"
+import ErrorMessage from "@/components/common/ErrorMessage"
 
 export default function MoviePage() {
   const { slug } = useParams<{ slug: string }>()

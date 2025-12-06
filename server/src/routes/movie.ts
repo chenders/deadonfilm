@@ -1,12 +1,12 @@
-import type { Request, Response } from 'express'
-import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from '../lib/tmdb.js'
-import { getCauseOfDeath } from '../lib/wikidata.js'
+import type { Request, Response } from "express"
+import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../lib/tmdb.js"
+import { getCauseOfDeath } from "../lib/wikidata.js"
 import {
   getDeceasedPersons,
   batchUpsertDeceasedPersons,
   updateDeathInfo,
   type DeceasedPersonRecord,
-} from '../lib/db.js'
+} from "../lib/db.js"
 
 interface DeceasedActor {
   id: number
@@ -56,7 +56,7 @@ export async function getMovie(req: Request, res: Response) {
   const movieId = parseInt(req.params.id, 10)
 
   if (!movieId || isNaN(movieId)) {
-    return res.status(400).json({ error: { message: 'Invalid movie ID' } })
+    return res.status(400).json({ error: { message: "Invalid movie ID" } })
   }
 
   try {
@@ -186,8 +186,8 @@ export async function getMovie(req: Request, res: Response) {
 
     res.json(response)
   } catch (error) {
-    console.error('Movie fetch error:', error)
-    res.status(500).json({ error: { message: 'Failed to fetch movie data' } })
+    console.error("Movie fetch error:", error)
+    res.status(500).json({ error: { message: "Failed to fetch movie data" } })
   }
 }
 
@@ -217,7 +217,7 @@ async function getDeceasedPersonsIfAvailable(
   try {
     return await getDeceasedPersons(tmdbIds)
   } catch (error) {
-    console.error('Database read error:', error)
+    console.error("Database read error:", error)
     return new Map()
   }
 }
@@ -226,7 +226,7 @@ async function getDeceasedPersonsIfAvailable(
 function saveDeceasedToDb(persons: DeceasedPersonRecord[]): void {
   if (!process.env.DATABASE_URL) return
   batchUpsertDeceasedPersons(persons).catch((error) => {
-    console.error('Database write error:', error)
+    console.error("Database write error:", error)
   })
 }
 
@@ -239,7 +239,7 @@ function updateDeathInfoInDb(
   if (!process.env.DATABASE_URL) return
   if (!causeOfDeath && !wikipediaUrl) return
   updateDeathInfo(tmdbId, causeOfDeath, wikipediaUrl).catch((error) => {
-    console.error('Database update error:', error)
+    console.error("Database update error:", error)
   })
 }
 
@@ -259,7 +259,7 @@ async function enrichWithWikidata(_movieId: number, deceased: DeceasedActor[]): 
     const result = results[i]
     const actor = toEnrich[i]
 
-    if (result.status === 'fulfilled') {
+    if (result.status === "fulfilled") {
       const { causeOfDeath, wikipediaUrl } = result.value
 
       // Update the deceased actor in the array
@@ -280,15 +280,15 @@ export async function getMovieDeathInfo(req: Request, res: Response) {
   const personIdsParam = req.query.personIds as string
 
   if (!movieId || isNaN(movieId)) {
-    return res.status(400).json({ error: { message: 'Invalid movie ID' } })
+    return res.status(400).json({ error: { message: "Invalid movie ID" } })
   }
 
   if (!personIdsParam) {
-    return res.status(400).json({ error: { message: 'personIds query parameter required' } })
+    return res.status(400).json({ error: { message: "personIds query parameter required" } })
   }
 
   const personIds = personIdsParam
-    .split(',')
+    .split(",")
     .map((id) => parseInt(id, 10))
     .filter((id) => !isNaN(id))
 

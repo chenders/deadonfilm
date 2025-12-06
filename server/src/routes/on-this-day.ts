@@ -1,6 +1,6 @@
-import type { Request, Response } from 'express'
-import { getDeceasedByMonthDay } from '../lib/db.js'
-import { getPersonCredits, getPersonDetails } from '../lib/tmdb.js'
+import type { Request, Response } from "express"
+import { getDeceasedByMonthDay } from "../lib/db.js"
+import { getPersonCredits, getPersonDetails } from "../lib/tmdb.js"
 
 interface OnThisDayDeath {
   actor: {
@@ -29,17 +29,17 @@ export async function getOnThisDay(_req: Request, res: Response) {
   const today = new Date()
   const month = today.getMonth() + 1
   const day = today.getDate()
-  const dateKey = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  const dateKey = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 
   try {
     // Check if database is available
     if (!process.env.DATABASE_URL) {
       const response: OnThisDayResponse = {
         date: dateKey,
-        month: today.toLocaleDateString('en-US', { month: 'long' }),
-        day: today.toLocaleDateString('en-US', { day: 'numeric' }),
+        month: today.toLocaleDateString("en-US", { month: "long" }),
+        day: today.toLocaleDateString("en-US", { day: "numeric" }),
         deaths: [],
-        message: 'Database not configured. Browse some movies to populate the data!',
+        message: "Database not configured. Browse some movies to populate the data!",
       }
       return res.json(response)
     }
@@ -50,11 +50,11 @@ export async function getOnThisDay(_req: Request, res: Response) {
     if (deceasedOnThisDay.length === 0) {
       const response: OnThisDayResponse = {
         date: dateKey,
-        month: today.toLocaleDateString('en-US', { month: 'long' }),
-        day: today.toLocaleDateString('en-US', { day: 'numeric' }),
+        month: today.toLocaleDateString("en-US", { month: "long" }),
+        day: today.toLocaleDateString("en-US", { day: "numeric" }),
         deaths: [],
         message:
-          'No recorded deaths on this day yet. Browse more movies to discover who passed away on this date!',
+          "No recorded deaths on this day yet. Browse more movies to discover who passed away on this date!",
       }
       return res.json(response)
     }
@@ -80,7 +80,7 @@ export async function getOnThisDay(_req: Request, res: Response) {
             .map((movie) => ({
               id: movie.id,
               title: movie.title,
-              year: movie.release_date.split('-')[0],
+              year: movie.release_date.split("-")[0],
             })) || []
 
         deaths.push({
@@ -111,8 +111,8 @@ export async function getOnThisDay(_req: Request, res: Response) {
 
     const response: OnThisDayResponse = {
       date: dateKey,
-      month: today.toLocaleDateString('en-US', { month: 'long' }),
-      day: today.toLocaleDateString('en-US', { day: 'numeric' }),
+      month: today.toLocaleDateString("en-US", { month: "long" }),
+      day: today.toLocaleDateString("en-US", { day: "numeric" }),
       deaths,
     }
 
@@ -123,7 +123,7 @@ export async function getOnThisDay(_req: Request, res: Response) {
 
     res.json(response)
   } catch (error) {
-    console.error('On This Day error:', error)
-    res.status(500).json({ error: { message: 'Failed to fetch On This Day data' } })
+    console.error("On This Day error:", error)
+    res.status(500).json({ error: { message: "Failed to fetch On This Day data" } })
   }
 }

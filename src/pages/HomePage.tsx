@@ -1,6 +1,6 @@
-import { Helmet } from 'react-helmet-async'
-import SearchBar from '@/components/search/SearchBar'
-import OnThisDay from '@/components/home/OnThisDay'
+import { Helmet } from "react-helmet-async"
+import SearchBar from "@/components/search/SearchBar"
+import OnThisDay from "@/components/home/OnThisDay"
 
 export default function HomePage() {
   return (

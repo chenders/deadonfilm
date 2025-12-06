@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom'
-import SkullLogo from './SkullLogo'
+import { Link } from "react-router-dom"
+import SkullLogo from "./SkullLogo"
 
 export default function Header() {
   return (

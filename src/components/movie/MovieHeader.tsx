@@ -1,6 +1,6 @@
-import type { MovieDetails } from '@/types'
-import { getPosterUrl } from '@/services/api'
-import { getYear } from '@/utils/formatDate'
+import type { MovieDetails } from "@/types"
+import { getPosterUrl } from "@/services/api"
+import { getYear } from "@/utils/formatDate"
 
 interface MovieHeaderProps {
   movie: MovieDetails
@@ -8,7 +8,7 @@ interface MovieHeaderProps {
 
 export default function MovieHeader({ movie }: MovieHeaderProps) {
   const year = getYear(movie.release_date)
-  const posterUrl = getPosterUrl(movie.poster_path, 'w342')
+  const posterUrl = getPosterUrl(movie.poster_path, "w342")
 
   return (
     <div className="flex flex-col sm:flex-row gap-6 mb-8">

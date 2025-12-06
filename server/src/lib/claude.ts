@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
+import Anthropic from "@anthropic-ai/sdk"
 
 let client: Anthropic | null = null
 
@@ -19,12 +19,12 @@ export interface ClaudeCauseOfDeathResult {
 
 // Vague causes that should trigger Claude lookup
 const VAGUE_CAUSES = [
-  'disease',
-  'illness',
-  'natural causes',
-  'natural cause',
-  'unspecified',
-  'unknown',
+  "disease",
+  "illness",
+  "natural causes",
+  "natural cause",
+  "unspecified",
+  "unknown",
 ]
 
 export function isVagueCause(cause: string | null): boolean {
@@ -43,7 +43,7 @@ export async function getCauseOfDeathFromClaude(
   }
 
   try {
-    const birthInfo = birthYear ? ` (born ${birthYear})` : ''
+    const birthInfo = birthYear ? ` (born ${birthYear})` : ""
     const prompt = `What was the cause of death for ${name}${birthInfo} who died in ${deathYear}?
 
 Please provide:
@@ -59,17 +59,17 @@ If you don't know or aren't confident, respond with:
     console.log(`Claude query for: ${name} (died ${deathYear})`)
 
     const message = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: "claude-3-haiku-20240307",
       max_tokens: 150,
       messages: [
         {
-          role: 'user',
+          role: "user",
           content: prompt,
         },
       ],
     })
 
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    const responseText = message.content[0].type === "text" ? message.content[0].text : ""
 
     // Parse JSON response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)

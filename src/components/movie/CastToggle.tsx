@@ -17,7 +17,7 @@ export default function CastToggle({
         <button
           onClick={() => onToggle(false)}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
-            !showLiving ? 'bg-accent text-white' : 'bg-white text-brown-dark hover:bg-beige'
+            !showLiving ? "bg-accent text-white" : "bg-white text-brown-dark hover:bg-beige"
           }`}
         >
           Deceased ({deceasedCount})
@@ -25,7 +25,7 @@ export default function CastToggle({
         <button
           onClick={() => onToggle(true)}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
-            showLiving ? 'bg-green-600 text-white' : 'bg-white text-brown-dark hover:bg-beige'
+            showLiving ? "bg-green-600 text-white" : "bg-white text-brown-dark hover:bg-beige"
           }`}
         >
           Living ({livingCount})

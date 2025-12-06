@@ -3,14 +3,14 @@
  * Example: "1977-06-14" → "Jun 14, 1977"
  */
 export function formatDate(dateString: string | null): string {
-  if (!dateString) return 'Unknown'
+  if (!dateString) return "Unknown"
 
   try {
-    const date = new Date(dateString + 'T00:00:00') // Ensure consistent parsing
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    const date = new Date(dateString + "T00:00:00") // Ensure consistent parsing
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     })
   } catch {
     return dateString
@@ -23,10 +23,10 @@ export function formatDate(dateString: string | null): string {
  */
 export function formatMonthDay(dateString: string): string {
   try {
-    const date = new Date(dateString + 'T00:00:00')
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
+    const date = new Date(dateString + "T00:00:00")
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
     })
   } catch {
     return dateString
@@ -38,7 +38,7 @@ export function formatMonthDay(dateString: string): string {
  * Example: "1961-10-05" → "1961"
  */
 export function getYear(dateString: string | null): string {
-  if (!dateString) return 'Unknown'
+  if (!dateString) return "Unknown"
   return dateString.slice(0, 4)
 }
 

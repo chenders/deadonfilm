@@ -1,5 +1,5 @@
-import type { Request, Response } from 'express'
-import { searchMovies as tmdbSearch } from '../lib/tmdb.js'
+import type { Request, Response } from "express"
+import { searchMovies as tmdbSearch } from "../lib/tmdb.js"
 
 export async function searchMovies(req: Request, res: Response) {
   const query = req.query.q as string
@@ -31,7 +31,7 @@ export async function searchMovies(req: Request, res: Response) {
       total_results: data.total_results,
     })
   } catch (error) {
-    console.error('Search error:', error)
-    res.status(500).json({ error: { message: 'Failed to search movies' } })
+    console.error("Search error:", error)
+    res.status(500).json({ error: { message: "Failed to search movies" } })
   }
 }

@@ -1,5 +1,5 @@
-import type { LivingActor } from '@/types'
-import { getProfileUrl } from '@/services/api'
+import type { LivingActor } from "@/types"
+import { getProfileUrl } from "@/services/api"
 
 interface LivingListProps {
   actors: LivingActor[]
@@ -28,7 +28,7 @@ export default function LivingList({ actors }: LivingListProps) {
 }
 
 function LivingCard({ actor }: { actor: LivingActor }) {
-  const profileUrl = getProfileUrl(actor.profile_path, 'w185')
+  const profileUrl = getProfileUrl(actor.profile_path, "w185")
 
   return (
     <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex gap-4 items-start">
