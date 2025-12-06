@@ -356,7 +356,7 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
 
 // Clean wiki markup from text
 function cleanWikiMarkup(text: string): string {
-  let cleaned = text
+  const cleaned = text
     // Remove nested templates (handle up to 3 levels of nesting)
     .replace(/\{\{[^{}]*\}\}/g, "")
     .replace(/\{\{[^{}]*\}\}/g, "")
