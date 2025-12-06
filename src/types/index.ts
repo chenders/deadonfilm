@@ -107,3 +107,9 @@ export interface OnThisDayResponse {
   }>
   message?: string
 }
+
+export interface RandomMovieResponse {
+  id: number
+  title: string
+  release_date: string
+}

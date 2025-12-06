@@ -182,7 +182,14 @@ export async function updateDeathInfo(
          wikipedia_url = COALESCE(wikipedia_url, $6),
          updated_at = CURRENT_TIMESTAMP
      WHERE tmdb_id = $1`,
-    [tmdbId, causeOfDeath, causeOfDeathSource, causeOfDeathDetails, causeOfDeathDetailsSource, wikipediaUrl]
+    [
+      tmdbId,
+      causeOfDeath,
+      causeOfDeathSource,
+      causeOfDeathDetails,
+      causeOfDeathDetailsSource,
+      wikipediaUrl,
+    ]
   )
 }
 

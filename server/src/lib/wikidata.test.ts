@@ -88,8 +88,7 @@ describe("getCauseOfDeath", () => {
                   {
                     slots: {
                       main: {
-                        "*":
-                          "'''Jane Doe''' (1940-2019) was an actress.\n\n== Death ==\nShe died of a sudden heart attack at her home in Los Angeles.",
+                        "*": "'''Jane Doe''' (1940-2019) was an actress.\n\n== Death ==\nShe died of a sudden heart attack at her home in Los Angeles.",
                       },
                     },
                   },
@@ -147,8 +146,7 @@ describe("getCauseOfDeath", () => {
                   {
                     slots: {
                       main: {
-                        "*":
-                          "'''Bob Actor''' was a performer.\n\n== Death ==\nHe died from pancreatic cancer after a long battle with the disease.",
+                        "*": "'''Bob Actor''' was a performer.\n\n== Death ==\nHe died from pancreatic cancer after a long battle with the disease.",
                       },
                     },
                   },
@@ -208,8 +206,7 @@ describe("getCauseOfDeath", () => {
                   {
                     slots: {
                       main: {
-                        "*":
-                          "'''Alice Star''' was an actress.\n\n== Death ==\nShe died of a stroke at age 82.",
+                        "*": "'''Alice Star''' was an actress.\n\n== Death ==\nShe died of a stroke at age 82.",
                       },
                     },
                   },
