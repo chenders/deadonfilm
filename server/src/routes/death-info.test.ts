@@ -83,7 +83,15 @@ describe('getDeathInfoRoute', () => {
 
   it('returns death info for valid request', async () => {
     const mockDbRecords = new Map([
-      [123, { tmdb_id: 123, name: 'Actor1', cause_of_death: 'lung cancer', wikipedia_url: 'https://en.wikipedia.org/wiki/Actor1' }],
+      [
+        123,
+        {
+          tmdb_id: 123,
+          name: 'Actor1',
+          cause_of_death: 'lung cancer',
+          wikipedia_url: 'https://en.wikipedia.org/wiki/Actor1',
+        },
+      ],
       [456, { tmdb_id: 456, name: 'Actor2', cause_of_death: 'heart attack', wikipedia_url: null }],
     ])
 
@@ -160,7 +168,15 @@ describe('getDeathInfoRoute', () => {
 
   it('handles partial results (some IDs found, some not)', async () => {
     const mockDbRecords = new Map([
-      [123, { tmdb_id: 123, name: 'Actor', cause_of_death: 'cancer', wikipedia_url: 'https://example.com' }],
+      [
+        123,
+        {
+          tmdb_id: 123,
+          name: 'Actor',
+          cause_of_death: 'cancer',
+          wikipedia_url: 'https://example.com',
+        },
+      ],
       // 456 and 789 not found
     ])
 
