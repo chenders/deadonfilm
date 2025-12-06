@@ -1,5 +1,5 @@
-import type { DeceasedActor } from '@/types'
-import DeceasedCard from './DeceasedCard'
+import type { DeceasedActor } from "@/types"
+import DeceasedCard from "./DeceasedCard"
 
 interface DeceasedListProps {
   actors: DeceasedActor[]

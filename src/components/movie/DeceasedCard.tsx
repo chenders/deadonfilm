@@ -1,6 +1,6 @@
-import type { DeceasedActor } from '@/types'
-import { getProfileUrl } from '@/services/api'
-import DeathInfo from './DeathInfo'
+import type { DeceasedActor } from "@/types"
+import { getProfileUrl } from "@/services/api"
+import DeathInfo from "./DeathInfo"
 
 interface DeceasedCardProps {
   actor: DeceasedActor
@@ -8,7 +8,7 @@ interface DeceasedCardProps {
 }
 
 export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardProps) {
-  const profileUrl = getProfileUrl(actor.profile_path, 'w185')
+  const profileUrl = getProfileUrl(actor.profile_path, "w185")
 
   // Show loading indicator only for actors without cause/wikipedia info while polling
   const showLoading = isPolling && !actor.causeOfDeath && !actor.wikipediaUrl

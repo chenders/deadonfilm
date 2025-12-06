@@ -1,6 +1,6 @@
-import { getCauseOfDeathFromClaude, isVagueCause } from './claude.js'
+import { getCauseOfDeathFromClaude, isVagueCause } from "./claude.js"
 
-const WIKIDATA_ENDPOINT = 'https://query.wikidata.org/sparql'
+const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
 
 interface WikidataSparqlResponse {
   results: {
@@ -54,8 +54,8 @@ export async function getCauseOfDeath(
 
     const response = await fetch(`${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(query)}`, {
       headers: {
-        Accept: 'application/sparql-results+json',
-        'User-Agent': 'DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)',
+        Accept: "application/sparql-results+json",
+        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
       },
     })
 
@@ -105,8 +105,8 @@ async function getWikipediaUrl(
   try {
     const response = await fetch(`${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(query)}`, {
       headers: {
-        Accept: 'application/sparql-results+json',
-        'User-Agent': 'DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)',
+        Accept: "application/sparql-results+json",
+        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
       },
     })
 
@@ -157,7 +157,7 @@ function parseWikidataResult(
   }
 
   for (const binding of bindings) {
-    const personName = binding.personLabel?.value || ''
+    const personName = binding.personLabel?.value || ""
 
     if (!isNameMatch(targetName, personName)) {
       continue
@@ -180,7 +180,7 @@ function parseWikidataResult(
 }
 
 function isNameMatch(tmdbName: string, wikidataName: string): boolean {
-  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '')
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "")
   const tmdbNorm = normalize(tmdbName)
   const wikiNorm = normalize(wikidataName)
 
@@ -214,7 +214,7 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
 
     const response = await fetch(apiUrl, {
       headers: {
-        'User-Agent': 'DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)',
+        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
       },
     })
 
@@ -227,9 +227,9 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
 
     // Get the first (and only) page
     const pageId = Object.keys(pages)[0]
-    if (!pageId || pageId === '-1') return null
+    if (!pageId || pageId === "-1") return null
 
-    const content = pages[pageId]?.revisions?.[0]?.slots?.main?.['*']
+    const content = pages[pageId]?.revisions?.[0]?.slots?.main?.["*"]
     if (!content) return null
 
     // 1. First try infobox fields
@@ -265,7 +265,7 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
 
     // 3. Try opening paragraph for "died of X" or "died from X"
     // Skip past infobox to get to actual article content
-    const afterInfobox = content.replace(/\{\{Infobox[\s\S]*?\}\}/gi, '')
+    const afterInfobox = content.replace(/\{\{Infobox[\s\S]*?\}\}/gi, "")
     const firstParagraph = afterInfobox.match(/'''[^']+'''.{0,500}/s)
     if (firstParagraph) {
       const paragraphText = cleanWikiMarkup(firstParagraph[0])
@@ -275,7 +275,7 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
 
     return null
   } catch (error) {
-    console.log('Wikipedia fallback error:', error)
+    console.log("Wikipedia fallback error:", error)
     return null
   }
 }
@@ -283,13 +283,13 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
 // Clean wiki markup from text
 function cleanWikiMarkup(text: string): string {
   return text
-    .replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g, '$2') // [[link|text]] -> text
-    .replace(/\{\{[^}]*\}\}/g, '') // Remove templates
-    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '') // Remove references
-    .replace(/<ref[^/]*\/>/gi, '') // Remove self-closing refs
-    .replace(/<[^>]+>/g, '') // Remove HTML tags
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g, "$2") // [[link|text]] -> text
+    .replace(/\{\{[^}]*\}\}/g, "") // Remove templates
+    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, "") // Remove references
+    .replace(/<ref[^/]*\/>/gi, "") // Remove self-closing refs
+    .replace(/<[^>]+>/g, "") // Remove HTML tags
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
 }
 
@@ -317,7 +317,7 @@ function extractCauseFromText(text: string): string | null {
       let cause = match[1].trim()
       // Clean up common trailing words
       cause = cause
-        .replace(/\s+(?:aged?|at age|years old|after|following|while|when).*$/i, '')
+        .replace(/\s+(?:aged?|at age|years old|after|following|while|when).*$/i, "")
         .trim()
       // Skip if too short or just contains common filler
       if (cause.length >= 3 && !/^(the|his|her|their|a|an)$/i.test(cause)) {
@@ -337,7 +337,7 @@ interface WikipediaApiResponse {
         revisions?: Array<{
           slots?: {
             main?: {
-              '*'?: string
+              "*"?: string
             }
           }
         }>

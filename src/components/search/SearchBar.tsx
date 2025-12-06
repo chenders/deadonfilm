@@ -1,14 +1,14 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useMovieSearch } from '@/hooks/useMovieSearch'
-import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation'
-import { createMovieSlug } from '@/utils/slugify'
-import type { MovieSearchResult } from '@/types'
-import SearchInput from './SearchInput'
-import SearchDropdown from './SearchDropdown'
+import { useState, useRef } from "react"
+import { useNavigate } from "react-router-dom"
+import { useMovieSearch } from "@/hooks/useMovieSearch"
+import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation"
+import { createMovieSlug } from "@/utils/slugify"
+import type { MovieSearchResult } from "@/types"
+import SearchInput from "./SearchInput"
+import SearchDropdown from "./SearchDropdown"
 
 export default function SearchBar() {
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
@@ -20,7 +20,7 @@ export default function SearchBar() {
     const slug = createMovieSlug(movie.title, movie.release_date, movie.id)
     navigate(`/movie/${slug}`)
     setIsOpen(false)
-    setQuery('')
+    setQuery("")
   }
 
   const { selectedIndex, handleKeyDown } = useKeyboardNavigation({

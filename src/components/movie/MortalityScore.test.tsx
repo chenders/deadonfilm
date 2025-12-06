@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import MortalityScore from './MortalityScore'
+import { describe, it, expect } from "vitest"
+import { render, screen } from "@testing-library/react"
+import MortalityScore from "./MortalityScore"
 
-describe('MortalityScore', () => {
-  it('displays mortality percentage', () => {
+describe("MortalityScore", () => {
+  it("displays mortality percentage", () => {
     const stats = {
       totalCast: 10,
       deceasedCount: 7,
@@ -13,10 +13,10 @@ describe('MortalityScore', () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText('70%')).toBeInTheDocument()
+    expect(screen.getByText("70%")).toBeInTheDocument()
   })
 
-  it('displays deceased count', () => {
+  it("displays deceased count", () => {
     const stats = {
       totalCast: 10,
       deceasedCount: 7,
@@ -26,11 +26,11 @@ describe('MortalityScore', () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText('7')).toBeInTheDocument()
-    expect(screen.getByText('deceased')).toBeInTheDocument()
+    expect(screen.getByText("7")).toBeInTheDocument()
+    expect(screen.getByText("deceased")).toBeInTheDocument()
   })
 
-  it('displays living count', () => {
+  it("displays living count", () => {
     const stats = {
       totalCast: 10,
       deceasedCount: 7,
@@ -40,11 +40,11 @@ describe('MortalityScore', () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText('3')).toBeInTheDocument()
-    expect(screen.getByText('living')).toBeInTheDocument()
+    expect(screen.getByText("3")).toBeInTheDocument()
+    expect(screen.getByText("living")).toBeInTheDocument()
   })
 
-  it('displays total cast count', () => {
+  it("displays total cast count", () => {
     const stats = {
       totalCast: 10,
       deceasedCount: 7,
@@ -54,11 +54,11 @@ describe('MortalityScore', () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText('10')).toBeInTheDocument()
-    expect(screen.getByText('total')).toBeInTheDocument()
+    expect(screen.getByText("10")).toBeInTheDocument()
+    expect(screen.getByText("total")).toBeInTheDocument()
   })
 
-  it('handles 0% mortality', () => {
+  it("handles 0% mortality", () => {
     const stats = {
       totalCast: 5,
       deceasedCount: 0,
@@ -68,11 +68,11 @@ describe('MortalityScore', () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText('0%')).toBeInTheDocument()
-    expect(screen.getByText('0')).toBeInTheDocument()
+    expect(screen.getByText("0%")).toBeInTheDocument()
+    expect(screen.getByText("0")).toBeInTheDocument()
   })
 
-  it('handles 100% mortality', () => {
+  it("handles 100% mortality", () => {
     const stats = {
       totalCast: 12,
       deceasedCount: 12,
@@ -82,10 +82,10 @@ describe('MortalityScore', () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(screen.getByText("100%")).toBeInTheDocument()
   })
 
-  it('displays the correct description text', () => {
+  it("displays the correct description text", () => {
     const stats = {
       totalCast: 10,
       deceasedCount: 5,
@@ -95,10 +95,10 @@ describe('MortalityScore', () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText('of the cast has passed away')).toBeInTheDocument()
+    expect(screen.getByText("of the cast has passed away")).toBeInTheDocument()
   })
 
-  it('renders mortality bar with correct width', () => {
+  it("renders mortality bar with correct width", () => {
     const stats = {
       totalCast: 10,
       deceasedCount: 6,

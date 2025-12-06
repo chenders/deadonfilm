@@ -2,7 +2,7 @@ export default function Footer() {
   return (
     <footer className="py-6 px-4 text-center text-text-muted text-sm">
       <p>
-        Data provided by{' '}
+        Data provided by{" "}
         <a
           href="https://www.themoviedb.org/"
           target="_blank"
@@ -10,8 +10,8 @@ export default function Footer() {
           className="underline hover:text-brown-dark"
         >
           The Movie Database (TMDB)
-        </a>{' '}
-        and{' '}
+        </a>{" "}
+        and{" "}
         <a
           href="https://www.wikidata.org/"
           target="_blank"

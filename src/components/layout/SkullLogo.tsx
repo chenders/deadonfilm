@@ -2,7 +2,7 @@ interface SkullLogoProps {
   className?: string
 }
 
-export default function SkullLogo({ className = 'w-32 h-auto' }: SkullLogoProps) {
+export default function SkullLogo({ className = "w-32 h-auto" }: SkullLogoProps) {
   return (
     <svg viewBox="0 0 200 100" className={className} aria-label="Dead on Film logo - winged skull">
       {/* Left Wing */}

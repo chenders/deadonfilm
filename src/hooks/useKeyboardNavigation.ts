@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from "react"
 
 interface Options<T> {
   items: T[]
@@ -27,25 +27,25 @@ export function useKeyboardNavigation<T>({ items, isOpen, onSelect, onEscape }: 
       if (!isOpen || items.length === 0) return
 
       switch (e.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault()
           setSelectedIndex((prev) => (prev < items.length - 1 ? prev + 1 : prev))
           break
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault()
           setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev))
           break
-        case 'Enter':
+        case "Enter":
           e.preventDefault()
           if (selectedIndex >= 0 && items[selectedIndex]) {
             onSelect(items[selectedIndex])
           }
           break
-        case 'Escape':
+        case "Escape":
           e.preventDefault()
           onEscape()
           break
-        case 'Tab':
+        case "Tab":
           // Allow Tab to close dropdown naturally
           onEscape()
           break

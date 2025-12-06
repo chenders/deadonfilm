@@ -1,7 +1,7 @@
-import { useOnThisDay } from '@/hooks/useOnThisDay'
-import { getProfileUrl } from '@/services/api'
-import { Link } from 'react-router-dom'
-import { createMovieSlug } from '@/utils/slugify'
+import { useOnThisDay } from "@/hooks/useOnThisDay"
+import { getProfileUrl } from "@/services/api"
+import { Link } from "react-router-dom"
+import { createMovieSlug } from "@/utils/slugify"
 
 export default function OnThisDay() {
   const { data, isLoading, error } = useOnThisDay()
@@ -32,7 +32,7 @@ export default function OnThisDay() {
       {deaths.length === 0 ? (
         <div className="p-6 bg-beige rounded-lg text-center">
           <p className="text-text-muted">
-            {message || 'No notable deaths recorded for this date.'}
+            {message || "No notable deaths recorded for this date."}
           </p>
         </div>
       ) : (
@@ -41,7 +41,7 @@ export default function OnThisDay() {
             <div key={death.actor.id} className="p-4 bg-beige rounded-lg flex items-center gap-4">
               {death.actor.profile_path ? (
                 <img
-                  src={getProfileUrl(death.actor.profile_path, 'w185')!}
+                  src={getProfileUrl(death.actor.profile_path, "w185")!}
                   alt={death.actor.name}
                   className="w-16 h-20 rounded object-cover"
                 />
@@ -60,7 +60,7 @@ export default function OnThisDay() {
                     {death.notableFilms.slice(0, 3).map((film) => (
                       <Link
                         key={film.id}
-                        to={`/movie/${createMovieSlug(film.title, film.year + '-01-01', film.id)}`}
+                        to={`/movie/${createMovieSlug(film.title, film.year + "-01-01", film.id)}`}
                         className="text-xs px-2 py-1 bg-white rounded hover:bg-cream"
                       >
                         {film.title} ({film.year})

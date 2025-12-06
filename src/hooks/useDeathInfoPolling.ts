@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react'
-import { getDeathInfo } from '@/services/api'
-import type { DeceasedActor } from '@/types'
+import { useEffect, useState, useCallback } from "react"
+import { getDeathInfo } from "@/services/api"
+import type { DeceasedActor } from "@/types"
 
 interface DeathInfoUpdate {
   causeOfDeath: string | null
@@ -85,7 +85,7 @@ export function useDeathInfoPolling({
 
         attempts++
       } catch (error) {
-        console.error('Error polling for death info:', error)
+        console.error("Error polling for death info:", error)
         setIsPolling(false)
         return
       }

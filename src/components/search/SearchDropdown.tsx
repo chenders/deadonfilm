@@ -1,5 +1,5 @@
-import type { MovieSearchResult } from '@/types'
-import SearchResult from './SearchResult'
+import type { MovieSearchResult } from "@/types"
+import SearchResult from "./SearchResult"
 
 interface SearchDropdownProps {
   movies: MovieSearchResult[]

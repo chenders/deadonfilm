@@ -1,4 +1,4 @@
-import { formatDate, calculateAge } from '@/utils/formatDate'
+import { formatDate, calculateAge } from "@/utils/formatDate"
 
 interface DeathInfoProps {
   deathday: string
@@ -12,10 +12,10 @@ function LoadingEllipsis() {
   return (
     <span className="inline-flex">
       <span className="animate-pulse">.</span>
-      <span className="animate-pulse" style={{ animationDelay: '0.2s' }}>
+      <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>
         .
       </span>
-      <span className="animate-pulse" style={{ animationDelay: '0.4s' }}>
+      <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>
         .
       </span>
     </span>
@@ -57,7 +57,7 @@ export default function DeathInfo({
       {!causeOfDeath && wikipediaUrl && (
         <p className="text-sm text-text-muted mt-1">
           <span className="italic">(cause unknown)</span>
-          {' - '}
+          {" - "}
           <a
             href={wikipediaUrl}
             target="_blank"

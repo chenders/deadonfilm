@@ -1,6 +1,6 @@
-import { useRef, useEffect } from 'react'
-import type { MovieSearchResult } from '@/types'
-import { getYear } from '@/utils/formatDate'
+import { useRef, useEffect } from "react"
+import type { MovieSearchResult } from "@/types"
+import { getYear } from "@/utils/formatDate"
 
 interface SearchResultProps {
   movie: MovieSearchResult
@@ -15,7 +15,7 @@ export default function SearchResult({ movie, isSelected, onSelect }: SearchResu
   // Scroll selected item into view
   useEffect(() => {
     if (isSelected && ref.current) {
-      ref.current.scrollIntoView({ block: 'nearest' })
+      ref.current.scrollIntoView({ block: "nearest" })
     }
   }, [isSelected])
 
@@ -25,7 +25,7 @@ export default function SearchResult({ movie, isSelected, onSelect }: SearchResu
       role="option"
       aria-selected={isSelected}
       className={`px-4 py-3 cursor-pointer transition-colors border-b border-brown-medium/10 last:border-b-0
-        ${isSelected ? 'bg-beige' : 'hover:bg-beige/50'}`}
+        ${isSelected ? "bg-beige" : "hover:bg-beige/50"}`}
       onClick={onSelect}
       onMouseDown={(e) => e.preventDefault()} // Prevent input blur before click
     >

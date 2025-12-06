@@ -1,9 +1,9 @@
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+const TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
 function getToken(): string {
   const token = process.env.TMDB_API_TOKEN
   if (!token) {
-    throw new Error('TMDB_API_TOKEN environment variable is not set')
+    throw new Error("TMDB_API_TOKEN environment variable is not set")
   }
   return token
 }
@@ -81,7 +81,7 @@ async function tmdbFetch<T>(path: string): Promise<T> {
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
-      accept: 'application/json',
+      accept: "application/json",
     },
   })
 
@@ -185,7 +185,7 @@ export async function batchGetPersonDetails(
       const result = chunkResults[j]
       const personId = chunk[j]
 
-      if (result.status === 'fulfilled') {
+      if (result.status === "fulfilled") {
         results.set(personId, result.value)
       }
     }
