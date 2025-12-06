@@ -123,7 +123,7 @@ async function main() {
       console.log(`  [${i + 1}/${deceasedActors.length}] ${actor.name}...`)
 
       try {
-        const { causeOfDeath, wikipediaUrl } = await getCauseOfDeath(
+        const { causeOfDeath, causeOfDeathDetails, wikipediaUrl } = await getCauseOfDeath(
           actor.name,
           actor.birthday,
           actor.deathday!
@@ -135,6 +135,7 @@ async function main() {
           birthday: actor.birthday,
           deathday: actor.deathday!,
           cause_of_death: causeOfDeath,
+          cause_of_death_details: causeOfDeathDetails,
           wikipedia_url: wikipediaUrl,
         })
 
@@ -155,6 +156,7 @@ async function main() {
           birthday: actor.birthday,
           deathday: actor.deathday!,
           cause_of_death: null,
+          cause_of_death_details: null,
           wikipedia_url: null,
         })
       }

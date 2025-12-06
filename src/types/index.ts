@@ -44,6 +44,7 @@ export interface DeceasedActor {
   birthday: string | null
   deathday: string
   causeOfDeath: string | null
+  causeOfDeathDetails: string | null
   wikipediaUrl: string | null
 }
 
@@ -80,7 +81,10 @@ export interface MovieResponse {
 
 export interface DeathInfoResponse {
   pending: boolean
-  deathInfo: Record<number, { causeOfDeath: string | null; wikipediaUrl: string | null }>
+  deathInfo: Record<
+    number,
+    { causeOfDeath: string | null; causeOfDeathDetails: string | null; wikipediaUrl: string | null }
+  >
 }
 
 export interface OnThisDayResponse {

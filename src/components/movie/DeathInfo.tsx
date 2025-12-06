@@ -4,6 +4,7 @@ interface DeathInfoProps {
   deathday: string
   birthday: string | null
   causeOfDeath: string | null
+  causeOfDeathDetails: string | null
   wikipediaUrl: string | null
   isLoading?: boolean
 }
@@ -26,10 +27,12 @@ export default function DeathInfo({
   deathday,
   birthday,
   causeOfDeath,
+  causeOfDeathDetails,
   wikipediaUrl,
   isLoading = false,
 }: DeathInfoProps) {
   const ageAtDeath = calculateAge(birthday, deathday)
+  const hasDetails = causeOfDeathDetails && causeOfDeathDetails.trim().length > 0
 
   return (
     <div className="text-right sm:text-right">
@@ -44,10 +47,17 @@ export default function DeathInfo({
               href={wikipediaUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-brown-dark"
+              className={`underline hover:text-brown-dark ${hasDetails ? "decoration-dotted cursor-help" : ""}`}
+              title={hasDetails ? causeOfDeathDetails : undefined}
             >
               {causeOfDeath}
+              {hasDetails && <span className="ml-1 text-xs opacity-60">ⓘ</span>}
             </a>
+          ) : hasDetails ? (
+            <span className="decoration-dotted underline cursor-help" title={causeOfDeathDetails}>
+              {causeOfDeath}
+              <span className="ml-1 text-xs opacity-60">ⓘ</span>
+            </span>
           ) : (
             causeOfDeath
           )}

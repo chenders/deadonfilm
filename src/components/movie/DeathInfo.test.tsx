@@ -9,6 +9,7 @@ describe("DeathInfo", () => {
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath={null}
+        causeOfDeathDetails={null}
         wikipediaUrl={null}
       />
     )
@@ -22,6 +23,7 @@ describe("DeathInfo", () => {
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath={null}
+        causeOfDeathDetails={null}
         wikipediaUrl={null}
       />
     )
@@ -31,7 +33,13 @@ describe("DeathInfo", () => {
 
   it("does not display age when birthday is null", () => {
     render(
-      <DeathInfo deathday="1993-01-20" birthday={null} causeOfDeath={null} wikipediaUrl={null} />
+      <DeathInfo
+        deathday="1993-01-20"
+        birthday={null}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+      />
     )
 
     expect(screen.queryByText(/Age/)).not.toBeInTheDocument()
@@ -43,6 +51,7 @@ describe("DeathInfo", () => {
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath="colon cancer"
+        causeOfDeathDetails={null}
         wikipediaUrl={null}
       />
     )
@@ -57,6 +66,7 @@ describe("DeathInfo", () => {
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath="colon cancer"
+        causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Audrey_Hepburn"
       />
     )
@@ -74,6 +84,7 @@ describe("DeathInfo", () => {
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath={null}
+        causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
       />
     )
@@ -90,6 +101,7 @@ describe("DeathInfo", () => {
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath="heart attack"
+        causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
       />
     )
@@ -101,7 +113,13 @@ describe("DeathInfo", () => {
 
   it("renders nothing extra when no cause or URL", () => {
     const { container } = render(
-      <DeathInfo deathday="2000-01-01" birthday={null} causeOfDeath={null} wikipediaUrl={null} />
+      <DeathInfo
+        deathday="2000-01-01"
+        birthday={null}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+      />
     )
 
     // Should only have the date
@@ -115,6 +133,7 @@ describe("DeathInfo", () => {
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath={null}
+        causeOfDeathDetails={null}
         wikipediaUrl={null}
         isLoading={true}
       />
@@ -129,6 +148,7 @@ describe("DeathInfo", () => {
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath="heart attack"
+        causeOfDeathDetails={null}
         wikipediaUrl={null}
         isLoading={true}
       />
@@ -144,6 +164,7 @@ describe("DeathInfo", () => {
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath={null}
+        causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Test"
         isLoading={true}
       />
@@ -151,5 +172,72 @@ describe("DeathInfo", () => {
 
     expect(screen.queryByText(/Looking up cause/)).not.toBeInTheDocument()
     expect(screen.getByText("(cause unknown)")).toBeInTheDocument()
+  })
+
+  it("shows info icon and dotted underline when details are present without wikipedia URL", () => {
+    render(
+      <DeathInfo
+        deathday="2000-01-01"
+        birthday={null}
+        causeOfDeath="heart attack"
+        causeOfDeathDetails="Suffered a massive coronary while playing tennis"
+        wikipediaUrl={null}
+      />
+    )
+
+    // Should show the info icon
+    expect(screen.getByText("ⓘ")).toBeInTheDocument()
+    // The cause text should have a title attribute with details
+    const causeElement = screen.getByText("heart attack")
+    expect(causeElement.closest("span")).toHaveAttribute(
+      "title",
+      "Suffered a massive coronary while playing tennis"
+    )
+  })
+
+  it("shows info icon and title on link when details are present with wikipedia URL", () => {
+    render(
+      <DeathInfo
+        deathday="2000-01-01"
+        birthday={null}
+        causeOfDeath="lung cancer"
+        causeOfDeathDetails="Was a heavy smoker for over 40 years"
+        wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
+      />
+    )
+
+    // Should show the info icon
+    expect(screen.getByText("ⓘ")).toBeInTheDocument()
+    // The link should have a title attribute with details
+    const link = screen.getByRole("link")
+    expect(link).toHaveAttribute("title", "Was a heavy smoker for over 40 years")
+  })
+
+  it("does not show info icon when details are null", () => {
+    render(
+      <DeathInfo
+        deathday="2000-01-01"
+        birthday={null}
+        causeOfDeath="heart attack"
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+      />
+    )
+
+    expect(screen.queryByText("ⓘ")).not.toBeInTheDocument()
+  })
+
+  it("does not show info icon when details are empty string", () => {
+    render(
+      <DeathInfo
+        deathday="2000-01-01"
+        birthday={null}
+        causeOfDeath="heart attack"
+        causeOfDeathDetails=""
+        wikipediaUrl={null}
+      />
+    )
+
+    expect(screen.queryByText("ⓘ")).not.toBeInTheDocument()
   })
 })

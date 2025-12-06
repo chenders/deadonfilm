@@ -14,13 +14,18 @@
     "format:check": "prettier --check \"src/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed": "tsx scripts/seed-deceased-actors.ts"
+    "seed": "tsx scripts/seed-deceased-actors.ts",
+    "migrate": "node-pg-migrate",
+    "migrate:up": "node-pg-migrate up",
+    "migrate:down": "node-pg-migrate down",
+    "migrate:create": "node-pg-migrate create"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "node-pg-migrate": "^8.0.3",
     "pg": "^8.16.3"
   },
   "devDependencies": {

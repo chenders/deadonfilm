@@ -116,12 +116,46 @@ deceased_persons (
   birthday DATE,
   deathday DATE NOT NULL,
   cause_of_death TEXT,
+  cause_of_death_details TEXT,  -- Detailed explanation for tooltip
   wikipedia_url TEXT,
   updated_at TIMESTAMP DEFAULT NOW()
 )
 ```
 
 Deceased actor data is persisted to the database and enriched with cause of death information over time.
+
+### Database Migrations
+
+The project uses `node-pg-migrate` for database migrations:
+
+```bash
+cd server
+
+# Run pending migrations
+npm run migrate:up
+
+# Rollback last migration
+npm run migrate:down
+
+# Create a new migration
+npm run migrate:create -- migration-name
+```
+
+Migration files are stored in `server/migrations/` as CommonJS files.
+
+### Database Seeding
+
+Populate the database with deceased actors from top movies by year:
+
+```bash
+cd server
+
+# Single year
+npm run seed -- 1995
+
+# Year range (e.g., 1990s)
+npm run seed -- 1990 1999
+```
 
 ## GKE Deployment
 
