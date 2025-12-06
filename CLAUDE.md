@@ -91,6 +91,7 @@ npm test                     # Frontend unit tests
 - `GET /api/movie/{id}` - Get movie with deceased cast
 - `GET /api/movie/{id}/death-info?personIds=1,2,3` - Poll for cause of death updates
 - `GET /api/on-this-day` - Deaths on current date
+- `GET /api/random` - Get a random movie (redirects to movie page)
 - `GET /health` - Health check for Kubernetes
 
 ## Environment Variables
@@ -116,6 +117,9 @@ deceased_persons (
   birthday DATE,
   deathday DATE NOT NULL,
   cause_of_death TEXT,
+  cause_of_death_source TEXT,     -- 'claude', 'wikidata', or 'wikipedia'
+  cause_of_death_details TEXT,    -- Detailed explanation for tooltip
+  cause_of_death_details_source TEXT,  -- Source of the details
   wikipedia_url TEXT,
   updated_at TIMESTAMP DEFAULT NOW()
 )
@@ -123,7 +127,46 @@ deceased_persons (
 
 Deceased actor data is persisted to the database and enriched with cause of death information over time.
 
+### Database Migrations
+
+The project uses `node-pg-migrate` for database migrations:
+
+```bash
+cd server
+
+# Run pending migrations
+npm run migrate:up
+
+# Rollback last migration
+npm run migrate:down
+
+# Create a new migration
+npm run migrate:create -- migration-name
+```
+
+Migration files are stored in `server/migrations/` as CommonJS files.
+
+### Database Seeding
+
+Populate the database with deceased actors from top movies by year:
+
+```bash
+cd server
+
+# Single year
+npm run seed -- 1995
+
+# Year range (e.g., 1990s)
+npm run seed -- 1990 1999
+```
+
 ## GKE Deployment
+
+**IMPORTANT**: GKE runs on AMD64 architecture. When building on Apple Silicon (ARM), you must specify the target platform to avoid "exec format error":
+
+```bash
+docker buildx build --platform linux/amd64 -t IMAGE:TAG --push .
+```
 
 ### Quick Deploy
 
@@ -133,9 +176,10 @@ GCP_PROJECT_ID=your-project-id ./scripts/deploy.sh
 
 ### Manual Deploy
 
-1. Build and push Docker image to Artifact Registry
+1. Build Docker image for AMD64: `docker buildx build --platform linux/amd64 -t us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:TAG --push .`
 2. Apply Kubernetes manifests: `kubectl apply -f k8s/`
 3. Create secrets with TMDB_API_TOKEN, ANTHROPIC_API_KEY, DATABASE_URL
+4. Restart deployment: `kubectl rollout restart deployment/dead-on-film -n dead-on-film`
 
 ## URL Structure
 

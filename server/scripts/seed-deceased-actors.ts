@@ -123,11 +123,13 @@ async function main() {
       console.log(`  [${i + 1}/${deceasedActors.length}] ${actor.name}...`)
 
       try {
-        const { causeOfDeath, wikipediaUrl } = await getCauseOfDeath(
-          actor.name,
-          actor.birthday,
-          actor.deathday!
-        )
+        const {
+          causeOfDeath,
+          causeOfDeathSource,
+          causeOfDeathDetails,
+          causeOfDeathDetailsSource,
+          wikipediaUrl,
+        } = await getCauseOfDeath(actor.name, actor.birthday, actor.deathday!)
 
         records.push({
           tmdb_id: actor.id,
@@ -135,11 +137,14 @@ async function main() {
           birthday: actor.birthday,
           deathday: actor.deathday!,
           cause_of_death: causeOfDeath,
+          cause_of_death_source: causeOfDeathSource,
+          cause_of_death_details: causeOfDeathDetails,
+          cause_of_death_details_source: causeOfDeathDetailsSource,
           wikipedia_url: wikipediaUrl,
         })
 
         if (causeOfDeath) {
-          console.log(`    -> ${causeOfDeath}`)
+          console.log(`    -> ${causeOfDeath} (${causeOfDeathSource})`)
         } else {
           console.log(`    -> (cause unknown)`)
         }
@@ -155,6 +160,9 @@ async function main() {
           birthday: actor.birthday,
           deathday: actor.deathday!,
           cause_of_death: null,
+          cause_of_death_source: null,
+          cause_of_death_details: null,
+          cause_of_death_details_source: null,
           wikipedia_url: null,
         })
       }

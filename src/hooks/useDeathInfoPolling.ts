@@ -4,6 +4,7 @@ import type { DeceasedActor } from "@/types"
 
 interface DeathInfoUpdate {
   causeOfDeath: string | null
+  causeOfDeathDetails: string | null
   wikipediaUrl: string | null
 }
 
@@ -109,6 +110,7 @@ export function useDeathInfoPolling({
       return {
         ...actor,
         causeOfDeath: update.causeOfDeath ?? actor.causeOfDeath,
+        causeOfDeathDetails: update.causeOfDeathDetails ?? actor.causeOfDeathDetails,
         wikipediaUrl: update.wikipediaUrl ?? actor.wikipediaUrl,
       }
     }
