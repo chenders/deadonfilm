@@ -86,6 +86,9 @@ export async function getDeceasedPersons(
 }
 
 // Insert or update a deceased person
+// Note: COALESCE prioritizes existing values over new values to preserve first-found data.
+// This is intentional - once we have death info, we don't overwrite it with potentially
+// different/conflicting data from later lookups.
 export async function upsertDeceasedPerson(person: DeceasedPersonRecord): Promise<void> {
   const db = getPool()
   await db.query(
@@ -164,6 +167,7 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
 }
 
 // Update just the cause of death and wikipedia URL for an existing person
+// Note: COALESCE prioritizes existing values - see comment on upsertDeceasedPerson
 export async function updateDeathInfo(
   tmdbId: number,
   causeOfDeath: string | null,

@@ -38,28 +38,40 @@ function Tooltip({ content, triggerRef, isVisible }: TooltipProps) {
   useEffect(() => {
     if (!isVisible || !triggerRef.current || !tooltipRef.current) return
 
-    const trigger = triggerRef.current.getBoundingClientRect()
-    const tooltip = tooltipRef.current.getBoundingClientRect()
-    const padding = 8
+    const updatePosition = () => {
+      if (!triggerRef.current || !tooltipRef.current) return
+      const trigger = triggerRef.current.getBoundingClientRect()
+      const tooltip = tooltipRef.current.getBoundingClientRect()
+      const padding = 8
 
-    // Start with position below and to the left of the trigger (since text is right-aligned)
-    let top = trigger.bottom + padding
-    let left = trigger.right - tooltip.width
+      // Start with position below and to the left of the trigger (since text is right-aligned)
+      let top = trigger.bottom + padding
+      let left = trigger.right - tooltip.width
 
-    // Keep tooltip within horizontal bounds
-    if (left < padding) {
-      left = padding
+      // Keep tooltip within horizontal bounds
+      if (left < padding) {
+        left = padding
+      }
+      if (left + tooltip.width > window.innerWidth - padding) {
+        left = window.innerWidth - tooltip.width - padding
+      }
+
+      // If tooltip would go below viewport, show it above the trigger
+      if (top + tooltip.height > window.innerHeight - padding) {
+        top = trigger.top - tooltip.height - padding
+      }
+
+      setPosition({ top, left })
     }
-    if (left + tooltip.width > window.innerWidth - padding) {
-      left = window.innerWidth - tooltip.width - padding
-    }
 
-    // If tooltip would go below viewport, show it above the trigger
-    if (top + tooltip.height > window.innerHeight - padding) {
-      top = trigger.top - tooltip.height - padding
-    }
+    updatePosition()
+    window.addEventListener("scroll", updatePosition, true)
+    window.addEventListener("resize", updatePosition)
 
-    setPosition({ top, left })
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true)
+      window.removeEventListener("resize", updatePosition)
+    }
   }, [isVisible, triggerRef])
 
   if (!isVisible) return null

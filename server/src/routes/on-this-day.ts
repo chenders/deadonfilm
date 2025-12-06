@@ -70,6 +70,8 @@ export async function getOnThisDay(_req: Request, res: Response) {
     }
 
     // Pick one random actor from the list
+    // We intentionally return only one actor to keep the homepage focused.
+    // The response uses an array structure for future extensibility.
     const randomIndex = Math.floor(Math.random() * deceasedOnThisDay.length)
     const person = deceasedOnThisDay[randomIndex]
     const deaths: OnThisDayDeath[] = []

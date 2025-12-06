@@ -1,6 +1,7 @@
 import { getCauseOfDeathFromClaude, isVagueCause } from "./claude.js"
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
+const MAX_DEATH_DETAILS_LENGTH = 200
 
 interface WikidataSparqlResponse {
   results: {
@@ -356,11 +357,16 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
 
 // Clean wiki markup from text
 function cleanWikiMarkup(text: string): string {
-  const cleaned = text
-    // Remove nested templates (handle up to 3 levels of nesting)
-    .replace(/\{\{[^{}]*\}\}/g, "")
-    .replace(/\{\{[^{}]*\}\}/g, "")
-    .replace(/\{\{[^{}]*\}\}/g, "")
+  // Remove nested templates with a loop (handles arbitrary nesting depth)
+  let cleaned = text
+  let prevCleaned = ""
+  let maxIterations = 10
+  while (cleaned !== prevCleaned && maxIterations-- > 0) {
+    prevCleaned = cleaned
+    cleaned = cleaned.replace(/\{\{[^{}]*\}\}/g, "")
+  }
+
+  cleaned = cleaned
     // Remove any remaining template fragments
     .replace(/\{\{[^}]*$/g, "")
     .replace(/^[^{]*\}\}/g, "")
@@ -453,7 +459,7 @@ function extractCauseFromText(text: string): string | null {
 }
 
 // Get death details from Wikipedia article (1-2 sentences about circumstances)
-async function getWikipediaDeathDetails(wikipediaUrl: string): Promise<string | null> {
+export async function getWikipediaDeathDetails(wikipediaUrl: string): Promise<string | null> {
   try {
     // Extract article title from URL
     const urlMatch = wikipediaUrl.match(/\/wiki\/(.+)$/)
@@ -501,10 +507,10 @@ async function getWikipediaDeathDetails(wikipediaUrl: string): Promise<string | 
         )
 
         if (deathSentences.length > 0) {
-          // Take first 1-2 relevant sentences, max 200 chars
+          // Take first 1-2 relevant sentences, max MAX_DEATH_DETAILS_LENGTH chars
           let details = deathSentences.slice(0, 2).join(" ")
-          if (details.length > 200) {
-            details = details.substring(0, 197) + "..."
+          if (details.length > MAX_DEATH_DETAILS_LENGTH) {
+            details = details.substring(0, MAX_DEATH_DETAILS_LENGTH - 3) + "..."
           }
           return details
         }
@@ -523,8 +529,8 @@ async function getWikipediaDeathDetails(wikipediaUrl: string): Promise<string | 
 
       if (deathSentences.length > 0) {
         let details = deathSentences.slice(0, 2).join(" ")
-        if (details.length > 200) {
-          details = details.substring(0, 197) + "..."
+        if (details.length > MAX_DEATH_DETAILS_LENGTH) {
+          details = details.substring(0, MAX_DEATH_DETAILS_LENGTH - 3) + "..."
         }
         return details
       }
@@ -536,9 +542,6 @@ async function getWikipediaDeathDetails(wikipediaUrl: string): Promise<string | 
     return null
   }
 }
-
-// Export for use in backfill script
-export { getWikipediaDeathDetails }
 
 interface WikipediaApiResponse {
   query?: {

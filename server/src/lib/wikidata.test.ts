@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { getCauseOfDeath, getWikipediaDeathDetails, type DeathInfoSource } from "./wikidata.js"
 
 // Mock the claude module

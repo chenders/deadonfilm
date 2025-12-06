@@ -96,12 +96,10 @@ If unknown, respond: {"cause": null, "details": null}`
 
       const causeMatch = jsonMatch[0].match(/"cause"\s*:\s*"([^"]*)"/)
       const detailsMatch = jsonMatch[0].match(/"details"\s*:\s*"([^"]*)"/)
-      const causeNullMatch = jsonMatch[0].match(/"cause"\s*:\s*null/)
-      const detailsNullMatch = jsonMatch[0].match(/"details"\s*:\s*null/)
 
       parsed = {
-        cause: causeMatch ? causeMatch[1] : causeNullMatch ? null : null,
-        details: detailsMatch ? detailsMatch[1] : detailsNullMatch ? null : null,
+        cause: causeMatch ? causeMatch[1] : null,
+        details: detailsMatch ? detailsMatch[1] : null,
       }
     }
 
