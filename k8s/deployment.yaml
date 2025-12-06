@@ -27,6 +27,8 @@ spec:
             - containerPort: 3000
               name: frontend
           env:
+            - name: TZ
+              value: "America/Los_Angeles"
             - name: PORT
               value: "8080"
             - name: NODE_ENV

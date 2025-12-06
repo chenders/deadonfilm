@@ -46,21 +46,28 @@ export async function getCauseOfDeathFromClaude(
     const birthInfo = birthYear ? ` (born ${birthYear})` : ""
     const prompt = `What was the cause of death for ${name}${birthInfo} who died in ${deathYear}?
 
-Please provide:
-1. The specific medical cause of death (e.g., "lung cancer", "heart attack", "complications from diabetes")
-2. A brief one-sentence explanation if relevant
+Provide:
+1. cause: The specific medical cause (e.g., "lung cancer", "heart attack")
+2. details: ONLY information that explains WHY or HOW they died - like underlying conditions, contributing factors, or notable circumstances. Return null if you only know basic facts.
 
-Respond in this exact JSON format only, with no other text:
-{"cause": "specific cause here", "details": "brief explanation or null"}
+The details field should ONLY contain information directly relevant to their death. Do not include:
+- Marriage/relationship information (unless spouse caused the death)
+- Career achievements or biographical info
+- When other people died
+- Date, age, or location of death (already known)
 
-If you don't know or aren't confident, respond with:
-{"cause": null, "details": null}`
+Just state facts - no flowery adjectives about the person.
+
+Respond in JSON only:
+{"cause": "specific cause", "details": "context about death circumstances, or null"}
+
+If unknown, respond: {"cause": null, "details": null}`
 
     console.log(`Claude query for: ${name} (died ${deathYear})`)
 
     const message = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
-      max_tokens: 150,
+      max_tokens: 300,
       messages: [
         {
           role: "user",
@@ -78,9 +85,22 @@ If you don't know or aren't confident, respond with:
       return { causeOfDeath: null, details: null }
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      cause: string | null
-      details: string | null
+    let parsed: { cause: string | null; details: string | null }
+
+    try {
+      parsed = JSON.parse(jsonMatch[0])
+    } catch {
+      // JSON parsing failed - try to extract values with regex as fallback
+      // This handles cases where Claude includes unescaped quotes in the values
+      console.log(`Claude JSON parse failed for ${name}, trying regex fallback: ${jsonMatch[0]}`)
+
+      const causeMatch = jsonMatch[0].match(/"cause"\s*:\s*"([^"]*)"/)
+      const detailsMatch = jsonMatch[0].match(/"details"\s*:\s*"([^"]*)"/)
+
+      parsed = {
+        cause: causeMatch ? causeMatch[1] : null,
+        details: detailsMatch ? detailsMatch[1] : null,
+      }
     }
 
     console.log(`Claude result for ${name}: cause="${parsed.cause}", details="${parsed.details}"`)

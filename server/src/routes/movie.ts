@@ -1,6 +1,6 @@
 import type { Request, Response } from "express"
 import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../lib/tmdb.js"
-import { getCauseOfDeath } from "../lib/wikidata.js"
+import { getCauseOfDeath, type DeathInfoSource } from "../lib/wikidata.js"
 import {
   getDeceasedPersons,
   batchUpsertDeceasedPersons,
@@ -16,7 +16,11 @@ interface DeceasedActor {
   birthday: string | null
   deathday: string
   causeOfDeath: string | null
+  causeOfDeathSource: DeathInfoSource
+  causeOfDeathDetails: string | null
+  causeOfDeathDetailsSource: DeathInfoSource
   wikipediaUrl: string | null
+  tmdbUrl: string
 }
 
 interface LivingActor {
@@ -95,6 +99,9 @@ export async function getMovie(req: Request, res: Response) {
       }
 
       if (person.deathday) {
+        // Generate TMDB profile URL (always available since we have the person ID)
+        const tmdbUrl = `https://www.themoviedb.org/person/${person.id}`
+
         // Use database record if available, otherwise use TMDB data
         deceased.push({
           id: person.id,
@@ -104,7 +111,11 @@ export async function getMovie(req: Request, res: Response) {
           birthday: person.birthday,
           deathday: person.deathday,
           causeOfDeath: dbRecord?.cause_of_death || null,
+          causeOfDeathSource: dbRecord?.cause_of_death_source || null,
+          causeOfDeathDetails: dbRecord?.cause_of_death_details || null,
+          causeOfDeathDetailsSource: dbRecord?.cause_of_death_details_source || null,
           wikipediaUrl: dbRecord?.wikipedia_url || null,
+          tmdbUrl,
         })
 
         // Track new deceased persons to save to database
@@ -115,6 +126,9 @@ export async function getMovie(req: Request, res: Response) {
             birthday: person.birthday,
             deathday: person.deathday,
             cause_of_death: null,
+            cause_of_death_source: null,
+            cause_of_death_details: null,
+            cause_of_death_details_source: null,
             wikipedia_url: null,
           })
         }
@@ -234,11 +248,21 @@ function saveDeceasedToDb(persons: DeceasedPersonRecord[]): void {
 function updateDeathInfoInDb(
   tmdbId: number,
   causeOfDeath: string | null,
+  causeOfDeathSource: DeathInfoSource,
+  causeOfDeathDetails: string | null,
+  causeOfDeathDetailsSource: DeathInfoSource,
   wikipediaUrl: string | null
 ): void {
   if (!process.env.DATABASE_URL) return
   if (!causeOfDeath && !wikipediaUrl) return
-  updateDeathInfo(tmdbId, causeOfDeath, wikipediaUrl).catch((error) => {
+  updateDeathInfo(
+    tmdbId,
+    causeOfDeath,
+    causeOfDeathSource,
+    causeOfDeathDetails,
+    causeOfDeathDetailsSource,
+    wikipediaUrl
+  ).catch((error) => {
     console.error("Database update error:", error)
   })
 }
@@ -260,16 +284,32 @@ async function enrichWithWikidata(_movieId: number, deceased: DeceasedActor[]): 
     const actor = toEnrich[i]
 
     if (result.status === "fulfilled") {
-      const { causeOfDeath, wikipediaUrl } = result.value
+      const {
+        causeOfDeath,
+        causeOfDeathSource,
+        causeOfDeathDetails,
+        causeOfDeathDetailsSource,
+        wikipediaUrl,
+      } = result.value
 
       // Update the deceased actor in the array
       if (causeOfDeath || wikipediaUrl) {
         actor.causeOfDeath = causeOfDeath
+        actor.causeOfDeathSource = causeOfDeathSource
+        actor.causeOfDeathDetails = causeOfDeathDetails
+        actor.causeOfDeathDetailsSource = causeOfDeathDetailsSource
         actor.wikipediaUrl = wikipediaUrl
       }
 
       // Save to database for permanent storage
-      updateDeathInfoInDb(actor.id, causeOfDeath, wikipediaUrl)
+      updateDeathInfoInDb(
+        actor.id,
+        causeOfDeath,
+        causeOfDeathSource,
+        causeOfDeathDetails,
+        causeOfDeathDetailsSource,
+        wikipediaUrl
+      )
     }
   }
 }
@@ -299,12 +339,16 @@ export async function getMovieDeathInfo(req: Request, res: Response) {
   const dbRecords = await getDeceasedPersonsIfAvailable(personIds)
 
   // Return death info for requested actors
-  const deathInfo: Record<number, { causeOfDeath: string | null; wikipediaUrl: string | null }> = {}
+  const deathInfo: Record<
+    number,
+    { causeOfDeath: string | null; causeOfDeathDetails: string | null; wikipediaUrl: string | null }
+  > = {}
   for (const personId of personIds) {
     const record = dbRecords.get(personId)
     if (record) {
       deathInfo[personId] = {
         causeOfDeath: record.cause_of_death,
+        causeOfDeathDetails: record.cause_of_death_details,
         wikipediaUrl: record.wikipedia_url,
       }
     }

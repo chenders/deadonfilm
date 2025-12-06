@@ -30,3 +30,7 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+.vite/
+
+# Generated reports
+*-report.md

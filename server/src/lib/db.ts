@@ -41,12 +41,17 @@ export async function initDatabase(): Promise<void> {
   console.log("Database initialized")
 }
 
+export type DeathInfoSource = "claude" | "wikipedia" | null
+
 export interface DeceasedPersonRecord {
   tmdb_id: number
   name: string
   birthday: string | null
   deathday: string
   cause_of_death: string | null
+  cause_of_death_source: DeathInfoSource
+  cause_of_death_details: string | null
+  cause_of_death_details_source: DeathInfoSource
   wikipedia_url: string | null
 }
 
@@ -81,17 +86,23 @@ export async function getDeceasedPersons(
 }
 
 // Insert or update a deceased person
+// Note: COALESCE prioritizes existing values over new values to preserve first-found data.
+// This is intentional - once we have death info, we don't overwrite it with potentially
+// different/conflicting data from later lookups.
 export async function upsertDeceasedPerson(person: DeceasedPersonRecord): Promise<void> {
   const db = getPool()
   await db.query(
-    `INSERT INTO deceased_persons (tmdb_id, name, birthday, deathday, cause_of_death, wikipedia_url, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+    `INSERT INTO deceased_persons (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
      ON CONFLICT (tmdb_id) DO UPDATE SET
        name = EXCLUDED.name,
        birthday = EXCLUDED.birthday,
        deathday = EXCLUDED.deathday,
-       cause_of_death = COALESCE(EXCLUDED.cause_of_death, deceased_persons.cause_of_death),
-       wikipedia_url = COALESCE(EXCLUDED.wikipedia_url, deceased_persons.wikipedia_url),
+       cause_of_death = COALESCE(deceased_persons.cause_of_death, EXCLUDED.cause_of_death),
+       cause_of_death_source = COALESCE(deceased_persons.cause_of_death_source, EXCLUDED.cause_of_death_source),
+       cause_of_death_details = COALESCE(deceased_persons.cause_of_death_details, EXCLUDED.cause_of_death_details),
+       cause_of_death_details_source = COALESCE(deceased_persons.cause_of_death_details_source, EXCLUDED.cause_of_death_details_source),
+       wikipedia_url = COALESCE(deceased_persons.wikipedia_url, EXCLUDED.wikipedia_url),
        updated_at = CURRENT_TIMESTAMP`,
     [
       person.tmdb_id,
@@ -99,6 +110,9 @@ export async function upsertDeceasedPerson(person: DeceasedPersonRecord): Promis
       person.birthday,
       person.deathday,
       person.cause_of_death,
+      person.cause_of_death_source,
+      person.cause_of_death_details,
+      person.cause_of_death_details_source,
       person.wikipedia_url,
     ]
   )
@@ -117,14 +131,17 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
 
     for (const person of persons) {
       await client.query(
-        `INSERT INTO deceased_persons (tmdb_id, name, birthday, deathday, cause_of_death, wikipedia_url, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        `INSERT INTO deceased_persons (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
          ON CONFLICT (tmdb_id) DO UPDATE SET
            name = EXCLUDED.name,
            birthday = EXCLUDED.birthday,
            deathday = EXCLUDED.deathday,
-           cause_of_death = COALESCE(EXCLUDED.cause_of_death, deceased_persons.cause_of_death),
-           wikipedia_url = COALESCE(EXCLUDED.wikipedia_url, deceased_persons.wikipedia_url),
+           cause_of_death = COALESCE(deceased_persons.cause_of_death, EXCLUDED.cause_of_death),
+           cause_of_death_source = COALESCE(deceased_persons.cause_of_death_source, EXCLUDED.cause_of_death_source),
+           cause_of_death_details = COALESCE(deceased_persons.cause_of_death_details, EXCLUDED.cause_of_death_details),
+           cause_of_death_details_source = COALESCE(deceased_persons.cause_of_death_details_source, EXCLUDED.cause_of_death_details_source),
+           wikipedia_url = COALESCE(deceased_persons.wikipedia_url, EXCLUDED.wikipedia_url),
            updated_at = CURRENT_TIMESTAMP`,
         [
           person.tmdb_id,
@@ -132,6 +149,9 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
           person.birthday,
           person.deathday,
           person.cause_of_death,
+          person.cause_of_death_source,
+          person.cause_of_death_details,
+          person.cause_of_death_details_source,
           person.wikipedia_url,
         ]
       )
@@ -147,19 +167,33 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
 }
 
 // Update just the cause of death and wikipedia URL for an existing person
+// Note: COALESCE prioritizes existing values - see comment on upsertDeceasedPerson
 export async function updateDeathInfo(
   tmdbId: number,
   causeOfDeath: string | null,
+  causeOfDeathSource: DeathInfoSource,
+  causeOfDeathDetails: string | null,
+  causeOfDeathDetailsSource: DeathInfoSource,
   wikipediaUrl: string | null
 ): Promise<void> {
   const db = getPool()
   await db.query(
     `UPDATE deceased_persons
-     SET cause_of_death = COALESCE($2, cause_of_death),
-         wikipedia_url = COALESCE($3, wikipedia_url),
+     SET cause_of_death = COALESCE(cause_of_death, $2),
+         cause_of_death_source = COALESCE(cause_of_death_source, $3),
+         cause_of_death_details = COALESCE(cause_of_death_details, $4),
+         cause_of_death_details_source = COALESCE(cause_of_death_details_source, $5),
+         wikipedia_url = COALESCE(wikipedia_url, $6),
          updated_at = CURRENT_TIMESTAMP
      WHERE tmdb_id = $1`,
-    [tmdbId, causeOfDeath, wikipediaUrl]
+    [
+      tmdbId,
+      causeOfDeath,
+      causeOfDeathSource,
+      causeOfDeathDetails,
+      causeOfDeathDetailsSource,
+      wikipediaUrl,
+    ]
   )
 }
 
