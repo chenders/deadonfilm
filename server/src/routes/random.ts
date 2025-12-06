@@ -16,6 +16,9 @@ async function discoverRandomMovie(): Promise<RandomMovieResponse | null> {
   }
 
   // Pick a random year between 1950 and current year
+  // Note: This has a slight bias towards years with more movies since we pick
+  // random pages 1-20 regardless of how many pages exist for each year.
+  // This is acceptable for simplicity - users get variety across decades.
   const currentYear = new Date().getFullYear()
   const randomYear = Math.floor(Math.random() * (currentYear - 1950 + 1)) + 1950
 
@@ -60,13 +63,17 @@ async function discoverRandomMovie(): Promise<RandomMovieResponse | null> {
 
 export async function getRandomMovie(_req: Request, res: Response) {
   try {
-    const movie = await discoverRandomMovie()
-
-    if (!movie) {
-      return res.status(404).json({ error: { message: "No random movie found" } })
+    // Retry up to 3 times in case a random year/page combination has no results
+    let movie: RandomMovieResponse | null = null
+    let attempts = 3
+    while (attempts-- > 0) {
+      movie = await discoverRandomMovie()
+      if (movie) {
+        return res.json(movie)
+      }
     }
 
-    res.json(movie)
+    return res.status(404).json({ error: { message: "No random movie found" } })
   } catch (error) {
     console.error("Random movie error:", error)
     res.status(500).json({ error: { message: "Failed to fetch random movie" } })
