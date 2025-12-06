@@ -95,11 +95,11 @@ export async function upsertDeceasedPerson(person: DeceasedPersonRecord): Promis
        name = EXCLUDED.name,
        birthday = EXCLUDED.birthday,
        deathday = EXCLUDED.deathday,
-       cause_of_death = COALESCE(EXCLUDED.cause_of_death, deceased_persons.cause_of_death),
-       cause_of_death_source = COALESCE(EXCLUDED.cause_of_death_source, deceased_persons.cause_of_death_source),
-       cause_of_death_details = COALESCE(EXCLUDED.cause_of_death_details, deceased_persons.cause_of_death_details),
-       cause_of_death_details_source = COALESCE(EXCLUDED.cause_of_death_details_source, deceased_persons.cause_of_death_details_source),
-       wikipedia_url = COALESCE(EXCLUDED.wikipedia_url, deceased_persons.wikipedia_url),
+       cause_of_death = COALESCE(deceased_persons.cause_of_death, EXCLUDED.cause_of_death),
+       cause_of_death_source = COALESCE(deceased_persons.cause_of_death_source, EXCLUDED.cause_of_death_source),
+       cause_of_death_details = COALESCE(deceased_persons.cause_of_death_details, EXCLUDED.cause_of_death_details),
+       cause_of_death_details_source = COALESCE(deceased_persons.cause_of_death_details_source, EXCLUDED.cause_of_death_details_source),
+       wikipedia_url = COALESCE(deceased_persons.wikipedia_url, EXCLUDED.wikipedia_url),
        updated_at = CURRENT_TIMESTAMP`,
     [
       person.tmdb_id,
@@ -134,11 +134,11 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
            name = EXCLUDED.name,
            birthday = EXCLUDED.birthday,
            deathday = EXCLUDED.deathday,
-           cause_of_death = COALESCE(EXCLUDED.cause_of_death, deceased_persons.cause_of_death),
-           cause_of_death_source = COALESCE(EXCLUDED.cause_of_death_source, deceased_persons.cause_of_death_source),
-           cause_of_death_details = COALESCE(EXCLUDED.cause_of_death_details, deceased_persons.cause_of_death_details),
-           cause_of_death_details_source = COALESCE(EXCLUDED.cause_of_death_details_source, deceased_persons.cause_of_death_details_source),
-           wikipedia_url = COALESCE(EXCLUDED.wikipedia_url, deceased_persons.wikipedia_url),
+           cause_of_death = COALESCE(deceased_persons.cause_of_death, EXCLUDED.cause_of_death),
+           cause_of_death_source = COALESCE(deceased_persons.cause_of_death_source, EXCLUDED.cause_of_death_source),
+           cause_of_death_details = COALESCE(deceased_persons.cause_of_death_details, EXCLUDED.cause_of_death_details),
+           cause_of_death_details_source = COALESCE(deceased_persons.cause_of_death_details_source, EXCLUDED.cause_of_death_details_source),
+           wikipedia_url = COALESCE(deceased_persons.wikipedia_url, EXCLUDED.wikipedia_url),
            updated_at = CURRENT_TIMESTAMP`,
         [
           person.tmdb_id,
@@ -175,11 +175,11 @@ export async function updateDeathInfo(
   const db = getPool()
   await db.query(
     `UPDATE deceased_persons
-     SET cause_of_death = COALESCE($2, cause_of_death),
-         cause_of_death_source = COALESCE($3, cause_of_death_source),
-         cause_of_death_details = COALESCE($4, cause_of_death_details),
-         cause_of_death_details_source = COALESCE($5, cause_of_death_details_source),
-         wikipedia_url = COALESCE($6, wikipedia_url),
+     SET cause_of_death = COALESCE(cause_of_death, $2),
+         cause_of_death_source = COALESCE(cause_of_death_source, $3),
+         cause_of_death_details = COALESCE(cause_of_death_details, $4),
+         cause_of_death_details_source = COALESCE(cause_of_death_details_source, $5),
+         wikipedia_url = COALESCE(wikipedia_url, $6),
          updated_at = CURRENT_TIMESTAMP
      WHERE tmdb_id = $1`,
     [tmdbId, causeOfDeath, causeOfDeathSource, causeOfDeathDetails, causeOfDeathDetailsSource, wikipediaUrl]

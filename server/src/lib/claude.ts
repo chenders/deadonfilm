@@ -47,11 +47,19 @@ export async function getCauseOfDeathFromClaude(
     const prompt = `What was the cause of death for ${name}${birthInfo} who died in ${deathYear}?
 
 Please provide:
-1. The specific medical cause of death (e.g., "lung cancer", "heart attack", "complications from diabetes")
-2. A brief one-sentence explanation if relevant
+1. The specific medical cause of death (e.g., "lung cancer", "heart attack", "complications from pneumonia")
+2. Important context about the death - this is CRITICAL. Include any of the following if known:
+   - Underlying conditions or contributing factors (e.g., "had been battling Parkinson's disease")
+   - How the condition developed (e.g., "diagnosed in 2015", "long battle with cancer")
+   - Notable circumstances (e.g., "allergic reaction to makeup during filming", "contracted HIV from blood transfusion")
+   - Mental health context for suicides (e.g., "suffering from depression and Lewy body dementia")
+
+The "details" field should tell the FULL STORY of how/why they died, not just restate the cause.
+
+IMPORTANT: Never describe the person with adjectives like "renowned", "legendary", "beloved", "acclaimed", "celebrated", "influential", or "pioneering". Just state the facts about their death - no biographical descriptions.
 
 Respond in this exact JSON format only, with no other text:
-{"cause": "specific cause here", "details": "brief explanation or null"}
+{"cause": "specific cause here", "details": "1-2 sentences with important context, or null if no additional context known"}
 
 If you don't know or aren't confident, respond with:
 {"cause": null, "details": null}`
@@ -60,7 +68,7 @@ If you don't know or aren't confident, respond with:
 
     const message = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
-      max_tokens: 150,
+      max_tokens: 300,
       messages: [
         {
           role: "user",
