@@ -53,7 +53,8 @@ export async function getOnThisDay(_req: Request, res: Response) {
         month: today.toLocaleDateString('en-US', { month: 'long' }),
         day: today.toLocaleDateString('en-US', { day: 'numeric' }),
         deaths: [],
-        message: 'No recorded deaths on this day yet. Browse more movies to discover who passed away on this date!',
+        message:
+          'No recorded deaths on this day yet. Browse more movies to discover who passed away on this date!',
       }
       return res.json(response)
     }
