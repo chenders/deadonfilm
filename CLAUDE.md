@@ -159,6 +159,12 @@ npm run seed -- 1990 1999
 
 ## GKE Deployment
 
+**IMPORTANT**: GKE runs on AMD64 architecture. When building on Apple Silicon (ARM), you must specify the target platform to avoid "exec format error":
+
+```bash
+docker buildx build --platform linux/amd64 -t IMAGE:TAG --push .
+```
+
 ### Quick Deploy
 
 ```bash
@@ -167,9 +173,10 @@ GCP_PROJECT_ID=your-project-id ./scripts/deploy.sh
 
 ### Manual Deploy
 
-1. Build and push Docker image to Artifact Registry
+1. Build Docker image for AMD64: `docker buildx build --platform linux/amd64 -t us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:TAG --push .`
 2. Apply Kubernetes manifests: `kubectl apply -f k8s/`
 3. Create secrets with TMDB_API_TOKEN, ANTHROPIC_API_KEY, DATABASE_URL
+4. Restart deployment: `kubectl rollout restart deployment/dead-on-film -n dead-on-film`
 
 ## URL Structure
 

@@ -72,7 +72,6 @@ async function main() {
 
       try {
         const {
-          causeOfDeath,
           causeOfDeathSource,
           causeOfDeathDetails,
           causeOfDeathDetailsSource,

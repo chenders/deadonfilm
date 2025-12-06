@@ -20,6 +20,7 @@ interface DeceasedActor {
   causeOfDeathDetails: string | null
   causeOfDeathDetailsSource: DeathInfoSource
   wikipediaUrl: string | null
+  tmdbUrl: string
 }
 
 interface LivingActor {
@@ -98,6 +99,9 @@ export async function getMovie(req: Request, res: Response) {
       }
 
       if (person.deathday) {
+        // Generate TMDB profile URL (always available since we have the person ID)
+        const tmdbUrl = `https://www.themoviedb.org/person/${person.id}`
+
         // Use database record if available, otherwise use TMDB data
         deceased.push({
           id: person.id,
@@ -111,6 +115,7 @@ export async function getMovie(req: Request, res: Response) {
           causeOfDeathDetails: dbRecord?.cause_of_death_details || null,
           causeOfDeathDetailsSource: dbRecord?.cause_of_death_details_source || null,
           wikipediaUrl: dbRecord?.wikipedia_url || null,
+          tmdbUrl,
         })
 
         // Track new deceased persons to save to database

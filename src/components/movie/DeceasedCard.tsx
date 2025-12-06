@@ -40,6 +40,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
             causeOfDeath={actor.causeOfDeath}
             causeOfDeathDetails={actor.causeOfDeathDetails}
             wikipediaUrl={actor.wikipediaUrl}
+            tmdbUrl={actor.tmdbUrl}
             isLoading={showLoading}
           />
         </div>

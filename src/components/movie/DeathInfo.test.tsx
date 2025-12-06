@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import DeathInfo from "./DeathInfo"
 
+const defaultTmdbUrl = "https://www.themoviedb.org/person/12345"
+
 describe("DeathInfo", () => {
   it("displays formatted death date", () => {
     render(
@@ -11,6 +13,7 @@ describe("DeathInfo", () => {
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
@@ -25,6 +28,7 @@ describe("DeathInfo", () => {
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
@@ -39,13 +43,14 @@ describe("DeathInfo", () => {
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
     expect(screen.queryByText(/Age/)).not.toBeInTheDocument()
   })
 
-  it("displays cause of death without link when no wikipedia URL", () => {
+  it("displays cause of death as TMDB link when no wikipedia URL", () => {
     render(
       <DeathInfo
         deathday="1993-01-20"
@@ -53,14 +58,16 @@ describe("DeathInfo", () => {
         causeOfDeath="colon cancer"
         causeOfDeathDetails={null}
         wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
-    expect(screen.getByText("colon cancer")).toBeInTheDocument()
-    expect(screen.queryByRole("link", { name: "colon cancer" })).not.toBeInTheDocument()
+    const link = screen.getByRole("link", { name: "colon cancer" })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute("href", defaultTmdbUrl)
   })
 
-  it("displays cause of death as link when wikipedia URL is provided", () => {
+  it("displays cause of death as Wikipedia link when wikipedia URL is provided", () => {
     render(
       <DeathInfo
         deathday="1993-01-20"
@@ -68,6 +75,7 @@ describe("DeathInfo", () => {
         causeOfDeath="colon cancer"
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Audrey_Hepburn"
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
@@ -86,6 +94,7 @@ describe("DeathInfo", () => {
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
@@ -93,6 +102,24 @@ describe("DeathInfo", () => {
     const link = screen.getByRole("link", { name: "Wikipedia" })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute("href", "https://en.wikipedia.org/wiki/Some_Actor")
+  })
+
+  it("displays cause unknown with TMDB link when no cause or wikipedia URL", () => {
+    render(
+      <DeathInfo
+        deathday="1993-01-20"
+        birthday="1929-05-04"
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    expect(screen.getByText("(cause unknown)")).toBeInTheDocument()
+    const link = screen.getByRole("link", { name: "TMDB" })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute("href", defaultTmdbUrl)
   })
 
   it("does not display Wikipedia link when cause of death is shown", () => {
@@ -103,28 +130,13 @@ describe("DeathInfo", () => {
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
     // The cause of death IS a link, but there should not be a separate "Wikipedia" link
     expect(screen.queryByRole("link", { name: "Wikipedia" })).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: "heart attack" })).toBeInTheDocument()
-  })
-
-  it("renders nothing extra when no cause or URL", () => {
-    const { container } = render(
-      <DeathInfo
-        deathday="2000-01-01"
-        birthday={null}
-        causeOfDeath={null}
-        causeOfDeathDetails={null}
-        wikipediaUrl={null}
-      />
-    )
-
-    // Should only have the date
-    expect(screen.getByText("Jan 1, 2000")).toBeInTheDocument()
-    expect(container.querySelectorAll("a").length).toBe(0)
   })
 
   it("shows loading indicator when isLoading is true and no cause/wikipedia", () => {
@@ -135,6 +147,7 @@ describe("DeathInfo", () => {
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
         isLoading={true}
       />
     )
@@ -150,6 +163,7 @@ describe("DeathInfo", () => {
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
         wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
         isLoading={true}
       />
     )
@@ -166,6 +180,7 @@ describe("DeathInfo", () => {
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Test"
+        tmdbUrl={defaultTmdbUrl}
         isLoading={true}
       />
     )
@@ -174,7 +189,7 @@ describe("DeathInfo", () => {
     expect(screen.getByText("(cause unknown)")).toBeInTheDocument()
   })
 
-  it("shows info icon and dotted underline when details are present without wikipedia URL", () => {
+  it("shows info icon and dotted underline when details are present with TMDB link", () => {
     render(
       <DeathInfo
         deathday="2000-01-01"
@@ -182,20 +197,18 @@ describe("DeathInfo", () => {
         causeOfDeath="heart attack"
         causeOfDeathDetails="Suffered a massive coronary while playing tennis"
         wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
     // Should show the info icon
     expect(screen.getByText("ⓘ")).toBeInTheDocument()
-    // The cause text should have a title attribute with details
-    const causeElement = screen.getByText("heart attack")
-    expect(causeElement.closest("span")).toHaveAttribute(
-      "title",
-      "Suffered a massive coronary while playing tennis"
-    )
+    // The cause text should be in a span with tooltip trigger styling (not a link when details present)
+    const causeText = screen.getByText("heart attack")
+    expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
   })
 
-  it("shows info icon and title on link when details are present with wikipedia URL", () => {
+  it("shows info icon and tooltip trigger when details are present with wikipedia URL", () => {
     render(
       <DeathInfo
         deathday="2000-01-01"
@@ -203,14 +216,15 @@ describe("DeathInfo", () => {
         causeOfDeath="lung cancer"
         causeOfDeathDetails="Was a heavy smoker for over 40 years"
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
     // Should show the info icon
     expect(screen.getByText("ⓘ")).toBeInTheDocument()
-    // The link should have a title attribute with details
-    const link = screen.getByRole("link")
-    expect(link).toHaveAttribute("title", "Was a heavy smoker for over 40 years")
+    // The cause text should be in a span with tooltip styling (no link when details present)
+    const causeText = screen.getByText("lung cancer")
+    expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
   })
 
   it("does not show info icon when details are null", () => {
@@ -221,6 +235,7 @@ describe("DeathInfo", () => {
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
         wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 
@@ -235,6 +250,7 @@ describe("DeathInfo", () => {
         causeOfDeath="heart attack"
         causeOfDeathDetails=""
         wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
       />
     )
 

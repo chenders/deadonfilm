@@ -89,10 +89,20 @@ describe("getDeathInfoRoute", () => {
           tmdb_id: 123,
           name: "Actor1",
           cause_of_death: "lung cancer",
+          cause_of_death_details: "Died at home after a battle with lung cancer.",
           wikipedia_url: "https://en.wikipedia.org/wiki/Actor1",
         },
       ],
-      [456, { tmdb_id: 456, name: "Actor2", cause_of_death: "heart attack", wikipedia_url: null }],
+      [
+        456,
+        {
+          tmdb_id: 456,
+          name: "Actor2",
+          cause_of_death: "heart attack",
+          cause_of_death_details: null,
+          wikipedia_url: null,
+        },
+      ],
     ])
 
     vi.mocked(getDeceasedPersons).mockResolvedValue(mockDbRecords as any)
@@ -108,8 +118,12 @@ describe("getDeathInfoRoute", () => {
     expect(jsonSpy).toHaveBeenCalledWith({
       pending: false,
       deathInfo: {
-        123: { causeOfDeath: "lung cancer", wikipediaUrl: "https://en.wikipedia.org/wiki/Actor1" },
-        456: { causeOfDeath: "heart attack", wikipediaUrl: null },
+        123: {
+          causeOfDeath: "lung cancer",
+          causeOfDeathDetails: "Died at home after a battle with lung cancer.",
+          wikipediaUrl: "https://en.wikipedia.org/wiki/Actor1",
+        },
+        456: { causeOfDeath: "heart attack", causeOfDeathDetails: null, wikipediaUrl: null },
       },
     })
   })
@@ -145,7 +159,16 @@ describe("getDeathInfoRoute", () => {
 
   it("handles single person ID", async () => {
     const mockDbRecords = new Map([
-      [123, { tmdb_id: 123, name: "Actor", cause_of_death: "stroke", wikipedia_url: null }],
+      [
+        123,
+        {
+          tmdb_id: 123,
+          name: "Actor",
+          cause_of_death: "stroke",
+          cause_of_death_details: "Suffered a stroke at age 75.",
+          wikipedia_url: null,
+        },
+      ],
     ])
 
     vi.mocked(getDeceasedPersons).mockResolvedValue(mockDbRecords as any)
@@ -161,7 +184,11 @@ describe("getDeathInfoRoute", () => {
     expect(jsonSpy).toHaveBeenCalledWith({
       pending: false,
       deathInfo: {
-        123: { causeOfDeath: "stroke", wikipediaUrl: null },
+        123: {
+          causeOfDeath: "stroke",
+          causeOfDeathDetails: "Suffered a stroke at age 75.",
+          wikipediaUrl: null,
+        },
       },
     })
   })
@@ -174,6 +201,7 @@ describe("getDeathInfoRoute", () => {
           tmdb_id: 123,
           name: "Actor",
           cause_of_death: "cancer",
+          cause_of_death_details: "Diagnosed with cancer in 2020.",
           wikipedia_url: "https://example.com",
         },
       ],
@@ -192,7 +220,11 @@ describe("getDeathInfoRoute", () => {
     expect(jsonSpy).toHaveBeenCalledWith({
       pending: false,
       deathInfo: {
-        123: { causeOfDeath: "cancer", wikipediaUrl: "https://example.com" },
+        123: {
+          causeOfDeath: "cancer",
+          causeOfDeathDetails: "Diagnosed with cancer in 2020.",
+          wikipediaUrl: "https://example.com",
+        },
       },
     })
   })
