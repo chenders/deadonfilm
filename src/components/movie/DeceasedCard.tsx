@@ -35,6 +35,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
           </div>
 
           <DeathInfo
+            actorName={actor.name}
             deathday={actor.deathday}
             birthday={actor.birthday}
             causeOfDeath={actor.causeOfDeath}
