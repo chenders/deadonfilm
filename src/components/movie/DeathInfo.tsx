@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import { formatDate, calculateAge } from "@/utils/formatDate"
 
 interface DeathInfoProps {
+  actorName: string
   deathday: string
   birthday: string | null
   causeOfDeath: string | null
@@ -100,6 +101,7 @@ function getProfileLink(
 }
 
 export default function DeathInfo({
+  actorName,
   deathday,
   birthday,
   causeOfDeath,
@@ -114,8 +116,8 @@ export default function DeathInfo({
   const [showTooltip, setShowTooltip] = useState(false)
   const triggerRef = useRef<HTMLSpanElement>(null)
 
-  const handleMouseEnter = useCallback(() => setShowTooltip(true), [])
-  const handleMouseLeave = useCallback(() => setShowTooltip(false), [])
+  const handleMouseEnter = () => setShowTooltip(true)
+  const handleMouseLeave = () => setShowTooltip(false)
 
   return (
     <div className="text-right sm:text-right">
@@ -131,6 +133,12 @@ export default function DeathInfo({
               className="underline decoration-dotted cursor-help"
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
+              data-track-event="view_death_details"
+              data-track-hover="true"
+              data-track-params={JSON.stringify({
+                actor_name: actorName,
+                cause_of_death: causeOfDeath,
+              })}
             >
               {causeOfDeath}
               <span className="ml-1 text-xs opacity-60">ⓘ</span>
@@ -146,6 +154,12 @@ export default function DeathInfo({
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-brown-dark"
+              data-track-event="click_external_link"
+              data-track-params={JSON.stringify({
+                actor_name: actorName,
+                link_type: profileLink.label,
+                link_url: profileLink.url,
+              })}
             >
               {causeOfDeath}
             </a>
@@ -162,6 +176,12 @@ export default function DeathInfo({
             target="_blank"
             rel="noopener noreferrer"
             className="text-brown-medium underline hover:text-brown-dark"
+            data-track-event="click_external_link"
+            data-track-params={JSON.stringify({
+              actor_name: actorName,
+              link_type: profileLink.label,
+              link_url: profileLink.url,
+            })}
           >
             {profileLink.label}
           </a>

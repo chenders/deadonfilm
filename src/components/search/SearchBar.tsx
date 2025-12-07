@@ -57,7 +57,12 @@ export default function SearchBar() {
       />
 
       {isOpen && movies.length > 0 && (
-        <SearchDropdown movies={movies} selectedIndex={selectedIndex} onSelect={handleSelect} />
+        <SearchDropdown
+          movies={movies}
+          selectedIndex={selectedIndex}
+          onSelect={handleSelect}
+          searchQuery={query}
+        />
       )}
 
       {isOpen && query.length >= 2 && !isLoading && movies.length === 0 && (

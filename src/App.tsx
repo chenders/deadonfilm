@@ -3,8 +3,11 @@ import Layout from "./components/layout/Layout"
 import HomePage from "./pages/HomePage"
 import MoviePage from "./pages/MoviePage"
 import RandomPage from "./pages/RandomPage"
+import { useGoogleAnalytics } from "./hooks/useGoogleAnalytics"
 
 function App() {
+  useGoogleAnalytics()
+
   return (
     <Layout>
       <Routes>

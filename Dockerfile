@@ -6,6 +6,8 @@ RUN npm ci
 COPY src/ ./src/
 COPY public/ ./public/
 COPY index.html vite.config.ts tsconfig.json tailwind.config.js postcss.config.js ./
+# Copy .env.production if it exists (optional - for GA config)
+COPY .env.productio[n] ./
 RUN npm run build
 
 # Build stage for backend
