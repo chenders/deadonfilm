@@ -10,6 +10,7 @@ import { getMovie } from "./routes/movie.js"
 import { getOnThisDay } from "./routes/on-this-day.js"
 import { getDeathInfoRoute } from "./routes/death-info.js"
 import { getRandomMovie } from "./routes/random.js"
+import { getDiscoverMovie } from "./routes/discover.js"
 import { initDatabase } from "./lib/db.js"
 
 const app = express()
@@ -39,6 +40,7 @@ app.get("/api/movie/:id", getMovie)
 app.get("/api/movie/:id/death-info", getDeathInfoRoute)
 app.get("/api/on-this-day", getOnThisDay)
 app.get("/api/random", getRandomMovie)
+app.get("/api/discover", getDiscoverMovie)
 
 // Start server
 app.listen(PORT, () => {

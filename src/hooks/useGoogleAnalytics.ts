@@ -42,7 +42,9 @@ function trackEvent(eventName: string, params?: Record<string, string | number |
 }
 
 function handleTrackableEvent(e: Event, eventType: "click" | "hover") {
-  const target = e.target as HTMLElement
+  const target = e.target as HTMLElement | null
+  if (!target || typeof target.closest !== "function") return
+
   const trackable = target.closest("[data-track-event]") as HTMLElement | null
   if (!trackable) return
 

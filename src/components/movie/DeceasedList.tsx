@@ -1,5 +1,6 @@
 import type { DeceasedActor } from "@/types"
 import DeceasedCard from "./DeceasedCard"
+import EmptyStateCard from "@/components/common/EmptyStateCard"
 
 interface DeceasedListProps {
   actors: DeceasedActor[]
@@ -7,11 +8,11 @@ interface DeceasedListProps {
   isPolling?: boolean
 }
 
-export default function DeceasedList({ actors, movieTitle, isPolling = false }: DeceasedListProps) {
+export default function DeceasedList({ actors, isPolling = false }: DeceasedListProps) {
   if (actors.length === 0) {
     return (
-      <div data-testid="no-deceased-message" className="text-center py-8">
-        <p className="text-text-muted text-lg">No deceased cast members found for {movieTitle}</p>
+      <div data-testid="no-deceased-message">
+        <EmptyStateCard type="no-deceased" />
       </div>
     )
   }
@@ -26,7 +27,8 @@ export default function DeceasedList({ actors, movieTitle, isPolling = false }: 
         {actors.map((actor, index) => (
           <div
             key={actor.id}
-            className={`animate-fade-in-up ${index < 10 ? `stagger-${index + 1}` : ""}`}
+            className="animate-fade-slide-in"
+            style={{ animationDelay: `${index * 50}ms` }}
           >
             <DeceasedCard actor={actor} isPolling={isPolling} />
           </div>

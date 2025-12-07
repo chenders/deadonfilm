@@ -81,10 +81,16 @@ function Tooltip({ content, triggerRef, isVisible }: TooltipProps) {
   return (
     <div
       ref={tooltipRef}
-      className="fixed z-50 max-w-xs bg-gray-900 text-white text-sm px-3 py-2 rounded-lg shadow-lg"
-      style={{ top: position.top, left: position.left }}
+      className="fixed z-50 max-w-xs bg-brown-dark text-cream text-sm px-4 py-3 rounded-lg shadow-xl border border-brown-medium/50 animate-fade-slide-in"
+      style={{ top: position.top, left: position.left, animationDelay: "0ms" }}
     >
-      {content}
+      {/* Film strip decoration at top */}
+      <div className="absolute -top-1 left-4 right-4 flex justify-between">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="w-1.5 h-2 bg-brown-medium/50 rounded-sm" />
+        ))}
+      </div>
+      <p className="leading-relaxed">{content}</p>
     </div>
   )
 }
@@ -137,7 +143,7 @@ export default function DeathInfo({
           {hasDetails ? (
             <span
               ref={triggerRef}
-              className="underline decoration-dotted cursor-help"
+              className="tooltip-trigger underline decoration-dotted cursor-help"
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
               data-track-event="view_death_details"

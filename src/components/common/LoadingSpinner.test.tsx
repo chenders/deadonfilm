@@ -16,10 +16,10 @@ describe("LoadingSpinner", () => {
   })
 
   it("renders the spinner element", () => {
-    const { container } = render(<LoadingSpinner />)
+    render(<LoadingSpinner />)
 
-    // Find the animated spinner div
-    const spinner = container.querySelector(".animate-spin")
+    // Find the spinner by testid
+    const spinner = screen.getByTestId("spinner")
     expect(spinner).toBeInTheDocument()
   })
 })

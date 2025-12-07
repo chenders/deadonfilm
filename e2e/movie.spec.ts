@@ -4,7 +4,7 @@ test.describe("Movie Page", () => {
   // Use The Matrix as a reliable test movie
   const movieUrl = "/movie/the-matrix-1999-603"
 
-  test("displays movie header with compact layout", async ({ page }) => {
+  test("displays movie header with title and year", async ({ page }) => {
     await page.goto(movieUrl)
 
     // Wait for page to load
@@ -22,21 +22,19 @@ test.describe("Movie Page", () => {
     })
   })
 
-  test("displays mortality score in horizontal layout", async ({ page }) => {
+  test("displays mortality gauge", async ({ page }) => {
     await page.goto(movieUrl)
 
-    // Wait for mortality score to load
-    await expect(page.getByTestId("mortality-score")).toBeVisible()
+    // Wait for mortality gauge to load
+    await expect(page.getByTestId("mortality-gauge")).toBeVisible()
 
-    // Verify mortality elements
-    await expect(page.getByTestId("mortality-percentage")).toBeVisible()
-    await expect(page.getByTestId("mortality-bar")).toBeVisible()
-    await expect(page.getByTestId("cast-stats")).toBeVisible()
+    // Verify gauge elements
+    await expect(page.getByTestId("gauge-percentage")).toBeVisible()
 
-    // Screenshot of just the mortality score area
-    const mortalityScore = page.getByTestId("mortality-score")
-    await mortalityScore.screenshot({
-      path: "e2e/screenshots/mortality-score.png",
+    // Screenshot of just the mortality gauge area
+    const gauge = page.getByTestId("mortality-gauge")
+    await gauge.screenshot({
+      path: "e2e/screenshots/mortality-gauge-detail.png",
     })
   })
 
@@ -82,7 +80,7 @@ test.describe("Movie Page", () => {
     // Click living toggle
     await page.getByTestId("living-toggle-btn").click()
 
-    // Wait for living list to appear (button has bg-living when active)
+    // Wait for living list to appear (button has aria-pressed when active)
     await expect(page.getByTestId("living-toggle-btn")).toHaveAttribute("aria-pressed", "true")
 
     // Take screenshot of living cast
@@ -101,8 +99,8 @@ test.describe("Movie Page - Mobile", () => {
     await page.goto(movieUrl)
 
     await expect(page.getByTestId("movie-page")).toBeVisible()
-    // Wait for mortality score to load
-    await expect(page.getByTestId("mortality-score")).toBeVisible()
+    // Wait for mortality gauge to load
+    await expect(page.getByTestId("mortality-gauge")).toBeVisible()
 
     // Take mobile viewport screenshot
     await page.screenshot({
@@ -110,14 +108,14 @@ test.describe("Movie Page - Mobile", () => {
     })
   })
 
-  test("mortality score visible on mobile", async ({ page }) => {
+  test("mortality gauge visible on mobile", async ({ page }) => {
     await page.goto(movieUrl)
 
-    await expect(page.getByTestId("mortality-score")).toBeVisible()
+    await expect(page.getByTestId("mortality-gauge")).toBeVisible()
 
-    // Verify mortality score is in viewport on mobile
-    const mortalityScore = page.getByTestId("mortality-score")
-    await expect(mortalityScore).toBeInViewport()
+    // Verify mortality gauge is in viewport on mobile
+    const gauge = page.getByTestId("mortality-gauge")
+    await expect(gauge).toBeInViewport()
 
     await page.screenshot({
       path: "e2e/screenshots/movie-mobile-mortality.png",
