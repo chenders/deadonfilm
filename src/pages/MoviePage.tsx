@@ -63,7 +63,7 @@ export default function MoviePage() {
         <meta property="og:type" content="website" />
       </Helmet>
 
-      <div className="max-w-4xl mx-auto">
+      <div data-testid="movie-page" className="max-w-4xl mx-auto">
         <MovieHeader movie={movie} />
 
         <MortalityScore stats={stats} />

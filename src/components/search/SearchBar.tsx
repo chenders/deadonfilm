@@ -34,7 +34,7 @@ export default function SearchBar() {
   })
 
   return (
-    <div className="relative w-full max-w-xl mx-auto">
+    <div data-testid="search-bar" className="relative w-full max-w-xl mx-auto">
       <SearchInput
         ref={inputRef}
         value={query}
@@ -66,7 +66,10 @@ export default function SearchBar() {
       )}
 
       {isOpen && query.length >= 2 && !isLoading && movies.length === 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-cream border border-brown-medium/30 rounded-lg shadow-lg p-4 text-center text-text-muted">
+        <div
+          data-testid="search-no-results"
+          className="absolute z-50 w-full mt-1 bg-cream border border-brown-medium/30 rounded-lg shadow-lg p-4 text-center text-text-muted"
+        >
           No movies found for "{query}"
         </div>
       )}

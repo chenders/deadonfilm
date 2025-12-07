@@ -13,8 +13,9 @@ interface SearchInputProps {
 const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   ({ value, onChange, onFocus, onBlur, onKeyDown, isLoading, placeholder }, ref) => {
     return (
-      <div className="relative">
+      <div data-testid="search-input-container" className="relative">
         <input
+          data-testid="search-input"
           ref={ref}
           type="text"
           value={value}
@@ -33,7 +34,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         />
 
         {isLoading && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+          <div data-testid="search-loading" className="absolute right-3 top-1/2 -translate-y-1/2">
             <div className="animate-spin rounded-full h-5 w-5 border-2 border-beige border-t-brown-dark" />
           </div>
         )}
