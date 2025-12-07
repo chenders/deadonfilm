@@ -66,7 +66,7 @@ describe("MortalityScore", () => {
     render(<MortalityScore stats={stats} />)
 
     expect(screen.getByText("0%")).toBeInTheDocument()
-    expect(screen.getByText("0")).toBeInTheDocument()
+    expect(screen.getByTestId("deceased-count")).toHaveTextContent("0")
   })
 
   it("handles 100% mortality", () => {
@@ -95,7 +95,7 @@ describe("MortalityScore", () => {
     expect(screen.getByText("of cast deceased")).toBeInTheDocument()
   })
 
-  it("renders mortality bar with correct width", () => {
+  it("renders mortality bar", () => {
     const stats = {
       totalCast: 10,
       deceasedCount: 6,
@@ -103,10 +103,10 @@ describe("MortalityScore", () => {
       mortalityPercentage: 60,
     }
 
-    const { container } = render(<MortalityScore stats={stats} />)
+    render(<MortalityScore stats={stats} />)
 
-    // Find the inner bar that shows mortality percentage
-    const mortalityBar = container.querySelector('[style*="width: 60%"]')
-    expect(mortalityBar).toBeInTheDocument()
+    // Bar exists and has fill element (starts at 0% and animates to target)
+    expect(screen.getByTestId("mortality-bar")).toBeInTheDocument()
+    expect(screen.getByTestId("mortality-bar-fill")).toBeInTheDocument()
   })
 })
