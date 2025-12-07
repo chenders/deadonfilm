@@ -15,7 +15,7 @@ export default function MortalityScore({ stats }: MortalityScoreProps) {
       data-testid="mortality-score"
       className="bg-beige rounded-lg p-2 md:p-3 mb-2 md:mb-3 w-[60%] mx-auto"
     >
-      {/* Single row: percentage+text left, stats right */}
+      {/* Horizontal layout: percentage+text and stats (wraps on narrow screens) */}
       <div className="flex flex-wrap items-baseline justify-between gap-1">
         <div className="flex items-baseline gap-1.5">
           <span
