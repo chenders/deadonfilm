@@ -15,10 +15,11 @@ let isInitialized = false
 function initializeGA() {
   if (isInitialized || !GA_MEASUREMENT_ID) return
 
-  // Initialize dataLayer
+  // Initialize dataLayer - must use 'arguments' not rest params for GA compatibility
   window.dataLayer = window.dataLayer || []
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer.push(args)
+  window.gtag = function () {
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer.push(arguments)
   }
   window.gtag("js", new Date())
   window.gtag("config", GA_MEASUREMENT_ID, {
