@@ -1,12 +1,12 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useMovie } from "@/hooks/useMovie"
 import { useDeathInfoPolling } from "@/hooks/useDeathInfoPolling"
 import { extractMovieId } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
-import MovieHeader from "@/components/movie/MovieHeader"
-import MortalityScore from "@/components/movie/MortalityScore"
+import MovieHeader, { MoviePoster } from "@/components/movie/MovieHeader"
+import MortalityGauge from "@/components/movie/MortalityGauge"
 import CastToggle from "@/components/movie/CastToggle"
 import DeceasedList from "@/components/movie/DeceasedList"
 import LivingList from "@/components/movie/LivingList"
@@ -26,6 +26,18 @@ export default function MoviePage() {
     deceased: data?.deceased ?? [],
     enrichmentPending: data?.enrichmentPending,
   })
+
+  // Auto-select the non-zero group when one group is empty
+  // Must be before conditional returns to follow Rules of Hooks
+  useEffect(() => {
+    if (!data) return
+    const { stats } = data
+    if (stats.deceasedCount === 0 && stats.livingCount > 0) {
+      setShowLiving(true)
+    } else if (stats.livingCount === 0 && stats.deceasedCount > 0) {
+      setShowLiving(false)
+    }
+  }, [data])
 
   if (!movieId) {
     return <ErrorMessage message="Invalid movie URL" />
@@ -64,9 +76,13 @@ export default function MoviePage() {
       </Helmet>
 
       <div data-testid="movie-page" className="max-w-4xl mx-auto">
-        <MovieHeader movie={movie} />
+        <MovieHeader movie={movie} hidePoster />
 
-        <MortalityScore stats={stats} />
+        {/* Poster + Gauge side by side */}
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <MoviePoster movie={movie} />
+          <MortalityGauge stats={stats} />
+        </div>
 
         {lastSurvivor && stats.mortalityPercentage >= 50 && !showLiving && (
           <LastSurvivor actor={lastSurvivor} totalLiving={stats.livingCount} />
@@ -82,7 +98,7 @@ export default function MoviePage() {
         {showLiving ? (
           <LivingList actors={living} />
         ) : (
-          <DeceasedList actors={enrichedDeceased} movieTitle={movie.title} isPolling={isPolling} />
+          <DeceasedList actors={enrichedDeceased} isPolling={isPolling} />
         )}
       </div>
     </>
