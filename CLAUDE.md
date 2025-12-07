@@ -99,17 +99,26 @@ npm test                     # Frontend unit tests
 Create a `.env` file in the project root (used by both frontend and backend):
 
 ```
-# Backend
+# Backend (required)
 TMDB_API_TOKEN=your_token_here
 PORT=8080
 DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
 ANTHROPIC_API_KEY=your_anthropic_key
 
-# Frontend (optional)
-VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX  # Google Analytics 4 measurement ID
+# Backend (optional - monitoring)
+NEW_RELIC_LICENSE_KEY=your_newrelic_key    # New Relic APM
+NEW_RELIC_APP_NAME=Dead on Film            # App name in New Relic
+
+# Frontend (optional - baked in at build time via .env.production)
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX        # Google Analytics 4
+VITE_NEW_RELIC_BROWSER_LICENSE_KEY=NRJS-xx # New Relic Browser
+VITE_NEW_RELIC_BROWSER_APP_ID=1234567      # New Relic Browser App ID
+VITE_NEW_RELIC_BROWSER_ACCOUNT_ID=1234567  # New Relic Account ID
 ```
 
 Frontend variables must be prefixed with `VITE_` to be exposed to the client.
+
+See `GOOGLE_ANALYTICS.md` and `NEW_RELIC.md` for detailed setup instructions.
 
 ## Database Schema
 
@@ -184,7 +193,7 @@ GCP_PROJECT_ID=your-project-id ./scripts/deploy.sh
 
 1. Build Docker image for AMD64: `docker buildx build --platform linux/amd64 -t us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:TAG --push .`
 2. Apply Kubernetes manifests: `kubectl apply -f k8s/`
-3. Create secrets with TMDB_API_TOKEN, ANTHROPIC_API_KEY, DATABASE_URL
+3. Create secrets with TMDB_API_TOKEN, ANTHROPIC_API_KEY, DATABASE_URL, and optionally NEW_RELIC_LICENSE_KEY
 4. Restart deployment: `kubectl rollout restart deployment/dead-on-film -n dead-on-film`
 
 ## URL Structure
