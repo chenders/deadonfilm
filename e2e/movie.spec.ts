@@ -60,7 +60,8 @@ test.describe("Movie Page", () => {
 
     // Wait for page to fully load
     await expect(page.getByTestId("movie-page")).toBeVisible()
-    await page.waitForTimeout(500)
+    // Wait for deceased actor cards to load
+    await expect(page.getByTestId("deceased-toggle-btn")).toBeVisible()
 
     // Take viewport screenshot (not full page) to verify first actor is visible
     await page.screenshot({
@@ -82,7 +83,7 @@ test.describe("Movie Page", () => {
     await page.getByTestId("living-toggle-btn").click()
 
     // Wait for living list to appear
-    await page.waitForTimeout(300)
+    await expect(page.getByTestId("living-toggle-btn")).toHaveAttribute("aria-pressed", "true")
 
     // Take screenshot of living cast
     await page.screenshot({
@@ -100,7 +101,8 @@ test.describe("Movie Page - Mobile", () => {
     await page.goto(movieUrl)
 
     await expect(page.getByTestId("movie-page")).toBeVisible()
-    await page.waitForTimeout(500)
+    // Wait for mortality score to load
+    await expect(page.getByTestId("mortality-score")).toBeVisible()
 
     // Take mobile viewport screenshot
     await page.screenshot({
