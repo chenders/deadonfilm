@@ -1,3 +1,7 @@
+// New Relic must be initialized FIRST, before any other imports
+import { initNewRelic } from "./lib/newrelic.js"
+initNewRelic()
+
 import "dotenv/config"
 import express from "express"
 import cors from "cors"
@@ -41,5 +45,8 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
   console.log(
     `TMDB token configured: ${process.env.TMDB_API_TOKEN ? "yes" : "NO - check .env file!"}`
+  )
+  console.log(
+    `New Relic APM configured: ${process.env.NEW_RELIC_LICENSE_KEY ? "yes" : "no (optional)"}`
   )
 })

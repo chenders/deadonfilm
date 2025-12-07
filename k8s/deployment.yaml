@@ -48,6 +48,15 @@ spec:
                 secretKeyRef:
                   name: dead-on-film-secrets
                   key: DATABASE_URL
+            # New Relic APM (optional - agent won't start if not set)
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dead-on-film-secrets
+                  key: NEW_RELIC_LICENSE_KEY
+                  optional: true
+            - name: NEW_RELIC_APP_NAME
+              value: "Dead on Film"
           resources:
             requests:
               memory: "256Mi"

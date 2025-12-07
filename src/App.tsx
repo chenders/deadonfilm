@@ -4,9 +4,11 @@ import HomePage from "./pages/HomePage"
 import MoviePage from "./pages/MoviePage"
 import RandomPage from "./pages/RandomPage"
 import { useGoogleAnalytics } from "./hooks/useGoogleAnalytics"
+import { useNewRelicBrowser } from "./hooks/useNewRelicBrowser"
 
 function App() {
   useGoogleAnalytics()
+  useNewRelicBrowser()
 
   return (
     <Layout>
