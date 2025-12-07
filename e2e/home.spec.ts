@@ -20,8 +20,8 @@ test.describe("Home Page", () => {
     // Type in search
     await page.getByTestId("search-input").fill("The Matrix")
 
-    // Wait for results to load
-    await page.waitForTimeout(1000)
+    // Wait for search results dropdown to appear
+    await expect(page.getByRole("listbox")).toBeVisible()
 
     // Take screenshot of search results
     await page.screenshot({ path: "e2e/screenshots/search-results.png" })
