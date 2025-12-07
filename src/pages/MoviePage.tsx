@@ -1,12 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useMovie } from "@/hooks/useMovie"
 import { useDeathInfoPolling } from "@/hooks/useDeathInfoPolling"
 import { extractMovieId } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
-import MovieHeader from "@/components/movie/MovieHeader"
-import MortalityScore from "@/components/movie/MortalityScore"
+import MovieHeader, { MoviePoster } from "@/components/movie/MovieHeader"
 import MortalityGauge from "@/components/movie/MortalityGauge"
 import CastToggle from "@/components/movie/CastToggle"
 import DeceasedList from "@/components/movie/DeceasedList"
@@ -20,7 +19,6 @@ export default function MoviePage() {
   const movieId = slug ? extractMovieId(slug) : 0
   const { data, isLoading, error } = useMovie(movieId)
   const [showLiving, setShowLiving] = useState(false)
-  const [useGauge, setUseGauge] = useState(true) // Toggle between gauge and bar
 
   // Poll for death info updates if enrichment is pending
   const { enrichedDeceased, isPolling } = useDeathInfoPolling({
@@ -28,6 +26,18 @@ export default function MoviePage() {
     deceased: data?.deceased ?? [],
     enrichmentPending: data?.enrichmentPending,
   })
+
+  // Auto-select the non-zero group when one group is empty
+  // Must be before conditional returns to follow Rules of Hooks
+  useEffect(() => {
+    if (!data) return
+    const { stats } = data
+    if (stats.deceasedCount === 0 && stats.livingCount > 0) {
+      setShowLiving(true)
+    } else if (stats.livingCount === 0 && stats.deceasedCount > 0) {
+      setShowLiving(false)
+    }
+  }, [data])
 
   if (!movieId) {
     return <ErrorMessage message="Invalid movie URL" />
@@ -66,23 +76,12 @@ export default function MoviePage() {
       </Helmet>
 
       <div data-testid="movie-page" className="max-w-4xl mx-auto">
-        <MovieHeader movie={movie} />
+        <MovieHeader movie={movie} hidePoster />
 
-        {/* Mortality visualization with toggle */}
-        <div className="relative">
-          {useGauge ? (
-            <MortalityGauge stats={stats} />
-          ) : (
-            <MortalityScore stats={stats} />
-          )}
-          {/* Subtle toggle to switch visualization styles */}
-          <button
-            onClick={() => setUseGauge(!useGauge)}
-            className="absolute top-0 right-0 text-xs text-text-muted hover:text-brown-dark transition-colors"
-            title={useGauge ? "Switch to bar view" : "Switch to gauge view"}
-          >
-            {useGauge ? "◧" : "○"}
-          </button>
+        {/* Poster + Gauge side by side */}
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <MoviePoster movie={movie} />
+          <MortalityGauge stats={stats} />
         </div>
 
         {lastSurvivor && stats.mortalityPercentage >= 50 && !showLiving && (

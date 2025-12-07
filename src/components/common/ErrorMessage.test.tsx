@@ -18,13 +18,13 @@ describe("ErrorMessage", () => {
   it("displays the error title", () => {
     renderWithRouter(<ErrorMessage message="Some error" />)
 
-    expect(screen.getByText("Something went wrong")).toBeInTheDocument()
+    expect(screen.getByText("Technical Difficulties")).toBeInTheDocument()
   })
 
   it("shows home link by default", () => {
     renderWithRouter(<ErrorMessage message="Error" />)
 
-    const link = screen.getByText("Return to search")
+    const link = screen.getByTestId("home-return-link")
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute("href", "/")
   })

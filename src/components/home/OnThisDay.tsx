@@ -3,6 +3,7 @@ import { getProfileUrl } from "@/services/api"
 import { Link } from "react-router-dom"
 import { createMovieSlug } from "@/utils/slugify"
 import { PersonIcon } from "@/components/icons"
+import EmptyStateCard from "@/components/common/EmptyStateCard"
 
 export default function OnThisDay() {
   const { data, isLoading, error } = useOnThisDay()
@@ -22,7 +23,7 @@ export default function OnThisDay() {
     return null // Silently fail - this is an enhancement feature
   }
 
-  const { month, day, deaths, message } = data
+  const { month, day, deaths } = data
 
   return (
     <section data-testid="on-this-day" className="mt-12">
@@ -34,10 +35,8 @@ export default function OnThisDay() {
       </h2>
 
       {deaths.length === 0 ? (
-        <div data-testid="on-this-day-empty" className="p-6 bg-beige rounded-lg text-center">
-          <p className="text-text-muted">
-            {message || "No notable deaths recorded for this date."}
-          </p>
+        <div data-testid="on-this-day-empty">
+          <EmptyStateCard type="quiet-day" />
         </div>
       ) : (
         <div data-testid="on-this-day-list" className="space-y-4">
@@ -45,7 +44,8 @@ export default function OnThisDay() {
             <div
               data-testid="on-this-day-card"
               key={death.actor.id}
-              className={`p-4 bg-beige rounded-lg flex items-center gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md animate-fade-in-up ${index < 10 ? `stagger-${index + 1}` : ""}`}
+              className="p-4 bg-beige rounded-lg flex items-center gap-4 animate-fade-slide-in"
+              style={{ animationDelay: `${index * 50}ms` }}
             >
               {death.actor.profile_path ? (
                 <img

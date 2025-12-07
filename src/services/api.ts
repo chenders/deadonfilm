@@ -47,6 +47,12 @@ export async function getRandomMovie(): Promise<RandomMovieResponse> {
   return fetchJson("/random")
 }
 
+export async function getDiscoverMovie(
+  type: "classic" | "high-mortality"
+): Promise<RandomMovieResponse> {
+  return fetchJson(`/discover?type=${type}`)
+}
+
 // TMDB image URL helpers
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p"
 

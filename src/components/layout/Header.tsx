@@ -7,12 +7,12 @@ export default function Header() {
       <Link
         to="/"
         data-testid="home-link"
-        className="flex flex-col items-center gap-0 hover:opacity-80 transition-opacity"
+        className="flex items-center justify-center gap-2 md:gap-3 hover:opacity-80 transition-opacity"
       >
-        <SkullLogo data-testid="skull-logo" className="w-14 md:w-32 h-auto" />
+        <SkullLogo data-testid="skull-logo" className="w-16 md:w-24 h-auto" />
         <h1
           data-testid="site-title"
-          className="font-display text-xl md:text-5xl text-brown-dark italic"
+          className="font-display text-2xl md:text-5xl text-brown-dark italic"
         >
           Dead on Film
         </h1>

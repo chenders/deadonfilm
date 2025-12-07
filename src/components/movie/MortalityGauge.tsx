@@ -10,7 +10,7 @@ interface MortalityGaugeProps {
 }
 
 export default function MortalityGauge({ stats }: MortalityGaugeProps) {
-  const { totalCast, deceasedCount, livingCount, mortalityPercentage } = stats
+  const { mortalityPercentage } = stats
   const [animatedPercentage, setAnimatedPercentage] = useState(0)
 
   // Animate the gauge on mount
@@ -22,8 +22,8 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
   }, [mortalityPercentage])
 
   // SVG calculations
-  const size = 160
-  const strokeWidth = 12
+  const size = 200
+  const strokeWidth = 14
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
   const center = size / 2
@@ -43,10 +43,7 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
   })
 
   return (
-    <div
-      data-testid="mortality-gauge"
-      className="flex flex-col items-center mb-4"
-    >
+    <div data-testid="mortality-gauge" className="flex flex-col items-center">
       <div className="relative">
         <svg
           width={size}
@@ -67,13 +64,7 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
 
           {/* Sprocket holes */}
           {sprocketHoles.map((hole, i) => (
-            <circle
-              key={i}
-              cx={hole.cx}
-              cy={hole.cy}
-              r="4"
-              className="fill-brown-medium/20"
-            />
+            <circle key={i} cx={hole.cx} cy={hole.cy} r="4" className="fill-brown-medium/20" />
           ))}
 
           {/* Background track (living portion) */}
@@ -101,12 +92,7 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
           />
 
           {/* Center hub */}
-          <circle
-            cx={center}
-            cy={center}
-            r={radius - strokeWidth - 8}
-            className="fill-beige"
-          />
+          <circle cx={center} cy={center} r={radius - strokeWidth - 8} className="fill-beige" />
           <circle
             cx={center}
             cy={center}
@@ -122,28 +108,12 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
         <div className="absolute inset-0 flex flex-col items-center justify-center transform rotate-0">
           <span
             data-testid="gauge-percentage"
-            className="text-3xl font-display text-accent font-bold"
+            className="text-4xl font-display text-accent font-bold"
           >
             {mortalityPercentage}%
           </span>
-          <span className="text-xs text-brown-dark">deceased</span>
+          <span className="text-sm text-brown-dark">deceased</span>
         </div>
-      </div>
-
-      {/* Stats row below gauge */}
-      <div
-        data-testid="gauge-stats"
-        className="flex gap-4 mt-2 text-sm"
-      >
-        <span className="text-accent font-medium">
-          {deceasedCount} dead
-        </span>
-        <span className="text-living font-medium">
-          {livingCount} living
-        </span>
-        <span className="text-brown-dark">
-          {totalCast} total
-        </span>
       </div>
     </div>
   )
