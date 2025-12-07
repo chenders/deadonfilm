@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN npm ci
 COPY src/ ./src/
 COPY public/ ./public/
-COPY index.html vite.config.ts tsconfig.json tailwind.config.js postcss.config.js ./
+COPY index.html vite.config.ts tsconfig.json tailwind.config.js postcss.config.js .env.production ./
 RUN npm run build
 
 # Build stage for backend

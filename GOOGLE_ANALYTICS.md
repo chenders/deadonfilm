@@ -25,13 +25,15 @@ After creating the stream, you'll see a **Measurement ID** starting with `G-` (e
 
 ### 4. Configure the Environment Variable
 
-Add the measurement ID to your `.env` file in the project root:
+**Local development:** Add to `.env` in the project root:
 
 ```
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 ```
 
-For production (Kubernetes), add it to your secrets or ConfigMap.
+**Production (Docker/Kubernetes):** The measurement ID is in `.env.production`, which is copied into the Docker image at build time. Since `VITE_*` variables are embedded by Vite during the build (not at runtime), this value is baked into the frontend JavaScript bundle.
+
+Note: The GA measurement ID is not a secret—it's visible in the browser source code. This is expected and safe.
 
 ## Events Tracked
 
