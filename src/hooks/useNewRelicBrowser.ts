@@ -2,12 +2,9 @@ import { useEffect } from "react"
 import { useLocation } from "react-router-dom"
 import { BrowserAgent } from "@newrelic/browser-agent/loaders/browser-agent"
 
-const BROWSER_LICENSE_KEY = import.meta.env
-  .VITE_NEW_RELIC_BROWSER_LICENSE_KEY as string | undefined
+const BROWSER_LICENSE_KEY = import.meta.env.VITE_NEW_RELIC_BROWSER_LICENSE_KEY as string | undefined
 const BROWSER_APP_ID = import.meta.env.VITE_NEW_RELIC_BROWSER_APP_ID as string | undefined
-const BROWSER_ACCOUNT_ID = import.meta.env.VITE_NEW_RELIC_BROWSER_ACCOUNT_ID as
-  | string
-  | undefined
+const BROWSER_ACCOUNT_ID = import.meta.env.VITE_NEW_RELIC_BROWSER_ACCOUNT_ID as string | undefined
 
 let browserAgent: BrowserAgent | null = null
 let isInitialized = false
