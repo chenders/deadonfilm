@@ -21,9 +21,9 @@ export default function LastSurvivor({ actor, totalLiving }: LastSurvivorProps) 
   return (
     <div
       data-testid="last-survivor"
-      className="bg-living-bg border border-living-border/30 rounded-lg p-4 mb-8"
+      className="mb-8 rounded-lg border border-living-border/30 bg-living-bg p-4"
     >
-      <h3 data-testid="last-survivor-title" className="font-display text-lg text-brown-dark mb-3">
+      <h3 data-testid="last-survivor-title" className="mb-3 font-display text-lg text-brown-dark">
         {title}
       </h3>
 
@@ -33,12 +33,12 @@ export default function LastSurvivor({ actor, totalLiving }: LastSurvivorProps) 
             data-testid="last-survivor-photo"
             src={profileUrl}
             alt={actor.name}
-            className="w-16 h-16 rounded-full object-cover"
+            className="h-16 w-16 rounded-full object-cover"
           />
         ) : (
           <div
             data-testid="last-survivor-photo-placeholder"
-            className="w-16 h-16 rounded-full bg-living-muted/20 flex items-center justify-center"
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-living-muted/20"
           >
             <PersonIcon size={32} className="text-living" />
           </div>

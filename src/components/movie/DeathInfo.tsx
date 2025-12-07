@@ -96,7 +96,7 @@ function Tooltip({
   return createPortal(
     <div
       ref={tooltipRef}
-      className="fixed z-50 max-w-xs bg-brown-dark text-cream text-sm px-4 py-3 rounded-lg shadow-xl border border-brown-medium/50 animate-fade-slide-in"
+      className="animate-fade-slide-in fixed z-50 max-w-xs rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl"
       style={{
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,
@@ -109,7 +109,7 @@ function Tooltip({
       {/* Film strip decoration at top */}
       <div className="absolute -top-1 left-4 right-4 flex justify-between">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="w-1.5 h-2 bg-brown-medium/50 rounded-sm" />
+          <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
         ))}
       </div>
       <p className="leading-relaxed">{content}</p>
@@ -164,7 +164,7 @@ export default function DeathInfo({
 
   return (
     <div data-testid="death-info" className="text-right sm:text-right">
-      <p data-testid="death-date" className="text-accent font-medium">
+      <p data-testid="death-date" className="font-medium text-accent">
         {formatDate(deathday)}
       </p>
 
@@ -175,11 +175,11 @@ export default function DeathInfo({
       )}
 
       {causeOfDeath && (
-        <p className="text-sm text-text-muted mt-1">
+        <p className="mt-1 text-sm text-text-muted">
           {hasDetails ? (
             <span
               ref={triggerRef}
-              className="tooltip-trigger underline decoration-dotted cursor-help"
+              className="tooltip-trigger cursor-help underline decoration-dotted"
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
               data-track-event="view_death_details"
@@ -219,7 +219,7 @@ export default function DeathInfo({
       )}
 
       {!causeOfDeath && (wikipediaUrl || !isLoading) && (
-        <p className="text-sm text-text-muted mt-1">
+        <p className="mt-1 text-sm text-text-muted">
           <span className="italic">(cause unknown)</span>
           {" - "}
           <a
@@ -240,7 +240,7 @@ export default function DeathInfo({
       )}
 
       {!causeOfDeath && !wikipediaUrl && isLoading && (
-        <p className="text-sm text-text-muted mt-1 italic">
+        <p className="mt-1 text-sm italic text-text-muted">
           Looking up cause
           <LoadingEllipsis />
         </p>

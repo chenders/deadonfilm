@@ -27,7 +27,7 @@ export default function QuickActions() {
     "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brown-dark bg-beige border border-brown-medium/30 rounded-full hover:bg-cream hover:border-brown-medium/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
 
   return (
-    <div data-testid="quick-actions" className="flex flex-wrap justify-center gap-2 mt-6">
+    <div data-testid="quick-actions" className="mt-6 flex flex-wrap justify-center gap-2">
       <button
         data-testid="high-mortality-btn"
         onClick={() => handleDiscover("high-mortality")}
