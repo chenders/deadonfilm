@@ -16,6 +16,7 @@ export default function CastToggle({
       <div className="inline-flex rounded-lg border border-brown-medium/30 overflow-hidden">
         <button
           data-testid="deceased-toggle-btn"
+          aria-pressed={!showLiving}
           onClick={() => onToggle(false)}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             !showLiving ? "bg-accent text-white" : "bg-white text-brown-dark hover:bg-beige"
@@ -25,6 +26,7 @@ export default function CastToggle({
         </button>
         <button
           data-testid="living-toggle-btn"
+          aria-pressed={showLiving}
           onClick={() => onToggle(true)}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             showLiving ? "bg-green-600 text-white" : "bg-white text-brown-dark hover:bg-beige"
