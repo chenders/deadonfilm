@@ -36,6 +36,7 @@ coverage/
 
 # Playwright
 playwright-report/
+playwright/.cache/
 test-results/
 
 # Generated reports
