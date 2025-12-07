@@ -25,7 +25,10 @@ export default function OnThisDay() {
 
   return (
     <section data-testid="on-this-day" className="mt-12">
-      <h2 data-testid="on-this-day-title" className="font-display text-2xl text-brown-dark mb-4 text-center">
+      <h2
+        data-testid="on-this-day-title"
+        className="font-display text-2xl text-brown-dark mb-4 text-center"
+      >
         On This Day: {month} {day}
       </h2>
 
@@ -38,7 +41,11 @@ export default function OnThisDay() {
       ) : (
         <div data-testid="on-this-day-list" className="space-y-4">
           {deaths.map((death) => (
-            <div data-testid="on-this-day-card" key={death.actor.id} className="p-4 bg-beige rounded-lg flex items-center gap-4">
+            <div
+              data-testid="on-this-day-card"
+              key={death.actor.id}
+              className="p-4 bg-beige rounded-lg flex items-center gap-4"
+            >
               {death.actor.profile_path ? (
                 <img
                   src={getProfileUrl(death.actor.profile_path, "w185")!}

@@ -11,11 +11,17 @@ export default function MortalityScore({ stats }: MortalityScoreProps) {
   const { totalCast, deceasedCount, livingCount, mortalityPercentage } = stats
 
   return (
-    <div data-testid="mortality-score" className="bg-beige rounded-lg p-2 md:p-3 mb-2 md:mb-3 w-[60%] mx-auto">
+    <div
+      data-testid="mortality-score"
+      className="bg-beige rounded-lg p-2 md:p-3 mb-2 md:mb-3 w-[60%] mx-auto"
+    >
       {/* Single row: percentage+text left, stats right */}
       <div className="flex flex-wrap items-baseline justify-between gap-1">
         <div className="flex items-baseline gap-1.5">
-          <span data-testid="mortality-percentage" className="text-lg md:text-2xl font-display text-accent">
+          <span
+            data-testid="mortality-percentage"
+            className="text-lg md:text-2xl font-display text-accent"
+          >
             {mortalityPercentage}%
           </span>
           <span className="text-xs md:text-sm text-brown-dark">of cast deceased</span>
@@ -35,7 +41,10 @@ export default function MortalityScore({ stats }: MortalityScoreProps) {
       </div>
 
       {/* Mortality bar */}
-      <div data-testid="mortality-bar" className="mt-1.5 h-1.5 bg-green-200 rounded-full overflow-hidden">
+      <div
+        data-testid="mortality-bar"
+        className="mt-1.5 h-1.5 bg-green-200 rounded-full overflow-hidden"
+      >
         <div
           data-testid="mortality-bar-fill"
           className="h-full bg-accent transition-all duration-500"

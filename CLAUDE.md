@@ -222,6 +222,16 @@ Example: `/movie/breakfast-at-tiffanys-1961-14629`
 - Consolidate identical conditional branches
 - Refactor when you see duplication
 
+### Pull Request Descriptions
+
+When creating a PR, include screenshots to illustrate UI changes:
+
+- **Before/After screenshots**: If making visual changes, include both before and after screenshots showing the difference
+- **After-only screenshots**: If before screenshots aren't available (e.g., new feature), include after screenshots showing the new functionality
+- **E2E test screenshots**: Reference any relevant screenshots from `e2e/screenshots/` directory
+- **Screenshot format in PR**: Use relative paths from repo root: `![Description](./e2e/screenshots/filename.png)`
+- **Multiple viewports**: Include both desktop and mobile screenshots when the change affects responsive layouts
+
 ## Pre-Commit Checklist
 
 1. `npm run format && cd server && npm run format`
