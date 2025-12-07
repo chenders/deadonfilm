@@ -31,7 +31,13 @@ After creating the stream, you'll see a **Measurement ID** starting with `G-` (e
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 ```
 
-**Production (Docker/Kubernetes):** The measurement ID is in `.env.production`, which is copied into the Docker image at build time. Since `VITE_*` variables are embedded by Vite during the build (not at runtime), this value is baked into the frontend JavaScript bundle.
+**Production (Docker/Kubernetes):** Create a `.env.production` file before building the Docker image:
+
+```
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+```
+
+This file is copied into the Docker image at build time and is gitignored (not committed to the repository). Since `VITE_*` variables are embedded by Vite during the build, the value is baked into the frontend JavaScript bundle.
 
 Note: The GA measurement ID is not a secret—it's visible in the browser source code. This is expected and safe.
 
