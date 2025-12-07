@@ -1,10 +1,10 @@
-interface SkullLogoProps {
+interface SkullLogoProps extends React.SVGProps<SVGSVGElement> {
   className?: string
 }
 
-export default function SkullLogo({ className = "w-32 h-auto" }: SkullLogoProps) {
+export default function SkullLogo({ className = "w-32 h-auto", ...props }: SkullLogoProps) {
   return (
-    <svg viewBox="0 0 200 100" className={className} aria-label="Dead on Film logo - winged skull">
+    <svg viewBox="0 0 200 100" className={className} aria-label="Dead on Film logo - winged skull" {...props}>
       {/* Left Wing */}
       <path
         d="M10 50 Q20 30 40 35 Q60 25 70 45 Q65 50 70 55 Q60 75 40 65 Q20 70 10 50"
