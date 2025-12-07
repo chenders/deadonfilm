@@ -82,8 +82,8 @@ test.describe("Movie Page", () => {
     // Click living toggle
     await page.getByTestId("living-toggle-btn").click()
 
-    // Wait for living list to appear (button has green background when active)
-    await expect(page.getByTestId("living-toggle-btn")).toHaveClass(/bg-green-600/)
+    // Wait for living list to appear (button has aria-pressed when active)
+    await expect(page.getByTestId("living-toggle-btn")).toHaveAttribute("aria-pressed", "true")
 
     // Take screenshot of living cast
     await page.screenshot({
