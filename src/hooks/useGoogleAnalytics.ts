@@ -11,6 +11,7 @@ declare global {
 const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID as string | undefined
 
 let isInitialized = false
+let isDelegationSetup = false
 
 function initializeGA() {
   if (isInitialized || !GA_MEASUREMENT_ID) return
@@ -52,14 +53,24 @@ function handleTrackableEvent(e: Event, eventType: "click" | "hover") {
   if (!eventName) return
 
   const params = trackable.dataset.trackParams
-  const parsedParams = params ? JSON.parse(params) : undefined
+  let parsedParams: Record<string, string | number | boolean> | undefined
+  if (params) {
+    try {
+      parsedParams = JSON.parse(params)
+    } catch {
+      // Invalid JSON in tracking params - skip this event
+      return
+    }
+  }
 
   trackEvent(eventName, parsedParams)
 }
 
 function setupEventDelegation() {
+  if (isDelegationSetup) return
   document.addEventListener("click", (e) => handleTrackableEvent(e, "click"))
   document.addEventListener("mouseenter", (e) => handleTrackableEvent(e, "hover"), true)
+  isDelegationSetup = true
 }
 
 export function useGoogleAnalytics() {
