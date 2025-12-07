@@ -7,12 +7,12 @@ interface ErrorMessageProps {
 
 export default function ErrorMessage({ message, showHomeLink = true }: ErrorMessageProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="text-4xl mb-4">💀</div>
-      <h2 className="text-xl font-display text-brown-dark mb-2">Something went wrong</h2>
-      <p className="text-text-muted mb-4">{message}</p>
+    <div data-testid="error-message" className="flex flex-col items-center justify-center py-12 text-center">
+      <div data-testid="error-icon" className="text-4xl mb-4">💀</div>
+      <h2 data-testid="error-title" className="text-xl font-display text-brown-dark mb-2">Something went wrong</h2>
+      <p data-testid="error-text" className="text-text-muted mb-4">{message}</p>
       {showHomeLink && (
-        <Link to="/" className="text-brown-medium underline hover:text-brown-dark">
+        <Link data-testid="home-return-link" to="/" className="text-brown-medium underline hover:text-brown-dark">
           Return to search
         </Link>
       )}
