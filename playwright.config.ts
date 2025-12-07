@@ -19,11 +19,19 @@ export default defineConfig({
     },
     {
       name: "tablet",
-      use: { ...devices["iPad Mini"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 768, height: 1024 },
+      },
     },
     {
       name: "mobile",
-      use: { ...devices["iPhone 12"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 375, height: 667 },
+        isMobile: true,
+        hasTouch: true,
+      },
     },
   ],
   webServer: {

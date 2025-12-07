@@ -132,7 +132,7 @@ jobs:
           path: server/dist/
 
       - name: Run E2E tests
-        run: npx playwright test --project=desktop
+        run: npm run test:e2e
         env:
           CI: true
           TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
