@@ -58,6 +58,10 @@ test.describe("Movie Page", () => {
 
     // Wait for page to fully load
     await expect(page.getByTestId("movie-page")).toBeVisible()
+    // Wait for movie poster to load
+    await expect(page.getByTestId("movie-poster")).toBeVisible()
+    // Wait for mortality gauge to load
+    await expect(page.getByTestId("mortality-gauge")).toBeVisible()
     // Wait for deceased actor cards to load
     await expect(page.getByTestId("deceased-toggle-btn")).toBeVisible()
 
