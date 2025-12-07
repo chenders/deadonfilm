@@ -98,7 +98,7 @@ export default function MoviePage() {
         {showLiving ? (
           <LivingList actors={living} />
         ) : (
-          <DeceasedList actors={enrichedDeceased} movieTitle={movie.title} isPolling={isPolling} />
+          <DeceasedList actors={enrichedDeceased} isPolling={isPolling} />
         )}
       </div>
     </>
