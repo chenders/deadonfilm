@@ -13,8 +13,8 @@ export default function HomePage() {
         />
       </Helmet>
 
-      <div className="max-w-2xl mx-auto text-center">
-        <p className="text-text-muted mb-8 text-lg">
+      <div data-testid="home-page" className="max-w-2xl mx-auto text-center">
+        <p data-testid="home-tagline" className="text-text-muted mb-8 text-lg">
           Search for a movie to see which cast members have passed away
         </p>
 

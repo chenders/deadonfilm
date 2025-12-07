@@ -120,10 +120,10 @@ export default function DeathInfo({
   const handleMouseLeave = () => setShowTooltip(false)
 
   return (
-    <div className="text-right sm:text-right">
-      <p className="text-accent font-medium">{formatDate(deathday)}</p>
+    <div data-testid="death-info" className="text-right sm:text-right">
+      <p data-testid="death-date" className="text-accent font-medium">{formatDate(deathday)}</p>
 
-      {ageAtDeath !== null && <p className="text-sm text-text-muted">Age {ageAtDeath}</p>}
+      {ageAtDeath !== null && <p data-testid="age-at-death" className="text-sm text-text-muted">Age {ageAtDeath}</p>}
 
       {causeOfDeath && (
         <p className="text-sm text-text-muted mt-1">
