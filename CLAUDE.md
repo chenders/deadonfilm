@@ -240,3 +240,26 @@ When creating a PR, include screenshots to illustrate UI changes:
 3. `npm run type-check && cd server && npm run type-check`
 4. `npm test`
 5. Update documentation if necessary
+
+## Git Commit Messages
+
+**IMPORTANT**: When writing multi-line commit messages, use simple double-quoted strings with `\n` for newlines. Do NOT use heredocs (`<<EOF`) inside command substitution (`$(...)`) as this causes shell parsing errors with special characters like apostrophes.
+
+**Correct approach:**
+```bash
+git commit -m "Short summary
+
+Longer description here. Avoid apostrophes or escape them.
+
+Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+```
+
+**Do NOT do this** (causes shell errors):
+```bash
+git commit -m "$(cat <<'EOF'
+Message with apostrophe's will break
+EOF
+)"
+```
