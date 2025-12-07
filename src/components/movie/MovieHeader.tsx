@@ -11,34 +11,32 @@ export default function MovieHeader({ movie }: MovieHeaderProps) {
   const posterUrl = getPosterUrl(movie.poster_path, "w342")
 
   return (
-    <div className="flex flex-col items-center text-center mb-8">
+    <div data-testid="movie-header" className="flex flex-col items-center text-center mb-2 md:mb-4">
       {posterUrl ? (
         <img
+          data-testid="movie-poster"
           src={posterUrl}
           alt={`${movie.title} poster`}
-          className="w-48 md:w-56 h-auto rounded-lg shadow-md mb-6"
+          className="w-[clamp(6rem,18vh,12rem)] h-auto rounded-lg shadow-md mb-2"
         />
       ) : (
-        <div className="w-48 md:w-56 h-72 md:h-84 bg-beige rounded-lg flex items-center justify-center mb-6">
+        <div
+          data-testid="movie-poster-placeholder"
+          className="w-[clamp(6rem,18vh,12rem)] aspect-[2/3] bg-beige rounded-lg flex items-center justify-center mb-2"
+        >
           <span className="text-text-muted">No poster</span>
         </div>
       )}
 
-      <h1 className="font-display text-3xl md:text-5xl text-brown-dark mb-2">{movie.title}</h1>
-      <p className="text-xl md:text-2xl text-text-muted mb-4">({year})</p>
-
-      {movie.genres && movie.genres.length > 0 && (
-        <div className="flex flex-wrap gap-2 justify-center">
-          {movie.genres.map((genre) => (
-            <span
-              key={genre.id}
-              className="px-4 py-1.5 bg-beige rounded-full text-sm md:text-base text-brown-dark"
-            >
-              {genre.name}
-            </span>
-          ))}
-        </div>
-      )}
+      <h1
+        data-testid="movie-title"
+        className="font-display text-[clamp(1.25rem,4vh,2.5rem)] text-brown-dark leading-tight"
+      >
+        {movie.title}
+      </h1>
+      <p data-testid="movie-year" className="text-[clamp(0.875rem,2.5vh,1.25rem)] text-text-muted">
+        ({year})
+      </p>
     </div>
   )
 }

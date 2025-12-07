@@ -26,8 +26,7 @@ describe("MortalityScore", () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText("7")).toBeInTheDocument()
-    expect(screen.getByText("deceased")).toBeInTheDocument()
+    expect(screen.getByTestId("deceased-count")).toHaveTextContent("7")
   })
 
   it("displays living count", () => {
@@ -40,8 +39,7 @@ describe("MortalityScore", () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText("3")).toBeInTheDocument()
-    expect(screen.getByText("living")).toBeInTheDocument()
+    expect(screen.getByTestId("living-count")).toHaveTextContent("3")
   })
 
   it("displays total cast count", () => {
@@ -54,8 +52,7 @@ describe("MortalityScore", () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText("10")).toBeInTheDocument()
-    expect(screen.getByText("total")).toBeInTheDocument()
+    expect(screen.getByTestId("total-count")).toHaveTextContent("10")
   })
 
   it("handles 0% mortality", () => {
@@ -95,7 +92,7 @@ describe("MortalityScore", () => {
 
     render(<MortalityScore stats={stats} />)
 
-    expect(screen.getByText("of the cast has passed away")).toBeInTheDocument()
+    expect(screen.getByText("of cast deceased")).toBeInTheDocument()
   })
 
   it("renders mortality bar with correct width", () => {

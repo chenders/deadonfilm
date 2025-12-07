@@ -24,21 +24,28 @@ export default function OnThisDay() {
   const { month, day, deaths, message } = data
 
   return (
-    <section className="mt-12">
-      <h2 className="font-display text-2xl text-brown-dark mb-4 text-center">
+    <section data-testid="on-this-day" className="mt-12">
+      <h2
+        data-testid="on-this-day-title"
+        className="font-display text-2xl text-brown-dark mb-4 text-center"
+      >
         On This Day: {month} {day}
       </h2>
 
       {deaths.length === 0 ? (
-        <div className="p-6 bg-beige rounded-lg text-center">
+        <div data-testid="on-this-day-empty" className="p-6 bg-beige rounded-lg text-center">
           <p className="text-text-muted">
             {message || "No notable deaths recorded for this date."}
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div data-testid="on-this-day-list" className="space-y-4">
           {deaths.map((death) => (
-            <div key={death.actor.id} className="p-4 bg-beige rounded-lg flex items-center gap-4">
+            <div
+              data-testid="on-this-day-card"
+              key={death.actor.id}
+              className="p-4 bg-beige rounded-lg flex items-center gap-4"
+            >
               {death.actor.profile_path ? (
                 <img
                   src={getProfileUrl(death.actor.profile_path, "w185")!}
