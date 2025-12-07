@@ -11,7 +11,6 @@ interface DeathInfoProps {
   wikipediaUrl: string | null
   tmdbUrl: string
   isLoading?: boolean
-  onTooltipVisibilityChange?: (isVisible: boolean) => void
 }
 
 function LoadingEllipsis() {
@@ -125,7 +124,6 @@ export default function DeathInfo({
   wikipediaUrl,
   tmdbUrl,
   isLoading = false,
-  onTooltipVisibilityChange,
 }: DeathInfoProps) {
   const ageAtDeath = calculateAge(birthday, deathday)
   const hasDetails = causeOfDeathDetails && causeOfDeathDetails.trim().length > 0
@@ -133,14 +131,8 @@ export default function DeathInfo({
   const [showTooltip, setShowTooltip] = useState(false)
   const triggerRef = useRef<HTMLSpanElement>(null)
 
-  const handleMouseEnter = () => {
-    setShowTooltip(true)
-    onTooltipVisibilityChange?.(true)
-  }
-  const handleMouseLeave = () => {
-    setShowTooltip(false)
-    onTooltipVisibilityChange?.(false)
-  }
+  const handleMouseEnter = () => setShowTooltip(true)
+  const handleMouseLeave = () => setShowTooltip(false)
 
   return (
     <div data-testid="death-info" className="text-right sm:text-right">

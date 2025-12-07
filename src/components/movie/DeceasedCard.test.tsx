@@ -116,22 +116,14 @@ describe("DeceasedCard", () => {
     })
   })
 
-  describe("hover effects", () => {
-    it("has hover lift and shadow classes", () => {
+  describe("styling", () => {
+    it("has base card styling", () => {
       render(<DeceasedCard actor={mockActor} />)
 
       const card = screen.getByTestId("deceased-card")
-      expect(card).toHaveClass("hover:-translate-y-0.5")
-      expect(card).toHaveClass("hover:shadow-md")
-    })
-
-    it("has hover effects that can be disabled when tooltip is visible", () => {
-      render(<DeceasedCard actor={mockActor} />)
-
-      const card = screen.getByTestId("deceased-card")
-      // When tooltip is not visible, hover effects should be present
-      expect(card.className).toContain("hover:-translate-y-0.5")
-      expect(card.className).toContain("hover:shadow-md")
+      expect(card).toHaveClass("bg-white")
+      expect(card).toHaveClass("rounded-lg")
+      expect(card).toHaveClass("cursor-pointer")
     })
   })
 })
