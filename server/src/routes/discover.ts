@@ -76,7 +76,9 @@ export async function getDiscoverMovie(req: Request, res: Response) {
   const type = req.query.type as DiscoverType
 
   if (!type || !["classic", "high-mortality"].includes(type)) {
-    return res.status(400).json({ error: { message: "Invalid type. Use 'classic' or 'high-mortality'" } })
+    return res
+      .status(400)
+      .json({ error: { message: "Invalid type. Use 'classic' or 'high-mortality'" } })
   }
 
   try {
