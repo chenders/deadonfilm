@@ -1,96 +1,184 @@
 import { test, expect } from "@playwright/test"
 
-test.describe("Tooltip Hover Issue", () => {
-  // Using the specific movie mentioned in the bug report
+test.describe("Card Hover and Tooltip Behavior", () => {
+  // Using Private Nurse which has actors with cause of death details
   const movieUrl = "/movie/private-nurse-1941-95120"
 
-  test("tooltip remains visible when hovering over cause of death", async ({ page }) => {
+  test("card should have no visual changes on hover (no lift, no shadow)", async ({ page }) => {
     await page.goto(movieUrl)
 
-    // Wait for the page to load
-    await expect(page.getByTestId("movie-page")).toBeVisible()
-
-    // Wait for deceased cards to load
+    // Wait longer for API response
+    await expect(page.getByTestId("movie-page")).toBeVisible({ timeout: 30000 })
     await expect(page.getByTestId("deceased-cards")).toBeVisible()
 
-    // Find "disease" text with tooltip (Kay Linaker's cause of death)
-    const diseaseText = page.locator("text=disease").first()
-    await diseaseText.scrollIntoViewIfNeeded()
+    const firstCard = page.getByTestId("deceased-card").first()
+    await firstCard.scrollIntoViewIfNeeded()
+
+    // Get card position and computed styles BEFORE hover
+    const beforeHoverBox = await firstCard.boundingBox()
+    const beforeStyles = await firstCard.evaluate((el) => {
+      const styles = window.getComputedStyle(el)
+      return {
+        transform: styles.transform,
+        boxShadow: styles.boxShadow,
+        top: el.getBoundingClientRect().top,
+      }
+    })
 
     // Screenshot before hover
     await page.screenshot({
-      path: "e2e/screenshots/tooltip-test-before-hover.png",
+      path: "e2e/screenshots/card-before-hover.png",
     })
 
-    // Hover over the disease text
-    await diseaseText.hover()
+    // Hover over the card
+    await firstCard.hover()
+    await page.waitForTimeout(300) // Wait for any CSS transitions
 
-    // Wait a moment for any animations/transitions
-    await page.waitForTimeout(300)
+    // Get card position and computed styles AFTER hover
+    const afterHoverBox = await firstCard.boundingBox()
+    const afterStyles = await firstCard.evaluate((el) => {
+      const styles = window.getComputedStyle(el)
+      return {
+        transform: styles.transform,
+        boxShadow: styles.boxShadow,
+        top: el.getBoundingClientRect().top,
+      }
+    })
 
-    // Screenshot during hover - should show tooltip
+    // Screenshot after hover
     await page.screenshot({
-      path: "e2e/screenshots/tooltip-test-during-hover.png",
+      path: "e2e/screenshots/card-after-hover.png",
     })
 
-    // Check if a tooltip appeared
-    const tooltip = page.locator(".fixed.z-50")
-    const tooltipVisible = await tooltip.isVisible()
-    console.log("Tooltip visible:", tooltipVisible)
+    // Assert: Card position should not change (no lift)
+    expect(beforeHoverBox?.y).toBe(afterHoverBox?.y)
+    expect(beforeStyles.top).toBe(afterStyles.top)
 
-    // The tooltip should be visible while hovering
-    await expect(tooltip).toBeVisible()
+    // Assert: Transform should be the same (no translateY)
+    expect(beforeStyles.transform).toBe(afterStyles.transform)
 
-    // Verify tooltip contains expected content about Kay Linaker
-    const tooltipText = await tooltip.textContent()
-    console.log("Tooltip text:", tooltipText)
-    expect(tooltipText).toContain("Linaker")
+    // Assert: Box shadow should be "none" or unchanged
+    // "none" in CSS is often represented as "none" or "rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    const shadowIsNone = (shadow: string) =>
+      shadow === "none" || shadow.includes("0px 0px 0px 0px") || shadow === ""
+
+    expect(
+      shadowIsNone(afterStyles.boxShadow) || beforeStyles.boxShadow === afterStyles.boxShadow
+    ).toBe(true)
   })
 
-  test("card hover lift does not interfere with tooltip trigger", async ({ page }) => {
+  test("tooltip appears in correct position when hovering over info icon", async ({ page }) => {
     await page.goto(movieUrl)
 
     await expect(page.getByTestId("movie-page")).toBeVisible()
     await expect(page.getByTestId("deceased-cards")).toBeVisible()
 
-    // Find the first tooltip trigger
-    const tooltipTrigger = page.locator(".decoration-dotted").first()
+    // Find a tooltip trigger (cause of death with details - has dotted underline)
+    const tooltipTrigger = page.locator(".tooltip-trigger").first()
     await tooltipTrigger.scrollIntoViewIfNeeded()
 
-    // Get the first deceased card
-    const firstCard = page.getByTestId("deceased-card").first()
+    // Get trigger position
+    const triggerBox = await tooltipTrigger.boundingBox()
+    expect(triggerBox).toBeTruthy()
 
-    // Hover on the first card
-    await firstCard.hover()
-    await page.waitForTimeout(200)
-
-    // Screenshot showing card lifted state
+    // Screenshot before hover
     await page.screenshot({
-      path: "e2e/screenshots/tooltip-test-card-hover.png",
+      path: "e2e/screenshots/tooltip-before-hover.png",
     })
 
-    // Now hover specifically on the tooltip trigger
+    // Hover over the trigger
     await tooltipTrigger.hover()
     await page.waitForTimeout(300)
 
-    // Screenshot showing tooltip
+    // Screenshot during hover
     await page.screenshot({
-      path: "e2e/screenshots/tooltip-test-trigger-hover.png",
+      path: "e2e/screenshots/tooltip-during-hover.png",
     })
 
     // Tooltip should be visible
-    const tooltip = page.locator(".fixed.z-50")
+    const tooltip = page.locator(".fixed.z-50.max-w-xs")
     await expect(tooltip).toBeVisible()
+
+    // Get tooltip position
+    const tooltipBox = await tooltip.boundingBox()
+    expect(tooltipBox).toBeTruthy()
+
+    // Tooltip should be positioned near the trigger (below or above it)
+    // The tooltip should be within a reasonable distance of the trigger
+    const verticalDistance = Math.abs(tooltipBox!.y - triggerBox!.y)
+    const isPositionedNearTrigger = verticalDistance < 200 // Within 200px vertically
+
+    expect(isPositionedNearTrigger).toBe(true)
+
+    // Tooltip should have meaningful content
+    const tooltipText = await tooltip.textContent()
+    expect(tooltipText).toBeTruthy()
+    expect(tooltipText!.length).toBeGreaterThan(10)
   })
 
-  test("tooltip does not flicker when card lifts", async ({ page }) => {
+  test("tooltip stays visible when moving mouse from trigger to tooltip", async ({ page }) => {
     await page.goto(movieUrl)
 
     await expect(page.getByTestId("movie-page")).toBeVisible()
     await expect(page.getByTestId("deceased-cards")).toBeVisible()
 
-    // Find the first tooltip trigger
-    const tooltipTrigger = page.locator(".decoration-dotted").first()
+    const tooltipTrigger = page.locator(".tooltip-trigger").first()
+    await tooltipTrigger.scrollIntoViewIfNeeded()
+
+    // Hover over the trigger to show tooltip
+    await tooltipTrigger.hover()
+    await page.waitForTimeout(300)
+
+    // Tooltip should be visible
+    const tooltip = page.locator(".fixed.z-50.max-w-xs")
+    await expect(tooltip).toBeVisible()
+
+    // Move mouse to the tooltip itself
+    await tooltip.hover()
+    await page.waitForTimeout(200)
+
+    // Screenshot with mouse on tooltip
+    await page.screenshot({
+      path: "e2e/screenshots/tooltip-mouse-on-tooltip.png",
+    })
+
+    // Tooltip should still be visible
+    await expect(tooltip).toBeVisible()
+  })
+
+  test("tooltip disappears when mouse leaves both trigger and tooltip", async ({ page }) => {
+    await page.goto(movieUrl)
+
+    await expect(page.getByTestId("movie-page")).toBeVisible()
+    await expect(page.getByTestId("deceased-cards")).toBeVisible()
+
+    const tooltipTrigger = page.locator(".tooltip-trigger").first()
+    await tooltipTrigger.scrollIntoViewIfNeeded()
+
+    // Hover to show tooltip
+    await tooltipTrigger.hover()
+    await page.waitForTimeout(300)
+
+    const tooltip = page.locator(".fixed.z-50.max-w-xs")
+    await expect(tooltip).toBeVisible()
+
+    // Move mouse away from both trigger and tooltip
+    await page.mouse.move(0, 0)
+    await page.waitForTimeout(300)
+
+    // Tooltip should be hidden
+    await expect(tooltip).not.toBeVisible()
+  })
+
+  test("card does not interfere with tooltip when approaching from card body", async ({
+    page,
+  }) => {
+    await page.goto(movieUrl)
+
+    await expect(page.getByTestId("movie-page")).toBeVisible()
+    await expect(page.getByTestId("deceased-cards")).toBeVisible()
+
+    const tooltipTrigger = page.locator(".tooltip-trigger").first()
     await tooltipTrigger.scrollIntoViewIfNeeded()
 
     const triggerBox = await tooltipTrigger.boundingBox()
@@ -98,29 +186,33 @@ test.describe("Tooltip Hover Issue", () => {
       throw new Error("Could not get trigger bounding box")
     }
 
-    // Move mouse to just above the trigger (on the card but not on trigger)
-    await page.mouse.move(triggerBox.x + triggerBox.width / 2, triggerBox.y - 20)
-    await page.waitForTimeout(100)
+    // First hover on the card body (to the left of the trigger)
+    await page.mouse.move(triggerBox.x - 100, triggerBox.y + triggerBox.height / 2)
+    await page.waitForTimeout(200)
 
-    // Now slowly move onto the trigger
+    // Screenshot: hovering on card
+    await page.screenshot({
+      path: "e2e/screenshots/tooltip-hover-on-card.png",
+    })
+
+    // Now move to the trigger
     await page.mouse.move(
       triggerBox.x + triggerBox.width / 2,
       triggerBox.y + triggerBox.height / 2
     )
     await page.waitForTimeout(300)
 
-    // Screenshot
+    // Screenshot: hovering on trigger
     await page.screenshot({
-      path: "e2e/screenshots/tooltip-test-slow-approach.png",
+      path: "e2e/screenshots/tooltip-hover-on-trigger.png",
     })
 
     // Tooltip should be visible
-    const tooltip = page.locator(".fixed.z-50")
+    const tooltip = page.locator(".fixed.z-50.max-w-xs")
     await expect(tooltip).toBeVisible()
 
-    // Verify the tooltip contains text
-    const tooltipText = await tooltip.textContent()
-    console.log("Tooltip text:", tooltipText)
-    expect(tooltipText).toBeTruthy()
+    // Verify tooltip position is stable (not jumping around due to card movement)
+    const tooltipBox = await tooltip.boundingBox()
+    expect(tooltipBox).toBeTruthy()
   })
 })
