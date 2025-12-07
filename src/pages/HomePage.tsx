@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async"
 import SearchBar from "@/components/search/SearchBar"
+import QuickActions from "@/components/search/QuickActions"
 import OnThisDay from "@/components/home/OnThisDay"
 
 export default function HomePage() {
@@ -19,6 +20,7 @@ export default function HomePage() {
         </p>
 
         <SearchBar />
+        <QuickActions />
 
         <OnThisDay />
       </div>

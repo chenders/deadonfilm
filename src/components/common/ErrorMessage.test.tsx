@@ -18,13 +18,13 @@ describe("ErrorMessage", () => {
   it("displays the error title", () => {
     renderWithRouter(<ErrorMessage message="Some error" />)
 
-    expect(screen.getByText("Something went wrong")).toBeInTheDocument()
+    expect(screen.getByText("Technical Difficulties")).toBeInTheDocument()
   })
 
   it("shows home link by default", () => {
     renderWithRouter(<ErrorMessage message="Error" />)
 
-    const link = screen.getByText("Return to search")
+    const link = screen.getByTestId("home-return-link")
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute("href", "/")
   })
@@ -35,9 +35,10 @@ describe("ErrorMessage", () => {
     expect(screen.queryByText("Return to search")).not.toBeInTheDocument()
   })
 
-  it("displays skull emoji", () => {
+  it("displays skull icon", () => {
     renderWithRouter(<ErrorMessage message="Error" />)
 
-    expect(screen.getByText("💀")).toBeInTheDocument()
+    const iconContainer = screen.getByTestId("error-icon")
+    expect(iconContainer.querySelector("svg")).toBeInTheDocument()
   })
 })

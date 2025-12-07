@@ -14,8 +14,12 @@ npm run lint || exit 1
 echo "Running type check..."
 npm run type-check || exit 1
 
-# Server lint and type check
+# Unit tests
+echo "Running unit tests..."
+npm test || exit 1
+
+# Server format, lint and type check
 echo "Checking server..."
-cd server && npm run lint && npm run type-check || exit 1
+cd server && npm run format:check && npm run lint && npm run type-check || exit 1
 
 echo "All pre-push checks passed!"
