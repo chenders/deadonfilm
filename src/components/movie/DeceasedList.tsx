@@ -23,8 +23,13 @@ export default function DeceasedList({ actors, movieTitle, isPolling = false }: 
       </h2>
 
       <div data-testid="deceased-cards" className="space-y-3">
-        {actors.map((actor) => (
-          <DeceasedCard key={actor.id} actor={actor} isPolling={isPolling} />
+        {actors.map((actor, index) => (
+          <div
+            key={actor.id}
+            className={`animate-fade-in-up ${index < 10 ? `stagger-${index + 1}` : ""}`}
+          >
+            <DeceasedCard actor={actor} isPolling={isPolling} />
+          </div>
         ))}
       </div>
     </div>

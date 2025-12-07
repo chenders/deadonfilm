@@ -41,11 +41,11 @@ export default function OnThisDay() {
         </div>
       ) : (
         <div data-testid="on-this-day-list" className="space-y-4">
-          {deaths.map((death) => (
+          {deaths.map((death, index) => (
             <div
               data-testid="on-this-day-card"
               key={death.actor.id}
-              className="p-4 bg-beige rounded-lg flex items-center gap-4"
+              className={`p-4 bg-beige rounded-lg flex items-center gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md animate-fade-in-up ${index < 10 ? `stagger-${index + 1}` : ""}`}
             >
               {death.actor.profile_path ? (
                 <img

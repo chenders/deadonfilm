@@ -17,7 +17,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
   return (
     <div
       data-testid="deceased-card"
-      className="bg-white border border-brown-medium/20 rounded-lg p-4 flex gap-4 items-start"
+      className="bg-white border border-brown-medium/20 rounded-lg p-4 flex gap-4 items-start transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
     >
       {profileUrl ? (
         <img

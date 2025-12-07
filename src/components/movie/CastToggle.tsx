@@ -13,13 +13,21 @@ export default function CastToggle({
 }: CastToggleProps) {
   return (
     <div data-testid="cast-toggle" className="flex justify-center mb-6">
-      <div className="inline-flex rounded-lg border border-brown-medium/30 overflow-hidden">
+      <div className="relative inline-flex rounded-lg border border-brown-medium/30 overflow-hidden bg-white">
+        {/* Sliding indicator */}
+        <div
+          data-testid="toggle-indicator"
+          className={`absolute inset-y-0 w-1/2 rounded-md transition-all duration-300 ease-out ${
+            showLiving ? "translate-x-full bg-living" : "translate-x-0 bg-accent"
+          }`}
+        />
+
         <button
           data-testid="deceased-toggle-btn"
           aria-pressed={!showLiving}
           onClick={() => onToggle(false)}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            !showLiving ? "bg-accent text-white" : "bg-white text-brown-dark hover:bg-beige"
+          className={`relative z-10 px-4 py-2 text-sm font-medium transition-colors duration-300 ${
+            !showLiving ? "text-white" : "text-brown-dark hover:text-brown-medium"
           }`}
         >
           Deceased ({deceasedCount})
@@ -28,8 +36,8 @@ export default function CastToggle({
           data-testid="living-toggle-btn"
           aria-pressed={showLiving}
           onClick={() => onToggle(true)}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            showLiving ? "bg-living text-white" : "bg-white text-brown-dark hover:bg-beige"
+          className={`relative z-10 px-4 py-2 text-sm font-medium transition-colors duration-300 ${
+            showLiving ? "text-white" : "text-brown-dark hover:text-brown-medium"
           }`}
         >
           Living ({livingCount})

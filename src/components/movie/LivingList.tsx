@@ -22,8 +22,13 @@ export default function LivingList({ actors }: LivingListProps) {
       </h2>
 
       <div data-testid="living-cards" className="space-y-3">
-        {actors.map((actor) => (
-          <LivingCard key={actor.id} actor={actor} />
+        {actors.map((actor, index) => (
+          <div
+            key={actor.id}
+            className={`animate-fade-in-up ${index < 10 ? `stagger-${index + 1}` : ""}`}
+          >
+            <LivingCard actor={actor} />
+          </div>
         ))}
       </div>
     </div>
@@ -36,7 +41,7 @@ function LivingCard({ actor }: { actor: LivingActor }) {
   return (
     <div
       data-testid="living-card"
-      className="bg-living-bg border border-living-border/30 rounded-lg p-4 flex gap-4 items-start"
+      className="bg-living-bg border border-living-border/30 rounded-lg p-4 flex gap-4 items-start transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
     >
       {profileUrl ? (
         <img
