@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useId } from "react"
 import { useNavigate } from "react-router-dom"
 import { useMovieSearch } from "@/hooks/useMovieSearch"
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation"
@@ -12,6 +12,7 @@ export default function SearchBar() {
   const [isOpen, setIsOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const listboxId = useId()
 
   const { data, isLoading } = useMovieSearch(query)
   const movies = data?.results || []
@@ -34,7 +35,7 @@ export default function SearchBar() {
   })
 
   return (
-    <div data-testid="search-bar" className="relative w-full max-w-xl mx-auto">
+    <div data-testid="search-bar" className="relative mx-auto w-full max-w-xl">
       <SearchInput
         ref={inputRef}
         value={query}
@@ -54,10 +55,12 @@ export default function SearchBar() {
         onKeyDown={handleKeyDown}
         isLoading={isLoading}
         placeholder="Search for a movie..."
+        listboxId={listboxId}
       />
 
       {isOpen && movies.length > 0 && (
         <SearchDropdown
+          id={listboxId}
           movies={movies}
           selectedIndex={selectedIndex}
           onSelect={handleSelect}
@@ -68,12 +71,12 @@ export default function SearchBar() {
       {isOpen && query.length >= 2 && !isLoading && movies.length === 0 && (
         <div
           data-testid="search-no-results"
-          className="absolute z-50 w-full mt-1 bg-cream border border-brown-medium/30 rounded-lg shadow-lg p-4 text-center"
+          className="absolute z-50 mt-1 w-full rounded-lg border border-brown-medium/30 bg-cream p-4 text-center shadow-lg"
         >
-          <p className="text-sm font-display text-brown-dark uppercase tracking-wide mb-1">
+          <p className="mb-1 font-display text-sm uppercase tracking-wide text-brown-dark">
             End of Reel
           </p>
-          <p className="text-text-muted text-sm">
+          <p className="text-sm text-text-muted">
             No films found for "<span className="italic">{query}</span>"
           </p>
         </div>

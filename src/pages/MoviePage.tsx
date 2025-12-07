@@ -75,11 +75,11 @@ export default function MoviePage() {
         <meta property="og:type" content="website" />
       </Helmet>
 
-      <div data-testid="movie-page" className="max-w-4xl mx-auto">
+      <div data-testid="movie-page" className="mx-auto max-w-4xl">
         <MovieHeader movie={movie} hidePoster />
 
         {/* Poster + Gauge side by side */}
-        <div className="flex items-center justify-center gap-4 mb-4">
+        <div className="mb-4 flex items-center justify-center gap-4">
           <MoviePoster movie={movie} />
           <MortalityGauge stats={stats} />
         </div>

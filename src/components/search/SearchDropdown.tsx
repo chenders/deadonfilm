@@ -2,6 +2,7 @@ import type { MovieSearchResult } from "@/types"
 import SearchResult from "./SearchResult"
 
 interface SearchDropdownProps {
+  id?: string
   movies: MovieSearchResult[]
   selectedIndex: number
   onSelect: (movie: MovieSearchResult) => void
@@ -9,6 +10,7 @@ interface SearchDropdownProps {
 }
 
 export default function SearchDropdown({
+  id,
   movies,
   selectedIndex,
   onSelect,
@@ -16,9 +18,9 @@ export default function SearchDropdown({
 }: SearchDropdownProps) {
   return (
     <ul
+      id={id}
       role="listbox"
-      className="absolute z-50 w-full mt-1 bg-cream border border-brown-medium/30
-                 rounded-lg shadow-lg max-h-80 overflow-y-auto"
+      className="absolute z-50 mt-1 max-h-80 w-full overflow-y-auto rounded-lg border border-brown-medium/30 bg-cream shadow-lg"
     >
       {movies.slice(0, 10).map((movie, index) => (
         <SearchResult

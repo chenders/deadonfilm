@@ -10,10 +10,10 @@ export default function OnThisDay() {
 
   if (isLoading) {
     return (
-      <div className="mt-12 p-6 bg-beige rounded-lg">
+      <div className="mt-12 rounded-lg bg-beige p-6">
         <div className="animate-pulse">
-          <div className="h-6 w-32 bg-brown-medium/20 rounded mb-4" />
-          <div className="h-4 w-48 bg-brown-medium/20 rounded" />
+          <div className="mb-4 h-6 w-32 rounded bg-brown-medium/20" />
+          <div className="h-4 w-48 rounded bg-brown-medium/20" />
         </div>
       </div>
     )
@@ -29,7 +29,7 @@ export default function OnThisDay() {
     <section data-testid="on-this-day" className="mt-12">
       <h2
         data-testid="on-this-day-title"
-        className="font-display text-2xl text-brown-dark mb-4 text-center"
+        className="mb-4 text-center font-display text-2xl text-brown-dark"
       >
         On This Day: {month} {day}
       </h2>
@@ -44,17 +44,17 @@ export default function OnThisDay() {
             <div
               data-testid="on-this-day-card"
               key={death.actor.id}
-              className="p-4 bg-beige rounded-lg flex items-center gap-4 animate-fade-slide-in"
+              className="animate-fade-slide-in flex items-center gap-4 rounded-lg bg-beige p-4"
               style={{ animationDelay: `${index * 50}ms` }}
             >
               {death.actor.profile_path ? (
                 <img
                   src={getProfileUrl(death.actor.profile_path, "w185")!}
                   alt={death.actor.name}
-                  className="w-16 h-20 rounded object-cover"
+                  className="h-20 w-16 rounded object-cover"
                 />
               ) : (
-                <div className="w-16 h-20 rounded bg-brown-medium/20 flex items-center justify-center">
+                <div className="flex h-20 w-16 items-center justify-center rounded bg-brown-medium/20">
                   <PersonIcon size={32} className="text-text-muted" />
                 </div>
               )}
@@ -69,7 +69,7 @@ export default function OnThisDay() {
                       <Link
                         key={film.id}
                         to={`/movie/${createMovieSlug(film.title, film.year + "-01-01", film.id)}`}
-                        className="text-xs px-2 py-1 bg-white rounded hover:bg-cream"
+                        className="rounded bg-white px-2 py-1 text-xs hover:bg-cream"
                       >
                         {film.title} ({film.year})
                       </Link>

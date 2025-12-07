@@ -44,12 +44,12 @@ export default function SearchResult({
   }, [isSelected])
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- Keyboard navigation handled by parent combobox
     <li
       ref={ref}
       role="option"
       aria-selected={isSelected}
-      className={`px-4 py-3 cursor-pointer transition-colors border-b border-brown-medium/10 last:border-b-0
-        ${isSelected ? "bg-beige" : "hover:bg-beige/50"}`}
+      className={`cursor-pointer border-b border-brown-medium/10 px-4 py-3 transition-colors last:border-b-0 ${isSelected ? "bg-beige" : "hover:bg-beige/50"}`}
       onClick={onSelect}
       onMouseDown={(e) => e.preventDefault()} // Prevent input blur before click
       data-track-event="search_select"
@@ -61,12 +61,12 @@ export default function SearchResult({
     >
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-medium text-brown-dark truncate">{movie.title}</div>
+          <div className="truncate font-medium text-brown-dark">{movie.title}</div>
           <div className="text-sm text-text-muted">{year}</div>
         </div>
         {mortality.level && (
           <div
-            className={`flex items-center gap-1 text-xs flex-shrink-0 ${
+            className={`flex flex-shrink-0 items-center gap-1 text-xs ${
               mortality.level === "high" ? "text-accent" : "text-brown-medium/60"
             }`}
             title={mortality.label || undefined}
