@@ -7,6 +7,7 @@ import { extractMovieId } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
 import MovieHeader from "@/components/movie/MovieHeader"
 import MortalityScore from "@/components/movie/MortalityScore"
+import MortalityGauge from "@/components/movie/MortalityGauge"
 import CastToggle from "@/components/movie/CastToggle"
 import DeceasedList from "@/components/movie/DeceasedList"
 import LivingList from "@/components/movie/LivingList"
@@ -19,6 +20,7 @@ export default function MoviePage() {
   const movieId = slug ? extractMovieId(slug) : 0
   const { data, isLoading, error } = useMovie(movieId)
   const [showLiving, setShowLiving] = useState(false)
+  const [useGauge, setUseGauge] = useState(true) // Toggle between gauge and bar
 
   // Poll for death info updates if enrichment is pending
   const { enrichedDeceased, isPolling } = useDeathInfoPolling({
@@ -66,7 +68,22 @@ export default function MoviePage() {
       <div data-testid="movie-page" className="max-w-4xl mx-auto">
         <MovieHeader movie={movie} />
 
-        <MortalityScore stats={stats} />
+        {/* Mortality visualization with toggle */}
+        <div className="relative">
+          {useGauge ? (
+            <MortalityGauge stats={stats} />
+          ) : (
+            <MortalityScore stats={stats} />
+          )}
+          {/* Subtle toggle to switch visualization styles */}
+          <button
+            onClick={() => setUseGauge(!useGauge)}
+            className="absolute top-0 right-0 text-xs text-text-muted hover:text-brown-dark transition-colors"
+            title={useGauge ? "Switch to bar view" : "Switch to gauge view"}
+          >
+            {useGauge ? "◧" : "○"}
+          </button>
+        </div>
 
         {lastSurvivor && stats.mortalityPercentage >= 50 && !showLiving && (
           <LastSurvivor actor={lastSurvivor} totalLiving={stats.livingCount} />
