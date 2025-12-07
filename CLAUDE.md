@@ -215,7 +215,7 @@ Example: `/movie/breakfast-at-tiffanys-1961-14629`
 - Write unit tests for new functionality
 - Test files go alongside code: `*.test.ts` or `*.test.tsx`
 - Tests MUST import and test actual production code, not reimplementations
-- Add `data-testid` attributes to all notable/describable UI elements (components, buttons, inputs, sections, etc.) to enable E2E testing with Playwright
+- For E2E testing, prefer semantic selectors (role, placeholder, text, label) as they best reflect user interactions. Add `data-testid` attributes when semantic selectors are insufficient or impractical.
 
 ### DRY Principle
 
