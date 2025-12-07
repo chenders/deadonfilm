@@ -4,7 +4,6 @@ import EmptyStateCard from "@/components/common/EmptyStateCard"
 
 interface DeceasedListProps {
   actors: DeceasedActor[]
-  movieTitle: string
   isPolling?: boolean
 }
 
