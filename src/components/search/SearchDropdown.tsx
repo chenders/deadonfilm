@@ -5,9 +5,15 @@ interface SearchDropdownProps {
   movies: MovieSearchResult[]
   selectedIndex: number
   onSelect: (movie: MovieSearchResult) => void
+  searchQuery: string
 }
 
-export default function SearchDropdown({ movies, selectedIndex, onSelect }: SearchDropdownProps) {
+export default function SearchDropdown({
+  movies,
+  selectedIndex,
+  onSelect,
+  searchQuery,
+}: SearchDropdownProps) {
   return (
     <ul
       role="listbox"
@@ -20,6 +26,7 @@ export default function SearchDropdown({ movies, selectedIndex, onSelect }: Sear
           movie={movie}
           isSelected={index === selectedIndex}
           onSelect={() => onSelect(movie)}
+          searchQuery={searchQuery}
         />
       ))}
     </ul>

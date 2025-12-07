@@ -3,11 +3,13 @@ import { render, screen } from "@testing-library/react"
 import DeathInfo from "./DeathInfo"
 
 const defaultTmdbUrl = "https://www.themoviedb.org/person/12345"
+const defaultActorName = "Test Actor"
 
 describe("DeathInfo", () => {
   it("displays formatted death date", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath={null}
@@ -23,6 +25,7 @@ describe("DeathInfo", () => {
   it("displays age at death when birthday is provided", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath={null}
@@ -38,6 +41,7 @@ describe("DeathInfo", () => {
   it("does not display age when birthday is null", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="1993-01-20"
         birthday={null}
         causeOfDeath={null}
@@ -53,6 +57,7 @@ describe("DeathInfo", () => {
   it("displays cause of death as TMDB link when no wikipedia URL", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath="colon cancer"
@@ -70,6 +75,7 @@ describe("DeathInfo", () => {
   it("displays cause of death as Wikipedia link when wikipedia URL is provided", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath="colon cancer"
@@ -89,6 +95,7 @@ describe("DeathInfo", () => {
   it("displays cause unknown with Wikipedia link when no cause of death but URL exists", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath={null}
@@ -107,6 +114,7 @@ describe("DeathInfo", () => {
   it("displays cause unknown with TMDB link when no cause or wikipedia URL", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath={null}
@@ -125,6 +133,7 @@ describe("DeathInfo", () => {
   it("does not display Wikipedia link when cause of death is shown", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
         causeOfDeath="heart attack"
@@ -142,6 +151,7 @@ describe("DeathInfo", () => {
   it("shows loading indicator when isLoading is true and no cause/wikipedia", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath={null}
@@ -158,6 +168,7 @@ describe("DeathInfo", () => {
   it("does not show loading indicator when cause of death exists", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath="heart attack"
@@ -175,6 +186,7 @@ describe("DeathInfo", () => {
   it("does not show loading indicator when wikipedia URL exists", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath={null}
@@ -192,6 +204,7 @@ describe("DeathInfo", () => {
   it("shows info icon and dotted underline when details are present with TMDB link", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath="heart attack"
@@ -211,6 +224,7 @@ describe("DeathInfo", () => {
   it("shows info icon and tooltip trigger when details are present with wikipedia URL", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath="lung cancer"
@@ -230,6 +244,7 @@ describe("DeathInfo", () => {
   it("does not show info icon when details are null", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath="heart attack"
@@ -245,6 +260,7 @@ describe("DeathInfo", () => {
   it("does not show info icon when details are empty string", () => {
     render(
       <DeathInfo
+        actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
         causeOfDeath="heart attack"
