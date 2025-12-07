@@ -118,7 +118,7 @@ VITE_NEW_RELIC_BROWSER_ACCOUNT_ID=1234567  # New Relic Account ID
 
 Frontend variables must be prefixed with `VITE_` to be exposed to the client.
 
-See `GOOGLE_ANALYTICS.md` and `NEW_RELIC.md` for detailed setup instructions.
+See `docs/GOOGLE_ANALYTICS.md` and `docs/NEW_RELIC.md` for detailed setup instructions.
 
 ## Database Schema
 
