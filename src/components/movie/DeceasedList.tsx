@@ -18,7 +18,9 @@ export default function DeceasedList({ actors, movieTitle, isPolling = false }: 
 
   return (
     <div data-testid="deceased-list">
-      <h2 data-testid="deceased-list-title" className="font-display text-2xl text-brown-dark mb-4">Deceased Cast Members</h2>
+      <h2 data-testid="deceased-list-title" className="font-display text-2xl text-brown-dark mb-4">
+        Deceased Cast Members
+      </h2>
 
       <div data-testid="deceased-cards" className="space-y-3">
         {actors.map((actor) => (
