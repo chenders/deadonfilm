@@ -11,6 +11,7 @@ interface DeceasedCardProps {
 
 export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isTooltipVisible, setIsTooltipVisible] = useState(false)
   const profileUrl = getProfileUrl(actor.profile_path, "w185")
 
   // Show loading indicator only for actors without cause/wikipedia info while polling
@@ -19,7 +20,9 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
   return (
     <div
       data-testid="deceased-card"
-      className="group bg-white border border-brown-medium/20 rounded-lg p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md has-[.tooltip-trigger:hover]:translate-y-0 has-[.tooltip-trigger:hover]:shadow-none cursor-pointer"
+      className={`group bg-white border border-brown-medium/20 rounded-lg p-4 transition-all duration-200 cursor-pointer ${
+        isTooltipVisible ? "" : "hover:-translate-y-0.5 hover:shadow-md"
+      }`}
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <div className="flex gap-4 items-start">
@@ -59,6 +62,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
               wikipediaUrl={actor.wikipediaUrl}
               tmdbUrl={actor.tmdbUrl}
               isLoading={showLoading}
+              onTooltipVisibilityChange={setIsTooltipVisible}
             />
           </div>
         </div>
