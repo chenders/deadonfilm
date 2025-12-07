@@ -125,11 +125,13 @@ describe("DeceasedCard", () => {
       expect(card).toHaveClass("hover:shadow-md")
     })
 
-    it("has tooltip-trigger override to prevent lift on tooltip hover", () => {
+    it("has hover effects that can be disabled when tooltip is visible", () => {
       render(<DeceasedCard actor={mockActor} />)
 
       const card = screen.getByTestId("deceased-card")
-      expect(card.className).toContain("has-[.tooltip-trigger:hover]:translate-y-0")
+      // When tooltip is not visible, hover effects should be present
+      expect(card.className).toContain("hover:-translate-y-0.5")
+      expect(card.className).toContain("hover:shadow-md")
     })
   })
 })

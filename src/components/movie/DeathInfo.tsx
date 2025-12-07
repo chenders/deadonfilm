@@ -11,6 +11,7 @@ interface DeathInfoProps {
   wikipediaUrl: string | null
   tmdbUrl: string
   isLoading?: boolean
+  onTooltipVisibilityChange?: (isVisible: boolean) => void
 }
 
 function LoadingEllipsis() {
@@ -33,7 +34,13 @@ interface TooltipProps {
   isVisible: boolean
 }
 
-function Tooltip({ content, triggerRef, isVisible }: TooltipProps) {
+function Tooltip({
+  content,
+  triggerRef,
+  isVisible,
+  onMouseEnter,
+  onMouseLeave,
+}: TooltipProps & { onMouseEnter: () => void; onMouseLeave: () => void }) {
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState({ top: 0, left: 0 })
 
@@ -83,6 +90,8 @@ function Tooltip({ content, triggerRef, isVisible }: TooltipProps) {
       ref={tooltipRef}
       className="fixed z-50 max-w-xs bg-brown-dark text-cream text-sm px-4 py-3 rounded-lg shadow-xl border border-brown-medium/50 animate-fade-slide-in"
       style={{ top: position.top, left: position.left, animationDelay: "0ms" }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       {/* Film strip decoration at top */}
       <div className="absolute -top-1 left-4 right-4 flex justify-between">
@@ -116,6 +125,7 @@ export default function DeathInfo({
   wikipediaUrl,
   tmdbUrl,
   isLoading = false,
+  onTooltipVisibilityChange,
 }: DeathInfoProps) {
   const ageAtDeath = calculateAge(birthday, deathday)
   const hasDetails = causeOfDeathDetails && causeOfDeathDetails.trim().length > 0
@@ -123,8 +133,14 @@ export default function DeathInfo({
   const [showTooltip, setShowTooltip] = useState(false)
   const triggerRef = useRef<HTMLSpanElement>(null)
 
-  const handleMouseEnter = () => setShowTooltip(true)
-  const handleMouseLeave = () => setShowTooltip(false)
+  const handleMouseEnter = () => {
+    setShowTooltip(true)
+    onTooltipVisibilityChange?.(true)
+  }
+  const handleMouseLeave = () => {
+    setShowTooltip(false)
+    onTooltipVisibilityChange?.(false)
+  }
 
   return (
     <div data-testid="death-info" className="text-right sm:text-right">
@@ -159,6 +175,8 @@ export default function DeathInfo({
                 content={causeOfDeathDetails}
                 triggerRef={triggerRef}
                 isVisible={showTooltip}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
               />
             </span>
           ) : (
