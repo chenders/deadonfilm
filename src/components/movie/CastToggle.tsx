@@ -29,7 +29,7 @@ export default function CastToggle({
           aria-pressed={showLiving}
           onClick={() => onToggle(true)}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
-            showLiving ? "bg-green-600 text-white" : "bg-white text-brown-dark hover:bg-beige"
+            showLiving ? "bg-living text-white" : "bg-white text-brown-dark hover:bg-beige"
           }`}
         >
           Living ({livingCount})

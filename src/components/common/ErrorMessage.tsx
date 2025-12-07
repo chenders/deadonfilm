@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { SkullIcon } from "@/components/icons"
 
 interface ErrorMessageProps {
   message: string
@@ -11,8 +12,8 @@ export default function ErrorMessage({ message, showHomeLink = true }: ErrorMess
       data-testid="error-message"
       className="flex flex-col items-center justify-center py-12 text-center"
     >
-      <div data-testid="error-icon" className="text-4xl mb-4">
-        💀
+      <div data-testid="error-icon" className="mb-4">
+        <SkullIcon size={48} className="text-accent" />
       </div>
       <h2 data-testid="error-title" className="text-xl font-display text-brown-dark mb-2">
         Something went wrong

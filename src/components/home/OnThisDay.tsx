@@ -2,6 +2,7 @@ import { useOnThisDay } from "@/hooks/useOnThisDay"
 import { getProfileUrl } from "@/services/api"
 import { Link } from "react-router-dom"
 import { createMovieSlug } from "@/utils/slugify"
+import { PersonIcon } from "@/components/icons"
 
 export default function OnThisDay() {
   const { data, isLoading, error } = useOnThisDay()
@@ -54,7 +55,7 @@ export default function OnThisDay() {
                 />
               ) : (
                 <div className="w-16 h-20 rounded bg-brown-medium/20 flex items-center justify-center">
-                  <span className="text-2xl">👤</span>
+                  <PersonIcon size={32} className="text-text-muted" />
                 </div>
               )}
 

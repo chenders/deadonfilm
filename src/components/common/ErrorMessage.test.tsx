@@ -35,9 +35,10 @@ describe("ErrorMessage", () => {
     expect(screen.queryByText("Return to search")).not.toBeInTheDocument()
   })
 
-  it("displays skull emoji", () => {
+  it("displays skull icon", () => {
     renderWithRouter(<ErrorMessage message="Error" />)
 
-    expect(screen.getByText("💀")).toBeInTheDocument()
+    const iconContainer = screen.getByTestId("error-icon")
+    expect(iconContainer.querySelector("svg")).toBeInTheDocument()
   })
 })

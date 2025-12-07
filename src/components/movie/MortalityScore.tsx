@@ -32,7 +32,7 @@ export default function MortalityScore({ stats }: MortalityScoreProps) {
             <strong className="text-accent">{deceasedCount}</strong> dead
           </span>
           <span data-testid="living-count">
-            <strong className="text-green-700">{livingCount}</strong> living
+            <strong className="text-living">{livingCount}</strong> living
           </span>
           <span data-testid="total-count">
             <strong className="text-brown-dark">{totalCast}</strong> total
@@ -43,7 +43,7 @@ export default function MortalityScore({ stats }: MortalityScoreProps) {
       {/* Mortality bar */}
       <div
         data-testid="mortality-bar"
-        className="mt-1.5 h-1.5 bg-green-200 rounded-full overflow-hidden"
+        className="mt-1.5 h-1.5 bg-living-muted/30 rounded-full overflow-hidden"
       >
         <div
           data-testid="mortality-bar-fill"

@@ -1,6 +1,7 @@
 import type { DeceasedActor } from "@/types"
 import { getProfileUrl } from "@/services/api"
 import DeathInfo from "./DeathInfo"
+import { PersonIcon } from "@/components/icons"
 
 interface DeceasedCardProps {
   actor: DeceasedActor
@@ -30,7 +31,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
           data-testid="actor-photo-placeholder"
           className="w-16 h-20 rounded bg-beige flex items-center justify-center flex-shrink-0"
         >
-          <span className="text-2xl text-text-muted">👤</span>
+          <PersonIcon size={32} className="text-text-muted" />
         </div>
       )}
 

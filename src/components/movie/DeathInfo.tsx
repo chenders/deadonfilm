@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { formatDate, calculateAge } from "@/utils/formatDate"
+import { InfoIcon } from "@/components/icons"
 
 interface DeathInfoProps {
   actorName: string
@@ -147,7 +148,7 @@ export default function DeathInfo({
               })}
             >
               {causeOfDeath}
-              <span className="ml-1 text-xs opacity-60">ⓘ</span>
+              <InfoIcon size={12} className="ml-1 inline opacity-60" />
               <Tooltip
                 content={causeOfDeathDetails}
                 triggerRef={triggerRef}
