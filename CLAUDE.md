@@ -96,14 +96,20 @@ npm test                     # Frontend unit tests
 
 ## Environment Variables
 
-Create a `.env` file in the `server/` directory:
+Create a `.env` file in the project root (used by both frontend and backend):
 
 ```
+# Backend
 TMDB_API_TOKEN=your_token_here
 PORT=8080
 DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
 ANTHROPIC_API_KEY=your_anthropic_key
+
+# Frontend (optional)
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX  # Google Analytics 4 measurement ID
 ```
+
+Frontend variables must be prefixed with `VITE_` to be exposed to the client.
 
 ## Database Schema
 
