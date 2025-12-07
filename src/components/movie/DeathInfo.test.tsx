@@ -214,10 +214,10 @@ describe("DeathInfo", () => {
       />
     )
 
-    // Should show the info icon
-    expect(screen.getByText("ⓘ")).toBeInTheDocument()
-    // The cause text should be in a span with tooltip trigger styling (not a link when details present)
+    // Should show the info icon (SVG)
     const causeText = screen.getByText("heart attack")
+    expect(causeText.closest("span")?.querySelector("svg")).toBeInTheDocument()
+    // The cause text should be in a span with tooltip trigger styling (not a link when details present)
     expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
   })
 
@@ -234,10 +234,10 @@ describe("DeathInfo", () => {
       />
     )
 
-    // Should show the info icon
-    expect(screen.getByText("ⓘ")).toBeInTheDocument()
-    // The cause text should be in a span with tooltip styling (no link when details present)
+    // Should show the info icon (SVG)
     const causeText = screen.getByText("lung cancer")
+    expect(causeText.closest("span")?.querySelector("svg")).toBeInTheDocument()
+    // The cause text should be in a span with tooltip styling (no link when details present)
     expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
   })
 
@@ -254,7 +254,9 @@ describe("DeathInfo", () => {
       />
     )
 
-    expect(screen.queryByText("ⓘ")).not.toBeInTheDocument()
+    const causeLink = screen.getByText("heart attack")
+    expect(causeLink.closest("a")).toBeInTheDocument()
+    expect(causeLink.closest("p")?.querySelector("svg")).not.toBeInTheDocument()
   })
 
   it("does not show info icon when details are empty string", () => {
@@ -270,6 +272,8 @@ describe("DeathInfo", () => {
       />
     )
 
-    expect(screen.queryByText("ⓘ")).not.toBeInTheDocument()
+    const causeLink = screen.getByText("heart attack")
+    expect(causeLink.closest("a")).toBeInTheDocument()
+    expect(causeLink.closest("p")?.querySelector("svg")).not.toBeInTheDocument()
   })
 })

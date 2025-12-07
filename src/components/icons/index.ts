@@ -1,0 +1,4 @@
+export { default as PersonIcon } from "./PersonIcon"
+export { default as SkullIcon } from "./SkullIcon"
+export { default as InfoIcon } from "./InfoIcon"
+export { default as FilmReelIcon } from "./FilmReelIcon"

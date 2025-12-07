@@ -1,5 +1,6 @@
 import type { LivingActor } from "@/types"
 import { getProfileUrl } from "@/services/api"
+import { PersonIcon } from "@/components/icons"
 
 interface LastSurvivorProps {
   actor: LivingActor
@@ -20,9 +21,9 @@ export default function LastSurvivor({ actor, totalLiving }: LastSurvivorProps) 
   return (
     <div
       data-testid="last-survivor"
-      className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8"
+      className="bg-living-bg border border-living-border/30 rounded-lg p-4 mb-8"
     >
-      <h3 data-testid="last-survivor-title" className="font-display text-lg text-green-800 mb-3">
+      <h3 data-testid="last-survivor-title" className="font-display text-lg text-brown-dark mb-3">
         {title}
       </h3>
 
@@ -37,21 +38,21 @@ export default function LastSurvivor({ actor, totalLiving }: LastSurvivorProps) 
         ) : (
           <div
             data-testid="last-survivor-photo-placeholder"
-            className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center"
+            className="w-16 h-16 rounded-full bg-living-muted/20 flex items-center justify-center"
           >
-            <span className="text-2xl">👤</span>
+            <PersonIcon size={32} className="text-living" />
           </div>
         )}
 
         <div>
-          <p data-testid="last-survivor-name" className="font-semibold text-green-900">
+          <p data-testid="last-survivor-name" className="font-semibold text-brown-dark">
             {actor.name}
           </p>
-          <p data-testid="last-survivor-character" className="text-sm text-green-700">
+          <p data-testid="last-survivor-character" className="text-sm text-living-dark">
             as {actor.character}
           </p>
           {actor.age && (
-            <p data-testid="last-survivor-age" className="text-sm text-green-600">
+            <p data-testid="last-survivor-age" className="text-sm text-living">
               Age: {actor.age}
             </p>
           )}
