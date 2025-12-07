@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { formatDate, calculateAge } from "@/utils/formatDate"
 import { InfoIcon } from "@/components/icons"
 
@@ -41,18 +42,22 @@ function Tooltip({
   onMouseLeave,
 }: TooltipProps & { onMouseEnter: () => void; onMouseLeave: () => void }) {
   const tooltipRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
 
   useEffect(() => {
-    if (!isVisible || !triggerRef.current || !tooltipRef.current) return
+    if (!isVisible || !triggerRef.current) {
+      setPosition(null)
+      return
+    }
 
     const updatePosition = () => {
       if (!triggerRef.current || !tooltipRef.current) return
+
       const trigger = triggerRef.current.getBoundingClientRect()
       const tooltip = tooltipRef.current.getBoundingClientRect()
       const padding = 8
 
-      // Start with position below and to the left of the trigger (since text is right-aligned)
+      // Position below the trigger, right-aligned with it (since text is right-aligned)
       let top = trigger.bottom + padding
       let left = trigger.right - tooltip.width
 
@@ -72,11 +77,14 @@ function Tooltip({
       setPosition({ top, left })
     }
 
-    updatePosition()
+    // Use requestAnimationFrame to ensure DOM is ready before measuring
+    const rafId = requestAnimationFrame(updatePosition)
+
     window.addEventListener("scroll", updatePosition, true)
     window.addEventListener("resize", updatePosition)
 
     return () => {
+      cancelAnimationFrame(rafId)
       window.removeEventListener("scroll", updatePosition, true)
       window.removeEventListener("resize", updatePosition)
     }
@@ -84,11 +92,17 @@ function Tooltip({
 
   if (!isVisible) return null
 
-  return (
+  // Render tooltip in a portal to avoid layout issues from being inside the trigger
+  return createPortal(
     <div
       ref={tooltipRef}
       className="fixed z-50 max-w-xs bg-brown-dark text-cream text-sm px-4 py-3 rounded-lg shadow-xl border border-brown-medium/50 animate-fade-slide-in"
-      style={{ top: position.top, left: position.left, animationDelay: "0ms" }}
+      style={{
+        top: position?.top ?? -9999,
+        left: position?.left ?? -9999,
+        visibility: position ? "visible" : "hidden",
+        animationDelay: "0ms",
+      }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -99,7 +113,8 @@ function Tooltip({
         ))}
       </div>
       <p className="leading-relaxed">{content}</p>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -130,9 +145,22 @@ export default function DeathInfo({
   const profileLink = getProfileLink(wikipediaUrl, tmdbUrl)
   const [showTooltip, setShowTooltip] = useState(false)
   const triggerRef = useRef<HTMLSpanElement>(null)
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleMouseEnter = () => setShowTooltip(true)
-  const handleMouseLeave = () => setShowTooltip(false)
+  const handleMouseEnter = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current)
+      hideTimeoutRef.current = null
+    }
+    setShowTooltip(true)
+  }
+
+  const handleMouseLeave = () => {
+    // Small delay before hiding to allow mouse to move to tooltip
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowTooltip(false)
+    }, 100)
+  }
 
   return (
     <div data-testid="death-info" className="text-right sm:text-right">

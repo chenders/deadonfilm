@@ -19,7 +19,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
   return (
     <div
       data-testid="deceased-card"
-      className="group bg-white border border-brown-medium/20 rounded-lg p-4 cursor-pointer"
+      className="group bg-white border border-brown-medium/20 rounded-lg p-4 cursor-pointer shadow-none hover:shadow-none"
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <div className="flex gap-4 items-start">
