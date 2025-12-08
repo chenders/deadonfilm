@@ -2,7 +2,7 @@ import { useState } from "react"
 import type { DeceasedActor } from "@/types"
 import { getProfileUrl } from "@/services/api"
 import DeathInfo from "./DeathInfo"
-import { PersonIcon } from "@/components/icons"
+import { PersonIcon, ChevronIcon } from "@/components/icons"
 
 interface DeceasedCardProps {
   actor: DeceasedActor
@@ -19,17 +19,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
   return (
     <div
       data-testid="deceased-card"
-      role="button"
-      tabIndex={0}
-      aria-expanded={isExpanded}
-      className="group cursor-pointer rounded-lg border border-brown-medium/20 bg-white p-4 focus:outline-none focus:ring-2 focus:ring-brown-medium/50"
-      onClick={() => setIsExpanded(!isExpanded)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          setIsExpanded(!isExpanded)
-        }
-      }}
+      className="group rounded-lg border border-brown-medium/20 bg-white p-4"
     >
       <div className="flex items-start gap-4">
         {profileUrl ? (
@@ -73,18 +63,35 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
         </div>
       </div>
 
+      {/* Expand/collapse button */}
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        aria-label={
+          isExpanded ? `Collapse links for ${actor.name}` : `Show links for ${actor.name}`
+        }
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="mt-2 flex w-full items-center justify-center gap-1 rounded py-1 text-xs text-brown-medium transition-colors hover:bg-beige hover:text-brown-dark focus:outline-none focus:ring-2 focus:ring-brown-medium/50"
+      >
+        <span>{isExpanded ? "Hide links" : "Show links"}</span>
+        <ChevronIcon
+          size={14}
+          direction={isExpanded ? "up" : "down"}
+          className="transition-transform"
+        />
+      </button>
+
       {/* Expanded section with external links */}
       {isExpanded && (
         <div
           data-testid="actor-expanded"
-          className="mt-3 flex flex-wrap gap-3 border-t border-brown-medium/10 pt-3"
+          className="mt-2 flex flex-wrap gap-3 border-t border-brown-medium/10 pt-3"
         >
           <a
             href={actor.tmdbUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
-            onClick={(e) => e.stopPropagation()}
           >
             View on TMDB →
           </a>
@@ -94,7 +101,6 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
-              onClick={(e) => e.stopPropagation()}
             >
               Wikipedia →
             </a>
@@ -104,7 +110,6 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
-            onClick={(e) => e.stopPropagation()}
           >
             Search Filmography →
           </a>
