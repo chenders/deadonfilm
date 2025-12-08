@@ -88,6 +88,7 @@ function identifyBadDetails(
 
   // Check for redundant details (just restates cause + date/age)
   // Pattern: "[Name] died of/from [cause] on/in [date/year], at age/aged [number]"
+  // eslint-disable-next-line security/detect-non-literal-regexp -- input is escaped with replace()
   const redundantPattern = new RegExp(
     `died (of|from) ${causeLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
     "i"
