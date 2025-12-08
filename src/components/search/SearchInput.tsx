@@ -8,10 +8,12 @@ interface SearchInputProps {
   onKeyDown: (e: React.KeyboardEvent) => void
   isLoading: boolean
   placeholder?: string
+  listboxId?: string
 }
 
 const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ value, onChange, onFocus, onBlur, onKeyDown, isLoading, placeholder }, ref) => {
+  ({ value, onChange, onFocus, onBlur, onKeyDown, isLoading, placeholder, listboxId }, ref) => {
+    const isExpanded = value.length >= 2
     return (
       <div data-testid="search-input-container" className="relative">
         <input
@@ -24,18 +26,18 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onBlur={onBlur}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          className="w-full px-4 py-3 text-lg bg-white border-2 border-brown-medium/30 rounded-lg
-                     focus:outline-none focus:border-brown-medium focus:ring-2 focus:ring-brown-medium/20
-                     placeholder:text-text-muted/50"
+          className="w-full rounded-lg border-2 border-brown-medium/30 bg-white px-4 py-3 text-lg placeholder:text-text-muted/50 focus:border-brown-medium focus:outline-none focus:ring-2 focus:ring-brown-medium/20"
           role="combobox"
           aria-autocomplete="list"
-          aria-expanded={value.length >= 2}
+          aria-expanded={isExpanded}
+          aria-controls={listboxId}
+          aria-haspopup="listbox"
           autoComplete="off"
         />
 
         {isLoading && (
           <div data-testid="search-loading" className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="animate-spin rounded-full h-5 w-5 border-2 border-beige border-t-brown-dark" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-beige border-t-brown-dark" />
           </div>
         )}
 

@@ -15,8 +15,8 @@ export default function CastToggle({
   const livingDisabled = livingCount === 0
 
   return (
-    <div data-testid="cast-toggle" className="flex justify-center mb-6">
-      <div className="inline-flex rounded-lg border border-brown-medium/30 bg-white overflow-hidden">
+    <div data-testid="cast-toggle" className="mb-6 flex justify-center">
+      <div className="inline-flex overflow-hidden rounded-lg border border-brown-medium/30 bg-white">
         <button
           data-testid="deceased-toggle-btn"
           aria-pressed={!showLiving}
@@ -24,7 +24,7 @@ export default function CastToggle({
           disabled={deceasedDisabled}
           className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
             deceasedDisabled
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+              ? "cursor-not-allowed bg-gray-100 text-gray-400"
               : !showLiving
                 ? "bg-accent text-white"
                 : "bg-white text-brown-dark hover:bg-beige"
@@ -39,7 +39,7 @@ export default function CastToggle({
           disabled={livingDisabled}
           className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
             livingDisabled
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+              ? "cursor-not-allowed bg-gray-100 text-gray-400"
               : showLiving
                 ? "bg-living text-white"
                 : "bg-white text-brown-dark hover:bg-beige"

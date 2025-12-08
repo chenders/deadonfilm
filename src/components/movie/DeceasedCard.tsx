@@ -2,7 +2,7 @@ import { useState } from "react"
 import type { DeceasedActor } from "@/types"
 import { getProfileUrl } from "@/services/api"
 import DeathInfo from "./DeathInfo"
-import { PersonIcon } from "@/components/icons"
+import { PersonIcon, ChevronIcon } from "@/components/icons"
 
 interface DeceasedCardProps {
   actor: DeceasedActor
@@ -19,33 +19,32 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
   return (
     <div
       data-testid="deceased-card"
-      className="group bg-white border border-brown-medium/20 rounded-lg p-4 cursor-pointer shadow-none hover:shadow-none"
-      onClick={() => setIsExpanded(!isExpanded)}
+      className="group rounded-lg border border-brown-medium/20 bg-white p-4"
     >
-      <div className="flex gap-4 items-start">
+      <div className="flex items-start gap-4">
         {profileUrl ? (
           <img
             data-testid="actor-photo"
             src={profileUrl}
             alt={actor.name}
-            className="w-16 h-20 rounded object-cover flex-shrink-0"
+            className="h-20 w-16 flex-shrink-0 rounded object-cover"
           />
         ) : (
           <div
             data-testid="actor-photo-placeholder"
-            className="w-16 h-20 rounded bg-beige flex items-center justify-center flex-shrink-0"
+            className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded bg-beige"
           >
             <PersonIcon size={32} className="text-text-muted" />
           </div>
         )}
 
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 data-testid="actor-name" className="font-semibold text-brown-dark">
                 {actor.name}
               </h3>
-              <p data-testid="actor-character" className="text-sm text-text-muted italic">
+              <p data-testid="actor-character" className="text-sm italic text-text-muted">
                 as {actor.character}
               </p>
             </div>
@@ -64,18 +63,35 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
         </div>
       </div>
 
+      {/* Expand/collapse button */}
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        aria-label={
+          isExpanded ? `Collapse links for ${actor.name}` : `Show links for ${actor.name}`
+        }
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-xs text-brown-medium transition-colors hover:text-brown-dark focus:outline-none"
+      >
+        <span>{isExpanded ? "Hide links" : "Show links"}</span>
+        <ChevronIcon
+          size={14}
+          direction={isExpanded ? "up" : "down"}
+          className="transition-transform"
+        />
+      </button>
+
       {/* Expanded section with external links */}
       {isExpanded && (
         <div
           data-testid="actor-expanded"
-          className="mt-3 pt-3 border-t border-brown-medium/10 flex flex-wrap gap-3"
+          className="mt-2 flex flex-wrap gap-3 border-t border-brown-medium/10 pt-3"
         >
           <a
             href={actor.tmdbUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs px-3 py-1.5 bg-beige text-brown-dark rounded-full hover:bg-cream transition-colors"
-            onClick={(e) => e.stopPropagation()}
+            className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
           >
             View on TMDB →
           </a>
@@ -84,8 +100,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
               href={actor.wikipediaUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs px-3 py-1.5 bg-beige text-brown-dark rounded-full hover:bg-cream transition-colors"
-              onClick={(e) => e.stopPropagation()}
+              className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
             >
               Wikipedia →
             </a>
@@ -94,8 +109,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
             href={`https://www.google.com/search?q=${encodeURIComponent(actor.name + " actor filmography")}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs px-3 py-1.5 bg-beige text-brown-dark rounded-full hover:bg-cream transition-colors"
-            onClick={(e) => e.stopPropagation()}
+            className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
           >
             Search Filmography →
           </a>

@@ -42,11 +42,11 @@ describe("DeceasedCard", () => {
     expect(screen.getByTestId("actor-photo-placeholder")).toBeInTheDocument()
   })
 
-  it("is clickable and shows cursor-pointer", () => {
+  it("has an expand/collapse button", () => {
     render(<DeceasedCard actor={mockActor} />)
 
-    const card = screen.getByTestId("deceased-card")
-    expect(card).toHaveClass("cursor-pointer")
+    const button = screen.getByRole("button", { name: /show links for john doe/i })
+    expect(button).toBeInTheDocument()
   })
 
   describe("expansion", () => {
@@ -56,30 +56,30 @@ describe("DeceasedCard", () => {
       expect(screen.queryByTestId("actor-expanded")).not.toBeInTheDocument()
     })
 
-    it("shows expanded section when card is clicked", () => {
+    it("shows expanded section when button is clicked", () => {
       render(<DeceasedCard actor={mockActor} />)
 
-      fireEvent.click(screen.getByTestId("deceased-card"))
+      fireEvent.click(screen.getByRole("button", { name: /show links/i }))
 
       expect(screen.getByTestId("actor-expanded")).toBeInTheDocument()
     })
 
-    it("hides expanded section when clicked again", () => {
+    it("hides expanded section when button is clicked again", () => {
       render(<DeceasedCard actor={mockActor} />)
 
       // Click to expand
-      fireEvent.click(screen.getByTestId("deceased-card"))
+      fireEvent.click(screen.getByRole("button", { name: /show links/i }))
       expect(screen.getByTestId("actor-expanded")).toBeInTheDocument()
 
-      // Click to collapse
-      fireEvent.click(screen.getByTestId("deceased-card"))
+      // Click to collapse (button aria-label changes to "Collapse links for...")
+      fireEvent.click(screen.getByRole("button", { name: /collapse links/i }))
       expect(screen.queryByTestId("actor-expanded")).not.toBeInTheDocument()
     })
 
     it("shows TMDB link in expanded section", () => {
       render(<DeceasedCard actor={mockActor} />)
 
-      fireEvent.click(screen.getByTestId("deceased-card"))
+      fireEvent.click(screen.getByRole("button", { name: /show links/i }))
 
       const tmdbLink = screen.getByText("View on TMDB →")
       expect(tmdbLink).toHaveAttribute("href", mockActor.tmdbUrl)
@@ -89,7 +89,7 @@ describe("DeceasedCard", () => {
     it("shows Wikipedia link when available", () => {
       render(<DeceasedCard actor={mockActor} />)
 
-      fireEvent.click(screen.getByTestId("deceased-card"))
+      fireEvent.click(screen.getByRole("button", { name: /show links/i }))
 
       const wikiLink = screen.getByText("Wikipedia →")
       expect(wikiLink).toHaveAttribute("href", mockActor.wikipediaUrl)
@@ -99,7 +99,7 @@ describe("DeceasedCard", () => {
       const actorNoWiki = { ...mockActor, wikipediaUrl: null }
       render(<DeceasedCard actor={actorNoWiki} />)
 
-      fireEvent.click(screen.getByTestId("deceased-card"))
+      fireEvent.click(screen.getByRole("button", { name: /show links/i }))
 
       expect(screen.queryByText("Wikipedia →")).not.toBeInTheDocument()
     })
@@ -107,7 +107,7 @@ describe("DeceasedCard", () => {
     it("shows Search Filmography link", () => {
       render(<DeceasedCard actor={mockActor} />)
 
-      fireEvent.click(screen.getByTestId("deceased-card"))
+      fireEvent.click(screen.getByRole("button", { name: /show links/i }))
 
       const searchLink = screen.getByText("Search Filmography →")
       expect(searchLink).toHaveAttribute("href")
@@ -123,7 +123,6 @@ describe("DeceasedCard", () => {
       const card = screen.getByTestId("deceased-card")
       expect(card).toHaveClass("bg-white")
       expect(card).toHaveClass("rounded-lg")
-      expect(card).toHaveClass("cursor-pointer")
     })
   })
 })

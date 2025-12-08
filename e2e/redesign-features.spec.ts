@@ -42,7 +42,7 @@ test.describe("Frontend Redesign Features", () => {
   })
 
   test.describe("Deceased Card Expansion", () => {
-    test("expands card to show external links on click", async ({ page }) => {
+    test("expands card to show external links on button click", async ({ page }) => {
       await page.goto("/movie/the-matrix-1999-603")
 
       await expect(page.getByTestId("deceased-cards")).toBeVisible()
@@ -51,8 +51,9 @@ test.describe("Frontend Redesign Features", () => {
       const firstCard = page.getByTestId("deceased-card").first()
       await firstCard.scrollIntoViewIfNeeded()
 
-      // Click to expand
-      await firstCard.click()
+      // Click the "Show links" button to expand
+      const showLinksButton = firstCard.getByRole("button", { name: /show links/i })
+      await showLinksButton.click()
 
       // Expanded section should appear
       await expect(page.getByTestId("actor-expanded").first()).toBeVisible()
@@ -65,8 +66,9 @@ test.describe("Frontend Redesign Features", () => {
         path: "e2e/screenshots/deceased-card-expanded.png",
       })
 
-      // Click again to collapse
-      await firstCard.click()
+      // Click "Hide links" button to collapse
+      const hideLinksButton = firstCard.getByRole("button", { name: /collapse links/i })
+      await hideLinksButton.click()
       await expect(page.getByTestId("actor-expanded")).not.toBeVisible()
     })
   })

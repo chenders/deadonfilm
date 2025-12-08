@@ -13,27 +13,27 @@ export default function ErrorMessage({ message, showHomeLink = true }: ErrorMess
       className="flex flex-col items-center justify-center py-12 text-center"
     >
       {/* Vintage film card styling */}
-      <div className="bg-beige border-2 border-brown-medium/30 rounded-lg p-8 max-w-md shadow-lg">
+      <div className="max-w-md rounded-lg border-2 border-brown-medium/30 bg-beige p-8 shadow-lg">
         {/* Film strip decoration top */}
-        <div className="flex justify-center gap-2 mb-4">
+        <div className="mb-4 flex justify-center gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="w-3 h-2 bg-brown-medium/20 rounded-sm" />
+            <div key={i} className="h-2 w-3 rounded-sm bg-brown-medium/20" />
           ))}
         </div>
 
         <div data-testid="error-icon" className="mb-4">
-          <SkullIcon size={48} className="text-accent mx-auto" />
+          <SkullIcon size={48} className="mx-auto text-accent" />
         </div>
 
         <h2
           data-testid="error-title"
-          className="text-lg font-display text-brown-dark mb-1 tracking-wider uppercase"
+          className="mb-1 font-display text-lg uppercase tracking-wider text-brown-dark"
         >
           Technical Difficulties
         </h2>
-        <p className="text-xs text-brown-medium mb-3 italic">The projector has jammed</p>
+        <p className="mb-3 text-xs italic text-brown-medium">The projector has jammed</p>
 
-        <p data-testid="error-text" className="text-text-muted mb-4">
+        <p data-testid="error-text" className="mb-4 text-text-muted">
           {message}
         </p>
 
@@ -41,7 +41,7 @@ export default function ErrorMessage({ message, showHomeLink = true }: ErrorMess
           <Link
             data-testid="home-return-link"
             to="/"
-            className="inline-flex items-center gap-2 text-brown-medium hover:text-brown-dark transition-colors"
+            className="inline-flex items-center gap-2 text-brown-medium transition-colors hover:text-brown-dark"
           >
             <FilmReelIcon size={16} />
             <span className="underline">Return to search</span>
@@ -49,9 +49,9 @@ export default function ErrorMessage({ message, showHomeLink = true }: ErrorMess
         )}
 
         {/* Film strip decoration bottom */}
-        <div className="flex justify-center gap-2 mt-4">
+        <div className="mt-4 flex justify-center gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="w-3 h-2 bg-brown-medium/20 rounded-sm" />
+            <div key={i} className="h-2 w-3 rounded-sm bg-brown-medium/20" />
           ))}
         </div>
       </div>
