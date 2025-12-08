@@ -240,7 +240,7 @@ export default function DeathInfo({
       )}
 
       {!causeOfDeath && !wikipediaUrl && isLoading && (
-        <p className="mt-1 text-sm italic text-text-muted">
+        <p className="mt-1 text-sm italic text-brown-medium">
           Looking up cause
           <LoadingEllipsis />
         </p>
