@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer data-testid="site-footer" className="py-6 px-4 text-center text-text-muted text-sm">
+    <footer data-testid="site-footer" className="px-4 py-6 text-center text-sm text-text-muted">
       <p data-testid="data-attribution">
         Data provided by{" "}
         <a

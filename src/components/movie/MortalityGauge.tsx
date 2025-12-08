@@ -49,7 +49,7 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
           width={size}
           height={size}
           viewBox={`0 0 ${size} ${size}`}
-          className="transform -rotate-90"
+          className="-rotate-90 transform"
         >
           {/* Outer decorative ring with sprocket holes */}
           <circle
@@ -105,10 +105,10 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
         </svg>
 
         {/* Center text (positioned absolutely over SVG) */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center transform rotate-0">
+        <div className="absolute inset-0 flex rotate-0 transform flex-col items-center justify-center">
           <span
             data-testid="gauge-percentage"
-            className="text-4xl font-display text-accent font-bold"
+            className="font-display text-4xl font-bold text-accent"
           >
             {mortalityPercentage}%
           </span>

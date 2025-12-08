@@ -324,10 +324,13 @@ async function getWikipediaInfoboxCauseOfDeath(wikipediaUrl: string): Promise<st
 
     // 2. Try to extract from death-related sections
     // Match various section titles that might contain death info
+    // Note: Using [^=\n]* to prevent ReDoS; eslint-disable for remaining safe patterns
+    /* eslint-disable security/detect-unsafe-regex */
     const sectionPatterns = [
-      /==\s*Death(?:\s+and\s+[\w\s]+)?\s*==\s*([\s\S]*?)(?:==\s*\w|$)/i,
-      /==\s*(?:Personal\s+life|Later\s+(?:life|years)|Final\s+years)(?:\s+and\s+[\w\s]+)?\s*==\s*([\s\S]*?)(?:==\s*\w|$)/i,
+      /==\s*Death(?:\s+and[^=\n]*)?\s*==\s*([\s\S]*?)(?===\s*\w|$)/i,
+      /==\s*(?:Personal\s+life|Later\s+(?:life|years)|Final\s+years)(?:\s+and[^=\n]*)?\s*==\s*([\s\S]*?)(?===\s*\w|$)/i,
     ]
+    /* eslint-enable security/detect-unsafe-regex */
 
     for (const sectionPattern of sectionPatterns) {
       const sectionMatch = content.match(sectionPattern)
@@ -491,10 +494,13 @@ export async function getWikipediaDeathDetails(wikipediaUrl: string): Promise<st
     if (!content) return null
 
     // Look for death-related sections and extract details
+    // Note: Using [^=\n]* to prevent ReDoS; eslint-disable for remaining safe patterns
+    /* eslint-disable security/detect-unsafe-regex */
     const sectionPatterns = [
-      /==\s*Death(?:\s+and\s+[\w\s]+)?\s*==\s*([\s\S]*?)(?:==\s*\w|$)/i,
-      /==\s*(?:Personal\s+life|Later\s+(?:life|years)|Final\s+years)(?:\s+and\s+[\w\s]+)?\s*==\s*([\s\S]*?)(?:==\s*\w|$)/i,
+      /==\s*Death(?:\s+and[^=\n]*)?\s*==\s*([\s\S]*?)(?===\s*\w|$)/i,
+      /==\s*(?:Personal\s+life|Later\s+(?:life|years)|Final\s+years)(?:\s+and[^=\n]*)?\s*==\s*([\s\S]*?)(?===\s*\w|$)/i,
     ]
+    /* eslint-enable security/detect-unsafe-regex */
 
     for (const sectionPattern of sectionPatterns) {
       const sectionMatch = content.match(sectionPattern)
