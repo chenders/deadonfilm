@@ -22,7 +22,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
       role="button"
       tabIndex={0}
       aria-expanded={isExpanded}
-      className="group cursor-pointer rounded-lg border border-brown-medium/20 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brown-medium/50 has-[.tooltip-trigger:hover]:translate-y-0 has-[.tooltip-trigger:hover]:shadow-none"
+      className="group cursor-pointer rounded-lg border border-brown-medium/20 bg-white p-4 focus:outline-none focus:ring-2 focus:ring-brown-medium/50"
       onClick={() => setIsExpanded(!isExpanded)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {

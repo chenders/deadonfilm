@@ -23,6 +23,16 @@ test.describe("Accessibility", () => {
     await page.goto("/movie/casablanca-1942-289")
     await page.waitForSelector('[data-testid="movie-header"]')
 
+    // Wait for CSS fade-in animations to complete before scanning
+    // (animations start with opacity: 0, which would cause false color contrast failures)
+    await page.waitForFunction(() => {
+      const elements = document.querySelectorAll(".animate-fade-slide-in")
+      return Array.from(elements).every((el) => {
+        const style = window.getComputedStyle(el)
+        return style.opacity === "1"
+      })
+    })
+
     const accessibilityScanResults = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze()
