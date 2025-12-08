@@ -22,6 +22,7 @@ export default tseslint.config(
           varsIgnorePattern: '^_',
         },
       ],
+      'security/detect-object-injection': ['off'],
     },
   },
   {
