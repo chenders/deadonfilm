@@ -388,7 +388,7 @@ export async function getCursedActors(limit: number = 20): Promise<
     actor_name: string
     total_movies: number
     total_costar_deaths: number
-    mortality_rate: number
+    avg_mortality_surprise: number
   }>
 > {
   const db = getPool()
@@ -398,14 +398,14 @@ export async function getCursedActors(limit: number = 20): Promise<
        aa.actor_name,
        COUNT(DISTINCT aa.movie_tmdb_id) as total_movies,
        SUM(m.deceased_count) as total_costar_deaths,
-       ROUND(AVG(m.mortality_surprise_score)::numeric, 3) as mortality_rate
+       ROUND(AVG(m.mortality_surprise_score)::numeric, 3) as avg_mortality_surprise
      FROM actor_appearances aa
      JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
      WHERE aa.is_deceased = false
        AND m.mortality_surprise_score IS NOT NULL
      GROUP BY aa.actor_tmdb_id, aa.actor_name
      HAVING COUNT(DISTINCT aa.movie_tmdb_id) >= 3
-     ORDER BY mortality_rate DESC
+     ORDER BY avg_mortality_surprise DESC
      LIMIT $1`,
     [limit]
   )

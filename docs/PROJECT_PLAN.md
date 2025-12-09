@@ -33,7 +33,7 @@ Based on actuarial data from US Social Security Administration life tables, the 
 ### Planned Features
 
 #### Young Deaths ("Gone Too Soon")
-- [ ] Calculate "years lost" for each deceased actor (expected lifespan - actual lifespan)
+- [x] Calculate "years lost" for each deceased actor (expected lifespan - actual lifespan) - Implemented in `calculateMovieMortality()` and `calculateYearsLost()`
 - [ ] Add badge on deceased cards showing years lost
 - [ ] Create "Gone Too Soon" quick action endpoint
 - [ ] Add filter/sort option on movie page by years lost
