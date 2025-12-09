@@ -66,13 +66,13 @@ describe("searchMovies route", () => {
     })
   })
 
-  it("returns search results sorted by popularity", async () => {
+  it("preserves TMDB order for movies with same relevance score", async () => {
     const mockTmdbResponse = {
       page: 1,
       results: [
         {
           id: 1,
-          title: "Low Pop",
+          title: "First Movie",
           popularity: 10,
           release_date: "2020-01-01",
           poster_path: null,
@@ -81,7 +81,7 @@ describe("searchMovies route", () => {
         },
         {
           id: 2,
-          title: "High Pop",
+          title: "Second Movie",
           popularity: 100,
           release_date: "2020-01-01",
           poster_path: null,
@@ -90,7 +90,7 @@ describe("searchMovies route", () => {
         },
         {
           id: 3,
-          title: "Mid Pop",
+          title: "Third Movie",
           popularity: 50,
           release_date: "2020-01-01",
           poster_path: null,
@@ -103,25 +103,15 @@ describe("searchMovies route", () => {
     }
 
     vi.mocked(tmdbSearch).mockResolvedValue(mockTmdbResponse)
-    mockReq = { query: { q: "test" } }
+    mockReq = { query: { q: "movie" } }
 
     await searchMovies(mockReq as Request, mockRes as Response)
 
-    expect(jsonSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        results: expect.arrayContaining([
-          expect.objectContaining({ id: 2, title: "High Pop" }),
-          expect.objectContaining({ id: 3, title: "Mid Pop" }),
-          expect.objectContaining({ id: 1, title: "Low Pop" }),
-        ]),
-      })
-    )
-
-    // Verify order
+    // All have same relevance (title contains "movie"), so TMDB order is preserved
     const calledWith = jsonSpy.mock.calls[0][0]
-    expect(calledWith.results[0].id).toBe(2)
-    expect(calledWith.results[1].id).toBe(3)
-    expect(calledWith.results[2].id).toBe(1)
+    expect(calledWith.results[0].id).toBe(1)
+    expect(calledWith.results[1].id).toBe(2)
+    expect(calledWith.results[2].id).toBe(3)
   })
 
   it("limits results to 10", async () => {
@@ -228,9 +218,135 @@ describe("searchMovies route", () => {
 
     await searchMovies(mockReq as Request, mockRes as Response)
 
-    // Should not throw, null popularity treated as 0
+    // Should not throw and return results
     expect(jsonSpy).toHaveBeenCalled()
     const calledWith = jsonSpy.mock.calls[0][0]
-    expect(calledWith.results[0].id).toBe(2) // Higher popularity first
+    expect(calledWith.results.length).toBe(2)
+  })
+
+  it("prioritizes exact title matches over popularity", async () => {
+    const mockTmdbResponse = {
+      page: 1,
+      results: [
+        {
+          id: 1,
+          title: "The Matrix Reloaded",
+          popularity: 200,
+          release_date: "2003-05-15",
+          poster_path: null,
+          overview: "",
+          genre_ids: [],
+        },
+        {
+          id: 2,
+          title: "The Matrix",
+          popularity: 50,
+          release_date: "1999-03-31",
+          poster_path: null,
+          overview: "",
+          genre_ids: [],
+        },
+      ],
+      total_pages: 1,
+      total_results: 2,
+    }
+
+    vi.mocked(tmdbSearch).mockResolvedValue(mockTmdbResponse)
+    mockReq = { query: { q: "the matrix" } }
+
+    await searchMovies(mockReq as Request, mockRes as Response)
+
+    const calledWith = jsonSpy.mock.calls[0][0]
+    // Exact match "The Matrix" should come first despite lower popularity
+    expect(calledWith.results[0].id).toBe(2)
+    expect(calledWith.results[1].id).toBe(1)
+  })
+
+  it("boosts movies from matching year when query is a year", async () => {
+    const mockTmdbResponse = {
+      page: 1,
+      results: [
+        {
+          id: 1,
+          title: "1984",
+          popularity: 30,
+          release_date: "2020-01-01",
+          poster_path: null,
+          overview: "",
+          genre_ids: [],
+        },
+        {
+          id: 2,
+          title: "Nineteen Eighty-Four",
+          popularity: 40,
+          release_date: "1984-10-10",
+          poster_path: null,
+          overview: "",
+          genre_ids: [],
+        },
+        {
+          id: 3,
+          title: "1984",
+          popularity: 25,
+          release_date: "1984-10-10",
+          poster_path: null,
+          overview: "",
+          genre_ids: [],
+        },
+      ],
+      total_pages: 1,
+      total_results: 3,
+    }
+
+    vi.mocked(tmdbSearch).mockResolvedValue(mockTmdbResponse)
+    mockReq = { query: { q: "1984" } }
+
+    await searchMovies(mockReq as Request, mockRes as Response)
+
+    const calledWith = jsonSpy.mock.calls[0][0]
+    // "1984" (1984) gets exact match (100) + year bonus (75) = highest score
+    expect(calledWith.results[0].id).toBe(3)
+    // "1984" (2020) gets exact match (100) but no year bonus
+    expect(calledWith.results[1].id).toBe(1)
+    // "Nineteen Eighty-Four" (1984) only gets year bonus (75), no title match
+    expect(calledWith.results[2].id).toBe(2)
+  })
+
+  it("prioritizes title-starts-with matches", async () => {
+    const mockTmdbResponse = {
+      page: 1,
+      results: [
+        {
+          id: 1,
+          title: "A Dirty Work Story",
+          popularity: 100,
+          release_date: "2020-01-01",
+          poster_path: null,
+          overview: "",
+          genre_ids: [],
+        },
+        {
+          id: 2,
+          title: "Dirty Work",
+          popularity: 20,
+          release_date: "1998-06-12",
+          poster_path: null,
+          overview: "",
+          genre_ids: [],
+        },
+      ],
+      total_pages: 1,
+      total_results: 2,
+    }
+
+    vi.mocked(tmdbSearch).mockResolvedValue(mockTmdbResponse)
+    mockReq = { query: { q: "dirty work" } }
+
+    await searchMovies(mockReq as Request, mockRes as Response)
+
+    const calledWith = jsonSpy.mock.calls[0][0]
+    // Exact match "Dirty Work" should beat "A Dirty Work Story"
+    expect(calledWith.results[0].id).toBe(2)
+    expect(calledWith.results[1].id).toBe(1)
   })
 })
