@@ -18,16 +18,19 @@ exports.up = (pgm) => {
     death_probability: { type: 'decimal(10,8)' },
     life_expectancy: { type: 'decimal(6,2)' },
     survivors_per_100k: { type: 'integer' },
-  });
+  }, { ifNotExists: true });
 
   // Unique constraint on birth_year, age, gender combination
-  pgm.addConstraint('actuarial_life_tables', 'actuarial_life_tables_unique', {
-    unique: ['birth_year', 'age', 'gender'],
-  });
+  pgm.sql(`
+    DO $$ BEGIN
+      ALTER TABLE actuarial_life_tables ADD CONSTRAINT actuarial_life_tables_unique UNIQUE (birth_year, age, gender);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
 
   // Index for efficient lookups
-  pgm.createIndex('actuarial_life_tables', ['birth_year', 'age']);
-  pgm.createIndex('actuarial_life_tables', ['gender']);
+  pgm.createIndex('actuarial_life_tables', ['birth_year', 'age'], { ifNotExists: true });
+  pgm.createIndex('actuarial_life_tables', ['gender'], { ifNotExists: true });
 };
 
 /**

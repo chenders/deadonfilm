@@ -11,15 +11,29 @@
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.up = (pgm) => {
-  pgm.addColumn('deceased_persons', {
-    age_at_death: { type: 'integer' },
-    expected_lifespan: { type: 'decimal(5,2)' },
-    years_lost: { type: 'decimal(5,2)' },
-  });
+  // Add columns if they don't exist
+  pgm.sql(`
+    DO $$ BEGIN
+      ALTER TABLE deceased_persons ADD COLUMN age_at_death INTEGER;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$;
+  `);
+  pgm.sql(`
+    DO $$ BEGIN
+      ALTER TABLE deceased_persons ADD COLUMN expected_lifespan DECIMAL(5,2);
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$;
+  `);
+  pgm.sql(`
+    DO $$ BEGIN
+      ALTER TABLE deceased_persons ADD COLUMN years_lost DECIMAL(5,2);
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$;
+  `);
 
   // Index for sorting by years lost (Young Deaths feature)
-  pgm.createIndex('deceased_persons', 'years_lost');
-  pgm.createIndex('deceased_persons', 'age_at_death');
+  pgm.createIndex('deceased_persons', 'years_lost', { ifNotExists: true });
+  pgm.createIndex('deceased_persons', 'age_at_death', { ifNotExists: true });
 };
 
 /**
