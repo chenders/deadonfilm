@@ -118,7 +118,9 @@ async function seedActuarialDataIfNeeded(): Promise<void> {
   const rawData = readFileSync(dataPath, "utf-8")
   const data: ActuarialData = JSON.parse(rawData)
 
-  // Use 2022 as the birth year for this period life table
+  // Birth year matches the SSA 2022 period life table data source.
+  // This is a period life table reflecting mortality rates observed in 2022.
+  // Update this value if the actuarial-life-tables.json data is updated.
   const birthYear = 2022
 
   // Collect all values for batch insert
