@@ -19,16 +19,21 @@ test.describe("Frontend Redesign Features", () => {
     })
 
     test("displays expected vs actual mortality comparison", async ({ page }) => {
-      // Mock the movie API to include mortality stats (in case actuarial data isn't seeded)
+      // Intercept the movie API to ensure mortality stats are present
+      // This handles cases where actuarial data isn't seeded in the database
       await page.route("**/api/movie/603", async (route) => {
-        const response = await route.fetch()
-        const json = await response.json()
-        // Ensure expectedDeaths is set so mortality-comparison shows
-        if (!json.expectedDeaths || json.expectedDeaths === 0) {
+        try {
+          const response = await route.fetch()
+          const json = await response.json()
+          // Always set expectedDeaths to ensure mortality-comparison shows
+          // (The component only renders when expectedDeaths > 0)
           json.expectedDeaths = 3.5
           json.mortalitySurpriseScore = 0.43
+          await route.fulfill({ json })
+        } catch {
+          // If fetch fails, continue with original request
+          await route.continue()
         }
-        await route.fulfill({ json })
       })
 
       await page.goto("/movie/the-matrix-1999-603")
