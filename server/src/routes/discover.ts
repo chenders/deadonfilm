@@ -1,5 +1,6 @@
 import type { Request, Response } from "express"
 import type { TMDBSearchResponse } from "../lib/tmdb.js"
+import { getHighMortalityMovies } from "../lib/db.js"
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
@@ -11,38 +12,23 @@ interface DiscoverMovieResponse {
 
 type DiscoverType = "classic" | "high-mortality"
 
-async function discoverMovie(type: DiscoverType): Promise<DiscoverMovieResponse | null> {
+async function discoverClassicMovie(): Promise<DiscoverMovieResponse | null> {
   const token = process.env.TMDB_API_TOKEN
   if (!token) {
     throw new Error("TMDB_API_TOKEN environment variable is not set")
   }
 
-  let url: string
-
-  if (type === "classic") {
-    // Classic films: 1930-1970, popular
-    const randomYear = Math.floor(Math.random() * (1970 - 1930 + 1)) + 1930
-    const randomPage = Math.floor(Math.random() * 5) + 1 // Fewer pages for older films
-    url =
-      `${TMDB_BASE_URL}/discover/movie?` +
-      `primary_release_year=${randomYear}&` +
-      `sort_by=vote_count.desc&` +
-      `vote_count.gte=100&` +
-      `include_adult=false&` +
-      `language=en-US&` +
-      `page=${randomPage}`
-  } else {
-    // High mortality: older films (1940-1980) with larger casts tend to have higher mortality
-    const randomYear = Math.floor(Math.random() * (1980 - 1940 + 1)) + 1940
-    const randomPage = Math.floor(Math.random() * 10) + 1
-    url =
-      `${TMDB_BASE_URL}/discover/movie?` +
-      `primary_release_year=${randomYear}&` +
-      `sort_by=popularity.desc&` +
-      `include_adult=false&` +
-      `language=en-US&` +
-      `page=${randomPage}`
-  }
+  // Classic films: 1930-1970, popular
+  const randomYear = Math.floor(Math.random() * (1970 - 1930 + 1)) + 1930
+  const randomPage = Math.floor(Math.random() * 5) + 1 // Fewer pages for older films
+  const url =
+    `${TMDB_BASE_URL}/discover/movie?` +
+    `primary_release_year=${randomYear}&` +
+    `sort_by=vote_count.desc&` +
+    `vote_count.gte=100&` +
+    `include_adult=false&` +
+    `language=en-US&` +
+    `page=${randomPage}`
 
   const response = await fetch(url, {
     headers: {
@@ -72,6 +58,25 @@ async function discoverMovie(type: DiscoverType): Promise<DiscoverMovieResponse 
   }
 }
 
+async function discoverHighMortalityMovie(): Promise<DiscoverMovieResponse | null> {
+  // Get movies with highest mortality surprise scores from our database
+  const movies = await getHighMortalityMovies(50)
+
+  if (movies.length === 0) {
+    return null
+  }
+
+  // Pick a random movie from the top 50
+  const randomIndex = Math.floor(Math.random() * movies.length)
+  const movie = movies[randomIndex]
+
+  return {
+    id: movie.tmdb_id,
+    title: movie.title,
+    release_date: movie.release_date || "",
+  }
+}
+
 export async function getDiscoverMovie(req: Request, res: Response) {
   const type = req.query.type as DiscoverType
 
@@ -82,14 +87,22 @@ export async function getDiscoverMovie(req: Request, res: Response) {
   }
 
   try {
-    // Retry up to 3 times in case a random year/page combination has no results
     let movie: DiscoverMovieResponse | null = null
-    let attempts = 3
-    while (attempts-- > 0) {
-      movie = await discoverMovie(type)
-      if (movie) {
-        return res.json(movie)
+
+    if (type === "high-mortality") {
+      // Use database with actual mortality surprise scores
+      movie = await discoverHighMortalityMovie()
+    } else {
+      // Retry up to 3 times for classic movies (TMDB API)
+      let attempts = 3
+      while (attempts-- > 0) {
+        movie = await discoverClassicMovie()
+        if (movie) break
       }
+    }
+
+    if (movie) {
+      return res.json(movie)
     }
 
     return res.status(404).json({ error: { message: "No movie found" } })
