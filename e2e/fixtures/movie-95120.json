@@ -1,0 +1,72 @@
+{
+  "movie": {
+    "id": 95120,
+    "title": "Private Nurse",
+    "release_date": "1941-06-27",
+    "poster_path": "/yHNxZNxdH4gFP9YHoGY5MmVfXRD.jpg",
+    "overview": "A nurse falls for one of her wealthy patients.",
+    "runtime": 60,
+    "genres": [{ "id": 18, "name": "Drama" }]
+  },
+  "deceased": [
+    {
+      "id": 85924,
+      "name": "Jane Darwell",
+      "character": "Grandma Aldrich",
+      "profile_path": "/h8dQMqxjCsKUMljQcXdvE7Y3q1R.jpg",
+      "birthday": "1879-10-15",
+      "deathday": "1967-08-13",
+      "causeOfDeath": "Heart attack",
+      "causeOfDeathSource": "wikidata",
+      "causeOfDeathDetails": "Jane Darwell died from a heart attack at the Motion Picture & Television Country House and Hospital in Woodland Hills, California. She was 87 years old and had been in declining health for several years.",
+      "causeOfDeathDetailsSource": "claude",
+      "wikipediaUrl": "https://en.wikipedia.org/wiki/Jane_Darwell",
+      "tmdbUrl": "https://www.themoviedb.org/person/85924",
+      "ageAtDeath": 87,
+      "yearsLost": -11
+    },
+    {
+      "id": 13022,
+      "name": "Brenda Joyce",
+      "character": "Mary Adams",
+      "profile_path": "/3dSH0sYSVw4Xk2zMKLN3w4nXdBP.jpg",
+      "birthday": "1917-02-25",
+      "deathday": "2009-07-04",
+      "causeOfDeath": "Natural causes",
+      "causeOfDeathSource": "claude",
+      "causeOfDeathDetails": "Brenda Joyce passed away peacefully at the age of 92 from natural causes at her home in Santa Monica, California.",
+      "causeOfDeathDetailsSource": "claude",
+      "wikipediaUrl": "https://en.wikipedia.org/wiki/Brenda_Joyce_(actress)",
+      "tmdbUrl": "https://www.themoviedb.org/person/13022",
+      "ageAtDeath": 92,
+      "yearsLost": -18
+    },
+    {
+      "id": 29260,
+      "name": "Robert Lowery",
+      "character": "Dr. David Dodd",
+      "profile_path": "/aBT2DaVc93XwUojJQ4Z0xALHGKI.jpg",
+      "birthday": "1913-10-17",
+      "deathday": "1971-12-26",
+      "causeOfDeath": "Heart attack",
+      "causeOfDeathSource": "wikidata",
+      "causeOfDeathDetails": "Robert Lowery suffered a fatal heart attack at his home in Hollywood. He was 58 years old at the time of his death.",
+      "causeOfDeathDetailsSource": "claude",
+      "wikipediaUrl": "https://en.wikipedia.org/wiki/Robert_Lowery_(actor)",
+      "tmdbUrl": "https://www.themoviedb.org/person/29260",
+      "ageAtDeath": 58,
+      "yearsLost": 15
+    }
+  ],
+  "living": [],
+  "stats": {
+    "totalCast": 3,
+    "deceasedCount": 3,
+    "livingCount": 0,
+    "mortalityPercentage": 100,
+    "expectedDeaths": 3,
+    "mortalitySurpriseScore": 0
+  },
+  "lastSurvivor": null,
+  "enrichmentPending": false
+}
