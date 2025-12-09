@@ -18,31 +18,22 @@ test.describe("Frontend Redesign Features", () => {
       })
     })
 
-    test("displays expected vs actual mortality comparison when actuarial data is available", async ({
-      page,
-    }) => {
+    test("displays expected vs actual mortality comparison", async ({ page }) => {
       await page.goto("/movie/the-matrix-1999-603")
 
       await expect(page.getByTestId("movie-page")).toBeVisible()
+      await expect(page.getByTestId("mortality-comparison")).toBeVisible()
 
-      // The mortality comparison only shows when actuarial data is available (expectedDeaths > 0)
-      // In CI without seeded actuarial data, this element won't be present
-      const mortalityComparison = page.getByTestId("mortality-comparison")
-      const isVisible = await mortalityComparison.isVisible().catch(() => false)
+      // Verify expected and actual labels are shown
+      await expect(page.getByText("Expected:")).toBeVisible()
+      await expect(page.getByText("Actual:")).toBeVisible()
 
-      if (isVisible) {
-        // Verify expected and actual labels are shown
-        await expect(page.getByText("Expected:")).toBeVisible()
-        await expect(page.getByText("Actual:")).toBeVisible()
+      // Verify surprise label is displayed
+      await expect(page.getByTestId("surprise-label")).toBeVisible()
 
-        // Verify surprise label is displayed
-        await expect(page.getByTestId("surprise-label")).toBeVisible()
-
-        await page.screenshot({
-          path: "e2e/screenshots/mortality-comparison.png",
-        })
-      }
-      // If not visible, actuarial data is not seeded - test passes but skips assertions
+      await page.screenshot({
+        path: "e2e/screenshots/mortality-comparison.png",
+      })
     })
   })
 
