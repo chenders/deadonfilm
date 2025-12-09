@@ -30,6 +30,9 @@ RUN npm install -g serve
 COPY --from=backend-builder /app/server/dist ./server/dist
 COPY --from=backend-builder /app/server/node_modules ./server/node_modules
 COPY server/package.json ./server/
+# Copy migrations and data for startup initialization
+COPY server/migrations ./server/migrations
+COPY server/data ./server/data
 # Copy New Relic config (optional - loaded at runtime if NEW_RELIC_LICENSE_KEY is set)
 COPY server/newrelic.cjs ./server/
 
