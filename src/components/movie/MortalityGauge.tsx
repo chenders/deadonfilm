@@ -6,12 +6,24 @@ interface MortalityGaugeProps {
     deceasedCount: number
     livingCount: number
     mortalityPercentage: number
+    expectedDeaths: number
+    mortalitySurpriseScore: number
   }
 }
 
 export default function MortalityGauge({ stats }: MortalityGaugeProps) {
-  const { mortalityPercentage } = stats
+  const { mortalityPercentage, deceasedCount, expectedDeaths, mortalitySurpriseScore } = stats
   const [animatedPercentage, setAnimatedPercentage] = useState(0)
+
+  // Determine if mortality is higher or lower than expected
+  const getSurpriseLabel = () => {
+    if (expectedDeaths === 0) return null
+    if (mortalitySurpriseScore > 0.5) return { text: "Unusually High", color: "text-accent" }
+    if (mortalitySurpriseScore > 0.2) return { text: "Higher Than Expected", color: "text-accent" }
+    if (mortalitySurpriseScore < -0.3) return { text: "Lower Than Expected", color: "text-living" }
+    return { text: "As Expected", color: "text-text-muted" }
+  }
+  const surpriseLabel = getSurpriseLabel()
 
   // Animate the gauge on mount
   useEffect(() => {
@@ -43,7 +55,7 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
   })
 
   return (
-    <div data-testid="mortality-gauge" className="flex flex-col items-center">
+    <div data-testid="mortality-gauge" className="flex flex-col items-center gap-4">
       <div className="relative">
         <svg
           width={size}
@@ -115,6 +127,31 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
           <span className="text-sm text-brown-dark">deceased</span>
         </div>
       </div>
+
+      {/* Expected vs Actual mortality info */}
+      {expectedDeaths > 0 && (
+        <div data-testid="mortality-comparison" className="text-center text-sm">
+          <div className="flex items-center justify-center gap-4">
+            <div>
+              <span className="text-text-muted">Expected: </span>
+              <span className="font-medium text-brown-dark">{expectedDeaths.toFixed(1)}</span>
+            </div>
+            <div className="text-brown-medium/40">|</div>
+            <div>
+              <span className="text-text-muted">Actual: </span>
+              <span className="font-medium text-accent">{deceasedCount}</span>
+            </div>
+          </div>
+          {surpriseLabel && (
+            <div
+              data-testid="surprise-label"
+              className={`mt-1 text-xs font-medium ${surpriseLabel.color}`}
+            >
+              {surpriseLabel.text}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -47,7 +47,10 @@ This file provides guidance to GitHub Copilot when working with code in this rep
 
 ## Database Schema
 
+### Main Tables
+
 ```sql
+-- Deceased actors discovered through movie lookups
 deceased_persons (
   id SERIAL PRIMARY KEY,
   tmdb_id INTEGER UNIQUE NOT NULL,
@@ -59,8 +62,25 @@ deceased_persons (
   cause_of_death_details TEXT,    -- Detailed explanation for tooltip
   cause_of_death_details_source TEXT,
   wikipedia_url TEXT,
+  age_at_death INTEGER,           -- Calculated age when died
+  expected_lifespan DECIMAL(5,2), -- Life expectancy based on birth year
+  years_lost DECIMAL(5,2),        -- Years lost vs expected lifespan
   updated_at TIMESTAMP DEFAULT NOW()
 )
+
+-- US SSA life expectancy data for mortality calculations
+actuarial_life_tables (
+  birth_year INTEGER, age INTEGER, gender TEXT,
+  death_probability DECIMAL(10,8), life_expectancy DECIMAL(6,2)
+)
+
+-- Movie cache for mortality statistics
+movies (tmdb_id INTEGER, title TEXT, release_year INTEGER,
+  expected_deaths DECIMAL(5,2), mortality_surprise_score DECIMAL(6,3))
+
+-- Actor appearances for cross-movie analysis
+actor_appearances (actor_tmdb_id INTEGER, movie_tmdb_id INTEGER,
+  actor_name TEXT, is_deceased BOOLEAN)
 ```
 
 ## Cause of Death Lookup Priority
