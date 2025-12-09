@@ -94,99 +94,101 @@ async function main() {
         const movieYear = movie.release_date?.split("-")[0] || "?"
         console.log(`[${i + 1}/${movies.length}] ${movie.title} (${movieYear})`)
 
-      try {
-        // Get full movie details
-        const details = await getMovieDetails(movie.id)
-        await delay(50)
+        try {
+          // Get full movie details
+          const details = await getMovieDetails(movie.id)
+          await delay(50)
 
-        // Get credits
-        const credits = await getMovieCredits(movie.id)
-        const topCast = credits.cast.slice(0, CAST_LIMIT)
-        await delay(50)
+          // Get credits
+          const credits = await getMovieCredits(movie.id)
+          const topCast = credits.cast.slice(0, CAST_LIMIT)
+          await delay(50)
 
-        // Get person details for cast
-        const personIds = topCast.map((c) => c.id)
-        const personDetails = await batchGetPersonDetails(personIds, 10, 100)
+          // Get person details for cast
+          const personIds = topCast.map((c) => c.id)
+          const personDetails = await batchGetPersonDetails(personIds, 10, 100)
 
-        // Prepare actors for mortality calculation
-        const actorsForMortality = topCast.map((castMember) => {
-          const person = personDetails.get(castMember.id)
-          return {
-            tmdbId: castMember.id,
-            name: castMember.name,
-            birthday: person?.birthday || null,
-            deathday: person?.deathday || null,
+          // Prepare actors for mortality calculation
+          const actorsForMortality = topCast.map((castMember) => {
+            const person = personDetails.get(castMember.id)
+            return {
+              tmdbId: castMember.id,
+              name: castMember.name,
+              birthday: person?.birthday || null,
+              deathday: person?.deathday || null,
+            }
+          })
+
+          // Calculate mortality statistics
+          const releaseYear = parseInt(movie.release_date?.split("-")[0] || "0", 10)
+          const mortalityStats = await calculateMovieMortality(
+            releaseYear,
+            actorsForMortality,
+            currentYear
+          )
+
+          // Save movie to database
+          const movieRecord: MovieRecord = {
+            tmdb_id: movie.id,
+            title: movie.title,
+            release_date: movie.release_date || null,
+            release_year: releaseYear || null,
+            poster_path: movie.poster_path,
+            genres: details.genres?.map((g) => g.name) || [],
+            popularity: movie.popularity || null,
+            vote_average: null, // Not in TMDBMovie type
+            cast_count: topCast.length,
+            deceased_count: mortalityStats.actualDeaths,
+            living_count: topCast.length - mortalityStats.actualDeaths,
+            expected_deaths: mortalityStats.expectedDeaths,
+            mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
           }
-        })
 
-        // Calculate mortality statistics
-        const releaseYear = parseInt(movie.release_date?.split("-")[0] || "0", 10)
-        const mortalityStats = await calculateMovieMortality(
-          releaseYear,
-          actorsForMortality,
-          currentYear
-        )
+          await upsertMovie(movieRecord)
+          yearMoviesSaved++
 
-        // Save movie to database
-        const movieRecord: MovieRecord = {
-          tmdb_id: movie.id,
-          title: movie.title,
-          release_date: movie.release_date || null,
-          release_year: releaseYear || null,
-          poster_path: movie.poster_path,
-          genres: details.genres?.map((g) => g.name) || [],
-          popularity: movie.popularity || null,
-          vote_average: null, // Not in TMDBMovie type
-          cast_count: topCast.length,
-          deceased_count: mortalityStats.actualDeaths,
-          living_count: topCast.length - mortalityStats.actualDeaths,
-          expected_deaths: mortalityStats.expectedDeaths,
-          mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
+          console.log(
+            `  Saved: ${mortalityStats.actualDeaths} deceased, ${mortalityStats.expectedDeaths.toFixed(1)} expected, score: ${mortalityStats.mortalitySurpriseScore.toFixed(3)}`
+          )
+
+          // Save actor appearances
+          const appearances: ActorAppearanceRecord[] = topCast.map((castMember, index) => {
+            const person = personDetails.get(castMember.id)
+            const birthday = person?.birthday
+            let ageAtFilming: number | null = null
+
+            if (birthday && releaseYear) {
+              const birthYear = parseInt(birthday.split("-")[0], 10)
+              ageAtFilming = releaseYear - birthYear
+            }
+
+            return {
+              actor_tmdb_id: castMember.id,
+              movie_tmdb_id: movie.id,
+              actor_name: castMember.name,
+              character_name: castMember.character || null,
+              billing_order: index,
+              age_at_filming: ageAtFilming,
+              is_deceased: !!person?.deathday,
+            }
+          })
+
+          await batchUpsertActorAppearances(appearances)
+          yearActorAppearances += appearances.length
+
+          console.log(`  Saved ${appearances.length} actor appearances`)
+
+          // Small delay between movies
+          await delay(100)
+        } catch (error) {
+          console.error(`  Error processing movie: ${error}`)
         }
-
-        await upsertMovie(movieRecord)
-        yearMoviesSaved++
-
-        console.log(
-          `  Saved: ${mortalityStats.actualDeaths} deceased, ${mortalityStats.expectedDeaths.toFixed(1)} expected, score: ${mortalityStats.mortalitySurpriseScore.toFixed(3)}`
-        )
-
-        // Save actor appearances
-        const appearances: ActorAppearanceRecord[] = topCast.map((castMember, index) => {
-          const person = personDetails.get(castMember.id)
-          const birthday = person?.birthday
-          let ageAtFilming: number | null = null
-
-          if (birthday && releaseYear) {
-            const birthYear = parseInt(birthday.split("-")[0], 10)
-            ageAtFilming = releaseYear - birthYear
-          }
-
-          return {
-            actor_tmdb_id: castMember.id,
-            movie_tmdb_id: movie.id,
-            actor_name: castMember.name,
-            character_name: castMember.character || null,
-            billing_order: index,
-            age_at_filming: ageAtFilming,
-            is_deceased: !!person?.deathday,
-          }
-        })
-
-        await batchUpsertActorAppearances(appearances)
-        yearActorAppearances += appearances.length
-
-        console.log(`  Saved ${appearances.length} actor appearances`)
-
-        // Small delay between movies
-        await delay(100)
-      } catch (error) {
-        console.error(`  Error processing movie: ${error}`)
-      }
       }
 
       // Year summary
-      console.log(`\nYear ${year} complete: ${yearMoviesSaved} movies, ${yearActorAppearances} appearances`)
+      console.log(
+        `\nYear ${year} complete: ${yearMoviesSaved} movies, ${yearActorAppearances} appearances`
+      )
       grandTotalMoviesSaved += yearMoviesSaved
       grandTotalActorAppearances += yearActorAppearances
     }

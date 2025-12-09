@@ -70,28 +70,14 @@ async function main() {
     // Insert male data
     console.log("Inserting male data...")
     for (const entry of data.male) {
-      await pool.query(insertQuery, [
-        birthYear,
-        entry.age,
-        "male",
-        entry.qx,
-        entry.ex,
-        entry.lx,
-      ])
+      await pool.query(insertQuery, [birthYear, entry.age, "male", entry.qx, entry.ex, entry.lx])
     }
     console.log(`  Inserted ${data.male.length} male entries`)
 
     // Insert female data
     console.log("Inserting female data...")
     for (const entry of data.female) {
-      await pool.query(insertQuery, [
-        birthYear,
-        entry.age,
-        "female",
-        entry.qx,
-        entry.ex,
-        entry.lx,
-      ])
+      await pool.query(insertQuery, [birthYear, entry.age, "female", entry.qx, entry.ex, entry.lx])
     }
     console.log(`  Inserted ${data.female.length} female entries`)
 

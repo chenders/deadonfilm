@@ -71,12 +71,8 @@ async function main() {
       console.log(`[${i + 1}/${records.length}] ${record.name}...`)
 
       try {
-        const {
-          causeOfDeathSource,
-          causeOfDeathDetails,
-          causeOfDeathDetailsSource,
-          wikipediaUrl,
-        } = await getCauseOfDeath(record.name, record.birthday, record.deathday)
+        const { causeOfDeathSource, causeOfDeathDetails, causeOfDeathDetailsSource, wikipediaUrl } =
+          await getCauseOfDeath(record.name, record.birthday, record.deathday)
 
         // Build update query dynamically based on what we got
         const updates: string[] = []
