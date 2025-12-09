@@ -1,5 +1,63 @@
 import type { Request, Response } from "express"
-import { searchMovies as tmdbSearch } from "../lib/tmdb.js"
+import { searchMovies as tmdbSearch, type TMDBMovie } from "../lib/tmdb.js"
+
+/**
+ * Detect if a query is a 4-digit year (1900-2099)
+ */
+function parseYearQuery(query: string): number | null {
+  const trimmed = query.trim()
+  if (!/^\d{4}$/.test(trimmed)) {
+    return null
+  }
+  const year = parseInt(trimmed, 10)
+  if (year >= 1900 && year <= 2099) {
+    return year
+  }
+  return null
+}
+
+/**
+ * Calculate a relevance score for a movie based on query matching.
+ * Higher scores = better matches.
+ */
+function calculateRelevance(movie: TMDBMovie, query: string): number {
+  const normalizedQuery = query.toLowerCase().trim()
+  const normalizedTitle = movie.title.toLowerCase()
+  let score = 0
+
+  // Exact title match
+  if (normalizedTitle === normalizedQuery) {
+    score += 100
+  }
+  // Title starts with query
+  else if (normalizedTitle.startsWith(normalizedQuery)) {
+    score += 50
+  }
+  // Title contains query as a word boundary match
+  // eslint-disable-next-line security/detect-non-literal-regexp -- input is escaped via escapeRegex()
+  else if (new RegExp(`\\b${escapeRegex(normalizedQuery)}\\b`).test(normalizedTitle)) {
+    score += 30
+  }
+  // Title contains query anywhere
+  else if (normalizedTitle.includes(normalizedQuery)) {
+    score += 20
+  }
+
+  // Year match bonus - if query is a year and movie is from that year
+  const yearQuery = parseYearQuery(query)
+  if (yearQuery && movie.release_date?.startsWith(String(yearQuery))) {
+    score += 75
+  }
+
+  return score
+}
+
+/**
+ * Escape special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
 
 export async function searchMovies(req: Request, res: Response) {
   const query = req.query.q as string
@@ -11,10 +69,12 @@ export async function searchMovies(req: Request, res: Response) {
   try {
     const data = await tmdbSearch(query)
 
-    // Sort by popularity (highest first) then take top 10
+    // Sort by relevance score (highest first), preserving TMDB order for ties
     const sortedResults = [...data.results]
-      .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+      .map((movie, index) => ({ movie, score: calculateRelevance(movie, query), index }))
+      .sort((a, b) => b.score - a.score || a.index - b.index)
       .slice(0, 10)
+      .map(({ movie }) => movie)
 
     const results = sortedResults.map((movie) => ({
       id: movie.id,

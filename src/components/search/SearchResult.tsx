@@ -66,13 +66,13 @@ export default function SearchResult({
         </div>
         {mortality.level && (
           <div
-            className={`flex flex-shrink-0 items-center gap-1 text-xs ${
+            className={`flex flex-shrink-0 items-center gap-0.5 ${
               mortality.level === "high" ? "text-accent" : "text-brown-medium/60"
             }`}
             title={mortality.label || undefined}
           >
-            <SkullIcon size={12} />
-            {mortality.level === "high" && <SkullIcon size={12} />}
+            <SkullIcon size={28} />
+            {mortality.level === "high" && <SkullIcon size={28} />}
           </div>
         )}
       </div>

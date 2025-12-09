@@ -92,9 +92,8 @@ async function tmdbFetch<T>(path: string): Promise<T> {
 }
 
 async function searchMoviesPage(query: string, page: number): Promise<TMDBSearchResponse> {
-  return tmdbFetch<TMDBSearchResponse>(
-    `/search/movie?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=${page}`
-  )
+  const url = `/search/movie?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=${page}`
+  return tmdbFetch<TMDBSearchResponse>(url)
 }
 
 export async function searchMovies(query: string): Promise<TMDBSearchResponse> {
