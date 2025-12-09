@@ -8,6 +8,8 @@ A website to look up movies and see which actors have passed away. Shows mortali
 
 - Search any movie and see its cast mortality statistics
 - View deceased cast members with death dates and causes
+- **Expected vs Actual mortality** - See how many deaths were expected based on actuarial data
+- **Mortality surprise score** - Identify movies with unusually high or low cast mortality
 - "On This Day" feature showing actors who died on the current date
 - Real-time cause of death lookup with loading indicators
 - SEO-friendly URLs with movie slugs
@@ -35,6 +37,12 @@ npm run dev:all
 ```
 
 Access at http://localhost:5173
+
+### Seed actuarial data (required for mortality statistics)
+
+```bash
+cd server && npm run seed:actuarial
+```
 
 ## Environment Variables
 
