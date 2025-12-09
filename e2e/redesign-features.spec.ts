@@ -17,6 +17,24 @@ test.describe("Frontend Redesign Features", () => {
         path: "e2e/screenshots/mortality-gauge.png",
       })
     })
+
+    test("displays expected vs actual mortality comparison", async ({ page }) => {
+      await page.goto("/movie/the-matrix-1999-603")
+
+      await expect(page.getByTestId("movie-page")).toBeVisible()
+      await expect(page.getByTestId("mortality-comparison")).toBeVisible()
+
+      // Verify expected and actual labels are shown
+      await expect(page.getByText("Expected:")).toBeVisible()
+      await expect(page.getByText("Actual:")).toBeVisible()
+
+      // Verify surprise label is displayed
+      await expect(page.getByTestId("surprise-label")).toBeVisible()
+
+      await page.screenshot({
+        path: "e2e/screenshots/mortality-comparison.png",
+      })
+    })
   })
 
   test.describe("Cast Toggle with Disabled State", () => {

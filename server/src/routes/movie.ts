@@ -7,6 +7,7 @@ import {
   updateDeathInfo,
   type DeceasedPersonRecord,
 } from "../lib/db.js"
+import { calculateMovieMortality, type ActorForMortality } from "../lib/mortality-stats.js"
 
 interface DeceasedActor {
   id: number
@@ -21,6 +22,9 @@ interface DeceasedActor {
   causeOfDeathDetailsSource: DeathInfoSource
   wikipediaUrl: string | null
   tmdbUrl: string
+  // Mortality statistics
+  ageAtDeath: number | null
+  yearsLost: number | null
 }
 
 interface LivingActor {
@@ -49,6 +53,9 @@ interface MovieResponse {
     deceasedCount: number
     livingCount: number
     mortalityPercentage: number
+    // Mortality statistics
+    expectedDeaths: number
+    mortalitySurpriseScore: number
   }
   lastSurvivor: LivingActor | null
   enrichmentPending?: boolean
@@ -116,6 +123,9 @@ export async function getMovie(req: Request, res: Response) {
           causeOfDeathDetailsSource: dbRecord?.cause_of_death_details_source || null,
           wikipediaUrl: dbRecord?.wikipedia_url || null,
           tmdbUrl,
+          // Mortality stats - will be populated after collecting all actors
+          ageAtDeath: null,
+          yearsLost: null,
         })
 
         // Track new deceased persons to save to database
@@ -160,6 +170,49 @@ export async function getMovie(req: Request, res: Response) {
     const livingCount = living.length
     const mortalityPercentage = totalCast > 0 ? Math.round((deceasedCount / totalCast) * 100) : 0
 
+    // Calculate mortality statistics
+    let expectedDeaths = 0
+    let mortalitySurpriseScore = 0
+    const releaseYear = movie.release_date ? parseInt(movie.release_date.split("-")[0]) : null
+
+    if (releaseYear && totalCast > 0) {
+      // Prepare actor data for mortality calculation
+      const allActors: ActorForMortality[] = [
+        ...deceased.map((d) => ({
+          tmdbId: d.id,
+          name: d.name,
+          birthday: d.birthday,
+          deathday: d.deathday,
+        })),
+        ...living.map((l) => ({
+          tmdbId: l.id,
+          name: l.name,
+          birthday: l.birthday,
+          deathday: null,
+        })),
+      ]
+
+      try {
+        const mortalityResult = await calculateMovieMortality(releaseYear, allActors)
+        expectedDeaths = mortalityResult.expectedDeaths
+        mortalitySurpriseScore = mortalityResult.mortalitySurpriseScore
+
+        // Update deceased actors with age at death and years lost
+        for (const actorResult of mortalityResult.actorResults) {
+          if (actorResult.isDeceased) {
+            const deceasedActor = deceased.find((d) => d.id === actorResult.tmdbId)
+            if (deceasedActor) {
+              deceasedActor.ageAtDeath = actorResult.ageAtDeath
+              deceasedActor.yearsLost = actorResult.yearsLost
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error calculating mortality stats:", error)
+        // Continue without mortality stats if calculation fails
+      }
+    }
+
     // Find last survivor
     let lastSurvivor: LivingActor | null = null
     if (living.length > 0 && living.length <= 5) {
@@ -183,6 +236,8 @@ export async function getMovie(req: Request, res: Response) {
         deceasedCount,
         livingCount,
         mortalityPercentage,
+        expectedDeaths,
+        mortalitySurpriseScore,
       },
       lastSurvivor,
     }

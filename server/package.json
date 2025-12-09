@@ -15,6 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed": "tsx scripts/seed-deceased-actors.ts",
+    "seed:actuarial": "tsx scripts/seed-actuarial-tables.ts",
+    "seed:movies": "tsx scripts/seed-movies.ts",
     "migrate": "node-pg-migrate",
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
