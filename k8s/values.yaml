@@ -46,8 +46,8 @@ newrelic-logging:
     persistence:
       # -- Fluent Bit persistence is needed to keep track of tailed logs, if set to none data loss or logs duplications could happen. Options are "hostPath", "none", "persistentVolume"
       mode: none
-        # persistentVolume:
-        # -- When using persistent volume a storage class could be needed depending on the cluster. It should be a storage class that allows ReadWriteMany
+      # persistentVolume:
+      # -- When using persistent volume a storage class could be needed depending on the cluster. It should be a storage class that allows ReadWriteMany
       # storageClass:
 
 
