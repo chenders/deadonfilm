@@ -273,13 +273,14 @@ jobs:
           # Apply namespace
           kubectl apply -f k8s/namespace.yaml
 
-          # Update deployment with new image tag
-          IMAGE_PATH="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          sed "s|us-central1-docker.pkg.dev/PROJECT_ID/deadonfilm-repo/dead-on-film:latest|${IMAGE_PATH}|g" k8s/deployment.yaml | kubectl apply -f -
-
-          # Apply service and ingress
+          # Apply deployment, service, and ingress
+          kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
           kubectl apply -f k8s/ingress.yaml
+
+          # Update deployment with new image tag
+          IMAGE_PATH="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          kubectl set image deployment/dead-on-film dead-on-film=$IMAGE_PATH -n dead-on-film
 
           # Wait for rollout
           kubectl rollout status deployment/dead-on-film -n dead-on-film --timeout=300s
