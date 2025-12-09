@@ -1,8 +1,25 @@
 import { test, expect } from "@playwright/test"
+import { readFileSync } from "fs"
+import { join, dirname } from "path"
+import { fileURLToPath } from "url"
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const movieData = JSON.parse(readFileSync(join(__dirname, "fixtures/movie-95120.json"), "utf-8"))
 
 test.describe("Card Hover and Tooltip Behavior", () => {
   // Using Private Nurse which has actors with cause of death details
   const movieUrl = "/movie/private-nurse-1941-95120"
+
+  // Mock the API response to ensure consistent test data with cause of death details
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/movie/95120", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(movieData),
+      })
+    })
+  })
 
   test("card should have no visual changes on hover (no lift, no shadow)", async ({ page }) => {
     await page.goto(movieUrl)
