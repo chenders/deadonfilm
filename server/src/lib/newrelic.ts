@@ -3,6 +3,8 @@
  * Must be called before any other imports in the application entry point.
  */
 
+import { createRequire } from "module"
+
 type NewRelicAgent = typeof import("newrelic")
 
 let newrelicAgent: NewRelicAgent | null = null
@@ -14,7 +16,8 @@ export function initNewRelic(): void {
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // New Relic is a CommonJS module, so we need createRequire in ESM
+    const require = createRequire(import.meta.url)
     newrelicAgent = require("newrelic")
     console.log("New Relic APM initialized")
   } catch (error) {
