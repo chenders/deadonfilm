@@ -28,10 +28,7 @@ interface BadEntry {
   reason: string
 }
 
-function identifyBadDetails(
-  cause: string | null,
-  details: string | null
-): string | null {
+function identifyBadDetails(cause: string | null, details: string | null): string | null {
   if (!details) return null
 
   const detailsLower = details.toLowerCase()
@@ -220,7 +217,6 @@ async function main() {
     console.log(`\nDone!`)
     console.log(`- Updated with new details: ${updated}`)
     console.log(`- Cleared (no meaningful details): ${cleared}`)
-
   } finally {
     await pool.end()
   }
