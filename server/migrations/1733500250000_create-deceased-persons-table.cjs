@@ -3,6 +3,7 @@
  *
  * This is the initial table for storing deceased actor information.
  * Originally created manually, now tracked as a migration for CI/fresh installs.
+ * Uses IF NOT EXISTS for idempotency on existing databases.
  */
 
 /**
@@ -40,9 +41,9 @@ exports.up = (pgm) => {
       type: 'timestamp',
       default: pgm.func('CURRENT_TIMESTAMP'),
     },
-  });
+  }, { ifNotExists: true });
 
-  pgm.createIndex('deceased_persons', 'tmdb_id', { name: 'idx_deceased_persons_tmdb_id' });
+  pgm.createIndex('deceased_persons', 'tmdb_id', { name: 'idx_deceased_persons_tmdb_id', ifNotExists: true });
 };
 
 /**

@@ -26,12 +26,12 @@ exports.up = (pgm) => {
     mortality_surprise_score: { type: 'decimal(6,3)' },
     created_at: { type: 'timestamp', default: pgm.func('NOW()') },
     updated_at: { type: 'timestamp', default: pgm.func('NOW()') },
-  });
+  }, { ifNotExists: true });
 
   // Index for efficient lookups
-  pgm.createIndex('movies', 'tmdb_id');
-  pgm.createIndex('movies', 'release_year');
-  pgm.createIndex('movies', 'mortality_surprise_score');
+  pgm.createIndex('movies', 'tmdb_id', { ifNotExists: true });
+  pgm.createIndex('movies', 'release_year', { ifNotExists: true });
+  pgm.createIndex('movies', 'mortality_surprise_score', { ifNotExists: true });
 };
 
 /**
