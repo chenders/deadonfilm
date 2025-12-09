@@ -6,6 +6,7 @@ This project supports optional New Relic monitoring for both backend (APM) and f
 
 - **Backend APM**: Tracks Express routes, database queries, and external API calls (TMDB, Claude, Wikidata)
 - **Browser Monitoring**: Tracks page load times, JavaScript errors, and user sessions in the React SPA
+- **Kubernetes Monitoring**: Tracks cluster health, pod metrics, and logs via the New Relic nri-bundle
 
 Both are optional - the application works fine without New Relic configured.
 
@@ -161,3 +162,67 @@ try {
 2. Check that data is being sent (Network tab shows requests to New Relic endpoints)
 3. Wait 2-3 minutes for data to propagate
 4. Ensure you're looking at the correct application/account in New Relic
+
+## Kubernetes Monitoring Setup
+
+The project includes Helm configuration for the New Relic Kubernetes integration (`nri-bundle`), which provides cluster-level monitoring including pod metrics, events, and logs.
+
+### 1. Create Secrets File
+
+Copy the example secrets file and add your license key:
+
+```bash
+cp k8s/values-secrets.yaml.example k8s/values-secrets.yaml
+```
+
+Edit `k8s/values-secrets.yaml`:
+
+```yaml
+global:
+  licenseKey: YOUR_NEW_RELIC_LICENSE_KEY_HERE
+```
+
+**Important:** `k8s/values-secrets.yaml` is gitignored and should never be committed.
+
+### 2. Install the New Relic Bundle
+
+```bash
+helm repo add newrelic https://helm-charts.newrelic.com
+helm repo update
+
+helm upgrade --install newrelic-bundle newrelic/nri-bundle \
+  -n deadonfilm \
+  --values k8s/values.yaml \
+  --values k8s/values-secrets.yaml
+```
+
+### 3. Apply Instrumentation (Optional)
+
+For automatic APM injection into pods:
+
+```bash
+kubectl apply -f k8s/instrumentation.yaml -n deadonfilm
+```
+
+### What's Tracked
+
+- Pod/container CPU and memory metrics
+- Kubernetes events
+- Container logs (via Fluent Bit)
+- Prometheus metrics
+- Cluster state (via kube-state-metrics)
+
+### Updating Configuration
+
+The main configuration is in `k8s/values.yaml`. Key settings:
+
+- `global.cluster`: Cluster name shown in New Relic
+- `global.provider`: Set to `GKE_AUTOPILOT` for GKE Autopilot clusters
+- `global.lowDataMode`: Reduces data sent to save costs
+- `k8s-agents-operator.enabled`: Enables automatic APM injection
+
+### Uninstalling
+
+```bash
+helm uninstall newrelic-bundle -n deadonfilm
+```
