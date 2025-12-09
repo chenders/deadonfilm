@@ -91,15 +91,8 @@ async function tmdbFetch<T>(path: string): Promise<T> {
   return response.json() as Promise<T>
 }
 
-async function searchMoviesPage(
-  query: string,
-  page: number,
-  year?: number
-): Promise<TMDBSearchResponse> {
-  let url = `/search/movie?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=${page}`
-  if (year) {
-    url += `&primary_release_year=${year}`
-  }
+async function searchMoviesPage(query: string, page: number): Promise<TMDBSearchResponse> {
+  const url = `/search/movie?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=${page}`
   return tmdbFetch<TMDBSearchResponse>(url)
 }
 
