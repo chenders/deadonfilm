@@ -15,6 +15,8 @@ describe("DeceasedCard", () => {
     causeOfDeathDetails: "Died peacefully at home",
     wikipediaUrl: "https://en.wikipedia.org/wiki/John_Doe",
     tmdbUrl: "https://www.themoviedb.org/person/123",
+    ageAtDeath: 70,
+    yearsLost: 7.5,
   }
 
   it("renders actor name", () => {

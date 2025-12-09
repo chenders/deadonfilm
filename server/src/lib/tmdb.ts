@@ -75,9 +75,6 @@ async function tmdbFetch<T>(path: string): Promise<T> {
   const token = getToken()
   const url = `${TMDB_BASE_URL}${path}`
 
-  console.log(`TMDB Request: ${url}`)
-  console.log(`Token (first 20 chars): ${token.substring(0, 20)}...`)
-
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,

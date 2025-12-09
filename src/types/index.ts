@@ -47,6 +47,9 @@ export interface DeceasedActor {
   causeOfDeathDetails: string | null
   wikipediaUrl: string | null
   tmdbUrl: string
+  // Mortality statistics
+  ageAtDeath: number | null
+  yearsLost: number | null
 }
 
 export interface LivingActor {
@@ -75,6 +78,9 @@ export interface MovieResponse {
     deceasedCount: number
     livingCount: number
     mortalityPercentage: number
+    // Mortality statistics
+    expectedDeaths: number
+    mortalitySurpriseScore: number
   }
   lastSurvivor: LivingActor | null
   enrichmentPending?: boolean

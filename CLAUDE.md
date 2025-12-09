@@ -16,6 +16,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Wikipedia should NEVER be the first method used. Claude should always be tried first.
 
+## Mortality Statistics
+
+The app calculates expected mortality for movie casts using US Social Security Administration actuarial life tables. This enables features like:
+
+- **Expected vs Actual Deaths**: Compare how many cast members have died vs how many would be expected based on their ages
+- **Mortality Surprise Score**: A metric showing how much higher/lower actual mortality is compared to expected
+- **Years Lost**: For deceased actors, calculate how many years they lost compared to life expectancy
+
+### Key Formulas
+
+```
+Expected Death Probability:
+  For each actor: P(death) = cumulative probability of dying between age at filming and current age
+  Expected Deaths = sum of all actor death probabilities
+
+Mortality Surprise Score:
+  (Actual Deaths - Expected Deaths) / Expected Deaths
+  Positive = more deaths than expected ("cursed" movie)
+  Negative = fewer deaths than expected ("blessed" movie)
+
+Years Lost:
+  Expected Lifespan - Actual Lifespan (based on life expectancy at birth)
+```
+
+### Server Libraries
+
+- `server/src/lib/mortality-stats.ts` - Calculation utilities
+- `server/data/actuarial-life-tables.json` - SSA Period Life Tables (2022)
+
 ## Tech Stack
 
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
@@ -122,7 +151,10 @@ See `docs/GOOGLE_ANALYTICS.md` and `docs/NEW_RELIC.md` for detailed setup instru
 
 ## Database Schema
 
-The app uses PostgreSQL with the following main table:
+The app uses PostgreSQL with the following tables:
+
+### deceased_persons
+Stores information about deceased actors discovered through movie lookups.
 
 ```sql
 deceased_persons (
@@ -136,7 +168,67 @@ deceased_persons (
   cause_of_death_details TEXT,    -- Detailed explanation for tooltip
   cause_of_death_details_source TEXT,  -- Source of the details
   wikipedia_url TEXT,
+  age_at_death INTEGER,           -- Calculated age when died
+  expected_lifespan DECIMAL(5,2), -- Life expectancy based on birth year
+  years_lost DECIMAL(5,2),        -- Years lost vs expected lifespan
   updated_at TIMESTAMP DEFAULT NOW()
+)
+```
+
+### actuarial_life_tables
+US Social Security Administration life expectancy data for mortality calculations.
+
+```sql
+actuarial_life_tables (
+  id SERIAL PRIMARY KEY,
+  birth_year INTEGER NOT NULL,
+  age INTEGER NOT NULL,
+  gender TEXT NOT NULL,           -- 'male', 'female', or 'combined'
+  death_probability DECIMAL(10,8), -- Probability of dying within this year (qx)
+  life_expectancy DECIMAL(6,2),   -- Remaining life expectancy at this age (ex)
+  survivors_per_100k INTEGER,     -- Number surviving to this age from 100k births
+  UNIQUE(birth_year, age, gender)
+)
+```
+
+### movies
+Cache of movie metadata for cross-movie analysis and mortality statistics.
+
+```sql
+movies (
+  id SERIAL PRIMARY KEY,
+  tmdb_id INTEGER UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  release_date DATE,
+  release_year INTEGER,
+  poster_path TEXT,
+  genres TEXT[],
+  popularity DECIMAL(10,3),
+  vote_average DECIMAL(3,1),
+  cast_count INTEGER,
+  deceased_count INTEGER,
+  living_count INTEGER,
+  expected_deaths DECIMAL(5,2),
+  mortality_surprise_score DECIMAL(6,3),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+)
+```
+
+### actor_appearances
+Links actors to movies for cross-movie analysis (Cursed Actors feature).
+
+```sql
+actor_appearances (
+  id SERIAL PRIMARY KEY,
+  actor_tmdb_id INTEGER NOT NULL,
+  movie_tmdb_id INTEGER NOT NULL,
+  actor_name TEXT NOT NULL,
+  character_name TEXT,
+  billing_order INTEGER,
+  age_at_filming INTEGER,
+  is_deceased BOOLEAN DEFAULT FALSE,
+  UNIQUE(actor_tmdb_id, movie_tmdb_id)
 )
 ```
 
@@ -173,6 +265,9 @@ npm run seed -- 1995
 
 # Year range (e.g., 1990s)
 npm run seed -- 1990 1999
+
+# Seed actuarial life tables (required for mortality statistics)
+npm run seed:actuarial
 ```
 
 ## GKE Deployment
@@ -263,3 +358,26 @@ Message with apostrophe's will break
 EOF
 )"
 ```
+
+## Shell Command Guidelines
+
+When running background commands with `&`, always chain subsequent commands properly:
+
+**Correct approach:**
+```bash
+# Use && to chain commands after backgrounding
+npm run dev:all 2>&1 & sleep 3 && curl http://localhost:8080/health
+
+# Or run commands separately
+npm run dev:all &
+# (wait for output, then run next command separately)
+curl http://localhost:8080/health
+```
+
+**Do NOT do this** (shell parsing error):
+```bash
+npm run dev:all 2>&1 &
+sleep 3
+curl http://localhost:8080/health
+```
+The above causes `sleep` to receive "3", "curl", "http://..." as arguments because newlines after `&` don't properly separate commands in background execution context.
