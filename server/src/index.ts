@@ -11,19 +11,10 @@ import { getOnThisDay } from "./routes/on-this-day.js"
 import { getDeathInfoRoute } from "./routes/death-info.js"
 import { getRandomMovie } from "./routes/random.js"
 import { getDiscoverMovie } from "./routes/discover.js"
-import { initDatabase } from "./lib/db.js"
+import { initializeDatabase } from "./lib/startup.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
-
-// Initialize database
-if (process.env.DATABASE_URL) {
-  initDatabase().catch((err) => {
-    console.error("Failed to initialize database:", err)
-  })
-} else {
-  console.log("DATABASE_URL not set - running without persistent storage")
-}
 
 // Middleware
 app.use(cors())
@@ -42,13 +33,26 @@ app.get("/api/on-this-day", getOnThisDay)
 app.get("/api/random", getRandomMovie)
 app.get("/api/discover", getDiscoverMovie)
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-  console.log(
-    `TMDB token configured: ${process.env.TMDB_API_TOKEN ? "yes" : "NO - check .env file!"}`
-  )
-  console.log(
-    `New Relic APM configured: ${process.env.NEW_RELIC_LICENSE_KEY ? "yes" : "no (optional)"}`
-  )
-})
+// Initialize database and start server
+async function startServer() {
+  try {
+    // Initialize database (runs migrations and seeds required data)
+    await initializeDatabase()
+
+    // Start accepting requests
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`)
+      console.log(
+        `TMDB token configured: ${process.env.TMDB_API_TOKEN ? "yes" : "NO - check .env file!"}`
+      )
+      console.log(
+        `New Relic APM configured: ${process.env.NEW_RELIC_LICENSE_KEY ? "yes" : "no (optional)"}`
+      )
+    })
+  } catch (error) {
+    console.error("Failed to start server:", error)
+    process.exit(1)
+  }
+}
+
+startServer()

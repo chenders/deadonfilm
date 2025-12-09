@@ -63,7 +63,9 @@ async function discoverHighMortalityMovie(): Promise<DiscoverMovieResponse | nul
   const movies = await getHighMortalityMovies(50)
 
   if (movies.length === 0) {
-    return null
+    // Fallback to classic movie discovery if no mortality data exists yet
+    console.log("No high-mortality movies in database, falling back to classic discovery")
+    return discoverClassicMovie()
   }
 
   // Pick a random movie from the top 50
