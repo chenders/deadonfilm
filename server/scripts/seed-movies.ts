@@ -112,7 +112,8 @@ async function main() {
         const actorsForMortality = topCast.map((castMember) => {
           const person = personDetails.get(castMember.id)
           return {
-            id: castMember.id,
+            tmdbId: castMember.id,
+            name: castMember.name,
             birthday: person?.birthday || null,
             deathday: person?.deathday || null,
           }
