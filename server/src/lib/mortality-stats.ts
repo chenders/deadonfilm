@@ -10,9 +10,7 @@
  * - Cumulative survival: Probability of surviving from age A to age B
  */
 
-import { readFileSync } from "fs"
-import { dirname, join } from "path"
-import { fileURLToPath } from "url"
+import { getPool } from "./db.js"
 
 interface ActuarialEntry {
   age: number
@@ -20,98 +18,47 @@ interface ActuarialEntry {
   life_expectancy: number // ex
 }
 
-// Cache for actuarial data (loaded once from DB or JSON file)
+// Cache for actuarial data (loaded once from DB)
 let actuarialCache: Map<string, ActuarialEntry[]> | null = null
 
 /**
- * Load actuarial data from JSON file (fallback for when database is not available)
- */
-function loadActuarialDataFromFile(): Map<string, ActuarialEntry[]> {
-  const __dirname = dirname(fileURLToPath(import.meta.url))
-  const jsonPath = join(__dirname, "../../data/actuarial-life-tables.json")
-  const jsonData = JSON.parse(readFileSync(jsonPath, "utf-8"))
-
-  const cache = new Map<string, ActuarialEntry[]>()
-
-  // Process male data
-  cache.set(
-    "male",
-    jsonData.male.map((entry: { age: number; qx: number; ex: number }) => ({
-      age: entry.age,
-      death_probability: entry.qx,
-      life_expectancy: entry.ex,
-    }))
-  )
-
-  // Process female data
-  cache.set(
-    "female",
-    jsonData.female.map((entry: { age: number; qx: number; ex: number }) => ({
-      age: entry.age,
-      death_probability: entry.qx,
-      life_expectancy: entry.ex,
-    }))
-  )
-
-  // Create combined (average of male and female)
-  const maleData = cache.get("male")!
-  const femaleData = cache.get("female")!
-  const combinedData: ActuarialEntry[] = maleData.map((male, i) => ({
-    age: male.age,
-    death_probability: (male.death_probability + femaleData[i].death_probability) / 2,
-    life_expectancy: (male.life_expectancy + femaleData[i].life_expectancy) / 2,
-  }))
-  cache.set("combined", combinedData)
-
-  return cache
-}
-
-/**
- * Load actuarial data from the database into cache, falling back to JSON file
+ * Load actuarial data from the database into cache
  */
 async function loadActuarialData(): Promise<Map<string, ActuarialEntry[]>> {
   if (actuarialCache) return actuarialCache
 
-  // Try loading from database first
-  if (process.env.DATABASE_URL) {
-    try {
-      const { getPool } = await import("./db.js")
-      const db = getPool()
-      const result = await db.query<{
-        age: number
-        gender: string
-        death_probability: string
-        life_expectancy: string
-      }>(`
-        SELECT age, gender, death_probability, life_expectancy
-        FROM actuarial_life_tables
-        ORDER BY gender, age
-      `)
+  const db = getPool()
+  const result = await db.query<{
+    age: number
+    gender: string
+    death_probability: string
+    life_expectancy: string
+  }>(`
+    SELECT age, gender, death_probability, life_expectancy
+    FROM actuarial_life_tables
+    ORDER BY gender, age
+  `)
 
-      if (result.rows.length > 0) {
-        actuarialCache = new Map()
-
-        for (const row of result.rows) {
-          const gender = row.gender
-          if (!actuarialCache.has(gender)) {
-            actuarialCache.set(gender, [])
-          }
-          actuarialCache.get(gender)!.push({
-            age: row.age,
-            death_probability: parseFloat(row.death_probability),
-            life_expectancy: parseFloat(row.life_expectancy),
-          })
-        }
-
-        return actuarialCache
-      }
-    } catch {
-      // Database not available, fall through to JSON file
-    }
+  if (result.rows.length === 0) {
+    throw new Error(
+      "No actuarial data found in database. Run 'npm run seed:actuarial' to populate the data."
+    )
   }
 
-  // Fall back to JSON file
-  actuarialCache = loadActuarialDataFromFile()
+  actuarialCache = new Map()
+
+  for (const row of result.rows) {
+    const gender = row.gender
+    if (!actuarialCache.has(gender)) {
+      actuarialCache.set(gender, [])
+    }
+    actuarialCache.get(gender)!.push({
+      age: row.age,
+      death_probability: parseFloat(row.death_probability),
+      life_expectancy: parseFloat(row.life_expectancy),
+    })
+  }
+
   return actuarialCache
 }
 
