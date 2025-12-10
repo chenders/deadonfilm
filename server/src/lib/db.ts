@@ -198,6 +198,7 @@ export async function updateDeathInfo(
 }
 
 // Get deceased persons who died on a specific month/day (for "On This Day" feature)
+// Only returns actors with a profile photo
 export async function getDeceasedByMonthDay(
   month: number,
   day: number
@@ -207,6 +208,7 @@ export async function getDeceasedByMonthDay(
     `SELECT * FROM deceased_persons
      WHERE EXTRACT(MONTH FROM deathday) = $1
        AND EXTRACT(DAY FROM deathday) = $2
+       AND profile_path IS NOT NULL
      ORDER BY deathday DESC`,
     [month, day]
   )
@@ -278,17 +280,65 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
   )
 }
 
+// Options for querying high mortality movies
+export interface HighMortalityOptions {
+  limit?: number
+  offset?: number
+  fromYear?: number // Start year (e.g., 1980)
+  toYear?: number // End year (e.g., 1989)
+  minDeadActors?: number
+}
+
 // Get movies with high mortality surprise scores
-export async function getHighMortalityMovies(limit: number = 20): Promise<MovieRecord[]> {
+// Supports pagination and filtering by year range and minimum deaths
+export async function getHighMortalityMovies(
+  options: HighMortalityOptions = {}
+): Promise<{ movies: MovieRecord[]; totalCount: number }> {
+  const { limit = 50, offset = 0, fromYear, toYear, minDeadActors = 3 } = options
+
   const db = getPool()
-  const result = await db.query<MovieRecord>(
-    `SELECT * FROM movies
+  const result = await db.query<MovieRecord & { total_count: string }>(
+    `SELECT COUNT(*) OVER () as total_count, *
+     FROM movies
      WHERE mortality_surprise_score IS NOT NULL
+       AND deceased_count >= $1
+       AND ($2::integer IS NULL OR release_year >= $2)
+       AND ($3::integer IS NULL OR release_year <= $3)
      ORDER BY mortality_surprise_score DESC
-     LIMIT $1`,
-    [limit]
+     LIMIT $4 OFFSET $5`,
+    [minDeadActors, fromYear || null, toYear || null, limit, offset]
   )
-  return result.rows
+
+  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
+  const movies = result.rows.map(({ total_count: _total_count, ...movie }) => movie as MovieRecord)
+
+  return { movies, totalCount }
+}
+
+// Get the maximum min deaths value that still returns at least 5 movies
+export async function getMaxValidMinDeaths(): Promise<number> {
+  const db = getPool()
+
+  // Find the highest threshold that still returns at least 5 movies
+  const result = await db.query<{ max_threshold: number | null }>(`
+    WITH thresholds AS (
+      SELECT generate_series(3, 50) as threshold
+    ),
+    valid_thresholds AS (
+      SELECT
+        t.threshold,
+        COUNT(m.tmdb_id) as movie_count
+      FROM thresholds t
+      LEFT JOIN movies m ON m.mortality_surprise_score IS NOT NULL
+        AND m.deceased_count >= t.threshold
+      GROUP BY t.threshold
+      HAVING COUNT(m.tmdb_id) >= 5
+    )
+    SELECT MAX(threshold) as max_threshold FROM valid_thresholds
+  `)
+
+  // Default to 3 if no valid thresholds found
+  return result.rows[0]?.max_threshold ?? 3
 }
 
 // ============================================================================
@@ -381,38 +431,101 @@ export async function getActorMovies(actorTmdbId: number): Promise<ActorAppearan
   return result.rows
 }
 
-// Get "cursed actors" - living actors with high co-star mortality
+// Options for getCursedActors query
+export interface CursedActorsOptions {
+  limit?: number
+  offset?: number
+  minMovies?: number
+  actorStatus?: "living" | "deceased" | "all"
+  fromYear?: number
+  toYear?: number
+}
+
+// Cursed actor record returned from database
+export interface CursedActorRecord {
+  actor_tmdb_id: number
+  actor_name: string
+  is_deceased: boolean
+  total_movies: number
+  total_actual_deaths: number
+  total_expected_deaths: number
+  curse_score: number
+}
+
+// Get "cursed actors" - actors with high co-star mortality
 // Ranks actors by total excess deaths (actual - expected) across their filmography
-export async function getCursedActors(limit: number = 20): Promise<
-  Array<{
-    actor_tmdb_id: number
-    actor_name: string
-    total_movies: number
-    total_actual_deaths: number
-    total_expected_deaths: number
-    curse_score: number
-  }>
-> {
+export async function getCursedActors(options: CursedActorsOptions = {}): Promise<{
+  actors: CursedActorRecord[]
+  totalCount: number
+}> {
+  const { limit = 50, offset = 0, minMovies = 2, actorStatus = "all", fromYear, toYear } = options
+
   const db = getPool()
-  const result = await db.query(
-    `SELECT
-       aa.actor_tmdb_id,
-       aa.actor_name,
-       COUNT(DISTINCT aa.movie_tmdb_id) as total_movies,
-       SUM(m.deceased_count)::integer as total_actual_deaths,
-       ROUND(SUM(m.expected_deaths)::numeric, 1) as total_expected_deaths,
-       ROUND((SUM(m.deceased_count) - SUM(m.expected_deaths))::numeric, 1) as curse_score
-     FROM actor_appearances aa
-     JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-     WHERE aa.is_deceased = false
-       AND m.expected_deaths IS NOT NULL
-     GROUP BY aa.actor_tmdb_id, aa.actor_name
-     HAVING COUNT(DISTINCT aa.movie_tmdb_id) >= 3
-     ORDER BY curse_score DESC
-     LIMIT $1`,
-    [limit]
+
+  // Build dynamic WHERE clause
+  const conditions: string[] = ["m.expected_deaths IS NOT NULL"]
+  const params: (number | string)[] = []
+  let paramIndex = 1
+
+  // Actor status filter
+  if (actorStatus === "living") {
+    conditions.push(`aa.is_deceased = false`)
+  } else if (actorStatus === "deceased") {
+    conditions.push(`aa.is_deceased = true`)
+  }
+  // "all" means no filter on is_deceased
+
+  // Year range filters
+  if (fromYear !== undefined) {
+    conditions.push(`m.release_year >= $${paramIndex}`)
+    params.push(fromYear)
+    paramIndex++
+  }
+  if (toYear !== undefined) {
+    conditions.push(`m.release_year <= $${paramIndex}`)
+    params.push(toYear)
+    paramIndex++
+  }
+
+  const whereClause = conditions.join(" AND ")
+
+  // Add pagination params
+  params.push(minMovies) // for HAVING clause
+  const minMoviesParamIndex = paramIndex++
+  params.push(limit)
+  const limitParamIndex = paramIndex++
+  params.push(offset)
+  const offsetParamIndex = paramIndex++
+
+  const query = `
+    SELECT
+      aa.actor_tmdb_id,
+      aa.actor_name,
+      aa.is_deceased,
+      COUNT(DISTINCT aa.movie_tmdb_id)::integer as total_movies,
+      SUM(m.deceased_count)::integer as total_actual_deaths,
+      ROUND(SUM(m.expected_deaths)::numeric, 1) as total_expected_deaths,
+      ROUND((SUM(m.deceased_count) - SUM(m.expected_deaths))::numeric, 1) as curse_score,
+      COUNT(*) OVER() as total_count
+    FROM actor_appearances aa
+    JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
+    WHERE ${whereClause}
+    GROUP BY aa.actor_tmdb_id, aa.actor_name, aa.is_deceased
+    HAVING COUNT(DISTINCT aa.movie_tmdb_id) >= $${minMoviesParamIndex}
+    ORDER BY curse_score DESC
+    LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
+  `
+
+  const result = await db.query(query, params)
+
+  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0
+
+  // Remove the total_count field from each row
+  const actors = result.rows.map(
+    ({ total_count: _, ...actor }: { total_count: string } & CursedActorRecord) => actor
   )
-  return result.rows
+
+  return { actors, totalCount }
 }
 
 // ============================================================================
@@ -462,7 +575,7 @@ export async function getSiteStats(): Promise<SiteStats> {
   }
 }
 
-// Get recently added deceased actors for homepage display
+// Get recently deceased actors for homepage display (ordered by death date)
 export async function getRecentDeaths(limit: number = 5): Promise<
   Array<{
     tmdb_id: number
@@ -476,7 +589,7 @@ export async function getRecentDeaths(limit: number = 5): Promise<
   const result = await db.query(
     `SELECT tmdb_id, name, deathday, cause_of_death, profile_path
      FROM deceased_persons
-     ORDER BY created_at DESC
+     ORDER BY deathday DESC
      LIMIT $1`,
     [limit]
   )

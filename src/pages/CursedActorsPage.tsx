@@ -1,12 +1,11 @@
-import { Link, useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
-import { useQuery } from "@tanstack/react-query"
-import { useCursedMovies } from "@/hooks/useCursedMovies"
-import { getPosterUrl, getCursedMoviesFilters } from "@/services/api"
+import { useCursedActors } from "@/hooks/useCursedActors"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import CalculationExplainer from "@/components/common/CalculationExplainer"
-import type { CursedMovie } from "@/types"
+import { PersonIcon, SkullIcon } from "@/components/icons"
+import type { CursedActor } from "@/types"
 
 const DECADE_OPTIONS = [
   { value: "", label: "Any" },
@@ -22,42 +21,46 @@ const DECADE_OPTIONS = [
   { value: "1930", label: "1930s" },
 ]
 
-function MovieRow({ movie }: { movie: CursedMovie }) {
-  const posterUrl = getPosterUrl(movie.posterPath, "w92")
-  const releaseYear = movie.releaseYear?.toString() || "Unknown"
-  const slug = `${movie.title
-    .toLowerCase()
-    .replace(/['']/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")}-${releaseYear}-${movie.id}`
-  const excessDeaths = Math.round((movie.deceasedCount - movie.expectedDeaths) * 10) / 10
+const STATUS_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "living", label: "Living" },
+  { value: "deceased", label: "Deceased" },
+]
+
+const MIN_MOVIES_OPTIONS = [
+  { value: "2", label: "Any" },
+  { value: "3", label: "3+" },
+  { value: "5", label: "5+" },
+  { value: "10", label: "10+" },
+  { value: "15", label: "15+" },
+  { value: "20", label: "20+" },
+]
+
+function ActorRow({ actor }: { actor: CursedActor }) {
+  const excessDeaths = Math.round((actor.totalActualDeaths - actor.totalExpectedDeaths) * 10) / 10
+  const cursePercentage =
+    actor.totalExpectedDeaths > 0
+      ? ((actor.totalActualDeaths - actor.totalExpectedDeaths) / actor.totalExpectedDeaths) * 100
+      : 0
 
   return (
-    <Link
-      to={`/movie/${slug}`}
-      className="flex items-center gap-4 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
-    >
-      <span className="w-8 text-center font-display text-lg text-brown-medium">{movie.rank}</span>
+    <div className="flex items-center gap-4 rounded-lg bg-white p-3">
+      <span className="w-8 text-center font-display text-lg text-brown-medium">{actor.rank}</span>
 
-      <div className="h-16 w-11 flex-shrink-0 overflow-hidden rounded bg-beige">
-        {posterUrl ? (
-          <img src={posterUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-text-muted">
-            No image
-          </div>
-        )}
+      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
+        <PersonIcon size={24} className="text-brown-medium" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <h3 className="truncate font-display text-lg text-brown-dark">{movie.title}</h3>
-        <p className="text-sm text-text-muted">{releaseYear}</p>
+        <div className="flex items-center gap-2">
+          <h3 className="truncate font-display text-lg text-brown-dark">{actor.name}</h3>
+          {actor.isDeceased && <SkullIcon size={16} className="flex-shrink-0 text-brown-medium" />}
+        </div>
+        <p className="text-sm text-text-muted">{actor.totalMovies} movies analyzed</p>
       </div>
 
       <div className="flex-shrink-0 text-right">
-        <p className="font-display text-lg text-brown-dark">
-          {movie.deceasedCount}/{movie.castCount}
-        </p>
+        <p className="font-display text-lg text-brown-dark">{actor.totalActualDeaths} deaths</p>
         <p className="text-xs text-text-muted">
           +{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"} above expected
         </p>
@@ -65,57 +68,40 @@ function MovieRow({ movie }: { movie: CursedMovie }) {
 
       <div className="flex-shrink-0 text-right">
         <p className="font-display text-xl text-brown-dark">
-          {(movie.mortalitySurpriseScore * 100).toFixed(0)}%
+          {cursePercentage > 0 ? `${cursePercentage.toFixed(0)}%` : "0%"}
         </p>
         <p className="text-xs text-text-muted">curse score</p>
       </div>
-    </Link>
+    </div>
   )
 }
 
-function getPageTitle(fromDecade?: number, toDecade?: number): string {
-  if (fromDecade && toDecade && fromDecade !== toDecade) {
-    return `Most Cursed Movies (${fromDecade}s-${toDecade}s) - Dead on Film`
+function getPageTitle(status?: string): string {
+  if (status === "living") {
+    return "Most Cursed Living Actors - Dead on Film"
   }
-  if (fromDecade) {
-    return `Most Cursed Movies from the ${fromDecade}s - Dead on Film`
+  if (status === "deceased") {
+    return "Most Cursed Deceased Actors - Dead on Film"
   }
-  return "Most Cursed Movies - Dead on Film"
+  return "Most Cursed Actors - Dead on Film"
 }
 
-// Generate min deaths options from 3 to max
-function generateMinDeathsOptions(maxMinDeaths: number) {
-  const options = [{ value: "3", label: "Any" }]
-  for (let i = 4; i <= maxMinDeaths; i++) {
-    options.push({ value: String(i), label: `${i}+` })
-  }
-  return options
-}
-
-export default function CursedMoviesPage() {
+export default function CursedActorsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-
-  // Fetch filter options (max min deaths value)
-  const { data: filtersData } = useQuery({
-    queryKey: ["cursed-movies-filters"],
-    queryFn: getCursedMoviesFilters,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  })
-
-  // Generate options based on fetched max, default to just "Any" while loading
-  const minDeathsOptions = generateMinDeathsOptions(filtersData?.maxMinDeaths ?? 3)
 
   // Parse URL params
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const fromDecade = searchParams.get("from") ? parseInt(searchParams.get("from")!, 10) : undefined
   const toDecade = searchParams.get("to") ? parseInt(searchParams.get("to")!, 10) : undefined
-  const minDeadActors = parseInt(searchParams.get("minDeaths") || "3", 10)
+  const minMovies = parseInt(searchParams.get("minMovies") || "2", 10)
+  const status = (searchParams.get("status") as "living" | "deceased" | "all") || "all"
 
-  const { data, isLoading, error } = useCursedMovies({
+  const { data, isLoading, error } = useCursedActors({
     page,
     fromDecade,
     toDecade,
-    minDeadActors,
+    minMovies,
+    status,
   })
 
   const updateParams = (updates: Record<string, string | undefined>) => {
@@ -142,45 +128,64 @@ export default function CursedMoviesPage() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading cursed movies..." />
+    return <LoadingSpinner message="Loading cursed actors..." />
   }
 
   if (error) {
     return <ErrorMessage message={error.message} />
   }
 
-  const hasFilters = fromDecade || toDecade || minDeadActors !== 3
-  const noResults = !data || data.movies.length === 0
+  const hasFilters = fromDecade || toDecade || minMovies !== 2 || status !== "all"
+  const noResults = !data || data.actors.length === 0
 
   return (
     <>
       <Helmet>
-        <title>{getPageTitle(fromDecade, toDecade)}</title>
+        <title>{getPageTitle(status)}</title>
         <meta
           name="description"
-          content="Discover the most cursed movies in cinema history. Ranked by mortality surprise score - films where cast deaths exceeded statistical expectations."
+          content="Discover actors whose co-stars have died at unusually high rates. Ranked by curse score - how many more deaths than statistically expected across their filmography."
         />
-        <meta property="og:title" content={getPageTitle(fromDecade, toDecade)} />
+        <meta property="og:title" content={getPageTitle(status)} />
         <meta
           property="og:description"
-          content="Movies ranked by how many cast members died above statistical expectations"
+          content="Actors ranked by how many of their co-stars died above statistical expectations"
         />
         <meta property="og:type" content="website" />
       </Helmet>
 
-      <div data-testid="cursed-movies-page" className="mx-auto max-w-3xl">
+      <div data-testid="cursed-actors-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">Most Cursed Movies</h1>
+          <h1 className="font-display text-3xl text-brown-dark">Most Cursed Actors</h1>
           <p className="mt-2 text-sm text-text-muted">
-            Movies ranked by statistically abnormal mortality. A film from the 1930s with all
-            deceased actors isn't "cursed" if that's expected for their ages. These films had
-            significantly more deaths than actuarial tables predicted. The curse score shows excess
-            mortality: 50% means 50% more deaths than expected.
+            Actors whose co-stars have died at unusually high rates across their filmography. The
+            curse score shows excess co-star mortality: 50% means 50% more co-star deaths than
+            actuarial tables predicted based on cast ages.
           </p>
         </div>
 
         {/* Filters */}
         <div className="mb-6 flex flex-wrap items-center justify-center gap-4 rounded-lg bg-beige p-4">
+          <div className="flex items-center gap-2">
+            <label htmlFor="status" className="text-sm text-text-muted">
+              Status:
+            </label>
+            <select
+              id="status"
+              value={status}
+              onChange={(e) =>
+                updateParams({ status: e.target.value === "all" ? undefined : e.target.value })
+              }
+              className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex items-center gap-2">
             <label htmlFor="from-decade" className="text-sm text-text-muted">
               From:
@@ -218,18 +223,18 @@ export default function CursedMoviesPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <label htmlFor="min-deaths" className="text-sm text-text-muted">
-              Min Deaths:
+            <label htmlFor="min-movies" className="text-sm text-text-muted">
+              Min Movies:
             </label>
             <select
-              id="min-deaths"
-              value={minDeadActors.toString()}
+              id="min-movies"
+              value={minMovies.toString()}
               onChange={(e) =>
-                updateParams({ minDeaths: e.target.value === "3" ? undefined : e.target.value })
+                updateParams({ minMovies: e.target.value === "2" ? undefined : e.target.value })
               }
               className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
             >
-              {minDeathsOptions.map((opt) => (
+              {MIN_MOVIES_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -249,13 +254,13 @@ export default function CursedMoviesPage() {
 
         {noResults ? (
           <div className="text-center text-text-muted">
-            <p>No movies match these filters. Try adjusting your criteria.</p>
+            <p>No actors match these filters. Try adjusting your criteria.</p>
           </div>
         ) : (
           <>
             <div className="space-y-2">
-              {data.movies.map((movie) => (
-                <MovieRow key={movie.id} movie={movie} />
+              {data.actors.map((actor) => (
+                <ActorRow key={actor.id} actor={actor} />
               ))}
             </div>
 
@@ -286,10 +291,10 @@ export default function CursedMoviesPage() {
 
             {/* Total count */}
             <p className="mt-4 text-center text-sm text-text-muted">
-              Showing {data.movies.length} of {data.pagination.totalCount} movies
+              Showing {data.actors.length} of {data.pagination.totalCount} actors
             </p>
 
-            <CalculationExplainer type="movies" />
+            <CalculationExplainer type="actors" />
           </>
         )}
       </div>

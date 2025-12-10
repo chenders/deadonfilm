@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { getRandomMovie, getDiscoverMovie } from "@/services/api"
 import { createMovieSlug } from "@/utils/slugify"
-import { FilmReelIcon, SkullIcon, TrophyIcon } from "@/components/icons"
+import { FilmReelIcon, SkullIcon, CursedFilmIcon, CursedActorIcon } from "@/components/icons"
 
 type LoadingState = null | "random" | "classic" | "high-mortality"
 
@@ -29,17 +29,11 @@ function QuickActionButton({
     "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brown-dark bg-beige border border-brown-medium/30 rounded-full hover:bg-cream hover:border-brown-medium/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
 
   const tooltipClass =
-    "absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 text-xs text-center bg-brown-dark text-cream px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 shadow-lg"
+    "absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 text-xs text-center bg-brown-dark text-cream px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-300 group-hover:delay-300 pointer-events-none z-10 shadow-lg"
 
   return (
     <div className="group relative">
-      <button
-        data-testid={testId}
-        onClick={onClick}
-        disabled={disabled}
-        className={buttonClass}
-        title={tooltip}
-      >
+      <button data-testid={testId} onClick={onClick} disabled={disabled} className={buttonClass}>
         {icon}
         {isLoading ? "..." : label}
       </button>
@@ -101,16 +95,29 @@ export default function QuickActions() {
 
       <div className="group relative">
         <Link
-          data-testid="leaderboard-btn"
+          data-testid="cursed-movies-btn"
           to="/cursed-movies"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brown-dark bg-beige border border-brown-medium/30 rounded-full hover:bg-cream hover:border-brown-medium/50 transition-all duration-200"
-          title="Top 50 most cursed films"
+          className="inline-flex items-center gap-1.5 rounded-full border border-brown-medium/30 bg-beige px-3 py-1.5 text-xs font-medium text-brown-dark transition-all duration-200 hover:border-brown-medium/50 hover:bg-cream"
         >
-          <TrophyIcon size={14} />
-          Leaderboard
+          <CursedFilmIcon size={14} />
+          Cursed Movies
         </Link>
-        <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 text-xs text-center bg-brown-dark text-cream px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 shadow-lg">
-          Top 50 most cursed films
+        <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 rounded-lg bg-brown-dark px-3 py-2 text-center text-xs text-cream opacity-0 shadow-lg transition-opacity delay-300 duration-200 group-hover:opacity-100 group-hover:delay-300">
+          Movies with statistically abnormal mortality
+        </span>
+      </div>
+
+      <div className="group relative">
+        <Link
+          data-testid="cursed-actors-btn"
+          to="/cursed-actors"
+          className="inline-flex items-center gap-1.5 rounded-full border border-brown-medium/30 bg-beige px-3 py-1.5 text-xs font-medium text-brown-dark transition-all duration-200 hover:border-brown-medium/50 hover:bg-cream"
+        >
+          <CursedActorIcon size={14} />
+          Cursed Actors
+        </Link>
+        <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 rounded-lg bg-brown-dark px-3 py-2 text-center text-xs text-cream opacity-0 shadow-lg transition-opacity delay-300 duration-200 group-hover:opacity-100 group-hover:delay-300">
+          Actors with unusually high co-star mortality
         </span>
       </div>
     </div>

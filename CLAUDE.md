@@ -31,7 +31,7 @@ Expected Death Probability:
   For each actor: P(death) = cumulative probability of dying between age at filming and current age
   Expected Deaths = sum of all actor death probabilities
 
-Mortality Surprise Score:
+Mortality Surprise Score (Curse Score):
   (Actual Deaths - Expected Deaths) / Expected Deaths
   Positive = more deaths than expected ("cursed" movie)
   Negative = fewer deaths than expected ("blessed" movie)
@@ -39,6 +39,14 @@ Mortality Surprise Score:
 Years Lost:
   Expected Lifespan - Actual Lifespan (based on life expectancy at birth)
 ```
+
+### Mortality Calculation Rules
+
+1. **Archived Footage Exclusion**: Actors who died more than 1 year before a movie's release are excluded from mortality calculations. They appeared via archived footage and weren't alive during production.
+
+2. **Same-Year Death Handling**: Actors who died the same year as the movie release are counted with at least 1 year of death probability to avoid zero-probability edge cases.
+
+3. **Cursed Actors**: Calculated by summing expected and actual co-star deaths across all of an actor's filmography, then computing the curse score.
 
 ### Server Libraries
 
@@ -121,6 +129,11 @@ npm test                     # Frontend unit tests
 - `GET /api/movie/{id}/death-info?personIds=1,2,3` - Poll for cause of death updates
 - `GET /api/on-this-day` - Deaths on current date
 - `GET /api/random` - Get a random movie (redirects to movie page)
+- `GET /api/discover/{type}` - Get movies by type (classic, high-mortality)
+- `GET /api/cursed-movies` - List movies ranked by curse score (with pagination/filters)
+- `GET /api/cursed-movies/filters` - Get filter options for cursed movies
+- `GET /api/cursed-actors` - List actors ranked by co-star mortality (with pagination/filters)
+- `GET /api/stats` - Get site-wide statistics
 - `GET /health` - Health check for Kubernetes
 
 ## Environment Variables

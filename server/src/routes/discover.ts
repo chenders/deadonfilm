@@ -1,6 +1,6 @@
 import type { Request, Response } from "express"
 import type { TMDBSearchResponse } from "../lib/tmdb.js"
-import { getHighMortalityMovies } from "../lib/db.js"
+import { getHighMortalityMovies, getMaxValidMinDeaths } from "../lib/db.js"
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
@@ -60,7 +60,7 @@ async function discoverClassicMovie(): Promise<DiscoverMovieResponse | null> {
 
 async function discoverHighMortalityMovie(): Promise<DiscoverMovieResponse | null> {
   // Get movies with highest mortality surprise scores from our database
-  const movies = await getHighMortalityMovies(50)
+  const { movies } = await getHighMortalityMovies({ limit: 50 })
 
   if (movies.length === 0) {
     // Fallback to classic movie discovery if no mortality data exists yet
@@ -115,13 +115,33 @@ export async function getDiscoverMovie(req: Request, res: Response) {
 }
 
 // Get list of high-mortality movies for leaderboard page
+// Supports pagination and filtering by decade range and minimum deaths
 export async function getCursedMovies(req: Request, res: Response) {
   try {
-    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100)
-    const movies = await getHighMortalityMovies(limit)
+    const page = Math.max(1, parseInt(req.query.page as string) || 1)
+    const pageSize = Math.min(parseInt(req.query.limit as string) || 50, 100)
+    const offset = (page - 1) * pageSize
 
+    // Parse filter parameters
+    const fromDecade = req.query.from ? parseInt(req.query.from as string) : undefined
+    const toDecade = req.query.to ? parseInt(req.query.to as string) : undefined
+    const minDeadActors = req.query.minDeaths ? parseInt(req.query.minDeaths as string) : 3
+
+    // Convert decades to year ranges
+    const fromYear = fromDecade || undefined
+    const toYear = toDecade ? toDecade + 9 : undefined
+
+    const { movies, totalCount } = await getHighMortalityMovies({
+      limit: pageSize,
+      offset,
+      fromYear,
+      toYear,
+      minDeadActors,
+    })
+
+    // Calculate rank based on global position (page offset + index)
     const result = movies.map((movie, index) => ({
-      rank: index + 1,
+      rank: offset + index + 1,
       id: movie.tmdb_id,
       title: movie.title,
       releaseYear: movie.release_year,
@@ -132,9 +152,37 @@ export async function getCursedMovies(req: Request, res: Response) {
       mortalitySurpriseScore: movie.mortality_surprise_score,
     }))
 
-    res.json({ movies: result })
+    // Enforce max 20 pages
+    const totalPages = Math.min(Math.ceil(totalCount / pageSize), 20)
+
+    res.json({
+      movies: result,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages,
+      },
+    })
   } catch (error) {
     console.error("Cursed movies error:", error)
     res.status(500).json({ error: { message: "Failed to fetch cursed movies" } })
+  }
+}
+
+// Get filter options for cursed movies page
+export async function getCursedMoviesFilters(_req: Request, res: Response) {
+  try {
+    // Check if database is available
+    if (!process.env.DATABASE_URL) {
+      return res.json({ maxMinDeaths: 3 })
+    }
+
+    const maxMinDeaths = await getMaxValidMinDeaths()
+    res.json({ maxMinDeaths })
+  } catch (error) {
+    console.error("Cursed movies filters error:", error)
+    // Return default on error
+    res.json({ maxMinDeaths: 3 })
   }
 }

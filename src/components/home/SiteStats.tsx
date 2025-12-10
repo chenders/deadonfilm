@@ -11,10 +11,12 @@ function StatCard({
   label: string
 }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-lg bg-white px-4 py-3">
-      <div className="text-brown-medium">{icon}</div>
-      <span className="font-display text-xl text-brown-dark">{value}</span>
-      <span className="text-xs text-text-muted">{label}</span>
+    <div className="flex items-center gap-2 text-text-muted">
+      <span className="text-brown-medium/60">{icon}</span>
+      <span className="text-sm">
+        <span className="font-medium text-brown-dark">{value}</span>{" "}
+        <span className="text-xs">{label}</span>
+      </span>
     </div>
   )
 }
@@ -33,30 +35,25 @@ export default function SiteStats() {
   }
 
   return (
-    <section data-testid="site-stats" className="mt-8">
-      <div className="rounded-lg bg-beige p-4">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <section data-testid="site-stats" className="mt-10">
+      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+        <StatCard
+          icon={<SkullIcon size={14} />}
+          value={data.totalDeceasedActors.toLocaleString()}
+          label="actors tracked"
+        />
+        <StatCard
+          icon={<FilmReelIcon size={14} />}
+          value={data.totalMoviesAnalyzed.toLocaleString()}
+          label="movies analyzed"
+        />
+        {data.avgMortalityPercentage !== null && (
           <StatCard
-            icon={<SkullIcon size={20} />}
-            value={data.totalDeceasedActors.toLocaleString()}
-            label="Actors Tracked"
+            icon={<span className="text-xs">%</span>}
+            value={`${data.avgMortalityPercentage}%`}
+            label="avg. mortality"
           />
-          <StatCard
-            icon={<FilmReelIcon size={20} />}
-            value={data.totalMoviesAnalyzed.toLocaleString()}
-            label="Movies Analyzed"
-          />
-          {data.avgMortalityPercentage !== null && (
-            <StatCard icon={<span>%</span>} value={`${data.avgMortalityPercentage}%`} label="Avg. Mortality" />
-          )}
-          {data.topCauseOfDeath && (
-            <StatCard
-              icon={<span className="text-sm">RIP</span>}
-              value={data.topCauseOfDeath}
-              label="Top Cause of Death"
-            />
-          )}
-        </div>
+        )}
       </div>
     </section>
   )

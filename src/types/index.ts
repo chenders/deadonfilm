@@ -149,6 +149,34 @@ export interface CursedMovie {
   mortalitySurpriseScore: number
 }
 
+export interface PaginationInfo {
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}
+
 export interface CursedMoviesResponse {
   movies: CursedMovie[]
+  pagination: PaginationInfo
+}
+
+export interface CursedMoviesFiltersResponse {
+  maxMinDeaths: number
+}
+
+export interface CursedActor {
+  rank: number
+  id: number
+  name: string
+  isDeceased: boolean
+  totalMovies: number
+  totalActualDeaths: number
+  totalExpectedDeaths: number
+  curseScore: number
+}
+
+export interface CursedActorsResponse {
+  actors: CursedActor[]
+  pagination: PaginationInfo
 }
