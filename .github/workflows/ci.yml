@@ -218,6 +218,7 @@ jobs:
   deploy:
     name: Deploy to GKE
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [frontend, backend, e2e, docker]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
