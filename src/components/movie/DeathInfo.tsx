@@ -96,12 +96,13 @@ function Tooltip({
   return createPortal(
     <div
       ref={tooltipRef}
-      className="animate-fade-slide-in fixed z-50 max-w-xs rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl"
+      className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
       style={{
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,
         visibility: position ? "visible" : "hidden",
         animationDelay: "0ms",
+        maxHeight: "60vh",
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -112,7 +113,7 @@ function Tooltip({
           <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
         ))}
       </div>
-      <p className="leading-relaxed">{content}</p>
+      <p className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</p>
     </div>,
     document.body
   )
