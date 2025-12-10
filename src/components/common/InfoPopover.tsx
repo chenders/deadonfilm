@@ -21,6 +21,17 @@ export default function InfoPopover({
     triggerRef.current?.focus()
   }, [])
 
+  // Focus management - move focus to dismiss button when popover opens
+  useEffect(() => {
+    if (isOpen) {
+      // Find the dismiss button and focus it
+      const dismissButton = popoverRef.current?.querySelector("button")
+      if (dismissButton) {
+        dismissButton.focus()
+      }
+    }
+  }, [isOpen])
+
   // Handle escape key
   useEffect(() => {
     if (!isOpen) return

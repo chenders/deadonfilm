@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async"
 import { useQuery } from "@tanstack/react-query"
 import { useCursedMovies } from "@/hooks/useCursedMovies"
 import { getPosterUrl, getCursedMoviesFilters } from "@/services/api"
+import { createMovieSlug } from "@/utils/slugify"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import CalculationExplainer from "@/components/common/CalculationExplainer"
@@ -25,11 +26,7 @@ const DECADE_OPTIONS = [
 function MovieRow({ movie }: { movie: CursedMovie }) {
   const posterUrl = getPosterUrl(movie.posterPath, "w92")
   const releaseYear = movie.releaseYear?.toString() || "Unknown"
-  const slug = `${movie.title
-    .toLowerCase()
-    .replace(/['']/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")}-${releaseYear}-${movie.id}`
+  const slug = createMovieSlug(movie.title, releaseYear, movie.id)
   const excessDeaths = Math.round((movie.deceasedCount - movie.expectedDeaths) * 10) / 10
 
   return (

@@ -6,7 +6,7 @@ export function createMovieSlug(title: string, releaseDate: string, id: number):
   const year = releaseDate ? releaseDate.slice(0, 4) : "unknown"
   const slug = title
     .toLowerCase()
-    .replace(/['']/g, "") // Remove apostrophes
+    .replace(/['\u02BC\u2019]/g, "") // Remove straight ('), modifier (ʼ), and curly (') apostrophes
     .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
     .replace(/(^-|-$)/g, "") // Remove leading/trailing hyphens
 
