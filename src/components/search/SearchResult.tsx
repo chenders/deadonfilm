@@ -39,7 +39,7 @@ function getPosterUrls(posterPath: string | null): {
   }
 }
 
-function FilmPoster({ posterPath }: { posterPath: string | null }) {
+function FilmPoster({ posterPath, title }: { posterPath: string | null; title: string }) {
   const poster = getPosterUrls(posterPath)
 
   return (
@@ -48,7 +48,7 @@ function FilmPoster({ posterPath }: { posterPath: string | null }) {
         <img
           src={poster.src}
           srcSet={poster.srcSet}
-          alt=""
+          alt={`${title} poster`}
           className="h-full w-full object-cover"
           loading="lazy"
         />
@@ -95,7 +95,7 @@ export default function SearchResult({
       })}
     >
       <div className="flex items-center gap-3">
-        <FilmPoster posterPath={movie.poster_path} />
+        <FilmPoster posterPath={movie.poster_path} title={movie.title} />
 
         {/* Title and year */}
         <div className="min-w-0 flex-1">
