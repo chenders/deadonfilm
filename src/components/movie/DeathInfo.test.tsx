@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import DeathInfo from "./DeathInfo"
 
 const defaultTmdbUrl = "https://www.themoviedb.org/person/12345"
@@ -275,5 +276,33 @@ describe("DeathInfo", () => {
     const causeLink = screen.getByText("heart attack")
     expect(causeLink.closest("a")).toBeInTheDocument()
     expect(causeLink.closest("p")?.querySelector("svg")).not.toBeInTheDocument()
+  })
+
+  it("renders tooltip with long details text without truncation", async () => {
+    const user = userEvent.setup()
+    const longDetails =
+      "This is a very long cause of death details text that would previously have been truncated with an ellipsis. " +
+      "It contains multiple sentences describing the circumstances of the death in great detail. " +
+      "The tooltip should now display all of this text without any truncation, allowing users to scroll if needed. " +
+      "This ensures that important information about the cause of death is never hidden from users who want to learn more."
+
+    render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday={null}
+        causeOfDeath="complications from surgery"
+        causeOfDeathDetails={longDetails}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    // Hover over the cause to show tooltip
+    const causeText = screen.getByText("complications from surgery")
+    await user.hover(causeText)
+
+    // Verify the full long text is rendered in the tooltip (not truncated)
+    expect(screen.getByText(longDetails)).toBeInTheDocument()
   })
 })
