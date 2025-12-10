@@ -20,6 +20,17 @@ const PORT = process.env.PORT || 8080
 app.use(cors())
 app.use(express.json())
 
+// Redirect www to apex domain for SEO
+app.use((req, res, next) => {
+  const host = req.get("host") || ""
+  if (host.startsWith("www.")) {
+    const apexHost = host.replace("www.", "")
+    const protocol = req.get("x-forwarded-proto") || req.protocol
+    return res.redirect(301, `${protocol}://${apexHost}${req.originalUrl}`)
+  }
+  next()
+})
+
 // Health check endpoint for GKE
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" })

@@ -26,6 +26,24 @@ spec:
                 name: dead-on-film-frontend
                 port:
                   number: 80
+    # www subdomain - routes to same services, redirect handled by app
+    - host: www.deadonfilm.com
+      http:
+        paths:
+          - path: /api/*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: dead-on-film-api
+                port:
+                  number: 8080
+          - path: /*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: dead-on-film-frontend
+                port:
+                  number: 80
 
 ---
 # Managed certificate for HTTPS
