@@ -122,4 +122,30 @@ describe("QuickActions", () => {
 
     expect(screen.getByText("🎲")).toBeInTheDocument()
   })
+
+  it("displays tooltips explaining each button", () => {
+    renderWithRouter(<QuickActions />)
+
+    // Tooltips are rendered as spans with the tooltip text
+    expect(
+      screen.getByText("Movies where more actors died than statistically expected")
+    ).toBeInTheDocument()
+    expect(screen.getByText("Golden age cinema from 1930-1970")).toBeInTheDocument()
+    expect(screen.getByText("Random movie from any era")).toBeInTheDocument()
+  })
+
+  it("has title attributes for accessibility fallback", () => {
+    renderWithRouter(<QuickActions />)
+
+    const highMortalityBtn = screen.getByTestId("high-mortality-btn")
+    const classicBtn = screen.getByTestId("classic-btn")
+    const randomBtn = screen.getByTestId("random-movie-btn")
+
+    expect(highMortalityBtn).toHaveAttribute(
+      "title",
+      "Movies where more actors died than statistically expected"
+    )
+    expect(classicBtn).toHaveAttribute("title", "Golden age cinema from 1930-1970")
+    expect(randomBtn).toHaveAttribute("title", "Random movie from any era")
+  })
 })

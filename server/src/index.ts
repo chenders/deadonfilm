@@ -10,7 +10,8 @@ import { getMovie } from "./routes/movie.js"
 import { getOnThisDay } from "./routes/on-this-day.js"
 import { getDeathInfoRoute } from "./routes/death-info.js"
 import { getRandomMovie } from "./routes/random.js"
-import { getDiscoverMovie } from "./routes/discover.js"
+import { getDiscoverMovie, getCursedMovies } from "./routes/discover.js"
+import { getStats, getRecentDeathsHandler } from "./routes/stats.js"
 import { initializeDatabase } from "./lib/startup.js"
 
 const app = express()
@@ -43,6 +44,9 @@ app.get("/api/movie/:id/death-info", getDeathInfoRoute)
 app.get("/api/on-this-day", getOnThisDay)
 app.get("/api/random", getRandomMovie)
 app.get("/api/discover", getDiscoverMovie)
+app.get("/api/cursed-movies", getCursedMovies)
+app.get("/api/stats", getStats)
+app.get("/api/recent-deaths", getRecentDeathsHandler)
 
 // Initialize database and start server
 async function startServer() {

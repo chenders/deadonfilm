@@ -414,3 +414,71 @@ export async function getCursedActors(limit: number = 20): Promise<
   )
   return result.rows
 }
+
+// ============================================================================
+// Site statistics functions
+// ============================================================================
+
+export interface SiteStats {
+  totalDeceasedActors: number
+  totalMoviesAnalyzed: number
+  topCauseOfDeath: string | null
+  avgMortalityPercentage: number | null
+}
+
+// Get aggregate site statistics for the homepage
+export async function getSiteStats(): Promise<SiteStats> {
+  const db = getPool()
+
+  // Get counts and top cause of death in a single query
+  const result = await db.query<{
+    total_actors: string
+    total_movies: string
+    top_cause: string | null
+    avg_mortality: string | null
+  }>(`
+    SELECT
+      (SELECT COUNT(*) FROM deceased_persons) as total_actors,
+      (SELECT COUNT(*) FROM movies WHERE mortality_surprise_score IS NOT NULL) as total_movies,
+      (SELECT cause_of_death FROM deceased_persons
+       WHERE cause_of_death IS NOT NULL
+       GROUP BY cause_of_death
+       ORDER BY COUNT(*) DESC
+       LIMIT 1) as top_cause,
+      (SELECT ROUND(AVG(
+        CASE WHEN cast_count > 0
+          THEN (deceased_count::numeric / cast_count) * 100
+          ELSE NULL
+        END
+      ), 1) FROM movies WHERE cast_count > 0) as avg_mortality
+  `)
+
+  const row = result.rows[0]
+  return {
+    totalDeceasedActors: parseInt(row.total_actors, 10) || 0,
+    totalMoviesAnalyzed: parseInt(row.total_movies, 10) || 0,
+    topCauseOfDeath: row.top_cause,
+    avgMortalityPercentage: row.avg_mortality ? parseFloat(row.avg_mortality) : null,
+  }
+}
+
+// Get recently added deceased actors for homepage display
+export async function getRecentDeaths(limit: number = 5): Promise<
+  Array<{
+    tmdb_id: number
+    name: string
+    deathday: string
+    cause_of_death: string | null
+    profile_path: string | null
+  }>
+> {
+  const db = getPool()
+  const result = await db.query(
+    `SELECT tmdb_id, name, deathday, cause_of_death, profile_path
+     FROM deceased_persons
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit]
+  )
+  return result.rows
+}
