@@ -4,6 +4,9 @@ import type {
   OnThisDayResponse,
   DeathInfoResponse,
   RandomMovieResponse,
+  SiteStatsResponse,
+  RecentDeathsResponse,
+  CursedMoviesResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -51,6 +54,18 @@ export async function getDiscoverMovie(
   type: "classic" | "high-mortality"
 ): Promise<RandomMovieResponse> {
   return fetchJson(`/discover?type=${type}`)
+}
+
+export async function getSiteStats(): Promise<SiteStatsResponse> {
+  return fetchJson("/stats")
+}
+
+export async function getRecentDeaths(limit: number = 5): Promise<RecentDeathsResponse> {
+  return fetchJson(`/recent-deaths?limit=${limit}`)
+}
+
+export async function getCursedMovies(limit: number = 50): Promise<CursedMoviesResponse> {
+  return fetchJson(`/cursed-movies?limit=${limit}`)
 }
 
 // TMDB image URL helpers

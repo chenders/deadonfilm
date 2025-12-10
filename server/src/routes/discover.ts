@@ -113,3 +113,28 @@ export async function getDiscoverMovie(req: Request, res: Response) {
     res.status(500).json({ error: { message: "Failed to fetch movie" } })
   }
 }
+
+// Get list of high-mortality movies for leaderboard page
+export async function getCursedMovies(req: Request, res: Response) {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100)
+    const movies = await getHighMortalityMovies(limit)
+
+    const result = movies.map((movie, index) => ({
+      rank: index + 1,
+      id: movie.tmdb_id,
+      title: movie.title,
+      releaseYear: movie.release_year,
+      posterPath: movie.poster_path,
+      deceasedCount: movie.deceased_count,
+      castCount: movie.cast_count,
+      expectedDeaths: movie.expected_deaths,
+      mortalitySurpriseScore: movie.mortality_surprise_score,
+    }))
+
+    res.json({ movies: result })
+  } catch (error) {
+    console.error("Cursed movies error:", error)
+    res.status(500).json({ error: { message: "Failed to fetch cursed movies" } })
+  }
+}

@@ -1,10 +1,52 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { getRandomMovie, getDiscoverMovie } from "@/services/api"
 import { createMovieSlug } from "@/utils/slugify"
-import { FilmReelIcon, SkullIcon } from "@/components/icons"
+import { FilmReelIcon, SkullIcon, TrophyIcon } from "@/components/icons"
 
 type LoadingState = null | "random" | "classic" | "high-mortality"
+
+interface QuickActionButtonProps {
+  testId: string
+  onClick: () => void
+  disabled: boolean
+  isLoading: boolean
+  icon: React.ReactNode
+  label: string
+  tooltip: string
+}
+
+function QuickActionButton({
+  testId,
+  onClick,
+  disabled,
+  isLoading,
+  icon,
+  label,
+  tooltip,
+}: QuickActionButtonProps) {
+  const buttonClass =
+    "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brown-dark bg-beige border border-brown-medium/30 rounded-full hover:bg-cream hover:border-brown-medium/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+
+  const tooltipClass =
+    "absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 text-xs text-center bg-brown-dark text-cream px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 shadow-lg"
+
+  return (
+    <div className="group relative">
+      <button
+        data-testid={testId}
+        onClick={onClick}
+        disabled={disabled}
+        className={buttonClass}
+        title={tooltip}
+      >
+        {icon}
+        {isLoading ? "..." : label}
+      </button>
+      <span className={tooltipClass}>{tooltip}</span>
+    </div>
+  )
+}
 
 export default function QuickActions() {
   const navigate = useNavigate()
@@ -23,40 +65,54 @@ export default function QuickActions() {
     }
   }
 
-  const buttonClass =
-    "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brown-dark bg-beige border border-brown-medium/30 rounded-full hover:bg-cream hover:border-brown-medium/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-
   return (
     <div data-testid="quick-actions" className="mt-6 flex flex-wrap justify-center gap-2">
-      <button
-        data-testid="high-mortality-btn"
+      <QuickActionButton
+        testId="high-mortality-btn"
         onClick={() => handleDiscover("high-mortality")}
         disabled={loading !== null}
-        className={buttonClass}
-      >
-        <SkullIcon size={14} className={loading === "high-mortality" ? "animate-pulse" : ""} />
-        {loading === "high-mortality" ? "..." : "High Mortality"}
-      </button>
+        isLoading={loading === "high-mortality"}
+        icon={
+          <SkullIcon size={14} className={loading === "high-mortality" ? "animate-pulse" : ""} />
+        }
+        label="High Mortality"
+        tooltip="Movies where more actors died than statistically expected"
+      />
 
-      <button
-        data-testid="classic-btn"
+      <QuickActionButton
+        testId="classic-btn"
         onClick={() => handleDiscover("classic")}
         disabled={loading !== null}
-        className={buttonClass}
-      >
-        <FilmReelIcon size={14} className={loading === "classic" ? "animate-spin" : ""} />
-        {loading === "classic" ? "..." : "Classic Films"}
-      </button>
+        isLoading={loading === "classic"}
+        icon={<FilmReelIcon size={14} className={loading === "classic" ? "animate-spin" : ""} />}
+        label="Classic Films"
+        tooltip="Golden age cinema from 1930-1970"
+      />
 
-      <button
-        data-testid="random-movie-btn"
+      <QuickActionButton
+        testId="random-movie-btn"
         onClick={() => handleDiscover("random")}
         disabled={loading !== null}
-        className={buttonClass}
-      >
-        <span className={loading === "random" ? "animate-pulse" : ""}>🎲</span>
-        {loading === "random" ? "..." : "Surprise Me"}
-      </button>
+        isLoading={loading === "random"}
+        icon={<span className={loading === "random" ? "animate-pulse" : ""}>🎲</span>}
+        label="Surprise Me"
+        tooltip="Random movie from any era"
+      />
+
+      <div className="group relative">
+        <Link
+          data-testid="leaderboard-btn"
+          to="/cursed-movies"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brown-dark bg-beige border border-brown-medium/30 rounded-full hover:bg-cream hover:border-brown-medium/50 transition-all duration-200"
+          title="Top 50 most cursed films"
+        >
+          <TrophyIcon size={14} />
+          Leaderboard
+        </Link>
+        <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 text-xs text-center bg-brown-dark text-cream px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 shadow-lg">
+          Top 50 most cursed films
+        </span>
+      </div>
     </div>
   )
 }
