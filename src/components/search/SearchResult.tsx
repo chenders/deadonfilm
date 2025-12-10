@@ -43,7 +43,7 @@ function FilmPoster({ posterPath }: { posterPath: string | null }) {
   const poster = getPosterUrls(posterPath)
 
   return (
-    <div className="h-11 w-[30px] flex-shrink-0 overflow-hidden rounded bg-brown-medium/10">
+    <div className="-my-1 h-14 w-[38px] flex-shrink-0 overflow-hidden rounded bg-brown-medium/10">
       {poster ? (
         <img
           src={poster.src}
@@ -94,7 +94,7 @@ export default function SearchResult({
         movie_id: movie.id,
       })}
     >
-      <div className="flex h-12 items-center gap-3">
+      <div className="flex items-center gap-3">
         <FilmPoster posterPath={movie.poster_path} />
 
         {/* Title and year */}
