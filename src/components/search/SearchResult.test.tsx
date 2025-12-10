@@ -57,8 +57,7 @@ describe("SearchResult", () => {
   it("renders poster image when poster_path exists", () => {
     render(<SearchResult movie={mockMovie} {...defaultProps} />)
 
-    // Image has alt="" so it's role="presentation"
-    const img = screen.getByRole("presentation")
+    const img = screen.getByRole("img", { name: "The Matrix poster" })
     expect(img).toBeInTheDocument()
     expect(img).toHaveAttribute(
       "src",
@@ -133,8 +132,7 @@ describe("SearchResult", () => {
   it("has correct TMDB srcset for retina displays", () => {
     render(<SearchResult movie={mockMovie} {...defaultProps} />)
 
-    // Image has alt="" so it's role="presentation"
-    const img = screen.getByRole("presentation")
+    const img = screen.getByRole("img", { name: "The Matrix poster" })
     const srcset = img.getAttribute("srcset")
 
     // Should have 1x and 2x variants
