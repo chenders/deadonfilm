@@ -24,6 +24,8 @@ spec:
         - name: dead-on-film
           securityContext:
             allowPrivilegeEscalation: false
+            # readOnlyRootFilesystem disabled: Node.js/npm may write to node_modules/.cache,
+            # New Relic APM writes logs, and 'serve' may need temp file access
             readOnlyRootFilesystem: false
             capabilities:
               drop:
