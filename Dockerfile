@@ -43,35 +43,37 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 # Configure nginx to run as non-root user (node)
 RUN mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp && \
     chown -R node:node /run/nginx /var/log/nginx /var/lib/nginx && \
-    echo 'pid /tmp/nginx.pid;' > /etc/nginx/nginx.conf && \
-    echo 'worker_processes auto;' >> /etc/nginx/nginx.conf && \
-    echo 'error_log /var/log/nginx/error.log warn;' >> /etc/nginx/nginx.conf && \
-    echo 'events { worker_connections 1024; }' >> /etc/nginx/nginx.conf && \
-    echo 'http {' >> /etc/nginx/nginx.conf && \
-    echo '    include /etc/nginx/mime.types;' >> /etc/nginx/nginx.conf && \
-    echo '    default_type application/octet-stream;' >> /etc/nginx/nginx.conf && \
-    echo '    client_body_temp_path /tmp/client_temp;' >> /etc/nginx/nginx.conf && \
-    echo '    proxy_temp_path /tmp/proxy_temp;' >> /etc/nginx/nginx.conf && \
-    echo '    fastcgi_temp_path /tmp/fastcgi_temp;' >> /etc/nginx/nginx.conf && \
-    echo '    uwsgi_temp_path /tmp/uwsgi_temp;' >> /etc/nginx/nginx.conf && \
-    echo '    scgi_temp_path /tmp/scgi_temp;' >> /etc/nginx/nginx.conf && \
-    echo '    server {' >> /etc/nginx/nginx.conf && \
-    echo '        listen 3000;' >> /etc/nginx/nginx.conf && \
-    echo '        server_name www.deadonfilm.com;' >> /etc/nginx/nginx.conf && \
-    echo '        return 301 https://deadonfilm.com$request_uri;' >> /etc/nginx/nginx.conf && \
-    echo '    }' >> /etc/nginx/nginx.conf && \
-    echo '    server {' >> /etc/nginx/nginx.conf && \
-    echo '        listen 3000 default_server;' >> /etc/nginx/nginx.conf && \
-    echo '        server_name deadonfilm.com localhost;' >> /etc/nginx/nginx.conf && \
-    echo '        root /app/frontend/dist;' >> /etc/nginx/nginx.conf && \
-    echo '        index index.html;' >> /etc/nginx/nginx.conf && \
-    echo '        location / {' >> /etc/nginx/nginx.conf && \
-    echo '            try_files $uri $uri/ /index.html;' >> /etc/nginx/nginx.conf && \
-    echo '        }' >> /etc/nginx/nginx.conf && \
-    echo '        gzip on;' >> /etc/nginx/nginx.conf && \
-    echo '        gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;' >> /etc/nginx/nginx.conf && \
-    echo '    }' >> /etc/nginx/nginx.conf && \
-    echo '}' >> /etc/nginx/nginx.conf
+    cat > /etc/nginx/nginx.conf <<'EOF'
+pid /tmp/nginx.pid;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+events { worker_connections 1024; }
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    client_body_temp_path /tmp/client_temp;
+    proxy_temp_path /tmp/proxy_temp;
+    fastcgi_temp_path /tmp/fastcgi_temp;
+    uwsgi_temp_path /tmp/uwsgi_temp;
+    scgi_temp_path /tmp/scgi_temp;
+    server {
+        listen 3000;
+        server_name www.deadonfilm.com;
+        return 301 https://deadonfilm.com$request_uri;
+    }
+    server {
+        listen 3000 default_server;
+        server_name deadonfilm.com localhost;
+        root /app/frontend/dist;
+        index index.html;
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+        gzip on;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
+    }
+}
+EOF
 
 # Create startup script
 RUN echo '#!/bin/sh' > /app/start.sh && \
