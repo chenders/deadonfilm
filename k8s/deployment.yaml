@@ -15,8 +15,19 @@ spec:
       labels:
         app: dead-on-film
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: dead-on-film
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
           # Update PROJECT_ID and REGION before deploying:
           # us-central1-docker.pkg.dev/PROJECT_ID/deadonfilm-repo/dead-on-film:latest
           image: us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:latest
