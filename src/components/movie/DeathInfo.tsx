@@ -103,7 +103,6 @@ function Tooltip({
         left: position?.left ?? -9999,
         visibility: position ? "visible" : "hidden",
         animationDelay: "0ms",
-        maxHeight: "60vh",
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
