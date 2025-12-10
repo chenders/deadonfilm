@@ -113,7 +113,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     })
 
     // Tooltip should be visible
-    const tooltip = page.locator(".fixed.z-50.max-w-xs")
+    const tooltip = page.locator(".fixed.z-50.max-w-sm")
     await expect(tooltip).toBeVisible()
 
     // Get tooltip position
@@ -147,7 +147,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     await page.waitForTimeout(300)
 
     // Tooltip should be visible
-    const tooltip = page.locator(".fixed.z-50.max-w-xs")
+    const tooltip = page.locator(".fixed.z-50.max-w-sm")
     await expect(tooltip).toBeVisible()
 
     // Move mouse to the tooltip itself
@@ -176,7 +176,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     await tooltipTrigger.hover()
     await page.waitForTimeout(300)
 
-    const tooltip = page.locator(".fixed.z-50.max-w-xs")
+    const tooltip = page.locator(".fixed.z-50.max-w-sm")
     await expect(tooltip).toBeVisible()
 
     // Move mouse away from both trigger and tooltip
@@ -225,7 +225,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     })
 
     // Tooltip should be visible
-    const tooltip = page.locator(".fixed.z-50.max-w-xs")
+    const tooltip = page.locator(".fixed.z-50.max-w-sm")
     await expect(tooltip).toBeVisible()
 
     // Verify tooltip position is stable (not jumping around due to card movement)
