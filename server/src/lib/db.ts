@@ -320,21 +320,17 @@ export async function getMaxValidMinDeaths(): Promise<number> {
   const db = getPool()
 
   // Find the highest threshold that still returns at least 5 movies
+  // Optimized query: group by deceased_count directly instead of generating and joining
   const result = await db.query<{ max_threshold: number | null }>(`
-    WITH thresholds AS (
-      SELECT generate_series(3, 50) as threshold
-    ),
-    valid_thresholds AS (
-      SELECT
-        t.threshold,
-        COUNT(m.tmdb_id) as movie_count
-      FROM thresholds t
-      LEFT JOIN movies m ON m.mortality_surprise_score IS NOT NULL
-        AND m.deceased_count >= t.threshold
-      GROUP BY t.threshold
-      HAVING COUNT(m.tmdb_id) >= 5
-    )
-    SELECT MAX(threshold) as max_threshold FROM valid_thresholds
+    SELECT MAX(deceased_count) as max_threshold
+    FROM (
+      SELECT deceased_count, COUNT(*) as count
+      FROM movies
+      WHERE mortality_surprise_score IS NOT NULL
+        AND deceased_count >= 3
+      GROUP BY deceased_count
+      HAVING COUNT(*) >= 5
+    ) subq
   `)
 
   // Default to 3 if no valid thresholds found

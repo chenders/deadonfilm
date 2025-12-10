@@ -28,7 +28,7 @@ export async function getRecentDeathsHandler(req: Request, res: Response) {
       return res.json({ deaths: [] })
     }
 
-    const limit = Math.min(parseInt(req.query.limit as string) || 5, 20)
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 5, 1), 20)
     const deaths = await getRecentDeaths(limit)
     res.json({ deaths })
   } catch (error) {
