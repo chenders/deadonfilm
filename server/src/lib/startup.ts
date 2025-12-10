@@ -36,6 +36,7 @@ function findMigrationsDir(): string {
   ]
 
   for (const path of possiblePaths) {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- paths are hardcoded relative to __dirname
     if (existsSync(path)) {
       return path
     }
@@ -55,6 +56,7 @@ function findDataDir(): string {
   ]
 
   for (const path of possiblePaths) {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- paths are hardcoded relative to __dirname
     if (existsSync(path)) {
       return path
     }
@@ -115,6 +117,7 @@ async function seedActuarialDataIfNeeded(): Promise<void> {
   const dataPath = join(dataDir, "actuarial-life-tables.json")
   console.log(`  Loading data from: ${dataPath}`)
 
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is constructed from hardcoded values
   const rawData = readFileSync(dataPath, "utf-8")
   const data: ActuarialData = JSON.parse(rawData)
 
