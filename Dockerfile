@@ -23,8 +23,8 @@ RUN npm run build
 FROM node:22-alpine AS production
 WORKDIR /app
 
-# Install serve for static files and production deps for server
-RUN npm install -g serve
+# Install nginx for frontend static files with redirect support
+RUN apk add --no-cache nginx
 
 # Copy backend
 COPY --from=backend-builder /app/server/dist ./server/dist
@@ -39,10 +39,46 @@ COPY server/newrelic.cjs ./server/
 # Copy frontend build
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
+# Create nginx config for frontend with www redirect
+# Configure nginx to run as non-root user (node)
+RUN mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp && \
+    chown -R node:node /run/nginx /var/log/nginx /var/lib/nginx && \
+    cat > /etc/nginx/nginx.conf <<'EOF'
+pid /tmp/nginx.pid;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+events { worker_connections 1024; }
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    client_body_temp_path /tmp/client_temp;
+    proxy_temp_path /tmp/proxy_temp;
+    fastcgi_temp_path /tmp/fastcgi_temp;
+    uwsgi_temp_path /tmp/uwsgi_temp;
+    scgi_temp_path /tmp/scgi_temp;
+    server {
+        listen 3000;
+        server_name www.deadonfilm.com;
+        return 301 https://deadonfilm.com$request_uri;
+    }
+    server {
+        listen 3000 default_server;
+        server_name deadonfilm.com localhost;
+        root /app/frontend/dist;
+        index index.html;
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+        gzip on;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
+    }
+}
+EOF
+
 # Create startup script
 RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'cd /app/server && node dist/index.js &' >> /app/start.sh && \
-    echo 'serve -s /app/frontend/dist -l 3000 &' >> /app/start.sh && \
+    echo 'nginx -g "daemon off;" &' >> /app/start.sh && \
     echo 'wait' >> /app/start.sh && \
     chmod +x /app/start.sh
 
