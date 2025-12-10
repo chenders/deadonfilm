@@ -24,8 +24,8 @@ app.use(express.json())
 app.use((req, res, next) => {
   const host = req.get("host") || ""
   if (host.startsWith("www.")) {
-    const apexHost = host.replace("www.", "")
-    const protocol = req.get("x-forwarded-proto") || req.protocol
+    const apexHost = host.replace(/^www\./, "")
+    const protocol = req.get("x-forwarded-proto") || "https"
     return res.redirect(301, `${protocol}://${apexHost}${req.originalUrl}`)
   }
   next()
