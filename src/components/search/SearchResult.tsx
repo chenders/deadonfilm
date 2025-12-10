@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react"
 import type { MovieSearchResult } from "@/types"
 import { getYear } from "@/utils/formatDate"
-import { SkullIcon } from "@/components/icons"
+import { SkullIcon, FilmReelIcon } from "@/components/icons"
 
 interface SearchResultProps {
   movie: MovieSearchResult
@@ -24,6 +24,41 @@ function getMortalityHint(releaseDate: string): {
   if (age >= 50) return { level: "high", label: "High mortality likely" }
   if (age >= 30) return { level: "medium", label: "Some deaths likely" }
   return { level: null, label: null }
+}
+
+// TMDB poster thumbnail URLs using their face-cropped format
+function getPosterUrls(posterPath: string | null): {
+  src: string
+  srcSet: string
+} | null {
+  if (!posterPath) return null
+  const base = "https://media.themoviedb.org/t/p"
+  return {
+    src: `${base}/w45_and_h67_face${posterPath}`,
+    srcSet: `${base}/w45_and_h67_face${posterPath} 1x, ${base}/w94_and_h141_face${posterPath} 2x`,
+  }
+}
+
+function FilmPoster({ posterPath }: { posterPath: string | null }) {
+  const poster = getPosterUrls(posterPath)
+
+  return (
+    <div className="h-11 w-[30px] flex-shrink-0 overflow-hidden rounded bg-brown-medium/10">
+      {poster ? (
+        <img
+          src={poster.src}
+          srcSet={poster.srcSet}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-brown-medium/30">
+          <FilmReelIcon size={16} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function SearchResult({
@@ -49,7 +84,7 @@ export default function SearchResult({
       ref={ref}
       role="option"
       aria-selected={isSelected}
-      className={`cursor-pointer border-b border-brown-medium/10 px-4 py-3 transition-colors last:border-b-0 ${isSelected ? "bg-beige" : "hover:bg-beige/50"}`}
+      className={`cursor-pointer border-b border-brown-medium/10 px-4 py-2 transition-colors last:border-b-0 ${isSelected ? "bg-beige" : "hover:bg-beige/50"}`}
       onClick={onSelect}
       onMouseDown={(e) => e.preventDefault()} // Prevent input blur before click
       data-track-event="search_select"
@@ -59,22 +94,33 @@ export default function SearchResult({
         movie_id: movie.id,
       })}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
+      <div className="flex h-12 items-center gap-3">
+        <FilmPoster posterPath={movie.poster_path} />
+
+        {/* Title and year */}
+        <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-brown-dark">{movie.title}</div>
           <div className="text-sm text-text-muted">{year}</div>
         </div>
-        {mortality.level && (
-          <div
-            className={`flex flex-shrink-0 items-center gap-0.5 ${
-              mortality.level === "high" ? "text-accent" : "text-brown-medium/60"
-            }`}
-            title={mortality.label || undefined}
-          >
-            <SkullIcon size={28} />
-            {mortality.level === "high" && <SkullIcon size={28} />}
-          </div>
-        )}
+
+        {/* Mortality indicator */}
+        <div
+          className={`flex h-7 w-14 flex-shrink-0 items-center justify-end ${
+            mortality.level === "high"
+              ? "text-accent"
+              : mortality.level === "medium"
+                ? "text-brown-medium/60"
+                : ""
+          }`}
+          title={mortality.label || undefined}
+        >
+          {mortality.level && (
+            <>
+              <SkullIcon size={28} />
+              {mortality.level === "high" && <SkullIcon size={28} />}
+            </>
+          )}
+        </div>
       </div>
     </li>
   )
