@@ -96,6 +96,7 @@ function Tooltip({
   return createPortal(
     <div
       ref={tooltipRef}
+      data-testid="death-details-tooltip"
       className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
       style={{
         top: position?.top ?? -9999,
@@ -180,6 +181,7 @@ export default function DeathInfo({
           {hasDetails ? (
             <span
               ref={triggerRef}
+              data-testid="death-details-trigger"
               className="tooltip-trigger cursor-help underline decoration-dotted"
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}

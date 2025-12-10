@@ -91,7 +91,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     await expect(page.getByTestId("deceased-cards")).toBeVisible()
 
     // Find a tooltip trigger (cause of death with details - has dotted underline)
-    const tooltipTrigger = page.locator(".tooltip-trigger").first()
+    const tooltipTrigger = page.getByTestId("death-details-trigger").first()
     await tooltipTrigger.scrollIntoViewIfNeeded()
 
     // Get trigger position
@@ -113,7 +113,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     })
 
     // Tooltip should be visible
-    const tooltip = page.locator(".fixed.z-50.max-w-sm")
+    const tooltip = page.getByTestId("death-details-tooltip")
     await expect(tooltip).toBeVisible()
 
     // Get tooltip position
@@ -139,7 +139,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     await expect(page.getByTestId("movie-page")).toBeVisible()
     await expect(page.getByTestId("deceased-cards")).toBeVisible()
 
-    const tooltipTrigger = page.locator(".tooltip-trigger").first()
+    const tooltipTrigger = page.getByTestId("death-details-trigger").first()
     await tooltipTrigger.scrollIntoViewIfNeeded()
 
     // Hover over the trigger to show tooltip
@@ -147,7 +147,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     await page.waitForTimeout(300)
 
     // Tooltip should be visible
-    const tooltip = page.locator(".fixed.z-50.max-w-sm")
+    const tooltip = page.getByTestId("death-details-tooltip")
     await expect(tooltip).toBeVisible()
 
     // Move mouse to the tooltip itself
@@ -169,14 +169,14 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     await expect(page.getByTestId("movie-page")).toBeVisible()
     await expect(page.getByTestId("deceased-cards")).toBeVisible()
 
-    const tooltipTrigger = page.locator(".tooltip-trigger").first()
+    const tooltipTrigger = page.getByTestId("death-details-trigger").first()
     await tooltipTrigger.scrollIntoViewIfNeeded()
 
     // Hover to show tooltip
     await tooltipTrigger.hover()
     await page.waitForTimeout(300)
 
-    const tooltip = page.locator(".fixed.z-50.max-w-sm")
+    const tooltip = page.getByTestId("death-details-tooltip")
     await expect(tooltip).toBeVisible()
 
     // Move mouse away from both trigger and tooltip
@@ -195,7 +195,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     await expect(page.getByTestId("movie-page")).toBeVisible()
     await expect(page.getByTestId("deceased-cards")).toBeVisible()
 
-    const tooltipTrigger = page.locator(".tooltip-trigger").first()
+    const tooltipTrigger = page.getByTestId("death-details-trigger").first()
     await tooltipTrigger.scrollIntoViewIfNeeded()
 
     const triggerBox = await tooltipTrigger.boundingBox()
@@ -225,7 +225,7 @@ test.describe("Card Hover and Tooltip Behavior", () => {
     })
 
     // Tooltip should be visible
-    const tooltip = page.locator(".fixed.z-50.max-w-sm")
+    const tooltip = page.getByTestId("death-details-tooltip")
     await expect(tooltip).toBeVisible()
 
     // Verify tooltip position is stable (not jumping around due to card movement)
