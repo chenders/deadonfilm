@@ -26,7 +26,11 @@ function getMortalityHint(releaseDate: string): {
   return { level: null, label: null }
 }
 
-// TMDB poster thumbnail URLs using their face-cropped format
+// TMDB poster thumbnail URLs using their face-cropped format.
+// This is intentionally separate from the getPosterUrl utility in api.ts because:
+// 1. Face-cropped format (w45_and_h67_face) shows the most recognizable part of posters
+// 2. Uses TMDB's media CDN (media.themoviedb.org) which supports face-cropping
+// 3. Returns srcset for retina display support (1x and 2x variants)
 function getPosterUrls(posterPath: string | null): {
   src: string
   srcSet: string
