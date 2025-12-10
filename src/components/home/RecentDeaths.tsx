@@ -31,7 +31,7 @@ export default function RecentDeaths() {
         data-testid="recent-deaths-title"
         className="mb-4 text-center font-display text-xl text-brown-dark"
       >
-        Recently Added
+        Recent Passings
       </h2>
 
       <div
@@ -61,7 +61,10 @@ export default function RecentDeaths() {
             </h3>
             <p className="text-xs text-accent">{formatRelativeDate(death.deathday)}</p>
             {death.cause_of_death && (
-              <p className="mt-1 w-24 truncate text-xs text-text-muted" title={death.cause_of_death}>
+              <p
+                className="mt-1 w-24 truncate text-xs text-text-muted"
+                title={death.cause_of_death}
+              >
                 {death.cause_of_death}
               </p>
             )}

@@ -29,13 +29,15 @@ describe("QuickActions", () => {
     vi.clearAllMocks()
   })
 
-  it("renders all three action buttons", () => {
+  it("renders all five action buttons", () => {
     renderWithRouter(<QuickActions />)
 
     expect(screen.getByTestId("quick-actions")).toBeInTheDocument()
     expect(screen.getByTestId("high-mortality-btn")).toBeInTheDocument()
     expect(screen.getByTestId("classic-btn")).toBeInTheDocument()
     expect(screen.getByTestId("random-movie-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("cursed-movies-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("cursed-actors-btn")).toBeInTheDocument()
   })
 
   it("displays correct button text", () => {
@@ -44,6 +46,8 @@ describe("QuickActions", () => {
     expect(screen.getByText("High Mortality")).toBeInTheDocument()
     expect(screen.getByText("Classic Films")).toBeInTheDocument()
     expect(screen.getByText("Surprise Me")).toBeInTheDocument()
+    expect(screen.getByText("Cursed Movies")).toBeInTheDocument()
+    expect(screen.getByText("Cursed Actors")).toBeInTheDocument()
   })
 
   it("navigates to high mortality movie when clicked", async () => {
@@ -132,20 +136,49 @@ describe("QuickActions", () => {
     ).toBeInTheDocument()
     expect(screen.getByText("Golden age cinema from 1930-1970")).toBeInTheDocument()
     expect(screen.getByText("Random movie from any era")).toBeInTheDocument()
+    expect(screen.getByText("Movies with statistically abnormal mortality")).toBeInTheDocument()
+    expect(screen.getByText("Actors with unusually high co-star mortality")).toBeInTheDocument()
   })
 
-  it("has title attributes for accessibility fallback", () => {
+  it("has styled tooltips visible on hover via CSS", () => {
     renderWithRouter(<QuickActions />)
 
-    const highMortalityBtn = screen.getByTestId("high-mortality-btn")
-    const classicBtn = screen.getByTestId("classic-btn")
-    const randomBtn = screen.getByTestId("random-movie-btn")
+    // The tooltips are styled spans that appear on hover via CSS
+    // They are in the DOM and become visible with group-hover
+    expect(
+      screen.getByText("Movies where more actors died than statistically expected")
+    ).toBeInTheDocument()
+    expect(screen.getByText("Golden age cinema from 1930-1970")).toBeInTheDocument()
+    expect(screen.getByText("Random movie from any era")).toBeInTheDocument()
+    expect(screen.getByText("Movies with statistically abnormal mortality")).toBeInTheDocument()
+    expect(screen.getByText("Actors with unusually high co-star mortality")).toBeInTheDocument()
+  })
 
-    expect(highMortalityBtn).toHaveAttribute(
-      "title",
-      "Movies where more actors died than statistically expected"
-    )
-    expect(classicBtn).toHaveAttribute("title", "Golden age cinema from 1930-1970")
-    expect(randomBtn).toHaveAttribute("title", "Random movie from any era")
+  it("Cursed Movies button links to /cursed-movies", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("cursed-movies-btn")
+    expect(link).toHaveAttribute("href", "/cursed-movies")
+  })
+
+  it("Cursed Movies button has film icon", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("cursed-movies-btn")
+    expect(link.querySelector("svg")).toBeInTheDocument()
+  })
+
+  it("Cursed Actors button links to /cursed-actors", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("cursed-actors-btn")
+    expect(link).toHaveAttribute("href", "/cursed-actors")
+  })
+
+  it("Cursed Actors button has person icon", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("cursed-actors-btn")
+    expect(link.querySelector("svg")).toBeInTheDocument()
   })
 })

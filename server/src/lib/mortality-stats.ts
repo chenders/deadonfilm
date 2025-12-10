@@ -183,15 +183,35 @@ export async function calculateMovieMortality(
     const currentAge = birthYear && !isDeceased ? currentYear - birthYear : null
     const ageAtDeath = birthYear && deathYear ? deathYear - birthYear : null
 
+    // Check if actor died more than 1 year before movie release (archived footage)
+    // These actors should be excluded from mortality calculations
+    const isArchivedFootage = deathYear !== null && deathYear < releaseYear - 1
+
     // Calculate death probability (expected chance they would have died by now)
     let deathProbability = 0
-    if (ageAtFilming !== null && ageAtFilming >= 0) {
-      const endAge = isDeceased && ageAtDeath ? ageAtDeath : ageAtFilming + yearsSinceRelease
-      deathProbability = await calculateCumulativeDeathProbability(
-        ageAtFilming,
-        Math.min(endAge, ageAtFilming + yearsSinceRelease),
-        "combined"
-      )
+    if (ageAtFilming !== null && ageAtFilming >= 0 && !isArchivedFootage) {
+      // For actors who died same year as movie or within 1 year after:
+      // Calculate probability from age at filming to at least 1 year later
+      // This ensures actors who died same year don't get 0% probability
+      const minEndAge = ageAtFilming + 1
+
+      if (isDeceased && ageAtDeath !== null) {
+        // Actor died: calculate probability up to their death age
+        // Use at least 1 year span to handle same-year deaths
+        const effectiveEndAge = Math.max(ageAtDeath, minEndAge)
+        deathProbability = await calculateCumulativeDeathProbability(
+          ageAtFilming,
+          Math.min(effectiveEndAge, ageAtFilming + yearsSinceRelease),
+          "combined"
+        )
+      } else {
+        // Actor still alive: calculate probability over full time span
+        deathProbability = await calculateCumulativeDeathProbability(
+          ageAtFilming,
+          ageAtFilming + yearsSinceRelease,
+          "combined"
+        )
+      }
     }
 
     // Calculate expected lifespan and years lost for deceased actors
@@ -203,8 +223,11 @@ export async function calculateMovieMortality(
       yearsLost = expectedLifespan - (birthYear + ageAtDeath)
     }
 
-    expectedDeaths += deathProbability
-    if (isDeceased) actualDeaths++
+    // Only count actors who weren't archived footage
+    if (!isArchivedFootage) {
+      expectedDeaths += deathProbability
+      if (isDeceased) actualDeaths++
+    }
 
     actorResults.push({
       tmdbId: actor.tmdbId,

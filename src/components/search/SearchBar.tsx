@@ -6,6 +6,7 @@ import { createMovieSlug } from "@/utils/slugify"
 import type { MovieSearchResult } from "@/types"
 import SearchInput from "./SearchInput"
 import SearchDropdown from "./SearchDropdown"
+import InfoPopover from "@/components/common/InfoPopover"
 
 export default function SearchBar() {
   const [query, setQuery] = useState("")
@@ -34,29 +35,55 @@ export default function SearchBar() {
     },
   })
 
+  const siteExplanation = (
+    <>
+      <h3 className="mb-3 font-display text-lg text-brown-dark">Movie Cast Mortality Database</h3>
+      <div className="space-y-3 text-sm text-text-muted">
+        <p>
+          Dead on Film lets you discover which actors from your favorite films have passed away.
+        </p>
+        <p>
+          We calculate <strong>expected vs actual deaths</strong> using US Social Security
+          Administration actuarial life tables. This reveals which films have statistically unusual
+          mortality rates - not just old movies where everyone has died, but films where deaths
+          exceeded what math would predict.
+        </p>
+        <p>
+          Search any movie to see death dates, causes, and how the cast compares to statistical
+          expectations.
+        </p>
+      </div>
+    </>
+  )
+
   return (
     <div data-testid="search-bar" className="relative mx-auto w-full max-w-xl">
-      <SearchInput
-        ref={inputRef}
-        value={query}
-        onChange={(value) => {
-          setQuery(value)
-          setIsOpen(value.length >= 2)
-        }}
-        onFocus={() => {
-          if (query.length >= 2) {
-            setIsOpen(true)
-          }
-        }}
-        onBlur={() => {
-          // Delay to allow click on dropdown items
-          setTimeout(() => setIsOpen(false), 200)
-        }}
-        onKeyDown={handleKeyDown}
-        isLoading={isLoading}
-        placeholder="Search for a movie..."
-        listboxId={listboxId}
-      />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <SearchInput
+            ref={inputRef}
+            value={query}
+            onChange={(value) => {
+              setQuery(value)
+              setIsOpen(value.length >= 2)
+            }}
+            onFocus={() => {
+              if (query.length >= 2) {
+                setIsOpen(true)
+              }
+            }}
+            onBlur={() => {
+              // Delay to allow click on dropdown items
+              setTimeout(() => setIsOpen(false), 200)
+            }}
+            onKeyDown={handleKeyDown}
+            isLoading={isLoading}
+            placeholder="Search for a movie..."
+            listboxId={listboxId}
+          />
+        </div>
+        <InfoPopover>{siteExplanation}</InfoPopover>
+      </div>
 
       {isOpen && movies.length > 0 && (
         <SearchDropdown

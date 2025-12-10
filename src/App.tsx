@@ -4,6 +4,7 @@ import HomePage from "./pages/HomePage"
 import MoviePage from "./pages/MoviePage"
 import RandomPage from "./pages/RandomPage"
 import CursedMoviesPage from "./pages/CursedMoviesPage"
+import CursedActorsPage from "./pages/CursedActorsPage"
 import { useGoogleAnalytics } from "./hooks/useGoogleAnalytics"
 import { useNewRelicBrowser } from "./hooks/useNewRelicBrowser"
 
@@ -18,6 +19,7 @@ function App() {
         <Route path="/movie/:slug" element={<MoviePage />} />
         <Route path="/random" element={<RandomPage />} />
         <Route path="/cursed-movies" element={<CursedMoviesPage />} />
+        <Route path="/cursed-actors" element={<CursedActorsPage />} />
       </Routes>
     </Layout>
   )

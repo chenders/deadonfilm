@@ -43,6 +43,10 @@ This file provides guidance to GitHub Copilot when working with code in this rep
 - `GET /api/movie/{id}/death-info?personIds=1,2,3` - Poll for cause of death updates
 - `GET /api/on-this-day` - Deaths on current date
 - `GET /api/random` - Get a random movie
+- `GET /api/discover/{type}` - Get movies by type (classic, high-mortality)
+- `GET /api/cursed-movies` - List movies ranked by curse score (paginated)
+- `GET /api/cursed-actors` - List actors ranked by co-star mortality (paginated)
+- `GET /api/stats` - Get site-wide statistics
 - `GET /health` - Health check for Kubernetes
 
 ## Database Schema
@@ -108,6 +112,12 @@ npm run lint && cd server && npm run lint
 npm run type-check && cd server && npm run type-check
 npm test && cd server && npm test
 ```
+
+## Mortality Calculation Rules
+
+1. **Archived Footage Exclusion**: Actors who died more than 1 year before a movie's release are excluded from mortality calculations.
+2. **Same-Year Death Handling**: Actors who died the same year as the movie release are counted with at least 1 year of death probability.
+3. **Curse Score**: `(Actual Deaths - Expected Deaths) / Expected Deaths`. Positive = more deaths than expected.
 
 ## Code Standards
 
