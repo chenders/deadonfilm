@@ -147,6 +147,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
 
       - name: Install frontend dependencies
         run: npm ci
@@ -209,8 +213,10 @@ jobs:
           push: false
           load: true
           tags: dead-on-film:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=docker-main
+            type=gha,scope=docker-${{ github.ref_name }}
+          cache-to: type=gha,mode=max,scope=docker-${{ github.ref_name }}
 
       - name: Verify image runs
         run: |
@@ -267,8 +273,10 @@ jobs:
           tags: |
             ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=docker-main
+            type=gha,scope=docker-${{ github.ref_name }}
+          cache-to: type=gha,mode=max,scope=docker-main
 
       - name: Get GKE credentials
         uses: google-github-actions/get-gke-credentials@v2
