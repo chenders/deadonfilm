@@ -310,7 +310,13 @@ Example: `/movie/breakfast-at-tiffanys-1961-14629`
 - Write unit tests for new functionality
 - Test files go alongside code: `*.test.ts` or `*.test.tsx`
 - Tests MUST import and test actual production code, not reimplementations
-- For E2E testing, prefer semantic selectors (role, placeholder, text, label) as they best reflect user interactions. Add `data-testid` attributes when semantic selectors are insufficient or impractical.
+- **data-testid attributes are REQUIRED** for all interactive and testable UI elements:
+  - Add `data-testid` to components, containers, buttons, inputs, tooltips, modals, and other elements that tests need to interact with
+  - Use descriptive kebab-case names: `data-testid="death-details-trigger"`, `data-testid="search-results-list"`
+  - Tests MUST use `data-testid` selectors (via `getByTestId` or `[data-testid="..."]`) instead of CSS class selectors
+  - CSS class selectors (`.some-class`) are fragile and break when styles change - avoid them in tests
+- For E2E testing, prefer semantic selectors (role, placeholder, text, label) as they best reflect user interactions. Use `data-testid` when semantic selectors are insufficient.
+- For unit tests, prefer Testing Library queries in this order: `getByRole` > `getByTestId` > `getByText` > CSS selectors (last resort)
 
 ### DRY Principle
 
