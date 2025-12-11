@@ -278,7 +278,35 @@ npm run migrate:down
 npm run migrate:create -- migration-name
 ```
 
-Migration files are stored in `server/migrations/` as CommonJS files.
+Migration files are stored in `server/migrations/` as CommonJS files with JSDoc type annotations.
+
+### JavaScript Files and JSDoc
+
+While the application code is written in TypeScript, some files remain as JavaScript/CommonJS for tooling compatibility:
+
+- **Config files** (`eslint.config.js`, `postcss.config.js`, `tailwind.config.js`) - These load before any build step
+- **Migration files** (`server/migrations/*.cjs`) - Required by `node-pg-migrate` in CommonJS format
+- **New Relic config** (`server/newrelic.cjs`) - Must be CommonJS for the agent to load it
+
+All JavaScript files use JSDoc annotations for type safety and IDE support:
+
+```javascript
+// Config files use @type for the default export
+/** @type {import('tailwindcss').Config} */
+export default {
+  // config here gets full autocomplete
+}
+
+// Migration files annotate function parameters
+/**
+ * @param {import('node-pg-migrate').MigrationBuilder} pgm
+ */
+exports.up = (pgm) => {
+  // pgm methods get full type checking
+}
+```
+
+When creating new JavaScript files, always add appropriate JSDoc type annotations.
 
 ### Database Seeding
 

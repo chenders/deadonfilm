@@ -4,7 +4,7 @@
 exports.shorthands = undefined;
 
 /**
- * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.up = (pgm) => {
   pgm.addColumn("deceased_persons", {
@@ -13,7 +13,7 @@ exports.up = (pgm) => {
 };
 
 /**
- * @param pgm {import('node-pg-migrate').MigrationBuilder}
+ * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.down = (pgm) => {
   pgm.dropColumn("deceased_persons", "imdb_id");
