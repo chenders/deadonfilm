@@ -130,8 +130,7 @@ npm test                     # Frontend unit tests
 - `GET /api/movie/{id}` - Get movie with deceased cast
 - `GET /api/movie/{id}/death-info?personIds=1,2,3` - Poll for cause of death updates
 - `GET /api/on-this-day` - Deaths on current date
-- `GET /api/random` - Get a random movie (redirects to movie page)
-- `GET /api/discover/{type}` - Get movies by type (classic, high-mortality)
+- `GET /api/discover/{type}` - Get a random movie by discovery type (currently: `forever-young`)
 - `GET /api/cursed-movies` - List movies ranked by curse score (with pagination/filters)
 - `GET /api/cursed-movies/filters` - Get filter options for cursed movies
 - `GET /api/cursed-actors` - List actors ranked by co-star mortality (with pagination/filters)

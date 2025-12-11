@@ -611,3 +611,39 @@ export async function getRecentDeaths(limit: number = 5): Promise<
   )
   return result.rows
 }
+
+// ============================================================================
+// Forever Young feature - movies with leading actors who died young
+// ============================================================================
+
+export interface ForeverYoungMovie {
+  tmdb_id: number
+  title: string
+  release_date: string | null
+  actor_name: string
+  years_lost: number
+}
+
+// Get movies featuring leading actors (top 3 billing) who died abnormally young
+// Returns movies ordered by years lost, for random selection
+export async function getForeverYoungMovies(limit: number = 100): Promise<ForeverYoungMovie[]> {
+  const db = getPool()
+  const result = await db.query<ForeverYoungMovie>(
+    `SELECT DISTINCT ON (m.tmdb_id)
+       m.tmdb_id,
+       m.title,
+       m.release_date,
+       dp.name as actor_name,
+       dp.years_lost
+     FROM actor_appearances aa
+     JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
+     JOIN deceased_persons dp ON aa.actor_tmdb_id = dp.tmdb_id
+     WHERE aa.billing_order <= 3
+       AND dp.years_lost >= 20
+     ORDER BY m.tmdb_id, dp.years_lost DESC`,
+    []
+  )
+
+  // Sort by years_lost and limit after deduplication
+  return result.rows.sort((a, b) => b.years_lost - a.years_lost).slice(0, limit)
+}

@@ -48,14 +48,8 @@ export async function getDeathInfo(
   return fetchJson(`/movie/${movieId}/death-info?personIds=${personIds.join(",")}`)
 }
 
-export async function getRandomMovie(): Promise<RandomMovieResponse> {
-  return fetchJson("/random")
-}
-
-export async function getDiscoverMovie(
-  type: "classic" | "high-mortality"
-): Promise<RandomMovieResponse> {
-  return fetchJson(`/discover?type=${type}`)
+export async function getDiscoverMovie(): Promise<RandomMovieResponse> {
+  return fetchJson("/discover/forever-young")
 }
 
 export async function getSiteStats(): Promise<SiteStatsResponse> {

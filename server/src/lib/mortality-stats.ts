@@ -94,8 +94,7 @@ export async function getCohortLifeExpectancy(
   // Find surrounding data points and interpolate
   for (let i = 0; i < data.length - 1; i++) {
     if (birthYear >= data[i].birthYear && birthYear < data[i + 1].birthYear) {
-      const ratio =
-        (birthYear - data[i].birthYear) / (data[i + 1].birthYear - data[i].birthYear)
+      const ratio = (birthYear - data[i].birthYear) / (data[i + 1].birthYear - data[i].birthYear)
       const lowerValue = data[i][gender]
       const upperValue = data[i + 1][gender]
       return lowerValue + ratio * (upperValue - lowerValue)
@@ -149,8 +148,9 @@ async function loadActuarialData(): Promise<Map<string, ActuarialEntry[]>> {
 
 /**
  * Get life expectancy at a specific age
+ * @internal Currently unused but may be useful for future features
  */
-async function getLifeExpectancy(
+async function _getLifeExpectancy(
   age: number,
   gender: "male" | "female" | "combined" = "combined"
 ): Promise<number> {
