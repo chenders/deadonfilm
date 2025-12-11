@@ -22,7 +22,7 @@
     "backfill:birthdays": "tsx scripts/backfill-birthdays.ts",
     "backfill:appearances": "tsx scripts/backfill-actor-appearances.ts",
     "backfill:profiles": "tsx scripts/backfill-profile-paths.ts",
-    "sync:tmdb": "tsx scripts/sync-tmdb-changes.ts",
+    "sync:tmdb": "node dist/scripts/sync-tmdb-changes.js 2>/dev/null || tsx scripts/sync-tmdb-changes.ts",
     "migrate": "node-pg-migrate",
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",

@@ -145,7 +145,15 @@ async function main() {
           name: castMember.name,
           birthday: person.birthday || null,
           deathday: person.deathday,
+          cause_of_death: null,
+          cause_of_death_source: null,
+          cause_of_death_details: null,
+          cause_of_death_details_source: null,
+          wikipedia_url: null,
           profile_path: person.profile_path || null,
+          age_at_death: null,
+          expected_lifespan: null,
+          years_lost: null,
         })
         deceasedCount++
         console.log(`  - ${castMember.name} (deceased)`)
