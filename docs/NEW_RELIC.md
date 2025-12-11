@@ -31,7 +31,7 @@ NEW_RELIC_APP_NAME=Dead on Film (Dev)
 
 ```bash
 kubectl create secret generic dead-on-film-secrets \
-  --namespace=dead-on-film \
+  --namespace=deadonfilm \
   --from-literal=TMDB_API_TOKEN=your_tmdb_token \
   --from-literal=ANTHROPIC_API_KEY=your_anthropic_key \
   --from-literal=DATABASE_URL=your_database_url \
@@ -41,7 +41,7 @@ kubectl create secret generic dead-on-film-secrets \
 Or update existing secret:
 
 ```bash
-kubectl patch secret dead-on-film-secrets -n dead-on-film \
+kubectl patch secret dead-on-film-secrets -n deadonfilm \
   --type='json' \
   -p='[{"op": "add", "path": "/data/NEW_RELIC_LICENSE_KEY", "value": "'$(echo -n 'your_key' | base64)'"}]'
 ```
@@ -144,7 +144,7 @@ try {
 
 ### Backend agent not starting
 
-1. Check `NEW_RELIC_LICENSE_KEY` is set: `kubectl exec -it <pod> -n dead-on-film -- printenv | grep NEW_RELIC`
+1. Check `NEW_RELIC_LICENSE_KEY` is set: `kubectl exec -it <pod> -n deadonfilm -- printenv | grep NEW_RELIC`
 2. Check server logs for "New Relic APM initialized" or error messages
 3. Ensure `newrelic.cjs` exists in the server directory
 
@@ -226,3 +226,32 @@ The main configuration is in `k8s/values.yaml`. Key settings:
 ```bash
 helm uninstall newrelic-bundle -n deadonfilm
 ```
+
+## Deployment Markers
+
+Deployment markers appear on New Relic charts to show when deployments occurred, making it easy to correlate performance changes with releases.
+
+A GitHub Actions workflow (`.github/workflows/nr-mark-deployment.yml`) automatically creates deployment markers after each successful deploy to GKE.
+
+### Required GitHub Secrets
+
+Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
+
+1. **`NEW_RELIC_API_KEY`** - A User API key (not the License key)
+   - Go to [New Relic API Keys](https://one.newrelic.com/api-keys)
+   - Click **Create a key**
+   - Select **User** as the key type
+   - Name it (e.g., "GitHub Actions Deployment Marker")
+   - Copy the key value
+
+2. **`NEW_RELIC_DEPLOYMENT_ENTITY_GUID`** - The Entity GUID for your APM application
+   - Go to **APM & Services** → **Dead on Film**
+   - Look at the URL - it contains the GUID: `https://one.newrelic.com/nr1-core?...&entityGuid=XXXXXXX`
+   - Or click the app name, then **See metadata** to find the Entity GUID
+
+### Viewing Deployment Markers
+
+Once configured, deployment markers will appear:
+- On APM charts as vertical lines
+- In **APM & Services** → **Dead on Film** → **Deployments** tab
+- Each marker includes the commit SHA, deploying user, and branch name

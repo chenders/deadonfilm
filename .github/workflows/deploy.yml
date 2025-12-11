@@ -79,12 +79,13 @@ jobs:
 
           # Update deployment with new image tag
           IMAGE_PATH="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          kubectl set image deployment/dead-on-film dead-on-film=$IMAGE_PATH -n dead-on-film
+          kubectl set image deployment/dead-on-film dead-on-film=$IMAGE_PATH -n deadonfilm
 
           # Wait for rollout
-          kubectl rollout status deployment/dead-on-film -n dead-on-film --timeout=300s
+          kubectl rollout status deployment/dead-on-film -n deadonfilm --timeout=300s
 
       - name: Verify deployment
         run: |
-          kubectl get pods -n dead-on-film
-          kubectl get ingress -n dead-on-film
+          kubectl get pods -n deadonfilm
+          kubectl get ingress -n deadonfilm
+
