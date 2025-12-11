@@ -4,15 +4,22 @@
  * This extends the deceased actors seeding to also save movie metadata and cast appearances.
  *
  * Usage:
- *   npm run seed:movies -- <startYear> [endYear]
+ *   npm run seed:movies -- <startYear> [endYear] [options]
+ *
+ * Options:
+ *   --count <n>    Number of movies per year (default: 200)
+ *   --all-time     Seed from 1920 to current year
  *
  * Examples:
- *   npm run seed:movies -- 1995       # Single year
- *   npm run seed:movies -- 1990 1999  # Year range (1990s)
- *   npm run seed:movies -- 1980 1989  # Year range (1980s)
+ *   npm run seed:movies -- 1995                    # Single year, 200 movies
+ *   npm run seed:movies -- 1990 1999               # Year range (1990s)
+ *   npm run seed:movies -- 1980 1989 --count 500   # 500 movies per year
+ *   npm run seed:movies -- --all-time              # All years since 1920
+ *   npm run seed:movies -- --all-time --count 1000 # 1000 movies per year, all years
  */
 
 import "dotenv/config"
+import { Command, InvalidArgumentError } from "commander"
 import {
   discoverMoviesByYear,
   getMovieDetails,
@@ -28,34 +35,88 @@ import {
   type ActorAppearanceRecord,
 } from "../src/lib/db.js"
 
-const MOVIES_TO_FETCH = 200 // Top 200 movies per year range
+const DEFAULT_MOVIES_TO_FETCH = 200
 const CAST_LIMIT = 30 // Top 30 actors per movie
-const PAGES_NEEDED = Math.ceil(MOVIES_TO_FETCH / 20) // TMDB returns 20 per page
+const EARLIEST_YEAR = 1920
 
-async function main() {
-  const args = process.argv.slice(2)
-
-  if (args.length === 0) {
-    console.error("Usage: npm run seed:movies -- <startYear> [endYear]")
-    console.error("Examples:")
-    console.error("  npm run seed:movies -- 1995       # Single year")
-    console.error("  npm run seed:movies -- 1990 1999  # Year range")
-    process.exit(1)
+function parsePositiveInt(value: string): number {
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError("Must be a positive integer")
   }
+  return parsed
+}
 
-  const startYear = parseInt(args[0], 10)
-  const endYear = parseInt(args[1], 10) || startYear
-
-  if (isNaN(startYear) || startYear < 1900 || startYear > 2100) {
-    console.error("Invalid start year:", args[0])
-    process.exit(1)
+function parseYear(value: string): number {
+  const parsed = parseInt(value, 10)
+  const maxYear = new Date().getFullYear() + 1
+  if (isNaN(parsed) || parsed < EARLIEST_YEAR || parsed > maxYear) {
+    throw new InvalidArgumentError(`Must be a valid year (${EARLIEST_YEAR}-${maxYear})`)
   }
+  return parsed
+}
 
-  if (isNaN(endYear) || endYear < startYear || endYear > 2100) {
-    console.error("Invalid end year:", args[1])
-    process.exit(1)
-  }
+const program = new Command()
+  .name("seed-movies")
+  .description("Seed the movies and actor_appearances tables with movie data from TMDB")
+  .argument("[startYear]", "Start year for seeding", parseYear)
+  .argument("[endYear]", "End year for seeding (defaults to startYear)", parseYear)
+  .option(
+    "-c, --count <number>",
+    "Number of movies per year",
+    parsePositiveInt,
+    DEFAULT_MOVIES_TO_FETCH
+  )
+  .option("-a, --all-time", "Seed from 1920 to current year")
+  .action(
+    async (
+      startYearArg: number | undefined,
+      endYearArg: number | undefined,
+      options: { count: number; allTime?: boolean }
+    ) => {
+      const currentYear = new Date().getFullYear()
 
+      // Validate that --all-time and explicit years are mutually exclusive
+      if (options.allTime && startYearArg !== undefined) {
+        console.error("Error: Cannot specify both --all-time and explicit years")
+        console.error("Use either: npm run seed:movies -- --all-time")
+        console.error("        or: npm run seed:movies -- <startYear> [endYear]")
+        process.exit(1)
+      }
+
+      // Determine years to seed
+      let startYear: number
+      let endYear: number
+
+      if (options.allTime) {
+        startYear = EARLIEST_YEAR
+        endYear = currentYear
+      } else if (startYearArg !== undefined) {
+        startYear = startYearArg
+        endYear = endYearArg ?? startYearArg
+      } else {
+        console.error("Error: Must specify either --all-time or a start year")
+        program.help()
+        process.exit(1)
+      }
+
+      // Validate year range
+      if (endYear < startYear) {
+        console.error(`Error: End year (${endYear}) cannot be before start year (${startYear})`)
+        process.exit(1)
+      }
+
+      await runSeeding({ startYear, endYear, moviesPerYear: options.count })
+    }
+  )
+
+interface SeedOptions {
+  startYear: number
+  endYear: number
+  moviesPerYear: number
+}
+
+async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
   // Check required environment variables
   if (!process.env.TMDB_API_TOKEN) {
     console.error("TMDB_API_TOKEN environment variable is required")
@@ -67,7 +128,10 @@ async function main() {
     process.exit(1)
   }
 
-  console.log(`\nSeeding movies for ${startYear}-${endYear}...\n`)
+  const totalYears = endYear - startYear + 1
+  console.log(`\nSeeding movies for ${startYear}-${endYear} (${totalYears} years)`)
+  console.log(`Movies per year: ${moviesPerYear}`)
+  console.log(`Estimated total: ~${totalYears * moviesPerYear} movies\n`)
 
   try {
     let grandTotalMoviesSaved = 0
@@ -81,8 +145,8 @@ async function main() {
       console.log(`${"=".repeat(60)}`)
 
       // Fetch top movies for this year
-      console.log(`Fetching top ${MOVIES_TO_FETCH} movies for ${year}...`)
-      const movies = await fetchTopMovies(year, year)
+      console.log(`Fetching top ${moviesPerYear} movies for ${year}...`)
+      const movies = await fetchTopMovies(year, year, moviesPerYear)
       console.log(`Found ${movies.length} movies\n`)
 
       let yearMoviesSaved = 0
@@ -205,11 +269,16 @@ async function main() {
   }
 }
 
-async function fetchTopMovies(startYear: number, endYear: number): Promise<TMDBMovie[]> {
+async function fetchTopMovies(
+  startYear: number,
+  endYear: number,
+  limit: number
+): Promise<TMDBMovie[]> {
   const movies: TMDBMovie[] = []
   const seenIds = new Set<number>()
+  const pagesNeeded = Math.ceil(limit / 20) // TMDB returns 20 per page
 
-  for (let page = 1; page <= PAGES_NEEDED; page++) {
+  for (let page = 1; page <= pagesNeeded; page++) {
     try {
       const response = await discoverMoviesByYear(startYear, endYear, page)
 
@@ -221,7 +290,7 @@ async function fetchTopMovies(startYear: number, endYear: number): Promise<TMDBM
       }
 
       // Stop if we've reached our limit or there are no more results
-      if (movies.length >= MOVIES_TO_FETCH || response.results.length === 0) {
+      if (movies.length >= limit || response.results.length === 0) {
         break
       }
 
@@ -232,11 +301,11 @@ async function fetchTopMovies(startYear: number, endYear: number): Promise<TMDBM
     }
   }
 
-  return movies.slice(0, MOVIES_TO_FETCH)
+  return movies.slice(0, limit)
 }
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-main()
+program.parse()

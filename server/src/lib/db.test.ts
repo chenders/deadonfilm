@@ -238,5 +238,101 @@ describe("Sync State Functions", () => {
 
       expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("IN ($1)"), [123])
     })
+
+    // Batching tests for PostgreSQL parameter limit handling
+    it("handles exactly 1000 elements in a single batch", async () => {
+      const ids = Array.from({ length: 1000 }, (_, i) => i + 1)
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1000 })
+
+      await markActorsDeceased(ids)
+
+      // Should result in exactly 1 query
+      expect(mockQuery).toHaveBeenCalledTimes(1)
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
+        ids
+      )
+    })
+
+    it("batches 1001 elements into 2 queries", async () => {
+      const ids = Array.from({ length: 1001 }, (_, i) => i + 1)
+      mockQuery
+        .mockResolvedValueOnce({ rows: [], rowCount: 1000 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+
+      await markActorsDeceased(ids)
+
+      // Should result in 2 queries: batch of 1000 + batch of 1
+      expect(mockQuery).toHaveBeenCalledTimes(2)
+
+      // First batch: IDs 1-1000
+      expect(mockQuery).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
+        ids.slice(0, 1000)
+      )
+
+      // Second batch: ID 1001
+      expect(mockQuery).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
+        ids.slice(1000)
+      )
+    })
+
+    it("batches 2500 elements into 3 queries (1000, 1000, 500)", async () => {
+      const ids = Array.from({ length: 2500 }, (_, i) => i + 1)
+      mockQuery
+        .mockResolvedValueOnce({ rows: [], rowCount: 1000 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 1000 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 500 })
+
+      await markActorsDeceased(ids)
+
+      // Should result in 3 queries
+      expect(mockQuery).toHaveBeenCalledTimes(3)
+
+      // First batch: IDs 1-1000
+      expect(mockQuery).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
+        ids.slice(0, 1000)
+      )
+
+      // Second batch: IDs 1001-2000
+      expect(mockQuery).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
+        ids.slice(1000, 2000)
+      )
+
+      // Third batch: IDs 2001-2500
+      expect(mockQuery).toHaveBeenNthCalledWith(
+        3,
+        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
+        ids.slice(2000)
+      )
+      expect(ids.slice(2000).length).toBe(500)
+    })
+
+    it("generates correct placeholders for each batch", async () => {
+      const ids = Array.from({ length: 1001 }, (_, i) => i + 1)
+      mockQuery
+        .mockResolvedValueOnce({ rows: [], rowCount: 1000 })
+        .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+
+      await markActorsDeceased(ids)
+
+      // First batch should have $1 through $1000
+      const firstCall = mockQuery.mock.calls[0][0] as string
+      expect(firstCall).toContain("$1,")
+      expect(firstCall).toContain("$1000")
+      expect(firstCall).not.toContain("$1001")
+
+      // Second batch should restart at $1 (not continue from $1001)
+      const secondCall = mockQuery.mock.calls[1][0] as string
+      expect(secondCall).toContain("$1)")
+      expect(secondCall).not.toContain("$2")
+    })
   })
 })

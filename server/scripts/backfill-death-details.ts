@@ -8,10 +8,11 @@
  * 3. Updates the records with the details and source information
  *
  * Usage:
- *   cd server && npx tsx scripts/backfill-death-details.ts
+ *   npm run backfill:death-details
  */
 
 import "dotenv/config"
+import { Command } from "commander"
 import pg from "pg"
 import { getCauseOfDeath } from "../src/lib/wikidata.js"
 
@@ -27,7 +28,14 @@ interface RecordToUpdate {
   wikipedia_url: string | null
 }
 
-async function main() {
+const program = new Command()
+  .name("backfill-death-details")
+  .description("Backfill cause_of_death_details and source tracking for existing records")
+  .action(async () => {
+    await runBackfill()
+  })
+
+async function runBackfill() {
   // Check required environment variables
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -145,7 +153,4 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-main().catch((error) => {
-  console.error("Fatal error:", error)
-  process.exit(1)
-})
+program.parse()

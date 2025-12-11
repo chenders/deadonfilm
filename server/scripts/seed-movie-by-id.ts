@@ -12,6 +12,7 @@
  */
 
 import "dotenv/config"
+import { Command, InvalidArgumentError } from "commander"
 import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../src/lib/tmdb.js"
 import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import {
@@ -24,22 +25,23 @@ import {
 
 const CAST_LIMIT = 30
 
-async function main() {
-  const args = process.argv.slice(2)
-
-  if (args.length === 0) {
-    console.error("Usage: npm run seed:movie -- <tmdbId>")
-    console.error("Example: npm run seed:movie -- 9495  # The Crow")
-    process.exit(1)
+function parsePositiveInt(value: string): number {
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError("Must be a positive integer")
   }
+  return parsed
+}
 
-  const tmdbId = parseInt(args[0], 10)
+const program = new Command()
+  .name("seed-movie-by-id")
+  .description("Seed a specific movie by TMDB ID")
+  .argument("<tmdbId>", "TMDB movie ID", parsePositiveInt)
+  .action(async (tmdbId: number) => {
+    await seedMovie(tmdbId)
+  })
 
-  if (isNaN(tmdbId) || tmdbId <= 0) {
-    console.error("Invalid TMDB ID:", args[0])
-    process.exit(1)
-  }
-
+async function seedMovie(tmdbId: number) {
   if (!process.env.TMDB_API_TOKEN) {
     console.error("TMDB_API_TOKEN environment variable is required")
     process.exit(1)
@@ -171,4 +173,4 @@ async function main() {
   }
 }
 
-main()
+program.parse()
