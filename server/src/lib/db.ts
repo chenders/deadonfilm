@@ -591,6 +591,92 @@ export async function getSiteStats(): Promise<SiteStats> {
   }
 }
 
+// ============================================================================
+// Sync state functions for TMDB Changes API synchronization
+// ============================================================================
+
+export interface SyncStateRecord {
+  sync_type: string
+  last_sync_date: string // YYYY-MM-DD
+  last_run_at: Date
+  items_processed: number
+  new_deaths_found: number
+  movies_updated: number
+  errors_count: number
+}
+
+// Get sync state for a given sync type
+export async function getSyncState(syncType: string): Promise<SyncStateRecord | null> {
+  const db = getPool()
+  const result = await db.query<SyncStateRecord>(
+    `SELECT sync_type, last_sync_date::text, last_run_at, items_processed, new_deaths_found, movies_updated, errors_count
+     FROM sync_state WHERE sync_type = $1`,
+    [syncType]
+  )
+  return result.rows[0] || null
+}
+
+// Update or insert sync state
+export async function updateSyncState(
+  state: Partial<SyncStateRecord> & { sync_type: string }
+): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO sync_state (sync_type, last_sync_date, last_run_at, items_processed, new_deaths_found, movies_updated, errors_count)
+     VALUES ($1, $2, NOW(), $3, $4, $5, $6)
+     ON CONFLICT (sync_type) DO UPDATE SET
+       last_sync_date = COALESCE($2, sync_state.last_sync_date),
+       last_run_at = NOW(),
+       items_processed = COALESCE($3, sync_state.items_processed),
+       new_deaths_found = COALESCE($4, sync_state.new_deaths_found),
+       movies_updated = COALESCE($5, sync_state.movies_updated),
+       errors_count = COALESCE($6, sync_state.errors_count)`,
+    [
+      state.sync_type,
+      state.last_sync_date || null,
+      state.items_processed ?? 0,
+      state.new_deaths_found ?? 0,
+      state.movies_updated ?? 0,
+      state.errors_count ?? 0,
+    ]
+  )
+}
+
+// Get all unique actor TMDB IDs from actor_appearances
+export async function getAllActorTmdbIds(): Promise<Set<number>> {
+  const db = getPool()
+  const result = await db.query<{ actor_tmdb_id: number }>(
+    `SELECT DISTINCT actor_tmdb_id FROM actor_appearances`
+  )
+  return new Set(result.rows.map((r) => r.actor_tmdb_id))
+}
+
+// Get all TMDB IDs of deceased persons in our database
+export async function getDeceasedTmdbIds(): Promise<Set<number>> {
+  const db = getPool()
+  const result = await db.query<{ tmdb_id: number }>(`SELECT tmdb_id FROM deceased_persons`)
+  return new Set(result.rows.map((r) => r.tmdb_id))
+}
+
+// Get all movie TMDB IDs from movies table
+export async function getAllMovieTmdbIds(): Promise<Set<number>> {
+  const db = getPool()
+  const result = await db.query<{ tmdb_id: number }>(`SELECT tmdb_id FROM movies`)
+  return new Set(result.rows.map((r) => r.tmdb_id))
+}
+
+// Mark actors as deceased in actor_appearances table
+export async function markActorsDeceased(actorTmdbIds: number[]): Promise<void> {
+  if (actorTmdbIds.length === 0) return
+
+  const db = getPool()
+  const placeholders = actorTmdbIds.map((_, i) => `$${i + 1}`).join(", ")
+  await db.query(
+    `UPDATE actor_appearances SET is_deceased = true WHERE actor_tmdb_id IN (${placeholders})`,
+    actorTmdbIds
+  )
+}
+
 // Get recently deceased actors for homepage display (ordered by death date)
 export async function getRecentDeaths(limit: number = 5): Promise<
   Array<{
