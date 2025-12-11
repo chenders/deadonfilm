@@ -56,7 +56,6 @@ interface SyncArgs {
 interface SyncResult {
   peopleChecked: number
   newDeathsFound: number
-  existingUpdated: number
   moviesChecked: number
   moviesUpdated: number
   errors: string[]
@@ -97,6 +96,7 @@ function subtractDays(dateStr: string, days: number): string {
 }
 
 // Split a date range into chunks of MAX_QUERY_DAYS or less
+// TMDB API allows up to 14 days inclusive, so we add (MAX_QUERY_DAYS - 1) to start
 function getDateRanges(startDate: string, endDate: string): Array<{ start: string; end: string }> {
   const ranges: Array<{ start: string; end: string }> = []
   let current = new Date(startDate)
@@ -105,16 +105,17 @@ function getDateRanges(startDate: string, endDate: string): Array<{ start: strin
   // Handle same-day case - still need at least one range
   while (current <= end) {
     const rangeEnd = new Date(current)
-    rangeEnd.setDate(rangeEnd.getDate() + MAX_QUERY_DAYS)
+    // Add (MAX_QUERY_DAYS - 1) to get exactly 14 days inclusive (day 1 to day 14)
+    rangeEnd.setDate(rangeEnd.getDate() + MAX_QUERY_DAYS - 1)
 
     ranges.push({
       start: formatDate(current),
       end: formatDate(rangeEnd > end ? end : rangeEnd),
     })
 
-    current = rangeEnd
-    // Prevent infinite loop when start equals end
-    if (current >= end && ranges.length > 0) break
+    // Move to the day after rangeEnd for the next chunk
+    current = new Date(rangeEnd)
+    current.setDate(current.getDate() + 1)
   }
 
   return ranges
@@ -124,11 +125,77 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+const CAST_LIMIT = 30
+
+// Helper to update a movie's mortality stats - used by both people and movie sync
+async function updateMovieMortalityStats(
+  movieId: number,
+  currentYear: number,
+  dryRun: boolean
+): Promise<{ updated: boolean; title?: string; error?: string }> {
+  try {
+    const [details, credits] = await Promise.all([
+      getMovieDetails(movieId),
+      getMovieCredits(movieId),
+    ])
+
+    const topCast = credits.cast.slice(0, CAST_LIMIT)
+    const personIds = topCast.map((c) => c.id)
+    const personDetails = await batchGetPersonDetails(personIds, 10, 100)
+
+    const releaseYear = details.release_date ? parseInt(details.release_date.split("-")[0]) : null
+
+    if (!releaseYear) {
+      return { updated: false }
+    }
+
+    const actorsForMortality = topCast.map((castMember) => {
+      const person = personDetails.get(castMember.id)
+      return {
+        tmdbId: castMember.id,
+        name: castMember.name,
+        birthday: person?.birthday || null,
+        deathday: person?.deathday || null,
+      }
+    })
+
+    const mortalityStats = await calculateMovieMortality(
+      releaseYear,
+      actorsForMortality,
+      currentYear
+    )
+
+    if (!dryRun) {
+      const movieRecord: MovieRecord = {
+        tmdb_id: movieId,
+        title: details.title,
+        release_date: details.release_date || null,
+        release_year: releaseYear,
+        poster_path: details.poster_path,
+        genres: details.genres?.map((g) => g.name) || [],
+        popularity: null,
+        vote_average: null,
+        cast_count: topCast.length,
+        deceased_count: mortalityStats.actualDeaths,
+        living_count: topCast.length - mortalityStats.actualDeaths,
+        expected_deaths: mortalityStats.expectedDeaths,
+        mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
+      }
+
+      await upsertMovie(movieRecord)
+    }
+
+    return { updated: true, title: `${details.title} (${releaseYear})` }
+  } catch (error) {
+    return { updated: false, error: `Error updating movie ${movieId}: ${error}` }
+  }
+}
+
 async function syncPeopleChanges(
   startDate: string,
   endDate: string,
   dryRun: boolean
-): Promise<{ checked: number; newDeaths: number; updated: number; errors: string[] }> {
+): Promise<{ checked: number; newDeaths: number; errors: string[] }> {
   console.log(`\n=== Syncing People Changes (${startDate} to ${endDate}) ===\n`)
 
   const errors: string[] = []
@@ -165,7 +232,7 @@ async function syncPeopleChanges(
 
   if (relevantIds.length === 0) {
     console.log("\nNo relevant people changes found.")
-    return { checked: 0, newDeaths: 0, updated: 0, errors }
+    return { checked: 0, newDeaths: 0, errors }
   }
 
   // Fetch person details from TMDB
@@ -175,7 +242,6 @@ async function syncPeopleChanges(
 
   // Process each person
   let newDeaths = 0
-  let updated = 0
   const newlyDeceasedIds: number[] = []
 
   console.log("\nProcessing people...")
@@ -202,10 +268,8 @@ async function syncPeopleChanges(
 
       await delay(200)
     } else if (wasAlreadyDeceased) {
-      // Existing deceased person - check for updates (profile_path, etc.)
-      // For now, we skip updates to existing records
-      // TODO: Consider updating profile_path if changed
-      updated++
+      // Existing deceased person - no updates needed for now
+      // Future: could update profile_path if changed
     }
   }
 
@@ -225,64 +289,18 @@ async function syncPeopleChanges(
 
     const currentYear = new Date().getFullYear()
     for (const { movie_tmdb_id: movieId } of affectedMovies) {
-      try {
-        const [details, credits] = await Promise.all([
-          getMovieDetails(movieId),
-          getMovieCredits(movieId),
-        ])
-        const topCast = credits.cast.slice(0, 30)
-        const personIds = topCast.map((c) => c.id)
-        const moviePersonDetails = await batchGetPersonDetails(personIds, 10, 100)
-
-        const releaseYear = details.release_date
-          ? parseInt(details.release_date.split("-")[0])
-          : null
-        if (releaseYear) {
-          const actorsForMortality = topCast.map((castMember) => {
-            const person = moviePersonDetails.get(castMember.id)
-            return {
-              tmdbId: castMember.id,
-              name: castMember.name,
-              birthday: person?.birthday || null,
-              deathday: person?.deathday || null,
-            }
-          })
-
-          const mortalityStats = await calculateMovieMortality(
-            releaseYear,
-            actorsForMortality,
-            currentYear
-          )
-
-          const movieRecord: MovieRecord = {
-            tmdb_id: movieId,
-            title: details.title,
-            release_date: details.release_date || null,
-            release_year: releaseYear,
-            poster_path: details.poster_path,
-            genres: details.genres?.map((g) => g.name) || [],
-            popularity: null,
-            vote_average: null,
-            cast_count: topCast.length,
-            deceased_count: mortalityStats.actualDeaths,
-            living_count: topCast.length - mortalityStats.actualDeaths,
-            expected_deaths: mortalityStats.expectedDeaths,
-            mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
-          }
-
-          await upsertMovie(movieRecord)
-          console.log(`    Updated: ${details.title} (${releaseYear})`)
-        }
-        await delay(250)
-      } catch (error) {
-        const errorMsg = `Error updating movie ${movieId}: ${error}`
-        console.error(`    ${errorMsg}`)
-        errors.push(errorMsg)
+      const result = await updateMovieMortalityStats(movieId, currentYear, false)
+      if (result.error) {
+        console.error(`    ${result.error}`)
+        errors.push(result.error)
+      } else if (result.updated && result.title) {
+        console.log(`    Updated: ${result.title}`)
       }
+      await delay(250)
     }
   }
 
-  return { checked: relevantIds.length, newDeaths, updated, errors }
+  return { checked: relevantIds.length, newDeaths, errors }
 }
 
 async function processNewDeath(person: TMDBPerson): Promise<void> {
@@ -370,76 +388,22 @@ async function syncMovieChanges(
 
   console.log("\nProcessing movies...")
   for (const movieId of relevantIds) {
-    try {
-      console.log(`  Processing movie ${movieId}...`)
+    console.log(`  Processing movie ${movieId}...`)
 
-      // Fetch movie details and credits
-      const [details, credits] = await Promise.all([
-        getMovieDetails(movieId),
-        getMovieCredits(movieId),
-      ])
-
-      // Get top 30 cast
-      const topCast = credits.cast.slice(0, 30)
-
-      // Fetch person details to check death status
-      const personIds = topCast.map((c) => c.id)
-      const personDetails = await batchGetPersonDetails(personIds, 10, 100)
-
-      // Calculate mortality stats using the correct function signature
-      const releaseYear = details.release_date ? parseInt(details.release_date.split("-")[0]) : null
-
-      if (releaseYear) {
-        // Prepare actors for mortality calculation
-        const actorsForMortality = topCast.map((castMember) => {
-          const person = personDetails.get(castMember.id)
-          return {
-            tmdbId: castMember.id,
-            name: castMember.name,
-            birthday: person?.birthday || null,
-            deathday: person?.deathday || null,
-          }
-        })
-
-        const mortalityStats = await calculateMovieMortality(
-          releaseYear,
-          actorsForMortality,
-          currentYear
-        )
-
-        if (!dryRun) {
-          // Update movie record
-          const movieRecord: MovieRecord = {
-            tmdb_id: movieId,
-            title: details.title,
-            release_date: details.release_date || null,
-            release_year: releaseYear,
-            poster_path: details.poster_path,
-            genres: details.genres?.map((g) => g.name) || [],
-            popularity: null,
-            vote_average: null,
-            cast_count: topCast.length,
-            deceased_count: mortalityStats.actualDeaths,
-            living_count: topCast.length - mortalityStats.actualDeaths,
-            expected_deaths: mortalityStats.expectedDeaths,
-            mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
-          }
-
-          await upsertMovie(movieRecord)
-          console.log(`    Updated: ${details.title} (${releaseYear})`)
-          updated++
-        } else {
-          console.log(`    Would update: ${details.title} (${releaseYear})`)
-          updated++
-        }
+    const result = await updateMovieMortalityStats(movieId, currentYear, dryRun)
+    if (result.error) {
+      console.error(`    ${result.error}`)
+      errors.push(result.error)
+    } else if (result.updated && result.title) {
+      if (dryRun) {
+        console.log(`    Would update: ${result.title}`)
+      } else {
+        console.log(`    Updated: ${result.title}`)
       }
-
-      await delay(250)
-    } catch (error) {
-      const errorMsg = `Error processing movie ${movieId}: ${error}`
-      console.error(`    ${errorMsg}`)
-      errors.push(errorMsg)
+      updated++
     }
+
+    await delay(250)
   }
 
   return { checked: relevantIds.length, updated, errors }
@@ -469,7 +433,6 @@ async function main(): Promise<void> {
   const result: SyncResult = {
     peopleChecked: 0,
     newDeathsFound: 0,
-    existingUpdated: 0,
     moviesChecked: 0,
     moviesUpdated: 0,
     errors: [],
@@ -486,7 +449,6 @@ async function main(): Promise<void> {
       const peopleResult = await syncPeopleChanges(peopleStartDate, today, args.dryRun)
       result.peopleChecked = peopleResult.checked
       result.newDeathsFound = peopleResult.newDeaths
-      result.existingUpdated = peopleResult.updated
       result.errors.push(...peopleResult.errors)
 
       // Update sync state
@@ -529,7 +491,6 @@ async function main(): Promise<void> {
     console.log("\n=== Sync Summary ===")
     console.log(`People checked: ${result.peopleChecked}`)
     console.log(`New deaths found: ${result.newDeathsFound}`)
-    console.log(`Existing updated: ${result.existingUpdated}`)
     console.log(`Movies checked: ${result.moviesChecked}`)
     console.log(`Movies updated: ${result.moviesUpdated}`)
     console.log(`Errors: ${result.errors.length}`)
