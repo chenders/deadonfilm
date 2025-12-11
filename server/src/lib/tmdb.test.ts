@@ -1,0 +1,230 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+
+// We need to mock fetch before importing the module
+const mockFetch = vi.fn()
+vi.stubGlobal("fetch", mockFetch)
+
+// Import after mocking
+import {
+  getPersonChanges,
+  getMovieChanges,
+  getAllChangedPersonIds,
+  getAllChangedMovieIds,
+} from "./tmdb.js"
+
+describe("TMDB Changes API", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Set the required environment variable
+    process.env.TMDB_API_TOKEN = "test-token"
+  })
+
+  afterEach(() => {
+    delete process.env.TMDB_API_TOKEN
+  })
+
+  describe("getPersonChanges", () => {
+    it("fetches person changes with correct parameters", async () => {
+      const mockResponse = {
+        results: [{ id: 123, adult: false }],
+        page: 1,
+        total_pages: 1,
+        total_results: 1,
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      })
+
+      const result = await getPersonChanges("2024-01-01", "2024-01-14", 1)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.themoviedb.org/3/person/changes?start_date=2024-01-01&end_date=2024-01-14&page=1",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer test-token",
+          }),
+        })
+      )
+      expect(result).toEqual(mockResponse)
+    })
+
+    it("throws error when API returns non-OK status", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        text: () => Promise.resolve("Invalid API key"),
+      })
+
+      await expect(getPersonChanges("2024-01-01", "2024-01-14")).rejects.toThrow(
+        "TMDB API error: 401 Unauthorized"
+      )
+    })
+  })
+
+  describe("getMovieChanges", () => {
+    it("fetches movie changes with correct parameters", async () => {
+      const mockResponse = {
+        results: [{ id: 456, adult: false }],
+        page: 1,
+        total_pages: 1,
+        total_results: 1,
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      })
+
+      const result = await getMovieChanges("2024-01-01", "2024-01-14", 2)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.themoviedb.org/3/movie/changes?start_date=2024-01-01&end_date=2024-01-14&page=2",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer test-token",
+          }),
+        })
+      )
+      expect(result).toEqual(mockResponse)
+    })
+  })
+
+  describe("getAllChangedPersonIds", () => {
+    it("returns all IDs from a single page", async () => {
+      const mockResponse = {
+        results: [
+          { id: 1, adult: false },
+          { id: 2, adult: false },
+          { id: 3, adult: false },
+        ],
+        page: 1,
+        total_pages: 1,
+        total_results: 3,
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      })
+
+      const result = await getAllChangedPersonIds("2024-01-01", "2024-01-14", 0)
+
+      expect(result).toEqual([1, 2, 3])
+    })
+
+    it("paginates through multiple pages", async () => {
+      const page1Response = {
+        results: [
+          { id: 1, adult: false },
+          { id: 2, adult: false },
+        ],
+        page: 1,
+        total_pages: 2,
+        total_results: 4,
+      }
+
+      const page2Response = {
+        results: [
+          { id: 3, adult: false },
+          { id: 4, adult: false },
+        ],
+        page: 2,
+        total_pages: 2,
+        total_results: 4,
+      }
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(page1Response),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(page2Response),
+        })
+
+      const result = await getAllChangedPersonIds("2024-01-01", "2024-01-14", 0)
+
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(result).toEqual([1, 2, 3, 4])
+    })
+
+    it("handles empty results", async () => {
+      const mockResponse = {
+        results: [],
+        page: 1,
+        total_pages: 0,
+        total_results: 0,
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      })
+
+      const result = await getAllChangedPersonIds("2024-01-01", "2024-01-14", 0)
+
+      expect(result).toEqual([])
+    })
+  })
+
+  describe("getAllChangedMovieIds", () => {
+    it("returns all IDs from multiple pages", async () => {
+      const page1Response = {
+        results: [{ id: 100, adult: false }],
+        page: 1,
+        total_pages: 2,
+        total_results: 2,
+      }
+
+      const page2Response = {
+        results: [{ id: 200, adult: false }],
+        page: 2,
+        total_pages: 2,
+        total_results: 2,
+      }
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(page1Response),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(page2Response),
+        })
+
+      const result = await getAllChangedMovieIds("2024-01-01", "2024-01-14", 0)
+
+      expect(result).toEqual([100, 200])
+    })
+  })
+})
+
+describe("TMDB Changes API - Error Handling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.TMDB_API_TOKEN = "test-token"
+  })
+
+  afterEach(() => {
+    delete process.env.TMDB_API_TOKEN
+  })
+
+  it("throws when TMDB_API_TOKEN is not set", async () => {
+    delete process.env.TMDB_API_TOKEN
+
+    await expect(getPersonChanges("2024-01-01", "2024-01-14")).rejects.toThrow(
+      "TMDB_API_TOKEN environment variable is not set"
+    )
+  })
+
+  it("propagates network errors", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("Network error"))
+
+    await expect(getPersonChanges("2024-01-01", "2024-01-14")).rejects.toThrow("Network error")
+  })
+})
