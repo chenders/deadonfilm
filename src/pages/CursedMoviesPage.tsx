@@ -4,24 +4,13 @@ import { useQuery } from "@tanstack/react-query"
 import { useCursedMovies } from "@/hooks/useCursedMovies"
 import { getPosterUrl, getCursedMoviesFilters } from "@/services/api"
 import { createMovieSlug } from "@/utils/slugify"
+import { getDecadeOptions } from "@/utils/formatDate"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import CalculationExplainer from "@/components/common/CalculationExplainer"
 import type { CursedMovie } from "@/types"
 
-const DECADE_OPTIONS = [
-  { value: "", label: "Any" },
-  { value: "2020", label: "2020s" },
-  { value: "2010", label: "2010s" },
-  { value: "2000", label: "2000s" },
-  { value: "1990", label: "1990s" },
-  { value: "1980", label: "1980s" },
-  { value: "1970", label: "1970s" },
-  { value: "1960", label: "1960s" },
-  { value: "1950", label: "1950s" },
-  { value: "1940", label: "1940s" },
-  { value: "1930", label: "1930s" },
-]
+const DECADE_OPTIONS = getDecadeOptions(1930)
 
 function MovieRow({ movie }: { movie: CursedMovie }) {
   const posterUrl = getPosterUrl(movie.posterPath, "w92")
