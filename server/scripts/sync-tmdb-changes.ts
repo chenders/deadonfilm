@@ -18,6 +18,7 @@
  */
 
 import "dotenv/config"
+import { Command, InvalidArgumentError } from "commander"
 import { getPool } from "../src/lib/db.js"
 import {
   getSyncState,
@@ -46,13 +47,6 @@ import { formatDate, subtractDays, getDateRanges } from "../src/lib/date-utils.j
 const SYNC_TYPE_PEOPLE = "person_changes"
 const SYNC_TYPE_MOVIES = "movie_changes"
 
-interface SyncArgs {
-  days?: number
-  dryRun: boolean
-  peopleOnly: boolean
-  moviesOnly: boolean
-}
-
 interface SyncResult {
   peopleChecked: number
   newDeathsFound: number
@@ -61,28 +55,150 @@ interface SyncResult {
   errors: string[]
 }
 
-function parseArgs(args: string[]): SyncArgs {
-  const result: SyncArgs = {
-    dryRun: false,
-    peopleOnly: false,
-    moviesOnly: false,
+function parsePositiveInt(value: string): number {
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError("Must be a positive integer")
   }
+  return parsed
+}
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]
-    if (arg === "--dry-run") {
-      result.dryRun = true
-    } else if (arg === "--people-only") {
-      result.peopleOnly = true
-    } else if (arg === "--movies-only") {
-      result.moviesOnly = true
-    } else if (arg === "--days" && args[i + 1]) {
-      result.days = parseInt(args[i + 1], 10)
-      i++
+const program = new Command()
+  .name("sync-tmdb")
+  .description("Sync with TMDB Changes API to detect newly deceased actors and movie updates")
+  .option("-d, --days <number>", "Number of days back to sync", parsePositiveInt)
+  .option("-n, --dry-run", "Preview changes without writing to database")
+  .option("-p, --people-only", "Only sync people changes")
+  .option("-m, --movies-only", "Only sync movie changes")
+  .action(
+    async (options: {
+      days?: number
+      dryRun?: boolean
+      peopleOnly?: boolean
+      moviesOnly?: boolean
+    }) => {
+      // Validate mutually exclusive options
+      if (options.peopleOnly && options.moviesOnly) {
+        console.error("Error: Cannot specify both --people-only and --movies-only")
+        console.error("Use one or the other, or neither to sync both")
+        process.exit(1)
+      }
+
+      await runSync({
+        days: options.days,
+        dryRun: options.dryRun ?? false,
+        peopleOnly: options.peopleOnly ?? false,
+        moviesOnly: options.moviesOnly ?? false,
+      })
     }
+  )
+
+interface SyncOptions {
+  days?: number
+  dryRun: boolean
+  peopleOnly: boolean
+  moviesOnly: boolean
+}
+
+async function runSync(options: SyncOptions): Promise<void> {
+  // Check required environment variables
+  if (!process.env.DATABASE_URL) {
+    console.error("DATABASE_URL environment variable is required")
+    process.exit(1)
   }
 
-  return result
+  if (!process.env.TMDB_API_TOKEN) {
+    console.error("TMDB_API_TOKEN environment variable is required")
+    process.exit(1)
+  }
+
+  console.log("TMDB Changes Sync")
+  console.log("=================")
+  if (options.dryRun) console.log("DRY RUN MODE - no changes will be written")
+  if (options.peopleOnly) console.log("People only mode")
+  if (options.moviesOnly) console.log("Movies only mode")
+
+  const today = formatDate(new Date())
+  const result: SyncResult = {
+    peopleChecked: 0,
+    newDeathsFound: 0,
+    moviesChecked: 0,
+    moviesUpdated: 0,
+    errors: [],
+  }
+
+  try {
+    // Sync people changes
+    if (!options.moviesOnly) {
+      const peopleState = await getSyncState(SYNC_TYPE_PEOPLE)
+      const peopleStartDate = options.days
+        ? subtractDays(today, options.days)
+        : peopleState?.last_sync_date || subtractDays(today, 1)
+
+      const peopleResult = await syncPeopleChanges(peopleStartDate, today, options.dryRun)
+      result.peopleChecked = peopleResult.checked
+      result.newDeathsFound = peopleResult.newDeaths
+      result.errors.push(...peopleResult.errors)
+
+      // Update sync state
+      if (!options.dryRun) {
+        await updateSyncState({
+          sync_type: SYNC_TYPE_PEOPLE,
+          last_sync_date: today,
+          items_processed: peopleResult.checked,
+          new_deaths_found: peopleResult.newDeaths,
+          errors_count: peopleResult.errors.length,
+        })
+      }
+    }
+
+    // Sync movie changes
+    if (!options.peopleOnly) {
+      const movieState = await getSyncState(SYNC_TYPE_MOVIES)
+      const movieStartDate = options.days
+        ? subtractDays(today, options.days)
+        : movieState?.last_sync_date || subtractDays(today, 1)
+
+      const movieResult = await syncMovieChanges(movieStartDate, today, options.dryRun)
+      result.moviesChecked = movieResult.checked
+      result.moviesUpdated = movieResult.updated
+      result.errors.push(...movieResult.errors)
+
+      // Update sync state
+      if (!options.dryRun) {
+        await updateSyncState({
+          sync_type: SYNC_TYPE_MOVIES,
+          last_sync_date: today,
+          items_processed: movieResult.checked,
+          movies_updated: movieResult.updated,
+          errors_count: movieResult.errors.length,
+        })
+      }
+    }
+
+    // Print summary
+    console.log("\n=== Sync Summary ===")
+    console.log(`People checked: ${result.peopleChecked}`)
+    console.log(`New deaths found: ${result.newDeathsFound}`)
+    console.log(`Movies checked: ${result.moviesChecked}`)
+    console.log(`Movies updated: ${result.moviesUpdated}`)
+    console.log(`Errors: ${result.errors.length}`)
+
+    if (result.errors.length > 0) {
+      console.log("\nErrors encountered:")
+      for (const error of result.errors) {
+        console.log(`  - ${error}`)
+      }
+    }
+
+    console.log("\nDone!")
+  } catch (error) {
+    console.error("Fatal error:", error)
+    process.exit(1)
+  } finally {
+    const pool = getPool()
+    await pool.end()
+  }
 }
 
 function delay(ms: number): Promise<void> {
@@ -373,107 +489,4 @@ async function syncMovieChanges(
   return { checked: relevantIds.length, updated, errors }
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2))
-
-  // Check required environment variables
-  if (!process.env.DATABASE_URL) {
-    console.error("DATABASE_URL environment variable is required")
-    process.exit(1)
-  }
-
-  if (!process.env.TMDB_API_TOKEN) {
-    console.error("TMDB_API_TOKEN environment variable is required")
-    process.exit(1)
-  }
-
-  console.log("TMDB Changes Sync")
-  console.log("=================")
-  if (args.dryRun) console.log("DRY RUN MODE - no changes will be written")
-  if (args.peopleOnly) console.log("People only mode")
-  if (args.moviesOnly) console.log("Movies only mode")
-
-  const today = formatDate(new Date())
-  const result: SyncResult = {
-    peopleChecked: 0,
-    newDeathsFound: 0,
-    moviesChecked: 0,
-    moviesUpdated: 0,
-    errors: [],
-  }
-
-  try {
-    // Sync people changes
-    if (!args.moviesOnly) {
-      const peopleState = await getSyncState(SYNC_TYPE_PEOPLE)
-      const peopleStartDate = args.days
-        ? subtractDays(today, args.days)
-        : peopleState?.last_sync_date || subtractDays(today, 1)
-
-      const peopleResult = await syncPeopleChanges(peopleStartDate, today, args.dryRun)
-      result.peopleChecked = peopleResult.checked
-      result.newDeathsFound = peopleResult.newDeaths
-      result.errors.push(...peopleResult.errors)
-
-      // Update sync state
-      if (!args.dryRun) {
-        await updateSyncState({
-          sync_type: SYNC_TYPE_PEOPLE,
-          last_sync_date: today,
-          items_processed: peopleResult.checked,
-          new_deaths_found: peopleResult.newDeaths,
-          errors_count: peopleResult.errors.length,
-        })
-      }
-    }
-
-    // Sync movie changes
-    if (!args.peopleOnly) {
-      const movieState = await getSyncState(SYNC_TYPE_MOVIES)
-      const movieStartDate = args.days
-        ? subtractDays(today, args.days)
-        : movieState?.last_sync_date || subtractDays(today, 1)
-
-      const movieResult = await syncMovieChanges(movieStartDate, today, args.dryRun)
-      result.moviesChecked = movieResult.checked
-      result.moviesUpdated = movieResult.updated
-      result.errors.push(...movieResult.errors)
-
-      // Update sync state
-      if (!args.dryRun) {
-        await updateSyncState({
-          sync_type: SYNC_TYPE_MOVIES,
-          last_sync_date: today,
-          items_processed: movieResult.checked,
-          movies_updated: movieResult.updated,
-          errors_count: movieResult.errors.length,
-        })
-      }
-    }
-
-    // Print summary
-    console.log("\n=== Sync Summary ===")
-    console.log(`People checked: ${result.peopleChecked}`)
-    console.log(`New deaths found: ${result.newDeathsFound}`)
-    console.log(`Movies checked: ${result.moviesChecked}`)
-    console.log(`Movies updated: ${result.moviesUpdated}`)
-    console.log(`Errors: ${result.errors.length}`)
-
-    if (result.errors.length > 0) {
-      console.log("\nErrors encountered:")
-      for (const error of result.errors) {
-        console.log(`  - ${error}`)
-      }
-    }
-
-    console.log("\nDone!")
-  } catch (error) {
-    console.error("Fatal error:", error)
-    process.exit(1)
-  } finally {
-    const pool = getPool()
-    await pool.end()
-  }
-}
-
-main()
+program.parse()

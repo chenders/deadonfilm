@@ -87,7 +87,8 @@ Years Lost:
 │   ├── service.yaml
 │   ├── ingress.yaml
 │   ├── managed-cert.yaml   # GKE managed SSL certificate
-│   └── cronjob-sync.yaml   # Daily TMDB sync job
+│   ├── cronjob-sync.yaml   # Daily TMDB sync job
+│   └── cronjob-seed.yaml   # Weekly movie seeding job
 ├── Dockerfile              # Multi-stage Docker build
 └── public/                 # Static assets
 ```
@@ -333,11 +334,16 @@ Populate the database with deceased actors from top movies by year:
 ```bash
 cd server
 
-# Single year
+# Single year (200 movies, seeds deceased actors only)
 npm run seed -- 1995
 
 # Year range (e.g., 1990s)
 npm run seed -- 1990 1999
+
+# Seed movies table with mortality statistics (for cursed movies feature)
+npm run seed:movies -- 1995                    # Single year, 200 movies
+npm run seed:movies -- 1990 1999 --count 500   # 500 movies per year
+npm run seed:movies -- --all-time              # All years since 1920
 
 # Seed actuarial life tables (required for death probability calculations)
 npm run seed:actuarial
@@ -409,12 +415,67 @@ Example: `/movie/breakfast-at-tiffanys-1961-14629`
 - Write unit tests for new functionality
 - Test files go alongside code: `*.test.ts` or `*.test.tsx`
 - Tests MUST import and test actual production code, not reimplementations
+- **Adding or updating tests is ALWAYS in scope** - Test coverage suggestions should always be implemented, not deferred to future PRs
 - **data-testid attributes should be added** to all interactive and testable UI elements:
   - Add `data-testid` to components, containers, buttons, inputs, tooltips, modals, and other elements that tests may need to interact with
   - Use descriptive kebab-case names: `data-testid="death-details-trigger"`, `data-testid="search-results-list"`
   - When writing tests, prefer semantic queries (role, text, label) when available. Use `getByTestId` as a fallback when semantic queries are insufficient
   - **Never use CSS class selectors** (`.some-class`) in tests - they are fragile and break when styles change
 - Query preference order: `getByRole` > `getByLabelText` > `getByText` > `getByTestId` > CSS selectors (avoid)
+
+### CLI Scripts
+
+All CLI scripts in `server/scripts/` use [Commander.js](https://github.com/tj/commander.js) for argument parsing. This provides consistent help output, type-safe options, and proper error handling.
+
+**Standard pattern:**
+
+```typescript
+#!/usr/bin/env tsx
+import { Command, InvalidArgumentError } from "commander"
+
+// Custom argument validators
+function parsePositiveInt(value: string): number {
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError("Must be a positive integer")
+  }
+  return parsed
+}
+
+function parseYear(value: string): number {
+  const year = parsePositiveInt(value)
+  if (year < 1900 || year > new Date().getFullYear()) {
+    throw new InvalidArgumentError("Must be a valid year")
+  }
+  return year
+}
+
+const program = new Command()
+  .name("script-name")
+  .description("What the script does")
+  .argument("[optional]", "Description", parseYear)
+  .argument("<required>", "Description", parsePositiveInt)
+  .option("-n, --dry-run", "Preview changes without writing")
+  .option("-c, --count <number>", "Number of items", parsePositiveInt, 100)
+  .action(async (arg1, arg2, options) => {
+    // Validate mutually exclusive options
+    if (options.optionA && options.optionB) {
+      console.error("Error: Cannot specify both --option-a and --option-b")
+      process.exit(1)
+    }
+    await runScript(options)
+  })
+
+program.parse()
+```
+
+**Key conventions:**
+
+- Use `InvalidArgumentError` for argument validation errors (Commander shows them nicely)
+- Validate mutually exclusive options in the action handler
+- Use optional arguments with `[brackets]`, required with `<brackets>`
+- Provide sensible defaults via the fourth parameter to `.option()`
+- Always call `program.parse()` at the end
 
 ### DRY Principle
 

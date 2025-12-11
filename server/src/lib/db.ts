@@ -678,11 +678,18 @@ export async function markActorsDeceased(actorTmdbIds: number[]): Promise<void> 
   if (actorTmdbIds.length === 0) return
 
   const db = getPool()
-  const placeholders = actorTmdbIds.map((_, i) => `$${i + 1}`).join(", ")
-  await db.query(
-    `UPDATE actor_appearances SET is_deceased = true WHERE actor_tmdb_id IN (${placeholders})`,
-    actorTmdbIds
-  )
+  // Batch size of 1000 is well under PostgreSQL's 65535 parameter limit.
+  // This conservative value balances performance with memory usage and transaction timeouts.
+  const BATCH_SIZE = 1000
+
+  for (let i = 0; i < actorTmdbIds.length; i += BATCH_SIZE) {
+    const batch = actorTmdbIds.slice(i, i + BATCH_SIZE)
+    const placeholders = batch.map((_, idx) => `$${idx + 1}`).join(", ")
+    await db.query(
+      `UPDATE actor_appearances SET is_deceased = true WHERE actor_tmdb_id IN (${placeholders})`,
+      batch
+    )
+  }
 }
 
 // Get recently deceased actors for homepage display (ordered by death date)

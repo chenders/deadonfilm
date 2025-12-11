@@ -1,21 +1,33 @@
 #!/usr/bin/env tsx
 /**
  * Update mortality stats for a single person by TMDB ID
- * Usage: npx tsx scripts/update-single-mortality.ts <tmdbId>
+ *
+ * Usage:
+ *   npx tsx scripts/update-single-mortality.ts <tmdbId>
  */
 
 import "dotenv/config"
+import { Command, InvalidArgumentError } from "commander"
 import { getPool } from "../src/lib/db.js"
 import { calculateYearsLost } from "../src/lib/mortality-stats.js"
 
-async function main() {
-  const tmdbId = parseInt(process.argv[2], 10)
-
-  if (isNaN(tmdbId)) {
-    console.error("Usage: npx tsx scripts/update-single-mortality.ts <tmdbId>")
-    process.exit(1)
+function parsePositiveInt(value: string): number {
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError("Must be a positive integer")
   }
+  return parsed
+}
 
+const program = new Command()
+  .name("update-single-mortality")
+  .description("Update mortality stats for a single person by TMDB ID")
+  .argument("<tmdbId>", "TMDB person ID", parsePositiveInt)
+  .action(async (tmdbId: number) => {
+    await runUpdate(tmdbId)
+  })
+
+async function runUpdate(tmdbId: number) {
   const db = getPool()
 
   const result = await db.query<{
@@ -69,4 +81,4 @@ async function main() {
   await db.end()
 }
 
-main().catch(console.error)
+program.parse()

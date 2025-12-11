@@ -5,13 +5,17 @@ import {
   getDeceasedPersons,
   batchUpsertDeceasedPersons,
   updateDeathInfo,
+  upsertMovie,
+  batchUpsertActorAppearances,
   type DeceasedPersonRecord,
+  type ActorAppearanceRecord,
 } from "../lib/db.js"
 import {
   calculateMovieMortality,
   calculateYearsLost,
   type ActorForMortality,
 } from "../lib/mortality-stats.js"
+import { buildMovieRecord, buildActorAppearanceRecord } from "../lib/movie-cache.js"
 
 interface DeceasedActor {
   id: number
@@ -270,6 +274,18 @@ export async function getMovie(req: Request, res: Response) {
       response.enrichmentPending = true
     }
 
+    // Cache movie and actor appearances in background (on-demand seeding)
+    // This populates the movies and actor_appearances tables for cursed movies/actors features
+    cacheMovieInBackground({
+      movie,
+      deceased,
+      living,
+      expectedDeaths,
+      mortalitySurpriseScore,
+      personDetails,
+      mainCast,
+    })
+
     res.json(response)
   } catch (error) {
     console.error("Movie fetch error:", error)
@@ -314,6 +330,67 @@ function saveDeceasedToDb(persons: DeceasedPersonRecord[]): void {
   batchUpsertDeceasedPersons(persons).catch((error) => {
     console.error("Database write error:", error)
   })
+}
+
+// Helper to cache movie and actor appearances in background (on-demand seeding)
+interface CacheMovieParams {
+  movie: {
+    id: number
+    title: string
+    release_date: string | null
+    poster_path: string | null
+    genres: Array<{ id: number; name: string }>
+  }
+  deceased: DeceasedActor[]
+  living: LivingActor[]
+  expectedDeaths: number
+  mortalitySurpriseScore: number
+  personDetails: Map<number, { birthday?: string | null; deathday?: string | null }>
+  mainCast: Array<{ id: number; name: string; character: string | null }>
+}
+
+function cacheMovieInBackground(params: CacheMovieParams): void {
+  if (!process.env.DATABASE_URL) return
+
+  const {
+    movie,
+    deceased,
+    living,
+    expectedDeaths,
+    mortalitySurpriseScore,
+    personDetails,
+    mainCast,
+  } = params
+  const releaseYear = movie.release_date ? parseInt(movie.release_date.split("-")[0]) : null
+
+  // Build movie record using extracted utility
+  const movieRecord = buildMovieRecord({
+    movie,
+    deceasedCount: deceased.length,
+    livingCount: living.length,
+    expectedDeaths,
+    mortalitySurpriseScore,
+  })
+
+  // Build actor appearance records using extracted utility
+  const appearances: ActorAppearanceRecord[] = mainCast.map((castMember, index) => {
+    const person = personDetails.get(castMember.id)
+    return buildActorAppearanceRecord({
+      castMember,
+      movieId: movie.id,
+      billingOrder: index,
+      releaseYear,
+      birthday: person?.birthday ?? null,
+      isDeceased: !!person?.deathday,
+    })
+  })
+
+  // Save in background
+  Promise.all([upsertMovie(movieRecord), batchUpsertActorAppearances(appearances)]).catch(
+    (error) => {
+      console.error("Movie cache error:", error)
+    }
+  )
 }
 
 // Helper to update death info in database

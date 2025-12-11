@@ -14,6 +14,7 @@
  */
 
 import "dotenv/config"
+import { Command } from "commander"
 import { Pool } from "pg"
 import { readFileSync } from "fs"
 import { join, dirname } from "path"
@@ -35,7 +36,14 @@ interface CohortData {
   data: CohortEntry[]
 }
 
-async function main() {
+const program = new Command()
+  .name("seed-cohort-life-expectancy")
+  .description("Seed cohort life expectancy table from US Social Security Administration data")
+  .action(async () => {
+    await runSeed()
+  })
+
+async function runSeed() {
   // Check required environment variables
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -100,4 +108,4 @@ async function main() {
   }
 }
 
-main()
+program.parse()
