@@ -3,6 +3,11 @@ import tseslint from 'typescript-eslint'
 import globals from 'globals'
 import security from 'eslint-plugin-security'
 
+/**
+ * ESLint configuration for the backend Express server.
+ * Uses TypeScript ESLint and security plugin for Node.js best practices.
+ * @type {import('typescript-eslint').Config}
+ */
 export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,

@@ -4,6 +4,11 @@ import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
 
+/**
+ * ESLint configuration for the frontend React application.
+ * Uses TypeScript ESLint, React Hooks, and JSX accessibility plugins.
+ * @type {import('typescript-eslint').Config}
+ */
 export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,

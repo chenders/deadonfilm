@@ -1,3 +1,7 @@
+/**
+ * PostCSS configuration for Tailwind CSS processing.
+ * @type {import('postcss-load-config').Config}
+ */
 export default {
   plugins: {
     tailwindcss: {},
