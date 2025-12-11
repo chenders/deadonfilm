@@ -2,7 +2,8 @@
 
 /**
  * New Relic agent configuration.
- * See https://docs.newrelic.com/docs/apm/agents/nodejs-agent/installation-configuration/nodejs-agent-configuration/
+ * @see https://docs.newrelic.com/docs/apm/agents/nodejs-agent/installation-configuration/nodejs-agent-configuration/
+ * @type {import('newrelic').Config}
  */
 exports.config = {
   app_name: [process.env.NEW_RELIC_APP_NAME || 'Dead on Film'],
