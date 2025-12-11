@@ -226,3 +226,32 @@ The main configuration is in `k8s/values.yaml`. Key settings:
 ```bash
 helm uninstall newrelic-bundle -n deadonfilm
 ```
+
+## Deployment Markers
+
+Deployment markers appear on New Relic charts to show when deployments occurred, making it easy to correlate performance changes with releases.
+
+A GitHub Actions workflow (`.github/workflows/nr-mark-deployment.yml`) automatically creates deployment markers after each successful deploy to GKE.
+
+### Required GitHub Secrets
+
+Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
+
+1. **`NEW_RELIC_API_KEY`** - A User API key (not the License key)
+   - Go to [New Relic API Keys](https://one.newrelic.com/api-keys)
+   - Click **Create a key**
+   - Select **User** as the key type
+   - Name it (e.g., "GitHub Actions Deployment Marker")
+   - Copy the key value
+
+2. **`NEW_RELIC_DEPLOYMENT_ENTITY_GUID`** - The Entity GUID for your APM application
+   - Go to **APM & Services** → **Dead on Film**
+   - Look at the URL - it contains the GUID: `https://one.newrelic.com/nr1-core?...&entityGuid=XXXXXXX`
+   - Or click the app name, then **See metadata** to find the Entity GUID
+
+### Viewing Deployment Markers
+
+Once configured, deployment markers will appear:
+- On APM charts as vertical lines
+- In **APM & Services** → **Dead on Film** → **Deployments** tab
+- Each marker includes the commit SHA, deploying user, and branch name
