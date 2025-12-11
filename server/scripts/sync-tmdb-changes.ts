@@ -102,7 +102,8 @@ function getDateRanges(startDate: string, endDate: string): Array<{ start: strin
   let current = new Date(startDate)
   const end = new Date(endDate)
 
-  while (current < end) {
+  // Handle same-day case - still need at least one range
+  while (current <= end) {
     const rangeEnd = new Date(current)
     rangeEnd.setDate(rangeEnd.getDate() + MAX_QUERY_DAYS)
 
@@ -112,6 +113,8 @@ function getDateRanges(startDate: string, endDate: string): Array<{ start: strin
     })
 
     current = rangeEnd
+    // Prevent infinite loop when start equals end
+    if (current >= end && ranges.length > 0) break
   }
 
   return ranges
@@ -210,6 +213,73 @@ async function syncPeopleChanges(
   if (!dryRun && newlyDeceasedIds.length > 0) {
     console.log(`\nMarking ${newlyDeceasedIds.length} actors as deceased in actor_appearances...`)
     await markActorsDeceased(newlyDeceasedIds)
+
+    // Recalculate mortality stats for movies featuring newly deceased actors
+    console.log(`\nRecalculating mortality stats for affected movies...`)
+    const pool = getPool()
+    const { rows: affectedMovies } = await pool.query<{ movie_tmdb_id: number }>(
+      `SELECT DISTINCT movie_tmdb_id FROM actor_appearances WHERE actor_tmdb_id = ANY($1)`,
+      [newlyDeceasedIds]
+    )
+    console.log(`  Found ${affectedMovies.length} affected movies`)
+
+    const currentYear = new Date().getFullYear()
+    for (const { movie_tmdb_id: movieId } of affectedMovies) {
+      try {
+        const [details, credits] = await Promise.all([
+          getMovieDetails(movieId),
+          getMovieCredits(movieId),
+        ])
+        const topCast = credits.cast.slice(0, 30)
+        const personIds = topCast.map((c) => c.id)
+        const moviePersonDetails = await batchGetPersonDetails(personIds, 10, 100)
+
+        const releaseYear = details.release_date
+          ? parseInt(details.release_date.split("-")[0])
+          : null
+        if (releaseYear) {
+          const actorsForMortality = topCast.map((castMember) => {
+            const person = moviePersonDetails.get(castMember.id)
+            return {
+              tmdbId: castMember.id,
+              name: castMember.name,
+              birthday: person?.birthday || null,
+              deathday: person?.deathday || null,
+            }
+          })
+
+          const mortalityStats = await calculateMovieMortality(
+            releaseYear,
+            actorsForMortality,
+            currentYear
+          )
+
+          const movieRecord: MovieRecord = {
+            tmdb_id: movieId,
+            title: details.title,
+            release_date: details.release_date || null,
+            release_year: releaseYear,
+            poster_path: details.poster_path,
+            genres: details.genres?.map((g) => g.name) || [],
+            popularity: null,
+            vote_average: null,
+            cast_count: topCast.length,
+            deceased_count: mortalityStats.actualDeaths,
+            living_count: topCast.length - mortalityStats.actualDeaths,
+            expected_deaths: mortalityStats.expectedDeaths,
+            mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
+          }
+
+          await upsertMovie(movieRecord)
+          console.log(`    Updated: ${details.title} (${releaseYear})`)
+        }
+        await delay(250)
+      } catch (error) {
+        const errorMsg = `Error updating movie ${movieId}: ${error}`
+        console.error(`    ${errorMsg}`)
+        errors.push(errorMsg)
+      }
+    }
   }
 
   return { checked: relevantIds.length, newDeaths, updated, errors }

@@ -634,10 +634,10 @@ export async function updateSyncState(
     [
       state.sync_type,
       state.last_sync_date || null,
-      state.items_processed ?? 0,
-      state.new_deaths_found ?? 0,
-      state.movies_updated ?? 0,
-      state.errors_count ?? 0,
+      state.items_processed ?? null,
+      state.new_deaths_found ?? null,
+      state.movies_updated ?? null,
+      state.errors_count ?? null,
     ]
   )
 }
