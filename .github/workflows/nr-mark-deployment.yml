@@ -1,0 +1,22 @@
+name: New Relic Deployment Marker
+
+on:
+  workflow_run:
+    workflows: [Deploy to GKE]
+    types: [completed]
+
+jobs:
+  newrelic:
+    runs-on: ubuntu-latest
+    name: Mark Deployment in New Relic
+    # Only run if deploy succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: New Relic Application Deployment Marker
+        uses: newrelic/deployment-marker-action@v2.3.0
+        with:
+          apiKey: ${{ secrets.NEW_RELIC_API_KEY }}
+          guid: ${{ secrets.NEW_RELIC_DEPLOYMENT_ENTITY_GUID }}
+          version: "${{ github.event.workflow_run.head_sha }}"
+          user: "${{ github.event.workflow_run.actor.login }}"
+          description: "Deployed from ${{ github.event.workflow_run.head_branch }}"

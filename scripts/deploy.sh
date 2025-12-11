@@ -49,11 +49,11 @@ echo -e "${YELLOW}Step 5: Apply Kubernetes manifests${NC}"
 kubectl apply -f k8s/namespace.yaml
 
 # Check if secrets exist, if not prompt
-if ! kubectl get secret dead-on-film-secrets -n dead-on-film &>/dev/null; then
+if ! kubectl get secret dead-on-film-secrets -n deadonfilm &>/dev/null; then
     echo -e "${YELLOW}Secrets not found. Please create them:${NC}"
     echo ""
     echo "kubectl create secret generic dead-on-film-secrets \\"
-    echo "  --namespace=dead-on-film \\"
+    echo "  --namespace=deadonfilm \\"
     echo "  --from-literal=TMDB_API_TOKEN=your_tmdb_token \\"
     echo "  --from-literal=ANTHROPIC_API_KEY=your_anthropic_key"
     echo ""
@@ -67,13 +67,13 @@ kubectl apply -f k8s/service.yaml
 kubectl apply -f k8s/ingress.yaml
 
 echo -e "${YELLOW}Step 6: Wait for deployment to be ready${NC}"
-kubectl rollout status deployment/dead-on-film -n dead-on-film --timeout=120s
+kubectl rollout status deployment/dead-on-film -n deadonfilm --timeout=120s
 
 echo -e "${GREEN}Deployment complete!${NC}"
 echo ""
 echo "To check status:"
-echo "  kubectl get pods -n dead-on-film"
-echo "  kubectl get ingress -n dead-on-film"
+echo "  kubectl get pods -n deadonfilm"
+echo "  kubectl get ingress -n deadonfilm"
 echo ""
 echo "To get the external IP:"
-echo "  kubectl get ingress dead-on-film-ingress -n dead-on-film -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
+echo "  kubectl get ingress dead-on-film-ingress -n deadonfilm -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"

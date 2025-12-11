@@ -31,7 +31,7 @@ NEW_RELIC_APP_NAME=Dead on Film (Dev)
 
 ```bash
 kubectl create secret generic dead-on-film-secrets \
-  --namespace=dead-on-film \
+  --namespace=deadonfilm \
   --from-literal=TMDB_API_TOKEN=your_tmdb_token \
   --from-literal=ANTHROPIC_API_KEY=your_anthropic_key \
   --from-literal=DATABASE_URL=your_database_url \
@@ -41,7 +41,7 @@ kubectl create secret generic dead-on-film-secrets \
 Or update existing secret:
 
 ```bash
-kubectl patch secret dead-on-film-secrets -n dead-on-film \
+kubectl patch secret dead-on-film-secrets -n deadonfilm \
   --type='json' \
   -p='[{"op": "add", "path": "/data/NEW_RELIC_LICENSE_KEY", "value": "'$(echo -n 'your_key' | base64)'"}]'
 ```
@@ -144,7 +144,7 @@ try {
 
 ### Backend agent not starting
 
-1. Check `NEW_RELIC_LICENSE_KEY` is set: `kubectl exec -it <pod> -n dead-on-film -- printenv | grep NEW_RELIC`
+1. Check `NEW_RELIC_LICENSE_KEY` is set: `kubectl exec -it <pod> -n deadonfilm -- printenv | grep NEW_RELIC`
 2. Check server logs for "New Relic APM initialized" or error messages
 3. Ensure `newrelic.cjs` exists in the server directory
 

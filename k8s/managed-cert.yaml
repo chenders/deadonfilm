@@ -2,7 +2,7 @@ apiVersion: networking.gke.io/v1
 kind: ManagedCertificate
 metadata:
   name: dead-on-film-cert
-  namespace: dead-on-film
+  namespace: deadonfilm
 spec:
   domains:
     - deadonfilm.com
