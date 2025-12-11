@@ -305,6 +305,9 @@ npm run backfill:mortality -- --all  # Recalculate all records
 
 # Backfill missing birthdays using Claude
 npm run backfill:birthdays
+
+# Backfill missing profile photos from TMDB
+npm run backfill:profiles
 ```
 
 ## GKE Deployment
