@@ -16,8 +16,11 @@ WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm ci
 COPY server/src/ ./src/
-COPY server/tsconfig.json ./
-RUN npm run build
+COPY server/scripts/ ./scripts/
+COPY server/tsconfig.json server/tsconfig.scripts.json ./
+# Build src first, then scripts (scripts import from src, so both must be included
+# in tsconfig.scripts.json for type resolution; redundant src compilation is harmless)
+RUN npm run build && npx tsc -p tsconfig.scripts.json
 
 # Production stage
 FROM node:22-alpine AS production
