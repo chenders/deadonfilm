@@ -139,9 +139,8 @@ describe("HomePage", () => {
   it("renders quick action buttons", async () => {
     renderWithProviders(<HomePage />)
 
-    expect(screen.getByTestId("high-mortality-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("classic-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("random-movie-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("forever-young-btn")).toBeInTheDocument()
     expect(screen.getByTestId("cursed-movies-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("cursed-actors-btn")).toBeInTheDocument()
   })
 })

@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { Request, Response } from "express"
-import { getCursedMovies } from "./discover.js"
+import { getCursedMovies, getDiscoverMovie } from "./discover.js"
 import * as db from "../lib/db.js"
 
 // Mock the db module
 vi.mock("../lib/db.js", () => ({
   getHighMortalityMovies: vi.fn(),
+  getForeverYoungMovies: vi.fn(),
 }))
 
 describe("getCursedMovies", () => {
@@ -256,5 +257,103 @@ describe("getCursedMovies", () => {
         totalPages: 3,
       },
     })
+  })
+})
+
+describe("getDiscoverMovie", () => {
+  let mockReq: Partial<Request>
+  let mockRes: Partial<Response>
+  let jsonSpy: ReturnType<typeof vi.fn>
+  let statusSpy: ReturnType<typeof vi.fn>
+
+  const mockForeverYoungMovies = [
+    {
+      tmdb_id: 123,
+      title: "Rebel Without a Cause",
+      release_date: "1955-10-27",
+      actor_name: "James Dean",
+      years_lost: 52,
+    },
+    {
+      tmdb_id: 456,
+      title: "The Crow",
+      release_date: "1994-05-13",
+      actor_name: "Brandon Lee",
+      years_lost: 48,
+    },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    jsonSpy = vi.fn()
+    statusSpy = vi.fn().mockReturnThis()
+
+    mockReq = {
+      params: { type: "forever-young" },
+    }
+    mockRes = {
+      json: jsonSpy as Response["json"],
+      status: statusSpy as Response["status"],
+    }
+  })
+
+  it("returns 400 when type is invalid", async () => {
+    mockReq.params = { type: "invalid" }
+
+    await getDiscoverMovie(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(400)
+    expect(jsonSpy).toHaveBeenCalledWith({
+      error: { message: "Invalid type. Use 'forever-young'" },
+    })
+  })
+
+  it("returns a movie for forever-young type", async () => {
+    vi.mocked(db.getForeverYoungMovies).mockResolvedValueOnce(mockForeverYoungMovies)
+
+    await getDiscoverMovie(mockReq as Request, mockRes as Response)
+
+    expect(db.getForeverYoungMovies).toHaveBeenCalledWith(100)
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: expect.any(Number),
+        title: expect.any(String),
+        release_date: expect.any(String),
+      })
+    )
+  })
+
+  it("returns 404 when no movies are found", async () => {
+    vi.mocked(db.getForeverYoungMovies).mockResolvedValueOnce([])
+
+    await getDiscoverMovie(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(404)
+    expect(jsonSpy).toHaveBeenCalledWith({
+      error: { message: "No movie found" },
+    })
+  })
+
+  it("returns 500 on database error", async () => {
+    vi.mocked(db.getForeverYoungMovies).mockRejectedValueOnce(new Error("Database error"))
+
+    await getDiscoverMovie(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(500)
+    expect(jsonSpy).toHaveBeenCalledWith({
+      error: { message: "Failed to fetch movie" },
+    })
+  })
+
+  it("returns one of the movies from the pool randomly", async () => {
+    vi.mocked(db.getForeverYoungMovies).mockResolvedValueOnce(mockForeverYoungMovies)
+
+    await getDiscoverMovie(mockReq as Request, mockRes as Response)
+
+    // The returned movie should be one from the mock data
+    const returnedMovie = jsonSpy.mock.calls[0][0]
+    const validIds = mockForeverYoungMovies.map((m) => m.tmdb_id)
+    expect(validIds).toContain(returnedMovie.id)
   })
 })
