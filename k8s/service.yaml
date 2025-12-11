@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: dead-on-film-api
-  namespace: dead-on-film
+  namespace: deadonfilm
 spec:
   selector:
     app: dead-on-film
@@ -17,7 +17,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: dead-on-film-frontend
-  namespace: dead-on-film
+  namespace: deadonfilm
 spec:
   selector:
     app: dead-on-film
