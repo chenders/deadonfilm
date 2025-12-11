@@ -186,7 +186,13 @@ export async function getMovieChanges(
   )
 }
 
-// Helper to fetch all changed person IDs across all pages
+/**
+ * Fetch all changed person IDs from TMDB Changes API, handling pagination.
+ * @param startDate - Start date in YYYY-MM-DD format (max 14 days before endDate)
+ * @param endDate - End date in YYYY-MM-DD format
+ * @param delayMs - Delay between page requests to respect API rate limits (default 50ms)
+ * @returns Array of TMDB person IDs that changed in the date range
+ */
 export async function getAllChangedPersonIds(
   startDate: string,
   endDate: string,
@@ -194,7 +200,7 @@ export async function getAllChangedPersonIds(
 ): Promise<number[]> {
   const ids: number[] = []
   let page = 1
-  let totalPages: number
+  let totalPages = 1
 
   do {
     const response = await getPersonChanges(startDate, endDate, page)
@@ -210,7 +216,13 @@ export async function getAllChangedPersonIds(
   return ids
 }
 
-// Helper to fetch all changed movie IDs across all pages
+/**
+ * Fetch all changed movie IDs from TMDB Changes API, handling pagination.
+ * @param startDate - Start date in YYYY-MM-DD format (max 14 days before endDate)
+ * @param endDate - End date in YYYY-MM-DD format
+ * @param delayMs - Delay between page requests to respect API rate limits (default 50ms)
+ * @returns Array of TMDB movie IDs that changed in the date range
+ */
 export async function getAllChangedMovieIds(
   startDate: string,
   endDate: string,
@@ -218,7 +230,7 @@ export async function getAllChangedMovieIds(
 ): Promise<number[]> {
   const ids: number[] = []
   let page = 1
-  let totalPages: number
+  let totalPages = 1
 
   do {
     const response = await getMovieChanges(startDate, endDate, page)
