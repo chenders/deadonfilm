@@ -194,7 +194,7 @@ export async function getAllChangedPersonIds(
 ): Promise<number[]> {
   const ids: number[] = []
   let page = 1
-  let totalPages = 1
+  let totalPages: number
 
   do {
     const response = await getPersonChanges(startDate, endDate, page)
@@ -218,7 +218,7 @@ export async function getAllChangedMovieIds(
 ): Promise<number[]> {
   const ids: number[] = []
   let page = 1
-  let totalPages = 1
+  let totalPages: number
 
   do {
     const response = await getMovieChanges(startDate, endDate, page)
