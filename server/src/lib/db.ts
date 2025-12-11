@@ -605,7 +605,11 @@ export interface SyncStateRecord {
   errors_count: number
 }
 
-// Get sync state for a given sync type
+/**
+ * Get sync state for a given sync type.
+ * @param syncType - The sync type identifier (e.g., 'person_changes', 'movie_changes')
+ * @returns The sync state record, or null if no sync has been run for this type
+ */
 export async function getSyncState(syncType: string): Promise<SyncStateRecord | null> {
   const db = getPool()
   const result = await db.query<SyncStateRecord>(
@@ -616,7 +620,11 @@ export async function getSyncState(syncType: string): Promise<SyncStateRecord | 
   return result.rows[0] || null
 }
 
-// Update or insert sync state
+/**
+ * Update or insert sync state. Uses COALESCE to preserve existing values
+ * when fields are not provided (null/undefined).
+ * @param state - Partial sync state with required sync_type. Omit fields to preserve existing DB values.
+ */
 export async function updateSyncState(
   state: Partial<SyncStateRecord> & { sync_type: string }
 ): Promise<void> {
