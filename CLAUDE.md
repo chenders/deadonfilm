@@ -87,7 +87,8 @@ Years Lost:
 │   ├── service.yaml
 │   ├── ingress.yaml
 │   ├── managed-cert.yaml   # GKE managed SSL certificate
-│   └── cronjob-sync.yaml   # Daily TMDB sync job
+│   ├── cronjob-sync.yaml   # Daily TMDB sync job
+│   └── cronjob-seed.yaml   # Weekly movie seeding job
 ├── Dockerfile              # Multi-stage Docker build
 └── public/                 # Static assets
 ```
@@ -333,11 +334,16 @@ Populate the database with deceased actors from top movies by year:
 ```bash
 cd server
 
-# Single year
+# Single year (200 movies, seeds deceased actors only)
 npm run seed -- 1995
 
 # Year range (e.g., 1990s)
 npm run seed -- 1990 1999
+
+# Seed movies table with mortality statistics (for cursed movies feature)
+npm run seed:movies -- 1995                    # Single year, 200 movies
+npm run seed:movies -- 1990 1999 --count 500   # 500 movies per year
+npm run seed:movies -- --all-time              # All years since 1920
 
 # Seed actuarial life tables (required for death probability calculations)
 npm run seed:actuarial
