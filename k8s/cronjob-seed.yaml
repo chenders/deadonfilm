@@ -7,7 +7,7 @@ metadata:
     app: dead-on-film
     component: seed
 spec:
-  # Run weekly on Sunday at 4 AM UTC (8 PM Saturday PST / 9 PM Saturday PDT)
+  # Run weekly on Sunday at 4 AM UTC (8 PM Saturday Pacific Time, adjusts with daylight saving)
   schedule: "0 4 * * 0"
   # Don't allow multiple seed jobs to run simultaneously
   concurrencyPolicy: Forbid
@@ -42,8 +42,8 @@ spec:
               image: us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:latest
               imagePullPolicy: Always
               # Seed current and previous year with 500 movies each to catch new releases
-              # Uses shell to dynamically compute years (avoids hardcoding)
-              command: ["/bin/sh", "-c", "CURRENT_YEAR=$(date +%Y) && PREV_YEAR=$((CURRENT_YEAR - 1)) && npm run seed:movies -- $PREV_YEAR $CURRENT_YEAR --count 500"]
+              # Uses shell to dynamically compute years in UTC (avoids hardcoding and timezone issues)
+              command: ["/bin/sh", "-c", "CURRENT_YEAR=$(date -u +%Y) && PREV_YEAR=$((CURRENT_YEAR - 1)) && npm run seed:movies -- $PREV_YEAR $CURRENT_YEAR --count 500"]
               workingDir: /app/server
               env:
                 - name: TZ

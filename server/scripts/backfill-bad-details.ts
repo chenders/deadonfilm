@@ -9,10 +9,12 @@
  * - Redundant details that just restate the cause
  *
  * Usage:
- *   cd server && npx tsx scripts/backfill-bad-details.ts [--dry-run]
+ *   npm run backfill:bad-details
+ *   npm run backfill:bad-details -- --dry-run
  */
 
 import "dotenv/config"
+import { Command } from "commander"
 import pg from "pg"
 import { getCauseOfDeathFromClaude } from "../src/lib/claude.js"
 
@@ -112,9 +114,15 @@ function identifyBadDetails(cause: string | null, details: string | null): strin
   return null
 }
 
-async function main() {
-  const dryRun = process.argv.includes("--dry-run")
+const program = new Command()
+  .name("backfill-bad-details")
+  .description("Fix problematic death details entries")
+  .option("-n, --dry-run", "Preview changes without writing to database")
+  .action(async (options: { dryRun?: boolean }) => {
+    await runBackfill(options.dryRun ?? false)
+  })
 
+async function runBackfill(dryRun: boolean) {
   if (dryRun) {
     console.log("DRY RUN MODE - no changes will be made\n")
   }
@@ -217,12 +225,12 @@ async function main() {
     console.log(`\nDone!`)
     console.log(`- Updated with new details: ${updated}`)
     console.log(`- Cleared (no meaningful details): ${cleared}`)
+  } catch (error) {
+    console.error("Fatal error:", error)
+    process.exit(1)
   } finally {
     await pool.end()
   }
 }
 
-main().catch((error) => {
-  console.error("Fatal error:", error)
-  process.exit(1)
-})
+program.parse()

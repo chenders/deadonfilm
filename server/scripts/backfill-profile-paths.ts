@@ -7,10 +7,18 @@
  */
 
 import "dotenv/config"
+import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
 import { getPersonDetails } from "../src/lib/tmdb.js"
 
-async function main() {
+const program = new Command()
+  .name("backfill-profile-paths")
+  .description("Fetch missing profile photos from TMDB for deceased actors")
+  .action(async () => {
+    await runBackfill()
+  })
+
+async function runBackfill() {
   // Check required environment variables
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -92,4 +100,4 @@ async function main() {
   }
 }
 
-main()
+program.parse()

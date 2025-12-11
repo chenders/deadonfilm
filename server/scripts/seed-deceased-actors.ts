@@ -12,6 +12,7 @@
  */
 
 import "dotenv/config"
+import { Command, InvalidArgumentError } from "commander"
 import {
   discoverMoviesByYear,
   getMovieCredits,
@@ -26,31 +27,37 @@ import { calculateYearsLost } from "../src/lib/mortality-stats.js"
 const MOVIES_TO_FETCH = 100 // Top 100 movies per year range
 const CAST_LIMIT = 30 // Top 30 actors per movie
 const PAGES_NEEDED = Math.ceil(MOVIES_TO_FETCH / 20) // TMDB returns 20 per page
+const MIN_YEAR = 1900
+const MAX_YEAR = 2100
 
-async function main() {
-  const args = process.argv.slice(2)
-
-  if (args.length === 0) {
-    console.error("Usage: npm run seed -- <startYear> [endYear]")
-    console.error("Examples:")
-    console.error("  npm run seed -- 1995       # Single year")
-    console.error("  npm run seed -- 1990 1999  # Year range")
-    process.exit(1)
+function parseYear(value: string): number {
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || parsed < MIN_YEAR || parsed > MAX_YEAR) {
+    throw new InvalidArgumentError(`Must be a valid year (${MIN_YEAR}-${MAX_YEAR})`)
   }
+  return parsed
+}
 
-  const startYear = parseInt(args[0], 10)
-  const endYear = parseInt(args[1], 10) || startYear
+const program = new Command()
+  .name("seed-deceased-actors")
+  .description("Seed the deceased_persons database with actors from top movies")
+  .argument("<startYear>", "Start year for seeding", parseYear)
+  .argument("[endYear]", "End year for seeding (defaults to startYear)", parseYear)
+  .action(async (startYear: number, endYear: number | undefined) => {
+    const effectiveEndYear = endYear ?? startYear
 
-  if (isNaN(startYear) || startYear < 1900 || startYear > 2100) {
-    console.error("Invalid start year:", args[0])
-    process.exit(1)
-  }
+    // Validate year range
+    if (effectiveEndYear < startYear) {
+      console.error(
+        `Error: End year (${effectiveEndYear}) cannot be before start year (${startYear})`
+      )
+      process.exit(1)
+    }
 
-  if (isNaN(endYear) || endYear < startYear || endYear > 2100) {
-    console.error("Invalid end year:", args[1])
-    process.exit(1)
-  }
+    await runSeeding(startYear, effectiveEndYear)
+  })
 
+async function runSeeding(startYear: number, endYear: number) {
   // Check required environment variables
   if (!process.env.TMDB_API_TOKEN) {
     console.error("TMDB_API_TOKEN environment variable is required")
@@ -237,4 +244,4 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-main()
+program.parse()
