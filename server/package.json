@@ -21,6 +21,7 @@
     "backfill:mortality": "tsx scripts/backfill-mortality-stats.ts",
     "backfill:birthdays": "tsx scripts/backfill-birthdays.ts",
     "backfill:appearances": "tsx scripts/backfill-actor-appearances.ts",
+    "backfill:profiles": "tsx scripts/backfill-profile-paths.ts",
     "migrate": "node-pg-migrate",
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
