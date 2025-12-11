@@ -62,7 +62,7 @@ export default function CalculationExplainer({ type }: CalculationExplainerProps
               <section>
                 <h4 className="font-medium text-brown-dark">Exclusions</h4>
                 <p>
-                  Actors appearing via archived footage (those who died more than a year before the
+                  Actors appearing via archived footage (those who died more than 3 years before the
                   film's release) are excluded from calculations, as they weren't alive during
                   production.
                 </p>

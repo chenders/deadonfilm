@@ -183,9 +183,9 @@ export async function calculateMovieMortality(
     const currentAge = birthYear && !isDeceased ? currentYear - birthYear : null
     const ageAtDeath = birthYear && deathYear ? deathYear - birthYear : null
 
-    // Check if actor died more than 1 year before movie release (archived footage)
+    // Check if actor died more than 3 years before movie release (archived footage)
     // These actors should be excluded from mortality calculations
-    const isArchivedFootage = deathYear !== null && deathYear < releaseYear - 1
+    const isArchivedFootage = deathYear !== null && deathYear < releaseYear - 3
 
     // Calculate death probability (expected chance they would have died by now)
     let deathProbability = 0
