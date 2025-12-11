@@ -6,6 +6,7 @@ import {
   calculateAge,
   calculateCurrentAge,
   formatRelativeDate,
+  getDecadeOptions,
 } from "./formatDate"
 
 describe("formatDate", () => {
@@ -210,5 +211,57 @@ describe("formatRelativeDate", () => {
     expect(formatRelativeDate("2024-05-15")).toBe("1 month ago")
     // 29 days should still be weeks
     expect(formatRelativeDate("2024-05-17")).toBe("4 weeks ago")
+  })
+})
+
+describe("getDecadeOptions", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2025-12-10T12:00:00Z"))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("generates decade options starting with 'Any'", () => {
+    const options = getDecadeOptions()
+    expect(options[0]).toEqual({ value: "", label: "Any" })
+  })
+
+  it("starts from current decade (2020s in 2025)", () => {
+    const options = getDecadeOptions()
+    expect(options[1]).toEqual({ value: "2020", label: "2020s" })
+  })
+
+  it("defaults to 1930 as minimum decade", () => {
+    const options = getDecadeOptions()
+    const lastOption = options[options.length - 1]
+    expect(lastOption).toEqual({ value: "1930", label: "1930s" })
+  })
+
+  it("generates correct number of decades", () => {
+    // 2025 → 2020s, 2010s, 2000s, 1990s, 1980s, 1970s, 1960s, 1950s, 1940s, 1930s = 10 decades
+    // Plus "Any" = 11 options
+    const options = getDecadeOptions()
+    expect(options).toHaveLength(11)
+  })
+
+  it("respects custom minimum decade", () => {
+    const options = getDecadeOptions(1950)
+    const lastOption = options[options.length - 1]
+    expect(lastOption).toEqual({ value: "1950", label: "1950s" })
+    // 2020s through 1950s = 8 decades + "Any" = 9 options
+    expect(options).toHaveLength(9)
+  })
+
+  it("generates decades in descending order", () => {
+    const options = getDecadeOptions(2000)
+    expect(options).toEqual([
+      { value: "", label: "Any" },
+      { value: "2020", label: "2020s" },
+      { value: "2010", label: "2010s" },
+      { value: "2000", label: "2000s" },
+    ])
   })
 })

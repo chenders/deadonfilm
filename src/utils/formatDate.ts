@@ -112,3 +112,20 @@ export function formatRelativeDate(dateString: string | null): string {
     return dateString
   }
 }
+
+/**
+ * Generates decade filter options from current decade down to a minimum
+ * Example: In 2025, generates [2020s, 2010s, 2000s, ... down to minDecade]
+ */
+export function getDecadeOptions(minDecade: number = 1930): { value: string; label: string }[] {
+  const currentYear = new Date().getFullYear()
+  const currentDecade = Math.floor(currentYear / 10) * 10
+
+  const options: { value: string; label: string }[] = [{ value: "", label: "Any" }]
+
+  for (let decade = currentDecade; decade >= minDecade; decade -= 10) {
+    options.push({ value: String(decade), label: `${decade}s` })
+  }
+
+  return options
+}

@@ -1,25 +1,14 @@
 import { useSearchParams } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useCursedActors } from "@/hooks/useCursedActors"
+import { getDecadeOptions } from "@/utils/formatDate"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import CalculationExplainer from "@/components/common/CalculationExplainer"
 import { PersonIcon, SkullIcon } from "@/components/icons"
 import type { CursedActor } from "@/types"
 
-const DECADE_OPTIONS = [
-  { value: "", label: "Any" },
-  { value: "2020", label: "2020s" },
-  { value: "2010", label: "2010s" },
-  { value: "2000", label: "2000s" },
-  { value: "1990", label: "1990s" },
-  { value: "1980", label: "1980s" },
-  { value: "1970", label: "1970s" },
-  { value: "1960", label: "1960s" },
-  { value: "1950", label: "1950s" },
-  { value: "1940", label: "1940s" },
-  { value: "1930", label: "1930s" },
-]
+const DECADE_OPTIONS = getDecadeOptions(1930)
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All" },
