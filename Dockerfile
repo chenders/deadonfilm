@@ -18,7 +18,8 @@ RUN npm ci
 COPY server/src/ ./src/
 COPY server/scripts/ ./scripts/
 COPY server/tsconfig.json server/tsconfig.scripts.json ./
-# Build src first (standard build), then build scripts with extended config
+# Build src first, then scripts (scripts import from src, so both must be included
+# in tsconfig.scripts.json for type resolution; redundant src compilation is harmless)
 RUN npm run build && npx tsc -p tsconfig.scripts.json
 
 # Production stage
