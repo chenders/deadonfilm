@@ -337,7 +337,7 @@ interface CacheMovieParams {
   movie: {
     id: number
     title: string
-    release_date: string
+    release_date: string | null
     poster_path: string | null
     genres: Array<{ id: number; name: string }>
   }
@@ -346,7 +346,7 @@ interface CacheMovieParams {
   expectedDeaths: number
   mortalitySurpriseScore: number
   personDetails: Map<number, { birthday?: string | null; deathday?: string | null }>
-  mainCast: Array<{ id: number; name: string; character: string }>
+  mainCast: Array<{ id: number; name: string; character: string | null }>
 }
 
 function cacheMovieInBackground(params: CacheMovieParams): void {

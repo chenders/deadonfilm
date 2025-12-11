@@ -49,10 +49,9 @@ function parsePositiveInt(value: string): number {
 
 function parseYear(value: string): number {
   const parsed = parseInt(value, 10)
-  if (isNaN(parsed) || parsed < EARLIEST_YEAR || parsed > new Date().getFullYear() + 1) {
-    throw new InvalidArgumentError(
-      `Must be a valid year (${EARLIEST_YEAR}-${new Date().getFullYear()})`
-    )
+  const maxYear = new Date().getFullYear() + 1
+  if (isNaN(parsed) || parsed < EARLIEST_YEAR || parsed > maxYear) {
+    throw new InvalidArgumentError(`Must be a valid year (${EARLIEST_YEAR}-${maxYear})`)
   }
   return parsed
 }
