@@ -127,6 +127,9 @@ jobs:
       - name: Seed actuarial data
         run: npm run seed:actuarial
 
+      - name: Seed cohort life expectancy data
+        run: npm run seed:cohort
+
       - name: Type check
         run: npm run type-check
 

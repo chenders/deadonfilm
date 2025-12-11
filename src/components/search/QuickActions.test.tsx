@@ -6,7 +6,6 @@ import * as api from "@/services/api"
 
 // Mock the API
 vi.mock("@/services/api", () => ({
-  getRandomMovie: vi.fn(),
   getDiscoverMovie: vi.fn(),
 }))
 
@@ -33,68 +32,40 @@ describe("QuickActions", () => {
     renderWithRouter(<QuickActions />)
 
     expect(screen.getByTestId("quick-actions")).toBeInTheDocument()
-    expect(screen.getByTestId("high-mortality-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("classic-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("random-movie-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("forever-young-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("cursed-movies-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("cursed-actors-btn")).toBeInTheDocument()
   })
 
   it("displays correct button text", () => {
     renderWithRouter(<QuickActions />)
 
-    expect(screen.getByText("High Mortality")).toBeInTheDocument()
-    expect(screen.getByText("Classic Films")).toBeInTheDocument()
-    expect(screen.getByText("Surprise Me")).toBeInTheDocument()
+    expect(screen.getByText("Forever Young")).toBeInTheDocument()
+    expect(screen.getByText("Cursed Movies")).toBeInTheDocument()
+    expect(screen.getByText("Cursed Actors")).toBeInTheDocument()
   })
 
-  it("navigates to high mortality movie when clicked", async () => {
-    const mockMovie = { id: 123, title: "Old Movie", release_date: "1950-01-01" }
+  it("navigates to forever young movie when clicked", async () => {
+    const mockMovie = { id: 123, title: "Tragic Movie", release_date: "1985-01-01" }
     vi.mocked(api.getDiscoverMovie).mockResolvedValue(mockMovie)
 
     renderWithRouter(<QuickActions />)
 
-    fireEvent.click(screen.getByTestId("high-mortality-btn"))
+    fireEvent.click(screen.getByTestId("forever-young-btn"))
 
     await waitFor(() => {
-      expect(api.getDiscoverMovie).toHaveBeenCalledWith("high-mortality")
-      expect(mockNavigate).toHaveBeenCalled()
-    })
-  })
-
-  it("navigates to classic film when clicked", async () => {
-    const mockMovie = { id: 456, title: "Classic Film", release_date: "1940-05-15" }
-    vi.mocked(api.getDiscoverMovie).mockResolvedValue(mockMovie)
-
-    renderWithRouter(<QuickActions />)
-
-    fireEvent.click(screen.getByTestId("classic-btn"))
-
-    await waitFor(() => {
-      expect(api.getDiscoverMovie).toHaveBeenCalledWith("classic")
-      expect(mockNavigate).toHaveBeenCalled()
-    })
-  })
-
-  it("navigates to random movie when Surprise Me is clicked", async () => {
-    const mockMovie = { id: 789, title: "Random Movie", release_date: "1985-03-20" }
-    vi.mocked(api.getRandomMovie).mockResolvedValue(mockMovie)
-
-    renderWithRouter(<QuickActions />)
-
-    fireEvent.click(screen.getByTestId("random-movie-btn"))
-
-    await waitFor(() => {
-      expect(api.getRandomMovie).toHaveBeenCalled()
+      expect(api.getDiscoverMovie).toHaveBeenCalled()
       expect(mockNavigate).toHaveBeenCalled()
     })
   })
 
   it("handles API errors gracefully", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    vi.mocked(api.getRandomMovie).mockRejectedValue(new Error("API Error"))
+    vi.mocked(api.getDiscoverMovie).mockRejectedValue(new Error("API Error"))
 
     renderWithRouter(<QuickActions />)
 
-    fireEvent.click(screen.getByTestId("random-movie-btn"))
+    fireEvent.click(screen.getByTestId("forever-young-btn"))
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalled()
@@ -103,23 +74,48 @@ describe("QuickActions", () => {
     consoleSpy.mockRestore()
   })
 
-  it("has skull icon for High Mortality button", () => {
+  it("has angel emoji for Forever Young button", () => {
     renderWithRouter(<QuickActions />)
 
-    const button = screen.getByTestId("high-mortality-btn")
-    expect(button.querySelector("svg")).toBeInTheDocument()
+    expect(screen.getByText("👼")).toBeInTheDocument()
   })
 
-  it("has film reel icon for Classic Films button", () => {
+  it("displays tooltips explaining each button", () => {
     renderWithRouter(<QuickActions />)
 
-    const button = screen.getByTestId("classic-btn")
-    expect(button.querySelector("svg")).toBeInTheDocument()
+    // Tooltips are rendered as spans with the tooltip text
+    expect(
+      screen.getByText("Movies featuring actors who died tragically young")
+    ).toBeInTheDocument()
+    expect(screen.getByText("Movies with statistically abnormal mortality")).toBeInTheDocument()
+    expect(screen.getByText("Actors with unusually high co-star mortality")).toBeInTheDocument()
   })
 
-  it("has dice emoji for Surprise Me button", () => {
+  it("Cursed Movies button links to /cursed-movies", () => {
     renderWithRouter(<QuickActions />)
 
-    expect(screen.getByText("🎲")).toBeInTheDocument()
+    const link = screen.getByTestId("cursed-movies-btn")
+    expect(link).toHaveAttribute("href", "/cursed-movies")
+  })
+
+  it("Cursed Movies button has film icon", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("cursed-movies-btn")
+    expect(link.querySelector("svg")).toBeInTheDocument()
+  })
+
+  it("Cursed Actors button links to /cursed-actors", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("cursed-actors-btn")
+    expect(link).toHaveAttribute("href", "/cursed-actors")
+  })
+
+  it("Cursed Actors button has person icon", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("cursed-actors-btn")
+    expect(link.querySelector("svg")).toBeInTheDocument()
   })
 })

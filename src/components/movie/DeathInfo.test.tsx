@@ -13,6 +13,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -29,6 +31,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -45,6 +49,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -61,6 +67,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath="colon cancer"
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -68,7 +76,7 @@ describe("DeathInfo", () => {
       />
     )
 
-    const link = screen.getByRole("link", { name: "colon cancer" })
+    const link = screen.getByRole("link", { name: "Colon Cancer" })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute("href", defaultTmdbUrl)
   })
@@ -79,6 +87,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath="colon cancer"
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Audrey_Hepburn"
@@ -86,7 +96,7 @@ describe("DeathInfo", () => {
       />
     )
 
-    const link = screen.getByRole("link", { name: "colon cancer" })
+    const link = screen.getByRole("link", { name: "Colon Cancer" })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute("href", "https://en.wikipedia.org/wiki/Audrey_Hepburn")
     expect(link).toHaveAttribute("target", "_blank")
@@ -99,6 +109,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
@@ -118,6 +130,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -137,6 +151,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
@@ -146,7 +162,7 @@ describe("DeathInfo", () => {
 
     // The cause of death IS a link, but there should not be a separate "Wikipedia" link
     expect(screen.queryByRole("link", { name: "Wikipedia" })).not.toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "heart attack" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Heart Attack" })).toBeInTheDocument()
   })
 
   it("shows loading indicator when isLoading is true and no cause/wikipedia", () => {
@@ -155,6 +171,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -172,6 +190,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -181,7 +201,7 @@ describe("DeathInfo", () => {
     )
 
     expect(screen.queryByText(/Looking up cause/)).not.toBeInTheDocument()
-    expect(screen.getByText("heart attack")).toBeInTheDocument()
+    expect(screen.getByText("Heart Attack")).toBeInTheDocument()
   })
 
   it("does not show loading indicator when wikipedia URL exists", () => {
@@ -190,6 +210,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Test"
@@ -208,6 +230,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails="Suffered a massive coronary while playing tennis"
         wikipediaUrl={null}
@@ -216,7 +240,7 @@ describe("DeathInfo", () => {
     )
 
     // Should show the info icon (SVG)
-    const causeText = screen.getByText("heart attack")
+    const causeText = screen.getByText("Heart Attack")
     expect(causeText.closest("span")?.querySelector("svg")).toBeInTheDocument()
     // The cause text should be in a span with tooltip trigger styling (not a link when details present)
     expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
@@ -228,6 +252,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath="lung cancer"
         causeOfDeathDetails="Was a heavy smoker for over 40 years"
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
@@ -236,7 +262,7 @@ describe("DeathInfo", () => {
     )
 
     // Should show the info icon (SVG)
-    const causeText = screen.getByText("lung cancer")
+    const causeText = screen.getByText("Lung Cancer")
     expect(causeText.closest("span")?.querySelector("svg")).toBeInTheDocument()
     // The cause text should be in a span with tooltip styling (no link when details present)
     expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
@@ -248,6 +274,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -255,7 +283,7 @@ describe("DeathInfo", () => {
       />
     )
 
-    const causeLink = screen.getByText("heart attack")
+    const causeLink = screen.getByText("Heart Attack")
     expect(causeLink.closest("a")).toBeInTheDocument()
     expect(causeLink.closest("p")?.querySelector("svg")).not.toBeInTheDocument()
   })
@@ -266,6 +294,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails=""
         wikipediaUrl={null}
@@ -273,7 +303,7 @@ describe("DeathInfo", () => {
       />
     )
 
-    const causeLink = screen.getByText("heart attack")
+    const causeLink = screen.getByText("Heart Attack")
     expect(causeLink.closest("a")).toBeInTheDocument()
     expect(causeLink.closest("p")?.querySelector("svg")).not.toBeInTheDocument()
   })
@@ -291,6 +321,8 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
         causeOfDeath="complications from surgery"
         causeOfDeathDetails={longDetails}
         wikipediaUrl={null}
@@ -299,10 +331,64 @@ describe("DeathInfo", () => {
     )
 
     // Hover over the cause to show tooltip
-    const causeText = screen.getByText("complications from surgery")
+    const causeText = screen.getByText("Complications From Surgery")
     await user.hover(causeText)
 
     // Verify the full long text is rendered in the tooltip (not truncated)
     expect(screen.getByText(longDetails)).toBeInTheDocument()
+  })
+
+  it("displays years lost when positive (died early)", () => {
+    render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday="1960-01-01"
+        ageAtDeath={null}
+        yearsLost={15.5}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    expect(screen.getByText(/16 years early/)).toBeInTheDocument()
+  })
+
+  it("displays years gained when negative (lived longer)", () => {
+    render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday="1920-01-01"
+        ageAtDeath={null}
+        yearsLost={-12.3}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    expect(screen.getByText(/12 years longer/)).toBeInTheDocument()
+  })
+
+  it("displays around expected when yearsLost is near zero", () => {
+    render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday="1930-01-01"
+        ageAtDeath={null}
+        yearsLost={0.3}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    expect(screen.getByText(/around expected/)).toBeInTheDocument()
   })
 })

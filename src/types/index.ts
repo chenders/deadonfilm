@@ -119,3 +119,64 @@ export interface RandomMovieResponse {
   title: string
   release_date: string
 }
+
+export interface SiteStatsResponse {
+  totalDeceasedActors: number
+  totalMoviesAnalyzed: number
+  topCauseOfDeath: string | null
+  avgMortalityPercentage: number | null
+}
+
+export interface RecentDeathsResponse {
+  deaths: Array<{
+    tmdb_id: number
+    name: string
+    deathday: string
+    cause_of_death: string | null
+    profile_path: string | null
+  }>
+}
+
+export interface CursedMovie {
+  rank: number
+  id: number
+  title: string
+  releaseYear: number | null
+  posterPath: string | null
+  deceasedCount: number
+  castCount: number
+  expectedDeaths: number
+  mortalitySurpriseScore: number
+}
+
+export interface PaginationInfo {
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}
+
+export interface CursedMoviesResponse {
+  movies: CursedMovie[]
+  pagination: PaginationInfo
+}
+
+export interface CursedMoviesFiltersResponse {
+  maxMinDeaths: number
+}
+
+export interface CursedActor {
+  rank: number
+  id: number
+  name: string
+  isDeceased: boolean
+  totalMovies: number
+  totalActualDeaths: number
+  totalExpectedDeaths: number
+  curseScore: number
+}
+
+export interface CursedActorsResponse {
+  actors: CursedActor[]
+  pagination: PaginationInfo
+}

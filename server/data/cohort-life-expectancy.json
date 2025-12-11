@@ -1,0 +1,20 @@
+{
+  "source": "US Social Security Administration Actuarial Study No. 120 - Life Tables for the United States Social Security Area 1900-2100",
+  "url": "https://www.ssa.gov/oact/NOTES/as120/LifeTables_Tbl_11.html",
+  "notes": "Cohort life expectancy at birth by year of birth. Values between listed years can be interpolated. Combined is average of male and female.",
+  "data": [
+    { "birthYear": 1900, "male": 51.5, "female": 58.3, "combined": 54.9 },
+    { "birthYear": 1910, "male": 54.0, "female": 60.7, "combined": 57.4 },
+    { "birthYear": 1920, "male": 58.5, "female": 66.5, "combined": 62.5 },
+    { "birthYear": 1930, "male": 62.5, "female": 70.2, "combined": 66.4 },
+    { "birthYear": 1940, "male": 66.4, "female": 74.1, "combined": 70.3 },
+    { "birthYear": 1950, "male": 69.2, "female": 77.4, "combined": 73.3 },
+    { "birthYear": 1960, "male": 70.5, "female": 78.5, "combined": 74.5 },
+    { "birthYear": 1970, "male": 72.0, "female": 79.8, "combined": 75.9 },
+    { "birthYear": 1980, "male": 74.1, "female": 81.2, "combined": 77.7 },
+    { "birthYear": 1990, "male": 76.5, "female": 82.8, "combined": 79.7 },
+    { "birthYear": 2000, "male": 79.6, "female": 84.5, "combined": 82.1 },
+    { "birthYear": 2010, "male": 81.0, "female": 85.5, "combined": 83.3 },
+    { "birthYear": 2020, "male": 82.0, "female": 86.2, "combined": 84.1 }
+  ]
+}

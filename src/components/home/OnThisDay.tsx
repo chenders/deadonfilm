@@ -31,7 +31,7 @@ export default function OnThisDay() {
         data-testid="on-this-day-title"
         className="mb-4 text-center font-display text-2xl text-brown-dark"
       >
-        On This Day: {month} {day}
+        Died On This Day: {month} {day}
       </h2>
 
       {deaths.length === 0 ? (
