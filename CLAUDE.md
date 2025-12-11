@@ -86,7 +86,8 @@ Years Lost:
 │   ├── deployment.yaml
 │   ├── service.yaml
 │   ├── ingress.yaml
-│   └── managed-cert.yaml   # GKE managed SSL certificate
+│   ├── managed-cert.yaml   # GKE managed SSL certificate
+│   └── cronjob-sync.yaml   # Daily TMDB sync job
 ├── Dockerfile              # Multi-stage Docker build
 └── public/                 # Static assets
 ```
@@ -122,6 +123,7 @@ cd server && npm run format  # Backend - auto-fix
 
 # Testing
 npm test                     # Frontend unit tests
+cd server && npm test        # Backend unit tests
 ```
 
 ## API Endpoints
@@ -435,7 +437,7 @@ When creating a PR, include screenshots to illustrate UI changes:
 1. `npm run format && cd server && npm run format`
 2. `npm run lint && cd server && npm run lint`
 3. `npm run type-check && cd server && npm run type-check`
-4. `npm test`
+4. `npm test && cd server && npm test` (frontend and backend unit tests)
 5. Update documentation if necessary
 
 ## Git Commit Messages
