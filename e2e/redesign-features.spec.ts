@@ -122,9 +122,9 @@ test.describe("Frontend Redesign Features", () => {
       await page.goto("/")
 
       await expect(page.getByTestId("quick-actions")).toBeVisible()
-      await expect(page.getByText("High Mortality")).toBeVisible()
-      await expect(page.getByText("Classic Films")).toBeVisible()
-      await expect(page.getByText("Surprise Me")).toBeVisible()
+      await expect(page.getByText("Forever Young")).toBeVisible()
+      await expect(page.getByText("Cursed Movies")).toBeVisible()
+      await expect(page.getByText("Cursed Actors")).toBeVisible()
 
       await page.screenshot({
         path: "e2e/screenshots/quick-actions.png",
