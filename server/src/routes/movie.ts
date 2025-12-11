@@ -8,7 +8,6 @@ import {
   upsertMovie,
   batchUpsertActorAppearances,
   type DeceasedPersonRecord,
-  type MovieRecord,
   type ActorAppearanceRecord,
 } from "../lib/db.js"
 import {
@@ -16,6 +15,7 @@ import {
   calculateYearsLost,
   type ActorForMortality,
 } from "../lib/mortality-stats.js"
+import { buildMovieRecord, buildActorAppearanceRecord } from "../lib/movie-cache.js"
 
 interface DeceasedActor {
   id: number
@@ -363,43 +363,26 @@ function cacheMovieInBackground(params: CacheMovieParams): void {
   } = params
   const releaseYear = movie.release_date ? parseInt(movie.release_date.split("-")[0]) : null
 
-  // Build movie record
-  const movieRecord: MovieRecord = {
-    tmdb_id: movie.id,
-    title: movie.title,
-    release_date: movie.release_date || null,
-    release_year: releaseYear,
-    poster_path: movie.poster_path,
-    genres: movie.genres?.map((g) => g.name) || [],
-    popularity: null,
-    vote_average: null,
-    cast_count: mainCast.length,
-    deceased_count: deceased.length,
-    living_count: living.length,
-    expected_deaths: expectedDeaths,
-    mortality_surprise_score: mortalitySurpriseScore,
-  }
+  // Build movie record using extracted utility
+  const movieRecord = buildMovieRecord({
+    movie,
+    deceasedCount: deceased.length,
+    livingCount: living.length,
+    expectedDeaths,
+    mortalitySurpriseScore,
+  })
 
-  // Build actor appearance records
+  // Build actor appearance records using extracted utility
   const appearances: ActorAppearanceRecord[] = mainCast.map((castMember, index) => {
     const person = personDetails.get(castMember.id)
-    const birthday = person?.birthday
-    let ageAtFilming: number | null = null
-
-    if (birthday && releaseYear) {
-      const birthYear = parseInt(birthday.split("-")[0], 10)
-      ageAtFilming = releaseYear - birthYear
-    }
-
-    return {
-      actor_tmdb_id: castMember.id,
-      movie_tmdb_id: movie.id,
-      actor_name: castMember.name,
-      character_name: castMember.character || null,
-      billing_order: index,
-      age_at_filming: ageAtFilming,
-      is_deceased: !!person?.deathday,
-    }
+    return buildActorAppearanceRecord({
+      castMember,
+      movieId: movie.id,
+      billingOrder: index,
+      releaseYear,
+      birthday: person?.birthday || null,
+      isDeceased: !!person?.deathday,
+    })
   })
 
   // Save in background

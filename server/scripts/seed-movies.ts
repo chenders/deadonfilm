@@ -55,6 +55,10 @@ function parseArgs(args: string[]): SeedOptions {
     const arg = args[i]
     if (arg === "--count" && args[i + 1]) {
       moviesPerYear = parseInt(args[i + 1], 10)
+      if (isNaN(moviesPerYear) || !Number.isInteger(moviesPerYear) || moviesPerYear <= 0) {
+        console.error(`Error: --count must be a positive integer (got "${args[i + 1]}")`)
+        process.exit(1)
+      }
       i++
     } else if (arg === "--all-time") {
       allTime = true
