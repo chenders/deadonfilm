@@ -42,7 +42,7 @@ Years Lost:
 
 ### Mortality Calculation Rules
 
-1. **Archived Footage Exclusion**: Actors who died more than 1 year before a movie's release are excluded from mortality calculations. They appeared via archived footage and weren't alive during production.
+1. **Archived Footage Exclusion**: Actors who died more than 3 years before a movie's release are excluded from mortality calculations. They appeared via archived footage and weren't alive during production.
 
 2. **Same-Year Death Handling**: Actors who died the same year as the movie release are counted with at least 1 year of death probability to avoid zero-probability edge cases.
 

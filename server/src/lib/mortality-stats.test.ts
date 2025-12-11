@@ -97,30 +97,29 @@ describe("mortality-stats", () => {
   })
 
   describe("edge cases for cursed movie calculations", () => {
-    it("excludes actor who died more than 1 year BEFORE movie was released (archived footage)", async () => {
-      // Herb Jeffries case: born 1913, died 2014, in a 2016 movie
-      // Died 2 years before movie, so should be excluded as archived footage
+    it("excludes actor who died more than 3 years BEFORE movie was released (archived footage)", async () => {
+      // Actor died 4 years before movie, so should be excluded as archived footage
       const actors: ActorForMortality[] = [
-        { tmdbId: 1, name: "Archived Actor", birthday: "1913-09-24", deathday: "2014-05-25" },
+        { tmdbId: 1, name: "Archived Actor", birthday: "1913-09-24", deathday: "2012-05-25" },
       ]
 
       const result = await calculateMovieMortality(2016, actors, 2025)
 
-      // This actor died more than 1 year BEFORE the movie was released
+      // This actor died more than 3 years BEFORE the movie was released
       // They should NOT be counted in mortality calculations (archived footage)
       expect(result.actualDeaths).toBe(0) // Excluded from actual deaths
       expect(result.actorResults[0].deathProbability).toBe(0) // No probability calculated
     })
 
-    it("includes actor who died within 1 year before movie release", async () => {
-      // Actor died 1 year before movie - still should be counted (not archived footage)
+    it("includes actor who died within 3 years before movie release", async () => {
+      // Actor died 2 years before movie - still should be counted (not archived footage)
       const actors: ActorForMortality[] = [
-        { tmdbId: 1, name: "Recent Death", birthday: "1934-11-13", deathday: "2015-07-19" },
+        { tmdbId: 1, name: "Recent Death", birthday: "1934-11-13", deathday: "2014-07-19" },
       ]
 
       const result = await calculateMovieMortality(2016, actors, 2025)
 
-      // Actor died within 1 year of movie release - should be included
+      // Actor died within 3 years of movie release - should be included
       expect(result.actualDeaths).toBe(1)
       expect(result.actorResults[0].deathProbability).toBeGreaterThan(0)
     })
@@ -167,8 +166,10 @@ describe("mortality-stats", () => {
         { tmdbId: 1, name: "Tempest Storm", birthday: "1928-02-29", deathday: "2021-04-20" },
         // Garry Marshall - born 1934, died 2016 (same year as movie)
         { tmdbId: 2, name: "Garry Marshall", birthday: "1934-11-13", deathday: "2016-07-19" },
-        // Herb Jeffries - born 1913, died 2014 (BEFORE the movie!) - archived footage
+        // Herb Jeffries - born 1913, died 2014 (2 years BEFORE the movie - within 3 year window)
         { tmdbId: 3, name: "Herb Jeffries", birthday: "1913-09-24", deathday: "2014-05-25" },
+        // Old Timer - born 1910, died 2010 (6 years BEFORE the movie!) - archived footage
+        { tmdbId: 7, name: "Old Timer", birthday: "1910-01-01", deathday: "2010-01-01" },
         // Danielle - born 1975, still alive
         { tmdbId: 4, name: "Danielle", birthday: "1975-12-03", deathday: null },
         // Dita - born 1972, still alive
@@ -179,25 +180,30 @@ describe("mortality-stats", () => {
 
       const result = await calculateMovieMortality(2016, actors, 2025)
 
-      // Herb Jeffries died 2 years before movie release - excluded as archived footage
-      // So only 2 actual deaths should be counted (Tempest Storm and Garry Marshall)
-      expect(result.actualDeaths).toBe(2)
+      // Old Timer died 6 years before movie release - excluded as archived footage
+      // Herb Jeffries died 2 years before - included (within 3 year window)
+      // So 3 actual deaths: Tempest Storm, Garry Marshall, Herb Jeffries
+      expect(result.actualDeaths).toBe(3)
 
       // Expected deaths should now be higher:
       // - Tempest Storm was 88 at filming, 5 years until death - ~61% prob
       // - Garry Marshall was 82 at filming, same year death - ~7% prob for 1 year
-      // - Herb Jeffries: excluded (archived footage)
+      // - Herb Jeffries was 103 at filming - very high prob
+      // - Old Timer: excluded (archived footage)
       // - Living actors: small probabilities
-      // Total expected should be around 0.7-0.8
       expect(result.expectedDeaths).toBeGreaterThan(0.6)
 
       // Garry Marshall (same-year death) should now have non-zero probability
       const garryResult = result.actorResults.find((a) => a.name === "Garry Marshall")
       expect(garryResult?.deathProbability).toBeGreaterThan(0)
 
-      // Herb Jeffries (archived footage) should have 0 probability
+      // Herb Jeffries (died 2 years before, within 3 year window) should have non-zero probability
       const herbResult = result.actorResults.find((a) => a.name === "Herb Jeffries")
-      expect(herbResult?.deathProbability).toBe(0)
+      expect(herbResult?.deathProbability).toBeGreaterThan(0)
+
+      // Old Timer (archived footage - died 6 years before) should have 0 probability
+      const oldTimerResult = result.actorResults.find((a) => a.name === "Old Timer")
+      expect(oldTimerResult?.deathProbability).toBe(0)
     })
   })
 
