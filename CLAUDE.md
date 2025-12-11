@@ -261,6 +261,22 @@ actor_appearances (
 
 Deceased actor data is persisted to the database and enriched with cause of death information over time.
 
+### sync_state
+Tracks the last sync date for TMDB Changes API synchronization (used by `npm run sync:tmdb`).
+
+```sql
+sync_state (
+  id SERIAL PRIMARY KEY,
+  sync_type TEXT NOT NULL UNIQUE,   -- 'person_changes', 'movie_changes'
+  last_sync_date DATE NOT NULL,
+  last_run_at TIMESTAMP DEFAULT NOW(),
+  items_processed INTEGER DEFAULT 0,
+  new_deaths_found INTEGER DEFAULT 0,
+  movies_updated INTEGER DEFAULT 0,
+  errors_count INTEGER DEFAULT 0
+)
+```
+
 ### Database Migrations
 
 The project uses `node-pg-migrate` for database migrations:
@@ -336,7 +352,20 @@ npm run backfill:birthdays
 
 # Backfill missing profile photos from TMDB
 npm run backfill:profiles
+
+# Sync with TMDB Changes API (detect new deaths, update movies)
+npm run sync:tmdb                    # Normal sync (since last run)
+npm run sync:tmdb -- --days 7        # Sync specific number of days back
+npm run sync:tmdb -- --dry-run       # Preview changes without writing
+npm run sync:tmdb -- --people-only   # Only sync people changes
+npm run sync:tmdb -- --movies-only   # Only sync movie changes
 ```
+
+The sync script uses TMDB's Changes API to detect:
+- Actors in our database who have died (adds them to deceased_persons)
+- Changes to movies in our database (recalculates mortality stats)
+
+A Kubernetes CronJob (`k8s/cronjob-sync.yaml`) runs this daily at 6 AM UTC.
 
 ## GKE Deployment
 
