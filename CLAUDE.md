@@ -394,7 +394,7 @@ GCP_PROJECT_ID=your-project-id ./scripts/deploy.sh
 1. Build Docker image for AMD64: `docker buildx build --platform linux/amd64 -t us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:TAG --push .`
 2. Apply Kubernetes manifests: `kubectl apply -f k8s/`
 3. Create secrets with TMDB_API_TOKEN, ANTHROPIC_API_KEY, DATABASE_URL, and optionally NEW_RELIC_LICENSE_KEY
-4. Restart deployment: `kubectl rollout restart deployment/dead-on-film -n dead-on-film`
+4. Restart deployment: `kubectl rollout restart deployment/dead-on-film -n deadonfilm`
 
 ## URL Structure
 

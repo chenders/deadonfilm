@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: dead-on-film-ingress
-  namespace: dead-on-film
+  namespace: deadonfilm
   annotations:
     kubernetes.io/ingress.class: "gce"
     kubernetes.io/ingress.global-static-ip-name: "dead-on-film-ip"
@@ -51,7 +51,7 @@ apiVersion: networking.gke.io/v1
 kind: ManagedCertificate
 metadata:
   name: dead-on-film-cert
-  namespace: dead-on-film
+  namespace: deadonfilm
 spec:
   domains:
     - deadonfilm.com
