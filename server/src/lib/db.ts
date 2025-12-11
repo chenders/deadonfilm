@@ -53,6 +53,10 @@ export interface DeceasedPersonRecord {
   cause_of_death_details: string | null
   cause_of_death_details_source: DeathInfoSource
   wikipedia_url: string | null
+  profile_path: string | null
+  age_at_death: number | null
+  expected_lifespan: number | null
+  years_lost: number | null
 }
 
 // Get a deceased person by TMDB ID
@@ -92,8 +96,8 @@ export async function getDeceasedPersons(
 export async function upsertDeceasedPerson(person: DeceasedPersonRecord): Promise<void> {
   const db = getPool()
   await db.query(
-    `INSERT INTO deceased_persons (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+    `INSERT INTO deceased_persons (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
      ON CONFLICT (tmdb_id) DO UPDATE SET
        name = EXCLUDED.name,
        birthday = EXCLUDED.birthday,
@@ -103,6 +107,10 @@ export async function upsertDeceasedPerson(person: DeceasedPersonRecord): Promis
        cause_of_death_details = COALESCE(deceased_persons.cause_of_death_details, EXCLUDED.cause_of_death_details),
        cause_of_death_details_source = COALESCE(deceased_persons.cause_of_death_details_source, EXCLUDED.cause_of_death_details_source),
        wikipedia_url = COALESCE(deceased_persons.wikipedia_url, EXCLUDED.wikipedia_url),
+       profile_path = COALESCE(deceased_persons.profile_path, EXCLUDED.profile_path),
+       age_at_death = COALESCE(deceased_persons.age_at_death, EXCLUDED.age_at_death),
+       expected_lifespan = COALESCE(deceased_persons.expected_lifespan, EXCLUDED.expected_lifespan),
+       years_lost = COALESCE(deceased_persons.years_lost, EXCLUDED.years_lost),
        updated_at = CURRENT_TIMESTAMP`,
     [
       person.tmdb_id,
@@ -114,6 +122,10 @@ export async function upsertDeceasedPerson(person: DeceasedPersonRecord): Promis
       person.cause_of_death_details,
       person.cause_of_death_details_source,
       person.wikipedia_url,
+      person.profile_path,
+      person.age_at_death,
+      person.expected_lifespan,
+      person.years_lost,
     ]
   )
 }
@@ -131,8 +143,8 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
 
     for (const person of persons) {
       await client.query(
-        `INSERT INTO deceased_persons (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+        `INSERT INTO deceased_persons (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
          ON CONFLICT (tmdb_id) DO UPDATE SET
            name = EXCLUDED.name,
            birthday = EXCLUDED.birthday,
@@ -142,6 +154,10 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
            cause_of_death_details = COALESCE(deceased_persons.cause_of_death_details, EXCLUDED.cause_of_death_details),
            cause_of_death_details_source = COALESCE(deceased_persons.cause_of_death_details_source, EXCLUDED.cause_of_death_details_source),
            wikipedia_url = COALESCE(deceased_persons.wikipedia_url, EXCLUDED.wikipedia_url),
+           profile_path = COALESCE(deceased_persons.profile_path, EXCLUDED.profile_path),
+           age_at_death = COALESCE(deceased_persons.age_at_death, EXCLUDED.age_at_death),
+           expected_lifespan = COALESCE(deceased_persons.expected_lifespan, EXCLUDED.expected_lifespan),
+           years_lost = COALESCE(deceased_persons.years_lost, EXCLUDED.years_lost),
            updated_at = CURRENT_TIMESTAMP`,
         [
           person.tmdb_id,
@@ -153,6 +169,10 @@ export async function batchUpsertDeceasedPersons(persons: DeceasedPersonRecord[]
           person.cause_of_death_details,
           person.cause_of_death_details_source,
           person.wikipedia_url,
+          person.profile_path,
+          person.age_at_death,
+          person.expected_lifespan,
+          person.years_lost,
         ]
       )
     }

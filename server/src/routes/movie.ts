@@ -7,7 +7,11 @@ import {
   updateDeathInfo,
   type DeceasedPersonRecord,
 } from "../lib/db.js"
-import { calculateMovieMortality, type ActorForMortality } from "../lib/mortality-stats.js"
+import {
+  calculateMovieMortality,
+  calculateYearsLost,
+  type ActorForMortality,
+} from "../lib/mortality-stats.js"
 
 interface DeceasedActor {
   id: number
@@ -110,6 +114,7 @@ export async function getMovie(req: Request, res: Response) {
         const tmdbUrl = `https://www.themoviedb.org/person/${person.id}`
 
         // Use database record if available, otherwise use TMDB data
+        // Note: ageAtDeath and yearsLost will be updated by mortality calculation if not in DB
         deceased.push({
           id: person.id,
           name: person.name,
@@ -123,13 +128,16 @@ export async function getMovie(req: Request, res: Response) {
           causeOfDeathDetailsSource: dbRecord?.cause_of_death_details_source || null,
           wikipediaUrl: dbRecord?.wikipedia_url || null,
           tmdbUrl,
-          // Mortality stats - will be populated after collecting all actors
-          ageAtDeath: null,
-          yearsLost: null,
+          // Use database values if available, otherwise will be calculated later
+          ageAtDeath: dbRecord?.age_at_death ?? null,
+          yearsLost: dbRecord?.years_lost ?? null,
         })
 
         // Track new deceased persons to save to database
         if (!dbRecord) {
+          // Calculate mortality stats for new deceased person
+          const yearsLostResult = await calculateYearsLost(person.birthday, person.deathday)
+
           newDeceasedForDb.push({
             tmdb_id: person.id,
             name: person.name,
@@ -140,6 +148,10 @@ export async function getMovie(req: Request, res: Response) {
             cause_of_death_details: null,
             cause_of_death_details_source: null,
             wikipedia_url: null,
+            profile_path: person.profile_path,
+            age_at_death: yearsLostResult?.ageAtDeath ?? null,
+            expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
+            years_lost: yearsLostResult?.yearsLost ?? null,
           })
         }
       } else {
@@ -197,13 +209,18 @@ export async function getMovie(req: Request, res: Response) {
         expectedDeaths = mortalityResult.expectedDeaths
         mortalitySurpriseScore = mortalityResult.mortalitySurpriseScore
 
-        // Update deceased actors with age at death and years lost
+        // Update deceased actors with age at death and years lost (only if not already from DB)
         for (const actorResult of mortalityResult.actorResults) {
           if (actorResult.isDeceased) {
             const deceasedActor = deceased.find((d) => d.id === actorResult.tmdbId)
             if (deceasedActor) {
-              deceasedActor.ageAtDeath = actorResult.ageAtDeath
-              deceasedActor.yearsLost = actorResult.yearsLost
+              // Only update if not already populated from database
+              if (deceasedActor.ageAtDeath === null) {
+                deceasedActor.ageAtDeath = actorResult.ageAtDeath
+              }
+              if (deceasedActor.yearsLost === null) {
+                deceasedActor.yearsLost = actorResult.yearsLost
+              }
             }
           }
         }
