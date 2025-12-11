@@ -9,6 +9,7 @@
  */
 
 import "dotenv/config"
+import { Command } from "commander"
 import { getMovieCredits, batchGetPersonDetails } from "../src/lib/tmdb.js"
 import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import { getPool, batchUpsertActorAppearances, type ActorAppearanceRecord } from "../src/lib/db.js"
@@ -22,7 +23,14 @@ interface MovieToBackfill {
   release_year: number | null
 }
 
-async function main() {
+const program = new Command()
+  .name("backfill-actor-appearances")
+  .description("Populate actor_appearances for movies that are missing them")
+  .action(async () => {
+    await runBackfill()
+  })
+
+async function runBackfill() {
   // Check required environment variables
   if (!process.env.TMDB_API_TOKEN) {
     console.error("TMDB_API_TOKEN environment variable is required")
@@ -175,4 +183,4 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-main()
+program.parse()

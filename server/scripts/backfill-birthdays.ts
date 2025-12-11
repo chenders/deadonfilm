@@ -7,6 +7,7 @@
  */
 
 import "dotenv/config"
+import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
 import { calculateYearsLost } from "../src/lib/mortality-stats.js"
 import Anthropic from "@anthropic-ai/sdk"
@@ -56,7 +57,14 @@ Do not include any other text.`,
   }
 }
 
-async function main() {
+const program = new Command()
+  .name("backfill-birthdays")
+  .description("Look up missing birthdays for deceased actors using Claude")
+  .action(async () => {
+    await runBackfill()
+  })
+
+async function runBackfill() {
   // Check required environment variables
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -149,4 +157,4 @@ async function main() {
   }
 }
 
-main()
+program.parse()

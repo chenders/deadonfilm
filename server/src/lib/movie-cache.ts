@@ -58,7 +58,11 @@ export function buildMovieRecord(input: MovieCacheInput): MovieRecord {
 
 /**
  * Calculate age at filming from birthday and release year.
- * Returns null if either value is missing.
+ * Returns null if either value is missing or invalid.
+ *
+ * @param birthday - Date string in YYYY-MM-DD format, or null
+ * @param releaseYear - The year the movie was released, or null
+ * @returns Age at filming, or null if birthday/releaseYear is missing or malformed
  */
 export function calculateAgeAtFilming(
   birthday: string | null,

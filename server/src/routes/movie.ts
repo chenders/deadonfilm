@@ -380,7 +380,7 @@ function cacheMovieInBackground(params: CacheMovieParams): void {
       movieId: movie.id,
       billingOrder: index,
       releaseYear,
-      birthday: person?.birthday || null,
+      birthday: person?.birthday ?? null,
       isDeceased: !!person?.deathday,
     })
   })

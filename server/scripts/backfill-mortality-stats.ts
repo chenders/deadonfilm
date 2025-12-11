@@ -13,17 +13,24 @@
  */
 
 import "dotenv/config"
+import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
 import { calculateYearsLost } from "../src/lib/mortality-stats.js"
 
-async function main() {
+const program = new Command()
+  .name("backfill-mortality-stats")
+  .description("Backfill mortality statistics for deceased actors")
+  .option("-a, --all", "Update ALL records (recalculate), not just NULL values")
+  .action(async (options: { all?: boolean }) => {
+    await runBackfill(options.all ?? false)
+  })
+
+async function runBackfill(updateAll: boolean) {
   // Check required environment variables
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
     process.exit(1)
   }
-
-  const updateAll = process.argv.includes("--all")
 
   console.log("\nBackfilling mortality statistics for deceased persons...")
   console.log(`Mode: ${updateAll ? "ALL records (recalculate)" : "Only NULL values"}\n`)
@@ -113,4 +120,4 @@ async function main() {
   }
 }
 
-main()
+program.parse()

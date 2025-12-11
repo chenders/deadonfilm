@@ -19,6 +19,7 @@
  */
 
 import "dotenv/config"
+import { Command, InvalidArgumentError } from "commander"
 import {
   discoverMoviesByYear,
   getMovieDetails,
@@ -38,71 +39,85 @@ const DEFAULT_MOVIES_TO_FETCH = 200
 const CAST_LIMIT = 30 // Top 30 actors per movie
 const EARLIEST_YEAR = 1920
 
+function parsePositiveInt(value: string): number {
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError("Must be a positive integer")
+  }
+  return parsed
+}
+
+function parseYear(value: string): number {
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || parsed < EARLIEST_YEAR || parsed > new Date().getFullYear() + 1) {
+    throw new InvalidArgumentError(
+      `Must be a valid year (${EARLIEST_YEAR}-${new Date().getFullYear()})`
+    )
+  }
+  return parsed
+}
+
+const program = new Command()
+  .name("seed-movies")
+  .description("Seed the movies and actor_appearances tables with movie data from TMDB")
+  .argument("[startYear]", "Start year for seeding", parseYear)
+  .argument("[endYear]", "End year for seeding (defaults to startYear)", parseYear)
+  .option(
+    "-c, --count <number>",
+    "Number of movies per year",
+    parsePositiveInt,
+    DEFAULT_MOVIES_TO_FETCH
+  )
+  .option("-a, --all-time", "Seed from 1920 to current year")
+  .action(
+    async (
+      startYearArg: number | undefined,
+      endYearArg: number | undefined,
+      options: { count: number; allTime?: boolean }
+    ) => {
+      const currentYear = new Date().getFullYear()
+
+      // Validate that --all-time and explicit years are mutually exclusive
+      if (options.allTime && startYearArg !== undefined) {
+        console.error("Error: Cannot specify both --all-time and explicit years")
+        console.error("Use either: npm run seed:movies -- --all-time")
+        console.error("        or: npm run seed:movies -- <startYear> [endYear]")
+        process.exit(1)
+      }
+
+      // Determine years to seed
+      let startYear: number
+      let endYear: number
+
+      if (options.allTime) {
+        startYear = EARLIEST_YEAR
+        endYear = currentYear
+      } else if (startYearArg !== undefined) {
+        startYear = startYearArg
+        endYear = endYearArg ?? startYearArg
+      } else {
+        console.error("Error: Must specify either --all-time or a start year")
+        program.help()
+        process.exit(1)
+      }
+
+      // Validate year range
+      if (endYear < startYear) {
+        console.error(`Error: End year (${endYear}) cannot be before start year (${startYear})`)
+        process.exit(1)
+      }
+
+      await runSeeding({ startYear, endYear, moviesPerYear: options.count })
+    }
+  )
+
 interface SeedOptions {
   startYear: number
   endYear: number
   moviesPerYear: number
 }
 
-function parseArgs(args: string[]): SeedOptions {
-  const currentYear = new Date().getFullYear()
-  let startYear: number | null = null
-  let endYear: number | null = null
-  let moviesPerYear = DEFAULT_MOVIES_TO_FETCH
-  let allTime = false
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]
-    if (arg === "--count" && args[i + 1]) {
-      moviesPerYear = parseInt(args[i + 1], 10)
-      if (isNaN(moviesPerYear) || !Number.isInteger(moviesPerYear) || moviesPerYear <= 0) {
-        console.error(`Error: --count must be a positive integer (got "${args[i + 1]}")`)
-        process.exit(1)
-      }
-      i++
-    } else if (arg === "--all-time") {
-      allTime = true
-    } else if (!arg.startsWith("--")) {
-      const year = parseInt(arg, 10)
-      if (!isNaN(year)) {
-        if (startYear === null) {
-          startYear = year
-        } else if (endYear === null) {
-          endYear = year
-        }
-      }
-    }
-  }
-
-  if (allTime) {
-    startYear = EARLIEST_YEAR
-    endYear = currentYear
-  }
-
-  if (startYear === null) {
-    console.error("Usage: npm run seed:movies -- <startYear> [endYear] [options]")
-    console.error("Options:")
-    console.error("  --count <n>    Number of movies per year (default: 200)")
-    console.error("  --all-time     Seed from 1920 to current year")
-    console.error("")
-    console.error("Examples:")
-    console.error("  npm run seed:movies -- 1995                    # Single year")
-    console.error("  npm run seed:movies -- 1990 1999               # Year range")
-    console.error("  npm run seed:movies -- 1980 1989 --count 500   # 500 movies/year")
-    console.error("  npm run seed:movies -- --all-time              # All years since 1920")
-    process.exit(1)
-  }
-
-  if (endYear === null) {
-    endYear = startYear
-  }
-
-  return { startYear, endYear, moviesPerYear }
-}
-
-async function main() {
-  const { startYear, endYear, moviesPerYear } = parseArgs(process.argv.slice(2))
-
+async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
   // Check required environment variables
   if (!process.env.TMDB_API_TOKEN) {
     console.error("TMDB_API_TOKEN environment variable is required")
@@ -294,4 +309,4 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-main()
+program.parse()

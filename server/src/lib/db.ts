@@ -678,7 +678,9 @@ export async function markActorsDeceased(actorTmdbIds: number[]): Promise<void> 
   if (actorTmdbIds.length === 0) return
 
   const db = getPool()
-  const BATCH_SIZE = 1000 // PostgreSQL has a limit of 65535 parameters per query
+  // Batch size of 1000 is well under PostgreSQL's 65535 parameter limit.
+  // This conservative value balances performance with memory usage and transaction timeouts.
+  const BATCH_SIZE = 1000
 
   for (let i = 0; i < actorTmdbIds.length; i += BATCH_SIZE) {
     const batch = actorTmdbIds.slice(i, i + BATCH_SIZE)
