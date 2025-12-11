@@ -12,7 +12,6 @@ vi.mock("@/services/api", () => ({
   getRecentDeaths: vi.fn(),
   getOnThisDay: vi.fn(),
   searchMovies: vi.fn(),
-  getRandomMovie: vi.fn(),
   getDiscoverMovie: vi.fn(),
   getProfileUrl: vi.fn((path) => (path ? `https://image.tmdb.org/t/p/w185${path}` : null)),
 }))
