@@ -9,6 +9,13 @@ function getToken(): string {
 }
 
 // TMDB API Response Types
+export interface TMDBChangesResponse {
+  results: Array<{ id: number; adult: boolean | null }>
+  page: number
+  total_pages: number
+  total_results: number
+}
+
 export interface TMDBSearchResponse {
   page: number
   results: TMDBMovie[]
@@ -154,6 +161,89 @@ export interface TMDBPersonCredits {
 
 export async function getPersonCredits(personId: number): Promise<TMDBPersonCredits> {
   return tmdbFetch<TMDBPersonCredits>(`/person/${personId}/movie_credits?language=en-US`)
+}
+
+// TMDB Changes API - for syncing database with TMDB updates
+// Both endpoints have a maximum 14-day query window and return 100 items per page
+
+export async function getPersonChanges(
+  startDate: string,
+  endDate: string,
+  page: number = 1
+): Promise<TMDBChangesResponse> {
+  return tmdbFetch<TMDBChangesResponse>(
+    `/person/changes?start_date=${startDate}&end_date=${endDate}&page=${page}`
+  )
+}
+
+export async function getMovieChanges(
+  startDate: string,
+  endDate: string,
+  page: number = 1
+): Promise<TMDBChangesResponse> {
+  return tmdbFetch<TMDBChangesResponse>(
+    `/movie/changes?start_date=${startDate}&end_date=${endDate}&page=${page}`
+  )
+}
+
+/**
+ * Fetch all changed person IDs from TMDB Changes API, handling pagination.
+ * @param startDate - Start date in YYYY-MM-DD format (max 14 days before endDate)
+ * @param endDate - End date in YYYY-MM-DD format
+ * @param delayMs - Delay between page requests to respect API rate limits (default 50ms)
+ * @returns Array of TMDB person IDs that changed in the date range
+ */
+export async function getAllChangedPersonIds(
+  startDate: string,
+  endDate: string,
+  delayMs: number = 50
+): Promise<number[]> {
+  const ids: number[] = []
+  let page = 1
+  let totalPages = 1
+
+  do {
+    const response = await getPersonChanges(startDate, endDate, page)
+    ids.push(...response.results.map((r) => r.id))
+    totalPages = response.total_pages
+    page++
+
+    if (page <= totalPages && delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  } while (page <= totalPages)
+
+  return ids
+}
+
+/**
+ * Fetch all changed movie IDs from TMDB Changes API, handling pagination.
+ * @param startDate - Start date in YYYY-MM-DD format (max 14 days before endDate)
+ * @param endDate - End date in YYYY-MM-DD format
+ * @param delayMs - Delay between page requests to respect API rate limits (default 50ms)
+ * @returns Array of TMDB movie IDs that changed in the date range
+ */
+export async function getAllChangedMovieIds(
+  startDate: string,
+  endDate: string,
+  delayMs: number = 50
+): Promise<number[]> {
+  const ids: number[] = []
+  let page = 1
+  let totalPages = 1
+
+  do {
+    const response = await getMovieChanges(startDate, endDate, page)
+    ids.push(...response.results.map((r) => r.id))
+    totalPages = response.total_pages
+    page++
+
+    if (page <= totalPages && delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  } while (page <= totalPages)
+
+  return ids
 }
 
 export async function discoverMoviesByYear(
