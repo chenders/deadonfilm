@@ -13,6 +13,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
@@ -30,6 +31,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
@@ -47,6 +49,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday={null}
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
@@ -64,6 +67,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath="colon cancer"
         causeOfDeathDetails={null}
@@ -72,7 +76,7 @@ describe("DeathInfo", () => {
       />
     )
 
-    const link = screen.getByRole("link", { name: "colon cancer" })
+    const link = screen.getByRole("link", { name: "Colon Cancer" })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute("href", defaultTmdbUrl)
   })
@@ -83,6 +87,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath="colon cancer"
         causeOfDeathDetails={null}
@@ -91,7 +96,7 @@ describe("DeathInfo", () => {
       />
     )
 
-    const link = screen.getByRole("link", { name: "colon cancer" })
+    const link = screen.getByRole("link", { name: "Colon Cancer" })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute("href", "https://en.wikipedia.org/wiki/Audrey_Hepburn")
     expect(link).toHaveAttribute("target", "_blank")
@@ -104,6 +109,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
@@ -124,6 +130,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
@@ -144,6 +151,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
@@ -154,7 +162,7 @@ describe("DeathInfo", () => {
 
     // The cause of death IS a link, but there should not be a separate "Wikipedia" link
     expect(screen.queryByRole("link", { name: "Wikipedia" })).not.toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "heart attack" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Heart Attack" })).toBeInTheDocument()
   })
 
   it("shows loading indicator when isLoading is true and no cause/wikipedia", () => {
@@ -163,6 +171,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
@@ -181,6 +190,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
@@ -191,7 +201,7 @@ describe("DeathInfo", () => {
     )
 
     expect(screen.queryByText(/Looking up cause/)).not.toBeInTheDocument()
-    expect(screen.getByText("heart attack")).toBeInTheDocument()
+    expect(screen.getByText("Heart Attack")).toBeInTheDocument()
   })
 
   it("does not show loading indicator when wikipedia URL exists", () => {
@@ -200,6 +210,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
@@ -219,6 +230,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails="Suffered a massive coronary while playing tennis"
@@ -228,7 +240,7 @@ describe("DeathInfo", () => {
     )
 
     // Should show the info icon (SVG)
-    const causeText = screen.getByText("heart attack")
+    const causeText = screen.getByText("Heart Attack")
     expect(causeText.closest("span")?.querySelector("svg")).toBeInTheDocument()
     // The cause text should be in a span with tooltip trigger styling (not a link when details present)
     expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
@@ -240,6 +252,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath="lung cancer"
         causeOfDeathDetails="Was a heavy smoker for over 40 years"
@@ -249,7 +262,7 @@ describe("DeathInfo", () => {
     )
 
     // Should show the info icon (SVG)
-    const causeText = screen.getByText("lung cancer")
+    const causeText = screen.getByText("Lung Cancer")
     expect(causeText.closest("span")?.querySelector("svg")).toBeInTheDocument()
     // The cause text should be in a span with tooltip styling (no link when details present)
     expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
@@ -261,6 +274,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
@@ -269,7 +283,7 @@ describe("DeathInfo", () => {
       />
     )
 
-    const causeLink = screen.getByText("heart attack")
+    const causeLink = screen.getByText("Heart Attack")
     expect(causeLink.closest("a")).toBeInTheDocument()
     expect(causeLink.closest("p")?.querySelector("svg")).not.toBeInTheDocument()
   })
@@ -280,6 +294,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails=""
@@ -288,7 +303,7 @@ describe("DeathInfo", () => {
       />
     )
 
-    const causeLink = screen.getByText("heart attack")
+    const causeLink = screen.getByText("Heart Attack")
     expect(causeLink.closest("a")).toBeInTheDocument()
     expect(causeLink.closest("p")?.querySelector("svg")).not.toBeInTheDocument()
   })
@@ -306,6 +321,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        ageAtDeath={null}
         yearsLost={null}
         causeOfDeath="complications from surgery"
         causeOfDeathDetails={longDetails}
@@ -315,7 +331,7 @@ describe("DeathInfo", () => {
     )
 
     // Hover over the cause to show tooltip
-    const causeText = screen.getByText("complications from surgery")
+    const causeText = screen.getByText("Complications From Surgery")
     await user.hover(causeText)
 
     // Verify the full long text is rendered in the tooltip (not truncated)
@@ -328,6 +344,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday="1960-01-01"
+        ageAtDeath={null}
         yearsLost={15.5}
         causeOfDeath={null}
         causeOfDeathDetails={null}
@@ -345,6 +362,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday="1920-01-01"
+        ageAtDeath={null}
         yearsLost={-12.3}
         causeOfDeath={null}
         causeOfDeathDetails={null}
@@ -362,6 +380,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday="1930-01-01"
+        ageAtDeath={null}
         yearsLost={0.3}
         causeOfDeath={null}
         causeOfDeathDetails={null}

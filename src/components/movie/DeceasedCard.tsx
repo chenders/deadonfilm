@@ -53,6 +53,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
               actorName={actor.name}
               deathday={actor.deathday}
               birthday={actor.birthday}
+              ageAtDeath={actor.ageAtDeath}
               yearsLost={actor.yearsLost}
               causeOfDeath={actor.causeOfDeath}
               causeOfDeathDetails={actor.causeOfDeathDetails}
