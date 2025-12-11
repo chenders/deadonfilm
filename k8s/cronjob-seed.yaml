@@ -42,7 +42,8 @@ spec:
               image: us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:latest
               imagePullPolicy: Always
               # Seed current and previous year with 500 movies each to catch new releases
-              command: ["npm", "run", "seed:movies", "--", "2024", "2025", "--count", "500"]
+              # Uses shell to dynamically compute years (avoids hardcoding)
+              command: ["/bin/sh", "-c", "CURRENT_YEAR=$(date +%Y) && PREV_YEAR=$((CURRENT_YEAR - 1)) && npm run seed:movies -- $PREV_YEAR $CURRENT_YEAR --count 500"]
               workingDir: /app/server
               env:
                 - name: TZ

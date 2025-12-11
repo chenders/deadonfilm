@@ -125,3 +125,9 @@ npm test && cd server && npm test
 - Tests must import and test actual production code
 - Avoid code duplication - extract repeated logic into functions
 - Run format/lint/type-check before committing
+
+## PR Review Policy
+
+- **Adding or updating tests is ALWAYS in scope** - Any suggestion to add test coverage should be implemented, not deferred
+- Test coverage for new functions, edge cases, and bug fixes is a requirement, not optional
+- If a review comment requests tests, implement them in the same PR
