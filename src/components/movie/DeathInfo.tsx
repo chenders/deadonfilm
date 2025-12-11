@@ -7,11 +7,32 @@ interface DeathInfoProps {
   actorName: string
   deathday: string
   birthday: string | null
+  yearsLost: number | null
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   wikipediaUrl: string | null
   tmdbUrl: string
   isLoading?: boolean
+}
+
+/**
+ * Format years lost/gained into human-readable text
+ * Positive yearsLost = died early, negative = lived longer than expected
+ */
+function formatYearsLost(yearsLost: number): string {
+  const absYears = Math.abs(yearsLost)
+  const roundedYears = Math.round(absYears)
+
+  if (roundedYears === 0) {
+    return "around expected"
+  }
+
+  const yearWord = roundedYears === 1 ? "year" : "years"
+  if (yearsLost > 0) {
+    return `${roundedYears} ${yearWord} early`
+  } else {
+    return `${roundedYears} ${yearWord} longer`
+  }
 }
 
 function LoadingEllipsis() {
@@ -135,6 +156,7 @@ export default function DeathInfo({
   actorName,
   deathday,
   birthday,
+  yearsLost,
   causeOfDeath,
   causeOfDeathDetails,
   wikipediaUrl,
@@ -172,6 +194,21 @@ export default function DeathInfo({
       {ageAtDeath !== null && (
         <p data-testid="age-at-death" className="text-sm text-text-muted">
           Age {ageAtDeath}
+          {yearsLost !== null && (
+            <span
+              className={yearsLost > 0 ? "text-accent" : "text-green-700"}
+              title={
+                yearsLost > 0
+                  ? `Died ${Math.abs(yearsLost).toFixed(1)} years earlier than expected for their birth year`
+                  : yearsLost < 0
+                    ? `Lived ${Math.abs(yearsLost).toFixed(1)} years longer than expected for their birth year`
+                    : "Died around expected age for their birth year"
+              }
+            >
+              {" "}
+              ({formatYearsLost(yearsLost)})
+            </span>
+          )}
         </p>
       )}
 

@@ -13,6 +13,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -29,6 +30,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -45,6 +47,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -61,6 +64,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        yearsLost={null}
         causeOfDeath="colon cancer"
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -79,6 +83,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        yearsLost={null}
         causeOfDeath="colon cancer"
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Audrey_Hepburn"
@@ -99,6 +104,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
@@ -118,6 +124,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -137,6 +144,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="1993-01-20"
         birthday="1929-05-04"
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
@@ -155,6 +163,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -172,6 +181,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -190,6 +200,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        yearsLost={null}
         causeOfDeath={null}
         causeOfDeathDetails={null}
         wikipediaUrl="https://en.wikipedia.org/wiki/Test"
@@ -208,6 +219,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails="Suffered a massive coronary while playing tennis"
         wikipediaUrl={null}
@@ -228,6 +240,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        yearsLost={null}
         causeOfDeath="lung cancer"
         causeOfDeathDetails="Was a heavy smoker for over 40 years"
         wikipediaUrl="https://en.wikipedia.org/wiki/Some_Actor"
@@ -248,6 +261,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails={null}
         wikipediaUrl={null}
@@ -266,6 +280,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        yearsLost={null}
         causeOfDeath="heart attack"
         causeOfDeathDetails=""
         wikipediaUrl={null}
@@ -291,6 +306,7 @@ describe("DeathInfo", () => {
         actorName={defaultActorName}
         deathday="2000-01-01"
         birthday={null}
+        yearsLost={null}
         causeOfDeath="complications from surgery"
         causeOfDeathDetails={longDetails}
         wikipediaUrl={null}
@@ -304,5 +320,56 @@ describe("DeathInfo", () => {
 
     // Verify the full long text is rendered in the tooltip (not truncated)
     expect(screen.getByText(longDetails)).toBeInTheDocument()
+  })
+
+  it("displays years lost when positive (died early)", () => {
+    render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday="1960-01-01"
+        yearsLost={15.5}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    expect(screen.getByText(/16 years early/)).toBeInTheDocument()
+  })
+
+  it("displays years gained when negative (lived longer)", () => {
+    render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday="1920-01-01"
+        yearsLost={-12.3}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    expect(screen.getByText(/12 years longer/)).toBeInTheDocument()
+  })
+
+  it("displays around expected when yearsLost is near zero", () => {
+    render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday="1930-01-01"
+        yearsLost={0.3}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    expect(screen.getByText(/around expected/)).toBeInTheDocument()
   })
 })
