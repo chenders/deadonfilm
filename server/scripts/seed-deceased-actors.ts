@@ -21,6 +21,7 @@ import {
 } from "../src/lib/tmdb.js"
 import { getCauseOfDeath } from "../src/lib/wikidata.js"
 import { batchUpsertDeceasedPersons, type DeceasedPersonRecord } from "../src/lib/db.js"
+import { calculateYearsLost } from "../src/lib/mortality-stats.js"
 
 const MOVIES_TO_FETCH = 100 // Top 100 movies per year range
 const CAST_LIMIT = 30 // Top 30 actors per movie
@@ -131,6 +132,9 @@ async function main() {
           wikipediaUrl,
         } = await getCauseOfDeath(actor.name, actor.birthday, actor.deathday!)
 
+        // Calculate mortality stats
+        const yearsLostResult = await calculateYearsLost(actor.birthday, actor.deathday!)
+
         records.push({
           tmdb_id: actor.id,
           name: actor.name,
@@ -141,6 +145,10 @@ async function main() {
           cause_of_death_details: causeOfDeathDetails,
           cause_of_death_details_source: causeOfDeathDetailsSource,
           wikipedia_url: wikipediaUrl,
+          profile_path: actor.profile_path,
+          age_at_death: yearsLostResult?.ageAtDeath ?? null,
+          expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
+          years_lost: yearsLostResult?.yearsLost ?? null,
         })
 
         if (causeOfDeath) {
@@ -154,6 +162,9 @@ async function main() {
       } catch (error) {
         console.error(`    Error: ${error}`)
         // Still add the record without cause of death
+        // Calculate mortality stats even if cause of death lookup failed
+        const yearsLostResult = await calculateYearsLost(actor.birthday, actor.deathday!)
+
         records.push({
           tmdb_id: actor.id,
           name: actor.name,
@@ -164,6 +175,10 @@ async function main() {
           cause_of_death_details: null,
           cause_of_death_details_source: null,
           wikipedia_url: null,
+          profile_path: actor.profile_path,
+          age_at_death: yearsLostResult?.ageAtDeath ?? null,
+          expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
+          years_lost: yearsLostResult?.yearsLost ?? null,
         })
       }
     }

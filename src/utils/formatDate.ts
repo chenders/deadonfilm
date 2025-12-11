@@ -79,3 +79,53 @@ export function calculateCurrentAge(birthday: string | null): number | null {
 
   return age
 }
+
+/**
+ * Formats a date string relative to now
+ * Returns year if more than a year ago, otherwise returns relative time
+ * Example: "2024-03-15" → "2024" (if > 1 year ago)
+ * Example: "2024-11-01" → "1 month ago"
+ */
+export function formatRelativeDate(dateString: string | null): string {
+  if (!dateString) return "Unknown"
+
+  try {
+    const date = new Date(dateString + "T00:00:00")
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffDays < 0) return dateString.slice(0, 4)
+    if (diffDays === 0) return "Today"
+    if (diffDays === 1) return "Yesterday"
+    if (diffDays < 7) return `${diffDays} days ago`
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7)
+      return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`
+    }
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30)
+      return months === 1 ? "1 month ago" : `${months} months ago`
+    }
+    return dateString.slice(0, 4) // Return just the year
+  } catch {
+    return dateString
+  }
+}
+
+/**
+ * Generates decade filter options from current decade down to a minimum
+ * Example: In 2025, generates [2020s, 2010s, 2000s, ... down to minDecade]
+ */
+export function getDecadeOptions(minDecade: number = 1930): { value: string; label: string }[] {
+  const currentYear = new Date().getFullYear()
+  const currentDecade = Math.floor(currentYear / 10) * 10
+
+  const options: { value: string; label: string }[] = [{ value: "", label: "Any" }]
+
+  for (let decade = currentDecade; decade >= minDecade; decade -= 10) {
+    options.push({ value: String(decade), label: `${decade}s` })
+  }
+
+  return options
+}

@@ -4,6 +4,11 @@ import type {
   OnThisDayResponse,
   DeathInfoResponse,
   RandomMovieResponse,
+  SiteStatsResponse,
+  RecentDeathsResponse,
+  CursedMoviesResponse,
+  CursedMoviesFiltersResponse,
+  CursedActorsResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -43,14 +48,68 @@ export async function getDeathInfo(
   return fetchJson(`/movie/${movieId}/death-info?personIds=${personIds.join(",")}`)
 }
 
-export async function getRandomMovie(): Promise<RandomMovieResponse> {
-  return fetchJson("/random")
+export async function getDiscoverMovie(): Promise<RandomMovieResponse> {
+  return fetchJson("/discover/forever-young")
 }
 
-export async function getDiscoverMovie(
-  type: "classic" | "high-mortality"
-): Promise<RandomMovieResponse> {
-  return fetchJson(`/discover?type=${type}`)
+export async function getSiteStats(): Promise<SiteStatsResponse> {
+  return fetchJson("/stats")
+}
+
+export async function getRecentDeaths(limit: number = 5): Promise<RecentDeathsResponse> {
+  return fetchJson(`/recent-deaths?limit=${limit}`)
+}
+
+export interface CursedMoviesOptions {
+  page?: number
+  limit?: number
+  fromDecade?: number // e.g., 1980
+  toDecade?: number // e.g., 1990
+  minDeadActors?: number
+}
+
+export async function getCursedMovies(
+  options: CursedMoviesOptions = {}
+): Promise<CursedMoviesResponse> {
+  const { page = 1, limit = 50, fromDecade, toDecade, minDeadActors } = options
+  const params = new URLSearchParams()
+
+  params.set("page", String(page))
+  params.set("limit", String(limit))
+  if (fromDecade) params.set("from", String(fromDecade))
+  if (toDecade) params.set("to", String(toDecade))
+  if (minDeadActors) params.set("minDeaths", String(minDeadActors))
+
+  return fetchJson(`/cursed-movies?${params.toString()}`)
+}
+
+export async function getCursedMoviesFilters(): Promise<CursedMoviesFiltersResponse> {
+  return fetchJson("/cursed-movies/filters")
+}
+
+export interface CursedActorsOptions {
+  page?: number
+  limit?: number
+  fromDecade?: number
+  toDecade?: number
+  minMovies?: number
+  status?: "living" | "deceased" | "all"
+}
+
+export async function getCursedActors(
+  options: CursedActorsOptions = {}
+): Promise<CursedActorsResponse> {
+  const { page = 1, limit = 50, fromDecade, toDecade, minMovies, status } = options
+  const params = new URLSearchParams()
+
+  params.set("page", String(page))
+  params.set("limit", String(limit))
+  if (fromDecade) params.set("from", String(fromDecade))
+  if (toDecade) params.set("to", String(toDecade))
+  if (minMovies) params.set("minMovies", String(minMovies))
+  if (status) params.set("status", status)
+
+  return fetchJson(`/cursed-actors?${params.toString()}`)
 }
 
 // TMDB image URL helpers

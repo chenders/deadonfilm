@@ -7,11 +7,44 @@ interface DeathInfoProps {
   actorName: string
   deathday: string
   birthday: string | null
+  ageAtDeath: number | null
+  yearsLost: number | null
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   wikipediaUrl: string | null
   tmdbUrl: string
   isLoading?: boolean
+}
+
+/**
+ * Title case a string (capitalize first letter of each word)
+ */
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
+/**
+ * Format years lost/gained into human-readable text
+ * Positive yearsLost = died early, negative = lived longer than expected
+ */
+function formatYearsLost(yearsLost: number): string {
+  const absYears = Math.abs(yearsLost)
+  const roundedYears = Math.round(absYears)
+
+  if (roundedYears === 0) {
+    return "around expected"
+  }
+
+  const yearWord = roundedYears === 1 ? "year" : "years"
+  if (yearsLost > 0) {
+    return `${roundedYears} ${yearWord} early`
+  } else {
+    return `${roundedYears} ${yearWord} longer`
+  }
 }
 
 function LoadingEllipsis() {
@@ -135,14 +168,24 @@ export default function DeathInfo({
   actorName,
   deathday,
   birthday,
+  ageAtDeath: ageAtDeathProp,
+  yearsLost,
   causeOfDeath,
   causeOfDeathDetails,
   wikipediaUrl,
   tmdbUrl,
   isLoading = false,
 }: DeathInfoProps) {
-  const ageAtDeath = calculateAge(birthday, deathday)
+  // Use prop if available, otherwise calculate from dates
+  const ageAtDeath = ageAtDeathProp ?? calculateAge(birthday, deathday)
   const hasDetails = causeOfDeathDetails && causeOfDeathDetails.trim().length > 0
+
+  // Calculate expected lifespan for the visualization
+  // expectedLifespan = ageAtDeath + yearsLost (since yearsLost = expected - actual)
+  // Note: yearsLost may come as a string from API, so ensure it's a number
+  const yearsLostNum = yearsLost !== null ? Number(yearsLost) : null
+  const expectedLifespan =
+    ageAtDeath !== null && yearsLostNum !== null ? ageAtDeath + yearsLostNum : null
   const profileLink = getProfileLink(wikipediaUrl, tmdbUrl)
   const [showTooltip, setShowTooltip] = useState(false)
   const triggerRef = useRef<HTMLSpanElement>(null)
@@ -172,7 +215,62 @@ export default function DeathInfo({
       {ageAtDeath !== null && (
         <p data-testid="age-at-death" className="text-sm text-text-muted">
           Age {ageAtDeath}
+          {yearsLostNum !== null && (
+            <span
+              className={yearsLostNum > 0 ? "text-accent" : "text-green-700"}
+              title={
+                yearsLostNum > 0
+                  ? `Died ${Math.abs(yearsLostNum).toFixed(1)} years earlier than expected for their birth year`
+                  : yearsLostNum < 0
+                    ? `Lived ${Math.abs(yearsLostNum).toFixed(1)} years longer than expected for their birth year`
+                    : "Died around expected age for their birth year"
+              }
+            >
+              {" "}
+              ({formatYearsLost(yearsLostNum)})
+            </span>
+          )}
         </p>
+      )}
+
+      {/* Lifespan visualization bar */}
+      {expectedLifespan !== null && ageAtDeath !== null && yearsLostNum !== null && (
+        <div
+          className="mt-1.5"
+          title={
+            yearsLostNum > 0
+              ? `Lived ${ageAtDeath} of ${Math.round(expectedLifespan)} expected years`
+              : `Lived ${ageAtDeath} years, ${Math.abs(Math.round(yearsLostNum))} more than expected`
+          }
+        >
+          <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-200">
+            {yearsLostNum > 0 ? (
+              <>
+                {/* Life lived (solid) - died early */}
+                <div
+                  className="bg-brown-medium"
+                  style={{ width: `${(ageAtDeath / expectedLifespan) * 100}%` }}
+                />
+                {/* Life lost (striped/faded) */}
+                <div
+                  className="bg-accent/40"
+                  style={{
+                    width: `${(yearsLostNum / expectedLifespan) * 100}%`,
+                    backgroundImage:
+                      "repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.3) 2px, rgba(255,255,255,0.3) 4px)",
+                  }}
+                />
+              </>
+            ) : (
+              /* Lived longer than expected - full bar */
+              <div className="w-full bg-green-600" />
+            )}
+          </div>
+          <div className="mt-0.5 flex justify-between text-[10px] text-text-muted">
+            <span>0</span>
+            <span>{yearsLostNum > 0 ? Math.round(expectedLifespan) : ageAtDeath} yrs</span>
+          </div>
+        </div>
       )}
 
       {causeOfDeath && (
@@ -191,8 +289,11 @@ export default function DeathInfo({
                 cause_of_death: causeOfDeath,
               })}
             >
-              {causeOfDeath}
-              <InfoIcon size={12} className="ml-1 inline opacity-60" />
+              {toTitleCase(causeOfDeath)}
+              <InfoIcon
+                size={14}
+                className="ml-1 inline-block align-text-bottom text-brown-medium"
+              />
               <Tooltip
                 content={causeOfDeathDetails}
                 triggerRef={triggerRef}
@@ -214,7 +315,7 @@ export default function DeathInfo({
                 link_url: profileLink.url,
               })}
             >
-              {causeOfDeath}
+              {toTitleCase(causeOfDeath)}
             </a>
           )}
         </p>

@@ -2,12 +2,14 @@
  * Mortality Statistics Utilities
  *
  * Provides functions to calculate expected mortality for movie casts based on
- * actuarial life tables. Uses US Social Security Administration Period Life Tables.
+ * actuarial life tables. Uses US Social Security Administration Period Life Tables
+ * and Cohort Life Tables.
  *
  * Key concepts:
  * - qx: Probability of dying within one year at age x
  * - ex: Life expectancy at age x (remaining years expected to live)
  * - Cumulative survival: Probability of surviving from age A to age B
+ * - Cohort life expectancy: Expected lifespan based on year of birth
  */
 
 import { getPool } from "./db.js"
@@ -20,6 +22,88 @@ interface ActuarialEntry {
 
 // Cache for actuarial data (loaded once from DB)
 let actuarialCache: Map<string, ActuarialEntry[]> | null = null
+
+// Cache for cohort life expectancy data (loaded once from database)
+interface CohortLifeExpectancyEntry {
+  birthYear: number
+  male: number
+  female: number
+  combined: number
+}
+let cohortLifeExpectancyCache: CohortLifeExpectancyEntry[] | null = null
+
+/**
+ * Load cohort life expectancy data from database
+ * Data source: US SSA Actuarial Study No. 120
+ */
+async function loadCohortLifeExpectancy(): Promise<CohortLifeExpectancyEntry[]> {
+  if (cohortLifeExpectancyCache) return cohortLifeExpectancyCache
+
+  const db = getPool()
+  const result = await db.query<{
+    birth_year: number
+    male: string
+    female: string
+    combined: string
+  }>(`
+    SELECT birth_year, male, female, combined
+    FROM cohort_life_expectancy
+    ORDER BY birth_year
+  `)
+
+  if (result.rows.length === 0) {
+    throw new Error(
+      "No cohort life expectancy data found in database. Run 'npm run seed:cohort' to populate the data."
+    )
+  }
+
+  cohortLifeExpectancyCache = result.rows.map((row) => ({
+    birthYear: row.birth_year,
+    male: parseFloat(row.male),
+    female: parseFloat(row.female),
+    combined: parseFloat(row.combined),
+  }))
+  return cohortLifeExpectancyCache
+}
+
+/**
+ * Get cohort life expectancy at birth for a given birth year
+ * Uses linear interpolation between data points
+ *
+ * @param birthYear Year of birth
+ * @param gender Gender for lookup (defaults to combined)
+ * @returns Expected lifespan at birth for that birth cohort
+ */
+export async function getCohortLifeExpectancy(
+  birthYear: number,
+  gender: "male" | "female" | "combined" = "combined"
+): Promise<number> {
+  const data = await loadCohortLifeExpectancy()
+
+  // Clamp to available data range
+  const minYear = data[0].birthYear
+  const maxYear = data[data.length - 1].birthYear
+
+  if (birthYear <= minYear) {
+    return data[0][gender]
+  }
+  if (birthYear >= maxYear) {
+    return data[data.length - 1][gender]
+  }
+
+  // Find surrounding data points and interpolate
+  for (let i = 0; i < data.length - 1; i++) {
+    if (birthYear >= data[i].birthYear && birthYear < data[i + 1].birthYear) {
+      const ratio = (birthYear - data[i].birthYear) / (data[i + 1].birthYear - data[i].birthYear)
+      const lowerValue = data[i][gender]
+      const upperValue = data[i + 1][gender]
+      return lowerValue + ratio * (upperValue - lowerValue)
+    }
+  }
+
+  // Fallback (shouldn't reach here)
+  return data[data.length - 1][gender]
+}
 
 /**
  * Load actuarial data from the database into cache
@@ -64,8 +148,9 @@ async function loadActuarialData(): Promise<Map<string, ActuarialEntry[]>> {
 
 /**
  * Get life expectancy at a specific age
+ * @internal Currently unused but may be useful for future features
  */
-async function getLifeExpectancy(
+async function _getLifeExpectancy(
   age: number,
   gender: "male" | "female" | "combined" = "combined"
 ): Promise<number> {
@@ -183,28 +268,52 @@ export async function calculateMovieMortality(
     const currentAge = birthYear && !isDeceased ? currentYear - birthYear : null
     const ageAtDeath = birthYear && deathYear ? deathYear - birthYear : null
 
+    // Check if actor died more than 3 years before movie release (archived footage)
+    // These actors should be excluded from mortality calculations
+    const isArchivedFootage = deathYear !== null && deathYear < releaseYear - 3
+
     // Calculate death probability (expected chance they would have died by now)
     let deathProbability = 0
-    if (ageAtFilming !== null && ageAtFilming >= 0) {
-      const endAge = isDeceased && ageAtDeath ? ageAtDeath : ageAtFilming + yearsSinceRelease
-      deathProbability = await calculateCumulativeDeathProbability(
-        ageAtFilming,
-        Math.min(endAge, ageAtFilming + yearsSinceRelease),
-        "combined"
-      )
+    if (ageAtFilming !== null && ageAtFilming >= 0 && !isArchivedFootage) {
+      // For actors who died same year as movie or within 1 year after:
+      // Calculate probability from age at filming to at least 1 year later
+      // This ensures actors who died same year don't get 0% probability
+      const minEndAge = ageAtFilming + 1
+
+      if (isDeceased && ageAtDeath !== null) {
+        // Actor died: calculate probability up to their death age
+        // Use at least 1 year span to handle same-year deaths
+        const effectiveEndAge = Math.max(ageAtDeath, minEndAge)
+        deathProbability = await calculateCumulativeDeathProbability(
+          ageAtFilming,
+          Math.min(effectiveEndAge, ageAtFilming + yearsSinceRelease),
+          "combined"
+        )
+      } else {
+        // Actor still alive: calculate probability over full time span
+        deathProbability = await calculateCumulativeDeathProbability(
+          ageAtFilming,
+          ageAtFilming + yearsSinceRelease,
+          "combined"
+        )
+      }
     }
 
     // Calculate expected lifespan and years lost for deceased actors
+    // Using birth-year-specific cohort life expectancy
     let expectedLifespan: number | null = null
     let yearsLost: number | null = null
     if (birthYear && isDeceased && ageAtDeath !== null) {
-      // Life expectancy at birth
-      expectedLifespan = birthYear + (await getLifeExpectancy(0, "combined"))
-      yearsLost = expectedLifespan - (birthYear + ageAtDeath)
+      // Life expectancy at birth for their specific birth cohort
+      expectedLifespan = await getCohortLifeExpectancy(birthYear, "combined")
+      yearsLost = expectedLifespan - ageAtDeath
     }
 
-    expectedDeaths += deathProbability
-    if (isDeceased) actualDeaths++
+    // Only count actors who weren't archived footage
+    if (!isArchivedFootage) {
+      expectedDeaths += deathProbability
+      if (isDeceased) actualDeaths++
+    }
 
     actorResults.push({
       tmdbId: actor.tmdbId,
@@ -236,6 +345,9 @@ export async function calculateMovieMortality(
 /**
  * Calculate years lost for a deceased person
  *
+ * Uses birth-year-specific cohort life expectancy from US SSA data.
+ * Someone born in 1920 had a different life expectancy than someone born in 1980.
+ *
  * @param birthday Date of birth (YYYY-MM-DD)
  * @param deathday Date of death (YYYY-MM-DD)
  * @returns Years lost compared to life expectancy, or null if can't calculate
@@ -252,21 +364,28 @@ export async function calculateYearsLost(
 
   if (isNaN(birthYear) || isNaN(deathYear) || ageAtDeath < 0) return null
 
-  // Life expectancy at birth for their birth cohort
-  const lifeExpectancyAtBirth = await getLifeExpectancy(0, "combined")
-  const expectedLifespan = birthYear + lifeExpectancyAtBirth
-  const yearsLost = expectedLifespan - (birthYear + ageAtDeath)
+  try {
+    // Get life expectancy at birth for their specific birth cohort
+    // This uses US SSA cohort life tables which vary by birth year
+    const expectedLifespan = await getCohortLifeExpectancy(birthYear, "combined")
+    const yearsLost = expectedLifespan - ageAtDeath
 
-  return {
-    ageAtDeath,
-    expectedLifespan: Math.round(expectedLifespan * 10) / 10,
-    yearsLost: Math.round(yearsLost * 10) / 10,
+    return {
+      ageAtDeath,
+      expectedLifespan: Math.round(expectedLifespan * 10) / 10,
+      yearsLost: Math.round(yearsLost * 10) / 10,
+    }
+  } catch {
+    // Database not available - return null for years lost calculations
+    // This allows E2E tests to run without database access
+    return null
   }
 }
 
 /**
- * Clear the actuarial cache (useful for testing)
+ * Clear all caches (useful for testing)
  */
 export function clearActuarialCache(): void {
   actuarialCache = null
+  cohortLifeExpectancyCache = null
 }

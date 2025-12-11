@@ -1,0 +1,166 @@
+#!/usr/bin/env tsx
+/**
+ * Seed a specific movie by TMDB ID.
+ * Useful for adding movies that aren't popular enough to be in the top 200 per decade.
+ *
+ * Usage:
+ *   npm run seed:movie -- <tmdbId>
+ *   npx tsx scripts/seed-movie-by-id.ts <tmdbId>
+ *
+ * Example:
+ *   npm run seed:movie -- 9495   # The Crow (1994)
+ */
+
+import "dotenv/config"
+import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../src/lib/tmdb.js"
+import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
+import {
+  upsertMovie,
+  batchUpsertActorAppearances,
+  upsertDeceasedPerson,
+  type MovieRecord,
+  type ActorAppearanceRecord,
+} from "../src/lib/db.js"
+
+const CAST_LIMIT = 30
+
+async function main() {
+  const args = process.argv.slice(2)
+
+  if (args.length === 0) {
+    console.error("Usage: npm run seed:movie -- <tmdbId>")
+    console.error("Example: npm run seed:movie -- 9495  # The Crow")
+    process.exit(1)
+  }
+
+  const tmdbId = parseInt(args[0], 10)
+
+  if (isNaN(tmdbId) || tmdbId <= 0) {
+    console.error("Invalid TMDB ID:", args[0])
+    process.exit(1)
+  }
+
+  if (!process.env.TMDB_API_TOKEN) {
+    console.error("TMDB_API_TOKEN environment variable is required")
+    process.exit(1)
+  }
+
+  if (!process.env.DATABASE_URL) {
+    console.error("DATABASE_URL environment variable is required")
+    process.exit(1)
+  }
+
+  console.log(`\nSeeding movie with TMDB ID: ${tmdbId}...\n`)
+
+  try {
+    const currentYear = new Date().getFullYear()
+
+    // Get full movie details
+    console.log("Fetching movie details...")
+    const details = await getMovieDetails(tmdbId)
+    const releaseYear = parseInt(details.release_date?.split("-")[0] || "0", 10)
+    console.log(`  Title: ${details.title} (${releaseYear})`)
+
+    // Get credits
+    console.log("Fetching credits...")
+    const credits = await getMovieCredits(tmdbId)
+    const topCast = credits.cast.slice(0, CAST_LIMIT)
+    console.log(`  Found ${topCast.length} cast members`)
+
+    // Get person details for cast
+    console.log("Fetching person details...")
+    const personIds = topCast.map((c) => c.id)
+    const personDetails = await batchGetPersonDetails(personIds, 10, 100)
+
+    // Prepare actors for mortality calculation
+    const actorsForMortality = topCast.map((castMember) => {
+      const person = personDetails.get(castMember.id)
+      return {
+        tmdbId: castMember.id,
+        name: castMember.name,
+        birthday: person?.birthday || null,
+        deathday: person?.deathday || null,
+      }
+    })
+
+    // Calculate mortality statistics
+    console.log("Calculating mortality statistics...")
+    const mortalityStats = await calculateMovieMortality(
+      releaseYear,
+      actorsForMortality,
+      currentYear
+    )
+
+    // Save movie to database
+    const movieRecord: MovieRecord = {
+      tmdb_id: tmdbId,
+      title: details.title,
+      release_date: details.release_date || null,
+      release_year: releaseYear || null,
+      poster_path: details.poster_path,
+      genres: details.genres?.map((g) => g.name) || [],
+      popularity: details.popularity || null,
+      vote_average: details.vote_average || null,
+      cast_count: topCast.length,
+      deceased_count: mortalityStats.actualDeaths,
+      living_count: topCast.length - mortalityStats.actualDeaths,
+      expected_deaths: mortalityStats.expectedDeaths,
+      mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
+    }
+
+    await upsertMovie(movieRecord)
+    console.log(`\nSaved movie: ${details.title}`)
+    console.log(`  Deceased: ${mortalityStats.actualDeaths}`)
+    console.log(`  Expected: ${mortalityStats.expectedDeaths.toFixed(1)}`)
+    console.log(`  Surprise score: ${mortalityStats.mortalitySurpriseScore.toFixed(3)}`)
+
+    // Save actor appearances and deceased persons
+    const appearances: ActorAppearanceRecord[] = []
+    let deceasedCount = 0
+
+    for (const castMember of topCast) {
+      const person = personDetails.get(castMember.id)
+      const birthday = person?.birthday
+      let ageAtFilming: number | null = null
+
+      if (birthday && releaseYear) {
+        const birthYear = parseInt(birthday.split("-")[0], 10)
+        ageAtFilming = releaseYear - birthYear
+      }
+
+      appearances.push({
+        actor_tmdb_id: castMember.id,
+        movie_tmdb_id: tmdbId,
+        actor_name: castMember.name,
+        character_name: castMember.character || null,
+        billing_order: topCast.indexOf(castMember),
+        age_at_filming: ageAtFilming,
+        is_deceased: !!person?.deathday,
+      })
+
+      // Also upsert deceased person if they're dead
+      if (person?.deathday) {
+        await upsertDeceasedPerson({
+          tmdb_id: castMember.id,
+          name: castMember.name,
+          birthday: person.birthday || null,
+          deathday: person.deathday,
+          profile_path: person.profile_path || null,
+        })
+        deceasedCount++
+        console.log(`  - ${castMember.name} (deceased)`)
+      }
+    }
+
+    await batchUpsertActorAppearances(appearances)
+    console.log(`\nSaved ${appearances.length} actor appearances`)
+    console.log(`Added/updated ${deceasedCount} deceased persons`)
+
+    console.log("\nDone!")
+  } catch (error) {
+    console.error("Error:", error)
+    process.exit(1)
+  }
+}
+
+main()

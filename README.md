@@ -10,6 +10,8 @@ A website to look up movies and see which actors have passed away. Shows mortali
 - View deceased cast members with death dates and causes
 - **Expected vs Actual mortality** - See how many deaths were expected based on actuarial data
 - **Mortality surprise score** - Identify movies with unusually high or low cast mortality
+- **Cursed Movies** - Browse movies ranked by statistically abnormal mortality
+- **Cursed Actors** - Discover actors whose co-stars have died at unusually high rates
 - "On This Day" feature showing actors who died on the current date
 - Real-time cause of death lookup with loading indicators
 - SEO-friendly URLs with movie slugs
@@ -60,6 +62,8 @@ ANTHROPIC_API_KEY=your_anthropic_key  # For cause of death lookup
 - `GET /api/movie/{id}` - Get movie with cast mortality data
 - `GET /api/movie/{id}/death-info?personIds=1,2,3` - Poll for cause of death updates
 - `GET /api/on-this-day` - Deaths on current date
+- `GET /api/cursed-movies` - Movies ranked by curse score
+- `GET /api/cursed-actors` - Actors ranked by co-star mortality
 - `GET /health` - Health check
 
 ## License

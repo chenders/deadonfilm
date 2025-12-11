@@ -31,19 +31,29 @@ Expected Death Probability:
   For each actor: P(death) = cumulative probability of dying between age at filming and current age
   Expected Deaths = sum of all actor death probabilities
 
-Mortality Surprise Score:
+Mortality Surprise Score (Curse Score):
   (Actual Deaths - Expected Deaths) / Expected Deaths
   Positive = more deaths than expected ("cursed" movie)
   Negative = fewer deaths than expected ("blessed" movie)
 
 Years Lost:
-  Expected Lifespan - Actual Lifespan (based on life expectancy at birth)
+  Expected Lifespan - Actual Lifespan
+  Uses birth-year-specific cohort life expectancy from US SSA data
+  Example: Someone born in 1920 had ~62 year life expectancy vs ~82 for someone born in 2000
+  Positive = died early, Negative = lived longer than expected
 ```
+
+### Mortality Calculation Rules
+
+1. **Archived Footage Exclusion**: Actors who died more than 3 years before a movie's release are excluded from mortality calculations. They appeared via archived footage and weren't alive during production.
+
+2. **Same-Year Death Handling**: Actors who died the same year as the movie release are counted with at least 1 year of death probability to avoid zero-probability edge cases.
+
+3. **Cursed Actors**: Calculated by summing expected and actual co-star deaths across all of an actor's filmography, then computing the curse score.
 
 ### Server Libraries
 
 - `server/src/lib/mortality-stats.ts` - Calculation utilities
-- `server/data/actuarial-life-tables.json` - SSA Period Life Tables (2022)
 
 ## Tech Stack
 
@@ -120,7 +130,11 @@ npm test                     # Frontend unit tests
 - `GET /api/movie/{id}` - Get movie with deceased cast
 - `GET /api/movie/{id}/death-info?personIds=1,2,3` - Poll for cause of death updates
 - `GET /api/on-this-day` - Deaths on current date
-- `GET /api/random` - Get a random movie (redirects to movie page)
+- `GET /api/discover/{type}` - Get a random movie by discovery type (currently: `forever-young`)
+- `GET /api/cursed-movies` - List movies ranked by curse score (with pagination/filters)
+- `GET /api/cursed-movies/filters` - Get filter options for cursed movies
+- `GET /api/cursed-actors` - List actors ranked by co-star mortality (with pagination/filters)
+- `GET /api/stats` - Get site-wide statistics
 - `GET /health` - Health check for Kubernetes
 
 ## Environment Variables
@@ -176,7 +190,7 @@ deceased_persons (
 ```
 
 ### actuarial_life_tables
-US Social Security Administration life expectancy data for mortality calculations.
+US Social Security Administration period life tables for death probability calculations (used in curse score).
 
 ```sql
 actuarial_life_tables (
@@ -188,6 +202,19 @@ actuarial_life_tables (
   life_expectancy DECIMAL(6,2),   -- Remaining life expectancy at this age (ex)
   survivors_per_100k INTEGER,     -- Number surviving to this age from 100k births
   UNIQUE(birth_year, age, gender)
+)
+```
+
+### cohort_life_expectancy
+US Social Security Administration cohort life expectancy by birth year (used for years lost calculation).
+
+```sql
+cohort_life_expectancy (
+  id SERIAL PRIMARY KEY,
+  birth_year INTEGER NOT NULL UNIQUE,
+  male DECIMAL(4,1) NOT NULL,     -- Life expectancy for males born this year
+  female DECIMAL(4,1) NOT NULL,   -- Life expectancy for females born this year
+  combined DECIMAL(4,1) NOT NULL  -- Average of male and female
 )
 ```
 
@@ -266,8 +293,18 @@ npm run seed -- 1995
 # Year range (e.g., 1990s)
 npm run seed -- 1990 1999
 
-# Seed actuarial life tables (required for mortality statistics)
+# Seed actuarial life tables (required for death probability calculations)
 npm run seed:actuarial
+
+# Seed cohort life expectancy (required for years lost calculations)
+npm run seed:cohort
+
+# Backfill mortality statistics for existing deceased actors
+npm run backfill:mortality        # Only records with NULL values
+npm run backfill:mortality -- --all  # Recalculate all records
+
+# Backfill missing birthdays using Claude
+npm run backfill:birthdays
 ```
 
 ## GKE Deployment
