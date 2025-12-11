@@ -628,6 +628,8 @@ export interface ForeverYoungMovie {
 // Returns movies ordered by years lost, for random selection
 export async function getForeverYoungMovies(limit: number = 100): Promise<ForeverYoungMovie[]> {
   const db = getPool()
+  // Find movies where a leading actor died with the majority of their expected lifespan still ahead
+  // i.e., years_lost > age_at_death (they lost more years than they lived)
   const result = await db.query<ForeverYoungMovie>(
     `SELECT DISTINCT ON (m.tmdb_id)
        m.tmdb_id,
@@ -639,7 +641,7 @@ export async function getForeverYoungMovies(limit: number = 100): Promise<Foreve
      JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
      JOIN deceased_persons dp ON aa.actor_tmdb_id = dp.tmdb_id
      WHERE aa.billing_order <= 3
-       AND dp.years_lost >= 20
+       AND dp.years_lost > dp.age_at_death
      ORDER BY m.tmdb_id, dp.years_lost DESC`,
     []
   )
