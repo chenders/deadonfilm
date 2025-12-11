@@ -41,10 +41,10 @@ import {
 } from "../src/lib/tmdb.js"
 import { getCauseOfDeath } from "../src/lib/wikidata.js"
 import { calculateYearsLost, calculateMovieMortality } from "../src/lib/mortality-stats.js"
+import { formatDate, subtractDays, getDateRanges } from "../src/lib/date-utils.js"
 
 const SYNC_TYPE_PEOPLE = "person_changes"
 const SYNC_TYPE_MOVIES = "movie_changes"
-const MAX_QUERY_DAYS = 14 // TMDB API limit
 
 interface SyncArgs {
   days?: number
@@ -83,42 +83,6 @@ function parseArgs(args: string[]): SyncArgs {
   }
 
   return result
-}
-
-function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0]
-}
-
-function subtractDays(dateStr: string, days: number): string {
-  const date = new Date(dateStr)
-  date.setDate(date.getDate() - days)
-  return formatDate(date)
-}
-
-// Split a date range into chunks of MAX_QUERY_DAYS or less
-// TMDB API allows up to 14 days inclusive, so we add (MAX_QUERY_DAYS - 1) to start
-function getDateRanges(startDate: string, endDate: string): Array<{ start: string; end: string }> {
-  const ranges: Array<{ start: string; end: string }> = []
-  let current = new Date(startDate)
-  const end = new Date(endDate)
-
-  // Handle same-day case - still need at least one range
-  while (current <= end) {
-    const rangeEnd = new Date(current)
-    // Add (MAX_QUERY_DAYS - 1) to get exactly 14 days inclusive (day 1 to day 14)
-    rangeEnd.setDate(rangeEnd.getDate() + MAX_QUERY_DAYS - 1)
-
-    ranges.push({
-      start: formatDate(current),
-      end: formatDate(rangeEnd > end ? end : rangeEnd),
-    })
-
-    // Move to the day after rangeEnd for the next chunk
-    current = new Date(rangeEnd)
-    current.setDate(current.getDate() + 1)
-  }
-
-  return ranges
 }
 
 function delay(ms: number): Promise<void> {
