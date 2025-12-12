@@ -53,6 +53,8 @@ function FilmPoster({ posterPath, title }: { posterPath: string | null; title: s
           src={poster.src}
           srcSet={poster.srcSet}
           alt={`${title} poster`}
+          width={38}
+          height={56}
           className="h-full w-full object-cover"
           loading="lazy"
         />
