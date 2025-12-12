@@ -49,6 +49,9 @@ function LivingCard({ actor }: { actor: LivingActor }) {
           data-testid="living-actor-photo"
           src={profileUrl}
           alt={actor.name}
+          width={64}
+          height={80}
+          loading="lazy"
           className="h-20 w-16 flex-shrink-0 rounded object-cover"
         />
       ) : (

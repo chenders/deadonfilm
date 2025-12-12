@@ -33,6 +33,9 @@ export default function LastSurvivor({ actor, totalLiving }: LastSurvivorProps) 
             data-testid="last-survivor-photo"
             src={profileUrl}
             alt={actor.name}
+            width={64}
+            height={64}
+            loading="lazy"
             className="h-16 w-16 rounded-full object-cover"
           />
         ) : (

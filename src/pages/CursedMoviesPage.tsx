@@ -27,7 +27,14 @@ function MovieRow({ movie }: { movie: CursedMovie }) {
 
       <div className="h-16 w-11 flex-shrink-0 overflow-hidden rounded bg-beige">
         {posterUrl ? (
-          <img src={posterUrl} alt="" className="h-full w-full object-cover" />
+          <img
+            src={posterUrl}
+            alt=""
+            width={44}
+            height={64}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-text-muted">
             No image
