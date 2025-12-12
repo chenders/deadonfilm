@@ -31,8 +31,19 @@ Review and respond to GitHub Copilot review comments on a pull request.
    - **Will implement**: Valid, valuable, and within scope
    - **Won't implement**: Invalid, not valuable, out of scope, or has significant trade-offs
    - **Needs discussion**: Unclear or requires user input
+   - **Deferred**: Valid and valuable, but out of scope for this PR - will be tracked in an issue
 
-5. **Make changes for accepted suggestions**
+5. **Create issues for deferred work**
+   If any suggestions are valid but deferred to a follow-up PR, you MUST create a GitHub issue to track them:
+   ```bash
+   gh issue create --title "Title describing the work" --body "Description with context and checklist"
+   ```
+   - Group related deferred items into a single issue when appropriate
+   - Include a checklist of specific tasks in the issue body
+   - Reference the PR number in the issue for context
+   - When responding to the Copilot comment, include the issue link
+
+6. **Make changes for accepted suggestions**
    - Implement the changes for suggestions you've decided to accept
    - Run tests to ensure changes don't break anything: `npm test && cd server && npm test`
    - Run quality checks: `npm run lint && npm run type-check`
@@ -83,6 +94,9 @@ Review and respond to GitHub Copilot review comments on a pull request.
 
 **Not implemented (out of scope):**
 > This is a valid suggestion but outside the scope of this PR. I've noted it for a future cleanup PR.
+
+**Deferred (with issue):**
+> Valid suggestion. This is outside the scope of this PR but I've created issue #123 to track it: https://github.com/owner/repo/issues/123
 
 ## Notes
 
