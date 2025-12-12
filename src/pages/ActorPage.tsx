@@ -338,15 +338,15 @@ export default function ActorPage() {
                   className={`font-display text-2xl ${costarStats.curseScore > 0 ? "text-accent" : "text-green-600"}`}
                 >
                   {costarStats.curseScore > 0 ? "+" : ""}
-                  {(costarStats.curseScore * 100).toFixed(0)}%
+                  {costarStats.curseScore.toFixed(0)}%
                 </p>
                 <p className="text-xs text-text-muted">curse score</p>
               </div>
             </div>
             {costarStats.curseScore > 0 && (
               <p className="mt-3 text-center text-sm text-text-muted">
-                {actor.name}'s co-stars have died at a rate{" "}
-                {(costarStats.curseScore * 100).toFixed(0)}% higher than expected
+                {actor.name}'s co-stars have died at a rate {costarStats.curseScore.toFixed(0)}%
+                higher than expected
               </p>
             )}
           </div>
