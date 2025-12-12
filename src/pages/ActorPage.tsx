@@ -1,4 +1,6 @@
+import { useState, useRef } from "react"
 import { useParams, Link } from "react-router-dom"
+import { createPortal } from "react-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
 import { extractActorId, createMovieSlug } from "@/utils/slugify"
@@ -6,8 +8,70 @@ import { formatDate, calculateCurrentAge } from "@/utils/formatDate"
 import { getProfileUrl, getPosterUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
-import { PersonIcon, SkullIcon, FilmReelIcon } from "@/components/icons"
+import { PersonIcon, SkullIcon, FilmReelIcon, InfoIcon } from "@/components/icons"
 import type { ActorFilmographyMovie } from "@/types"
+
+/**
+ * Title case a string (capitalize first letter of each word)
+ */
+function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
+}
+
+interface TooltipProps {
+  content: string
+  triggerRef: React.RefObject<HTMLElement | null>
+  isVisible: boolean
+  onMouseEnter: () => void
+  onMouseLeave: () => void
+}
+
+function Tooltip({ content, triggerRef, isVisible, onMouseEnter, onMouseLeave }: TooltipProps) {
+  const tooltipRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
+
+  // Calculate position when visible
+  if (isVisible && triggerRef.current && !position) {
+    const trigger = triggerRef.current.getBoundingClientRect()
+    const padding = 8
+    // Position below the trigger
+    const top = trigger.bottom + padding
+    const left = trigger.left
+    setPosition({ top, left })
+  }
+
+  if (!isVisible) {
+    if (position) setPosition(null)
+    return null
+  }
+
+  return createPortal(
+    <div
+      ref={tooltipRef}
+      data-testid="death-details-tooltip"
+      className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
+      style={{
+        top: position?.top ?? -9999,
+        left: position?.left ?? -9999,
+        visibility: position ? "visible" : "hidden",
+      }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <div className="absolute -top-1 left-4 right-4 flex justify-between">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
+        ))}
+      </div>
+      <p className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</p>
+    </div>,
+    document.body
+  )
+}
 
 function FilmographyRow({ movie }: { movie: ActorFilmographyMovie }) {
   const posterUrl = getPosterUrl(movie.posterPath, "w92")
@@ -63,6 +127,25 @@ export default function ActorPage() {
   const actorId = slug ? extractActorId(slug) : 0
   const { data, isLoading, error } = useActor(actorId)
 
+  // Tooltip state for cause of death details
+  const [showTooltip, setShowTooltip] = useState(false)
+  const triggerRef = useRef<HTMLSpanElement>(null)
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleMouseEnter = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current)
+      hideTimeoutRef.current = null
+    }
+    setShowTooltip(true)
+  }
+
+  const handleMouseLeave = () => {
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowTooltip(false)
+    }, 100)
+  }
+
   if (!actorId) {
     return <ErrorMessage message="Invalid actor URL" />
   }
@@ -83,6 +166,8 @@ export default function ActorPage() {
   const profileUrl = getProfileUrl(actor.profilePath, "h632")
   const currentAge = actor.deathday ? null : calculateCurrentAge(actor.birthday)
   const isDeceased = !!actor.deathday
+  const hasDeathDetails =
+    deathInfo?.causeOfDeathDetails && deathInfo.causeOfDeathDetails.trim().length > 0
 
   return (
     <>
@@ -101,6 +186,20 @@ export default function ActorPage() {
       </Helmet>
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
+        {/* Deceased banner - prominent indicator */}
+        {isDeceased && (
+          <div
+            data-testid="deceased-banner"
+            className="mb-4 flex items-center justify-center gap-3 rounded-lg bg-brown-dark px-4 py-3 text-cream"
+          >
+            <SkullIcon size={24} className="flex-shrink-0" />
+            <span className="font-display text-lg">Deceased</span>
+            {actor.deathday && (
+              <span className="text-sm opacity-80">— {formatDate(actor.deathday)}</span>
+            )}
+          </div>
+        )}
+
         {/* Header section */}
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           {/* Profile photo */}
@@ -122,10 +221,7 @@ export default function ActorPage() {
 
           {/* Basic info */}
           <div className="flex-1 text-center sm:text-left">
-            <div className="flex items-center justify-center gap-2 sm:justify-start">
-              <h1 className="font-display text-3xl text-brown-dark">{actor.name}</h1>
-              {isDeceased && <SkullIcon size={24} className="text-brown-medium" />}
-            </div>
+            <h1 className="font-display text-3xl text-brown-dark">{actor.name}</h1>
 
             <div className="mt-2 space-y-1 text-sm text-text-muted">
               {actor.birthday && (
@@ -135,10 +231,10 @@ export default function ActorPage() {
                 </p>
               )}
 
-              {isDeceased && actor.deathday && (
+              {isDeceased && actor.deathday && deathInfo?.ageAtDeath && (
                 <p>
-                  <span className="font-medium">Died:</span> {formatDate(actor.deathday)}
-                  {deathInfo?.ageAtDeath && ` (age ${deathInfo.ageAtDeath})`}
+                  <span className="font-medium">Died:</span> {formatDate(actor.deathday)} (age{" "}
+                  {deathInfo.ageAtDeath})
                 </p>
               )}
 
@@ -150,7 +246,31 @@ export default function ActorPage() {
 
               {deathInfo?.causeOfDeath && (
                 <p>
-                  <span className="font-medium">Cause of Death:</span> {deathInfo.causeOfDeath}
+                  <span className="font-medium">Cause of Death:</span>{" "}
+                  {hasDeathDetails ? (
+                    <span
+                      ref={triggerRef}
+                      data-testid="cause-of-death-trigger"
+                      className="cursor-help underline decoration-dotted"
+                      onMouseEnter={handleMouseEnter}
+                      onMouseLeave={handleMouseLeave}
+                    >
+                      {toTitleCase(deathInfo.causeOfDeath)}
+                      <InfoIcon
+                        size={14}
+                        className="ml-1 inline-block align-text-bottom text-brown-medium"
+                      />
+                      <Tooltip
+                        content={deathInfo.causeOfDeathDetails!}
+                        triggerRef={triggerRef}
+                        isVisible={showTooltip}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                      />
+                    </span>
+                  ) : (
+                    <span>{toTitleCase(deathInfo.causeOfDeath)}</span>
+                  )}
                 </p>
               )}
 
