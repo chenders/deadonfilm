@@ -74,7 +74,13 @@ function renderApp(initialRoute = "/") {
   return render(
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
-        <MemoryRouter initialEntries={[initialRoute]}>
+        <MemoryRouter
+          initialEntries={[initialRoute]}
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <App />
         </MemoryRouter>
       </HelmetProvider>
