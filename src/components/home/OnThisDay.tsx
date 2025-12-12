@@ -51,6 +51,9 @@ export default function OnThisDay() {
                 <img
                   src={getProfileUrl(death.actor.profile_path, "w185")!}
                   alt={death.actor.name}
+                  width={64}
+                  height={80}
+                  loading="lazy"
                   className="h-20 w-16 rounded object-cover"
                 />
               ) : (
