@@ -1,0 +1,269 @@
+import { useParams, Link } from "react-router-dom"
+import { Helmet } from "react-helmet-async"
+import { useActor } from "@/hooks/useActor"
+import { extractActorId, createMovieSlug } from "@/utils/slugify"
+import { formatDate, calculateCurrentAge } from "@/utils/formatDate"
+import { getProfileUrl, getPosterUrl } from "@/services/api"
+import LoadingSpinner from "@/components/common/LoadingSpinner"
+import ErrorMessage from "@/components/common/ErrorMessage"
+import { PersonIcon, SkullIcon, FilmReelIcon } from "@/components/icons"
+import type { ActorFilmographyMovie } from "@/types"
+
+function FilmographyRow({ movie }: { movie: ActorFilmographyMovie }) {
+  const posterUrl = getPosterUrl(movie.posterPath, "w92")
+  const slug = createMovieSlug(
+    movie.title,
+    movie.releaseYear?.toString() || "unknown",
+    movie.movieId
+  )
+  const mortalityPercent =
+    movie.castCount > 0 ? Math.round((movie.deceasedCount / movie.castCount) * 100) : 0
+
+  return (
+    <Link
+      to={`/movie/${slug}`}
+      className="flex items-center gap-3 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      data-testid="filmography-row"
+    >
+      {posterUrl ? (
+        <img
+          src={posterUrl}
+          alt={movie.title}
+          width={46}
+          height={69}
+          loading="lazy"
+          className="h-[69px] w-[46px] flex-shrink-0 rounded object-cover"
+        />
+      ) : (
+        <div className="flex h-[69px] w-[46px] flex-shrink-0 items-center justify-center rounded bg-beige">
+          <FilmReelIcon size={24} className="text-text-muted" />
+        </div>
+      )}
+
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate font-display text-base text-brown-dark">{movie.title}</h3>
+        {movie.releaseYear && <p className="text-sm text-text-muted">{movie.releaseYear}</p>}
+        {movie.character && (
+          <p className="truncate text-sm italic text-text-muted">as {movie.character}</p>
+        )}
+      </div>
+
+      <div className="flex-shrink-0 text-right">
+        <p className="font-display text-lg text-brown-dark">
+          {movie.deceasedCount}/{movie.castCount}
+        </p>
+        <p className="text-xs text-text-muted">{mortalityPercent}% deceased</p>
+      </div>
+    </Link>
+  )
+}
+
+export default function ActorPage() {
+  const { slug } = useParams<{ slug: string }>()
+  const actorId = slug ? extractActorId(slug) : 0
+  const { data, isLoading, error } = useActor(actorId)
+
+  if (!actorId) {
+    return <ErrorMessage message="Invalid actor URL" />
+  }
+
+  if (isLoading) {
+    return <LoadingSpinner message="Loading actor profile..." />
+  }
+
+  if (error) {
+    return <ErrorMessage message={error.message} />
+  }
+
+  if (!data) {
+    return <ErrorMessage message="Actor not found" />
+  }
+
+  const { actor, analyzedFilmography, costarStats, deathInfo } = data
+  const profileUrl = getProfileUrl(actor.profilePath, "h632")
+  const currentAge = actor.deathday ? null : calculateCurrentAge(actor.birthday)
+  const isDeceased = !!actor.deathday
+
+  return (
+    <>
+      <Helmet>
+        <title>{actor.name} - Dead on Film</title>
+        <meta
+          name="description"
+          content={
+            costarStats
+              ? `${actor.name}'s filmography: ${costarStats.totalMoviesAnalyzed} movies analyzed with ${costarStats.totalCostarDeaths} co-star deaths.`
+              : `${actor.name}'s profile and filmography on Dead on Film.`
+          }
+        />
+        <meta property="og:title" content={`${actor.name} - Dead on Film`} />
+        <meta property="og:type" content="profile" />
+      </Helmet>
+
+      <div data-testid="actor-page" className="mx-auto max-w-3xl">
+        {/* Header section */}
+        <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+          {/* Profile photo */}
+          {profileUrl ? (
+            <img
+              src={profileUrl}
+              alt={actor.name}
+              className="h-48 w-36 flex-shrink-0 rounded-lg object-cover shadow-md"
+              data-testid="actor-profile-photo"
+            />
+          ) : (
+            <div
+              className="flex h-48 w-36 flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-md"
+              data-testid="actor-profile-placeholder"
+            >
+              <PersonIcon size={64} className="text-text-muted" />
+            </div>
+          )}
+
+          {/* Basic info */}
+          <div className="flex-1 text-center sm:text-left">
+            <div className="flex items-center justify-center gap-2 sm:justify-start">
+              <h1 className="font-display text-3xl text-brown-dark">{actor.name}</h1>
+              {isDeceased && <SkullIcon size={24} className="text-brown-medium" />}
+            </div>
+
+            <div className="mt-2 space-y-1 text-sm text-text-muted">
+              {actor.birthday && (
+                <p>
+                  <span className="font-medium">Born:</span> {formatDate(actor.birthday)}
+                  {actor.placeOfBirth && ` in ${actor.placeOfBirth}`}
+                </p>
+              )}
+
+              {isDeceased && actor.deathday && (
+                <p>
+                  <span className="font-medium">Died:</span> {formatDate(actor.deathday)}
+                  {deathInfo?.ageAtDeath && ` (age ${deathInfo.ageAtDeath})`}
+                </p>
+              )}
+
+              {!isDeceased && currentAge && (
+                <p>
+                  <span className="font-medium">Age:</span> {currentAge}
+                </p>
+              )}
+
+              {deathInfo?.causeOfDeath && (
+                <p>
+                  <span className="font-medium">Cause of Death:</span> {deathInfo.causeOfDeath}
+                </p>
+              )}
+
+              {deathInfo?.yearsLost && deathInfo.yearsLost > 0 && (
+                <p className="text-accent">
+                  Died {deathInfo.yearsLost.toFixed(1)} years before life expectancy
+                </p>
+              )}
+            </div>
+
+            {/* External links */}
+            <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+              <a
+                href={`https://www.themoviedb.org/person/${actor.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+              >
+                TMDB
+              </a>
+              {deathInfo?.wikipediaUrl && (
+                <a
+                  href={deathInfo.wikipediaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+                >
+                  Wikipedia
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Biography */}
+        {actor.biography && (
+          <div className="mb-6 rounded-lg bg-white p-4">
+            <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
+            <p className="line-clamp-6 text-sm leading-relaxed text-text-muted">
+              {actor.biography}
+            </p>
+          </div>
+        )}
+
+        {/* Co-star mortality stats */}
+        {costarStats && costarStats.totalMoviesAnalyzed > 0 && (
+          <div className="mb-6 rounded-lg bg-beige p-4">
+            <h2 className="mb-3 font-display text-lg text-brown-dark">Co-Star Mortality Stats</h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="text-center">
+                <p className="font-display text-2xl text-brown-dark">
+                  {costarStats.totalMoviesAnalyzed}
+                </p>
+                <p className="text-xs text-text-muted">movies analyzed</p>
+              </div>
+              <div className="text-center">
+                <p className="font-display text-2xl text-brown-dark">
+                  {costarStats.totalCostarDeaths}
+                </p>
+                <p className="text-xs text-text-muted">co-star deaths</p>
+              </div>
+              <div className="text-center">
+                <p className="font-display text-2xl text-brown-dark">
+                  {costarStats.totalExpectedDeaths.toFixed(1)}
+                </p>
+                <p className="text-xs text-text-muted">expected deaths</p>
+              </div>
+              <div className="text-center">
+                <p
+                  className={`font-display text-2xl ${costarStats.curseScore > 0 ? "text-accent" : "text-green-600"}`}
+                >
+                  {costarStats.curseScore > 0 ? "+" : ""}
+                  {(costarStats.curseScore * 100).toFixed(0)}%
+                </p>
+                <p className="text-xs text-text-muted">curse score</p>
+              </div>
+            </div>
+            {costarStats.curseScore > 0 && (
+              <p className="mt-3 text-center text-sm text-text-muted">
+                {actor.name}'s co-stars have died at a rate{" "}
+                {(costarStats.curseScore * 100).toFixed(0)}% higher than expected
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Filmography */}
+        <div>
+          <h2 className="mb-3 font-display text-lg text-brown-dark">
+            Analyzed Filmography
+            {analyzedFilmography.length > 0 && (
+              <span className="ml-2 text-sm font-normal text-text-muted">
+                ({analyzedFilmography.length} movies)
+              </span>
+            )}
+          </h2>
+
+          {analyzedFilmography.length === 0 ? (
+            <div className="rounded-lg bg-white p-6 text-center text-text-muted">
+              <p>No movies in our database yet.</p>
+              <p className="mt-1 text-sm">
+                This actor hasn't appeared in any movies we've analyzed for mortality statistics.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {analyzedFilmography.map((movie) => (
+                <FilmographyRow key={movie.movieId} movie={movie} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}

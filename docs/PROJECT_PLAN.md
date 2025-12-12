@@ -57,6 +57,44 @@ Based on actuarial data from US Social Security Administration life tables, the 
 
 ---
 
+## Future Feature Ideas
+
+Features enabled by storing all actor appearances (not just deceased):
+
+### Six Degrees of Death
+- Find connections between any two actors through shared movies
+- Show the "mortality chain" - how many deceased actors link them
+
+### Actor Profile Pages
+- Full filmography for any actor (not just deceased ones)
+- Personal mortality stats: "X of Y co-stars have died"
+- "Luckiest actors" - those with unusually low co-star mortality
+
+### Blessed Movies (inverse of Cursed)
+- Movies with significantly fewer deaths than expected
+- Casts that have aged remarkably well
+
+### Living Cast Reunion Stats
+- "X% of the original cast could still reunite"
+- Countdown/tracking for older movies approaching 0% living
+
+### Actor Longevity Predictions
+- Based on filmography patterns and co-star data
+- "Actors most likely to be the last survivor of [movie]"
+
+### Genre/Director Mortality Analysis
+- Do horror movie casts have higher mortality? Action films?
+- Which directors' casts have the highest/lowest mortality rates?
+
+### "Working Together" Stats
+- Actors who frequently appeared together
+- Track mortality of recurring ensembles (e.g., Christopher Guest films)
+
+### Timeline Visualizations
+- Interactive timeline showing when cast members died over the years since a movie's release
+
+---
+
 ## Seeding Commands
 
 ```bash

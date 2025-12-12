@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest"
-import { createMovieSlug, extractMovieId, extractYearFromSlug } from "./slugify"
+import {
+  createMovieSlug,
+  extractMovieId,
+  extractYearFromSlug,
+  createActorSlug,
+  extractActorId,
+} from "./slugify"
 
 describe("createMovieSlug", () => {
   it("creates a slug from title, release date, and id", () => {
@@ -94,5 +100,53 @@ describe("extractYearFromSlug", () => {
 
   it("returns null for empty string", () => {
     expect(extractYearFromSlug("")).toBe(null)
+  })
+})
+
+describe("createActorSlug", () => {
+  it("creates a slug from actor name and id", () => {
+    expect(createActorSlug("John Wayne", 4165)).toBe("john-wayne-4165")
+  })
+
+  it("handles names with apostrophes", () => {
+    expect(createActorSlug("Michael O'Brien", 12345)).toBe("michael-obrien-12345")
+  })
+
+  it("handles curly apostrophes", () => {
+    expect(createActorSlug("Michael O'Brien", 12345)).toBe("michael-obrien-12345")
+  })
+
+  it("handles names with special characters", () => {
+    expect(createActorSlug("Jean-Claude Van Damme", 5576)).toBe("jean-claude-van-damme-5576")
+  })
+
+  it("handles single word names", () => {
+    expect(createActorSlug("Madonna", 65011)).toBe("madonna-65011")
+  })
+
+  it("handles names with periods and numbers", () => {
+    expect(createActorSlug("Robert Downey Jr.", 3223)).toBe("robert-downey-jr-3223")
+  })
+})
+
+describe("extractActorId", () => {
+  it("extracts ID from valid actor slug", () => {
+    expect(extractActorId("john-wayne-4165")).toBe(4165)
+  })
+
+  it("extracts ID from actor with hyphenated name", () => {
+    expect(extractActorId("jean-claude-van-damme-5576")).toBe(5576)
+  })
+
+  it("extracts ID with large number", () => {
+    expect(extractActorId("some-actor-999999")).toBe(999999)
+  })
+
+  it("returns 0 for invalid slug without ID", () => {
+    expect(extractActorId("invalid-slug")).toBe(0)
+  })
+
+  it("returns 0 for empty string", () => {
+    expect(extractActorId("")).toBe(0)
   })
 })
