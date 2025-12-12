@@ -48,6 +48,9 @@ export default function RecentDeaths() {
               <img
                 src={getProfileUrl(death.profile_path, "w185")!}
                 alt={death.name}
+                width={64}
+                height={80}
+                loading="lazy"
                 className="mb-2 h-20 w-16 rounded object-cover"
               />
             ) : (
