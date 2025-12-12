@@ -180,3 +180,44 @@ export interface CursedActorsResponse {
   actors: CursedActor[]
   pagination: PaginationInfo
 }
+
+// Actor Profile types
+export interface ActorFilmographyMovie {
+  movieId: number
+  title: string
+  releaseYear: number | null
+  character: string | null
+  posterPath: string | null
+  deceasedCount: number
+  castCount: number
+}
+
+export interface ActorCostarStats {
+  totalMoviesAnalyzed: number
+  totalCostarDeaths: number
+  totalExpectedDeaths: number
+  curseScore: number
+}
+
+export interface ActorDeathInfo {
+  causeOfDeath: string | null
+  causeOfDeathDetails: string | null
+  wikipediaUrl: string | null
+  ageAtDeath: number | null
+  yearsLost: number | null
+}
+
+export interface ActorProfileResponse {
+  actor: {
+    id: number
+    name: string
+    birthday: string | null
+    deathday: string | null
+    biography: string
+    profilePath: string | null
+    placeOfBirth: string | null
+  }
+  analyzedFilmography: ActorFilmographyMovie[]
+  costarStats: ActorCostarStats | null
+  deathInfo: ActorDeathInfo | null
+}

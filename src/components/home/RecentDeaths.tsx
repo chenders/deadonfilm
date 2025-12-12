@@ -1,5 +1,7 @@
+import { Link } from "react-router-dom"
 import { useRecentDeaths } from "@/hooks/useRecentDeaths"
 import { getProfileUrl } from "@/services/api"
+import { createActorSlug } from "@/utils/slugify"
 import { PersonIcon } from "@/components/icons"
 import { formatDate } from "@/utils/formatDate"
 
@@ -39,9 +41,10 @@ export default function RecentDeaths() {
         className="flex justify-center gap-3 overflow-x-auto pb-2"
       >
         {data.deaths.map((death, index) => (
-          <div
+          <Link
             key={death.tmdb_id}
-            className="animate-fade-slide-in flex flex-col items-center rounded-lg bg-beige p-3 text-center"
+            to={`/actor/${createActorSlug(death.name, death.tmdb_id)}`}
+            className="animate-fade-slide-in flex flex-col items-center rounded-lg bg-beige p-3 text-center transition-colors hover:bg-cream"
             style={{ animationDelay: `${index * 50}ms` }}
           >
             {death.profile_path ? (
@@ -71,7 +74,7 @@ export default function RecentDeaths() {
                 {death.cause_of_death}
               </p>
             )}
-          </div>
+          </Link>
         ))}
       </div>
     </section>
