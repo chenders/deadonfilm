@@ -207,10 +207,12 @@ export default function ActorPage() {
 
           {/* Basic info */}
           <div className="flex-1 text-center sm:text-left">
-            <h1 className="font-display text-3xl text-brown-dark">
+            <h1
+              className={`font-display text-3xl ${isDeceased ? "text-accent" : "text-brown-dark"}`}
+            >
               {actor.name}
               {isDeceased && (
-                <span className="ml-2 text-accent" data-testid="deceased-label">
+                <span className="ml-2" data-testid="deceased-label">
                   (Deceased)
                 </span>
               )}
