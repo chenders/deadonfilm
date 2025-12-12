@@ -69,9 +69,19 @@ http {
         server_name deadonfilm.com localhost;
         root /app/frontend/dist;
         index index.html;
+
+        # Hashed assets - cache forever (1 year, immutable)
+        location /assets/ {
+            add_header Cache-Control "public, max-age=31536000, immutable";
+            try_files $uri =404;
+        }
+
+        # HTML and other files - no cache (always revalidate)
         location / {
+            add_header Cache-Control "no-cache";
             try_files $uri $uri/ /index.html;
         }
+
         gzip on;
         gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
     }
