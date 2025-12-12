@@ -8,7 +8,7 @@ import { formatDate, calculateCurrentAge } from "@/utils/formatDate"
 import { getProfileUrl, getPosterUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
-import { PersonIcon, SkullIcon, FilmReelIcon, InfoIcon } from "@/components/icons"
+import { PersonIcon, FilmReelIcon, InfoIcon } from "@/components/icons"
 import type { ActorFilmographyMovie } from "@/types"
 
 /**
@@ -188,42 +188,33 @@ export default function ActorPage() {
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
         {/* Header section */}
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-          {/* Profile photo with memorial treatment for deceased */}
-          <div className="relative flex-shrink-0">
-            {profileUrl ? (
-              <img
-                src={profileUrl}
-                alt={actor.name}
-                className={`h-48 w-36 rounded-lg object-cover shadow-md ${
-                  isDeceased ? "ring-2 ring-brown-dark/40" : ""
-                }`}
-                data-testid="actor-profile-photo"
-              />
-            ) : (
-              <div
-                className={`flex h-48 w-36 items-center justify-center rounded-lg bg-beige shadow-md ${
-                  isDeceased ? "ring-2 ring-brown-dark/40" : ""
-                }`}
-                data-testid="actor-profile-placeholder"
-              >
-                <PersonIcon size={64} className="text-text-muted" />
-              </div>
-            )}
-            {/* Skull icon overlay for deceased actors */}
-            {isDeceased && (
-              <div
-                className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-brown-dark shadow-md"
-                data-testid="deceased-indicator"
-                title="Deceased"
-              >
-                <SkullIcon size={18} className="text-cream" />
-              </div>
-            )}
-          </div>
+          {/* Profile photo */}
+          {profileUrl ? (
+            <img
+              src={profileUrl}
+              alt={actor.name}
+              className="h-48 w-36 flex-shrink-0 rounded-lg object-cover shadow-md"
+              data-testid="actor-profile-photo"
+            />
+          ) : (
+            <div
+              className="flex h-48 w-36 flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-md"
+              data-testid="actor-profile-placeholder"
+            >
+              <PersonIcon size={64} className="text-text-muted" />
+            </div>
+          )}
 
           {/* Basic info */}
           <div className="flex-1 text-center sm:text-left">
-            <h1 className="font-display text-3xl text-brown-dark">{actor.name}</h1>
+            <h1 className="font-display text-3xl text-brown-dark">
+              {actor.name}
+              {isDeceased && (
+                <span className="ml-2 text-accent" data-testid="deceased-label">
+                  (Deceased)
+                </span>
+              )}
+            </h1>
 
             <div className="mt-2 space-y-1 text-sm text-text-muted">
               {actor.birthday && (
