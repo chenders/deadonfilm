@@ -154,9 +154,9 @@ export default function ActorPage() {
                 </p>
               )}
 
-              {deathInfo?.yearsLost && deathInfo.yearsLost > 0 && (
+              {deathInfo?.yearsLost && Number(deathInfo.yearsLost) > 0 && (
                 <p className="text-accent">
-                  Died {deathInfo.yearsLost.toFixed(1)} years before life expectancy
+                  Died {Number(deathInfo.yearsLost).toFixed(1)} years before life expectancy
                 </p>
               )}
             </div>
