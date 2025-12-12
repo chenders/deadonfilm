@@ -1,7 +1,7 @@
 import { useRecentDeaths } from "@/hooks/useRecentDeaths"
 import { getProfileUrl } from "@/services/api"
 import { PersonIcon } from "@/components/icons"
-import { formatRelativeDate } from "@/utils/formatDate"
+import { formatDate } from "@/utils/formatDate"
 
 export default function RecentDeaths() {
   const { data, isLoading, error } = useRecentDeaths(5)
@@ -62,7 +62,7 @@ export default function RecentDeaths() {
             <h3 className="w-24 truncate text-sm font-medium text-brown-dark" title={death.name}>
               {death.name}
             </h3>
-            <p className="text-xs text-accent">{formatRelativeDate(death.deathday)}</p>
+            <p className="text-xs text-accent">{formatDate(death.deathday)}</p>
             {death.cause_of_death && (
               <p
                 className="mt-1 w-24 truncate text-xs text-text-muted"
