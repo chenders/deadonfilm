@@ -1,12 +1,20 @@
 /**
- * Formats a date string (YYYY-MM-DD) to a readable format
+ * Formats a date string (YYYY-MM-DD or ISO timestamp) to a readable format
  * Example: "1977-06-14" → "Jun 14, 1977"
+ * Example: "2025-12-10T08:00:00.000Z" → "Dec 10, 2025"
  */
 export function formatDate(dateString: string | null): string {
   if (!dateString) return "Unknown"
 
   try {
-    const date = new Date(dateString + "T00:00:00") // Ensure consistent parsing
+    // If it's already an ISO timestamp (contains 'T'), parse directly
+    // Otherwise add T00:00:00 for consistent timezone handling
+    const date = dateString.includes("T")
+      ? new Date(dateString)
+      : new Date(dateString + "T00:00:00")
+
+    if (isNaN(date.getTime())) return "Unknown"
+
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",

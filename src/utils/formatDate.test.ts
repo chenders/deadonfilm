@@ -30,6 +30,10 @@ describe("formatDate", () => {
     expect(formatDate("")).toBe("Unknown")
   })
 
+  it("handles ISO timestamp format", () => {
+    expect(formatDate("2025-12-10T08:00:00.000Z")).toBe("Dec 10, 2025")
+  })
+
   it("handles historic dates", () => {
     expect(formatDate("1899-05-10")).toBe("May 10, 1899")
   })
