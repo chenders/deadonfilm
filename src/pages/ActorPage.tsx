@@ -186,38 +186,40 @@ export default function ActorPage() {
       </Helmet>
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
-        {/* Deceased banner - prominent indicator */}
-        {isDeceased && (
-          <div
-            data-testid="deceased-banner"
-            className="mb-4 flex items-center justify-center gap-3 rounded-lg bg-brown-dark px-4 py-3 text-cream"
-          >
-            <SkullIcon size={24} className="flex-shrink-0" />
-            <span className="font-display text-lg">Deceased</span>
-            {actor.deathday && (
-              <span className="text-sm opacity-80">— {formatDate(actor.deathday)}</span>
-            )}
-          </div>
-        )}
-
         {/* Header section */}
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-          {/* Profile photo */}
-          {profileUrl ? (
-            <img
-              src={profileUrl}
-              alt={actor.name}
-              className="h-48 w-36 flex-shrink-0 rounded-lg object-cover shadow-md"
-              data-testid="actor-profile-photo"
-            />
-          ) : (
-            <div
-              className="flex h-48 w-36 flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-md"
-              data-testid="actor-profile-placeholder"
-            >
-              <PersonIcon size={64} className="text-text-muted" />
-            </div>
-          )}
+          {/* Profile photo with memorial treatment for deceased */}
+          <div className="relative flex-shrink-0">
+            {profileUrl ? (
+              <img
+                src={profileUrl}
+                alt={actor.name}
+                className={`h-48 w-36 rounded-lg object-cover shadow-md ${
+                  isDeceased ? "ring-2 ring-brown-dark/40" : ""
+                }`}
+                data-testid="actor-profile-photo"
+              />
+            ) : (
+              <div
+                className={`flex h-48 w-36 items-center justify-center rounded-lg bg-beige shadow-md ${
+                  isDeceased ? "ring-2 ring-brown-dark/40" : ""
+                }`}
+                data-testid="actor-profile-placeholder"
+              >
+                <PersonIcon size={64} className="text-text-muted" />
+              </div>
+            )}
+            {/* Skull icon overlay for deceased actors */}
+            {isDeceased && (
+              <div
+                className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-brown-dark shadow-md"
+                data-testid="deceased-indicator"
+                title="Deceased"
+              >
+                <SkullIcon size={18} className="text-cream" />
+              </div>
+            )}
+          </div>
 
           {/* Basic info */}
           <div className="flex-1 text-center sm:text-left">
