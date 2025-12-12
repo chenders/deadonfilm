@@ -1,26 +1,16 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
 import { createPortal } from "react-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
 import { extractActorId, createMovieSlug } from "@/utils/slugify"
 import { formatDate, calculateCurrentAge } from "@/utils/formatDate"
+import { toTitleCase } from "@/utils/formatText"
 import { getProfileUrl, getPosterUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import { PersonIcon, FilmReelIcon, InfoIcon } from "@/components/icons"
 import type { ActorFilmographyMovie } from "@/types"
-
-/**
- * Title case a string (capitalize first letter of each word)
- */
-function toTitleCase(str: string): string {
-  return str
-    .toLowerCase()
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
 
 interface TooltipProps {
   content: string
@@ -34,18 +24,21 @@ function Tooltip({ content, triggerRef, isVisible, onMouseEnter, onMouseLeave }:
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
 
-  // Calculate position when visible
-  if (isVisible && triggerRef.current && !position) {
-    const trigger = triggerRef.current.getBoundingClientRect()
-    const padding = 8
-    // Position below the trigger
-    const top = trigger.bottom + padding
-    const left = trigger.left
-    setPosition({ top, left })
-  }
+  // Calculate position when tooltip becomes visible
+  useEffect(() => {
+    if (isVisible && triggerRef.current) {
+      const trigger = triggerRef.current.getBoundingClientRect()
+      const padding = 8
+      // Position below the trigger
+      const top = trigger.bottom + padding
+      const left = trigger.left
+      setPosition({ top, left })
+    } else if (!isVisible) {
+      setPosition(null)
+    }
+  }, [isVisible, triggerRef])
 
   if (!isVisible) {
-    if (position) setPosition(null)
     return null
   }
 

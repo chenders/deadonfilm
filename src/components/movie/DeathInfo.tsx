@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { formatDate, calculateAge } from "@/utils/formatDate"
+import { toTitleCase } from "@/utils/formatText"
 import { InfoIcon } from "@/components/icons"
 
 interface DeathInfoProps {
@@ -14,17 +15,6 @@ interface DeathInfoProps {
   wikipediaUrl: string | null
   tmdbUrl: string
   isLoading?: boolean
-}
-
-/**
- * Title case a string (capitalize first letter of each word)
- */
-function toTitleCase(str: string): string {
-  return str
-    .toLowerCase()
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
 }
 
 /**
