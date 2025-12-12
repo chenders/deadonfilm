@@ -46,7 +46,10 @@ function renderWithProviders(ui: React.ReactElement, { initialEntries = ["/curse
   return render(
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
-        <MemoryRouter initialEntries={initialEntries}>
+        <MemoryRouter
+          initialEntries={initialEntries}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <Routes>
             <Route path="/cursed-actors" element={ui} />
           </Routes>
