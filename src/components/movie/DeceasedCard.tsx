@@ -1,6 +1,8 @@
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import type { DeceasedActor } from "@/types"
 import { getProfileUrl } from "@/services/api"
+import { createActorSlug } from "@/utils/slugify"
 import DeathInfo from "./DeathInfo"
 import { PersonIcon, ChevronIcon } from "@/components/icons"
 
@@ -45,7 +47,12 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 data-testid="actor-name" className="font-semibold text-brown-dark">
-                {actor.name}
+                <Link
+                  to={`/actor/${createActorSlug(actor.name, actor.id)}`}
+                  className="hover:text-accent hover:underline"
+                >
+                  {actor.name}
+                </Link>
               </h3>
               <p data-testid="actor-character" className="text-sm italic text-text-muted">
                 as {actor.character}

@@ -1,5 +1,7 @@
+import { Link } from "react-router-dom"
 import type { LivingActor } from "@/types"
 import { getProfileUrl } from "@/services/api"
+import { createActorSlug } from "@/utils/slugify"
 import { PersonIcon } from "@/components/icons"
 
 interface LivingListProps {
@@ -67,7 +69,12 @@ function LivingCard({ actor }: { actor: LivingActor }) {
         <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h3 data-testid="living-actor-name" className="font-semibold text-brown-dark">
-              {actor.name}
+              <Link
+                to={`/actor/${createActorSlug(actor.name, actor.id)}`}
+                className="hover:text-accent hover:underline"
+              >
+                {actor.name}
+              </Link>
             </h3>
             <p data-testid="living-actor-character" className="text-sm italic text-living-dark">
               as {actor.character}

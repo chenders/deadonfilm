@@ -9,6 +9,7 @@ import type {
   CursedMoviesResponse,
   CursedMoviesFiltersResponse,
   CursedActorsResponse,
+  ActorProfileResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -129,4 +130,8 @@ export function getProfileUrl(
 ): string | null {
   if (!profilePath) return null
   return `${TMDB_IMAGE_BASE}/${size}${profilePath}`
+}
+
+export async function getActor(actorId: number): Promise<ActorProfileResponse> {
+  return fetchJson(`/actor/${actorId}`)
 }

@@ -750,3 +750,105 @@ export async function getForeverYoungMovies(limit: number = 100): Promise<Foreve
   // Sort by years_lost and limit after deduplication
   return result.rows.sort((a, b) => b.years_lost - a.years_lost).slice(0, limit)
 }
+
+// ============================================================================
+// Actor profile functions
+// ============================================================================
+
+export interface ActorFilmographyMovie {
+  movieId: number
+  title: string
+  releaseYear: number | null
+  character: string | null
+  posterPath: string | null
+  deceasedCount: number
+  castCount: number
+}
+
+export interface ActorCostarStats {
+  totalMoviesAnalyzed: number
+  totalCostarDeaths: number
+  totalExpectedDeaths: number
+  curseScore: number
+}
+
+// Get actor's filmography from our database with mortality stats
+export async function getActorFilmographyWithStats(actorTmdbId: number): Promise<{
+  filmography: ActorFilmographyMovie[]
+  stats: ActorCostarStats | null
+}> {
+  const db = getPool()
+
+  // Get filmography with movie mortality stats
+  const filmographyResult = await db.query<{
+    movie_id: number
+    title: string
+    release_year: number | null
+    character_name: string | null
+    poster_path: string | null
+    deceased_count: number
+    cast_count: number
+  }>(
+    `SELECT
+       m.tmdb_id as movie_id,
+       m.title,
+       m.release_year,
+       aa.character_name,
+       m.poster_path,
+       m.deceased_count,
+       m.cast_count
+     FROM actor_appearances aa
+     JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
+     WHERE aa.actor_tmdb_id = $1
+     ORDER BY m.release_year DESC NULLS LAST`,
+    [actorTmdbId]
+  )
+
+  const filmography: ActorFilmographyMovie[] = filmographyResult.rows.map((row) => ({
+    movieId: row.movie_id,
+    title: row.title,
+    releaseYear: row.release_year,
+    character: row.character_name,
+    posterPath: row.poster_path,
+    deceasedCount: row.deceased_count,
+    castCount: row.cast_count,
+  }))
+
+  // Calculate co-star mortality stats if we have movies
+  if (filmography.length === 0) {
+    return { filmography, stats: null }
+  }
+
+  // Get aggregate stats across all movies
+  const statsResult = await db.query<{
+    total_movies: string
+    total_deaths: string
+    total_expected: string
+  }>(
+    `SELECT
+       COUNT(DISTINCT m.tmdb_id)::text as total_movies,
+       SUM(m.deceased_count)::text as total_deaths,
+       ROUND(SUM(m.expected_deaths)::numeric, 1)::text as total_expected
+     FROM actor_appearances aa
+     JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
+     WHERE aa.actor_tmdb_id = $1`,
+    [actorTmdbId]
+  )
+
+  const row = statsResult.rows[0]
+  const totalMovies = parseInt(row.total_movies, 10) || 0
+  const totalDeaths = parseInt(row.total_deaths, 10) || 0
+  const totalExpected = parseFloat(row.total_expected) || 0
+
+  const curseScore = totalExpected > 0 ? ((totalDeaths - totalExpected) / totalExpected) * 100 : 0
+
+  return {
+    filmography,
+    stats: {
+      totalMoviesAnalyzed: totalMovies,
+      totalCostarDeaths: totalDeaths,
+      totalExpectedDeaths: Math.round(totalExpected * 10) / 10,
+      curseScore: Math.round(curseScore * 10) / 10,
+    },
+  }
+}

@@ -1,7 +1,8 @@
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useCursedActors } from "@/hooks/useCursedActors"
 import { getDecadeOptions } from "@/utils/formatDate"
+import { createActorSlug } from "@/utils/slugify"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import CalculationExplainer from "@/components/common/CalculationExplainer"
@@ -31,9 +32,13 @@ function ActorRow({ actor }: { actor: CursedActor }) {
     actor.totalExpectedDeaths > 0
       ? ((actor.totalActualDeaths - actor.totalExpectedDeaths) / actor.totalExpectedDeaths) * 100
       : 0
+  const slug = createActorSlug(actor.name, actor.id)
 
   return (
-    <div className="flex items-center gap-4 rounded-lg bg-white p-3">
+    <Link
+      to={`/actor/${slug}`}
+      className="flex items-center gap-4 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+    >
       <span className="w-8 text-center font-display text-lg text-brown-medium">{actor.rank}</span>
 
       <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
@@ -61,7 +66,7 @@ function ActorRow({ actor }: { actor: CursedActor }) {
         </p>
         <p className="text-xs text-text-muted">curse score</p>
       </div>
-    </div>
+    </Link>
   )
 }
 
