@@ -7,6 +7,7 @@ import { extractMovieId } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
 import MovieHeader, { MoviePoster } from "@/components/movie/MovieHeader"
 import MortalityGauge from "@/components/movie/MortalityGauge"
+import DeathTimeline from "@/components/movie/DeathTimeline"
 import CastToggle from "@/components/movie/CastToggle"
 import DeceasedList from "@/components/movie/DeceasedList"
 import LivingList from "@/components/movie/LivingList"
@@ -83,6 +84,17 @@ export default function MoviePage() {
           <MoviePoster movie={movie} />
           <MortalityGauge stats={stats} />
         </div>
+
+        {/* Death Timeline */}
+        {stats.deceasedCount > 0 && (
+          <div className="mb-4">
+            <DeathTimeline
+              movieReleaseDate={movie.release_date}
+              deceased={enrichedDeceased}
+              livingCount={stats.livingCount}
+            />
+          </div>
+        )}
 
         {lastSurvivor && stats.mortalityPercentage >= 50 && !showLiving && (
           <LastSurvivor actor={lastSurvivor} totalLiving={stats.livingCount} />
