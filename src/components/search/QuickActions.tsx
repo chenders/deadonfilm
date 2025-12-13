@@ -30,6 +30,10 @@ export default function QuickActions() {
   const tooltipClass =
     "pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 rounded-lg bg-brown-dark px-3 py-2 text-center text-xs text-cream opacity-0 shadow-lg transition-opacity delay-300 duration-200 group-hover:opacity-100 group-hover:delay-300"
 
+  // Consistent icon size for all buttons (emojis and SVG icons)
+  const iconSize = 16
+  const emojiClass = "text-base leading-none"
+
   return (
     <div data-testid="quick-actions" className="mt-6 flex flex-wrap justify-center gap-2">
       <div className="group relative">
@@ -39,7 +43,7 @@ export default function QuickActions() {
           disabled={loading}
           className={buttonClass}
         >
-          <span className={loading ? "animate-pulse" : ""}>👼</span>
+          <span className={`${emojiClass} ${loading ? "animate-pulse" : ""}`}>👼</span>
           {loading ? "..." : "Forever Young"}
         </button>
         <span className={tooltipClass}>Movies featuring actors who died tragically young</span>
@@ -47,7 +51,7 @@ export default function QuickActions() {
 
       <div className="group relative">
         <Link data-testid="cursed-movies-btn" to="/cursed-movies" className={linkClass}>
-          <CursedFilmIcon size={14} />
+          <CursedFilmIcon size={iconSize} />
           Cursed Movies
         </Link>
         <span className={tooltipClass}>Movies with statistically abnormal mortality</span>
@@ -55,7 +59,7 @@ export default function QuickActions() {
 
       <div className="group relative">
         <Link data-testid="cursed-actors-btn" to="/cursed-actors" className={linkClass}>
-          <CursedActorIcon size={14} />
+          <CursedActorIcon size={iconSize} />
           Cursed Actors
         </Link>
         <span className={tooltipClass}>Actors with unusually high co-star mortality</span>
@@ -63,7 +67,7 @@ export default function QuickActions() {
 
       <div className="group relative">
         <Link data-testid="covid-deaths-btn" to="/covid-deaths" className={linkClass}>
-          <span className="text-sm">🦠</span>
+          <span className={emojiClass}>🦠</span>
           COVID-19
         </Link>
         <span className={tooltipClass}>Actors who died from COVID-19</span>
