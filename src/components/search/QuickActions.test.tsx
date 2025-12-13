@@ -32,13 +32,14 @@ describe("QuickActions", () => {
     vi.clearAllMocks()
   })
 
-  it("renders all three action buttons", () => {
+  it("renders all four action buttons", () => {
     renderWithRouter(<QuickActions />)
 
     expect(screen.getByTestId("quick-actions")).toBeInTheDocument()
     expect(screen.getByTestId("forever-young-btn")).toBeInTheDocument()
     expect(screen.getByTestId("cursed-movies-btn")).toBeInTheDocument()
     expect(screen.getByTestId("cursed-actors-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
   })
 
   it("displays correct button text", () => {
@@ -47,6 +48,7 @@ describe("QuickActions", () => {
     expect(screen.getByText("Forever Young")).toBeInTheDocument()
     expect(screen.getByText("Cursed Movies")).toBeInTheDocument()
     expect(screen.getByText("Cursed Actors")).toBeInTheDocument()
+    expect(screen.getByText("COVID-19")).toBeInTheDocument()
   })
 
   it("navigates to forever young movie when clicked", async () => {
@@ -93,6 +95,7 @@ describe("QuickActions", () => {
     ).toBeInTheDocument()
     expect(screen.getByText("Movies with statistically abnormal mortality")).toBeInTheDocument()
     expect(screen.getByText("Actors with unusually high co-star mortality")).toBeInTheDocument()
+    expect(screen.getByText("Actors who died from COVID-19")).toBeInTheDocument()
   })
 
   it("Cursed Movies button links to /cursed-movies", () => {
@@ -121,5 +124,18 @@ describe("QuickActions", () => {
 
     const link = screen.getByTestId("cursed-actors-btn")
     expect(link.querySelector("svg")).toBeInTheDocument()
+  })
+
+  it("COVID-19 button links to /covid-deaths", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("covid-deaths-btn")
+    expect(link).toHaveAttribute("href", "/covid-deaths")
+  })
+
+  it("COVID-19 button has microbe emoji", () => {
+    renderWithRouter(<QuickActions />)
+
+    expect(screen.getByText("🦠")).toBeInTheDocument()
   })
 })
