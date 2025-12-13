@@ -259,6 +259,7 @@ describe("CursedMoviesPage", () => {
         fromDecade: 1970,
         toDecade: 1990,
         minDeadActors: 5,
+        language: "en", // Default language
       })
     })
   })

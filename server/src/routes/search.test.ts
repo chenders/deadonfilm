@@ -78,6 +78,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
         {
           id: 2,
@@ -87,6 +88,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
         {
           id: 3,
@@ -96,6 +98,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
       ],
       total_pages: 1,
@@ -125,6 +128,7 @@ describe("searchMovies route", () => {
         poster_path: null,
         overview: "",
         genre_ids: [],
+        original_language: "en",
       })),
       total_pages: 1,
       total_results: 20,
@@ -236,6 +240,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
         {
           id: 2,
@@ -245,6 +250,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
       ],
       total_pages: 1,
@@ -274,6 +280,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
         {
           id: 2,
@@ -283,6 +290,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
         {
           id: 3,
@@ -292,6 +300,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
       ],
       total_pages: 1,
@@ -324,6 +333,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
         {
           id: 2,
@@ -333,6 +343,7 @@ describe("searchMovies route", () => {
           poster_path: null,
           overview: "",
           genre_ids: [],
+          original_language: "en",
         },
       ],
       total_pages: 1,

@@ -164,8 +164,14 @@ export interface CursedMoviesResponse {
   pagination: PaginationInfo
 }
 
+export interface LanguageOption {
+  code: string
+  count: number
+}
+
 export interface CursedMoviesFiltersResponse {
   maxMinDeaths: number
+  languages: LanguageOption[]
 }
 
 export interface CursedActor {

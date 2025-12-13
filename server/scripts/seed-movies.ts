@@ -199,6 +199,7 @@ async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
             release_year: releaseYear || null,
             poster_path: movie.poster_path,
             genres: details.genres?.map((g) => g.name) || [],
+            original_language: movie.original_language || null,
             popularity: movie.popularity || null,
             vote_average: null, // Not in TMDBMovie type
             cast_count: topCast.length,

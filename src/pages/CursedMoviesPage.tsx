@@ -12,6 +12,45 @@ import type { CursedMovie } from "@/types"
 
 const DECADE_OPTIONS = getDecadeOptions(1930)
 
+// Map ISO 639-1 language codes to readable names
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  ja: "Japanese",
+  ko: "Korean",
+  zh: "Chinese",
+  pt: "Portuguese",
+  ru: "Russian",
+  hi: "Hindi",
+  ar: "Arabic",
+  nl: "Dutch",
+  sv: "Swedish",
+  da: "Danish",
+  no: "Norwegian",
+  pl: "Polish",
+  cs: "Czech",
+  tr: "Turkish",
+  th: "Thai",
+  vi: "Vietnamese",
+  id: "Indonesian",
+  ms: "Malay",
+  tl: "Tagalog",
+  he: "Hebrew",
+  el: "Greek",
+  hu: "Hungarian",
+  ro: "Romanian",
+  uk: "Ukrainian",
+  fi: "Finnish",
+  cn: "Cantonese",
+}
+
+function getLanguageName(code: string): string {
+  return LANGUAGE_NAMES[code] || code.toUpperCase()
+}
+
 function MovieRow({ movie }: { movie: CursedMovie }) {
   const posterUrl = getPosterUrl(movie.posterPath, "w92")
   const releaseYear = movie.releaseYear?.toString() || "Unknown"
@@ -98,17 +137,19 @@ export default function CursedMoviesPage() {
   // Generate options based on fetched max, default to just "Any" while loading
   const minDeathsOptions = generateMinDeathsOptions(filtersData?.maxMinDeaths ?? 3)
 
-  // Parse URL params
+  // Parse URL params - default language to 'en' (English)
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const fromDecade = searchParams.get("from") ? parseInt(searchParams.get("from")!, 10) : undefined
   const toDecade = searchParams.get("to") ? parseInt(searchParams.get("to")!, 10) : undefined
   const minDeadActors = parseInt(searchParams.get("minDeaths") || "3", 10)
+  const language = searchParams.get("language") ?? "en" // Default to English
 
   const { data, isLoading, error } = useCursedMovies({
     page,
     fromDecade,
     toDecade,
     minDeadActors,
+    language: language || undefined, // Pass undefined if "all" is selected
   })
 
   const updateParams = (updates: Record<string, string | undefined>) => {
@@ -142,7 +183,7 @@ export default function CursedMoviesPage() {
     return <ErrorMessage message={error.message} />
   }
 
-  const hasFilters = fromDecade || toDecade || minDeadActors !== 3
+  const hasFilters = fromDecade || toDecade || minDeadActors !== 3 || language !== "en"
   const noResults = !data || data.movies.length === 0
 
   return (
@@ -225,6 +266,27 @@ export default function CursedMoviesPage() {
               {minDeathsOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="language" className="text-sm text-text-muted">
+              Language:
+            </label>
+            <select
+              id="language"
+              value={language}
+              onChange={(e) =>
+                updateParams({ language: e.target.value === "en" ? undefined : e.target.value })
+              }
+              className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+            >
+              <option value="">All Languages</option>
+              {filtersData?.languages?.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {getLanguageName(lang.code)} ({lang.count})
                 </option>
               ))}
             </select>
