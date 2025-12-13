@@ -138,4 +138,24 @@ describe("QuickActions", () => {
 
     expect(screen.getByText("🦠")).toBeInTheDocument()
   })
+
+  it("all buttons have consistent styling for height", () => {
+    renderWithRouter(<QuickActions />)
+
+    const foreverYoungBtn = screen.getByTestId("forever-young-btn")
+    const cursedMoviesBtn = screen.getByTestId("cursed-movies-btn")
+    const cursedActorsBtn = screen.getByTestId("cursed-actors-btn")
+    const covidDeathsBtn = screen.getByTestId("covid-deaths-btn")
+
+    // Verify all buttons have the same height-affecting CSS classes
+    // Note: getBoundingClientRect() returns 0 in jsdom, so we test classes instead
+    const heightClasses = ["py-1.5", "text-xs", "items-center"]
+
+    const buttons = [foreverYoungBtn, cursedMoviesBtn, cursedActorsBtn, covidDeathsBtn]
+    buttons.forEach((btn) => {
+      heightClasses.forEach((cls) => {
+        expect(btn.className).toContain(cls)
+      })
+    })
+  })
 })
