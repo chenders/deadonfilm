@@ -60,6 +60,14 @@ export default function QuickActions() {
         </Link>
         <span className={tooltipClass}>Actors with unusually high co-star mortality</span>
       </div>
+
+      <div className="group relative">
+        <Link data-testid="covid-deaths-btn" to="/covid-deaths" className={linkClass}>
+          <span className="text-sm">🦠</span>
+          COVID-19
+        </Link>
+        <span className={tooltipClass}>Actors who died from COVID-19</span>
+      </div>
     </div>
   )
 }

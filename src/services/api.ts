@@ -10,6 +10,7 @@ import type {
   CursedMoviesFiltersResponse,
   CursedActorsResponse,
   ActorProfileResponse,
+  CovidDeathsResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -136,4 +137,8 @@ export function getProfileUrl(
 
 export async function getActor(actorId: number): Promise<ActorProfileResponse> {
   return fetchJson(`/actor/${actorId}`)
+}
+
+export async function getCovidDeaths(page: number = 1): Promise<CovidDeathsResponse> {
+  return fetchJson(`/covid-deaths?page=${page}`)
 }
