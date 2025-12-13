@@ -438,7 +438,7 @@ export async function getHighMortalityMovies(
          OR NOT (
            poster_path IS NULL
            OR (original_language = 'en' AND COALESCE(popularity, 0) < 5.0 AND COALESCE(cast_count, 0) < 5)
-           OR (original_language != 'en' AND COALESCE(popularity, 0) < 20.0)
+           OR (COALESCE(original_language, '') != 'en' AND COALESCE(popularity, 0) < 20.0)
          )
        )
      ORDER BY mortality_surprise_score DESC
