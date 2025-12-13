@@ -31,6 +31,7 @@ export interface TMDBMovie {
   overview: string
   genre_ids: number[]
   popularity: number
+  original_language: string
 }
 
 export interface TMDBMovieDetails {

@@ -246,6 +246,7 @@ export interface MovieRecord {
   release_year: number | null
   poster_path: string | null
   genres: string[]
+  original_language: string | null
   popularity: number | null
   vote_average: number | null
   cast_count: number | null
@@ -266,14 +267,15 @@ export async function getMovie(tmdbId: number): Promise<MovieRecord | null> {
 export async function upsertMovie(movie: MovieRecord): Promise<void> {
   const db = getPool()
   await db.query(
-    `INSERT INTO movies (tmdb_id, title, release_date, release_year, poster_path, genres, popularity, vote_average, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
+    `INSERT INTO movies (tmdb_id, title, release_date, release_year, poster_path, genres, original_language, popularity, vote_average, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
      ON CONFLICT (tmdb_id) DO UPDATE SET
        title = EXCLUDED.title,
        release_date = EXCLUDED.release_date,
        release_year = EXCLUDED.release_year,
        poster_path = EXCLUDED.poster_path,
        genres = EXCLUDED.genres,
+       original_language = EXCLUDED.original_language,
        popularity = EXCLUDED.popularity,
        vote_average = EXCLUDED.vote_average,
        cast_count = EXCLUDED.cast_count,
@@ -289,6 +291,7 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
       movie.release_year,
       movie.poster_path,
       movie.genres,
+      movie.original_language,
       movie.popularity,
       movie.vote_average,
       movie.cast_count,
@@ -307,14 +310,15 @@ export interface HighMortalityOptions {
   fromYear?: number // Start year (e.g., 1980)
   toYear?: number // End year (e.g., 1989)
   minDeadActors?: number
+  language?: string // ISO 639-1 code (e.g., 'en', 'es', 'fr')
 }
 
 // Get movies with high mortality surprise scores
-// Supports pagination and filtering by year range and minimum deaths
+// Supports pagination and filtering by year range, minimum deaths, and language
 export async function getHighMortalityMovies(
   options: HighMortalityOptions = {}
 ): Promise<{ movies: MovieRecord[]; totalCount: number }> {
-  const { limit = 50, offset = 0, fromYear, toYear, minDeadActors = 3 } = options
+  const { limit = 50, offset = 0, fromYear, toYear, minDeadActors = 3, language } = options
 
   const db = getPool()
   const result = await db.query<MovieRecord & { total_count: string }>(
@@ -324,9 +328,10 @@ export async function getHighMortalityMovies(
        AND deceased_count >= $1
        AND ($2::integer IS NULL OR release_year >= $2)
        AND ($3::integer IS NULL OR release_year <= $3)
+       AND ($4::text IS NULL OR original_language = $4)
      ORDER BY mortality_surprise_score DESC
-     LIMIT $4 OFFSET $5`,
-    [minDeadActors, fromYear || null, toYear || null, limit, offset]
+     LIMIT $5 OFFSET $6`,
+    [minDeadActors, fromYear || null, toYear || null, language || null, limit, offset]
   )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
@@ -355,6 +360,25 @@ export async function getMaxValidMinDeaths(): Promise<number> {
 
   // Default to 3 if no valid thresholds found
   return result.rows[0]?.max_threshold ?? 3
+}
+
+// Get available languages with movie counts for filtering
+export async function getAvailableLanguages(): Promise<Array<{ code: string; count: number }>> {
+  const db = getPool()
+  const result = await db.query<{ original_language: string; count: string }>(`
+    SELECT original_language, COUNT(*) as count
+    FROM movies
+    WHERE mortality_surprise_score IS NOT NULL
+      AND deceased_count >= 3
+      AND original_language IS NOT NULL
+    GROUP BY original_language
+    ORDER BY count DESC
+  `)
+
+  return result.rows.map((row) => ({
+    code: row.original_language,
+    count: parseInt(row.count, 10),
+  }))
 }
 
 // ============================================================================
