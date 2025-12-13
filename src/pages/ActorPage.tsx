@@ -155,7 +155,7 @@ export default function ActorPage() {
     return <ErrorMessage message="Actor not found" />
   }
 
-  const { actor, analyzedFilmography, costarStats, deathInfo } = data
+  const { actor, analyzedFilmography, deathInfo } = data
   const profileUrl = getProfileUrl(actor.profilePath, "h632")
   const currentAge = actor.deathday ? null : calculateCurrentAge(actor.birthday)
   const isDeceased = !!actor.deathday
@@ -168,11 +168,7 @@ export default function ActorPage() {
         <title>{actor.name} - Dead on Film</title>
         <meta
           name="description"
-          content={
-            costarStats
-              ? `${actor.name}'s filmography: ${costarStats.totalMoviesAnalyzed} movies analyzed with ${costarStats.totalCostarDeaths} co-star deaths.`
-              : `${actor.name}'s profile and filmography on Dead on Film.`
-          }
+          content={`${actor.name}'s profile and filmography on Dead on Film.`}
         />
         <meta property="og:title" content={`${actor.name} - Dead on Film`} />
         <meta property="og:type" content="profile" />
@@ -300,48 +296,6 @@ export default function ActorPage() {
             <p className="line-clamp-6 text-sm leading-relaxed text-text-muted">
               {actor.biography}
             </p>
-          </div>
-        )}
-
-        {/* Co-star mortality stats */}
-        {costarStats && costarStats.totalMoviesAnalyzed > 0 && (
-          <div className="mb-6 rounded-lg bg-beige p-4">
-            <h2 className="mb-3 font-display text-lg text-brown-dark">Co-Star Mortality Stats</h2>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="text-center">
-                <p className="font-display text-2xl text-brown-dark">
-                  {costarStats.totalMoviesAnalyzed}
-                </p>
-                <p className="text-xs text-text-muted">movies analyzed</p>
-              </div>
-              <div className="text-center">
-                <p className="font-display text-2xl text-brown-dark">
-                  {costarStats.totalCostarDeaths}
-                </p>
-                <p className="text-xs text-text-muted">co-star deaths</p>
-              </div>
-              <div className="text-center">
-                <p className="font-display text-2xl text-brown-dark">
-                  {costarStats.totalExpectedDeaths.toFixed(1)}
-                </p>
-                <p className="text-xs text-text-muted">expected deaths</p>
-              </div>
-              <div className="text-center">
-                <p
-                  className={`font-display text-2xl ${costarStats.curseScore > 0 ? "text-accent" : "text-green-600"}`}
-                >
-                  {costarStats.curseScore > 0 ? "+" : ""}
-                  {costarStats.curseScore.toFixed(0)}%
-                </p>
-                <p className="text-xs text-text-muted">curse score</p>
-              </div>
-            </div>
-            {costarStats.curseScore > 0 && (
-              <p className="mt-3 text-center text-sm text-text-muted">
-                {actor.name}'s co-stars have died at a rate {costarStats.curseScore.toFixed(0)}%
-                higher than expected
-              </p>
-            )}
           </div>
         )}
 

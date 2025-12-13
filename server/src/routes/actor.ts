@@ -1,6 +1,6 @@
 import type { Request, Response } from "express"
 import { getPersonDetails } from "../lib/tmdb.js"
-import { getActorFilmographyWithStats, getDeceasedPerson } from "../lib/db.js"
+import { getActorFilmography, getDeceasedPerson } from "../lib/db.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -21,12 +21,6 @@ interface ActorProfileResponse {
     deceasedCount: number
     castCount: number
   }>
-  costarStats: {
-    totalMoviesAnalyzed: number
-    totalCostarDeaths: number
-    totalExpectedDeaths: number
-    curseScore: number
-  } | null
   deathInfo: {
     causeOfDeath: string | null
     causeOfDeathDetails: string | null
@@ -47,8 +41,8 @@ export async function getActor(req: Request, res: Response) {
     // Fetch actor details from TMDB
     const person = await getPersonDetails(actorId)
 
-    // Query our database for filmography and stats
-    const { filmography, stats } = await getActorFilmographyWithStats(actorId)
+    // Query our database for filmography
+    const filmography = await getActorFilmography(actorId)
 
     // Get death info if deceased
     let deathInfo: ActorProfileResponse["deathInfo"] = null
@@ -85,7 +79,6 @@ export async function getActor(req: Request, res: Response) {
         placeOfBirth: person.place_of_birth,
       },
       analyzedFilmography: filmography,
-      costarStats: stats,
       deathInfo,
     }
 
