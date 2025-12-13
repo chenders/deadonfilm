@@ -18,9 +18,8 @@ RUN npm ci
 COPY server/src/ ./src/
 COPY server/scripts/ ./scripts/
 COPY server/tsconfig.json server/tsconfig.scripts.json ./
-# Build src first, then scripts (scripts import from src, so both must be included
-# in tsconfig.scripts.json for type resolution; redundant src compilation is harmless)
-RUN npm run build && npx tsc -p tsconfig.scripts.json
+# Build src and scripts together (tsconfig.json now includes both)
+RUN npm run build
 
 # Production stage
 FROM node:22-alpine AS production
@@ -90,7 +89,7 @@ EOF
 
 # Create startup script
 RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'cd /app/server && node dist/index.js &' >> /app/start.sh && \
+    echo 'cd /app/server && node dist/src/index.js &' >> /app/start.sh && \
     echo 'nginx -g "daemon off;" &' >> /app/start.sh && \
     echo 'wait' >> /app/start.sh && \
     chmod +x /app/start.sh
