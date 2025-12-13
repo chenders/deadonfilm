@@ -27,7 +27,7 @@ function ActorRow({ actor }: { actor: DeathWatchActor }) {
       className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
-      <div className="hidden items-center gap-4 sm:flex">
+      <div className="hidden items-center gap-4 md:flex">
         <span className="w-8 text-center font-display text-lg text-brown-medium">{actor.rank}</span>
 
         {profileUrl ? (
@@ -65,7 +65,7 @@ function ActorRow({ actor }: { actor: DeathWatchActor }) {
       </div>
 
       {/* Mobile layout */}
-      <div className="flex items-start gap-3 sm:hidden">
+      <div className="flex items-start gap-3 md:hidden">
         <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
           {actor.rank}
         </span>
