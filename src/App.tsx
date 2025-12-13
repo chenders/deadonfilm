@@ -12,6 +12,7 @@ const ActorPage = lazy(() => import("./pages/ActorPage"))
 const CursedMoviesPage = lazy(() => import("./pages/CursedMoviesPage"))
 const CursedActorsPage = lazy(() => import("./pages/CursedActorsPage"))
 const CovidDeathsPage = lazy(() => import("./pages/CovidDeathsPage"))
+const DeathWatchPage = lazy(() => import("./pages/DeathWatchPage"))
 
 function App() {
   useGoogleAnalytics()
@@ -27,6 +28,7 @@ function App() {
           <Route path="/cursed-movies" element={<CursedMoviesPage />} />
           <Route path="/cursed-actors" element={<CursedActorsPage />} />
           <Route path="/covid-deaths" element={<CovidDeathsPage />} />
+          <Route path="/death-watch" element={<DeathWatchPage />} />
         </Routes>
       </Suspense>
     </Layout>

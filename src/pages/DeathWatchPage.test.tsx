@@ -1,0 +1,307 @@
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { MemoryRouter, Route, Routes } from "react-router-dom"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { HelmetProvider } from "react-helmet-async"
+import DeathWatchPage from "./DeathWatchPage"
+import * as api from "@/services/api"
+
+// Mock the API
+vi.mock("@/services/api", () => ({
+  getDeathWatch: vi.fn(),
+  getProfileUrl: vi.fn((path: string | null) => (path ? `https://image.tmdb.org${path}` : null)),
+}))
+
+const mockActors = [
+  {
+    rank: 1,
+    id: 123,
+    name: "Old Actor",
+    age: 95,
+    birthday: "1928-05-15",
+    profilePath: "/path1.jpg",
+    deathProbability: 0.3521,
+    yearsRemaining: 2.5,
+    totalMovies: 15,
+  },
+  {
+    rank: 2,
+    id: 456,
+    name: "Another Actor",
+    age: 88,
+    birthday: "1936-01-01",
+    profilePath: null,
+    deathProbability: 0.1856,
+    yearsRemaining: 5.1,
+    totalMovies: 8,
+  },
+]
+
+function renderWithProviders(ui: React.ReactElement, { initialEntries = ["/death-watch"] } = {}) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <HelmetProvider>
+        <MemoryRouter
+          initialEntries={initialEntries}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <Routes>
+            <Route path="/death-watch" element={ui} />
+          </Routes>
+        </MemoryRouter>
+      </HelmetProvider>
+    </QueryClientProvider>
+  )
+}
+
+describe("DeathWatchPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("renders loading state initially", () => {
+    vi.mocked(api.getDeathWatch).mockImplementation(
+      () => new Promise(() => {}) // Never resolves
+    )
+
+    renderWithProviders(<DeathWatchPage />)
+
+    expect(screen.getByText("Loading Death Watch...")).toBeInTheDocument()
+  })
+
+  it("renders actor list when data loads", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: {
+        page: 1,
+        pageSize: 50,
+        totalPages: 2,
+        totalCount: 100,
+      },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Old Actor")).toBeInTheDocument()
+      expect(screen.getByText("Another Actor")).toBeInTheDocument()
+    })
+  })
+
+  it("renders page title and description", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Death Watch")).toBeInTheDocument()
+      expect(
+        screen.getByText(/Living actors in our database ranked by their probability/)
+      ).toBeInTheDocument()
+    })
+  })
+
+  it("shows empty state when no results", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: [],
+      pagination: { page: 1, pageSize: 50, totalPages: 0, totalCount: 0 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("No actors found matching your criteria.")).toBeInTheDocument()
+    })
+  })
+
+  it("displays actor details correctly", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      // Check age and movie count
+      expect(screen.getByText(/Age 95/)).toBeInTheDocument()
+      expect(screen.getByText(/15 movies/)).toBeInTheDocument()
+      // Check death probability (35.2% - one decimal place for >= 1%)
+      expect(screen.getByText("35.2%")).toBeInTheDocument()
+      // Check years remaining
+      expect(screen.getByText("~2.5")).toBeInTheDocument()
+    })
+  })
+
+  it("renders pagination controls when multiple pages", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: { page: 1, pageSize: 50, totalPages: 2, totalCount: 100 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Previous")).toBeInTheDocument()
+      expect(screen.getByText("Next")).toBeInTheDocument()
+      expect(screen.getByText("Page 1 of 2")).toBeInTheDocument()
+    })
+  })
+
+  it("disables Previous button on first page", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: { page: 1, pageSize: 50, totalPages: 2, totalCount: 100 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Previous")).toBeDisabled()
+      expect(screen.getByText("Next")).not.toBeDisabled()
+    })
+  })
+
+  it("calls API with page 2 when Next is clicked", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: { page: 1, pageSize: 50, totalPages: 2, totalCount: 100 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Next")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText("Next"))
+
+    await waitFor(() => {
+      expect(api.getDeathWatch).toHaveBeenCalledWith({ page: 2, includeObscure: false })
+    })
+  })
+
+  it("hides pagination when only one page", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Old Actor")).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText("Previous")).not.toBeInTheDocument()
+    expect(screen.queryByText("Next")).not.toBeInTheDocument()
+  })
+
+  it("renders error state when API fails", async () => {
+    vi.mocked(api.getDeathWatch).mockRejectedValue(new Error("API Error"))
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("error-message")).toBeInTheDocument()
+      },
+      { timeout: 3000 }
+    )
+
+    expect(screen.getByTestId("error-text")).toHaveTextContent("API Error")
+  })
+
+  it("shows total count footer", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: { page: 1, pageSize: 50, totalPages: 2, totalCount: 100 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Showing 2 of 100 actors")).toBeInTheDocument()
+    })
+  })
+
+  it("toggles include obscure filter", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Include lesser-known actors")).toBeInTheDocument()
+    })
+
+    const checkbox = screen.getByRole("checkbox")
+    expect(checkbox).not.toBeChecked()
+
+    fireEvent.click(checkbox)
+
+    await waitFor(() => {
+      expect(api.getDeathWatch).toHaveBeenCalledWith({ page: 1, includeObscure: true })
+    })
+  })
+
+  it("actor rows link to actor profile pages", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: mockActors,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      const actorRow = screen.getByTestId("death-watch-row-123")
+      expect(actorRow).toHaveAttribute("href", "/actor/old-actor-123")
+    })
+  })
+
+  it("displays placeholder icon when no profile image", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: [mockActors[1]], // Another Actor has no profile path
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 1 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      // The PersonIcon should be rendered as an SVG
+      const actorRow = screen.getByTestId("death-watch-row-456")
+      expect(actorRow.querySelector("svg")).toBeInTheDocument()
+    })
+  })
+
+  it("formats low death probabilities with two decimal places", async () => {
+    vi.mocked(api.getDeathWatch).mockResolvedValue({
+      actors: [
+        {
+          ...mockActors[0],
+          deathProbability: 0.005, // 0.5%
+        },
+      ],
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 1 },
+    })
+
+    renderWithProviders(<DeathWatchPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("0.50%")).toBeInTheDocument()
+    })
+  })
+})
