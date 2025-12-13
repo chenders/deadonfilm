@@ -61,8 +61,15 @@ export async function getDeathWatchHandler(req: Request, res: Response) {
         try {
           const lifeExpectancy = await getCohortLifeExpectancy(birthYear, "combined")
           yearsRemaining = Math.max(0, Math.round((lifeExpectancy - actor.age) * 10) / 10)
-        } catch {
+        } catch (err) {
           // Cohort data may not be available for all birth years
+          // Log unexpected errors for debugging
+          if (err instanceof Error && !err.message.includes("not found")) {
+            console.error(
+              `Error calculating yearsRemaining for ${actor.actor_name} (birthYear: ${birthYear}):`,
+              err
+            )
+          }
         }
 
         return {
