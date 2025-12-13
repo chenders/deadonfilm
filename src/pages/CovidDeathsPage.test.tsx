@@ -89,8 +89,9 @@ describe("CovidDeathsPage", () => {
     renderWithProviders(<CovidDeathsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Actor One")).toBeInTheDocument()
-      expect(screen.getByText("Actor Two")).toBeInTheDocument()
+      // Use getAllByText since responsive layout renders both desktop and mobile versions
+      expect(screen.getAllByText("Actor One").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Actor Two").length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -130,9 +131,10 @@ describe("CovidDeathsPage", () => {
     renderWithProviders(<CovidDeathsPage />)
 
     await waitFor(() => {
-      // Check death info is displayed
-      expect(screen.getByText(/at age 72/)).toBeInTheDocument()
-      expect(screen.getByText("COVID-19")).toBeInTheDocument()
+      // Check death info is displayed - use getAllByText since responsive layout renders both desktop and mobile versions
+      expect(screen.getAllByText(/Age 72/).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("COVID-19").length).toBeGreaterThanOrEqual(1)
+      // Details only shown in desktop view
       expect(screen.getByText("Complications from COVID-19")).toBeInTheDocument()
     })
   })
@@ -194,7 +196,8 @@ describe("CovidDeathsPage", () => {
     renderWithProviders(<CovidDeathsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Actor One")).toBeInTheDocument()
+      // Use getAllByText since responsive layout renders both desktop and mobile versions
+      expect(screen.getAllByText("Actor One").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(screen.queryByText("Previous")).not.toBeInTheDocument()
