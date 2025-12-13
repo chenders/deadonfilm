@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Link } from "react-router-dom"
 import { getProfileUrl } from "@/services/api"
 import { createActorSlug } from "@/utils/slugify"
@@ -12,43 +12,39 @@ interface MiniTimelineProps {
   deceased: DeceasedActor[]
 }
 
-interface DeathYearData {
-  year: number
-  count: number
-  actors: DeceasedActor[]
-  position: number // 0-100 percentage
-}
-
 export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProps) {
   const [expandedYear, setExpandedYear] = useState<number | null>(null)
   const [hoveredActorId, setHoveredActorId] = useState<number | null>(null)
 
-  if (deceased.length === 0) {
-    return null
-  }
-
   const currentYear = new Date().getFullYear()
   const totalYears = currentYear - releaseYear
 
-  // Group deaths by year and calculate positions
-  const deathsByYear = deceased.reduce(
-    (acc, actor) => {
-      const year = new Date(actor.deathday).getFullYear()
-      if (!acc[year]) acc[year] = []
-      acc[year].push(actor)
-      return acc
-    },
-    {} as Record<number, DeceasedActor[]>
-  )
+  // Memoize timeline data calculations to avoid recalculating on every render
+  const deathYearData = useMemo(() => {
+    // Group deaths by year
+    const deathsByYear = deceased.reduce(
+      (acc, actor) => {
+        const year = new Date(actor.deathday).getFullYear()
+        if (!acc[year]) acc[year] = []
+        acc[year].push(actor)
+        return acc
+      },
+      {} as Record<number, DeceasedActor[]>
+    )
 
-  const deathYearData: DeathYearData[] = Object.entries(deathsByYear)
-    .map(([yearStr, actors]) => {
-      const year = parseInt(yearStr, 10)
-      const yearOffset = year - releaseYear
-      const position = totalYears > 0 ? (yearOffset / totalYears) * 100 : 0
-      return { year, count: actors.length, actors, position }
-    })
-    .sort((a, b) => a.year - b.year)
+    return Object.entries(deathsByYear)
+      .map(([yearStr, actors]) => {
+        const year = parseInt(yearStr, 10)
+        const yearOffset = year - releaseYear
+        const position = totalYears > 0 ? (yearOffset / totalYears) * 100 : 0
+        return { year, count: actors.length, actors, position }
+      })
+      .sort((a, b) => a.year - b.year)
+  }, [deceased, releaseYear, totalYears])
+
+  if (deceased.length === 0) {
+    return null
+  }
 
   const toggleYear = (year: number) => {
     setExpandedYear(expandedYear === year ? null : year)
@@ -85,6 +81,8 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                     onClick={() => toggleYear(yearData.year)}
                     className="flex w-full items-center gap-2 text-left text-sm transition-colors hover:text-accent"
                     data-testid={`timeline-year-${yearData.year}`}
+                    aria-expanded={expandedYear === yearData.year}
+                    aria-controls={`timeline-content-${yearData.year}`}
                   >
                     <span className="font-semibold text-accent">{yearData.year}</span>
                     <span className="text-text-muted">
@@ -97,6 +95,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
+                      aria-hidden="true"
                     >
                       <path
                         strokeLinecap="round"
@@ -109,6 +108,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
 
                   {/* Expanded actor list with animation */}
                   <div
+                    id={`timeline-content-${yearData.year}`}
                     className={`overflow-hidden transition-all duration-300 ease-in-out ${
                       expandedYear === yearData.year
                         ? "mt-3 max-h-[1000px] opacity-100"
@@ -134,7 +134,10 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                                   className="h-16 w-12 rounded object-cover transition-transform hover:scale-105"
                                 />
                               ) : (
-                                <div className="flex h-16 w-12 items-center justify-center rounded bg-beige text-text-muted">
+                                <div
+                                  className="flex h-16 w-12 items-center justify-center rounded bg-beige text-text-muted"
+                                  aria-hidden="true"
+                                >
                                   <PersonIcon size={24} />
                                 </div>
                               )}
@@ -215,7 +218,10 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-beige text-text-muted">
+                              <div
+                                className="flex h-full w-full items-center justify-center bg-beige text-text-muted"
+                                aria-hidden="true"
+                              >
                                 <PersonIcon size={18} />
                               </div>
                             )}
