@@ -14,8 +14,7 @@ import LivingList from "@/components/movie/LivingList"
 import LastSurvivor from "@/components/movie/LastSurvivor"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
-
-type ViewMode = "list" | "timeline"
+import type { ViewMode } from "@/types"
 
 export default function MoviePage() {
   const { slug } = useParams<{ slug: string }>()

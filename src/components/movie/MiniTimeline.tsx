@@ -35,12 +35,10 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
     return Object.entries(deathsByYear)
       .map(([yearStr, actors]) => {
         const year = parseInt(yearStr, 10)
-        const yearOffset = year - releaseYear
-        const position = totalYears > 0 ? (yearOffset / totalYears) * 100 : 0
-        return { year, count: actors.length, actors, position }
+        return { year, count: actors.length, actors }
       })
       .sort((a, b) => a.year - b.year)
-  }, [deceased, releaseYear, totalYears])
+  }, [deceased])
 
   if (deceased.length === 0) {
     return null
