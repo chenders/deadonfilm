@@ -11,6 +11,7 @@ import type {
   CursedActorsResponse,
   ActorProfileResponse,
   CovidDeathsResponse,
+  DeathWatchResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -141,4 +142,25 @@ export async function getActor(actorId: number): Promise<ActorProfileResponse> {
 
 export async function getCovidDeaths(page: number = 1): Promise<CovidDeathsResponse> {
   return fetchJson(`/covid-deaths?page=${page}`)
+}
+
+export interface DeathWatchOptions {
+  page?: number
+  limit?: number
+  minAge?: number
+  minMovies?: number
+  includeObscure?: boolean
+}
+
+export async function getDeathWatch(options: DeathWatchOptions = {}): Promise<DeathWatchResponse> {
+  const { page = 1, limit = 50, minAge, minMovies, includeObscure } = options
+  const params = new URLSearchParams()
+
+  params.set("page", String(page))
+  params.set("limit", String(limit))
+  if (minAge) params.set("minAge", String(minAge))
+  if (minMovies) params.set("minMovies", String(minMovies))
+  if (includeObscure) params.set("includeObscure", "true")
+
+  return fetchJson(`/death-watch?${params.toString()}`)
 }

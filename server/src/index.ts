@@ -13,6 +13,7 @@ import { getDiscoverMovie, getCursedMovies, getCursedMoviesFilters } from "./rou
 import { getStats, getRecentDeathsHandler, getCovidDeathsHandler } from "./routes/stats.js"
 import { getCursedActorsRoute } from "./routes/actors.js"
 import { getActor } from "./routes/actor.js"
+import { getDeathWatchHandler } from "./routes/death-watch.js"
 import { initializeDatabase } from "./lib/startup.js"
 
 const app = express()
@@ -51,6 +52,7 @@ app.get("/api/recent-deaths", getRecentDeathsHandler)
 app.get("/api/covid-deaths", getCovidDeathsHandler)
 app.get("/api/cursed-actors", getCursedActorsRoute)
 app.get("/api/actor/:id", getActor)
+app.get("/api/death-watch", getDeathWatchHandler)
 
 // Initialize database and start server
 async function startServer() {

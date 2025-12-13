@@ -74,6 +74,14 @@ export default function QuickActions() {
         </Link>
         <span className={tooltipClass}>Actors who died from COVID-19</span>
       </div>
+
+      <div className="group relative">
+        <Link data-testid="death-watch-btn" to="/death-watch" className={linkClass}>
+          <span className="text-sm">⏳</span>
+          Death Watch
+        </Link>
+        <span className={tooltipClass}>Living actors most likely to die soon</span>
+      </div>
     </div>
   )
 }
