@@ -1,6 +1,53 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, Page } from "@playwright/test"
+
+const mockDeathWatchResponse = {
+  actors: [
+    {
+      id: 11111,
+      rank: 1,
+      name: "Test Elderly Actor",
+      profilePath: "/test-elderly-1.jpg",
+      age: 95,
+      birthday: "1929-05-15",
+      deathProbability: 0.35,
+      yearsRemaining: 3,
+      totalMovies: 45,
+    },
+    {
+      id: 22222,
+      rank: 2,
+      name: "Test Senior Actor",
+      profilePath: null,
+      age: 88,
+      birthday: "1936-08-20",
+      deathProbability: 0.22,
+      yearsRemaining: 5,
+      totalMovies: 32,
+    },
+  ],
+  pagination: {
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+    totalCount: 2,
+  },
+}
+
+async function setupMocks(page: Page) {
+  await page.route("**/api/death-watch**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockDeathWatchResponse),
+    })
+  })
+}
 
 test.describe("Death Watch Page", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupMocks(page)
+  })
+
   test("displays death watch page with actor list", async ({ page }) => {
     await page.goto("/death-watch")
 

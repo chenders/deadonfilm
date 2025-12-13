@@ -1,6 +1,51 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, Page } from "@playwright/test"
+
+const mockCovidDeathsResponse = {
+  persons: [
+    {
+      id: 12345,
+      rank: 1,
+      name: "Test Actor One",
+      profilePath: "/test-profile-1.jpg",
+      deathday: "2021-03-15",
+      ageAtDeath: 72,
+      causeOfDeath: "COVID-19",
+      causeOfDeathDetails: "Complications from COVID-19",
+    },
+    {
+      id: 67890,
+      rank: 2,
+      name: "Test Actor Two",
+      profilePath: null,
+      deathday: "2020-12-20",
+      ageAtDeath: 65,
+      causeOfDeath: "COVID-19",
+      causeOfDeathDetails: null,
+    },
+  ],
+  pagination: {
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+    totalCount: 2,
+  },
+}
+
+async function setupMocks(page: Page) {
+  await page.route("**/api/covid-deaths**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockCovidDeathsResponse),
+    })
+  })
+}
 
 test.describe("COVID-19 Deaths Page", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupMocks(page)
+  })
+
   test("displays covid deaths page with actor list", async ({ page }) => {
     await page.goto("/covid-deaths")
 
