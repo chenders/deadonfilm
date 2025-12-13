@@ -58,18 +58,25 @@ async function runBackfill(options: BackfillOptions) {
       ? "1=1"
       : "(birthday IS NULL OR profile_path IS NULL OR popularity IS NULL)"
 
-    const limitClause = limit ? `LIMIT ${limit}` : ""
+    // Use parameterized query for LIMIT to prevent SQL injection
+    const params: number[] = []
+    let paramIndex = 1
+    const limitClause = limit ? `LIMIT $${paramIndex++}` : ""
+    if (limit) params.push(limit)
 
     const result = await db.query<{
       actor_tmdb_id: number
       actor_name: string
-    }>(`
+    }>(
+      `
       SELECT DISTINCT actor_tmdb_id, actor_name
       FROM actor_appearances
       WHERE ${whereClause}
       ORDER BY actor_tmdb_id
       ${limitClause}
-    `)
+    `,
+      params
+    )
 
     console.log(`Found ${result.rows.length} actors to process\n`)
 

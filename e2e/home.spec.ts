@@ -34,7 +34,7 @@ test.describe("Home Page", () => {
     // Visual regression test - compare against baseline
     // This will fail if the layout changes (e.g., more than 4 buttons per row)
     await expect(quickActions).toHaveScreenshot("quick-actions-layout.png", {
-      maxDiffPixelRatio: 0.1,
+      maxDiffPixelRatio: 0.02, // Strict 2% tolerance to catch layout regressions
     })
   })
 
