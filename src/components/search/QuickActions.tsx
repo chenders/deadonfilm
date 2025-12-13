@@ -30,7 +30,9 @@ export default function QuickActions() {
   const tooltipClass =
     "pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 rounded-lg bg-brown-dark px-3 py-2 text-center text-xs text-cream opacity-0 shadow-lg transition-opacity delay-300 duration-200 group-hover:opacity-100 group-hover:delay-300"
 
-  // Consistent icon size for all buttons (emojis and SVG icons)
+  // Consistent icon size for all buttons: both emojis and SVG icons are 16px
+  // - SVG icons use `iconSize` (16)
+  // - Emojis use Tailwind's `text-base` (16px) via `emojiClass`
   const iconSize = 16
   const emojiClass = "text-base leading-none"
 
