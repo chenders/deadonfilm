@@ -41,7 +41,7 @@ function ActorRow({ person }: { person: CovidDeath }) {
           <h3 className="truncate font-display text-lg text-brown-dark">{person.name}</h3>
           <p className="text-sm text-text-muted">
             Died {formatDate(person.deathday)}
-            {person.ageAtDeath && ` at age ${person.ageAtDeath}`}
+            {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
           </p>
         </div>
 

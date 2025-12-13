@@ -85,7 +85,7 @@ function ActorRow({ actor }: { actor: DeathWatchActor }) {
         <div className="min-w-0 flex-1">
           <h3 className="truncate font-display text-base text-brown-dark">{actor.name}</h3>
           <p className="text-xs text-text-muted">
-            Age {actor.age} · {actor.totalMovies} movie{actor.totalMovies !== 1 && "s"}
+            Age {actor.age} &middot; {actor.totalMovies} movie{actor.totalMovies !== 1 && "s"}
           </p>
           <div className="mt-1 flex items-center gap-3 text-xs">
             <span className="font-medium text-brown-dark">
