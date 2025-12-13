@@ -15,13 +15,13 @@ export default function Footer() {
           >
             <img src="/tmdb-logo.svg" alt="TMDB" className="h-3" />
           </a>
-          <p className="text-[10px] text-brown-medium/60">
+          <p className="text-[10px] text-text-muted">
             This product uses the{" "}
             <a
               href="https://developer.themoviedb.org/docs/faq#what-are-the-attribution-requirements"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-brown-medium/80"
+              className="underline hover:text-brown-dark"
             >
               TMDB API
             </a>{" "}
