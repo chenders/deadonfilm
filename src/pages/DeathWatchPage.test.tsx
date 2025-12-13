@@ -91,8 +91,9 @@ describe("DeathWatchPage", () => {
     renderWithProviders(<DeathWatchPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Old Actor")).toBeInTheDocument()
-      expect(screen.getByText("Another Actor")).toBeInTheDocument()
+      // Use getAllByText since responsive layout renders both desktop and mobile versions
+      expect(screen.getAllByText("Old Actor").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Another Actor").length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -134,13 +135,14 @@ describe("DeathWatchPage", () => {
     renderWithProviders(<DeathWatchPage />)
 
     await waitFor(() => {
+      // Use getAllByText since responsive layout renders both desktop and mobile versions
       // Check age and movie count
-      expect(screen.getByText(/Age 95/)).toBeInTheDocument()
-      expect(screen.getByText(/15 movies/)).toBeInTheDocument()
+      expect(screen.getAllByText(/Age 95/).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText(/15 movie/).length).toBeGreaterThanOrEqual(1)
       // Check death probability (35.2% - one decimal place for >= 1%)
-      expect(screen.getByText("35.2%")).toBeInTheDocument()
-      // Check years remaining
-      expect(screen.getByText("~2.5")).toBeInTheDocument()
+      expect(screen.getAllByText(/35\.2%/).length).toBeGreaterThanOrEqual(1)
+      // Check years remaining (desktop shows ~2.5, mobile shows ~2.5 yrs left)
+      expect(screen.getAllByText(/~2\.5/).length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -201,7 +203,8 @@ describe("DeathWatchPage", () => {
     renderWithProviders(<DeathWatchPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Old Actor")).toBeInTheDocument()
+      // Use getAllByText since responsive layout renders both desktop and mobile versions
+      expect(screen.getAllByText("Old Actor").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(screen.queryByText("Previous")).not.toBeInTheDocument()

@@ -24,42 +24,79 @@ function ActorRow({ actor }: { actor: DeathWatchActor }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`death-watch-row-${actor.id}`}
-      className="flex items-center gap-4 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
     >
-      <span className="w-8 text-center font-display text-lg text-brown-medium">{actor.rank}</span>
+      {/* Desktop layout */}
+      <div className="hidden items-center gap-4 sm:flex">
+        <span className="w-8 text-center font-display text-lg text-brown-medium">{actor.rank}</span>
 
-      {profileUrl ? (
-        <img
-          src={profileUrl}
-          alt={actor.name}
-          className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
-        />
-      ) : (
-        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-          <PersonIcon size={24} className="text-brown-medium" />
+        {profileUrl ? (
+          <img
+            src={profileUrl}
+            alt={actor.name}
+            className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
+            <PersonIcon size={24} className="text-brown-medium" />
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-display text-lg text-brown-dark">{actor.name}</h3>
+          <p className="text-sm text-text-muted">
+            Age {actor.age} &middot; {actor.totalMovies} movie{actor.totalMovies !== 1 && "s"}
+          </p>
         </div>
-      )}
 
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate font-display text-lg text-brown-dark">{actor.name}</h3>
-        <p className="text-sm text-text-muted">
-          Age {actor.age} &middot; {actor.totalMovies} movie{actor.totalMovies !== 1 && "s"}
-        </p>
-      </div>
-
-      <div className="flex-shrink-0 text-right">
-        <p className="font-display text-lg text-brown-dark">
-          {formatPercentage(actor.deathProbability)}
-        </p>
-        <p className="text-xs text-text-muted">chance this year</p>
-      </div>
-
-      {actor.yearsRemaining !== null && (
         <div className="flex-shrink-0 text-right">
-          <p className="font-display text-lg text-brown-dark">~{actor.yearsRemaining}</p>
-          <p className="text-xs text-text-muted">years left</p>
+          <p className="font-display text-lg text-brown-dark">
+            {formatPercentage(actor.deathProbability)}
+          </p>
+          <p className="text-xs text-text-muted">chance this year</p>
         </div>
-      )}
+
+        {actor.yearsRemaining !== null && (
+          <div className="flex-shrink-0 text-right">
+            <p className="font-display text-lg text-brown-dark">~{actor.yearsRemaining}</p>
+            <p className="text-xs text-text-muted">years left</p>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile layout */}
+      <div className="flex items-start gap-3 sm:hidden">
+        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+          {actor.rank}
+        </span>
+
+        {profileUrl ? (
+          <img
+            src={profileUrl}
+            alt={actor.name}
+            className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-beige">
+            <PersonIcon size={20} className="text-brown-medium" />
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-display text-base text-brown-dark">{actor.name}</h3>
+          <p className="text-xs text-text-muted">
+            Age {actor.age} · {actor.totalMovies} movie{actor.totalMovies !== 1 && "s"}
+          </p>
+          <div className="mt-1 flex items-center gap-3 text-xs">
+            <span className="font-medium text-brown-dark">
+              {formatPercentage(actor.deathProbability)} risk
+            </span>
+            {actor.yearsRemaining !== null && (
+              <span className="text-text-muted">~{actor.yearsRemaining} yrs left</span>
+            )}
+          </div>
+        </div>
+      </div>
     </Link>
   )
 }
