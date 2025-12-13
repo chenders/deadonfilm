@@ -29,6 +29,7 @@ describe("getActor", () => {
     profile_path: "/profile.jpg",
     place_of_birth: "Los Angeles, CA",
     imdb_id: "nm1234567",
+    popularity: 5.5,
   }
 
   const mockDeceasedPerson = {
@@ -40,6 +41,7 @@ describe("getActor", () => {
     profile_path: "/legacy.jpg",
     place_of_birth: "New York, NY",
     imdb_id: "nm7654321",
+    popularity: 8.2,
   }
 
   const mockFilmography = [

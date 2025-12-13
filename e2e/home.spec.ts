@@ -14,6 +14,30 @@ test.describe("Home Page", () => {
     await page.screenshot({ path: "e2e/screenshots/home-page.png", fullPage: true })
   })
 
+  test("quick actions buttons layout", async ({ page }) => {
+    await page.goto("/")
+
+    // Verify quick actions container is visible
+    const quickActions = page.getByTestId("quick-actions")
+    await expect(quickActions).toBeVisible()
+
+    // Verify all 5 buttons are present
+    await expect(page.getByTestId("forever-young-btn")).toBeVisible()
+    await expect(page.getByTestId("cursed-movies-btn")).toBeVisible()
+    await expect(page.getByTestId("cursed-actors-btn")).toBeVisible()
+    await expect(page.getByTestId("covid-deaths-btn")).toBeVisible()
+    await expect(page.getByTestId("death-watch-btn")).toBeVisible()
+
+    // Take screenshot of quick actions for visual regression testing
+    await quickActions.screenshot({ path: "e2e/screenshots/quick-actions.png" })
+
+    // Visual regression test - compare against baseline
+    // This will fail if the layout changes (e.g., more than 4 buttons per row)
+    await expect(quickActions).toHaveScreenshot("quick-actions-layout.png", {
+      maxDiffPixelRatio: 0.02, // Strict 2% tolerance to catch layout regressions
+    })
+  })
+
   test("search shows dropdown results", async ({ page }) => {
     await page.goto("/")
 

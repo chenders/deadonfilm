@@ -80,6 +80,7 @@ export interface TMDBPerson {
   profile_path: string | null
   place_of_birth: string | null
   imdb_id: string | null
+  popularity: number
 }
 
 async function tmdbFetch<T>(path: string): Promise<T> {

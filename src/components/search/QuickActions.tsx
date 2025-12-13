@@ -37,7 +37,10 @@ export default function QuickActions() {
   const emojiClass = "text-base leading-none"
 
   return (
-    <div data-testid="quick-actions" className="mt-6 flex flex-wrap justify-center gap-2">
+    <div
+      data-testid="quick-actions"
+      className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-2"
+    >
       <div className="group relative">
         <button
           data-testid="forever-young-btn"
@@ -73,6 +76,14 @@ export default function QuickActions() {
           COVID-19
         </Link>
         <span className={tooltipClass}>Actors who died from COVID-19</span>
+      </div>
+
+      <div className="group relative">
+        <Link data-testid="death-watch-btn" to="/death-watch" className={linkClass}>
+          <span className="text-sm">⏳</span>
+          Death Watch
+        </Link>
+        <span className={tooltipClass}>Living actors most likely to die soon</span>
       </div>
     </div>
   )

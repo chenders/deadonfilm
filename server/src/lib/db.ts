@@ -992,3 +992,113 @@ export async function updateMovieLanguage(
     )
   }
 }
+
+// ============================================================================
+// Death Watch feature - living actors most likely to die soon
+// ============================================================================
+
+export interface DeathWatchOptions {
+  limit?: number
+  offset?: number
+  minAge?: number
+  minMovies?: number
+  includeObscure?: boolean
+}
+
+export interface DeathWatchActorRecord {
+  actor_tmdb_id: number
+  actor_name: string
+  birthday: string
+  age: number
+  profile_path: string | null
+  popularity: number | null
+  total_movies: number
+}
+
+// Get living actors for the Death Watch feature
+// Returns actors ordered by age (oldest first = highest death probability)
+// Death probability is calculated in application code using actuarial tables
+export async function getDeathWatchActors(options: DeathWatchOptions = {}): Promise<{
+  actors: DeathWatchActorRecord[]
+  totalCount: number
+}> {
+  const { limit = 50, offset = 0, minAge, minMovies = 2, includeObscure = false } = options
+
+  const db = getPool()
+
+  // Build dynamic WHERE conditions
+  const conditions: string[] = []
+  const params: (number | boolean)[] = []
+  let paramIndex = 1
+
+  // Min age filter (applied in outer WHERE)
+  if (minAge !== undefined) {
+    conditions.push(`age >= $${paramIndex}`)
+    params.push(minAge)
+    paramIndex++
+  }
+
+  // Obscure filter - exclude actors without profile photos or low popularity
+  if (!includeObscure) {
+    conditions.push(`profile_path IS NOT NULL`)
+    conditions.push(`popularity >= 5.0`)
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
+
+  // Add pagination and minMovies params
+  params.push(minMovies)
+  const minMoviesParamIndex = paramIndex++
+  params.push(limit)
+  const limitParamIndex = paramIndex++
+  params.push(offset)
+  const offsetParamIndex = paramIndex++
+
+  const query = `
+    WITH living_actors AS (
+      SELECT
+        aa.actor_tmdb_id,
+        aa.actor_name,
+        aa.birthday,
+        aa.profile_path,
+        MAX(aa.popularity) as popularity,
+        COUNT(DISTINCT aa.movie_tmdb_id) as total_movies,
+        EXTRACT(YEAR FROM age(aa.birthday))::integer as age
+      FROM actor_appearances aa
+      WHERE aa.is_deceased = false
+        AND aa.birthday IS NOT NULL
+      GROUP BY aa.actor_tmdb_id, aa.actor_name, aa.birthday, aa.profile_path
+      HAVING COUNT(DISTINCT aa.movie_tmdb_id) >= $${minMoviesParamIndex}
+    )
+    SELECT
+      actor_tmdb_id,
+      actor_name,
+      birthday::text,
+      age,
+      profile_path,
+      popularity::decimal,
+      total_movies::integer,
+      COUNT(*) OVER() as total_count
+    FROM living_actors
+    ${whereClause}
+    ORDER BY age DESC, popularity DESC NULLS LAST
+    LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
+  `
+
+  const result = await db.query(query, params)
+
+  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
+
+  // Remove the total_count field from each row
+  const actors = result.rows.map(
+    ({
+      total_count: _,
+      ...actor
+    }: { total_count: string } & DeathWatchActorRecord): DeathWatchActorRecord => ({
+      ...actor,
+      popularity: actor.popularity ? parseFloat(String(actor.popularity)) : null,
+    })
+  )
+
+  return { actors, totalCount }
+}
