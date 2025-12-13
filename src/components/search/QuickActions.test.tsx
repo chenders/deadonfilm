@@ -155,6 +155,20 @@ describe("QuickActions", () => {
     expect(screen.getByText("⏳")).toBeInTheDocument()
   })
 
+  it("limits buttons to max 4 per row using CSS grid", () => {
+    renderWithRouter(<QuickActions />)
+
+    const container = screen.getByTestId("quick-actions")
+
+    // Verify grid layout with max 4 columns
+    expect(container.className).toContain("grid")
+    expect(container.className).toContain("grid-cols-2")
+    expect(container.className).toContain("sm:grid-cols-4")
+
+    // Ensure no flex override that could show more than 4 per row
+    expect(container.className).not.toContain("flex")
+  })
+
   it("all buttons have consistent styling for height", () => {
     renderWithRouter(<QuickActions />)
 
