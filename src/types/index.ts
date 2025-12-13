@@ -1,3 +1,6 @@
+// UI types
+export type ViewMode = "list" | "timeline"
+
 // Movie types
 export interface MovieSearchResult {
   id: number
