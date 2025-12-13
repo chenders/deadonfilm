@@ -195,13 +195,6 @@ export interface ActorFilmographyMovie {
   castCount: number
 }
 
-export interface ActorCostarStats {
-  totalMoviesAnalyzed: number
-  totalCostarDeaths: number
-  totalExpectedDeaths: number
-  curseScore: number
-}
-
 export interface ActorDeathInfo {
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
@@ -221,6 +214,5 @@ export interface ActorProfileResponse {
     placeOfBirth: string | null
   }
   analyzedFilmography: ActorFilmographyMovie[]
-  costarStats: ActorCostarStats | null
   deathInfo: ActorDeathInfo | null
 }
