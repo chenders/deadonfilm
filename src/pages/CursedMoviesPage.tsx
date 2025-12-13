@@ -103,12 +103,14 @@ export default function CursedMoviesPage() {
   const fromDecade = searchParams.get("from") ? parseInt(searchParams.get("from")!, 10) : undefined
   const toDecade = searchParams.get("to") ? parseInt(searchParams.get("to")!, 10) : undefined
   const minDeadActors = parseInt(searchParams.get("minDeaths") || "3", 10)
+  const includeObscure = searchParams.get("includeObscure") === "true"
 
   const { data, isLoading, error } = useCursedMovies({
     page,
     fromDecade,
     toDecade,
     minDeadActors,
+    includeObscure,
   })
 
   const updateParams = (updates: Record<string, string | undefined>) => {
@@ -142,7 +144,7 @@ export default function CursedMoviesPage() {
     return <ErrorMessage message={error.message} />
   }
 
-  const hasFilters = fromDecade || toDecade || minDeadActors !== 3
+  const hasFilters = fromDecade || toDecade || minDeadActors !== 3 || includeObscure
   const noResults = !data || data.movies.length === 0
 
   return (
@@ -229,6 +231,18 @@ export default function CursedMoviesPage() {
               ))}
             </select>
           </div>
+
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
+            <input
+              type="checkbox"
+              checked={includeObscure}
+              onChange={(e) =>
+                updateParams({ includeObscure: e.target.checked ? "true" : undefined })
+              }
+              className="rounded border-brown-medium/30"
+            />
+            Include obscure movies
+          </label>
 
           {hasFilters && (
             <button

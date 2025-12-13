@@ -4,15 +4,113 @@ const { Pool } = pg
 
 let pool: pg.Pool | null = null
 
+/**
+ * Creates a new database pool with connection recovery settings.
+ * Configures idle timeout, connection timeout, and error handling
+ * to gracefully recover from connection terminations (common with
+ * serverless databases like Neon).
+ */
+function createPool(): pg.Pool {
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) {
+    throw new Error("DATABASE_URL environment variable is not set")
+  }
+
+  const newPool = new Pool({
+    connectionString,
+    // Connection pool settings for resilience
+    max: 20, // Maximum number of clients in the pool
+    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+    connectionTimeoutMillis: 10000, // Fail connection attempts after 10 seconds
+  })
+
+  // Handle pool-level errors (e.g., unexpected disconnections)
+  // This prevents unhandled errors from crashing the process
+  newPool.on("error", (err: Error) => {
+    console.error("Unexpected database pool error:", err.message)
+    // Don't exit - let the pool recover naturally
+    // The pool will create new connections as needed
+  })
+
+  return newPool
+}
+
 export function getPool(): pg.Pool {
   if (!pool) {
-    const connectionString = process.env.DATABASE_URL
-    if (!connectionString) {
-      throw new Error("DATABASE_URL environment variable is not set")
-    }
-    pool = new Pool({ connectionString })
+    pool = createPool()
   }
   return pool
+}
+
+/**
+ * Reset the pool connection. Call this if you need to force
+ * reconnection after a catastrophic failure.
+ */
+export async function resetPool(): Promise<void> {
+  if (pool) {
+    try {
+      await pool.end()
+    } catch (err) {
+      console.error("Error closing pool:", err)
+    }
+    pool = null
+  }
+}
+
+/**
+ * Check if an error is a connection-related error that should be retried.
+ */
+function isConnectionError(err: unknown): boolean {
+  if (err instanceof Error) {
+    const message = err.message.toLowerCase()
+    return (
+      message.includes("connection terminated") ||
+      message.includes("connection refused") ||
+      message.includes("connection reset") ||
+      message.includes("econnreset") ||
+      message.includes("econnrefused") ||
+      message.includes("etimedout") ||
+      message.includes("socket hang up") ||
+      message.includes("network error")
+    )
+  }
+  return false
+}
+
+/**
+ * Execute a query with automatic retry on connection errors.
+ * Retries up to 3 times with exponential backoff (100ms, 200ms, 400ms).
+ */
+export async function queryWithRetry<T>(
+  queryFn: (pool: pg.Pool) => Promise<T>,
+  maxRetries: number = 3
+): Promise<T> {
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const db = getPool()
+      return await queryFn(db)
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+
+      if (isConnectionError(err) && attempt < maxRetries - 1) {
+        // Exponential backoff: 100ms, 200ms, 400ms
+        const delay = 100 * Math.pow(2, attempt)
+        console.warn(
+          `Database connection error (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay}ms:`,
+          lastError.message
+        )
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        continue
+      }
+
+      throw lastError
+    }
+  }
+
+  // This shouldn't be reached, but TypeScript needs it
+  throw lastError ?? new Error("Query failed after retries")
 }
 
 export async function initDatabase(): Promise<void> {
@@ -246,6 +344,7 @@ export interface MovieRecord {
   release_year: number | null
   poster_path: string | null
   genres: string[]
+  original_language: string | null
   popularity: number | null
   vote_average: number | null
   cast_count: number | null
@@ -266,15 +365,16 @@ export async function getMovie(tmdbId: number): Promise<MovieRecord | null> {
 export async function upsertMovie(movie: MovieRecord): Promise<void> {
   const db = getPool()
   await db.query(
-    `INSERT INTO movies (tmdb_id, title, release_date, release_year, poster_path, genres, popularity, vote_average, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
+    `INSERT INTO movies (tmdb_id, title, release_date, release_year, poster_path, genres, original_language, popularity, vote_average, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
      ON CONFLICT (tmdb_id) DO UPDATE SET
        title = EXCLUDED.title,
        release_date = EXCLUDED.release_date,
        release_year = EXCLUDED.release_year,
        poster_path = EXCLUDED.poster_path,
        genres = EXCLUDED.genres,
-       popularity = EXCLUDED.popularity,
+       original_language = COALESCE(EXCLUDED.original_language, movies.original_language),
+       popularity = COALESCE(EXCLUDED.popularity, movies.popularity),
        vote_average = EXCLUDED.vote_average,
        cast_count = EXCLUDED.cast_count,
        deceased_count = EXCLUDED.deceased_count,
@@ -289,6 +389,7 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
       movie.release_year,
       movie.poster_path,
       movie.genres,
+      movie.original_language,
       movie.popularity,
       movie.vote_average,
       movie.cast_count,
@@ -307,14 +408,22 @@ export interface HighMortalityOptions {
   fromYear?: number // Start year (e.g., 1980)
   toYear?: number // End year (e.g., 1989)
   minDeadActors?: number
+  includeObscure?: boolean // Include obscure/unknown movies (default: false)
 }
 
 // Get movies with high mortality surprise scores
-// Supports pagination and filtering by year range and minimum deaths
+// Supports pagination and filtering by year range, minimum deaths, and obscurity
 export async function getHighMortalityMovies(
   options: HighMortalityOptions = {}
 ): Promise<{ movies: MovieRecord[]; totalCount: number }> {
-  const { limit = 50, offset = 0, fromYear, toYear, minDeadActors = 3 } = options
+  const {
+    limit = 50,
+    offset = 0,
+    fromYear,
+    toYear,
+    minDeadActors = 3,
+    includeObscure = false,
+  } = options
 
   const db = getPool()
   const result = await db.query<MovieRecord & { total_count: string }>(
@@ -324,9 +433,17 @@ export async function getHighMortalityMovies(
        AND deceased_count >= $1
        AND ($2::integer IS NULL OR release_year >= $2)
        AND ($3::integer IS NULL OR release_year <= $3)
+       AND (
+         $6::boolean = true
+         OR NOT (
+           poster_path IS NULL
+           OR (original_language = 'en' AND COALESCE(popularity, 0) < 5.0 AND cast_count IS NOT NULL AND cast_count < 5)
+           OR (original_language IS NOT NULL AND original_language != 'en' AND COALESCE(popularity, 0) < 20.0)
+         )
+       )
      ORDER BY mortality_surprise_score DESC
      LIMIT $4 OFFSET $5`,
-    [minDeadActors, fromYear || null, toYear || null, limit, offset]
+    [minDeadActors, fromYear || null, toYear || null, limit, offset, includeObscure]
   )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
@@ -802,4 +919,39 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
     deceasedCount: row.deceased_count,
     castCount: row.cast_count,
   }))
+}
+
+// ============================================================================
+// Language backfill functions
+// ============================================================================
+
+// Get TMDB IDs of movies that don't have original_language set (NULL or empty string)
+export async function getMoviesWithoutLanguage(limit?: number): Promise<number[]> {
+  const db = getPool()
+  const query = limit
+    ? `SELECT tmdb_id FROM movies WHERE original_language IS NULL OR original_language = '' LIMIT $1`
+    : `SELECT tmdb_id FROM movies WHERE original_language IS NULL OR original_language = ''`
+  const params = limit ? [limit] : []
+  const result = await db.query<{ tmdb_id: number }>(query, params)
+  return result.rows.map((row) => row.tmdb_id)
+}
+
+// Update a movie's original language and optionally popularity
+export async function updateMovieLanguage(
+  tmdbId: number,
+  language: string,
+  popularity?: number
+): Promise<void> {
+  const db = getPool()
+  if (popularity !== undefined) {
+    await db.query(
+      `UPDATE movies SET original_language = $1, popularity = $2, updated_at = NOW() WHERE tmdb_id = $3`,
+      [language, popularity, tmdbId]
+    )
+  } else {
+    await db.query(
+      `UPDATE movies SET original_language = $1, updated_at = NOW() WHERE tmdb_id = $2`,
+      [language, tmdbId]
+    )
+  }
 }
