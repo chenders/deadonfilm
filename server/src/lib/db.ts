@@ -765,21 +765,10 @@ export interface ActorFilmographyMovie {
   castCount: number
 }
 
-export interface ActorCostarStats {
-  totalMoviesAnalyzed: number
-  totalCostarDeaths: number
-  totalExpectedDeaths: number
-  curseScore: number
-}
-
-// Get actor's filmography from our database with mortality stats
-export async function getActorFilmographyWithStats(actorTmdbId: number): Promise<{
-  filmography: ActorFilmographyMovie[]
-  stats: ActorCostarStats | null
-}> {
+// Get actor's filmography from our database
+export async function getActorFilmography(actorTmdbId: number): Promise<ActorFilmographyMovie[]> {
   const db = getPool()
 
-  // Get filmography with movie mortality stats
   const filmographyResult = await db.query<{
     movie_id: number
     title: string
@@ -804,7 +793,7 @@ export async function getActorFilmographyWithStats(actorTmdbId: number): Promise
     [actorTmdbId]
   )
 
-  const filmography: ActorFilmographyMovie[] = filmographyResult.rows.map((row) => ({
+  return filmographyResult.rows.map((row) => ({
     movieId: row.movie_id,
     title: row.title,
     releaseYear: row.release_year,
@@ -813,42 +802,4 @@ export async function getActorFilmographyWithStats(actorTmdbId: number): Promise
     deceasedCount: row.deceased_count,
     castCount: row.cast_count,
   }))
-
-  // Calculate co-star mortality stats if we have movies
-  if (filmography.length === 0) {
-    return { filmography, stats: null }
-  }
-
-  // Get aggregate stats across all movies
-  const statsResult = await db.query<{
-    total_movies: string
-    total_deaths: string
-    total_expected: string
-  }>(
-    `SELECT
-       COUNT(DISTINCT m.tmdb_id)::text as total_movies,
-       SUM(m.deceased_count)::text as total_deaths,
-       ROUND(SUM(m.expected_deaths)::numeric, 1)::text as total_expected
-     FROM actor_appearances aa
-     JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-     WHERE aa.actor_tmdb_id = $1`,
-    [actorTmdbId]
-  )
-
-  const row = statsResult.rows[0]
-  const totalMovies = parseInt(row.total_movies, 10) || 0
-  const totalDeaths = parseInt(row.total_deaths, 10) || 0
-  const totalExpected = parseFloat(row.total_expected) || 0
-
-  const curseScore = totalExpected > 0 ? ((totalDeaths - totalExpected) / totalExpected) * 100 : 0
-
-  return {
-    filmography,
-    stats: {
-      totalMoviesAnalyzed: totalMovies,
-      totalCostarDeaths: totalDeaths,
-      totalExpectedDeaths: Math.round(totalExpected * 10) / 10,
-      curseScore: Math.round(curseScore * 10) / 10,
-    },
-  }
 }
