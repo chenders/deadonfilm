@@ -17,40 +17,75 @@ function ActorRow({ person }: { person: CovidDeath }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`covid-death-row-${person.id}`}
-      className="flex items-center gap-4 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
     >
-      <span className="w-8 text-center font-display text-lg text-brown-medium">{person.rank}</span>
+      {/* Desktop layout */}
+      <div className="hidden items-center gap-4 md:flex">
+        <span className="w-8 text-center font-display text-lg text-brown-medium">
+          {person.rank}
+        </span>
 
-      {profileUrl ? (
-        <img
-          src={profileUrl}
-          alt={person.name}
-          className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
-        />
-      ) : (
-        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-          <PersonIcon size={24} className="text-brown-medium" />
+        {profileUrl ? (
+          <img
+            src={profileUrl}
+            alt={person.name}
+            className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
+            <PersonIcon size={24} className="text-brown-medium" />
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-display text-lg text-brown-dark">{person.name}</h3>
+          <p className="text-sm text-text-muted">
+            Died {formatDate(person.deathday)}
+            {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
+          </p>
         </div>
-      )}
 
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate font-display text-lg text-brown-dark">{person.name}</h3>
-        <p className="text-sm text-text-muted">
-          Died {formatDate(person.deathday)}
-          {person.ageAtDeath && ` at age ${person.ageAtDeath}`}
-        </p>
+        <div className="flex-shrink-0 text-right">
+          {person.causeOfDeath && <p className="text-sm text-brown-dark">{person.causeOfDeath}</p>}
+          {person.causeOfDeathDetails && (
+            <p
+              className="max-w-xs truncate text-xs text-text-muted"
+              title={person.causeOfDeathDetails}
+            >
+              {person.causeOfDeathDetails}
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="flex-shrink-0 text-right">
-        {person.causeOfDeath && <p className="text-sm text-brown-dark">{person.causeOfDeath}</p>}
-        {person.causeOfDeathDetails && (
-          <p
-            className="max-w-xs truncate text-xs text-text-muted"
-            title={person.causeOfDeathDetails}
-          >
-            {person.causeOfDeathDetails}
-          </p>
+      {/* Mobile layout */}
+      <div className="flex items-start gap-3 md:hidden">
+        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+          {person.rank}
+        </span>
+
+        {profileUrl ? (
+          <img
+            src={profileUrl}
+            alt={person.name}
+            className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-beige">
+            <PersonIcon size={20} className="text-brown-medium" />
+          </div>
         )}
+
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-display text-base text-brown-dark">{person.name}</h3>
+          <p className="text-xs text-text-muted">
+            Died {formatDate(person.deathday)}
+            {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
+          </p>
+          {person.causeOfDeath && (
+            <p className="mt-1 text-xs text-brown-dark">{person.causeOfDeath}</p>
+          )}
+        </div>
       </div>
     </Link>
   )
