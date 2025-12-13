@@ -179,6 +179,53 @@ describe("getCursedMovies", () => {
     )
   })
 
+  it("defaults includeObscure to false (hides obscure movies)", async () => {
+    vi.mocked(db.getHighMortalityMovies).mockResolvedValueOnce({
+      movies: mockMovies,
+      totalCount: 100,
+    })
+
+    await getCursedMovies(mockReq as Request, mockRes as Response)
+
+    expect(db.getHighMortalityMovies).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeObscure: false,
+      })
+    )
+  })
+
+  it("parses includeObscure=true correctly", async () => {
+    mockReq.query = { includeObscure: "true" }
+    vi.mocked(db.getHighMortalityMovies).mockResolvedValueOnce({
+      movies: mockMovies,
+      totalCount: 100,
+    })
+
+    await getCursedMovies(mockReq as Request, mockRes as Response)
+
+    expect(db.getHighMortalityMovies).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeObscure: true,
+      })
+    )
+  })
+
+  it("treats includeObscure=false as false", async () => {
+    mockReq.query = { includeObscure: "false" }
+    vi.mocked(db.getHighMortalityMovies).mockResolvedValueOnce({
+      movies: mockMovies,
+      totalCount: 100,
+    })
+
+    await getCursedMovies(mockReq as Request, mockRes as Response)
+
+    expect(db.getHighMortalityMovies).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeObscure: false,
+      })
+    )
+  })
+
   it("limits to 100 movies per page", async () => {
     mockReq.query = { limit: "200" }
     vi.mocked(db.getHighMortalityMovies).mockResolvedValueOnce({
@@ -244,6 +291,7 @@ describe("getCursedMovies", () => {
       fromYear: 1970,
       toYear: 1999, // 1990 + 9
       minDeadActors: 5,
+      includeObscure: false,
     })
 
     expect(jsonSpy).toHaveBeenCalledWith({

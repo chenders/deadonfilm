@@ -51,6 +51,16 @@ Years Lost:
 
 3. **Cursed Actors**: Calculated by summing expected and actual co-star deaths across all of an actor's filmography, then computing the curse score.
 
+### Obscure Movie Filtering
+
+The Cursed Movies page filters out obscure/unknown movies by default to improve result quality. A movie is considered "obscure" if any of these conditions apply:
+
+- **No poster image**: `poster_path IS NULL`
+- **English movies**: `popularity < 5.0 AND cast_count < 5` (low popularity combined with small cast)
+- **Non-English movies**: `popularity < 20.0` (higher threshold since US is the primary demographic)
+
+Users can toggle "Include obscure movies" checkbox to see all movies. This setting is controlled via the `includeObscure` URL parameter.
+
 ### Server Libraries
 
 - `server/src/lib/mortality-stats.ts` - Calculation utilities
@@ -59,7 +69,7 @@ Years Lost:
 
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
 - **Backend**: Node.js + Express.js + TypeScript
-- **Database**: PostgreSQL (Neon serverless in production)
+- **Database**: PostgreSQL (Neon Launch plan - $19/month, 10GB storage)
 - **State Management**: TanStack Query (React Query)
 - **Routing**: React Router v6
 - **Deployment**: Google Kubernetes Engine (GKE)
@@ -134,8 +144,8 @@ cd server && npm test        # Backend unit tests
 - `GET /api/movie/{id}/death-info?personIds=1,2,3` - Poll for cause of death updates
 - `GET /api/on-this-day` - Deaths on current date
 - `GET /api/discover/{type}` - Get a random movie by discovery type (currently: `forever-young`)
-- `GET /api/cursed-movies` - List movies ranked by curse score (with pagination/filters)
-- `GET /api/cursed-movies/filters` - Get filter options for cursed movies
+- `GET /api/cursed-movies` - List movies ranked by curse score (with pagination/filters, obscure movies hidden by default)
+- `GET /api/cursed-movies/filters` - Get filter options for cursed movies (maxMinDeaths)
 - `GET /api/cursed-actors` - List actors ranked by co-star mortality (with pagination/filters)
 - `GET /api/stats` - Get site-wide statistics
 - `GET /health` - Health check for Kubernetes
@@ -360,6 +370,11 @@ npm run backfill:birthdays
 
 # Backfill missing profile photos from TMDB
 npm run backfill:profiles
+
+# Backfill missing language data for movies
+npm run backfill:languages                      # Process all movies
+npm run backfill:languages -- --batch-size 500  # Limit batch size
+npm run backfill:languages -- --dry-run         # Preview without writing
 
 # Sync with TMDB Changes API (detect new deaths, update movies)
 npm run sync:tmdb                    # Normal sync (since last run)

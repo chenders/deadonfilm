@@ -259,7 +259,7 @@ describe("CursedMoviesPage", () => {
         fromDecade: 1970,
         toDecade: 1990,
         minDeadActors: 5,
-        language: "en", // Default language
+        includeObscure: false,
       })
     })
   })
@@ -293,5 +293,99 @@ describe("CursedMoviesPage", () => {
 
     expect(screen.queryByText("Previous")).not.toBeInTheDocument()
     expect(screen.queryByText("Next")).not.toBeInTheDocument()
+  })
+
+  it("renders Include obscure movies checkbox", async () => {
+    vi.mocked(api.getCursedMovies).mockResolvedValue({
+      movies: mockMovies,
+      pagination: { page: 1, pageSize: 50, totalCount: 100, totalPages: 2 },
+    })
+
+    renderWithProviders(<CursedMoviesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Include obscure movies")).toBeInTheDocument()
+    })
+  })
+
+  it("defaults includeObscure to false (checkbox unchecked)", async () => {
+    vi.mocked(api.getCursedMovies).mockResolvedValue({
+      movies: mockMovies,
+      pagination: { page: 1, pageSize: 50, totalCount: 100, totalPages: 2 },
+    })
+
+    renderWithProviders(<CursedMoviesPage />)
+
+    await waitFor(() => {
+      const checkbox = screen.getByLabelText("Include obscure movies") as HTMLInputElement
+      expect(checkbox.checked).toBe(false)
+    })
+
+    // Verify API was called with includeObscure: false
+    expect(api.getCursedMovies).toHaveBeenCalledWith(
+      expect.objectContaining({
+        includeObscure: false,
+      })
+    )
+  })
+
+  it("calls API with includeObscure=true when checkbox is checked", async () => {
+    vi.mocked(api.getCursedMovies).mockResolvedValue({
+      movies: mockMovies,
+      pagination: { page: 1, pageSize: 50, totalCount: 100, totalPages: 2 },
+    })
+
+    renderWithProviders(<CursedMoviesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Include obscure movies")).toBeInTheDocument()
+    })
+
+    // Check the checkbox
+    fireEvent.click(screen.getByLabelText("Include obscure movies"))
+
+    await waitFor(() => {
+      expect(api.getCursedMovies).toHaveBeenCalledWith(
+        expect.objectContaining({
+          includeObscure: true,
+        })
+      )
+    })
+  })
+
+  it("shows Clear filters when includeObscure is true", async () => {
+    vi.mocked(api.getCursedMovies).mockResolvedValue({
+      movies: mockMovies,
+      pagination: { page: 1, pageSize: 50, totalCount: 100, totalPages: 2 },
+    })
+
+    renderWithProviders(<CursedMoviesPage />, {
+      initialEntries: ["/cursed-movies?includeObscure=true"],
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText("Clear filters")).toBeInTheDocument()
+      const checkbox = screen.getByLabelText("Include obscure movies") as HTMLInputElement
+      expect(checkbox.checked).toBe(true)
+    })
+  })
+
+  it("reads includeObscure from URL parameters", async () => {
+    vi.mocked(api.getCursedMovies).mockResolvedValue({
+      movies: mockMovies,
+      pagination: { page: 1, pageSize: 50, totalCount: 100, totalPages: 2 },
+    })
+
+    renderWithProviders(<CursedMoviesPage />, {
+      initialEntries: ["/cursed-movies?includeObscure=true"],
+    })
+
+    await waitFor(() => {
+      expect(api.getCursedMovies).toHaveBeenCalledWith(
+        expect.objectContaining({
+          includeObscure: true,
+        })
+      )
+    })
   })
 })

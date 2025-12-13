@@ -408,15 +408,22 @@ export interface HighMortalityOptions {
   fromYear?: number // Start year (e.g., 1980)
   toYear?: number // End year (e.g., 1989)
   minDeadActors?: number
-  language?: string // ISO 639-1 code (e.g., 'en', 'es', 'fr')
+  includeObscure?: boolean // Include obscure/unknown movies (default: false)
 }
 
 // Get movies with high mortality surprise scores
-// Supports pagination and filtering by year range, minimum deaths, and language
+// Supports pagination and filtering by year range, minimum deaths, and obscurity
 export async function getHighMortalityMovies(
   options: HighMortalityOptions = {}
 ): Promise<{ movies: MovieRecord[]; totalCount: number }> {
-  const { limit = 50, offset = 0, fromYear, toYear, minDeadActors = 3, language } = options
+  const {
+    limit = 50,
+    offset = 0,
+    fromYear,
+    toYear,
+    minDeadActors = 3,
+    includeObscure = false,
+  } = options
 
   const db = getPool()
   const result = await db.query<MovieRecord & { total_count: string }>(
@@ -426,10 +433,17 @@ export async function getHighMortalityMovies(
        AND deceased_count >= $1
        AND ($2::integer IS NULL OR release_year >= $2)
        AND ($3::integer IS NULL OR release_year <= $3)
-       AND ($4::text IS NULL OR original_language = $4)
+       AND (
+         $6::boolean = true
+         OR NOT (
+           poster_path IS NULL
+           OR (original_language = 'en' AND COALESCE(popularity, 0) < 5.0 AND COALESCE(cast_count, 0) < 5)
+           OR (original_language != 'en' AND COALESCE(popularity, 0) < 20.0)
+         )
+       )
      ORDER BY mortality_surprise_score DESC
-     LIMIT $5 OFFSET $6`,
-    [minDeadActors, fromYear || null, toYear || null, language || null, limit, offset]
+     LIMIT $4 OFFSET $5`,
+    [minDeadActors, fromYear || null, toYear || null, limit, offset, includeObscure]
   )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
@@ -458,25 +472,6 @@ export async function getMaxValidMinDeaths(): Promise<number> {
 
   // Default to 3 if no valid thresholds found
   return result.rows[0]?.max_threshold ?? 3
-}
-
-// Get available languages with movie counts for filtering
-export async function getAvailableLanguages(): Promise<Array<{ code: string; count: number }>> {
-  const db = getPool()
-  const result = await db.query<{ original_language: string; count: string }>(`
-    SELECT original_language, COUNT(*) as count
-    FROM movies
-    WHERE mortality_surprise_score IS NOT NULL
-      AND deceased_count >= 3
-      AND original_language IS NOT NULL
-    GROUP BY original_language
-    ORDER BY count DESC
-  `)
-
-  return result.rows.map((row) => ({
-    code: row.original_language,
-    count: parseInt(row.count, 10),
-  }))
 }
 
 // ============================================================================
@@ -924,4 +919,28 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
     deceasedCount: row.deceased_count,
     castCount: row.cast_count,
   }))
+}
+
+// ============================================================================
+// Language backfill functions
+// ============================================================================
+
+// Get TMDB IDs of movies that don't have original_language set
+export async function getMoviesWithoutLanguage(limit?: number): Promise<number[]> {
+  const db = getPool()
+  const query = limit
+    ? `SELECT tmdb_id FROM movies WHERE original_language IS NULL LIMIT $1`
+    : `SELECT tmdb_id FROM movies WHERE original_language IS NULL`
+  const params = limit ? [limit] : []
+  const result = await db.query<{ tmdb_id: number }>(query, params)
+  return result.rows.map((row) => row.tmdb_id)
+}
+
+// Update a movie's original language
+export async function updateMovieLanguage(tmdbId: number, language: string): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `UPDATE movies SET original_language = $1, updated_at = NOW() WHERE tmdb_id = $2`,
+    [language, tmdbId]
+  )
 }
