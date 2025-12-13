@@ -216,3 +216,20 @@ export interface ActorProfileResponse {
   analyzedFilmography: ActorFilmographyMovie[]
   deathInfo: ActorDeathInfo | null
 }
+
+// COVID-19 Deaths types
+export interface CovidDeath {
+  rank: number
+  id: number
+  name: string
+  deathday: string
+  causeOfDeath: string | null
+  causeOfDeathDetails: string | null
+  profilePath: string | null
+  ageAtDeath: number | null
+}
+
+export interface CovidDeathsResponse {
+  persons: CovidDeath[]
+  pagination: PaginationInfo
+}

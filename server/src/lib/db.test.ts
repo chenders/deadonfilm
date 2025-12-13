@@ -39,6 +39,7 @@ import {
   getMoviesWithoutLanguage,
   updateMovieLanguage,
   upsertMovie,
+  getCovidDeaths,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -571,6 +572,129 @@ describe("Sync State Functions", () => {
 
       // Should not throw
       await expect(resetPool()).resolves.toBeUndefined()
+    })
+  })
+
+  describe("getCovidDeaths", () => {
+    it("returns persons with totalCount using window function", async () => {
+      const mockRows = [
+        {
+          total_count: "10",
+          tmdb_id: 1,
+          name: "Actor One",
+          birthday: "1950-01-01",
+          deathday: "2021-03-15",
+          cause_of_death: "COVID-19",
+          cause_of_death_source: "claude",
+          cause_of_death_details: "Complications",
+          cause_of_death_details_source: "claude",
+          wikipedia_url: "https://example.com",
+          profile_path: "/path.jpg",
+          age_at_death: 71,
+          expected_lifespan: 78,
+          years_lost: 7,
+        },
+      ]
+      mockQuery.mockResolvedValueOnce({ rows: mockRows })
+
+      const result = await getCovidDeaths({ limit: 50, offset: 0 })
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("SELECT COUNT(*) OVER () as total_count"),
+        [50, 0]
+      )
+      expect(result.totalCount).toBe(10)
+      expect(result.persons).toHaveLength(1)
+      // total_count should be stripped from persons
+      expect(result.persons[0]).not.toHaveProperty("total_count")
+    })
+
+    it("searches cause_of_death and cause_of_death_details for COVID terms", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getCovidDeaths()
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("cause_of_death ILIKE '%covid%'")
+      expect(query).toContain("cause_of_death ILIKE '%coronavirus%'")
+      expect(query).toContain("cause_of_death ILIKE '%sars-cov-2%'")
+      expect(query).toContain("cause_of_death_details ILIKE '%covid%'")
+      expect(query).toContain("cause_of_death_details ILIKE '%coronavirus%'")
+      expect(query).toContain("cause_of_death_details ILIKE '%sars-cov-2%'")
+    })
+
+    it("orders by deathday DESC", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getCovidDeaths()
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("ORDER BY deathday DESC")
+    })
+
+    it("uses default limit and offset when not provided", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getCovidDeaths()
+
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [50, 0])
+    })
+
+    it("uses custom limit and offset", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getCovidDeaths({ limit: 25, offset: 50 })
+
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [25, 50])
+    })
+
+    it("returns 0 totalCount when no rows returned", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      const result = await getCovidDeaths()
+
+      expect(result.totalCount).toBe(0)
+      expect(result.persons).toEqual([])
+    })
+
+    it("strips total_count from returned persons", async () => {
+      const mockRows = [
+        {
+          total_count: "5",
+          tmdb_id: 1,
+          name: "Test Actor",
+          birthday: null,
+          deathday: "2021-01-01",
+          cause_of_death: "COVID-19",
+          cause_of_death_source: null,
+          cause_of_death_details: null,
+          cause_of_death_details_source: null,
+          wikipedia_url: null,
+          profile_path: null,
+          age_at_death: null,
+          expected_lifespan: null,
+          years_lost: null,
+        },
+      ]
+      mockQuery.mockResolvedValueOnce({ rows: mockRows })
+
+      const result = await getCovidDeaths()
+
+      expect(result.persons[0]).toEqual({
+        tmdb_id: 1,
+        name: "Test Actor",
+        birthday: null,
+        deathday: "2021-01-01",
+        cause_of_death: "COVID-19",
+        cause_of_death_source: null,
+        cause_of_death_details: null,
+        cause_of_death_details_source: null,
+        wikipedia_url: null,
+        profile_path: null,
+        age_at_death: null,
+        expected_lifespan: null,
+        years_lost: null,
+      })
     })
   })
 })
