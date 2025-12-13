@@ -138,4 +138,22 @@ describe("QuickActions", () => {
 
     expect(screen.getByText("🦠")).toBeInTheDocument()
   })
+
+  it("all buttons have consistent height", () => {
+    renderWithRouter(<QuickActions />)
+
+    const foreverYoungBtn = screen.getByTestId("forever-young-btn")
+    const cursedMoviesBtn = screen.getByTestId("cursed-movies-btn")
+    const cursedActorsBtn = screen.getByTestId("cursed-actors-btn")
+    const covidDeathsBtn = screen.getByTestId("covid-deaths-btn")
+
+    const buttons = [foreverYoungBtn, cursedMoviesBtn, cursedActorsBtn, covidDeathsBtn]
+    const heights = buttons.map((btn) => btn.getBoundingClientRect().height)
+
+    // All buttons should have the same height
+    const firstHeight = heights[0]
+    heights.forEach((height) => {
+      expect(height).toBe(firstHeight)
+    })
+  })
 })
