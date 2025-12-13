@@ -1,10 +1,5 @@
 import type { Request, Response } from "express"
-import {
-  getHighMortalityMovies,
-  getMaxValidMinDeaths,
-  getForeverYoungMovies,
-  getAvailableLanguages,
-} from "../lib/db.js"
+import { getHighMortalityMovies, getMaxValidMinDeaths, getForeverYoungMovies } from "../lib/db.js"
 
 interface DiscoverMovieResponse {
   id: number
@@ -64,7 +59,7 @@ export async function getCursedMovies(req: Request, res: Response) {
     const fromDecade = req.query.from ? parseInt(req.query.from as string) : undefined
     const toDecade = req.query.to ? parseInt(req.query.to as string) : undefined
     const minDeadActors = req.query.minDeaths ? parseInt(req.query.minDeaths as string) : 3
-    const language = (req.query.language as string) || undefined
+    const includeObscure = req.query.includeObscure === "true"
 
     // Convert decades to year ranges
     const fromYear = fromDecade || undefined
@@ -76,7 +71,7 @@ export async function getCursedMovies(req: Request, res: Response) {
       fromYear,
       toYear,
       minDeadActors,
-      language,
+      includeObscure,
     })
 
     // Calculate rank based on global position (page offset + index)
@@ -115,17 +110,14 @@ export async function getCursedMoviesFilters(_req: Request, res: Response) {
   try {
     // Check if database is available
     if (!process.env.DATABASE_URL) {
-      return res.json({ maxMinDeaths: 3, languages: [] })
+      return res.json({ maxMinDeaths: 3 })
     }
 
-    const [maxMinDeaths, languages] = await Promise.all([
-      getMaxValidMinDeaths(),
-      getAvailableLanguages(),
-    ])
-    res.json({ maxMinDeaths, languages })
+    const maxMinDeaths = await getMaxValidMinDeaths()
+    res.json({ maxMinDeaths })
   } catch (error) {
     console.error("Cursed movies filters error:", error)
     // Return default on error
-    res.json({ maxMinDeaths: 3, languages: [] })
+    res.json({ maxMinDeaths: 3 })
   }
 }
