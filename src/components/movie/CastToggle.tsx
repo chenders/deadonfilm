@@ -1,8 +1,14 @@
+import { ListIcon, TimelineIcon } from "@/components/icons"
+
+type ViewMode = "list" | "timeline"
+
 interface CastToggleProps {
   showLiving: boolean
   onToggle: (showLiving: boolean) => void
   deceasedCount: number
   livingCount: number
+  viewMode: ViewMode
+  onViewModeChange: (mode: ViewMode) => void
 }
 
 export default function CastToggle({
@@ -10,12 +16,18 @@ export default function CastToggle({
   onToggle,
   deceasedCount,
   livingCount,
+  viewMode,
+  onViewModeChange,
 }: CastToggleProps) {
   const deceasedDisabled = deceasedCount === 0
   const livingDisabled = livingCount === 0
 
   return (
-    <div data-testid="cast-toggle" className="mb-6 flex justify-center">
+    <div
+      data-testid="cast-toggle"
+      className="mb-6 flex flex-wrap items-center justify-center gap-3"
+    >
+      {/* Deceased/Living toggle */}
       <div className="inline-flex overflow-hidden rounded-lg border border-brown-medium/30 bg-white">
         <button
           data-testid="deceased-toggle-btn"
@@ -48,6 +60,38 @@ export default function CastToggle({
           Living ({livingCount})
         </button>
       </div>
+
+      {/* List/Timeline toggle - only show when viewing deceased */}
+      {!showLiving && deceasedCount > 0 && (
+        <div className="inline-flex items-center gap-1 rounded-lg border border-brown-medium/30 bg-white p-1">
+          <button
+            data-testid="list-view-btn"
+            aria-pressed={viewMode === "list"}
+            onClick={() => onViewModeChange("list")}
+            className={`rounded-md p-1.5 transition-colors duration-200 ${
+              viewMode === "list"
+                ? "bg-beige text-brown-dark"
+                : "text-text-muted hover:bg-beige/50 hover:text-brown-dark"
+            }`}
+            title="List view"
+          >
+            <ListIcon size={18} />
+          </button>
+          <button
+            data-testid="timeline-view-btn"
+            aria-pressed={viewMode === "timeline"}
+            onClick={() => onViewModeChange("timeline")}
+            className={`rounded-md p-1.5 transition-colors duration-200 ${
+              viewMode === "timeline"
+                ? "bg-beige text-brown-dark"
+                : "text-text-muted hover:bg-beige/50 hover:text-brown-dark"
+            }`}
+            title="Timeline view"
+          >
+            <TimelineIcon size={18} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
