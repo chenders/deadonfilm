@@ -226,7 +226,7 @@ export default function DeathInfo({
       {/* Lifespan visualization bar */}
       {expectedLifespan !== null && ageAtDeath !== null && yearsLostNum !== null && (
         <div
-          className="mt-1.5"
+          className="ml-auto mt-1.5 w-40"
           title={
             yearsLostNum > 0
               ? `Lived ${ageAtDeath} of ${Math.round(expectedLifespan)} expected years`
