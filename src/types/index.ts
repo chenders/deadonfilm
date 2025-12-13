@@ -233,3 +233,21 @@ export interface CovidDeathsResponse {
   persons: CovidDeath[]
   pagination: PaginationInfo
 }
+
+// Death Watch types
+export interface DeathWatchActor {
+  rank: number
+  id: number
+  name: string
+  age: number
+  birthday: string
+  profilePath: string | null
+  deathProbability: number // 0-1, probability of dying in next year
+  yearsRemaining: number | null // Life expectancy - current age
+  totalMovies: number
+}
+
+export interface DeathWatchResponse {
+  actors: DeathWatchActor[]
+  pagination: PaginationInfo
+}

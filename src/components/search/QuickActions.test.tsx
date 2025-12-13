@@ -32,7 +32,7 @@ describe("QuickActions", () => {
     vi.clearAllMocks()
   })
 
-  it("renders all four action buttons", () => {
+  it("renders all five action buttons", () => {
     renderWithRouter(<QuickActions />)
 
     expect(screen.getByTestId("quick-actions")).toBeInTheDocument()
@@ -40,6 +40,7 @@ describe("QuickActions", () => {
     expect(screen.getByTestId("cursed-movies-btn")).toBeInTheDocument()
     expect(screen.getByTestId("cursed-actors-btn")).toBeInTheDocument()
     expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
   })
 
   it("displays correct button text", () => {
@@ -49,6 +50,7 @@ describe("QuickActions", () => {
     expect(screen.getByText("Cursed Movies")).toBeInTheDocument()
     expect(screen.getByText("Cursed Actors")).toBeInTheDocument()
     expect(screen.getByText("COVID-19")).toBeInTheDocument()
+    expect(screen.getByText("Death Watch")).toBeInTheDocument()
   })
 
   it("navigates to forever young movie when clicked", async () => {
@@ -96,6 +98,7 @@ describe("QuickActions", () => {
     expect(screen.getByText("Movies with statistically abnormal mortality")).toBeInTheDocument()
     expect(screen.getByText("Actors with unusually high co-star mortality")).toBeInTheDocument()
     expect(screen.getByText("Actors who died from COVID-19")).toBeInTheDocument()
+    expect(screen.getByText("Living actors most likely to die soon")).toBeInTheDocument()
   })
 
   it("Cursed Movies button links to /cursed-movies", () => {
@@ -139,6 +142,33 @@ describe("QuickActions", () => {
     expect(screen.getByText("🦠")).toBeInTheDocument()
   })
 
+  it("Death Watch button links to /death-watch", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("death-watch-btn")
+    expect(link).toHaveAttribute("href", "/death-watch")
+  })
+
+  it("Death Watch button has hourglass emoji", () => {
+    renderWithRouter(<QuickActions />)
+
+    expect(screen.getByText("⏳")).toBeInTheDocument()
+  })
+
+  it("uses flex-wrap layout with max-width to limit buttons per row", () => {
+    renderWithRouter(<QuickActions />)
+
+    const container = screen.getByTestId("quick-actions")
+
+    // Verify flex layout with wrapping and centered content
+    expect(container.className).toContain("flex")
+    expect(container.className).toContain("flex-wrap")
+    expect(container.className).toContain("justify-center")
+    expect(container.className).toContain("gap-2")
+    // Max-width ensures buttons wrap to max 4 per row on wide screens
+    expect(container.className).toContain("max-w-xl")
+  })
+
   it("all buttons have consistent styling for height", () => {
     renderWithRouter(<QuickActions />)
 
@@ -146,12 +176,19 @@ describe("QuickActions", () => {
     const cursedMoviesBtn = screen.getByTestId("cursed-movies-btn")
     const cursedActorsBtn = screen.getByTestId("cursed-actors-btn")
     const covidDeathsBtn = screen.getByTestId("covid-deaths-btn")
+    const deathWatchBtn = screen.getByTestId("death-watch-btn")
 
     // Verify all buttons have the same height-affecting CSS classes
     // Note: getBoundingClientRect() returns 0 in jsdom, so we test classes instead
     const heightClasses = ["py-1.5", "text-xs", "items-center"]
 
-    const buttons = [foreverYoungBtn, cursedMoviesBtn, cursedActorsBtn, covidDeathsBtn]
+    const buttons = [
+      foreverYoungBtn,
+      cursedMoviesBtn,
+      cursedActorsBtn,
+      covidDeathsBtn,
+      deathWatchBtn,
+    ]
     buttons.forEach((btn) => {
       heightClasses.forEach((cls) => {
         expect(btn.className).toContain(cls)

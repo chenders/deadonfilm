@@ -40,6 +40,7 @@ import {
   updateMovieLanguage,
   upsertMovie,
   getCovidDeaths,
+  getDeathWatchActors,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -829,6 +830,206 @@ describe("Language Backfill Functions", () => {
         expect.stringContaining("COALESCE(EXCLUDED.original_language, movies.original_language)"),
         expect.arrayContaining(["en"])
       )
+    })
+  })
+
+  describe("getDeathWatchActors", () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+    })
+
+    afterEach(() => {
+      delete process.env.DATABASE_URL
+    })
+
+    it("returns actors with totalCount using window function", async () => {
+      const mockRows = [
+        {
+          total_count: "10",
+          actor_tmdb_id: 1,
+          actor_name: "Actor One",
+          birthday: "1935-01-15",
+          age: 89,
+          profile_path: "/path1.jpg",
+          popularity: "10.5",
+          total_movies: 25,
+        },
+      ]
+      mockQuery.mockResolvedValueOnce({ rows: mockRows })
+
+      const result = await getDeathWatchActors({ limit: 50, offset: 0 })
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("COUNT(*) OVER() as total_count"),
+        expect.any(Array)
+      )
+      expect(result.totalCount).toBe(10)
+      expect(result.actors).toHaveLength(1)
+      // total_count should be stripped from actors
+      expect(result.actors[0]).not.toHaveProperty("total_count")
+    })
+
+    it("queries living actors with birthday not null", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors()
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("aa.is_deceased = false")
+      expect(query).toContain("aa.birthday IS NOT NULL")
+    })
+
+    it("orders by age DESC, popularity DESC", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors()
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("ORDER BY age DESC, popularity DESC NULLS LAST")
+    })
+
+    it("uses default limit, offset, and minMovies when not provided", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors()
+
+      // Default values: minMovies=2, limit=50, offset=0
+      // Params order: minMovies, limit, offset
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2, 50, 0])
+    })
+
+    it("uses custom limit and offset", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors({ limit: 25, offset: 50 })
+
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2, 25, 50])
+    })
+
+    it("applies minAge filter", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors({ minAge: 70 })
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("age >= $1")
+      // Params order: minAge, minMovies, limit, offset
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [70, 2, 50, 0])
+    })
+
+    it("applies minMovies filter in HAVING clause", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors({ minMovies: 5 })
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("HAVING COUNT(DISTINCT aa.movie_tmdb_id) >= $1")
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [5, 50, 0])
+    })
+
+    it("excludes obscure actors by default", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors({ includeObscure: false })
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("profile_path IS NOT NULL")
+      expect(query).toContain("popularity >= 5.0")
+    })
+
+    it("includes obscure actors when includeObscure is true", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors({ includeObscure: true })
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).not.toContain("profile_path IS NOT NULL")
+      expect(query).not.toContain("popularity >= 5.0")
+    })
+
+    it("returns 0 totalCount when no rows returned", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      const result = await getDeathWatchActors()
+
+      expect(result.totalCount).toBe(0)
+      expect(result.actors).toEqual([])
+    })
+
+    it("strips total_count from returned actors", async () => {
+      const mockRows = [
+        {
+          total_count: "5",
+          actor_tmdb_id: 1,
+          actor_name: "Test Actor",
+          birthday: "1940-06-20",
+          age: 84,
+          profile_path: "/path.jpg",
+          popularity: "8.2",
+          total_movies: 15,
+        },
+      ]
+      mockQuery.mockResolvedValueOnce({ rows: mockRows })
+
+      const result = await getDeathWatchActors()
+
+      expect(result.actors[0]).not.toHaveProperty("total_count")
+      expect(result.actors[0].actor_name).toBe("Test Actor")
+    })
+
+    it("parses popularity as float", async () => {
+      const mockRows = [
+        {
+          total_count: "1",
+          actor_tmdb_id: 1,
+          actor_name: "Test Actor",
+          birthday: "1940-06-20",
+          age: 84,
+          profile_path: "/path.jpg",
+          popularity: "15.789",
+          total_movies: 10,
+        },
+      ]
+      mockQuery.mockResolvedValueOnce({ rows: mockRows })
+
+      const result = await getDeathWatchActors()
+
+      expect(result.actors[0].popularity).toBe(15.789)
+      expect(typeof result.actors[0].popularity).toBe("number")
+    })
+
+    it("handles null popularity", async () => {
+      const mockRows = [
+        {
+          total_count: "1",
+          actor_tmdb_id: 1,
+          actor_name: "Test Actor",
+          birthday: "1940-06-20",
+          age: 84,
+          profile_path: "/path.jpg",
+          popularity: null,
+          total_movies: 10,
+        },
+      ]
+      mockQuery.mockResolvedValueOnce({ rows: mockRows })
+
+      const result = await getDeathWatchActors()
+
+      expect(result.actors[0].popularity).toBeNull()
+    })
+
+    it("combines minAge filter with obscure filter", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors({ minAge: 70, includeObscure: false })
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("age >= $1")
+      expect(query).toContain("profile_path IS NOT NULL")
+      expect(query).toContain("popularity >= 5.0")
+      // Params: minAge, minMovies, limit, offset
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [70, 2, 50, 0])
     })
   })
 })
