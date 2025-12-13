@@ -147,6 +147,7 @@ cd server && npm test        # Backend unit tests
 - `GET /api/cursed-movies` - List movies ranked by curse score (with pagination/filters, obscure movies hidden by default)
 - `GET /api/cursed-movies/filters` - Get filter options for cursed movies (maxMinDeaths)
 - `GET /api/cursed-actors` - List actors ranked by co-star mortality (with pagination/filters)
+- `GET /api/covid-deaths` - List actors who died from COVID-19 (with pagination)
 - `GET /api/stats` - Get site-wide statistics
 - `GET /health` - Health check for Kubernetes
 
