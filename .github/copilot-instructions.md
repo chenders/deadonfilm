@@ -79,8 +79,8 @@ actuarial_life_tables (
 )
 
 -- Movie cache for mortality statistics
-movies (tmdb_id INTEGER, title TEXT, release_year INTEGER,
-  expected_deaths DECIMAL(5,2), mortality_surprise_score DECIMAL(6,3))
+movies (tmdb_id INTEGER, title TEXT, release_year INTEGER, original_language TEXT,
+  popularity DECIMAL(10,3), expected_deaths DECIMAL(5,2), mortality_surprise_score DECIMAL(6,3))
 
 -- Actor appearances for cross-movie analysis
 actor_appearances (actor_tmdb_id INTEGER, movie_tmdb_id INTEGER,
@@ -118,6 +118,15 @@ npm test && cd server && npm test
 1. **Archived Footage Exclusion**: Actors who died more than 3 years before a movie's release are excluded from mortality calculations.
 2. **Same-Year Death Handling**: Actors who died the same year as the movie release are counted with at least 1 year of death probability.
 3. **Curse Score**: `(Actual Deaths - Expected Deaths) / Expected Deaths`. Positive = more deaths than expected.
+
+## Obscure Movie Filtering
+
+The Cursed Movies page filters out obscure/unknown movies by default. A movie is "obscure" if:
+- No poster image (`poster_path IS NULL`), OR
+- English movies: `popularity < 5.0 AND cast_count < 5`, OR
+- Non-English movies: `popularity < 20.0`
+
+Users can toggle "Include obscure movies" checkbox to see all movies.
 
 ## Code Standards
 
