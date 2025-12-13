@@ -37,7 +37,10 @@ export default function QuickActions() {
   const emojiClass = "text-base leading-none"
 
   return (
-    <div data-testid="quick-actions" className="mt-6 flex flex-wrap justify-center gap-2">
+    <div
+      data-testid="quick-actions"
+      className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-2"
+    >
       <div className="group relative">
         <button
           data-testid="forever-young-btn"
