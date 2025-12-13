@@ -391,4 +391,64 @@ describe("DeathInfo", () => {
 
     expect(screen.getByText(/around expected/)).toBeInTheDocument()
   })
+
+  it("renders lifespan bar with fixed width when all required props provided", () => {
+    const { container } = render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday="1960-01-01"
+        ageAtDeath={40}
+        yearsLost={35}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    // Find the lifespan bar container by its classes
+    const lifespanBarContainer = container.querySelector(".w-40.ml-auto")
+    expect(lifespanBarContainer).toBeInTheDocument()
+    // Verify it contains the bar visualization
+    expect(lifespanBarContainer?.querySelector(".rounded-full.bg-gray-200")).toBeInTheDocument()
+  })
+
+  it("does not render lifespan bar when ageAtDeath is null and birthday unavailable", () => {
+    const { container } = render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday={null}
+        ageAtDeath={null}
+        yearsLost={35}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    // Lifespan bar should not be rendered when age cannot be determined
+    expect(container.querySelector(".w-40.ml-auto")).not.toBeInTheDocument()
+  })
+
+  it("does not render lifespan bar when yearsLost is null", () => {
+    const { container } = render(
+      <DeathInfo
+        actorName={defaultActorName}
+        deathday="2000-01-01"
+        birthday="1960-01-01"
+        ageAtDeath={40}
+        yearsLost={null}
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    // Lifespan bar should not be rendered
+    expect(container.querySelector(".w-40.ml-auto")).not.toBeInTheDocument()
+  })
 })
