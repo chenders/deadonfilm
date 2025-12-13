@@ -30,6 +30,7 @@ import {
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
   markActorsDeceased,
+  getActorFilmography,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -333,6 +334,124 @@ describe("Sync State Functions", () => {
       const secondCall = mockQuery.mock.calls[1][0] as string
       expect(secondCall).toContain("$1)")
       expect(secondCall).not.toContain("$2")
+    })
+  })
+
+  describe("getActorFilmography", () => {
+    it("returns filmography with multiple movies ordered by release year DESC", async () => {
+      const mockRows = [
+        {
+          movie_id: 100,
+          title: "Recent Movie",
+          release_year: 2020,
+          character_name: "Lead Role",
+          poster_path: "/poster1.jpg",
+          deceased_count: 3,
+          cast_count: 10,
+        },
+        {
+          movie_id: 200,
+          title: "Older Movie",
+          release_year: 1995,
+          character_name: "Supporting Role",
+          poster_path: "/poster2.jpg",
+          deceased_count: 5,
+          cast_count: 15,
+        },
+      ]
+      mockQuery.mockResolvedValueOnce({ rows: mockRows })
+
+      const result = await getActorFilmography(12345)
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("FROM actor_appearances aa"),
+        [12345]
+      )
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("ORDER BY m.release_year DESC NULLS LAST"),
+        [12345]
+      )
+      expect(result).toHaveLength(2)
+      expect(result[0]).toEqual({
+        movieId: 100,
+        title: "Recent Movie",
+        releaseYear: 2020,
+        character: "Lead Role",
+        posterPath: "/poster1.jpg",
+        deceasedCount: 3,
+        castCount: 10,
+      })
+      expect(result[1]).toEqual({
+        movieId: 200,
+        title: "Older Movie",
+        releaseYear: 1995,
+        character: "Supporting Role",
+        posterPath: "/poster2.jpg",
+        deceasedCount: 5,
+        castCount: 15,
+      })
+    })
+
+    it("returns empty array for actor with no movies in database", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      const result = await getActorFilmography(99999)
+
+      expect(result).toEqual([])
+      expect(result).toHaveLength(0)
+    })
+
+    it("handles null values correctly", async () => {
+      const mockRows = [
+        {
+          movie_id: 300,
+          title: "Movie With Nulls",
+          release_year: null,
+          character_name: null,
+          poster_path: null,
+          deceased_count: 0,
+          cast_count: 5,
+        },
+      ]
+      mockQuery.mockResolvedValueOnce({ rows: mockRows })
+
+      const result = await getActorFilmography(11111)
+
+      expect(result).toHaveLength(1)
+      expect(result[0]).toEqual({
+        movieId: 300,
+        title: "Movie With Nulls",
+        releaseYear: null,
+        character: null,
+        posterPath: null,
+        deceasedCount: 0,
+        castCount: 5,
+      })
+    })
+
+    it("correctly maps database fields to return type", async () => {
+      const mockRows = [
+        {
+          movie_id: 400,
+          title: "Test Mapping",
+          release_year: 2015,
+          character_name: "Test Character",
+          poster_path: "/test.jpg",
+          deceased_count: 2,
+          cast_count: 8,
+        },
+      ]
+      mockQuery.mockResolvedValueOnce({ rows: mockRows })
+
+      const result = await getActorFilmography(22222)
+
+      // Verify field name transformations
+      expect(result[0]).toHaveProperty("movieId") // from movie_id
+      expect(result[0]).toHaveProperty("releaseYear") // from release_year
+      expect(result[0]).toHaveProperty("character") // from character_name
+      expect(result[0]).toHaveProperty("posterPath") // from poster_path
+      expect(result[0]).toHaveProperty("deceasedCount") // from deceased_count
+      expect(result[0]).toHaveProperty("castCount") // from cast_count
     })
   })
 })
