@@ -36,6 +36,9 @@ import {
   getActorFilmography,
   queryWithRetry,
   resetPool,
+  getMoviesWithoutLanguage,
+  updateMovieLanguage,
+  upsertMovie,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -568,6 +571,140 @@ describe("Sync State Functions", () => {
 
       // Should not throw
       await expect(resetPool()).resolves.toBeUndefined()
+    })
+  })
+})
+
+describe("Language Backfill Functions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  describe("getMoviesWithoutLanguage", () => {
+    it("returns movies with NULL original_language", async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ tmdb_id: 289 }, { tmdb_id: 389 }],
+      })
+
+      const result = await getMoviesWithoutLanguage()
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("original_language IS NULL"),
+        []
+      )
+      expect(result).toEqual([289, 389])
+    })
+
+    it("also returns movies with empty string original_language", async () => {
+      // This is the regression test for the bug where empty strings were not caught
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ tmdb_id: 123 }],
+      })
+
+      const result = await getMoviesWithoutLanguage()
+
+      // The query should check for BOTH NULL and empty string
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("original_language = ''"), [])
+      expect(result).toEqual([123])
+    })
+
+    it("respects the limit parameter", async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ tmdb_id: 100 }],
+      })
+
+      await getMoviesWithoutLanguage(10)
+
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("LIMIT $1"), [10])
+    })
+  })
+
+  describe("updateMovieLanguage", () => {
+    it("updates only language when popularity is not provided", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await updateMovieLanguage(289, "en")
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("SET original_language = $1"),
+        ["en", 289]
+      )
+      // Should NOT include popularity in query when not provided
+      expect(mockQuery).not.toHaveBeenCalledWith(
+        expect.stringContaining("popularity = $2"),
+        expect.anything()
+      )
+    })
+
+    it("updates both language and popularity when popularity is provided", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await updateMovieLanguage(289, "en", 5.9)
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("original_language = $1, popularity = $2"),
+        ["en", 5.9, 289]
+      )
+    })
+  })
+
+  describe("upsertMovie", () => {
+    const baseMovie = {
+      tmdb_id: 289,
+      title: "Casablanca",
+      release_date: "1943-01-23",
+      release_year: 1943,
+      poster_path: "/poster.jpg",
+      genres: ["Drama", "Romance"],
+      original_language: null,
+      popularity: null,
+      vote_average: 8.1,
+      cast_count: 30,
+      deceased_count: 26,
+      living_count: 4,
+      expected_deaths: 9.72,
+      mortality_surprise_score: 1.675,
+    }
+
+    it("preserves existing language when new value is NULL", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await upsertMovie(baseMovie)
+
+      // The query should use COALESCE to preserve existing values
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("COALESCE(EXCLUDED.original_language, movies.original_language)"),
+        expect.arrayContaining([289, "Casablanca"])
+      )
+    })
+
+    it("preserves existing popularity when new value is NULL", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await upsertMovie(baseMovie)
+
+      // The query should use COALESCE to preserve existing values
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("COALESCE(EXCLUDED.popularity, movies.popularity)"),
+        expect.arrayContaining([289, "Casablanca"])
+      )
+    })
+
+    it("updates language when new value is provided", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await upsertMovie({ ...baseMovie, original_language: "en" })
+
+      // COALESCE will use the new value since it's not null
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("COALESCE(EXCLUDED.original_language, movies.original_language)"),
+        expect.arrayContaining(["en"])
+      )
     })
   })
 })
