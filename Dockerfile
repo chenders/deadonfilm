@@ -17,7 +17,7 @@ COPY server/package*.json ./
 RUN npm ci
 COPY server/src/ ./src/
 COPY server/scripts/ ./scripts/
-COPY server/tsconfig.json server/tsconfig.scripts.json ./
+COPY server/tsconfig.json ./
 # Build src and scripts together (tsconfig.json now includes both)
 RUN npm run build
 

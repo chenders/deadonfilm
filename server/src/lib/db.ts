@@ -437,8 +437,8 @@ export async function getHighMortalityMovies(
          $6::boolean = true
          OR NOT (
            poster_path IS NULL
-           OR (original_language = 'en' AND COALESCE(popularity, 0) < 5.0 AND COALESCE(cast_count, 0) < 5)
-           OR (COALESCE(original_language, '') != 'en' AND COALESCE(popularity, 0) < 20.0)
+           OR (original_language = 'en' AND COALESCE(popularity, 0) < 5.0 AND cast_count IS NOT NULL AND cast_count < 5)
+           OR (original_language IS NOT NULL AND original_language != 'en' AND COALESCE(popularity, 0) < 20.0)
          )
        )
      ORDER BY mortality_surprise_score DESC
