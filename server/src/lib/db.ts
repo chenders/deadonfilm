@@ -882,6 +882,43 @@ export interface ActorFilmographyMovie {
   castCount: number
 }
 
+// ============================================================================
+// COVID-19 deaths functions
+// ============================================================================
+
+export interface CovidDeathOptions {
+  limit?: number
+  offset?: number
+}
+
+// Get deceased persons who died from COVID-19 or related causes
+export async function getCovidDeaths(options: CovidDeathOptions = {}): Promise<{
+  persons: DeceasedPersonRecord[]
+  totalCount: number
+}> {
+  const { limit = 50, offset = 0 } = options
+  const db = getPool()
+
+  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(
+    `SELECT COUNT(*) OVER () as total_count, *
+     FROM deceased_persons
+     WHERE cause_of_death ILIKE '%covid%'
+        OR cause_of_death ILIKE '%coronavirus%'
+        OR cause_of_death ILIKE '%sars-cov-2%'
+        OR cause_of_death_details ILIKE '%covid%'
+        OR cause_of_death_details ILIKE '%coronavirus%'
+        OR cause_of_death_details ILIKE '%sars-cov-2%'
+     ORDER BY deathday DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  )
+
+  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
+  const persons = result.rows.map(({ total_count: _total_count, ...person }) => person)
+
+  return { persons, totalCount }
+}
+
 // Get actor's filmography from our database
 export async function getActorFilmography(actorTmdbId: number): Promise<ActorFilmographyMovie[]> {
   const db = getPool()
