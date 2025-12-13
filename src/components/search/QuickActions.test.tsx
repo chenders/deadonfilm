@@ -155,7 +155,7 @@ describe("QuickActions", () => {
     expect(screen.getByText("⏳")).toBeInTheDocument()
   })
 
-  it("uses flex-wrap layout for buttons", () => {
+  it("uses flex-wrap layout with max-width to limit buttons per row", () => {
     renderWithRouter(<QuickActions />)
 
     const container = screen.getByTestId("quick-actions")
@@ -165,6 +165,8 @@ describe("QuickActions", () => {
     expect(container.className).toContain("flex-wrap")
     expect(container.className).toContain("justify-center")
     expect(container.className).toContain("gap-2")
+    // Max-width ensures buttons wrap to max 4 per row on wide screens
+    expect(container.className).toContain("max-w-xl")
   })
 
   it("all buttons have consistent styling for height", () => {
