@@ -31,6 +31,7 @@ export interface TMDBMovie {
   overview: string
   genre_ids: number[]
   popularity: number
+  original_language: string
 }
 
 export interface TMDBMovieDetails {
@@ -43,6 +44,7 @@ export interface TMDBMovieDetails {
   genres: Array<{ id: number; name: string }>
   popularity?: number
   vote_average?: number
+  original_language?: string
 }
 
 export interface TMDBCreditsResponse {

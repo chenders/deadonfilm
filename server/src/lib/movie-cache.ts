@@ -46,6 +46,7 @@ export function buildMovieRecord(input: MovieCacheInput): MovieRecord {
     release_year: releaseYear,
     poster_path: movie.poster_path,
     genres: movie.genres?.map((g) => g.name) || [],
+    original_language: null, // Not available from movie details endpoint
     popularity: null,
     vote_average: null,
     cast_count: deceasedCount + livingCount,

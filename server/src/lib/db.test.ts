@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 // Create a shared mock query function that persists across imports
 const mockQuery = vi.fn()
 const mockEnd = vi.fn()
+const mockOn = vi.fn()
 
 // Mock the pg module
 vi.mock("pg", async () => {
@@ -13,6 +14,7 @@ vi.mock("pg", async () => {
       Pool: class MockPool {
         query = (globalThis as Record<string, unknown>).__testMockQuery as typeof mockQuery
         end = (globalThis as Record<string, unknown>).__testMockEnd as typeof mockEnd
+        on = (globalThis as Record<string, unknown>).__testMockOn as typeof mockOn
       },
     },
   }
@@ -21,6 +23,7 @@ vi.mock("pg", async () => {
 // Set up the global mock functions before imports
 ;(globalThis as Record<string, unknown>).__testMockQuery = mockQuery
 ;(globalThis as Record<string, unknown>).__testMockEnd = mockEnd
+;(globalThis as Record<string, unknown>).__testMockOn = mockOn
 
 // Import after mocking
 import {
@@ -31,6 +34,11 @@ import {
   getAllMovieTmdbIds,
   markActorsDeceased,
   getActorFilmography,
+  queryWithRetry,
+  resetPool,
+  getMoviesWithoutLanguage,
+  updateMovieLanguage,
+  upsertMovie,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -452,6 +460,251 @@ describe("Sync State Functions", () => {
       expect(result[0]).toHaveProperty("posterPath") // from poster_path
       expect(result[0]).toHaveProperty("deceasedCount") // from deceased_count
       expect(result[0]).toHaveProperty("castCount") // from cast_count
+    })
+  })
+
+  describe("queryWithRetry", () => {
+    it("returns result on first successful query", async () => {
+      const result = await queryWithRetry(async () => {
+        return { data: "success" }
+      })
+
+      expect(result).toEqual({ data: "success" })
+    })
+
+    it("retries on connection error and succeeds", async () => {
+      let attempts = 0
+      const result = await queryWithRetry(async () => {
+        attempts++
+        if (attempts < 2) {
+          throw new Error("Connection terminated unexpectedly")
+        }
+        return { data: "success after retry" }
+      })
+
+      expect(attempts).toBe(2)
+      expect(result).toEqual({ data: "success after retry" })
+    })
+
+    it("retries multiple times on connection errors", async () => {
+      let attempts = 0
+      const result = await queryWithRetry(async () => {
+        attempts++
+        if (attempts < 3) {
+          throw new Error("ECONNRESET")
+        }
+        return { data: "success after 3 tries" }
+      })
+
+      expect(attempts).toBe(3)
+      expect(result).toEqual({ data: "success after 3 tries" })
+    })
+
+    it("throws after max retries on persistent connection error", async () => {
+      let attempts = 0
+      await expect(
+        queryWithRetry(async () => {
+          attempts++
+          throw new Error("Connection terminated")
+        }, 3)
+      ).rejects.toThrow("Connection terminated")
+
+      expect(attempts).toBe(3)
+    })
+
+    it("does not retry on non-connection errors", async () => {
+      let attempts = 0
+      await expect(
+        queryWithRetry(async () => {
+          attempts++
+          throw new Error("Syntax error in SQL")
+        })
+      ).rejects.toThrow("Syntax error in SQL")
+
+      expect(attempts).toBe(1)
+    })
+
+    it("recognizes various connection error patterns", async () => {
+      const connectionErrors = [
+        "Connection refused",
+        "connection reset by peer",
+        "ETIMEDOUT",
+        "socket hang up",
+        "network error occurred",
+      ]
+
+      for (const errorMsg of connectionErrors) {
+        let attempts = 0
+        const result = await queryWithRetry(async () => {
+          attempts++
+          if (attempts < 2) {
+            throw new Error(errorMsg)
+          }
+          return { success: true }
+        })
+
+        expect(attempts).toBe(2)
+        expect(result).toEqual({ success: true })
+      }
+    })
+  })
+
+  describe("resetPool", () => {
+    it("ends and clears the pool", async () => {
+      // First, ensure pool is created by doing a query
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+      await getSyncState("test")
+
+      // Reset the pool
+      await resetPool()
+
+      expect(mockEnd).toHaveBeenCalled()
+    })
+
+    it("handles errors during pool.end gracefully", async () => {
+      // Create pool
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+      await getSyncState("test")
+
+      // Make end() throw
+      mockEnd.mockRejectedValueOnce(new Error("End failed"))
+
+      // Should not throw
+      await expect(resetPool()).resolves.toBeUndefined()
+    })
+  })
+})
+
+describe("Language Backfill Functions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  describe("getMoviesWithoutLanguage", () => {
+    it("returns movies with NULL original_language", async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ tmdb_id: 289 }, { tmdb_id: 389 }],
+      })
+
+      const result = await getMoviesWithoutLanguage()
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("original_language IS NULL"),
+        []
+      )
+      expect(result).toEqual([289, 389])
+    })
+
+    it("also returns movies with empty string original_language", async () => {
+      // This is the regression test for the bug where empty strings were not caught
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ tmdb_id: 123 }],
+      })
+
+      const result = await getMoviesWithoutLanguage()
+
+      // The query should check for BOTH NULL and empty string
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("original_language = ''"), [])
+      expect(result).toEqual([123])
+    })
+
+    it("respects the limit parameter", async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ tmdb_id: 100 }],
+      })
+
+      await getMoviesWithoutLanguage(10)
+
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("LIMIT $1"), [10])
+    })
+  })
+
+  describe("updateMovieLanguage", () => {
+    it("updates only language when popularity is not provided", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await updateMovieLanguage(289, "en")
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("SET original_language = $1"),
+        ["en", 289]
+      )
+      // Should NOT include popularity in query when not provided
+      expect(mockQuery).not.toHaveBeenCalledWith(
+        expect.stringContaining("popularity = $2"),
+        expect.anything()
+      )
+    })
+
+    it("updates both language and popularity when popularity is provided", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await updateMovieLanguage(289, "en", 5.9)
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("original_language = $1, popularity = $2"),
+        ["en", 5.9, 289]
+      )
+    })
+  })
+
+  describe("upsertMovie", () => {
+    const baseMovie = {
+      tmdb_id: 289,
+      title: "Casablanca",
+      release_date: "1943-01-23",
+      release_year: 1943,
+      poster_path: "/poster.jpg",
+      genres: ["Drama", "Romance"],
+      original_language: null,
+      popularity: null,
+      vote_average: 8.1,
+      cast_count: 30,
+      deceased_count: 26,
+      living_count: 4,
+      expected_deaths: 9.72,
+      mortality_surprise_score: 1.675,
+    }
+
+    it("preserves existing language when new value is NULL", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await upsertMovie(baseMovie)
+
+      // The query should use COALESCE to preserve existing values
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("COALESCE(EXCLUDED.original_language, movies.original_language)"),
+        expect.arrayContaining([289, "Casablanca"])
+      )
+    })
+
+    it("preserves existing popularity when new value is NULL", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await upsertMovie(baseMovie)
+
+      // The query should use COALESCE to preserve existing values
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("COALESCE(EXCLUDED.popularity, movies.popularity)"),
+        expect.arrayContaining([289, "Casablanca"])
+      )
+    })
+
+    it("updates language when new value is provided", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await upsertMovie({ ...baseMovie, original_language: "en" })
+
+      // COALESCE will use the new value since it's not null
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("COALESCE(EXCLUDED.original_language, movies.original_language)"),
+        expect.arrayContaining(["en"])
+      )
     })
   })
 })

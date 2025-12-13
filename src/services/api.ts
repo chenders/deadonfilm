@@ -67,12 +67,13 @@ export interface CursedMoviesOptions {
   fromDecade?: number // e.g., 1980
   toDecade?: number // e.g., 1990
   minDeadActors?: number
+  includeObscure?: boolean // Include obscure/unknown movies (default: false)
 }
 
 export async function getCursedMovies(
   options: CursedMoviesOptions = {}
 ): Promise<CursedMoviesResponse> {
-  const { page = 1, limit = 50, fromDecade, toDecade, minDeadActors } = options
+  const { page = 1, limit = 50, fromDecade, toDecade, minDeadActors, includeObscure } = options
   const params = new URLSearchParams()
 
   params.set("page", String(page))
@@ -80,6 +81,7 @@ export async function getCursedMovies(
   if (fromDecade) params.set("from", String(fromDecade))
   if (toDecade) params.set("to", String(toDecade))
   if (minDeadActors) params.set("minDeaths", String(minDeadActors))
+  if (includeObscure) params.set("includeObscure", "true")
 
   return fetchJson(`/cursed-movies?${params.toString()}`)
 }

@@ -59,6 +59,7 @@ export async function getCursedMovies(req: Request, res: Response) {
     const fromDecade = req.query.from ? parseInt(req.query.from as string) : undefined
     const toDecade = req.query.to ? parseInt(req.query.to as string) : undefined
     const minDeadActors = req.query.minDeaths ? parseInt(req.query.minDeaths as string) : 3
+    const includeObscure = req.query.includeObscure === "true"
 
     // Convert decades to year ranges
     const fromYear = fromDecade || undefined
@@ -70,6 +71,7 @@ export async function getCursedMovies(req: Request, res: Response) {
       fromYear,
       toYear,
       minDeadActors,
+      includeObscure,
     })
 
     // Calculate rank based on global position (page offset + index)

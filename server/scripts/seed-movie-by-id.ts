@@ -101,6 +101,7 @@ async function seedMovie(tmdbId: number) {
       release_year: releaseYear || null,
       poster_path: details.poster_path,
       genres: details.genres?.map((g) => g.name) || [],
+      original_language: details.original_language || null,
       popularity: details.popularity || null,
       vote_average: details.vote_average || null,
       cast_count: topCast.length,

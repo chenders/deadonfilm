@@ -44,3 +44,4 @@ test-results/
 
 # Kubernetes secrets
 k8s/values-secrets.yaml
+docs/potentially-wrong-language-data.md
