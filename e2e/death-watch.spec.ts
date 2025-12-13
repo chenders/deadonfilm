@@ -40,8 +40,8 @@ test.describe("Death Watch Page", () => {
     const firstRow = page.locator('[data-testid^="death-watch-row-"]').first()
 
     // On desktop, we should see the full horizontal layout with all columns
-    // Check that the desktop layout is visible (has sm:flex class)
-    const desktopLayout = firstRow.locator(".sm\\:flex").first()
+    // Check that the desktop layout is visible (has md:flex class)
+    const desktopLayout = firstRow.locator(".md\\:flex").first()
     await expect(desktopLayout).toBeVisible()
 
     // Take screenshot of just the first row for visual comparison
@@ -61,8 +61,8 @@ test.describe("Death Watch Page", () => {
     const firstRow = page.locator('[data-testid^="death-watch-row-"]').first()
 
     // On mobile, we should see the stacked mobile layout
-    // Check that the mobile layout is visible (has sm:hidden class)
-    const mobileLayout = firstRow.locator(".sm\\:hidden").first()
+    // Check that the mobile layout is visible (has md:hidden class)
+    const mobileLayout = firstRow.locator(".md\\:hidden").first()
     await expect(mobileLayout).toBeVisible()
 
     // Take screenshot of just the first row for visual comparison
