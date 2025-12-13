@@ -39,7 +39,7 @@ export default function QuickActions() {
   return (
     <div
       data-testid="quick-actions"
-      className="mt-6 grid grid-cols-2 justify-items-center gap-2 sm:grid-cols-4 md:flex md:flex-wrap md:justify-center"
+      className="mt-6 grid grid-cols-2 justify-items-center gap-2 sm:grid-cols-4"
     >
       <div className="group relative">
         <button
