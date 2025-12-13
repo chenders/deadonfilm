@@ -7,7 +7,7 @@ import { extractMovieId } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
 import MovieHeader, { MoviePoster } from "@/components/movie/MovieHeader"
 import MortalityGauge from "@/components/movie/MortalityGauge"
-import DeathTimeline from "@/components/movie/DeathTimeline"
+import MiniTimeline from "@/components/movie/MiniTimeline"
 import CastToggle from "@/components/movie/CastToggle"
 import DeceasedList from "@/components/movie/DeceasedList"
 import LivingList from "@/components/movie/LivingList"
@@ -15,11 +15,14 @@ import LastSurvivor from "@/components/movie/LastSurvivor"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 
+type ViewMode = "list" | "timeline"
+
 export default function MoviePage() {
   const { slug } = useParams<{ slug: string }>()
   const movieId = slug ? extractMovieId(slug) : 0
   const { data, isLoading, error } = useMovie(movieId)
   const [showLiving, setShowLiving] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>("list")
 
   // Poll for death info updates if enrichment is pending
   const { enrichedDeceased, isPolling } = useDeathInfoPolling({
@@ -85,17 +88,6 @@ export default function MoviePage() {
           <MortalityGauge stats={stats} />
         </div>
 
-        {/* Death Timeline */}
-        {stats.deceasedCount > 0 && (
-          <div className="mb-4">
-            <DeathTimeline
-              movieReleaseDate={movie.release_date}
-              deceased={enrichedDeceased}
-              livingCount={stats.livingCount}
-            />
-          </div>
-        )}
-
         {lastSurvivor && stats.mortalityPercentage >= 50 && !showLiving && (
           <LastSurvivor actor={lastSurvivor} totalLiving={stats.livingCount} />
         )}
@@ -105,10 +97,17 @@ export default function MoviePage() {
           onToggle={setShowLiving}
           deceasedCount={stats.deceasedCount}
           livingCount={stats.livingCount}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
 
         {showLiving ? (
           <LivingList actors={living} />
+        ) : viewMode === "timeline" ? (
+          <MiniTimeline
+            releaseYear={new Date(movie.release_date).getFullYear()}
+            deceased={enrichedDeceased}
+          />
         ) : (
           <DeceasedList actors={enrichedDeceased} isPolling={isPolling} />
         )}
