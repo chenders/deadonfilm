@@ -1,6 +1,5 @@
 import { ListIcon, TimelineIcon } from "@/components/icons"
-
-type ViewMode = "list" | "timeline"
+import type { ViewMode } from "@/types"
 
 interface CastToggleProps {
   showLiving: boolean
@@ -67,6 +66,7 @@ export default function CastToggle({
           <button
             data-testid="list-view-btn"
             aria-pressed={viewMode === "list"}
+            aria-label="List view"
             onClick={() => onViewModeChange("list")}
             className={`rounded-md p-1.5 transition-colors duration-200 ${
               viewMode === "list"
@@ -80,6 +80,7 @@ export default function CastToggle({
           <button
             data-testid="timeline-view-btn"
             aria-pressed={viewMode === "timeline"}
+            aria-label="Timeline view"
             onClick={() => onViewModeChange("timeline")}
             className={`rounded-md p-1.5 transition-colors duration-200 ${
               viewMode === "timeline"
