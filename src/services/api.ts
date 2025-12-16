@@ -11,6 +11,7 @@ import type {
   CursedActorsResponse,
   ActorProfileResponse,
   CovidDeathsResponse,
+  ViolentDeathsResponse,
   DeathWatchResponse,
 } from "@/types"
 
@@ -142,6 +143,10 @@ export async function getActor(actorId: number): Promise<ActorProfileResponse> {
 
 export async function getCovidDeaths(page: number = 1): Promise<CovidDeathsResponse> {
   return fetchJson(`/covid-deaths?page=${page}`)
+}
+
+export async function getViolentDeaths(page: number = 1): Promise<ViolentDeathsResponse> {
+  return fetchJson(`/violent-deaths?page=${page}`)
 }
 
 export interface DeathWatchOptions {
