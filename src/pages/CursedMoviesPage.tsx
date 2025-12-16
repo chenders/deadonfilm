@@ -8,6 +8,8 @@ import { getDecadeOptions } from "@/utils/formatDate"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import CalculationExplainer from "@/components/common/CalculationExplainer"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildItemListSchema } from "@/utils/schema"
 import type { CursedMovie } from "@/types"
 
 const DECADE_OPTIONS = getDecadeOptions(1930)
@@ -161,8 +163,28 @@ export default function CursedMoviesPage() {
           content="Movies ranked by how many cast members died above statistical expectations"
         />
         <meta property="og:type" content="website" />
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={getPageTitle(fromDecade, toDecade)} />
+        <meta
+          name="twitter:description"
+          content="Movies ranked by how many cast members died above statistical expectations"
+        />
         <link rel="canonical" href="https://deadonfilm.com/cursed-movies" />
       </Helmet>
+      {data && data.movies.length > 0 && (
+        <JsonLd
+          data={buildItemListSchema(
+            "Most Cursed Movies",
+            "Movies ranked by statistically abnormal cast mortality",
+            data.movies.slice(0, 10).map((movie) => ({
+              name: movie.title,
+              url: `https://deadonfilm.com/movie/${createMovieSlug(movie.title, movie.releaseYear?.toString() || "unknown", movie.id)}`,
+              position: movie.rank,
+            }))
+          )}
+        />
+      )}
 
       <div data-testid="cursed-movies-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">

@@ -69,6 +69,13 @@ http {
         root /app/frontend/dist;
         index index.html;
 
+        # Sitemap - proxy to backend for dynamic generation
+        location = /sitemap.xml {
+            proxy_pass http://localhost:8080/sitemap.xml;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+
         # Hashed assets - cache forever (1 year, immutable)
         location /assets/ {
             add_header Cache-Control "public, max-age=31536000, immutable";
