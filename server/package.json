@@ -24,6 +24,7 @@
     "backfill:profiles": "tsx scripts/backfill-profile-paths.ts",
     "backfill:languages": "tsx scripts/backfill-languages.ts",
     "backfill:actor-details": "tsx scripts/backfill-actor-details.ts",
+    "backfill:violent-deaths": "tsx scripts/backfill-violent-deaths.ts",
     "sync:tmdb": "node dist/scripts/sync-tmdb-changes.js || tsx scripts/sync-tmdb-changes.ts",
     "migrate": "node-pg-migrate",
     "migrate:up": "node-pg-migrate up",

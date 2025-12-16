@@ -919,6 +919,38 @@ export async function getCovidDeaths(options: CovidDeathOptions = {}): Promise<{
   return { persons, totalCount }
 }
 
+// ============================================================================
+// Violent deaths functions
+// ============================================================================
+
+export interface ViolentDeathOptions {
+  limit?: number
+  offset?: number
+}
+
+// Get deceased persons who died from violent causes (homicide, suicide, execution, weapons)
+export async function getViolentDeaths(options: ViolentDeathOptions = {}): Promise<{
+  persons: DeceasedPersonRecord[]
+  totalCount: number
+}> {
+  const { limit = 50, offset = 0 } = options
+  const db = getPool()
+
+  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(
+    `SELECT COUNT(*) OVER () as total_count, *
+     FROM deceased_persons
+     WHERE violent_death = true
+     ORDER BY deathday DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  )
+
+  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
+  const persons = result.rows.map(({ total_count: _total_count, ...person }) => person)
+
+  return { persons, totalCount }
+}
+
 // Get actor's filmography from our database
 export async function getActorFilmography(actorTmdbId: number): Promise<ActorFilmographyMovie[]> {
   const db = getPool()
