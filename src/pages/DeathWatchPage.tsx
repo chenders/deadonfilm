@@ -154,6 +154,7 @@ export default function DeathWatchPage() {
           content="Living actors most likely to die soon based on actuarial statistics"
         />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://deadonfilm.com/death-watch" />
       </Helmet>
 
       <div data-testid="death-watch-page" className="mx-auto max-w-3xl">

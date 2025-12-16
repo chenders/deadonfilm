@@ -161,6 +161,7 @@ export default function CursedMoviesPage() {
           content="Movies ranked by how many cast members died above statistical expectations"
         />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://deadonfilm.com/cursed-movies" />
       </Helmet>
 
       <div data-testid="cursed-movies-page" className="mx-auto max-w-3xl">

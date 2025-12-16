@@ -21,6 +21,7 @@ export default function HomePage() {
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://deadonfilm.com" />
+        <link rel="canonical" href="https://deadonfilm.com" />
       </Helmet>
 
       <div data-testid="home-page" className="mx-auto max-w-2xl text-center">
