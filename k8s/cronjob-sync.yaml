@@ -7,8 +7,8 @@ metadata:
     app: dead-on-film
     component: sync
 spec:
-  # Run daily at 6 AM UTC (10 PM PST / 11 PM PDT)
-  schedule: "0 6 * * *"
+  # Run every 6 hours (midnight, 6 AM, noon, 6 PM UTC)
+  schedule: "0 0,6,12,18 * * *"
   # Don't allow multiple sync jobs to run simultaneously
   concurrencyPolicy: Forbid
   # Keep last 3 successful and 1 failed job for debugging

@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important: Verify Before Providing Specific Details
+
+**Never fabricate specific identifiers, IDs, or URLs.** If you haven't looked something up using a tool (database query, web search, file read), don't provide it as if it's a fact.
+
+Examples of things to verify before stating:
+- TMDB IDs (person IDs, movie IDs)
+- URLs containing IDs
+- Database record values
+- API response values
+
+If you don't know a specific value, either:
+1. Look it up first (query the database, search the web, read a file)
+2. Tell the user you don't know and suggest how they can find it
+3. Provide general guidance without the specific value
+
+Do NOT fill in plausible-looking numbers or IDs - there's no such thing as a "plausible" unique identifier.
+
 ## Project Overview
 
 **Dead on Film** - A website to look up movies and see which actors have passed away. Shows mortality statistics, death dates, and causes of death.
@@ -389,7 +406,7 @@ The sync script uses TMDB's Changes API to detect:
 - Actors in our database who have died (adds them to deceased_persons)
 - Changes to movies in our database (recalculates mortality stats)
 
-A Kubernetes CronJob (`k8s/cronjob-sync.yaml`) runs this daily at 6 AM UTC.
+A Kubernetes CronJob (`k8s/cronjob-sync.yaml`) runs this every 6 hours (midnight, 6 AM, noon, 6 PM UTC).
 
 ## GKE Deployment
 

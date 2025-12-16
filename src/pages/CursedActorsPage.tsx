@@ -146,6 +146,7 @@ export default function CursedActorsPage() {
           content="Actors ranked by how many of their co-stars died above statistical expectations"
         />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://deadonfilm.com/cursed-actors" />
       </Helmet>
 
       <div data-testid="cursed-actors-page" className="mx-auto max-w-3xl">
