@@ -46,17 +46,22 @@ export async function getCauseOfDeathFromClaude(
     const birthInfo = birthYear ? ` (born ${birthYear})` : ""
     const prompt = `What was the cause of death for ${name}${birthInfo} who died in ${deathYear}?
 
-Provide:
-1. cause: The specific medical cause (e.g., "lung cancer", "heart attack")
-2. details: ONLY information that explains WHY or HOW they died - like underlying conditions, contributing factors, or notable circumstances. Return null if you only know basic facts.
+CRITICAL: Report ONLY how ${name} personally died. Do NOT confuse with:
+- Deaths of their children, parents, siblings, or other family members
+- Deaths of co-workers, friends, or colleagues
+- Any other person's death mentioned in their biography
 
-The details field should ONLY contain information directly relevant to their death. Do not include:
-- Marriage/relationship information (unless spouse caused the death)
+Provide:
+1. cause: The specific medical cause for ${name}'s death (e.g., "lung cancer", "heart attack")
+2. details: ONLY information explaining WHY or HOW ${name} died - underlying conditions, contributing factors, or notable circumstances. Return null if you only know basic facts.
+
+The details field must ONLY contain information about ${name}'s own death. Do not include:
+- Deaths of family members or other people
+- Marriage/relationship information
 - Career achievements or biographical info
-- When other people died
 - Date, age, or location of death (already known)
 
-Just state facts - no flowery adjectives about the person.
+Just state facts - no flowery adjectives.
 
 Respond in JSON only:
 {"cause": "specific cause", "details": "context about death circumstances, or null"}
