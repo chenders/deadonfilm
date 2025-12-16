@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, useLocation, Link } from "react-router-dom"
 import { createPortal } from "react-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
@@ -117,6 +117,7 @@ function FilmographyRow({ movie }: { movie: ActorFilmographyMovie }) {
 
 export default function ActorPage() {
   const { slug } = useParams<{ slug: string }>()
+  const location = useLocation()
   const actorId = slug ? extractActorId(slug) : 0
   const { data, isLoading, error } = useActor(actorId)
 
@@ -172,6 +173,7 @@ export default function ActorPage() {
         />
         <meta property="og:title" content={`${actor.name} - Dead on Film`} />
         <meta property="og:type" content="profile" />
+        <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
