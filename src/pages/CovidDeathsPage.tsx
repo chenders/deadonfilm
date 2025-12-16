@@ -132,6 +132,7 @@ export default function CovidDeathsPage() {
           content="Actors who died from COVID-19 or related complications"
         />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://deadonfilm.com/covid-deaths" />
       </Helmet>
 
       <div data-testid="covid-deaths-page" className="mx-auto max-w-3xl">

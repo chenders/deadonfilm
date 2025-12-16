@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useParams } from "react-router-dom"
+import { useParams, useLocation } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useMovie } from "@/hooks/useMovie"
 import { useDeathInfoPolling } from "@/hooks/useDeathInfoPolling"
@@ -18,6 +18,7 @@ import type { ViewMode } from "@/types"
 
 export default function MoviePage() {
   const { slug } = useParams<{ slug: string }>()
+  const location = useLocation()
   const movieId = slug ? extractMovieId(slug) : 0
   const { data, isLoading, error } = useMovie(movieId)
   const [showLiving, setShowLiving] = useState(false)
@@ -76,6 +77,7 @@ export default function MoviePage() {
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
 
       <div data-testid="movie-page" className="mx-auto max-w-4xl">
