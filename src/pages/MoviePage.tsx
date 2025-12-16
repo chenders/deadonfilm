@@ -14,6 +14,8 @@ import LivingList from "@/components/movie/LivingList"
 import LastSurvivor from "@/components/movie/LastSurvivor"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildMovieSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import type { ViewMode } from "@/types"
 
 export default function MoviePage() {
@@ -76,9 +78,35 @@ export default function MoviePage() {
           property="og:description"
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
-        <meta property="og:type" content="website" />
+        <meta property="og:type" content="video.movie" />
+        {movie.poster_path && (
+          <meta
+            property="og:image"
+            content={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+          />
+        )}
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${title} - Dead on Film`} />
+        <meta
+          name="twitter:description"
+          content={`${stats.mortalityPercentage}% of the cast has passed away`}
+        />
+        {movie.poster_path && (
+          <meta
+            name="twitter:image"
+            content={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+          />
+        )}
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
+      <JsonLd data={buildMovieSchema(movie, stats, slug!)} />
+      <JsonLd
+        data={buildBreadcrumbSchema([
+          { name: "Home", url: "https://deadonfilm.com" },
+          { name: movie.title, url: `https://deadonfilm.com${location.pathname}` },
+        ])}
+      />
 
       <div data-testid="movie-page" className="mx-auto max-w-4xl">
         <MovieHeader movie={movie} hidePoster />
