@@ -132,6 +132,13 @@ export default function CovidDeathsPage() {
           content="Actors who died from COVID-19 or related complications"
         />
         <meta property="og:type" content="website" />
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="COVID-19 Deaths | Dead on Film" />
+        <meta
+          name="twitter:description"
+          content="Actors who died from COVID-19 or related complications"
+        />
         <link rel="canonical" href="https://deadonfilm.com/covid-deaths" />
       </Helmet>
 

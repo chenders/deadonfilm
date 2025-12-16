@@ -154,6 +154,13 @@ export default function DeathWatchPage() {
           content="Living actors most likely to die soon based on actuarial statistics"
         />
         <meta property="og:type" content="website" />
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="Death Watch | Dead on Film" />
+        <meta
+          name="twitter:description"
+          content="Living actors most likely to die soon based on actuarial statistics"
+        />
         <link rel="canonical" href="https://deadonfilm.com/death-watch" />
       </Helmet>
 
