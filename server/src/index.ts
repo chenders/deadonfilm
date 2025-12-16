@@ -14,6 +14,7 @@ import { getStats, getRecentDeathsHandler, getCovidDeathsHandler } from "./route
 import { getCursedActorsRoute } from "./routes/actors.js"
 import { getActor } from "./routes/actor.js"
 import { getDeathWatchHandler } from "./routes/death-watch.js"
+import { getSitemap } from "./routes/sitemap.js"
 import { initializeDatabase } from "./lib/startup.js"
 
 const app = express()
@@ -38,6 +39,9 @@ app.use((req, res, next) => {
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" })
 })
+
+// SEO endpoints (not under /api since they're for crawlers)
+app.get("/sitemap.xml", getSitemap)
 
 // API routes
 app.get("/api/search", searchMovies)

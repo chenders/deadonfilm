@@ -9,6 +9,8 @@ import { toTitleCase } from "@/utils/formatText"
 import { getProfileUrl, getPosterUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildPersonSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import { PersonIcon, FilmReelIcon, InfoIcon } from "@/components/icons"
 import type { ActorFilmographyMovie } from "@/types"
 
@@ -173,8 +175,46 @@ export default function ActorPage() {
         />
         <meta property="og:title" content={`${actor.name} - Dead on Film`} />
         <meta property="og:type" content="profile" />
+        {actor.profilePath && (
+          <meta
+            property="og:image"
+            content={`https://image.tmdb.org/t/p/h632${actor.profilePath}`}
+          />
+        )}
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${actor.name} - Dead on Film`} />
+        <meta
+          name="twitter:description"
+          content={`${actor.name}'s profile and filmography on Dead on Film.`}
+        />
+        {actor.profilePath && (
+          <meta
+            name="twitter:image"
+            content={`https://image.tmdb.org/t/p/h632${actor.profilePath}`}
+          />
+        )}
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
+      <JsonLd
+        data={buildPersonSchema(
+          {
+            name: actor.name,
+            birthday: actor.birthday,
+            deathday: actor.deathday,
+            biography: actor.biography,
+            profilePath: actor.profilePath,
+            placeOfBirth: actor.placeOfBirth,
+          },
+          slug!
+        )}
+      />
+      <JsonLd
+        data={buildBreadcrumbSchema([
+          { name: "Home", url: "https://deadonfilm.com" },
+          { name: actor.name, url: `https://deadonfilm.com${location.pathname}` },
+        ])}
+      />
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
         {/* Header section */}

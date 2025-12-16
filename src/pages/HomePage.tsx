@@ -21,6 +21,13 @@ export default function HomePage() {
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://deadonfilm.com" />
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="Dead on Film - Movie Cast Mortality Database" />
+        <meta
+          name="twitter:description"
+          content="Look up any movie and see which actors have passed away. Discover mortality statistics and causes of death."
+        />
         <link rel="canonical" href="https://deadonfilm.com" />
       </Helmet>
 

@@ -6,6 +6,8 @@ import { createActorSlug } from "@/utils/slugify"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import CalculationExplainer from "@/components/common/CalculationExplainer"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildItemListSchema } from "@/utils/schema"
 import { PersonIcon, SkullIcon } from "@/components/icons"
 import type { CursedActor } from "@/types"
 
@@ -146,8 +148,28 @@ export default function CursedActorsPage() {
           content="Actors ranked by how many of their co-stars died above statistical expectations"
         />
         <meta property="og:type" content="website" />
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={getPageTitle(status)} />
+        <meta
+          name="twitter:description"
+          content="Actors ranked by how many of their co-stars died above statistical expectations"
+        />
         <link rel="canonical" href="https://deadonfilm.com/cursed-actors" />
       </Helmet>
+      {data && data.actors.length > 0 && (
+        <JsonLd
+          data={buildItemListSchema(
+            "Most Cursed Actors",
+            "Actors ranked by how many of their co-stars died above statistical expectations",
+            data.actors.slice(0, 10).map((actor) => ({
+              name: actor.name,
+              url: `https://deadonfilm.com/actor/${createActorSlug(actor.name, actor.id)}`,
+              position: actor.rank,
+            }))
+          )}
+        />
+      )}
 
       <div data-testid="cursed-actors-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
