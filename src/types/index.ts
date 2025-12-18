@@ -234,6 +234,23 @@ export interface CovidDeathsResponse {
   pagination: PaginationInfo
 }
 
+// Violent Deaths types
+export interface ViolentDeath {
+  rank: number
+  id: number
+  name: string
+  deathday: string
+  causeOfDeath: string | null
+  causeOfDeathDetails: string | null
+  profilePath: string | null
+  ageAtDeath: number | null
+}
+
+export interface ViolentDeathsResponse {
+  persons: ViolentDeath[]
+  pagination: PaginationInfo
+}
+
 // Death Watch types
 export interface DeathWatchActor {
   rank: number
