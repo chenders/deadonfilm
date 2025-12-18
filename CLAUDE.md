@@ -455,6 +455,15 @@ Example: `/movie/breakfast-at-tiffanys-1961-14629`
   - When writing tests, prefer semantic queries (role, text, label) when available. Use `getByTestId` as a fallback when semantic queries are insufficient
   - **Never use CSS class selectors** (`.some-class`) in tests - they are fragile and break when styles change
 - Query preference order: `getByRole` > `getByLabelText` > `getByText` > `getByTestId` > CSS selectors (avoid)
+- **Playwright visual snapshots**: ALWAYS use Docker to generate/update Playwright visual regression snapshots. This ensures CI compatibility since CI runs on Linux:
+  ```bash
+  # Update snapshots using the Playwright Docker image (match version in package.json)
+  docker run --rm -v /path/to/project:/app -w /app --ipc=host \
+    mcr.microsoft.com/playwright:v1.57.0-noble \
+    sh -c "npm ci && npx playwright test --update-snapshots --grep 'test name'"
+  ```
+  - Only commit Linux snapshots (`*-linux.png`), never darwin/macOS snapshots
+  - Match the Docker image version to the Playwright version in package.json
 
 ### CLI Scripts
 
