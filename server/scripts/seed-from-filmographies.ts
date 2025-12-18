@@ -12,7 +12,8 @@
  *
  * Options:
  *   --limit <n>    Process only the first N actors
- *   --skip <n>     Skip the first N actors (for resuming)
+ *   --skip <n>     Skip the first N actors from the remaining unprocessed list
+ *                  (applied AFTER filtering out previously processed actors)
  *   --dry-run      Preview what would be done without writing to database
  *   --reset        Clear progress file and start fresh
  *
@@ -35,6 +36,7 @@ import {
   batchGetPersonDetails,
 } from "../src/lib/tmdb.js"
 import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
+import { calculateAgeAtFilming } from "../src/lib/movie-cache.js"
 import {
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
@@ -107,7 +109,15 @@ async function processMovie(
   currentYear: number,
   dryRun: boolean
 ): Promise<ProcessMovieResult> {
-  const releaseYear = releaseDate ? parseInt(releaseDate.split("-")[0], 10) : 0
+  // Skip movies without a valid release date to avoid invalid mortality calculations
+  if (!releaseDate) {
+    return { success: false, actorAppearances: 0 }
+  }
+
+  const releaseYear = parseInt(releaseDate.split("-")[0], 10)
+  if (isNaN(releaseYear) || releaseYear <= 0) {
+    return { success: false, actorAppearances: 0 }
+  }
 
   // Get full movie details
   const details = await getMovieDetails(movieId)
@@ -170,13 +180,6 @@ async function processMovie(
   // Save actor appearances
   const appearances: ActorAppearanceRecord[] = topCast.map((castMember, index) => {
     const person = personDetails.get(castMember.id)
-    const birthday = person?.birthday
-    let ageAtFilming: number | null = null
-
-    if (birthday && releaseYear) {
-      const birthYear = parseInt(birthday.split("-")[0], 10)
-      ageAtFilming = releaseYear - birthYear
-    }
 
     return {
       actor_tmdb_id: castMember.id,
@@ -184,7 +187,7 @@ async function processMovie(
       actor_name: castMember.name,
       character_name: castMember.character || null,
       billing_order: index,
-      age_at_filming: ageAtFilming,
+      age_at_filming: calculateAgeAtFilming(person?.birthday ?? null, releaseYear),
       is_deceased: !!person?.deathday,
     }
   })
@@ -363,9 +366,15 @@ async function runSeeding({ limit, skip, dryRun, reset }: RunOptions) {
       processedActors++
 
       // Still mark actor as processed to avoid retrying failed actors
+      // Keep all stats in sync on error, just like the success path
       if (!dryRun) {
         progress.processedActorIds.push(actorId)
-        progress.stats.errors = totalErrors
+        progress.stats = {
+          newMovies: totalNewMovies,
+          skippedMovies: totalSkippedMovies,
+          actorAppearances: totalActorAppearances,
+          errors: totalErrors,
+        }
         saveProgress(progress)
       }
     }
