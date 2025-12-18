@@ -23,46 +23,91 @@ function MovieRow({ movie }: { movie: CursedMovie }) {
   return (
     <Link
       to={`/movie/${slug}`}
-      className="flex items-center gap-4 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      data-testid={`cursed-movie-row-${movie.id}`}
+      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
     >
-      <span className="w-8 text-center font-display text-lg text-brown-medium">{movie.rank}</span>
+      {/* Desktop layout */}
+      <div className="hidden items-center gap-4 md:flex">
+        <span className="w-8 text-center font-display text-lg text-brown-medium">{movie.rank}</span>
 
-      <div className="h-16 w-11 flex-shrink-0 overflow-hidden rounded bg-beige">
-        {posterUrl ? (
-          <img
-            src={posterUrl}
-            alt=""
-            width={44}
-            height={64}
-            loading="lazy"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-text-muted">
-            No image
-          </div>
-        )}
+        <div className="h-16 w-11 flex-shrink-0 overflow-hidden rounded bg-beige">
+          {posterUrl ? (
+            <img
+              src={posterUrl}
+              alt=""
+              width={44}
+              height={64}
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs text-text-muted">
+              No image
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-display text-lg text-brown-dark">{movie.title}</h3>
+          <p className="text-sm text-text-muted">{releaseYear}</p>
+        </div>
+
+        <div className="flex-shrink-0 text-right">
+          <p className="font-display text-lg text-brown-dark">
+            {movie.deceasedCount}/{movie.castCount}
+          </p>
+          <p className="text-xs text-text-muted">
+            +{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"} above expected
+          </p>
+        </div>
+
+        <div className="flex-shrink-0 text-right">
+          <p className="font-display text-xl text-brown-dark">
+            {(movie.mortalitySurpriseScore * 100).toFixed(0)}%
+          </p>
+          <p className="text-xs text-text-muted">curse score</p>
+        </div>
       </div>
 
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate font-display text-lg text-brown-dark">{movie.title}</h3>
-        <p className="text-sm text-text-muted">{releaseYear}</p>
-      </div>
+      {/* Mobile layout */}
+      <div className="flex items-start gap-3 md:hidden">
+        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+          {movie.rank}
+        </span>
 
-      <div className="flex-shrink-0 text-right">
-        <p className="font-display text-lg text-brown-dark">
-          {movie.deceasedCount}/{movie.castCount}
-        </p>
-        <p className="text-xs text-text-muted">
-          +{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"} above expected
-        </p>
-      </div>
+        <div className="h-14 w-10 flex-shrink-0 overflow-hidden rounded bg-beige">
+          {posterUrl ? (
+            <img
+              src={posterUrl}
+              alt=""
+              width={40}
+              height={56}
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[10px] text-text-muted">
+              No img
+            </div>
+          )}
+        </div>
 
-      <div className="flex-shrink-0 text-right">
-        <p className="font-display text-xl text-brown-dark">
-          {(movie.mortalitySurpriseScore * 100).toFixed(0)}%
-        </p>
-        <p className="text-xs text-text-muted">curse score</p>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-display text-base text-brown-dark">{movie.title}</h3>
+          <p className="text-xs text-text-muted">
+            {releaseYear} · {movie.deceasedCount}/{movie.castCount} deaths
+          </p>
+          <p className="mt-1 text-xs text-brown-dark">
+            <span className="font-display text-sm">
+              {(movie.mortalitySurpriseScore * 100).toFixed(0)}%
+            </span>{" "}
+            curse score
+            <span className="text-text-muted">
+              {" "}
+              (+{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"})
+            </span>
+          </p>
+        </div>
       </div>
     </Link>
   )
@@ -198,83 +243,168 @@ export default function CursedMoviesPage() {
         </div>
 
         {/* Filters */}
-        <div className="mb-6 flex flex-wrap items-center justify-center gap-4 rounded-lg bg-beige p-4">
-          <div className="flex items-center gap-2">
-            <label htmlFor="from-decade" className="text-sm text-text-muted">
-              From:
-            </label>
-            <select
-              id="from-decade"
-              value={fromDecade?.toString() || ""}
-              onChange={(e) => updateParams({ from: e.target.value || undefined })}
-              className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
-            >
-              {DECADE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+        <div className="mb-6 rounded-lg bg-beige p-4">
+          {/* Mobile filters - stacked */}
+          <div className="grid grid-cols-3 gap-3 md:hidden">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="from-decade-mobile" className="text-xs text-text-muted">
+                From
+              </label>
+              <select
+                id="from-decade-mobile"
+                value={fromDecade?.toString() || ""}
+                onChange={(e) => updateParams({ from: e.target.value || undefined })}
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+              >
+                {DECADE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="to-decade-mobile" className="text-xs text-text-muted">
+                To
+              </label>
+              <select
+                id="to-decade-mobile"
+                value={toDecade?.toString() || ""}
+                onChange={(e) => updateParams({ to: e.target.value || undefined })}
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+              >
+                {DECADE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="min-deaths-mobile" className="text-xs text-text-muted">
+                Min Deaths
+              </label>
+              <select
+                id="min-deaths-mobile"
+                value={minDeadActors.toString()}
+                onChange={(e) =>
+                  updateParams({ minDeaths: e.target.value === "3" ? undefined : e.target.value })
+                }
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+              >
+                {minDeathsOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label htmlFor="to-decade" className="text-sm text-text-muted">
-              To:
+          <div className="mt-3 flex items-center justify-between md:hidden">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
+              <input
+                type="checkbox"
+                checked={includeObscure}
+                onChange={(e) =>
+                  updateParams({ includeObscure: e.target.checked ? "true" : undefined })
+                }
+                className="rounded border-brown-medium/30"
+              />
+              Include obscure
             </label>
-            <select
-              id="to-decade"
-              value={toDecade?.toString() || ""}
-              onChange={(e) => updateParams({ to: e.target.value || undefined })}
-              className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
-            >
-              {DECADE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+
+            {hasFilters && (
+              <button
+                onClick={() => setSearchParams(new URLSearchParams())}
+                className="text-xs text-accent hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <label htmlFor="min-deaths" className="text-sm text-text-muted">
-              Min Deaths:
+          {/* Desktop filters - inline */}
+          <div className="hidden flex-wrap items-center justify-center gap-4 md:flex">
+            <div className="flex items-center gap-2">
+              <label htmlFor="from-decade" className="text-sm text-text-muted">
+                From:
+              </label>
+              <select
+                id="from-decade"
+                value={fromDecade?.toString() || ""}
+                onChange={(e) => updateParams({ from: e.target.value || undefined })}
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+              >
+                {DECADE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="to-decade" className="text-sm text-text-muted">
+                To:
+              </label>
+              <select
+                id="to-decade"
+                value={toDecade?.toString() || ""}
+                onChange={(e) => updateParams({ to: e.target.value || undefined })}
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+              >
+                {DECADE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="min-deaths" className="text-sm text-text-muted">
+                Min Deaths:
+              </label>
+              <select
+                id="min-deaths"
+                value={minDeadActors.toString()}
+                onChange={(e) =>
+                  updateParams({ minDeaths: e.target.value === "3" ? undefined : e.target.value })
+                }
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+              >
+                {minDeathsOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
+              <input
+                type="checkbox"
+                checked={includeObscure}
+                onChange={(e) =>
+                  updateParams({ includeObscure: e.target.checked ? "true" : undefined })
+                }
+                className="rounded border-brown-medium/30"
+              />
+              Include obscure movies
             </label>
-            <select
-              id="min-deaths"
-              value={minDeadActors.toString()}
-              onChange={(e) =>
-                updateParams({ minDeaths: e.target.value === "3" ? undefined : e.target.value })
-              }
-              className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
-            >
-              {minDeathsOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+
+            {hasFilters && (
+              <button
+                onClick={() => setSearchParams(new URLSearchParams())}
+                className="text-sm text-accent hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
-
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
-            <input
-              type="checkbox"
-              checked={includeObscure}
-              onChange={(e) =>
-                updateParams({ includeObscure: e.target.checked ? "true" : undefined })
-              }
-              className="rounded border-brown-medium/30"
-            />
-            Include obscure movies
-          </label>
-
-          {hasFilters && (
-            <button
-              onClick={() => setSearchParams(new URLSearchParams())}
-              className="text-sm text-accent hover:underline"
-            >
-              Clear filters
-            </button>
-          )}
         </div>
 
         {noResults ? (
