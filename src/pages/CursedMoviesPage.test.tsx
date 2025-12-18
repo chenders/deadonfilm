@@ -92,8 +92,9 @@ describe("CursedMoviesPage", () => {
     renderWithProviders(<CursedMoviesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Very Cursed Movie")).toBeInTheDocument()
-      expect(screen.getByText("Somewhat Cursed Movie")).toBeInTheDocument()
+      // Both desktop and mobile layouts render movie titles
+      expect(screen.getAllByText("Very Cursed Movie").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Somewhat Cursed Movie").length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -106,6 +107,7 @@ describe("CursedMoviesPage", () => {
     renderWithProviders(<CursedMoviesPage />)
 
     await waitFor(() => {
+      // Both desktop (with colon) and mobile (without) layouts are rendered
       expect(screen.getByLabelText("From:")).toBeInTheDocument()
       expect(screen.getByLabelText("To:")).toBeInTheDocument()
       expect(screen.getByLabelText("Min Deaths:")).toBeInTheDocument()
@@ -177,7 +179,8 @@ describe("CursedMoviesPage", () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText("Clear filters")).toBeInTheDocument()
+      // Both mobile and desktop layouts render Clear filters
+      expect(screen.getAllByText("Clear filters").length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -190,7 +193,8 @@ describe("CursedMoviesPage", () => {
     renderWithProviders(<CursedMoviesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Very Cursed Movie")).toBeInTheDocument()
+      // Both desktop and mobile layouts render movie titles
+      expect(screen.getAllByText("Very Cursed Movie").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(screen.queryByText("Clear filters")).not.toBeInTheDocument()
@@ -220,13 +224,14 @@ describe("CursedMoviesPage", () => {
     renderWithProviders(<CursedMoviesPage />)
 
     await waitFor(() => {
-      // Check mortality stats display (deceasedCount/castCount)
-      expect(screen.getByText("15/20")).toBeInTheDocument()
-      expect(screen.getByText("10/15")).toBeInTheDocument()
+      // Both desktop and mobile layouts render stats, use getAllByText
+      // Check mortality stats display (deceasedCount/castCount) - desktop shows "15/20"
+      expect(screen.getAllByText("15/20").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("10/15").length).toBeGreaterThanOrEqual(1)
 
       // Check curse score display (mortalitySurpriseScore * 100)%
-      expect(screen.getByText("200%")).toBeInTheDocument() // 2.0 * 100
-      expect(screen.getByText("150%")).toBeInTheDocument() // 1.5 * 100
+      expect(screen.getAllByText("200%").length).toBeGreaterThanOrEqual(1) // 2.0 * 100
+      expect(screen.getAllByText("150%").length).toBeGreaterThanOrEqual(1) // 1.5 * 100
     })
   })
 
@@ -288,7 +293,8 @@ describe("CursedMoviesPage", () => {
     renderWithProviders(<CursedMoviesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Very Cursed Movie")).toBeInTheDocument()
+      // Both desktop and mobile layouts render movie titles
+      expect(screen.getAllByText("Very Cursed Movie").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(screen.queryByText("Previous")).not.toBeInTheDocument()
@@ -304,6 +310,7 @@ describe("CursedMoviesPage", () => {
     renderWithProviders(<CursedMoviesPage />)
 
     await waitFor(() => {
+      // Desktop has "Include obscure movies", mobile has "Include obscure"
       expect(screen.getByLabelText("Include obscure movies")).toBeInTheDocument()
     })
   })
@@ -317,6 +324,7 @@ describe("CursedMoviesPage", () => {
     renderWithProviders(<CursedMoviesPage />)
 
     await waitFor(() => {
+      // Use desktop checkbox for testing
       const checkbox = screen.getByLabelText("Include obscure movies") as HTMLInputElement
       expect(checkbox.checked).toBe(false)
     })
@@ -341,7 +349,7 @@ describe("CursedMoviesPage", () => {
       expect(screen.getByLabelText("Include obscure movies")).toBeInTheDocument()
     })
 
-    // Check the checkbox
+    // Check the desktop checkbox
     fireEvent.click(screen.getByLabelText("Include obscure movies"))
 
     await waitFor(() => {
@@ -364,7 +372,9 @@ describe("CursedMoviesPage", () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText("Clear filters")).toBeInTheDocument()
+      // Both mobile and desktop have Clear filters buttons, use getAllByText
+      expect(screen.getAllByText("Clear filters").length).toBeGreaterThanOrEqual(1)
+      // Use desktop checkbox for testing
       const checkbox = screen.getByLabelText("Include obscure movies") as HTMLInputElement
       expect(checkbox.checked).toBe(true)
     })

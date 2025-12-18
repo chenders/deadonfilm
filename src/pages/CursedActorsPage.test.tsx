@@ -88,8 +88,9 @@ describe("CursedActorsPage", () => {
     renderWithProviders(<CursedActorsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Very Cursed Actor")).toBeInTheDocument()
-      expect(screen.getByText("Somewhat Cursed Actor")).toBeInTheDocument()
+      // Both desktop and mobile layouts render actor names
+      expect(screen.getAllByText("Very Cursed Actor").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Somewhat Cursed Actor").length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -174,7 +175,8 @@ describe("CursedActorsPage", () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText("Clear filters")).toBeInTheDocument()
+      // Both mobile and desktop layouts render Clear filters
+      expect(screen.getAllByText("Clear filters").length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -187,7 +189,8 @@ describe("CursedActorsPage", () => {
     renderWithProviders(<CursedActorsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Very Cursed Actor")).toBeInTheDocument()
+      // Both desktop and mobile layouts render actor names
+      expect(screen.getAllByText("Very Cursed Actor").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(screen.queryByText("Clear filters")).not.toBeInTheDocument()
@@ -217,13 +220,14 @@ describe("CursedActorsPage", () => {
     renderWithProviders(<CursedActorsPage />)
 
     await waitFor(() => {
-      // Check movie count
-      expect(screen.getByText("15 movies analyzed")).toBeInTheDocument()
-      expect(screen.getByText("10 movies analyzed")).toBeInTheDocument()
+      // Desktop shows "X movies analyzed", mobile shows "X movies · Y co-star deaths"
+      // Check that movie counts appear somewhere
+      expect(screen.getAllByText(/15 movies/).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText(/10 movies/).length).toBeGreaterThanOrEqual(1)
 
-      // Check death counts
-      expect(screen.getByText("127 deaths")).toBeInTheDocument()
-      expect(screen.getByText("85 deaths")).toBeInTheDocument()
+      // Check death counts - desktop shows "127 deaths", mobile shows "127 co-star deaths"
+      expect(screen.getAllByText(/127/).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText(/85/).length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -285,7 +289,8 @@ describe("CursedActorsPage", () => {
     renderWithProviders(<CursedActorsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Very Cursed Actor")).toBeInTheDocument()
+      // Both desktop and mobile layouts render actor names
+      expect(screen.getAllByText("Very Cursed Actor").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(screen.queryByText("Previous")).not.toBeInTheDocument()
@@ -301,11 +306,12 @@ describe("CursedActorsPage", () => {
     renderWithProviders(<CursedActorsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Somewhat Cursed Actor")).toBeInTheDocument()
+      // Both desktop and mobile layouts render actor names
+      expect(screen.getAllByText("Somewhat Cursed Actor").length).toBeGreaterThanOrEqual(1)
     })
 
-    // The deceased actor row should have a skull icon
-    const actorRow = screen.getByText("Somewhat Cursed Actor").closest("div")
+    // The deceased actor row should have a skull icon - check via test id
+    const actorRow = screen.getByTestId("cursed-actor-row-2")
     expect(actorRow).toBeInTheDocument()
   })
 })
