@@ -18,6 +18,7 @@
     "seed:actuarial": "tsx scripts/seed-actuarial-tables.ts",
     "seed:cohort": "tsx scripts/seed-cohort-life-expectancy.ts",
     "seed:movies": "tsx scripts/seed-movies.ts",
+    "seed:filmographies": "tsx scripts/seed-from-filmographies.ts",
     "backfill:mortality": "tsx scripts/backfill-mortality-stats.ts",
     "backfill:birthdays": "tsx scripts/backfill-birthdays.ts",
     "backfill:appearances": "tsx scripts/backfill-actor-appearances.ts",
