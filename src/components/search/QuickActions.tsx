@@ -1,29 +1,7 @@
-import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { getDiscoverMovie } from "@/services/api"
-import { createMovieSlug } from "@/utils/slugify"
+import { Link } from "react-router-dom"
 import { CursedFilmIcon, CursedActorIcon } from "@/components/icons"
 
 export default function QuickActions() {
-  const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
-
-  const handleForeverYoung = async () => {
-    setLoading(true)
-    try {
-      const data = await getDiscoverMovie()
-      const slug = createMovieSlug(data.title, data.release_date, data.id)
-      navigate(`/movie/${slug}`)
-    } catch (error) {
-      console.error("Failed to get forever young movie:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const buttonClass =
-    "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brown-dark bg-beige border border-brown-medium/30 rounded-full hover:bg-cream hover:border-brown-medium/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-
   const linkClass =
     "inline-flex items-center gap-1.5 rounded-full border border-brown-medium/30 bg-beige px-3 py-1.5 text-xs font-medium text-brown-dark transition-all duration-200 hover:border-brown-medium/50 hover:bg-cream"
 
@@ -42,15 +20,10 @@ export default function QuickActions() {
       className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-2"
     >
       <div className="group relative">
-        <button
-          data-testid="forever-young-btn"
-          onClick={handleForeverYoung}
-          disabled={loading}
-          className={buttonClass}
-        >
-          <span className={`${emojiClass} ${loading ? "animate-pulse" : ""}`}>👼</span>
-          {loading ? "..." : "Forever Young"}
-        </button>
+        <Link data-testid="forever-young-btn" to="/forever-young" className={linkClass}>
+          <span className={emojiClass}>👼</span>
+          Forever Young
+        </Link>
         <span className={tooltipClass}>Movies featuring actors who died tragically young</span>
       </div>
 
