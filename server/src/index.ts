@@ -9,7 +9,12 @@ import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
 import { getOnThisDay } from "./routes/on-this-day.js"
 import { getDeathInfoRoute } from "./routes/death-info.js"
-import { getDiscoverMovie, getCursedMovies, getCursedMoviesFilters } from "./routes/discover.js"
+import {
+  getDiscoverMovie,
+  getCursedMovies,
+  getCursedMoviesFilters,
+  getForeverYoungMoviesHandler,
+} from "./routes/discover.js"
 import {
   getStats,
   getRecentDeathsHandler,
@@ -56,6 +61,7 @@ app.get("/api/on-this-day", getOnThisDay)
 app.get("/api/discover/:type", getDiscoverMovie)
 app.get("/api/cursed-movies", getCursedMovies)
 app.get("/api/cursed-movies/filters", getCursedMoviesFilters)
+app.get("/api/forever-young", getForeverYoungMoviesHandler)
 app.get("/api/stats", getStats)
 app.get("/api/recent-deaths", getRecentDeathsHandler)
 app.get("/api/covid-deaths", getCovidDeathsHandler)
