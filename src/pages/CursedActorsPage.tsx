@@ -39,34 +39,73 @@ function ActorRow({ actor }: { actor: CursedActor }) {
   return (
     <Link
       to={`/actor/${slug}`}
-      className="flex items-center gap-4 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      data-testid={`cursed-actor-row-${actor.id}`}
+      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
     >
-      <span className="w-8 text-center font-display text-lg text-brown-medium">{actor.rank}</span>
+      {/* Desktop layout */}
+      <div className="hidden items-center gap-4 md:flex">
+        <span className="w-8 text-center font-display text-lg text-brown-medium">{actor.rank}</span>
 
-      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-        <PersonIcon size={24} className="text-brown-medium" />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <h3 className="truncate font-display text-lg text-brown-dark">{actor.name}</h3>
-          {actor.isDeceased && <SkullIcon size={16} className="flex-shrink-0 text-brown-medium" />}
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
+          <PersonIcon size={24} className="text-brown-medium" />
         </div>
-        <p className="text-sm text-text-muted">{actor.totalMovies} movies analyzed</p>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="truncate font-display text-lg text-brown-dark">{actor.name}</h3>
+            {actor.isDeceased && (
+              <SkullIcon size={16} className="flex-shrink-0 text-brown-medium" />
+            )}
+          </div>
+          <p className="text-sm text-text-muted">{actor.totalMovies} movies analyzed</p>
+        </div>
+
+        <div className="flex-shrink-0 text-right">
+          <p className="font-display text-lg text-brown-dark">{actor.totalActualDeaths} deaths</p>
+          <p className="text-xs text-text-muted">
+            +{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"} above expected
+          </p>
+        </div>
+
+        <div className="flex-shrink-0 text-right">
+          <p className="font-display text-xl text-brown-dark">
+            {cursePercentage > 0 ? `${cursePercentage.toFixed(0)}%` : "0%"}
+          </p>
+          <p className="text-xs text-text-muted">curse score</p>
+        </div>
       </div>
 
-      <div className="flex-shrink-0 text-right">
-        <p className="font-display text-lg text-brown-dark">{actor.totalActualDeaths} deaths</p>
-        <p className="text-xs text-text-muted">
-          +{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"} above expected
-        </p>
-      </div>
+      {/* Mobile layout */}
+      <div className="flex items-start gap-3 md:hidden">
+        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+          {actor.rank}
+        </span>
 
-      <div className="flex-shrink-0 text-right">
-        <p className="font-display text-xl text-brown-dark">
-          {cursePercentage > 0 ? `${cursePercentage.toFixed(0)}%` : "0%"}
-        </p>
-        <p className="text-xs text-text-muted">curse score</p>
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-beige">
+          <PersonIcon size={20} className="text-brown-medium" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <h3 className="truncate font-display text-base text-brown-dark">{actor.name}</h3>
+            {actor.isDeceased && (
+              <SkullIcon size={14} className="flex-shrink-0 text-brown-medium" />
+            )}
+          </div>
+          <p className="text-xs text-text-muted">
+            {actor.totalMovies} movies · {actor.totalActualDeaths} co-star deaths
+          </p>
+          <p className="mt-1 text-xs text-brown-dark">
+            <span className="font-display text-sm">
+              {cursePercentage > 0 ? `${cursePercentage.toFixed(0)}%` : "0%"}
+            </span>{" "}
+            curse score
+            <span className="text-text-muted">
+              {" "}
+              (+{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"})
+            </span>
+          </p>
+        </div>
       </div>
     </Link>
   )
@@ -182,91 +221,184 @@ export default function CursedActorsPage() {
         </div>
 
         {/* Filters */}
-        <div className="mb-6 flex flex-wrap items-center justify-center gap-4 rounded-lg bg-beige p-4">
-          <div className="flex items-center gap-2">
-            <label htmlFor="status" className="text-sm text-text-muted">
-              Status:
-            </label>
-            <select
-              id="status"
-              value={status}
-              onChange={(e) =>
-                updateParams({ status: e.target.value === "all" ? undefined : e.target.value })
-              }
-              className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="mb-6 rounded-lg bg-beige p-4">
+          {/* Mobile filters - stacked */}
+          <div className="grid grid-cols-2 gap-3 md:hidden">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="status-mobile" className="text-xs text-text-muted">
+                Status
+              </label>
+              <select
+                id="status-mobile"
+                value={status}
+                onChange={(e) =>
+                  updateParams({ status: e.target.value === "all" ? undefined : e.target.value })
+                }
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <label htmlFor="from-decade" className="text-sm text-text-muted">
-              From:
-            </label>
-            <select
-              id="from-decade"
-              value={fromDecade?.toString() || ""}
-              onChange={(e) => updateParams({ from: e.target.value || undefined })}
-              className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
-            >
-              {DECADE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="min-movies-mobile" className="text-xs text-text-muted">
+                Min Movies
+              </label>
+              <select
+                id="min-movies-mobile"
+                value={minMovies.toString()}
+                onChange={(e) =>
+                  updateParams({ minMovies: e.target.value === "2" ? undefined : e.target.value })
+                }
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+              >
+                {MIN_MOVIES_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <label htmlFor="to-decade" className="text-sm text-text-muted">
-              To:
-            </label>
-            <select
-              id="to-decade"
-              value={toDecade?.toString() || ""}
-              onChange={(e) => updateParams({ to: e.target.value || undefined })}
-              className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
-            >
-              {DECADE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="from-decade-mobile" className="text-xs text-text-muted">
+                From
+              </label>
+              <select
+                id="from-decade-mobile"
+                value={fromDecade?.toString() || ""}
+                onChange={(e) => updateParams({ from: e.target.value || undefined })}
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+              >
+                {DECADE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <label htmlFor="min-movies" className="text-sm text-text-muted">
-              Min Movies:
-            </label>
-            <select
-              id="min-movies"
-              value={minMovies.toString()}
-              onChange={(e) =>
-                updateParams({ minMovies: e.target.value === "2" ? undefined : e.target.value })
-              }
-              className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
-            >
-              {MIN_MOVIES_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="to-decade-mobile" className="text-xs text-text-muted">
+                To
+              </label>
+              <select
+                id="to-decade-mobile"
+                value={toDecade?.toString() || ""}
+                onChange={(e) => updateParams({ to: e.target.value || undefined })}
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+              >
+                {DECADE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {hasFilters && (
-            <button
-              onClick={() => setSearchParams(new URLSearchParams())}
-              className="text-sm text-accent hover:underline"
-            >
-              Clear filters
-            </button>
+            <div className="mt-3 flex justify-end md:hidden">
+              <button
+                onClick={() => setSearchParams(new URLSearchParams())}
+                className="text-xs text-accent hover:underline"
+              >
+                Clear filters
+              </button>
+            </div>
           )}
+
+          {/* Desktop filters - inline */}
+          <div className="hidden flex-wrap items-center justify-center gap-4 md:flex">
+            <div className="flex items-center gap-2">
+              <label htmlFor="status" className="text-sm text-text-muted">
+                Status:
+              </label>
+              <select
+                id="status"
+                value={status}
+                onChange={(e) =>
+                  updateParams({ status: e.target.value === "all" ? undefined : e.target.value })
+                }
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="from-decade" className="text-sm text-text-muted">
+                From:
+              </label>
+              <select
+                id="from-decade"
+                value={fromDecade?.toString() || ""}
+                onChange={(e) => updateParams({ from: e.target.value || undefined })}
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+              >
+                {DECADE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="to-decade" className="text-sm text-text-muted">
+                To:
+              </label>
+              <select
+                id="to-decade"
+                value={toDecade?.toString() || ""}
+                onChange={(e) => updateParams({ to: e.target.value || undefined })}
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+              >
+                {DECADE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="min-movies" className="text-sm text-text-muted">
+                Min Movies:
+              </label>
+              <select
+                id="min-movies"
+                value={minMovies.toString()}
+                onChange={(e) =>
+                  updateParams({ minMovies: e.target.value === "2" ? undefined : e.target.value })
+                }
+                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+              >
+                {MIN_MOVIES_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {hasFilters && (
+              <button
+                onClick={() => setSearchParams(new URLSearchParams())}
+                className="text-sm text-accent hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
         {noResults ? (
