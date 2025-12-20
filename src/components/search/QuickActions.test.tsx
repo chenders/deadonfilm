@@ -1,23 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { describe, it, expect } from "vitest"
+import { render, screen } from "@testing-library/react"
 import { BrowserRouter } from "react-router-dom"
 import QuickActions from "./QuickActions"
-import * as api from "@/services/api"
-
-// Mock the API
-vi.mock("@/services/api", () => ({
-  getDiscoverMovie: vi.fn(),
-}))
-
-// Mock useNavigate
-const mockNavigate = vi.fn()
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom")
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  }
-})
 
 function renderWithRouter(ui: React.ReactElement) {
   return render(
@@ -28,10 +12,6 @@ function renderWithRouter(ui: React.ReactElement) {
 }
 
 describe("QuickActions", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it("renders all five action buttons", () => {
     renderWithRouter(<QuickActions />)
 
@@ -53,33 +33,11 @@ describe("QuickActions", () => {
     expect(screen.getByText("Death Watch")).toBeInTheDocument()
   })
 
-  it("navigates to forever young movie when clicked", async () => {
-    const mockMovie = { id: 123, title: "Tragic Movie", release_date: "1985-01-01" }
-    vi.mocked(api.getDiscoverMovie).mockResolvedValue(mockMovie)
-
+  it("Forever Young button links to /forever-young", () => {
     renderWithRouter(<QuickActions />)
 
-    fireEvent.click(screen.getByTestId("forever-young-btn"))
-
-    await waitFor(() => {
-      expect(api.getDiscoverMovie).toHaveBeenCalled()
-      expect(mockNavigate).toHaveBeenCalled()
-    })
-  })
-
-  it("handles API errors gracefully", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    vi.mocked(api.getDiscoverMovie).mockRejectedValue(new Error("API Error"))
-
-    renderWithRouter(<QuickActions />)
-
-    fireEvent.click(screen.getByTestId("forever-young-btn"))
-
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalled()
-    })
-
-    consoleSpy.mockRestore()
+    const link = screen.getByTestId("forever-young-btn")
+    expect(link).toHaveAttribute("href", "/forever-young")
   })
 
   it("has angel emoji for Forever Young button", () => {

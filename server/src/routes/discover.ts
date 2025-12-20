@@ -1,5 +1,10 @@
 import type { Request, Response } from "express"
-import { getHighMortalityMovies, getMaxValidMinDeaths, getForeverYoungMovies } from "../lib/db.js"
+import {
+  getHighMortalityMovies,
+  getMaxValidMinDeaths,
+  getForeverYoungMovies,
+  getForeverYoungMoviesPaginated,
+} from "../lib/db.js"
 
 interface DiscoverMovieResponse {
   id: number
@@ -119,5 +124,60 @@ export async function getCursedMoviesFilters(_req: Request, res: Response) {
     console.error("Cursed movies filters error:", error)
     // Return default on error
     res.json({ maxMinDeaths: 3 })
+  }
+}
+
+// Get paginated list of forever young movies (movies featuring actors who died young)
+export async function getForeverYoungMoviesHandler(req: Request, res: Response) {
+  try {
+    // Check if database is available
+    if (!process.env.DATABASE_URL) {
+      return res.json({
+        movies: [],
+        pagination: { page: 1, pageSize: 50, totalCount: 0, totalPages: 0 },
+      })
+    }
+
+    const page = Math.max(1, parseInt(req.query.page as string) || 1)
+    const pageSize = 50
+    const offset = (page - 1) * pageSize
+
+    const { movies, totalCount } = await getForeverYoungMoviesPaginated({
+      limit: pageSize,
+      offset,
+    })
+
+    // Map database records to API response format with ranks
+    const result = movies.map((movie, index) => ({
+      rank: offset + index + 1,
+      id: movie.movie_tmdb_id,
+      title: movie.movie_title,
+      releaseYear: movie.movie_release_year,
+      posterPath: movie.movie_poster_path,
+      actor: {
+        id: movie.actor_tmdb_id,
+        name: movie.actor_name,
+        profilePath: movie.actor_profile_path,
+        yearsLost: movie.years_lost,
+        causeOfDeath: movie.cause_of_death,
+        causeOfDeathDetails: movie.cause_of_death_details,
+      },
+    }))
+
+    // Enforce max 20 pages
+    const totalPages = Math.min(Math.ceil(totalCount / pageSize), 20)
+
+    res.json({
+      movies: result,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages,
+      },
+    })
+  } catch (error) {
+    console.error("Forever young movies error:", error)
+    res.status(500).json({ error: { message: "Failed to fetch forever young movies" } })
   }
 }

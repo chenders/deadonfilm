@@ -8,6 +8,7 @@ import type {
   RecentDeathsResponse,
   CursedMoviesResponse,
   CursedMoviesFiltersResponse,
+  ForeverYoungResponse,
   CursedActorsResponse,
   ActorProfileResponse,
   CovidDeathsResponse,
@@ -91,6 +92,10 @@ export async function getCursedMovies(
 
 export async function getCursedMoviesFilters(): Promise<CursedMoviesFiltersResponse> {
   return fetchJson("/cursed-movies/filters")
+}
+
+export async function getForeverYoungMovies(page: number = 1): Promise<ForeverYoungResponse> {
+  return fetchJson(`/forever-young?page=${page}`)
 }
 
 export interface CursedActorsOptions {
