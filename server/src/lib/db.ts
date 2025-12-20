@@ -868,6 +868,68 @@ export async function getForeverYoungMovies(limit: number = 100): Promise<Foreve
   return result.rows.sort((a, b) => b.years_lost - a.years_lost).slice(0, limit)
 }
 
+// Paginated version for the Forever Young list page
+export interface ForeverYoungMovieRecord {
+  movie_tmdb_id: number
+  movie_title: string
+  movie_release_year: number | null
+  movie_poster_path: string | null
+  actor_tmdb_id: number
+  actor_name: string
+  actor_profile_path: string | null
+  years_lost: number
+  cause_of_death: string | null
+  cause_of_death_details: string | null
+}
+
+export interface ForeverYoungOptions {
+  limit?: number
+  offset?: number
+}
+
+// Get movies featuring leading actors who died abnormally young with pagination
+export async function getForeverYoungMoviesPaginated(
+  options: ForeverYoungOptions = {}
+): Promise<{ movies: ForeverYoungMovieRecord[]; totalCount: number }> {
+  const { limit = 50, offset = 0 } = options
+  const db = getPool()
+
+  // Find movies where a leading actor died with 40%+ of their expected lifespan still ahead
+  // Uses CTE to get one actor per movie (the one who lost the most years),
+  // then paginates and returns with total count
+  const result = await db.query<ForeverYoungMovieRecord & { total_count: string }>(
+    `WITH forever_young_movies AS (
+       SELECT DISTINCT ON (m.tmdb_id)
+         m.tmdb_id as movie_tmdb_id,
+         m.title as movie_title,
+         m.release_year as movie_release_year,
+         m.poster_path as movie_poster_path,
+         dp.tmdb_id as actor_tmdb_id,
+         dp.name as actor_name,
+         dp.profile_path as actor_profile_path,
+         dp.years_lost,
+         dp.cause_of_death,
+         dp.cause_of_death_details
+       FROM actor_appearances aa
+       JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
+       JOIN deceased_persons dp ON aa.actor_tmdb_id = dp.tmdb_id
+       WHERE aa.billing_order <= 3
+         AND dp.years_lost > dp.expected_lifespan * 0.40
+       ORDER BY m.tmdb_id, dp.years_lost DESC
+     )
+     SELECT COUNT(*) OVER() as total_count, *
+     FROM forever_young_movies
+     ORDER BY years_lost DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  )
+
+  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
+  const movies = result.rows.map(({ total_count: _total_count, ...movie }) => movie)
+
+  return { movies, totalCount }
+}
+
 // ============================================================================
 // Actor profile functions
 // ============================================================================
