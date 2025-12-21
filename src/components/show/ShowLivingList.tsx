@@ -176,4 +176,3 @@ function ShowLivingCard({ actor, showId, showName }: ShowLivingCardProps) {
     </div>
   )
 }
-

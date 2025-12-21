@@ -209,4 +209,3 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
     </div>
   )
 }
-
