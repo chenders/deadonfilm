@@ -18,6 +18,7 @@ const mockEpisodeResponse = {
     id: 1400,
     name: "Seinfeld",
     posterPath: "/poster.jpg",
+    firstAirDate: "1989-07-05",
   },
   episode: {
     id: 12345,
@@ -134,7 +135,7 @@ describe("EpisodePage", () => {
     })
 
     const showLink = screen.getByText("Seinfeld").closest("a")
-    expect(showLink).toHaveAttribute("href", "/show/seinfeld-unknown-1400")
+    expect(showLink).toHaveAttribute("href", "/show/seinfeld-1989-1400")
   })
 
   it("renders mortality stats", async () => {

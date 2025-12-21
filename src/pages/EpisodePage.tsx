@@ -53,7 +53,7 @@ export default function EpisodePage() {
   const { show, episode, deceased, living, stats } = data
   const episodeCode = `S${episode.seasonNumber}E${episode.episodeNumber}`
   const title = `${show.name} - ${episodeCode}: ${episode.name}`
-  const showSlug = createShowSlug(show.name, null, show.id)
+  const showSlug = createShowSlug(show.name, show.firstAirDate, show.id)
 
   // Get still image URL
   const stillUrl = episode.stillPath ? `https://image.tmdb.org/t/p/w500${episode.stillPath}` : null
