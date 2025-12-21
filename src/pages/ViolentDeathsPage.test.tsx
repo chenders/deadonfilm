@@ -114,6 +114,43 @@ describe("ViolentDeathsPage", () => {
     })
   })
 
+  it("description excludes 'self-inflicted causes' when checkbox unchecked", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Actors in our database who died from violent causes/)
+      ).toBeInTheDocument()
+    })
+
+    // Description should NOT include "self-inflicted causes" when unchecked
+    expect(screen.queryByText(/self-inflicted causes/)).not.toBeInTheDocument()
+  })
+
+  it("description includes 'self-inflicted causes' when checkbox checked", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Include all causes")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole("checkbox"))
+
+    await waitFor(() => {
+      expect(screen.getByText(/self-inflicted causes/)).toBeInTheDocument()
+    })
+  })
+
   it("shows empty state when no results", async () => {
     vi.mocked(api.getViolentDeaths).mockResolvedValue({
       persons: [],
@@ -188,7 +225,7 @@ describe("ViolentDeathsPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getViolentDeaths).toHaveBeenCalledWith(2)
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 2, includeSelfInflicted: false })
     })
   })
 
@@ -248,7 +285,84 @@ describe("ViolentDeathsPage", () => {
     })
 
     await waitFor(() => {
-      expect(api.getViolentDeaths).toHaveBeenCalledWith(2)
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 2, includeSelfInflicted: false })
+    })
+  })
+
+  it("renders 'Include all causes' checkbox", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Include all causes")).toBeInTheDocument()
+      expect(screen.getByRole("checkbox")).not.toBeChecked()
+    })
+  })
+
+  it("calls API with includeSelfInflicted when checkbox is checked", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Include all causes")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole("checkbox"))
+
+    await waitFor(() => {
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 1, includeSelfInflicted: true })
+    })
+  })
+
+  it("reads includeSelfInflicted from URL parameters", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />, {
+      initialEntries: ["/violent-deaths?all=true"],
+    })
+
+    await waitFor(() => {
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 1, includeSelfInflicted: true })
+      expect(screen.getByRole("checkbox")).toBeChecked()
+    })
+  })
+
+  it("resets page to 1 when toggling the checkbox", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 2, pageSize: 50, totalPages: 3, totalCount: 150 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />, {
+      initialEntries: ["/violent-deaths?page=2"],
+    })
+
+    // Wait for initial data to load and checkbox to appear
+    await waitFor(() => {
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 2, includeSelfInflicted: false })
+      expect(screen.getByRole("checkbox")).toBeInTheDocument()
+    })
+
+    // Clear mock to track only the next call
+    vi.mocked(api.getViolentDeaths).mockClear()
+
+    // Toggle the checkbox
+    fireEvent.click(screen.getByRole("checkbox"))
+
+    // Should reset to page 1 when toggling the filter
+    await waitFor(() => {
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 1, includeSelfInflicted: true })
     })
   })
 

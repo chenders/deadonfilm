@@ -95,8 +95,9 @@ export default function ViolentDeathsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
+  const includeSelfInflicted = searchParams.get("all") === "true"
 
-  const { data, isLoading, error } = useViolentDeaths(page)
+  const { data, isLoading, error } = useViolentDeaths({ page, includeSelfInflicted })
 
   const goToPage = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams)
@@ -105,6 +106,18 @@ export default function ViolentDeathsPage() {
     } else {
       newParams.delete("page")
     }
+    setSearchParams(newParams)
+  }
+
+  const toggleIncludeAll = () => {
+    const newParams = new URLSearchParams(searchParams)
+    if (!includeSelfInflicted) {
+      newParams.set("all", "true")
+    } else {
+      newParams.delete("all")
+    }
+    // Reset to page 1 when toggling
+    newParams.delete("page")
     setSearchParams(newParams)
   }
 
@@ -146,9 +159,22 @@ export default function ViolentDeathsPage() {
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">Violent Deaths</h1>
           <p className="mt-2 text-sm text-text-muted">
-            Actors in our database who died from violent causes including homicide, suicide, or
-            execution. Ordered by death date, most recent first.
+            Actors in our database who died from violent causes including homicide
+            {includeSelfInflicted ? ", self-inflicted causes," : ""} or execution. Ordered by death
+            date, most recent first.
           </p>
+          <label
+            className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+            data-testid="include-all-toggle"
+          >
+            <input
+              type="checkbox"
+              checked={includeSelfInflicted}
+              onChange={toggleIncludeAll}
+              className="h-4 w-4 rounded border-brown-medium/30 text-brown-medium focus:ring-brown-medium/50"
+            />
+            <span>Include all causes</span>
+          </label>
         </div>
 
         {noResults ? (

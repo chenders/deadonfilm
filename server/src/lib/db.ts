@@ -1525,6 +1525,7 @@ export async function getCovidDeaths(options: CovidDeathOptions = {}): Promise<{
 export interface ViolentDeathOptions {
   limit?: number
   offset?: number
+  includeSelfInflicted?: boolean
 }
 
 // Get deceased persons who died from violent causes (homicide, suicide, execution, weapons)
@@ -1532,17 +1533,33 @@ export async function getViolentDeaths(options: ViolentDeathOptions = {}): Promi
   persons: DeceasedPersonRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0 } = options
+  const { limit = 50, offset = 0, includeSelfInflicted = false } = options
   const db = getPool()
 
-  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(
-    `SELECT COUNT(*) OVER () as total_count, *
-     FROM deceased_persons
-     WHERE violent_death = true
-     ORDER BY deathday DESC
-     LIMIT $1 OFFSET $2`,
-    [limit, offset]
-  )
+  // Build the query based on whether to include self-inflicted deaths
+  // By default, exclude suicide patterns from violent deaths
+  const query = includeSelfInflicted
+    ? `SELECT COUNT(*) OVER () as total_count, *
+       FROM deceased_persons
+       WHERE violent_death = true
+       ORDER BY deathday DESC
+       LIMIT $1 OFFSET $2`
+    : `SELECT COUNT(*) OVER () as total_count, *
+       FROM deceased_persons
+       WHERE violent_death = true
+         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%suicide%'
+         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%self-inflicted%'
+         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%took own life%'
+         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%took his own life%'
+         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%took her own life%'
+         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%died by suicide%'
+       ORDER BY deathday DESC
+       LIMIT $1 OFFSET $2`
+
+  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(query, [
+    limit,
+    offset,
+  ])
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
   const persons = result.rows.map(({ total_count: _total_count, ...person }) => person)
