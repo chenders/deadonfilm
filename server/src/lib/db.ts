@@ -1525,20 +1525,44 @@ export async function getCovidDeaths(options: CovidDeathOptions = {}): Promise<{
 export interface ViolentDeathOptions {
   limit?: number
   offset?: number
+  includeSelfInflicted?: boolean
 }
+
+// Patterns that indicate self-inflicted death (suicide)
+const SELF_INFLICTED_PATTERNS = [
+  "suicide",
+  "self-inflicted",
+  "took own life",
+  "took his own life",
+  "took her own life",
+  "died by suicide",
+]
 
 // Get deceased persons who died from violent causes (homicide, suicide, execution, weapons)
 export async function getViolentDeaths(options: ViolentDeathOptions = {}): Promise<{
   persons: DeceasedPersonRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0 } = options
+  const { limit = 50, offset = 0, includeSelfInflicted = false } = options
   const db = getPool()
+
+  // Build the WHERE clause
+  let whereClause = "violent_death = true"
+
+  // By default, exclude self-inflicted deaths (suicides)
+  if (!includeSelfInflicted) {
+    // Create a condition that excludes records matching suicide patterns
+    const excludePatterns = SELF_INFLICTED_PATTERNS.map(
+      (p) =>
+        `LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%${p}%'`
+    ).join(" AND ")
+    whereClause += ` AND (${excludePatterns})`
+  }
 
   const result = await db.query<DeceasedPersonRecord & { total_count: string }>(
     `SELECT COUNT(*) OVER () as total_count, *
      FROM deceased_persons
-     WHERE violent_death = true
+     WHERE ${whereClause}
      ORDER BY deathday DESC
      LIMIT $1 OFFSET $2`,
     [limit, offset]
