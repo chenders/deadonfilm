@@ -68,6 +68,18 @@ describe("SiteStats", () => {
       expect(screen.getByText("actors tracked")).toBeInTheDocument()
       expect(screen.getByText("movies analyzed")).toBeInTheDocument()
       expect(screen.getByText("avg. mortality")).toBeInTheDocument()
+      expect(screen.getByText("leading cause")).toBeInTheDocument()
+    })
+  })
+
+  it("displays top cause of death when available", async () => {
+    vi.mocked(api.getSiteStats).mockResolvedValue(mockStats)
+
+    renderWithProviders(<SiteStats />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Cancer")).toBeInTheDocument()
+      expect(screen.getByText("leading cause")).toBeInTheDocument()
     })
   })
 
@@ -123,6 +135,7 @@ describe("SiteStats", () => {
 
     // Optional stats should not be shown
     expect(screen.queryByText("avg. mortality")).not.toBeInTheDocument()
+    expect(screen.queryByText("leading cause")).not.toBeInTheDocument()
   })
 
   it("shows mortality percentage when available", async () => {

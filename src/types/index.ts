@@ -273,6 +273,124 @@ export interface ViolentDeathsResponse {
   pagination: PaginationInfo
 }
 
+// Featured Movie types
+export interface FeaturedMovie {
+  tmdbId: number
+  title: string
+  releaseYear: number | null
+  posterPath: string | null
+  deceasedCount: number
+  castCount: number
+  expectedDeaths: number
+  mortalitySurpriseScore: number
+}
+
+export interface FeaturedMovieResponse {
+  movie: FeaturedMovie | null
+}
+
+// Trivia types
+export interface TriviaFact {
+  type: string
+  title: string
+  value: string
+  link?: string
+}
+
+export interface TriviaResponse {
+  facts: TriviaFact[]
+}
+
+// This Week Deaths types
+export interface ThisWeekDeath {
+  id: number
+  name: string
+  deathday: string
+  profilePath: string | null
+  causeOfDeath: string | null
+  ageAtDeath: number | null
+  yearOfDeath: number
+}
+
+export interface ThisWeekDeathsResponse {
+  deaths: ThisWeekDeath[]
+  weekRange: {
+    start: string
+    end: string
+  }
+}
+
+// Popular Movies types
+export interface PopularMovie {
+  id: number
+  title: string
+  releaseYear: number | null
+  posterPath: string | null
+  deceasedCount: number
+  castCount: number
+  popularity: number
+}
+
+export interface PopularMoviesResponse {
+  movies: PopularMovie[]
+}
+
+// Deaths by Cause types
+export interface CauseCategory {
+  cause: string
+  count: number
+  slug: string
+}
+
+export interface CauseCategoriesResponse {
+  causes: CauseCategory[]
+}
+
+export interface DeathByCause {
+  id: number
+  name: string
+  deathday: string
+  profilePath: string | null
+  causeOfDeath: string
+  causeOfDeathDetails: string | null
+  ageAtDeath: number | null
+  yearsLost: number | null
+}
+
+export interface DeathsByCauseResponse {
+  cause: string
+  slug: string
+  deaths: DeathByCause[]
+  pagination: PaginationInfo
+}
+
+// Deaths by Decade types
+export interface DecadeCategory {
+  decade: number
+  count: number
+}
+
+export interface DecadeCategoriesResponse {
+  decades: DecadeCategory[]
+}
+
+export interface DeathByDecade {
+  id: number
+  name: string
+  deathday: string
+  profilePath: string | null
+  causeOfDeath: string | null
+  ageAtDeath: number | null
+  yearsLost: number | null
+}
+
+export interface DeathsByDecadeResponse {
+  decade: number
+  decadeLabel: string
+  deaths: DeathByDecade[]
+  pagination: PaginationInfo
+}
+
 // Death Watch types
 export interface DeathWatchActor {
   rank: number
@@ -288,5 +406,50 @@ export interface DeathWatchActor {
 
 export interface DeathWatchResponse {
   actors: DeathWatchActor[]
+  pagination: PaginationInfo
+}
+
+// All Deaths types
+export interface AllDeath {
+  rank: number
+  id: number
+  name: string
+  deathday: string
+  profilePath: string | null
+  causeOfDeath: string | null
+  ageAtDeath: number | null
+}
+
+export interface AllDeathsResponse {
+  deaths: AllDeath[]
+  pagination: PaginationInfo
+}
+
+// Movies by Genre types
+export interface GenreCategory {
+  genre: string
+  count: number
+  slug: string
+}
+
+export interface GenreCategoriesResponse {
+  genres: GenreCategory[]
+}
+
+export interface MovieByGenre {
+  id: number
+  title: string
+  releaseYear: number | null
+  posterPath: string | null
+  deceasedCount: number
+  castCount: number
+  expectedDeaths: number | null
+  mortalitySurpriseScore: number | null
+}
+
+export interface MoviesByGenreResponse {
+  genre: string
+  slug: string
+  movies: MovieByGenre[]
   pagination: PaginationInfo
 }
