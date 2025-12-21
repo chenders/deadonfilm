@@ -83,6 +83,117 @@ export interface TMDBPerson {
   popularity: number
 }
 
+// TV Show Types
+export interface TMDBTVSearchResponse {
+  page: number
+  results: TMDBTVShow[]
+  total_pages: number
+  total_results: number
+}
+
+export interface TMDBTVShow {
+  id: number
+  name: string
+  first_air_date: string
+  poster_path: string | null
+  overview: string
+  genre_ids: number[]
+  popularity: number
+  origin_country: string[]
+  original_language: string
+}
+
+export interface TMDBTVShowDetails {
+  id: number
+  name: string
+  first_air_date: string
+  last_air_date: string | null
+  poster_path: string | null
+  backdrop_path: string | null
+  overview: string
+  status: string // 'Returning Series', 'Ended', 'Canceled', etc.
+  number_of_seasons: number
+  number_of_episodes: number
+  genres: Array<{ id: number; name: string }>
+  popularity: number
+  vote_average: number
+  origin_country: string[]
+  original_language: string
+  seasons: TMDBSeasonSummary[]
+}
+
+export interface TMDBSeasonSummary {
+  id: number
+  season_number: number
+  name: string
+  air_date: string | null
+  episode_count: number
+  poster_path: string | null
+}
+
+export interface TMDBSeasonDetails {
+  id: number
+  season_number: number
+  name: string
+  air_date: string | null
+  episodes: TMDBEpisodeSummary[]
+  poster_path: string | null
+}
+
+export interface TMDBEpisodeSummary {
+  id: number
+  episode_number: number
+  season_number: number
+  name: string
+  air_date: string | null
+  runtime: number | null
+  guest_stars: TMDBCastMember[]
+}
+
+export interface TMDBEpisodeDetails {
+  id: number
+  episode_number: number
+  season_number: number
+  name: string
+  overview: string
+  air_date: string | null
+  runtime: number | null
+  still_path: string | null
+  vote_average: number
+  vote_count: number
+}
+
+export interface TMDBAggregateCreditsResponse {
+  id: number
+  cast: TMDBAggregateActor[]
+}
+
+export interface TMDBAggregateActor {
+  id: number
+  name: string
+  profile_path: string | null
+  roles: Array<{
+    character: string
+    episode_count: number
+  }>
+  total_episode_count: number
+  order: number
+  gender: number
+  known_for_department: string
+}
+
+export interface TMDBSeasonCreditsResponse {
+  id: number
+  cast: TMDBCastMember[]
+  guest_stars?: TMDBCastMember[]
+}
+
+export interface TMDBEpisodeCreditsResponse {
+  id: number
+  cast: TMDBCastMember[]
+  guest_stars: TMDBCastMember[]
+}
+
 async function tmdbFetch<T>(path: string): Promise<T> {
   const token = getToken()
   const url = `${TMDB_BASE_URL}${path}`
@@ -304,4 +415,123 @@ export async function batchGetPersonDetails(
   }
 
   return results
+}
+
+// TV Show Functions
+
+async function searchTVShowsPage(query: string, page: number): Promise<TMDBTVSearchResponse> {
+  const url = `/search/tv?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=${page}`
+  return tmdbFetch<TMDBTVSearchResponse>(url)
+}
+
+/**
+ * Search for TV shows. Fetches first 3 pages for better coverage.
+ * Filters to English-language US shows.
+ */
+export async function searchTVShows(query: string): Promise<TMDBTVSearchResponse> {
+  const [page1, page2, page3] = await Promise.all([
+    searchTVShowsPage(query, 1),
+    searchTVShowsPage(query, 2).catch((error) => {
+      console.error("searchTVShows: failed to fetch page 2", { query, error: String(error) })
+      return null
+    }),
+    searchTVShowsPage(query, 3).catch((error) => {
+      console.error("searchTVShows: failed to fetch page 3", { query, error: String(error) })
+      return null
+    }),
+  ])
+
+  const seenIds = new Set<number>()
+  const allResults: TMDBTVShow[] = []
+
+  for (const page of [page1, page2, page3]) {
+    if (page) {
+      for (const show of page.results) {
+        // Filter to English-language shows from US
+        // Require explicit US origin - exclude shows with empty/unknown origin
+        if (
+          !seenIds.has(show.id) &&
+          show.original_language === "en" &&
+          show.origin_country.includes("US")
+        ) {
+          seenIds.add(show.id)
+          allResults.push(show)
+        }
+      }
+    }
+  }
+
+  return {
+    page: 1,
+    results: allResults,
+    total_pages: page1.total_pages,
+    total_results: allResults.length,
+  }
+}
+
+/**
+ * Get TV show details including season list
+ */
+export async function getTVShowDetails(showId: number): Promise<TMDBTVShowDetails> {
+  return tmdbFetch<TMDBTVShowDetails>(`/tv/${showId}?language=en-US`)
+}
+
+/**
+ * Get aggregate credits for a TV show (all actors across all seasons)
+ */
+export async function getTVShowAggregateCredits(
+  showId: number
+): Promise<TMDBAggregateCreditsResponse> {
+  return tmdbFetch<TMDBAggregateCreditsResponse>(`/tv/${showId}/aggregate_credits?language=en-US`)
+}
+
+/**
+ * Get season details including episode list
+ */
+export async function getSeasonDetails(
+  showId: number,
+  seasonNumber: number
+): Promise<TMDBSeasonDetails> {
+  return tmdbFetch<TMDBSeasonDetails>(`/tv/${showId}/season/${seasonNumber}?language=en-US`)
+}
+
+/**
+ * Get details for a specific episode
+ */
+export async function getEpisodeDetails(
+  showId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<TMDBEpisodeDetails> {
+  return tmdbFetch<TMDBEpisodeDetails>(
+    `/tv/${showId}/season/${seasonNumber}/episode/${episodeNumber}?language=en-US`
+  )
+}
+
+/**
+ * Get credits for a specific episode
+ */
+export async function getEpisodeCredits(
+  showId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<TMDBEpisodeCreditsResponse> {
+  return tmdbFetch<TMDBEpisodeCreditsResponse>(
+    `/tv/${showId}/season/${seasonNumber}/episode/${episodeNumber}/credits?language=en-US`
+  )
+}
+
+/**
+ * Discover popular TV shows for seeding
+ */
+export async function discoverTVShows(page: number = 1): Promise<TMDBTVSearchResponse> {
+  return tmdbFetch<TMDBTVSearchResponse>(
+    `/discover/tv?` +
+      `with_origin_country=US&` +
+      `with_original_language=en&` +
+      `sort_by=popularity.desc&` +
+      `include_adult=false&` +
+      `language=en-US&` +
+      `page=${page}`
+  )
 }

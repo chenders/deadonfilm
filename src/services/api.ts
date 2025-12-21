@@ -25,6 +25,11 @@ import type {
   GenreCategoriesResponse,
   MoviesByGenreResponse,
   AllDeathsResponse,
+  TVSearchResponse,
+  ShowResponse,
+  EpisodeResponse,
+  UnifiedSearchResponse,
+  SearchMediaType,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -47,6 +52,21 @@ export async function searchMovies(query: string): Promise<SearchResponse> {
     return { results: [], page: 1, total_pages: 0, total_results: 0 }
   }
   return fetchJson(`/search?q=${encodeURIComponent(query)}`)
+}
+
+/**
+ * Unified search for movies and/or TV shows
+ * @param query Search query
+ * @param type Media type: 'movie', 'tv', or 'all' (default: 'all')
+ */
+export async function searchAll(
+  query: string,
+  type: SearchMediaType = "all"
+): Promise<UnifiedSearchResponse> {
+  if (!query || query.length < 2) {
+    return { results: [], page: 1, total_pages: 0, total_results: 0 }
+  }
+  return fetchJson(`/search?q=${encodeURIComponent(query)}&type=${type}`)
 }
 
 export async function getMovie(movieId: number): Promise<MovieResponse> {
@@ -237,4 +257,24 @@ export async function getMoviesByGenre(
   page: number = 1
 ): Promise<MoviesByGenreResponse> {
   return fetchJson(`/movies/genre/${encodeURIComponent(genreSlug)}?page=${page}`)
+}
+
+// TV Show API functions
+export async function searchTVShows(query: string): Promise<TVSearchResponse> {
+  if (!query || query.length < 2) {
+    return { results: [], page: 1, total_pages: 0, total_results: 0 }
+  }
+  return fetchJson(`/search/tv?q=${encodeURIComponent(query)}`)
+}
+
+export async function getShow(showId: number): Promise<ShowResponse> {
+  return fetchJson(`/show/${showId}`)
+}
+
+export async function getEpisode(
+  showId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<EpisodeResponse> {
+  return fetchJson(`/show/${showId}/season/${seasonNumber}/episode/${episodeNumber}`)
 }
