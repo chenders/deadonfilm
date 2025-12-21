@@ -663,7 +663,9 @@ await browser.close();
 
 #### Including Screenshots in PR Description
 
-Use GitHub raw URLs (not relative paths) so screenshots display correctly:
+**IMPORTANT: Do NOT use relative paths like `./e2e/screenshots/...` - they will appear as broken images on GitHub!**
+
+Use GitHub raw URLs so screenshots display correctly:
 
 ```markdown
 ## Screenshots
