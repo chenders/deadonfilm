@@ -1,0 +1,251 @@
+import { useState } from "react"
+import { Link } from "react-router-dom"
+import type { DeceasedShowActor } from "@/types"
+import { getProfileUrl } from "@/services/api"
+import { createActorSlug, createEpisodeSlug } from "@/utils/slugify"
+import DeathInfo from "@/components/movie/DeathInfo"
+import { PersonIcon, ChevronIcon } from "@/components/icons"
+import EmptyStateCard from "@/components/common/EmptyStateCard"
+
+interface ShowDeceasedListProps {
+  actors: DeceasedShowActor[]
+  showId?: number
+  showName?: string
+}
+
+export default function ShowDeceasedList({ actors, showId, showName }: ShowDeceasedListProps) {
+  if (actors.length === 0) {
+    return (
+      <div data-testid="no-deceased-message">
+        <EmptyStateCard type="no-deceased" />
+      </div>
+    )
+  }
+
+  return (
+    <div data-testid="show-deceased-list">
+      <h2 data-testid="deceased-list-title" className="mb-4 font-display text-2xl text-brown-dark">
+        Deceased Cast Members
+      </h2>
+
+      <div data-testid="deceased-cards" className="space-y-3">
+        {actors.map((actor, index) => (
+          <div
+            key={actor.id}
+            className="animate-fade-slide-in"
+            style={{ animationDelay: `${index * 50}ms` }}
+          >
+            <ShowDeceasedCard actor={actor} showId={showId} showName={showName} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+interface ShowDeceasedCardProps {
+  actor: DeceasedShowActor
+  showId?: number
+  showName?: string
+}
+
+function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const profileUrl = getProfileUrl(actor.profile_path, "w185")
+
+  // Format episode appearances for display with optional links
+  const episodeDisplay = formatEpisodeDisplay(actor, showId, showName)
+
+  return (
+    <div
+      data-testid="deceased-card"
+      className="group rounded-lg border border-brown-medium/20 bg-white p-4"
+    >
+      <div className="flex items-start gap-4">
+        {profileUrl ? (
+          <img
+            data-testid="actor-photo"
+            src={profileUrl}
+            alt={actor.name}
+            width={64}
+            height={80}
+            loading="lazy"
+            className="h-20 w-16 flex-shrink-0 rounded object-cover"
+          />
+        ) : (
+          <div
+            data-testid="actor-photo-placeholder"
+            className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded bg-beige"
+          >
+            <PersonIcon size={32} className="text-text-muted" />
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 data-testid="actor-name" className="font-semibold text-brown-dark">
+                <Link
+                  to={`/actor/${createActorSlug(actor.name, actor.id)}`}
+                  className="hover:text-accent hover:underline"
+                >
+                  {actor.name}
+                </Link>
+              </h3>
+              <p data-testid="actor-character" className="text-sm italic text-text-muted">
+                as {actor.character}
+              </p>
+              {/* Episode info */}
+              <div data-testid="actor-episodes" className="mt-1 text-xs text-brown-medium">
+                {episodeDisplay}
+              </div>
+            </div>
+
+            <DeathInfo
+              actorName={actor.name}
+              deathday={actor.deathday}
+              birthday={actor.birthday}
+              ageAtDeath={actor.ageAtDeath}
+              yearsLost={actor.yearsLost}
+              causeOfDeath={actor.causeOfDeath}
+              causeOfDeathDetails={actor.causeOfDeathDetails}
+              wikipediaUrl={actor.wikipediaUrl}
+              tmdbUrl={actor.tmdbUrl}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Expand/collapse button */}
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        aria-label={
+          isExpanded ? `Collapse details for ${actor.name}` : `Show details for ${actor.name}`
+        }
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-xs text-brown-medium transition-colors hover:text-brown-dark focus:outline-none"
+      >
+        <span>{isExpanded ? "Hide details" : "Show details"}</span>
+        <ChevronIcon
+          size={14}
+          direction={isExpanded ? "up" : "down"}
+          className="transition-transform"
+        />
+      </button>
+
+      {/* Expanded section with episode list and external links */}
+      {isExpanded && (
+        <div data-testid="actor-expanded" className="mt-2 border-t border-brown-medium/10 pt-3">
+          {/* Episode appearances */}
+          {actor.episodes.length > 0 && (
+            <div className="mb-3">
+              <h4 className="mb-2 text-xs font-medium text-brown-dark">Episode Appearances:</h4>
+              <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-text-muted">
+                {actor.episodes.slice(0, 20).map((ep, i) => (
+                  <li key={i}>
+                    <span className="font-medium">
+                      S{ep.seasonNumber}E{ep.episodeNumber}:
+                    </span>{" "}
+                    "{ep.episodeName}" {ep.character !== actor.character && `(as ${ep.character})`}
+                  </li>
+                ))}
+                {actor.episodes.length > 20 && (
+                  <li className="italic">...and {actor.episodes.length - 20} more episodes</li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* External links */}
+          <div className="flex flex-wrap gap-3">
+            <a
+              href={actor.tmdbUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+            >
+              View on TMDB
+            </a>
+            {actor.wikipediaUrl && (
+              <a
+                href={actor.wikipediaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+              >
+                Wikipedia
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatEpisodeDisplay(
+  actor: DeceasedShowActor,
+  showId?: number,
+  showName?: string
+): React.ReactNode {
+  const count = actor.totalEpisodes
+
+  if (actor.episodes.length === 0) {
+    // No episode-level data available, just show count
+    return `${count} episode${count !== 1 ? "s" : ""}`
+  }
+
+  // Helper to create episode link
+  const createEpisodeLink = (ep: {
+    seasonNumber: number
+    episodeNumber: number
+    episodeName: string
+  }) => {
+    if (showId && showName) {
+      const slug = createEpisodeSlug(
+        showName,
+        ep.episodeName,
+        ep.seasonNumber,
+        ep.episodeNumber,
+        showId
+      )
+      return (
+        <Link
+          key={`${ep.seasonNumber}-${ep.episodeNumber}`}
+          to={`/episode/${slug}`}
+          className="hover:text-accent hover:underline"
+        >
+          "{ep.episodeName}"
+        </Link>
+      )
+    }
+    return `"${ep.episodeName}"`
+  }
+
+  if (actor.episodes.length === 1) {
+    const ep = actor.episodes[0]
+    return (
+      <>
+        S{ep.seasonNumber}E{ep.episodeNumber}: {createEpisodeLink(ep)}
+      </>
+    )
+  }
+
+  if (actor.episodes.length <= 3) {
+    return actor.episodes.map((ep, i) => (
+      <span key={`${ep.seasonNumber}-${ep.episodeNumber}`}>
+        {i > 0 && ", "}
+        {createEpisodeLink(ep)}
+      </span>
+    ))
+  }
+
+  // For many episodes, show count and first episode
+  const firstEp = actor.episodes[0]
+  return (
+    <>
+      {count} episodes (first: {createEpisodeLink(firstEp)})
+    </>
+  )
+}

@@ -8,6 +8,8 @@ import { useNewRelicBrowser } from "./hooks/useNewRelicBrowser"
 
 // Lazy load pages that aren't the landing page
 const MoviePage = lazy(() => import("./pages/MoviePage"))
+const ShowPage = lazy(() => import("./pages/ShowPage"))
+const EpisodePage = lazy(() => import("./pages/EpisodePage"))
 const ActorPage = lazy(() => import("./pages/ActorPage"))
 const CursedMoviesPage = lazy(() => import("./pages/CursedMoviesPage"))
 const CursedActorsPage = lazy(() => import("./pages/CursedActorsPage"))
@@ -33,6 +35,8 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/movie/:slug" element={<MoviePage />} />
+          <Route path="/show/:slug" element={<ShowPage />} />
+          <Route path="/episode/:slug" element={<EpisodePage />} />
           <Route path="/actor/:slug" element={<ActorPage />} />
           <Route path="/cursed-movies" element={<CursedMoviesPage />} />
           <Route path="/cursed-actors" element={<CursedActorsPage />} />

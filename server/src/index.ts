@@ -37,6 +37,7 @@ import {
   getAllDeathsHandler,
 } from "./routes/deaths.js"
 import { getGenreCategoriesHandler, getMoviesByGenreHandler } from "./routes/movies.js"
+import { getShow, searchShows, getShowSeasons, getEpisode } from "./routes/shows.js"
 import { initializeDatabase } from "./lib/startup.js"
 
 const app = express()
@@ -92,6 +93,12 @@ app.get("/api/deaths/decade/:decade", getDeathsByDecadeHandler)
 app.get("/api/deaths/all", getAllDeathsHandler)
 app.get("/api/movies/genres", getGenreCategoriesHandler)
 app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
+
+// TV Show routes
+app.get("/api/search/tv", searchShows)
+app.get("/api/show/:id", getShow)
+app.get("/api/show/:id/seasons", getShowSeasons)
+app.get("/api/show/:showId/season/:season/episode/:episode", getEpisode)
 
 // Initialize database and start server
 async function startServer() {
