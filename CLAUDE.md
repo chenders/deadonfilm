@@ -628,13 +628,54 @@ program.parse()
 
 ### Pull Request Descriptions
 
-When creating a PR, include screenshots to illustrate UI changes:
+**IMPORTANT**: When creating a PR that includes UI changes, you MUST:
+
+1. **Take screenshots** of all affected UI areas using Playwright or the browser
+2. **Commit screenshots** to the `e2e/screenshots/` directory
+3. **Include screenshots in the PR description** using GitHub raw URLs
+4. **Verify screenshots are visible** by checking the PR on GitHub after creating it
+
+#### Screenshot Requirements
 
 - **Before/After screenshots**: If making visual changes, include both before and after screenshots showing the difference
 - **After-only screenshots**: If before screenshots aren't available (e.g., new feature), include after screenshots showing the new functionality
-- **E2E test screenshots**: Reference any relevant screenshots from `e2e/screenshots/` directory
-- **Screenshot format in PR**: Use relative paths from repo root: `![Description](./e2e/screenshots/filename.png)`
 - **Multiple viewports**: Include both desktop and mobile screenshots when the change affects responsive layouts
+
+#### Taking Screenshots with Playwright
+
+```javascript
+import { chromium } from 'playwright';
+
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+
+await page.goto('http://localhost:5173/your-page');
+await page.waitForLoadState('networkidle');
+await page.waitForTimeout(500); // Allow animations to complete
+await page.screenshot({ path: 'e2e/screenshots/feature-name.png' });
+
+await browser.close();
+```
+
+#### Including Screenshots in PR Description
+
+Use GitHub raw URLs (not relative paths) so screenshots display correctly:
+
+```markdown
+## Screenshots
+
+### Feature Name
+![Feature Name](https://raw.githubusercontent.com/chenders/deadonfilm-claude/{commit-sha}/e2e/screenshots/feature-name.png)
+```
+
+**Get the commit SHA** after pushing: `git rev-parse HEAD`
+
+#### Verification Checklist
+
+After creating the PR, verify on GitHub that:
+- [ ] All screenshot images load and display correctly
+- [ ] Screenshots show the actual UI changes (not loading states or errors)
+- [ ] Image URLs use the correct commit SHA from the pushed branch
 
 ## Pre-Commit Checklist
 
