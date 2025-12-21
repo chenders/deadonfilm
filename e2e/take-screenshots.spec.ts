@@ -12,7 +12,7 @@ test('take PR screenshots', async ({ page }) => {
   // 2. Search with mixed results (movies and TV)
   await page.fill('[data-testid="search-input"]', 'breaking');
   await expect(page.getByTestId('search-dropdown')).toBeVisible();
-  await expect(page.getByTestId('search-dropdown').locator('li')).toHaveCount.greaterThan(0);
+  await expect(page.getByTestId('search-dropdown').locator('li').first()).toBeVisible();
   await page.waitForTimeout(500);
   await page.screenshot({ path: 'e2e/screenshots/search-tv-results.png' });
   
