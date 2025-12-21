@@ -24,6 +24,12 @@ import {
 } from "../lib/mortality-stats.js"
 import type { DeathInfoSource } from "../lib/wikidata.js"
 
+// Limit main cast to reduce API calls (movies use 30)
+const SHOW_CAST_LIMIT = 50
+
+// Show statuses that indicate the show is finished and will never have new episodes
+const ENDED_STATUSES = ["Ended", "Canceled"]
+
 interface EpisodeAppearance {
   seasonNumber: number
   episodeNumber: number
@@ -115,8 +121,8 @@ export async function getShow(req: Request, res: Response) {
       return res.status(404).json({ error: { message: "Show not available" } })
     }
 
-    // Get the main character per actor (no limit - include all cast)
-    const mainCast = credits.cast.map((actor) => ({
+    // Get the main character per actor (limit to reduce API calls)
+    const mainCast = credits.cast.slice(0, SHOW_CAST_LIMIT).map((actor) => ({
       id: actor.id,
       name: actor.name,
       profile_path: actor.profile_path,
@@ -130,11 +136,17 @@ export async function getShow(req: Request, res: Response) {
       .filter((s) => s.season_number > 0) // Exclude specials
       .map((s) => s.season_number)
 
-    // Batch fetch person details and episode appearances in parallel
+    // Skip expensive episode fetching for ended/canceled shows
+    // These shows will never have new episodes, so aggregate credits suffice
+    const isShowEnded = ENDED_STATUSES.includes(show.status)
+
+    // Batch fetch person details and optionally episode appearances in parallel
     const personIds = mainCast.map((c) => c.id)
     const [personDetails, episodeAppearances] = await Promise.all([
       batchGetPersonDetails(personIds),
-      fetchEpisodeAppearances(showId, seasonNumbers),
+      isShowEnded
+        ? Promise.resolve(new Map<number, EpisodeAppearance[]>())
+        : fetchEpisodeAppearances(showId, seasonNumbers),
     ])
 
     // Check database for existing death info
