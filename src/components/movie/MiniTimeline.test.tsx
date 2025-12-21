@@ -50,7 +50,11 @@ const mockDeceased: DeceasedActor[] = [
 ]
 
 const renderWithRouter = (ui: React.ReactElement) => {
-  return render(<MemoryRouter>{ui}</MemoryRouter>)
+  return render(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      {ui}
+    </MemoryRouter>
+  )
 }
 
 describe("MiniTimeline", () => {
