@@ -1,6 +1,6 @@
 import type { Request, Response } from "express"
 import { getPool } from "../lib/db.js"
-import { createActorSlug, createMovieSlug } from "../lib/slug-utils.js"
+import { createActorSlug, createMovieSlug, createShowSlug } from "../lib/slug-utils.js"
 
 /**
  * Escapes special XML characters in a string
@@ -48,6 +48,20 @@ export async function getSitemap(_req: Request, res: Response) {
       LIMIT 50000
     `)
 
+    // Get all TV shows with mortality data
+    const showsResult = await db.query<{
+      tmdb_id: number
+      name: string
+      first_air_year: number | null
+      updated_at: Date
+    }>(`
+      SELECT tmdb_id, name, EXTRACT(YEAR FROM first_air_date)::integer as first_air_year, updated_at
+      FROM shows
+      WHERE mortality_surprise_score IS NOT NULL
+      ORDER BY updated_at DESC
+      LIMIT 50000
+    `)
+
     const baseUrl = "https://deadonfilm.com"
     const today = new Date().toISOString().split("T")[0]
 
@@ -57,7 +71,11 @@ export async function getSitemap(_req: Request, res: Response) {
       { loc: "/cursed-movies", priority: "0.8", changefreq: "weekly" },
       { loc: "/cursed-actors", priority: "0.8", changefreq: "weekly" },
       { loc: "/covid-deaths", priority: "0.6", changefreq: "weekly" },
+      { loc: "/unnatural-deaths", priority: "0.6", changefreq: "weekly" },
       { loc: "/death-watch", priority: "0.7", changefreq: "daily" },
+      { loc: "/forever-young", priority: "0.6", changefreq: "weekly" },
+      { loc: "/deaths", priority: "0.5", changefreq: "weekly" },
+      { loc: "/movies/genres", priority: "0.5", changefreq: "weekly" },
     ]
 
     // Build sitemap XML
@@ -98,6 +116,19 @@ export async function getSitemap(_req: Request, res: Response) {
     <lastmod>${lastmod}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>
+`
+    }
+
+    // Add TV show pages
+    for (const show of showsResult.rows) {
+      const slug = createShowSlug(show.name, show.first_air_year, show.tmdb_id)
+      const lastmod = show.updated_at.toISOString().split("T")[0]
+      xml += `  <url>
+    <loc>${baseUrl}/show/${escapeXml(slug)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 `
     }
