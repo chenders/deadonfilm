@@ -349,7 +349,7 @@ function calculateAge(birthday: string | null): number | null {
   return age
 }
 
-// Fetch episode appearances for all actors in a show
+// Fetch episode appearances for all actors in a show with exponential backoff
 async function fetchEpisodeAppearances(
   showId: number,
   seasonNumbers: number[]
@@ -358,35 +358,62 @@ async function fetchEpisodeAppearances(
 
   // Fetch all seasons in parallel (with small batches to avoid rate limits)
   const batchSize = 3
+  let baseDelay = 100 // Start with 100ms delay
+  const maxDelay = 2000 // Max 2 seconds between batches
+
   for (let i = 0; i < seasonNumbers.length; i += batchSize) {
     const batch = seasonNumbers.slice(i, i + batchSize)
-    const seasonPromises = batch.map((seasonNum) => getSeasonDetails(showId, seasonNum))
+    let retryCount = 0
+    const maxRetries = 3
 
-    try {
-      const seasons = await Promise.all(seasonPromises)
+    while (retryCount <= maxRetries) {
+      try {
+        const seasonPromises = batch.map((seasonNum) => getSeasonDetails(showId, seasonNum))
+        const seasons = await Promise.all(seasonPromises)
 
-      for (const season of seasons) {
-        for (const episode of season.episodes) {
-          // Process guest stars from each episode
-          for (const guestStar of episode.guest_stars || []) {
-            const existing = actorEpisodes.get(guestStar.id) || []
-            existing.push({
-              seasonNumber: season.season_number,
-              episodeNumber: episode.episode_number,
-              episodeName: episode.name,
-              character: guestStar.character || "Unknown",
-            })
-            actorEpisodes.set(guestStar.id, existing)
+        for (const season of seasons) {
+          for (const episode of season.episodes) {
+            // Process guest stars from each episode
+            for (const guestStar of episode.guest_stars || []) {
+              const existing = actorEpisodes.get(guestStar.id) || []
+              existing.push({
+                seasonNumber: season.season_number,
+                episodeNumber: episode.episode_number,
+                episodeName: episode.name,
+                character: guestStar.character || "Unknown",
+              })
+              actorEpisodes.set(guestStar.id, existing)
+            }
           }
         }
+
+        // Success - reset delay on successful batch
+        baseDelay = 100
+        break // Exit retry loop on success
+      } catch (error) {
+        retryCount++
+        const isRateLimit =
+          error instanceof Error &&
+          (error.message.includes("429") || error.message.includes("rate"))
+
+        if (isRateLimit && retryCount <= maxRetries) {
+          // Exponential backoff: 200ms, 400ms, 800ms
+          const backoffDelay = baseDelay * Math.pow(2, retryCount)
+          console.warn(
+            `Rate limit hit for show ${showId}, retrying in ${backoffDelay}ms (attempt ${retryCount}/${maxRetries})`
+          )
+          await new Promise((resolve) => setTimeout(resolve, backoffDelay))
+          baseDelay = Math.min(backoffDelay, maxDelay) // Increase base delay for future batches
+        } else {
+          console.error(`Error fetching season details for show ${showId}:`, error)
+          break // Exit retry loop on non-rate-limit error or max retries exceeded
+        }
       }
-    } catch (error) {
-      console.error(`Error fetching season details for show ${showId}:`, error)
     }
 
-    // Small delay between batches to respect rate limits
+    // Delay between batches (respects increased delay from rate limits)
     if (i + batchSize < seasonNumbers.length) {
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, baseDelay))
     }
   }
 
