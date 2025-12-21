@@ -560,6 +560,24 @@ Example: `/episode/seinfeld-s1e1-pilot-1400`
   - When writing tests, prefer semantic queries (role, text, label) when available. Use `getByTestId` as a fallback when semantic queries are insufficient
   - **Never use CSS class selectors** (`.some-class`) in tests - they are fragile and break when styles change
 - Query preference order: `getByRole` > `getByLabelText` > `getByText` > `getByTestId` > CSS selectors (avoid)
+- **Test all conditional UI states**: When UI text or elements change based on state/props (e.g., checkbox toggles, filters, loading states), write tests for EACH condition:
+  ```typescript
+  // BAD: Only tests default state
+  it("renders description", async () => {
+    expect(screen.getByText(/some description/)).toBeInTheDocument()
+  })
+
+  // GOOD: Tests both states of a toggle
+  it("shows filtered description when unchecked", async () => {
+    expect(screen.getByText(/without optional content/)).toBeInTheDocument()
+    expect(screen.queryByText(/optional content/)).not.toBeInTheDocument()
+  })
+
+  it("shows full description when checked", async () => {
+    fireEvent.click(screen.getByRole("checkbox"))
+    expect(screen.getByText(/with optional content/)).toBeInTheDocument()
+  })
+  ```
 - **Playwright visual snapshots**: ALWAYS use Docker to generate/update Playwright visual regression snapshots. This ensures CI compatibility since CI runs on Linux:
   ```bash
   # Update snapshots using the Playwright Docker image (match version in package.json)
