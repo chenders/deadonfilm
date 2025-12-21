@@ -8,6 +8,14 @@ vi.mock("../lib/db.js", () => ({
   getSiteStats: vi.fn(),
   getRecentDeaths: vi.fn(),
   getCovidDeaths: vi.fn(),
+  getUnnaturalDeaths: vi.fn(),
+  UNNATURAL_DEATH_CATEGORIES: {
+    suicide: { label: "Suicide", patterns: [] },
+    accident: { label: "Accident", patterns: [] },
+    overdose: { label: "Overdose", patterns: [] },
+    homicide: { label: "Homicide", patterns: [] },
+    other: { label: "Other", patterns: [] },
+  },
 }))
 
 describe("getStats", () => {

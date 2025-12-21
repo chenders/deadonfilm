@@ -15,6 +15,7 @@ const CursedMoviesPage = lazy(() => import("./pages/CursedMoviesPage"))
 const CursedActorsPage = lazy(() => import("./pages/CursedActorsPage"))
 const ForeverYoungPage = lazy(() => import("./pages/ForeverYoungPage"))
 const CovidDeathsPage = lazy(() => import("./pages/CovidDeathsPage"))
+const UnnaturalDeathsPage = lazy(() => import("./pages/UnnaturalDeathsPage"))
 const DeathWatchPage = lazy(() => import("./pages/DeathWatchPage"))
 const CausesIndexPage = lazy(() => import("./pages/CausesIndexPage"))
 const DeathsByCausePage = lazy(() => import("./pages/DeathsByCausePage"))
@@ -41,6 +42,7 @@ function App() {
           <Route path="/cursed-actors" element={<CursedActorsPage />} />
           <Route path="/forever-young" element={<ForeverYoungPage />} />
           <Route path="/covid-deaths" element={<CovidDeathsPage />} />
+          <Route path="/unnatural-deaths" element={<UnnaturalDeathsPage />} />
           <Route path="/death-watch" element={<DeathWatchPage />} />
           <Route path="/deaths" element={<CausesIndexPage />} />
           <Route path="/deaths/all" element={<AllDeathsPage />} />
