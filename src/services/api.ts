@@ -181,8 +181,21 @@ export async function getCovidDeaths(page: number = 1): Promise<CovidDeathsRespo
   return fetchJson(`/covid-deaths?page=${page}`)
 }
 
-export async function getViolentDeaths(page: number = 1): Promise<ViolentDeathsResponse> {
-  return fetchJson(`/violent-deaths?page=${page}`)
+export interface ViolentDeathsOptions {
+  page?: number
+  includeSelfInflicted?: boolean
+}
+
+export async function getViolentDeaths(
+  options: ViolentDeathsOptions = {}
+): Promise<ViolentDeathsResponse> {
+  const { page = 1, includeSelfInflicted } = options
+  const params = new URLSearchParams()
+
+  params.set("page", String(page))
+  if (includeSelfInflicted) params.set("includeSelfInflicted", "true")
+
+  return fetchJson(`/violent-deaths?${params.toString()}`)
 }
 
 export interface DeathWatchOptions {
