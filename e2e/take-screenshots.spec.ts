@@ -29,7 +29,7 @@ test('take PR screenshots', async ({ page }) => {
   // 4. Show page - wait for actual content
   await page.goto('/show/seinfeld-1989-1400');
   await expect(page.getByTestId('show-header')).toBeVisible({ timeout: 30000 });
-  await expect(page.getByText('Seinfeld')).toBeVisible();
+  await expect(page.getByTestId('show-title')).toBeVisible();
   await page.waitForTimeout(1000);
   await page.screenshot({ path: 'e2e/screenshots/show-page-seinfeld.png' });
   
