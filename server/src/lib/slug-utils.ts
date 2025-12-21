@@ -36,11 +36,7 @@ export function createActorSlug(name: string, tmdbId: number): string {
  * Creates a URL-safe slug from a TV show name, first air year, and ID
  * Example: "Breaking Bad", 2008, 1396 → "breaking-bad-2008-1396"
  */
-export function createShowSlug(
-  name: string,
-  firstAirYear: number | null,
-  tmdbId: number
-): string {
+export function createShowSlug(name: string, firstAirYear: number | null, tmdbId: number): string {
   const year = firstAirYear?.toString() || "unknown"
   const slug = name
     .toLowerCase()
