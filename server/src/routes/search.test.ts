@@ -8,7 +8,7 @@ vi.mock("../lib/tmdb.js", () => ({
   searchTVShows: vi.fn(),
 }))
 
-import { searchMovies as tmdbSearch, searchTVShows as tmdbSearchTV } from "../lib/tmdb.js"
+import { searchMovies as tmdbSearch } from "../lib/tmdb.js"
 
 describe("searchMovies route", () => {
   let mockReq: Partial<Request>
