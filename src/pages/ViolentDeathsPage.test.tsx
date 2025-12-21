@@ -114,6 +114,43 @@ describe("ViolentDeathsPage", () => {
     })
   })
 
+  it("description excludes 'self-inflicted causes' when checkbox unchecked", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Actors in our database who died from violent causes/)
+      ).toBeInTheDocument()
+    })
+
+    // Description should NOT include "self-inflicted causes" when unchecked
+    expect(screen.queryByText(/self-inflicted causes/)).not.toBeInTheDocument()
+  })
+
+  it("description includes 'self-inflicted causes' when checkbox checked", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Include all causes")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole("checkbox"))
+
+    await waitFor(() => {
+      expect(screen.getByText(/self-inflicted causes/)).toBeInTheDocument()
+    })
+  })
+
   it("shows empty state when no results", async () => {
     vi.mocked(api.getViolentDeaths).mockResolvedValue({
       persons: [],
