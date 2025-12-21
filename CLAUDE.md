@@ -21,7 +21,7 @@ Do NOT fill in plausible-looking numbers or IDs - there's no such thing as a "pl
 
 ## Project Overview
 
-**Dead on Film** - A website to look up movies and see which actors have passed away. Shows mortality statistics, death dates, and causes of death.
+**Dead on Film** - A website to look up movies and TV shows to see which actors have passed away. Shows mortality statistics, death dates, and causes of death. Supports both movies (film casts) and TV shows (episode-level actor tracking).
 
 ## Cause of Death Lookup Priority
 
@@ -168,6 +168,11 @@ cd server && npm test        # Backend unit tests
 - `GET /api/stats` - Get site-wide statistics
 - `GET /health` - Health check for Kubernetes
 
+### TV Show Endpoints
+
+- `GET /api/show/{id}` - Get TV show with deceased/living cast and mortality stats
+- `GET /api/show/{id}/episode/{seasonNumber}/{episodeNumber}` - Get episode details with cast
+
 ## Environment Variables
 
 Create a `.env` file in the project root (used by both frontend and backend):
@@ -308,6 +313,96 @@ sync_state (
 )
 ```
 
+### TV Show Tables
+
+#### shows
+Stores TV show metadata with mortality statistics.
+
+```sql
+shows (
+  id SERIAL PRIMARY KEY,
+  tmdb_id INTEGER UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  first_air_date DATE,
+  last_air_date DATE,
+  poster_path TEXT,
+  backdrop_path TEXT,
+  genres TEXT[],
+  status TEXT,                    -- 'Returning Series', 'Ended', 'Canceled'
+  number_of_seasons INTEGER,
+  number_of_episodes INTEGER,
+  popularity DECIMAL(10,3),
+  vote_average DECIMAL(3,1),
+  original_language TEXT,
+  origin_country TEXT[],
+  cast_count INTEGER,
+  deceased_count INTEGER,
+  living_count INTEGER,
+  expected_deaths DECIMAL(5,2),
+  mortality_surprise_score DECIMAL(6,3),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+)
+```
+
+#### seasons
+Stores season metadata for TV shows.
+
+```sql
+seasons (
+  id SERIAL PRIMARY KEY,
+  show_tmdb_id INTEGER NOT NULL REFERENCES shows(tmdb_id),
+  season_number INTEGER NOT NULL,
+  name TEXT,
+  air_date DATE,
+  episode_count INTEGER,
+  poster_path TEXT,
+  UNIQUE(show_tmdb_id, season_number)
+)
+```
+
+#### episodes
+Stores episode metadata for TV shows.
+
+```sql
+episodes (
+  id SERIAL PRIMARY KEY,
+  show_tmdb_id INTEGER NOT NULL REFERENCES shows(tmdb_id),
+  season_number INTEGER NOT NULL,
+  episode_number INTEGER NOT NULL,
+  name TEXT,
+  overview TEXT,
+  air_date DATE,
+  runtime INTEGER,
+  still_path TEXT,
+  cast_count INTEGER,
+  deceased_count INTEGER,
+  guest_star_count INTEGER,
+  expected_deaths DECIMAL(5,2),
+  mortality_surprise_score DECIMAL(6,3),
+  UNIQUE(show_tmdb_id, season_number, episode_number)
+)
+```
+
+#### show_actor_appearances
+Links actors to TV shows at episode level for cross-show analysis.
+
+```sql
+show_actor_appearances (
+  id SERIAL PRIMARY KEY,
+  actor_tmdb_id INTEGER NOT NULL,
+  show_tmdb_id INTEGER NOT NULL,
+  season_number INTEGER NOT NULL,
+  episode_number INTEGER NOT NULL,
+  actor_name TEXT NOT NULL,
+  character_name TEXT,
+  appearance_type TEXT NOT NULL,  -- 'regular', 'recurring', 'guest'
+  billing_order INTEGER,
+  is_deceased BOOLEAN DEFAULT FALSE,
+  UNIQUE(actor_tmdb_id, show_tmdb_id, season_number, episode_number)
+)
+```
+
 ### Database Migrations
 
 The project uses `node-pg-migrate` for database migrations:
@@ -433,6 +528,12 @@ GCP_PROJECT_ID=your-project-id ./scripts/deploy.sh
 
 Movie URLs use: `/movie/{slug}-{year}-{tmdbId}`
 Example: `/movie/breakfast-at-tiffanys-1961-14629`
+
+Show URLs use: `/show/{slug}-{firstAirYear}-{tmdbId}`
+Example: `/show/seinfeld-1989-1400`
+
+Episode URLs use: `/episode/{showSlug}-s{season}e{episode}-{episodeSlug}-{showTmdbId}`
+Example: `/episode/seinfeld-s1e1-pilot-1400`
 
 ## Development Standards
 
