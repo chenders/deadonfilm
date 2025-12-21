@@ -1626,41 +1626,6 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
 }
 
 // ============================================================================
-// Language backfill functions
-// ============================================================================
-
-// Get TMDB IDs of movies that don't have original_language set (NULL or empty string)
-export async function getMoviesWithoutLanguage(limit?: number): Promise<number[]> {
-  const db = getPool()
-  const query = limit
-    ? `SELECT tmdb_id FROM movies WHERE original_language IS NULL OR original_language = '' LIMIT $1`
-    : `SELECT tmdb_id FROM movies WHERE original_language IS NULL OR original_language = ''`
-  const params = limit ? [limit] : []
-  const result = await db.query<{ tmdb_id: number }>(query, params)
-  return result.rows.map((row) => row.tmdb_id)
-}
-
-// Update a movie's original language and optionally popularity
-export async function updateMovieLanguage(
-  tmdbId: number,
-  language: string,
-  popularity?: number
-): Promise<void> {
-  const db = getPool()
-  if (popularity !== undefined) {
-    await db.query(
-      `UPDATE movies SET original_language = $1, popularity = $2, updated_at = NOW() WHERE tmdb_id = $3`,
-      [language, popularity, tmdbId]
-    )
-  } else {
-    await db.query(
-      `UPDATE movies SET original_language = $1, updated_at = NOW() WHERE tmdb_id = $2`,
-      [language, tmdbId]
-    )
-  }
-}
-
-// ============================================================================
 // Death Watch feature - living actors most likely to die soon
 // ============================================================================
 

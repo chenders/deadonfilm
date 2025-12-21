@@ -36,8 +36,6 @@ import {
   getActorFilmography,
   queryWithRetry,
   resetPool,
-  getMoviesWithoutLanguage,
-  updateMovieLanguage,
   upsertMovie,
   getCovidDeaths,
   getDeathWatchActors,
@@ -700,7 +698,7 @@ describe("Sync State Functions", () => {
   })
 })
 
-describe("Language Backfill Functions", () => {
+describe("Movie Functions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
@@ -708,74 +706,6 @@ describe("Language Backfill Functions", () => {
 
   afterEach(() => {
     delete process.env.DATABASE_URL
-  })
-
-  describe("getMoviesWithoutLanguage", () => {
-    it("returns movies with NULL original_language", async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ tmdb_id: 289 }, { tmdb_id: 389 }],
-      })
-
-      const result = await getMoviesWithoutLanguage()
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("original_language IS NULL"),
-        []
-      )
-      expect(result).toEqual([289, 389])
-    })
-
-    it("also returns movies with empty string original_language", async () => {
-      // This is the regression test for the bug where empty strings were not caught
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ tmdb_id: 123 }],
-      })
-
-      const result = await getMoviesWithoutLanguage()
-
-      // The query should check for BOTH NULL and empty string
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("original_language = ''"), [])
-      expect(result).toEqual([123])
-    })
-
-    it("respects the limit parameter", async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ tmdb_id: 100 }],
-      })
-
-      await getMoviesWithoutLanguage(10)
-
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("LIMIT $1"), [10])
-    })
-  })
-
-  describe("updateMovieLanguage", () => {
-    it("updates only language when popularity is not provided", async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [] })
-
-      await updateMovieLanguage(289, "en")
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("SET original_language = $1"),
-        ["en", 289]
-      )
-      // Should NOT include popularity in query when not provided
-      expect(mockQuery).not.toHaveBeenCalledWith(
-        expect.stringContaining("popularity = $2"),
-        expect.anything()
-      )
-    })
-
-    it("updates both language and popularity when popularity is provided", async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [] })
-
-      await updateMovieLanguage(289, "en", 5.9)
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("original_language = $1, popularity = $2"),
-        ["en", 5.9, 289]
-      )
-    })
   })
 
   describe("upsertMovie", () => {

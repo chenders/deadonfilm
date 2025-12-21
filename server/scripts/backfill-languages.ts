@@ -10,8 +10,47 @@
 
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
-import { getMoviesWithoutLanguage, updateMovieLanguage, getPool } from "../src/lib/db.js"
+import { getPool } from "../src/lib/db.js"
 import { getMovieDetails } from "../src/lib/tmdb.js"
+
+// ============================================================================
+// Helper functions (only used by this script)
+// ============================================================================
+
+/**
+ * Get TMDB IDs of movies that don't have original_language set (NULL or empty string)
+ */
+async function getMoviesWithoutLanguage(limit?: number): Promise<number[]> {
+  const db = getPool()
+  const query = limit
+    ? `SELECT tmdb_id FROM movies WHERE original_language IS NULL OR original_language = '' LIMIT $1`
+    : `SELECT tmdb_id FROM movies WHERE original_language IS NULL OR original_language = ''`
+  const params = limit ? [limit] : []
+  const result = await db.query<{ tmdb_id: number }>(query, params)
+  return result.rows.map((row) => row.tmdb_id)
+}
+
+/**
+ * Update a movie's original language and optionally popularity
+ */
+async function updateMovieLanguage(
+  tmdbId: number,
+  language: string,
+  popularity?: number
+): Promise<void> {
+  const db = getPool()
+  if (popularity !== undefined) {
+    await db.query(
+      `UPDATE movies SET original_language = $1, popularity = $2, updated_at = NOW() WHERE tmdb_id = $3`,
+      [language, popularity, tmdbId]
+    )
+  } else {
+    await db.query(
+      `UPDATE movies SET original_language = $1, updated_at = NOW() WHERE tmdb_id = $2`,
+      [language, tmdbId]
+    )
+  }
+}
 
 function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
