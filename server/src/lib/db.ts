@@ -1802,3 +1802,339 @@ export async function getGenreFromSlug(slug: string): Promise<string | null> {
 
   return null
 }
+
+// ============================================================================
+// TV Shows table functions
+// ============================================================================
+
+export interface ShowRecord {
+  tmdb_id: number
+  name: string
+  first_air_date: string | null
+  last_air_date: string | null
+  poster_path: string | null
+  backdrop_path: string | null
+  genres: string[]
+  status: string | null
+  number_of_seasons: number | null
+  number_of_episodes: number | null
+  popularity: number | null
+  vote_average: number | null
+  origin_country: string[]
+  original_language: string | null
+  cast_count: number | null
+  deceased_count: number | null
+  living_count: number | null
+  expected_deaths: number | null
+  mortality_surprise_score: number | null
+}
+
+// Get a show by TMDB ID
+export async function getShow(tmdbId: number): Promise<ShowRecord | null> {
+  const db = getPool()
+  const result = await db.query<ShowRecord>("SELECT * FROM shows WHERE tmdb_id = $1", [tmdbId])
+  return result.rows[0] || null
+}
+
+// Insert or update a show
+export async function upsertShow(show: ShowRecord): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO shows (
+       tmdb_id, name, first_air_date, last_air_date, poster_path, backdrop_path,
+       genres, status, number_of_seasons, number_of_episodes, popularity, vote_average,
+       origin_country, original_language, cast_count, deceased_count, living_count,
+       expected_deaths, mortality_surprise_score, updated_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, CURRENT_TIMESTAMP)
+     ON CONFLICT (tmdb_id) DO UPDATE SET
+       name = EXCLUDED.name,
+       first_air_date = EXCLUDED.first_air_date,
+       last_air_date = EXCLUDED.last_air_date,
+       poster_path = EXCLUDED.poster_path,
+       backdrop_path = EXCLUDED.backdrop_path,
+       genres = EXCLUDED.genres,
+       status = EXCLUDED.status,
+       number_of_seasons = EXCLUDED.number_of_seasons,
+       number_of_episodes = EXCLUDED.number_of_episodes,
+       popularity = EXCLUDED.popularity,
+       vote_average = EXCLUDED.vote_average,
+       origin_country = EXCLUDED.origin_country,
+       original_language = COALESCE(EXCLUDED.original_language, shows.original_language),
+       cast_count = EXCLUDED.cast_count,
+       deceased_count = EXCLUDED.deceased_count,
+       living_count = EXCLUDED.living_count,
+       expected_deaths = EXCLUDED.expected_deaths,
+       mortality_surprise_score = EXCLUDED.mortality_surprise_score,
+       updated_at = CURRENT_TIMESTAMP`,
+    [
+      show.tmdb_id,
+      show.name,
+      show.first_air_date,
+      show.last_air_date,
+      show.poster_path,
+      show.backdrop_path,
+      show.genres,
+      show.status,
+      show.number_of_seasons,
+      show.number_of_episodes,
+      show.popularity,
+      show.vote_average,
+      show.origin_country,
+      show.original_language,
+      show.cast_count,
+      show.deceased_count,
+      show.living_count,
+      show.expected_deaths,
+      show.mortality_surprise_score,
+    ]
+  )
+}
+
+// ============================================================================
+// Seasons table functions
+// ============================================================================
+
+export interface SeasonRecord {
+  show_tmdb_id: number
+  season_number: number
+  name: string | null
+  air_date: string | null
+  episode_count: number | null
+  poster_path: string | null
+  cast_count: number | null
+  deceased_count: number | null
+  expected_deaths: number | null
+  mortality_surprise_score: number | null
+}
+
+// Get seasons for a show
+export async function getSeasons(showTmdbId: number): Promise<SeasonRecord[]> {
+  const db = getPool()
+  const result = await db.query<SeasonRecord>(
+    "SELECT * FROM seasons WHERE show_tmdb_id = $1 ORDER BY season_number",
+    [showTmdbId]
+  )
+  return result.rows
+}
+
+// Insert or update a season
+export async function upsertSeason(season: SeasonRecord): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO seasons (
+       show_tmdb_id, season_number, name, air_date, episode_count, poster_path,
+       cast_count, deceased_count, expected_deaths, mortality_surprise_score
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT (show_tmdb_id, season_number) DO UPDATE SET
+       name = EXCLUDED.name,
+       air_date = EXCLUDED.air_date,
+       episode_count = EXCLUDED.episode_count,
+       poster_path = EXCLUDED.poster_path,
+       cast_count = EXCLUDED.cast_count,
+       deceased_count = EXCLUDED.deceased_count,
+       expected_deaths = EXCLUDED.expected_deaths,
+       mortality_surprise_score = EXCLUDED.mortality_surprise_score`,
+    [
+      season.show_tmdb_id,
+      season.season_number,
+      season.name,
+      season.air_date,
+      season.episode_count,
+      season.poster_path,
+      season.cast_count,
+      season.deceased_count,
+      season.expected_deaths,
+      season.mortality_surprise_score,
+    ]
+  )
+}
+
+// ============================================================================
+// Episodes table functions
+// ============================================================================
+
+export interface EpisodeRecord {
+  show_tmdb_id: number
+  season_number: number
+  episode_number: number
+  name: string | null
+  air_date: string | null
+  runtime: number | null
+  cast_count: number | null
+  deceased_count: number | null
+  guest_star_count: number | null
+  expected_deaths: number | null
+  mortality_surprise_score: number | null
+}
+
+// Get episodes for a season
+export async function getEpisodes(
+  showTmdbId: number,
+  seasonNumber: number
+): Promise<EpisodeRecord[]> {
+  const db = getPool()
+  const result = await db.query<EpisodeRecord>(
+    "SELECT * FROM episodes WHERE show_tmdb_id = $1 AND season_number = $2 ORDER BY episode_number",
+    [showTmdbId, seasonNumber]
+  )
+  return result.rows
+}
+
+// Insert or update an episode
+export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO episodes (
+       show_tmdb_id, season_number, episode_number, name, air_date, runtime,
+       cast_count, deceased_count, guest_star_count, expected_deaths, mortality_surprise_score
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     ON CONFLICT (show_tmdb_id, season_number, episode_number) DO UPDATE SET
+       name = EXCLUDED.name,
+       air_date = EXCLUDED.air_date,
+       runtime = EXCLUDED.runtime,
+       cast_count = EXCLUDED.cast_count,
+       deceased_count = EXCLUDED.deceased_count,
+       guest_star_count = EXCLUDED.guest_star_count,
+       expected_deaths = EXCLUDED.expected_deaths,
+       mortality_surprise_score = EXCLUDED.mortality_surprise_score`,
+    [
+      episode.show_tmdb_id,
+      episode.season_number,
+      episode.episode_number,
+      episode.name,
+      episode.air_date,
+      episode.runtime,
+      episode.cast_count,
+      episode.deceased_count,
+      episode.guest_star_count,
+      episode.expected_deaths,
+      episode.mortality_surprise_score,
+    ]
+  )
+}
+
+// ============================================================================
+// Show actor appearances table functions
+// ============================================================================
+
+export interface ShowActorAppearanceRecord {
+  actor_tmdb_id: number
+  show_tmdb_id: number
+  season_number: number
+  episode_number: number
+  actor_name: string
+  character_name: string | null
+  appearance_type: string // 'regular', 'recurring', 'guest'
+  billing_order: number | null
+  age_at_filming: number | null
+  is_deceased: boolean
+}
+
+// Insert or update a show actor appearance
+export async function upsertShowActorAppearance(
+  appearance: ShowActorAppearanceRecord
+): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO show_actor_appearances (
+       actor_tmdb_id, show_tmdb_id, season_number, episode_number, actor_name,
+       character_name, appearance_type, billing_order, age_at_filming, is_deceased
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT (actor_tmdb_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
+       actor_name = EXCLUDED.actor_name,
+       character_name = EXCLUDED.character_name,
+       appearance_type = EXCLUDED.appearance_type,
+       billing_order = EXCLUDED.billing_order,
+       age_at_filming = EXCLUDED.age_at_filming,
+       is_deceased = EXCLUDED.is_deceased`,
+    [
+      appearance.actor_tmdb_id,
+      appearance.show_tmdb_id,
+      appearance.season_number,
+      appearance.episode_number,
+      appearance.actor_name,
+      appearance.character_name,
+      appearance.appearance_type,
+      appearance.billing_order,
+      appearance.age_at_filming,
+      appearance.is_deceased,
+    ]
+  )
+}
+
+// Batch insert show actor appearances using bulk VALUES for efficiency
+export async function batchUpsertShowActorAppearances(
+  appearances: ShowActorAppearanceRecord[]
+): Promise<void> {
+  if (appearances.length === 0) return
+
+  const db = getPool()
+
+  // Process in chunks of 100 to avoid query size limits
+  const CHUNK_SIZE = 100
+  for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
+    const chunk = appearances.slice(i, i + CHUNK_SIZE)
+
+    // Build VALUES clause with numbered parameters
+    const values: unknown[] = []
+    const placeholders = chunk.map((appearance, index) => {
+      const offset = index * 10
+      values.push(
+        appearance.actor_tmdb_id,
+        appearance.show_tmdb_id,
+        appearance.season_number,
+        appearance.episode_number,
+        appearance.actor_name,
+        appearance.character_name,
+        appearance.appearance_type,
+        appearance.billing_order,
+        appearance.age_at_filming,
+        appearance.is_deceased
+      )
+      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10})`
+    })
+
+    await db.query(
+      `INSERT INTO show_actor_appearances (
+         actor_tmdb_id, show_tmdb_id, season_number, episode_number, actor_name,
+         character_name, appearance_type, billing_order, age_at_filming, is_deceased
+       )
+       VALUES ${placeholders.join(", ")}
+       ON CONFLICT (actor_tmdb_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
+         actor_name = EXCLUDED.actor_name,
+         character_name = EXCLUDED.character_name,
+         appearance_type = EXCLUDED.appearance_type,
+         billing_order = EXCLUDED.billing_order,
+         age_at_filming = EXCLUDED.age_at_filming,
+         is_deceased = EXCLUDED.is_deceased`,
+      values
+    )
+  }
+}
+
+// Get unique actors for a show (aggregated across all episodes)
+export async function getShowActors(
+  showTmdbId: number
+): Promise<Array<{ actorTmdbId: number; actorName: string; isDeceased: boolean }>> {
+  const db = getPool()
+  const result = await db.query<{
+    actor_tmdb_id: number
+    actor_name: string
+    is_deceased: boolean
+  }>(
+    `SELECT DISTINCT actor_tmdb_id, actor_name, is_deceased
+     FROM show_actor_appearances
+     WHERE show_tmdb_id = $1
+     ORDER BY actor_name`,
+    [showTmdbId]
+  )
+  return result.rows.map((row) => ({
+    actorTmdbId: row.actor_tmdb_id,
+    actorName: row.actor_name,
+    isDeceased: row.is_deceased,
+  }))
+}

@@ -1,17 +1,17 @@
-import type { MovieSearchResult } from "@/types"
+import type { UnifiedSearchResult } from "@/types"
 import SearchResult from "./SearchResult"
 
 interface SearchDropdownProps {
   id?: string
-  movies: MovieSearchResult[]
+  results: UnifiedSearchResult[]
   selectedIndex: number
-  onSelect: (movie: MovieSearchResult) => void
+  onSelect: (result: UnifiedSearchResult) => void
   searchQuery: string
 }
 
 export default function SearchDropdown({
   id,
-  movies,
+  results,
   selectedIndex,
   onSelect,
   searchQuery,
@@ -20,14 +20,15 @@ export default function SearchDropdown({
     <ul
       id={id}
       role="listbox"
+      data-testid="search-dropdown"
       className="absolute z-50 mt-1 max-h-80 w-full overflow-y-auto rounded-lg border border-brown-medium/30 bg-cream shadow-lg"
     >
-      {movies.slice(0, 10).map((movie, index) => (
+      {results.slice(0, 10).map((result, index) => (
         <SearchResult
-          key={movie.id}
-          movie={movie}
+          key={`${result.media_type}-${result.id}`}
+          result={result}
           isSelected={index === selectedIndex}
-          onSelect={() => onSelect(movie)}
+          onSelect={() => onSelect(result)}
           searchQuery={searchQuery}
         />
       ))}

@@ -58,6 +58,8 @@ For "details": ONLY include information that explains WHY or HOW they died medic
 - "Long history of heart problems"
 
 Return null for details if you only know basic facts. NEVER include:
+- Deaths of family members (spouse, partner, children, parents dying before or after them)
+- Words like "predeceased", "widow", "widower", "survived by"
 - Marriage history or spouse names
 - Career achievements or awards
 - Tributes, quotes, or flowery language

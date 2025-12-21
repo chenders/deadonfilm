@@ -5,6 +5,7 @@ import { searchMovies } from "./search.js"
 // Mock the dependencies
 vi.mock("../lib/tmdb.js", () => ({
   searchMovies: vi.fn(),
+  searchTVShows: vi.fn(),
 }))
 
 import { searchMovies as tmdbSearch } from "../lib/tmdb.js"
@@ -143,7 +144,7 @@ describe("searchMovies route", () => {
     expect(calledWith.results.length).toBe(10)
   })
 
-  it("returns only necessary fields", async () => {
+  it("returns only necessary fields plus media_type", async () => {
     const mockTmdbResponse = {
       page: 1,
       results: [
@@ -174,6 +175,7 @@ describe("searchMovies route", () => {
       release_date: "2020-05-15",
       poster_path: "/abc123.jpg",
       overview: "A great movie",
+      media_type: "movie",
     })
     expect(calledWith.results[0]).not.toHaveProperty("popularity")
     expect(calledWith.results[0]).not.toHaveProperty("genre_ids")
@@ -188,7 +190,7 @@ describe("searchMovies route", () => {
 
     expect(statusSpy).toHaveBeenCalledWith(500)
     expect(jsonSpy).toHaveBeenCalledWith({
-      error: { message: "Failed to search movies" },
+      error: { message: "Failed to search" },
     })
   })
 

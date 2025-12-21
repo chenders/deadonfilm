@@ -1,32 +1,39 @@
 import { useState, useRef, useId } from "react"
 import { useNavigate } from "react-router-dom"
-import { useMovieSearch } from "@/hooks/useMovieSearch"
+import { useUnifiedSearch } from "@/hooks/useUnifiedSearch"
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation"
-import { createMovieSlug } from "@/utils/slugify"
-import type { MovieSearchResult } from "@/types"
+import { createMovieSlug, createShowSlug } from "@/utils/slugify"
+import type { UnifiedSearchResult, SearchMediaType } from "@/types"
 import SearchInput from "./SearchInput"
 import SearchDropdown from "./SearchDropdown"
+import MediaTypeToggle from "./MediaTypeToggle"
 import InfoPopover from "@/components/common/InfoPopover"
 
 export default function SearchBar() {
   const [query, setQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
+  const [mediaType, setMediaType] = useState<SearchMediaType>("all")
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const listboxId = useId()
 
-  const { data, isLoading } = useMovieSearch(query)
-  const movies = data?.results || []
+  const { data, isLoading } = useUnifiedSearch(query, mediaType)
+  const results = data?.results || []
 
-  const handleSelect = (movie: MovieSearchResult) => {
-    const slug = createMovieSlug(movie.title, movie.release_date, movie.id)
-    navigate(`/movie/${slug}`)
+  const handleSelect = (result: UnifiedSearchResult) => {
+    if (result.media_type === "tv") {
+      const slug = createShowSlug(result.title, result.release_date, result.id)
+      navigate(`/show/${slug}`)
+    } else {
+      const slug = createMovieSlug(result.title, result.release_date, result.id)
+      navigate(`/movie/${slug}`)
+    }
     setIsOpen(false)
     setQuery("")
   }
 
   const { selectedIndex, handleKeyDown } = useKeyboardNavigation({
-    items: movies,
+    items: results,
     isOpen,
     onSelect: handleSelect,
     onEscape: () => {
@@ -37,27 +44,39 @@ export default function SearchBar() {
 
   const siteExplanation = (
     <>
-      <h3 className="mb-3 font-display text-lg text-brown-dark">Movie Cast Mortality Database</h3>
+      <h3 className="mb-3 font-display text-lg text-brown-dark">Cast Mortality Database</h3>
       <div className="space-y-3 text-sm text-text-muted">
         <p>
-          Dead on Film lets you discover which actors from your favorite films have passed away.
+          Dead on Film lets you discover which actors from your favorite films and TV shows have
+          passed away.
         </p>
         <p>
           We calculate <strong>expected vs actual deaths</strong> using US Social Security
-          Administration actuarial life tables. This reveals which films have statistically unusual
-          mortality rates - not just old movies where everyone has died, but films where deaths
-          exceeded what math would predict.
+          Administration actuarial life tables. This reveals which productions have statistically
+          unusual mortality rates - not just old content where everyone has died, but those where
+          deaths exceeded what math would predict.
         </p>
         <p>
-          Search any movie to see death dates, causes, and how the cast compares to statistical
-          expectations.
+          Search any movie or TV show to see death dates, causes, and how the cast compares to
+          statistical expectations.
         </p>
       </div>
     </>
   )
 
+  const placeholderText =
+    mediaType === "movie"
+      ? "Search for a movie..."
+      : mediaType === "tv"
+        ? "Search for a TV show..."
+        : "Search movies and TV shows..."
+
   return (
     <div data-testid="search-bar" className="relative mx-auto w-full max-w-xl">
+      <div className="mb-3 flex justify-center">
+        <MediaTypeToggle value={mediaType} onChange={setMediaType} />
+      </div>
+
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <SearchInput
@@ -78,24 +97,24 @@ export default function SearchBar() {
             }}
             onKeyDown={handleKeyDown}
             isLoading={isLoading}
-            placeholder="Search for a movie..."
+            placeholder={placeholderText}
             listboxId={listboxId}
           />
         </div>
         <InfoPopover>{siteExplanation}</InfoPopover>
       </div>
 
-      {isOpen && movies.length > 0 && (
+      {isOpen && results.length > 0 && (
         <SearchDropdown
           id={listboxId}
-          movies={movies}
+          results={results}
           selectedIndex={selectedIndex}
           onSelect={handleSelect}
           searchQuery={query}
         />
       )}
 
-      {isOpen && query.length >= 2 && !isLoading && movies.length === 0 && (
+      {isOpen && query.length >= 2 && !isLoading && results.length === 0 && (
         <div
           data-testid="search-no-results"
           className="absolute z-50 mt-1 w-full rounded-lg border border-brown-medium/30 bg-cream p-4 text-center shadow-lg"
@@ -104,7 +123,7 @@ export default function SearchBar() {
             End of Reel
           </p>
           <p className="text-sm text-text-muted">
-            No films found for "<span className="italic">{query}</span>"
+            No results found for "<span className="italic">{query}</span>"
           </p>
         </div>
       )}
