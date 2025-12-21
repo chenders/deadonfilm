@@ -1,10 +1,10 @@
 import { useRef, useEffect } from "react"
-import type { MovieSearchResult } from "@/types"
+import type { UnifiedSearchResult } from "@/types"
 import { getYear } from "@/utils/formatDate"
-import { SkullIcon, FilmReelIcon } from "@/components/icons"
+import { SkullIcon, FilmReelIcon, TVIcon } from "@/components/icons"
 
 interface SearchResultProps {
-  movie: MovieSearchResult
+  result: UnifiedSearchResult
   isSelected: boolean
   onSelect: () => void
   searchQuery: string
@@ -43,8 +43,17 @@ function getPosterUrls(posterPath: string | null): {
   }
 }
 
-function FilmPoster({ posterPath, title }: { posterPath: string | null; title: string }) {
+function MediaPoster({
+  posterPath,
+  title,
+  mediaType,
+}: {
+  posterPath: string | null
+  title: string
+  mediaType: "movie" | "tv"
+}) {
   const poster = getPosterUrls(posterPath)
+  const PlaceholderIcon = mediaType === "tv" ? TVIcon : FilmReelIcon
 
   return (
     <div className="-my-1 h-14 w-[38px] flex-shrink-0 overflow-hidden rounded bg-brown-medium/10">
@@ -59,7 +68,7 @@ function FilmPoster({ posterPath, title }: { posterPath: string | null; title: s
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-brown-medium/30">
-          <FilmReelIcon size={16} />
+          <PlaceholderIcon size={16} />
         </div>
       )}
     </div>
@@ -67,14 +76,14 @@ function FilmPoster({ posterPath, title }: { posterPath: string | null; title: s
 }
 
 export default function SearchResult({
-  movie,
+  result,
   isSelected,
   onSelect,
   searchQuery,
 }: SearchResultProps) {
   const ref = useRef<HTMLLIElement>(null)
-  const year = getYear(movie.release_date)
-  const mortality = getMortalityHint(movie.release_date)
+  const year = getYear(result.release_date)
+  const mortality = getMortalityHint(result.release_date)
 
   // Scroll selected item into view
   useEffect(() => {
@@ -89,22 +98,40 @@ export default function SearchResult({
       ref={ref}
       role="option"
       aria-selected={isSelected}
+      data-testid="search-result"
       className={`cursor-pointer border-b border-brown-medium/10 px-4 py-2 transition-colors last:border-b-0 ${isSelected ? "bg-beige" : "hover:bg-beige/50"}`}
       onClick={onSelect}
       onMouseDown={(e) => e.preventDefault()} // Prevent input blur before click
       data-track-event="search_select"
       data-track-params={JSON.stringify({
         search_term: searchQuery,
-        movie_title: movie.title,
-        movie_id: movie.id,
+        title: result.title,
+        id: result.id,
+        media_type: result.media_type,
       })}
     >
       <div className="flex items-center gap-3">
-        <FilmPoster posterPath={movie.poster_path} title={movie.title} />
+        <MediaPoster
+          posterPath={result.poster_path}
+          title={result.title}
+          mediaType={result.media_type}
+        />
 
-        {/* Title and year */}
+        {/* Title, year, and media type badge */}
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-brown-dark">{movie.title}</div>
+          <div className="flex items-center gap-2">
+            <span className="truncate font-medium text-brown-dark">{result.title}</span>
+            <span
+              data-testid={`media-badge-${result.media_type}`}
+              className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                result.media_type === "tv"
+                  ? "bg-living/20 text-living-dark"
+                  : "bg-brown-medium/10 text-brown-medium"
+              }`}
+            >
+              {result.media_type === "tv" ? "TV" : "Film"}
+            </span>
+          </div>
           <div className="text-sm text-text-muted">{year}</div>
         </div>
 

@@ -10,6 +10,25 @@ export interface MovieSearchResult {
   overview: string
 }
 
+// Unified search result (for mixed movie/TV search)
+export interface UnifiedSearchResult {
+  id: number
+  title: string
+  release_date: string
+  poster_path: string | null
+  overview: string
+  media_type: "movie" | "tv"
+}
+
+export type SearchMediaType = "movie" | "tv" | "all"
+
+export interface UnifiedSearchResponse {
+  results: UnifiedSearchResult[]
+  page: number
+  total_pages: number
+  total_results: number
+}
+
 export interface MovieDetails {
   id: number
   title: string
