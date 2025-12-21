@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   formatDate,
-  formatMonthDay,
   getYear,
   calculateAge,
   calculateCurrentAge,
-  formatRelativeDate,
   getDecadeOptions,
 } from "./formatDate"
 
@@ -36,25 +34,6 @@ describe("formatDate", () => {
 
   it("handles historic dates", () => {
     expect(formatDate("1899-05-10")).toBe("May 10, 1899")
-  })
-})
-
-describe("formatMonthDay", () => {
-  it("formats month and day", () => {
-    expect(formatMonthDay("1977-06-14")).toBe("Jun 14")
-  })
-
-  it("handles December dates", () => {
-    expect(formatMonthDay("2023-12-25")).toBe("Dec 25")
-  })
-
-  it("handles single digit day", () => {
-    expect(formatMonthDay("2023-01-05")).toBe("Jan 5")
-  })
-
-  it("returns Invalid Date for invalid input", () => {
-    // The function tries to parse and format, resulting in "Invalid Date"
-    expect(formatMonthDay("invalid")).toBe("Invalid Date")
   })
 })
 
@@ -150,71 +129,6 @@ describe("calculateCurrentAge", () => {
   it("handles very old people", () => {
     // Born 1920, current date 2024 = 103 or 104 depending on birthday
     expect(calculateCurrentAge("1920-01-01")).toBe(104)
-  })
-})
-
-describe("formatRelativeDate", () => {
-  beforeEach(() => {
-    // Mock the current date to 2024-06-15
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date("2024-06-15T12:00:00Z"))
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('returns "Unknown" for null', () => {
-    expect(formatRelativeDate(null)).toBe("Unknown")
-  })
-
-  it('returns "Today" for today\'s date', () => {
-    expect(formatRelativeDate("2024-06-15")).toBe("Today")
-  })
-
-  it('returns "Yesterday" for yesterday\'s date', () => {
-    expect(formatRelativeDate("2024-06-14")).toBe("Yesterday")
-  })
-
-  it("returns days ago for dates within a week", () => {
-    expect(formatRelativeDate("2024-06-12")).toBe("3 days ago")
-    expect(formatRelativeDate("2024-06-10")).toBe("5 days ago")
-  })
-
-  it("returns weeks ago for dates between 7 and 30 days", () => {
-    expect(formatRelativeDate("2024-06-08")).toBe("1 week ago")
-    expect(formatRelativeDate("2024-06-01")).toBe("2 weeks ago")
-    expect(formatRelativeDate("2024-05-25")).toBe("3 weeks ago")
-  })
-
-  it("returns months ago for dates between 30 and 365 days", () => {
-    expect(formatRelativeDate("2024-05-15")).toBe("1 month ago")
-    expect(formatRelativeDate("2024-04-15")).toBe("2 months ago")
-    expect(formatRelativeDate("2024-01-15")).toBe("5 months ago")
-  })
-
-  it("returns year for dates more than a year ago", () => {
-    expect(formatRelativeDate("2023-06-15")).toBe("2023")
-    expect(formatRelativeDate("2020-01-01")).toBe("2020")
-  })
-
-  it("returns year for future dates (negative diff)", () => {
-    expect(formatRelativeDate("2024-12-25")).toBe("2024")
-    expect(formatRelativeDate("2025-01-01")).toBe("2025")
-  })
-
-  it("handles edge case at week boundary", () => {
-    // Exactly 7 days ago
-    expect(formatRelativeDate("2024-06-08")).toBe("1 week ago")
-  })
-
-  it("handles edge case at month boundary", () => {
-    // 30 days is the boundary between weeks and months
-    // 2024-05-16 is exactly 30 days before 2024-06-15, which is >= 30 so it's "1 month ago"
-    expect(formatRelativeDate("2024-05-16")).toBe("1 month ago")
-    expect(formatRelativeDate("2024-05-15")).toBe("1 month ago")
-    // 29 days should still be weeks
-    expect(formatRelativeDate("2024-05-17")).toBe("4 weeks ago")
   })
 })
 

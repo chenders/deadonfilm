@@ -1,34 +1,6 @@
 import type { Request, Response } from "express"
 import { getPool } from "../lib/db.js"
-
-/**
- * Creates a URL-safe slug from a movie title, year, and ID
- * (Server-side version of the frontend utility)
- */
-function createMovieSlug(title: string, releaseYear: number | null, tmdbId: number): string {
-  const year = releaseYear?.toString() || "unknown"
-  const slug = title
-    .toLowerCase()
-    .replace(/['\u02BC\u2019]/g, "") // Remove apostrophes
-    .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
-    .replace(/(^-|-$)/g, "") // Remove leading/trailing hyphens
-
-  return `${slug}-${year}-${tmdbId}`
-}
-
-/**
- * Creates a URL-safe slug from an actor name and ID
- * (Server-side version of the frontend utility)
- */
-function createActorSlug(name: string, tmdbId: number): string {
-  const slug = name
-    .toLowerCase()
-    .replace(/['\u02BC\u2019]/g, "") // Remove apostrophes
-    .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
-    .replace(/(^-|-$)/g, "") // Remove leading/trailing hyphens
-
-  return `${slug}-${tmdbId}`
-}
+import { createActorSlug, createMovieSlug } from "../lib/slug-utils.js"
 
 /**
  * Escapes special XML characters in a string

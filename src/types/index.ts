@@ -275,8 +275,16 @@ export interface CovidDeathsResponse {
   pagination: PaginationInfo
 }
 
-// Violent Deaths types
-export interface ViolentDeath {
+// Unnatural Deaths types
+export type UnnaturalDeathCategory = "suicide" | "accident" | "overdose" | "homicide" | "other"
+
+export interface UnnaturalDeathCategoryInfo {
+  id: UnnaturalDeathCategory
+  label: string
+  count: number
+}
+
+export interface UnnaturalDeath {
   rank: number
   id: number
   name: string
@@ -287,9 +295,12 @@ export interface ViolentDeath {
   ageAtDeath: number | null
 }
 
-export interface ViolentDeathsResponse {
-  persons: ViolentDeath[]
+export interface UnnaturalDeathsResponse {
+  persons: UnnaturalDeath[]
   pagination: PaginationInfo
+  categories: UnnaturalDeathCategoryInfo[]
+  selectedCategory: UnnaturalDeathCategory | "all"
+  hideSuicides: boolean
 }
 
 // Featured Movie types

@@ -1,4 +1,5 @@
 import pg from "pg"
+import { createActorSlug, createMovieSlug } from "./slug-utils.js"
 
 const { Pool } = pg
 
@@ -522,16 +523,6 @@ export interface TriviaFact {
 let triviaCache: TriviaFact[] | null = null
 let triviaCacheExpiry = 0
 const TRIVIA_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
-
-// Helper to create actor slug
-function createActorSlug(name: string, tmdbId: number): string {
-  return `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${tmdbId}`
-}
-
-// Helper to create movie slug
-function createMovieSlug(title: string, releaseYear: number | null, tmdbId: number): string {
-  return `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${releaseYear || "unknown"}-${tmdbId}`
-}
 
 // Combined query result types
 interface PersonsStatsRow {
@@ -1519,52 +1510,184 @@ export async function getCovidDeaths(options: CovidDeathOptions = {}): Promise<{
 }
 
 // ============================================================================
-// Violent deaths functions
+// Unnatural deaths functions
 // ============================================================================
 
-export interface ViolentDeathOptions {
+// Categories of unnatural death with their SQL pattern conditions
+export const UNNATURAL_DEATH_CATEGORIES = {
+  suicide: {
+    label: "Suicide",
+    patterns: [
+      "suicide",
+      "self-inflicted",
+      "took own life",
+      "took his own life",
+      "took her own life",
+      "died by suicide",
+      "hanging to death",
+    ],
+  },
+  accident: {
+    label: "Accidents",
+    patterns: [
+      "traffic collision",
+      "car accident",
+      "motorcycle accident",
+      "automobile accident",
+      "road accident",
+      "struck by vehicle",
+      "bicycle accident",
+      "plane crash",
+      "aviation accident",
+      "helicopter crash",
+      "aircraft crash",
+      "falling from height",
+      "falling",
+      "accidental fall",
+      "accidental drowning",
+      "drowning",
+    ],
+  },
+  overdose: {
+    label: "Overdose",
+    patterns: ["drug overdose", "overdose", "intoxication", "barbiturate"],
+  },
+  homicide: {
+    label: "Homicide",
+    patterns: [
+      "gunshot wound",
+      "gunshot",
+      "shooting",
+      "homicide",
+      "murdered",
+      "stabbing",
+      "stab wound",
+      "strangulation",
+      "strangled",
+    ],
+  },
+  other: {
+    label: "Other",
+    patterns: [
+      "carbon monoxide poisoning",
+      "cyanide poisoning",
+      "burns",
+      "fire",
+      "smoke inhalation",
+      "september 11",
+      "animal attack",
+      "heat stroke",
+      "hyperthermia",
+      "exposure and dehydration",
+    ],
+  },
+} as const
+
+export type UnnaturalDeathCategory = keyof typeof UNNATURAL_DEATH_CATEGORIES
+
+export interface UnnaturalDeathsOptions {
   limit?: number
   offset?: number
-  includeSelfInflicted?: boolean
+  category?: UnnaturalDeathCategory | "all"
+  hideSuicides?: boolean
 }
 
-// Get deceased persons who died from violent causes (homicide, suicide, execution, weapons)
-export async function getViolentDeaths(options: ViolentDeathOptions = {}): Promise<{
+// Build SQL condition for a category's patterns
+function buildCategoryCondition(patterns: readonly string[]): string {
+  return patterns
+    .map(
+      (p) =>
+        `LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) LIKE '%${p}%'`
+    )
+    .join(" OR ")
+}
+
+// Get all unnatural death pattern conditions
+function getAllUnnaturalPatterns(): string {
+  const conditions = Object.values(UNNATURAL_DEATH_CATEGORIES)
+    .map((cat) => `(${buildCategoryCondition(cat.patterns)})`)
+    .join(" OR ")
+  return conditions
+}
+
+// Get non-suicide unnatural pattern conditions
+function getNonSuicideUnnaturalPatterns(): string {
+  const conditions = Object.entries(UNNATURAL_DEATH_CATEGORIES)
+    .filter(([key]) => key !== "suicide")
+    .map(([, cat]) => `(${buildCategoryCondition(cat.patterns)})`)
+    .join(" OR ")
+  return conditions
+}
+
+// Get deceased persons who died from unnatural causes
+export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): Promise<{
   persons: DeceasedPersonRecord[]
   totalCount: number
+  categoryCounts: Record<UnnaturalDeathCategory, number>
 }> {
-  const { limit = 50, offset = 0, includeSelfInflicted = false } = options
+  const { limit = 50, offset = 0, category = "all", hideSuicides = false } = options
   const db = getPool()
 
-  // Build the query based on whether to include self-inflicted deaths
-  // By default, exclude suicide patterns from violent deaths
-  const query = includeSelfInflicted
-    ? `SELECT COUNT(*) OVER () as total_count, *
-       FROM deceased_persons
-       WHERE violent_death = true
-       ORDER BY deathday DESC
-       LIMIT $1 OFFSET $2`
-    : `SELECT COUNT(*) OVER () as total_count, *
-       FROM deceased_persons
-       WHERE violent_death = true
-         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%suicide%'
-         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%self-inflicted%'
-         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%took own life%'
-         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%took his own life%'
-         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%took her own life%'
-         AND LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) NOT LIKE '%died by suicide%'
-       ORDER BY deathday DESC
-       LIMIT $1 OFFSET $2`
+  // Build WHERE clause based on category and hideSuicides
+  let whereCondition: string
+  if (category === "all") {
+    whereCondition = hideSuicides ? getNonSuicideUnnaturalPatterns() : getAllUnnaturalPatterns()
+  } else if (category === "suicide" && hideSuicides) {
+    // User is filtering to suicide but also hiding suicides - return empty
+    return {
+      persons: [],
+      totalCount: 0,
+      categoryCounts: { suicide: 0, accident: 0, overdose: 0, homicide: 0, other: 0 },
+    }
+  } else {
+    const categoryInfo = UNNATURAL_DEATH_CATEGORIES[category]
+    whereCondition = buildCategoryCondition(categoryInfo.patterns)
+  }
 
-  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(query, [
-    limit,
-    offset,
-  ])
+  // Get persons matching the filter
+  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(
+    `SELECT COUNT(*) OVER () as total_count, *
+     FROM deceased_persons
+     WHERE ${whereCondition}
+     ORDER BY deathday DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
   const persons = result.rows.map(({ total_count: _total_count, ...person }) => person)
 
-  return { persons, totalCount }
+  // Get counts for each category (for the filter badges)
+  const categoryCountsResult = await db.query<{ category: string; count: string }>(`
+    SELECT
+      CASE
+        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)} THEN 'suicide'
+        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.accident.patterns)} THEN 'accident'
+        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.overdose.patterns)} THEN 'overdose'
+        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.homicide.patterns)} THEN 'homicide'
+        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.other.patterns)} THEN 'other'
+      END as category,
+      COUNT(*) as count
+    FROM deceased_persons
+    WHERE ${getAllUnnaturalPatterns()}
+    GROUP BY category
+  `)
+
+  const categoryCounts: Record<UnnaturalDeathCategory, number> = {
+    suicide: 0,
+    accident: 0,
+    overdose: 0,
+    homicide: 0,
+    other: 0,
+  }
+
+  for (const row of categoryCountsResult.rows) {
+    if (row.category && row.category in categoryCounts) {
+      categoryCounts[row.category as UnnaturalDeathCategory] = parseInt(row.count, 10)
+    }
+  }
+
+  return { persons, totalCount, categoryCounts }
 }
 
 // Get all deceased persons, paginated (for "All Deaths" page)
