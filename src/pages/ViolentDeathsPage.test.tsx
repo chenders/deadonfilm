@@ -338,6 +338,34 @@ describe("ViolentDeathsPage", () => {
     })
   })
 
+  it("resets page to 1 when toggling the checkbox", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 2, pageSize: 50, totalPages: 3, totalCount: 150 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />, {
+      initialEntries: ["/violent-deaths?page=2"],
+    })
+
+    // Wait for initial data to load and checkbox to appear
+    await waitFor(() => {
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 2, includeSelfInflicted: false })
+      expect(screen.getByRole("checkbox")).toBeInTheDocument()
+    })
+
+    // Clear mock to track only the next call
+    vi.mocked(api.getViolentDeaths).mockClear()
+
+    // Toggle the checkbox
+    fireEvent.click(screen.getByRole("checkbox"))
+
+    // Should reset to page 1 when toggling the filter
+    await waitFor(() => {
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 1, includeSelfInflicted: true })
+    })
+  })
+
   it("actor rows link to actor profile pages", async () => {
     vi.mocked(api.getViolentDeaths).mockResolvedValue({
       persons: mockPersons,
