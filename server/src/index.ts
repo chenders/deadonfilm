@@ -20,11 +20,23 @@ import {
   getRecentDeathsHandler,
   getCovidDeathsHandler,
   getViolentDeathsHandler,
+  getFeaturedMovieHandler,
+  getTriviaHandler,
+  getThisWeekDeathsHandler,
+  getPopularMoviesHandler,
 } from "./routes/stats.js"
 import { getCursedActorsRoute } from "./routes/actors.js"
 import { getActor } from "./routes/actor.js"
 import { getDeathWatchHandler } from "./routes/death-watch.js"
 import { getSitemap } from "./routes/sitemap.js"
+import {
+  getCauseCategoriesHandler,
+  getDeathsByCauseHandler,
+  getDecadeCategoriesHandler,
+  getDeathsByDecadeHandler,
+  getAllDeathsHandler,
+} from "./routes/deaths.js"
+import { getGenreCategoriesHandler, getMoviesByGenreHandler } from "./routes/movies.js"
 import { initializeDatabase } from "./lib/startup.js"
 
 const app = express()
@@ -66,9 +78,20 @@ app.get("/api/stats", getStats)
 app.get("/api/recent-deaths", getRecentDeathsHandler)
 app.get("/api/covid-deaths", getCovidDeathsHandler)
 app.get("/api/violent-deaths", getViolentDeathsHandler)
+app.get("/api/featured-movie", getFeaturedMovieHandler)
+app.get("/api/trivia", getTriviaHandler)
+app.get("/api/this-week", getThisWeekDeathsHandler)
+app.get("/api/popular-movies", getPopularMoviesHandler)
 app.get("/api/cursed-actors", getCursedActorsRoute)
 app.get("/api/actor/:id", getActor)
 app.get("/api/death-watch", getDeathWatchHandler)
+app.get("/api/deaths/causes", getCauseCategoriesHandler)
+app.get("/api/deaths/cause/:cause", getDeathsByCauseHandler)
+app.get("/api/deaths/decades", getDecadeCategoriesHandler)
+app.get("/api/deaths/decade/:decade", getDeathsByDecadeHandler)
+app.get("/api/deaths/all", getAllDeathsHandler)
+app.get("/api/movies/genres", getGenreCategoriesHandler)
+app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
 
 // Initialize database and start server
 async function startServer() {
