@@ -99,8 +99,13 @@ export async function getViolentDeathsHandler(req: Request, res: Response) {
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const pageSize = 50
     const offset = (page - 1) * pageSize
+    const includeSelfInflicted = req.query.includeSelfInflicted === "true"
 
-    const { persons, totalCount } = await getViolentDeaths({ limit: pageSize, offset })
+    const { persons, totalCount } = await getViolentDeaths({
+      limit: pageSize,
+      offset,
+      includeSelfInflicted,
+    })
 
     res.json({
       persons: persons.map((p, i) => ({

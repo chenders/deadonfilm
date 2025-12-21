@@ -188,7 +188,7 @@ describe("ViolentDeathsPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getViolentDeaths).toHaveBeenCalledWith(2)
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 2, includeSelfInflicted: false })
     })
   })
 
@@ -248,7 +248,56 @@ describe("ViolentDeathsPage", () => {
     })
 
     await waitFor(() => {
-      expect(api.getViolentDeaths).toHaveBeenCalledWith(2)
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 2, includeSelfInflicted: false })
+    })
+  })
+
+  it("renders 'Include all causes' checkbox", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Include all causes")).toBeInTheDocument()
+      expect(screen.getByRole("checkbox")).not.toBeChecked()
+    })
+  })
+
+  it("calls API with includeSelfInflicted when checkbox is checked", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Include all causes")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole("checkbox"))
+
+    await waitFor(() => {
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 1, includeSelfInflicted: true })
+    })
+  })
+
+  it("reads includeSelfInflicted from URL parameters", async () => {
+    vi.mocked(api.getViolentDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<ViolentDeathsPage />, {
+      initialEntries: ["/violent-deaths?all=true"],
+    })
+
+    await waitFor(() => {
+      expect(api.getViolentDeaths).toHaveBeenCalledWith({ page: 1, includeSelfInflicted: true })
+      expect(screen.getByRole("checkbox")).toBeChecked()
     })
   })
 
