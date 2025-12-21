@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { useFeaturedMovie } from "@/hooks/useFeaturedMovie"
 import { getPosterUrl } from "@/services/api"
 import { SkullIcon, FilmReelIcon } from "@/components/icons"
+import { createMovieSlug } from "@/utils/slugify"
 
 export default function FeaturedCursedMovie() {
   const { data, isLoading, error } = useFeaturedMovie()
@@ -30,11 +31,8 @@ export default function FeaturedCursedMovie() {
 
   const movie = data.movie
   const mortalityPercentage = Math.round((movie.deceasedCount / movie.castCount) * 100)
-  const movieSlug = `${movie.title
-    .toLowerCase()
-    .replace(/['\u02BC\u2019]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")}-${movie.releaseYear || "unknown"}-${movie.tmdbId}`
+  const releaseDate = movie.releaseYear ? `${movie.releaseYear}-01-01` : ""
+  const movieSlug = createMovieSlug(movie.title, releaseDate, movie.tmdbId)
 
   return (
     <section data-testid="featured-movie" className="mt-8">

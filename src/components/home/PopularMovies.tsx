@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { usePopularMovies } from "@/hooks/usePopularMovies"
 import { getPosterUrl } from "@/services/api"
 import { FilmReelIcon } from "@/components/icons"
+import { createMovieSlug } from "@/utils/slugify"
 
 export default function PopularMovies() {
   const { data, isLoading, error } = usePopularMovies(8)
@@ -39,12 +40,8 @@ export default function PopularMovies() {
         className="flex justify-center gap-2 overflow-x-auto pb-2"
       >
         {data.movies.map((movie, index) => {
-          const slug = `${movie.title
-            .toLowerCase()
-            .replace(/['\u02BC\u2019]/g, "")
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "")}-${movie.releaseYear || "unknown"}-${movie.id}`
-
+          const releaseDate = movie.releaseYear ? `${movie.releaseYear}-01-01` : ""
+          const slug = createMovieSlug(movie.title, releaseDate, movie.id)
           const mortalityPercent = Math.round((movie.deceasedCount / movie.castCount) * 100)
 
           return (
