@@ -1460,13 +1460,18 @@ export interface UnnaturalDeathsOptions {
   hideSuicides?: boolean
 }
 
+// Escape single quotes in SQL LIKE patterns for safety
+function escapeSqlLikePattern(pattern: string): string {
+  return pattern.replace(/'/g, "''")
+}
+
 // Build SQL condition for a category's patterns
 function buildCategoryCondition(patterns: readonly string[]): string {
   return patterns
-    .map(
-      (p) =>
-        `LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) LIKE '%${p}%'`
-    )
+    .map((p) => {
+      const escaped = escapeSqlLikePattern(p.toLowerCase())
+      return `LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) LIKE '%${escaped}%'`
+    })
     .join(" OR ")
 }
 
