@@ -7,6 +7,8 @@ import DeathInfo from "@/components/movie/DeathInfo"
 import { PersonIcon, ChevronIcon } from "@/components/icons"
 import EmptyStateCard from "@/components/common/EmptyStateCard"
 
+const PAGE_SIZE = 25
+
 interface ShowDeceasedListProps {
   actors: DeceasedShowActor[]
   showId?: number
@@ -14,12 +16,22 @@ interface ShowDeceasedListProps {
 }
 
 export default function ShowDeceasedList({ actors, showId, showName }: ShowDeceasedListProps) {
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
   if (actors.length === 0) {
     return (
       <div data-testid="no-deceased-message">
         <EmptyStateCard type="no-deceased" />
       </div>
     )
+  }
+
+  const visibleActors = actors.slice(0, visibleCount)
+  const hasMore = visibleCount < actors.length
+  const remainingCount = actors.length - visibleCount
+
+  const handleShowMore = () => {
+    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, actors.length))
   }
 
   return (
@@ -29,16 +41,29 @@ export default function ShowDeceasedList({ actors, showId, showName }: ShowDecea
       </h2>
 
       <div data-testid="deceased-cards" className="space-y-3">
-        {actors.map((actor, index) => (
+        {visibleActors.map((actor, index) => (
           <div
             key={actor.id}
             className="animate-fade-slide-in"
-            style={{ animationDelay: `${index * 50}ms` }}
+            style={{ animationDelay: `${Math.min(index, PAGE_SIZE - 1) * 50}ms` }}
           >
             <ShowDeceasedCard actor={actor} showId={showId} showName={showName} />
           </div>
         ))}
       </div>
+
+      {hasMore && (
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            data-testid="show-more-deceased"
+            onClick={handleShowMore}
+            className="rounded-lg bg-brown-medium/10 px-6 py-2 text-sm font-medium text-brown-dark transition-colors hover:bg-brown-medium/20"
+          >
+            Show more ({remainingCount} remaining)
+          </button>
+        </div>
+      )}
     </div>
   )
 }

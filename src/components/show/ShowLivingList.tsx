@@ -5,6 +5,8 @@ import { getProfileUrl } from "@/services/api"
 import { createActorSlug, createEpisodeSlug } from "@/utils/slugify"
 import { PersonIcon, ChevronIcon } from "@/components/icons"
 
+const PAGE_SIZE = 25
+
 interface ShowLivingListProps {
   actors: LivingShowActor[]
   showId?: number
@@ -12,12 +14,22 @@ interface ShowLivingListProps {
 }
 
 export default function ShowLivingList({ actors, showId, showName }: ShowLivingListProps) {
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
   if (actors.length === 0) {
     return (
       <div data-testid="no-living-message" className="py-8 text-center">
         <p className="text-lg text-text-muted">No living cast members found</p>
       </div>
     )
+  }
+
+  const visibleActors = actors.slice(0, visibleCount)
+  const hasMore = visibleCount < actors.length
+  const remainingCount = actors.length - visibleCount
+
+  const handleShowMore = () => {
+    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, actors.length))
   }
 
   return (
@@ -27,16 +39,29 @@ export default function ShowLivingList({ actors, showId, showName }: ShowLivingL
       </h2>
 
       <div data-testid="living-cards" className="space-y-3">
-        {actors.map((actor, index) => (
+        {visibleActors.map((actor, index) => (
           <div
             key={actor.id}
             className="animate-fade-slide-in"
-            style={{ animationDelay: `${index * 50}ms` }}
+            style={{ animationDelay: `${Math.min(index, PAGE_SIZE - 1) * 50}ms` }}
           >
             <ShowLivingCard actor={actor} showId={showId} showName={showName} />
           </div>
         ))}
       </div>
+
+      {hasMore && (
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            data-testid="show-more-living"
+            onClick={handleShowMore}
+            className="rounded-lg bg-living/10 px-6 py-2 text-sm font-medium text-living-dark transition-colors hover:bg-living/20"
+          >
+            Show more ({remainingCount} remaining)
+          </button>
+        </div>
+      )}
     </div>
   )
 }

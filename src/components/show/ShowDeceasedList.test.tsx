@@ -54,6 +54,14 @@ const mockActorManyEpisodes: DeceasedShowActor = {
   })),
 }
 
+// Create many actors for pagination testing
+const createManyActors = (count: number): DeceasedShowActor[] =>
+  Array.from({ length: count }, (_, i) => ({
+    ...mockActor,
+    id: 200 + i,
+    name: `Actor ${i + 1}`,
+  }))
+
 function renderWithRouter(ui: React.ReactElement) {
   return render(
     <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -230,5 +238,62 @@ describe("ShowDeceasedList", () => {
     // Episode names should be text, not links
     const episodeText = screen.getByTestId("actor-episodes")
     expect(episodeText.querySelector("a")).toBeNull()
+  })
+
+  describe("pagination", () => {
+    it("shows all actors when count is under page size", () => {
+      const actors = createManyActors(10)
+      renderWithRouter(<ShowDeceasedList actors={actors} />)
+
+      const cards = screen.getAllByTestId("deceased-card")
+      expect(cards).toHaveLength(10)
+      expect(screen.queryByTestId("show-more-deceased")).not.toBeInTheDocument()
+    })
+
+    it("shows only first 25 actors when list exceeds page size", () => {
+      const actors = createManyActors(50)
+      renderWithRouter(<ShowDeceasedList actors={actors} />)
+
+      const cards = screen.getAllByTestId("deceased-card")
+      expect(cards).toHaveLength(25)
+      expect(screen.getByTestId("show-more-deceased")).toBeInTheDocument()
+    })
+
+    it("shows remaining count in button text", () => {
+      const actors = createManyActors(50)
+      renderWithRouter(<ShowDeceasedList actors={actors} />)
+
+      expect(screen.getByTestId("show-more-deceased")).toHaveTextContent("25 remaining")
+    })
+
+    it("shows more actors when button is clicked", () => {
+      const actors = createManyActors(50)
+      renderWithRouter(<ShowDeceasedList actors={actors} />)
+
+      expect(screen.getAllByTestId("deceased-card")).toHaveLength(25)
+
+      fireEvent.click(screen.getByTestId("show-more-deceased"))
+
+      expect(screen.getAllByTestId("deceased-card")).toHaveLength(50)
+      expect(screen.queryByTestId("show-more-deceased")).not.toBeInTheDocument()
+    })
+
+    it("handles multiple clicks to show all actors", () => {
+      const actors = createManyActors(60)
+      renderWithRouter(<ShowDeceasedList actors={actors} />)
+
+      expect(screen.getAllByTestId("deceased-card")).toHaveLength(25)
+      expect(screen.getByTestId("show-more-deceased")).toHaveTextContent("35 remaining")
+
+      fireEvent.click(screen.getByTestId("show-more-deceased"))
+
+      expect(screen.getAllByTestId("deceased-card")).toHaveLength(50)
+      expect(screen.getByTestId("show-more-deceased")).toHaveTextContent("10 remaining")
+
+      fireEvent.click(screen.getByTestId("show-more-deceased"))
+
+      expect(screen.getAllByTestId("deceased-card")).toHaveLength(60)
+      expect(screen.queryByTestId("show-more-deceased")).not.toBeInTheDocument()
+    })
   })
 })
