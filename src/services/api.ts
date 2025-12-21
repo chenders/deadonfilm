@@ -25,6 +25,9 @@ import type {
   GenreCategoriesResponse,
   MoviesByGenreResponse,
   AllDeathsResponse,
+  TVSearchResponse,
+  ShowResponse,
+  EpisodeResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -237,4 +240,24 @@ export async function getMoviesByGenre(
   page: number = 1
 ): Promise<MoviesByGenreResponse> {
   return fetchJson(`/movies/genre/${encodeURIComponent(genreSlug)}?page=${page}`)
+}
+
+// TV Show API functions
+export async function searchTVShows(query: string): Promise<TVSearchResponse> {
+  if (!query || query.length < 2) {
+    return { results: [], page: 1, total_pages: 0, total_results: 0 }
+  }
+  return fetchJson(`/search/tv?q=${encodeURIComponent(query)}`)
+}
+
+export async function getShow(showId: number): Promise<ShowResponse> {
+  return fetchJson(`/show/${showId}`)
+}
+
+export async function getEpisode(
+  showId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<EpisodeResponse> {
+  return fetchJson(`/show/${showId}/season/${seasonNumber}/episode/${episodeNumber}`)
 }
