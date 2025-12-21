@@ -158,13 +158,13 @@ describe("RecentDeaths", () => {
     expect(container.querySelector("[data-testid='recent-deaths']")).toBeNull()
   })
 
-  it("calls API with limit of 5", async () => {
+  it("calls API with limit of 8", async () => {
     vi.mocked(api.getRecentDeaths).mockResolvedValue(mockDeaths)
 
     renderWithProviders(<RecentDeaths />)
 
     await waitFor(() => {
-      expect(api.getRecentDeaths).toHaveBeenCalledWith(5)
+      expect(api.getRecentDeaths).toHaveBeenCalledWith(8)
     })
   })
 
@@ -177,5 +177,19 @@ describe("RecentDeaths", () => {
       const nameElements = screen.getAllByTitle(/Actor/)
       expect(nameElements.length).toBe(3)
     })
+  })
+
+  it("renders View all link to /deaths/all", async () => {
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(mockDeaths)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("view-all-deaths-link")).toBeInTheDocument()
+    })
+
+    const link = screen.getByTestId("view-all-deaths-link")
+    expect(link).toHaveAttribute("href", "/deaths/all")
+    expect(link).toHaveTextContent("View all")
   })
 })

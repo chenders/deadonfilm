@@ -83,6 +83,30 @@ export function buildBreadcrumbSchema(items: BreadcrumbItem[]): Record<string, u
   }
 }
 
+/**
+ * Build WebSite schema for homepage SEO
+ * Enables sitelinks search box in Google results
+ */
+export function buildWebsiteSchema(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Dead on Film",
+    alternateName: "DeadOnFilm",
+    url: BASE_URL,
+    description:
+      "Movie cast mortality database. Look up any movie and see which actors have passed away.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${BASE_URL}/?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  }
+}
+
 interface ItemListItem {
   name: string
   url: string

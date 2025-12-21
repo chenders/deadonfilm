@@ -474,6 +474,476 @@ export async function getMaxValidMinDeaths(): Promise<number> {
   return result.rows[0]?.max_threshold ?? 3
 }
 
+// Get the single most cursed movie (highest mortality surprise score)
+export interface FeaturedMovieRecord {
+  tmdb_id: number
+  title: string
+  release_year: number | null
+  poster_path: string | null
+  deceased_count: number
+  cast_count: number
+  expected_deaths: number
+  mortality_surprise_score: number
+}
+
+export async function getMostCursedMovie(): Promise<FeaturedMovieRecord | null> {
+  const db = getPool()
+
+  const result = await db.query<FeaturedMovieRecord>(
+    `SELECT tmdb_id, title, release_year, poster_path,
+            deceased_count, cast_count, expected_deaths, mortality_surprise_score
+     FROM movies
+     WHERE mortality_surprise_score IS NOT NULL
+       AND poster_path IS NOT NULL
+       AND deceased_count >= 3
+     ORDER BY mortality_surprise_score DESC
+     LIMIT 1`
+  )
+
+  return result.rows[0] || null
+}
+
+// Get interesting trivia facts from the database
+export interface TriviaFact {
+  type: string
+  title: string
+  value: string
+  link?: string // Optional link to related page
+}
+
+export async function getTrivia(): Promise<TriviaFact[]> {
+  const db = getPool()
+
+  const facts: TriviaFact[] = []
+
+  // Get oldest actor who died
+  const oldestResult = await db.query<{
+    name: string
+    tmdb_id: number
+    age_at_death: number
+  }>(`
+    SELECT name, tmdb_id, age_at_death
+    FROM deceased_persons
+    WHERE age_at_death IS NOT NULL
+    ORDER BY age_at_death DESC
+    LIMIT 1
+  `)
+  if (oldestResult.rows[0]) {
+    const { name, tmdb_id, age_at_death } = oldestResult.rows[0]
+    facts.push({
+      type: "oldest",
+      title: "Oldest at Death",
+      value: `${name} lived to ${age_at_death} years old`,
+      link: `/actor/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${tmdb_id}`,
+    })
+  }
+
+  // Get youngest actor who died (excluding infants/children - age > 15)
+  const youngestResult = await db.query<{
+    name: string
+    tmdb_id: number
+    age_at_death: number
+  }>(`
+    SELECT name, tmdb_id, age_at_death
+    FROM deceased_persons
+    WHERE age_at_death IS NOT NULL AND age_at_death > 15
+    ORDER BY age_at_death ASC
+    LIMIT 1
+  `)
+  if (youngestResult.rows[0]) {
+    const { name, tmdb_id, age_at_death } = youngestResult.rows[0]
+    facts.push({
+      type: "youngest",
+      title: "Youngest at Death",
+      value: `${name} died at just ${age_at_death} years old`,
+      link: `/actor/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${tmdb_id}`,
+    })
+  }
+
+  // Get total years lost across all actors
+  const yearsLostResult = await db.query<{ total_years_lost: string }>(`
+    SELECT ROUND(SUM(years_lost)) as total_years_lost
+    FROM deceased_persons
+    WHERE years_lost > 0
+  `)
+  if (yearsLostResult.rows[0]?.total_years_lost) {
+    const totalYears = parseInt(yearsLostResult.rows[0].total_years_lost, 10)
+    facts.push({
+      type: "years_lost",
+      title: "Total Years Lost",
+      value: `${totalYears.toLocaleString()} years of life lost to early deaths`,
+    })
+  }
+
+  // Get movie with highest mortality percentage
+  const highestMortalityResult = await db.query<{
+    title: string
+    tmdb_id: number
+    release_year: number
+    deceased_count: number
+    cast_count: number
+  }>(`
+    SELECT title, tmdb_id, release_year, deceased_count, cast_count
+    FROM movies
+    WHERE cast_count >= 5 AND deceased_count > 0 AND poster_path IS NOT NULL
+    ORDER BY (deceased_count::float / cast_count) DESC
+    LIMIT 1
+  `)
+  if (highestMortalityResult.rows[0]) {
+    const { title, tmdb_id, release_year, deceased_count, cast_count } =
+      highestMortalityResult.rows[0]
+    const percentage = Math.round((deceased_count / cast_count) * 100)
+    const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${release_year || "unknown"}-${tmdb_id}`
+    facts.push({
+      type: "highest_mortality",
+      title: "Highest Mortality Rate",
+      value: `${title} (${release_year}): ${percentage}% of cast deceased`,
+      link: `/movie/${slug}`,
+    })
+  }
+
+  // Get most common decade of death
+  const decadeResult = await db.query<{ decade: number; count: string }>(`
+    SELECT (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
+           COUNT(*) as count
+    FROM deceased_persons
+    WHERE deathday IS NOT NULL
+    GROUP BY decade
+    ORDER BY count DESC
+    LIMIT 1
+  `)
+  if (decadeResult.rows[0]) {
+    const decade = decadeResult.rows[0].decade
+    const count = parseInt(decadeResult.rows[0].count, 10)
+    facts.push({
+      type: "common_decade",
+      title: "Deadliest Decade",
+      value: `${count.toLocaleString()} actors died in the ${decade}s`,
+    })
+  }
+
+  // Get actor who lost the most years
+  const mostYearsLostResult = await db.query<{
+    name: string
+    tmdb_id: number
+    years_lost: number
+    age_at_death: number
+  }>(`
+    SELECT name, tmdb_id, ROUND(years_lost) as years_lost, age_at_death
+    FROM deceased_persons
+    WHERE years_lost > 0
+    ORDER BY years_lost DESC
+    LIMIT 1
+  `)
+  if (mostYearsLostResult.rows[0]) {
+    const { name, tmdb_id, years_lost, age_at_death } = mostYearsLostResult.rows[0]
+    facts.push({
+      type: "most_years_lost",
+      title: "Most Potential Lost",
+      value: `${name} died at ${age_at_death}, losing ${years_lost} expected years`,
+      link: `/actor/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${tmdb_id}`,
+    })
+  }
+
+  return facts
+}
+
+// Get deaths that occurred during this calendar week (any year)
+export interface ThisWeekDeathRecord {
+  tmdb_id: number
+  name: string
+  deathday: string
+  profile_path: string | null
+  cause_of_death: string | null
+  age_at_death: number | null
+  year_of_death: number
+}
+
+export async function getDeathsThisWeek(): Promise<ThisWeekDeathRecord[]> {
+  const db = getPool()
+
+  // Get current week's start (Sunday) and end (Saturday)
+  // Using ISO week would be Monday-Sunday, but we'll use the more common US week
+  const result = await db.query<ThisWeekDeathRecord>(`
+    SELECT tmdb_id, name, deathday::text, profile_path, cause_of_death, age_at_death,
+           EXTRACT(YEAR FROM deathday)::int as year_of_death
+    FROM deceased_persons
+    WHERE deathday IS NOT NULL
+      AND (EXTRACT(WEEK FROM deathday), EXTRACT(DOW FROM deathday))
+          BETWEEN
+          (EXTRACT(WEEK FROM CURRENT_DATE) - 1, 0)
+          AND
+          (EXTRACT(WEEK FROM CURRENT_DATE), 6)
+      OR (
+        -- Handle same-week matching for any year
+        EXTRACT(MONTH FROM deathday) = EXTRACT(MONTH FROM CURRENT_DATE)
+        AND EXTRACT(DAY FROM deathday) BETWEEN
+            EXTRACT(DAY FROM date_trunc('week', CURRENT_DATE))
+            AND EXTRACT(DAY FROM date_trunc('week', CURRENT_DATE) + INTERVAL '6 days')
+      )
+    ORDER BY
+      EXTRACT(MONTH FROM deathday),
+      EXTRACT(DAY FROM deathday),
+      year_of_death DESC
+    LIMIT 20
+  `)
+
+  return result.rows
+}
+
+// Get popular movies based on TMDB popularity scores
+export interface PopularMovieRecord {
+  tmdb_id: number
+  title: string
+  release_year: number | null
+  poster_path: string | null
+  deceased_count: number
+  cast_count: number
+  popularity: number
+}
+
+export async function getPopularMovies(limit: number = 10): Promise<PopularMovieRecord[]> {
+  const db = getPool()
+
+  const result = await db.query<PopularMovieRecord>(
+    `SELECT tmdb_id, title, release_year, poster_path, deceased_count, cast_count, popularity
+     FROM movies
+     WHERE poster_path IS NOT NULL
+       AND deceased_count > 0
+       AND cast_count >= 3
+     ORDER BY popularity DESC
+     LIMIT $1`,
+    [limit]
+  )
+
+  return result.rows
+}
+
+// Simpler approach: Get deaths that occurred on the same day of week range
+export async function getDeathsThisWeekSimple(): Promise<ThisWeekDeathRecord[]> {
+  const db = getPool()
+
+  // Get the day of year range for the current week
+  const result = await db.query<ThisWeekDeathRecord>(`
+    WITH week_range AS (
+      SELECT
+        date_trunc('week', CURRENT_DATE)::date as week_start,
+        (date_trunc('week', CURRENT_DATE) + INTERVAL '6 days')::date as week_end
+    )
+    SELECT
+      dp.tmdb_id,
+      dp.name,
+      dp.deathday::text,
+      dp.profile_path,
+      dp.cause_of_death,
+      dp.age_at_death,
+      EXTRACT(YEAR FROM dp.deathday)::int as year_of_death
+    FROM deceased_persons dp, week_range wr
+    WHERE dp.deathday IS NOT NULL
+      AND (
+        -- Match month and day range
+        (EXTRACT(MONTH FROM dp.deathday) = EXTRACT(MONTH FROM wr.week_start)
+         AND EXTRACT(DAY FROM dp.deathday) >= EXTRACT(DAY FROM wr.week_start)
+         AND EXTRACT(DAY FROM dp.deathday) <= EXTRACT(DAY FROM wr.week_end))
+        OR
+        -- Handle week spanning month boundary
+        (EXTRACT(MONTH FROM wr.week_start) != EXTRACT(MONTH FROM wr.week_end)
+         AND (
+           (EXTRACT(MONTH FROM dp.deathday) = EXTRACT(MONTH FROM wr.week_start)
+            AND EXTRACT(DAY FROM dp.deathday) >= EXTRACT(DAY FROM wr.week_start))
+           OR
+           (EXTRACT(MONTH FROM dp.deathday) = EXTRACT(MONTH FROM wr.week_end)
+            AND EXTRACT(DAY FROM dp.deathday) <= EXTRACT(DAY FROM wr.week_end))
+         ))
+      )
+    ORDER BY
+      EXTRACT(MONTH FROM dp.deathday),
+      EXTRACT(DAY FROM dp.deathday),
+      year_of_death DESC
+    LIMIT 15
+  `)
+
+  return result.rows
+}
+
+// ============================================================================
+// Deaths by Cause functions (SEO category pages)
+// ============================================================================
+
+export interface CauseCategory {
+  cause: string
+  count: number
+  slug: string
+}
+
+export async function getCauseCategories(): Promise<CauseCategory[]> {
+  const db = getPool()
+
+  const result = await db.query<{ cause_of_death: string; count: string }>(`
+    SELECT cause_of_death, COUNT(*) as count
+    FROM deceased_persons
+    WHERE cause_of_death IS NOT NULL
+      AND cause_of_death != ''
+    GROUP BY cause_of_death
+    HAVING COUNT(*) >= 5
+    ORDER BY count DESC
+  `)
+
+  return result.rows.map((row) => ({
+    cause: row.cause_of_death,
+    count: parseInt(row.count, 10),
+    slug: row.cause_of_death
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, ""),
+  }))
+}
+
+export interface DeathByCauseRecord {
+  tmdb_id: number
+  name: string
+  deathday: string
+  profile_path: string | null
+  cause_of_death: string
+  cause_of_death_details: string | null
+  age_at_death: number | null
+  years_lost: number | null
+}
+
+export interface DeathsByCauseOptions {
+  limit?: number
+  offset?: number
+}
+
+export async function getDeathsByCause(
+  cause: string,
+  options: DeathsByCauseOptions = {}
+): Promise<{ deaths: DeathByCauseRecord[]; totalCount: number }> {
+  const { limit = 50, offset = 0 } = options
+  const db = getPool()
+
+  // Get total count
+  const countResult = await db.query<{ count: string }>(
+    `SELECT COUNT(*) as count
+     FROM deceased_persons
+     WHERE LOWER(cause_of_death) = LOWER($1)`,
+    [cause]
+  )
+  const totalCount = parseInt(countResult.rows[0].count, 10)
+
+  // Get paginated results
+  const result = await db.query<DeathByCauseRecord>(
+    `SELECT tmdb_id, name, deathday::text, profile_path, cause_of_death,
+            cause_of_death_details, age_at_death, years_lost
+     FROM deceased_persons
+     WHERE LOWER(cause_of_death) = LOWER($1)
+     ORDER BY deathday DESC NULLS LAST, name
+     LIMIT $2 OFFSET $3`,
+    [cause, limit, offset]
+  )
+
+  return { deaths: result.rows, totalCount }
+}
+
+// ============================================================================
+// Deaths by Decade functions (SEO category pages)
+// ============================================================================
+
+export interface DecadeCategory {
+  decade: number // e.g., 1950, 1960, etc.
+  count: number
+}
+
+export async function getDecadeCategories(): Promise<DecadeCategory[]> {
+  const db = getPool()
+
+  const result = await db.query<{ decade: number; count: string }>(`
+    SELECT (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
+           COUNT(*) as count
+    FROM deceased_persons
+    WHERE deathday IS NOT NULL
+    GROUP BY decade
+    HAVING COUNT(*) >= 5
+    ORDER BY decade DESC
+  `)
+
+  return result.rows.map((row) => ({
+    decade: row.decade,
+    count: parseInt(row.count, 10),
+  }))
+}
+
+export interface DeathByDecadeRecord {
+  tmdb_id: number
+  name: string
+  deathday: string
+  profile_path: string | null
+  cause_of_death: string | null
+  age_at_death: number | null
+  years_lost: number | null
+}
+
+export interface DeathsByDecadeOptions {
+  limit?: number
+  offset?: number
+}
+
+export async function getDeathsByDecade(
+  decade: number,
+  options: DeathsByDecadeOptions = {}
+): Promise<{ deaths: DeathByDecadeRecord[]; totalCount: number }> {
+  const { limit = 50, offset = 0 } = options
+  const db = getPool()
+  const decadeEnd = decade + 9
+
+  // Get total count
+  const countResult = await db.query<{ count: string }>(
+    `SELECT COUNT(*) as count
+     FROM deceased_persons
+     WHERE EXTRACT(YEAR FROM deathday) BETWEEN $1 AND $2`,
+    [decade, decadeEnd]
+  )
+  const totalCount = parseInt(countResult.rows[0].count, 10)
+
+  // Get paginated results
+  const result = await db.query<DeathByDecadeRecord>(
+    `SELECT tmdb_id, name, deathday::text, profile_path, cause_of_death,
+            age_at_death, years_lost
+     FROM deceased_persons
+     WHERE EXTRACT(YEAR FROM deathday) BETWEEN $1 AND $2
+     ORDER BY deathday DESC NULLS LAST, name
+     LIMIT $3 OFFSET $4`,
+    [decade, decadeEnd, limit, offset]
+  )
+
+  return { deaths: result.rows, totalCount }
+}
+
+// Find the original cause name from a slug
+export async function getCauseFromSlug(slug: string): Promise<string | null> {
+  const db = getPool()
+
+  // Get all causes and find the one matching the slug
+  const result = await db.query<{ cause_of_death: string }>(`
+    SELECT DISTINCT cause_of_death
+    FROM deceased_persons
+    WHERE cause_of_death IS NOT NULL
+      AND cause_of_death != ''
+  `)
+
+  for (const row of result.rows) {
+    const causeSlug = row.cause_of_death
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+    if (causeSlug === slug) {
+      return row.cause_of_death
+    }
+  }
+
+  return null
+}
+
 // ============================================================================
 // Actor appearances table functions
 // ============================================================================
@@ -1013,6 +1483,34 @@ export async function getViolentDeaths(options: ViolentDeathOptions = {}): Promi
   return { persons, totalCount }
 }
 
+// Get all deceased persons, paginated (for "All Deaths" page)
+export interface AllDeathsOptions {
+  limit?: number
+  offset?: number
+}
+
+export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
+  persons: DeceasedPersonRecord[]
+  totalCount: number
+}> {
+  const { limit = 50, offset = 0 } = options
+  const db = getPool()
+
+  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(
+    `SELECT COUNT(*) OVER () as total_count, *
+     FROM deceased_persons
+     WHERE deathday IS NOT NULL
+     ORDER BY deathday DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  )
+
+  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
+  const persons = result.rows.map(({ total_count: _total_count, ...person }) => person)
+
+  return { persons, totalCount }
+}
+
 // Get actor's filmography from our database
 export async function getActorFilmography(actorTmdbId: number): Promise<ActorFilmographyMovie[]> {
   const db = getPool()
@@ -1195,4 +1693,112 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
   )
 
   return { actors, totalCount }
+}
+
+// ============================================================================
+// Movies by Genre functions (SEO category pages)
+// ============================================================================
+
+export interface GenreCategory {
+  genre: string
+  count: number
+  slug: string
+}
+
+export async function getGenreCategories(): Promise<GenreCategory[]> {
+  const db = getPool()
+
+  // Unnest the genres array and count movies per genre
+  const result = await db.query<{ genre: string; count: string }>(`
+    SELECT unnest(genres) as genre, COUNT(*) as count
+    FROM movies
+    WHERE genres IS NOT NULL
+      AND array_length(genres, 1) > 0
+      AND deceased_count > 0
+    GROUP BY genre
+    HAVING COUNT(*) >= 5
+    ORDER BY count DESC, genre
+  `)
+
+  return result.rows.map((row) => ({
+    genre: row.genre,
+    count: parseInt(row.count, 10),
+    slug: row.genre
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, ""),
+  }))
+}
+
+export interface MovieByGenreRecord {
+  tmdb_id: number
+  title: string
+  release_year: number | null
+  poster_path: string | null
+  deceased_count: number
+  cast_count: number
+  expected_deaths: number | null
+  mortality_surprise_score: number | null
+}
+
+export interface MoviesByGenreOptions {
+  limit?: number
+  offset?: number
+}
+
+export async function getMoviesByGenre(
+  genre: string,
+  options: MoviesByGenreOptions = {}
+): Promise<{ movies: MovieByGenreRecord[]; totalCount: number }> {
+  const { limit = 50, offset = 0 } = options
+  const db = getPool()
+
+  // Get total count
+  const countResult = await db.query<{ count: string }>(
+    `SELECT COUNT(*) as count
+     FROM movies
+     WHERE $1 = ANY(genres)
+       AND deceased_count > 0`,
+    [genre]
+  )
+  const totalCount = parseInt(countResult.rows[0].count, 10)
+
+  // Get paginated results, sorted by mortality surprise score (cursed movies first)
+  const result = await db.query<MovieByGenreRecord>(
+    `SELECT tmdb_id, title, release_year, poster_path, deceased_count,
+            cast_count, expected_deaths, mortality_surprise_score
+     FROM movies
+     WHERE $1 = ANY(genres)
+       AND deceased_count > 0
+     ORDER BY mortality_surprise_score DESC NULLS LAST, deceased_count DESC, title
+     LIMIT $2 OFFSET $3`,
+    [genre, limit, offset]
+  )
+
+  return { movies: result.rows, totalCount }
+}
+
+// Find the original genre name from a slug
+export async function getGenreFromSlug(slug: string): Promise<string | null> {
+  const db = getPool()
+
+  // Get all genres and find the one matching the slug
+  const result = await db.query<{ genre: string }>(`
+    SELECT DISTINCT unnest(genres) as genre
+    FROM movies
+    WHERE genres IS NOT NULL
+      AND array_length(genres, 1) > 0
+  `)
+
+  for (const row of result.rows) {
+    const genreSlug = row.genre
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+    if (genreSlug === slug) {
+      return row.genre
+    }
+  }
+
+  return null
 }
