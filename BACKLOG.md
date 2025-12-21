@@ -19,6 +19,4 @@ Ideas and future improvements for consideration.
 
 ## Technical Debt
 
-| Idea | Effort | Benefit | Notes |
-|------|--------|---------|-------|
-| **Fix mortality-stats tests** | Low | Low | 13 integration tests failing due to missing `cohort_life_expectancy` data in test environment. Need to seed test data or mock the queries. |
+_No items currently._
