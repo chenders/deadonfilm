@@ -2,10 +2,11 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import type { DeceasedShowActor } from "@/types"
 import { getProfileUrl } from "@/services/api"
-import { createActorSlug, createEpisodeSlug } from "@/utils/slugify"
+import { createActorSlug } from "@/utils/slugify"
 import DeathInfo from "@/components/movie/DeathInfo"
 import { PersonIcon, ChevronIcon } from "@/components/icons"
 import EmptyStateCard from "@/components/common/EmptyStateCard"
+import { formatEpisodeDisplay } from "./formatEpisodeDisplay"
 
 const PAGE_SIZE = 25
 
@@ -209,68 +210,3 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
   )
 }
 
-function formatEpisodeDisplay(
-  actor: DeceasedShowActor,
-  showId?: number,
-  showName?: string
-): React.ReactNode {
-  const count = actor.totalEpisodes
-
-  if (actor.episodes.length === 0) {
-    // No episode-level data available, just show count
-    return `${count} episode${count !== 1 ? "s" : ""}`
-  }
-
-  // Helper to create episode link
-  const createEpisodeLink = (ep: {
-    seasonNumber: number
-    episodeNumber: number
-    episodeName: string
-  }) => {
-    if (showId && showName) {
-      const slug = createEpisodeSlug(
-        showName,
-        ep.episodeName,
-        ep.seasonNumber,
-        ep.episodeNumber,
-        showId
-      )
-      return (
-        <Link
-          key={`${ep.seasonNumber}-${ep.episodeNumber}`}
-          to={`/episode/${slug}`}
-          className="hover:text-accent hover:underline"
-        >
-          "{ep.episodeName}"
-        </Link>
-      )
-    }
-    return `"${ep.episodeName}"`
-  }
-
-  if (actor.episodes.length === 1) {
-    const ep = actor.episodes[0]
-    return (
-      <>
-        S{ep.seasonNumber}E{ep.episodeNumber}: {createEpisodeLink(ep)}
-      </>
-    )
-  }
-
-  if (actor.episodes.length <= 3) {
-    return actor.episodes.map((ep, i) => (
-      <span key={`${ep.seasonNumber}-${ep.episodeNumber}`}>
-        {i > 0 && ", "}
-        {createEpisodeLink(ep)}
-      </span>
-    ))
-  }
-
-  // For many episodes, show count and first episode
-  const firstEp = actor.episodes[0]
-  return (
-    <>
-      {count} episodes (first: {createEpisodeLink(firstEp)})
-    </>
-  )
-}

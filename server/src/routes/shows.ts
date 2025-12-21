@@ -472,9 +472,11 @@ function cacheShowInBackground(params: CacheShowParams): void {
 
 // Search TV shows
 export async function searchShows(req: Request, res: Response) {
-  const query = req.query.q as string
+  const queryParam = req.query.q
+  // Handle array case from query string (e.g., ?q=a&q=b)
+  const query = Array.isArray(queryParam) ? queryParam[0] : queryParam
 
-  if (!query || query.length < 2) {
+  if (!query || typeof query !== "string" || query.length < 2) {
     return res.json({ results: [], page: 1, total_pages: 0, total_results: 0 })
   }
 
