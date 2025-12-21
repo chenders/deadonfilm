@@ -32,6 +32,19 @@ function createPool(): pg.Pool {
     // The pool will create new connections as needed
   })
 
+  // Set SSD-optimized PostgreSQL settings for each new connection
+  // Neon uses SSDs but has conservative default settings for spinning disks
+  newPool.on("connect", async (client) => {
+    try {
+      // random_page_cost: Lower for SSDs (1.1 vs default 4.0) - random I/O is nearly as fast as sequential
+      // effective_io_concurrency: Higher for SSDs (200 vs default 1) - more parallel I/O operations
+      await client.query("SET random_page_cost = 1.1; SET effective_io_concurrency = 200")
+    } catch (err) {
+      // Non-fatal - log but don't fail connection
+      console.warn("Failed to set SSD-optimized settings:", err)
+    }
+  })
+
   return newPool
 }
 
@@ -426,6 +439,7 @@ export async function getHighMortalityMovies(
   } = options
 
   const db = getPool()
+  // Uses idx_movies_not_obscure_curse partial index when includeObscure = false
   const result = await db.query<MovieRecord & { total_count: string }>(
     `SELECT COUNT(*) OVER () as total_count, *
      FROM movies
@@ -433,14 +447,7 @@ export async function getHighMortalityMovies(
        AND deceased_count >= $1
        AND ($2::integer IS NULL OR release_year >= $2)
        AND ($3::integer IS NULL OR release_year <= $3)
-       AND (
-         $6::boolean = true
-         OR NOT (
-           poster_path IS NULL
-           OR (original_language = 'en' AND COALESCE(popularity, 0) < 5.0 AND cast_count IS NOT NULL AND cast_count < 5)
-           OR (original_language IS NOT NULL AND original_language != 'en' AND COALESCE(popularity, 0) < 20.0)
-         )
-       )
+       AND ($6::boolean = true OR NOT is_obscure)
      ORDER BY mortality_surprise_score DESC
      LIMIT $4 OFFSET $5`,
     [minDeadActors, fromYear || null, toYear || null, limit, offset, includeObscure]
@@ -511,139 +518,180 @@ export interface TriviaFact {
   link?: string // Optional link to related page
 }
 
-export async function getTrivia(): Promise<TriviaFact[]> {
-  const db = getPool()
+// In-memory cache for trivia (5-minute TTL)
+let triviaCache: TriviaFact[] | null = null
+let triviaCacheExpiry = 0
+const TRIVIA_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
+// Helper to create actor slug
+function createActorSlug(name: string, tmdbId: number): string {
+  return `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${tmdbId}`
+}
+
+// Helper to create movie slug
+function createMovieSlug(title: string, releaseYear: number | null, tmdbId: number): string {
+  return `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${releaseYear || "unknown"}-${tmdbId}`
+}
+
+// Combined query result types
+interface PersonsStatsRow {
+  oldest_name: string | null
+  oldest_tmdb_id: number | null
+  oldest_age: number | null
+  youngest_name: string | null
+  youngest_tmdb_id: number | null
+  youngest_age: number | null
+  total_years_lost: string | null
+  deadliest_decade: number | null
+  decade_count: string | null
+  most_lost_name: string | null
+  most_lost_tmdb_id: number | null
+  most_lost_years: number | null
+  most_lost_age: number | null
+}
+
+interface MovieStatsRow {
+  title: string
+  tmdb_id: number
+  release_year: number
+  deceased_count: number
+  cast_count: number
+}
+
+export async function getTrivia(): Promise<TriviaFact[]> {
+  const now = Date.now()
+
+  // Return cached result if still valid
+  if (triviaCache && now < triviaCacheExpiry) {
+    return triviaCache
+  }
+
+  const db = getPool()
   const facts: TriviaFact[] = []
 
-  // Get oldest actor who died
-  const oldestResult = await db.query<{
-    name: string
-    tmdb_id: number
-    age_at_death: number
-  }>(`
-    SELECT name, tmdb_id, age_at_death
-    FROM deceased_persons
-    WHERE age_at_death IS NOT NULL
-    ORDER BY age_at_death DESC
-    LIMIT 1
+  // Combined query for all deceased_persons stats (was 5 queries, now 1)
+  // Uses CTEs to compute each stat in a single pass
+  const personsStatsResult = await db.query<PersonsStatsRow>(`
+    WITH oldest AS (
+      SELECT name, tmdb_id, age_at_death
+      FROM deceased_persons
+      WHERE age_at_death IS NOT NULL
+      ORDER BY age_at_death DESC
+      LIMIT 1
+    ),
+    youngest AS (
+      SELECT name, tmdb_id, age_at_death
+      FROM deceased_persons
+      WHERE age_at_death IS NOT NULL AND age_at_death > 15
+      ORDER BY age_at_death ASC
+      LIMIT 1
+    ),
+    years_lost_total AS (
+      SELECT ROUND(SUM(years_lost)) as total
+      FROM deceased_persons
+      WHERE years_lost > 0
+    ),
+    deadliest_decade AS (
+      SELECT (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade, COUNT(*) as count
+      FROM deceased_persons
+      WHERE deathday IS NOT NULL
+      GROUP BY decade
+      ORDER BY count DESC
+      LIMIT 1
+    ),
+    most_years_lost AS (
+      SELECT name, tmdb_id, ROUND(years_lost) as years_lost, age_at_death
+      FROM deceased_persons
+      WHERE years_lost > 0
+      ORDER BY years_lost DESC
+      LIMIT 1
+    )
+    SELECT
+      o.name as oldest_name, o.tmdb_id as oldest_tmdb_id, o.age_at_death as oldest_age,
+      y.name as youngest_name, y.tmdb_id as youngest_tmdb_id, y.age_at_death as youngest_age,
+      yl.total as total_years_lost,
+      dd.decade as deadliest_decade, dd.count as decade_count,
+      ml.name as most_lost_name, ml.tmdb_id as most_lost_tmdb_id,
+      ml.years_lost as most_lost_years, ml.age_at_death as most_lost_age
+    FROM oldest o
+    FULL OUTER JOIN youngest y ON true
+    FULL OUTER JOIN years_lost_total yl ON true
+    FULL OUTER JOIN deadliest_decade dd ON true
+    FULL OUTER JOIN most_years_lost ml ON true
   `)
-  if (oldestResult.rows[0]) {
-    const { name, tmdb_id, age_at_death } = oldestResult.rows[0]
-    facts.push({
-      type: "oldest",
-      title: "Oldest at Death",
-      value: `${name} lived to ${age_at_death} years old`,
-      link: `/actor/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${tmdb_id}`,
-    })
+
+  // Process deceased_persons stats
+  const ps = personsStatsResult.rows[0]
+  if (ps) {
+    if (ps.oldest_name && ps.oldest_tmdb_id && ps.oldest_age) {
+      facts.push({
+        type: "oldest",
+        title: "Oldest at Death",
+        value: `${ps.oldest_name} lived to ${ps.oldest_age} years old`,
+        link: `/actor/${createActorSlug(ps.oldest_name, ps.oldest_tmdb_id)}`,
+      })
+    }
+
+    if (ps.youngest_name && ps.youngest_tmdb_id && ps.youngest_age) {
+      facts.push({
+        type: "youngest",
+        title: "Youngest at Death",
+        value: `${ps.youngest_name} died at just ${ps.youngest_age} years old`,
+        link: `/actor/${createActorSlug(ps.youngest_name, ps.youngest_tmdb_id)}`,
+      })
+    }
+
+    if (ps.total_years_lost) {
+      const totalYears = parseInt(ps.total_years_lost, 10)
+      facts.push({
+        type: "years_lost",
+        title: "Total Years Lost",
+        value: `${totalYears.toLocaleString()} years of life lost to early deaths`,
+      })
+    }
+
+    if (ps.deadliest_decade && ps.decade_count) {
+      const count = parseInt(ps.decade_count, 10)
+      facts.push({
+        type: "common_decade",
+        title: "Deadliest Decade",
+        value: `${count.toLocaleString()} actors died in the ${ps.deadliest_decade}s`,
+      })
+    }
+
+    if (ps.most_lost_name && ps.most_lost_tmdb_id && ps.most_lost_years && ps.most_lost_age) {
+      facts.push({
+        type: "most_years_lost",
+        title: "Most Potential Lost",
+        value: `${ps.most_lost_name} died at ${ps.most_lost_age}, losing ${ps.most_lost_years} expected years`,
+        link: `/actor/${createActorSlug(ps.most_lost_name, ps.most_lost_tmdb_id)}`,
+      })
+    }
   }
 
-  // Get youngest actor who died (excluding infants/children - age > 15)
-  const youngestResult = await db.query<{
-    name: string
-    tmdb_id: number
-    age_at_death: number
-  }>(`
-    SELECT name, tmdb_id, age_at_death
-    FROM deceased_persons
-    WHERE age_at_death IS NOT NULL AND age_at_death > 15
-    ORDER BY age_at_death ASC
-    LIMIT 1
-  `)
-  if (youngestResult.rows[0]) {
-    const { name, tmdb_id, age_at_death } = youngestResult.rows[0]
-    facts.push({
-      type: "youngest",
-      title: "Youngest at Death",
-      value: `${name} died at just ${age_at_death} years old`,
-      link: `/actor/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${tmdb_id}`,
-    })
-  }
-
-  // Get total years lost across all actors
-  const yearsLostResult = await db.query<{ total_years_lost: string }>(`
-    SELECT ROUND(SUM(years_lost)) as total_years_lost
-    FROM deceased_persons
-    WHERE years_lost > 0
-  `)
-  if (yearsLostResult.rows[0]?.total_years_lost) {
-    const totalYears = parseInt(yearsLostResult.rows[0].total_years_lost, 10)
-    facts.push({
-      type: "years_lost",
-      title: "Total Years Lost",
-      value: `${totalYears.toLocaleString()} years of life lost to early deaths`,
-    })
-  }
-
-  // Get movie with highest mortality percentage
-  const highestMortalityResult = await db.query<{
-    title: string
-    tmdb_id: number
-    release_year: number
-    deceased_count: number
-    cast_count: number
-  }>(`
+  // Separate query for movie with highest mortality (different table)
+  const movieResult = await db.query<MovieStatsRow>(`
     SELECT title, tmdb_id, release_year, deceased_count, cast_count
     FROM movies
     WHERE cast_count >= 5 AND deceased_count > 0 AND poster_path IS NOT NULL
     ORDER BY (deceased_count::float / cast_count) DESC
     LIMIT 1
   `)
-  if (highestMortalityResult.rows[0]) {
-    const { title, tmdb_id, release_year, deceased_count, cast_count } =
-      highestMortalityResult.rows[0]
+
+  if (movieResult.rows[0]) {
+    const { title, tmdb_id, release_year, deceased_count, cast_count } = movieResult.rows[0]
     const percentage = Math.round((deceased_count / cast_count) * 100)
-    const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${release_year || "unknown"}-${tmdb_id}`
     facts.push({
       type: "highest_mortality",
       title: "Highest Mortality Rate",
       value: `${title} (${release_year}): ${percentage}% of cast deceased`,
-      link: `/movie/${slug}`,
+      link: `/movie/${createMovieSlug(title, release_year, tmdb_id)}`,
     })
   }
 
-  // Get most common decade of death
-  const decadeResult = await db.query<{ decade: number; count: string }>(`
-    SELECT (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
-           COUNT(*) as count
-    FROM deceased_persons
-    WHERE deathday IS NOT NULL
-    GROUP BY decade
-    ORDER BY count DESC
-    LIMIT 1
-  `)
-  if (decadeResult.rows[0]) {
-    const decade = decadeResult.rows[0].decade
-    const count = parseInt(decadeResult.rows[0].count, 10)
-    facts.push({
-      type: "common_decade",
-      title: "Deadliest Decade",
-      value: `${count.toLocaleString()} actors died in the ${decade}s`,
-    })
-  }
-
-  // Get actor who lost the most years
-  const mostYearsLostResult = await db.query<{
-    name: string
-    tmdb_id: number
-    years_lost: number
-    age_at_death: number
-  }>(`
-    SELECT name, tmdb_id, ROUND(years_lost) as years_lost, age_at_death
-    FROM deceased_persons
-    WHERE years_lost > 0
-    ORDER BY years_lost DESC
-    LIMIT 1
-  `)
-  if (mostYearsLostResult.rows[0]) {
-    const { name, tmdb_id, years_lost, age_at_death } = mostYearsLostResult.rows[0]
-    facts.push({
-      type: "most_years_lost",
-      title: "Most Potential Lost",
-      value: `${name} died at ${age_at_death}, losing ${years_lost} expected years`,
-      link: `/actor/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${tmdb_id}`,
-    })
-  }
+  // Cache the result
+  triviaCache = facts
+  triviaCacheExpiry = now + TRIVIA_CACHE_TTL_MS
 
   return facts
 }
@@ -1142,8 +1190,21 @@ export interface SiteStats {
   avgMortalityPercentage: number | null
 }
 
-// Get aggregate site statistics for the homepage
+// In-memory cache for site stats (5-minute TTL)
+// This query takes ~205ms and runs on every homepage load
+let siteStatsCache: SiteStats | null = null
+let siteStatsCacheExpiry = 0
+const SITE_STATS_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+// Get aggregate site statistics for the homepage (cached)
 export async function getSiteStats(): Promise<SiteStats> {
+  const now = Date.now()
+
+  // Return cached result if still valid
+  if (siteStatsCache && now < siteStatsCacheExpiry) {
+    return siteStatsCache
+  }
+
   const db = getPool()
 
   // Get counts and top cause of death in a single query
@@ -1170,12 +1231,18 @@ export async function getSiteStats(): Promise<SiteStats> {
   `)
 
   const row = result.rows[0]
-  return {
+  const stats: SiteStats = {
     totalDeceasedActors: parseInt(row.total_actors, 10) || 0,
     totalMoviesAnalyzed: parseInt(row.total_movies, 10) || 0,
     topCauseOfDeath: row.top_cause,
     avgMortalityPercentage: row.avg_mortality ? parseFloat(row.avg_mortality) : null,
   }
+
+  // Cache the result
+  siteStatsCache = stats
+  siteStatsCacheExpiry = now + SITE_STATS_CACHE_TTL_MS
+
+  return stats
 }
 
 // ============================================================================
