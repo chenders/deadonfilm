@@ -448,7 +448,7 @@ Example: `/movie/breakfast-at-tiffanys-1961-14629`
 - Write unit tests for new functionality
 - Test files go alongside code: `*.test.ts` or `*.test.tsx`
 - Tests MUST import and test actual production code, not reimplementations
-- **Adding or updating tests is ALWAYS in scope** - Test coverage suggestions should always be implemented, not deferred to future PRs
+- **Test coverage is NEVER out of scope** - Tests for new code MUST be included in the same PR that introduces the code. Do not defer test coverage to a follow-up issue or future PR. If you're adding a new component, page, hook, API route, or utility function, include tests for it in the same PR.
 - **data-testid attributes should be added** to all interactive and testable UI elements:
   - Add `data-testid` to components, containers, buttons, inputs, tooltips, modals, and other elements that tests may need to interact with
   - Use descriptive kebab-case names: `data-testid="death-details-trigger"`, `data-testid="search-results-list"`
