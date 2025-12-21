@@ -19,7 +19,7 @@ export default {
         living: {
           DEFAULT: '#b8860b',   // Dark goldenrod - main accent
           light: '#daa520',     // Goldenrod - highlights
-          dark: '#8b6914',      // Darker gold for text on light backgrounds
+          dark: '#6b5010',      // Darker gold for text on light backgrounds (WCAG AA contrast)
           muted: '#c9a227',     // Muted gold for backgrounds
           bg: '#faf6e9',        // Very light cream-gold for cards
           border: '#d4af37',    // Gold border
