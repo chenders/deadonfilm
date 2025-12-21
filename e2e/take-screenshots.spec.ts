@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-test('take PR screenshots', async ({ page }) => {
+// Skip in CI - this test is for manually generating PR screenshots
+// Run locally with: npx playwright test e2e/take-screenshots.spec.ts
+test.skip('take PR screenshots', async ({ page }) => {
   test.setTimeout(120000);
   
   // 1. Home page with media type toggle
