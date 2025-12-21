@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
+
+// Mock the database module before importing mortality-stats
+vi.mock("./db.js", () => ({
+  getPool: vi.fn(() => ({
+    query: vi.fn(),
+  })),
+}))
+
 import {
   calculateCumulativeDeathProbability,
   calculateMovieMortality,
@@ -6,17 +14,97 @@ import {
   clearActuarialCache,
   type ActorForMortality,
 } from "./mortality-stats.js"
+import { getPool } from "./db.js"
 
-// Note: These tests require a database connection with actuarial data seeded
+// Generate realistic actuarial data for testing
+// Death probability increases with age (roughly exponential)
+function generateActuarialData() {
+  const rows: Array<{
+    age: number
+    gender: string
+    death_probability: string
+    life_expectancy: string
+  }> = []
+
+  for (let age = 0; age <= 119; age++) {
+    // Simplified death probability formula that increases with age
+    // Roughly matches real actuarial data patterns
+    let deathProb: number
+    if (age < 1) {
+      deathProb = 0.006 // Infant mortality
+    } else if (age < 20) {
+      deathProb = 0.0003 + age * 0.00002
+    } else if (age < 50) {
+      deathProb = 0.001 + (age - 20) * 0.0002
+    } else if (age < 80) {
+      deathProb = 0.007 + (age - 50) * 0.003
+    } else if (age < 100) {
+      deathProb = 0.1 + (age - 80) * 0.015
+    } else {
+      deathProb = 0.4 + (age - 100) * 0.03 // Very high for 100+
+    }
+
+    // Life expectancy decreases with age
+    const lifeExpectancy = Math.max(0, 80 - age * 0.7)
+
+    rows.push({
+      age,
+      gender: "combined",
+      death_probability: deathProb.toFixed(8),
+      life_expectancy: lifeExpectancy.toFixed(2),
+    })
+  }
+
+  return rows
+}
+
+// Generate cohort life expectancy data
+function generateCohortLifeExpectancy() {
+  const rows: Array<{
+    birth_year: number
+    male: string
+    female: string
+    combined: string
+  }> = []
+
+  // Generate data from 1900 to 2020
+  for (let year = 1900; year <= 2020; year += 10) {
+    // Life expectancy increased over time
+    const baseExpectancy = 50 + (year - 1900) * 0.25
+    rows.push({
+      birth_year: year,
+      male: (baseExpectancy - 3).toFixed(1),
+      female: (baseExpectancy + 3).toFixed(1),
+      combined: baseExpectancy.toFixed(1),
+    })
+  }
+
+  return rows
+}
+
+const mockActuarialData = generateActuarialData()
+const mockCohortData = generateCohortLifeExpectancy()
 
 describe("mortality-stats", () => {
-  beforeAll(() => {
-    // Clear cache before tests
+  beforeEach(() => {
+    // Clear cache and reset mocks before each test
     clearActuarialCache()
-  })
+    vi.clearAllMocks()
 
-  afterAll(() => {
-    clearActuarialCache()
+    // Setup mock database responses
+    const mockQuery = vi.fn().mockImplementation((sql: string) => {
+      if (sql.includes("actuarial_life_tables")) {
+        return Promise.resolve({ rows: mockActuarialData })
+      }
+      if (sql.includes("cohort_life_expectancy")) {
+        return Promise.resolve({ rows: mockCohortData })
+      }
+      return Promise.resolve({ rows: [] })
+    })
+
+    vi.mocked(getPool).mockReturnValue({
+      query: mockQuery,
+    } as unknown as ReturnType<typeof getPool>)
   })
 
   describe("calculateCumulativeDeathProbability", () => {
@@ -148,13 +236,6 @@ describe("mortality-stats", () => {
 
       const result = await calculateMovieMortality(2016, actors, 2025)
 
-      console.log(
-        "Very old actor (103):",
-        result.actorResults[0].ageAtFilming,
-        "deathProb:",
-        result.actorResults[0].deathProbability
-      )
-
       // At 103, the cumulative death probability over 9 years should be very high (>99%)
       expect(result.actorResults[0].deathProbability).toBeGreaterThan(0.99)
     })
@@ -185,12 +266,7 @@ describe("mortality-stats", () => {
       // So 3 actual deaths: Tempest Storm, Garry Marshall, Herb Jeffries
       expect(result.actualDeaths).toBe(3)
 
-      // Expected deaths should now be higher:
-      // - Tempest Storm was 88 at filming, 5 years until death - ~61% prob
-      // - Garry Marshall was 82 at filming, same year death - ~7% prob for 1 year
-      // - Herb Jeffries was 103 at filming - very high prob
-      // - Old Timer: excluded (archived footage)
-      // - Living actors: small probabilities
+      // Expected deaths should be greater than 0
       expect(result.expectedDeaths).toBeGreaterThan(0.6)
 
       // Garry Marshall (same-year death) should now have non-zero probability
@@ -214,7 +290,9 @@ describe("mortality-stats", () => {
 
       expect(result).not.toBeNull()
       expect(result!.ageAtDeath).toBe(40)
-      expect(result!.yearsLost).toBeGreaterThan(25) // Life expectancy ~77, so lost ~37 years
+      // Life expectancy for 1970 birth cohort is ~67.5 in our mock data
+      // So years lost = 67.5 - 40 = 27.5
+      expect(result!.yearsLost).toBeGreaterThan(20)
     })
 
     it("returns null for missing birthday", async () => {

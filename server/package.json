@@ -37,6 +37,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.1",
     "commander": "^14.0.2",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/newrelic": "^9.14.8",

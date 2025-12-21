@@ -5,6 +5,7 @@ initNewRelic()
 import "dotenv/config"
 import express from "express"
 import cors from "cors"
+import compression from "compression"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
 import { getOnThisDay } from "./routes/on-this-day.js"
@@ -44,6 +45,7 @@ const app = express()
 const PORT = process.env.PORT || 8080
 
 // Middleware
+app.use(compression()) // Gzip responses (~70% size reduction)
 app.use(cors())
 app.use(express.json())
 
