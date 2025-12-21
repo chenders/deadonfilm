@@ -109,7 +109,8 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
     }
 
     const decade = parseInt(decadeMatch[1], 10)
-    if (decade < 1900 || decade > 2020 || decade % 10 !== 0) {
+    const currentDecade = Math.floor(new Date().getFullYear() / 10) * 10
+    if (decade < 1900 || decade > currentDecade || decade % 10 !== 0) {
       return res.status(400).json({
         error: { message: "Invalid decade. Must be a valid decade like 1950, 1960, etc." },
       })
