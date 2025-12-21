@@ -28,7 +28,8 @@ import type { DeathInfoSource } from "../lib/wikidata.js"
 const SHOW_CAST_LIMIT = 50
 
 // Show statuses that indicate the show is finished and will never have new episodes
-const ENDED_STATUSES = ["Ended", "Canceled"]
+// Include both US spelling (Canceled) and UK spelling (Cancelled) for safety
+const ENDED_STATUSES = ["Ended", "Canceled", "Cancelled"]
 
 interface EpisodeAppearance {
   seasonNumber: number
