@@ -22,4 +22,3 @@ Ideas and future improvements for consideration.
 | Idea | Effort | Benefit | Notes |
 |------|--------|---------|-------|
 | **Fix mortality-stats tests** | Low | Low | 13 integration tests failing due to missing `cohort_life_expectancy` data in test environment. Need to seed test data or mock the queries. |
-| **Expand shows.test.ts coverage** | Medium | Low | Add tests for ongoing show episode fetching and response structure. Current tests only verify the "skip" optimization. Requires more extensive mock setup. |
