@@ -24,74 +24,47 @@ Based on actuarial data from US Social Security Administration life tables, the 
 - [x] Added database functions for movies and actor appearances
 - [x] Created seed script: `npm run seed:movies -- <startYear> [endYear]`
 
-### In Progress
+#### Phase 4: Cursed Movies
+- [x] Created `/cursed-movies` page with pagination and filters
+- [x] Filter by decade, minimum deaths, include/exclude obscure movies
+- [x] Rank movies by mortality surprise score
 
-#### Data Seeding
-- [ ] Seed movies 2014-2024 (200 movies per year) - **Currently running**
-- [ ] Seed classic films (1950s-1990s) for higher mortality data
+#### Phase 5: Cursed Actors
+- [x] Query actors across all movies in database
+- [x] Calculate co-star mortality across filmography
+- [x] Compare to expected mortality for those movies
+- [x] Rank by "curse score" (actual - expected deaths)
+- [x] Created `/cursed-actors` page with filters
+
+#### Phase 6: Discovery Pages
+- [x] `/cursed-movies` - Movies with high mortality surprise scores
+- [x] `/cursed-actors` - Actors with high co-star mortality
+- [x] `/forever-young` - Actors who died tragically young (years lost)
+- [x] `/covid-deaths` - Actors who died from COVID-19
+- [x] `/unnatural-deaths` - Accidents, suicides, overdoses, homicides
+- [x] `/death-watch` - Living actors with highest mortality probability
+- [x] `/deaths` - Browse deaths by cause or decade
+
+#### Phase 7: TV Show Support
+- [x] Created `shows`, `seasons`, `episodes` tables
+- [x] Show pages with cast mortality at series or episode level
+- [x] Episode pages with episode-specific cast
+- [x] Same mortality statistics as movies
+
+#### Phase 8: Actor Profile Pages
+- [x] Full filmography for any actor in the database
+- [x] Death info for deceased actors
+- [x] Links to movies they appeared in
 
 ### Planned Features
 
-#### Young Deaths ("Gone Too Soon")
-- [x] Calculate "years lost" for each deceased actor (expected lifespan - actual lifespan) - Implemented in `calculateMovieMortality()` and `calculateYearsLost()`
-- [ ] Add badge on deceased cards showing years lost
-- [ ] Create "Gone Too Soon" quick action endpoint
-- [ ] Add filter/sort option on movie page by years lost
+#### Enhanced Visualizations
+- [ ] Interactive timeline showing when cast members died over years since release
+- [ ] Network graph of actor connections through shared movies
 
-#### Cursed Actors
-- [ ] Query actors across all movies in database
-- [ ] For each living actor, calculate co-star mortality across their filmography
-- [ ] Compare to expected mortality for those movies
-- [ ] Rank by "curse score" (actual - expected deaths)
-- [ ] Create "Cursed Actors" leaderboard page
-- [ ] Show which movies contributed to their score
-
-#### Discovery Pages
-- [ ] Create `/discover/unusual-mortality` page showing movies with high surprise scores
-- [ ] Create `/discover/cursed-actors` page
-- [ ] Create `/discover/gone-too-soon` page for actors who died young
-
-#### Quick Actions
-- [ ] Add "Unusually High Mortality" quick action button
-- [ ] Add "Cursed Actors" quick action button (when implemented)
-
----
-
-## Future Feature Ideas
-
-Features enabled by storing all actor appearances (not just deceased):
-
-### Six Degrees of Death
-- Find connections between any two actors through shared movies
-- Show the "mortality chain" - how many deceased actors link them
-
-### Actor Profile Pages
-- Full filmography for any actor (not just deceased ones)
-- Personal mortality stats: "X of Y co-stars have died"
-- "Luckiest actors" - those with unusually low co-star mortality
-
-### Blessed Movies (inverse of Cursed)
-- Movies with significantly fewer deaths than expected
-- Casts that have aged remarkably well
-
-### Living Cast Reunion Stats
-- "X% of the original cast could still reunite"
-- Countdown/tracking for older movies approaching 0% living
-
-### Actor Longevity Predictions
-- Based on filmography patterns and co-star data
-- "Actors most likely to be the last survivor of [movie]"
-
-### Genre/Director Mortality Analysis
-- Do horror movie casts have higher mortality? Action films?
-- Which directors' casts have the highest/lowest mortality rates?
-
-### "Working Together" Stats
-- Actors who frequently appeared together
-- Track mortality of recurring ensembles (e.g., Christopher Guest films)
-
-### Timeline Visualizations
-- Interactive timeline showing when cast members died over the years since a movie's release
+#### Genre/Director Analysis
+- [ ] Mortality analysis by genre (horror vs comedy, etc.)
+- [ ] Director mortality patterns
 
 ---
 
@@ -103,13 +76,23 @@ cd server
 # Seed actuarial life tables (required first)
 npm run seed:actuarial
 
+# Seed cohort life expectancy (for years lost calculations)
+npm run seed:cohort
+
 # Seed movies by year range
 npm run seed:movies -- 1995           # Single year
 npm run seed:movies -- 1990 1999      # Year range
+npm run seed:movies -- --all-time     # All years since 1920
 
-# Seed deceased actors (original script, also looks up cause of death)
+# Seed TV shows
+npm run seed:shows -- <show_id>
+
+# Seed deceased actors (original script)
 npm run seed -- 1995
 npm run seed -- 1990 1999
+
+# Sync with TMDB for new deaths
+npm run sync:tmdb
 ```
 
 ---
@@ -117,7 +100,9 @@ npm run seed -- 1990 1999
 ## Key Files
 
 - `server/src/lib/mortality-stats.ts` - Mortality calculation utilities
+- `server/src/lib/db.ts` - Database functions
 - `server/data/actuarial-life-tables.json` - SSA Period Life Tables (2022)
 - `server/scripts/seed-movies.ts` - Movie seeding script
-- `server/scripts/seed-actuarial-tables.ts` - Actuarial data seeding
+- `server/scripts/seed-shows.ts` - TV show seeding script
+- `server/scripts/sync-tmdb-changes.ts` - TMDB sync for new deaths
 - `src/components/movie/MortalityGauge.tsx` - Expected vs actual display
