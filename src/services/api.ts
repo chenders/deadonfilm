@@ -28,6 +28,8 @@ import type {
   TVSearchResponse,
   ShowResponse,
   EpisodeResponse,
+  UnifiedSearchResponse,
+  SearchMediaType,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -50,6 +52,21 @@ export async function searchMovies(query: string): Promise<SearchResponse> {
     return { results: [], page: 1, total_pages: 0, total_results: 0 }
   }
   return fetchJson(`/search?q=${encodeURIComponent(query)}`)
+}
+
+/**
+ * Unified search for movies and/or TV shows
+ * @param query Search query
+ * @param type Media type: 'movie', 'tv', or 'all' (default: 'all')
+ */
+export async function searchAll(
+  query: string,
+  type: SearchMediaType = "all"
+): Promise<UnifiedSearchResponse> {
+  if (!query || query.length < 2) {
+    return { results: [], page: 1, total_pages: 0, total_results: 0 }
+  }
+  return fetchJson(`/search?q=${encodeURIComponent(query)}&type=${type}`)
 }
 
 export async function getMovie(movieId: number): Promise<MovieResponse> {

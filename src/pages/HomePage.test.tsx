@@ -12,6 +12,7 @@ vi.mock("@/services/api", () => ({
   getRecentDeaths: vi.fn(),
   getOnThisDay: vi.fn(),
   searchMovies: vi.fn(),
+  searchAll: vi.fn(),
   getDiscoverMovie: vi.fn(),
   getProfileUrl: vi.fn((path) => (path ? `https://image.tmdb.org/t/p/w185${path}` : null)),
 }))
@@ -75,6 +76,12 @@ describe("HomePage", () => {
       total_pages: 0,
       total_results: 0,
     })
+    vi.mocked(api.searchAll).mockResolvedValue({
+      results: [],
+      page: 1,
+      total_pages: 0,
+      total_results: 0,
+    })
   })
 
   it("renders home page with correct test id", async () => {
@@ -91,10 +98,11 @@ describe("HomePage", () => {
     )
   })
 
-  it("renders search bar", async () => {
+  it("renders search bar with media type toggle", async () => {
     renderWithProviders(<HomePage />)
 
-    expect(screen.getByPlaceholderText(/search for a movie/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/search movies and tv shows/i)).toBeInTheDocument()
+    expect(screen.getByTestId("media-type-toggle")).toBeInTheDocument()
   })
 
   it("renders quick actions", async () => {
