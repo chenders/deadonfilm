@@ -76,6 +76,8 @@ The Cursed Movies page filters out obscure/unknown movies by default to improve 
 - **English movies**: `popularity < 5.0 AND cast_count < 5` (low popularity combined with small cast)
 - **Non-English movies**: `popularity < 20.0` (higher threshold since US is the primary demographic)
 
+This logic is implemented as a **computed column** (`is_obscure BOOLEAN GENERATED ALWAYS AS ... STORED`) in the movies table for efficient querying. A partial index (`idx_movies_not_obscure_curse`) covers non-obscure movies.
+
 Users can toggle "Include obscure movies" checkbox to see all movies. This setting is controlled via the `includeObscure` URL parameter.
 
 ### Server Libraries
@@ -266,6 +268,7 @@ movies (
   release_year INTEGER,
   poster_path TEXT,
   genres TEXT[],
+  original_language TEXT,
   popularity DECIMAL(10,3),
   vote_average DECIMAL(3,1),
   cast_count INTEGER,
@@ -273,6 +276,7 @@ movies (
   living_count INTEGER,
   expected_deaths DECIMAL(5,2),
   mortality_surprise_score DECIMAL(6,3),
+  is_obscure BOOLEAN GENERATED ALWAYS AS (...) STORED, -- Computed column for filtering
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 )
