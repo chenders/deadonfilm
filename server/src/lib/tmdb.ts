@@ -431,8 +431,14 @@ async function searchTVShowsPage(query: string, page: number): Promise<TMDBTVSea
 export async function searchTVShows(query: string): Promise<TMDBTVSearchResponse> {
   const [page1, page2, page3] = await Promise.all([
     searchTVShowsPage(query, 1),
-    searchTVShowsPage(query, 2).catch(() => null),
-    searchTVShowsPage(query, 3).catch(() => null),
+    searchTVShowsPage(query, 2).catch((error) => {
+      console.error("searchTVShows: failed to fetch page 2", { query, error: String(error) })
+      return null
+    }),
+    searchTVShowsPage(query, 3).catch((error) => {
+      console.error("searchTVShows: failed to fetch page 3", { query, error: String(error) })
+      return null
+    }),
   ])
 
   const seenIds = new Set<number>()
@@ -441,11 +447,12 @@ export async function searchTVShows(query: string): Promise<TMDBTVSearchResponse
   for (const page of [page1, page2, page3]) {
     if (page) {
       for (const show of page.results) {
-        // Filter to English-language shows from US or streaming
+        // Filter to English-language shows from US
+        // Require explicit US origin - exclude shows with empty/unknown origin
         if (
           !seenIds.has(show.id) &&
           show.original_language === "en" &&
-          (show.origin_country.includes("US") || show.origin_country.length === 0)
+          show.origin_country.includes("US")
         ) {
           seenIds.add(show.id)
           allResults.push(show)

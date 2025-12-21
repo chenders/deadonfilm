@@ -2,8 +2,9 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import type { LivingShowActor } from "@/types"
 import { getProfileUrl } from "@/services/api"
-import { createActorSlug, createEpisodeSlug } from "@/utils/slugify"
+import { createActorSlug } from "@/utils/slugify"
 import { PersonIcon, ChevronIcon } from "@/components/icons"
+import { formatEpisodeDisplay } from "./formatEpisodeDisplay"
 
 const PAGE_SIZE = 25
 
@@ -76,8 +77,8 @@ function ShowLivingCard({ actor, showId, showName }: ShowLivingCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const profileUrl = getProfileUrl(actor.profile_path, "w185")
 
-  // Format episode appearances for display with links
-  const episodeDisplay = formatEpisodeDisplay(actor, showId, showName)
+  // Format episode appearances for display with links (using living color)
+  const episodeDisplay = formatEpisodeDisplay(actor, showId, showName, "hover:text-living-dark")
 
   return (
     <div
@@ -176,66 +177,3 @@ function ShowLivingCard({ actor, showId, showName }: ShowLivingCardProps) {
   )
 }
 
-function formatEpisodeDisplay(
-  actor: LivingShowActor,
-  showId?: number,
-  showName?: string
-): React.ReactNode {
-  const count = actor.totalEpisodes
-
-  if (actor.episodes.length === 0) {
-    return `${count} episode${count !== 1 ? "s" : ""}`
-  }
-
-  // Helper to create episode link
-  const createEpisodeLink = (ep: {
-    seasonNumber: number
-    episodeNumber: number
-    episodeName: string
-  }) => {
-    if (showId && showName) {
-      const slug = createEpisodeSlug(
-        showName,
-        ep.episodeName,
-        ep.seasonNumber,
-        ep.episodeNumber,
-        showId
-      )
-      return (
-        <Link
-          key={`${ep.seasonNumber}-${ep.episodeNumber}`}
-          to={`/episode/${slug}`}
-          className="hover:text-living-dark hover:underline"
-        >
-          "{ep.episodeName}"
-        </Link>
-      )
-    }
-    return `"${ep.episodeName}"`
-  }
-
-  if (actor.episodes.length === 1) {
-    const ep = actor.episodes[0]
-    return (
-      <>
-        S{ep.seasonNumber}E{ep.episodeNumber}: {createEpisodeLink(ep)}
-      </>
-    )
-  }
-
-  if (actor.episodes.length <= 3) {
-    return actor.episodes.map((ep, i) => (
-      <span key={`${ep.seasonNumber}-${ep.episodeNumber}`}>
-        {i > 0 && ", "}
-        {createEpisodeLink(ep)}
-      </span>
-    ))
-  }
-
-  const firstEp = actor.episodes[0]
-  return (
-    <>
-      {count} episodes (first: {createEpisodeLink(firstEp)})
-    </>
-  )
-}
