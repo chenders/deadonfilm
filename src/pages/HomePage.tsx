@@ -3,7 +3,8 @@ import SearchBar from "@/components/search/SearchBar"
 import QuickActions from "@/components/search/QuickActions"
 import SiteStats from "@/components/home/SiteStats"
 import RecentDeaths from "@/components/home/RecentDeaths"
-import OnThisDay from "@/components/home/OnThisDay"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildWebsiteSchema } from "@/utils/schema"
 
 export default function HomePage() {
   return (
@@ -31,6 +32,8 @@ export default function HomePage() {
         <link rel="canonical" href="https://deadonfilm.com" />
       </Helmet>
 
+      <JsonLd data={buildWebsiteSchema()} />
+
       <div data-testid="home-page" className="mx-auto max-w-2xl text-center">
         <p data-testid="home-tagline" className="mb-6 text-lg text-text-muted">
           Search for a movie to see which cast members have passed away
@@ -40,7 +43,6 @@ export default function HomePage() {
         <QuickActions />
 
         <RecentDeaths />
-        <OnThisDay />
         <SiteStats />
       </div>
     </>

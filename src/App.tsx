@@ -15,6 +15,13 @@ const ForeverYoungPage = lazy(() => import("./pages/ForeverYoungPage"))
 const CovidDeathsPage = lazy(() => import("./pages/CovidDeathsPage"))
 const ViolentDeathsPage = lazy(() => import("./pages/ViolentDeathsPage"))
 const DeathWatchPage = lazy(() => import("./pages/DeathWatchPage"))
+const CausesIndexPage = lazy(() => import("./pages/CausesIndexPage"))
+const DeathsByCausePage = lazy(() => import("./pages/DeathsByCausePage"))
+const DecadesIndexPage = lazy(() => import("./pages/DecadesIndexPage"))
+const AllDeathsPage = lazy(() => import("./pages/AllDeathsPage"))
+const DeathsByDecadePage = lazy(() => import("./pages/DeathsByDecadePage"))
+const GenresIndexPage = lazy(() => import("./pages/GenresIndexPage"))
+const GenreMoviesPage = lazy(() => import("./pages/GenreMoviesPage"))
 
 function App() {
   useGoogleAnalytics()
@@ -33,6 +40,13 @@ function App() {
           <Route path="/covid-deaths" element={<CovidDeathsPage />} />
           <Route path="/violent-deaths" element={<ViolentDeathsPage />} />
           <Route path="/death-watch" element={<DeathWatchPage />} />
+          <Route path="/deaths" element={<CausesIndexPage />} />
+          <Route path="/deaths/all" element={<AllDeathsPage />} />
+          <Route path="/deaths/decades" element={<DecadesIndexPage />} />
+          <Route path="/deaths/decade/:decade" element={<DeathsByDecadePage />} />
+          <Route path="/deaths/:cause" element={<DeathsByCausePage />} />
+          <Route path="/movies/genres" element={<GenresIndexPage />} />
+          <Route path="/movies/genre/:genre" element={<GenreMoviesPage />} />
         </Routes>
       </Suspense>
     </Layout>

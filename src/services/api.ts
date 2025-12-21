@@ -14,6 +14,17 @@ import type {
   CovidDeathsResponse,
   ViolentDeathsResponse,
   DeathWatchResponse,
+  FeaturedMovieResponse,
+  TriviaResponse,
+  ThisWeekDeathsResponse,
+  PopularMoviesResponse,
+  CauseCategoriesResponse,
+  DeathsByCauseResponse,
+  DecadeCategoriesResponse,
+  DeathsByDecadeResponse,
+  GenreCategoriesResponse,
+  MoviesByGenreResponse,
+  AllDeathsResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -173,4 +184,57 @@ export async function getDeathWatch(options: DeathWatchOptions = {}): Promise<De
   if (includeObscure) params.set("includeObscure", "true")
 
   return fetchJson(`/death-watch?${params.toString()}`)
+}
+
+export async function getFeaturedMovie(): Promise<FeaturedMovieResponse> {
+  return fetchJson("/featured-movie")
+}
+
+export async function getTrivia(): Promise<TriviaResponse> {
+  return fetchJson("/trivia")
+}
+
+export async function getThisWeekDeaths(): Promise<ThisWeekDeathsResponse> {
+  return fetchJson("/this-week")
+}
+
+export async function getPopularMovies(limit: number = 10): Promise<PopularMoviesResponse> {
+  return fetchJson(`/popular-movies?limit=${limit}`)
+}
+
+export async function getCauseCategories(): Promise<CauseCategoriesResponse> {
+  return fetchJson("/deaths/causes")
+}
+
+export async function getDeathsByCause(
+  causeSlug: string,
+  page: number = 1
+): Promise<DeathsByCauseResponse> {
+  return fetchJson(`/deaths/cause/${encodeURIComponent(causeSlug)}?page=${page}`)
+}
+
+export async function getDecadeCategories(): Promise<DecadeCategoriesResponse> {
+  return fetchJson("/deaths/decades")
+}
+
+export async function getDeathsByDecade(
+  decade: string,
+  page: number = 1
+): Promise<DeathsByDecadeResponse> {
+  return fetchJson(`/deaths/decade/${encodeURIComponent(decade)}?page=${page}`)
+}
+
+export async function getAllDeaths(page: number = 1): Promise<AllDeathsResponse> {
+  return fetchJson(`/deaths/all?page=${page}`)
+}
+
+export async function getGenreCategories(): Promise<GenreCategoriesResponse> {
+  return fetchJson("/movies/genres")
+}
+
+export async function getMoviesByGenre(
+  genreSlug: string,
+  page: number = 1
+): Promise<MoviesByGenreResponse> {
+  return fetchJson(`/movies/genre/${encodeURIComponent(genreSlug)}?page=${page}`)
 }
