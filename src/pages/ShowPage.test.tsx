@@ -85,6 +85,8 @@ const mockShowResponse = {
     deceasedCount: 30,
     livingCount: 70,
     mortalityPercentage: 30,
+    expectedDeaths: 25,
+    mortalitySurpriseScore: 0.2,
   },
 }
 
@@ -236,6 +238,8 @@ describe("ShowPage", () => {
         deceasedCount: 0,
         livingCount: 100,
         mortalityPercentage: 0,
+        expectedDeaths: 10,
+        mortalitySurpriseScore: -1,
       },
     })
 

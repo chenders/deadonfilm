@@ -659,6 +659,7 @@ export async function getEpisode(req: Request, res: Response) {
         id: show.id,
         name: show.name,
         posterPath: show.poster_path,
+        firstAirDate: show.first_air_date,
       },
       episode: {
         id: episode.id,

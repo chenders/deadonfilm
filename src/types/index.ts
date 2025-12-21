@@ -540,6 +540,7 @@ export interface EpisodeShowInfo {
   id: number
   name: string
   posterPath: string | null
+  firstAirDate: string | null
 }
 
 export interface EpisodeResponse {
