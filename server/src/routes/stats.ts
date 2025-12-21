@@ -3,11 +3,13 @@ import {
   getSiteStats,
   getRecentDeaths,
   getCovidDeaths,
-  getViolentDeaths,
+  getUnnaturalDeaths,
   getMostCursedMovie,
   getTrivia,
   getDeathsThisWeekSimple,
   getPopularMovies,
+  UNNATURAL_DEATH_CATEGORIES,
+  type UnnaturalDeathCategory,
 } from "../lib/db.js"
 
 export async function getStats(_req: Request, res: Response) {
@@ -83,51 +85,6 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
   } catch (error) {
     console.error("COVID deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch COVID deaths" } })
-  }
-}
-
-export async function getViolentDeathsHandler(req: Request, res: Response) {
-  try {
-    // Check if database is available
-    if (!process.env.DATABASE_URL) {
-      return res.json({
-        persons: [],
-        pagination: { page: 1, pageSize: 50, totalCount: 0, totalPages: 0 },
-      })
-    }
-
-    const page = Math.max(1, parseInt(req.query.page as string) || 1)
-    const pageSize = 50
-    const offset = (page - 1) * pageSize
-    const includeSelfInflicted = req.query.includeSelfInflicted === "true"
-
-    const { persons, totalCount } = await getViolentDeaths({
-      limit: pageSize,
-      offset,
-      includeSelfInflicted,
-    })
-
-    res.json({
-      persons: persons.map((p, i) => ({
-        rank: offset + i + 1,
-        id: p.tmdb_id,
-        name: p.name,
-        deathday: p.deathday,
-        causeOfDeath: p.cause_of_death,
-        causeOfDeathDetails: p.cause_of_death_details,
-        profilePath: p.profile_path,
-        ageAtDeath: p.age_at_death,
-      })),
-      pagination: {
-        page,
-        pageSize,
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize),
-      },
-    })
-  } catch (error) {
-    console.error("Violent deaths error:", error)
-    res.status(500).json({ error: { message: "Failed to fetch violent deaths" } })
   }
 }
 
@@ -239,5 +196,74 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
   } catch (error) {
     console.error("Popular movies error:", error)
     res.status(500).json({ error: { message: "Failed to fetch popular movies" } })
+  }
+}
+
+const validCategories = Object.keys(UNNATURAL_DEATH_CATEGORIES) as UnnaturalDeathCategory[]
+
+export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
+  try {
+    // Check if database is available
+    if (!process.env.DATABASE_URL) {
+      return res.json({
+        persons: [],
+        pagination: { page: 1, pageSize: 50, totalCount: 0, totalPages: 0 },
+        categories: [],
+        categoryCounts: {},
+      })
+    }
+
+    const page = Math.max(1, parseInt(req.query.page as string) || 1)
+    const pageSize = 50
+    const offset = (page - 1) * pageSize
+
+    // Validate category parameter
+    const categoryParam = req.query.category as string | undefined
+    let category: UnnaturalDeathCategory | "all" = "all"
+    if (categoryParam && validCategories.includes(categoryParam as UnnaturalDeathCategory)) {
+      category = categoryParam as UnnaturalDeathCategory
+    }
+
+    // Parse hideSuicides parameter (defaults to false)
+    const hideSuicides = req.query.hideSuicides === "true"
+
+    const { persons, totalCount, categoryCounts } = await getUnnaturalDeaths({
+      limit: pageSize,
+      offset,
+      category,
+      hideSuicides,
+    })
+
+    // Build categories array with labels and counts
+    const categories = validCategories.map((key) => ({
+      id: key,
+      label: UNNATURAL_DEATH_CATEGORIES[key].label,
+      count: categoryCounts[key],
+    }))
+
+    res.json({
+      persons: persons.map((p, i) => ({
+        rank: offset + i + 1,
+        id: p.tmdb_id,
+        name: p.name,
+        deathday: p.deathday,
+        causeOfDeath: p.cause_of_death,
+        causeOfDeathDetails: p.cause_of_death_details,
+        profilePath: p.profile_path,
+        ageAtDeath: p.age_at_death,
+      })),
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+      },
+      categories,
+      selectedCategory: category,
+      hideSuicides,
+    })
+  } catch (error) {
+    console.error("Unnatural deaths error:", error)
+    res.status(500).json({ error: { message: "Failed to fetch unnatural deaths" } })
   }
 }

@@ -709,6 +709,10 @@ After creating the PR, verify on GitHub that:
 4. `npm test && cd server && npm test` (frontend and backend unit tests)
 5. Update documentation if necessary
 
+## Plan Files Cleanup
+
+**IMPORTANT**: After implementing a plan, delete the plan file from `~/.claude/plans/`. Plan files are only useful during active planning and implementation - once the work is complete, they become stale and can cause confusion in future sessions.
+
 ## Git Commit Messages
 
 **IMPORTANT**: When writing multi-line commit messages, use simple double-quoted strings with `\n` for newlines. Do NOT use heredocs (`<<EOF`) inside command substitution (`$(...)`) as this causes shell parsing errors with special characters like apostrophes.

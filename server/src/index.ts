@@ -20,7 +20,7 @@ import {
   getStats,
   getRecentDeathsHandler,
   getCovidDeathsHandler,
-  getViolentDeathsHandler,
+  getUnnaturalDeathsHandler,
   getFeaturedMovieHandler,
   getTriviaHandler,
   getThisWeekDeathsHandler,
@@ -80,7 +80,7 @@ app.get("/api/forever-young", getForeverYoungMoviesHandler)
 app.get("/api/stats", getStats)
 app.get("/api/recent-deaths", getRecentDeathsHandler)
 app.get("/api/covid-deaths", getCovidDeathsHandler)
-app.get("/api/violent-deaths", getViolentDeathsHandler)
+app.get("/api/unnatural-deaths", getUnnaturalDeathsHandler)
 app.get("/api/featured-movie", getFeaturedMovieHandler)
 app.get("/api/trivia", getTriviaHandler)
 app.get("/api/this-week", getThisWeekDeathsHandler)
