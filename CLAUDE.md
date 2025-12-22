@@ -719,6 +719,34 @@ After creating the PR, verify on GitHub that:
 4. `npm test && cd server && npm test` (frontend and backend unit tests)
 5. Update documentation if necessary
 
+## Git Branching Strategy
+
+**IMPORTANT**: Never commit directly to `main` or push to `main`. All work must go through pull requests.
+
+1. **Always create a feature branch** for any new work:
+   ```bash
+   git checkout -b feat/feature-name   # New features
+   git checkout -b fix/bug-name        # Bug fixes
+   git checkout -b chore/task-name     # Maintenance tasks
+   git checkout -b docs/docs-change    # Documentation updates
+   ```
+
+2. **Push the branch and create a PR**:
+   ```bash
+   git push -u origin feat/feature-name
+   gh pr create --title "Description" --body "Details"
+   ```
+
+3. **Never push directly to main** - The repository has branch protection rules that will reject direct pushes anyway.
+
+4. If you accidentally commit to main locally, move the commit to a new branch:
+   ```bash
+   git checkout -b feat/new-branch     # Create branch with your commits
+   git checkout main
+   git reset --hard origin/main        # Reset main to match remote
+   git checkout feat/new-branch        # Go back to your branch
+   ```
+
 ## Plan Files Cleanup
 
 **IMPORTANT**: After implementing a plan, delete the plan file from `~/.claude/plans/`. Plan files are only useful during active planning and implementation - once the work is complete, they become stale and can cause confusion in future sessions.
