@@ -21,7 +21,7 @@ Ideas and future improvements for consideration.
 
 | Idea | Effort | Benefit | Notes |
 |------|--------|---------|-------|
-| **Increase TMDB sync frequency to every 2 hours** | Low | Medium | Change cron schedule from `0 0,6,12,18 * * *` to `0 */2 * * *` in `k8s/cronjob-sync.yaml`. Provides fresher death data. Current runs take 7-17 min, well within 2-hour window. |
+| ~~**Increase TMDB sync frequency to every 2 hours**~~ | ~~Low~~ | ~~Medium~~ | Done. Changed cron from every 6 hours to every 2 hours. |
 
 ## Technical Debt
 
