@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dead on Film - Social Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 1280px;
+      height: 640px;
+      overflow: hidden;
+    }
+
+    .container {
+      width: 1280px;
+      height: 640px;
+      background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Film strip decoration - left */
+    .film-strip-left {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 60px;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      padding: 10px 0;
+    }
+
+    .film-strip-right {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 60px;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      padding: 10px 0;
+    }
+
+    .sprocket {
+      width: 30px;
+      height: 20px;
+      background: #1a1a2e;
+      margin: 0 auto;
+      border-radius: 3px;
+    }
+
+    /* Main content */
+    .content {
+      text-align: center;
+      z-index: 10;
+      padding: 40px;
+    }
+
+    .icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 0 30px rgba(255, 100, 100, 0.3));
+    }
+
+    .title {
+      font-family: 'Playfair Display', serif;
+      font-size: 96px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+      margin-bottom: 20px;
+      letter-spacing: -2px;
+    }
+
+    .subtitle {
+      font-family: 'Inter', sans-serif;
+      font-size: 28px;
+      font-weight: 400;
+      color: #a0a0a0;
+      max-width: 700px;
+      margin: 0 auto 30px;
+      line-height: 1.4;
+    }
+
+    .tagline {
+      font-family: 'Inter', sans-serif;
+      font-size: 18px;
+      font-weight: 500;
+      color: #e74c3c;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+    }
+
+    /* Decorative elements */
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+    }
+
+    .glow-1 {
+      width: 400px;
+      height: 400px;
+      background: #e74c3c;
+      top: -100px;
+      right: 100px;
+    }
+
+    .glow-2 {
+      width: 300px;
+      height: 300px;
+      background: #3498db;
+      bottom: -50px;
+      left: 150px;
+    }
+
+    /* Subtle film grain overlay */
+    .grain {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+      pointer-events: none;
+    }
+
+    /* Stats bar at bottom */
+    .stats {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 60px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="glow-orb glow-1"></div>
+    <div class="glow-orb glow-2"></div>
+    <div class="grain"></div>
+
+    <div class="film-strip-left">
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+    </div>
+
+    <div class="film-strip-right">
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+      <div class="sprocket"></div>
+    </div>
+
+    <div class="content">
+      <div class="icon">🎬</div>
+      <h1 class="title">Dead on Film</h1>
+      <p class="subtitle">Discover which actors from your favorite movies have passed away</p>
+      <p class="tagline">Mortality Statistics & Movie History</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">50K+</div>
+        <div class="stat-label">Movies</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">25K+</div>
+        <div class="stat-label">Actors Tracked</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">1920–Today</div>
+        <div class="stat-label">Coverage</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

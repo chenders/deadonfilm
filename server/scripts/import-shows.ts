@@ -53,15 +53,15 @@ const SHOW_PROCESSING_DELAY_MS = 100
 const RESUME_ID_SEARCH_LIMIT = 20
 
 // Popularity thresholds for phases
-const PHASE_THRESHOLDS = {
+export const PHASE_THRESHOLDS = {
   popular: { min: 50, max: Infinity },
   standard: { min: 10, max: 50 },
   obscure: { min: 0, max: 10 },
 } as const
 
-type ImportPhase = keyof typeof PHASE_THRESHOLDS
+export type ImportPhase = keyof typeof PHASE_THRESHOLDS
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
   if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
     throw new InvalidArgumentError("Must be a positive integer")
@@ -69,11 +69,39 @@ function parsePositiveInt(value: string): number {
   return parsed
 }
 
-function parsePhase(value: string): ImportPhase {
+export function parsePhase(value: string): ImportPhase {
   if (!["popular", "standard", "obscure"].includes(value)) {
     throw new InvalidArgumentError("Phase must be: popular, standard, or obscure")
   }
   return value as ImportPhase
+}
+
+/**
+ * Checks if error threshold has been exceeded.
+ * Returns true if import should abort due to too many errors.
+ */
+export function shouldAbortDueToErrors(
+  errorCount: number,
+  totalShowsSaved: number,
+  minShowsForRateCheck: number = 10
+): boolean {
+  return (
+    errorCount > 10 && totalShowsSaved >= minShowsForRateCheck && errorCount > totalShowsSaved * 0.1
+  )
+}
+
+/**
+ * Filters shows by popularity threshold for a given phase.
+ */
+export function filterShowsByPopularity(
+  shows: Array<{ popularity?: number }>,
+  phase: ImportPhase
+): Array<{ popularity?: number }> {
+  const threshold = PHASE_THRESHOLDS[phase]
+  return shows.filter((show) => {
+    const popularity = show.popularity || 0
+    return popularity >= threshold.min && popularity < threshold.max
+  })
 }
 
 interface ImportOptions {
@@ -321,12 +349,7 @@ async function runImport(options: ImportOptions) {
 
         // Continue to next show on non-fatal errors
         // Abort if >10 errors AND >10% failure rate (with minimum of 10 shows processed)
-        const minShowsForRateCheck = 10
-        if (
-          errorCount > 10 &&
-          totalShowsSaved >= minShowsForRateCheck &&
-          errorCount > totalShowsSaved * 0.1
-        ) {
+        if (shouldAbortDueToErrors(errorCount, totalShowsSaved)) {
           console.error("\nToo many errors (>10% failure rate). Aborting.")
           await saveCheckpoint({
             phase: currentPhase,
@@ -455,4 +478,8 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-program.parse()
+// Only run when executed directly (not when imported for testing)
+const isMainModule = import.meta.url === `file://${process.argv[1]}`
+if (isMainModule) {
+  program.parse()
+}
