@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import type { Request, Response } from "express"
-import { getCursedMovies, getDiscoverMovie, getForeverYoungMoviesHandler } from "./discover.js"
+import {
+  getCursedMovies,
+  getCursedMoviesFilters,
+  getDiscoverMovie,
+  getForeverYoungMoviesHandler,
+} from "./discover.js"
 import * as db from "../lib/db.js"
 
 // Mock the db module
 vi.mock("../lib/db.js", () => ({
   getHighMortalityMovies: vi.fn(),
+  getMaxValidMinDeaths: vi.fn(),
   getForeverYoungMovies: vi.fn(),
   getForeverYoungMoviesPaginated: vi.fn(),
 }))
@@ -59,10 +65,12 @@ describe("getCursedMovies", () => {
 
     mockReq = {
       query: {},
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -342,10 +350,12 @@ describe("getDiscoverMovie", () => {
 
     mockReq = {
       params: { type: "forever-young" },
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -452,10 +462,12 @@ describe("getForeverYoungMoviesHandler", () => {
 
     mockReq = {
       query: {},
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -618,5 +630,94 @@ describe("getForeverYoungMoviesHandler", () => {
       limit: 50,
       offset: 0, // Should default to page 1
     })
+  })
+})
+
+describe("getCursedMoviesFilters", () => {
+  let mockReq: Partial<Request>
+  let mockRes: Partial<Response>
+  let jsonSpy: ReturnType<typeof vi.fn>
+  let setSpy: ReturnType<typeof vi.fn>
+  let statusSpy: ReturnType<typeof vi.fn>
+  let endSpy: ReturnType<typeof vi.fn>
+  const originalEnv = process.env.DATABASE_URL
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgres://test"
+
+    jsonSpy = vi.fn()
+    setSpy = vi.fn()
+    statusSpy = vi.fn().mockReturnThis()
+    endSpy = vi.fn()
+
+    mockReq = {
+      get: vi.fn().mockReturnValue(undefined),
+    }
+    mockRes = {
+      json: jsonSpy as unknown as Response["json"],
+      status: statusSpy as unknown as Response["status"],
+      set: setSpy as unknown as Response["set"],
+      end: endSpy as unknown as Response["end"],
+    }
+  })
+
+  afterEach(() => {
+    process.env.DATABASE_URL = originalEnv
+  })
+
+  it("returns maxMinDeaths from database", async () => {
+    vi.mocked(db.getMaxValidMinDeaths).mockResolvedValueOnce(15)
+
+    await getCursedMoviesFilters(mockReq as Request, mockRes as Response)
+
+    expect(db.getMaxValidMinDeaths).toHaveBeenCalled()
+    expect(jsonSpy).toHaveBeenCalledWith({ maxMinDeaths: 15 })
+  })
+
+  it("sets ETag header on response", async () => {
+    vi.mocked(db.getMaxValidMinDeaths).mockResolvedValueOnce(10)
+
+    await getCursedMoviesFilters(mockReq as Request, mockRes as Response)
+
+    expect(setSpy).toHaveBeenCalledWith("ETag", expect.stringMatching(/^"[a-f0-9]{32}"$/))
+    expect(setSpy).toHaveBeenCalledWith("Cache-Control", "public, max-age=3600")
+  })
+
+  it("returns 304 Not Modified when ETag matches", async () => {
+    // First call to get the ETag
+    vi.mocked(db.getMaxValidMinDeaths).mockResolvedValue(10)
+    await getCursedMoviesFilters(mockReq as Request, mockRes as Response)
+
+    // Get the ETag that was set
+    const etagCall = setSpy.mock.calls.find((call) => call[0] === "ETag")
+    const etag = etagCall![1] as string
+
+    // Reset mocks for second call
+    vi.clearAllMocks()
+    ;(mockReq.get as ReturnType<typeof vi.fn>).mockReturnValue(etag)
+
+    await getCursedMoviesFilters(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(304)
+    expect(endSpy).toHaveBeenCalled()
+    expect(jsonSpy).not.toHaveBeenCalled()
+  })
+
+  it("returns default when DATABASE_URL is not set", async () => {
+    delete process.env.DATABASE_URL
+
+    await getCursedMoviesFilters(mockReq as Request, mockRes as Response)
+
+    expect(db.getMaxValidMinDeaths).not.toHaveBeenCalled()
+    expect(jsonSpy).toHaveBeenCalledWith({ maxMinDeaths: 3 })
+  })
+
+  it("returns default on database error", async () => {
+    vi.mocked(db.getMaxValidMinDeaths).mockRejectedValueOnce(new Error("Database error"))
+
+    await getCursedMoviesFilters(mockReq as Request, mockRes as Response)
+
+    expect(jsonSpy).toHaveBeenCalledWith({ maxMinDeaths: 3 })
   })
 })

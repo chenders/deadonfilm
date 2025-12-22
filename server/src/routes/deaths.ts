@@ -7,15 +7,16 @@ import {
   getDeathsByDecade,
   getAllDeaths,
 } from "../lib/db.js"
+import { sendWithETag } from "../lib/etag.js"
 
-export async function getCauseCategoriesHandler(_req: Request, res: Response) {
+export async function getCauseCategoriesHandler(req: Request, res: Response) {
   try {
     if (!process.env.DATABASE_URL) {
       return res.json({ causes: [] })
     }
 
     const causes = await getCauseCategories()
-    res.json({ causes })
+    sendWithETag(req, res, { causes }, 3600) // 1 hour cache
   } catch (error) {
     console.error("Cause categories error:", error)
     res.status(500).json({ error: { message: "Failed to fetch cause categories" } })
@@ -49,7 +50,7 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
 
     const { deaths, totalCount } = await getDeathsByCause(cause, { limit: pageSize, offset })
 
-    res.json({
+    const response = {
       cause,
       slug,
       deaths: deaths.map((d) => ({
@@ -68,21 +69,22 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
         totalCount,
         totalPages: Math.ceil(totalCount / pageSize),
       },
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Deaths by cause error:", error)
     res.status(500).json({ error: { message: "Failed to fetch deaths by cause" } })
   }
 }
 
-export async function getDecadeCategoriesHandler(_req: Request, res: Response) {
+export async function getDecadeCategoriesHandler(req: Request, res: Response) {
   try {
     if (!process.env.DATABASE_URL) {
       return res.json({ decades: [] })
     }
 
     const decades = await getDecadeCategories()
-    res.json({ decades })
+    sendWithETag(req, res, { decades }, 3600) // 1 hour cache
   } catch (error) {
     console.error("Decade categories error:", error)
     res.status(500).json({ error: { message: "Failed to fetch decade categories" } })
@@ -122,7 +124,7 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
 
     const { deaths, totalCount } = await getDeathsByDecade(decade, { limit: pageSize, offset })
 
-    res.json({
+    const response = {
       decade,
       decadeLabel: `${decade}s`,
       deaths: deaths.map((d) => ({
@@ -140,7 +142,8 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
         totalCount,
         totalPages: Math.ceil(totalCount / pageSize),
       },
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Deaths by decade error:", error)
     res.status(500).json({ error: { message: "Failed to fetch deaths by decade" } })
@@ -162,7 +165,7 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
 
     const { persons, totalCount } = await getAllDeaths({ limit: pageSize, offset })
 
-    res.json({
+    const response = {
       deaths: persons.map((p, i) => ({
         rank: offset + i + 1,
         id: p.tmdb_id,
@@ -178,7 +181,8 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
         totalCount,
         totalPages: Math.ceil(totalCount / pageSize),
       },
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("All deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch all deaths" } })

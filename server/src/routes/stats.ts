@@ -11,8 +11,9 @@ import {
   UNNATURAL_DEATH_CATEGORIES,
   type UnnaturalDeathCategory,
 } from "../lib/db.js"
+import { sendWithETag } from "../lib/etag.js"
 
-export async function getStats(_req: Request, res: Response) {
+export async function getStats(req: Request, res: Response) {
   try {
     // Check if database is available
     if (!process.env.DATABASE_URL) {
@@ -25,7 +26,7 @@ export async function getStats(_req: Request, res: Response) {
     }
 
     const stats = await getSiteStats()
-    res.json(stats)
+    sendWithETag(req, res, stats, 3600) // 1 hour cache
   } catch (error) {
     console.error("Stats error:", error)
     res.status(500).json({ error: { message: "Failed to fetch site statistics" } })
@@ -64,7 +65,7 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
 
     const { persons, totalCount } = await getCovidDeaths({ limit: pageSize, offset })
 
-    res.json({
+    const response = {
       persons: persons.map((p, i) => ({
         rank: offset + i + 1,
         id: p.tmdb_id,
@@ -81,7 +82,8 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
         totalCount,
         totalPages: Math.ceil(totalCount / pageSize),
       },
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("COVID deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch COVID deaths" } })
@@ -119,7 +121,7 @@ export async function getFeaturedMovieHandler(_req: Request, res: Response) {
   }
 }
 
-export async function getTriviaHandler(_req: Request, res: Response) {
+export async function getTriviaHandler(req: Request, res: Response) {
   try {
     // Check if database is available
     if (!process.env.DATABASE_URL) {
@@ -127,7 +129,7 @@ export async function getTriviaHandler(_req: Request, res: Response) {
     }
 
     const facts = await getTrivia()
-    res.json({ facts })
+    sendWithETag(req, res, { facts }, 3600) // 1 hour cache
   } catch (error) {
     console.error("Trivia error:", error)
     res.status(500).json({ error: { message: "Failed to fetch trivia" } })
@@ -182,7 +184,7 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 20)
     const movies = await getPopularMovies(limit)
 
-    res.json({
+    const response = {
       movies: movies.map((m) => ({
         id: m.tmdb_id,
         title: m.title,
@@ -192,7 +194,8 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
         castCount: m.cast_count,
         popularity: m.popularity,
       })),
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Popular movies error:", error)
     res.status(500).json({ error: { message: "Failed to fetch popular movies" } })
@@ -241,7 +244,7 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
       count: categoryCounts[key],
     }))
 
-    res.json({
+    const response = {
       persons: persons.map((p, i) => ({
         rank: offset + i + 1,
         id: p.tmdb_id,
@@ -261,7 +264,8 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
       categories,
       selectedCategory: category,
       hideSuicides,
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Unnatural deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch unnatural deaths" } })
