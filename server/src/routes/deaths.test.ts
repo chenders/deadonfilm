@@ -572,6 +572,7 @@ describe("getAllDeathsHandler", () => {
           deathday: "2024-01-15",
           profilePath: "/path1.jpg",
           causeOfDeath: "Natural causes",
+          causeOfDeathDetails: "Died peacefully in sleep",
           ageAtDeath: 85,
         },
         {
@@ -581,6 +582,7 @@ describe("getAllDeathsHandler", () => {
           deathday: "2024-01-10",
           profilePath: null,
           causeOfDeath: null,
+          causeOfDeathDetails: null,
           ageAtDeath: 72,
         },
       ],
