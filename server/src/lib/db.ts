@@ -1116,6 +1116,11 @@ export interface SyncStateRecord {
   new_deaths_found: number
   movies_updated: number
   errors_count: number
+  // Import tracking columns (optional, only used by import scripts)
+  current_phase: string | null
+  last_processed_id: number | null
+  phase_total: number | null
+  phase_completed: number | null
 }
 
 /**
@@ -1126,7 +1131,8 @@ export interface SyncStateRecord {
 export async function getSyncState(syncType: string): Promise<SyncStateRecord | null> {
   const db = getPool()
   const result = await db.query<SyncStateRecord>(
-    `SELECT sync_type, last_sync_date::text, last_run_at, items_processed, new_deaths_found, movies_updated, errors_count
+    `SELECT sync_type, last_sync_date::text, last_run_at, items_processed, new_deaths_found, movies_updated, errors_count,
+            current_phase, last_processed_id, phase_total, phase_completed
      FROM sync_state WHERE sync_type = $1`,
     [syncType]
   )
@@ -1143,15 +1149,19 @@ export async function updateSyncState(
 ): Promise<void> {
   const db = getPool()
   await db.query(
-    `INSERT INTO sync_state (sync_type, last_sync_date, last_run_at, items_processed, new_deaths_found, movies_updated, errors_count)
-     VALUES ($1, $2, NOW(), $3, $4, $5, $6)
+    `INSERT INTO sync_state (sync_type, last_sync_date, last_run_at, items_processed, new_deaths_found, movies_updated, errors_count, current_phase, last_processed_id, phase_total, phase_completed)
+     VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10)
      ON CONFLICT (sync_type) DO UPDATE SET
        last_sync_date = COALESCE($2, sync_state.last_sync_date),
        last_run_at = NOW(),
        items_processed = COALESCE($3, sync_state.items_processed),
        new_deaths_found = COALESCE($4, sync_state.new_deaths_found),
        movies_updated = COALESCE($5, sync_state.movies_updated),
-       errors_count = COALESCE($6, sync_state.errors_count)`,
+       errors_count = COALESCE($6, sync_state.errors_count),
+       current_phase = COALESCE($7, sync_state.current_phase),
+       last_processed_id = COALESCE($8, sync_state.last_processed_id),
+       phase_total = COALESCE($9, sync_state.phase_total),
+       phase_completed = COALESCE($10, sync_state.phase_completed)`,
     [
       state.sync_type,
       state.last_sync_date || null,
@@ -1159,6 +1169,10 @@ export async function updateSyncState(
       state.new_deaths_found ?? null,
       state.movies_updated ?? null,
       state.errors_count ?? null,
+      state.current_phase ?? null,
+      state.last_processed_id ?? null,
+      state.phase_total ?? null,
+      state.phase_completed ?? null,
     ]
   )
 }
