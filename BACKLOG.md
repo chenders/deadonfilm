@@ -27,4 +27,4 @@ Ideas and future improvements for consideration.
 
 | Idea | Effort | Benefit | Notes |
 |------|--------|---------|-------|
-| **Split sitemap.xml into multiple files** | Low | Medium | Once there are 500+ entries, break into sitemap-movies.xml, sitemap-shows.xml, sitemap-actors.xml with a sitemap index. Google recommends max 50,000 URLs per file but smaller files are easier to debug. |
+| ~~**Split sitemap.xml into multiple files**~~ | ~~Low~~ | ~~Medium~~ | Done. Sitemap now uses index with separate files for static, movies, actors, shows. Pagination support for >50k URLs. |
