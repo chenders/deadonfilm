@@ -106,6 +106,7 @@ export interface AllDeath {
   deathday: string
   profilePath: string | null
   causeOfDeath: string | null
+  causeOfDeathDetails: string | null
   ageAtDeath: number | null
 }
 

@@ -45,11 +45,18 @@ function ActorRow({ person }: { person: AllDeath }) {
           </p>
         </div>
 
-        {person.causeOfDeath && (
-          <div className="flex-shrink-0 text-right">
-            <p className="text-sm text-brown-dark">{person.causeOfDeath}</p>
-          </div>
-        )}
+        <div className="flex-shrink-0 text-right">
+          {person.causeOfDeath && <p className="text-sm text-brown-dark">{person.causeOfDeath}</p>}
+          {person.causeOfDeathDetails && (
+            <p
+              className="max-w-xs truncate text-xs text-text-muted"
+              title={person.causeOfDeathDetails}
+              data-testid={`death-details-${person.id}`}
+            >
+              {person.causeOfDeathDetails}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Mobile layout */}
@@ -78,6 +85,14 @@ function ActorRow({ person }: { person: AllDeath }) {
           </p>
           {person.causeOfDeath && (
             <p className="mt-1 text-xs text-brown-dark">{person.causeOfDeath}</p>
+          )}
+          {person.causeOfDeathDetails && (
+            <p
+              className="mt-0.5 truncate text-xs text-text-muted"
+              title={person.causeOfDeathDetails}
+            >
+              {person.causeOfDeathDetails}
+            </p>
           )}
         </div>
       </div>

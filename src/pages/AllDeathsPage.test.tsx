@@ -19,6 +19,7 @@ const mockDeaths = [
     name: "Actor One",
     deathday: "2024-01-15",
     causeOfDeath: "Natural causes",
+    causeOfDeathDetails: "Died peacefully in their sleep at home",
     profilePath: "/path1.jpg",
     ageAtDeath: 85,
   },
@@ -28,6 +29,7 @@ const mockDeaths = [
     name: "Actor Two",
     deathday: "2024-01-10",
     causeOfDeath: null,
+    causeOfDeathDetails: null,
     profilePath: null,
     ageAtDeath: 72,
   },
@@ -135,6 +137,40 @@ describe("AllDeathsPage", () => {
       expect(screen.getAllByText(/Age 85/).length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText("Natural causes").length).toBeGreaterThanOrEqual(1)
     })
+  })
+
+  it("displays causeOfDeathDetails when present", async () => {
+    vi.mocked(api.getAllDeaths).mockResolvedValue({
+      deaths: mockDeaths,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<AllDeathsPage />)
+
+    await waitFor(() => {
+      // Check death details are displayed for Actor One
+      const detailsElements = screen.getAllByText("Died peacefully in their sleep at home")
+      expect(detailsElements.length).toBeGreaterThanOrEqual(1)
+
+      // Check that the details have a title attribute for tooltip
+      expect(detailsElements[0]).toHaveAttribute("title", "Died peacefully in their sleep at home")
+    })
+  })
+
+  it("does not render causeOfDeathDetails element when null", async () => {
+    vi.mocked(api.getAllDeaths).mockResolvedValue({
+      deaths: [mockDeaths[1]], // Actor Two has null causeOfDeathDetails
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 1 },
+    })
+
+    renderWithProviders(<AllDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Actor Two").length).toBeGreaterThanOrEqual(1)
+    })
+
+    // Should not find any death details elements
+    expect(screen.queryByTestId("death-details-456")).not.toBeInTheDocument()
   })
 
   it("renders pagination controls when multiple pages", async () => {
