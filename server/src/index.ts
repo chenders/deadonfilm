@@ -6,6 +6,7 @@ import "dotenv/config"
 import express from "express"
 import cors from "cors"
 import compression from "compression"
+import rateLimit from "express-rate-limit"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
 import { getOnThisDay } from "./routes/on-this-day.js"
@@ -49,6 +50,25 @@ app.use(compression()) // Gzip responses (~70% size reduction)
 app.use(cors())
 app.use(express.json())
 
+// Rate limiting to protect against abuse
+// General API rate limit: 100 requests per minute per IP
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { message: "Too many requests, please try again later" } },
+})
+
+// Stricter rate limit for heavy endpoints (sitemap, etc): 10 requests per minute
+const heavyEndpointLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { message: "Too many requests, please try again later" } },
+})
+
 // Redirect www to apex domain for SEO
 app.use((req, res, next) => {
   const host = req.get("host") || ""
@@ -66,9 +86,10 @@ app.get("/health", (_req, res) => {
 })
 
 // SEO endpoints (not under /api since they're for crawlers)
-app.get("/sitemap.xml", getSitemap)
+app.get("/sitemap.xml", heavyEndpointLimiter, getSitemap)
 
-// API routes
+// API routes - apply rate limiting to all API endpoints
+app.use("/api", apiLimiter)
 app.get("/api/search", searchMovies)
 app.get("/api/movie/:id", getMovie)
 app.get("/api/movie/:id/death-info", getDeathInfoRoute)
