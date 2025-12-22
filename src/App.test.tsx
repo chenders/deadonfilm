@@ -102,24 +102,6 @@ describe("App", () => {
       })
     })
 
-    it("renders lazy-loaded CursedMoviesPage at /cursed-movies", async () => {
-      renderApp("/cursed-movies")
-
-      // Should show loading spinner initially while lazy loading
-      // Then the page should load
-      await waitFor(() => {
-        expect(screen.getByTestId("cursed-movies-page")).toBeInTheDocument()
-      })
-    })
-
-    it("renders lazy-loaded CursedActorsPage at /cursed-actors", async () => {
-      renderApp("/cursed-actors")
-
-      await waitFor(() => {
-        expect(screen.getByTestId("cursed-actors-page")).toBeInTheDocument()
-      })
-    })
-
     it("renders lazy-loaded MoviePage at /movie/:slug", async () => {
       renderApp("/movie/test-movie-2024-12345")
 
@@ -133,11 +115,11 @@ describe("App", () => {
     it("shows LoadingSpinner as fallback while lazy components load", async () => {
       // This test verifies the Suspense boundary is set up correctly
       // The LoadingSpinner should be rendered as fallback during lazy loading
-      renderApp("/cursed-movies")
+      renderApp("/movie/test-movie-2024-12345")
 
       // The page should eventually load
       await waitFor(() => {
-        expect(screen.getByTestId("cursed-movies-page")).toBeInTheDocument()
+        expect(screen.getByTestId("movie-page")).toBeInTheDocument()
       })
     })
   })

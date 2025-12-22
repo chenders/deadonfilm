@@ -11,8 +11,9 @@ const MoviePage = lazy(() => import("./pages/MoviePage"))
 const ShowPage = lazy(() => import("./pages/ShowPage"))
 const EpisodePage = lazy(() => import("./pages/EpisodePage"))
 const ActorPage = lazy(() => import("./pages/ActorPage"))
-const CursedMoviesPage = lazy(() => import("./pages/CursedMoviesPage"))
-const CursedActorsPage = lazy(() => import("./pages/CursedActorsPage"))
+// Temporarily hidden - see plan in kind-brewing-moore.md
+// const CursedMoviesPage = lazy(() => import("./pages/CursedMoviesPage"))
+// const CursedActorsPage = lazy(() => import("./pages/CursedActorsPage"))
 const ForeverYoungPage = lazy(() => import("./pages/ForeverYoungPage"))
 const CovidDeathsPage = lazy(() => import("./pages/CovidDeathsPage"))
 const UnnaturalDeathsPage = lazy(() => import("./pages/UnnaturalDeathsPage"))
@@ -38,8 +39,9 @@ function App() {
           <Route path="/show/:slug" element={<ShowPage />} />
           <Route path="/episode/:slug" element={<EpisodePage />} />
           <Route path="/actor/:slug" element={<ActorPage />} />
-          <Route path="/cursed-movies" element={<CursedMoviesPage />} />
-          <Route path="/cursed-actors" element={<CursedActorsPage />} />
+          {/* Temporarily hidden - see plan in kind-brewing-moore.md */}
+          {/* <Route path="/cursed-movies" element={<CursedMoviesPage />} /> */}
+          {/* <Route path="/cursed-actors" element={<CursedActorsPage />} /> */}
           <Route path="/forever-young" element={<ForeverYoungPage />} />
           <Route path="/covid-deaths" element={<CovidDeathsPage />} />
           <Route path="/unnatural-deaths" element={<UnnaturalDeathsPage />} />
