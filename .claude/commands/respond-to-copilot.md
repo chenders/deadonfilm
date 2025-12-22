@@ -29,31 +29,25 @@ Review and respond to GitHub Copilot review comments on a pull request.
 
 4. **Categorize suggestions**
    - **Will implement**: Valid, valuable, and within scope
-   - **Won't implement**: Invalid, not valuable, out of scope, or has significant trade-offs
+   - **Won't implement**: Invalid, not valuable, or has significant trade-offs
    - **Needs discussion**: Unclear or requires user input
-   - **Deferred**: Valid and valuable, but out of scope for this PR - will be tracked in an issue
 
-5. **Create issues for deferred work**
-   If any suggestions are valid but deferred to a follow-up PR, you MUST create a GitHub issue to track them:
-   ```bash
-   gh issue create --title "Title describing the work" --body "Description with context and checklist"
-   ```
-   - Group related deferred items into a single issue when appropriate
-   - Include a checklist of specific tasks in the issue body
-   - Reference the PR number in the issue for context
-   - When responding to the Copilot comment, include the issue link
+   **IMPORTANT: Never defer work or create issues without explicit user approval.** If a suggestion is valid but you believe it's out of scope:
+   - First, attempt to implement it if it's reasonably small
+   - If it's too large, ask the user: "This suggestion would require significant work. Should I implement it now, or would you prefer to defer it to a separate PR?"
+   - Only create tracking issues if the user explicitly asks for deferral
 
-6. **Make changes for accepted suggestions**
+5. **Make changes for accepted suggestions**
    - Implement the changes for suggestions you've decided to accept
    - Run tests to ensure changes don't break anything: `npm test && cd server && npm test`
    - Run quality checks: `npm run lint && npm run type-check`
 
-6. **Commit and push changes before responding**
+5. **Commit and push changes before responding**
    - Stage and commit with a message like: "Address Copilot review feedback"
    - Push the changes to update the PR
    - Note the commit SHA for use in responses: `git rev-parse --short HEAD`
 
-7. **Respond to each comment on GitHub**
+6. **Respond to each comment on GitHub**
    Use `gh api` to reply to each comment:
    ```bash
    gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
@@ -65,7 +59,7 @@ Review and respond to GitHub Copilot review comments on a pull request.
    - **If not implemented**: Explain why (invalid suggestion, out of scope, trade-offs, etc.)
    - **If needs discussion**: Ask clarifying questions
 
-8. **Resolve implemented comments**
+7. **Resolve implemented comments**
    After responding to comments you implemented fixes for, resolve them using the GraphQL API:
    ```bash
    gh api graphql -f query='
@@ -83,20 +77,20 @@ Review and respond to GitHub Copilot review comments on a pull request.
 
 ## Example Responses
 
-**Implemented:**
+**Implemented (simple fix):**
 > Fixed in 2f50cc1. Added null check before accessing the property to prevent potential runtime errors.
+
+**Implemented (refactoring):**
+> Fixed in 3a8bc12. Extracted the shared logic into a reusable utility function in `src/lib/utils.ts` and updated both call sites to use it.
+
+**Implemented (security fix):**
+> Fixed in 5d9ef34. Changed from string interpolation to parameterized query to prevent SQL injection.
 
 **Not implemented (invalid):**
 > This suggestion doesn't apply here - the variable is already guaranteed to be non-null at this point due to the guard clause on line 42.
 
 **Not implemented (trade-off):**
 > Chose not to implement this. While the suggested abstraction would reduce duplication, it would also add complexity for a pattern that only appears twice in the codebase. Will reconsider if this pattern appears more frequently.
-
-**Not implemented (out of scope):**
-> This is a valid suggestion but outside the scope of this PR. I've noted it for a future cleanup PR.
-
-**Deferred (with issue):**
-> Valid suggestion. This is outside the scope of this PR but I've created issue #123 to track it: https://github.com/owner/repo/issues/123
 
 ## Notes
 
