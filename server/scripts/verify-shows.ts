@@ -23,32 +23,17 @@
  */
 
 import "dotenv/config"
-import { Command, InvalidArgumentError } from "commander"
+import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
+import {
+  PHASE_THRESHOLDS,
+  parsePositiveInt,
+  parsePhase,
+  type ImportPhase,
+} from "../src/lib/import-phases.js"
 
-// Popularity thresholds for phases (same as import-shows.ts)
-export const PHASE_THRESHOLDS = {
-  popular: { min: 50, max: Infinity },
-  standard: { min: 10, max: 50 },
-  obscure: { min: 0, max: 10 },
-} as const
-
-export type ImportPhase = keyof typeof PHASE_THRESHOLDS
-
-export function parsePositiveInt(value: string): number {
-  const parsed = parseInt(value, 10)
-  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
-    throw new InvalidArgumentError("Must be a positive integer")
-  }
-  return parsed
-}
-
-export function parsePhase(value: string): ImportPhase {
-  if (!["popular", "standard", "obscure"].includes(value)) {
-    throw new InvalidArgumentError("Phase must be: popular, standard, or obscure")
-  }
-  return value as ImportPhase
-}
+// Re-export for backwards compatibility with tests
+export { PHASE_THRESHOLDS, parsePositiveInt, parsePhase, type ImportPhase }
 
 interface VerifyOptions {
   checkCounts: boolean
@@ -293,7 +278,7 @@ export async function findMissingMortality(
 // ============================================================================
 
 /**
- * Fix cast_count values for specific shows
+ * Fix cast_count values for specific shows (batch update)
  */
 export async function fixCastCounts(
   mismatches: CastCountMismatch[],
@@ -302,23 +287,24 @@ export async function fixCastCounts(
   if (dryRun || mismatches.length === 0) return 0
 
   const db = getPool()
-  let fixed = 0
 
-  for (const mismatch of mismatches) {
-    await db.query(
-      `
-      UPDATE shows
-      SET cast_count = $1,
-          living_count = $1 - COALESCE(deceased_count, 0),
-          updated_at = NOW()
-      WHERE tmdb_id = $2
-    `,
-      [mismatch.actual_count, mismatch.tmdb_id]
-    )
-    fixed++
-  }
+  // Batch update using unnest arrays
+  const tmdbIds = mismatches.map((m) => m.tmdb_id)
+  const actualCounts = mismatches.map((m) => m.actual_count)
 
-  return fixed
+  await db.query(
+    `
+    UPDATE shows s
+    SET cast_count = u.actual_count,
+        living_count = u.actual_count - COALESCE(s.deceased_count, 0),
+        updated_at = NOW()
+    FROM unnest($1::int[], $2::int[]) AS u(tmdb_id, actual_count)
+    WHERE s.tmdb_id = u.tmdb_id
+  `,
+    [tmdbIds, actualCounts]
+  )
+
+  return mismatches.length
 }
 
 /**
@@ -358,7 +344,7 @@ export async function fixDeceasedFlags(
 }
 
 /**
- * Fix deceased_count values for specific shows
+ * Fix deceased_count values for specific shows (batch update)
  */
 export async function fixDeceasedCounts(
   mismatches: DeceasedCountMismatch[],
@@ -367,23 +353,24 @@ export async function fixDeceasedCounts(
   if (dryRun || mismatches.length === 0) return 0
 
   const db = getPool()
-  let fixed = 0
 
-  for (const mismatch of mismatches) {
-    await db.query(
-      `
-      UPDATE shows
-      SET deceased_count = $1,
-          living_count = COALESCE(cast_count, 0) - $1,
-          updated_at = NOW()
-      WHERE tmdb_id = $2
-    `,
-      [mismatch.actual_count, mismatch.tmdb_id]
-    )
-    fixed++
-  }
+  // Batch update using unnest arrays
+  const tmdbIds = mismatches.map((m) => m.tmdb_id)
+  const actualCounts = mismatches.map((m) => m.actual_count)
 
-  return fixed
+  await db.query(
+    `
+    UPDATE shows s
+    SET deceased_count = u.actual_count,
+        living_count = COALESCE(s.cast_count, 0) - u.actual_count,
+        updated_at = NOW()
+    FROM unnest($1::int[], $2::int[]) AS u(tmdb_id, actual_count)
+    WHERE s.tmdb_id = u.tmdb_id
+  `,
+    [tmdbIds, actualCounts]
+  )
+
+  return mismatches.length
 }
 
 // ============================================================================

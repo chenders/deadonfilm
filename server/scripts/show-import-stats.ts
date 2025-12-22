@@ -20,13 +20,10 @@
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, getSyncState, type SyncStateRecord } from "../src/lib/db.js"
+import { PHASE_THRESHOLDS } from "../src/lib/import-phases.js"
 
-// Popularity thresholds for phases (same as import-shows.ts)
-export const PHASE_THRESHOLDS = {
-  popular: { min: 50, max: Infinity },
-  standard: { min: 10, max: 50 },
-  obscure: { min: 0, max: 10 },
-} as const
+// Re-export for backwards compatibility with tests
+export { PHASE_THRESHOLDS }
 
 export type OutputFormat = "table" | "json"
 
