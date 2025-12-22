@@ -59,10 +59,12 @@ describe("getCursedMovies", () => {
 
     mockReq = {
       query: {},
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -342,10 +344,12 @@ describe("getDiscoverMovie", () => {
 
     mockReq = {
       params: { type: "forever-young" },
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -452,10 +456,12 @@ describe("getForeverYoungMoviesHandler", () => {
 
     mockReq = {
       query: {},
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 

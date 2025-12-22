@@ -27,10 +27,13 @@ describe("getGenreCategoriesHandler", () => {
     jsonSpy = vi.fn()
     statusSpy = vi.fn().mockReturnThis()
 
-    mockReq = {}
+    mockReq = {
+      get: vi.fn().mockReturnValue(undefined),
+    }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -101,10 +104,12 @@ describe("getMoviesByGenreHandler", () => {
     mockReq = {
       params: { genre: "action" },
       query: {},
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 

@@ -37,10 +37,13 @@ describe("getCauseCategoriesHandler", () => {
     jsonSpy = vi.fn()
     statusSpy = vi.fn().mockReturnThis()
 
-    mockReq = {}
+    mockReq = {
+      get: vi.fn().mockReturnValue(undefined),
+    }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -113,10 +116,12 @@ describe("getDeathsByCauseHandler", () => {
     mockReq = {
       params: { cause: "cancer" },
       query: {},
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -264,10 +269,13 @@ describe("getDecadeCategoriesHandler", () => {
     jsonSpy = vi.fn()
     statusSpy = vi.fn().mockReturnThis()
 
-    mockReq = {}
+    mockReq = {
+      get: vi.fn().mockReturnValue(undefined),
+    }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -338,10 +346,12 @@ describe("getDeathsByDecadeHandler", () => {
     mockReq = {
       params: { decade: "2020s" },
       query: {},
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
@@ -535,10 +545,12 @@ describe("getAllDeathsHandler", () => {
 
     mockReq = {
       query: {},
+      get: vi.fn().mockReturnValue(undefined),
     }
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: vi.fn(),
     }
   })
 
