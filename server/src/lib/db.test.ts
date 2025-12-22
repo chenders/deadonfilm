@@ -102,6 +102,10 @@ describe("Sync State Functions", () => {
         5,
         0,
         2,
+        null, // current_phase
+        null, // last_processed_id
+        null, // phase_total
+        null, // phase_completed
       ])
     })
 
@@ -120,6 +124,10 @@ describe("Sync State Functions", () => {
         null,
         null,
         null,
+        null, // current_phase
+        null, // last_processed_id
+        null, // phase_total
+        null, // phase_completed
       ])
     })
 
@@ -141,6 +149,10 @@ describe("Sync State Functions", () => {
         null,
         null,
         null,
+        null, // current_phase
+        null, // last_processed_id
+        null, // phase_total
+        null, // phase_completed
       ])
     })
   })
