@@ -5,6 +5,7 @@ import {
   parsePhase,
   shouldAbortDueToErrors,
   filterShowsByPopularity,
+  processShowsPage,
   PHASE_THRESHOLDS,
   type ImportPhase,
 } from "./import-shows.js"
@@ -216,5 +217,181 @@ describe("filterShowsByPopularity", () => {
     expect(filterShowsByPopularity(boundaryShows, "popular")).toHaveLength(1)
     expect(filterShowsByPopularity(boundaryShows, "standard")).toHaveLength(2)
     expect(filterShowsByPopularity(boundaryShows, "obscure")).toHaveLength(1)
+  })
+})
+
+describe("processShowsPage", () => {
+  // Helper to create test shows
+  const createShows = (ids: number[], popularity: number = 100) =>
+    ids.map((id) => ({ id, popularity }))
+
+  describe("resume logic (afterId handling)", () => {
+    it("skips shows before afterId when not yet found", () => {
+      const shows = createShows([1, 2, 3, 4, 5])
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", 3, false, seenIds, 10, 0)
+
+      // Should skip 1, 2, 3 and include 4, 5
+      expect(result.includedShows.map((s) => s.id)).toEqual([4, 5])
+      expect(result.foundAfterId).toBe(true)
+    })
+
+    it("includes shows after afterId is found", () => {
+      const shows = createShows([1, 2, 3, 4, 5])
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", 2, false, seenIds, 10, 0)
+
+      // Should skip 1, 2 and include 3, 4, 5
+      expect(result.includedShows.map((s) => s.id)).toEqual([3, 4, 5])
+      expect(result.foundAfterId).toBe(true)
+    })
+
+    it("includes all shows when afterId is null (no resume)", () => {
+      const shows = createShows([1, 2, 3])
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", null, true, seenIds, 10, 0)
+
+      expect(result.includedShows.map((s) => s.id)).toEqual([1, 2, 3])
+      expect(result.foundAfterId).toBe(true)
+    })
+
+    it("includes all shows when foundAfterId is already true", () => {
+      const shows = createShows([1, 2, 3])
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", 999, true, seenIds, 10, 0)
+
+      // foundAfterId is true, so ignore afterId
+      expect(result.includedShows.map((s) => s.id)).toEqual([1, 2, 3])
+      expect(result.foundAfterId).toBe(true)
+    })
+
+    it("returns empty array when afterId not found in page", () => {
+      const shows = createShows([1, 2, 3])
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", 999, false, seenIds, 10, 0)
+
+      // afterId 999 not found, so all shows are skipped
+      expect(result.includedShows).toHaveLength(0)
+      expect(result.foundAfterId).toBe(false)
+    })
+
+    it("excludes afterId itself from results", () => {
+      const shows = createShows([1, 2, 3])
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", 2, false, seenIds, 10, 0)
+
+      // Show 2 is the afterId, so it should be skipped
+      expect(result.includedShows.map((s) => s.id)).toEqual([3])
+      expect(result.foundAfterId).toBe(true)
+    })
+  })
+
+  describe("duplicate handling", () => {
+    it("skips shows already in seenIds", () => {
+      const shows = createShows([1, 2, 3, 4, 5])
+      const seenIds = new Set<number>([2, 4])
+
+      const result = processShowsPage(shows, "popular", null, true, seenIds, 10, 0)
+
+      expect(result.includedShows.map((s) => s.id)).toEqual([1, 3, 5])
+    })
+
+    it("adds included shows to seenIds", () => {
+      const shows = createShows([1, 2, 3])
+      const seenIds = new Set<number>()
+
+      processShowsPage(shows, "popular", null, true, seenIds, 10, 0)
+
+      expect(seenIds.has(1)).toBe(true)
+      expect(seenIds.has(2)).toBe(true)
+      expect(seenIds.has(3)).toBe(true)
+    })
+  })
+
+  describe("popularity filtering", () => {
+    it("only includes shows matching phase popularity threshold", () => {
+      const shows = [
+        { id: 1, popularity: 100 }, // popular
+        { id: 2, popularity: 30 }, // standard
+        { id: 3, popularity: 5 }, // obscure
+        { id: 4, popularity: 75 }, // popular
+      ]
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", null, true, seenIds, 10, 0)
+
+      expect(result.includedShows.map((s) => s.id)).toEqual([1, 4])
+    })
+
+    it("filters by standard phase correctly", () => {
+      const shows = [
+        { id: 1, popularity: 100 }, // too popular
+        { id: 2, popularity: 30 }, // standard
+        { id: 3, popularity: 15 }, // standard
+        { id: 4, popularity: 5 }, // too obscure
+      ]
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "standard", null, true, seenIds, 10, 0)
+
+      expect(result.includedShows.map((s) => s.id)).toEqual([2, 3])
+    })
+  })
+
+  describe("limit handling", () => {
+    it("stops when limit is reached", () => {
+      const shows = createShows([1, 2, 3, 4, 5])
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", null, true, seenIds, 3, 0)
+
+      expect(result.includedShows).toHaveLength(3)
+      expect(result.includedShows.map((s) => s.id)).toEqual([1, 2, 3])
+    })
+
+    it("accounts for currentCount when checking limit", () => {
+      const shows = createShows([1, 2, 3, 4, 5])
+      const seenIds = new Set<number>()
+
+      // Already have 2 shows, limit is 4, so only include 2 more
+      const result = processShowsPage(shows, "popular", null, true, seenIds, 4, 2)
+
+      expect(result.includedShows).toHaveLength(2)
+      expect(result.includedShows.map((s) => s.id)).toEqual([1, 2])
+    })
+
+    it("returns empty when already at limit", () => {
+      const shows = createShows([1, 2, 3])
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", null, true, seenIds, 5, 5)
+
+      expect(result.includedShows).toHaveLength(0)
+    })
+  })
+
+  describe("combined scenarios", () => {
+    it("handles resume + popularity filter + limit together", () => {
+      const shows = [
+        { id: 1, popularity: 100 }, // skipped (before afterId)
+        { id: 2, popularity: 100 }, // afterId, skipped
+        { id: 3, popularity: 30 }, // after afterId but wrong popularity
+        { id: 4, popularity: 100 }, // included
+        { id: 5, popularity: 100 }, // included (reaches limit)
+        { id: 6, popularity: 100 }, // would be included but limit reached
+      ]
+      const seenIds = new Set<number>()
+
+      const result = processShowsPage(shows, "popular", 2, false, seenIds, 2, 0)
+
+      expect(result.includedShows.map((s) => s.id)).toEqual([4, 5])
+      expect(result.foundAfterId).toBe(true)
+    })
   })
 })
