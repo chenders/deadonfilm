@@ -69,6 +69,19 @@ describe("QuickActions", () => {
     expect(screen.getByText("🦠")).toBeInTheDocument()
   })
 
+  it("Unnatural Deaths button links to /unnatural-deaths", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("unnatural-deaths-btn")
+    expect(link).toHaveAttribute("href", "/unnatural-deaths")
+  })
+
+  it("Unnatural Deaths button has warning emoji", () => {
+    renderWithRouter(<QuickActions />)
+
+    expect(screen.getByText("⚠️")).toBeInTheDocument()
+  })
+
   it("Death Watch button links to /death-watch", () => {
     renderWithRouter(<QuickActions />)
 
