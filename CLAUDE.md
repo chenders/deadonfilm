@@ -560,10 +560,17 @@ The sitemap is located at `server/src/routes/sitemap.ts` and generates `/sitemap
 
 ### Testing
 
-- Write unit tests for new functionality
+**CRITICAL: A PR is NOT ready for review until it includes tests for all new/changed code.**
+
+- Write unit tests for new functionality - this is a hard requirement, not optional
 - Test files go alongside code: `*.test.ts` or `*.test.tsx`
 - Tests MUST import and test actual production code, not reimplementations
 - **Test coverage is NEVER out of scope** - Tests for new code MUST be included in the same PR that introduces the code. Do not defer test coverage to a follow-up issue or future PR. If you're adding a new component, page, hook, API route, or utility function, include tests for it in the same PR.
+- **Before creating a PR**, verify you have written tests that cover:
+  - Happy path (normal operation)
+  - Error handling (database errors, API failures, invalid input)
+  - Edge cases (empty results, pagination boundaries, null values)
+  - All branching logic in the new code
 - **data-testid attributes should be added** to all interactive and testable UI elements:
   - Add `data-testid` to components, containers, buttons, inputs, tooltips, modals, and other elements that tests may need to interact with
   - Use descriptive kebab-case names: `data-testid="death-details-trigger"`, `data-testid="search-results-list"`
