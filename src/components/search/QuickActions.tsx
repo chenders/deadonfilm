@@ -31,11 +31,11 @@ export default function QuickActions() {
       </div>
 
       <div className="group relative">
-        <Link data-testid="violent-deaths-btn" to="/violent-deaths" className={linkClass}>
-          <span className={emojiClass}>🔪</span>
-          Violent Deaths
+        <Link data-testid="unnatural-deaths-btn" to="/unnatural-deaths" className={linkClass}>
+          <span className={emojiClass}>⚠️</span>
+          Unnatural Deaths
         </Link>
-        <span className={tooltipClass}>Actors who died from violent causes</span>
+        <span className={tooltipClass}>Actors who died from unnatural causes</span>
       </div>
 
       <div className="group relative">
