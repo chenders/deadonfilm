@@ -10,7 +10,7 @@
  *   --check-deceased    Verify is_deceased flags match deceased_persons table
  *   --check-mortality   Verify mortality stats are calculated
  *   --check-all         Run all checks (default if no specific check specified)
- *   --sample <n>        Check random sample of N shows (default: all)
+ *   --sample <n>        Limit results to top N shows by popularity (default: all)
  *   --phase <phase>     Only check shows from specific phase (popular/standard/obscure)
  *   --fix               Auto-fix issues found
  *   --dry-run           Preview fixes without writing
