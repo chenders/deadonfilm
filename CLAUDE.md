@@ -728,6 +728,7 @@ After creating the PR, verify on GitHub that:
    git checkout -b feat/feature-name   # New features
    git checkout -b fix/bug-name        # Bug fixes
    git checkout -b chore/task-name     # Maintenance tasks
+   git checkout -b docs/docs-change    # Documentation updates
    ```
 
 2. **Push the branch and create a PR**:
