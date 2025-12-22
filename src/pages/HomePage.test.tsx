@@ -117,13 +117,6 @@ describe("HomePage", () => {
     expect(screen.getByRole("button", { name: /about this site/i })).toBeInTheDocument()
   })
 
-  it("renders link to cursed movies page in quick actions", async () => {
-    renderWithProviders(<HomePage />)
-
-    const link = screen.getByTestId("cursed-movies-btn")
-    expect(link).toHaveAttribute("href", "/cursed-movies")
-  })
-
   it("renders SiteStats when data loads", async () => {
     renderWithProviders(<HomePage />)
 
@@ -149,7 +142,7 @@ describe("HomePage", () => {
     renderWithProviders(<HomePage />)
 
     expect(screen.getByTestId("forever-young-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("cursed-movies-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("cursed-actors-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
   })
 })

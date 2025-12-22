@@ -12,14 +12,13 @@ function renderWithRouter(ui: React.ReactElement) {
 }
 
 describe("QuickActions", () => {
-  it("renders all five action buttons", () => {
+  it("renders all action buttons", () => {
     renderWithRouter(<QuickActions />)
 
     expect(screen.getByTestId("quick-actions")).toBeInTheDocument()
     expect(screen.getByTestId("forever-young-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("cursed-movies-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("cursed-actors-btn")).toBeInTheDocument()
     expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("violent-deaths-btn")).toBeInTheDocument()
     expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
   })
 
@@ -27,9 +26,8 @@ describe("QuickActions", () => {
     renderWithRouter(<QuickActions />)
 
     expect(screen.getByText("Forever Young")).toBeInTheDocument()
-    expect(screen.getByText("Cursed Movies")).toBeInTheDocument()
-    expect(screen.getByText("Cursed Actors")).toBeInTheDocument()
     expect(screen.getByText("COVID-19")).toBeInTheDocument()
+    expect(screen.getByText("Violent Deaths")).toBeInTheDocument()
     expect(screen.getByText("Death Watch")).toBeInTheDocument()
   })
 
@@ -53,38 +51,9 @@ describe("QuickActions", () => {
     expect(
       screen.getByText("Movies featuring actors who died tragically young")
     ).toBeInTheDocument()
-    expect(screen.getByText("Movies with statistically abnormal mortality")).toBeInTheDocument()
-    expect(screen.getByText("Actors with unusually high co-star mortality")).toBeInTheDocument()
     expect(screen.getByText("Actors who died from COVID-19")).toBeInTheDocument()
+    expect(screen.getByText("Actors who died from violent causes")).toBeInTheDocument()
     expect(screen.getByText("Living actors most likely to die soon")).toBeInTheDocument()
-  })
-
-  it("Cursed Movies button links to /cursed-movies", () => {
-    renderWithRouter(<QuickActions />)
-
-    const link = screen.getByTestId("cursed-movies-btn")
-    expect(link).toHaveAttribute("href", "/cursed-movies")
-  })
-
-  it("Cursed Movies button has film icon", () => {
-    renderWithRouter(<QuickActions />)
-
-    const link = screen.getByTestId("cursed-movies-btn")
-    expect(link.querySelector("svg")).toBeInTheDocument()
-  })
-
-  it("Cursed Actors button links to /cursed-actors", () => {
-    renderWithRouter(<QuickActions />)
-
-    const link = screen.getByTestId("cursed-actors-btn")
-    expect(link).toHaveAttribute("href", "/cursed-actors")
-  })
-
-  it("Cursed Actors button has person icon", () => {
-    renderWithRouter(<QuickActions />)
-
-    const link = screen.getByTestId("cursed-actors-btn")
-    expect(link.querySelector("svg")).toBeInTheDocument()
   })
 
   it("COVID-19 button links to /covid-deaths", () => {
@@ -131,22 +100,15 @@ describe("QuickActions", () => {
     renderWithRouter(<QuickActions />)
 
     const foreverYoungBtn = screen.getByTestId("forever-young-btn")
-    const cursedMoviesBtn = screen.getByTestId("cursed-movies-btn")
-    const cursedActorsBtn = screen.getByTestId("cursed-actors-btn")
     const covidDeathsBtn = screen.getByTestId("covid-deaths-btn")
+    const violentDeathsBtn = screen.getByTestId("violent-deaths-btn")
     const deathWatchBtn = screen.getByTestId("death-watch-btn")
 
     // Verify all buttons have the same height-affecting CSS classes
     // Note: getBoundingClientRect() returns 0 in jsdom, so we test classes instead
     const heightClasses = ["py-1.5", "text-xs", "items-center"]
 
-    const buttons = [
-      foreverYoungBtn,
-      cursedMoviesBtn,
-      cursedActorsBtn,
-      covidDeathsBtn,
-      deathWatchBtn,
-    ]
+    const buttons = [foreverYoungBtn, covidDeathsBtn, violentDeathsBtn, deathWatchBtn]
     buttons.forEach((btn) => {
       heightClasses.forEach((cls) => {
         expect(btn.className).toContain(cls)
