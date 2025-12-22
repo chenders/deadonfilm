@@ -7,6 +7,7 @@ import express from "express"
 import cors from "cors"
 import compression from "compression"
 import rateLimit from "express-rate-limit"
+import { logger } from "./lib/logger.js"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
 import { getOnThisDay } from "./routes/on-this-day.js"
@@ -80,6 +81,28 @@ app.use((req, res, next) => {
   next()
 })
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now()
+  res.on("finish", () => {
+    const duration = Date.now() - start
+    // Skip health checks to reduce log noise
+    if (req.path !== "/health") {
+      logger.info(
+        {
+          method: req.method,
+          path: req.path,
+          statusCode: res.statusCode,
+          duration,
+          userAgent: req.get("user-agent"),
+        },
+        `${req.method} ${req.path} ${res.statusCode} ${duration}ms`
+      )
+    }
+  })
+  next()
+})
+
 // Health check endpoint for GKE
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" })
@@ -131,16 +154,17 @@ async function startServer() {
 
     // Start accepting requests
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`)
-      console.log(
-        `TMDB token configured: ${process.env.TMDB_API_TOKEN ? "yes" : "NO - check .env file!"}`
-      )
-      console.log(
-        `New Relic APM configured: ${process.env.NEW_RELIC_LICENSE_KEY ? "yes" : "no (optional)"}`
+      logger.info(
+        {
+          port: PORT,
+          tmdbConfigured: !!process.env.TMDB_API_TOKEN,
+          newRelicConfigured: !!process.env.NEW_RELIC_LICENSE_KEY,
+        },
+        `Server running on port ${PORT}`
       )
     })
   } catch (error) {
-    console.error("Failed to start server:", error)
+    logger.fatal({ error }, "Failed to start server")
     process.exit(1)
   }
 }
