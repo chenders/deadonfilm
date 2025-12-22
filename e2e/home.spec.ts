@@ -21,11 +21,10 @@ test.describe("Home Page", () => {
     const quickActions = page.getByTestId("quick-actions")
     await expect(quickActions).toBeVisible()
 
-    // Verify all 5 buttons are present
+    // Verify quick action buttons are present
     await expect(page.getByTestId("forever-young-btn")).toBeVisible()
-    await expect(page.getByTestId("cursed-movies-btn")).toBeVisible()
-    await expect(page.getByTestId("cursed-actors-btn")).toBeVisible()
     await expect(page.getByTestId("covid-deaths-btn")).toBeVisible()
+    await expect(page.getByTestId("violent-deaths-btn")).toBeVisible()
     await expect(page.getByTestId("death-watch-btn")).toBeVisible()
 
     // Take screenshot of quick actions for visual regression testing
