@@ -5,6 +5,7 @@ import {
   getForeverYoungMovies,
   getForeverYoungMoviesPaginated,
 } from "../lib/db.js"
+import { sendWithETag } from "../lib/etag.js"
 
 interface DiscoverMovieResponse {
   id: number
@@ -95,7 +96,7 @@ export async function getCursedMovies(req: Request, res: Response) {
     // Enforce max 20 pages
     const totalPages = Math.min(Math.ceil(totalCount / pageSize), 20)
 
-    res.json({
+    const response = {
       movies: result,
       pagination: {
         page,
@@ -103,7 +104,8 @@ export async function getCursedMovies(req: Request, res: Response) {
         totalCount,
         totalPages,
       },
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Cursed movies error:", error)
     res.status(500).json({ error: { message: "Failed to fetch cursed movies" } })
@@ -111,7 +113,7 @@ export async function getCursedMovies(req: Request, res: Response) {
 }
 
 // Get filter options for cursed movies page
-export async function getCursedMoviesFilters(_req: Request, res: Response) {
+export async function getCursedMoviesFilters(req: Request, res: Response) {
   try {
     // Check if database is available
     if (!process.env.DATABASE_URL) {
@@ -119,7 +121,7 @@ export async function getCursedMoviesFilters(_req: Request, res: Response) {
     }
 
     const maxMinDeaths = await getMaxValidMinDeaths()
-    res.json({ maxMinDeaths })
+    sendWithETag(req, res, { maxMinDeaths }, 3600) // 1 hour cache
   } catch (error) {
     console.error("Cursed movies filters error:", error)
     // Return default on error
@@ -167,7 +169,7 @@ export async function getForeverYoungMoviesHandler(req: Request, res: Response) 
     // Enforce max 20 pages
     const totalPages = Math.min(Math.ceil(totalCount / pageSize), 20)
 
-    res.json({
+    const response = {
       movies: result,
       pagination: {
         page,
@@ -175,7 +177,8 @@ export async function getForeverYoungMoviesHandler(req: Request, res: Response) 
         totalCount,
         totalPages,
       },
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Forever young movies error:", error)
     res.status(500).json({ error: { message: "Failed to fetch forever young movies" } })

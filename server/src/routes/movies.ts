@@ -1,11 +1,12 @@
 import { Request, Response } from "express"
 import { getGenreCategories, getMoviesByGenre, getGenreFromSlug } from "../lib/db.js"
+import { sendWithETag } from "../lib/etag.js"
 
-export async function getGenreCategoriesHandler(_req: Request, res: Response) {
+export async function getGenreCategoriesHandler(req: Request, res: Response) {
   try {
     const genres = await getGenreCategories()
 
-    res.json({ genres })
+    sendWithETag(req, res, { genres }, 3600) // 1 hour cache
   } catch (error) {
     console.error("Error getting genre categories:", error)
     res.status(500).json({ error: { message: "Failed to load genre categories" } })
@@ -33,7 +34,7 @@ export async function getMoviesByGenreHandler(req: Request, res: Response) {
 
     const { movies, totalCount } = await getMoviesByGenre(genre, { limit, offset })
 
-    res.json({
+    const response = {
       genre,
       slug: genreSlug,
       movies: movies.map((movie) => ({
@@ -52,7 +53,8 @@ export async function getMoviesByGenreHandler(req: Request, res: Response) {
         totalCount,
         totalPages: Math.ceil(totalCount / limit),
       },
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Error getting movies by genre:", error)
     res.status(500).json({ error: { message: "Failed to load movies for this genre" } })
