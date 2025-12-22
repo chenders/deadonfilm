@@ -173,6 +173,7 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
         deathday: p.deathday,
         profilePath: p.profile_path,
         causeOfDeath: p.cause_of_death,
+        causeOfDeathDetails: p.cause_of_death_details,
         ageAtDeath: p.age_at_death,
       })),
       pagination: {
