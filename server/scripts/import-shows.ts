@@ -45,6 +45,10 @@ const SYNC_TYPE = "show_import"
 // Cast limit per show
 const CAST_LIMIT = 50
 
+// Rate limiting delays (in milliseconds)
+const API_CALL_DELAY_MS = 50
+const SHOW_PROCESSING_DELAY_MS = 100
+
 // Popularity thresholds for phases
 const PHASE_THRESHOLDS = {
   popular: { min: 50, max: Infinity },
@@ -134,6 +138,20 @@ async function runImport(options: ImportOptions) {
     console.log(`Already completed: ${phaseCompleted} shows`)
   } else {
     currentPhase = phase!
+
+    // Check if a checkpoint exists for a different phase
+    if (!dryRun) {
+      const existingState = await getSyncState(SYNC_TYPE)
+      if (existingState?.current_phase && existingState.current_phase !== currentPhase) {
+        console.error(
+          `\nWarning: Existing checkpoint found for '${existingState.current_phase}' phase.`
+        )
+        console.error(`Starting '${currentPhase}' phase will overwrite the previous checkpoint.`)
+        console.error("Use --resume to continue the previous phase, or proceed to start fresh.\n")
+        // Continue anyway - the user explicitly specified a new phase
+      }
+    }
+
     console.log(`\nStarting ${currentPhase} phase import`)
   }
 
@@ -183,12 +201,12 @@ async function runImport(options: ImportOptions) {
       try {
         // Get full show details
         const details = await getTVShowDetails(show.id)
-        await delay(50)
+        await delay(API_CALL_DELAY_MS)
 
         // Get aggregate credits
         const credits = await getTVShowAggregateCredits(show.id)
         const topCast = credits.cast.slice(0, CAST_LIMIT)
-        await delay(50)
+        await delay(API_CALL_DELAY_MS)
 
         // Get person details for cast
         const personIds = topCast.map((c) => c.id)
@@ -262,6 +280,8 @@ async function runImport(options: ImportOptions) {
           return {
             actor_tmdb_id: castMember.id,
             show_tmdb_id: show.id,
+            // Placeholder values - aggregate credits don't track per-episode appearances.
+            // These represent "appeared in the show" rather than a specific episode.
             season_number: 1,
             episode_number: 1,
             actor_name: castMember.name,
@@ -290,14 +310,20 @@ async function runImport(options: ImportOptions) {
           console.log(`\n💾 Checkpoint saved at show ${i + 1 + phaseCompleted}\n`)
         }
 
-        // Rate limiting
-        await delay(100)
+        // Rate limiting between shows
+        await delay(SHOW_PROCESSING_DELAY_MS)
       } catch (error) {
         errorCount++
         console.error(`  ❌ Error: ${error instanceof Error ? error.message : String(error)}`)
 
         // Continue to next show on non-fatal errors
-        if (errorCount > 10 && errorCount > totalShowsSaved * 0.1) {
+        // Abort if >10 errors AND >10% failure rate (with minimum of 10 shows processed)
+        const minShowsForRateCheck = 10
+        if (
+          errorCount > 10 &&
+          totalShowsSaved >= minShowsForRateCheck &&
+          errorCount > totalShowsSaved * 0.1
+        ) {
           console.error("\nToo many errors (>10% failure rate). Aborting.")
           await saveCheckpoint({
             phase: currentPhase,
@@ -378,7 +404,7 @@ async function fetchShowsForPhase(
       // Stop if no more results
       if (response.results.length === 0) break
 
-      await delay(50)
+      await delay(API_CALL_DELAY_MS)
     } catch (error) {
       console.error(`Error fetching page ${page}:`, error)
       break
