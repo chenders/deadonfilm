@@ -49,6 +49,9 @@ const CAST_LIMIT = 50
 const API_CALL_DELAY_MS = 50
 const SHOW_PROCESSING_DELAY_MS = 100
 
+// Number of pages to search before warning about missing resume ID
+const RESUME_ID_SEARCH_LIMIT = 20
+
 // Popularity thresholds for phases
 const PHASE_THRESHOLDS = {
   popular: { min: 50, max: Infinity },
@@ -401,6 +404,14 @@ async function fetchShowsForPhase(
         }
       }
 
+      // Warn if we've searched many pages without finding the resume ID
+      if (!foundAfterId && page === RESUME_ID_SEARCH_LIMIT) {
+        console.error(`\n⚠️  Warning: Resume show ID ${afterId} not found after ${page} pages.`)
+        console.error("The show may have been removed from TMDB or its popularity changed.")
+        console.error("Skipping resume point and continuing from current results.\n")
+        foundAfterId = true // Continue without the resume point
+      }
+
       // Stop if no more results
       if (response.results.length === 0) break
 
@@ -409,6 +420,12 @@ async function fetchShowsForPhase(
       console.error(`Error fetching page ${page}:`, error)
       break
     }
+  }
+
+  // Final warning if we never found the ID (happens if maxPages < RESUME_ID_SEARCH_LIMIT)
+  if (!foundAfterId && afterId !== null) {
+    console.error(`\n⚠️  Warning: Resume show ID ${afterId} not found in ${phase} phase results.`)
+    console.error("The show may have been removed from TMDB or its popularity changed.\n")
   }
 
   return shows
