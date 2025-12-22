@@ -41,6 +41,26 @@ function setSitemapHeaders(res: Response): void {
 }
 
 /**
+ * Generates sitemap index entries for a content type with pagination support
+ */
+function generateSitemapIndexEntries(pageCount: number, pathPrefix: string): string {
+  if (pageCount <= 1) {
+    return `  <sitemap>
+    <loc>${BASE_URL}/${pathPrefix}.xml</loc>
+  </sitemap>
+`
+  }
+  let entries = ""
+  for (let i = 1; i <= pageCount; i++) {
+    entries += `  <sitemap>
+    <loc>${BASE_URL}/${pathPrefix}-${i}.xml</loc>
+  </sitemap>
+`
+  }
+  return entries
+}
+
+/**
  * GET /sitemap.xml
  * Returns a sitemap index pointing to individual sitemaps for each content type
  */
@@ -70,50 +90,9 @@ export async function getSitemapIndex(_req: Request, res: Response) {
   </sitemap>
 `
 
-    // Add movie sitemaps (use numbered suffix if multiple pages, otherwise no suffix)
-    if (moviePages <= 1) {
-      xml += `  <sitemap>
-    <loc>${BASE_URL}/sitemap-movies.xml</loc>
-  </sitemap>
-`
-    } else {
-      for (let i = 1; i <= moviePages; i++) {
-        xml += `  <sitemap>
-    <loc>${BASE_URL}/sitemap-movies-${i}.xml</loc>
-  </sitemap>
-`
-      }
-    }
-
-    // Add actor sitemaps
-    if (actorPages <= 1) {
-      xml += `  <sitemap>
-    <loc>${BASE_URL}/sitemap-actors.xml</loc>
-  </sitemap>
-`
-    } else {
-      for (let i = 1; i <= actorPages; i++) {
-        xml += `  <sitemap>
-    <loc>${BASE_URL}/sitemap-actors-${i}.xml</loc>
-  </sitemap>
-`
-      }
-    }
-
-    // Add show sitemaps
-    if (showPages <= 1) {
-      xml += `  <sitemap>
-    <loc>${BASE_URL}/sitemap-shows.xml</loc>
-  </sitemap>
-`
-    } else {
-      for (let i = 1; i <= showPages; i++) {
-        xml += `  <sitemap>
-    <loc>${BASE_URL}/sitemap-shows-${i}.xml</loc>
-  </sitemap>
-`
-      }
-    }
+    xml += generateSitemapIndexEntries(moviePages, "sitemap-movies")
+    xml += generateSitemapIndexEntries(actorPages, "sitemap-actors")
+    xml += generateSitemapIndexEntries(showPages, "sitemap-shows")
 
     xml += `</sitemapindex>`
 
