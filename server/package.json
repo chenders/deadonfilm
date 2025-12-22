@@ -43,7 +43,7 @@
     "express": "^4.21.2",
     "express-rate-limit": "^8.2.1",
     "newrelic": "^13.6.6",
-    "node-pg-migrate": "^8.0.3",
+    "node-pg-migrate": "^8.0.4",
     "pg": "^8.16.3"
   },
   "devDependencies": {
