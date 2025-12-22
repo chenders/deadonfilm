@@ -26,7 +26,7 @@ export async function getStats(req: Request, res: Response) {
     }
 
     const stats = await getSiteStats()
-    sendWithETag(req, res, stats, 300) // 5 min cache
+    sendWithETag(req, res, stats, 3600) // 1 hour cache
   } catch (error) {
     console.error("Stats error:", error)
     res.status(500).json({ error: { message: "Failed to fetch site statistics" } })
@@ -129,7 +129,7 @@ export async function getTriviaHandler(req: Request, res: Response) {
     }
 
     const facts = await getTrivia()
-    sendWithETag(req, res, { facts }, 300) // 5 min cache
+    sendWithETag(req, res, { facts }, 3600) // 1 hour cache
   } catch (error) {
     console.error("Trivia error:", error)
     res.status(500).json({ error: { message: "Failed to fetch trivia" } })
