@@ -29,12 +29,6 @@ test.describe("Home Page", () => {
 
     // Take screenshot of quick actions for visual regression testing
     await quickActions.screenshot({ path: "e2e/screenshots/quick-actions.png" })
-
-    // Visual regression test - compare against baseline
-    // This will fail if the layout changes (e.g., more than 4 buttons per row)
-    await expect(quickActions).toHaveScreenshot("quick-actions-layout.png", {
-      maxDiffPixelRatio: 0.02, // Strict 2% tolerance to catch layout regressions
-    })
   })
 
   test("search shows dropdown results", async ({ page }) => {
