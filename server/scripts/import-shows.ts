@@ -21,7 +21,7 @@
  */
 
 import "dotenv/config"
-import { Command, InvalidArgumentError } from "commander"
+import { Command } from "commander"
 import {
   discoverTVShows,
   getTVShowDetails,
@@ -38,6 +38,15 @@ import {
   type ShowRecord,
   type ShowActorAppearanceRecord,
 } from "../src/lib/db.js"
+import {
+  PHASE_THRESHOLDS,
+  parsePositiveInt,
+  parsePhase,
+  type ImportPhase,
+} from "../src/lib/import-phases.js"
+
+// Re-export for backwards compatibility with tests
+export { PHASE_THRESHOLDS, parsePositiveInt, parsePhase, type ImportPhase }
 
 // Sync state key for import tracking
 const SYNC_TYPE = "show_import"
@@ -51,30 +60,6 @@ const SHOW_PROCESSING_DELAY_MS = 100
 
 // Number of pages to search before warning about missing resume ID
 const RESUME_ID_SEARCH_LIMIT = 20
-
-// Popularity thresholds for phases
-export const PHASE_THRESHOLDS = {
-  popular: { min: 50, max: Infinity },
-  standard: { min: 10, max: 50 },
-  obscure: { min: 0, max: 10 },
-} as const
-
-export type ImportPhase = keyof typeof PHASE_THRESHOLDS
-
-export function parsePositiveInt(value: string): number {
-  const parsed = parseInt(value, 10)
-  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
-    throw new InvalidArgumentError("Must be a positive integer")
-  }
-  return parsed
-}
-
-export function parsePhase(value: string): ImportPhase {
-  if (!["popular", "standard", "obscure"].includes(value)) {
-    throw new InvalidArgumentError("Phase must be: popular, standard, or obscure")
-  }
-  return value as ImportPhase
-}
 
 /**
  * Checks if error threshold has been exceeded.
