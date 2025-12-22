@@ -1,5 +1,6 @@
 import type { Request, Response } from "express"
 import { getCursedActors } from "../lib/db.js"
+import { sendWithETag } from "../lib/etag.js"
 
 // Get list of cursed actors (actors whose co-stars have died at unusually high rates)
 // Supports pagination and filtering by actor status, decade range, and minimum movies
@@ -46,7 +47,7 @@ export async function getCursedActorsRoute(req: Request, res: Response) {
     // Enforce max 20 pages
     const totalPages = Math.min(Math.ceil(totalCount / pageSize), 20)
 
-    res.json({
+    const response = {
       actors: result,
       pagination: {
         page,
@@ -54,7 +55,8 @@ export async function getCursedActorsRoute(req: Request, res: Response) {
         totalCount,
         totalPages,
       },
-    })
+    }
+    sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Cursed actors error:", error)
     res.status(500).json({ error: { message: "Failed to fetch cursed actors" } })
