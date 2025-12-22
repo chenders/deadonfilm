@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest"
+import { InvalidArgumentError } from "commander"
 import {
   parseFormat,
   formatTableOutput,
@@ -12,11 +13,12 @@ describe("parseFormat", () => {
     expect(parseFormat("json")).toBe("json")
   })
 
-  it("throws for invalid format values", () => {
+  it("throws InvalidArgumentError for invalid format values", () => {
+    expect(() => parseFormat("invalid")).toThrow(InvalidArgumentError)
     expect(() => parseFormat("invalid")).toThrow("Format must be: table or json")
-    expect(() => parseFormat("")).toThrow("Format must be: table or json")
-    expect(() => parseFormat("TABLE")).toThrow("Format must be: table or json")
-    expect(() => parseFormat("JSON")).toThrow("Format must be: table or json")
+    expect(() => parseFormat("")).toThrow(InvalidArgumentError)
+    expect(() => parseFormat("TABLE")).toThrow(InvalidArgumentError)
+    expect(() => parseFormat("JSON")).toThrow(InvalidArgumentError)
   })
 })
 
