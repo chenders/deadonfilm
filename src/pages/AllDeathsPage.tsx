@@ -86,14 +86,6 @@ function ActorRow({ person }: { person: AllDeath }) {
           {person.causeOfDeath && (
             <p className="mt-1 text-xs text-brown-dark">{person.causeOfDeath}</p>
           )}
-          {person.causeOfDeathDetails && (
-            <p
-              className="mt-0.5 truncate text-xs text-text-muted"
-              title={person.causeOfDeathDetails}
-            >
-              {person.causeOfDeathDetails}
-            </p>
-          )}
         </div>
       </div>
     </Link>
