@@ -12,7 +12,8 @@ import type {
   CursedActorsResponse,
   ActorProfileResponse,
   CovidDeathsResponse,
-  ViolentDeathsResponse,
+  UnnaturalDeathsResponse,
+  UnnaturalDeathCategory,
   DeathWatchResponse,
   FeaturedMovieResponse,
   TriviaResponse,
@@ -181,21 +182,25 @@ export async function getCovidDeaths(page: number = 1): Promise<CovidDeathsRespo
   return fetchJson(`/covid-deaths?page=${page}`)
 }
 
-export interface ViolentDeathsOptions {
+export interface UnnaturalDeathsParams {
   page?: number
-  includeSelfInflicted?: boolean
+  category?: UnnaturalDeathCategory | "all"
+  hideSuicides?: boolean
 }
 
-export async function getViolentDeaths(
-  options: ViolentDeathsOptions = {}
-): Promise<ViolentDeathsResponse> {
-  const { page = 1, includeSelfInflicted } = options
-  const params = new URLSearchParams()
-
-  params.set("page", String(page))
-  if (includeSelfInflicted) params.set("includeSelfInflicted", "true")
-
-  return fetchJson(`/violent-deaths?${params.toString()}`)
+export async function getUnnaturalDeaths(
+  params: UnnaturalDeathsParams = {}
+): Promise<UnnaturalDeathsResponse> {
+  const { page = 1, category = "all", hideSuicides = false } = params
+  const searchParams = new URLSearchParams()
+  searchParams.set("page", String(page))
+  if (category !== "all") {
+    searchParams.set("category", category)
+  }
+  if (hideSuicides) {
+    searchParams.set("hideSuicides", "true")
+  }
+  return fetchJson(`/unnatural-deaths?${searchParams.toString()}`)
 }
 
 export interface DeathWatchOptions {

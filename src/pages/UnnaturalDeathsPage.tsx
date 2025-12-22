@@ -1,22 +1,22 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
-import { useViolentDeaths } from "@/hooks/useViolentDeaths"
+import { useUnnaturalDeaths } from "@/hooks/useUnnaturalDeaths"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
 import { formatDate } from "@/utils/formatDate"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import { PersonIcon } from "@/components/icons"
-import type { ViolentDeath } from "@/types"
+import type { UnnaturalDeath, UnnaturalDeathCategory } from "@/types"
 
-function ActorRow({ person }: { person: ViolentDeath }) {
+function ActorRow({ person }: { person: UnnaturalDeath }) {
   const slug = createActorSlug(person.name, person.id)
   const profileUrl = getProfileUrl(person.profilePath, "w185")
 
   return (
     <Link
       to={`/actor/${slug}`}
-      data-testid={`violent-death-row-${person.id}`}
+      data-testid={`unnatural-death-row-${person.id}`}
       className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
@@ -91,38 +91,64 @@ function ActorRow({ person }: { person: ViolentDeath }) {
   )
 }
 
-export default function ViolentDeathsPage() {
+const CATEGORY_LABELS: Record<UnnaturalDeathCategory | "all", string> = {
+  all: "All",
+  suicide: "Suicide",
+  accident: "Accident",
+  overdose: "Overdose",
+  homicide: "Homicide",
+  other: "Other",
+}
+
+export default function UnnaturalDeathsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
-  const includeSelfInflicted = searchParams.get("all") === "true"
+  const category = (searchParams.get("category") || "all") as UnnaturalDeathCategory | "all"
+  const hideSuicides = searchParams.get("hideSuicides") === "true"
 
-  const { data, isLoading, error } = useViolentDeaths({ page, includeSelfInflicted })
+  const { data, isLoading, error } = useUnnaturalDeaths({ page, category, hideSuicides })
 
-  const goToPage = (newPage: number) => {
+  const updateParams = (updates: {
+    page?: number
+    category?: UnnaturalDeathCategory | "all"
+    hideSuicides?: boolean
+  }) => {
     const newParams = new URLSearchParams(searchParams)
-    if (newPage > 1) {
-      newParams.set("page", String(newPage))
-    } else {
+
+    if (updates.page !== undefined) {
+      if (updates.page > 1) {
+        newParams.set("page", String(updates.page))
+      } else {
+        newParams.delete("page")
+      }
+    }
+
+    if (updates.category !== undefined) {
+      if (updates.category !== "all") {
+        newParams.set("category", updates.category)
+      } else {
+        newParams.delete("category")
+      }
+      // Reset page when changing category
       newParams.delete("page")
     }
-    setSearchParams(newParams)
-  }
 
-  const toggleIncludeAll = () => {
-    const newParams = new URLSearchParams(searchParams)
-    if (!includeSelfInflicted) {
-      newParams.set("all", "true")
-    } else {
-      newParams.delete("all")
+    if (updates.hideSuicides !== undefined) {
+      if (updates.hideSuicides) {
+        newParams.set("hideSuicides", "true")
+      } else {
+        newParams.delete("hideSuicides")
+      }
+      // Reset page when changing filter
+      newParams.delete("page")
     }
-    // Reset to page 1 when toggling
-    newParams.delete("page")
+
     setSearchParams(newParams)
   }
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading violent deaths..." />
+    return <LoadingSpinner message="Loading unnatural deaths..." />
   }
 
   if (error) {
@@ -134,52 +160,87 @@ export default function ViolentDeathsPage() {
   return (
     <>
       <Helmet>
-        <title>Violent Deaths | Dead on Film</title>
+        <title>Unnatural Deaths | Dead on Film</title>
         <meta
           name="description"
-          content="Actors who died from violent causes including homicide, suicide, or execution. A somber look at tragic losses in film history."
+          content="Actors who died from unnatural causes including accidents, overdoses, homicides, and suicides."
         />
-        <meta property="og:title" content="Violent Deaths | Dead on Film" />
+        <meta property="og:title" content="Unnatural Deaths | Dead on Film" />
         <meta
           property="og:description"
-          content="Actors who died from violent causes including homicide, suicide, or execution"
+          content="Actors who died from unnatural causes including accidents, overdoses, homicides, and suicides"
         />
         <meta property="og:type" content="website" />
-        {/* Twitter Card */}
         <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content="Violent Deaths | Dead on Film" />
+        <meta name="twitter:title" content="Unnatural Deaths | Dead on Film" />
         <meta
           name="twitter:description"
-          content="Actors who died from violent causes including homicide, suicide, or execution"
+          content="Actors who died from unnatural causes including accidents, overdoses, homicides, and suicides"
         />
-        <link rel="canonical" href="https://deadonfilm.com/violent-deaths" />
+        <link rel="canonical" href="https://deadonfilm.com/unnatural-deaths" />
       </Helmet>
 
-      <div data-testid="violent-deaths-page" className="mx-auto max-w-3xl">
+      <div data-testid="unnatural-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">Violent Deaths</h1>
+          <h1 className="font-display text-3xl text-brown-dark">Unnatural Deaths</h1>
           <p className="mt-2 text-sm text-text-muted">
-            Actors in our database who died from violent causes including homicide
-            {includeSelfInflicted ? ", self-inflicted causes," : ""} or execution. Ordered by death
-            date, most recent first.
+            Actors who died from unnatural causes. Ordered by death date, most recent first.
           </p>
-          <label
-            className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-text-muted"
-            data-testid="include-all-toggle"
-          >
-            <input
-              type="checkbox"
-              checked={includeSelfInflicted}
-              onChange={toggleIncludeAll}
-              className="h-4 w-4 rounded border-brown-medium/30 text-brown-medium focus:ring-brown-medium/50"
-            />
-            <span>Include all causes</span>
-          </label>
         </div>
+
+        {/* Category tabs */}
+        {data?.categories && data.categories.length > 0 && (
+          <div className="mb-4 flex flex-wrap justify-center gap-2">
+            <button
+              onClick={() => updateParams({ category: "all" })}
+              className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                category === "all"
+                  ? "bg-brown-dark text-white"
+                  : "bg-beige text-brown-dark hover:bg-brown-light hover:text-white"
+              }`}
+              data-testid="category-tab-all"
+            >
+              All ({data.categories.reduce((sum, c) => sum + c.count, 0)})
+            </button>
+            {data.categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => updateParams({ category: cat.id })}
+                className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                  category === cat.id
+                    ? "bg-brown-dark text-white"
+                    : "bg-beige text-brown-dark hover:bg-brown-light hover:text-white"
+                }`}
+                data-testid={`category-tab-${cat.id}`}
+              >
+                {cat.label} ({cat.count})
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Hide suicides toggle (only show when viewing all or suicide category) */}
+        {(category === "all" || category === "suicide") && (
+          <div className="mb-4 flex justify-center">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
+              <input
+                type="checkbox"
+                checked={hideSuicides}
+                onChange={(e) => updateParams({ hideSuicides: e.target.checked })}
+                className="h-4 w-4 rounded border-brown-light text-brown-dark focus:ring-brown-medium"
+                data-testid="hide-suicides-checkbox"
+              />
+              Hide suicides
+            </label>
+          </div>
+        )}
 
         {noResults ? (
           <div className="text-center text-text-muted">
-            <p>No violent deaths found in our database.</p>
+            <p>
+              No {category !== "all" ? CATEGORY_LABELS[category].toLowerCase() : "unnatural"} deaths
+              found.
+            </p>
           </div>
         ) : (
           <>
@@ -193,7 +254,7 @@ export default function ViolentDeathsPage() {
             {data.pagination.totalPages > 1 && (
               <div className="mt-6 flex items-center justify-center gap-4">
                 <button
-                  onClick={() => goToPage(page - 1)}
+                  onClick={() => updateParams({ page: page - 1 })}
                   disabled={page <= 1}
                   className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -205,7 +266,7 @@ export default function ViolentDeathsPage() {
                 </span>
 
                 <button
-                  onClick={() => goToPage(page + 1)}
+                  onClick={() => updateParams({ page: page + 1 })}
                   disabled={page >= data.pagination.totalPages}
                   className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
                 >
