@@ -64,7 +64,7 @@ exports.config = {
   // Custom instrumentation for external calls
   // Automatically instrument HTTP calls, database queries, etc.
   instrumentation: {
-    '@node-postgres/pg': { enabled: true }
+    pg: { enabled: true }
   },
 
   // Span events for distributed tracing details
@@ -87,7 +87,7 @@ exports.config = {
 
   // Browser monitoring (injects browser agent script)
   browser_monitoring: {
-    enable: true
+    enabled: true
   },
 
   // Allow all headers except sensitive ones
