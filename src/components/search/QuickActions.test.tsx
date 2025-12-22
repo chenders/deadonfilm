@@ -18,7 +18,7 @@ describe("QuickActions", () => {
     expect(screen.getByTestId("quick-actions")).toBeInTheDocument()
     expect(screen.getByTestId("forever-young-btn")).toBeInTheDocument()
     expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("violent-deaths-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("unnatural-deaths-btn")).toBeInTheDocument()
     expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
   })
 
@@ -27,7 +27,7 @@ describe("QuickActions", () => {
 
     expect(screen.getByText("Forever Young")).toBeInTheDocument()
     expect(screen.getByText("COVID-19")).toBeInTheDocument()
-    expect(screen.getByText("Violent Deaths")).toBeInTheDocument()
+    expect(screen.getByText("Unnatural Deaths")).toBeInTheDocument()
     expect(screen.getByText("Death Watch")).toBeInTheDocument()
   })
 
@@ -52,7 +52,7 @@ describe("QuickActions", () => {
       screen.getByText("Movies featuring actors who died tragically young")
     ).toBeInTheDocument()
     expect(screen.getByText("Actors who died from COVID-19")).toBeInTheDocument()
-    expect(screen.getByText("Actors who died from violent causes")).toBeInTheDocument()
+    expect(screen.getByText("Actors who died from unnatural causes")).toBeInTheDocument()
     expect(screen.getByText("Living actors most likely to die soon")).toBeInTheDocument()
   })
 
@@ -67,6 +67,19 @@ describe("QuickActions", () => {
     renderWithRouter(<QuickActions />)
 
     expect(screen.getByText("🦠")).toBeInTheDocument()
+  })
+
+  it("Unnatural Deaths button links to /unnatural-deaths", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("unnatural-deaths-btn")
+    expect(link).toHaveAttribute("href", "/unnatural-deaths")
+  })
+
+  it("Unnatural Deaths button has warning emoji", () => {
+    renderWithRouter(<QuickActions />)
+
+    expect(screen.getByText("⚠️")).toBeInTheDocument()
   })
 
   it("Death Watch button links to /death-watch", () => {
@@ -101,14 +114,14 @@ describe("QuickActions", () => {
 
     const foreverYoungBtn = screen.getByTestId("forever-young-btn")
     const covidDeathsBtn = screen.getByTestId("covid-deaths-btn")
-    const violentDeathsBtn = screen.getByTestId("violent-deaths-btn")
+    const unnaturalDeathsBtn = screen.getByTestId("unnatural-deaths-btn")
     const deathWatchBtn = screen.getByTestId("death-watch-btn")
 
     // Verify all buttons have the same height-affecting CSS classes
     // Note: getBoundingClientRect() returns 0 in jsdom, so we test classes instead
     const heightClasses = ["py-1.5", "text-xs", "items-center"]
 
-    const buttons = [foreverYoungBtn, covidDeathsBtn, violentDeathsBtn, deathWatchBtn]
+    const buttons = [foreverYoungBtn, covidDeathsBtn, unnaturalDeathsBtn, deathWatchBtn]
     buttons.forEach((btn) => {
       heightClasses.forEach((cls) => {
         expect(btn.className).toContain(cls)

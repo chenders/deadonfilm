@@ -24,7 +24,7 @@ test.describe("Home Page", () => {
     // Verify quick action buttons are present
     await expect(page.getByTestId("forever-young-btn")).toBeVisible()
     await expect(page.getByTestId("covid-deaths-btn")).toBeVisible()
-    await expect(page.getByTestId("violent-deaths-btn")).toBeVisible()
+    await expect(page.getByTestId("unnatural-deaths-btn")).toBeVisible()
     await expect(page.getByTestId("death-watch-btn")).toBeVisible()
 
     // Take screenshot of quick actions for visual regression testing
