@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom"
-import { CursedFilmIcon, CursedActorIcon } from "@/components/icons"
 
 export default function QuickActions() {
   const linkClass =
@@ -8,10 +7,6 @@ export default function QuickActions() {
   const tooltipClass =
     "pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 rounded-lg bg-brown-dark px-3 py-2 text-center text-xs text-cream opacity-0 shadow-lg transition-opacity delay-300 duration-200 group-hover:opacity-100 group-hover:delay-300"
 
-  // Consistent icon size for all buttons: both emojis and SVG icons are 16px
-  // - SVG icons use `iconSize` (16)
-  // - Emojis use Tailwind's `text-base` (16px) via `emojiClass`
-  const iconSize = 16
   const emojiClass = "text-base leading-none"
 
   return (
@@ -25,22 +20,6 @@ export default function QuickActions() {
           Forever Young
         </Link>
         <span className={tooltipClass}>Movies featuring actors who died tragically young</span>
-      </div>
-
-      <div className="group relative">
-        <Link data-testid="cursed-movies-btn" to="/cursed-movies" className={linkClass}>
-          <CursedFilmIcon size={iconSize} />
-          Cursed Movies
-        </Link>
-        <span className={tooltipClass}>Movies with statistically abnormal mortality</span>
-      </div>
-
-      <div className="group relative">
-        <Link data-testid="cursed-actors-btn" to="/cursed-actors" className={linkClass}>
-          <CursedActorIcon size={iconSize} />
-          Cursed Actors
-        </Link>
-        <span className={tooltipClass}>Actors with unusually high co-star mortality</span>
       </div>
 
       <div className="group relative">
