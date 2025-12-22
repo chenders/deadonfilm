@@ -103,8 +103,13 @@ app.use((req, res, next) => {
   next()
 })
 
-// Health check endpoint for GKE
+// Health check endpoint for GKE (internal pod health checks)
 app.get("/health", (_req, res) => {
+  res.json({ status: "ok" })
+})
+
+// External health check endpoint (routed via /api/* ingress rule)
+app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" })
 })
 
