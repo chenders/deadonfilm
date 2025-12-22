@@ -69,9 +69,9 @@ http {
         root /app/frontend/dist;
         index index.html;
 
-        # Sitemap - proxy to backend for dynamic generation
-        location = /sitemap.xml {
-            proxy_pass http://localhost:8080/sitemap.xml;
+        # Sitemaps - proxy to backend for dynamic generation
+        location ^~ /sitemap {
+            proxy_pass http://localhost:8080;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
         }
