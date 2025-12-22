@@ -127,7 +127,12 @@ export async function findCastCountMismatches(
     }
   }
 
-  const limitClause = sample ? `LIMIT ${sample}` : ""
+  let limitClause = ""
+  if (sample) {
+    const paramIndex = params.length + 1
+    limitClause = `LIMIT $${paramIndex}`
+    params.push(sample)
+  }
 
   const result = await db.query<CastCountMismatch>(
     `
@@ -211,7 +216,12 @@ export async function findDeceasedCountMismatches(
     }
   }
 
-  const limitClause = sample ? `LIMIT ${sample}` : ""
+  let limitClause = ""
+  if (sample) {
+    const paramIndex = params.length + 1
+    limitClause = `LIMIT $${paramIndex}`
+    params.push(sample)
+  }
 
   const result = await db.query<DeceasedCountMismatch>(
     `
@@ -257,7 +267,12 @@ export async function findMissingMortality(
     }
   }
 
-  const limitClause = sample ? `LIMIT ${sample}` : ""
+  let limitClause = ""
+  if (sample) {
+    const paramIndex = params.length + 1
+    limitClause = `LIMIT $${paramIndex}`
+    params.push(sample)
+  }
 
   const result = await db.query<MissingMortality>(
     `

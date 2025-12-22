@@ -18,7 +18,7 @@
  */
 
 import "dotenv/config"
-import { Command } from "commander"
+import { Command, InvalidArgumentError } from "commander"
 import { getPool, getSyncState, type SyncStateRecord } from "../src/lib/db.js"
 
 // Popularity thresholds for phases (same as import-shows.ts)
@@ -32,7 +32,7 @@ export type OutputFormat = "table" | "json"
 
 export function parseFormat(value: string): OutputFormat {
   if (value !== "table" && value !== "json") {
-    throw new Error("Format must be: table or json")
+    throw new InvalidArgumentError("Format must be: table or json")
   }
   return value
 }
