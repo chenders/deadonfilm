@@ -20,6 +20,7 @@
     "seed:movies": "tsx scripts/seed-movies.ts",
     "seed:shows": "tsx scripts/seed-shows.ts",
     "seed:filmographies": "tsx scripts/seed-from-filmographies.ts",
+    "import:shows": "tsx scripts/import-shows.ts",
     "backfill:mortality": "tsx scripts/backfill-mortality-stats.ts",
     "backfill:birthdays": "tsx scripts/backfill-birthdays.ts",
     "backfill:appearances": "tsx scripts/backfill-actor-appearances.ts",
