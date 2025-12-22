@@ -17,3 +17,6 @@ test-results/
 # SEO components using dangerouslySetInnerHTML with safe JSON.stringify
 # This is the standard pattern for JSON-LD structured data
 src/components/seo/JsonLd.tsx
+
+# Sitemap generates XML from database content with proper XML escaping
+server/src/routes/sitemap.ts

@@ -31,7 +31,13 @@ import {
 import { getCursedActorsRoute } from "./routes/actors.js"
 import { getActor } from "./routes/actor.js"
 import { getDeathWatchHandler } from "./routes/death-watch.js"
-import { getSitemap } from "./routes/sitemap.js"
+import {
+  getSitemapIndex,
+  getStaticSitemap,
+  getMoviesSitemap,
+  getActorsSitemap,
+  getShowsSitemap,
+} from "./routes/sitemap.js"
 import {
   getCauseCategoriesHandler,
   getDeathsByCauseHandler,
@@ -114,7 +120,15 @@ app.get("/api/health", (_req, res) => {
 })
 
 // SEO endpoints (not under /api since they're for crawlers)
-app.get("/sitemap.xml", heavyEndpointLimiter, getSitemap)
+// Sitemap index and individual sitemaps (split by content type for Google's 50k URL limit)
+app.get("/sitemap.xml", heavyEndpointLimiter, getSitemapIndex)
+app.get("/sitemap-static.xml", heavyEndpointLimiter, getStaticSitemap)
+app.get("/sitemap-movies.xml", heavyEndpointLimiter, getMoviesSitemap)
+app.get("/sitemap-movies-:page.xml", heavyEndpointLimiter, getMoviesSitemap)
+app.get("/sitemap-actors.xml", heavyEndpointLimiter, getActorsSitemap)
+app.get("/sitemap-actors-:page.xml", heavyEndpointLimiter, getActorsSitemap)
+app.get("/sitemap-shows.xml", heavyEndpointLimiter, getShowsSitemap)
+app.get("/sitemap-shows-:page.xml", heavyEndpointLimiter, getShowsSitemap)
 
 // API routes - apply rate limiting to all API endpoints
 app.use("/api", apiLimiter)
