@@ -19,6 +19,13 @@ spec:
                 name: dead-on-film-api
                 port:
                   number: 8080
+          - path: /sitemap
+            pathType: Prefix
+            backend:
+              service:
+                name: dead-on-film-api
+                port:
+                  number: 8080
           - path: /*
             pathType: ImplementationSpecific
             backend:
@@ -32,6 +39,13 @@ spec:
         paths:
           - path: /api/*
             pathType: ImplementationSpecific
+            backend:
+              service:
+                name: dead-on-film-api
+                port:
+                  number: 8080
+          - path: /sitemap
+            pathType: Prefix
             backend:
               service:
                 name: dead-on-film-api
