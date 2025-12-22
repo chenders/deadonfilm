@@ -104,6 +104,49 @@ export function filterShowsByPopularity(
   })
 }
 
+/**
+ * Processes a page of shows for the resume logic.
+ * Returns the shows to include and whether the afterId was found.
+ */
+export function processShowsPage<T extends { id: number; popularity?: number }>(
+  shows: T[],
+  phase: ImportPhase,
+  afterId: number | null,
+  foundAfterId: boolean,
+  seenIds: Set<number>,
+  limit: number,
+  currentCount: number
+): { includedShows: T[]; foundAfterId: boolean } {
+  const threshold = PHASE_THRESHOLDS[phase]
+  const includedShows: T[] = []
+  let found = foundAfterId
+
+  for (const show of shows) {
+    // Skip if we haven't reached our resume point yet
+    if (!found) {
+      if (show.id === afterId) {
+        found = true
+      }
+      continue
+    }
+
+    // Skip already seen shows
+    if (seenIds.has(show.id)) continue
+
+    // Stop if we've already reached the limit
+    if (currentCount + includedShows.length >= limit) break
+
+    // Check popularity threshold
+    const popularity = show.popularity || 0
+    if (popularity >= threshold.min && popularity < threshold.max) {
+      seenIds.add(show.id)
+      includedShows.push(show)
+    }
+  }
+
+  return { includedShows, foundAfterId: found }
+}
+
 interface ImportOptions {
   phase?: ImportPhase
   maxShows: number
