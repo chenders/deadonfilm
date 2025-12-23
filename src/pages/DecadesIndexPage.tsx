@@ -38,7 +38,7 @@ export default function DecadesIndexPage() {
         <title>Deaths by Decade - Dead on Film</title>
         <meta
           name="description"
-          content="Browse movie actors by decade of death. Explore mortality across different eras in film history."
+          content="Browse actors by decade of death from movies and TV shows. Explore mortality across different eras in film and television."
         />
         <link rel="canonical" href="https://deadonfilm.com/deaths/decades" />
       </Helmet>

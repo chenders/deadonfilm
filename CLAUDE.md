@@ -35,7 +35,7 @@ Wikipedia should NEVER be the first method used. Claude should always be tried f
 
 ## Mortality Statistics
 
-The app calculates expected mortality for movie casts using US Social Security Administration actuarial life tables. This enables features like:
+The app calculates expected mortality for movie and TV show casts using US Social Security Administration actuarial life tables. This enables features like:
 
 - **Expected vs Actual Deaths**: Compare how many cast members have died vs how many would be expected based on their ages
 - **Mortality Surprise Score**: A metric showing how much higher/lower actual mortality is compared to expected
@@ -62,7 +62,7 @@ Years Lost:
 
 ### Mortality Calculation Rules
 
-1. **Archived Footage Exclusion**: Actors who died more than 3 years before a movie's release are excluded from mortality calculations. They appeared via archived footage and weren't alive during production.
+1. **Archived Footage Exclusion**: Actors who died more than 3 years before a movie or show's release are excluded from mortality calculations. They appeared via archived footage and weren't alive during production.
 
 2. **Same-Year Death Handling**: Actors who died the same year as the movie release are counted with at least 1 year of death probability to avoid zero-probability edge cases.
 
