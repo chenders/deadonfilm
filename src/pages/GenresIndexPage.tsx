@@ -38,7 +38,7 @@ export default function GenresIndexPage() {
         <title>Movies by Genre - Dead on Film</title>
         <meta
           name="description"
-          content="Browse cursed movies by genre. Explore horror, drama, action, and more films ranked by mortality statistics."
+          content="Browse cursed movies and TV shows by genre. Explore horror, drama, action, and more ranked by mortality statistics."
         />
         <link rel="canonical" href="https://deadonfilm.com/movies/genres" />
       </Helmet>

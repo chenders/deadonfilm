@@ -160,19 +160,19 @@ export default function ForeverYoungPage() {
         <title>Forever Young | Dead on Film</title>
         <meta
           name="description"
-          content="Movies featuring actors who died tragically young, losing 40% or more of their expected lifespan. Ranked by years of life lost."
+          content="Movies and TV shows featuring actors who died tragically young, losing 40% or more of their expected lifespan. Ranked by years of life lost."
         />
         <meta property="og:title" content="Forever Young | Dead on Film" />
         <meta
           property="og:description"
-          content="Movies featuring actors who died tragically young"
+          content="Movies and TV shows featuring actors who died tragically young"
         />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content="Forever Young | Dead on Film" />
         <meta
           name="twitter:description"
-          content="Movies featuring actors who died tragically young"
+          content="Movies and TV shows featuring actors who died tragically young"
         />
         <link rel="canonical" href="https://deadonfilm.com/forever-young" />
       </Helmet>

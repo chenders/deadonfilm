@@ -94,7 +94,7 @@ describe("HomePage", () => {
     renderWithProviders(<HomePage />)
 
     expect(screen.getByTestId("home-tagline")).toHaveTextContent(
-      "Search for a movie to see which cast members have passed away"
+      "Search for a movie or TV show to see which cast members have passed away"
     )
   })
 
