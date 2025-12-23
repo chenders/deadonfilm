@@ -130,7 +130,7 @@ export default function DeathsByCausePage() {
         <title>{data.cause} Deaths | Dead on Film</title>
         <meta
           name="description"
-          content={`${data.pagination.totalCount} actors who died from ${data.cause}. Browse movie actors by cause of death.`}
+          content={`${data.pagination.totalCount} actors who died from ${data.cause}. Browse actors by cause of death from movies and TV shows.`}
         />
         <link rel="canonical" href={`https://deadonfilm.com/deaths/${data.slug}`} />
       </Helmet>

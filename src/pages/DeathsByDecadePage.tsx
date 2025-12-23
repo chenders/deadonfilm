@@ -153,7 +153,7 @@ export default function DeathsByDecadePage() {
         <title>Deaths in the {data.decadeLabel} | Dead on Film</title>
         <meta
           name="description"
-          content={`${data.pagination.totalCount} actors who died in the ${data.decadeLabel}. Browse movie actors by decade of death.`}
+          content={`${data.pagination.totalCount} actors who died in the ${data.decadeLabel}. Browse actors by decade of death from movies and TV shows.`}
         />
         <link rel="canonical" href={`https://deadonfilm.com/deaths/decade/${data.decadeLabel}`} />
       </Helmet>

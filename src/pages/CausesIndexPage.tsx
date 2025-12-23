@@ -36,7 +36,7 @@ export default function CausesIndexPage() {
         <title>Deaths by Cause - Dead on Film</title>
         <meta
           name="description"
-          content="Browse movie actors by cause of death. Explore deaths from cancer, heart disease, accidents, and more."
+          content="Browse actors by cause of death from movies and TV shows. Explore deaths from cancer, heart disease, accidents, and more."
         />
         <link rel="canonical" href="https://deadonfilm.com/deaths" />
       </Helmet>

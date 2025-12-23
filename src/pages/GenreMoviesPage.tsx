@@ -167,7 +167,7 @@ export default function GenreMoviesPage() {
         <title>{data.genre} Movies | Dead on Film</title>
         <meta
           name="description"
-          content={`${data.pagination.totalCount} ${data.genre.toLowerCase()} movies ranked by mortality statistics. Browse the most cursed ${data.genre.toLowerCase()} films.`}
+          content={`${data.pagination.totalCount} ${data.genre.toLowerCase()} movies and TV shows ranked by mortality statistics. Browse the most cursed ${data.genre.toLowerCase()} content.`}
         />
         <link rel="canonical" href={`https://deadonfilm.com/movies/genre/${data.slug}`} />
       </Helmet>
