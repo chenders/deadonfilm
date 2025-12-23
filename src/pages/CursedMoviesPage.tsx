@@ -200,7 +200,7 @@ export default function CursedMoviesPage() {
         <title>{getPageTitle(fromDecade, toDecade)}</title>
         <meta
           name="description"
-          content="Discover the most cursed movies in cinema history. Ranked by mortality surprise score - films where cast deaths exceeded statistical expectations."
+          content="Discover the most cursed movies and TV shows. Ranked by mortality surprise score - where cast deaths exceeded statistical expectations."
         />
         <meta property="og:title" content={getPageTitle(fromDecade, toDecade)} />
         <meta
