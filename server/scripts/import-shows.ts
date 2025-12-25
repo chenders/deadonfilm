@@ -33,7 +33,7 @@ import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import {
   upsertShow,
   batchUpsertShowActorAppearances,
-  upsertDeceasedPerson,
+  batchUpsertDeceasedPersons,
   getSyncState,
   updateSyncState,
   type ShowRecord,
@@ -349,37 +349,39 @@ async function runImport(options: ImportOptions) {
           `  ${mortalityStats.actualDeaths} deceased, ${mortalityStats.expectedDeaths.toFixed(1)} expected`
         )
 
-        // Save deceased actors to deceased_persons table
-        if (!dryRun) {
-          for (const castMember of topCast) {
-            const person = personDetails.get(castMember.id)
-            if (person?.deathday) {
-              let ageAtDeath: number | null = null
-              if (person.birthday) {
-                const birthYear = parseInt(person.birthday.split("-")[0], 10)
-                const deathYear = parseInt(person.deathday.split("-")[0], 10)
-                ageAtDeath = deathYear - birthYear
-              }
-
-              const deceasedRecord: DeceasedPersonRecord = {
-                tmdb_id: castMember.id,
-                name: castMember.name,
-                birthday: person.birthday || null,
-                deathday: person.deathday,
-                cause_of_death: null,
-                cause_of_death_source: null,
-                cause_of_death_details: null,
-                cause_of_death_details_source: null,
-                wikipedia_url: null,
-                profile_path: person.profile_path || null,
-                age_at_death: ageAtDeath,
-                expected_lifespan: null,
-                years_lost: null,
-              }
-
-              await upsertDeceasedPerson(deceasedRecord)
+        // Collect deceased actors for batch insert
+        const deceasedRecords: DeceasedPersonRecord[] = []
+        for (const castMember of topCast) {
+          const person = personDetails.get(castMember.id)
+          if (person?.deathday) {
+            let ageAtDeath: number | null = null
+            if (person.birthday) {
+              const birthYear = parseInt(person.birthday.split("-")[0], 10)
+              const deathYear = parseInt(person.deathday.split("-")[0], 10)
+              ageAtDeath = deathYear - birthYear
             }
+
+            deceasedRecords.push({
+              tmdb_id: castMember.id,
+              name: castMember.name,
+              birthday: person.birthday || null,
+              deathday: person.deathday,
+              cause_of_death: null,
+              cause_of_death_source: null,
+              cause_of_death_details: null,
+              cause_of_death_details_source: null,
+              wikipedia_url: null,
+              profile_path: person.profile_path || null,
+              age_at_death: ageAtDeath,
+              expected_lifespan: null,
+              years_lost: null,
+            })
           }
+        }
+
+        // Batch insert deceased actors
+        if (!dryRun && deceasedRecords.length > 0) {
+          await batchUpsertDeceasedPersons(deceasedRecords)
         }
 
         // Prepare actor appearances
