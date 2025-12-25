@@ -86,6 +86,7 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
       appearance_type TEXT NOT NULL DEFAULT 'regular',
       billing_order INTEGER,
       is_deceased BOOLEAN DEFAULT FALSE,
+      age_at_filming INTEGER,
       UNIQUE(actor_tmdb_id, show_tmdb_id, season_number, episode_number)
     );
 
