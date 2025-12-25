@@ -21,7 +21,7 @@ import {
   type TMDBPerson,
 } from "../src/lib/tmdb.js"
 import { getCauseOfDeath } from "../src/lib/wikidata.js"
-import { batchUpsertDeceasedPersons, type DeceasedPersonRecord } from "../src/lib/db.js"
+import { batchUpsertActors, type ActorInput } from "../src/lib/db.js"
 import { calculateYearsLost } from "../src/lib/mortality-stats.js"
 
 const MOVIES_TO_FETCH = 100 // Top 100 movies per year range
@@ -124,7 +124,7 @@ async function runSeeding(startYear: number, endYear: number) {
 
     // Step 5: Look up causes of death
     console.log("Looking up causes of death...")
-    const records: DeceasedPersonRecord[] = []
+    const records: ActorInput[] = []
 
     for (let i = 0; i < deceasedActors.length; i++) {
       const actor = deceasedActors[i]
@@ -192,7 +192,7 @@ async function runSeeding(startYear: number, endYear: number) {
 
     // Step 6: Save to database
     console.log("\nSaving to database...")
-    await batchUpsertDeceasedPersons(records)
+    await batchUpsertActors(records)
     console.log(`Successfully inserted/updated ${records.length} records\n`)
 
     // Summary

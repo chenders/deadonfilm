@@ -4,10 +4,10 @@ import { getDeathInfoRoute } from "./death-info.js"
 
 // Mock the db module
 vi.mock("../lib/db.js", () => ({
-  getDeceasedPersons: vi.fn(),
+  getActors: vi.fn(),
 }))
 
-import { getDeceasedPersons } from "../lib/db.js"
+import { getActors } from "../lib/db.js"
 
 describe("getDeathInfoRoute", () => {
   let mockReq: Partial<Request>
@@ -18,7 +18,7 @@ describe("getDeathInfoRoute", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Set DATABASE_URL so getDeceasedPersonsIfAvailable calls the mocked function
+    // Set DATABASE_URL so getActors calls the mocked function
     process.env.DATABASE_URL = "postgresql://test"
 
     jsonSpy = vi.fn()
@@ -105,7 +105,7 @@ describe("getDeathInfoRoute", () => {
       ],
     ])
 
-    vi.mocked(getDeceasedPersons).mockResolvedValue(mockDbRecords as any)
+    vi.mocked(getActors).mockResolvedValue(mockDbRecords as any)
 
     mockReq = {
       params: { id: "389" },
@@ -114,7 +114,7 @@ describe("getDeathInfoRoute", () => {
 
     await getDeathInfoRoute(mockReq as Request, mockRes as Response)
 
-    expect(getDeceasedPersons).toHaveBeenCalledWith([123, 456])
+    expect(getActors).toHaveBeenCalledWith([123, 456])
     expect(jsonSpy).toHaveBeenCalledWith({
       pending: false,
       deathInfo: {
@@ -129,7 +129,7 @@ describe("getDeathInfoRoute", () => {
   })
 
   it("handles empty results", async () => {
-    vi.mocked(getDeceasedPersons).mockResolvedValue(new Map())
+    vi.mocked(getActors).mockResolvedValue(new Map())
 
     mockReq = {
       params: { id: "389" },
@@ -145,7 +145,7 @@ describe("getDeathInfoRoute", () => {
   })
 
   it("filters out invalid person IDs", async () => {
-    vi.mocked(getDeceasedPersons).mockResolvedValue(new Map())
+    vi.mocked(getActors).mockResolvedValue(new Map())
 
     mockReq = {
       params: { id: "389" },
@@ -154,7 +154,7 @@ describe("getDeathInfoRoute", () => {
 
     await getDeathInfoRoute(mockReq as Request, mockRes as Response)
 
-    expect(getDeceasedPersons).toHaveBeenCalledWith([123, 456])
+    expect(getActors).toHaveBeenCalledWith([123, 456])
   })
 
   it("handles single person ID", async () => {
@@ -171,7 +171,7 @@ describe("getDeathInfoRoute", () => {
       ],
     ])
 
-    vi.mocked(getDeceasedPersons).mockResolvedValue(mockDbRecords as any)
+    vi.mocked(getActors).mockResolvedValue(mockDbRecords as any)
 
     mockReq = {
       params: { id: "100" },
@@ -180,7 +180,7 @@ describe("getDeathInfoRoute", () => {
 
     await getDeathInfoRoute(mockReq as Request, mockRes as Response)
 
-    expect(getDeceasedPersons).toHaveBeenCalledWith([123])
+    expect(getActors).toHaveBeenCalledWith([123])
     expect(jsonSpy).toHaveBeenCalledWith({
       pending: false,
       deathInfo: {
@@ -208,7 +208,7 @@ describe("getDeathInfoRoute", () => {
       // 456 and 789 not found
     ])
 
-    vi.mocked(getDeceasedPersons).mockResolvedValue(mockDbRecords as any)
+    vi.mocked(getActors).mockResolvedValue(mockDbRecords as any)
 
     mockReq = {
       params: { id: "200" },

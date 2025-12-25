@@ -33,12 +33,12 @@ import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import {
   upsertShow,
   batchUpsertShowActorAppearances,
-  batchUpsertDeceasedPersons,
+  batchUpsertActors,
   getSyncState,
   updateSyncState,
   type ShowRecord,
   type ShowActorAppearanceRecord,
-  type DeceasedPersonRecord,
+  type ActorInput,
 } from "../src/lib/db.js"
 import {
   PHASE_THRESHOLDS,
@@ -356,7 +356,7 @@ async function runImport(options: ImportOptions) {
         )
 
         // Collect deceased actors for batch insert
-        const deceasedRecords: DeceasedPersonRecord[] = []
+        const deceasedRecords: ActorInput[] = []
         for (const castMember of topCast) {
           const person = personDetails.get(castMember.id)
           if (person?.deathday) {
@@ -387,7 +387,7 @@ async function runImport(options: ImportOptions) {
 
         // Batch insert deceased actors
         if (!dryRun && deceasedRecords.length > 0) {
-          await batchUpsertDeceasedPersons(deceasedRecords)
+          await batchUpsertActors(deceasedRecords)
         }
 
         // Prepare actor appearances
