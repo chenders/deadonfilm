@@ -181,12 +181,10 @@ async function runSeeding({ showsToFetch, dryRun }: SeedOptions) {
             show_tmdb_id: show.id,
             season_number: 1, // Placeholder - we're tracking at show level for now
             episode_number: 1, // Placeholder
-            actor_name: castMember.name,
             character_name: characterName,
             appearance_type: "regular" as const,
             billing_order: index,
             age_at_filming: ageAtFilming,
-            is_deceased: !!person?.deathday,
           }
         })
 

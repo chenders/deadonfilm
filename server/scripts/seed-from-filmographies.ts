@@ -41,9 +41,9 @@ import {
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
   upsertMovie,
-  batchUpsertActorAppearances,
+  batchUpsertActorMovieAppearances,
   type MovieRecord,
-  type ActorAppearanceRecord,
+  type ActorMovieAppearanceRecord,
 } from "../src/lib/db.js"
 
 const CAST_LIMIT = 30 // Top 30 actors per movie
@@ -178,21 +178,19 @@ async function processMovie(
   )
 
   // Save actor appearances
-  const appearances: ActorAppearanceRecord[] = topCast.map((castMember, index) => {
+  const appearances: ActorMovieAppearanceRecord[] = topCast.map((castMember, index) => {
     const person = personDetails.get(castMember.id)
 
     return {
       actor_tmdb_id: castMember.id,
       movie_tmdb_id: movieId,
-      actor_name: castMember.name,
       character_name: castMember.character || null,
       billing_order: index,
       age_at_filming: calculateAgeAtFilming(person?.birthday ?? null, releaseYear),
-      is_deceased: !!person?.deathday,
     }
   })
 
-  await batchUpsertActorAppearances(appearances)
+  await batchUpsertActorMovieAppearances(appearances)
   console.log(`    Saved ${appearances.length} actor appearances`)
 
   return { success: true, actorAppearances: appearances.length }

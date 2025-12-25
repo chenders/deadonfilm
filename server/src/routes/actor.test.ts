@@ -11,7 +11,7 @@ vi.mock("../lib/tmdb.js", () => ({
 
 vi.mock("../lib/db.js", () => ({
   getActorFilmography: vi.fn(),
-  getDeceasedPerson: vi.fn(),
+  getActor: vi.fn(),
 }))
 
 describe("getActor", () => {
@@ -120,7 +120,7 @@ describe("getActor", () => {
 
     expect(tmdb.getPersonDetails).toHaveBeenCalledWith(12345)
     expect(db.getActorFilmography).toHaveBeenCalledWith(12345)
-    expect(db.getDeceasedPerson).not.toHaveBeenCalled()
+    expect(db.getActor).not.toHaveBeenCalled()
     expect(jsonSpy).toHaveBeenCalledWith({
       actor: {
         id: 12345,
@@ -140,13 +140,13 @@ describe("getActor", () => {
     mockReq.params = { id: "67890" }
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
-    vi.mocked(db.getDeceasedPerson).mockResolvedValueOnce(mockDeceasedRecord)
+    vi.mocked(db.getActor).mockResolvedValueOnce(mockDeceasedRecord)
 
     await getActor(mockReq as Request, mockRes as Response)
 
     expect(tmdb.getPersonDetails).toHaveBeenCalledWith(67890)
     expect(db.getActorFilmography).toHaveBeenCalledWith(67890)
-    expect(db.getDeceasedPerson).toHaveBeenCalledWith(67890)
+    expect(db.getActor).toHaveBeenCalledWith(67890)
     expect(jsonSpy).toHaveBeenCalledWith({
       actor: {
         id: 67890,
@@ -172,11 +172,11 @@ describe("getActor", () => {
     mockReq.params = { id: "67890" }
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce([])
-    vi.mocked(db.getDeceasedPerson).mockResolvedValueOnce(null)
+    vi.mocked(db.getActor).mockResolvedValueOnce(null)
 
     await getActor(mockReq as Request, mockRes as Response)
 
-    expect(db.getDeceasedPerson).toHaveBeenCalledWith(67890)
+    expect(db.getActor).toHaveBeenCalledWith(67890)
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         deathInfo: {

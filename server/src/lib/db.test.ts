@@ -32,7 +32,6 @@ import {
   getAllActorTmdbIds,
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
-  markActorsDeceased,
   getActorFilmography,
   queryWithRetry,
   resetPool,
@@ -226,32 +225,6 @@ describe("Sync State Functions", () => {
       expect(result.has(1000)).toBe(true)
       expect(result.has(2000)).toBe(true)
       expect(result.has(3000)).toBe(true)
-    })
-  })
-
-  describe("markActorsDeceased", () => {
-    // Note: markActorsDeceased is now a no-op because deceased status is derived from actors.deathday
-    // These tests verify it doesn't do anything (backward compatibility)
-
-    it("is a no-op for actor IDs (deceased status now derived from actors.deathday)", async () => {
-      await markActorsDeceased([123, 456, 789])
-      expect(mockQuery).not.toHaveBeenCalled()
-    })
-
-    it("is a no-op when given empty array", async () => {
-      await markActorsDeceased([])
-      expect(mockQuery).not.toHaveBeenCalled()
-    })
-
-    it("is a no-op for single actor ID", async () => {
-      await markActorsDeceased([123])
-      expect(mockQuery).not.toHaveBeenCalled()
-    })
-
-    it("is a no-op for large arrays (previously batched)", async () => {
-      const ids = Array.from({ length: 2500 }, (_, i) => i + 1)
-      await markActorsDeceased(ids)
-      expect(mockQuery).not.toHaveBeenCalled()
     })
   })
 

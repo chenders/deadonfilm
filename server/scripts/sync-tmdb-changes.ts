@@ -26,7 +26,6 @@ import {
   getAllActorTmdbIds,
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
-  markActorsDeceased,
   upsertActor,
   upsertMovie,
   type ActorInput,
@@ -354,16 +353,14 @@ async function syncPeopleChanges(
     }
   }
 
-  // Mark newly deceased actors in actor_appearances
+  // Recalculate mortality stats for movies featuring newly deceased actors
   if (!dryRun && newlyDeceasedIds.length > 0) {
-    console.log(`\nMarking ${newlyDeceasedIds.length} actors as deceased in actor_appearances...`)
-    await markActorsDeceased(newlyDeceasedIds)
-
-    // Recalculate mortality stats for movies featuring newly deceased actors
-    console.log(`\nRecalculating mortality stats for affected movies...`)
+    console.log(
+      `\nRecalculating mortality stats for ${newlyDeceasedIds.length} newly deceased actors...`
+    )
     const pool = getPool()
     const { rows: affectedMovies } = await pool.query<{ movie_tmdb_id: number }>(
-      `SELECT DISTINCT movie_tmdb_id FROM actor_appearances WHERE actor_tmdb_id = ANY($1)`,
+      `SELECT DISTINCT movie_tmdb_id FROM actor_movie_appearances WHERE actor_tmdb_id = ANY($1)`,
       [newlyDeceasedIds]
     )
     console.log(`  Found ${affectedMovies.length} affected movies`)

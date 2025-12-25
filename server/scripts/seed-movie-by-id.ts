@@ -17,10 +17,10 @@ import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../src/
 import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import {
   upsertMovie,
-  batchUpsertActorAppearances,
-  upsertDeceasedPerson,
+  batchUpsertActorMovieAppearances,
+  upsertActor,
   type MovieRecord,
-  type ActorAppearanceRecord,
+  type ActorMovieAppearanceRecord,
 } from "../src/lib/db.js"
 
 const CAST_LIMIT = 30
@@ -117,8 +117,8 @@ async function seedMovie(tmdbId: number) {
     console.log(`  Expected: ${mortalityStats.expectedDeaths.toFixed(1)}`)
     console.log(`  Surprise score: ${mortalityStats.mortalitySurpriseScore.toFixed(3)}`)
 
-    // Save actor appearances and deceased persons
-    const appearances: ActorAppearanceRecord[] = []
+    // Save actor appearances and actors
+    const appearances: ActorMovieAppearanceRecord[] = []
     let deceasedCount = 0
 
     for (const castMember of topCast) {
@@ -134,38 +134,29 @@ async function seedMovie(tmdbId: number) {
       appearances.push({
         actor_tmdb_id: castMember.id,
         movie_tmdb_id: tmdbId,
-        actor_name: castMember.name,
         character_name: castMember.character || null,
         billing_order: topCast.indexOf(castMember),
         age_at_filming: ageAtFilming,
-        is_deceased: !!person?.deathday,
       })
 
-      // Also upsert deceased person if they're dead
+      // Upsert actor to actors table
+      await upsertActor({
+        tmdb_id: castMember.id,
+        name: castMember.name,
+        birthday: person?.birthday || null,
+        deathday: person?.deathday || null,
+        profile_path: person?.profile_path || null,
+      })
+
       if (person?.deathday) {
-        await upsertDeceasedPerson({
-          tmdb_id: castMember.id,
-          name: castMember.name,
-          birthday: person.birthday || null,
-          deathday: person.deathday,
-          cause_of_death: null,
-          cause_of_death_source: null,
-          cause_of_death_details: null,
-          cause_of_death_details_source: null,
-          wikipedia_url: null,
-          profile_path: person.profile_path || null,
-          age_at_death: null,
-          expected_lifespan: null,
-          years_lost: null,
-        })
         deceasedCount++
         console.log(`  - ${castMember.name} (deceased)`)
       }
     }
 
-    await batchUpsertActorAppearances(appearances)
+    await batchUpsertActorMovieAppearances(appearances)
     console.log(`\nSaved ${appearances.length} actor appearances`)
-    console.log(`Added/updated ${deceasedCount} deceased persons`)
+    console.log(`Added/updated ${deceasedCount} deceased actors`)
 
     console.log("\nDone!")
   } catch (error) {
