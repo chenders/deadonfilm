@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Seed script to populate the deceased_persons database with actors from top movies.
+ * Seed script to populate the actors table with deceased actors from top movies.
  *
  * Usage:
  *   npm run seed -- <startYear> [endYear]
@@ -40,7 +40,7 @@ function parseYear(value: string): number {
 
 const program = new Command()
   .name("seed-deceased-actors")
-  .description("Seed the deceased_persons database with actors from top movies")
+  .description("Seed deceased actors from top movies")
   .argument("<startYear>", "Start year for seeding", parseYear)
   .argument("[endYear]", "End year for seeding (defaults to startYear)", parseYear)
   .action(async (startYear: number, endYear: number | undefined) => {
