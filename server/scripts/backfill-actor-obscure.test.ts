@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest"
-
-// Test constants match those in the script
-const OBSCURE_POPULARITY_THRESHOLD = 5.0
+import { OBSCURE_POPULARITY_THRESHOLD } from "./backfill-actor-obscure.js"
 
 describe("backfill-actor-obscure constants", () => {
   it("uses popularity threshold of 5.0 (matches Death Watch feature)", () => {
@@ -83,15 +81,6 @@ describe("is_obscure calculation logic", () => {
   })
 })
 
-describe("popularity source priority", () => {
-  // The script prioritizes getting popularity from actor_appearances (cached)
-  // before falling back to TMDB API
-
-  it("should prefer cached data over API calls", () => {
-    // This is a documentation test - the actual behavior is in the script
-    // actor_appearances is checked first, then TMDB API
-    const sources = ["actor_appearances", "tmdb"] as const
-    expect(sources[0]).toBe("actor_appearances")
-    expect(sources[1]).toBe("tmdb")
-  })
-})
+// Note: The script prioritizes getting popularity from actor_appearances (cached)
+// before falling back to TMDB API. This behavior is tested via integration tests
+// since it requires database connections.
