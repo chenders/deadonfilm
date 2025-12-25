@@ -4,17 +4,22 @@
  *
  * Features:
  * - Automatically resumes from checkpoint if one exists
- * - Self-recovers from errors by retrying with --resume
+ * - Attempts to self-recover from errors by retrying with --resume when a checkpoint exists
  * - Logs all errors encountered during the run
  * - Provides error summary at the end
  *
  * Usage:
- *   npm run import:shows:all           # Run all phases with auto-resume
+ *   npm run import:shows:all             # Run all phases with auto-resume
  *   npm run import:shows:all -- --fresh  # Start fresh, ignore existing checkpoint
  *
  * Options:
  *   --fresh      Start fresh, ignoring any existing checkpoint
  *   --dry-run    Preview without writing to database
+ *
+ * Notes:
+ *   Retries using --resume require that a checkpoint has already been created for the phase.
+ *   If a phase fails before its first checkpoint is written, you may need to rerun that phase
+ *   by starting fresh (the script will detect no checkpoint and start from the beginning).
  */
 
 import "dotenv/config"
@@ -148,16 +153,24 @@ async function confirmWithUser(prompt: string): Promise<boolean> {
  * Clear the existing checkpoint from the sync_state table.
  */
 async function clearCheckpoint(): Promise<void> {
-  await updateSyncState({
-    sync_type: SYNC_TYPE,
-    last_sync_date: new Date().toISOString().split("T")[0],
-    current_phase: null,
-    last_processed_id: null,
-    phase_total: null,
-    phase_completed: null,
-    items_processed: 0,
-    errors_count: 0,
-  })
+  try {
+    await updateSyncState({
+      sync_type: SYNC_TYPE,
+      last_sync_date: new Date().toISOString().split("T")[0],
+      current_phase: null,
+      last_processed_id: null,
+      phase_total: null,
+      phase_completed: null,
+      items_processed: 0,
+      errors_count: 0,
+    })
+  } catch (error) {
+    console.error(
+      "Failed to clear checkpoint. Please check your database connection and try again.",
+      error
+    )
+    throw error
+  }
 }
 
 /**
@@ -192,7 +205,12 @@ async function runImportScript(args: string[]): Promise<{ success: boolean; erro
     })
 
     child.on("error", (err) => {
-      resolve({ success: false, error: err.message })
+      // Include any stderr collected before the error occurred
+      const stderrMessage = stderrOutput.trim()
+      const errorMessage = stderrMessage
+        ? `${err.message}\n\nStderr before error:\n${stderrMessage}`
+        : err.message
+      resolve({ success: false, error: errorMessage })
     })
   })
 }
@@ -210,22 +228,34 @@ async function runPostImportScripts(dryRun: boolean): Promise<void> {
 
   // Run verify-shows.ts --fix
   const verifyScript = path.join(__dirname, "verify-shows.ts")
-  await new Promise<void>((resolve) => {
+  await new Promise<void>((resolve, reject) => {
     const child = spawn("tsx", [verifyScript, "--fix"], {
       stdio: "inherit",
       cwd: path.join(__dirname, ".."),
     })
-    child.on("close", () => resolve())
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve()
+      } else {
+        reject(new Error(`verify-shows.ts failed with exit code ${code}`))
+      }
+    })
   })
 
   // Run show-import-stats.ts
   const statsScript = path.join(__dirname, "show-import-stats.ts")
-  await new Promise<void>((resolve) => {
+  await new Promise<void>((resolve, reject) => {
     const child = spawn("tsx", [statsScript], {
       stdio: "inherit",
       cwd: path.join(__dirname, ".."),
     })
-    child.on("close", () => resolve())
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve()
+      } else {
+        reject(new Error(`show-import-stats.ts failed with exit code ${code}`))
+      }
+    })
   })
 }
 
@@ -281,7 +311,7 @@ async function executePhase(
  */
 async function determineStartingPhase(
   fresh: boolean
-): Promise<{ phase: ImportPhase; useResume: boolean } | null> {
+): Promise<{ phase: ImportPhase; useResume: boolean }> {
   try {
     const syncState = await getSyncState(SYNC_TYPE)
 
@@ -318,8 +348,9 @@ async function determineStartingPhase(
       console.log(`   Phase completed: ${phaseCompleted}`)
       return { phase: currentPhase, useResume: true }
     }
-  } catch {
-    // Database not available or no checkpoint - start fresh
+  } catch (error) {
+    // Database not available or failed to read checkpoint - log and start fresh
+    console.warn("[import-shows-all] Failed to get sync state; starting fresh import.", error)
   }
 
   // No checkpoint exists, fresh start
@@ -341,13 +372,7 @@ async function runAllPhases(options: AllPhaseOptions): Promise<void> {
   console.log(`Fresh start: ${fresh}`)
 
   // Determine where to start
-  const startInfo = await determineStartingPhase(fresh)
-  if (!startInfo) {
-    console.error("Failed to determine starting phase")
-    process.exit(1)
-  }
-
-  const { phase: startPhase, useResume } = startInfo
+  const { phase: startPhase, useResume } = await determineStartingPhase(fresh)
   const startIndex = findPhaseIndex(startPhase)
 
   const results: PhaseResult[] = []
@@ -366,7 +391,9 @@ async function runAllPhases(options: AllPhaseOptions): Promise<void> {
     if (!result.success) {
       allSucceeded = false
       console.error(`\n❌ Phase '${phase}' failed after ${result.attempts} attempts`)
-      console.error("Stopping import process. Use --resume to continue later.\n")
+      console.error(
+        "Stopping import process. Re-run this script without --fresh to resume from the last checkpoint.\n"
+      )
       break
     }
 
