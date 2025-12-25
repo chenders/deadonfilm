@@ -118,10 +118,7 @@ async function runBackfill() {
 
         if (updates.length > 0) {
           updates.push("updated_at = CURRENT_TIMESTAMP")
-          await pool.query(
-            `UPDATE actors SET ${updates.join(", ")} WHERE tmdb_id = $1`,
-            values
-          )
+          await pool.query(`UPDATE actors SET ${updates.join(", ")} WHERE tmdb_id = $1`, values)
           console.log(
             `  -> Updated (details: ${causeOfDeathDetailsSource || "none"}, cause: ${causeOfDeathSource || record.cause_of_death_source || "unknown"})`
           )
