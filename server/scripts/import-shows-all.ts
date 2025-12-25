@@ -84,10 +84,10 @@ export function buildPhaseArgs(
 
   if (useResume && attempt === 1) {
     // First attempt: use --resume if we're resuming
-    args.push("--resume")
+    args.push("--resume", "--max-shows", String(maxShows))
   } else if (attempt > 1) {
     // Retry attempts: always use --resume
-    args.push("--resume")
+    args.push("--resume", "--max-shows", String(maxShows))
   } else {
     // Fresh start for this phase
     args.push("--phase", phase, "--max-shows", String(maxShows))
