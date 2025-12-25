@@ -20,13 +20,10 @@ import { getPool } from "../src/lib/db.js"
 import { getPersonDetails } from "../src/lib/tmdb.js"
 
 // Popularity threshold for obscure actors (matches Death Watch feature)
-const OBSCURE_POPULARITY_THRESHOLD = 5.0
+export const OBSCURE_POPULARITY_THRESHOLD = 5.0
 
 // Rate limiting delay (TMDB allows ~40 requests/10 seconds)
 const API_DELAY_MS = 260
-
-// Batch size for database updates
-const BATCH_SIZE = 100
 
 interface BackfillOptions {
   all?: boolean
@@ -93,6 +90,13 @@ async function showStats(): Promise<void> {
     console.log("DECEASED ACTORS OBSCURE STATISTICS")
     console.log("=".repeat(60))
     console.log(`\nTotal deceased actors: ${total.toLocaleString()}`)
+
+    if (total === 0) {
+      console.log("\nNo deceased actors in database.")
+      console.log("=".repeat(60) + "\n")
+      return
+    }
+
     console.log(`\nPopularity data:`)
     console.log(
       `  With popularity:    ${withPopularity.toLocaleString()} (${((withPopularity / total) * 100).toFixed(1)}%)`
@@ -299,4 +303,10 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   }
 }
 
-program.parse()
+// Only run when executed directly, not when imported for testing
+const isMainModule =
+  import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("backfill-actor-obscure.ts")
+
+if (isMainModule) {
+  program.parse()
+}
