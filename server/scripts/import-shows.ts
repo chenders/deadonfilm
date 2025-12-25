@@ -496,8 +496,7 @@ async function fetchShowsForPhase(
   const baseMaxPages = phase === "popular" ? 50 : phase === "standard" ? 100 : 200
 
   // Calculate starting page based on how many shows we've already processed
-  const calculatedStartPage =
-    afterId !== null ? calculateResumeStartPage(phase, phaseCompleted) : 1
+  const calculatedStartPage = afterId !== null ? calculateResumeStartPage(phase, phaseCompleted) : 1
 
   // TMDB's discover API has a hard limit of 500 pages
   if (calculatedStartPage > TMDB_MAX_PAGES) {
