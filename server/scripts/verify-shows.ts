@@ -218,7 +218,7 @@ export async function findDeceasedCountMismatches(
     FROM shows s
     LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
     ${whereClause}
-    GROUP BY s.tmdb_id, s.name, s.deceased_count
+    GROUP BY s.tmdb_id, s.name, s.deceased_count, s.popularity
     HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN saa.is_deceased THEN saa.actor_tmdb_id END)
     ORDER BY s.popularity DESC NULLS LAST
     ${limitClause}
