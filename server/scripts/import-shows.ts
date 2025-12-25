@@ -61,6 +61,31 @@ const SHOW_PROCESSING_DELAY_MS = 100
 // Number of pages to search before warning about missing resume ID
 const RESUME_ID_SEARCH_LIMIT = 20
 
+// Estimated shows matching each phase per TMDB page (for resume page estimation)
+// These are conservative estimates to ensure we don't skip past the resume point
+const ESTIMATED_MATCHES_PER_PAGE: Record<ImportPhase, number> = {
+  popular: 15, // High popularity shows are common at the top
+  standard: 8, // Medium popularity shows are moderately common
+  obscure: 3, // Low popularity shows are rare per page
+}
+
+// Buffer pages to search before the estimated resume page (in case estimates are off)
+const RESUME_PAGE_BUFFER = 10
+
+/**
+ * Calculate the starting page for resume based on shows already processed.
+ * Uses conservative estimates to ensure we don't skip past the resume point.
+ */
+export function calculateResumeStartPage(phase: ImportPhase, phaseCompleted: number): number {
+  if (phaseCompleted === 0) return 1
+
+  const matchesPerPage = ESTIMATED_MATCHES_PER_PAGE[phase]
+  const estimatedPage = Math.floor(phaseCompleted / matchesPerPage)
+
+  // Start a few pages before the estimate to ensure we find the resume ID
+  return Math.max(1, estimatedPage - RESUME_PAGE_BUFFER)
+}
+
 /**
  * Checks if error threshold has been exceeded.
  * Returns true if import should abort due to too many errors.
@@ -224,7 +249,7 @@ async function runImport(options: ImportOptions) {
   try {
     // Fetch shows for this phase
     console.log("Fetching TV shows from TMDB...")
-    const shows = await fetchShowsForPhase(currentPhase, maxShows, startFromId)
+    const shows = await fetchShowsForPhase(currentPhase, maxShows, startFromId, phaseCompleted)
     console.log(`Found ${shows.length} shows to process\n`)
 
     if (shows.length === 0) {
@@ -419,7 +444,8 @@ async function runImport(options: ImportOptions) {
 async function fetchShowsForPhase(
   phase: ImportPhase,
   limit: number,
-  afterId: number | null
+  afterId: number | null,
+  phaseCompleted: number = 0
 ): Promise<TMDBTVShow[]> {
   const threshold = PHASE_THRESHOLDS[phase]
   const shows: TMDBTVShow[] = []
@@ -429,7 +455,15 @@ async function fetchShowsForPhase(
   // Fetch more pages for lower popularity tiers
   const maxPages = phase === "popular" ? 50 : phase === "standard" ? 100 : 200
 
-  for (let page = 1; page <= maxPages && shows.length < limit; page++) {
+  // Calculate starting page based on how many shows we've already processed
+  const startPage = afterId !== null ? calculateResumeStartPage(phase, phaseCompleted) : 1
+  if (startPage > 1) {
+    console.log(
+      `Resuming from estimated page ${startPage} (based on ${phaseCompleted} shows processed)`
+    )
+  }
+
+  for (let page = startPage; page <= maxPages && shows.length < limit; page++) {
     try {
       const response = await discoverTVShows(page)
 
@@ -456,8 +490,11 @@ async function fetchShowsForPhase(
       }
 
       // Warn if we've searched many pages without finding the resume ID
-      if (!foundAfterId && page === RESUME_ID_SEARCH_LIMIT) {
-        console.error(`\n⚠️  Warning: Resume show ID ${afterId} not found after ${page} pages.`)
+      const pagesSearched = page - startPage + 1
+      if (!foundAfterId && pagesSearched === RESUME_ID_SEARCH_LIMIT) {
+        console.error(
+          `\n⚠️  Warning: Resume show ID ${afterId} not found after searching pages ${startPage}-${page}.`
+        )
         console.error("The show may have been removed from TMDB or its popularity changed.")
         console.error("Skipping resume point and continuing from current results.\n")
         foundAfterId = true // Continue without the resume point

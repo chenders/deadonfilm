@@ -6,6 +6,7 @@ import {
   shouldAbortDueToErrors,
   filterShowsByPopularity,
   processShowsPage,
+  calculateResumeStartPage,
   PHASE_THRESHOLDS,
   type ImportPhase,
 } from "./import-shows.js"
@@ -393,5 +394,52 @@ describe("processShowsPage", () => {
       expect(result.includedShows.map((s) => s.id)).toEqual([4, 5])
       expect(result.foundAfterId).toBe(true)
     })
+  })
+})
+
+describe("calculateResumeStartPage", () => {
+  it("returns page 1 when phaseCompleted is 0", () => {
+    expect(calculateResumeStartPage("popular", 0)).toBe(1)
+    expect(calculateResumeStartPage("standard", 0)).toBe(1)
+    expect(calculateResumeStartPage("obscure", 0)).toBe(1)
+  })
+
+  it("returns page 1 when phaseCompleted is small", () => {
+    // Small values should still start at page 1 due to buffer
+    expect(calculateResumeStartPage("popular", 10)).toBe(1)
+    expect(calculateResumeStartPage("standard", 10)).toBe(1)
+    expect(calculateResumeStartPage("obscure", 10)).toBe(1)
+  })
+
+  it("calculates correct starting page for popular phase", () => {
+    // Popular: ~15 matches per page, buffer of 10 pages
+    // 300 shows / 15 per page = page 20, minus 10 buffer = page 10
+    expect(calculateResumeStartPage("popular", 300)).toBe(10)
+    // 450 shows / 15 per page = page 30, minus 10 buffer = page 20
+    expect(calculateResumeStartPage("popular", 450)).toBe(20)
+  })
+
+  it("calculates correct starting page for standard phase", () => {
+    // Standard: ~8 matches per page, buffer of 10 pages
+    // 160 shows / 8 per page = page 20, minus 10 buffer = page 10
+    expect(calculateResumeStartPage("standard", 160)).toBe(10)
+    // 400 shows / 8 per page = page 50, minus 10 buffer = page 40
+    expect(calculateResumeStartPage("standard", 400)).toBe(40)
+  })
+
+  it("calculates correct starting page for obscure phase", () => {
+    // Obscure: ~3 matches per page, buffer of 10 pages
+    // 60 shows / 3 per page = page 20, minus 10 buffer = page 10
+    expect(calculateResumeStartPage("obscure", 60)).toBe(10)
+    // 300 shows / 3 per page = page 100, minus 10 buffer = page 90
+    expect(calculateResumeStartPage("obscure", 300)).toBe(90)
+    // 500 shows / 3 per page = page 166, minus 10 buffer = page 156
+    expect(calculateResumeStartPage("obscure", 500)).toBe(156)
+  })
+
+  it("never returns less than page 1", () => {
+    // Even with buffer subtraction, should never go below 1
+    expect(calculateResumeStartPage("popular", 1)).toBe(1)
+    expect(calculateResumeStartPage("obscure", 5)).toBe(1)
   })
 })
