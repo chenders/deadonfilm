@@ -143,8 +143,8 @@ async function runBackfill(dryRun: boolean) {
     // Get all entries with details
     const result = await pool.query(`
       SELECT tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_details
-      FROM deceased_persons
-      WHERE cause_of_death_details IS NOT NULL
+      FROM actors
+      WHERE deathday IS NOT NULL AND cause_of_death_details IS NOT NULL
       ORDER BY name
     `)
 
@@ -196,7 +196,7 @@ async function runBackfill(dryRun: boolean) {
       if (claudeResult.details !== null) {
         // Got new details - update
         await pool.query(
-          `UPDATE deceased_persons
+          `UPDATE actors
            SET cause_of_death = COALESCE($1, cause_of_death),
                cause_of_death_details = $2,
                updated_at = NOW()
@@ -208,7 +208,7 @@ async function runBackfill(dryRun: boolean) {
       } else {
         // No details - clear the bad details
         await pool.query(
-          `UPDATE deceased_persons
+          `UPDATE actors
            SET cause_of_death_details = NULL,
                updated_at = NOW()
            WHERE tmdb_id = $1`,

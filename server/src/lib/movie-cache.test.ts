@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   buildMovieRecord,
   calculateAgeAtFilming,
-  buildActorAppearanceRecord,
+  buildActorMovieAppearanceRecord,
 } from "./movie-cache.js"
 
 describe("movie-cache", () => {
@@ -141,97 +141,83 @@ describe("movie-cache", () => {
     })
   })
 
-  describe("buildActorAppearanceRecord", () => {
-    it("builds a complete actor appearance record", () => {
-      const result = buildActorAppearanceRecord({
+  describe("buildActorMovieAppearanceRecord", () => {
+    it("builds a complete actor movie appearance record", () => {
+      const result = buildActorMovieAppearanceRecord({
         castMember: {
           id: 999,
-          name: "John Doe",
           character: "The Hero",
         },
         movieId: 12345,
         billingOrder: 0,
         releaseYear: 2020,
         birthday: "1980-03-20",
-        isDeceased: false,
       })
 
       expect(result.actor_tmdb_id).toBe(999)
       expect(result.movie_tmdb_id).toBe(12345)
-      expect(result.actor_name).toBe("John Doe")
       expect(result.character_name).toBe("The Hero")
       expect(result.billing_order).toBe(0)
       expect(result.age_at_filming).toBe(40)
-      expect(result.is_deceased).toBe(false)
     })
 
     it("handles null character name", () => {
-      const result = buildActorAppearanceRecord({
+      const result = buildActorMovieAppearanceRecord({
         castMember: {
           id: 999,
-          name: "John Doe",
           character: null,
         },
         movieId: 12345,
         billingOrder: 5,
         releaseYear: 2020,
         birthday: "1980-03-20",
-        isDeceased: true,
       })
 
       expect(result.character_name).toBeNull()
-      expect(result.is_deceased).toBe(true)
     })
 
     it("handles missing birthday", () => {
-      const result = buildActorAppearanceRecord({
+      const result = buildActorMovieAppearanceRecord({
         castMember: {
           id: 999,
-          name: "John Doe",
           character: "Villain",
         },
         movieId: 12345,
         billingOrder: 1,
         releaseYear: 2020,
         birthday: null,
-        isDeceased: false,
       })
 
       expect(result.age_at_filming).toBeNull()
     })
 
     it("handles missing release year", () => {
-      const result = buildActorAppearanceRecord({
+      const result = buildActorMovieAppearanceRecord({
         castMember: {
           id: 999,
-          name: "John Doe",
           character: "Villain",
         },
         movieId: 12345,
         billingOrder: 1,
         releaseYear: null,
         birthday: "1980-03-20",
-        isDeceased: false,
       })
 
       expect(result.age_at_filming).toBeNull()
     })
 
-    it("handles deceased actor", () => {
-      const result = buildActorAppearanceRecord({
+    it("calculates age at filming correctly", () => {
+      const result = buildActorMovieAppearanceRecord({
         castMember: {
           id: 999,
-          name: "Jane Doe",
           character: "Supporting",
         },
         movieId: 12345,
         billingOrder: 3,
         releaseYear: 2010,
         birthday: "1930-05-10",
-        isDeceased: true,
       })
 
-      expect(result.is_deceased).toBe(true)
       expect(result.age_at_filming).toBe(80)
     })
   })

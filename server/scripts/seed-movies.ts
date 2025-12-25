@@ -30,9 +30,9 @@ import {
 import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import {
   upsertMovie,
-  batchUpsertActorAppearances,
+  batchUpsertActorMovieAppearances,
   type MovieRecord,
-  type ActorAppearanceRecord,
+  type ActorMovieAppearanceRecord,
 } from "../src/lib/db.js"
 
 const DEFAULT_MOVIES_TO_FETCH = 200
@@ -217,7 +217,7 @@ async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
           )
 
           // Save actor appearances
-          const appearances: ActorAppearanceRecord[] = topCast.map((castMember, index) => {
+          const appearances: ActorMovieAppearanceRecord[] = topCast.map((castMember, index) => {
             const person = personDetails.get(castMember.id)
             const birthday = person?.birthday
             let ageAtFilming: number | null = null
@@ -230,15 +230,13 @@ async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
             return {
               actor_tmdb_id: castMember.id,
               movie_tmdb_id: movie.id,
-              actor_name: castMember.name,
               character_name: castMember.character || null,
               billing_order: index,
               age_at_filming: ageAtFilming,
-              is_deceased: !!person?.deathday,
             }
           })
 
-          await batchUpsertActorAppearances(appearances)
+          await batchUpsertActorMovieAppearances(appearances)
           yearActorAppearances += appearances.length
 
           console.log(`  Saved ${appearances.length} actor appearances`)

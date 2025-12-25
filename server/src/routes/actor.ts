@@ -1,6 +1,6 @@
 import type { Request, Response } from "express"
 import { getPersonDetails } from "../lib/tmdb.js"
-import { getActorFilmography, getDeceasedPerson } from "../lib/db.js"
+import { getActorFilmography, getActor as getActorRecord } from "../lib/db.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -47,7 +47,7 @@ export async function getActor(req: Request, res: Response) {
     // Get death info if deceased
     let deathInfo: ActorProfileResponse["deathInfo"] = null
     if (person.deathday) {
-      const deceasedRecord = await getDeceasedPerson(actorId)
+      const deceasedRecord = await getActorRecord(actorId)
       if (deceasedRecord) {
         deathInfo = {
           causeOfDeath: deceasedRecord.cause_of_death,

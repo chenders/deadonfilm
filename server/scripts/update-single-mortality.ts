@@ -38,8 +38,8 @@ async function runUpdate(tmdbId: number) {
   }>(
     `
     SELECT tmdb_id, name, birthday::text, deathday::text
-    FROM deceased_persons
-    WHERE tmdb_id = $1
+    FROM actors
+    WHERE tmdb_id = $1 AND deathday IS NOT NULL
   `,
     [tmdbId]
   )
@@ -65,7 +65,7 @@ async function runUpdate(tmdbId: number) {
 
   if (stats) {
     await db.query(
-      `UPDATE deceased_persons
+      `UPDATE actors
        SET age_at_death = $2, expected_lifespan = $3, years_lost = $4, updated_at = CURRENT_TIMESTAMP
        WHERE tmdb_id = $1`,
       [person.tmdb_id, stats.ageAtDeath, stats.expectedLifespan, stats.yearsLost]

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Backfill script to populate the popularity column in deceased_persons table.
+ * Backfill script to populate the popularity column in the actors table.
  * The is_obscure column is computed automatically based on profile_path and popularity.
  *
  * An actor is considered "obscure" if:
@@ -76,7 +76,7 @@ async function showStats(): Promise<void> {
         COUNT(*) FILTER (WHERE is_obscure = false)::text as not_obscure,
         COUNT(*) FILTER (WHERE profile_path IS NULL)::text as no_profile,
         COUNT(*) FILTER (WHERE COALESCE(popularity, 0) < ${OBSCURE_POPULARITY_THRESHOLD})::text as low_popularity
-      FROM deceased_persons
+      FROM actors
     `)
 
     const stats = result.rows[0]
@@ -176,7 +176,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
     const result = await db.query<ActorRow>(
       `SELECT tmdb_id, name, profile_path, popularity
-       FROM deceased_persons
+       FROM actors
        WHERE ${whereClause}
        ORDER BY tmdb_id
        ${limitClause}`,
@@ -217,7 +217,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
           )
           updated++
         } else {
-          await db.query(`UPDATE deceased_persons SET popularity = $2 WHERE tmdb_id = $1`, [
+          await db.query(`UPDATE actors SET popularity = $2 WHERE tmdb_id = $1`, [
             actor.tmdb_id,
             popularity,
           ])

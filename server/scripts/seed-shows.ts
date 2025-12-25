@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Seed script to populate the shows and show_actor_appearances tables.
+ * Seed script to populate the shows and actor_show_appearances tables.
  * Discovers popular US TV shows and saves their cast information.
  *
  * Usage:
@@ -46,7 +46,7 @@ function parsePositiveInt(value: string): number {
 
 const program = new Command()
   .name("seed-shows")
-  .description("Seed the shows and show_actor_appearances tables with TV show data from TMDB")
+  .description("Seed the shows and actor_show_appearances tables with TV show data from TMDB")
   .option(
     "-c, --count <number>",
     "Number of shows to seed",
@@ -181,12 +181,10 @@ async function runSeeding({ showsToFetch, dryRun }: SeedOptions) {
             show_tmdb_id: show.id,
             season_number: 1, // Placeholder - we're tracking at show level for now
             episode_number: 1, // Placeholder
-            actor_name: castMember.name,
             character_name: characterName,
             appearance_type: "regular" as const,
             billing_order: index,
             age_at_filming: ageAtFilming,
-            is_deceased: !!person?.deathday,
           }
         })
 

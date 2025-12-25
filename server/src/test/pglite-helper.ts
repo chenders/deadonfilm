@@ -38,8 +38,8 @@ export async function resetTestDb(): Promise<void> {
   const testDb = await getTestDb()
   await testDb.exec(`
     TRUNCATE shows CASCADE;
-    TRUNCATE show_actor_appearances CASCADE;
-    TRUNCATE deceased_persons CASCADE;
+    TRUNCATE actor_show_appearances CASCADE;
+    TRUNCATE actors CASCADE;
   `)
 }
 
@@ -74,44 +74,45 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
       updated_at TIMESTAMP DEFAULT NOW()
     );
 
-    -- Show actor appearances table
-    CREATE TABLE IF NOT EXISTS show_actor_appearances (
-      id SERIAL PRIMARY KEY,
-      actor_tmdb_id INTEGER NOT NULL,
-      show_tmdb_id INTEGER NOT NULL,
-      season_number INTEGER NOT NULL DEFAULT 1,
-      episode_number INTEGER NOT NULL DEFAULT 1,
-      actor_name TEXT NOT NULL,
-      character_name TEXT,
-      appearance_type TEXT NOT NULL DEFAULT 'regular',
-      billing_order INTEGER,
-      is_deceased BOOLEAN DEFAULT FALSE,
-      age_at_filming INTEGER,
-      UNIQUE(actor_tmdb_id, show_tmdb_id, season_number, episode_number)
-    );
-
-    -- Deceased persons table
-    CREATE TABLE IF NOT EXISTS deceased_persons (
+    -- Actors table (unified for living and deceased)
+    CREATE TABLE IF NOT EXISTS actors (
       id SERIAL PRIMARY KEY,
       tmdb_id INTEGER UNIQUE NOT NULL,
       name TEXT NOT NULL,
       birthday DATE,
-      deathday DATE NOT NULL,
+      deathday DATE,
+      profile_path TEXT,
+      popularity DECIMAL(10,3),
       cause_of_death TEXT,
       cause_of_death_source TEXT,
       cause_of_death_details TEXT,
       cause_of_death_details_source TEXT,
       wikipedia_url TEXT,
-      profile_path TEXT,
       age_at_death INTEGER,
       expected_lifespan DECIMAL(5,2),
       years_lost DECIMAL(5,2),
+      violent_death BOOLEAN,
+      created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
 
+    -- Actor show appearances table (junction table only)
+    CREATE TABLE IF NOT EXISTS actor_show_appearances (
+      id SERIAL PRIMARY KEY,
+      actor_tmdb_id INTEGER NOT NULL,
+      show_tmdb_id INTEGER NOT NULL,
+      season_number INTEGER NOT NULL DEFAULT 1,
+      episode_number INTEGER NOT NULL DEFAULT 1,
+      character_name TEXT,
+      appearance_type TEXT NOT NULL DEFAULT 'regular',
+      billing_order INTEGER,
+      age_at_filming INTEGER,
+      UNIQUE(actor_tmdb_id, show_tmdb_id, season_number, episode_number)
+    );
+
     -- Create indexes for foreign key lookups
-    CREATE INDEX IF NOT EXISTS idx_saa_show_tmdb_id ON show_actor_appearances(show_tmdb_id);
-    CREATE INDEX IF NOT EXISTS idx_saa_actor_tmdb_id ON show_actor_appearances(actor_tmdb_id);
+    CREATE INDEX IF NOT EXISTS idx_asa_show_tmdb_id ON actor_show_appearances(show_tmdb_id);
+    CREATE INDEX IF NOT EXISTS idx_asa_actor_tmdb_id ON actor_show_appearances(actor_tmdb_id);
   `)
 }
 
@@ -158,57 +159,65 @@ export async function insertShow(
 }
 
 /**
- * Insert test actor appearance data
+ * Insert test show actor appearance data
  */
-export async function insertActorAppearance(
+export async function insertShowActorAppearance(
   testDb: PGlite,
   appearance: {
     actor_tmdb_id: number
     show_tmdb_id: number
-    actor_name: string
-    is_deceased?: boolean
     season_number?: number
     episode_number?: number
+    character_name?: string
+    appearance_type?: string
+    billing_order?: number
   }
 ): Promise<void> {
   await testDb.query(
     `
-    INSERT INTO show_actor_appearances (actor_tmdb_id, show_tmdb_id, actor_name, is_deceased, season_number, episode_number)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO actor_show_appearances (actor_tmdb_id, show_tmdb_id, season_number, episode_number, character_name, appearance_type, billing_order)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     ON CONFLICT (actor_tmdb_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
-      actor_name = EXCLUDED.actor_name,
-      is_deceased = EXCLUDED.is_deceased
+      character_name = EXCLUDED.character_name,
+      appearance_type = EXCLUDED.appearance_type,
+      billing_order = EXCLUDED.billing_order
   `,
     [
       appearance.actor_tmdb_id,
       appearance.show_tmdb_id,
-      appearance.actor_name,
-      appearance.is_deceased ?? false,
       appearance.season_number ?? 1,
       appearance.episode_number ?? 1,
+      appearance.character_name ?? null,
+      appearance.appearance_type ?? "regular",
+      appearance.billing_order ?? null,
     ]
   )
 }
 
 /**
- * Insert test deceased person data
+ * Insert test actor data
  */
-export async function insertDeceasedPerson(
+export async function insertActor(
   testDb: PGlite,
-  person: {
+  actor: {
     tmdb_id: number
     name: string
-    deathday: string
+    deathday?: string | null
+    birthday?: string | null
   }
 ): Promise<void> {
   await testDb.query(
     `
-    INSERT INTO deceased_persons (tmdb_id, name, deathday)
-    VALUES ($1, $2, $3)
+    INSERT INTO actors (tmdb_id, name, deathday, birthday)
+    VALUES ($1, $2, $3, $4)
     ON CONFLICT (tmdb_id) DO UPDATE SET
       name = EXCLUDED.name,
-      deathday = EXCLUDED.deathday
+      deathday = EXCLUDED.deathday,
+      birthday = EXCLUDED.birthday
   `,
-    [person.tmdb_id, person.name, person.deathday]
+    [actor.tmdb_id, actor.name, actor.deathday ?? null, actor.birthday ?? null]
   )
 }
+
+// Backwards compatibility alias
+export const insertDeceasedPerson = insertActor

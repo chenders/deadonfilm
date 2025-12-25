@@ -5,9 +5,8 @@
  * This script:
  * 1. Fetches person/movie changes from TMDB since last sync
  * 2. Filters to people/movies in our database
- * 3. Detects newly deceased actors and adds them to deceased_persons
- * 4. Updates actor_appearances.is_deceased flags
- * 5. Recalculates mortality stats for affected movies
+ * 3. Detects newly deceased actors and updates them in the actors table
+ * 4. Recalculates mortality stats for affected movies
  *
  * Usage:
  *   npm run sync:tmdb                    # Normal sync (since last run)
@@ -26,10 +25,9 @@ import {
   getAllActorTmdbIds,
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
-  markActorsDeceased,
-  upsertDeceasedPerson,
+  upsertActor,
   upsertMovie,
-  type DeceasedPersonRecord,
+  type ActorInput,
   type MovieRecord,
 } from "../src/lib/db.js"
 import {
@@ -288,7 +286,7 @@ async function syncPeopleChanges(
     getDeceasedTmdbIds(),
   ])
   console.log(`  Found ${actorTmdbIds.size} actors in actor_appearances`)
-  console.log(`  Found ${deceasedTmdbIds.size} actors in deceased_persons`)
+  console.log(`  Found ${deceasedTmdbIds.size} deceased actors`)
 
   // Split into date ranges if needed (max 14 days per query)
   const dateRanges = getDateRanges(startDate, endDate)
@@ -354,16 +352,14 @@ async function syncPeopleChanges(
     }
   }
 
-  // Mark newly deceased actors in actor_appearances
+  // Recalculate mortality stats for movies featuring newly deceased actors
   if (!dryRun && newlyDeceasedIds.length > 0) {
-    console.log(`\nMarking ${newlyDeceasedIds.length} actors as deceased in actor_appearances...`)
-    await markActorsDeceased(newlyDeceasedIds)
-
-    // Recalculate mortality stats for movies featuring newly deceased actors
-    console.log(`\nRecalculating mortality stats for affected movies...`)
+    console.log(
+      `\nRecalculating mortality stats for ${newlyDeceasedIds.length} newly deceased actors...`
+    )
     const pool = getPool()
     const { rows: affectedMovies } = await pool.query<{ movie_tmdb_id: number }>(
-      `SELECT DISTINCT movie_tmdb_id FROM actor_appearances WHERE actor_tmdb_id = ANY($1)`,
+      `SELECT DISTINCT movie_tmdb_id FROM actor_movie_appearances WHERE actor_tmdb_id = ANY($1)`,
       [newlyDeceasedIds]
     )
     console.log(`  Found ${affectedMovies.length} affected movies`)
@@ -397,8 +393,8 @@ async function processNewDeath(person: TMDBPerson): Promise<void> {
   // Calculate mortality stats
   const yearsLostResult = await calculateYearsLost(person.birthday, person.deathday!)
 
-  // Create deceased person record
-  const record: DeceasedPersonRecord = {
+  // Create actor record
+  const record: ActorInput = {
     tmdb_id: person.id,
     name: person.name,
     birthday: person.birthday,
@@ -414,7 +410,7 @@ async function processNewDeath(person: TMDBPerson): Promise<void> {
     years_lost: yearsLostResult?.yearsLost ?? null,
   }
 
-  await upsertDeceasedPerson(record)
+  await upsertActor(record)
 
   if (causeOfDeath) {
     console.log(`    -> ${causeOfDeath} (${causeOfDeathSource})`)

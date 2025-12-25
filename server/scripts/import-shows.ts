@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Import script to populate the shows and show_actor_appearances tables.
+ * Import script to populate the shows and actor_show_appearances tables.
  * Supports phased imports with checkpointing for large-scale imports.
  *
  * Usage:
@@ -33,12 +33,12 @@ import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import {
   upsertShow,
   batchUpsertShowActorAppearances,
-  batchUpsertDeceasedPersons,
+  batchUpsertActors,
   getSyncState,
   updateSyncState,
   type ShowRecord,
   type ShowActorAppearanceRecord,
-  type DeceasedPersonRecord,
+  type ActorInput,
 } from "../src/lib/db.js"
 import {
   PHASE_THRESHOLDS,
@@ -356,7 +356,7 @@ async function runImport(options: ImportOptions) {
         )
 
         // Collect deceased actors for batch insert
-        const deceasedRecords: DeceasedPersonRecord[] = []
+        const deceasedRecords: ActorInput[] = []
         for (const castMember of topCast) {
           const person = personDetails.get(castMember.id)
           if (person?.deathday) {
@@ -387,7 +387,7 @@ async function runImport(options: ImportOptions) {
 
         // Batch insert deceased actors
         if (!dryRun && deceasedRecords.length > 0) {
-          await batchUpsertDeceasedPersons(deceasedRecords)
+          await batchUpsertActors(deceasedRecords)
         }
 
         // Prepare actor appearances
@@ -411,12 +411,10 @@ async function runImport(options: ImportOptions) {
             // These represent "appeared in the show" rather than a specific episode.
             season_number: 1,
             episode_number: 1,
-            actor_name: castMember.name,
             character_name: characterName,
             appearance_type: "regular" as const,
             billing_order: index,
             age_at_filming: ageAtFilming,
-            is_deceased: !!person?.deathday,
           }
         })
 

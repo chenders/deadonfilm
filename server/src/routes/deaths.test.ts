@@ -518,6 +518,9 @@ describe("getAllDeathsHandler", () => {
       age_at_death: 85,
       expected_lifespan: 80,
       years_lost: -5,
+      popularity: 10.5,
+      violent_death: false,
+      is_obscure: false,
     },
     {
       tmdb_id: 2,
@@ -533,6 +536,9 @@ describe("getAllDeathsHandler", () => {
       age_at_death: 72,
       expected_lifespan: 78,
       years_lost: 6,
+      popularity: null,
+      violent_death: null,
+      is_obscure: true,
     },
   ]
 

@@ -13,8 +13,8 @@ vi.mock("../lib/tmdb.js", () => ({
 }))
 
 vi.mock("../lib/db.js", () => ({
-  getDeceasedPersons: vi.fn(),
-  batchUpsertDeceasedPersons: vi.fn(),
+  getActors: vi.fn(),
+  batchUpsertActors: vi.fn(),
   upsertShow: vi.fn(),
   getSeasons: vi.fn(),
 }))
@@ -31,7 +31,7 @@ import {
   batchGetPersonDetails,
   getSeasonDetails,
 } from "../lib/tmdb.js"
-import { getDeceasedPersons, upsertShow, getSeasons } from "../lib/db.js"
+import { getActors, upsertShow, getSeasons } from "../lib/db.js"
 import { calculateMovieMortality } from "../lib/mortality-stats.js"
 
 describe("getShow route", () => {
@@ -123,7 +123,7 @@ describe("getShow route", () => {
         ],
       ])
     )
-    vi.mocked(getDeceasedPersons).mockResolvedValue(new Map())
+    vi.mocked(getActors).mockResolvedValue(new Map())
     vi.mocked(upsertShow).mockResolvedValue()
     vi.mocked(getSeasons).mockResolvedValue([])
     vi.mocked(calculateMovieMortality).mockResolvedValue({
