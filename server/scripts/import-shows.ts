@@ -74,6 +74,9 @@ const ESTIMATED_MATCHES_PER_PAGE: Record<ImportPhase, number> = {
 // Buffer pages to search before the estimated resume page (in case estimates are off)
 const RESUME_PAGE_BUFFER = 10
 
+// TMDB's discover API has a hard limit of 500 pages
+const TMDB_MAX_PAGES = 500
+
 /**
  * Calculate the starting page for resume based on shows already processed.
  * Uses conservative estimates to ensure we don't skip past the resume point.
@@ -493,15 +496,32 @@ async function fetchShowsForPhase(
   const baseMaxPages = phase === "popular" ? 50 : phase === "standard" ? 100 : 200
 
   // Calculate starting page based on how many shows we've already processed
-  const startPage = afterId !== null ? calculateResumeStartPage(phase, phaseCompleted) : 1
+  const calculatedStartPage =
+    afterId !== null ? calculateResumeStartPage(phase, phaseCompleted) : 1
+
+  // TMDB's discover API has a hard limit of 500 pages
+  if (calculatedStartPage > TMDB_MAX_PAGES) {
+    console.log(
+      `\n✅ Reached TMDB API page limit (${TMDB_MAX_PAGES} pages). Phase import is complete.`
+    )
+    console.log(`   Total shows processed in this phase: ${phaseCompleted}\n`)
+    return shows // Return empty - we've exhausted what TMDB can provide
+  }
+
+  const startPage = Math.min(calculatedStartPage, TMDB_MAX_PAGES)
 
   // When resuming, search baseMaxPages from the start point (not from page 1)
-  const maxPages = startPage + baseMaxPages - 1
+  // But don't exceed TMDB's page limit
+  const maxPages = Math.min(startPage + baseMaxPages - 1, TMDB_MAX_PAGES)
 
   if (startPage > 1) {
     console.log(
       `Resuming from estimated page ${startPage} (based on ${phaseCompleted} shows processed)`
     )
+  }
+
+  if (maxPages === TMDB_MAX_PAGES) {
+    console.log(`Note: Will stop at TMDB's API limit of ${TMDB_MAX_PAGES} pages`)
   }
 
   for (let page = startPage; page <= maxPages && shows.length < limit; page++) {
