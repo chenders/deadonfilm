@@ -41,7 +41,7 @@ interface ActorRow {
 
 interface PopularitySource {
   popularity: number | null
-  source: "actor_appearances" | "tmdb" | null
+  source: "tmdb" | null
 }
 
 const program = new Command()
@@ -120,48 +120,12 @@ async function showStats(): Promise<void> {
   }
 }
 
-async function getPopularityFromAppearances(
-  db: ReturnType<typeof getPool>,
-  tmdbId: number
-): Promise<number | null> {
-  // Try to get popularity from actor_appearances (movie appearances)
-  const movieResult = await db.query<{ popularity: string | null }>(
-    `SELECT MAX(popularity) as popularity
-     FROM actor_appearances
-     WHERE actor_tmdb_id = $1 AND popularity IS NOT NULL`,
-    [tmdbId]
-  )
-
-  if (movieResult.rows[0]?.popularity) {
-    return parseFloat(movieResult.rows[0].popularity)
-  }
-
-  // Try show_actor_appearances if available
-  const showResult = await db.query<{ popularity: string | null }>(
-    `SELECT MAX(popularity) as popularity
-     FROM show_actor_appearances
-     WHERE actor_tmdb_id = $1 AND popularity IS NOT NULL`,
-    [tmdbId]
-  )
-
-  if (showResult.rows[0]?.popularity) {
-    return parseFloat(showResult.rows[0].popularity)
-  }
-
-  return null
-}
-
-async function getPopularity(
-  db: ReturnType<typeof getPool>,
-  tmdbId: number
-): Promise<PopularitySource> {
-  // First, try to get from existing appearance data (faster, no API call)
-  const cachedPopularity = await getPopularityFromAppearances(db, tmdbId)
-  if (cachedPopularity !== null) {
-    return { popularity: cachedPopularity, source: "actor_appearances" }
-  }
-
-  // Fall back to TMDB API
+/**
+ * Get actor popularity from TMDB API.
+ * Note: We always fetch from TMDB rather than using cached data from actor_appearances
+ * because that cached data can become stale (TMDB popularity changes over time).
+ */
+async function getPopularity(tmdbId: number): Promise<PopularitySource> {
   try {
     const details = await getPersonDetails(tmdbId)
     return { popularity: details.popularity, source: "tmdb" }
@@ -231,15 +195,13 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     let updated = 0
     let skipped = 0
     let errors = 0
-    let fromCache = 0
-    let fromApi = 0
 
     for (let i = 0; i < result.rows.length; i++) {
       const actor = result.rows[i]
       const progress = `[${i + 1}/${result.rows.length}]`
 
       try {
-        const { popularity, source } = await getPopularity(db, actor.tmdb_id)
+        const { popularity } = await getPopularity(actor.tmdb_id)
 
         if (popularity === null) {
           console.log(`${progress} ${actor.name}: no popularity data found, skipping`)
@@ -252,7 +214,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
         if (dryRun) {
           console.log(
-            `${progress} ${actor.name}: popularity=${popularity.toFixed(1)} (${source}) → ${obscureLabel}`
+            `${progress} ${actor.name}: popularity=${popularity.toFixed(1)} → ${obscureLabel}`
           )
           updated++
         } else {
@@ -261,18 +223,13 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
             popularity,
           ])
           console.log(
-            `${progress} ${actor.name}: popularity=${popularity.toFixed(1)} (${source}) → ${obscureLabel}`
+            `${progress} ${actor.name}: popularity=${popularity.toFixed(1)} → ${obscureLabel}`
           )
           updated++
         }
 
-        if (source === "actor_appearances") {
-          fromCache++
-        } else {
-          fromApi++
-          // Only rate limit when making API calls
-          await new Promise((resolve) => setTimeout(resolve, API_DELAY_MS))
-        }
+        // Rate limit - TMDB API has limits (around 40 requests/10 seconds)
+        await new Promise((resolve) => setTimeout(resolve, API_DELAY_MS))
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error)
         console.error(`${progress} ${actor.name}: ERROR - ${errorMsg}`)
@@ -286,9 +243,6 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     console.log(`  Updated:  ${updated}`)
     console.log(`  Skipped:  ${skipped}`)
     console.log(`  Errors:   ${errors}`)
-    console.log(`\nData sources:`)
-    console.log(`  From actor_appearances: ${fromCache}`)
-    console.log(`  From TMDB API:          ${fromApi}`)
     console.log("=".repeat(60))
 
     // Show final stats

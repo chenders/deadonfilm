@@ -81,6 +81,6 @@ describe("is_obscure calculation logic", () => {
   })
 })
 
-// Note: The script prioritizes getting popularity from actor_appearances (cached)
-// before falling back to TMDB API. This behavior is tested via integration tests
-// since it requires database connections.
+// Note: The script always fetches popularity from the TMDB API to ensure
+// accurate, up-to-date values. Cached popularity from actor_appearances is not
+// used because it may be stale or not available for all deceased actors.
