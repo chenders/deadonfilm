@@ -33,6 +33,8 @@ export interface DeceasedPersonRecord {
   age_at_death: number | null
   expected_lifespan: number | null
   years_lost: number | null
+  popularity?: number | null // Added via migration, optional for backwards compat
+  is_obscure?: boolean | null // Computed column: profile_path IS NULL OR popularity < 5.0
 }
 
 // ============================================================================
