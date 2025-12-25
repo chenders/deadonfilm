@@ -33,10 +33,12 @@ import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import {
   upsertShow,
   batchUpsertShowActorAppearances,
+  upsertDeceasedPerson,
   getSyncState,
   updateSyncState,
   type ShowRecord,
   type ShowActorAppearanceRecord,
+  type DeceasedPersonRecord,
 } from "../src/lib/db.js"
 import {
   PHASE_THRESHOLDS,
@@ -347,6 +349,39 @@ async function runImport(options: ImportOptions) {
           `  ${mortalityStats.actualDeaths} deceased, ${mortalityStats.expectedDeaths.toFixed(1)} expected`
         )
 
+        // Save deceased actors to deceased_persons table
+        if (!dryRun) {
+          for (const castMember of topCast) {
+            const person = personDetails.get(castMember.id)
+            if (person?.deathday) {
+              let ageAtDeath: number | null = null
+              if (person.birthday) {
+                const birthYear = parseInt(person.birthday.split("-")[0], 10)
+                const deathYear = parseInt(person.deathday.split("-")[0], 10)
+                ageAtDeath = deathYear - birthYear
+              }
+
+              const deceasedRecord: DeceasedPersonRecord = {
+                tmdb_id: castMember.id,
+                name: castMember.name,
+                birthday: person.birthday || null,
+                deathday: person.deathday,
+                cause_of_death: null,
+                cause_of_death_source: null,
+                cause_of_death_details: null,
+                cause_of_death_details_source: null,
+                wikipedia_url: null,
+                profile_path: person.profile_path || null,
+                age_at_death: ageAtDeath,
+                expected_lifespan: null,
+                years_lost: null,
+              }
+
+              await upsertDeceasedPerson(deceasedRecord)
+            }
+          }
+        }
+
         // Prepare actor appearances
         const appearances: ShowActorAppearanceRecord[] = topCast.map((castMember, index) => {
           const person = personDetails.get(castMember.id)
@@ -458,8 +493,8 @@ async function fetchShowsForPhase(
   // Calculate starting page based on how many shows we've already processed
   const startPage = afterId !== null ? calculateResumeStartPage(phase, phaseCompleted) : 1
 
-  // Extend maxPages if resuming from a high page to ensure we can search
-  const maxPages = Math.max(baseMaxPages, startPage + RESUME_ID_SEARCH_LIMIT)
+  // When resuming, search baseMaxPages from the start point (not from page 1)
+  const maxPages = startPage + baseMaxPages - 1
 
   if (startPage > 1) {
     console.log(
