@@ -458,7 +458,9 @@ async function fetchShowsForPhase(
   // Calculate starting page based on how many shows we've already processed
   const startPage = afterId !== null ? calculateResumeStartPage(phase, phaseCompleted) : 1
   if (startPage > 1) {
-    console.log(`Resuming from estimated page ${startPage} (based on ${phaseCompleted} shows processed)`)
+    console.log(
+      `Resuming from estimated page ${startPage} (based on ${phaseCompleted} shows processed)`
+    )
   }
 
   for (let page = startPage; page <= maxPages && shows.length < limit; page++) {
@@ -490,7 +492,9 @@ async function fetchShowsForPhase(
       // Warn if we've searched many pages without finding the resume ID
       const pagesSearched = page - startPage + 1
       if (!foundAfterId && pagesSearched === RESUME_ID_SEARCH_LIMIT) {
-        console.error(`\n⚠️  Warning: Resume show ID ${afterId} not found after searching pages ${startPage}-${page}.`)
+        console.error(
+          `\n⚠️  Warning: Resume show ID ${afterId} not found after searching pages ${startPage}-${page}.`
+        )
         console.error("The show may have been removed from TMDB or its popularity changed.")
         console.error("Skipping resume point and continuing from current results.\n")
         foundAfterId = true // Continue without the resume point
