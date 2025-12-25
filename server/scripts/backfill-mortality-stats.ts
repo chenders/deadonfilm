@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Backfill script to populate age_at_death, expected_lifespan, and years_lost
- * for existing deceased_persons records.
+ * for existing deceased actors.
  *
  * Uses birth-year-specific cohort life expectancy from US SSA Actuarial Study No. 120.
  *

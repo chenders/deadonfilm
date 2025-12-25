@@ -7,7 +7,6 @@
  *
  * Options:
  *   --check-counts      Verify cast_count matches actual appearances
- *   --check-deceased    Verify is_deceased flags match deceased_persons table
  *   --check-mortality   Verify mortality stats are calculated
  *   --check-all         Run all checks (default if no specific check specified)
  *   --sample <n>        Limit results to top N shows by popularity (default: all)
@@ -37,7 +36,6 @@ export { PHASE_THRESHOLDS, parsePositiveInt, parsePhase, type ImportPhase }
 
 interface VerifyOptions {
   checkCounts: boolean
-  checkDeceased: boolean
   checkMortality: boolean
   checkAll: boolean
   sample?: number
@@ -57,13 +55,6 @@ interface CastCountMismatch {
   actual_count: number
 }
 
-interface DeceasedFlagIssue {
-  actor_tmdb_id: number
-  show_tmdb_id: number
-  actor_name: string
-  issue: "should_be_true" | "should_be_false"
-}
-
 interface DeceasedCountMismatch {
   tmdb_id: number
   name: string
@@ -78,7 +69,6 @@ interface MissingMortality {
 
 interface VerificationResults {
   castCountMismatches: CastCountMismatch[]
-  deceasedFlagIssues: DeceasedFlagIssue[]
   deceasedCountMismatches: DeceasedCountMismatch[]
   missingMortality: MissingMortality[]
   showsChecked: number
@@ -127,7 +117,7 @@ export async function findCastCountMismatches(
       COALESCE(s.cast_count, 0)::int as stored_count,
       COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
     FROM shows s
-    LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+    LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
     ${whereClause}
     GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
     HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
@@ -141,45 +131,7 @@ export async function findCastCountMismatches(
 }
 
 /**
- * Find appearances where is_deceased flag doesn't match deceased_persons table
- */
-export async function findDeceasedFlagIssues(): Promise<DeceasedFlagIssue[]> {
-  const db = getPool()
-
-  // Find actors who should be marked deceased but aren't
-  const shouldBeTrue = await db.query<{
-    actor_tmdb_id: number
-    show_tmdb_id: number
-    actor_name: string
-  }>(`
-    SELECT DISTINCT saa.actor_tmdb_id, saa.show_tmdb_id, saa.actor_name
-    FROM show_actor_appearances saa
-    INNER JOIN deceased_persons dp ON saa.actor_tmdb_id = dp.tmdb_id
-    WHERE saa.is_deceased = false
-  `)
-
-  // Find actors marked deceased who aren't in deceased_persons
-  const shouldBeFalse = await db.query<{
-    actor_tmdb_id: number
-    show_tmdb_id: number
-    actor_name: string
-  }>(`
-    SELECT DISTINCT saa.actor_tmdb_id, saa.show_tmdb_id, saa.actor_name
-    FROM show_actor_appearances saa
-    LEFT JOIN deceased_persons dp ON saa.actor_tmdb_id = dp.tmdb_id
-    WHERE saa.is_deceased = true AND dp.tmdb_id IS NULL
-  `)
-
-  const issues: DeceasedFlagIssue[] = [
-    ...shouldBeTrue.rows.map((r) => ({ ...r, issue: "should_be_true" as const })),
-    ...shouldBeFalse.rows.map((r) => ({ ...r, issue: "should_be_false" as const })),
-  ]
-
-  return issues
-}
-
-/**
- * Find shows where deceased_count doesn't match is_deceased flags
+ * Find shows where deceased_count doesn't match actual deceased actors
  */
 export async function findDeceasedCountMismatches(
   phase?: ImportPhase,
@@ -214,12 +166,13 @@ export async function findDeceasedCountMismatches(
       s.tmdb_id,
       s.name,
       COALESCE(s.deceased_count, 0)::int as stored_count,
-      COUNT(DISTINCT CASE WHEN saa.is_deceased THEN saa.actor_tmdb_id END)::int as actual_count
+      COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)::int as actual_count
     FROM shows s
-    LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+    LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+    LEFT JOIN actors a ON saa.actor_tmdb_id = a.tmdb_id
     ${whereClause}
     GROUP BY s.tmdb_id, s.name, s.deceased_count, s.popularity
-    HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN saa.is_deceased THEN saa.actor_tmdb_id END)
+    HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)
     ORDER BY s.popularity DESC NULLS LAST
     ${limitClause}
   `,
@@ -308,42 +261,6 @@ export async function fixCastCounts(
 }
 
 /**
- * Fix is_deceased flags
- */
-export async function fixDeceasedFlags(
-  issues: DeceasedFlagIssue[],
-  dryRun: boolean
-): Promise<number> {
-  if (dryRun || issues.length === 0) return 0
-
-  const db = getPool()
-
-  // Update flags that should be true
-  const shouldBeTrue = issues.filter((i) => i.issue === "should_be_true")
-  if (shouldBeTrue.length > 0) {
-    const actorIds = [...new Set(shouldBeTrue.map((i) => i.actor_tmdb_id))]
-    const placeholders = actorIds.map((_, i) => `$${i + 1}`).join(", ")
-    await db.query(
-      `UPDATE show_actor_appearances SET is_deceased = true WHERE actor_tmdb_id IN (${placeholders})`,
-      actorIds
-    )
-  }
-
-  // Update flags that should be false
-  const shouldBeFalse = issues.filter((i) => i.issue === "should_be_false")
-  if (shouldBeFalse.length > 0) {
-    const actorIds = [...new Set(shouldBeFalse.map((i) => i.actor_tmdb_id))]
-    const placeholders = actorIds.map((_, i) => `$${i + 1}`).join(", ")
-    await db.query(
-      `UPDATE show_actor_appearances SET is_deceased = false WHERE actor_tmdb_id IN (${placeholders})`,
-      actorIds
-    )
-  }
-
-  return issues.length
-}
-
-/**
  * Fix deceased_count values for specific shows (batch update)
  */
 export async function fixDeceasedCounts(
@@ -380,7 +297,6 @@ export async function fixDeceasedCounts(
 async function runVerification(options: VerifyOptions): Promise<VerificationResults> {
   const results: VerificationResults = {
     castCountMismatches: [],
-    deceasedFlagIssues: [],
     deceasedCountMismatches: [],
     missingMortality: [],
     showsChecked: 0,
@@ -388,10 +304,8 @@ async function runVerification(options: VerifyOptions): Promise<VerificationResu
   }
 
   // Determine which checks to run
-  const runAll =
-    options.checkAll || (!options.checkCounts && !options.checkDeceased && !options.checkMortality)
+  const runAll = options.checkAll || (!options.checkCounts && !options.checkMortality)
   const checkCounts = runAll || options.checkCounts
-  const checkDeceased = runAll || options.checkDeceased
   const checkMortality = runAll || options.checkMortality
 
   console.log("\nTV Show Data Verification")
@@ -432,32 +346,8 @@ async function runVerification(options: VerifyOptions): Promise<VerificationResu
     console.log("")
   }
 
-  // Check deceased flags
-  if (checkDeceased) {
-    console.log("Checking deceased flags...")
-    results.deceasedFlagIssues = await findDeceasedFlagIssues()
-    if (results.deceasedFlagIssues.length > 0) {
-      const shouldBeTrue = results.deceasedFlagIssues.filter(
-        (i) => i.issue === "should_be_true"
-      ).length
-      const shouldBeFalse = results.deceasedFlagIssues.filter(
-        (i) => i.issue === "should_be_false"
-      ).length
-      console.log(`  Found ${results.deceasedFlagIssues.length} flag issues`)
-      console.log(`    Should be true: ${shouldBeTrue}`)
-      console.log(`    Should be false: ${shouldBeFalse}`)
-
-      if (options.fix) {
-        const fixed = await fixDeceasedFlags(results.deceasedFlagIssues, options.dryRun)
-        results.issuesFixed += fixed
-        console.log(`  ${options.dryRun ? "Would fix" : "Fixed"}: ${fixed} flag issues`)
-      }
-    } else {
-      console.log("  All deceased flags correct")
-    }
-    console.log("")
-
-    // Also check deceased counts
+  // Check deceased counts (always run when checking counts)
+  if (checkCounts) {
     console.log("Checking deceased counts...")
     results.deceasedCountMismatches = await findDeceasedCountMismatches(
       options.phase,
@@ -505,19 +395,17 @@ async function runVerification(options: VerifyOptions): Promise<VerificationResu
   // Summary
   const totalIssues =
     results.castCountMismatches.length +
-    results.deceasedFlagIssues.length +
     results.deceasedCountMismatches.length +
     results.missingMortality.length
 
   console.log("=".repeat(50))
   console.log("SUMMARY")
   console.log("-".repeat(30))
-  console.log(`Cast count mismatches:    ${results.castCountMismatches.length}`)
-  console.log(`Deceased flag issues:     ${results.deceasedFlagIssues.length}`)
+  console.log(`Cast count mismatches:     ${results.castCountMismatches.length}`)
   console.log(`Deceased count mismatches: ${results.deceasedCountMismatches.length}`)
-  console.log(`Missing mortality stats:  ${results.missingMortality.length}`)
+  console.log(`Missing mortality stats:   ${results.missingMortality.length}`)
   console.log("-".repeat(30))
-  console.log(`Total issues:             ${totalIssues}`)
+  console.log(`Total issues:              ${totalIssues}`)
   if (options.fix) {
     console.log(
       `Issues fixed:             ${results.issuesFixed}${options.dryRun ? " (dry run)" : ""}`
@@ -540,7 +428,6 @@ const program = new Command()
   .name("verify-shows")
   .description("Verify TV show data integrity and optionally fix issues")
   .option("--check-counts", "Verify cast_count matches actual appearances", false)
-  .option("--check-deceased", "Verify is_deceased flags match deceased_persons", false)
   .option("--check-mortality", "Verify mortality stats are calculated", false)
   .option("--check-all", "Run all checks", false)
   .option("-s, --sample <n>", "Check random sample of N shows", parsePositiveInt)
@@ -560,7 +447,6 @@ const program = new Command()
       // Exit with error code if issues found and not fixing
       const totalIssues =
         results.castCountMismatches.length +
-        results.deceasedFlagIssues.length +
         results.deceasedCountMismatches.length +
         results.missingMortality.length
 

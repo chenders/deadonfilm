@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 /**
- * Backfill script to classify violent deaths in the deceased_persons table.
+ * Backfill script to classify violent deaths in the actors table.
  *
  * This script:
- * 1. Finds all deceased persons with NULL violent_death
+ * 1. Finds all deceased actors with NULL violent_death
  * 2. Uses pattern matching for definite violent deaths
  * 3. Uses Claude API for ambiguous cases
  * 4. Updates the violent_death boolean column
@@ -138,7 +138,7 @@ Do not include any other text.`
 
 const program = new Command()
   .name("backfill-violent-deaths")
-  .description("Classify violent deaths in deceased_persons table")
+  .description("Classify violent deaths in actors table")
   .option("-n, --dry-run", "Preview changes without updating database")
   .option("-a, --all", "Recalculate all records, not just NULLs")
   .action(async (options: { dryRun?: boolean; all?: boolean }) => {

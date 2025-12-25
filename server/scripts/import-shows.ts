@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Import script to populate the shows and show_actor_appearances tables.
+ * Import script to populate the shows and actor_show_appearances tables.
  * Supports phased imports with checkpointing for large-scale imports.
  *
  * Usage:

@@ -5,9 +5,8 @@
  * This script:
  * 1. Fetches person/movie changes from TMDB since last sync
  * 2. Filters to people/movies in our database
- * 3. Detects newly deceased actors and adds them to deceased_persons
- * 4. Updates actor_appearances.is_deceased flags
- * 5. Recalculates mortality stats for affected movies
+ * 3. Detects newly deceased actors and updates them in the actors table
+ * 4. Recalculates mortality stats for affected movies
  *
  * Usage:
  *   npm run sync:tmdb                    # Normal sync (since last run)
@@ -287,7 +286,7 @@ async function syncPeopleChanges(
     getDeceasedTmdbIds(),
   ])
   console.log(`  Found ${actorTmdbIds.size} actors in actor_appearances`)
-  console.log(`  Found ${deceasedTmdbIds.size} actors in deceased_persons`)
+  console.log(`  Found ${deceasedTmdbIds.size} deceased actors`)
 
   // Split into date ranges if needed (max 14 days per query)
   const dateRanges = getDateRanges(startDate, endDate)

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Backfill script to populate the popularity column in deceased_persons table.
+ * Backfill script to populate the popularity column in the actors table.
  * The is_obscure column is computed automatically based on profile_path and popularity.
  *
  * An actor is considered "obscure" if:
