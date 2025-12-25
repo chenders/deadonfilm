@@ -48,7 +48,8 @@ export type DeceasedPersonRecord = ActorRecord
 
 // Input type for upserting actors - only tmdb_id and name are required
 // All other fields are optional and will be preserved if not provided
-export type ActorInput = Pick<ActorRecord, "tmdb_id" | "name"> & Partial<Omit<ActorRecord, "tmdb_id" | "name" | "is_obscure">>
+export type ActorInput = Pick<ActorRecord, "tmdb_id" | "name"> &
+  Partial<Omit<ActorRecord, "tmdb_id" | "name" | "is_obscure">>
 
 // Simplified movie appearance record (junction table only)
 export interface ActorMovieAppearanceRecord {
