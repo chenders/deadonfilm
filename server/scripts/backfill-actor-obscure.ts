@@ -39,9 +39,8 @@ interface ActorRow {
   popularity: number | null
 }
 
-interface PopularitySource {
+interface PopularityResult {
   popularity: number | null
-  source: "tmdb" | null
 }
 
 const program = new Command()
@@ -125,15 +124,15 @@ async function showStats(): Promise<void> {
  * Note: We always fetch from TMDB rather than using cached data from actor_appearances
  * because that cached data can become stale (TMDB popularity changes over time).
  */
-async function getPopularity(tmdbId: number): Promise<PopularitySource> {
+export async function getPopularity(tmdbId: number): Promise<PopularityResult> {
   try {
     const details = await getPersonDetails(tmdbId)
-    return { popularity: details.popularity, source: "tmdb" }
+    return { popularity: details.popularity }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     if (errorMsg.includes("404")) {
       // Actor not found on TMDB
-      return { popularity: null, source: null }
+      return { popularity: null }
     }
     throw error
   }
@@ -227,13 +226,14 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
           )
           updated++
         }
-
-        // Rate limit - TMDB API has limits (around 40 requests/10 seconds)
-        await new Promise((resolve) => setTimeout(resolve, API_DELAY_MS))
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error)
         console.error(`${progress} ${actor.name}: ERROR - ${errorMsg}`)
         errors++
+      } finally {
+        // Rate limit - TMDB API has limits (around 40 requests/10 seconds)
+        // Applied in finally block to ensure rate limiting even on errors
+        await new Promise((resolve) => setTimeout(resolve, API_DELAY_MS))
       }
     }
 
