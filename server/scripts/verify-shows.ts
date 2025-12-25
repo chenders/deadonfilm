@@ -129,7 +129,7 @@ export async function findCastCountMismatches(
     FROM shows s
     LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
     ${whereClause}
-    GROUP BY s.tmdb_id, s.name, s.cast_count
+    GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
     HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
     ORDER BY s.popularity DESC NULLS LAST
     ${limitClause}
