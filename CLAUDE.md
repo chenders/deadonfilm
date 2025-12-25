@@ -214,24 +214,36 @@ See `docs/GOOGLE_ANALYTICS.md` and `docs/NEW_RELIC.md` for detailed setup instru
 
 The app uses PostgreSQL with the following tables:
 
-### deceased_persons
-Stores information about deceased actors discovered through movie lookups.
+### actors
+Unified table for all actors (both living and deceased). Death-related fields are NULL for living actors.
 
 ```sql
-deceased_persons (
+actors (
   id SERIAL PRIMARY KEY,
   tmdb_id INTEGER UNIQUE NOT NULL,
   name TEXT NOT NULL,
   birthday DATE,
-  deathday DATE NOT NULL,
+  deathday DATE,                  -- NULL for living actors
+  profile_path TEXT,
+  popularity DECIMAL(10,3),
+
+  -- Death fields (NULL for living actors)
   cause_of_death TEXT,
   cause_of_death_source TEXT,     -- 'claude', 'wikidata', or 'wikipedia'
   cause_of_death_details TEXT,    -- Detailed explanation for tooltip
-  cause_of_death_details_source TEXT,  -- Source of the details
+  cause_of_death_details_source TEXT,
   wikipedia_url TEXT,
-  age_at_death INTEGER,           -- Calculated age when died
-  expected_lifespan DECIMAL(5,2), -- Life expectancy based on birth year
-  years_lost DECIMAL(5,2),        -- Years lost vs expected lifespan
+  age_at_death INTEGER,
+  expected_lifespan DECIMAL(5,2),
+  years_lost DECIMAL(5,2),
+  violent_death BOOLEAN,
+
+  -- Computed column for filtering obscure actors
+  is_obscure BOOLEAN GENERATED ALWAYS AS (
+    profile_path IS NULL OR COALESCE(popularity, 0) < 5.0
+  ) STORED,
+
+  created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 )
 ```
@@ -291,24 +303,22 @@ movies (
 )
 ```
 
-### actor_appearances
-Links actors to movies for cross-movie analysis (Cursed Actors feature).
+### actor_movie_appearances
+Junction table linking actors to movies. Actor metadata is stored in the `actors` table.
 
 ```sql
-actor_appearances (
+actor_movie_appearances (
   id SERIAL PRIMARY KEY,
   actor_tmdb_id INTEGER NOT NULL,
-  movie_tmdb_id INTEGER NOT NULL,
-  actor_name TEXT NOT NULL,
+  movie_tmdb_id INTEGER NOT NULL REFERENCES movies(tmdb_id) ON DELETE CASCADE,
   character_name TEXT,
   billing_order INTEGER,
   age_at_filming INTEGER,
-  is_deceased BOOLEAN DEFAULT FALSE,
   UNIQUE(actor_tmdb_id, movie_tmdb_id)
 )
 ```
 
-Deceased actor data is persisted to the database and enriched with cause of death information over time.
+Actor data (including death information) is stored in the unified `actors` table. Deceased status is derived by checking `actors.deathday IS NOT NULL`.
 
 ### sync_state
 Tracks the last sync date for TMDB Changes API synchronization (used by `npm run sync:tmdb`).
@@ -397,24 +407,25 @@ episodes (
 )
 ```
 
-#### show_actor_appearances
-Links actors to TV shows at episode level for cross-show analysis.
+#### actor_show_appearances
+Junction table linking actors to TV shows at episode level. Actor metadata is stored in the `actors` table.
 
 ```sql
-show_actor_appearances (
+actor_show_appearances (
   id SERIAL PRIMARY KEY,
   actor_tmdb_id INTEGER NOT NULL,
-  show_tmdb_id INTEGER NOT NULL,
+  show_tmdb_id INTEGER NOT NULL REFERENCES shows(tmdb_id) ON DELETE CASCADE,
   season_number INTEGER NOT NULL,
   episode_number INTEGER NOT NULL,
-  actor_name TEXT NOT NULL,
   character_name TEXT,
   appearance_type TEXT NOT NULL,  -- 'regular', 'recurring', 'guest'
   billing_order INTEGER,
-  is_deceased BOOLEAN DEFAULT FALSE,
+  age_at_filming INTEGER,
   UNIQUE(actor_tmdb_id, show_tmdb_id, season_number, episode_number)
 )
 ```
+
+Deceased status for TV show appearances is derived by joining with `actors WHERE deathday IS NOT NULL`.
 
 ### Database Migrations
 

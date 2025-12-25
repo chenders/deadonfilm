@@ -54,22 +54,22 @@ This file provides guidance to GitHub Copilot when working with code in this rep
 ### Main Tables
 
 ```sql
--- Deceased actors discovered through movie lookups
-deceased_persons (
-  id SERIAL PRIMARY KEY,
+-- Unified actor table (living and deceased)
+actors (
   tmdb_id INTEGER UNIQUE NOT NULL,
   name TEXT NOT NULL,
   birthday DATE,
-  deathday DATE NOT NULL,
+  deathday DATE,                  -- NULL for living actors
+  profile_path TEXT,
+  popularity DECIMAL(10,3),
   cause_of_death TEXT,
   cause_of_death_source TEXT,     -- 'claude', 'wikidata', or 'wikipedia'
-  cause_of_death_details TEXT,    -- Detailed explanation for tooltip
-  cause_of_death_details_source TEXT,
-  wikipedia_url TEXT,
-  age_at_death INTEGER,           -- Calculated age when died
-  expected_lifespan DECIMAL(5,2), -- Life expectancy based on birth year
-  years_lost DECIMAL(5,2),        -- Years lost vs expected lifespan
-  updated_at TIMESTAMP DEFAULT NOW()
+  cause_of_death_details TEXT,
+  age_at_death INTEGER,
+  expected_lifespan DECIMAL(5,2),
+  years_lost DECIMAL(5,2),
+  violent_death BOOLEAN,
+  is_obscure BOOLEAN GENERATED ALWAYS AS (...) STORED
 )
 
 -- US SSA life expectancy data for mortality calculations
@@ -82,10 +82,16 @@ actuarial_life_tables (
 movies (tmdb_id INTEGER, title TEXT, release_year INTEGER, original_language TEXT,
   popularity DECIMAL(10,3), expected_deaths DECIMAL(5,2), mortality_surprise_score DECIMAL(6,3))
 
--- Actor appearances for cross-movie analysis
-actor_appearances (actor_tmdb_id INTEGER, movie_tmdb_id INTEGER,
-  actor_name TEXT, is_deceased BOOLEAN)
+-- Actor appearances for cross-movie analysis (junction table)
+actor_movie_appearances (actor_tmdb_id INTEGER, movie_tmdb_id INTEGER,
+  character_name TEXT, billing_order INTEGER, age_at_filming INTEGER)
+
+-- Actor appearances for TV shows (junction table)
+actor_show_appearances (actor_tmdb_id INTEGER, show_tmdb_id INTEGER,
+  season_number INTEGER, episode_number INTEGER, appearance_type TEXT)
 ```
+
+Deceased status is derived by checking `actors.deathday IS NOT NULL`.
 
 ## Cause of Death Lookup Priority
 
