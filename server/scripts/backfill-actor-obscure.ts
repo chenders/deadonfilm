@@ -305,7 +305,8 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
 // Only run when executed directly, not when imported for testing
 const isMainModule =
-  import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("backfill-actor-obscure.ts")
+  import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1]?.endsWith("backfill-actor-obscure.ts")
 
 if (isMainModule) {
   program.parse()
