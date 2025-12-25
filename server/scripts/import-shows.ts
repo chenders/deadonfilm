@@ -453,10 +453,14 @@ async function fetchShowsForPhase(
   let foundAfterId = afterId === null
 
   // Fetch more pages for lower popularity tiers
-  const maxPages = phase === "popular" ? 50 : phase === "standard" ? 100 : 200
+  const baseMaxPages = phase === "popular" ? 50 : phase === "standard" ? 100 : 200
 
   // Calculate starting page based on how many shows we've already processed
   const startPage = afterId !== null ? calculateResumeStartPage(phase, phaseCompleted) : 1
+
+  // Extend maxPages if resuming from a high page to ensure we can search
+  const maxPages = Math.max(baseMaxPages, startPage + RESUME_ID_SEARCH_LIMIT)
+
   if (startPage > 1) {
     console.log(
       `Resuming from estimated page ${startPage} (based on ${phaseCompleted} shows processed)`
