@@ -54,29 +54,29 @@ describe("buildPhaseArgs", () => {
 
     it("uses --resume on retry attempts even if not resuming", () => {
       const args = buildPhaseArgs("popular", 500, false, 2, false)
-      expect(args).toEqual(["--resume"])
+      expect(args).toEqual(["--resume", "--max-shows", "500"])
     })
 
     it("uses --resume with --dry-run on retry attempts", () => {
       const args = buildPhaseArgs("standard", 2000, false, 3, true)
-      expect(args).toEqual(["--resume", "--dry-run"])
+      expect(args).toEqual(["--resume", "--max-shows", "2000", "--dry-run"])
     })
   })
 
   describe("resume mode", () => {
     it("uses --resume on first attempt when resuming", () => {
       const args = buildPhaseArgs("standard", 2000, true, 1, false)
-      expect(args).toEqual(["--resume"])
+      expect(args).toEqual(["--resume", "--max-shows", "2000"])
     })
 
     it("uses --resume with --dry-run when resuming", () => {
       const args = buildPhaseArgs("obscure", 5000, true, 1, true)
-      expect(args).toEqual(["--resume", "--dry-run"])
+      expect(args).toEqual(["--resume", "--max-shows", "5000", "--dry-run"])
     })
 
     it("uses --resume on retry attempts", () => {
       const args = buildPhaseArgs("popular", 500, true, 2, false)
-      expect(args).toEqual(["--resume"])
+      expect(args).toEqual(["--resume", "--max-shows", "500"])
     })
   })
 
