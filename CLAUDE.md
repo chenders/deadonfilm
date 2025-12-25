@@ -706,7 +706,7 @@ Use GitHub raw URLs so screenshots display correctly:
 ## Screenshots
 
 ### Feature Name
-![Feature Name](https://raw.githubusercontent.com/chenders/deadonfilm-claude/{commit-sha}/e2e/screenshots/feature-name.png)
+![Feature Name](https://raw.githubusercontent.com/chenders/deadonfilm/{commit-sha}/e2e/screenshots/feature-name.png)
 ```
 
 **Get the commit SHA** after pushing: `git rev-parse HEAD`
