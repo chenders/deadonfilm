@@ -43,9 +43,6 @@ export interface ActorRecord {
   is_obscure: boolean | null
 }
 
-// Alias for backward compatibility during migration
-export type DeceasedPersonRecord = ActorRecord
-
 // Input type for upserting actors - only tmdb_id and name are required
 // All other fields are optional and will be preserved if not provided
 export type ActorInput = Pick<ActorRecord, "tmdb_id" | "name"> &
@@ -71,9 +68,6 @@ export async function getActor(tmdbId: number): Promise<ActorRecord | null> {
   return result.rows[0] || null
 }
 
-// Alias for backward compatibility
-export const getDeceasedPerson = getActor
-
 // Get multiple actors by TMDB IDs
 export async function getActors(tmdbIds: number[]): Promise<Map<number, ActorRecord>> {
   if (tmdbIds.length === 0) return new Map()
@@ -91,9 +85,6 @@ export async function getActors(tmdbIds: number[]): Promise<Map<number, ActorRec
   }
   return map
 }
-
-// Alias for backward compatibility
-export const getDeceasedPersons = getActors
 
 // Insert or update an actor
 // Note: COALESCE prioritizes existing values over new values to preserve first-found data.
@@ -139,9 +130,6 @@ export async function upsertActor(actor: ActorInput): Promise<void> {
     ]
   )
 }
-
-// Alias for backward compatibility
-export const upsertDeceasedPerson = upsertActor
 
 // Batch insert/update actors
 export async function batchUpsertActors(actors: ActorInput[]): Promise<void> {
@@ -202,9 +190,6 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<void> {
     client.release()
   }
 }
-
-// Alias for backward compatibility
-export const batchUpsertDeceasedPersons = batchUpsertActors
 
 // Update just the cause of death and wikipedia URL for an existing actor
 // Note: COALESCE prioritizes existing values - see comment on upsertActor
@@ -893,17 +878,6 @@ export async function getCauseFromSlug(slug: string): Promise<string | null> {
 // Actor movie appearances table functions (simplified junction table)
 // ============================================================================
 
-// Legacy interface for backward compatibility
-export interface ActorAppearanceRecord {
-  actor_tmdb_id: number
-  movie_tmdb_id: number
-  actor_name: string
-  character_name: string | null
-  billing_order: number | null
-  age_at_filming: number | null
-  is_deceased: boolean
-}
-
 // Insert or update an actor movie appearance
 export async function upsertActorMovieAppearance(
   appearance: ActorMovieAppearanceRecord
@@ -925,16 +899,6 @@ export async function upsertActorMovieAppearance(
     ]
   )
 }
-
-// Alias for backward compatibility
-export const upsertActorAppearance = (appearance: ActorAppearanceRecord) =>
-  upsertActorMovieAppearance({
-    actor_tmdb_id: appearance.actor_tmdb_id,
-    movie_tmdb_id: appearance.movie_tmdb_id,
-    character_name: appearance.character_name,
-    billing_order: appearance.billing_order,
-    age_at_filming: appearance.age_at_filming,
-  })
 
 // Batch insert actor movie appearances
 export async function batchUpsertActorMovieAppearances(
@@ -973,18 +937,6 @@ export async function batchUpsertActorMovieAppearances(
     client.release()
   }
 }
-
-// Alias for backward compatibility
-export const batchUpsertActorAppearances = (appearances: ActorAppearanceRecord[]) =>
-  batchUpsertActorMovieAppearances(
-    appearances.map((a) => ({
-      actor_tmdb_id: a.actor_tmdb_id,
-      movie_tmdb_id: a.movie_tmdb_id,
-      character_name: a.character_name,
-      billing_order: a.billing_order,
-      age_at_filming: a.age_at_filming,
-    }))
-  )
 
 // Get all movies an actor has appeared in (with actor info from actors table)
 export async function getActorMovies(
@@ -1265,15 +1217,6 @@ export async function getAllMovieTmdbIds(): Promise<Set<number>> {
   return new Set(result.rows.map((r) => r.tmdb_id))
 }
 
-// Mark actors as deceased - now a no-op
-// In the new schema, deceased status is derived from actors.deathday IS NOT NULL.
-// Actors should be upserted to the actors table with their deathday set via upsertActor().
-// This function is kept for backward compatibility but does nothing.
-export async function markActorsDeceased(_actorTmdbIds: number[]): Promise<void> {
-  // No-op: deceased status is now derived from actors.deathday IS NOT NULL
-  // The caller should ensure actors are upserted with their deathday before calling this.
-}
-
 // Get recently deceased actors for homepage display (ordered by death date)
 export async function getRecentDeaths(limit: number = 5): Promise<
   Array<{
@@ -1420,13 +1363,13 @@ export interface CovidDeathOptions {
 
 // Get deceased persons who died from COVID-19 or related causes
 export async function getCovidDeaths(options: CovidDeathOptions = {}): Promise<{
-  persons: DeceasedPersonRecord[]
+  persons: ActorRecord[]
   totalCount: number
 }> {
   const { limit = 50, offset = 0 } = options
   const db = getPool()
 
-  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(
+  const result = await db.query<ActorRecord & { total_count: string }>(
     `SELECT COUNT(*) OVER () as total_count, *
      FROM actors
      WHERE cause_of_death ILIKE '%covid%'
@@ -1563,7 +1506,7 @@ function getNonSuicideUnnaturalPatterns(): string {
 
 // Get deceased persons who died from unnatural causes
 export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): Promise<{
-  persons: DeceasedPersonRecord[]
+  persons: ActorRecord[]
   totalCount: number
   categoryCounts: Record<UnnaturalDeathCategory, number>
 }> {
@@ -1587,7 +1530,7 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
   }
 
   // Get persons matching the filter
-  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(
+  const result = await db.query<ActorRecord & { total_count: string }>(
     `SELECT COUNT(*) OVER () as total_count, *
      FROM actors
      WHERE ${whereCondition}
@@ -1639,13 +1582,13 @@ export interface AllDeathsOptions {
 }
 
 export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
-  persons: DeceasedPersonRecord[]
+  persons: ActorRecord[]
   totalCount: number
 }> {
   const { limit = 50, offset = 0 } = options
   const db = getPool()
 
-  const result = await db.query<DeceasedPersonRecord & { total_count: string }>(
+  const result = await db.query<ActorRecord & { total_count: string }>(
     `SELECT COUNT(*) OVER () as total_count, *
      FROM actors
      WHERE deathday IS NOT NULL
@@ -2146,9 +2089,6 @@ export interface ShowActorAppearanceRecord {
   billing_order: number | null
   age_at_filming: number | null
 }
-
-// Alias for backward compatibility with imports that include metadata
-export type ActorShowAppearanceRecord = ShowActorAppearanceRecord
 
 // Insert or update a show actor appearance
 export async function upsertShowActorAppearance(

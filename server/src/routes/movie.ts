@@ -16,7 +16,7 @@ import {
   calculateYearsLost,
   type ActorForMortality,
 } from "../lib/mortality-stats.js"
-import { buildMovieRecord, buildActorAppearanceRecord } from "../lib/movie-cache.js"
+import { buildMovieRecord, buildActorMovieAppearanceRecord } from "../lib/movie-cache.js"
 
 interface DeceasedActor {
   id: number
@@ -374,13 +374,12 @@ function cacheMovieInBackground(params: CacheMovieParams): void {
   // Build actor appearance records using extracted utility
   const appearances: ActorMovieAppearanceRecord[] = mainCast.map((castMember, index) => {
     const person = personDetails.get(castMember.id)
-    return buildActorAppearanceRecord({
+    return buildActorMovieAppearanceRecord({
       castMember,
       movieId: movie.id,
       billingOrder: index,
       releaseYear,
       birthday: person?.birthday ?? null,
-      isDeceased: !!person?.deathday,
     })
   })
 
