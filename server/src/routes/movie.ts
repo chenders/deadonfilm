@@ -313,9 +313,7 @@ function calculateAge(birthday: string | null): number | null {
 const pendingEnrichment = new Map<number, Promise<void>>()
 
 // Helper to safely get deceased persons from database (returns empty map if DB unavailable)
-async function getDeceasedPersonsIfAvailable(
-  tmdbIds: number[]
-): Promise<Map<number, ActorRecord>> {
+async function getDeceasedPersonsIfAvailable(tmdbIds: number[]): Promise<Map<number, ActorRecord>> {
   if (!process.env.DATABASE_URL) return new Map()
   try {
     return await getActors(tmdbIds)

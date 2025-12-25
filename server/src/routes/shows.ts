@@ -435,9 +435,7 @@ async function fetchEpisodeAppearances(
 }
 
 // Helper to safely get deceased persons from database
-async function getDeceasedPersonsIfAvailable(
-  tmdbIds: number[]
-): Promise<Map<number, ActorRecord>> {
+async function getDeceasedPersonsIfAvailable(tmdbIds: number[]): Promise<Map<number, ActorRecord>> {
   if (!process.env.DATABASE_URL) return new Map()
   try {
     return await getActors(tmdbIds)
