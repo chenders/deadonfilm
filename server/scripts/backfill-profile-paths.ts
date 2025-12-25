@@ -41,8 +41,8 @@ async function runBackfill() {
       name: string
     }>(`
       SELECT tmdb_id, name
-      FROM deceased_persons
-      WHERE profile_path IS NULL
+      FROM actors
+      WHERE deathday IS NOT NULL AND profile_path IS NULL
       ORDER BY deathday DESC
     `)
 
@@ -66,7 +66,7 @@ async function runBackfill() {
 
         if (details.profile_path) {
           await db.query(
-            `UPDATE deceased_persons
+            `UPDATE actors
              SET profile_path = $2,
                  updated_at = CURRENT_TIMESTAMP
              WHERE tmdb_id = $1`,

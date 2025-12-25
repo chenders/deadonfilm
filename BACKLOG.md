@@ -14,7 +14,7 @@ Ideas and future improvements for consideration.
 |------|--------|---------|------------------|
 | ~~**ETag headers**~~ | ~~Medium~~ | ~~Low~~ | Done. Added to Tier 1 (static data, 1hr cache) and Tier 2 (paginated, 5min cache) endpoints. |
 | **Redis caching** | Medium | Medium | When scaling to 3+ replicas or needing shared session state. Adds ~$10-20/mo operational cost. |
-| **Table partitioning for TV shows** | High | High | When `show_actor_appearances` reaches 20M+ rows. Partition by show_tmdb_id ranges. Do before bulk TV data import. |
+| **Table partitioning for TV shows** | High | High | When `actor_show_appearances` reaches 20M+ rows. Partition by show_tmdb_id ranges. Do before bulk TV data import. |
 | **Materialized views** | Medium | High | Pre-compute actor stats (total movies, co-star deaths). Refresh nightly via cron. Useful when actor queries become slow. |
 
 ## Operations

@@ -138,15 +138,24 @@ export async function queryWithRetry<T>(
 export async function initDatabase(): Promise<void> {
   const db = getPool()
 
-  // Create tables if they don't exist
+  // Create actors table if it doesn't exist
   await db.query(`
-    CREATE TABLE IF NOT EXISTS deceased_persons (
+    CREATE TABLE IF NOT EXISTS actors (
       tmdb_id INTEGER PRIMARY KEY,
       name TEXT NOT NULL,
       birthday DATE,
-      deathday DATE NOT NULL,
+      deathday DATE,
+      profile_path TEXT,
+      popularity DECIMAL(10,3),
       cause_of_death TEXT,
+      cause_of_death_source TEXT,
+      cause_of_death_details TEXT,
+      cause_of_death_details_source TEXT,
       wikipedia_url TEXT,
+      age_at_death INTEGER,
+      expected_lifespan DECIMAL(5,2),
+      years_lost DECIMAL(5,2),
+      violent_death BOOLEAN,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
@@ -154,8 +163,8 @@ export async function initDatabase(): Promise<void> {
 
   // Index for faster lookups
   await db.query(`
-    CREATE INDEX IF NOT EXISTS idx_deceased_persons_tmdb_id
-    ON deceased_persons(tmdb_id)
+    CREATE INDEX IF NOT EXISTS idx_actors_tmdb_id
+    ON actors(tmdb_id)
   `)
 
   console.log("Database initialized")

@@ -3,7 +3,7 @@
  * These are pure functions extracted for testability.
  */
 
-import type { MovieRecord, ActorAppearanceRecord } from "./db.js"
+import type { MovieRecord, ActorMovieAppearanceRecord } from "./db.js"
 
 export interface MovieCacheInput {
   movie: {
@@ -22,14 +22,12 @@ export interface MovieCacheInput {
 export interface ActorAppearanceInput {
   castMember: {
     id: number
-    name: string
     character: string | null
   }
   movieId: number
   billingOrder: number
   releaseYear: number | null
   birthday: string | null
-  isDeceased: boolean
 }
 
 /**
@@ -78,18 +76,18 @@ export function calculateAgeAtFilming(
 }
 
 /**
- * Build an actor appearance record.
+ * Build an actor movie appearance record.
  */
-export function buildActorAppearanceRecord(input: ActorAppearanceInput): ActorAppearanceRecord {
-  const { castMember, movieId, billingOrder, releaseYear, birthday, isDeceased } = input
+export function buildActorMovieAppearanceRecord(
+  input: ActorAppearanceInput
+): ActorMovieAppearanceRecord {
+  const { castMember, movieId, billingOrder, releaseYear, birthday } = input
 
   return {
     actor_tmdb_id: castMember.id,
     movie_tmdb_id: movieId,
-    actor_name: castMember.name,
     character_name: castMember.character || null,
     billing_order: billingOrder,
     age_at_filming: calculateAgeAtFilming(birthday, releaseYear),
-    is_deceased: isDeceased,
   }
 }

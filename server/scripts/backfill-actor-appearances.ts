@@ -12,7 +12,11 @@ import "dotenv/config"
 import { Command } from "commander"
 import { getMovieCredits, batchGetPersonDetails } from "../src/lib/tmdb.js"
 import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
-import { getPool, batchUpsertActorAppearances, type ActorAppearanceRecord } from "../src/lib/db.js"
+import {
+  getPool,
+  batchUpsertActorMovieAppearances,
+  type ActorMovieAppearanceRecord,
+} from "../src/lib/db.js"
 
 const CAST_LIMIT = 30 // Top 30 actors per movie
 
@@ -129,7 +133,7 @@ async function runBackfill() {
         )
 
         // Save actor appearances
-        const appearances: ActorAppearanceRecord[] = topCast.map((castMember, index) => {
+        const appearances: ActorMovieAppearanceRecord[] = topCast.map((castMember, index) => {
           const person = personDetails.get(castMember.id)
           const birthday = person?.birthday
           let ageAtFilming: number | null = null
@@ -142,15 +146,13 @@ async function runBackfill() {
           return {
             actor_tmdb_id: castMember.id,
             movie_tmdb_id: movie.tmdb_id,
-            actor_name: castMember.name,
             character_name: castMember.character || null,
             billing_order: index,
             age_at_filming: ageAtFilming,
-            is_deceased: !!person?.deathday,
           }
         })
 
-        await batchUpsertActorAppearances(appearances)
+        await batchUpsertActorMovieAppearances(appearances)
         totalAppearances += appearances.length
         successCount++
 

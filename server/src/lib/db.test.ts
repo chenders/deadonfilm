@@ -32,7 +32,6 @@ import {
   getAllActorTmdbIds,
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
-  markActorsDeceased,
   getActorFilmography,
   queryWithRetry,
   resetPool,
@@ -194,7 +193,7 @@ describe("Sync State Functions", () => {
       const result = await getDeceasedTmdbIds()
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT tmdb_id FROM deceased_persons")
+        expect.stringContaining("SELECT tmdb_id FROM actors WHERE deathday IS NOT NULL")
       )
       expect(result).toBeInstanceOf(Set)
       expect(result.size).toBe(2)
@@ -229,134 +228,6 @@ describe("Sync State Functions", () => {
     })
   })
 
-  describe("markActorsDeceased", () => {
-    it("updates is_deceased for given actor IDs", async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 3 })
-
-      await markActorsDeceased([123, 456, 789])
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
-        [123, 456, 789]
-      )
-      // Verify the IN clause has correct placeholders
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("IN ($1, $2, $3)"),
-        [123, 456, 789]
-      )
-    })
-
-    it("does nothing when given empty array", async () => {
-      await markActorsDeceased([])
-
-      expect(mockQuery).not.toHaveBeenCalled()
-    })
-
-    it("handles single actor ID", async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
-
-      await markActorsDeceased([123])
-
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("IN ($1)"), [123])
-    })
-
-    // Batching tests for PostgreSQL parameter limit handling
-    it("handles exactly 1000 elements in a single batch", async () => {
-      const ids = Array.from({ length: 1000 }, (_, i) => i + 1)
-      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1000 })
-
-      await markActorsDeceased(ids)
-
-      // Should result in exactly 1 query
-      expect(mockQuery).toHaveBeenCalledTimes(1)
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
-        ids
-      )
-    })
-
-    it("batches 1001 elements into 2 queries", async () => {
-      const ids = Array.from({ length: 1001 }, (_, i) => i + 1)
-      mockQuery
-        .mockResolvedValueOnce({ rows: [], rowCount: 1000 })
-        .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-
-      await markActorsDeceased(ids)
-
-      // Should result in 2 queries: batch of 1000 + batch of 1
-      expect(mockQuery).toHaveBeenCalledTimes(2)
-
-      // First batch: IDs 1-1000
-      expect(mockQuery).toHaveBeenNthCalledWith(
-        1,
-        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
-        ids.slice(0, 1000)
-      )
-
-      // Second batch: ID 1001
-      expect(mockQuery).toHaveBeenNthCalledWith(
-        2,
-        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
-        ids.slice(1000)
-      )
-    })
-
-    it("batches 2500 elements into 3 queries (1000, 1000, 500)", async () => {
-      const ids = Array.from({ length: 2500 }, (_, i) => i + 1)
-      mockQuery
-        .mockResolvedValueOnce({ rows: [], rowCount: 1000 })
-        .mockResolvedValueOnce({ rows: [], rowCount: 1000 })
-        .mockResolvedValueOnce({ rows: [], rowCount: 500 })
-
-      await markActorsDeceased(ids)
-
-      // Should result in 3 queries
-      expect(mockQuery).toHaveBeenCalledTimes(3)
-
-      // First batch: IDs 1-1000
-      expect(mockQuery).toHaveBeenNthCalledWith(
-        1,
-        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
-        ids.slice(0, 1000)
-      )
-
-      // Second batch: IDs 1001-2000
-      expect(mockQuery).toHaveBeenNthCalledWith(
-        2,
-        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
-        ids.slice(1000, 2000)
-      )
-
-      // Third batch: IDs 2001-2500
-      expect(mockQuery).toHaveBeenNthCalledWith(
-        3,
-        expect.stringContaining("UPDATE actor_appearances SET is_deceased = true"),
-        ids.slice(2000)
-      )
-      expect(ids.slice(2000).length).toBe(500)
-    })
-
-    it("generates correct placeholders for each batch", async () => {
-      const ids = Array.from({ length: 1001 }, (_, i) => i + 1)
-      mockQuery
-        .mockResolvedValueOnce({ rows: [], rowCount: 1000 })
-        .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-
-      await markActorsDeceased(ids)
-
-      // First batch should have $1 through $1000
-      const firstCall = mockQuery.mock.calls[0][0] as string
-      expect(firstCall).toContain("$1,")
-      expect(firstCall).toContain("$1000")
-      expect(firstCall).not.toContain("$1001")
-
-      // Second batch should restart at $1 (not continue from $1001)
-      const secondCall = mockQuery.mock.calls[1][0] as string
-      expect(secondCall).toContain("$1)")
-      expect(secondCall).not.toContain("$2")
-    })
-  })
-
   describe("getActorFilmography", () => {
     it("returns filmography with multiple movies ordered by release year DESC", async () => {
       const mockRows = [
@@ -384,7 +255,7 @@ describe("Sync State Functions", () => {
       const result = await getActorFilmography(12345)
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("FROM actor_appearances aa"),
+        expect.stringContaining("FROM actor_movie_appearances aa"),
         [12345]
       )
       expect(mockQuery).toHaveBeenCalledWith(
@@ -604,6 +475,9 @@ describe("Sync State Functions", () => {
           age_at_death: 71,
           expected_lifespan: 78,
           years_lost: 7,
+          popularity: 10.0,
+          violent_death: false,
+          is_obscure: false,
         },
       ]
       mockQuery.mockResolvedValueOnce({ rows: mockRows })
@@ -685,6 +559,9 @@ describe("Sync State Functions", () => {
           age_at_death: null,
           expected_lifespan: null,
           years_lost: null,
+          popularity: null,
+          violent_death: null,
+          is_obscure: null,
         },
       ]
       mockQuery.mockResolvedValueOnce({ rows: mockRows })
@@ -705,6 +582,9 @@ describe("Sync State Functions", () => {
         age_at_death: null,
         expected_lifespan: null,
         years_lost: null,
+        popularity: null,
+        violent_death: null,
+        is_obscure: null,
       })
     })
   })
@@ -818,8 +698,8 @@ describe("Movie Functions", () => {
       await getDeathWatchActors()
 
       const query = mockQuery.mock.calls[0][0] as string
-      expect(query).toContain("aa.is_deceased = false")
-      expect(query).toContain("aa.birthday IS NOT NULL")
+      expect(query).toContain("a.deathday IS NULL")
+      expect(query).toContain("a.birthday IS NOT NULL")
     })
 
     it("orders by age DESC, popularity DESC", async () => {

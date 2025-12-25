@@ -109,9 +109,10 @@ export async function getActorStats(): Promise<ActorStats> {
   const db = getPool()
   const result = await db.query<ActorStats>(`
     SELECT
-      COUNT(DISTINCT actor_tmdb_id)::int as unique_actors,
-      COUNT(DISTINCT CASE WHEN is_deceased THEN actor_tmdb_id END)::int as deceased_actors
-    FROM show_actor_appearances
+      COUNT(DISTINCT saa.actor_tmdb_id)::int as unique_actors,
+      COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)::int as deceased_actors
+    FROM actor_show_appearances saa
+    LEFT JOIN actors a ON saa.actor_tmdb_id = a.tmdb_id
   `)
   return result.rows[0]
 }
@@ -188,11 +189,11 @@ export async function getDataQualityStats(): Promise<DataQualityStats> {
       "SELECT COUNT(*)::int as count FROM shows WHERE mortality_surprise_score IS NULL"
     ),
     db.query<{ count: number }>(
-      "SELECT COUNT(*)::int as count FROM show_actor_appearances WHERE age_at_filming IS NULL"
+      "SELECT COUNT(*)::int as count FROM actor_show_appearances WHERE age_at_filming IS NULL"
     ),
     db.query<{ count: number }>(`
       SELECT COUNT(*)::int as count
-      FROM show_actor_appearances saa
+      FROM actor_show_appearances saa
       LEFT JOIN shows s ON saa.show_tmdb_id = s.tmdb_id
       WHERE s.id IS NULL
     `),
