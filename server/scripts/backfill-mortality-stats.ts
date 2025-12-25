@@ -48,7 +48,7 @@ async function runBackfill(updateAll: boolean) {
       deathday: string
     }>(`
       SELECT tmdb_id, name, birthday::text, deathday::text
-      FROM deceased_persons
+      FROM actors
       WHERE birthday IS NOT NULL
         ${whereClause}
       ORDER BY tmdb_id
@@ -73,7 +73,7 @@ async function runBackfill(updateAll: boolean) {
 
         if (mortalityStats) {
           await db.query(
-            `UPDATE deceased_persons
+            `UPDATE actors
              SET age_at_death = $2,
                  expected_lifespan = $3,
                  years_lost = $4,

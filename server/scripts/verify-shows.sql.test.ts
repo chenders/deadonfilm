@@ -12,8 +12,8 @@ import {
   closeTestDb,
   resetTestDb,
   insertShow,
-  insertActorAppearance,
-  insertDeceasedPerson,
+  insertShowActorAppearance,
+  insertActor,
 } from "../src/test/pglite-helper.js"
 import type { PGlite } from "@electric-sql/pglite"
 
@@ -25,10 +25,11 @@ interface CastCountRow {
   actual_count: number
 }
 
-interface DeceasedFlagRow {
-  actor_tmdb_id: number
-  show_tmdb_id: number
-  actor_name: string
+interface DeceasedCountRow {
+  tmdb_id: number
+  name: string
+  stored_count: number
+  actual_count: number
 }
 
 interface MortalityRow {
@@ -60,7 +61,7 @@ describe("verify-shows SQL queries", () => {
         COALESCE(s.cast_count, 0)::int as stored_count,
         COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
       FROM shows s
-      LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+      LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
       GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
       HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
       ORDER BY s.popularity DESC NULLS LAST
@@ -83,10 +84,9 @@ describe("verify-shows SQL queries", () => {
 
       // Insert only 5 actor appearances
       for (let i = 1; i <= 5; i++) {
-        await insertActorAppearance(db, {
+        await insertShowActorAppearance(db, {
           actor_tmdb_id: i,
           show_tmdb_id: 1,
-          actor_name: `Actor ${i}`,
         })
       }
 
@@ -106,10 +106,9 @@ describe("verify-shows SQL queries", () => {
       })
 
       for (let i = 1; i <= 3; i++) {
-        await insertActorAppearance(db, {
+        await insertShowActorAppearance(db, {
           actor_tmdb_id: i,
           show_tmdb_id: 1,
-          actor_name: `Actor ${i}`,
         })
       }
 
@@ -132,23 +131,24 @@ describe("verify-shows SQL queries", () => {
   })
 
   describe("findDeceasedCountMismatches query", () => {
-    // This is the exact SQL from verify-shows.ts findDeceasedCountMismatches
+    // Updated SQL that joins with actors table to count deceased
     const query = `
       SELECT
         s.tmdb_id,
         s.name,
         COALESCE(s.deceased_count, 0)::int as stored_count,
-        COUNT(DISTINCT CASE WHEN saa.is_deceased THEN saa.actor_tmdb_id END)::int as actual_count
+        COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)::int as actual_count
       FROM shows s
-      LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+      LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+      LEFT JOIN actors a ON saa.actor_tmdb_id = a.tmdb_id
       GROUP BY s.tmdb_id, s.name, s.deceased_count, s.popularity
-      HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN saa.is_deceased THEN saa.actor_tmdb_id END)
+      HAVING COALESCE(s.deceased_count, 0) != COUNT(DISTINCT CASE WHEN a.deathday IS NOT NULL THEN saa.actor_tmdb_id END)
       ORDER BY s.popularity DESC NULLS LAST
     `
 
     it("executes without SQL errors", async () => {
       // The query should execute without throwing
-      const result = await db.query<CastCountRow>(query)
+      const result = await db.query<DeceasedCountRow>(query)
       expect(result.rows).toEqual([])
     })
 
@@ -162,15 +162,18 @@ describe("verify-shows SQL queries", () => {
 
       // Insert 2 deceased and 3 living actors
       for (let i = 1; i <= 5; i++) {
-        await insertActorAppearance(db, {
+        await insertActor(db, {
+          tmdb_id: i,
+          name: `Actor ${i}`,
+          deathday: i <= 2 ? "2020-01-01" : null,
+        })
+        await insertShowActorAppearance(db, {
           actor_tmdb_id: i,
           show_tmdb_id: 1,
-          actor_name: `Actor ${i}`,
-          is_deceased: i <= 2,
         })
       }
 
-      const result = await db.query<CastCountRow>(query)
+      const result = await db.query<DeceasedCountRow>(query)
       expect(result.rows).toHaveLength(1)
       expect(result.rows[0].tmdb_id).toBe(1)
       expect(result.rows[0].stored_count).toBe(5)
@@ -185,96 +188,17 @@ describe("verify-shows SQL queries", () => {
         deceased_count: 2,
       })
 
-      await insertActorAppearance(db, {
-        actor_tmdb_id: 1,
-        show_tmdb_id: 1,
-        actor_name: "Actor 1",
-        is_deceased: true,
-      })
-      await insertActorAppearance(db, {
-        actor_tmdb_id: 2,
-        show_tmdb_id: 1,
-        actor_name: "Actor 2",
-        is_deceased: true,
-      })
-      await insertActorAppearance(db, {
-        actor_tmdb_id: 3,
-        show_tmdb_id: 1,
-        actor_name: "Actor 3",
-        is_deceased: false,
-      })
+      // Insert 2 deceased actors
+      await insertActor(db, { tmdb_id: 1, name: "Actor 1", deathday: "2020-01-01" })
+      await insertActor(db, { tmdb_id: 2, name: "Actor 2", deathday: "2020-01-01" })
+      await insertActor(db, { tmdb_id: 3, name: "Actor 3" }) // living
 
-      const result = await db.query<CastCountRow>(query)
+      await insertShowActorAppearance(db, { actor_tmdb_id: 1, show_tmdb_id: 1 })
+      await insertShowActorAppearance(db, { actor_tmdb_id: 2, show_tmdb_id: 1 })
+      await insertShowActorAppearance(db, { actor_tmdb_id: 3, show_tmdb_id: 1 })
+
+      const result = await db.query<DeceasedCountRow>(query)
       expect(result.rows).toHaveLength(0)
-    })
-  })
-
-  describe("findDeceasedFlagIssues query - should_be_true", () => {
-    // This is the exact SQL from verify-shows.ts findDeceasedFlagIssues
-    const query = `
-      SELECT DISTINCT saa.actor_tmdb_id, saa.show_tmdb_id, saa.actor_name
-      FROM show_actor_appearances saa
-      INNER JOIN deceased_persons dp ON saa.actor_tmdb_id = dp.tmdb_id
-      WHERE saa.is_deceased = false
-    `
-
-    it("executes without SQL errors", async () => {
-      const result = await db.query<DeceasedFlagRow>(query)
-      expect(result.rows).toEqual([])
-    })
-
-    it("finds actors who should be marked deceased but aren't", async () => {
-      await insertShow(db, { tmdb_id: 1, name: "Test Show", popularity: 50 })
-
-      // Add a deceased person
-      await insertDeceasedPerson(db, {
-        tmdb_id: 100,
-        name: "Deceased Actor",
-        deathday: "2020-01-01",
-      })
-
-      // Add appearance with is_deceased = false (incorrect)
-      await insertActorAppearance(db, {
-        actor_tmdb_id: 100,
-        show_tmdb_id: 1,
-        actor_name: "Deceased Actor",
-        is_deceased: false,
-      })
-
-      const result = await db.query<DeceasedFlagRow>(query)
-      expect(result.rows).toHaveLength(1)
-      expect(result.rows[0].actor_tmdb_id).toBe(100)
-    })
-  })
-
-  describe("findDeceasedFlagIssues query - should_be_false", () => {
-    // This is the exact SQL from verify-shows.ts findDeceasedFlagIssues
-    const query = `
-      SELECT DISTINCT saa.actor_tmdb_id, saa.show_tmdb_id, saa.actor_name
-      FROM show_actor_appearances saa
-      LEFT JOIN deceased_persons dp ON saa.actor_tmdb_id = dp.tmdb_id
-      WHERE saa.is_deceased = true AND dp.tmdb_id IS NULL
-    `
-
-    it("executes without SQL errors", async () => {
-      const result = await db.query<DeceasedFlagRow>(query)
-      expect(result.rows).toEqual([])
-    })
-
-    it("finds actors marked deceased who aren't in deceased_persons", async () => {
-      await insertShow(db, { tmdb_id: 1, name: "Test Show", popularity: 50 })
-
-      // Add appearance with is_deceased = true but no deceased_persons record
-      await insertActorAppearance(db, {
-        actor_tmdb_id: 200,
-        show_tmdb_id: 1,
-        actor_name: "Living Actor",
-        is_deceased: true,
-      })
-
-      const result = await db.query<DeceasedFlagRow>(query)
-      expect(result.rows).toHaveLength(1)
-      expect(result.rows[0].actor_tmdb_id).toBe(200)
     })
   })
 
@@ -336,7 +260,7 @@ describe("verify-shows SQL queries", () => {
         COALESCE(s.cast_count, 0)::int as stored_count,
         COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
       FROM shows s
-      LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+      LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
       WHERE s.popularity >= $1 AND s.popularity < $2
       GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
       HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
@@ -363,7 +287,7 @@ describe("verify-shows SQL queries", () => {
         COALESCE(s.cast_count, 0)::int as stored_count,
         COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
       FROM shows s
-      LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+      LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
       GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
       HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
       ORDER BY s.popularity DESC NULLS LAST
@@ -401,7 +325,7 @@ describe("SQL syntax regression tests", () => {
           COALESCE(s.cast_count, 0)::int as stored_count,
           COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
         FROM shows s
-        LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+        LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
         GROUP BY s.tmdb_id, s.name, s.cast_count
         HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
         ORDER BY s.popularity DESC NULLS LAST
@@ -421,7 +345,7 @@ describe("SQL syntax regression tests", () => {
           COALESCE(s.cast_count, 0)::int as stored_count,
           COUNT(DISTINCT saa.actor_tmdb_id)::int as actual_count
         FROM shows s
-        LEFT JOIN show_actor_appearances saa ON s.tmdb_id = saa.show_tmdb_id
+        LEFT JOIN actor_show_appearances saa ON s.tmdb_id = saa.show_tmdb_id
         GROUP BY s.tmdb_id, s.name, s.cast_count, s.popularity
         HAVING COALESCE(s.cast_count, 0) != COUNT(DISTINCT saa.actor_tmdb_id)
         ORDER BY s.popularity DESC NULLS LAST

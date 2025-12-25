@@ -55,8 +55,9 @@ async function runBackfill() {
 
     const result = await pool.query<RecordToUpdate>(`
       SELECT tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, wikipedia_url
-      FROM deceased_persons
-      WHERE cause_of_death IS NOT NULL
+      FROM actors
+      WHERE deathday IS NOT NULL
+        AND cause_of_death IS NOT NULL
         AND cause_of_death_details IS NULL
       ORDER BY name
     `)
@@ -118,7 +119,7 @@ async function runBackfill() {
         if (updates.length > 0) {
           updates.push("updated_at = CURRENT_TIMESTAMP")
           await pool.query(
-            `UPDATE deceased_persons SET ${updates.join(", ")} WHERE tmdb_id = $1`,
+            `UPDATE actors SET ${updates.join(", ")} WHERE tmdb_id = $1`,
             values
           )
           console.log(

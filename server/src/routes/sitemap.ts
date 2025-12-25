@@ -73,7 +73,7 @@ export async function getSitemapIndex(_req: Request, res: Response) {
       db.query<{ count: string }>(
         "SELECT COUNT(*) FROM movies WHERE mortality_surprise_score IS NOT NULL"
       ),
-      db.query<{ count: string }>("SELECT COUNT(*) FROM deceased_persons"),
+      db.query<{ count: string }>("SELECT COUNT(*) FROM actors WHERE deathday IS NOT NULL"),
       db.query<{ count: string }>(
         "SELECT COUNT(*) FROM shows WHERE mortality_surprise_score IS NOT NULL"
       ),
@@ -220,7 +220,8 @@ export async function getActorsSitemap(req: Request, res: Response) {
     }>(
       `
       SELECT tmdb_id, name, updated_at
-      FROM deceased_persons
+      FROM actors
+      WHERE deathday IS NOT NULL
       ORDER BY updated_at DESC
       LIMIT $1 OFFSET $2
     `,
