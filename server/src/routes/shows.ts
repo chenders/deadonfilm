@@ -10,11 +10,12 @@ import {
   type TMDBTVShow,
 } from "../lib/tmdb.js"
 import {
-  getDeceasedPersons,
-  batchUpsertDeceasedPersons,
+  getActors,
+  batchUpsertActors,
   upsertShow,
   getSeasons as getSeasonsFromDb,
-  type DeceasedPersonRecord,
+  type ActorRecord,
+  type ActorInput,
   type ShowRecord,
 } from "../lib/db.js"
 import {
@@ -156,7 +157,7 @@ export async function getShow(req: Request, res: Response) {
     // Separate deceased and living
     const deceased: DeceasedActor[] = []
     const living: LivingActor[] = []
-    const newDeceasedForDb: DeceasedPersonRecord[] = []
+    const newDeceasedForDb: ActorInput[] = []
 
     for (const castMember of mainCast) {
       const person = personDetails.get(castMember.id)
@@ -436,10 +437,10 @@ async function fetchEpisodeAppearances(
 // Helper to safely get deceased persons from database
 async function getDeceasedPersonsIfAvailable(
   tmdbIds: number[]
-): Promise<Map<number, DeceasedPersonRecord>> {
+): Promise<Map<number, ActorRecord>> {
   if (!process.env.DATABASE_URL) return new Map()
   try {
-    return await getDeceasedPersons(tmdbIds)
+    return await getActors(tmdbIds)
   } catch (error) {
     console.error("Database read error:", error)
     return new Map()
@@ -447,9 +448,9 @@ async function getDeceasedPersonsIfAvailable(
 }
 
 // Helper to save deceased persons to database in background
-function saveDeceasedToDb(persons: DeceasedPersonRecord[]): void {
+function saveDeceasedToDb(persons: ActorInput[]): void {
   if (!process.env.DATABASE_URL) return
-  batchUpsertDeceasedPersons(persons).catch((error) => {
+  batchUpsertActors(persons).catch((error) => {
     console.error("Database write error:", error)
   })
 }

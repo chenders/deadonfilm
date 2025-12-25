@@ -70,6 +70,9 @@ describe("getActor", () => {
     age_at_death: 80,
     expected_lifespan: 75,
     years_lost: -5,
+    popularity: 50.0,
+    violent_death: false,
+    is_obscure: false,
   }
 
   beforeEach(() => {

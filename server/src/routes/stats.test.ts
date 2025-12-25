@@ -234,6 +234,9 @@ describe("getCovidDeathsHandler", () => {
       age_at_death: 71,
       expected_lifespan: 78,
       years_lost: 7,
+      popularity: 15.0,
+      violent_death: false,
+      is_obscure: false,
     },
     {
       tmdb_id: 2,
@@ -249,6 +252,9 @@ describe("getCovidDeathsHandler", () => {
       age_at_death: 75,
       expected_lifespan: 80,
       years_lost: 5,
+      popularity: null,
+      violent_death: null,
+      is_obscure: true,
     },
   ]
 
@@ -443,6 +449,9 @@ describe("getUnnaturalDeathsHandler", () => {
       age_at_death: 60,
       expected_lifespan: 78,
       years_lost: 18,
+      popularity: 25.0,
+      violent_death: true,
+      is_obscure: false,
     },
     {
       tmdb_id: 2,
@@ -458,6 +467,9 @@ describe("getUnnaturalDeathsHandler", () => {
       age_at_death: 49,
       expected_lifespan: 80,
       years_lost: 31,
+      popularity: null,
+      violent_death: true,
+      is_obscure: true,
     },
   ]
 

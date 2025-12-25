@@ -27,9 +27,9 @@ import {
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
   markActorsDeceased,
-  upsertDeceasedPerson,
+  upsertActor,
   upsertMovie,
-  type DeceasedPersonRecord,
+  type ActorInput,
   type MovieRecord,
 } from "../src/lib/db.js"
 import {
@@ -397,8 +397,8 @@ async function processNewDeath(person: TMDBPerson): Promise<void> {
   // Calculate mortality stats
   const yearsLostResult = await calculateYearsLost(person.birthday, person.deathday!)
 
-  // Create deceased person record
-  const record: DeceasedPersonRecord = {
+  // Create actor record
+  const record: ActorInput = {
     tmdb_id: person.id,
     name: person.name,
     birthday: person.birthday,
@@ -414,7 +414,7 @@ async function processNewDeath(person: TMDBPerson): Promise<void> {
     years_lost: yearsLostResult?.yearsLost ?? null,
   }
 
-  await upsertDeceasedPerson(record)
+  await upsertActor(record)
 
   if (causeOfDeath) {
     console.log(`    -> ${causeOfDeath} (${causeOfDeathSource})`)

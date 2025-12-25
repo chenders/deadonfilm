@@ -2,13 +2,14 @@ import type { Request, Response } from "express"
 import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../lib/tmdb.js"
 import { getCauseOfDeath, type DeathInfoSource } from "../lib/wikidata.js"
 import {
-  getDeceasedPersons,
-  batchUpsertDeceasedPersons,
+  getActors,
+  batchUpsertActors,
   updateDeathInfo,
   upsertMovie,
-  batchUpsertActorAppearances,
-  type DeceasedPersonRecord,
-  type ActorAppearanceRecord,
+  batchUpsertActorMovieAppearances,
+  type ActorRecord,
+  type ActorInput,
+  type ActorMovieAppearanceRecord,
 } from "../lib/db.js"
 import {
   calculateMovieMortality,
@@ -95,7 +96,7 @@ export async function getMovie(req: Request, res: Response) {
     // Separate deceased and living
     const deceased: DeceasedActor[] = []
     const living: LivingActor[] = []
-    const newDeceasedForDb: DeceasedPersonRecord[] = []
+    const newDeceasedForDb: ActorInput[] = []
 
     for (const castMember of mainCast) {
       const person = personDetails.get(castMember.id)
@@ -314,10 +315,10 @@ const pendingEnrichment = new Map<number, Promise<void>>()
 // Helper to safely get deceased persons from database (returns empty map if DB unavailable)
 async function getDeceasedPersonsIfAvailable(
   tmdbIds: number[]
-): Promise<Map<number, DeceasedPersonRecord>> {
+): Promise<Map<number, ActorRecord>> {
   if (!process.env.DATABASE_URL) return new Map()
   try {
-    return await getDeceasedPersons(tmdbIds)
+    return await getActors(tmdbIds)
   } catch (error) {
     console.error("Database read error:", error)
     return new Map()
@@ -325,9 +326,9 @@ async function getDeceasedPersonsIfAvailable(
 }
 
 // Helper to save deceased persons to database in background
-function saveDeceasedToDb(persons: DeceasedPersonRecord[]): void {
+function saveDeceasedToDb(persons: ActorInput[]): void {
   if (!process.env.DATABASE_URL) return
-  batchUpsertDeceasedPersons(persons).catch((error) => {
+  batchUpsertActors(persons).catch((error) => {
     console.error("Database write error:", error)
   })
 }
@@ -373,7 +374,7 @@ function cacheMovieInBackground(params: CacheMovieParams): void {
   })
 
   // Build actor appearance records using extracted utility
-  const appearances: ActorAppearanceRecord[] = mainCast.map((castMember, index) => {
+  const appearances: ActorMovieAppearanceRecord[] = mainCast.map((castMember, index) => {
     const person = personDetails.get(castMember.id)
     return buildActorAppearanceRecord({
       castMember,
@@ -386,7 +387,7 @@ function cacheMovieInBackground(params: CacheMovieParams): void {
   })
 
   // Save in background
-  Promise.all([upsertMovie(movieRecord), batchUpsertActorAppearances(appearances)]).catch(
+  Promise.all([upsertMovie(movieRecord), batchUpsertActorMovieAppearances(appearances)]).catch(
     (error) => {
       console.error("Movie cache error:", error)
     }
