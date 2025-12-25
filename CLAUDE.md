@@ -80,6 +80,15 @@ This logic is implemented as a **computed column** (`is_obscure BOOLEAN GENERATE
 
 Users can toggle "Include obscure movies" checkbox to see all movies. This setting is controlled via the `includeObscure` URL parameter.
 
+### Obscure Actor Filtering
+
+Similarly, deceased actors can be filtered as "obscure" to improve result quality. An actor is considered "obscure" if:
+
+- **No profile photo**: `profile_path IS NULL`
+- **Low popularity**: `popularity < 5.0`
+
+This logic is implemented as a **computed column** (`is_obscure BOOLEAN GENERATED ALWAYS AS ... STORED`) in the `deceased_persons` table. The `popularity` column must be backfilled using `npm run backfill:actor-obscure`.
+
 ### Server Libraries
 
 - `server/src/lib/mortality-stats.ts` - Calculation utilities
@@ -487,6 +496,12 @@ npm run backfill:birthdays
 
 # Backfill missing profile photos from TMDB
 npm run backfill:profiles
+
+# Backfill popularity for deceased actors (enables obscure filtering)
+npm run backfill:actor-obscure                  # Backfill actors missing popularity
+npm run backfill:actor-obscure -- --all         # Refresh all actors
+npm run backfill:actor-obscure -- --stats       # Show obscure statistics only
+npm run backfill:actor-obscure -- --dry-run     # Preview without writing
 
 # Backfill missing language data for movies
 npm run backfill:languages                      # Process all movies
