@@ -1252,7 +1252,9 @@ export async function getAllActorTmdbIds(): Promise<Set<number>> {
 // Get all TMDB IDs of deceased persons in our database
 export async function getDeceasedTmdbIds(): Promise<Set<number>> {
   const db = getPool()
-  const result = await db.query<{ tmdb_id: number }>(`SELECT tmdb_id FROM actors`)
+  const result = await db.query<{ tmdb_id: number }>(
+    `SELECT tmdb_id FROM actors WHERE deathday IS NOT NULL`
+  )
   return new Set(result.rows.map((r) => r.tmdb_id))
 }
 

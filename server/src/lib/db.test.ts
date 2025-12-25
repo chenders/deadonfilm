@@ -193,7 +193,9 @@ describe("Sync State Functions", () => {
 
       const result = await getDeceasedTmdbIds()
 
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("SELECT tmdb_id FROM actors"))
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("SELECT tmdb_id FROM actors WHERE deathday IS NOT NULL")
+      )
       expect(result).toBeInstanceOf(Set)
       expect(result.size).toBe(2)
       expect(result.has(111)).toBe(true)
