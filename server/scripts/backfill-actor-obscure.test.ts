@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest"
-import { OBSCURE_POPULARITY_THRESHOLD } from "./backfill-actor-obscure.js"
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { OBSCURE_POPULARITY_THRESHOLD, getPopularity } from "./backfill-actor-obscure.js"
+import * as tmdb from "../src/lib/tmdb.js"
 
 describe("backfill-actor-obscure constants", () => {
   it("uses popularity threshold of 5.0 (matches Death Watch feature)", () => {
@@ -84,3 +85,54 @@ describe("is_obscure calculation logic", () => {
 // Note: The script always fetches popularity from the TMDB API to ensure
 // accurate, up-to-date values. Cached popularity from actor_appearances is not
 // used because it may be stale or not available for all deceased actors.
+
+vi.mock("../src/lib/tmdb.js", () => ({
+  getPersonDetails: vi.fn(),
+}))
+
+describe("getPopularity", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it("returns popularity from TMDB API on success", async () => {
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValue({
+      id: 12345,
+      name: "John Smith",
+      birthday: "1950-01-01",
+      deathday: "2020-01-01",
+      biography: "Actor biography",
+      profile_path: "/profile.jpg",
+      place_of_birth: "Los Angeles, CA",
+      imdb_id: "nm0001234",
+      popularity: 42.5,
+    })
+
+    const result = await getPopularity(12345)
+
+    expect(result).toEqual({ popularity: 42.5 })
+    expect(tmdb.getPersonDetails).toHaveBeenCalledWith(12345)
+  })
+
+  it("returns null popularity when actor is not found (404)", async () => {
+    vi.mocked(tmdb.getPersonDetails).mockRejectedValue(new Error("404 Not Found"))
+
+    const result = await getPopularity(99999)
+
+    expect(result).toEqual({ popularity: null })
+  })
+
+  it("re-throws non-404 errors", async () => {
+    const serverError = new Error("500 Internal Server Error")
+    vi.mocked(tmdb.getPersonDetails).mockRejectedValue(serverError)
+
+    await expect(getPopularity(12345)).rejects.toThrow("500 Internal Server Error")
+  })
+
+  it("handles rate limit errors by re-throwing", async () => {
+    const rateLimitError = new Error("429 Too Many Requests")
+    vi.mocked(tmdb.getPersonDetails).mockRejectedValue(rateLimitError)
+
+    await expect(getPopularity(12345)).rejects.toThrow("429 Too Many Requests")
+  })
+})
