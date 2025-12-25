@@ -91,7 +91,7 @@ export async function getMovie(req: Request, res: Response) {
     const personDetails = await batchGetPersonDetails(personIds)
 
     // Check database for existing death info
-    const dbRecords = await getDeceasedPersonsIfAvailable(personIds)
+    const dbRecords = await getActorsIfAvailable(personIds)
 
     // Separate deceased and living
     const deceased: DeceasedActor[] = []
@@ -312,8 +312,8 @@ function calculateAge(birthday: string | null): number | null {
 // Track movies with pending enrichment
 const pendingEnrichment = new Map<number, Promise<void>>()
 
-// Helper to safely get deceased persons from database (returns empty map if DB unavailable)
-async function getDeceasedPersonsIfAvailable(tmdbIds: number[]): Promise<Map<number, ActorRecord>> {
+// Helper to safely get actors from database (returns empty map if DB unavailable)
+async function getActorsIfAvailable(tmdbIds: number[]): Promise<Map<number, ActorRecord>> {
   if (!process.env.DATABASE_URL) return new Map()
   try {
     return await getActors(tmdbIds)
@@ -483,7 +483,7 @@ export async function getMovieDeathInfo(req: Request, res: Response) {
   const isPending = pendingEnrichment.has(movieId)
 
   // Query database directly for the latest death info
-  const dbRecords = await getDeceasedPersonsIfAvailable(personIds)
+  const dbRecords = await getActorsIfAvailable(personIds)
 
   // Return death info for requested actors
   const deathInfo: Record<

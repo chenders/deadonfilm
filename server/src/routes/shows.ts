@@ -152,7 +152,7 @@ export async function getShow(req: Request, res: Response) {
     ])
 
     // Check database for existing death info
-    const dbRecords = await getDeceasedPersonsIfAvailable(personIds)
+    const dbRecords = await getActorsIfAvailable(personIds)
 
     // Separate deceased and living
     const deceased: DeceasedActor[] = []
@@ -434,8 +434,8 @@ async function fetchEpisodeAppearances(
   return actorEpisodes
 }
 
-// Helper to safely get deceased persons from database
-async function getDeceasedPersonsIfAvailable(tmdbIds: number[]): Promise<Map<number, ActorRecord>> {
+// Helper to safely get actors from database
+async function getActorsIfAvailable(tmdbIds: number[]): Promise<Map<number, ActorRecord>> {
   if (!process.env.DATABASE_URL) return new Map()
   try {
     return await getActors(tmdbIds)
@@ -625,7 +625,7 @@ export async function getEpisode(req: Request, res: Response) {
     const personDetails = await batchGetPersonDetails(personIds)
 
     // Check database for existing death info
-    const dbRecords = await getDeceasedPersonsIfAvailable(personIds)
+    const dbRecords = await getActorsIfAvailable(personIds)
 
     // Separate deceased and living
     const deceased: DeceasedActor[] = []
