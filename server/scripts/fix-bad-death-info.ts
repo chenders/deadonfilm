@@ -320,8 +320,8 @@ async function run(options: { fix?: boolean; dryRun?: boolean; limit?: string; v
       cause_of_death_details: string | null
     }>(`
       SELECT tmdb_id, name, birthday, deathday, age_at_death, cause_of_death, cause_of_death_details
-      FROM deceased_persons
-      WHERE cause_of_death IS NOT NULL OR cause_of_death_details IS NOT NULL
+      FROM actors
+      WHERE deathday IS NOT NULL AND (cause_of_death IS NOT NULL OR cause_of_death_details IS NOT NULL)
       ORDER BY name
     `)
 
@@ -403,7 +403,7 @@ async function run(options: { fix?: boolean; dryRun?: boolean; limit?: string; v
         if (!options.dryRun) {
           await pool.query(
             `
-            UPDATE deceased_persons
+            UPDATE actors
             SET cause_of_death = $1,
                 cause_of_death_source = 'claude',
                 cause_of_death_details = $2,

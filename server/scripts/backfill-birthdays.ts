@@ -88,8 +88,8 @@ async function runBackfill() {
       deathday: string
     }>(`
       SELECT tmdb_id, name, deathday::text
-      FROM deceased_persons
-      WHERE birthday IS NULL
+      FROM actors
+      WHERE deathday IS NOT NULL AND birthday IS NULL
       ORDER BY name
     `)
 
@@ -114,7 +114,7 @@ async function runBackfill() {
         const mortalityStats = await calculateYearsLost(birthday, person.deathday)
 
         await db.query(
-          `UPDATE deceased_persons
+          `UPDATE actors
            SET birthday = $2,
                age_at_death = $3,
                expected_lifespan = $4,
