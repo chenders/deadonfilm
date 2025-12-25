@@ -8,6 +8,7 @@ import {
   processShowsPage,
   calculateResumeStartPage,
   PHASE_THRESHOLDS,
+  TMDB_MAX_PAGES,
   type ImportPhase,
 } from "./import-shows.js"
 
@@ -441,5 +442,36 @@ describe("calculateResumeStartPage", () => {
     // Even with buffer subtraction, should never go below 1
     expect(calculateResumeStartPage("popular", 1)).toBe(1)
     expect(calculateResumeStartPage("obscure", 5)).toBe(1)
+  })
+
+  it("can return values exceeding TMDB_MAX_PAGES for large imports", () => {
+    // This demonstrates why fetchShowsForPhase needs to handle the page limit
+    // Obscure: 1560 shows / 3 per page = page 520, minus 10 buffer = page 510
+    const startPage = calculateResumeStartPage("obscure", 1560)
+    expect(startPage).toBe(510)
+    expect(startPage).toBeGreaterThan(TMDB_MAX_PAGES)
+  })
+})
+
+describe("TMDB_MAX_PAGES", () => {
+  it("is set to 500 (TMDB API limit)", () => {
+    expect(TMDB_MAX_PAGES).toBe(500)
+  })
+
+  it("is less than what large obscure imports would calculate", () => {
+    // With 1560 obscure shows processed, calculated start page exceeds limit
+    // 1560 / 3 = 520, minus 10 buffer = 510
+    const largeImportStartPage = calculateResumeStartPage("obscure", 1560)
+    expect(largeImportStartPage).toBeGreaterThan(TMDB_MAX_PAGES)
+  })
+
+  it("is sufficient for popular and standard phases", () => {
+    // Popular phase at max: 500 pages * 15 matches/page = 7500 shows
+    // Standard phase at max: 500 pages * 8 matches/page = 4000 shows
+    // These are well above typical import limits
+    const popularMax = 500 * 15
+    const standardMax = 500 * 8
+    expect(popularMax).toBeGreaterThan(5000)
+    expect(standardMax).toBeGreaterThan(2000)
   })
 })

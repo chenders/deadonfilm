@@ -50,6 +50,9 @@ import {
 // Re-export for backwards compatibility with tests
 export { PHASE_THRESHOLDS, parsePositiveInt, parsePhase, type ImportPhase }
 
+// Export TMDB page limit constant for testing
+export { TMDB_MAX_PAGES }
+
 // Sync state key for import tracking
 const SYNC_TYPE = "show_import"
 
@@ -507,7 +510,7 @@ async function fetchShowsForPhase(
     return shows // Return empty - we've exhausted what TMDB can provide
   }
 
-  const startPage = Math.min(calculatedStartPage, TMDB_MAX_PAGES)
+  const startPage = calculatedStartPage
 
   // When resuming, search baseMaxPages from the start point (not from page 1)
   // But don't exceed TMDB's page limit
