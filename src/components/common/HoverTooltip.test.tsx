@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import HoverTooltip from "./HoverTooltip"
 
@@ -211,5 +211,133 @@ describe("HoverTooltip", () => {
     const trigger = screen.getByText("Trigger text").parentElement!
     expect(trigger).toHaveAttribute("role", "button")
     expect(trigger).toHaveAttribute("tabIndex", "0")
+  })
+
+  it("calls onOpen callback when tooltip is shown via hover", async () => {
+    const onOpen = vi.fn()
+    render(
+      <HoverTooltip content="Tooltip content" onOpen={onOpen}>
+        <span>Trigger text</span>
+      </HoverTooltip>
+    )
+
+    fireEvent.mouseEnter(screen.getByText("Trigger text"))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it("calls onOpen callback when tooltip is shown via click", async () => {
+    const onOpen = vi.fn()
+    render(
+      <HoverTooltip content="Tooltip content" onOpen={onOpen}>
+        <span>Trigger text</span>
+      </HoverTooltip>
+    )
+
+    fireEvent.click(screen.getByText("Trigger text"))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it("only calls onOpen once per tooltip session", async () => {
+    const onOpen = vi.fn()
+    render(
+      <HoverTooltip content="Tooltip content" onOpen={onOpen}>
+        <span>Trigger text</span>
+      </HoverTooltip>
+    )
+
+    const trigger = screen.getByText("Trigger text")
+
+    // Open via hover
+    fireEvent.mouseEnter(trigger)
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+
+    // Move to tooltip and back - should not trigger onOpen again
+    const tooltip = screen.getByTestId("hover-tooltip")
+    fireEvent.mouseLeave(trigger)
+    fireEvent.mouseEnter(tooltip)
+    fireEvent.mouseLeave(tooltip)
+    fireEvent.mouseEnter(trigger)
+
+    // Should still only be called once
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it("calls onOpen callback when tooltip is opened via keyboard (Enter key)", async () => {
+    const onOpen = vi.fn()
+    render(
+      <HoverTooltip content="Tooltip content" onOpen={onOpen}>
+        <span>Trigger text</span>
+      </HoverTooltip>
+    )
+
+    const trigger = screen.getByText("Trigger text").parentElement!
+    fireEvent.keyDown(trigger, { key: "Enter" })
+
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it("calls onOpen callback when tooltip is opened via keyboard (Space key)", async () => {
+    const onOpen = vi.fn()
+    render(
+      <HoverTooltip content="Tooltip content" onOpen={onOpen}>
+        <span>Trigger text</span>
+      </HoverTooltip>
+    )
+
+    const trigger = screen.getByText("Trigger text").parentElement!
+    fireEvent.keyDown(trigger, { key: " " })
+
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it("calls onOpen again after closing with Escape and reopening", async () => {
+    const onOpen = vi.fn()
+    render(
+      <HoverTooltip content="Tooltip content" onOpen={onOpen}>
+        <span>Trigger text</span>
+      </HoverTooltip>
+    )
+
+    const trigger = screen.getByText("Trigger text").parentElement!
+
+    // Open with Enter
+    fireEvent.keyDown(trigger, { key: "Enter" })
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+    expect(onOpen).toHaveBeenCalledTimes(1)
+
+    // Close with Escape
+    fireEvent.keyDown(trigger, { key: "Escape" })
+    await waitFor(() => {
+      expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
+    })
+
+    // Open again with Enter - onOpen should be called again
+    fireEvent.keyDown(trigger, { key: "Enter" })
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+    expect(onOpen).toHaveBeenCalledTimes(2)
   })
 })

@@ -1,7 +1,12 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import DeathInfo from "./DeathInfo"
+
+// Mock the New Relic tracking function
+vi.mock("@/hooks/useNewRelicBrowser", () => ({
+  trackPageAction: vi.fn(),
+}))
 
 const defaultTmdbUrl = "https://www.themoviedb.org/person/12345"
 const defaultActorName = "Test Actor"
@@ -452,5 +457,34 @@ describe("DeathInfo", () => {
 
     // Lifespan bar should not be rendered
     expect(container.querySelector(".w-40.ml-auto")).not.toBeInTheDocument()
+  })
+
+  it("tracks view_death_details event when tooltip is opened", async () => {
+    const { trackPageAction } = await import("@/hooks/useNewRelicBrowser")
+    const user = userEvent.setup()
+
+    render(
+      <DeathInfo
+        actorName="John Smith"
+        deathday="2000-01-01"
+        birthday={null}
+        ageAtDeath={null}
+        yearsLost={null}
+        causeOfDeath="heart attack"
+        causeOfDeathDetails="Suffered a heart attack at home"
+        wikipediaUrl={null}
+        tmdbUrl={defaultTmdbUrl}
+      />
+    )
+
+    // Hover over the cause to open tooltip
+    const causeText = screen.getByText("Heart Attack")
+    await user.hover(causeText)
+
+    // Verify tracking was called with correct parameters
+    expect(trackPageAction).toHaveBeenCalledWith("view_death_details", {
+      actorName: "John Smith",
+      causeOfDeath: "heart attack",
+    })
   })
 })

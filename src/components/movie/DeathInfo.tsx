@@ -2,6 +2,7 @@ import { formatDate, calculateAge } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import { InfoIcon } from "@/components/icons"
 import HoverTooltip from "@/components/common/HoverTooltip"
+import { trackPageAction } from "@/hooks/useNewRelicBrowser"
 
 interface DeathInfoProps {
   actorName: string
@@ -160,16 +161,14 @@ export default function DeathInfo({
               content={causeOfDeathDetails}
               testId="death-details-tooltip"
               className="underline decoration-dotted"
+              onOpen={() =>
+                trackPageAction("view_death_details", {
+                  actorName,
+                  causeOfDeath,
+                })
+              }
             >
-              <span
-                data-testid="death-details-trigger"
-                data-track-event="view_death_details"
-                data-track-hover="true"
-                data-track-params={JSON.stringify({
-                  actor_name: actorName,
-                  cause_of_death: causeOfDeath,
-                })}
-              >
+              <span data-testid="death-details-trigger">
                 {toTitleCase(causeOfDeath)}
                 <InfoIcon
                   size={14}
@@ -183,12 +182,6 @@ export default function DeathInfo({
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-brown-dark"
-              data-track-event="click_external_link"
-              data-track-params={JSON.stringify({
-                actor_name: actorName,
-                link_type: profileLink.label,
-                link_url: profileLink.url,
-              })}
             >
               {toTitleCase(causeOfDeath)}
             </a>
@@ -205,12 +198,6 @@ export default function DeathInfo({
             target="_blank"
             rel="noopener noreferrer"
             className="text-brown-medium underline hover:text-brown-dark"
-            data-track-event="click_external_link"
-            data-track-params={JSON.stringify({
-              actor_name: actorName,
-              link_type: profileLink.label,
-              link_url: profileLink.url,
-            })}
           >
             {profileLink.label}
           </a>
