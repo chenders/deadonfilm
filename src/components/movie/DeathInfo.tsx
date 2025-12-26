@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from "react"
-import { createPortal } from "react-dom"
 import { formatDate, calculateAge } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import { InfoIcon } from "@/components/icons"
+import HoverTooltip from "@/components/common/HoverTooltip"
 
 interface DeathInfoProps {
   actorName: string
@@ -51,97 +50,6 @@ function LoadingEllipsis() {
   )
 }
 
-interface TooltipProps {
-  content: string
-  triggerRef: React.RefObject<HTMLElement | null>
-  isVisible: boolean
-}
-
-function Tooltip({
-  content,
-  triggerRef,
-  isVisible,
-  onMouseEnter,
-  onMouseLeave,
-}: TooltipProps & { onMouseEnter: () => void; onMouseLeave: () => void }) {
-  const tooltipRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
-
-  useEffect(() => {
-    if (!isVisible || !triggerRef.current) {
-      setPosition(null)
-      return
-    }
-
-    const updatePosition = () => {
-      if (!triggerRef.current || !tooltipRef.current) return
-
-      const trigger = triggerRef.current.getBoundingClientRect()
-      const tooltip = tooltipRef.current.getBoundingClientRect()
-      const padding = 8
-
-      // Position below the trigger, right-aligned with it (since text is right-aligned)
-      let top = trigger.bottom + padding
-      let left = trigger.right - tooltip.width
-
-      // Keep tooltip within horizontal bounds
-      if (left < padding) {
-        left = padding
-      }
-      if (left + tooltip.width > window.innerWidth - padding) {
-        left = window.innerWidth - tooltip.width - padding
-      }
-
-      // If tooltip would go below viewport, show it above the trigger
-      if (top + tooltip.height > window.innerHeight - padding) {
-        top = trigger.top - tooltip.height - padding
-      }
-
-      setPosition({ top, left })
-    }
-
-    // Use requestAnimationFrame to ensure DOM is ready before measuring
-    const rafId = requestAnimationFrame(updatePosition)
-
-    window.addEventListener("scroll", updatePosition, true)
-    window.addEventListener("resize", updatePosition)
-
-    return () => {
-      cancelAnimationFrame(rafId)
-      window.removeEventListener("scroll", updatePosition, true)
-      window.removeEventListener("resize", updatePosition)
-    }
-  }, [isVisible, triggerRef])
-
-  if (!isVisible) return null
-
-  // Render tooltip in a portal to avoid layout issues from being inside the trigger
-  return createPortal(
-    <div
-      ref={tooltipRef}
-      data-testid="death-details-tooltip"
-      className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
-      style={{
-        top: position?.top ?? -9999,
-        left: position?.left ?? -9999,
-        visibility: position ? "visible" : "hidden",
-        animationDelay: "0ms",
-      }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      {/* Film strip decoration at top */}
-      <div className="absolute -top-1 left-4 right-4 flex justify-between">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
-        ))}
-      </div>
-      <p className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</p>
-    </div>,
-    document.body
-  )
-}
-
 // Get the best profile link with fallback priority: Wikipedia > TMDB
 function getProfileLink(
   wikipediaUrl: string | null,
@@ -177,24 +85,6 @@ export default function DeathInfo({
   const expectedLifespan =
     ageAtDeath !== null && yearsLostNum !== null ? ageAtDeath + yearsLostNum : null
   const profileLink = getProfileLink(wikipediaUrl, tmdbUrl)
-  const [showTooltip, setShowTooltip] = useState(false)
-  const triggerRef = useRef<HTMLSpanElement>(null)
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleMouseEnter = () => {
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current)
-      hideTimeoutRef.current = null
-    }
-    setShowTooltip(true)
-  }
-
-  const handleMouseLeave = () => {
-    // Small delay before hiding to allow mouse to move to tooltip
-    hideTimeoutRef.current = setTimeout(() => {
-      setShowTooltip(false)
-    }, 100)
-  }
 
   return (
     <div data-testid="death-info" className="text-right sm:text-right">
@@ -266,32 +156,27 @@ export default function DeathInfo({
       {causeOfDeath && (
         <p className="mt-1 text-sm text-text-muted">
           {hasDetails ? (
-            <span
-              ref={triggerRef}
-              data-testid="death-details-trigger"
-              className="tooltip-trigger cursor-help underline decoration-dotted"
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              data-track-event="view_death_details"
-              data-track-hover="true"
-              data-track-params={JSON.stringify({
-                actor_name: actorName,
-                cause_of_death: causeOfDeath,
-              })}
+            <HoverTooltip
+              content={causeOfDeathDetails}
+              testId="death-details-tooltip"
+              className="underline decoration-dotted"
             >
-              {toTitleCase(causeOfDeath)}
-              <InfoIcon
-                size={14}
-                className="ml-1 inline-block align-text-bottom text-brown-medium"
-              />
-              <Tooltip
-                content={causeOfDeathDetails}
-                triggerRef={triggerRef}
-                isVisible={showTooltip}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-              />
-            </span>
+              <span
+                data-testid="death-details-trigger"
+                data-track-event="view_death_details"
+                data-track-hover="true"
+                data-track-params={JSON.stringify({
+                  actor_name: actorName,
+                  cause_of_death: causeOfDeath,
+                })}
+              >
+                {toTitleCase(causeOfDeath)}
+                <InfoIcon
+                  size={14}
+                  className="ml-1 inline-block align-text-bottom text-brown-medium"
+                />
+              </span>
+            </HoverTooltip>
           ) : (
             <a
               href={profileLink.url}
