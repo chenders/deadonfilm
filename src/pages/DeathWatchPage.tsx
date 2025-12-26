@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react"
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useDeathWatch } from "@/hooks/useDeathWatch"
+import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
@@ -107,33 +107,9 @@ export default function DeathWatchPage() {
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const includeObscure = searchParams.get("includeObscure") === "true"
-  const searchQuery = searchParams.get("search") || ""
 
-  // Local state for debounced search input
-  const [searchInput, setSearchInput] = useState(searchQuery)
-
-  // Sync local state when URL changes (e.g., browser back/forward)
-  useEffect(() => {
-    setSearchInput(searchQuery)
-  }, [searchQuery])
-
-  // Debounce search input - update URL after user stops typing
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchInput !== searchQuery) {
-        const newParams = new URLSearchParams(searchParams)
-        if (searchInput) {
-          newParams.set("search", searchInput)
-        } else {
-          newParams.delete("search")
-        }
-        newParams.delete("page") // Reset to first page when search changes
-        setSearchParams(newParams)
-      }
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [searchInput, searchQuery, searchParams, setSearchParams])
+  // Debounced search with URL sync
+  const [searchInput, setSearchInput, searchQuery] = useDebouncedSearchParam()
 
   const { data, isLoading, error } = useDeathWatch({ page, includeObscure, search: searchQuery })
 

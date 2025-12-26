@@ -1634,12 +1634,8 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
   const { limit = 50, offset = 0, includeObscure = false, search } = options
   const db = getPool()
 
-  // Build search condition
-  const searchCondition = search ? `AND actors.name ILIKE $4` : ""
-  const params: (number | boolean | string)[] = [limit, offset, includeObscure]
-  if (search) {
-    params.push(`%${search}%`)
-  }
+  // Always pass search parameter (null if not searching) - avoids SQL string interpolation
+  const searchPattern = search ? `%${search}%` : null
 
   const result = await db.query<ActorRecord & { total_count: string }>(
     `WITH actor_appearances AS (
@@ -1658,10 +1654,11 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
      SELECT COUNT(*) OVER () as total_count, actors.*
      FROM actors
      JOIN actor_appearances aa ON aa.tmdb_id = actors.tmdb_id
-     WHERE ($3 = true OR is_obscure = false) ${searchCondition}
+     WHERE ($3 = true OR is_obscure = false)
+       AND ($4::text IS NULL OR actors.name ILIKE $4)
      ORDER BY deathday DESC
      LIMIT $1 OFFSET $2`,
-    params
+    [limit, offset, includeObscure, searchPattern]
   )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
