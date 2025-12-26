@@ -171,7 +171,7 @@ export default function AllDeathsPage() {
           <h1 className="font-display text-3xl text-brown-dark">All Deaths</h1>
           <p className="mt-2 text-sm text-text-muted">
             {includeObscure
-              ? "Complete list of all deceased actors in our database, ordered by death date (most recent first)."
+              ? "All deceased actors in our database, ordered by death date (most recent first)."
               : "Well-known deceased actors in our database, ordered by death date (most recent first)."}
           </p>
         </div>
