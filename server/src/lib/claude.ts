@@ -32,6 +32,97 @@ export function isVagueCause(cause: string | null): boolean {
   return VAGUE_CAUSES.some((vague) => cause.toLowerCase().includes(vague.toLowerCase()))
 }
 
+// Patterns that indicate irrelevant content in death details
+const IRRELEVANT_PATTERNS = [
+  // Biographical info
+  /\bborn in\b/i,
+  /\bstudied at\b/i,
+  /\beducated at\b/i,
+  /\bgraduated from\b/i,
+  /\bfounded\b/i,
+  /\bco-founded\b/i,
+
+  // Family info
+  /\bmarried\b/i,
+  /\bdivorced\b/i,
+  /\bwidow(er)?\b/i,
+  /\bsurvived by\b/i,
+  /\bpredeceased\b/i,
+  /\bdaughter[s]?\b/i,
+  /\bson[s]?\b/i,
+  /\bchildren\b/i,
+  /\bwife\b/i,
+  /\bhusband\b/i,
+  /\bspouse\b/i,
+  /\bgrandchild/i,
+
+  // Career/filmography
+  /\bfilmography\b/i,
+  /\bappeared in\b.*\bfilm/i,
+  /\bstarred in\b/i,
+  /\bknown for\b/i,
+  /\bplayed the role\b/i,
+  /\* [A-Z]/, // Bullet point lists (filmography)
+  /\(\d{4}\)/g, // Years in parentheses (filmography entries like "(1939)")
+
+  // Awards/achievements
+  /\baward\b/i,
+  /\bnominated\b/i,
+  /\bhonored\b/i,
+
+  // Other people's deaths
+  /\bhis (father|mother|brother|sister|wife|spouse|partner)\b.*\bdied\b/i,
+  /\bher (father|mother|brother|sister|husband|spouse|partner)\b.*\bdied\b/i,
+]
+
+// Validate death details and return null if they contain irrelevant content
+function validateDeathDetails(
+  details: string | null,
+  cause: string | null,
+  name: string
+): string | null {
+  if (!details) return null
+
+  // Check for irrelevant patterns
+  for (const pattern of IRRELEVANT_PATTERNS) {
+    if (pattern.test(details)) {
+      console.log(`Details for ${name} rejected: matches pattern ${pattern}`)
+      return null
+    }
+  }
+
+  // Check for cause/details mismatch (e.g., cause is cancer but details say Parkinson's)
+  if (cause) {
+    const causeLower = cause.toLowerCase()
+
+    // If cause doesn't mention Parkinson's but details do, it's likely wrong
+    if (!causeLower.includes("parkinson") && /parkinson/i.test(details)) {
+      console.log(`Details for ${name} rejected: Parkinson's mismatch with cause "${cause}"`)
+      return null
+    }
+
+    // If cause doesn't mention Alzheimer's but details do, it's likely wrong
+    if (!causeLower.includes("alzheimer") && /alzheimer/i.test(details)) {
+      console.log(`Details for ${name} rejected: Alzheimer's mismatch with cause "${cause}"`)
+      return null
+    }
+  }
+
+  // Check for truncated content (ends with "...")
+  if (details.trim().endsWith("...")) {
+    console.log(`Details for ${name} rejected: appears truncated`)
+    return null
+  }
+
+  // Check for very short details that don't add value
+  if (details.length < 30) {
+    console.log(`Details for ${name} rejected: too short (${details.length} chars)`)
+    return null
+  }
+
+  return details
+}
+
 export async function getCauseOfDeathFromClaude(
   name: string,
   birthYear: number | null,
@@ -47,25 +138,42 @@ export async function getCauseOfDeathFromClaude(
     const prompt = `What was the cause of death for ${name}${birthInfo} who died in ${deathYear}?
 
 CRITICAL RULES:
-1. Report ONLY how ${name} personally died - not family members or others
-2. The "details" field should ONLY explain medical circumstances of the death itself
+1. Report ONLY how ${name} personally died - not family members, spouses, or others
+2. The "details" field must ONLY explain the medical circumstances leading to ${name}'s death
+3. Details must DIRECTLY relate to the stated cause of death
 
-For "cause": Give the specific medical cause (e.g., "lung cancer", "heart attack", "car accident")
+For "cause": Give the specific medical cause (e.g., "lung cancer", "heart attack", "car accident", "stroke")
 
-For "details": ONLY include information that explains WHY or HOW they died medically. Examples of GOOD details:
-- "Had been battling the disease for 3 years"
-- "Complications from surgery"
-- "Long history of heart problems"
+For "details": ONLY include medical context about THIS PERSON'S death.
 
-Return null for details if you only know basic facts. NEVER include:
-- Deaths of family members (spouse, partner, children, parents dying before or after them)
-- Words like "predeceased", "widow", "widower", "survived by"
-- Marriage history or spouse names
-- Career achievements or awards
-- Tributes, quotes, or flowery language
-- Date, age, or location (we already have these)
-- Children, family relationships
-- Any biographical information
+GOOD details examples:
+- "Had been battling the disease for 3 years before succumbing"
+- "Complications arose following surgery"
+- "Long history of heart problems contributed to the cardiac event"
+- "The cancer had metastasized to other organs"
+
+Return null for details if you only know the basic cause. It's better to return null than include irrelevant information.
+
+NEVER include in details (return null if you're tempted to include these):
+- Deaths of other people (spouse, partner, children, parents, siblings)
+- Words: "predeceased", "widow", "widower", "survived by", "outlived"
+- Marriage history, spouse names, divorce info
+- Career achievements, awards, notable roles
+- Education, schools attended, training
+- Filmography or list of works (no movie/TV titles)
+- Tributes, quotes, or praise about the person
+- Date, age, or location of death (we already have these)
+- Children, family relationships, grandchildren
+- Biographical/personal life info unrelated to the death
+- Information about how their death was announced or received
+- Hospital names or care facility names (unless medically relevant)
+
+VALIDATION: Before responding, verify:
+1. Does "details" ONLY discuss ${name}'s medical condition/death?
+2. Is "details" consistent with "cause"? (e.g., don't say "Parkinson's" if cause is "cancer")
+3. Does "details" avoid ALL the forbidden content above?
+
+If in doubt, return {"cause": "the cause", "details": null}
 
 Respond ONLY with JSON:
 {"cause": "specific cause", "details": "medical context only, or null"}
@@ -109,6 +217,15 @@ If unknown: {"cause": null, "details": null}`
       parsed = {
         cause: causeMatch ? causeMatch[1] : null,
         details: detailsMatch ? detailsMatch[1] : null,
+      }
+    }
+
+    // Validate and potentially reject bad details
+    if (parsed.details) {
+      const validatedDetails = validateDeathDetails(parsed.details, parsed.cause, name)
+      if (validatedDetails !== parsed.details) {
+        console.log(`Claude details rejected for ${name}: "${parsed.details?.substring(0, 50)}..."`)
+        parsed.details = validatedDetails
       }
     }
 
