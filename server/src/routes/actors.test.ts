@@ -8,6 +8,12 @@ vi.mock("../lib/db.js", () => ({
   getCursedActors: vi.fn(),
 }))
 
+vi.mock("../lib/newrelic.js", () => ({
+  recordCustomEvent: vi.fn(),
+}))
+
+import { recordCustomEvent } from "../lib/newrelic.js"
+
 describe("getCursedActorsRoute", () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
@@ -339,5 +345,29 @@ describe("getCursedActorsRoute", () => {
         totalPages: 3,
       },
     })
+  })
+
+  it("records CursedActorsQuery custom event with correct attributes", async () => {
+    mockReq.query = { page: "2", from: "1970", to: "1990", minMovies: "5", status: "living" }
+    vi.mocked(db.getCursedActors).mockResolvedValueOnce({
+      actors: mockActors,
+      totalCount: 50,
+    })
+
+    await getCursedActorsRoute(mockReq as Request, mockRes as Response)
+
+    expect(recordCustomEvent).toHaveBeenCalledWith(
+      "CursedActorsQuery",
+      expect.objectContaining({
+        page: 2,
+        status: "living",
+        fromYear: 1970,
+        toYear: 1999,
+        minMovies: 5,
+        resultCount: 2,
+        totalCount: 50,
+        responseTimeMs: expect.any(Number),
+      })
+    )
   })
 })

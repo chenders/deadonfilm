@@ -8,6 +8,7 @@ import {
   getAllDeaths,
 } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 
 export async function getCauseCategoriesHandler(req: Request, res: Response) {
   try {
@@ -25,6 +26,8 @@ export async function getCauseCategoriesHandler(req: Request, res: Response) {
 
 export async function getDeathsByCauseHandler(req: Request, res: Response) {
   try {
+    const startTime = Date.now()
+
     if (!process.env.DATABASE_URL) {
       return res.json({
         cause: null,
@@ -75,6 +78,16 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
         totalPages: Math.ceil(totalCount / pageSize),
       },
     }
+
+    recordCustomEvent("DeathsByCauseQuery", {
+      cause,
+      page,
+      includeObscure,
+      resultCount: deaths.length,
+      totalCount,
+      responseTimeMs: Date.now() - startTime,
+    })
+
     sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Deaths by cause error:", error)
@@ -98,6 +111,8 @@ export async function getDecadeCategoriesHandler(req: Request, res: Response) {
 
 export async function getDeathsByDecadeHandler(req: Request, res: Response) {
   try {
+    const startTime = Date.now()
+
     if (!process.env.DATABASE_URL) {
       return res.json({
         decade: null,
@@ -153,6 +168,16 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
         totalPages: Math.ceil(totalCount / pageSize),
       },
     }
+
+    recordCustomEvent("DeathsByDecadeQuery", {
+      decade,
+      page,
+      includeObscure,
+      resultCount: deaths.length,
+      totalCount,
+      responseTimeMs: Date.now() - startTime,
+    })
+
     sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Deaths by decade error:", error)
@@ -162,6 +187,8 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
 
 export async function getAllDeathsHandler(req: Request, res: Response) {
   try {
+    const startTime = Date.now()
+
     if (!process.env.DATABASE_URL) {
       return res.json({
         deaths: [],
@@ -194,6 +221,15 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
         totalPages: Math.ceil(totalCount / pageSize),
       },
     }
+
+    recordCustomEvent("AllDeathsQuery", {
+      page,
+      includeObscure,
+      resultCount: persons.length,
+      totalCount,
+      responseTimeMs: Date.now() - startTime,
+    })
+
     sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("All deaths error:", error)

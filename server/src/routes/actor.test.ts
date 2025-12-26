@@ -14,6 +14,12 @@ vi.mock("../lib/db.js", () => ({
   getActor: vi.fn(),
 }))
 
+vi.mock("../lib/newrelic.js", () => ({
+  recordCustomEvent: vi.fn(),
+}))
+
+import { recordCustomEvent } from "../lib/newrelic.js"
+
 describe("getActor", () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
@@ -235,5 +241,55 @@ describe("getActor", () => {
     const response = jsonSpy.mock.calls[0][0]
     expect(response).not.toHaveProperty("costarStats")
     expect(Object.keys(response)).toEqual(["actor", "analyzedFilmography", "deathInfo"])
+  })
+
+  describe("recordCustomEvent tracking", () => {
+    it("records ActorView custom event for living actor", async () => {
+      vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
+      vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+
+      await getActor(mockReq as Request, mockRes as Response)
+
+      expect(recordCustomEvent).toHaveBeenCalledWith(
+        "ActorView",
+        expect.objectContaining({
+          tmdbId: 12345,
+          name: "Living Actor",
+          isDeceased: false,
+          filmographyCount: 1,
+          hasCauseOfDeath: false,
+          responseTimeMs: expect.any(Number),
+        })
+      )
+    })
+
+    it("records ActorView custom event for deceased actor with cause of death", async () => {
+      mockReq.params = { id: "67890" }
+      vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
+      vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+      vi.mocked(db.getActor).mockResolvedValueOnce(mockDeceasedRecord)
+
+      await getActor(mockReq as Request, mockRes as Response)
+
+      expect(recordCustomEvent).toHaveBeenCalledWith(
+        "ActorView",
+        expect.objectContaining({
+          tmdbId: 67890,
+          name: "Deceased Actor",
+          isDeceased: true,
+          filmographyCount: 1,
+          hasCauseOfDeath: true,
+          responseTimeMs: expect.any(Number),
+        })
+      )
+    })
+
+    it("does not record ActorView event on error", async () => {
+      vi.mocked(tmdb.getPersonDetails).mockRejectedValueOnce(new Error("API error"))
+
+      await getActor(mockReq as Request, mockRes as Response)
+
+      expect(recordCustomEvent).not.toHaveBeenCalled()
+    })
   })
 })
