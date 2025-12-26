@@ -105,14 +105,21 @@ export default function UnnaturalDeathsPage() {
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const category = (searchParams.get("category") || "all") as UnnaturalDeathCategory | "all"
-  const hideSuicides = searchParams.get("hideSuicides") === "true"
+  const showSelfInflicted = searchParams.get("showSelfInflicted") === "true"
+  const includeObscure = searchParams.get("includeObscure") === "true"
 
-  const { data, isLoading, error } = useUnnaturalDeaths({ page, category, hideSuicides })
+  const { data, isLoading, error } = useUnnaturalDeaths({
+    page,
+    category,
+    showSelfInflicted,
+    includeObscure,
+  })
 
   const updateParams = (updates: {
     page?: number
     category?: UnnaturalDeathCategory | "all"
-    hideSuicides?: boolean
+    showSelfInflicted?: boolean
+    includeObscure?: boolean
   }) => {
     const newParams = new URLSearchParams(searchParams)
 
@@ -134,11 +141,21 @@ export default function UnnaturalDeathsPage() {
       newParams.delete("page")
     }
 
-    if (updates.hideSuicides !== undefined) {
-      if (updates.hideSuicides) {
-        newParams.set("hideSuicides", "true")
+    if (updates.showSelfInflicted !== undefined) {
+      if (updates.showSelfInflicted) {
+        newParams.set("showSelfInflicted", "true")
       } else {
-        newParams.delete("hideSuicides")
+        newParams.delete("showSelfInflicted")
+      }
+      // Reset page when changing filter
+      newParams.delete("page")
+    }
+
+    if (updates.includeObscure !== undefined) {
+      if (updates.includeObscure) {
+        newParams.set("includeObscure", "true")
+      } else {
+        newParams.delete("includeObscure")
       }
       // Reset page when changing filter
       newParams.delete("page")
@@ -219,21 +236,38 @@ export default function UnnaturalDeathsPage() {
           </div>
         )}
 
-        {/* Hide suicides toggle (only show when viewing all or suicide category) */}
-        {(category === "all" || category === "suicide") && (
-          <div className="mb-4 flex justify-center">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-text-muted">
+        {/* Filters */}
+        <div className="mb-4 flex flex-wrap justify-center gap-4">
+          {/* Show self-inflicted toggle (only show when viewing all category) */}
+          {category === "all" && (
+            <label
+              className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+              data-testid="show-self-inflicted-filter"
+            >
               <input
                 type="checkbox"
-                checked={hideSuicides}
-                onChange={(e) => updateParams({ hideSuicides: e.target.checked })}
-                className="h-4 w-4 rounded border-brown-light text-brown-dark focus:ring-brown-medium"
-                data-testid="hide-suicides-checkbox"
+                checked={showSelfInflicted}
+                onChange={(e) => updateParams({ showSelfInflicted: e.target.checked })}
+                className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
               />
-              Hide suicides
+              Show self-inflicted deaths
             </label>
-          </div>
-        )}
+          )}
+
+          {/* Include lesser-known actors */}
+          <label
+            className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+            data-testid="include-obscure-filter"
+          >
+            <input
+              type="checkbox"
+              checked={includeObscure}
+              onChange={(e) => updateParams({ includeObscure: e.target.checked })}
+              className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+            />
+            Include lesser-known actors
+          </label>
+        </div>
 
         {noResults ? (
           <div className="text-center text-text-muted">

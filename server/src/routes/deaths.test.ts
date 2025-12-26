@@ -135,7 +135,11 @@ describe("getDeathsByCauseHandler", () => {
     await getDeathsByCauseHandler(mockReq as Request, mockRes as Response)
 
     expect(db.getCauseFromSlug).toHaveBeenCalledWith("cancer")
-    expect(db.getDeathsByCause).toHaveBeenCalledWith("Cancer", { limit: 50, offset: 0 })
+    expect(db.getDeathsByCause).toHaveBeenCalledWith("Cancer", {
+      limit: 50,
+      offset: 0,
+      includeObscure: false,
+    })
     expect(jsonSpy).toHaveBeenCalledWith({
       cause: "Cancer",
       slug: "cancer",
@@ -202,7 +206,11 @@ describe("getDeathsByCauseHandler", () => {
 
     await getDeathsByCauseHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getDeathsByCause).toHaveBeenCalledWith("Cancer", { limit: 50, offset: 50 })
+    expect(db.getDeathsByCause).toHaveBeenCalledWith("Cancer", {
+      limit: 50,
+      offset: 50,
+      includeObscure: false,
+    })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         pagination: expect.objectContaining({
@@ -223,7 +231,11 @@ describe("getDeathsByCauseHandler", () => {
 
     await getDeathsByCauseHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getDeathsByCause).toHaveBeenCalledWith("Cancer", { limit: 50, offset: 0 })
+    expect(db.getDeathsByCause).toHaveBeenCalledWith("Cancer", {
+      limit: 50,
+      offset: 0,
+      includeObscure: false,
+    })
   })
 
   it("returns empty response when DATABASE_URL is not set", async () => {
@@ -363,7 +375,11 @@ describe("getDeathsByDecadeHandler", () => {
 
     await getDeathsByDecadeHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getDeathsByDecade).toHaveBeenCalledWith(2020, { limit: 50, offset: 0 })
+    expect(db.getDeathsByDecade).toHaveBeenCalledWith(2020, {
+      limit: 50,
+      offset: 0,
+      includeObscure: false,
+    })
     expect(jsonSpy).toHaveBeenCalledWith({
       decade: 2020,
       decadeLabel: "2020s",
@@ -405,7 +421,11 @@ describe("getDeathsByDecadeHandler", () => {
 
     await getDeathsByDecadeHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getDeathsByDecade).toHaveBeenCalledWith(2020, { limit: 50, offset: 0 })
+    expect(db.getDeathsByDecade).toHaveBeenCalledWith(2020, {
+      limit: 50,
+      offset: 0,
+      includeObscure: false,
+    })
   })
 
   it("returns 400 for invalid decade format", async () => {
@@ -461,7 +481,11 @@ describe("getDeathsByDecadeHandler", () => {
 
     await getDeathsByDecadeHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getDeathsByDecade).toHaveBeenCalledWith(2020, { limit: 50, offset: 50 })
+    expect(db.getDeathsByDecade).toHaveBeenCalledWith(2020, {
+      limit: 50,
+      offset: 50,
+      includeObscure: false,
+    })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         pagination: expect.objectContaining({
@@ -568,7 +592,7 @@ describe("getAllDeathsHandler", () => {
 
     await getAllDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0 })
+    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0, includeObscure: false })
     expect(jsonSpy).toHaveBeenCalledWith({
       deaths: [
         {
@@ -610,7 +634,7 @@ describe("getAllDeathsHandler", () => {
 
     await getAllDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 50 })
+    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 50, includeObscure: false })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         deaths: expect.arrayContaining([
@@ -634,7 +658,7 @@ describe("getAllDeathsHandler", () => {
 
     await getAllDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0 })
+    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0, includeObscure: false })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         pagination: expect.objectContaining({ page: 1 }),
@@ -689,7 +713,7 @@ describe("getAllDeathsHandler", () => {
     await getAllDeathsHandler(mockReq as Request, mockRes as Response)
 
     // NaN from parseInt defaults to 1
-    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0 })
+    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0, includeObscure: false })
   })
 
   it("calculates totalPages correctly", async () => {

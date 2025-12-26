@@ -119,8 +119,9 @@ export default function DeathsByDecadePage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
+  const includeObscure = searchParams.get("includeObscure") === "true"
 
-  const { data, isLoading, error } = useDeathsByDecade(decade || "", page)
+  const { data, isLoading, error } = useDeathsByDecade(decade || "", { page, includeObscure })
 
   const goToPage = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams)
@@ -129,6 +130,17 @@ export default function DeathsByDecadePage() {
     } else {
       newParams.delete("page")
     }
+    setSearchParams(newParams)
+  }
+
+  const toggleIncludeObscure = (checked: boolean) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (checked) {
+      newParams.set("includeObscure", "true")
+    } else {
+      newParams.delete("includeObscure")
+    }
+    newParams.delete("page") // Reset to first page when filter changes
     setSearchParams(newParams)
   }
 
@@ -176,6 +188,22 @@ export default function DeathsByDecadePage() {
         </div>
 
         <DecadeSelector currentDecade={decade || ""} />
+
+        {/* Filter */}
+        <div className="mb-4 flex justify-center">
+          <label
+            className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+            data-testid="include-obscure-filter"
+          >
+            <input
+              type="checkbox"
+              checked={includeObscure}
+              onChange={(e) => toggleIncludeObscure(e.target.checked)}
+              className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+            />
+            Include lesser-known actors
+          </label>
+        </div>
 
         {noResults ? (
           <div className="text-center text-text-muted">

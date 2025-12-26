@@ -19,6 +19,41 @@ If you don't know a specific value, either:
 
 Do NOT fill in plausible-looking numbers or IDs - there's no such thing as a "plausible" unique identifier.
 
+## CRITICAL: SQL Security - Always Use Parameterized Queries
+
+**NEVER use string interpolation or template literals to build SQL queries with dynamic values.** This creates SQL injection vulnerabilities.
+
+### Bad (NEVER do this):
+```typescript
+// String interpolation - DANGEROUS
+const filter = includeObscure ? "" : "AND is_obscure = false"
+const result = await db.query(`SELECT * FROM actors WHERE deathday IS NOT NULL ${filter}`)
+
+// Template literal with values - DANGEROUS
+const result = await db.query(`SELECT * FROM actors WHERE id = ${userId}`)
+```
+
+### Good (ALWAYS do this):
+```typescript
+// Use parameterized queries with boolean logic
+const result = await db.query(
+  `SELECT * FROM actors WHERE deathday IS NOT NULL AND ($1 = true OR is_obscure = false)`,
+  [includeObscure]
+)
+
+// All dynamic values as parameters
+const result = await db.query(`SELECT * FROM actors WHERE id = $1`, [userId])
+```
+
+### The Pattern for Optional Filters:
+When you need a filter that can be toggled on/off, use this pattern:
+```typescript
+// Instead of: ${includeAll ? "" : "AND status = 'active'"}
+// Use: AND ($N = true OR status = 'active')
+```
+
+This rule applies even when the interpolated value is a hardcoded string derived from code logic. Always use parameterized queries.
+
 ## Project Overview
 
 **Dead on Film** - A website to look up movies and TV shows to see which actors have passed away. Shows mortality statistics, death dates, and causes of death. Supports both movies (film casts) and TV shows (episode-level actor tracking).

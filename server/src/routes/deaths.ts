@@ -47,8 +47,13 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const pageSize = 50
     const offset = (page - 1) * pageSize
+    const includeObscure = req.query.includeObscure === "true"
 
-    const { deaths, totalCount } = await getDeathsByCause(cause, { limit: pageSize, offset })
+    const { deaths, totalCount } = await getDeathsByCause(cause, {
+      limit: pageSize,
+      offset,
+      includeObscure,
+    })
 
     const response = {
       cause,
@@ -121,8 +126,13 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const pageSize = 50
     const offset = (page - 1) * pageSize
+    const includeObscure = req.query.includeObscure === "true"
 
-    const { deaths, totalCount } = await getDeathsByDecade(decade, { limit: pageSize, offset })
+    const { deaths, totalCount } = await getDeathsByDecade(decade, {
+      limit: pageSize,
+      offset,
+      includeObscure,
+    })
 
     const response = {
       decade,
@@ -162,8 +172,9 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const pageSize = 50
     const offset = (page - 1) * pageSize
+    const includeObscure = req.query.includeObscure === "true"
 
-    const { persons, totalCount } = await getAllDeaths({ limit: pageSize, offset })
+    const { persons, totalCount } = await getAllDeaths({ limit: pageSize, offset, includeObscure })
 
     const response = {
       deaths: persons.map((p, i) => ({
