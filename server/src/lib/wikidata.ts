@@ -1,4 +1,4 @@
-import { getCauseOfDeathFromClaude, isVagueCause } from "./claude.js"
+import { getCauseOfDeathFromClaude, isVagueCause, type ClaudeModel } from "./claude.js"
 import { recordCustomEvent } from "./newrelic.js"
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
@@ -32,13 +32,14 @@ export interface CauseOfDeathResult {
 export async function getCauseOfDeath(
   name: string,
   birthday: string | null,
-  deathday: string
+  deathday: string,
+  model: ClaudeModel = "sonnet"
 ): Promise<CauseOfDeathResult> {
   const birthYear = birthday ? new Date(birthday).getFullYear() : null
   const deathYear = new Date(deathday).getFullYear()
 
   // 1. Try Claude first (most accurate)
-  const claudeResult = await getCauseOfDeathFromClaude(name, birthYear, deathYear)
+  const claudeResult = await getCauseOfDeathFromClaude(name, birthYear, deathYear, model)
   if (claudeResult.causeOfDeath && !isVagueCause(claudeResult.causeOfDeath)) {
     // Get Wikipedia URL from Wikidata for linking
     const wikiUrl = await getWikipediaUrl(name, birthYear, deathYear)
