@@ -240,10 +240,11 @@ describe("DeathInfo", () => {
     )
 
     // Should show the info icon (SVG)
-    const causeText = screen.getByText("Heart Attack")
-    expect(causeText.closest("span")?.querySelector("svg")).toBeInTheDocument()
-    // The cause text should be in a span with tooltip trigger styling (not a link when details present)
-    expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
+    const triggerSpan = screen.getByTestId("death-details-trigger")
+    expect(triggerSpan.querySelector("svg")).toBeInTheDocument()
+    // The trigger should be wrapped in HoverTooltip which has the styling classes
+    const tooltipWrapper = triggerSpan.parentElement
+    expect(tooltipWrapper).toHaveClass("underline", "decoration-dotted", "cursor-help")
   })
 
   it("shows info icon and tooltip trigger when details are present with wikipedia URL", () => {
@@ -262,10 +263,11 @@ describe("DeathInfo", () => {
     )
 
     // Should show the info icon (SVG)
-    const causeText = screen.getByText("Lung Cancer")
-    expect(causeText.closest("span")?.querySelector("svg")).toBeInTheDocument()
-    // The cause text should be in a span with tooltip styling (no link when details present)
-    expect(causeText.closest("span")).toHaveClass("underline", "decoration-dotted", "cursor-help")
+    const triggerSpan = screen.getByTestId("death-details-trigger")
+    expect(triggerSpan.querySelector("svg")).toBeInTheDocument()
+    // The trigger should be wrapped in HoverTooltip which has the styling classes
+    const tooltipWrapper = triggerSpan.parentElement
+    expect(tooltipWrapper).toHaveClass("underline", "decoration-dotted", "cursor-help")
   })
 
   it("does not show info icon when details are null", () => {
