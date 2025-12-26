@@ -317,7 +317,12 @@ async function runVerification(options: VerifyOptions): Promise<void> {
         // Note: Rate limiting is handled by the centralized rate limiter in claude.ts
       } catch (error) {
         console.error(`  ✗ Error: ${error instanceof Error ? error.message : error}`)
+        if (error instanceof Error && error.stack) {
+          console.error(error.stack)
+        }
         errors++
+        // Exit on first error to prevent data corruption
+        throw error
       }
     }
 
