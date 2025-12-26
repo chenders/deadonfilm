@@ -771,6 +771,40 @@ describe("Movie Functions", () => {
       expect(query).not.toContain("popularity >= 5.0")
     })
 
+    it("applies search filter with ILIKE pattern", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors({ search: "Clint" })
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("actor_name ILIKE")
+      // Params: search pattern, limit, offset
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), ["%Clint%", 50, 0])
+    })
+
+    it("combines search with minAge filter", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors({ search: "Eastwood", minAge: 80 })
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("age >= $1")
+      expect(query).toContain("actor_name ILIKE $2")
+      // Params order: minAge, search, limit, offset
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [80, "%Eastwood%", 50, 0])
+    })
+
+    it("combines search with includeObscure filter", async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      await getDeathWatchActors({ search: "Actor", includeObscure: false })
+
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("profile_path IS NOT NULL")
+      expect(query).toContain("actor_name ILIKE")
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), ["%Actor%", 50, 0])
+    })
+
     it("returns 0 totalCount when no rows returned", async () => {
       mockQuery.mockResolvedValueOnce({ rows: [] })
 
