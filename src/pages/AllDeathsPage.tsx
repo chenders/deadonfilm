@@ -4,9 +4,11 @@ import { useAllDeaths } from "@/hooks/useAllDeaths"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
 import { formatDate } from "@/utils/formatDate"
+import { toTitleCase } from "@/utils/formatText"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
-import { PersonIcon } from "@/components/icons"
+import HoverTooltip from "@/components/common/HoverTooltip"
+import { PersonIcon, InfoIcon } from "@/components/icons"
 import type { AllDeath } from "@/types"
 
 function ActorRow({ person }: { person: AllDeath }) {
@@ -45,18 +47,28 @@ function ActorRow({ person }: { person: AllDeath }) {
           </p>
         </div>
 
-        <div className="flex-shrink-0 text-right">
-          {person.causeOfDeath && <p className="text-sm text-brown-dark">{person.causeOfDeath}</p>}
-          {person.causeOfDeathDetails && (
-            <p
-              className="max-w-xs truncate text-xs text-text-muted"
-              title={person.causeOfDeathDetails}
-              data-testid={`death-details-${person.id}`}
-            >
-              {person.causeOfDeathDetails}
+        {person.causeOfDeath && (
+          <div className="flex-shrink-0 text-right">
+            <p className="text-sm text-brown-dark">
+              {person.causeOfDeathDetails ? (
+                <HoverTooltip content={person.causeOfDeathDetails}>
+                  <span
+                    className="underline decoration-dotted"
+                    data-testid={`death-details-${person.id}`}
+                  >
+                    {toTitleCase(person.causeOfDeath)}
+                    <InfoIcon
+                      size={14}
+                      className="ml-1 inline-block align-text-bottom text-brown-medium"
+                    />
+                  </span>
+                </HoverTooltip>
+              ) : (
+                toTitleCase(person.causeOfDeath)
+              )}
             </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Mobile layout */}
@@ -84,7 +96,7 @@ function ActorRow({ person }: { person: AllDeath }) {
             {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
           </p>
           {person.causeOfDeath && (
-            <p className="mt-1 text-xs text-brown-dark">{person.causeOfDeath}</p>
+            <p className="mt-1 text-xs text-brown-dark">{toTitleCase(person.causeOfDeath)}</p>
           )}
         </div>
       </div>
