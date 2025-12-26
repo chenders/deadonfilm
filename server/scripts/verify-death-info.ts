@@ -300,7 +300,7 @@ async function runVerification(options: VerifyOptions): Promise<void> {
                    SET cause_of_death_details = NULL,
                        cause_of_death_details_source = NULL,
                        updated_at = CURRENT_TIMESTAMP
-                   WHERE tmdb_id = $3`,
+                   WHERE tmdb_id = $1`,
                   [actor.tmdb_id]
                 )
               }
