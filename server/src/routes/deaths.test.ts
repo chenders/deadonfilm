@@ -19,6 +19,12 @@ vi.mock("../lib/db.js", () => ({
   getAllDeaths: vi.fn(),
 }))
 
+vi.mock("../lib/newrelic.js", () => ({
+  recordCustomEvent: vi.fn(),
+}))
+
+import { recordCustomEvent } from "../lib/newrelic.js"
+
 describe("getCauseCategoriesHandler", () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
@@ -729,6 +735,112 @@ describe("getAllDeathsHandler", () => {
         pagination: expect.objectContaining({
           totalPages: 3, // Math.ceil(125 / 50) = 3
         }),
+      })
+    )
+  })
+
+  it("records AllDeathsQuery custom event with correct attributes", async () => {
+    mockReq.query = { page: "2", includeObscure: "true" }
+    vi.mocked(db.getAllDeaths).mockResolvedValueOnce({
+      persons: mockPersons,
+      totalCount: 75,
+    })
+
+    await getAllDeathsHandler(mockReq as Request, mockRes as Response)
+
+    expect(recordCustomEvent).toHaveBeenCalledWith(
+      "AllDeathsQuery",
+      expect.objectContaining({
+        page: 2,
+        includeObscure: true,
+        resultCount: 2,
+        totalCount: 75,
+        responseTimeMs: expect.any(Number),
+      })
+    )
+  })
+})
+
+describe("recordCustomEvent tracking", () => {
+  let mockReq: Partial<Request>
+  let mockRes: Partial<Response>
+  let jsonSpy: ReturnType<typeof vi.fn>
+
+  const mockDeaths = [
+    {
+      tmdb_id: 1,
+      name: "Actor One",
+      deathday: "2021-03-15",
+      profile_path: "/path1.jpg",
+      cause_of_death: "Cancer",
+      cause_of_death_details: "Lung cancer",
+      age_at_death: 72,
+      years_lost: 6,
+    },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+
+    jsonSpy = vi.fn()
+
+    mockRes = {
+      json: jsonSpy as Response["json"],
+      status: vi.fn().mockReturnThis() as unknown as Response["status"],
+      set: vi.fn(),
+    }
+  })
+
+  it("records DeathsByCauseQuery custom event with correct attributes", async () => {
+    mockReq = {
+      params: { cause: "cancer" },
+      query: { page: "2", includeObscure: "true" },
+      get: vi.fn().mockReturnValue(undefined),
+    }
+    vi.mocked(db.getCauseFromSlug).mockResolvedValueOnce("Cancer")
+    vi.mocked(db.getDeathsByCause).mockResolvedValueOnce({
+      deaths: mockDeaths,
+      totalCount: 75,
+    })
+
+    await getDeathsByCauseHandler(mockReq as Request, mockRes as Response)
+
+    expect(recordCustomEvent).toHaveBeenCalledWith(
+      "DeathsByCauseQuery",
+      expect.objectContaining({
+        cause: "Cancer",
+        page: 2,
+        includeObscure: true,
+        resultCount: 1,
+        totalCount: 75,
+        responseTimeMs: expect.any(Number),
+      })
+    )
+  })
+
+  it("records DeathsByDecadeQuery custom event with correct attributes", async () => {
+    mockReq = {
+      params: { decade: "2020s" },
+      query: { page: "2", includeObscure: "true" },
+      get: vi.fn().mockReturnValue(undefined),
+    }
+    vi.mocked(db.getDeathsByDecade).mockResolvedValueOnce({
+      deaths: mockDeaths,
+      totalCount: 75,
+    })
+
+    await getDeathsByDecadeHandler(mockReq as Request, mockRes as Response)
+
+    expect(recordCustomEvent).toHaveBeenCalledWith(
+      "DeathsByDecadeQuery",
+      expect.objectContaining({
+        decade: 2020,
+        page: 2,
+        includeObscure: true,
+        resultCount: 1,
+        totalCount: 75,
+        responseTimeMs: expect.any(Number),
       })
     )
   })

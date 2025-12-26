@@ -188,7 +188,16 @@ export default function HoverTooltip({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
+      const wasHidden = !showTooltip
       setShowTooltip((prev) => !prev)
+      // Only call onOpen once per tooltip session (on open, not close)
+      if (wasHidden && !hasCalledOnOpen.current && onOpen) {
+        hasCalledOnOpen.current = true
+        onOpen()
+      }
+      if (!wasHidden) {
+        hasCalledOnOpen.current = false
+      }
     } else if (e.key === "Escape" && showTooltip) {
       setShowTooltip(false)
     }

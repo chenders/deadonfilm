@@ -273,4 +273,40 @@ describe("HoverTooltip", () => {
     // Should still only be called once
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
+
+  it("calls onOpen callback when tooltip is opened via keyboard (Enter key)", async () => {
+    const onOpen = vi.fn()
+    render(
+      <HoverTooltip content="Tooltip content" onOpen={onOpen}>
+        <span>Trigger text</span>
+      </HoverTooltip>
+    )
+
+    const trigger = screen.getByText("Trigger text").parentElement!
+    fireEvent.keyDown(trigger, { key: "Enter" })
+
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it("calls onOpen callback when tooltip is opened via keyboard (Space key)", async () => {
+    const onOpen = vi.fn()
+    render(
+      <HoverTooltip content="Tooltip content" onOpen={onOpen}>
+        <span>Trigger text</span>
+      </HoverTooltip>
+    )
+
+    const trigger = screen.getByText("Trigger text").parentElement!
+    fireEvent.keyDown(trigger, { key: " " })
+
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+  })
 })

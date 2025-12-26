@@ -8,7 +8,12 @@ vi.mock("../lib/tmdb.js", () => ({
   searchTVShows: vi.fn(),
 }))
 
+vi.mock("../lib/newrelic.js", () => ({
+  recordCustomEvent: vi.fn(),
+}))
+
 import { searchMovies as tmdbSearch } from "../lib/tmdb.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 
 describe("searchMovies route", () => {
   let mockReq: Partial<Request>
@@ -361,5 +366,58 @@ describe("searchMovies route", () => {
     // Exact match "Dirty Work" should beat "A Dirty Work Story"
     expect(calledWith.results[0].id).toBe(2)
     expect(calledWith.results[1].id).toBe(1)
+  })
+
+  it("records Search custom event with correct attributes", async () => {
+    const mockTmdbResponse = {
+      page: 1,
+      results: [
+        {
+          id: 1,
+          title: "Test Movie",
+          popularity: 50,
+          release_date: "2020-01-01",
+          poster_path: null,
+          overview: "",
+          genre_ids: [],
+          original_language: "en",
+        },
+        {
+          id: 2,
+          title: "Another Movie",
+          popularity: 30,
+          release_date: "2019-01-01",
+          poster_path: null,
+          overview: "",
+          genre_ids: [],
+          original_language: "en",
+        },
+      ],
+      total_pages: 1,
+      total_results: 2,
+    }
+
+    vi.mocked(tmdbSearch).mockResolvedValue(mockTmdbResponse)
+    mockReq = { query: { q: "test movie" } }
+
+    await searchMovies(mockReq as Request, mockRes as Response)
+
+    expect(recordCustomEvent).toHaveBeenCalledWith(
+      "Search",
+      expect.objectContaining({
+        query: "test movie",
+        type: "movie",
+        resultCount: 2,
+        responseTimeMs: expect.any(Number),
+      })
+    )
+  })
+
+  it("does not record Search event for empty query", async () => {
+    mockReq = { query: { q: "" } }
+
+    await searchMovies(mockReq as Request, mockRes as Response)
+
+    expect(recordCustomEvent).not.toHaveBeenCalled()
   })
 })

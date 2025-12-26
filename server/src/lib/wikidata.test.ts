@@ -7,7 +7,13 @@ vi.mock("./claude.js", () => ({
   isVagueCause: vi.fn(),
 }))
 
+// Mock the newrelic module
+vi.mock("./newrelic.js", () => ({
+  recordCustomEvent: vi.fn(),
+}))
+
 import { getCauseOfDeathFromClaude, isVagueCause } from "./claude.js"
+import { recordCustomEvent } from "./newrelic.js"
 
 // Mock global fetch
 const mockFetch = vi.fn()
@@ -282,6 +288,162 @@ describe("getCauseOfDeath", () => {
     expect(result.causeOfDeath).toBe("cancer")
     expect(result.causeOfDeathSource).toBe("claude")
     expect(result.wikipediaUrl).toBeNull()
+  })
+
+  describe("recordCustomEvent tracking", () => {
+    it("records CauseOfDeathLookup event when Claude successfully provides cause", async () => {
+      vi.mocked(getCauseOfDeathFromClaude).mockResolvedValue({
+        causeOfDeath: "lung cancer",
+        details: "Diagnosed in 2015.",
+      })
+
+      // Mock Wikidata fetch
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            results: {
+              bindings: [
+                {
+                  personLabel: { value: "Test Actor" },
+                  deathDate: { value: "2020-01-15" },
+                  article: { value: "https://en.wikipedia.org/wiki/Test_Actor" },
+                },
+              ],
+            },
+          }),
+      })
+
+      await getCauseOfDeath("Test Actor", "1950-01-01", "2020-01-15")
+
+      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+        personName: "Test Actor",
+        source: "claude",
+        success: true,
+        hasDetails: true,
+      })
+    })
+
+    it("records CauseOfDeathLookup event when falling back to Wikidata", async () => {
+      vi.mocked(getCauseOfDeathFromClaude).mockResolvedValue({
+        causeOfDeath: null,
+        details: null,
+      })
+      vi.mocked(isVagueCause).mockReturnValue(true)
+
+      // Mock Wikidata fetch with cause of death
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            results: {
+              bindings: [
+                {
+                  personLabel: { value: "Wikidata Actor" },
+                  deathDate: { value: "2018-03-10" },
+                  causeOfDeathLabel: { value: "stroke" },
+                  article: { value: "https://en.wikipedia.org/wiki/Wikidata_Actor" },
+                },
+              ],
+            },
+          }),
+      })
+
+      // Mock Wikipedia API for death details
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            query: {
+              pages: {
+                "123": {
+                  revisions: [
+                    {
+                      slots: {
+                        main: {
+                          "*": "'''Wikidata Actor''' died.\n\n== Death ==\nDied of a stroke.",
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          }),
+      })
+
+      await getCauseOfDeath("Wikidata Actor", "1945-07-22", "2018-03-10")
+
+      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+        personName: "Wikidata Actor",
+        source: "wikipedia",
+        success: true,
+        hasDetails: true,
+      })
+    })
+
+    it("records CauseOfDeathLookup event when no cause found", async () => {
+      vi.mocked(getCauseOfDeathFromClaude).mockResolvedValue({
+        causeOfDeath: null,
+        details: null,
+      })
+      vi.mocked(isVagueCause).mockReturnValue(true)
+
+      // Mock Wikidata fetch with no results
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            results: {
+              bindings: [],
+            },
+          }),
+      })
+
+      await getCauseOfDeath("Unknown Person", "1930-01-01", "2000-01-01")
+
+      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+        personName: "Unknown Person",
+        source: "none",
+        success: false,
+        hasDetails: false,
+      })
+    })
+
+    it("records CauseOfDeathLookup event when missing birthday falls back to Claude", async () => {
+      vi.mocked(getCauseOfDeathFromClaude).mockResolvedValue({
+        causeOfDeath: "heart attack",
+        details: "Sudden cardiac arrest.",
+      })
+
+      await getCauseOfDeath("No Birthday Actor", null, "2021-05-01")
+
+      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+        personName: "No Birthday Actor",
+        source: "claude",
+        success: true,
+        hasDetails: true,
+      })
+    })
+
+    it("records CauseOfDeathLookup event on API error", async () => {
+      vi.mocked(getCauseOfDeathFromClaude).mockResolvedValue({
+        causeOfDeath: null,
+        details: null,
+      })
+
+      // Mock Wikidata fetch failure
+      mockFetch.mockRejectedValueOnce(new Error("Network error"))
+
+      await getCauseOfDeath("Error Actor", "1960-01-01", "2022-01-01")
+
+      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+        personName: "Error Actor",
+        source: "none",
+        success: false,
+        hasDetails: false,
+      })
+    })
   })
 })
 

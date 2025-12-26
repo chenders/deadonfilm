@@ -24,6 +24,10 @@ vi.mock("../lib/mortality-stats.js", () => ({
   calculateYearsLost: vi.fn(),
 }))
 
+vi.mock("../lib/newrelic.js", () => ({
+  recordCustomEvent: vi.fn(),
+}))
+
 import { getShow } from "./shows.js"
 import {
   getTVShowDetails,
@@ -33,6 +37,7 @@ import {
 } from "../lib/tmdb.js"
 import { getActors, upsertShow, getSeasons } from "../lib/db.js"
 import { calculateMovieMortality } from "../lib/mortality-stats.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 
 describe("getShow route", () => {
   let mockReq: Partial<Request>
@@ -140,7 +145,7 @@ describe("getShow route", () => {
 
     it("skips episode fetching when show status is 'Ended'", async () => {
       vi.mocked(getTVShowDetails).mockResolvedValue(createMockShow("Ended"))
-      mockReq = { params: { id: "test-show-1990-1400" } }
+      mockReq = { params: { id: "1400" } }
 
       await getShow(mockReq as Request, mockRes as Response)
 
@@ -150,7 +155,7 @@ describe("getShow route", () => {
 
     it("skips episode fetching when show status is 'Canceled'", async () => {
       vi.mocked(getTVShowDetails).mockResolvedValue(createMockShow("Canceled"))
-      mockReq = { params: { id: "test-show-1990-1400" } }
+      mockReq = { params: { id: "1400" } }
 
       await getShow(mockReq as Request, mockRes as Response)
 
@@ -160,12 +165,32 @@ describe("getShow route", () => {
 
     it("skips episode fetching when show status is 'Cancelled' (UK spelling)", async () => {
       vi.mocked(getTVShowDetails).mockResolvedValue(createMockShow("Cancelled"))
-      mockReq = { params: { id: "test-show-1990-1400" } }
+      mockReq = { params: { id: "1400" } }
 
       await getShow(mockReq as Request, mockRes as Response)
 
       // getSeasonDetails should NOT be called for cancelled shows
       expect(getSeasonDetails).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("recordCustomEvent tracking", () => {
+    it("records ShowView custom event with correct attributes", async () => {
+      vi.mocked(getTVShowDetails).mockResolvedValue(createMockShow("Ended"))
+      mockReq = { params: { id: "1400" } }
+
+      await getShow(mockReq as Request, mockRes as Response)
+
+      expect(recordCustomEvent).toHaveBeenCalledWith(
+        "ShowView",
+        expect.objectContaining({
+          tmdbId: 1400,
+          name: "Test Show",
+          firstAirYear: 1990,
+          isEnded: true,
+          responseTimeMs: expect.any(Number),
+        })
+      )
     })
   })
 })
