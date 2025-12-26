@@ -108,8 +108,9 @@ export default function AllDeathsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
+  const includeObscure = searchParams.get("includeObscure") === "true"
 
-  const { data, isLoading, error } = useAllDeaths(page)
+  const { data, isLoading, error } = useAllDeaths({ page, includeObscure })
 
   const goToPage = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams)
@@ -118,6 +119,17 @@ export default function AllDeathsPage() {
     } else {
       newParams.delete("page")
     }
+    setSearchParams(newParams)
+  }
+
+  const toggleIncludeObscure = (checked: boolean) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (checked) {
+      newParams.set("includeObscure", "true")
+    } else {
+      newParams.delete("includeObscure")
+    }
+    newParams.delete("page") // Reset to first page when filter changes
     setSearchParams(newParams)
   }
 
@@ -158,9 +170,26 @@ export default function AllDeathsPage() {
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">All Deaths</h1>
           <p className="mt-2 text-sm text-text-muted">
-            Complete list of deceased actors in our database, ordered by death date (most recent
-            first).
+            {includeObscure
+              ? "All deceased actors in our database, ordered by death date (most recent first)."
+              : "Well-known deceased actors in our database, ordered by death date (most recent first)."}
           </p>
+        </div>
+
+        {/* Filter */}
+        <div className="mb-4 flex justify-center">
+          <label
+            className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+            data-testid="include-obscure-filter"
+          >
+            <input
+              type="checkbox"
+              checked={includeObscure}
+              onChange={(e) => toggleIncludeObscure(e.target.checked)}
+              className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+            />
+            Include lesser-known actors
+          </label>
         </div>
 
         {noResults ? (

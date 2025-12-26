@@ -76,7 +76,7 @@ export interface UnnaturalDeathsResponse {
   pagination: PaginationInfo
   categories: UnnaturalDeathCategoryInfo[]
   selectedCategory: UnnaturalDeathCategory | "all"
-  hideSuicides: boolean
+  showSelfInflicted: boolean
 }
 
 // This Week Deaths types

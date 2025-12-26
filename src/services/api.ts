@@ -178,27 +178,42 @@ export async function getActor(actorId: number): Promise<ActorProfileResponse> {
   return fetchJson(`/actor/${actorId}`)
 }
 
-export async function getCovidDeaths(page: number = 1): Promise<CovidDeathsResponse> {
-  return fetchJson(`/covid-deaths?page=${page}`)
+export interface CovidDeathsParams {
+  page?: number
+  includeObscure?: boolean
+}
+
+export async function getCovidDeaths(params: CovidDeathsParams = {}): Promise<CovidDeathsResponse> {
+  const { page = 1, includeObscure = false } = params
+  const searchParams = new URLSearchParams()
+  searchParams.set("page", String(page))
+  if (includeObscure) {
+    searchParams.set("includeObscure", "true")
+  }
+  return fetchJson(`/covid-deaths?${searchParams.toString()}`)
 }
 
 export interface UnnaturalDeathsParams {
   page?: number
   category?: UnnaturalDeathCategory | "all"
-  hideSuicides?: boolean
+  showSelfInflicted?: boolean
+  includeObscure?: boolean
 }
 
 export async function getUnnaturalDeaths(
   params: UnnaturalDeathsParams = {}
 ): Promise<UnnaturalDeathsResponse> {
-  const { page = 1, category = "all", hideSuicides = false } = params
+  const { page = 1, category = "all", showSelfInflicted = false, includeObscure = false } = params
   const searchParams = new URLSearchParams()
   searchParams.set("page", String(page))
   if (category !== "all") {
     searchParams.set("category", category)
   }
-  if (hideSuicides) {
-    searchParams.set("hideSuicides", "true")
+  if (showSelfInflicted) {
+    searchParams.set("showSelfInflicted", "true")
+  }
+  if (includeObscure) {
+    searchParams.set("includeObscure", "true")
   }
   return fetchJson(`/unnatural-deaths?${searchParams.toString()}`)
 }
@@ -244,26 +259,59 @@ export async function getCauseCategories(): Promise<CauseCategoriesResponse> {
   return fetchJson("/deaths/causes")
 }
 
+export interface DeathsByCauseParams {
+  page?: number
+  includeObscure?: boolean
+}
+
 export async function getDeathsByCause(
   causeSlug: string,
-  page: number = 1
+  params: DeathsByCauseParams = {}
 ): Promise<DeathsByCauseResponse> {
-  return fetchJson(`/deaths/cause/${encodeURIComponent(causeSlug)}?page=${page}`)
+  const { page = 1, includeObscure = false } = params
+  const searchParams = new URLSearchParams()
+  searchParams.set("page", String(page))
+  if (includeObscure) {
+    searchParams.set("includeObscure", "true")
+  }
+  return fetchJson(`/deaths/cause/${encodeURIComponent(causeSlug)}?${searchParams.toString()}`)
 }
 
 export async function getDecadeCategories(): Promise<DecadeCategoriesResponse> {
   return fetchJson("/deaths/decades")
 }
 
-export async function getDeathsByDecade(
-  decade: string,
-  page: number = 1
-): Promise<DeathsByDecadeResponse> {
-  return fetchJson(`/deaths/decade/${encodeURIComponent(decade)}?page=${page}`)
+export interface DeathsByDecadeParams {
+  page?: number
+  includeObscure?: boolean
 }
 
-export async function getAllDeaths(page: number = 1): Promise<AllDeathsResponse> {
-  return fetchJson(`/deaths/all?page=${page}`)
+export async function getDeathsByDecade(
+  decade: string,
+  params: DeathsByDecadeParams = {}
+): Promise<DeathsByDecadeResponse> {
+  const { page = 1, includeObscure = false } = params
+  const searchParams = new URLSearchParams()
+  searchParams.set("page", String(page))
+  if (includeObscure) {
+    searchParams.set("includeObscure", "true")
+  }
+  return fetchJson(`/deaths/decade/${encodeURIComponent(decade)}?${searchParams.toString()}`)
+}
+
+export interface AllDeathsParams {
+  page?: number
+  includeObscure?: boolean
+}
+
+export async function getAllDeaths(params: AllDeathsParams = {}): Promise<AllDeathsResponse> {
+  const { page = 1, includeObscure = false } = params
+  const searchParams = new URLSearchParams()
+  searchParams.set("page", String(page))
+  if (includeObscure) {
+    searchParams.set("includeObscure", "true")
+  }
+  return fetchJson(`/deaths/all?${searchParams.toString()}`)
 }
 
 export async function getGenreCategories(): Promise<GenreCategoriesResponse> {

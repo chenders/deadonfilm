@@ -486,7 +486,7 @@ describe("Sync State Functions", () => {
 
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining("SELECT COUNT(*) OVER () as total_count"),
-        [50, 0]
+        [50, 0, false]
       )
       expect(result.totalCount).toBe(10)
       expect(result.persons).toHaveLength(1)
@@ -522,7 +522,7 @@ describe("Sync State Functions", () => {
 
       await getCovidDeaths()
 
-      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [50, 0])
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [50, 0, false])
     })
 
     it("uses custom limit and offset", async () => {
@@ -530,7 +530,7 @@ describe("Sync State Functions", () => {
 
       await getCovidDeaths({ limit: 25, offset: 50 })
 
-      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [25, 50])
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [25, 50, false])
     })
 
     it("returns 0 totalCount when no rows returned", async () => {

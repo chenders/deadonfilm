@@ -9,10 +9,17 @@ export function useDecadeCategories() {
   })
 }
 
-export function useDeathsByDecade(decade: string, page: number = 1) {
+export interface DeathsByDecadeOptions {
+  page?: number
+  includeObscure?: boolean
+}
+
+export function useDeathsByDecade(decade: string, options: DeathsByDecadeOptions = {}) {
+  const { page = 1, includeObscure = false } = options
+
   return useQuery({
-    queryKey: ["deaths-by-decade", decade, page],
-    queryFn: () => getDeathsByDecade(decade, page),
+    queryKey: ["deaths-by-decade", decade, page, includeObscure],
+    queryFn: () => getDeathsByDecade(decade, { page, includeObscure }),
     staleTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!decade,
   })
