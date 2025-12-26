@@ -117,12 +117,18 @@ Users can toggle "Include obscure movies" checkbox to see all movies. This setti
 
 ### Obscure Actor Filtering
 
-Similarly, deceased actors can be filtered as "obscure" to improve result quality. An actor is considered "obscure" if:
+Similarly, deceased actors can be filtered as "obscure" to improve result quality. An actor is considered **NOT obscure** if ANY of these conditions are true:
 
-- **No profile photo**: `profile_path IS NULL`
-- **Low popularity**: `popularity < 5.0`
+- **Hit movie**: Has appeared in a movie with popularity >= 20
+- **Hit TV show**: Has appeared in a TV show with popularity >= 20
+- **Established in English film market**: Has 3+ English movies with popularity >= 5
+- **Established in English TV market**: Has 3+ English TV shows with popularity >= 5
+- **Prolific film actor**: Has 10+ movies total
+- **Prolific TV actor**: Has 50+ TV episodes total
 
-This logic is implemented as a **computed column** (`is_obscure BOOLEAN GENERATED ALWAYS AS ... STORED`) in the `deceased_persons` table. The `popularity` column must be backfilled using `npm run backfill:actor-obscure`.
+This logic considers both movie and TV appearances, and naturally prioritizes actors recognizable to an English-speaking audience while still including internationally famous foreign actors.
+
+The `is_obscure` column in the `actors` table is a regular boolean column updated by the backfill script: `npm run backfill:actor-obscure`.
 
 ### Server Libraries
 
