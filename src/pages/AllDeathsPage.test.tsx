@@ -135,11 +135,12 @@ describe("AllDeathsPage", () => {
     await waitFor(() => {
       // Check death info is displayed - use getAllByText since responsive layout renders both versions
       expect(screen.getAllByText(/Age 85/).length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText("Natural causes").length).toBeGreaterThanOrEqual(1)
+      // Cause of death is now title-cased
+      expect(screen.getAllByText("Natural Causes").length).toBeGreaterThanOrEqual(1)
     })
   })
 
-  it("displays causeOfDeathDetails when present", async () => {
+  it("displays causeOfDeathDetails with tooltip trigger when present", async () => {
     vi.mocked(api.getAllDeaths).mockResolvedValue({
       deaths: mockDeaths,
       pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
@@ -148,12 +149,13 @@ describe("AllDeathsPage", () => {
     renderWithProviders(<AllDeathsPage />)
 
     await waitFor(() => {
-      // Check death details are displayed for Actor One
-      const detailsElements = screen.getAllByText("Died peacefully in their sleep at home")
-      expect(detailsElements.length).toBeGreaterThanOrEqual(1)
-
-      // Check that the details have a title attribute for tooltip
-      expect(detailsElements[0]).toHaveAttribute("title", "Died peacefully in their sleep at home")
+      // Check that the death details trigger exists with info icon
+      const detailsTrigger = screen.getByTestId("death-details-123")
+      expect(detailsTrigger).toBeInTheDocument()
+      // The trigger should contain the cause of death text (title-cased)
+      expect(detailsTrigger).toHaveTextContent("Natural Causes")
+      // The trigger should have an info icon (SVG element)
+      expect(detailsTrigger.querySelector("svg")).toBeInTheDocument()
     })
   })
 
