@@ -711,14 +711,13 @@ describe("Movie Functions", () => {
       expect(query).toContain("ORDER BY age DESC, popularity DESC NULLS LAST")
     })
 
-    it("uses default limit, offset, and minMovies when not provided", async () => {
+    it("uses default limit and offset when not provided", async () => {
       mockQuery.mockResolvedValueOnce({ rows: [] })
 
       await getDeathWatchActors()
 
-      // Default values: minMovies=2, limit=50, offset=0
-      // Params order: minMovies, limit, offset
-      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2, 50, 0])
+      // Default values: limit=50, offset=0
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [50, 0])
     })
 
     it("uses custom limit and offset", async () => {
@@ -726,7 +725,7 @@ describe("Movie Functions", () => {
 
       await getDeathWatchActors({ limit: 25, offset: 50 })
 
-      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2, 25, 50])
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [25, 50])
     })
 
     it("applies minAge filter", async () => {
@@ -736,18 +735,20 @@ describe("Movie Functions", () => {
 
       const query = mockQuery.mock.calls[0][0] as string
       expect(query).toContain("age >= $1")
-      // Params order: minAge, minMovies, limit, offset
-      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [70, 2, 50, 0])
+      // Params order: minAge, limit, offset
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [70, 50, 0])
     })
 
-    it("applies minMovies filter in HAVING clause", async () => {
+    it("requires 2+ movies OR 10+ episodes in HAVING clause", async () => {
       mockQuery.mockResolvedValueOnce({ rows: [] })
 
-      await getDeathWatchActors({ minMovies: 5 })
+      await getDeathWatchActors()
 
       const query = mockQuery.mock.calls[0][0] as string
-      expect(query).toContain("HAVING COUNT(DISTINCT aa.movie_tmdb_id) >= $1")
-      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [5, 50, 0])
+      expect(query).toContain("COUNT(DISTINCT ama.movie_tmdb_id) >= 2")
+      expect(query).toContain(
+        "COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10"
+      )
     })
 
     it("excludes obscure actors by default", async () => {
@@ -850,8 +851,8 @@ describe("Movie Functions", () => {
       expect(query).toContain("age >= $1")
       expect(query).toContain("profile_path IS NOT NULL")
       expect(query).toContain("popularity >= 5.0")
-      // Params: minAge, minMovies, limit, offset
-      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [70, 2, 50, 0])
+      // Params: minAge, limit, offset
+      expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [70, 50, 0])
     })
   })
 })

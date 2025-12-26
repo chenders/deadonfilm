@@ -759,6 +759,40 @@ describe("getAllDeathsHandler", () => {
       })
     )
   })
+
+  it("parses search from query params", async () => {
+    mockReq.query = { search: "John" }
+    vi.mocked(db.getAllDeaths).mockResolvedValueOnce({
+      persons: mockPersons,
+      totalCount: 2,
+    })
+
+    await getAllDeathsHandler(mockReq as Request, mockRes as Response)
+
+    expect(db.getAllDeaths).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      includeObscure: false,
+      search: "John",
+    })
+  })
+
+  it("combines search with other filters", async () => {
+    mockReq.query = { search: "John", includeObscure: "true", page: "2" }
+    vi.mocked(db.getAllDeaths).mockResolvedValueOnce({
+      persons: mockPersons,
+      totalCount: 100,
+    })
+
+    await getAllDeathsHandler(mockReq as Request, mockRes as Response)
+
+    expect(db.getAllDeaths).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 50,
+      includeObscure: true,
+      search: "John",
+    })
+  })
 })
 
 describe("recordCustomEvent tracking", () => {

@@ -218,7 +218,7 @@ describe("AllDeathsPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getAllDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false })
+      expect(api.getAllDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false, search: "" })
     })
   })
 
@@ -278,7 +278,7 @@ describe("AllDeathsPage", () => {
     })
 
     await waitFor(() => {
-      expect(api.getAllDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false })
+      expect(api.getAllDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false, search: "" })
     })
   })
 
@@ -359,6 +359,7 @@ describe("AllDeathsPage", () => {
       expect(api.getAllDeaths).toHaveBeenCalledWith({
         page: 1,
         includeObscure: true,
+        search: "",
       })
     })
   })
@@ -377,6 +378,7 @@ describe("AllDeathsPage", () => {
       expect(api.getAllDeaths).toHaveBeenCalledWith({
         page: 1,
         includeObscure: true,
+        search: "",
       })
     })
   })
@@ -393,6 +395,103 @@ describe("AllDeathsPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/All deceased actors in our database/)).toBeInTheDocument()
+    })
+  })
+
+  describe("search functionality", () => {
+    it("renders search input", async () => {
+      vi.mocked(api.getAllDeaths).mockResolvedValue({
+        deaths: mockDeaths,
+        pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+      })
+
+      renderWithProviders(<AllDeathsPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("search-input")).toBeInTheDocument()
+        expect(screen.getByPlaceholderText("Search for an actor...")).toBeInTheDocument()
+      })
+    })
+
+    it("reads search from URL parameters", async () => {
+      vi.mocked(api.getAllDeaths).mockResolvedValue({
+        deaths: mockDeaths,
+        pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+      })
+
+      renderWithProviders(<AllDeathsPage />, {
+        initialEntries: ["/deaths/all?search=John"],
+      })
+
+      // Wait for data to load (search input renders after loading completes)
+      await waitFor(() => {
+        expect(screen.getByTestId("search-input")).toBeInTheDocument()
+      })
+
+      expect(api.getAllDeaths).toHaveBeenCalledWith({
+        page: 1,
+        includeObscure: false,
+        search: "John",
+      })
+
+      // Search input should be populated with the URL parameter
+      const searchInput = screen.getByTestId("search-input") as HTMLInputElement
+      expect(searchInput.value).toBe("John")
+    })
+
+    it("shows search-specific empty state when no results for search term", async () => {
+      vi.mocked(api.getAllDeaths).mockResolvedValue({
+        deaths: [],
+        pagination: { page: 1, pageSize: 50, totalPages: 0, totalCount: 0 },
+      })
+
+      renderWithProviders(<AllDeathsPage />, {
+        initialEntries: ["/deaths/all?search=NonexistentActor"],
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText(/No actors found matching "NonexistentActor"/)).toBeInTheDocument()
+        expect(screen.getByText(/Try a different search term/)).toBeInTheDocument()
+      })
+    })
+
+    it("search input updates value on change", async () => {
+      vi.mocked(api.getAllDeaths).mockResolvedValue({
+        deaths: mockDeaths,
+        pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+      })
+
+      renderWithProviders(<AllDeathsPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("search-input")).toBeInTheDocument()
+      })
+
+      // Type in search input - this tests that the input updates immediately
+      // (the debounce is internal state, tested implicitly by the URL param tests)
+      const searchInput = screen.getByTestId("search-input") as HTMLInputElement
+      fireEvent.change(searchInput, { target: { value: "Test" } })
+
+      expect(searchInput.value).toBe("Test")
+    })
+
+    it("combines search with includeObscure filter", async () => {
+      vi.mocked(api.getAllDeaths).mockResolvedValue({
+        deaths: mockDeaths,
+        pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+      })
+
+      renderWithProviders(<AllDeathsPage />, {
+        initialEntries: ["/deaths/all?search=John&includeObscure=true"],
+      })
+
+      await waitFor(() => {
+        expect(api.getAllDeaths).toHaveBeenCalledWith({
+          page: 1,
+          includeObscure: true,
+          search: "John",
+        })
+      })
     })
   })
 })
