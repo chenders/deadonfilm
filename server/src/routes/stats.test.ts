@@ -286,7 +286,7 @@ describe("getCovidDeathsHandler", () => {
 
     await getCovidDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getCovidDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0 })
+    expect(db.getCovidDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0, includeObscure: false })
     expect(jsonSpy).toHaveBeenCalledWith({
       persons: [
         {
@@ -328,7 +328,7 @@ describe("getCovidDeathsHandler", () => {
 
     await getCovidDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getCovidDeaths).toHaveBeenCalledWith({ limit: 50, offset: 50 })
+    expect(db.getCovidDeaths).toHaveBeenCalledWith({ limit: 50, offset: 50, includeObscure: false })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         persons: expect.arrayContaining([
@@ -352,7 +352,7 @@ describe("getCovidDeathsHandler", () => {
 
     await getCovidDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getCovidDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0 })
+    expect(db.getCovidDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0, includeObscure: false })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         pagination: expect.objectContaining({ page: 1 }),
@@ -407,7 +407,7 @@ describe("getCovidDeathsHandler", () => {
     await getCovidDeathsHandler(mockReq as Request, mockRes as Response)
 
     // NaN from parseInt defaults to 1
-    expect(db.getCovidDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0 })
+    expect(db.getCovidDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0, includeObscure: false })
   })
 
   it("calculates totalPages correctly", async () => {
@@ -514,7 +514,8 @@ describe("getUnnaturalDeathsHandler", () => {
       limit: 50,
       offset: 0,
       category: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
     expect(jsonSpy).toHaveBeenCalledWith({
       persons: [
@@ -553,7 +554,7 @@ describe("getUnnaturalDeathsHandler", () => {
         { id: "other", label: "Other", count: 8 },
       ],
       selectedCategory: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
     })
   })
 
@@ -571,7 +572,8 @@ describe("getUnnaturalDeathsHandler", () => {
       limit: 50,
       offset: 0,
       category: "accident",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -594,7 +596,8 @@ describe("getUnnaturalDeathsHandler", () => {
       limit: 50,
       offset: 0,
       category: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -603,11 +606,11 @@ describe("getUnnaturalDeathsHandler", () => {
     )
   })
 
-  it("parses hideSuicides from query params", async () => {
-    mockReq.query = { hideSuicides: "true" }
+  it("parses showSelfInflicted from query params", async () => {
+    mockReq.query = { showSelfInflicted: "true" }
     vi.mocked(db.getUnnaturalDeaths).mockResolvedValueOnce({
       persons: mockUnnaturalPersons,
-      totalCount: 53,
+      totalCount: 63,
       categoryCounts: mockCategoryCounts,
     })
 
@@ -617,11 +620,12 @@ describe("getUnnaturalDeathsHandler", () => {
       limit: 50,
       offset: 0,
       category: "all",
-      hideSuicides: true,
+      showSelfInflicted: true,
+      includeObscure: false,
     })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        hideSuicides: true,
+        showSelfInflicted: true,
       })
     )
   })
@@ -640,7 +644,8 @@ describe("getUnnaturalDeathsHandler", () => {
       limit: 50,
       offset: 50,
       category: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -669,7 +674,8 @@ describe("getUnnaturalDeathsHandler", () => {
       limit: 50,
       offset: 0,
       category: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -723,7 +729,7 @@ describe("getUnnaturalDeathsHandler", () => {
         { id: "other", label: "Other", count: 0 },
       ],
       selectedCategory: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
     })
   })
 
@@ -742,12 +748,13 @@ describe("getUnnaturalDeathsHandler", () => {
       limit: 50,
       offset: 0,
       category: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
   })
 
-  it("combines category and hideSuicides filters", async () => {
-    mockReq.query = { category: "overdose", hideSuicides: "true" }
+  it("combines category and showSelfInflicted filters", async () => {
+    mockReq.query = { category: "overdose", showSelfInflicted: "true" }
     vi.mocked(db.getUnnaturalDeaths).mockResolvedValueOnce({
       persons: mockUnnaturalPersons,
       totalCount: 15,
@@ -760,12 +767,13 @@ describe("getUnnaturalDeathsHandler", () => {
       limit: 50,
       offset: 0,
       category: "overdose",
-      hideSuicides: true,
+      showSelfInflicted: true,
+      includeObscure: false,
     })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         selectedCategory: "overdose",
-        hideSuicides: true,
+        showSelfInflicted: true,
       })
     )
   })

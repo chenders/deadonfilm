@@ -38,7 +38,7 @@ describe("useUnnaturalDeaths", () => {
       { id: "accident", label: "Accident", count: 25 },
     ],
     selectedCategory: "all",
-    hideSuicides: false,
+    showSelfInflicted: false,
   }
 
   function wrapper({ children }: { children: ReactNode }) {
@@ -66,7 +66,8 @@ describe("useUnnaturalDeaths", () => {
     expect(api.getUnnaturalDeaths).toHaveBeenCalledWith({
       page: 1,
       category: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
     expect(result.current.data).toEqual(mockResponse)
   })
@@ -84,7 +85,8 @@ describe("useUnnaturalDeaths", () => {
     expect(api.getUnnaturalDeaths).toHaveBeenCalledWith({
       page: 2,
       category: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
   })
 
@@ -101,24 +103,43 @@ describe("useUnnaturalDeaths", () => {
     expect(api.getUnnaturalDeaths).toHaveBeenCalledWith({
       page: 1,
       category: "accident",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
   })
 
-  it("fetches with hideSuicides filter", async () => {
+  it("fetches with showSelfInflicted filter", async () => {
     vi.mocked(api.getUnnaturalDeaths).mockResolvedValueOnce({
       ...mockResponse,
-      hideSuicides: true,
+      showSelfInflicted: true,
     })
 
-    const { result } = renderHook(() => useUnnaturalDeaths({ hideSuicides: true }), { wrapper })
+    const { result } = renderHook(() => useUnnaturalDeaths({ showSelfInflicted: true }), {
+      wrapper,
+    })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
     expect(api.getUnnaturalDeaths).toHaveBeenCalledWith({
       page: 1,
       category: "all",
-      hideSuicides: true,
+      showSelfInflicted: true,
+      includeObscure: false,
+    })
+  })
+
+  it("fetches with includeObscure filter", async () => {
+    vi.mocked(api.getUnnaturalDeaths).mockResolvedValueOnce(mockResponse)
+
+    const { result } = renderHook(() => useUnnaturalDeaths({ includeObscure: true }), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(api.getUnnaturalDeaths).toHaveBeenCalledWith({
+      page: 1,
+      category: "all",
+      showSelfInflicted: false,
+      includeObscure: true,
     })
   })
 
@@ -126,7 +147,13 @@ describe("useUnnaturalDeaths", () => {
     vi.mocked(api.getUnnaturalDeaths).mockResolvedValueOnce(mockResponse)
 
     const { result } = renderHook(
-      () => useUnnaturalDeaths({ page: 3, category: "overdose", hideSuicides: true }),
+      () =>
+        useUnnaturalDeaths({
+          page: 3,
+          category: "overdose",
+          showSelfInflicted: true,
+          includeObscure: true,
+        }),
       { wrapper }
     )
 
@@ -135,7 +162,8 @@ describe("useUnnaturalDeaths", () => {
     expect(api.getUnnaturalDeaths).toHaveBeenCalledWith({
       page: 3,
       category: "overdose",
-      hideSuicides: true,
+      showSelfInflicted: true,
+      includeObscure: true,
     })
   })
 
@@ -186,12 +214,14 @@ describe("useUnnaturalDeaths", () => {
     expect(api.getUnnaturalDeaths).toHaveBeenNthCalledWith(1, {
       page: 1,
       category: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
     expect(api.getUnnaturalDeaths).toHaveBeenNthCalledWith(2, {
       page: 2,
       category: "all",
-      hideSuicides: false,
+      showSelfInflicted: false,
+      includeObscure: false,
     })
   })
 })

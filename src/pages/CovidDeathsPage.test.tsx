@@ -105,7 +105,10 @@ describe("CovidDeathsPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("COVID-19 Deaths")).toBeInTheDocument()
-      expect(screen.getByText(/Actors in our database who died from COVID-19/)).toBeInTheDocument()
+      // Default state (includeObscure=false) shows "Well-known actors" description
+      expect(
+        screen.getByText(/Well-known actors in our database who died from COVID-19/)
+      ).toBeInTheDocument()
     })
   })
 
@@ -183,7 +186,7 @@ describe("CovidDeathsPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getCovidDeaths).toHaveBeenCalledWith(2)
+      expect(api.getCovidDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false })
     })
   })
 
@@ -243,7 +246,7 @@ describe("CovidDeathsPage", () => {
     })
 
     await waitFor(() => {
-      expect(api.getCovidDeaths).toHaveBeenCalledWith(2)
+      expect(api.getCovidDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false })
     })
   })
 
@@ -273,6 +276,78 @@ describe("CovidDeathsPage", () => {
       // The PersonIcon should be rendered as an SVG
       const actorRow = screen.getByTestId("covid-death-row-456")
       expect(actorRow.querySelector("svg")).toBeInTheDocument()
+    })
+  })
+
+  it("renders include obscure filter checkbox", async () => {
+    vi.mocked(api.getCovidDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<CovidDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("include-obscure-filter")).toBeInTheDocument()
+      expect(screen.getByText("Include lesser-known actors")).toBeInTheDocument()
+    })
+  })
+
+  it("calls API with includeObscure when checkbox is checked", async () => {
+    vi.mocked(api.getCovidDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<CovidDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("include-obscure-filter")).toBeInTheDocument()
+    })
+
+    const checkbox = screen.getByRole("checkbox")
+    fireEvent.click(checkbox)
+
+    await waitFor(() => {
+      expect(api.getCovidDeaths).toHaveBeenCalledWith({
+        page: 1,
+        includeObscure: true,
+      })
+    })
+  })
+
+  it("reads includeObscure from URL parameters", async () => {
+    vi.mocked(api.getCovidDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<CovidDeathsPage />, {
+      initialEntries: ["/covid-deaths?includeObscure=true"],
+    })
+
+    await waitFor(() => {
+      expect(api.getCovidDeaths).toHaveBeenCalledWith({
+        page: 1,
+        includeObscure: true,
+      })
+    })
+  })
+
+  it("shows different description when includeObscure is checked", async () => {
+    vi.mocked(api.getCovidDeaths).mockResolvedValue({
+      persons: mockPersons,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<CovidDeathsPage />, {
+      initialEntries: ["/covid-deaths?includeObscure=true"],
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/All actors in our database who died from COVID-19/)
+      ).toBeInTheDocument()
     })
   })
 })

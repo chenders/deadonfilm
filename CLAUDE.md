@@ -19,6 +19,41 @@ If you don't know a specific value, either:
 
 Do NOT fill in plausible-looking numbers or IDs - there's no such thing as a "plausible" unique identifier.
 
+## CRITICAL: SQL Security - Always Use Parameterized Queries
+
+**NEVER use string interpolation or template literals to build SQL queries with dynamic values.** This creates SQL injection vulnerabilities.
+
+### Bad (NEVER do this):
+```typescript
+// String interpolation - DANGEROUS
+const filter = includeObscure ? "" : "AND is_obscure = false"
+const result = await db.query(`SELECT * FROM actors WHERE deathday IS NOT NULL ${filter}`)
+
+// Template literal with values - DANGEROUS
+const result = await db.query(`SELECT * FROM actors WHERE id = ${userId}`)
+```
+
+### Good (ALWAYS do this):
+```typescript
+// Use parameterized queries with boolean logic
+const result = await db.query(
+  `SELECT * FROM actors WHERE deathday IS NOT NULL AND ($1 = true OR is_obscure = false)`,
+  [includeObscure]
+)
+
+// All dynamic values as parameters
+const result = await db.query(`SELECT * FROM actors WHERE id = $1`, [userId])
+```
+
+### The Pattern for Optional Filters:
+When you need a filter that can be toggled on/off, use this pattern:
+```typescript
+// Instead of: ${includeAll ? "" : "AND status = 'active'"}
+// Use: AND ($N = true OR status = 'active')
+```
+
+This rule applies even when the interpolated value is a hardcoded string derived from code logic. Always use parameterized queries.
+
 ## Project Overview
 
 **Dead on Film** - A website to look up movies and TV shows to see which actors have passed away. Shows mortality statistics, death dates, and causes of death. Supports both movies (film casts) and TV shows (episode-level actor tracking).
@@ -592,6 +627,7 @@ The sitemap is located at `server/src/routes/sitemap.ts` and generates `/sitemap
 - Test files go alongside code: `*.test.ts` or `*.test.tsx`
 - Tests MUST import and test actual production code, not reimplementations
 - **Test coverage is NEVER out of scope** - Tests for new code MUST be included in the same PR that introduces the code. Do not defer test coverage to a follow-up issue or future PR. If you're adding a new component, page, hook, API route, or utility function, include tests for it in the same PR.
+- **MANDATORY: When a reviewer (human or automated like Copilot) requests test coverage, you MUST implement those tests.** Responding with "out of scope" or "will address in a follow-up" is NOT acceptable. Test requests are always valid and always in scope.
 - **Before creating a PR**, verify you have written tests that cover:
   - Happy path (normal operation)
   - Error handling (database errors, API failures, invalid input)
@@ -630,6 +666,25 @@ The sitemap is located at `server/src/routes/sitemap.ts` and generates `/sitemap
   ```
   - Only commit Linux snapshots (`*-linux.png`), never darwin/macOS snapshots
   - Match the Docker image version to the Playwright version in package.json
+
+### Responding to Automated Review Comments (Copilot, etc.)
+
+When GitHub Copilot or other automated reviewers suggest adding tests:
+
+1. **NEVER dismiss test suggestions as "out of scope"** - Test coverage is always in scope
+2. **NEVER defer test coverage to a follow-up PR or issue** - Implement the tests now
+3. **Implement the requested tests** before responding to the comment
+4. **Only decline a test suggestion if it's technically invalid** (e.g., testing a function that doesn't exist, or the test already exists)
+
+**Acceptable responses to test coverage requests:**
+- "Fixed in [commit]. Added tests for [component/function]."
+- "This test already exists in [file]."
+
+**Unacceptable responses:**
+- "Out of scope for this PR"
+- "Will address in a follow-up"
+- "This is a valid suggestion but..."
+- Any response that acknowledges validity but doesn't implement
 
 ### CLI Scripts
 
