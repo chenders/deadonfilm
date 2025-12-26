@@ -345,7 +345,9 @@ async function syncPeopleChanges(
         newDeaths++
       }
 
-      await delay(200)
+      // Note: Claude rate limiting is handled internally by claude.ts
+      // This delay is only for general pacing between person processing
+      await delay(50)
     } else if (wasAlreadyDeceased) {
       // Existing deceased person - no updates needed for now
       // Future: could update profile_path if changed
