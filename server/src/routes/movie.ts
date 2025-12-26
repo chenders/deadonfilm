@@ -1,6 +1,7 @@
 import type { Request, Response } from "express"
 import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../lib/tmdb.js"
 import { getCauseOfDeath, type DeathInfoSource } from "../lib/wikidata.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 import {
   getActors,
   batchUpsertActors,
@@ -80,6 +81,8 @@ export async function getMovie(req: Request, res: Response) {
   }
 
   try {
+    const startTime = Date.now()
+
     // Fetch movie details and credits in parallel
     const [movie, credits] = await Promise.all([getMovieDetails(movieId), getMovieCredits(movieId)])
 
@@ -285,6 +288,17 @@ export async function getMovie(req: Request, res: Response) {
       mortalitySurpriseScore,
       personDetails,
       mainCast,
+    })
+
+    recordCustomEvent("MovieView", {
+      tmdbId: movie.id,
+      title: movie.title,
+      releaseYear: releaseYear ?? 0,
+      deceasedCount,
+      livingCount,
+      expectedDeaths,
+      curseScore: mortalitySurpriseScore,
+      responseTimeMs: Date.now() - startTime,
     })
 
     res.json(response)

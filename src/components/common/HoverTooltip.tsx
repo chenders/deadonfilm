@@ -11,6 +11,8 @@ interface HoverTooltipProps {
   children: React.ReactNode
   className?: string
   testId?: string
+  /** Called when tooltip is opened (on hover or click) */
+  onOpen?: () => void
 }
 
 function TooltipContent({
@@ -111,10 +113,12 @@ export default function HoverTooltip({
   children,
   className = "",
   testId,
+  onOpen,
 }: HoverTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false)
   const triggerRef = useRef<HTMLSpanElement>(null)
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hasCalledOnOpen = useRef(false)
 
   const handleMouseEnter = () => {
     if (hideTimeoutRef.current) {
@@ -122,12 +126,18 @@ export default function HoverTooltip({
       hideTimeoutRef.current = null
     }
     setShowTooltip(true)
+    // Only call onOpen once per tooltip session
+    if (!hasCalledOnOpen.current && onOpen) {
+      hasCalledOnOpen.current = true
+      onOpen()
+    }
   }
 
   const handleMouseLeave = () => {
     // Small delay before hiding to allow mouse to move to tooltip
     hideTimeoutRef.current = setTimeout(() => {
       setShowTooltip(false)
+      hasCalledOnOpen.current = false
     }, 100)
   }
 
@@ -135,7 +145,16 @@ export default function HoverTooltip({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    const wasHidden = !showTooltip
     setShowTooltip((prev) => !prev)
+    // Only call onOpen once per tooltip session (on open, not close)
+    if (wasHidden && !hasCalledOnOpen.current && onOpen) {
+      hasCalledOnOpen.current = true
+      onOpen()
+    }
+    if (!wasHidden) {
+      hasCalledOnOpen.current = false
+    }
   }
 
   // Close tooltip when clicking outside

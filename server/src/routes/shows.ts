@@ -9,6 +9,7 @@ import {
   searchTVShows as tmdbSearchTVShows,
   type TMDBTVShow,
 } from "../lib/tmdb.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 import {
   getActors,
   batchUpsertActors,
@@ -112,6 +113,8 @@ export async function getShow(req: Request, res: Response) {
   }
 
   try {
+    const startTime = Date.now()
+
     // Fetch show details and aggregate credits in parallel
     const [show, credits] = await Promise.all([
       getTVShowDetails(showId),
@@ -340,6 +343,18 @@ export async function getShow(req: Request, res: Response) {
         mortalitySurpriseScore,
       },
     }
+
+    recordCustomEvent("ShowView", {
+      tmdbId: show.id,
+      name: show.name,
+      firstAirYear: firstAirYear ?? 0,
+      deceasedCount,
+      livingCount,
+      expectedDeaths,
+      curseScore: mortalitySurpriseScore,
+      isEnded: isShowEnded,
+      responseTimeMs: Date.now() - startTime,
+    })
 
     res.json(response)
   } catch (error) {
