@@ -190,7 +190,7 @@ describe("DeathWatchPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getDeathWatch).toHaveBeenCalledWith({ page: 2, includeObscure: false })
+      expect(api.getDeathWatch).toHaveBeenCalledWith({ page: 2, includeObscure: false, search: "" })
     })
   })
 
@@ -257,7 +257,7 @@ describe("DeathWatchPage", () => {
     fireEvent.click(checkbox)
 
     await waitFor(() => {
-      expect(api.getDeathWatch).toHaveBeenCalledWith({ page: 1, includeObscure: true })
+      expect(api.getDeathWatch).toHaveBeenCalledWith({ page: 1, includeObscure: true, search: "" })
     })
   })
 
@@ -305,6 +305,103 @@ describe("DeathWatchPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("0.50%")).toBeInTheDocument()
+    })
+  })
+
+  describe("search functionality", () => {
+    it("renders search input", async () => {
+      vi.mocked(api.getDeathWatch).mockResolvedValue({
+        actors: mockActors,
+        pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+      })
+
+      renderWithProviders(<DeathWatchPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("search-input")).toBeInTheDocument()
+        expect(screen.getByPlaceholderText("Search for an actor...")).toBeInTheDocument()
+      })
+    })
+
+    it("reads search from URL parameters", async () => {
+      vi.mocked(api.getDeathWatch).mockResolvedValue({
+        actors: mockActors,
+        pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+      })
+
+      renderWithProviders(<DeathWatchPage />, {
+        initialEntries: ["/death-watch?search=Clint"],
+      })
+
+      // Wait for data to load (search input renders after loading completes)
+      await waitFor(() => {
+        expect(screen.getByTestId("search-input")).toBeInTheDocument()
+      })
+
+      expect(api.getDeathWatch).toHaveBeenCalledWith({
+        page: 1,
+        includeObscure: false,
+        search: "Clint",
+      })
+
+      // Search input should be populated with the URL parameter
+      const searchInput = screen.getByTestId("search-input") as HTMLInputElement
+      expect(searchInput.value).toBe("Clint")
+    })
+
+    it("shows search-specific empty state when no results for search term", async () => {
+      vi.mocked(api.getDeathWatch).mockResolvedValue({
+        actors: [],
+        pagination: { page: 1, pageSize: 50, totalPages: 0, totalCount: 0 },
+      })
+
+      renderWithProviders(<DeathWatchPage />, {
+        initialEntries: ["/death-watch?search=NonexistentActor"],
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText(/No actors found matching "NonexistentActor"/)).toBeInTheDocument()
+        expect(screen.getByText(/Try a different search term/)).toBeInTheDocument()
+      })
+    })
+
+    it("search input updates value on change", async () => {
+      vi.mocked(api.getDeathWatch).mockResolvedValue({
+        actors: mockActors,
+        pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+      })
+
+      renderWithProviders(<DeathWatchPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("search-input")).toBeInTheDocument()
+      })
+
+      // Type in search input - this tests that the input updates immediately
+      // (the debounce is internal state, tested implicitly by the URL param tests)
+      const searchInput = screen.getByTestId("search-input") as HTMLInputElement
+      fireEvent.change(searchInput, { target: { value: "Test" } })
+
+      expect(searchInput.value).toBe("Test")
+    })
+
+    it("combines search with includeObscure filter", async () => {
+      vi.mocked(api.getDeathWatch).mockResolvedValue({
+        actors: mockActors,
+        pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+      })
+
+      renderWithProviders(<DeathWatchPage />, {
+        initialEntries: ["/death-watch?search=Clint&includeObscure=true"],
+      })
+
+      await waitFor(() => {
+        expect(api.getDeathWatch).toHaveBeenCalledWith({
+          page: 1,
+          includeObscure: true,
+          search: "Clint",
+        })
+      })
     })
   })
 })

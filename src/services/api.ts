@@ -222,19 +222,19 @@ export interface DeathWatchOptions {
   page?: number
   limit?: number
   minAge?: number
-  minMovies?: number
   includeObscure?: boolean
+  search?: string
 }
 
 export async function getDeathWatch(options: DeathWatchOptions = {}): Promise<DeathWatchResponse> {
-  const { page = 1, limit = 50, minAge, minMovies, includeObscure } = options
+  const { page = 1, limit = 50, minAge, includeObscure, search } = options
   const params = new URLSearchParams()
 
   params.set("page", String(page))
   params.set("limit", String(limit))
   if (minAge) params.set("minAge", String(minAge))
-  if (minMovies) params.set("minMovies", String(minMovies))
   if (includeObscure) params.set("includeObscure", "true")
+  if (search) params.set("search", search)
 
   return fetchJson(`/death-watch?${params.toString()}`)
 }
@@ -302,14 +302,18 @@ export async function getDeathsByDecade(
 export interface AllDeathsParams {
   page?: number
   includeObscure?: boolean
+  search?: string
 }
 
 export async function getAllDeaths(params: AllDeathsParams = {}): Promise<AllDeathsResponse> {
-  const { page = 1, includeObscure = false } = params
+  const { page = 1, includeObscure = false, search } = params
   const searchParams = new URLSearchParams()
   searchParams.set("page", String(page))
   if (includeObscure) {
     searchParams.set("includeObscure", "true")
+  }
+  if (search) {
+    searchParams.set("search", search)
   }
   return fetchJson(`/deaths/all?${searchParams.toString()}`)
 }

@@ -200,8 +200,14 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
     const pageSize = 50
     const offset = (page - 1) * pageSize
     const includeObscure = req.query.includeObscure === "true"
+    const search = (req.query.search as string) || undefined
 
-    const { persons, totalCount } = await getAllDeaths({ limit: pageSize, offset, includeObscure })
+    const { persons, totalCount } = await getAllDeaths({
+      limit: pageSize,
+      offset,
+      includeObscure,
+      search,
+    })
 
     const response = {
       deaths: persons.map((p, i) => ({
