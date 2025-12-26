@@ -15,6 +15,7 @@ interface DeathWatchActorResponse {
   deathProbability: number // 0-1, probability of dying in next year
   yearsRemaining: number | null // Life expectancy - current age
   totalMovies: number
+  totalEpisodes: number
 }
 
 export async function getDeathWatchHandler(req: Request, res: Response) {
@@ -32,16 +33,16 @@ export async function getDeathWatchHandler(req: Request, res: Response) {
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50))
     const offset = (page - 1) * pageSize
     const minAge = req.query.minAge ? parseInt(req.query.minAge as string) : undefined
-    const minMovies = req.query.minMovies ? parseInt(req.query.minMovies as string) : 2
     const includeObscure = req.query.includeObscure === "true"
+    const search = (req.query.search as string) || undefined
 
     // Fetch actors from database
     const { actors, totalCount } = await getDeathWatchActors({
       limit: pageSize,
       offset,
       minAge,
-      minMovies,
       includeObscure,
+      search,
     })
 
     // Calculate death probabilities and years remaining for each actor
@@ -82,6 +83,7 @@ export async function getDeathWatchHandler(req: Request, res: Response) {
           deathProbability: Math.round(deathProbability * 10000) / 10000, // 4 decimal precision
           yearsRemaining,
           totalMovies: actor.total_movies,
+          totalEpisodes: actor.total_episodes,
         }
       })
     )

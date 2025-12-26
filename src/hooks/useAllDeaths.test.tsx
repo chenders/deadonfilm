@@ -189,4 +189,62 @@ describe("useAllDeaths", () => {
       includeObscure: true,
     })
   })
+
+  it("fetches with search param", async () => {
+    vi.mocked(api.getAllDeaths).mockResolvedValueOnce(mockResponse)
+
+    const { result } = renderHook(() => useAllDeaths({ search: "John" }), { wrapper })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(api.getAllDeaths).toHaveBeenCalledWith({
+      page: 1,
+      includeObscure: false,
+      search: "John",
+    })
+  })
+
+  it("refetches when search changes", async () => {
+    vi.mocked(api.getAllDeaths).mockResolvedValue(mockResponse)
+
+    const { result, rerender } = renderHook(
+      ({ search }: { search: string | undefined }) => useAllDeaths({ search }),
+      { wrapper, initialProps: { search: undefined as string | undefined } }
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    // Rerender with search term
+    rerender({ search: "John" })
+    await waitFor(() => expect(result.current.isFetching).toBe(true))
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(api.getAllDeaths).toHaveBeenCalledTimes(2)
+    expect(api.getAllDeaths).toHaveBeenNthCalledWith(1, {
+      page: 1,
+      includeObscure: false,
+      search: undefined,
+    })
+    expect(api.getAllDeaths).toHaveBeenNthCalledWith(2, {
+      page: 1,
+      includeObscure: false,
+      search: "John",
+    })
+  })
+
+  it("handles all params together including search", async () => {
+    vi.mocked(api.getAllDeaths).mockResolvedValueOnce(mockResponse)
+
+    const { result } = renderHook(
+      () => useAllDeaths({ page: 2, includeObscure: true, search: "Wayne" }),
+      { wrapper }
+    )
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(api.getAllDeaths).toHaveBeenCalledWith({
+      page: 2,
+      includeObscure: true,
+      search: "Wayne",
+    })
+  })
 })

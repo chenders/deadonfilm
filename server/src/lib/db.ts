@@ -1619,26 +1619,46 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
 }
 
 // Get all deceased persons, paginated (for "All Deaths" page)
+// Requires actors to have appeared in 2+ movies OR 10+ TV episodes
 export interface AllDeathsOptions {
   limit?: number
   offset?: number
   includeObscure?: boolean
+  search?: string
 }
 
 export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
   persons: ActorRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0, includeObscure = false } = options
+  const { limit = 50, offset = 0, includeObscure = false, search } = options
   const db = getPool()
 
+  // Always pass search parameter (null if not searching) - avoids SQL string interpolation
+  const searchPattern = search ? `%${search}%` : null
+
   const result = await db.query<ActorRecord & { total_count: string }>(
-    `SELECT COUNT(*) OVER () as total_count, *
+    `WITH actor_appearances AS (
+       SELECT
+         a.tmdb_id,
+         COUNT(DISTINCT ama.movie_tmdb_id) as movie_count,
+         COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as episode_count
+       FROM actors a
+       LEFT JOIN actor_movie_appearances ama ON ama.actor_tmdb_id = a.tmdb_id
+       LEFT JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id
+       WHERE a.deathday IS NOT NULL
+       GROUP BY a.tmdb_id
+       HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
+          OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
+     )
+     SELECT COUNT(*) OVER () as total_count, actors.*
      FROM actors
-     WHERE deathday IS NOT NULL AND ($3 = true OR is_obscure = false)
+     JOIN actor_appearances aa ON aa.tmdb_id = actors.tmdb_id
+     WHERE ($3 = true OR is_obscure = false)
+       AND ($4::text IS NULL OR actors.name ILIKE $4)
      ORDER BY deathday DESC
      LIMIT $1 OFFSET $2`,
-    [limit, offset, includeObscure]
+    [limit, offset, includeObscure, searchPattern]
   )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
@@ -1694,8 +1714,8 @@ export interface DeathWatchOptions {
   limit?: number
   offset?: number
   minAge?: number
-  minMovies?: number
   includeObscure?: boolean
+  search?: string
 }
 
 export interface DeathWatchActorRecord {
@@ -1706,22 +1726,24 @@ export interface DeathWatchActorRecord {
   profile_path: string | null
   popularity: number | null
   total_movies: number
+  total_episodes: number
 }
 
 // Get living actors for the Death Watch feature
 // Returns actors ordered by age (oldest first = highest death probability)
 // Death probability is calculated in application code using actuarial tables
+// Requires actors to have appeared in 2+ movies OR 10+ TV episodes
 export async function getDeathWatchActors(options: DeathWatchOptions = {}): Promise<{
   actors: DeathWatchActorRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0, minAge, minMovies = 2, includeObscure = false } = options
+  const { limit = 50, offset = 0, minAge, includeObscure = false, search } = options
 
   const db = getPool()
 
   // Build dynamic WHERE conditions
   const conditions: string[] = []
-  const params: (number | boolean)[] = []
+  const params: (number | boolean | string)[] = []
   let paramIndex = 1
 
   // Min age filter (applied in outer WHERE)
@@ -1737,11 +1759,16 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
     conditions.push(`popularity >= 5.0`)
   }
 
+  // Search filter
+  if (search) {
+    conditions.push(`actor_name ILIKE $${paramIndex}`)
+    params.push(`%${search}%`)
+    paramIndex++
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
 
-  // Add pagination and minMovies params
-  params.push(minMovies)
-  const minMoviesParamIndex = paramIndex++
+  // Add pagination params
   params.push(limit)
   const limitParamIndex = paramIndex++
   params.push(offset)
@@ -1755,14 +1782,17 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
         a.birthday,
         a.profile_path,
         a.popularity,
-        COUNT(DISTINCT aa.movie_tmdb_id) as total_movies,
+        COUNT(DISTINCT ama.movie_tmdb_id) as total_movies,
+        COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as total_episodes,
         EXTRACT(YEAR FROM age(a.birthday))::integer as age
       FROM actors a
-      JOIN actor_movie_appearances aa ON aa.actor_tmdb_id = a.tmdb_id
+      LEFT JOIN actor_movie_appearances ama ON ama.actor_tmdb_id = a.tmdb_id
+      LEFT JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id
       WHERE a.deathday IS NULL
         AND a.birthday IS NOT NULL
       GROUP BY a.tmdb_id, a.name, a.birthday, a.profile_path, a.popularity
-      HAVING COUNT(DISTINCT aa.movie_tmdb_id) >= $${minMoviesParamIndex}
+      HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
+         OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
     )
     SELECT
       actor_tmdb_id,
@@ -1772,6 +1802,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
       profile_path,
       popularity::decimal,
       total_movies::integer,
+      total_episodes::integer,
       COUNT(*) OVER() as total_count
     FROM living_actors
     ${whereClause}

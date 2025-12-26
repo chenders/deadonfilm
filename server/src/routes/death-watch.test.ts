@@ -30,6 +30,7 @@ describe("getDeathWatchHandler", () => {
       profile_path: "/path1.jpg",
       popularity: 10.5,
       total_movies: 25,
+      total_episodes: 50,
     },
     {
       actor_tmdb_id: 2,
@@ -39,6 +40,7 @@ describe("getDeathWatchHandler", () => {
       profile_path: "/path2.jpg",
       popularity: 8.2,
       total_movies: 15,
+      total_episodes: 100,
     },
   ]
 
@@ -76,8 +78,8 @@ describe("getDeathWatchHandler", () => {
       limit: 50,
       offset: 0,
       minAge: undefined,
-      minMovies: 2,
       includeObscure: false,
+      search: undefined,
     })
     expect(jsonSpy).toHaveBeenCalledWith({
       actors: [
@@ -91,6 +93,7 @@ describe("getDeathWatchHandler", () => {
           deathProbability: 0.15,
           yearsRemaining: 0, // max(0, 75 - 89) rounded
           totalMovies: 25,
+          totalEpisodes: 50,
         },
         {
           rank: 2,
@@ -102,6 +105,7 @@ describe("getDeathWatchHandler", () => {
           deathProbability: 0.15,
           yearsRemaining: 0, // max(0, 75 - 84) rounded
           totalMovies: 15,
+          totalEpisodes: 100,
         },
       ],
       pagination: {
@@ -210,22 +214,6 @@ describe("getDeathWatchHandler", () => {
     expect(db.getDeathWatchActors).toHaveBeenCalledWith(
       expect.objectContaining({
         minAge: 70,
-      })
-    )
-  })
-
-  it("parses minMovies from query params", async () => {
-    mockReq.query = { minMovies: "5" }
-    vi.mocked(db.getDeathWatchActors).mockResolvedValueOnce({
-      actors: mockActors,
-      totalCount: 2,
-    })
-
-    await getDeathWatchHandler(mockReq as Request, mockRes as Response)
-
-    expect(db.getDeathWatchActors).toHaveBeenCalledWith(
-      expect.objectContaining({
-        minMovies: 5,
       })
     )
   })
@@ -430,5 +418,39 @@ describe("getDeathWatchHandler", () => {
         ]),
       })
     )
+  })
+
+  it("parses search from query params", async () => {
+    mockReq.query = { search: "Clint" }
+    vi.mocked(db.getDeathWatchActors).mockResolvedValueOnce({
+      actors: mockActors,
+      totalCount: 2,
+    })
+
+    await getDeathWatchHandler(mockReq as Request, mockRes as Response)
+
+    expect(db.getDeathWatchActors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: "Clint",
+      })
+    )
+  })
+
+  it("combines search with other filters", async () => {
+    mockReq.query = { search: "Clint", includeObscure: "true", page: "2" }
+    vi.mocked(db.getDeathWatchActors).mockResolvedValueOnce({
+      actors: mockActors,
+      totalCount: 100,
+    })
+
+    await getDeathWatchHandler(mockReq as Request, mockRes as Response)
+
+    expect(db.getDeathWatchActors).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 50,
+      minAge: undefined,
+      includeObscure: true,
+      search: "Clint",
+    })
   })
 })

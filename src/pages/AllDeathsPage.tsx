@@ -1,6 +1,7 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useAllDeaths } from "@/hooks/useAllDeaths"
+import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
 import { formatDate } from "@/utils/formatDate"
@@ -110,7 +111,10 @@ export default function AllDeathsPage() {
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const includeObscure = searchParams.get("includeObscure") === "true"
 
-  const { data, isLoading, error } = useAllDeaths({ page, includeObscure })
+  // Debounced search with URL sync
+  const [searchInput, setSearchInput, searchQuery] = useDebouncedSearchParam()
+
+  const { data, isLoading, error } = useAllDeaths({ page, includeObscure, search: searchQuery })
 
   const goToPage = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams)
@@ -176,25 +180,46 @@ export default function AllDeathsPage() {
           </p>
         </div>
 
-        {/* Filter */}
-        <div className="mb-4 flex justify-center">
-          <label
-            className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
-            data-testid="include-obscure-filter"
-          >
+        {/* Search and Filter */}
+        <div className="mb-4 space-y-3">
+          <div className="flex justify-center">
             <input
-              type="checkbox"
-              checked={includeObscure}
-              onChange={(e) => toggleIncludeObscure(e.target.checked)}
-              className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search for an actor..."
+              data-testid="search-input"
+              className="w-full max-w-md rounded-lg border border-brown-medium/30 bg-white px-4 py-2 text-sm text-brown-dark placeholder-text-muted focus:border-brown-medium focus:outline-none focus:ring-1 focus:ring-brown-medium"
             />
-            Include lesser-known actors
-          </label>
+          </div>
+          <div className="flex justify-center">
+            <label
+              className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+              data-testid="include-obscure-filter"
+            >
+              <input
+                type="checkbox"
+                checked={includeObscure}
+                onChange={(e) => toggleIncludeObscure(e.target.checked)}
+                className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+              />
+              Include lesser-known actors
+            </label>
+          </div>
         </div>
 
         {noResults ? (
           <div className="text-center text-text-muted">
-            <p>No deaths found in our database.</p>
+            {searchQuery ? (
+              <>
+                <p>No actors found matching "{searchQuery}".</p>
+                <p className="mt-2 text-xs">
+                  Try a different search term or enable "Include lesser-known actors".
+                </p>
+              </>
+            ) : (
+              <p>No deaths found in our database.</p>
+            )}
           </div>
         ) : (
           <>
