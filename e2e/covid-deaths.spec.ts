@@ -52,9 +52,9 @@ test.describe("COVID-19 Deaths Page", () => {
     // Verify page title
     await expect(page.getByRole("heading", { name: "COVID-19 Deaths" })).toBeVisible()
 
-    // Verify page description is visible
+    // Verify page description is visible (default shows "Well-known actors")
     await expect(
-      page.getByText(/Actors in our database who died from COVID-19/)
+      page.getByText(/actors in our database who died from COVID-19/i)
     ).toBeVisible()
 
     // Wait for actor list to load (skip loading state)
