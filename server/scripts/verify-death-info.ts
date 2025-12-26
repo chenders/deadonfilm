@@ -8,19 +8,74 @@
  * This script re-runs discovery for all deceased actors to get more accurate
  * cause of death and details using the improved two-pass approach.
  *
+ * The script automatically saves progress to a checkpoint file and resumes
+ * from where it left off if interrupted. Use --fresh to start over.
+ *
  * Usage:
- *   npm run verify:death-info                    # Process all actors
+ *   npm run verify:death-info                    # Process all actors (resumes if interrupted)
  *   npm run verify:death-info -- --limit 50      # Process up to 50
  *   npm run verify:death-info -- --dry-run       # Preview without updating
  *   npm run verify:death-info -- --popular       # Only popular actors first
  *   npm run verify:death-info -- --pass1-only    # Only verify causes
  *   npm run verify:death-info -- --pass2-only    # Only fetch details
+ *   npm run verify:death-info -- --fresh         # Start fresh (ignore checkpoint)
  */
 
 import "dotenv/config"
 import { Command } from "commander"
 import pg from "pg"
+import fs from "fs"
+import path from "path"
 import { verifyCauseOfDeath, getDeathDetails, type ClaudeModel } from "../src/lib/claude.js"
+
+// Checkpoint file to track progress
+const CHECKPOINT_FILE = path.join(process.cwd(), ".verify-death-info-checkpoint.json")
+
+interface Checkpoint {
+  processedIds: number[]
+  startedAt: string
+  lastUpdated: string
+  stats: {
+    processed: number
+    causesUpdated: number
+    causesUnchanged: number
+    detailsUpdated: number
+    detailsCleared: number
+    noChange: number
+    errors: number
+  }
+}
+
+function loadCheckpoint(): Checkpoint | null {
+  try {
+    if (fs.existsSync(CHECKPOINT_FILE)) {
+      const data = fs.readFileSync(CHECKPOINT_FILE, "utf-8")
+      return JSON.parse(data) as Checkpoint
+    }
+  } catch (error) {
+    console.warn("Warning: Could not load checkpoint file:", error)
+  }
+  return null
+}
+
+function saveCheckpoint(checkpoint: Checkpoint): void {
+  try {
+    checkpoint.lastUpdated = new Date().toISOString()
+    fs.writeFileSync(CHECKPOINT_FILE, JSON.stringify(checkpoint, null, 2))
+  } catch (error) {
+    console.error("Warning: Could not save checkpoint:", error)
+  }
+}
+
+function deleteCheckpoint(): void {
+  try {
+    if (fs.existsSync(CHECKPOINT_FILE)) {
+      fs.unlinkSync(CHECKPOINT_FILE)
+    }
+  } catch (error) {
+    console.warn("Warning: Could not delete checkpoint file:", error)
+  }
+}
 
 const { Pool } = pg
 
@@ -43,6 +98,7 @@ interface VerifyOptions {
   pass1Only?: boolean
   pass2Only?: boolean
   model?: ClaudeModel
+  fresh?: boolean
 }
 
 interface DiscrepancyRecord {
@@ -64,6 +120,7 @@ const program = new Command()
   .option("--pass1-only", "Only verify causes (Pass 1), skip details")
   .option("--pass2-only", "Only fetch details (Pass 2), skip cause verification")
   .option("-m, --model <model>", "Claude model to use (sonnet or haiku)", "sonnet")
+  .option("--fresh", "Start fresh, ignoring any saved checkpoint")
   .action(async (options) => {
     const model = options.model as ClaudeModel
     if (model !== "sonnet" && model !== "haiku") {
@@ -82,6 +139,7 @@ async function runVerification(options: VerifyOptions): Promise<void> {
     pass1Only = false,
     pass2Only = false,
     model = "sonnet",
+    fresh = false,
   } = options
 
   if (!process.env.DATABASE_URL) {
@@ -93,6 +151,42 @@ async function runVerification(options: VerifyOptions): Promise<void> {
     console.error("ANTHROPIC_API_KEY environment variable is required")
     process.exit(1)
   }
+
+  // Load or create checkpoint
+  let checkpoint: Checkpoint
+  const existingCheckpoint = fresh ? null : loadCheckpoint()
+
+  if (existingCheckpoint && !dryRun) {
+    checkpoint = existingCheckpoint
+    console.log("\n" + "=".repeat(70))
+    console.log("RESUMING FROM CHECKPOINT")
+    console.log("=".repeat(70))
+    console.log(`Started: ${checkpoint.startedAt}`)
+    console.log(`Last updated: ${checkpoint.lastUpdated}`)
+    console.log(`Already processed: ${checkpoint.processedIds.length} actors`)
+    console.log(`Use --fresh to start over`)
+    console.log("=".repeat(70) + "\n")
+  } else {
+    checkpoint = {
+      processedIds: [],
+      startedAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
+      stats: {
+        processed: 0,
+        causesUpdated: 0,
+        causesUnchanged: 0,
+        detailsUpdated: 0,
+        detailsCleared: 0,
+        noChange: 0,
+        errors: 0,
+      },
+    }
+    if (fresh) {
+      deleteCheckpoint()
+    }
+  }
+
+  const processedSet = new Set(checkpoint.processedIds)
 
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
@@ -141,27 +235,38 @@ async function runVerification(options: VerifyOptions): Promise<void> {
     const result = await pool.query<ActorRecord>(query, params)
     const actors = result.rows
 
-    console.log(`Found ${actors.length} actors to process\n`)
+    // Filter out already-processed actors
+    const actorsToProcess = actors.filter((a) => !processedSet.has(a.tmdb_id))
 
-    if (actors.length === 0) {
-      console.log("No actors to process. Done!")
+    console.log(`Found ${actors.length} actors total`)
+    if (processedSet.size > 0) {
+      console.log(`Skipping ${actors.length - actorsToProcess.length} already processed`)
+    }
+    console.log(`Processing ${actorsToProcess.length} actors\n`)
+
+    if (actorsToProcess.length === 0) {
+      console.log("All actors already processed. Done!")
+      deleteCheckpoint()
       return
     }
 
-    // Stats
-    let processed = 0
-    let causesUpdated = 0
-    let causesUnchanged = 0
-    let detailsUpdated = 0
-    let detailsCleared = 0
-    let noChange = 0
-    let errors = 0
+    // Stats - use checkpoint stats if resuming
+    let {
+      processed,
+      causesUpdated,
+      causesUnchanged,
+      detailsUpdated,
+      detailsCleared,
+      noChange,
+      errors,
+    } = checkpoint.stats
 
     const discrepancies: DiscrepancyRecord[] = []
 
-    for (let i = 0; i < actors.length; i++) {
-      const actor = actors[i]
-      const progress = `[${i + 1}/${actors.length}]`
+    for (let i = 0; i < actorsToProcess.length; i++) {
+      const actor = actorsToProcess[i]
+      const totalProgress = processedSet.size + i + 1
+      const progress = `[${totalProgress}/${actors.length}]`
       const popularityStr = actor.popularity
         ? ` (pop: ${parseFloat(String(actor.popularity)).toFixed(1)})`
         : ""
@@ -314,6 +419,21 @@ async function runVerification(options: VerifyOptions): Promise<void> {
 
         processed++
 
+        // Save checkpoint after each successful actor (not in dry-run mode)
+        if (!dryRun) {
+          checkpoint.processedIds.push(actor.tmdb_id)
+          checkpoint.stats = {
+            processed,
+            causesUpdated,
+            causesUnchanged,
+            detailsUpdated,
+            detailsCleared,
+            noChange,
+            errors,
+          }
+          saveCheckpoint(checkpoint)
+        }
+
         // Note: Rate limiting is handled by the centralized rate limiter in claude.ts
       } catch (error) {
         console.error(`  ✗ Error: ${error instanceof Error ? error.message : error}`)
@@ -321,6 +441,24 @@ async function runVerification(options: VerifyOptions): Promise<void> {
           console.error(error.stack)
         }
         errors++
+
+        // Save checkpoint before exiting so we can resume
+        if (!dryRun) {
+          checkpoint.stats = {
+            processed,
+            causesUpdated,
+            causesUnchanged,
+            detailsUpdated,
+            detailsCleared,
+            noChange,
+            errors,
+          }
+          saveCheckpoint(checkpoint)
+          console.log(
+            `\nCheckpoint saved. Run again to resume from actor #${checkpoint.processedIds.length + 1}`
+          )
+        }
+
         // Exit on first error to prevent data corruption
         throw error
       }
@@ -353,6 +491,10 @@ async function runVerification(options: VerifyOptions): Promise<void> {
 
     if (dryRun) {
       console.log("\n(DRY RUN - no changes were made)")
+    } else {
+      // All done - remove checkpoint file
+      deleteCheckpoint()
+      console.log("\nAll actors processed successfully. Checkpoint cleared.")
     }
 
     console.log("=".repeat(70) + "\n")
