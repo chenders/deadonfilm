@@ -38,14 +38,16 @@ This file provides guidance to GitHub Copilot when working with code in this rep
 
 ## API Endpoints
 
-- `GET /api/search?q={query}` - Search movies
+- `GET /api/search?q={query}` - Search movies and TV shows
 - `GET /api/movie/{id}` - Get movie with deceased cast
 - `GET /api/movie/{id}/death-info?personIds=1,2,3` - Poll for cause of death updates
+- `GET /api/show/{id}` - Get TV show with deceased/living cast and mortality stats
+- `GET /api/show/{id}/episode/{seasonNumber}/{episodeNumber}` - Get episode details with cast
 - `GET /api/on-this-day` - Deaths on current date
-- `GET /api/random` - Get a random movie
-- `GET /api/discover/{type}` - Get movies by type (classic, high-mortality)
+- `GET /api/discover/{type}` - Get movies by type (forever-young, etc.)
 - `GET /api/cursed-movies` - List movies ranked by curse score (paginated)
 - `GET /api/cursed-actors` - List actors ranked by co-star mortality (paginated)
+- `GET /api/covid-deaths` - List actors who died from COVID-19 (paginated)
 - `GET /api/stats` - Get site-wide statistics
 - `GET /health` - Health check for Kubernetes
 
@@ -134,15 +136,49 @@ The Cursed Movies page filters out obscure/unknown movies by default. A movie is
 
 Users can toggle "Include obscure movies" checkbox to see all movies.
 
+## CRITICAL: SQL Security - Always Use Parameterized Queries
+
+**NEVER use string interpolation or template literals to build SQL queries with dynamic values.**
+
+```typescript
+// BAD - SQL injection vulnerability
+const filter = includeObscure ? "" : "AND is_obscure = false"
+const result = await db.query(`SELECT * FROM actors WHERE deathday IS NOT NULL ${filter}`)
+
+// GOOD - Use parameterized queries with boolean logic
+const result = await db.query(
+  `SELECT * FROM actors WHERE deathday IS NOT NULL AND ($1 = true OR is_obscure = false)`,
+  [includeObscure]
+)
+```
+
 ## Code Standards
 
 - Write unit tests for new functionality (*.test.ts or *.test.tsx)
 - Tests must import and test actual production code
 - Avoid code duplication - extract repeated logic into functions
 - Run format/lint/type-check before committing
+- Use parameterized queries for ALL database operations
 
-## PR Review Policy
+## PR Review Policy - MANDATORY
 
-- **Adding or updating tests is ALWAYS in scope** - Any suggestion to add test coverage should be implemented, not deferred
-- Test coverage for new functions, edge cases, and bug fixes is a requirement, not optional
-- If a review comment requests tests, implement them in the same PR
+**Test coverage requests are NEVER "out of scope". They must always be implemented.**
+
+When responding to review comments (from humans or automated tools like Copilot):
+
+1. **Test suggestions MUST be implemented** - Not deferred, not dismissed, not "acknowledged as valid but..."
+2. **"Out of scope" is NEVER an acceptable response** to a test coverage request
+3. **Implement first, then respond** - Write the tests before replying to the comment
+4. **Only valid reason to decline**: The test already exists or the suggestion is technically incorrect
+
+### Acceptable responses to test requests:
+- "Fixed in [commit]. Added tests for [component]."
+- "This test already exists in [file]."
+
+### Unacceptable responses (NEVER use these):
+- "Out of scope for this PR"
+- "Will address in a follow-up"
+- "This is a valid suggestion but..." (followed by not implementing)
+- "Adding comprehensive tests is out of scope"
+
+If you find yourself wanting to defer a test, stop and implement it instead.
