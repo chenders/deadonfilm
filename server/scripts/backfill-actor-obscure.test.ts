@@ -1,138 +1,229 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { OBSCURE_POPULARITY_THRESHOLD, getPopularity } from "./backfill-actor-obscure.js"
-import * as tmdb from "../src/lib/tmdb.js"
+import { describe, it, expect } from "vitest"
+import { THRESHOLDS } from "./backfill-actor-obscure.js"
 
 describe("backfill-actor-obscure constants", () => {
-  it("uses popularity threshold of 5.0 (matches Death Watch feature)", () => {
-    expect(OBSCURE_POPULARITY_THRESHOLD).toBe(5.0)
+  it("exports threshold constants", () => {
+    expect(THRESHOLDS).toEqual({
+      HIT_MOVIE_POPULARITY: 20,
+      HIT_SHOW_POPULARITY: 20,
+      ENGLISH_CONTENT_POPULARITY: 5,
+      MIN_ENGLISH_MOVIES: 3,
+      MIN_ENGLISH_SHOWS: 3,
+      MIN_TOTAL_MOVIES: 10,
+      MIN_TOTAL_EPISODES: 50,
+    })
   })
 })
 
 describe("is_obscure calculation logic", () => {
-  // This tests the logic that will be used in the computed column
-  // is_obscure = profile_path IS NULL OR popularity < 5.0
+  // Tests the logic used in the backfill script:
+  // An actor is NOT obscure if ANY of these conditions are true:
+  // - Has a movie with popularity >= 20 (hit film)
+  // - Has a TV show with popularity >= 20 (hit show)
+  // - Has 3+ English movies with popularity >= 5
+  // - Has 3+ English TV shows with popularity >= 5
+  // - Has 10+ movies total
+  // - Has 50+ TV episodes total
 
-  function isObscure(profilePath: string | null, popularity: number | null): boolean {
-    return profilePath === null || (popularity ?? 0) < OBSCURE_POPULARITY_THRESHOLD
+  interface ActorMetrics {
+    maxMoviePop: number
+    maxShowPop: number
+    enMoviesPop5: number
+    enShowsPop5: number
+    movieCount: number
+    episodeCount: number
   }
 
-  describe("profile_path conditions", () => {
-    it("marks actor as obscure when profile_path is null", () => {
-      expect(isObscure(null, 100)).toBe(true)
+  function isObscure(metrics: ActorMetrics): boolean {
+    if (metrics.maxMoviePop >= THRESHOLDS.HIT_MOVIE_POPULARITY) return false
+    if (metrics.maxShowPop >= THRESHOLDS.HIT_SHOW_POPULARITY) return false
+    if (metrics.enMoviesPop5 >= THRESHOLDS.MIN_ENGLISH_MOVIES) return false
+    if (metrics.enShowsPop5 >= THRESHOLDS.MIN_ENGLISH_SHOWS) return false
+    if (metrics.movieCount >= THRESHOLDS.MIN_TOTAL_MOVIES) return false
+    if (metrics.episodeCount >= THRESHOLDS.MIN_TOTAL_EPISODES) return false
+    return true
+  }
+
+  const defaultMetrics: ActorMetrics = {
+    maxMoviePop: 0,
+    maxShowPop: 0,
+    enMoviesPop5: 0,
+    enShowsPop5: 0,
+    movieCount: 0,
+    episodeCount: 0,
+  }
+
+  describe("hit movie condition", () => {
+    it("marks actor as NOT obscure when they have a hit movie (pop >= 20)", () => {
+      expect(isObscure({ ...defaultMetrics, maxMoviePop: 20 })).toBe(false)
+      expect(isObscure({ ...defaultMetrics, maxMoviePop: 100 })).toBe(false)
     })
 
-    it("does not mark as obscure solely based on having a profile_path", () => {
-      expect(isObscure("/path.jpg", 100)).toBe(false)
+    it("does not satisfy condition with movie pop < 20", () => {
+      expect(isObscure({ ...defaultMetrics, maxMoviePop: 19.9 })).toBe(true)
+      expect(isObscure({ ...defaultMetrics, maxMoviePop: 10 })).toBe(true)
     })
   })
 
-  describe("popularity conditions", () => {
-    it("marks actor as obscure when popularity is below threshold", () => {
-      expect(isObscure("/path.jpg", 4.9)).toBe(true)
-      expect(isObscure("/path.jpg", 0)).toBe(true)
-      expect(isObscure("/path.jpg", 1)).toBe(true)
+  describe("hit TV show condition", () => {
+    it("marks actor as NOT obscure when they have a hit TV show (pop >= 20)", () => {
+      expect(isObscure({ ...defaultMetrics, maxShowPop: 20 })).toBe(false)
+      expect(isObscure({ ...defaultMetrics, maxShowPop: 144 })).toBe(false)
     })
 
-    it("does not mark as obscure when popularity is at or above threshold", () => {
-      expect(isObscure("/path.jpg", 5.0)).toBe(false)
-      expect(isObscure("/path.jpg", 5.1)).toBe(false)
-      expect(isObscure("/path.jpg", 100)).toBe(false)
+    it("does not satisfy condition with show pop < 20", () => {
+      expect(isObscure({ ...defaultMetrics, maxShowPop: 19.9 })).toBe(true)
+      expect(isObscure({ ...defaultMetrics, maxShowPop: 15 })).toBe(true)
+    })
+  })
+
+  describe("English movies condition", () => {
+    it("marks actor as NOT obscure with 3+ English movies (pop >= 5)", () => {
+      expect(isObscure({ ...defaultMetrics, enMoviesPop5: 3 })).toBe(false)
+      expect(isObscure({ ...defaultMetrics, enMoviesPop5: 10 })).toBe(false)
     })
 
-    it("treats null popularity as 0 (obscure)", () => {
-      expect(isObscure("/path.jpg", null)).toBe(true)
+    it("does not satisfy condition with < 3 English movies", () => {
+      expect(isObscure({ ...defaultMetrics, enMoviesPop5: 2 })).toBe(true)
+      expect(isObscure({ ...defaultMetrics, enMoviesPop5: 0 })).toBe(true)
+    })
+  })
+
+  describe("English TV shows condition", () => {
+    it("marks actor as NOT obscure with 3+ English TV shows (pop >= 5)", () => {
+      expect(isObscure({ ...defaultMetrics, enShowsPop5: 3 })).toBe(false)
+      expect(isObscure({ ...defaultMetrics, enShowsPop5: 5 })).toBe(false)
+    })
+
+    it("does not satisfy condition with < 3 English TV shows", () => {
+      expect(isObscure({ ...defaultMetrics, enShowsPop5: 2 })).toBe(true)
+      expect(isObscure({ ...defaultMetrics, enShowsPop5: 0 })).toBe(true)
+    })
+  })
+
+  describe("prolific film actor condition", () => {
+    it("marks actor as NOT obscure with 10+ movies total", () => {
+      expect(isObscure({ ...defaultMetrics, movieCount: 10 })).toBe(false)
+      expect(isObscure({ ...defaultMetrics, movieCount: 50 })).toBe(false)
+    })
+
+    it("does not satisfy condition with < 10 movies", () => {
+      expect(isObscure({ ...defaultMetrics, movieCount: 9 })).toBe(true)
+      expect(isObscure({ ...defaultMetrics, movieCount: 5 })).toBe(true)
+    })
+  })
+
+  describe("prolific TV actor condition", () => {
+    it("marks actor as NOT obscure with 50+ TV episodes", () => {
+      expect(isObscure({ ...defaultMetrics, episodeCount: 50 })).toBe(false)
+      expect(isObscure({ ...defaultMetrics, episodeCount: 200 })).toBe(false)
+    })
+
+    it("does not satisfy condition with < 50 episodes", () => {
+      expect(isObscure({ ...defaultMetrics, episodeCount: 49 })).toBe(true)
+      expect(isObscure({ ...defaultMetrics, episodeCount: 10 })).toBe(true)
     })
   })
 
   describe("combined conditions", () => {
-    it("marks as obscure when both profile_path is null AND popularity is low", () => {
-      expect(isObscure(null, 2)).toBe(true)
+    it("marks as NOT obscure when multiple conditions are met", () => {
+      expect(
+        isObscure({
+          maxMoviePop: 30,
+          maxShowPop: 50,
+          enMoviesPop5: 5,
+          enShowsPop5: 4,
+          movieCount: 20,
+          episodeCount: 100,
+        })
+      ).toBe(false)
     })
 
-    it("marks as obscure when only profile_path is null", () => {
-      expect(isObscure(null, 50)).toBe(true)
+    it("marks as NOT obscure when only one condition is met", () => {
+      // Only hit movie
+      expect(isObscure({ ...defaultMetrics, maxMoviePop: 25 })).toBe(false)
+      // Only prolific TV
+      expect(isObscure({ ...defaultMetrics, episodeCount: 60 })).toBe(false)
     })
 
-    it("marks as obscure when only popularity is low", () => {
-      expect(isObscure("/path.jpg", 3)).toBe(true)
-    })
-
-    it("does not mark as obscure when both conditions are met (has photo + high popularity)", () => {
-      expect(isObscure("/path.jpg", 10)).toBe(false)
-    })
-  })
-
-  describe("edge cases", () => {
-    it("handles exact threshold value", () => {
-      // Exactly 5.0 should NOT be obscure (>= 5.0 is not obscure)
-      expect(isObscure("/path.jpg", 5.0)).toBe(false)
-    })
-
-    it("handles very small popularity values", () => {
-      expect(isObscure("/path.jpg", 0.001)).toBe(true)
-    })
-
-    it("handles very high popularity values", () => {
-      expect(isObscure("/path.jpg", 1000)).toBe(false)
-    })
-
-    it("handles negative popularity (should not happen but handle gracefully)", () => {
-      expect(isObscure("/path.jpg", -1)).toBe(true)
+    it("marks as obscure when no conditions are met", () => {
+      expect(
+        isObscure({
+          maxMoviePop: 10,
+          maxShowPop: 10,
+          enMoviesPop5: 2,
+          enShowsPop5: 1,
+          movieCount: 5,
+          episodeCount: 20,
+        })
+      ).toBe(true)
     })
   })
-})
 
-// Note: The script always fetches popularity from the TMDB API to ensure
-// accurate, up-to-date values. Cached popularity from actor_appearances is not
-// used because it may be stale or not available for all deceased actors.
-
-vi.mock("../src/lib/tmdb.js", () => ({
-  getPersonDetails: vi.fn(),
-}))
-
-describe("getPopularity", () => {
-  beforeEach(() => {
-    vi.resetAllMocks()
-  })
-
-  it("returns popularity from TMDB API on success", async () => {
-    vi.mocked(tmdb.getPersonDetails).mockResolvedValue({
-      id: 12345,
-      name: "John Smith",
-      birthday: "1950-01-01",
-      deathday: "2020-01-01",
-      biography: "Actor biography",
-      profile_path: "/profile.jpg",
-      place_of_birth: "Los Angeles, CA",
-      imdb_id: "nm0001234",
-      popularity: 42.5,
+  describe("real-world examples", () => {
+    it("Marlon Brando would NOT be obscure (hit movie: The Godfather)", () => {
+      expect(
+        isObscure({
+          maxMoviePop: 43, // The Godfather
+          maxShowPop: 0,
+          enMoviesPop5: 6,
+          enShowsPop5: 0,
+          movieCount: 101,
+          episodeCount: 0,
+        })
+      ).toBe(false)
     })
 
-    const result = await getPopularity(12345)
+    it("Stephen Hawking would NOT be obscure (hit TV show: The Simpsons)", () => {
+      expect(
+        isObscure({
+          maxMoviePop: 10,
+          maxShowPop: 144, // The Simpsons
+          enMoviesPop5: 1,
+          enShowsPop5: 2,
+          movieCount: 6,
+          episodeCount: 5,
+        })
+      ).toBe(false)
+    })
 
-    expect(result).toEqual({ popularity: 42.5 })
-    expect(tmdb.getPersonDetails).toHaveBeenCalledWith(12345)
-  })
+    it("TV-only actor with 3+ popular English shows would NOT be obscure", () => {
+      expect(
+        isObscure({
+          maxMoviePop: 0,
+          maxShowPop: 8,
+          enMoviesPop5: 0,
+          enShowsPop5: 3,
+          movieCount: 0,
+          episodeCount: 15,
+        })
+      ).toBe(false)
+    })
 
-  it("returns null popularity when actor is not found (404)", async () => {
-    vi.mocked(tmdb.getPersonDetails).mockRejectedValue(new Error("404 Not Found"))
+    it("Actor with only foreign films but 10+ movies would NOT be obscure", () => {
+      expect(
+        isObscure({
+          maxMoviePop: 15,
+          maxShowPop: 0,
+          enMoviesPop5: 0,
+          enShowsPop5: 0,
+          movieCount: 12,
+          episodeCount: 0,
+        })
+      ).toBe(false)
+    })
 
-    const result = await getPopularity(99999)
-
-    expect(result).toEqual({ popularity: null })
-  })
-
-  it("re-throws non-404 errors", async () => {
-    const serverError = new Error("500 Internal Server Error")
-    vi.mocked(tmdb.getPersonDetails).mockRejectedValue(serverError)
-
-    await expect(getPopularity(12345)).rejects.toThrow("500 Internal Server Error")
-  })
-
-  it("handles rate limit errors by re-throwing", async () => {
-    const rateLimitError = new Error("429 Too Many Requests")
-    vi.mocked(tmdb.getPersonDetails).mockRejectedValue(rateLimitError)
-
-    await expect(getPopularity(12345)).rejects.toThrow("429 Too Many Requests")
+    it("Actor with few appearances in unpopular content would be obscure", () => {
+      expect(
+        isObscure({
+          maxMoviePop: 5,
+          maxShowPop: 3,
+          enMoviesPop5: 1,
+          enShowsPop5: 0,
+          movieCount: 3,
+          episodeCount: 2,
+        })
+      ).toBe(true)
+    })
   })
 })
