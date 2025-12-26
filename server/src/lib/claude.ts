@@ -41,7 +41,7 @@ const MODEL_RATE_LIMITS: Record<ClaudeModel, number> = {
  * Rate limiter for Claude API requests.
  * Ensures we don't exceed rate limits for each model.
  */
-class ClaudeRateLimiter {
+export class ClaudeRateLimiter {
   private lastRequestTime: Record<ClaudeModel, number> = {
     sonnet: 0,
     haiku: 0,
@@ -300,7 +300,7 @@ If unknown: {"cause": null, "confidence": null, "reasoning": "No reliable inform
  * Validate death details to reject irrelevant content.
  * Returns the validated details string or null if rejected.
  */
-function validateDeathDetails(details: string, cause: string, _name: string): string | null {
+export function validateDeathDetails(details: string, cause: string): string | null {
   const lowerDetails = details.toLowerCase()
 
   // Reject if it mentions family relationships
@@ -340,17 +340,6 @@ function validateDeathDetails(details: string, cause: string, _name: string): st
   const normalizedDetails = lowerDetails.replace(/[^a-z]/g, "")
   if (normalizedDetails.length < normalizedCause.length + 20) {
     console.log(`  Rejected: too short to contain meaningful context`)
-    return null
-  }
-
-  // Reject if it talks about someone other than the actor
-  if (
-    lowerDetails.includes("his wife") ||
-    lowerDetails.includes("her husband") ||
-    lowerDetails.includes("their son") ||
-    lowerDetails.includes("their daughter")
-  ) {
-    console.log(`  Rejected: references to other people`)
     return null
   }
 
@@ -421,7 +410,7 @@ Respond with ONLY the details text (1-2 sentences) or null. No JSON, no quotes a
     }
 
     // Validate the details
-    const validated = validateDeathDetails(responseText, verifiedCause, name)
+    const validated = validateDeathDetails(responseText, verifiedCause)
     if (!validated) {
       console.log(`Claude details rejected for ${name}: "${responseText.substring(0, 50)}..."`)
       return null
