@@ -309,4 +309,35 @@ describe("HoverTooltip", () => {
 
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
+
+  it("calls onOpen again after closing with Escape and reopening", async () => {
+    const onOpen = vi.fn()
+    render(
+      <HoverTooltip content="Tooltip content" onOpen={onOpen}>
+        <span>Trigger text</span>
+      </HoverTooltip>
+    )
+
+    const trigger = screen.getByText("Trigger text").parentElement!
+
+    // Open with Enter
+    fireEvent.keyDown(trigger, { key: "Enter" })
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+    expect(onOpen).toHaveBeenCalledTimes(1)
+
+    // Close with Escape
+    fireEvent.keyDown(trigger, { key: "Escape" })
+    await waitFor(() => {
+      expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
+    })
+
+    // Open again with Enter - onOpen should be called again
+    fireEvent.keyDown(trigger, { key: "Enter" })
+    await waitFor(() => {
+      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    })
+    expect(onOpen).toHaveBeenCalledTimes(2)
+  })
 })

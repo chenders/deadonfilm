@@ -200,6 +200,7 @@ export default function HoverTooltip({
       }
     } else if (e.key === "Escape" && showTooltip) {
       setShowTooltip(false)
+      hasCalledOnOpen.current = false
     }
   }
 

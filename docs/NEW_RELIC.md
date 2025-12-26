@@ -151,9 +151,13 @@ The application tracks the following custom events automatically:
 | `Search` | query, type, resultCount, responseTimeMs | Searches performed |
 | `MovieView` | tmdbId, title, releaseYear, deceasedCount, livingCount, expectedDeaths, curseScore, responseTimeMs | Movie page views |
 | `ShowView` | tmdbId, name, firstAirYear, deceasedCount, livingCount, expectedDeaths, curseScore, isEnded, responseTimeMs | TV show page views |
+| `ActorView` | tmdbId, name, isDeceased, filmographyCount, hasCauseOfDeath, responseTimeMs | Individual actor profile views |
 | `CursedMoviesQuery` | page, fromDecade, toDecade, minDeaths, includeObscure, resultCount, totalCount, responseTimeMs | Cursed movies list queries |
 | `CursedActorsQuery` | page, status, fromYear, toYear, minMovies, resultCount, totalCount, responseTimeMs | Cursed actors list queries |
 | `CovidDeathsQuery` | page, includeObscure, resultCount, totalCount, responseTimeMs | COVID deaths list queries |
+| `DeathsByCauseQuery` | cause, page, includeObscure, resultCount, totalCount, responseTimeMs | Deaths filtered by cause of death |
+| `DeathsByDecadeQuery` | decade, page, includeObscure, resultCount, totalCount, responseTimeMs | Deaths filtered by decade |
+| `AllDeathsQuery` | page, includeObscure, resultCount, totalCount, responseTimeMs | All recorded deaths list queries |
 | `CauseOfDeathLookup` | personName, source, success, hasDetails | Death info lookups (source: claude/wikipedia/none) |
 
 ### Frontend Events (Page Actions)
