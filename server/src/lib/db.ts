@@ -1089,7 +1089,7 @@ export async function getSiteStats(): Promise<SiteStats> {
     avg_mortality: string | null
   }>(`
     SELECT
-      (SELECT COUNT(*) FROM actors) as total_actors,
+      (SELECT COUNT(*) FROM actors WHERE deathday IS NOT NULL) as total_actors,
       (SELECT COUNT(*) FROM movies WHERE mortality_surprise_score IS NOT NULL) as total_movies,
       (SELECT cause_of_death FROM actors
        WHERE cause_of_death IS NOT NULL
@@ -1231,6 +1231,7 @@ export async function getRecentDeaths(limit: number = 5): Promise<
   const result = await db.query(
     `SELECT tmdb_id, name, deathday, cause_of_death, profile_path
      FROM actors
+     WHERE deathday IS NOT NULL
      ORDER BY deathday DESC
      LIMIT $1`,
     [limit]
