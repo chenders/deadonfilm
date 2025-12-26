@@ -57,7 +57,7 @@ const program = new Command()
     await runBackfill(options)
   })
 
-async function showStats(): Promise<void> {
+async function showStats(closePool = true): Promise<void> {
   const db = getPool()
 
   try {
@@ -164,7 +164,9 @@ async function showStats(): Promise<void> {
     )
     console.log("=".repeat(70) + "\n")
   } finally {
-    await db.end()
+    if (closePool) {
+      await db.end()
+    }
   }
 }
 
@@ -269,7 +271,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
     if (dryRun) {
       console.log("\n(DRY RUN - no changes made)")
-      await showStats()
+      await showStats(false)
       return
     }
 
@@ -331,8 +333,8 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
     console.log(`Updated ${updateResult.rowCount} actors.`)
 
-    // Show final stats
-    await showStats()
+    // Show final stats (don't close pool here, we'll close it in finally)
+    await showStats(false)
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)
