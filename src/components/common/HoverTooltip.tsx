@@ -10,6 +10,7 @@ interface HoverTooltipProps {
   content: string
   children: React.ReactNode
   className?: string
+  testId?: string
 }
 
 function TooltipContent({
@@ -18,12 +19,14 @@ function TooltipContent({
   isVisible,
   onMouseEnter,
   onMouseLeave,
+  testId = "hover-tooltip",
 }: {
   content: string
   triggerRef: React.RefObject<HTMLElement | null>
   isVisible: boolean
   onMouseEnter: () => void
   onMouseLeave: () => void
+  testId?: string
 }) {
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<TooltipPosition | null>(null)
@@ -80,7 +83,7 @@ function TooltipContent({
   return createPortal(
     <div
       ref={tooltipRef}
-      data-testid="hover-tooltip"
+      data-testid={testId}
       className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
       style={{
         top: position?.top ?? -9999,
@@ -103,7 +106,12 @@ function TooltipContent({
   )
 }
 
-export default function HoverTooltip({ content, children, className = "" }: HoverTooltipProps) {
+export default function HoverTooltip({
+  content,
+  children,
+  className = "",
+  testId,
+}: HoverTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false)
   const triggerRef = useRef<HTMLSpanElement>(null)
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -123,12 +131,60 @@ export default function HoverTooltip({ content, children, className = "" }: Hove
     }, 100)
   }
 
+  // Toggle on click/tap for mobile support
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setShowTooltip((prev) => !prev)
+  }
+
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    if (!showTooltip) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node
+      const isInsideTrigger = triggerRef.current?.contains(target)
+      const isInsideTooltip = document
+        .querySelector(`[data-testid="${testId || "hover-tooltip"}"]`)
+        ?.contains(target)
+
+      if (!isInsideTrigger && !isInsideTooltip) {
+        setShowTooltip(false)
+      }
+    }
+
+    // Delay adding listener to prevent immediate close from the opening click
+    const timeoutId = setTimeout(() => {
+      document.addEventListener("click", handleClickOutside)
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener("click", handleClickOutside)
+    }
+  }, [showTooltip, testId])
+
+  // Toggle on keyboard for accessibility
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      setShowTooltip((prev) => !prev)
+    } else if (e.key === "Escape" && showTooltip) {
+      setShowTooltip(false)
+    }
+  }
+
   return (
     <span
       ref={triggerRef}
+      role="button"
+      tabIndex={0}
       className={`cursor-help ${className}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
     >
       {children}
       <TooltipContent
@@ -137,6 +193,7 @@ export default function HoverTooltip({ content, children, className = "" }: Hove
         isVisible={showTooltip}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        testId={testId}
       />
     </span>
   )
