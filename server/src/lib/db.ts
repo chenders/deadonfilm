@@ -1481,12 +1481,29 @@ export interface UnnaturalDeathsOptions {
   includeObscure?: boolean
 }
 
-// Escape single quotes in SQL LIKE patterns for safety
+/**
+ * SQL Pattern Building for Unnatural Deaths
+ *
+ * SECURITY NOTE: These functions build SQL fragments from HARDCODED CONSTANTS only.
+ * The patterns come from UNNATURAL_DEATH_CATEGORIES (defined above with `as const`),
+ * which are compile-time string literals, NOT user input.
+ *
+ * This is an intentional exception to the "no string interpolation" SQL guideline because:
+ * 1. All patterns are hardcoded constants defined in this file
+ * 2. Patterns are escaped via escapeSqlLikePattern() for defense-in-depth
+ * 3. PostgreSQL doesn't support parameterized LIKE patterns efficiently
+ * 4. Refactoring to parameterized queries would require significant complexity
+ *    (dynamic parameter counts, array unnesting) with no security benefit
+ *
+ * DO NOT use these functions with user-provided input.
+ */
+
+// Escape single quotes in SQL LIKE patterns for defense-in-depth
 function escapeSqlLikePattern(pattern: string): string {
   return pattern.replace(/'/g, "''")
 }
 
-// Build SQL condition for a category's patterns
+// Build SQL condition for a category's patterns (hardcoded constants only)
 function buildCategoryCondition(patterns: readonly string[]): string {
   return patterns
     .map((p) => {
