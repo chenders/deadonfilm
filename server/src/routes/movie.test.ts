@@ -11,9 +11,9 @@ vi.mock("../lib/tmdb.js", () => ({
 vi.mock("../lib/db.js", () => ({
   getActors: vi.fn(),
   batchUpsertActors: vi.fn(),
-  updateDeathInfo: vi.fn(),
-  upsertMovie: vi.fn(),
-  batchUpsertActorMovieAppearances: vi.fn(),
+  updateDeathInfo: vi.fn().mockResolvedValue(undefined),
+  upsertMovie: vi.fn().mockResolvedValue(undefined),
+  batchUpsertActorMovieAppearances: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("../lib/mortality-stats.js", () => ({
