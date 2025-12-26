@@ -21,6 +21,7 @@ import {
   type TMDBPerson,
 } from "../src/lib/tmdb.js"
 import { getCauseOfDeath } from "../src/lib/wikidata.js"
+// Use haiku for bulk seeding operations to save cost (rate limiting is handled by claude.ts)
 import { batchUpsertActors, type ActorInput } from "../src/lib/db.js"
 import { calculateYearsLost } from "../src/lib/mortality-stats.js"
 
@@ -137,7 +138,7 @@ async function runSeeding(startYear: number, endYear: number) {
           causeOfDeathDetails,
           causeOfDeathDetailsSource,
           wikipediaUrl,
-        } = await getCauseOfDeath(actor.name, actor.birthday, actor.deathday!)
+        } = await getCauseOfDeath(actor.name, actor.birthday, actor.deathday!, "haiku")
 
         // Calculate mortality stats
         const yearsLostResult = await calculateYearsLost(actor.birthday, actor.deathday!)
@@ -164,8 +165,7 @@ async function runSeeding(startYear: number, endYear: number) {
           console.log(`    -> (cause unknown)`)
         }
 
-        // Small delay between cause of death lookups
-        await delay(200)
+        // Note: Rate limiting is handled by the centralized rate limiter in claude.ts
       } catch (error) {
         console.error(`    Error: ${error}`)
         // Still add the record without cause of death

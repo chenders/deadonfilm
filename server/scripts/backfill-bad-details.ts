@@ -16,6 +16,7 @@
 import "dotenv/config"
 import { Command } from "commander"
 import pg from "pg"
+// Note: Rate limiting is handled by the centralized rate limiter in claude.ts
 import { getCauseOfDeathFromClaude } from "../src/lib/claude.js"
 
 const { Pool } = pg
@@ -218,8 +219,7 @@ async function runBackfill(dryRun: boolean) {
         cleared++
       }
 
-      // Rate limit
-      await new Promise((r) => setTimeout(r, 300))
+      // Note: Rate limiting is handled by the centralized rate limiter in claude.ts
     }
 
     console.log(`\nDone!`)
