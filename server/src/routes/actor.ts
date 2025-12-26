@@ -1,6 +1,7 @@
 import type { Request, Response } from "express"
 import { getPersonDetails } from "../lib/tmdb.js"
 import { getActorFilmography, getActor as getActorRecord } from "../lib/db.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -38,6 +39,8 @@ export async function getActor(req: Request, res: Response) {
   }
 
   try {
+    const startTime = Date.now()
+
     // Fetch actor details from TMDB
     const person = await getPersonDetails(actorId)
 
@@ -81,6 +84,15 @@ export async function getActor(req: Request, res: Response) {
       analyzedFilmography: filmography,
       deathInfo,
     }
+
+    recordCustomEvent("ActorView", {
+      tmdbId: actorId,
+      name: person.name,
+      isDeceased: !!person.deathday,
+      filmographyCount: filmography.length,
+      hasCauseOfDeath: !!deathInfo?.causeOfDeath,
+      responseTimeMs: Date.now() - startTime,
+    })
 
     res.json(response)
   } catch (error) {

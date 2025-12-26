@@ -16,6 +16,12 @@ vi.mock("../lib/db.js", () => ({
   getForeverYoungMoviesPaginated: vi.fn(),
 }))
 
+vi.mock("../lib/newrelic.js", () => ({
+  recordCustomEvent: vi.fn(),
+}))
+
+import { recordCustomEvent } from "../lib/newrelic.js"
+
 describe("getCursedMovies", () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
@@ -316,6 +322,30 @@ describe("getCursedMovies", () => {
         totalPages: 3,
       },
     })
+  })
+
+  it("records CursedMoviesQuery custom event with correct attributes", async () => {
+    mockReq.query = { page: "2", from: "1980", to: "1990", minDeaths: "5", includeObscure: "true" }
+    vi.mocked(db.getHighMortalityMovies).mockResolvedValueOnce({
+      movies: mockMovies,
+      totalCount: 50,
+    })
+
+    await getCursedMovies(mockReq as Request, mockRes as Response)
+
+    expect(recordCustomEvent).toHaveBeenCalledWith(
+      "CursedMoviesQuery",
+      expect.objectContaining({
+        page: 2,
+        fromDecade: 1980,
+        toDecade: 1990,
+        minDeaths: 5,
+        includeObscure: true,
+        resultCount: 2,
+        totalCount: 50,
+        responseTimeMs: expect.any(Number),
+      })
+    )
   })
 })
 

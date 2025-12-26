@@ -23,6 +23,12 @@ vi.mock("../lib/db.js", () => ({
   },
 }))
 
+vi.mock("../lib/newrelic.js", () => ({
+  recordCustomEvent: vi.fn(),
+}))
+
+import { recordCustomEvent } from "../lib/newrelic.js"
+
 describe("getStats", () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
@@ -423,6 +429,27 @@ describe("getCovidDeathsHandler", () => {
         pagination: expect.objectContaining({
           totalPages: 3, // Math.ceil(125 / 50) = 3
         }),
+      })
+    )
+  })
+
+  it("records CovidDeathsQuery custom event with correct attributes", async () => {
+    mockReq.query = { page: "2", includeObscure: "true" }
+    vi.mocked(db.getCovidDeaths).mockResolvedValueOnce({
+      persons: mockCovidPersons,
+      totalCount: 75,
+    })
+
+    await getCovidDeathsHandler(mockReq as Request, mockRes as Response)
+
+    expect(recordCustomEvent).toHaveBeenCalledWith(
+      "CovidDeathsQuery",
+      expect.objectContaining({
+        page: 2,
+        includeObscure: true,
+        resultCount: 2,
+        totalCount: 75,
+        responseTimeMs: expect.any(Number),
       })
     )
   })
