@@ -325,4 +325,74 @@ describe("AllDeathsPage", () => {
       expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1)
     })
   })
+
+  it("renders include obscure filter checkbox", async () => {
+    vi.mocked(api.getAllDeaths).mockResolvedValue({
+      deaths: mockDeaths,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<AllDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("include-obscure-filter")).toBeInTheDocument()
+      expect(screen.getByText("Include lesser-known actors")).toBeInTheDocument()
+    })
+  })
+
+  it("calls API with includeObscure when checkbox is checked", async () => {
+    vi.mocked(api.getAllDeaths).mockResolvedValue({
+      deaths: mockDeaths,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<AllDeathsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("include-obscure-filter")).toBeInTheDocument()
+    })
+
+    const checkbox = screen.getByRole("checkbox")
+    fireEvent.click(checkbox)
+
+    await waitFor(() => {
+      expect(api.getAllDeaths).toHaveBeenCalledWith({
+        page: 1,
+        includeObscure: true,
+      })
+    })
+  })
+
+  it("reads includeObscure from URL parameters", async () => {
+    vi.mocked(api.getAllDeaths).mockResolvedValue({
+      deaths: mockDeaths,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<AllDeathsPage />, {
+      initialEntries: ["/deaths/all?includeObscure=true"],
+    })
+
+    await waitFor(() => {
+      expect(api.getAllDeaths).toHaveBeenCalledWith({
+        page: 1,
+        includeObscure: true,
+      })
+    })
+  })
+
+  it("shows different description when includeObscure is checked", async () => {
+    vi.mocked(api.getAllDeaths).mockResolvedValue({
+      deaths: mockDeaths,
+      pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+    })
+
+    renderWithProviders(<AllDeathsPage />, {
+      initialEntries: ["/deaths/all?includeObscure=true"],
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/All deceased actors in our database/)).toBeInTheDocument()
+    })
+  })
 })
