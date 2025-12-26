@@ -234,10 +234,10 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
     }
 
     // Parse showSelfInflicted parameter (defaults to false, meaning suicides are hidden)
-    // Also support legacy hideSuicides parameter for backwards compatibility
+    // New param:  showSelfInflicted=true  => show suicides
+    // Legacy param: hideSuicides=false    => show suicides
     const showSelfInflicted =
-      req.query.showSelfInflicted === "true" ||
-      (req.query.hideSuicides !== undefined && req.query.hideSuicides !== "true")
+      req.query.showSelfInflicted === "true" || req.query.hideSuicides === "false"
 
     const { persons, totalCount, categoryCounts } = await getUnnaturalDeaths({
       limit: pageSize,

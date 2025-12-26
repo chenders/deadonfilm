@@ -1534,7 +1534,7 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
   // hideSuicides=true means hide suicides (deprecated)
   // Default: hide suicides (showSelfInflicted=false)
   const shouldHideSuicides =
-    showSelfInflicted !== undefined ? !showSelfInflicted : hideSuicides || true
+    showSelfInflicted !== undefined ? !showSelfInflicted : (hideSuicides ?? true)
 
   // Build WHERE clause based on category and suicide visibility
   let whereCondition: string
