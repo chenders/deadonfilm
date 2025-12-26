@@ -6,6 +6,7 @@ import {
   getForeverYoungMoviesPaginated,
 } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 
 interface DiscoverMovieResponse {
   id: number
@@ -57,6 +58,7 @@ export async function getDiscoverMovie(req: Request, res: Response) {
 // Supports pagination and filtering by decade range and minimum deaths
 export async function getCursedMovies(req: Request, res: Response) {
   try {
+    const startTime = Date.now()
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const pageSize = Math.min(parseInt(req.query.limit as string) || 50, 100)
     const offset = (page - 1) * pageSize
@@ -105,6 +107,18 @@ export async function getCursedMovies(req: Request, res: Response) {
         totalPages,
       },
     }
+
+    recordCustomEvent("CursedMoviesQuery", {
+      page,
+      fromDecade: fromDecade ?? 0,
+      toDecade: toDecade ?? 0,
+      minDeaths: minDeadActors,
+      includeObscure,
+      resultCount: result.length,
+      totalCount,
+      responseTimeMs: Date.now() - startTime,
+    })
+
     sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Cursed movies error:", error)

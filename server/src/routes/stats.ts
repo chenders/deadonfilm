@@ -12,6 +12,7 @@ import {
   type UnnaturalDeathCategory,
 } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 
 export async function getStats(req: Request, res: Response) {
   try {
@@ -51,6 +52,8 @@ export async function getRecentDeathsHandler(req: Request, res: Response) {
 
 export async function getCovidDeathsHandler(req: Request, res: Response) {
   try {
+    const startTime = Date.now()
+
     // Check if database is available
     if (!process.env.DATABASE_URL) {
       return res.json({
@@ -88,6 +91,15 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
         totalPages: Math.ceil(totalCount / pageSize),
       },
     }
+
+    recordCustomEvent("CovidDeathsQuery", {
+      page,
+      includeObscure,
+      resultCount: persons.length,
+      totalCount,
+      responseTimeMs: Date.now() - startTime,
+    })
+
     sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("COVID deaths error:", error)

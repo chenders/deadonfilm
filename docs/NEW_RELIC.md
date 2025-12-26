@@ -140,6 +140,89 @@ try {
 }
 ```
 
+## Custom Events Reference
+
+The application tracks the following custom events automatically:
+
+### Backend Events
+
+| Event | Attributes | Description |
+|-------|-----------|-------------|
+| `Search` | query, type, resultCount, responseTimeMs | Searches performed |
+| `MovieView` | tmdbId, title, releaseYear, deceasedCount, livingCount, expectedDeaths, curseScore, responseTimeMs | Movie page views |
+| `ShowView` | tmdbId, name, firstAirYear, deceasedCount, livingCount, expectedDeaths, curseScore, isEnded, responseTimeMs | TV show page views |
+| `CursedMoviesQuery` | page, fromDecade, toDecade, minDeaths, includeObscure, resultCount, totalCount, responseTimeMs | Cursed movies list queries |
+| `CursedActorsQuery` | page, status, fromYear, toYear, minMovies, resultCount, totalCount, responseTimeMs | Cursed actors list queries |
+| `CovidDeathsQuery` | page, includeObscure, resultCount, totalCount, responseTimeMs | COVID deaths list queries |
+| `CauseOfDeathLookup` | personName, source, success, hasDetails | Death info lookups (source: claude/wikipedia/none) |
+
+### Frontend Events (Page Actions)
+
+| Event | Attributes | Description |
+|-------|-----------|-------------|
+| `view_death_details` | actorName, causeOfDeath | User views death details tooltip (hover/click) |
+
+### Example NRQL Queries
+
+```sql
+-- Search analytics
+SELECT count(*) FROM Search FACET type SINCE 1 day ago
+
+-- Most viewed movies
+SELECT count(*) FROM MovieView FACET title SINCE 1 week ago LIMIT 20
+
+-- Cause of death source breakdown
+SELECT count(*) FROM CauseOfDeathLookup FACET source SINCE 1 day ago
+
+-- Average response times by endpoint
+SELECT average(responseTimeMs) FROM MovieView, ShowView, Search FACET eventType SINCE 1 hour ago TIMESERIES
+```
+
+## Updating nri-bundle
+
+Check current version:
+
+```bash
+helm list -n deadonfilm | grep newrelic
+```
+
+Update to latest:
+
+```bash
+helm repo update newrelic
+helm upgrade newrelic-bundle newrelic/nri-bundle \
+  -n deadonfilm \
+  --values k8s/values.yaml \
+  --values k8s/values-secrets.yaml
+```
+
+## Neon Database Monitoring (Optional)
+
+Neon PostgreSQL supports OpenTelemetry for sending database metrics to New Relic.
+
+**Prerequisite:** Requires Neon Scale or Business plan (not available on Launch plan).
+
+### Setup
+
+1. In Neon Console, go to your project → **Integrations** → **OpenTelemetry**
+2. Configure:
+   - **Telemetry to export:** Metrics + Postgres logs
+   - **Connection:** HTTP
+   - **Endpoint:** `https://otlp.nr-data.net`
+   - **Authentication:** Bearer
+   - **Bearer Token:** Your New Relic License Key
+   - **Resource attributes:** `service.name: neon-deadonfilm`
+3. Click **Save**
+
+### Available Metrics
+
+- Query latency
+- Connection pool usage
+- Storage consumption
+- Compute utilization
+
+See: https://neon.com/guides/newrelic-otel-neon
+
 ## Troubleshooting
 
 ### Backend agent not starting

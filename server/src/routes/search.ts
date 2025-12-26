@@ -5,6 +5,7 @@ import {
   type TMDBMovie,
   type TMDBTVShow,
 } from "../lib/tmdb.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 
 // Unified search result type
 interface SearchResult {
@@ -132,6 +133,7 @@ export async function searchMovies(req: Request, res: Response) {
   }
 
   try {
+    const startTime = Date.now()
     const results: SearchResult[] = []
 
     // Fetch movies if type is 'movie' or 'all'
@@ -190,6 +192,13 @@ export async function searchMovies(req: Request, res: Response) {
         if (i < tvShows.length) finalResults.push(tvShows[i])
       }
     }
+
+    recordCustomEvent("Search", {
+      query,
+      type,
+      resultCount: finalResults.length,
+      responseTimeMs: Date.now() - startTime,
+    })
 
     res.json({
       results: finalResults,

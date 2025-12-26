@@ -1,11 +1,13 @@
 import type { Request, Response } from "express"
 import { getCursedActors } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
 
 // Get list of cursed actors (actors whose co-stars have died at unusually high rates)
 // Supports pagination and filtering by actor status, decade range, and minimum movies
 export async function getCursedActorsRoute(req: Request, res: Response) {
   try {
+    const startTime = Date.now()
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const pageSize = Math.min(parseInt(req.query.limit as string) || 50, 100)
     const offset = (page - 1) * pageSize
@@ -56,6 +58,18 @@ export async function getCursedActorsRoute(req: Request, res: Response) {
         totalPages,
       },
     }
+
+    recordCustomEvent("CursedActorsQuery", {
+      page,
+      status: actorStatus,
+      fromYear: fromYear ?? 0,
+      toYear: toYear ?? 0,
+      minMovies,
+      resultCount: result.length,
+      totalCount,
+      responseTimeMs: Date.now() - startTime,
+    })
+
     sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
     console.error("Cursed actors error:", error)

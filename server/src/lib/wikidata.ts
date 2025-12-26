@@ -1,4 +1,5 @@
 import { getCauseOfDeathFromClaude, isVagueCause } from "./claude.js"
+import { recordCustomEvent } from "./newrelic.js"
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
 const MAX_DEATH_DETAILS_LENGTH = 200
@@ -56,20 +57,37 @@ export async function getCauseOfDeath(
       }
     }
 
-    return {
+    const result = {
       causeOfDeath: claudeResult.causeOfDeath,
-      causeOfDeathSource: "claude",
+      causeOfDeathSource: "claude" as DeathInfoSource,
       causeOfDeathDetails: details,
       causeOfDeathDetailsSource: detailsSource,
       wikipediaUrl: wikiUrl,
     }
+
+    recordCustomEvent("CauseOfDeathLookup", {
+      personName: name,
+      source: result.causeOfDeathSource ?? "none",
+      success: result.causeOfDeath !== null,
+      hasDetails: result.causeOfDeathDetails !== null,
+    })
+
+    return result
   }
 
   // 2. Fall back to Wikidata/Wikipedia if Claude unavailable or returned vague answer
   if (!birthday) {
+    const source: DeathInfoSource = claudeResult.causeOfDeath ? "claude" : null
+    recordCustomEvent("CauseOfDeathLookup", {
+      personName: name,
+      source: source ?? "none",
+      success: claudeResult.causeOfDeath !== null,
+      hasDetails: claudeResult.details !== null,
+    })
+
     return {
       causeOfDeath: claudeResult.causeOfDeath,
-      causeOfDeathSource: claudeResult.causeOfDeath ? "claude" : null,
+      causeOfDeathSource: source,
       causeOfDeathDetails: claudeResult.details,
       causeOfDeathDetailsSource: claudeResult.details ? "claude" : null,
       wikipediaUrl: null,
@@ -90,9 +108,17 @@ export async function getCauseOfDeath(
 
     if (!response.ok) {
       console.log(`Wikidata error: ${response.status} ${response.statusText}`)
+      const source: DeathInfoSource = claudeResult.causeOfDeath ? "claude" : null
+      recordCustomEvent("CauseOfDeathLookup", {
+        personName: name,
+        source: source ?? "none",
+        success: claudeResult.causeOfDeath !== null,
+        hasDetails: claudeResult.details !== null,
+      })
+
       return {
         causeOfDeath: claudeResult.causeOfDeath,
-        causeOfDeathSource: claudeResult.causeOfDeath ? "claude" : null,
+        causeOfDeathSource: source,
         causeOfDeathDetails: claudeResult.details,
         causeOfDeathDetailsSource: claudeResult.details ? "claude" : null,
         wikipediaUrl: null,
@@ -143,6 +169,13 @@ export async function getCauseOfDeath(
       `Final result for ${name}: cause="${causeOfDeath}" (${causeOfDeathSource}), url="${wikidataResult.wikipediaUrl}"`
     )
 
+    recordCustomEvent("CauseOfDeathLookup", {
+      personName: name,
+      source: causeOfDeathSource ?? "none",
+      success: causeOfDeath !== null,
+      hasDetails: causeOfDeathDetails !== null,
+    })
+
     return {
       causeOfDeath,
       causeOfDeathSource,
@@ -152,9 +185,17 @@ export async function getCauseOfDeath(
     }
   } catch (error) {
     console.log(`Wikidata error for ${name}:`, error)
+    const source: DeathInfoSource = claudeResult.causeOfDeath ? "claude" : null
+    recordCustomEvent("CauseOfDeathLookup", {
+      personName: name,
+      source: source ?? "none",
+      success: claudeResult.causeOfDeath !== null,
+      hasDetails: claudeResult.details !== null,
+    })
+
     return {
       causeOfDeath: claudeResult.causeOfDeath,
-      causeOfDeathSource: claudeResult.causeOfDeath ? "claude" : null,
+      causeOfDeathSource: source,
       causeOfDeathDetails: claudeResult.details,
       causeOfDeathDetailsSource: claudeResult.details ? "claude" : null,
       wikipediaUrl: null,
