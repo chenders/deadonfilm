@@ -37,6 +37,7 @@
     "backfill:actor-obscure": "tsx scripts/backfill-actor-obscure.ts",
     "fix:death-info": "tsx scripts/fix-bad-death-info.ts",
     "fix:death-details": "tsx scripts/fix-death-details.ts",
+    "refetch:death-details": "tsx scripts/refetch-death-details.ts",
     "sync:tmdb": "node dist/scripts/sync-tmdb-changes.js || tsx scripts/sync-tmdb-changes.ts",
     "migrate": "node-pg-migrate",
     "migrate:up": "node-pg-migrate up",
