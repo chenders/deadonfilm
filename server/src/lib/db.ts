@@ -743,21 +743,22 @@ export interface DeathByCauseRecord {
 export interface DeathsByCauseOptions {
   limit?: number
   offset?: number
+  includeObscure?: boolean
 }
 
 export async function getDeathsByCause(
   cause: string,
   options: DeathsByCauseOptions = {}
 ): Promise<{ deaths: DeathByCauseRecord[]; totalCount: number }> {
-  const { limit = 50, offset = 0 } = options
+  const { limit = 50, offset = 0, includeObscure = false } = options
   const db = getPool()
 
   // Get total count
   const countResult = await db.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM actors
-     WHERE LOWER(cause_of_death) = LOWER($1)`,
-    [cause]
+     WHERE LOWER(cause_of_death) = LOWER($1) AND ($2 = true OR is_obscure = false)`,
+    [cause, includeObscure]
   )
   const totalCount = parseInt(countResult.rows[0].count, 10)
 
@@ -766,10 +767,10 @@ export async function getDeathsByCause(
     `SELECT tmdb_id, name, deathday::text, profile_path, cause_of_death,
             cause_of_death_details, age_at_death, years_lost
      FROM actors
-     WHERE LOWER(cause_of_death) = LOWER($1)
+     WHERE LOWER(cause_of_death) = LOWER($1) AND ($4 = true OR is_obscure = false)
      ORDER BY deathday DESC NULLS LAST, name
      LIMIT $2 OFFSET $3`,
-    [cause, limit, offset]
+    [cause, limit, offset, includeObscure]
   )
 
   return { deaths: result.rows, totalCount }
@@ -816,13 +817,14 @@ export interface DeathByDecadeRecord {
 export interface DeathsByDecadeOptions {
   limit?: number
   offset?: number
+  includeObscure?: boolean
 }
 
 export async function getDeathsByDecade(
   decade: number,
   options: DeathsByDecadeOptions = {}
 ): Promise<{ deaths: DeathByDecadeRecord[]; totalCount: number }> {
-  const { limit = 50, offset = 0 } = options
+  const { limit = 50, offset = 0, includeObscure = false } = options
   const db = getPool()
   const decadeEnd = decade + 9
 
@@ -830,8 +832,9 @@ export async function getDeathsByDecade(
   const countResult = await db.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM actors
-     WHERE EXTRACT(YEAR FROM deathday) BETWEEN $1 AND $2`,
-    [decade, decadeEnd]
+     WHERE EXTRACT(YEAR FROM deathday) BETWEEN $1 AND $2
+     AND ($3 = true OR is_obscure = false)`,
+    [decade, decadeEnd, includeObscure]
   )
   const totalCount = parseInt(countResult.rows[0].count, 10)
 
@@ -841,9 +844,10 @@ export async function getDeathsByDecade(
             age_at_death, years_lost
      FROM actors
      WHERE EXTRACT(YEAR FROM deathday) BETWEEN $1 AND $2
+     AND ($5 = true OR is_obscure = false)
      ORDER BY deathday DESC NULLS LAST, name
      LIMIT $3 OFFSET $4`,
-    [decade, decadeEnd, limit, offset]
+    [decade, decadeEnd, limit, offset, includeObscure]
   )
 
   return { deaths: result.rows, totalCount }
@@ -1360,6 +1364,7 @@ export interface ActorFilmographyMovie {
 export interface CovidDeathOptions {
   limit?: number
   offset?: number
+  includeObscure?: boolean
 }
 
 // Get deceased persons who died from COVID-19 or related causes
@@ -1367,21 +1372,22 @@ export async function getCovidDeaths(options: CovidDeathOptions = {}): Promise<{
   persons: ActorRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0 } = options
+  const { limit = 50, offset = 0, includeObscure = false } = options
   const db = getPool()
 
   const result = await db.query<ActorRecord & { total_count: string }>(
     `SELECT COUNT(*) OVER () as total_count, *
      FROM actors
-     WHERE cause_of_death ILIKE '%covid%'
+     WHERE (cause_of_death ILIKE '%covid%'
         OR cause_of_death ILIKE '%coronavirus%'
         OR cause_of_death ILIKE '%sars-cov-2%'
         OR cause_of_death_details ILIKE '%covid%'
         OR cause_of_death_details ILIKE '%coronavirus%'
-        OR cause_of_death_details ILIKE '%sars-cov-2%'
+        OR cause_of_death_details ILIKE '%sars-cov-2%')
+     AND ($3 = true OR is_obscure = false)
      ORDER BY deathday DESC
      LIMIT $1 OFFSET $2`,
-    [limit, offset]
+    [limit, offset, includeObscure]
   )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
@@ -1470,7 +1476,9 @@ export interface UnnaturalDeathsOptions {
   limit?: number
   offset?: number
   category?: UnnaturalDeathCategory | "all"
-  hideSuicides?: boolean
+  hideSuicides?: boolean // Deprecated - use showSelfInflicted instead
+  showSelfInflicted?: boolean
+  includeObscure?: boolean
 }
 
 // Escape single quotes in SQL LIKE patterns for safety
@@ -1511,14 +1519,30 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
   totalCount: number
   categoryCounts: Record<UnnaturalDeathCategory, number>
 }> {
-  const { limit = 50, offset = 0, category = "all", hideSuicides = false } = options
+  const {
+    limit = 50,
+    offset = 0,
+    category = "all",
+    hideSuicides = false,
+    showSelfInflicted,
+    includeObscure = false,
+  } = options
   const db = getPool()
 
-  // Build WHERE clause based on category and hideSuicides
+  // Support both old hideSuicides and new showSelfInflicted parameters
+  // showSelfInflicted=true means show suicides, showSelfInflicted=false means hide
+  // hideSuicides=true means hide suicides (deprecated)
+  // Default: hide suicides (showSelfInflicted=false)
+  const shouldHideSuicides =
+    showSelfInflicted !== undefined ? !showSelfInflicted : hideSuicides || true
+
+  // Build WHERE clause based on category and suicide visibility
   let whereCondition: string
   if (category === "all") {
-    whereCondition = hideSuicides ? getNonSuicideUnnaturalPatterns() : getAllUnnaturalPatterns()
-  } else if (category === "suicide" && hideSuicides) {
+    whereCondition = shouldHideSuicides
+      ? getNonSuicideUnnaturalPatterns()
+      : getAllUnnaturalPatterns()
+  } else if (category === "suicide" && shouldHideSuicides) {
     // User is filtering to suicide but also hiding suicides - return empty
     return {
       persons: [],
@@ -1534,18 +1558,18 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
   const result = await db.query<ActorRecord & { total_count: string }>(
     `SELECT COUNT(*) OVER () as total_count, *
      FROM actors
-     WHERE ${whereCondition}
+     WHERE (${whereCondition}) AND ($3 = true OR is_obscure = false)
      ORDER BY deathday DESC
      LIMIT $1 OFFSET $2`,
-    [limit, offset]
+    [limit, offset, includeObscure]
   )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
   const persons = result.rows.map(({ total_count: _total_count, ...person }) => person)
 
-  // Get counts for each category (for the filter badges)
-  const categoryCountsResult = await db.query<{ category: string; count: string }>(`
-    SELECT
+  // Get counts for each category (for the filter badges) - also apply obscure filter
+  const categoryCountsResult = await db.query<{ category: string; count: string }>(
+    `SELECT
       CASE
         WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)} THEN 'suicide'
         WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.accident.patterns)} THEN 'accident'
@@ -1555,9 +1579,10 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
       END as category,
       COUNT(*) as count
     FROM actors
-    WHERE ${getAllUnnaturalPatterns()}
-    GROUP BY category
-  `)
+    WHERE (${getAllUnnaturalPatterns()}) AND ($1 = true OR is_obscure = false)
+    GROUP BY category`,
+    [includeObscure]
+  )
 
   const categoryCounts: Record<UnnaturalDeathCategory, number> = {
     suicide: 0,
@@ -1580,22 +1605,23 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
 export interface AllDeathsOptions {
   limit?: number
   offset?: number
+  includeObscure?: boolean
 }
 
 export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
   persons: ActorRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0 } = options
+  const { limit = 50, offset = 0, includeObscure = false } = options
   const db = getPool()
 
   const result = await db.query<ActorRecord & { total_count: string }>(
     `SELECT COUNT(*) OVER () as total_count, *
      FROM actors
-     WHERE deathday IS NOT NULL
+     WHERE deathday IS NOT NULL AND ($3 = true OR is_obscure = false)
      ORDER BY deathday DESC
      LIMIT $1 OFFSET $2`,
-    [limit, offset]
+    [limit, offset, includeObscure]
   )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0

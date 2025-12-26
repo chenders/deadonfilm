@@ -105,9 +105,8 @@ describe("AllDeathsPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("All Deaths")).toBeInTheDocument()
-      expect(
-        screen.getByText(/Complete list of deceased actors in our database/)
-      ).toBeInTheDocument()
+      // Default state (includeObscure=false) shows "Well-known" description
+      expect(screen.getByText(/Well-known deceased actors in our database/)).toBeInTheDocument()
     })
   })
 
@@ -219,7 +218,7 @@ describe("AllDeathsPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getAllDeaths).toHaveBeenCalledWith(2)
+      expect(api.getAllDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false })
     })
   })
 
@@ -279,7 +278,7 @@ describe("AllDeathsPage", () => {
     })
 
     await waitFor(() => {
-      expect(api.getAllDeaths).toHaveBeenCalledWith(2)
+      expect(api.getAllDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false })
     })
   })
 

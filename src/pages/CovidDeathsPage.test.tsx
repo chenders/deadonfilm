@@ -105,7 +105,10 @@ describe("CovidDeathsPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("COVID-19 Deaths")).toBeInTheDocument()
-      expect(screen.getByText(/Actors in our database who died from COVID-19/)).toBeInTheDocument()
+      // Default state (includeObscure=false) shows "Well-known actors" description
+      expect(
+        screen.getByText(/Well-known actors in our database who died from COVID-19/)
+      ).toBeInTheDocument()
     })
   })
 
@@ -183,7 +186,7 @@ describe("CovidDeathsPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getCovidDeaths).toHaveBeenCalledWith(2)
+      expect(api.getCovidDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false })
     })
   })
 
@@ -243,7 +246,7 @@ describe("CovidDeathsPage", () => {
     })
 
     await waitFor(() => {
-      expect(api.getCovidDeaths).toHaveBeenCalledWith(2)
+      expect(api.getCovidDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false })
     })
   })
 

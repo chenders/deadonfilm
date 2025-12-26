@@ -62,8 +62,13 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const pageSize = 50
     const offset = (page - 1) * pageSize
+    const includeObscure = req.query.includeObscure === "true"
 
-    const { persons, totalCount } = await getCovidDeaths({ limit: pageSize, offset })
+    const { persons, totalCount } = await getCovidDeaths({
+      limit: pageSize,
+      offset,
+      includeObscure,
+    })
 
     const response = {
       persons: persons.map((p, i) => ({
@@ -219,6 +224,7 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const pageSize = 50
     const offset = (page - 1) * pageSize
+    const includeObscure = req.query.includeObscure === "true"
 
     // Validate category parameter
     const categoryParam = req.query.category as string | undefined
@@ -227,14 +233,18 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
       category = categoryParam as UnnaturalDeathCategory
     }
 
-    // Parse hideSuicides parameter (defaults to false)
-    const hideSuicides = req.query.hideSuicides === "true"
+    // Parse showSelfInflicted parameter (defaults to false, meaning suicides are hidden)
+    // Also support legacy hideSuicides parameter for backwards compatibility
+    const showSelfInflicted =
+      req.query.showSelfInflicted === "true" ||
+      (req.query.hideSuicides !== undefined && req.query.hideSuicides !== "true")
 
     const { persons, totalCount, categoryCounts } = await getUnnaturalDeaths({
       limit: pageSize,
       offset,
       category,
-      hideSuicides,
+      showSelfInflicted,
+      includeObscure,
     })
 
     // Build categories array with labels and counts
@@ -263,7 +273,7 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
       },
       categories,
       selectedCategory: category,
-      hideSuicides,
+      showSelfInflicted,
     }
     sendWithETag(req, res, response, 300) // 5 min cache
   } catch (error) {
