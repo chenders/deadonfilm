@@ -4,6 +4,9 @@
  * This includes guest star information and mortality statistics.
  * Use seed-episodes.ts for faster metadata-only seeding.
  *
+ * The script automatically saves progress to a checkpoint file and resumes
+ * from where it left off if interrupted. Use --fresh to start over.
+ *
  * Usage:
  *   npm run seed:episodes:full -- [options]
  *
@@ -12,16 +15,20 @@
  *   --show <id>      Process a single show by TMDB ID
  *   --limit <n>      Limit number of shows to process
  *   --dry-run        Preview without writing to database
+ *   --fresh          Start fresh (ignore checkpoint)
  *
  * Examples:
- *   npm run seed:episodes:full                        # Seed all shows
+ *   npm run seed:episodes:full                        # Seed all shows (resumes if interrupted)
  *   npm run seed:episodes:full -- --active-only       # Only active shows (for cron)
  *   npm run seed:episodes:full -- --show 1400         # Only Seinfeld
  *   npm run seed:episodes:full -- --limit 10          # First 10 shows
  *   npm run seed:episodes:full -- --dry-run           # Preview what would be seeded
+ *   npm run seed:episodes:full -- --fresh             # Start fresh, ignore checkpoint
  */
 
 import "dotenv/config"
+import fs from "fs"
+import path from "path"
 import { Command, InvalidArgumentError } from "commander"
 import {
   getPool,
@@ -75,6 +82,54 @@ export function deduplicateAppearances(
   return [...uniqueAppearances.values()]
 }
 
+// Checkpoint file to track progress
+const CHECKPOINT_FILE = path.join(process.cwd(), ".seed-episodes-full-checkpoint.json")
+
+export interface Checkpoint {
+  processedShowIds: number[]
+  startedAt: string
+  lastUpdated: string
+  stats: {
+    showsProcessed: number
+    totalSeasons: number
+    totalEpisodes: number
+    totalGuestStars: number
+    newActorsSaved: number
+    errors: number
+  }
+}
+
+export function loadCheckpoint(filePath: string = CHECKPOINT_FILE): Checkpoint | null {
+  try {
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, "utf-8")
+      return JSON.parse(data) as Checkpoint
+    }
+  } catch (error) {
+    console.warn("Warning: Could not load checkpoint file:", error)
+  }
+  return null
+}
+
+export function saveCheckpoint(checkpoint: Checkpoint, filePath: string = CHECKPOINT_FILE): void {
+  try {
+    checkpoint.lastUpdated = new Date().toISOString()
+    fs.writeFileSync(filePath, JSON.stringify(checkpoint, null, 2))
+  } catch (error) {
+    console.error("Warning: Could not save checkpoint:", error)
+  }
+}
+
+export function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath)
+    }
+  } catch (error) {
+    console.warn("Warning: Could not delete checkpoint file:", error)
+  }
+}
+
 const program = new Command()
   .name("seed-episodes-full")
   .description(
@@ -84,8 +139,15 @@ const program = new Command()
   .option("-s, --show <id>", "Process a single show by TMDB ID", parsePositiveInt)
   .option("-l, --limit <number>", "Limit number of shows to process", parsePositiveInt)
   .option("-n, --dry-run", "Preview without writing to database")
+  .option("--fresh", "Start fresh, ignoring any saved checkpoint")
   .action(
-    async (options: { activeOnly?: boolean; show?: number; limit?: number; dryRun?: boolean }) => {
+    async (options: {
+      activeOnly?: boolean
+      show?: number
+      limit?: number
+      dryRun?: boolean
+      fresh?: boolean
+    }) => {
       await runSeeding(options)
     }
   )
@@ -95,6 +157,7 @@ interface SeedOptions {
   show?: number
   limit?: number
   dryRun?: boolean
+  fresh?: boolean
 }
 
 interface ShowInfo {
@@ -106,7 +169,7 @@ interface ShowInfo {
 }
 
 async function runSeeding(options: SeedOptions) {
-  const { activeOnly, show: showId, limit, dryRun } = options
+  const { activeOnly, show: showId, limit, dryRun, fresh = false } = options
 
   // Check required environment variables
   if (!process.env.TMDB_API_TOKEN) {
@@ -118,6 +181,42 @@ async function runSeeding(options: SeedOptions) {
     console.error("DATABASE_URL environment variable is required (or use --dry-run)")
     process.exit(1)
   }
+
+  // Load or create checkpoint (skip for single show mode or dry run)
+  let checkpoint: Checkpoint
+  const shouldUseCheckpoint = !showId && !dryRun
+  const existingCheckpoint = shouldUseCheckpoint && !fresh ? loadCheckpoint() : null
+
+  if (existingCheckpoint) {
+    checkpoint = existingCheckpoint
+    console.log("\n" + "=".repeat(60))
+    console.log("RESUMING FROM CHECKPOINT")
+    console.log("=".repeat(60))
+    console.log(`Started: ${checkpoint.startedAt}`)
+    console.log(`Last updated: ${checkpoint.lastUpdated}`)
+    console.log(`Already processed: ${checkpoint.processedShowIds.length} shows`)
+    console.log(`Use --fresh to start over`)
+    console.log("=".repeat(60))
+  } else {
+    checkpoint = {
+      processedShowIds: [],
+      startedAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
+      stats: {
+        showsProcessed: 0,
+        totalSeasons: 0,
+        totalEpisodes: 0,
+        totalGuestStars: 0,
+        newActorsSaved: 0,
+        errors: 0,
+      },
+    }
+    if (fresh && shouldUseCheckpoint) {
+      deleteCheckpoint()
+    }
+  }
+
+  const processedSet = new Set(checkpoint.processedShowIds)
 
   const modeDesc = showId ? `show ${showId}` : activeOnly ? "active shows only" : "all shows"
 
@@ -149,25 +248,38 @@ async function runSeeding(options: SeedOptions) {
     }
 
     const result = await db.query<ShowInfo>(query, params)
-    const shows = result.rows
+    const allShows = result.rows
 
-    if (shows.length === 0) {
+    if (allShows.length === 0) {
       console.log("No shows found matching criteria")
       return
     }
 
-    console.log(`Found ${shows.length} shows to process\n`)
+    // Filter out already-processed shows
+    const shows = allShows.filter((s) => !processedSet.has(s.tmdb_id))
 
-    let totalSeasons = 0
-    let totalEpisodes = 0
-    let totalGuestStars = 0
-    let newActorsSaved = 0
-    let showsProcessed = 0
-    let errors = 0
+    console.log(`Found ${allShows.length} shows total`)
+    if (processedSet.size > 0) {
+      console.log(`Skipping ${allShows.length - shows.length} already processed`)
+    }
+    console.log(`Processing ${shows.length} shows\n`)
+
+    if (shows.length === 0) {
+      console.log("All shows already processed. Done!")
+      if (shouldUseCheckpoint) {
+        deleteCheckpoint()
+      }
+      return
+    }
+
+    // Use checkpoint stats if resuming, otherwise start fresh
+    let { showsProcessed, totalSeasons, totalEpisodes, totalGuestStars, newActorsSaved, errors } =
+      checkpoint.stats
 
     for (let i = 0; i < shows.length; i++) {
       const showInfo = shows[i]
-      console.log(`[${i + 1}/${shows.length}] ${showInfo.name} (${showInfo.tmdb_id})`)
+      const totalProgress = processedSet.size + i + 1
+      console.log(`[${totalProgress}/${allShows.length}] ${showInfo.name} (${showInfo.tmdb_id})`)
 
       try {
         // Get fresh show details from TMDB to get current season list
@@ -427,11 +539,44 @@ async function runSeeding(options: SeedOptions) {
         )
         showsProcessed++
 
+        // Save checkpoint after each successful show
+        if (shouldUseCheckpoint) {
+          checkpoint.processedShowIds.push(showInfo.tmdb_id)
+          checkpoint.stats = {
+            showsProcessed,
+            totalSeasons,
+            totalEpisodes,
+            totalGuestStars,
+            newActorsSaved,
+            errors,
+          }
+          saveCheckpoint(checkpoint)
+        }
+
         // Small delay between shows
         await delay(100)
       } catch (showError) {
         console.error(`  Error processing show: ${showError}`)
         errors++
+
+        // Save checkpoint on error so we can resume
+        if (shouldUseCheckpoint) {
+          checkpoint.stats = {
+            showsProcessed,
+            totalSeasons,
+            totalEpisodes,
+            totalGuestStars,
+            newActorsSaved,
+            errors,
+          }
+          saveCheckpoint(checkpoint)
+          console.log(
+            `\nCheckpoint saved. Run again to resume from show #${checkpoint.processedShowIds.length + 1}`
+          )
+        }
+
+        // Exit on first error to allow resuming
+        throw showError
       }
     }
 
@@ -448,6 +593,13 @@ async function runSeeding(options: SeedOptions) {
     if (errors > 0) {
       console.log(`  Errors: ${errors}`)
     }
+
+    // All done - remove checkpoint file
+    if (shouldUseCheckpoint) {
+      deleteCheckpoint()
+      console.log("\nAll shows processed successfully. Checkpoint cleared.")
+    }
+
     console.log("\nDone!")
   } catch (error) {
     console.error("Fatal error:", error)
