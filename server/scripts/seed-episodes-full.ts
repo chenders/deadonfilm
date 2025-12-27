@@ -28,9 +28,11 @@ import {
   upsertSeason,
   upsertEpisode,
   batchUpsertActors,
+  batchUpsertShowActorAppearances,
   type SeasonRecord,
   type EpisodeRecord,
   type ActorInput,
+  type ShowActorAppearanceRecord,
 } from "../src/lib/db.js"
 import { getSeasonDetails, getTVShowDetails, batchGetPersonDetails } from "../src/lib/tmdb.js"
 import {
@@ -272,16 +274,30 @@ async function runSeeding(options: SeedOptions) {
 
             // Process episodes in this season
             const episodes = seasonDetails.episodes || []
+            const guestStarAppearances: ShowActorAppearanceRecord[] = []
+
             for (const ep of episodes) {
               const guestStars = ep.guest_stars || []
               let episodeDeceasedCount = 0
 
-              // Count deceased in this episode
+              // Count deceased in this episode and collect appearances
               for (const gs of guestStars) {
                 const person = personDetails.get(gs.id)
                 if (person?.deathday) {
                   episodeDeceasedCount++
                 }
+
+                // Collect guest star appearance for database
+                guestStarAppearances.push({
+                  actor_tmdb_id: gs.id,
+                  show_tmdb_id: showInfo.tmdb_id,
+                  season_number: ep.season_number,
+                  episode_number: ep.episode_number,
+                  character_name: gs.character || null,
+                  appearance_type: "guest",
+                  billing_order: gs.order ?? null,
+                  age_at_filming: null, // Could calculate from birthday and air_date
+                })
               }
 
               // Calculate episode mortality stats
@@ -347,6 +363,15 @@ async function runSeeding(options: SeedOptions) {
                 newActorsSaved += newActors.length
               } catch (actorError) {
                 console.error(`    Error saving actors: ${actorError}`)
+              }
+            }
+
+            // Save guest star appearances to database
+            if (!dryRun && guestStarAppearances.length > 0) {
+              try {
+                await batchUpsertShowActorAppearances(guestStarAppearances)
+              } catch (appearanceError) {
+                console.error(`    Error saving appearances: ${appearanceError}`)
               }
             }
 
