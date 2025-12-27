@@ -85,7 +85,7 @@ export function deduplicateAppearances(
 // Checkpoint file to track progress
 const CHECKPOINT_FILE = path.join(process.cwd(), ".seed-episodes-full-checkpoint.json")
 
-interface Checkpoint {
+export interface Checkpoint {
   processedShowIds: number[]
   startedAt: string
   lastUpdated: string
@@ -99,10 +99,10 @@ interface Checkpoint {
   }
 }
 
-function loadCheckpoint(): Checkpoint | null {
+export function loadCheckpoint(filePath: string = CHECKPOINT_FILE): Checkpoint | null {
   try {
-    if (fs.existsSync(CHECKPOINT_FILE)) {
-      const data = fs.readFileSync(CHECKPOINT_FILE, "utf-8")
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, "utf-8")
       return JSON.parse(data) as Checkpoint
     }
   } catch (error) {
@@ -111,19 +111,19 @@ function loadCheckpoint(): Checkpoint | null {
   return null
 }
 
-function saveCheckpoint(checkpoint: Checkpoint): void {
+export function saveCheckpoint(checkpoint: Checkpoint, filePath: string = CHECKPOINT_FILE): void {
   try {
     checkpoint.lastUpdated = new Date().toISOString()
-    fs.writeFileSync(CHECKPOINT_FILE, JSON.stringify(checkpoint, null, 2))
+    fs.writeFileSync(filePath, JSON.stringify(checkpoint, null, 2))
   } catch (error) {
     console.error("Warning: Could not save checkpoint:", error)
   }
 }
 
-function deleteCheckpoint(): void {
+export function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
   try {
-    if (fs.existsSync(CHECKPOINT_FILE)) {
-      fs.unlinkSync(CHECKPOINT_FILE)
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath)
     }
   } catch (error) {
     console.warn("Warning: Could not delete checkpoint file:", error)
