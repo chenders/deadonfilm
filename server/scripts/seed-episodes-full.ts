@@ -206,7 +206,8 @@ async function runSeeding(options: SeedOptions) {
                     deathday: person.deathday,
                   })
 
-                  // Track new deceased actors to save
+                  // Save ALL guest stars to actors table (both living and deceased)
+                  // This ensures foreign key constraints are satisfied for actor_show_appearances
                   if (person.deathday) {
                     const yearsLostResult = await calculateYearsLost(
                       person.birthday,
@@ -226,6 +227,15 @@ async function runSeeding(options: SeedOptions) {
                       age_at_death: yearsLostResult?.ageAtDeath ?? null,
                       expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
                       years_lost: yearsLostResult?.yearsLost ?? null,
+                    })
+                  } else {
+                    // Living actors - save basic info to satisfy FK constraints
+                    newActors.push({
+                      tmdb_id: person.id,
+                      name: person.name,
+                      birthday: person.birthday,
+                      deathday: null,
+                      profile_path: person.profile_path,
                     })
                   }
                 }
@@ -405,7 +415,7 @@ async function runSeeding(options: SeedOptions) {
     console.log(`  Total episodes ${dryRun ? "would be " : ""}saved: ${totalEpisodes}`)
     console.log(`  Total unique guest stars: ${totalGuestStars}`)
     if (!dryRun) {
-      console.log(`  New deceased actors saved: ${newActorsSaved}`)
+      console.log(`  Actors saved/updated: ${newActorsSaved}`)
     }
     if (errors > 0) {
       console.log(`  Errors: ${errors}`)
