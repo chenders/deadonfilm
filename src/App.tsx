@@ -9,6 +9,7 @@ import { useNewRelicBrowser } from "./hooks/useNewRelicBrowser"
 // Lazy load pages that aren't the landing page
 const MoviePage = lazy(() => import("./pages/MoviePage"))
 const ShowPage = lazy(() => import("./pages/ShowPage"))
+const SeasonPage = lazy(() => import("./pages/SeasonPage"))
 const EpisodePage = lazy(() => import("./pages/EpisodePage"))
 const ActorPage = lazy(() => import("./pages/ActorPage"))
 // Temporarily hidden - see plan in kind-brewing-moore.md
@@ -37,6 +38,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/movie/:slug" element={<MoviePage />} />
           <Route path="/show/:slug" element={<ShowPage />} />
+          <Route path="/show/:showId/season/:seasonNumber" element={<SeasonPage />} />
           <Route path="/episode/:slug" element={<EpisodePage />} />
           <Route path="/actor/:slug" element={<ActorPage />} />
           {/* Temporarily hidden - see plan in kind-brewing-moore.md */}

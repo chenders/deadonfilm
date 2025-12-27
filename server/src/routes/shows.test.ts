@@ -28,7 +28,7 @@ vi.mock("../lib/newrelic.js", () => ({
   recordCustomEvent: vi.fn(),
 }))
 
-import { getShow } from "./shows.js"
+import { getShow, getSeasonEpisodes } from "./shows.js"
 import {
   getTVShowDetails,
   getTVShowAggregateCredits,
@@ -192,5 +192,103 @@ describe("getShow route", () => {
         })
       )
     })
+  })
+})
+
+describe("getSeasonEpisodes route", () => {
+  let mockReq: Partial<Request>
+  let mockRes: Partial<Response>
+  let jsonSpy: ReturnType<typeof vi.fn>
+  let statusSpy: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    jsonSpy = vi.fn()
+    statusSpy = vi.fn().mockReturnThis()
+
+    mockRes = {
+      json: jsonSpy as Response["json"],
+      status: statusSpy as Response["status"],
+    }
+  })
+
+  it("returns episodes for a valid season", async () => {
+    vi.mocked(getSeasonDetails).mockResolvedValue({
+      id: 123,
+      season_number: 1,
+      name: "Season 1",
+      air_date: "1990-01-01",
+      poster_path: null,
+      episodes: [
+        {
+          id: 1001,
+          episode_number: 1,
+          season_number: 1,
+          name: "Pilot",
+          air_date: "1990-01-01",
+          runtime: 30,
+          guest_stars: [],
+        },
+        {
+          id: 1002,
+          episode_number: 2,
+          season_number: 1,
+          name: "The Second One",
+          air_date: "1990-01-08",
+          runtime: 30,
+          guest_stars: [],
+        },
+      ],
+    })
+
+    mockReq = { params: { id: "1400", seasonNumber: "1" } }
+
+    await getSeasonEpisodes(mockReq as Request, mockRes as Response)
+
+    expect(getSeasonDetails).toHaveBeenCalledWith(1400, 1)
+    expect(jsonSpy).toHaveBeenCalledWith({
+      episodes: [
+        { episodeNumber: 1, seasonNumber: 1, name: "Pilot", airDate: "1990-01-01" },
+        { episodeNumber: 2, seasonNumber: 1, name: "The Second One", airDate: "1990-01-08" },
+      ],
+    })
+  })
+
+  it("returns 400 for invalid show ID", async () => {
+    mockReq = { params: { id: "invalid", seasonNumber: "1" } }
+
+    await getSeasonEpisodes(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(400)
+    expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid show ID" } })
+  })
+
+  it("returns 400 for invalid season number", async () => {
+    mockReq = { params: { id: "1400", seasonNumber: "abc" } }
+
+    await getSeasonEpisodes(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(400)
+    expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid season number" } })
+  })
+
+  it("returns 400 for season number less than 1", async () => {
+    mockReq = { params: { id: "1400", seasonNumber: "0" } }
+
+    await getSeasonEpisodes(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(400)
+    expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid season number" } })
+  })
+
+  it("returns 500 on TMDB API error", async () => {
+    vi.mocked(getSeasonDetails).mockRejectedValue(new Error("TMDB API error"))
+    mockReq = { params: { id: "1400", seasonNumber: "1" } }
+
+    await getSeasonEpisodes(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(500)
+    expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Failed to fetch season episodes" } })
   })
 })
