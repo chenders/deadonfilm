@@ -292,6 +292,9 @@ async function runSeeding(options: SeedOptions) {
 
               // Count deceased in this episode and collect appearances
               for (const gs of guestStars) {
+                // Skip guest stars with invalid/null IDs
+                if (!gs.id) continue
+
                 const person = personDetails.get(gs.id)
                 if (person?.deathday) {
                   episodeDeceasedCount++
@@ -377,9 +380,18 @@ async function runSeeding(options: SeedOptions) {
             }
 
             // Save guest star appearances to database
+            // Deduplicate first to avoid "ON CONFLICT cannot affect row a second time" error
             if (!dryRun && guestStarAppearances.length > 0) {
               try {
-                await batchUpsertShowActorAppearances(guestStarAppearances)
+                const uniqueAppearances = new Map<string, ShowActorAppearanceRecord>()
+                for (const appearance of guestStarAppearances) {
+                  const key = `${appearance.actor_tmdb_id}-${appearance.show_tmdb_id}-${appearance.season_number}-${appearance.episode_number}`
+                  // Keep the first occurrence (or could merge character names if needed)
+                  if (!uniqueAppearances.has(key)) {
+                    uniqueAppearances.set(key, appearance)
+                  }
+                }
+                await batchUpsertShowActorAppearances([...uniqueAppearances.values()])
               } catch (appearanceError) {
                 console.error(`    Error saving appearances: ${appearanceError}`)
               }
