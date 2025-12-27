@@ -48,3 +48,5 @@ docs/potentially-wrong-language-data.md
 
 # Script progress files
 .filmography-seed-progress.json
+.seed-episodes-full-checkpoint.json
+.verify-death-info-checkpoint.json
