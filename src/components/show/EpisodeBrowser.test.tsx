@@ -35,7 +35,14 @@ describe("EpisodeBrowser", () => {
   })
 
   it("renders the season selector", () => {
-    renderWithRouter(<EpisodeBrowser seasons={mockSeasons} showId={1400} showName="Test Show" />)
+    renderWithRouter(
+      <EpisodeBrowser
+        seasons={mockSeasons}
+        showId={1400}
+        showName="Test Show"
+        showFirstAirDate="1990-01-01"
+      />
+    )
 
     expect(screen.getByTestId("episode-browser")).toBeInTheDocument()
     expect(screen.getByTestId("season-selector")).toBeInTheDocument()
@@ -45,14 +52,26 @@ describe("EpisodeBrowser", () => {
 
   it("returns null when no seasons", () => {
     const { container } = renderWithRouter(
-      <EpisodeBrowser seasons={[]} showId={1400} showName="Test Show" />
+      <EpisodeBrowser
+        seasons={[]}
+        showId={1400}
+        showName="Test Show"
+        showFirstAirDate="1990-01-01"
+      />
     )
 
     expect(container.firstChild).toBeNull()
   })
 
   it("does not show episode list initially", () => {
-    renderWithRouter(<EpisodeBrowser seasons={mockSeasons} showId={1400} showName="Test Show" />)
+    renderWithRouter(
+      <EpisodeBrowser
+        seasons={mockSeasons}
+        showId={1400}
+        showName="Test Show"
+        showFirstAirDate="1990-01-01"
+      />
+    )
 
     expect(screen.queryByTestId("episode-list")).not.toBeInTheDocument()
   })
@@ -63,7 +82,14 @@ describe("EpisodeBrowser", () => {
       isLoading: true,
     } as unknown as ReturnType<typeof useSeasonEpisodes>)
 
-    renderWithRouter(<EpisodeBrowser seasons={mockSeasons} showId={1400} showName="Test Show" />)
+    renderWithRouter(
+      <EpisodeBrowser
+        seasons={mockSeasons}
+        showId={1400}
+        showName="Test Show"
+        showFirstAirDate="1990-01-01"
+      />
+    )
 
     // Click a season to show the episode list area
     fireEvent.click(screen.getByTestId("season-btn-1"))
@@ -77,7 +103,14 @@ describe("EpisodeBrowser", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useSeasonEpisodes>)
 
-    renderWithRouter(<EpisodeBrowser seasons={mockSeasons} showId={1400} showName="Test Show" />)
+    renderWithRouter(
+      <EpisodeBrowser
+        seasons={mockSeasons}
+        showId={1400}
+        showName="Test Show"
+        showFirstAirDate="1990-01-01"
+      />
+    )
 
     // Click a season
     fireEvent.click(screen.getByTestId("season-btn-1"))
@@ -93,7 +126,14 @@ describe("EpisodeBrowser", () => {
       isLoading: false,
     } as unknown as ReturnType<typeof useSeasonEpisodes>)
 
-    renderWithRouter(<EpisodeBrowser seasons={mockSeasons} showId={1400} showName="Test Show" />)
+    renderWithRouter(
+      <EpisodeBrowser
+        seasons={mockSeasons}
+        showId={1400}
+        showName="Test Show"
+        showFirstAirDate="1990-01-01"
+      />
+    )
 
     // Click season 1
     fireEvent.click(screen.getByTestId("season-btn-1"))

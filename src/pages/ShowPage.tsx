@@ -94,7 +94,12 @@ export default function ShowPage() {
           <MortalityGauge stats={stats} />
         </div>
 
-        <EpisodeBrowser seasons={seasons} showId={show.id} showName={show.name} />
+        <EpisodeBrowser
+          seasons={seasons}
+          showId={show.id}
+          showName={show.name}
+          showFirstAirDate={show.firstAirDate}
+        />
 
         <CastToggle
           showLiving={showLiving}

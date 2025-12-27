@@ -1,18 +1,18 @@
 import { useParams, useLocation, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useSeason } from "@/hooks/useSeason"
-import { createShowSlug, createEpisodeSlug } from "@/utils/slugify"
+import { createShowSlug, createEpisodeSlug, extractShowId } from "@/utils/slugify"
 import { formatDate } from "@/utils/formatDate"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 
 export default function SeasonPage() {
-  const { showId: showIdParam, seasonNumber: seasonNumberParam } = useParams<{
-    showId: string
+  const { slug, seasonNumber: seasonNumberParam } = useParams<{
+    slug: string
     seasonNumber: string
   }>()
   const location = useLocation()
-  const showId = parseInt(showIdParam || "0", 10)
+  const showId = extractShowId(slug || "")
   const seasonNumber = parseInt(seasonNumberParam || "0", 10)
 
   const { data, isLoading, error } = useSeason(showId, seasonNumber)
@@ -108,7 +108,7 @@ export default function SeasonPage() {
                 <div className="text-xs text-text-muted">Episodes</div>
               </div>
               <div className="rounded-lg border border-brown-medium/20 bg-white px-4 py-2 text-center">
-                <div className="text-2xl font-bold text-brown-dark">{stats.totalGuestStars}</div>
+                <div className="text-2xl font-bold text-brown-dark">{stats.uniqueGuestStars}</div>
                 <div className="text-xs text-text-muted">Guest Stars</div>
               </div>
               <div className="rounded-lg border border-accent/20 bg-accent/5 px-4 py-2 text-center">

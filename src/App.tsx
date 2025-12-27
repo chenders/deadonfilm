@@ -38,7 +38,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/movie/:slug" element={<MoviePage />} />
           <Route path="/show/:slug" element={<ShowPage />} />
-          <Route path="/show/:showId/season/:seasonNumber" element={<SeasonPage />} />
+          <Route path="/show/:slug/season/:seasonNumber" element={<SeasonPage />} />
           <Route path="/episode/:slug" element={<EpisodePage />} />
           <Route path="/actor/:slug" element={<ActorPage />} />
           {/* Temporarily hidden - see plan in kind-brewing-moore.md */}

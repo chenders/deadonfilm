@@ -8,9 +8,15 @@ interface EpisodeBrowserProps {
   seasons: SeasonSummary[]
   showId: number
   showName: string
+  showFirstAirDate: string | null
 }
 
-export default function EpisodeBrowser({ seasons, showId, showName }: EpisodeBrowserProps) {
+export default function EpisodeBrowser({
+  seasons,
+  showId,
+  showName,
+  showFirstAirDate,
+}: EpisodeBrowserProps) {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null)
 
   const { data, isLoading } = useSeasonEpisodes(showId, selectedSeason)
@@ -36,6 +42,7 @@ export default function EpisodeBrowser({ seasons, showId, showName }: EpisodeBro
           episodes={data?.episodes ?? []}
           showId={showId}
           showName={showName}
+          showFirstAirDate={showFirstAirDate}
           seasonNumber={selectedSeason}
           seasonName={selectedSeasonInfo?.name ?? `Season ${selectedSeason}`}
           isLoading={isLoading}
