@@ -39,7 +39,7 @@ import {
   type ActorForMortality,
 } from "../src/lib/mortality-stats.js"
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
   if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
     throw new InvalidArgumentError("Must be a positive integer")

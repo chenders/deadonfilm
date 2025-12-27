@@ -42,7 +42,7 @@ export default function SeasonSelector({
                 onClick={() => handleSeasonClick(season.seasonNumber)}
                 className={`whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors duration-200 ${
                   isSelected ? "bg-accent text-white" : "bg-white text-brown-dark hover:bg-beige"
-                } ${isFirst ? "rounded-l-lg" : ""} ${isLast ? "rounded-r-lg" : ""}`}
+                } ${isFirst ? "rounded-l-lg" : "border-l border-brown-medium/30"} ${isLast ? "rounded-r-lg" : ""}`}
               >
                 S{season.seasonNumber}
                 <span className="ml-1 text-xs opacity-75">({season.episodeCount})</span>
