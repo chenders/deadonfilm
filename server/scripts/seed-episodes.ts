@@ -32,7 +32,7 @@ import {
 } from "../src/lib/db.js"
 import { getSeasonDetails, getTVShowDetails } from "../src/lib/tmdb.js"
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
   if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
     throw new InvalidArgumentError("Must be a positive integer")
