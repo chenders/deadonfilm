@@ -140,7 +140,7 @@ export interface SeasonResponse {
   episodes: SeasonEpisodeWithStats[]
   stats: {
     totalEpisodes: number
-    totalGuestStars: number
+    uniqueGuestStars: number
     uniqueDeceasedGuestStars: number
   }
 }

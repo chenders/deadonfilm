@@ -810,8 +810,8 @@ export async function getSeason(req: Request, res: Response) {
     const dbRecords = await getActorsIfAvailable([...allGuestStarIds])
 
     // Count deceased guest stars per episode
-    let seasonDeceasedCount = 0
-    let seasonGuestStarCount = 0
+    // Track unique guest stars (same actor can appear in multiple episodes)
+    const seenGuestStars = new Set<number>()
     const seenDeceased = new Set<number>()
 
     const episodes = season.episodes.map((ep) => {
@@ -819,20 +819,16 @@ export async function getSeason(req: Request, res: Response) {
       let episodeDeceasedCount = 0
 
       for (const gs of guestStars) {
+        seenGuestStars.add(gs.id)
         const dbRecord = dbRecords.get(gs.id)
         const person = personDetails.get(gs.id)
         // Check both database and TMDB for death info
         const isDeceased = dbRecord?.deathday || person?.deathday
         if (isDeceased) {
           episodeDeceasedCount++
-          if (!seenDeceased.has(gs.id)) {
-            seenDeceased.add(gs.id)
-            seasonDeceasedCount++
-          }
+          seenDeceased.add(gs.id)
         }
       }
-
-      seasonGuestStarCount += guestStars.length
 
       return {
         episodeNumber: ep.episode_number,
@@ -865,8 +861,8 @@ export async function getSeason(req: Request, res: Response) {
       episodes,
       stats: {
         totalEpisodes: episodes.length,
-        totalGuestStars: seasonGuestStarCount,
-        uniqueDeceasedGuestStars: seasonDeceasedCount,
+        uniqueGuestStars: seenGuestStars.size,
+        uniqueDeceasedGuestStars: seenDeceased.size,
       },
     })
   } catch (error) {

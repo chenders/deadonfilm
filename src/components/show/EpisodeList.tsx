@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { createEpisodeSlug } from "@/utils/slugify"
+import { createEpisodeSlug, createSeasonPath } from "@/utils/slugify"
 import { formatDate } from "@/utils/formatDate"
 import type { EpisodeSummary } from "@/types"
 
@@ -7,6 +7,7 @@ interface EpisodeListProps {
   episodes: EpisodeSummary[]
   showId: number
   showName: string
+  showFirstAirDate: string | null
   seasonNumber: number
   seasonName: string
   isLoading: boolean
@@ -16,6 +17,7 @@ export default function EpisodeList({
   episodes,
   showId,
   showName,
+  showFirstAirDate,
   seasonNumber,
   seasonName,
   isLoading,
@@ -50,7 +52,7 @@ export default function EpisodeList({
           </span>
         </h3>
         <Link
-          to={`/show/${showId}/season/${seasonNumber}`}
+          to={createSeasonPath(showName, showFirstAirDate, showId, seasonNumber)}
           data-testid="view-season-link"
           className="text-xs text-accent hover:underline"
         >
