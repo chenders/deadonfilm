@@ -237,4 +237,8 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-program.parse()
+// Only run if executed directly, not when imported for testing
+const isMainModule = import.meta.url === `file://${process.argv[1]}`
+if (isMainModule) {
+  program.parse()
+}
