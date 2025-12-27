@@ -2263,3 +2263,127 @@ export async function getShowActors(
     isDeceased: row.is_deceased,
   }))
 }
+
+// Deceased actor with episode appearances for show page
+export interface DeceasedShowActor {
+  tmdb_id: number
+  name: string
+  profile_path: string | null
+  birthday: string | null
+  deathday: string
+  cause_of_death: string | null
+  cause_of_death_source: DeathInfoSource
+  cause_of_death_details: string | null
+  cause_of_death_details_source: DeathInfoSource
+  wikipedia_url: string | null
+  age_at_death: number | null
+  years_lost: number | null
+  total_episodes: number
+  episodes: Array<{
+    season_number: number
+    episode_number: number
+    episode_name: string | null
+    character_name: string | null
+  }>
+}
+
+// Get all deceased actors for a show with their episode appearances
+export async function getDeceasedActorsForShow(showTmdbId: number): Promise<DeceasedShowActor[]> {
+  const db = getPool()
+
+  // First get all deceased actors with their aggregated episode count
+  const actorsResult = await db.query<{
+    tmdb_id: number
+    name: string
+    profile_path: string | null
+    birthday: string | null
+    deathday: string
+    cause_of_death: string | null
+    cause_of_death_source: DeathInfoSource
+    cause_of_death_details: string | null
+    cause_of_death_details_source: DeathInfoSource
+    wikipedia_url: string | null
+    age_at_death: number | null
+    years_lost: number | null
+    total_episodes: number
+  }>(
+    `SELECT
+       a.tmdb_id,
+       a.name,
+       a.profile_path,
+       a.birthday,
+       a.deathday,
+       a.cause_of_death,
+       a.cause_of_death_source,
+       a.cause_of_death_details,
+       a.cause_of_death_details_source,
+       a.wikipedia_url,
+       a.age_at_death,
+       a.years_lost,
+       COUNT(DISTINCT (asa.season_number, asa.episode_number))::int as total_episodes
+     FROM actors a
+     JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id
+     WHERE asa.show_tmdb_id = $1
+       AND a.deathday IS NOT NULL
+     GROUP BY a.tmdb_id, a.name, a.profile_path, a.birthday, a.deathday,
+              a.cause_of_death, a.cause_of_death_source, a.cause_of_death_details,
+              a.cause_of_death_details_source, a.wikipedia_url, a.age_at_death, a.years_lost
+     ORDER BY a.deathday DESC`,
+    [showTmdbId]
+  )
+
+  if (actorsResult.rows.length === 0) {
+    return []
+  }
+
+  // Get episode appearances for all deceased actors
+  const actorIds = actorsResult.rows.map((a) => a.tmdb_id)
+  const episodesResult = await db.query<{
+    actor_tmdb_id: number
+    season_number: number
+    episode_number: number
+    episode_name: string | null
+    character_name: string | null
+  }>(
+    `SELECT
+       asa.actor_tmdb_id,
+       asa.season_number,
+       asa.episode_number,
+       e.name as episode_name,
+       asa.character_name
+     FROM actor_show_appearances asa
+     LEFT JOIN episodes e ON e.show_tmdb_id = asa.show_tmdb_id
+       AND e.season_number = asa.season_number
+       AND e.episode_number = asa.episode_number
+     WHERE asa.show_tmdb_id = $1
+       AND asa.actor_tmdb_id = ANY($2)
+     ORDER BY asa.season_number, asa.episode_number`,
+    [showTmdbId, actorIds]
+  )
+
+  // Group episodes by actor
+  const episodesByActor = new Map<
+    number,
+    Array<{
+      season_number: number
+      episode_number: number
+      episode_name: string | null
+      character_name: string | null
+    }>
+  >()
+  for (const ep of episodesResult.rows) {
+    const existing = episodesByActor.get(ep.actor_tmdb_id) || []
+    existing.push({
+      season_number: ep.season_number,
+      episode_number: ep.episode_number,
+      episode_name: ep.episode_name,
+      character_name: ep.character_name,
+    })
+    episodesByActor.set(ep.actor_tmdb_id, existing)
+  }
+
+  return actorsResult.rows.map((actor) => ({
+    ...actor,
+    episodes: episodesByActor.get(actor.tmdb_id) || [],
+  }))
+}
