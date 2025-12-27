@@ -71,6 +71,18 @@ export interface ShowResponse {
   }
 }
 
+// Episode summary for season episode list
+export interface EpisodeSummary {
+  episodeNumber: number
+  seasonNumber: number
+  name: string
+  airDate: string | null
+}
+
+export interface SeasonEpisodesResponse {
+  episodes: EpisodeSummary[]
+}
+
 // Episode types
 export interface EpisodeDetails {
   id: number
@@ -100,5 +112,35 @@ export interface EpisodeResponse {
     deceasedCount: number
     livingCount: number
     mortalityPercentage: number
+  }
+}
+
+// Season page types
+export interface SeasonInfo {
+  seasonNumber: number
+  name: string
+  airDate: string | null
+  posterPath: string | null
+  episodeCount: number
+}
+
+export interface SeasonEpisodeWithStats {
+  episodeNumber: number
+  seasonNumber: number
+  name: string
+  airDate: string | null
+  runtime: number | null
+  guestStarCount: number
+  deceasedCount: number
+}
+
+export interface SeasonResponse {
+  show: EpisodeShowInfo
+  season: SeasonInfo
+  episodes: SeasonEpisodeWithStats[]
+  stats: {
+    totalEpisodes: number
+    totalGuestStars: number
+    uniqueDeceasedGuestStars: number
   }
 }

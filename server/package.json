@@ -19,6 +19,8 @@
     "seed:cohort": "tsx scripts/seed-cohort-life-expectancy.ts",
     "seed:movies": "tsx scripts/seed-movies.ts",
     "seed:shows": "tsx scripts/seed-shows.ts",
+    "seed:episodes": "tsx scripts/seed-episodes.ts",
+    "seed:episodes:full": "tsx scripts/seed-episodes-full.ts",
     "seed:filmographies": "tsx scripts/seed-from-filmographies.ts",
     "import:shows": "tsx scripts/import-shows.ts",
     "import:shows:popular": "tsx scripts/import-shows.ts --phase popular --max-shows 500",

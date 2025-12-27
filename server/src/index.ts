@@ -46,11 +46,22 @@ import {
   getAllDeathsHandler,
 } from "./routes/deaths.js"
 import { getGenreCategoriesHandler, getMoviesByGenreHandler } from "./routes/movies.js"
-import { getShow, searchShows, getShowSeasons, getEpisode } from "./routes/shows.js"
+import {
+  getShow,
+  searchShows,
+  getShowSeasons,
+  getEpisode,
+  getSeasonEpisodes,
+  getSeason,
+} from "./routes/shows.js"
 import { initializeDatabase } from "./lib/startup.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
+
+// Trust first proxy (for running behind Docker, nginx, GKE ingress, etc.)
+// Required for express-rate-limit to correctly identify client IPs
+app.set("trust proxy", 1)
 
 // Middleware
 app.use(compression()) // Gzip responses (~70% size reduction)
@@ -163,6 +174,8 @@ app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
 app.get("/api/search/tv", searchShows)
 app.get("/api/show/:id", getShow)
 app.get("/api/show/:id/seasons", getShowSeasons)
+app.get("/api/show/:id/season/:seasonNumber", getSeason)
+app.get("/api/show/:id/season/:seasonNumber/episodes", getSeasonEpisodes)
 app.get("/api/show/:showId/season/:season/episode/:episode", getEpisode)
 
 // Initialize database and start server
