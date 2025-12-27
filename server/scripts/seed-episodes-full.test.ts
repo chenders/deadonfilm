@@ -1,9 +1,16 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { InvalidArgumentError } from "commander"
+import fs from "fs"
+import path from "path"
+import os from "os"
 import {
   parsePositiveInt,
   filterValidGuestStars,
   deduplicateAppearances,
+  loadCheckpoint,
+  saveCheckpoint,
+  deleteCheckpoint,
+  type Checkpoint,
 } from "./seed-episodes-full.js"
 import type { ShowActorAppearanceRecord } from "../src/lib/db.js"
 
@@ -186,5 +193,177 @@ describe("deduplicateAppearances", () => {
     const result = deduplicateAppearances(appearances)
     expect(result).toHaveLength(1)
     expect(result[0].character_name).toBe("First")
+  })
+})
+
+describe("checkpoint functions", () => {
+  let tempDir: string
+  let testCheckpointFile: string
+
+  const createTestCheckpoint = (): Checkpoint => ({
+    processedShowIds: [100, 200, 300],
+    startedAt: "2025-01-01T00:00:00.000Z",
+    lastUpdated: "2025-01-01T01:00:00.000Z",
+    stats: {
+      showsProcessed: 3,
+      totalSeasons: 10,
+      totalEpisodes: 100,
+      totalGuestStars: 500,
+      newActorsSaved: 50,
+      errors: 0,
+    },
+  })
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "checkpoint-test-"))
+    testCheckpointFile = path.join(tempDir, "test-checkpoint.json")
+  })
+
+  afterEach(() => {
+    // Clean up temp directory
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  describe("loadCheckpoint", () => {
+    it("returns null when checkpoint file does not exist", () => {
+      const result = loadCheckpoint(testCheckpointFile)
+      expect(result).toBeNull()
+    })
+
+    it("loads valid checkpoint file", () => {
+      const checkpoint = createTestCheckpoint()
+      fs.writeFileSync(testCheckpointFile, JSON.stringify(checkpoint))
+
+      const result = loadCheckpoint(testCheckpointFile)
+      expect(result).toEqual(checkpoint)
+    })
+
+    it("returns null and logs warning for corrupted JSON", () => {
+      fs.writeFileSync(testCheckpointFile, "{ invalid json }")
+
+      const result = loadCheckpoint(testCheckpointFile)
+      expect(result).toBeNull()
+    })
+
+    it("preserves all checkpoint fields", () => {
+      const checkpoint = createTestCheckpoint()
+      fs.writeFileSync(testCheckpointFile, JSON.stringify(checkpoint))
+
+      const result = loadCheckpoint(testCheckpointFile)
+      expect(result?.processedShowIds).toEqual([100, 200, 300])
+      expect(result?.startedAt).toBe("2025-01-01T00:00:00.000Z")
+      expect(result?.stats.showsProcessed).toBe(3)
+      expect(result?.stats.totalSeasons).toBe(10)
+      expect(result?.stats.totalEpisodes).toBe(100)
+      expect(result?.stats.totalGuestStars).toBe(500)
+      expect(result?.stats.newActorsSaved).toBe(50)
+      expect(result?.stats.errors).toBe(0)
+    })
+  })
+
+  describe("saveCheckpoint", () => {
+    it("saves checkpoint to file", () => {
+      const checkpoint = createTestCheckpoint()
+      saveCheckpoint(checkpoint, testCheckpointFile)
+
+      expect(fs.existsSync(testCheckpointFile)).toBe(true)
+      const saved = JSON.parse(fs.readFileSync(testCheckpointFile, "utf-8"))
+      expect(saved.processedShowIds).toEqual([100, 200, 300])
+      expect(saved.stats.showsProcessed).toBe(3)
+    })
+
+    it("updates lastUpdated timestamp", () => {
+      const checkpoint = createTestCheckpoint()
+      const originalTimestamp = checkpoint.lastUpdated
+
+      saveCheckpoint(checkpoint, testCheckpointFile)
+
+      const saved = JSON.parse(fs.readFileSync(testCheckpointFile, "utf-8"))
+      expect(saved.lastUpdated).not.toBe(originalTimestamp)
+      // Should be a valid ISO timestamp
+      expect(new Date(saved.lastUpdated).toISOString()).toBe(saved.lastUpdated)
+    })
+
+    it("overwrites existing checkpoint file", () => {
+      const checkpoint1 = createTestCheckpoint()
+      checkpoint1.processedShowIds = [100]
+      saveCheckpoint(checkpoint1, testCheckpointFile)
+
+      const checkpoint2 = createTestCheckpoint()
+      checkpoint2.processedShowIds = [100, 200, 300, 400]
+      saveCheckpoint(checkpoint2, testCheckpointFile)
+
+      const saved = JSON.parse(fs.readFileSync(testCheckpointFile, "utf-8"))
+      expect(saved.processedShowIds).toEqual([100, 200, 300, 400])
+    })
+
+    it("writes formatted JSON with indentation", () => {
+      const checkpoint = createTestCheckpoint()
+      saveCheckpoint(checkpoint, testCheckpointFile)
+
+      const content = fs.readFileSync(testCheckpointFile, "utf-8")
+      expect(content).toContain("\n") // Should have newlines (formatted)
+      expect(content).toContain("  ") // Should have indentation
+    })
+  })
+
+  describe("deleteCheckpoint", () => {
+    it("deletes existing checkpoint file", () => {
+      const checkpoint = createTestCheckpoint()
+      fs.writeFileSync(testCheckpointFile, JSON.stringify(checkpoint))
+      expect(fs.existsSync(testCheckpointFile)).toBe(true)
+
+      deleteCheckpoint(testCheckpointFile)
+
+      expect(fs.existsSync(testCheckpointFile)).toBe(false)
+    })
+
+    it("does not throw when file does not exist", () => {
+      expect(fs.existsSync(testCheckpointFile)).toBe(false)
+      expect(() => deleteCheckpoint(testCheckpointFile)).not.toThrow()
+    })
+
+    it("only deletes the specified file", () => {
+      const otherFile = path.join(tempDir, "other-file.json")
+      fs.writeFileSync(testCheckpointFile, "{}")
+      fs.writeFileSync(otherFile, "{}")
+
+      deleteCheckpoint(testCheckpointFile)
+
+      expect(fs.existsSync(testCheckpointFile)).toBe(false)
+      expect(fs.existsSync(otherFile)).toBe(true)
+    })
+  })
+
+  describe("checkpoint round-trip", () => {
+    it("can save and load checkpoint correctly", () => {
+      const original = createTestCheckpoint()
+      const originalLastUpdated = original.lastUpdated
+      saveCheckpoint(original, testCheckpointFile)
+      const loaded = loadCheckpoint(testCheckpointFile)
+
+      expect(loaded?.processedShowIds).toEqual(original.processedShowIds)
+      expect(loaded?.startedAt).toBe(original.startedAt)
+      expect(loaded?.stats).toEqual(original.stats)
+      // lastUpdated will be different due to saveCheckpoint updating it
+      expect(loaded?.lastUpdated).not.toBe(originalLastUpdated)
+    })
+
+    it("can save, load, modify, and save again", () => {
+      const checkpoint = createTestCheckpoint()
+      saveCheckpoint(checkpoint, testCheckpointFile)
+
+      const loaded = loadCheckpoint(testCheckpointFile)
+      expect(loaded).not.toBeNull()
+      loaded!.processedShowIds.push(400)
+      loaded!.stats.showsProcessed = 4
+      saveCheckpoint(loaded!, testCheckpointFile)
+
+      const reloaded = loadCheckpoint(testCheckpointFile)
+      expect(reloaded?.processedShowIds).toEqual([100, 200, 300, 400])
+      expect(reloaded?.stats.showsProcessed).toBe(4)
+    })
   })
 })
