@@ -72,7 +72,7 @@ interface SeedOptions {
 interface ShowInfo {
   tmdb_id: number
   name: string
-  first_air_date: string | null
+  first_air_date: string | Date | null
   number_of_seasons: number | null
   status: string | null
 }
@@ -147,8 +147,11 @@ async function runSeeding(options: SeedOptions) {
         await delay(50)
 
         const seasons = showDetails.seasons || []
+        // Handle first_air_date as either Date object (from pg) or string
         const firstAirYear = showInfo.first_air_date
-          ? parseInt(showInfo.first_air_date.split("-")[0], 10)
+          ? showInfo.first_air_date instanceof Date
+            ? showInfo.first_air_date.getFullYear()
+            : parseInt(String(showInfo.first_air_date).split("-")[0], 10)
           : null
 
         console.log(`  Found ${seasons.length} seasons`)
