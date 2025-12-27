@@ -29,6 +29,8 @@ import type {
   TVSearchResponse,
   ShowResponse,
   EpisodeResponse,
+  SeasonEpisodesResponse,
+  SeasonResponse,
   UnifiedSearchResponse,
   SearchMediaType,
 } from "@/types"
@@ -347,4 +349,15 @@ export async function getEpisode(
   episodeNumber: number
 ): Promise<EpisodeResponse> {
   return fetchJson(`/show/${showId}/season/${seasonNumber}/episode/${episodeNumber}`)
+}
+
+export async function getSeasonEpisodes(
+  showId: number,
+  seasonNumber: number
+): Promise<SeasonEpisodesResponse> {
+  return fetchJson(`/show/${showId}/season/${seasonNumber}/episodes`)
+}
+
+export async function getSeason(showId: number, seasonNumber: number): Promise<SeasonResponse> {
+  return fetchJson(`/show/${showId}/season/${seasonNumber}`)
 }
