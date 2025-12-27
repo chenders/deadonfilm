@@ -38,6 +38,7 @@ import {
   upsertMovie,
   getCovidDeaths,
   getDeathWatchActors,
+  getDeceasedActorsForShow,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -888,5 +889,285 @@ describe("Movie Functions", () => {
       // Params: minAge, limit, offset
       expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [70, 50, 0])
     })
+  })
+})
+
+describe("getDeceasedActorsForShow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  it("returns empty array when no deceased actors exist for the show", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const result = await getDeceasedActorsForShow(18347)
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("FROM actors a"), [18347])
+    expect(result).toEqual([])
+  })
+
+  it("correctly aggregates episode appearances for deceased actors", async () => {
+    const mockActors = [
+      {
+        tmdb_id: 20753,
+        name: "Fred Willard",
+        profile_path: "/profile.jpg",
+        birthday: "1933-09-18",
+        deathday: "2020-05-15",
+        cause_of_death: "Cardiac arrest",
+        cause_of_death_source: "claude",
+        cause_of_death_details: "Died peacefully at home",
+        cause_of_death_details_source: "claude",
+        wikipedia_url: "https://en.wikipedia.org/wiki/Fred_Willard",
+        age_at_death: 86,
+        years_lost: -4,
+        total_episodes: 3,
+      },
+    ]
+    const mockEpisodes = [
+      {
+        actor_tmdb_id: 20753,
+        season_number: 1,
+        episode_number: 5,
+        episode_name: "Advanced Criminal Law",
+        character_name: "Pierce's Dad",
+      },
+      {
+        actor_tmdb_id: 20753,
+        season_number: 2,
+        episode_number: 10,
+        episode_name: "Mixology Certification",
+        character_name: "Pierce's Dad",
+      },
+    ]
+
+    mockQuery
+      .mockResolvedValueOnce({ rows: mockActors })
+      .mockResolvedValueOnce({ rows: mockEpisodes })
+
+    const result = await getDeceasedActorsForShow(18347)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].tmdb_id).toBe(20753)
+    expect(result[0].name).toBe("Fred Willard")
+    expect(result[0].total_episodes).toBe(3)
+    expect(result[0].episodes).toHaveLength(2)
+    expect(result[0].episodes[0]).toEqual({
+      season_number: 1,
+      episode_number: 5,
+      episode_name: "Advanced Criminal Law",
+      character_name: "Pierce's Dad",
+    })
+  })
+
+  it("returns actors sorted by deathday DESC", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getDeceasedActorsForShow(1400)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("ORDER BY a.deathday DESC")
+  })
+
+  it("properly joins with episodes table to get episode names", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getDeceasedActorsForShow(1400)
+
+    // Check the second query (episodes query) is issued
+    // First query is for actors, no episodes query if no actors
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+
+    // Now test with actors to verify episode join
+    const mockActors = [
+      {
+        tmdb_id: 100,
+        name: "Test Actor",
+        profile_path: null,
+        birthday: null,
+        deathday: "2020-01-01",
+        cause_of_death: null,
+        cause_of_death_source: null,
+        cause_of_death_details: null,
+        cause_of_death_details_source: null,
+        wikipedia_url: null,
+        age_at_death: null,
+        years_lost: null,
+        total_episodes: 1,
+      },
+    ]
+    mockQuery.mockResolvedValueOnce({ rows: mockActors }).mockResolvedValueOnce({ rows: [] })
+
+    await getDeceasedActorsForShow(1400)
+
+    // Second call should be the episodes query with LEFT JOIN
+    const episodesQuery = mockQuery.mock.calls[2][0] as string
+    expect(episodesQuery).toContain("LEFT JOIN episodes e ON")
+    expect(episodesQuery).toContain("e.name as episode_name")
+  })
+
+  it("handles actors with multiple episode appearances", async () => {
+    const mockActors = [
+      {
+        tmdb_id: 200,
+        name: "Multi-Episode Actor",
+        profile_path: null,
+        birthday: "1950-01-01",
+        deathday: "2021-06-15",
+        cause_of_death: "Natural causes",
+        cause_of_death_source: "wikidata",
+        cause_of_death_details: null,
+        cause_of_death_details_source: null,
+        wikipedia_url: null,
+        age_at_death: 71,
+        years_lost: 8,
+        total_episodes: 5,
+      },
+    ]
+    const mockEpisodes = [
+      {
+        actor_tmdb_id: 200,
+        season_number: 1,
+        episode_number: 1,
+        episode_name: "Pilot",
+        character_name: "Guest",
+      },
+      {
+        actor_tmdb_id: 200,
+        season_number: 1,
+        episode_number: 2,
+        episode_name: "Episode 2",
+        character_name: "Guest",
+      },
+      {
+        actor_tmdb_id: 200,
+        season_number: 1,
+        episode_number: 3,
+        episode_name: "Episode 3",
+        character_name: "Guest",
+      },
+      {
+        actor_tmdb_id: 200,
+        season_number: 2,
+        episode_number: 1,
+        episode_name: "Season 2 Premiere",
+        character_name: "Recurring",
+      },
+      {
+        actor_tmdb_id: 200,
+        season_number: 2,
+        episode_number: 2,
+        episode_name: "Episode 2",
+        character_name: "Recurring",
+      },
+    ]
+
+    mockQuery
+      .mockResolvedValueOnce({ rows: mockActors })
+      .mockResolvedValueOnce({ rows: mockEpisodes })
+
+    const result = await getDeceasedActorsForShow(5000)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].episodes).toHaveLength(5)
+    expect(result[0].episodes[0].season_number).toBe(1)
+    expect(result[0].episodes[0].episode_number).toBe(1)
+    expect(result[0].episodes[4].season_number).toBe(2)
+    expect(result[0].episodes[4].episode_number).toBe(2)
+  })
+
+  it("handles multiple deceased actors with their respective episodes", async () => {
+    const mockActors = [
+      {
+        tmdb_id: 300,
+        name: "Actor A",
+        profile_path: null,
+        birthday: null,
+        deathday: "2022-01-01",
+        cause_of_death: null,
+        cause_of_death_source: null,
+        cause_of_death_details: null,
+        cause_of_death_details_source: null,
+        wikipedia_url: null,
+        age_at_death: null,
+        years_lost: null,
+        total_episodes: 2,
+      },
+      {
+        tmdb_id: 400,
+        name: "Actor B",
+        profile_path: null,
+        birthday: null,
+        deathday: "2020-06-01",
+        cause_of_death: null,
+        cause_of_death_source: null,
+        cause_of_death_details: null,
+        cause_of_death_details_source: null,
+        wikipedia_url: null,
+        age_at_death: null,
+        years_lost: null,
+        total_episodes: 1,
+      },
+    ]
+    const mockEpisodes = [
+      {
+        actor_tmdb_id: 300,
+        season_number: 1,
+        episode_number: 1,
+        episode_name: "Ep 1",
+        character_name: "Char A",
+      },
+      {
+        actor_tmdb_id: 300,
+        season_number: 1,
+        episode_number: 2,
+        episode_name: "Ep 2",
+        character_name: "Char A",
+      },
+      {
+        actor_tmdb_id: 400,
+        season_number: 3,
+        episode_number: 5,
+        episode_name: "Ep 5",
+        character_name: "Char B",
+      },
+    ]
+
+    mockQuery
+      .mockResolvedValueOnce({ rows: mockActors })
+      .mockResolvedValueOnce({ rows: mockEpisodes })
+
+    const result = await getDeceasedActorsForShow(9999)
+
+    expect(result).toHaveLength(2)
+    // Actor A (more recent death) should be first due to ORDER BY deathday DESC
+    expect(result[0].tmdb_id).toBe(300)
+    expect(result[0].episodes).toHaveLength(2)
+    expect(result[1].tmdb_id).toBe(400)
+    expect(result[1].episodes).toHaveLength(1)
+  })
+
+  it("uses actor_show_appearances table to find appearances", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getDeceasedActorsForShow(18347)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id")
+    expect(query).toContain("WHERE asa.show_tmdb_id = $1")
+  })
+
+  it("only returns actors with deathday IS NOT NULL", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getDeceasedActorsForShow(18347)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("AND a.deathday IS NOT NULL")
   })
 })
