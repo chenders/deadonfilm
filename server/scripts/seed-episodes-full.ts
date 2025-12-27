@@ -28,9 +28,11 @@ import {
   upsertSeason,
   upsertEpisode,
   batchUpsertActors,
+  batchUpsertShowActorAppearances,
   type SeasonRecord,
   type EpisodeRecord,
   type ActorInput,
+  type ShowActorAppearanceRecord,
 } from "../src/lib/db.js"
 import { getSeasonDetails, getTVShowDetails, batchGetPersonDetails } from "../src/lib/tmdb.js"
 import {
@@ -204,7 +206,8 @@ async function runSeeding(options: SeedOptions) {
                     deathday: person.deathday,
                   })
 
-                  // Track new deceased actors to save
+                  // Save ALL guest stars to actors table (both living and deceased)
+                  // This ensures foreign key constraints are satisfied for actor_show_appearances
                   if (person.deathday) {
                     const yearsLostResult = await calculateYearsLost(
                       person.birthday,
@@ -224,6 +227,15 @@ async function runSeeding(options: SeedOptions) {
                       age_at_death: yearsLostResult?.ageAtDeath ?? null,
                       expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
                       years_lost: yearsLostResult?.yearsLost ?? null,
+                    })
+                  } else {
+                    // Living actors - save basic info to satisfy FK constraints
+                    newActors.push({
+                      tmdb_id: person.id,
+                      name: person.name,
+                      birthday: person.birthday,
+                      deathday: null,
+                      profile_path: person.profile_path,
                     })
                   }
                 }
@@ -272,16 +284,30 @@ async function runSeeding(options: SeedOptions) {
 
             // Process episodes in this season
             const episodes = seasonDetails.episodes || []
+            const guestStarAppearances: ShowActorAppearanceRecord[] = []
+
             for (const ep of episodes) {
               const guestStars = ep.guest_stars || []
               let episodeDeceasedCount = 0
 
-              // Count deceased in this episode
+              // Count deceased in this episode and collect appearances
               for (const gs of guestStars) {
                 const person = personDetails.get(gs.id)
                 if (person?.deathday) {
                   episodeDeceasedCount++
                 }
+
+                // Collect guest star appearance for database
+                guestStarAppearances.push({
+                  actor_tmdb_id: gs.id,
+                  show_tmdb_id: showInfo.tmdb_id,
+                  season_number: ep.season_number,
+                  episode_number: ep.episode_number,
+                  character_name: gs.character || null,
+                  appearance_type: "guest",
+                  billing_order: gs.order ?? null,
+                  age_at_filming: null, // Could calculate from birthday and air_date
+                })
               }
 
               // Calculate episode mortality stats
@@ -350,6 +376,15 @@ async function runSeeding(options: SeedOptions) {
               }
             }
 
+            // Save guest star appearances to database
+            if (!dryRun && guestStarAppearances.length > 0) {
+              try {
+                await batchUpsertShowActorAppearances(guestStarAppearances)
+              } catch (appearanceError) {
+                console.error(`    Error saving appearances: ${appearanceError}`)
+              }
+            }
+
             totalGuestStars += seasonActors.length
           } catch (seasonError) {
             console.error(
@@ -380,7 +415,7 @@ async function runSeeding(options: SeedOptions) {
     console.log(`  Total episodes ${dryRun ? "would be " : ""}saved: ${totalEpisodes}`)
     console.log(`  Total unique guest stars: ${totalGuestStars}`)
     if (!dryRun) {
-      console.log(`  New deceased actors saved: ${newActorsSaved}`)
+      console.log(`  Actors saved/updated: ${newActorsSaved}`)
     }
     if (errors > 0) {
       console.log(`  Errors: ${errors}`)

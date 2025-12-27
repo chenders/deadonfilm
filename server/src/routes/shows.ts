@@ -15,6 +15,7 @@ import {
   batchUpsertActors,
   upsertShow,
   getSeasons as getSeasonsFromDb,
+  getDeceasedActorsForShow,
   type ActorRecord,
   type ActorInput,
   type ShowRecord,
@@ -239,6 +240,52 @@ export async function getShow(req: Request, res: Response) {
     // Save new deceased persons to database in background
     if (newDeceasedForDb.length > 0) {
       saveDeceasedToDb(newDeceasedForDb)
+    }
+
+    // Fetch deceased guest stars from database (seeded by seed-episodes-full)
+    // These may not appear in aggregate credits but are in episode-level data
+    if (process.env.DATABASE_URL) {
+      try {
+        const dbDeceasedActors = await getDeceasedActorsForShow(showId)
+        const existingIds = new Set(deceased.map((d) => d.id))
+
+        for (const dbActor of dbDeceasedActors) {
+          // Skip if already in deceased list from TMDB aggregate credits
+          if (existingIds.has(dbActor.tmdb_id)) {
+            continue
+          }
+
+          // Convert database actor to DeceasedActor format
+          const tmdbUrl = `https://www.themoviedb.org/person/${dbActor.tmdb_id}`
+          const firstEpisode = dbActor.episodes[0]
+
+          deceased.push({
+            id: dbActor.tmdb_id,
+            name: dbActor.name,
+            character: firstEpisode?.character_name || "Guest",
+            profile_path: dbActor.profile_path,
+            birthday: dbActor.birthday,
+            deathday: dbActor.deathday,
+            causeOfDeath: dbActor.cause_of_death,
+            causeOfDeathSource: dbActor.cause_of_death_source,
+            causeOfDeathDetails: dbActor.cause_of_death_details,
+            causeOfDeathDetailsSource: dbActor.cause_of_death_details_source,
+            wikipediaUrl: dbActor.wikipedia_url,
+            tmdbUrl,
+            ageAtDeath: dbActor.age_at_death,
+            yearsLost: dbActor.years_lost,
+            totalEpisodes: dbActor.total_episodes,
+            episodes: dbActor.episodes.map((ep) => ({
+              seasonNumber: ep.season_number,
+              episodeNumber: ep.episode_number,
+              episodeName: ep.episode_name || `Episode ${ep.episode_number}`,
+              character: ep.character_name || "Guest",
+            })),
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching deceased actors from database:", error)
+      }
     }
 
     // Sort deceased by death date (most recent first)
