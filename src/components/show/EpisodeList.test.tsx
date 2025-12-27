@@ -182,4 +182,23 @@ describe("EpisodeList", () => {
     // Name is truncated at 40 chars + "..."
     expect(screen.getByText("This Is A Very Long Episode Name That Sh...")).toBeInTheDocument()
   })
+
+  it("creates correct View full season link", () => {
+    renderWithRouter(
+      <EpisodeList
+        episodes={mockEpisodes}
+        showId={1400}
+        showName="Test Show"
+        showFirstAirDate="1990-01-01"
+        seasonNumber={1}
+        seasonName="Season 1"
+        isLoading={false}
+      />
+    )
+
+    const viewSeasonLink = screen.getByTestId("view-season-link")
+    expect(viewSeasonLink).toBeInTheDocument()
+    expect(viewSeasonLink).toHaveAttribute("href", "/show/test-show-1990-1400/season/1")
+    expect(viewSeasonLink).toHaveTextContent("View full season")
+  })
 })
