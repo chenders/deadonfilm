@@ -49,6 +49,32 @@ export function parsePositiveInt(value: string): number {
   return parsed
 }
 
+/**
+ * Filter out guest stars with invalid/null IDs.
+ * TMDB occasionally returns guest stars with null or undefined IDs.
+ */
+export function filterValidGuestStars<T extends { id?: number | null }>(guestStars: T[]): T[] {
+  return guestStars.filter((gs): gs is T & { id: number } => gs.id != null && gs.id > 0)
+}
+
+/**
+ * Deduplicate appearances by composite key to prevent
+ * "ON CONFLICT DO UPDATE command cannot affect row a second time" errors.
+ * Keeps the first occurrence of each unique appearance.
+ */
+export function deduplicateAppearances(
+  appearances: ShowActorAppearanceRecord[]
+): ShowActorAppearanceRecord[] {
+  const uniqueAppearances = new Map<string, ShowActorAppearanceRecord>()
+  for (const appearance of appearances) {
+    const key = `${appearance.actor_tmdb_id}-${appearance.show_tmdb_id}-${appearance.season_number}-${appearance.episode_number}`
+    if (!uniqueAppearances.has(key)) {
+      uniqueAppearances.set(key, appearance)
+    }
+  }
+  return [...uniqueAppearances.values()]
+}
+
 const program = new Command()
   .name("seed-episodes-full")
   .description(
@@ -287,7 +313,7 @@ async function runSeeding(options: SeedOptions) {
             const guestStarAppearances: ShowActorAppearanceRecord[] = []
 
             for (const ep of episodes) {
-              const guestStars = ep.guest_stars || []
+              const guestStars = filterValidGuestStars(ep.guest_stars || [])
               let episodeDeceasedCount = 0
 
               // Count deceased in this episode and collect appearances
@@ -377,9 +403,11 @@ async function runSeeding(options: SeedOptions) {
             }
 
             // Save guest star appearances to database
+            // Deduplicate first to avoid "ON CONFLICT cannot affect row a second time" error
             if (!dryRun && guestStarAppearances.length > 0) {
               try {
-                await batchUpsertShowActorAppearances(guestStarAppearances)
+                const uniqueAppearances = deduplicateAppearances(guestStarAppearances)
+                await batchUpsertShowActorAppearances(uniqueAppearances)
               } catch (appearanceError) {
                 console.error(`    Error saving appearances: ${appearanceError}`)
               }
