@@ -1458,10 +1458,20 @@ export const UNNATURAL_DEATH_CATEGORIES = {
     patterns: [
       "carbon monoxide poisoning",
       "cyanide poisoning",
-      "burns",
+      // Use specific burn-related terms to avoid matching actor names like "George Burns"
+      "burn injuries",
+      "severe burns",
+      "burned to death",
+      "third-degree burns",
+      "house fire",
       "fire",
       "smoke inhalation",
-      "september 11",
+      // Use 9/11-specific terms to avoid matching deaths that happened on September 11 of other years
+      "september 11 attacks",
+      "september 11, 2001",
+      "9/11",
+      "world trade center",
+      "twin towers",
       "animal attack",
       "heat stroke",
       "hyperthermia",
