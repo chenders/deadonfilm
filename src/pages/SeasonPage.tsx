@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async"
 import { useSeason } from "@/hooks/useSeason"
 import { createShowSlug, createEpisodeSlug, extractShowId } from "@/utils/slugify"
 import { formatDate } from "@/utils/formatDate"
+import MortalityGauge from "@/components/movie/MortalityGauge"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 
@@ -122,6 +123,27 @@ export default function SeasonPage() {
                 <div className="text-xs text-text-muted">Deceased</div>
               </div>
             </div>
+
+            {/* Mortality Gauge */}
+            {stats.uniqueGuestStars > 0 && (
+              <div className="mt-4">
+                <MortalityGauge
+                  stats={{
+                    totalCast: stats.uniqueGuestStars,
+                    deceasedCount: stats.uniqueDeceasedGuestStars,
+                    livingCount: stats.uniqueGuestStars - stats.uniqueDeceasedGuestStars,
+                    mortalityPercentage:
+                      stats.uniqueGuestStars > 0
+                        ? Math.round(
+                            (stats.uniqueDeceasedGuestStars / stats.uniqueGuestStars) * 100
+                          )
+                        : 0,
+                    expectedDeaths: stats.expectedDeaths,
+                    mortalitySurpriseScore: stats.mortalitySurpriseScore,
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
 

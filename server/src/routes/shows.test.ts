@@ -661,6 +661,8 @@ describe("getSeason route", () => {
         totalEpisodes: 2,
         uniqueGuestStars: 2,
         uniqueDeceasedGuestStars: 1,
+        expectedDeaths: 0.5,
+        mortalitySurpriseScore: -1,
       },
     })
   })
@@ -781,6 +783,8 @@ describe("getSeason route", () => {
           totalEpisodes: 2,
           uniqueGuestStars: 1, // Same guest in both episodes counts as 1
           uniqueDeceasedGuestStars: 1,
+          expectedDeaths: 0.5,
+          mortalitySurpriseScore: -1,
         },
       })
     )

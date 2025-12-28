@@ -37,7 +37,13 @@ describe("useSeason", () => {
         episodeCount: 10,
       },
       episodes: [],
-      stats: { totalEpisodes: 10, uniqueGuestStars: 20, uniqueDeceasedGuestStars: 5 },
+      stats: {
+        totalEpisodes: 10,
+        uniqueGuestStars: 20,
+        uniqueDeceasedGuestStars: 5,
+        expectedDeaths: 2.5,
+        mortalitySurpriseScore: 1.0,
+      },
     }
     vi.mocked(api.getSeason).mockResolvedValue(mockData)
 
@@ -109,7 +115,13 @@ describe("useSeason", () => {
         episodeCount: 12,
       },
       episodes: [],
-      stats: { totalEpisodes: 12, uniqueGuestStars: 25, uniqueDeceasedGuestStars: 8 },
+      stats: {
+        totalEpisodes: 12,
+        uniqueGuestStars: 25,
+        uniqueDeceasedGuestStars: 8,
+        expectedDeaths: 4.0,
+        mortalitySurpriseScore: 1.0,
+      },
     }
     vi.mocked(api.getSeason).mockResolvedValue(mockData)
 
