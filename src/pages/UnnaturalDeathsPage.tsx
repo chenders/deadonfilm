@@ -230,7 +230,7 @@ export default function UnnaturalDeathsPage() {
                 }`}
                 data-testid={`category-tab-${cat.id}`}
               >
-                {cat.label} ({cat.count})
+                {cat.label} ({cat.count.toLocaleString()})
               </button>
             ))}
           </div>
@@ -311,7 +311,8 @@ export default function UnnaturalDeathsPage() {
 
             {/* Total count */}
             <p className="mt-4 text-center text-sm text-text-muted">
-              Showing {data.persons.length} of {data.pagination.totalCount} actors
+              Showing {data.persons.length.toLocaleString()} of{" "}
+              {data.pagination.totalCount.toLocaleString()} actors
             </p>
           </>
         )}

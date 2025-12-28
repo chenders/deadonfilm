@@ -255,7 +255,8 @@ export default function DeathWatchPage() {
 
             {/* Total count */}
             <p className="mt-4 text-center text-sm text-text-muted">
-              Showing {data.actors.length} of {data.pagination.totalCount} actors
+              Showing {data.actors.length.toLocaleString()} of{" "}
+              {data.pagination.totalCount.toLocaleString()} actors
             </p>
           </>
         )}

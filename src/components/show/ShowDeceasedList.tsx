@@ -61,7 +61,7 @@ export default function ShowDeceasedList({ actors, showId, showName }: ShowDecea
             onClick={handleShowMore}
             className="rounded-lg bg-brown-medium/10 px-6 py-2 text-sm font-medium text-brown-dark transition-colors hover:bg-brown-medium/20"
           >
-            Show more ({remainingCount} remaining)
+            Show more ({remainingCount.toLocaleString()} remaining)
           </button>
         </div>
       )}

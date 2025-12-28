@@ -70,9 +70,14 @@ export type {
   DeceasedShowActor,
   LivingShowActor,
   ShowResponse,
+  EpisodeSummary,
+  SeasonEpisodesResponse,
   EpisodeDetails,
   EpisodeShowInfo,
   EpisodeResponse,
+  SeasonInfo,
+  SeasonEpisodeWithStats,
+  SeasonResponse,
 } from "./show"
 
 // Discovery types

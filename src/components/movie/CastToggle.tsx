@@ -41,7 +41,7 @@ export default function CastToggle({
                 : "bg-white text-brown-dark hover:bg-beige"
           }`}
         >
-          Deceased ({deceasedCount})
+          Deceased ({deceasedCount.toLocaleString()})
         </button>
         <button
           data-testid="living-toggle-btn"
@@ -56,7 +56,7 @@ export default function CastToggle({
                 : "bg-white text-brown-dark hover:bg-beige"
           }`}
         >
-          Living ({livingCount})
+          Living ({livingCount.toLocaleString()})
         </button>
       </div>
 

@@ -65,6 +65,8 @@ const mockEpisodeResponse = {
     deceasedCount: 3,
     livingCount: 7,
     mortalityPercentage: 30,
+    expectedDeaths: 1.5,
+    mortalitySurpriseScore: 1.0,
   },
 }
 
@@ -138,17 +140,19 @@ describe("EpisodePage", () => {
     expect(showLink).toHaveAttribute("href", "/show/seinfeld-1989-1400")
   })
 
-  it("renders mortality stats", async () => {
+  it("renders mortality gauge with stats", async () => {
     vi.mocked(api.getEpisode).mockResolvedValue(mockEpisodeResponse)
 
     renderWithProviders(<EpisodePage />)
 
     await waitFor(() => {
-      expect(screen.getByText("30%")).toBeInTheDocument()
+      expect(screen.getByTestId("mortality-gauge")).toBeInTheDocument()
     })
 
-    expect(screen.getByText("cast deceased")).toBeInTheDocument()
-    expect(screen.getByText("3 of 10 cast members")).toBeInTheDocument()
+    expect(screen.getByTestId("gauge-percentage")).toHaveTextContent("30%")
+    expect(screen.getByText("deceased")).toBeInTheDocument()
+    // Should show expected/actual comparison since expectedDeaths > 0
+    expect(screen.getByTestId("mortality-comparison")).toBeInTheDocument()
   })
 
   it("renders episode overview", async () => {
@@ -236,6 +240,8 @@ describe("EpisodePage", () => {
         deceasedCount: 0,
         livingCount: 10,
         mortalityPercentage: 0,
+        expectedDeaths: 0.5,
+        mortalitySurpriseScore: -1.0,
       },
     })
 

@@ -84,7 +84,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                   >
                     <span className="font-semibold text-accent">{yearData.year}</span>
                     <span className="text-text-muted">
-                      {yearData.count} death{yearData.count !== 1 ? "s" : ""}
+                      {yearData.count.toLocaleString()} death{yearData.count !== 1 ? "s" : ""}
                     </span>
                     <svg
                       className={`ml-auto h-4 w-4 text-brown-medium/50 transition-transform duration-300 ${

@@ -262,6 +262,7 @@ async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
     console.log(`  Total movies saved: ${grandTotalMoviesSaved}`)
     console.log(`  Total actor appearances: ${grandTotalActorAppearances}`)
     console.log("\nDone!")
+    process.exit(0)
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)

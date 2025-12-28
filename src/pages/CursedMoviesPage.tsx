@@ -54,7 +54,7 @@ function MovieRow({ movie }: { movie: CursedMovie }) {
 
         <div className="flex-shrink-0 text-right">
           <p className="font-display text-lg text-brown-dark">
-            {movie.deceasedCount}/{movie.castCount}
+            {movie.deceasedCount.toLocaleString()}/{movie.castCount.toLocaleString()}
           </p>
           <p className="text-xs text-text-muted">
             +{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"} above expected
@@ -95,7 +95,8 @@ function MovieRow({ movie }: { movie: CursedMovie }) {
         <div className="min-w-0 flex-1">
           <h3 className="truncate font-display text-base text-brown-dark">{movie.title}</h3>
           <p className="text-xs text-text-muted">
-            {releaseYear} · {movie.deceasedCount}/{movie.castCount} deaths
+            {releaseYear} · {movie.deceasedCount.toLocaleString()}/
+            {movie.castCount.toLocaleString()} deaths
           </p>
           <p className="mt-1 text-xs text-brown-dark">
             <span className="font-display text-sm">
@@ -446,7 +447,8 @@ export default function CursedMoviesPage() {
 
             {/* Total count */}
             <p className="mt-4 text-center text-sm text-text-muted">
-              Showing {data.movies.length} of {data.pagination.totalCount} movies
+              Showing {data.movies.length.toLocaleString()} of{" "}
+              {data.pagination.totalCount.toLocaleString()} movies
             </p>
 
             <CalculationExplainer type="movies" />
