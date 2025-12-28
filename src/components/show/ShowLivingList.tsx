@@ -59,7 +59,7 @@ export default function ShowLivingList({ actors, showId, showName }: ShowLivingL
             onClick={handleShowMore}
             className="rounded-lg bg-living/10 px-6 py-2 text-sm font-medium text-living-dark transition-colors hover:bg-living/20"
           >
-            Show more ({remainingCount} remaining)
+            Show more ({remainingCount.toLocaleString()} remaining)
           </button>
         </div>
       )}

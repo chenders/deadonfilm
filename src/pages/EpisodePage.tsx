@@ -128,7 +128,8 @@ export default function EpisodePage() {
             <div className="text-4xl font-bold text-accent">{stats.mortalityPercentage}%</div>
             <div className="text-sm text-brown-dark">cast deceased</div>
             <div className="mt-2 text-xs text-text-muted">
-              {stats.deceasedCount} of {stats.totalCast} cast members
+              {stats.deceasedCount.toLocaleString()} of {stats.totalCast.toLocaleString()} cast
+              members
             </div>
           </div>
         </div>
