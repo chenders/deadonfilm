@@ -18,6 +18,7 @@ vi.mock("../lib/db.js", () => ({
   upsertShow: vi.fn(),
   getSeasons: vi.fn(),
   getDeceasedActorsForShow: vi.fn(),
+  getLivingActorsForShow: vi.fn(),
 }))
 
 vi.mock("../lib/mortality-stats.js", () => ({
@@ -41,6 +42,7 @@ import {
   upsertShow,
   getSeasons,
   getDeceasedActorsForShow,
+  getLivingActorsForShow,
   batchUpsertActors,
 } from "../lib/db.js"
 import { calculateMovieMortality } from "../lib/mortality-stats.js"
@@ -140,6 +142,7 @@ describe("getShow route", () => {
     vi.mocked(upsertShow).mockResolvedValue()
     vi.mocked(getSeasons).mockResolvedValue([])
     vi.mocked(getDeceasedActorsForShow).mockResolvedValue([])
+    vi.mocked(getLivingActorsForShow).mockResolvedValue([])
     vi.mocked(calculateMovieMortality).mockResolvedValue({
       expectedDeaths: 0.5,
       actualDeaths: 0,

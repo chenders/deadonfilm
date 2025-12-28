@@ -16,6 +16,7 @@ import {
   upsertShow,
   getSeasons as getSeasonsFromDb,
   getDeceasedActorsForShow,
+  getLivingActorsForShow,
   type ActorRecord,
   type ActorInput,
   type ShowRecord,
@@ -286,12 +287,49 @@ export async function getShow(req: Request, res: Response) {
       } catch (error) {
         console.error("Error fetching deceased actors from database:", error)
       }
+
+      // Also fetch living guest stars from database (seeded by seed-episodes-full)
+      try {
+        const dbLivingActors = await getLivingActorsForShow(showId)
+        const existingLivingIds = new Set(living.map((l) => l.id))
+
+        for (const dbActor of dbLivingActors) {
+          // Skip if already in living list from TMDB aggregate credits
+          if (existingLivingIds.has(dbActor.tmdb_id)) {
+            continue
+          }
+
+          // Convert database actor to LivingActor format
+          const firstEpisode = dbActor.episodes[0]
+
+          living.push({
+            id: dbActor.tmdb_id,
+            name: dbActor.name,
+            character: firstEpisode?.character_name || "Guest",
+            profile_path: dbActor.profile_path,
+            birthday: dbActor.birthday,
+            age: calculateAge(dbActor.birthday),
+            totalEpisodes: dbActor.total_episodes,
+            episodes: dbActor.episodes.map((ep) => ({
+              seasonNumber: ep.season_number,
+              episodeNumber: ep.episode_number,
+              episodeName: ep.episode_name || `Episode ${ep.episode_number}`,
+              character: ep.character_name || "Guest",
+            })),
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching living actors from database:", error)
+      }
     }
 
     // Sort deceased by death date (most recent first)
     deceased.sort((a, b) => {
       return new Date(b.deathday).getTime() - new Date(a.deathday).getTime()
     })
+
+    // Sort living by total episodes (most episodes first)
+    living.sort((a, b) => b.totalEpisodes - a.totalEpisodes)
 
     // Calculate stats
     const totalCast = deceased.length + living.length
