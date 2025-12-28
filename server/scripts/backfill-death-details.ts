@@ -14,6 +14,7 @@
 import "dotenv/config"
 import { Command } from "commander"
 import pg from "pg"
+// Note: Rate limiting is handled by the centralized rate limiter in claude.ts
 import { getCauseOfDeath } from "../src/lib/wikidata.js"
 
 const { Pool } = pg
@@ -127,8 +128,7 @@ async function runBackfill() {
           console.log(`  -> No updates needed`)
         }
 
-        // Delay between API calls to avoid rate limiting
-        await delay(300)
+        // Note: Rate limiting is handled by the centralized rate limiter in claude.ts
       } catch (error) {
         console.error(`  -> Error: ${error}`)
         failed++
@@ -145,10 +145,6 @@ async function runBackfill() {
   } finally {
     await pool.end()
   }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 program.parse()

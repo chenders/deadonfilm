@@ -7,6 +7,7 @@ import { getYear } from "@/utils/formatDate"
 import ShowHeader, { ShowPoster } from "@/components/show/ShowHeader"
 import ShowDeceasedList from "@/components/show/ShowDeceasedList"
 import ShowLivingList from "@/components/show/ShowLivingList"
+import EpisodeBrowser from "@/components/show/EpisodeBrowser"
 import MortalityGauge from "@/components/movie/MortalityGauge"
 import CastToggle from "@/components/movie/CastToggle"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
@@ -48,7 +49,7 @@ export default function ShowPage() {
     return <ErrorMessage message="Show not found" />
   }
 
-  const { show, deceased, living, stats } = data
+  const { show, seasons, deceased, living, stats } = data
   const year = getYear(show.firstAirDate)
   const title = `${show.name} (${year})`
 
@@ -92,6 +93,13 @@ export default function ShowPage() {
           <ShowPoster show={show} />
           <MortalityGauge stats={stats} />
         </div>
+
+        <EpisodeBrowser
+          seasons={seasons}
+          showId={show.id}
+          showName={show.name}
+          showFirstAirDate={show.firstAirDate}
+        />
 
         <CastToggle
           showLiving={showLiving}

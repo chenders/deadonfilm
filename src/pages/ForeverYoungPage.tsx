@@ -228,7 +228,8 @@ export default function ForeverYoungPage() {
 
             {/* Total count */}
             <p className="mt-4 text-center text-sm text-text-muted">
-              Showing {data.movies.length} of {data.pagination.totalCount} movies
+              Showing {data.movies.length.toLocaleString()} of{" "}
+              {data.pagination.totalCount.toLocaleString()} movies
               {data.pagination.totalPages === 20 && " (showing first 1,000)"}
             </p>
           </>

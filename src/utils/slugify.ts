@@ -79,6 +79,20 @@ export function extractShowId(slug: string): number {
 }
 
 /**
+ * Creates a URL path for a season page using the show slug
+ * Example: "Seinfeld" (1989), ID 1400, Season 4 → "/show/seinfeld-1989-1400/season/4"
+ */
+export function createSeasonPath(
+  showName: string,
+  firstAirDate: string | null,
+  showId: number,
+  seasonNumber: number
+): string {
+  const showSlug = createShowSlug(showName, firstAirDate, showId)
+  return `/show/${showSlug}/season/${seasonNumber}`
+}
+
+/**
  * Creates a URL-safe slug for an episode
  * Example: "Seinfeld", "The Contest", S4E11, show ID 1400 → "seinfeld-s4e11-the-contest-1400"
  */
