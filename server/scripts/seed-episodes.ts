@@ -227,6 +227,7 @@ async function runSeeding(options: SeedOptions) {
       console.log(`  Errors: ${errors}`)
     }
     console.log("\nDone!")
+    process.exit(0)
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)

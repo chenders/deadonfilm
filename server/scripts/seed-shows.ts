@@ -208,6 +208,7 @@ async function runSeeding({ showsToFetch, dryRun }: SeedOptions) {
     console.log(`  Total shows ${dryRun ? "would be " : ""}saved: ${totalShowsSaved}`)
     console.log(`  Total actor appearances: ${totalActorAppearances}`)
     console.log("\nDone!")
+    process.exit(0)
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)
