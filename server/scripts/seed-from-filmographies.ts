@@ -398,6 +398,7 @@ async function runSeeding({ limit, skip, dryRun, reset }: RunOptions) {
     console.log("  Run again to continue, or use --reset to start over")
   }
   console.log("\nDone!")
+  process.exit(0)
 }
 
 const program = new Command()

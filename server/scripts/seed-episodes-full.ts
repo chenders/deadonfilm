@@ -269,7 +269,7 @@ async function runSeeding(options: SeedOptions) {
       if (shouldUseCheckpoint) {
         deleteCheckpoint()
       }
-      return
+      process.exit(0)
     }
 
     // Use checkpoint stats if resuming, otherwise start fresh
@@ -601,6 +601,7 @@ async function runSeeding(options: SeedOptions) {
     }
 
     console.log("\nDone!")
+    process.exit(0)
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)
