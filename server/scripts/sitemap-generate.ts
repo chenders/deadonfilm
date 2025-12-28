@@ -32,7 +32,7 @@ const DEFAULT_OUTPUT_DIR = "/app/sitemaps"
  * Sanitize a filename to prevent path traversal attacks.
  * Only allows alphanumeric characters, dots, hyphens, and underscores.
  */
-function sanitizeFilename(filename: string): string {
+export function sanitizeFilename(filename: string): string {
   // Remove any path components and validate characters
   const basename = path.basename(filename)
   if (!/^[\w.-]+$/.test(basename)) {
@@ -44,15 +44,20 @@ function sanitizeFilename(filename: string): string {
 /**
  * Safely join paths with sanitization to prevent path traversal.
  */
-function safePathJoin(baseDir: string, filename: string): string {
+export function safePathJoin(baseDir: string, filename: string): string {
   const sanitized = sanitizeFilename(filename)
   // nosemgrep: path-join-resolve-traversal - baseDir is hardcoded or from CLI, sanitized validates filename
   const resolvedBase = path.resolve(baseDir)
   // nosemgrep: path-join-resolve-traversal - sanitized is already validated above
   const fullPath = path.join(resolvedBase, sanitized)
 
-  // Ensure the result is still under the base directory
-  if (!fullPath.startsWith(resolvedBase)) {
+  // Ensure the result is still under the base directory (or exactly the base)
+  const normalizedFull = path.normalize(fullPath)
+  const normalizedBase = path.normalize(resolvedBase) + path.sep
+  if (
+    !normalizedFull.startsWith(normalizedBase) &&
+    normalizedFull !== path.normalize(resolvedBase)
+  ) {
     throw new Error(`Path traversal detected: ${filename}`)
   }
   return fullPath

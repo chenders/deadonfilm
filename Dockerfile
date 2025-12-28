@@ -84,8 +84,8 @@ http {
             proxy_set_header X-Real-IP $remote_addr;
         }
 
-        # IndexNow key file for Bing verification (UUID format)
-        location ~ ^/[a-f0-9-]{36}\.txt$ {
+        # IndexNow key file for Bing verification (UUID format, case-insensitive)
+        location ~ ^/[a-fA-F0-9-]{36}\.txt$ {
             root /app/sitemaps;
             try_files $uri =404;
         }

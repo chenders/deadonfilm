@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { computeCombinedHash, submitToGoogle, submitToBing } from "./sitemap-generate.js"
+import path from "path"
+import {
+  computeCombinedHash,
+  submitToGoogle,
+  submitToBing,
+  sanitizeFilename,
+  safePathJoin,
+} from "./sitemap-generate.js"
 
 describe("computeCombinedHash", () => {
   it("produces consistent hash for same content", () => {
@@ -195,5 +202,106 @@ describe("submitToBing", () => {
     const result = await submitToBing("https://example.com/sitemap.xml", "key")
 
     expect(result).toBe(false)
+  })
+})
+
+describe("sanitizeFilename", () => {
+  describe("valid filenames", () => {
+    it("allows alphanumeric filenames", () => {
+      expect(sanitizeFilename("sitemap.xml")).toBe("sitemap.xml")
+      expect(sanitizeFilename("sitemap123.xml")).toBe("sitemap123.xml")
+    })
+
+    it("allows hyphens and underscores", () => {
+      expect(sanitizeFilename("sitemap-movies.xml")).toBe("sitemap-movies.xml")
+      expect(sanitizeFilename("sitemap_actors.xml")).toBe("sitemap_actors.xml")
+      expect(sanitizeFilename("sitemap-movies-1.xml")).toBe("sitemap-movies-1.xml")
+    })
+
+    it("allows dots in filename", () => {
+      expect(sanitizeFilename("sitemap.xml")).toBe("sitemap.xml")
+      expect(sanitizeFilename(".xml")).toBe(".xml")
+      expect(sanitizeFilename("file.name.xml")).toBe("file.name.xml")
+    })
+
+    it("allows edge case filenames", () => {
+      expect(sanitizeFilename("-file.xml")).toBe("-file.xml")
+      expect(sanitizeFilename("_test.xml")).toBe("_test.xml")
+      expect(sanitizeFilename("a")).toBe("a")
+    })
+  })
+
+  describe("invalid filenames", () => {
+    it("extracts basename from path traversal attempts", () => {
+      // path.basename extracts just the filename part, stripping traversal
+      expect(sanitizeFilename("../etc/passwd")).toBe("passwd")
+      expect(sanitizeFilename("foo/../bar")).toBe("bar")
+      // Windows-style paths with backslashes are rejected as invalid characters on Unix
+      expect(() => sanitizeFilename("..\\windows\\system32")).toThrow("Invalid filename")
+    })
+
+    it("rejects special characters", () => {
+      expect(() => sanitizeFilename("file name.xml")).toThrow("Invalid filename")
+      expect(() => sanitizeFilename("file@name.xml")).toThrow("Invalid filename")
+      expect(() => sanitizeFilename("file#name.xml")).toThrow("Invalid filename")
+      expect(() => sanitizeFilename("file$name.xml")).toThrow("Invalid filename")
+    })
+
+    it("rejects empty strings", () => {
+      expect(() => sanitizeFilename("")).toThrow("Invalid filename")
+    })
+
+    it("extracts basename and validates", () => {
+      // path.basename extracts "passwd" which is valid
+      expect(sanitizeFilename("/etc/passwd")).toBe("passwd")
+      // But if the basename itself contains invalid chars, it should fail
+      expect(() => sanitizeFilename("/path/to/file name.xml")).toThrow("Invalid filename")
+    })
+  })
+})
+
+describe("safePathJoin", () => {
+  const testBaseDir = "/app/sitemaps"
+
+  describe("valid paths", () => {
+    it("joins base directory with valid filename", () => {
+      const result = safePathJoin(testBaseDir, "sitemap.xml")
+      expect(result).toBe(path.join(testBaseDir, "sitemap.xml"))
+    })
+
+    it("handles various valid filenames", () => {
+      expect(safePathJoin(testBaseDir, "sitemap-movies.xml")).toBe(
+        path.join(testBaseDir, "sitemap-movies.xml")
+      )
+      expect(safePathJoin(testBaseDir, "sitemap_actors.xml")).toBe(
+        path.join(testBaseDir, "sitemap_actors.xml")
+      )
+      expect(safePathJoin(testBaseDir, "12345678-1234-1234-1234-123456789abc.txt")).toBe(
+        path.join(testBaseDir, "12345678-1234-1234-1234-123456789abc.txt")
+      )
+    })
+  })
+
+  describe("path traversal prevention", () => {
+    it("extracts basename and uses it safely", () => {
+      // Path traversal attempts are neutralized by extracting basename
+      const result1 = safePathJoin(testBaseDir, "../etc/passwd")
+      expect(result1).toBe(path.join(testBaseDir, "passwd"))
+
+      const result2 = safePathJoin(testBaseDir, "foo/../bar")
+      expect(result2).toBe(path.join(testBaseDir, "bar"))
+    })
+
+    it("rejects filenames with special characters", () => {
+      expect(() => safePathJoin(testBaseDir, "file name.xml")).toThrow()
+      expect(() => safePathJoin(testBaseDir, "file@name.xml")).toThrow()
+    })
+  })
+
+  describe("normalized path handling", () => {
+    it("handles relative base directories", () => {
+      const result = safePathJoin("./sitemaps", "sitemap.xml")
+      expect(result).toBe(path.join(path.resolve("./sitemaps"), "sitemap.xml"))
+    })
   })
 })
