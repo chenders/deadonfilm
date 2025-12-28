@@ -143,8 +143,8 @@ const IRRELEVANT_PATTERNS = [
   /\bher (father|mother|brother|sister|husband|spouse|partner)\b.*\bdied\b/i,
 ]
 
-// Validate death details and return null if they contain irrelevant content
-function validateDeathDetails(
+// Validate initial death details and return null if they contain irrelevant content
+function validateInitialDeathDetails(
   details: string | null,
   cause: string | null,
   name: string
@@ -294,7 +294,7 @@ If unknown: {"cause": null, "details": null}`
 
     // Validate and potentially reject bad details
     if (parsed.details) {
-      const validatedDetails = validateDeathDetails(parsed.details, parsed.cause, name)
+      const validatedDetails = validateInitialDeathDetails(parsed.details, parsed.cause, name)
       if (validatedDetails !== parsed.details) {
         console.log(`Claude details rejected for ${name}: "${parsed.details?.substring(0, 50)}..."`)
         parsed.details = validatedDetails
