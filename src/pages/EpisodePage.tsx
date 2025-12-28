@@ -7,6 +7,7 @@ import { formatDate } from "@/utils/formatDate"
 import ShowDeceasedList from "@/components/show/ShowDeceasedList"
 import ShowLivingList from "@/components/show/ShowLivingList"
 import CastToggle from "@/components/movie/CastToggle"
+import MortalityGauge from "@/components/movie/MortalityGauge"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import type { ViewMode } from "@/types"
@@ -123,14 +124,7 @@ export default function EpisodePage() {
             </div>
           )}
 
-          {/* Stats */}
-          <div className="rounded-lg border border-brown-medium/20 bg-white p-4 text-center">
-            <div className="text-4xl font-bold text-accent">{stats.mortalityPercentage}%</div>
-            <div className="text-sm text-brown-dark">cast deceased</div>
-            <div className="mt-2 text-xs text-text-muted">
-              {stats.deceasedCount} of {stats.totalCast} cast members
-            </div>
-          </div>
+          <MortalityGauge stats={stats} />
         </div>
 
         {/* Overview */}

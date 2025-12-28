@@ -217,7 +217,8 @@ export default function DeathsByCausePage() {
 
             {/* Total count */}
             <p className="mt-4 text-center text-sm text-text-muted">
-              Showing {data.deaths.length} of {data.pagination.totalCount} actors
+              Showing {data.deaths.length.toLocaleString()} of{" "}
+              {data.pagination.totalCount.toLocaleString()} actors
             </p>
           </>
         )}

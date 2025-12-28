@@ -139,7 +139,7 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
             <div className="text-brown-medium/40">|</div>
             <div>
               <span className="text-text-muted">Actual: </span>
-              <span className="font-medium text-accent">{deceasedCount}</span>
+              <span className="font-medium text-accent">{deceasedCount.toLocaleString()}</span>
             </div>
           </div>
           {surpriseLabel && (

@@ -39,6 +39,7 @@ import {
   getCovidDeaths,
   getDeathWatchActors,
   getDeceasedActorsForShow,
+  getLivingActorsForShow,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -1169,5 +1170,174 @@ describe("getDeceasedActorsForShow", () => {
 
     const query = mockQuery.mock.calls[0][0] as string
     expect(query).toContain("AND a.deathday IS NOT NULL")
+  })
+})
+
+describe("getLivingActorsForShow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  it("returns empty array when no living actors exist for the show", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const result = await getLivingActorsForShow(18347)
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("FROM actors a"), [18347])
+    expect(result).toEqual([])
+  })
+
+  it("correctly aggregates episode appearances for living actors", async () => {
+    const mockActors = [
+      {
+        tmdb_id: 20753,
+        name: "John Smith",
+        profile_path: "/profile.jpg",
+        birthday: "1960-05-15",
+        total_episodes: 3,
+      },
+    ]
+    const mockEpisodes = [
+      {
+        actor_tmdb_id: 20753,
+        season_number: 1,
+        episode_number: 5,
+        episode_name: "The Pilot",
+        character_name: "Doctor",
+      },
+      {
+        actor_tmdb_id: 20753,
+        season_number: 2,
+        episode_number: 10,
+        episode_name: "The Finale",
+        character_name: "Doctor",
+      },
+    ]
+
+    mockQuery
+      .mockResolvedValueOnce({ rows: mockActors })
+      .mockResolvedValueOnce({ rows: mockEpisodes })
+
+    const result = await getLivingActorsForShow(18347)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].tmdb_id).toBe(20753)
+    expect(result[0].name).toBe("John Smith")
+    expect(result[0].total_episodes).toBe(3)
+    expect(result[0].episodes).toHaveLength(2)
+    expect(result[0].episodes[0]).toEqual({
+      season_number: 1,
+      episode_number: 5,
+      episode_name: "The Pilot",
+      character_name: "Doctor",
+    })
+  })
+
+  it("returns actors sorted by total_episodes DESC", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getLivingActorsForShow(1400)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("ORDER BY total_episodes DESC")
+  })
+
+  it("properly joins with episodes table to get episode names", async () => {
+    const mockActors = [
+      {
+        tmdb_id: 100,
+        name: "Test Actor",
+        profile_path: null,
+        birthday: null,
+        total_episodes: 1,
+      },
+    ]
+    mockQuery.mockResolvedValueOnce({ rows: mockActors }).mockResolvedValueOnce({ rows: [] })
+
+    await getLivingActorsForShow(1400)
+
+    // Second call should be the episodes query with LEFT JOIN
+    const episodesQuery = mockQuery.mock.calls[1][0] as string
+    expect(episodesQuery).toContain("LEFT JOIN episodes e ON")
+    expect(episodesQuery).toContain("e.name as episode_name")
+  })
+
+  it("handles multiple living actors with their respective episodes", async () => {
+    const mockActors = [
+      {
+        tmdb_id: 300,
+        name: "Actor A",
+        profile_path: null,
+        birthday: "1980-01-01",
+        total_episodes: 5,
+      },
+      {
+        tmdb_id: 400,
+        name: "Actor B",
+        profile_path: null,
+        birthday: "1990-06-01",
+        total_episodes: 2,
+      },
+    ]
+    const mockEpisodes = [
+      {
+        actor_tmdb_id: 300,
+        season_number: 1,
+        episode_number: 1,
+        episode_name: "Ep 1",
+        character_name: "Char A",
+      },
+      {
+        actor_tmdb_id: 300,
+        season_number: 1,
+        episode_number: 2,
+        episode_name: "Ep 2",
+        character_name: "Char A",
+      },
+      {
+        actor_tmdb_id: 400,
+        season_number: 3,
+        episode_number: 5,
+        episode_name: "Ep 5",
+        character_name: "Char B",
+      },
+    ]
+
+    mockQuery
+      .mockResolvedValueOnce({ rows: mockActors })
+      .mockResolvedValueOnce({ rows: mockEpisodes })
+
+    const result = await getLivingActorsForShow(9999)
+
+    expect(result).toHaveLength(2)
+    // Actor A (more episodes) should be first due to ORDER BY total_episodes DESC
+    expect(result[0].tmdb_id).toBe(300)
+    expect(result[0].episodes).toHaveLength(2)
+    expect(result[1].tmdb_id).toBe(400)
+    expect(result[1].episodes).toHaveLength(1)
+  })
+
+  it("uses actor_show_appearances table to find appearances", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getLivingActorsForShow(18347)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id")
+    expect(query).toContain("WHERE asa.show_tmdb_id = $1")
+  })
+
+  it("only returns actors with deathday IS NULL", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getLivingActorsForShow(18347)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("AND a.deathday IS NULL")
   })
 })

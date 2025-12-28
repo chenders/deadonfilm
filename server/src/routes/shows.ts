@@ -16,6 +16,7 @@ import {
   upsertShow,
   getSeasons as getSeasonsFromDb,
   getDeceasedActorsForShow,
+  getLivingActorsForShow,
   type ActorRecord,
   type ActorInput,
   type ShowRecord,
@@ -286,12 +287,49 @@ export async function getShow(req: Request, res: Response) {
       } catch (error) {
         console.error("Error fetching deceased actors from database:", error)
       }
+
+      // Also fetch living guest stars from database (seeded by seed-episodes-full)
+      try {
+        const dbLivingActors = await getLivingActorsForShow(showId)
+        const existingLivingIds = new Set(living.map((l) => l.id))
+
+        for (const dbActor of dbLivingActors) {
+          // Skip if already in living list from TMDB aggregate credits
+          if (existingLivingIds.has(dbActor.tmdb_id)) {
+            continue
+          }
+
+          // Convert database actor to LivingActor format
+          const firstEpisode = dbActor.episodes[0]
+
+          living.push({
+            id: dbActor.tmdb_id,
+            name: dbActor.name,
+            character: firstEpisode?.character_name || "Guest",
+            profile_path: dbActor.profile_path,
+            birthday: dbActor.birthday,
+            age: calculateAge(dbActor.birthday),
+            totalEpisodes: dbActor.total_episodes,
+            episodes: dbActor.episodes.map((ep) => ({
+              seasonNumber: ep.season_number,
+              episodeNumber: ep.episode_number,
+              episodeName: ep.episode_name || `Episode ${ep.episode_number}`,
+              character: ep.character_name || "Guest",
+            })),
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching living actors from database:", error)
+      }
     }
 
     // Sort deceased by death date (most recent first)
     deceased.sort((a, b) => {
       return new Date(b.deathday).getTime() - new Date(a.deathday).getTime()
     })
+
+    // Sort living by total episodes (most episodes first)
+    living.sort((a, b) => b.totalEpisodes - a.totalEpisodes)
 
     // Calculate stats
     const totalCast = deceased.length + living.length
@@ -757,6 +795,51 @@ export async function getEpisode(req: Request, res: Response) {
     const livingCount = living.length
     const mortalityPercentage = totalCast > 0 ? Math.round((deceasedCount / totalCast) * 100) : 0
 
+    // Calculate mortality statistics using episode air date as release year
+    let expectedDeaths = 0
+    let mortalitySurpriseScore = 0
+    const airYear = episode.air_date ? parseInt(episode.air_date.split("-")[0]) : null
+
+    if (airYear && totalCast > 0) {
+      const allActors: ActorForMortality[] = [
+        ...deceased.map((d) => ({
+          tmdbId: d.id,
+          name: d.name,
+          birthday: d.birthday,
+          deathday: d.deathday,
+        })),
+        ...living.map((l) => ({
+          tmdbId: l.id,
+          name: l.name,
+          birthday: l.birthday,
+          deathday: null,
+        })),
+      ]
+
+      try {
+        const mortalityResult = await calculateMovieMortality(airYear, allActors)
+        expectedDeaths = mortalityResult.expectedDeaths
+        mortalitySurpriseScore = mortalityResult.mortalitySurpriseScore
+
+        // Update deceased actors with age at death and years lost
+        for (const actorResult of mortalityResult.actorResults) {
+          if (actorResult.isDeceased) {
+            const deceasedActor = deceased.find((d) => d.id === actorResult.tmdbId)
+            if (deceasedActor) {
+              if (deceasedActor.ageAtDeath === null) {
+                deceasedActor.ageAtDeath = actorResult.ageAtDeath
+              }
+              if (deceasedActor.yearsLost === null) {
+                deceasedActor.yearsLost = actorResult.yearsLost
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error calculating episode mortality stats:", error)
+      }
+    }
+
     res.json({
       show: {
         id: show.id,
@@ -781,6 +864,8 @@ export async function getEpisode(req: Request, res: Response) {
         deceasedCount,
         livingCount,
         mortalityPercentage,
+        expectedDeaths,
+        mortalitySurpriseScore,
       },
     })
   } catch (error) {
@@ -858,15 +943,16 @@ export async function getSeason(req: Request, res: Response) {
 
     // Count deceased guest stars per episode
     // Track unique guest stars (same actor can appear in multiple episodes)
+    // Also collect actor info for mortality calculation
     const seenGuestStars = new Set<number>()
     const seenDeceased = new Set<number>()
+    const uniqueActors: ActorForMortality[] = []
 
     const episodes = season.episodes.map((ep) => {
       const guestStars = ep.guest_stars || []
       let episodeDeceasedCount = 0
 
       for (const gs of guestStars) {
-        seenGuestStars.add(gs.id)
         const dbRecord = dbRecords.get(gs.id)
         const person = personDetails.get(gs.id)
         // Check both database and TMDB for death info
@@ -874,6 +960,17 @@ export async function getSeason(req: Request, res: Response) {
         if (isDeceased) {
           episodeDeceasedCount++
           seenDeceased.add(gs.id)
+        }
+
+        // Add to unique actors list if not already seen
+        if (!seenGuestStars.has(gs.id)) {
+          seenGuestStars.add(gs.id)
+          uniqueActors.push({
+            tmdbId: gs.id,
+            name: person?.name || gs.name,
+            birthday: person?.birthday || dbRecord?.birthday || null,
+            deathday: person?.deathday || dbRecord?.deathday || null,
+          })
         }
       }
 
@@ -890,6 +987,22 @@ export async function getSeason(req: Request, res: Response) {
 
     // Find the season info from show details
     const seasonInfo = show.seasons.find((s) => s.season_number === seasonNumber)
+
+    // Calculate mortality statistics using season air date as release year
+    let expectedDeaths = 0
+    let mortalitySurpriseScore = 0
+    const seasonAirDate = seasonInfo?.air_date || season.episodes[0]?.air_date
+    const airYear = seasonAirDate ? parseInt(seasonAirDate.split("-")[0]) : null
+
+    if (airYear && uniqueActors.length > 0) {
+      try {
+        const mortalityResult = await calculateMovieMortality(airYear, uniqueActors)
+        expectedDeaths = mortalityResult.expectedDeaths
+        mortalitySurpriseScore = mortalityResult.mortalitySurpriseScore
+      } catch (error) {
+        console.error("Error calculating season mortality stats:", error)
+      }
+    }
 
     res.json({
       show: {
@@ -910,6 +1023,8 @@ export async function getSeason(req: Request, res: Response) {
         totalEpisodes: episodes.length,
         uniqueGuestStars: seenGuestStars.size,
         uniqueDeceasedGuestStars: seenDeceased.size,
+        expectedDeaths,
+        mortalitySurpriseScore,
       },
     })
   } catch (error) {

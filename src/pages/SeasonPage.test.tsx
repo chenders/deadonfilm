@@ -64,6 +64,8 @@ const mockSeasonData = {
     totalEpisodes: 3,
     uniqueGuestStars: 10,
     uniqueDeceasedGuestStars: 3,
+    expectedDeaths: 1.5,
+    mortalitySurpriseScore: 1.0,
   },
 }
 
@@ -220,5 +222,41 @@ describe("SeasonPage", () => {
     renderWithProviders("/show/seinfeld-1989-1400/season/4")
 
     expect(screen.getByText("Season not found")).toBeInTheDocument()
+  })
+
+  it("renders MortalityGauge with mortality statistics", () => {
+    vi.mocked(useSeason).mockReturnValue({
+      data: mockSeasonData,
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useSeason>)
+
+    renderWithProviders("/show/seinfeld-1989-1400/season/4")
+
+    // MortalityGauge should be rendered when uniqueGuestStars > 0
+    expect(screen.getByTestId("mortality-gauge")).toBeInTheDocument()
+    // Check that the percentage is displayed (30% = 3/10 deceased)
+    expect(screen.getByTestId("gauge-percentage")).toHaveTextContent("30%")
+  })
+
+  it("does not render MortalityGauge when no guest stars", () => {
+    vi.mocked(useSeason).mockReturnValue({
+      data: {
+        ...mockSeasonData,
+        stats: {
+          totalEpisodes: 3,
+          uniqueGuestStars: 0,
+          uniqueDeceasedGuestStars: 0,
+          expectedDeaths: 0,
+          mortalitySurpriseScore: 0,
+        },
+      },
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useSeason>)
+
+    renderWithProviders("/show/seinfeld-1989-1400/season/4")
+
+    expect(screen.queryByTestId("mortality-gauge")).not.toBeInTheDocument()
   })
 })
