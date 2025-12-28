@@ -120,7 +120,7 @@ async function runSeeding(startYear: number, endYear: number) {
 
     if (deceasedActors.length === 0) {
       console.log("No deceased actors found. Done!")
-      return
+      process.exit(0)
     }
 
     // Step 5: Look up causes of death
@@ -204,6 +204,7 @@ async function runSeeding(startYear: number, endYear: number) {
     console.log(`  With cause of death: ${withCause}`)
     console.log(`  Without cause of death: ${deceasedActors.length - withCause}`)
     console.log("\nDone!")
+    process.exit(0)
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)

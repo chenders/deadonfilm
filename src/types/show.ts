@@ -112,6 +112,8 @@ export interface EpisodeResponse {
     deceasedCount: number
     livingCount: number
     mortalityPercentage: number
+    expectedDeaths: number
+    mortalitySurpriseScore: number
   }
 }
 
@@ -142,5 +144,7 @@ export interface SeasonResponse {
     totalEpisodes: number
     uniqueGuestStars: number
     uniqueDeceasedGuestStars: number
+    expectedDeaths: number
+    mortalitySurpriseScore: number
   }
 }

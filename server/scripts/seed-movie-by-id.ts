@@ -159,6 +159,7 @@ async function seedMovie(tmdbId: number) {
     console.log(`Added/updated ${deceasedCount} deceased actors`)
 
     console.log("\nDone!")
+    process.exit(0)
   } catch (error) {
     console.error("Error:", error)
     process.exit(1)

@@ -109,7 +109,7 @@ function FilmographyRow({ movie }: { movie: ActorFilmographyMovie }) {
 
       <div className="flex-shrink-0 text-right">
         <p className="font-display text-lg text-brown-dark">
-          {movie.deceasedCount}/{movie.castCount}
+          {movie.deceasedCount.toLocaleString()}/{movie.castCount.toLocaleString()}
         </p>
         <p className="text-xs text-text-muted">{mortalityPercent}% deceased</p>
       </div>

@@ -78,7 +78,8 @@ export default function FeaturedCursedMovie() {
               <p className="flex items-center gap-2 text-accent">
                 <SkullIcon size={14} />
                 <span>
-                  {movie.deceasedCount} of {movie.castCount} cast deceased ({mortalityPercentage}%)
+                  {movie.deceasedCount.toLocaleString()} of {movie.castCount.toLocaleString()} cast
+                  deceased ({mortalityPercentage}%)
                 </span>
               </p>
               <p className="text-text-muted">Expected: {movie.expectedDeaths.toFixed(1)} deaths</p>
