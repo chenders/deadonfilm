@@ -45,7 +45,9 @@ export default function SeasonSelector({
                 } ${isFirst ? "rounded-l-lg" : "border-l border-brown-medium/30"} ${isLast ? "rounded-r-lg" : ""}`}
               >
                 S{season.seasonNumber}
-                <span className="ml-1 text-xs opacity-75">({season.episodeCount})</span>
+                <span className="ml-1 text-xs opacity-75">
+                  ({season.episodeCount.toLocaleString()})
+                </span>
               </button>
             )
           })}

@@ -219,7 +219,8 @@ export default function CovidDeathsPage() {
 
             {/* Total count */}
             <p className="mt-4 text-center text-sm text-text-muted">
-              Showing {data.persons.length} of {data.pagination.totalCount} actors
+              Showing {data.persons.length.toLocaleString()} of{" "}
+              {data.pagination.totalCount.toLocaleString()} actors
             </p>
           </>
         )}

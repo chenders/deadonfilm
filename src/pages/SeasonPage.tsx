@@ -104,16 +104,20 @@ export default function SeasonPage() {
             {/* Stats */}
             <div className="mt-4 flex flex-wrap justify-center gap-4 md:justify-start">
               <div className="rounded-lg border border-brown-medium/20 bg-white px-4 py-2 text-center">
-                <div className="text-2xl font-bold text-brown-dark">{stats.totalEpisodes}</div>
+                <div className="text-2xl font-bold text-brown-dark">
+                  {stats.totalEpisodes.toLocaleString()}
+                </div>
                 <div className="text-xs text-text-muted">Episodes</div>
               </div>
               <div className="rounded-lg border border-brown-medium/20 bg-white px-4 py-2 text-center">
-                <div className="text-2xl font-bold text-brown-dark">{stats.uniqueGuestStars}</div>
+                <div className="text-2xl font-bold text-brown-dark">
+                  {stats.uniqueGuestStars.toLocaleString()}
+                </div>
                 <div className="text-xs text-text-muted">Guest Stars</div>
               </div>
               <div className="rounded-lg border border-accent/20 bg-accent/5 px-4 py-2 text-center">
                 <div className="text-2xl font-bold text-accent">
-                  {stats.uniqueDeceasedGuestStars}
+                  {stats.uniqueDeceasedGuestStars.toLocaleString()}
                 </div>
                 <div className="text-xs text-text-muted">Deceased</div>
               </div>
@@ -155,7 +159,7 @@ export default function SeasonPage() {
                         {episode.airDate && <span>{formatDate(episode.airDate)}</span>}
                         {episode.runtime && <span>{episode.runtime} min</span>}
                         {episode.guestStarCount > 0 && (
-                          <span>{episode.guestStarCount} guest stars</span>
+                          <span>{episode.guestStarCount.toLocaleString()} guest stars</span>
                         )}
                       </div>
                     </div>
@@ -163,7 +167,7 @@ export default function SeasonPage() {
                     {/* Death stats badge */}
                     {episode.deceasedCount > 0 && (
                       <div className="flex-shrink-0 rounded-full bg-accent/10 px-2 py-1 text-xs font-medium text-accent">
-                        {episode.deceasedCount} deceased
+                        {episode.deceasedCount.toLocaleString()} deceased
                       </div>
                     )}
                   </div>

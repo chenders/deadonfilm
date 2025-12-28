@@ -44,14 +44,15 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
             )}
           </h3>
           <p className="text-sm text-text-muted">
-            {movie.deceasedCount} of {movie.castCount} cast deceased
+            {movie.deceasedCount.toLocaleString()} of {movie.castCount.toLocaleString()} cast
+            deceased
           </p>
         </div>
 
         <div className="flex-shrink-0 text-right">
           <div className="flex items-center gap-1 text-accent">
             <SkullIcon size={16} />
-            <span className="font-medium">{movie.deceasedCount}</span>
+            <span className="font-medium">{movie.deceasedCount.toLocaleString()}</span>
           </div>
           {movie.mortalitySurpriseScore !== null && movie.mortalitySurpriseScore > 0 && (
             <p className="text-xs text-brown-medium">
@@ -87,7 +88,8 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
             )}
           </h3>
           <p className="text-xs text-text-muted">
-            {movie.deceasedCount} of {movie.castCount} cast deceased
+            {movie.deceasedCount.toLocaleString()} of {movie.castCount.toLocaleString()} cast
+            deceased
           </p>
           {movie.mortalitySurpriseScore !== null && movie.mortalitySurpriseScore > 0 && (
             <p className="mt-1 text-xs text-accent">
@@ -228,7 +230,8 @@ export default function GenreMoviesPage() {
 
             {/* Total count */}
             <p className="mt-4 text-center text-sm text-text-muted">
-              Showing {data.movies.length} of {data.pagination.totalCount} movies
+              Showing {data.movies.length.toLocaleString()} of{" "}
+              {data.pagination.totalCount.toLocaleString()} movies
             </p>
           </>
         )}
