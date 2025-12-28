@@ -132,12 +132,9 @@ export default function SeasonPage() {
                     totalCast: stats.uniqueGuestStars,
                     deceasedCount: stats.uniqueDeceasedGuestStars,
                     livingCount: stats.uniqueGuestStars - stats.uniqueDeceasedGuestStars,
-                    mortalityPercentage:
-                      stats.uniqueGuestStars > 0
-                        ? Math.round(
-                            (stats.uniqueDeceasedGuestStars / stats.uniqueGuestStars) * 100
-                          )
-                        : 0,
+                    mortalityPercentage: Math.round(
+                      (stats.uniqueDeceasedGuestStars / stats.uniqueGuestStars) * 100
+                    ),
                     expectedDeaths: stats.expectedDeaths,
                     mortalitySurpriseScore: stats.mortalitySurpriseScore,
                   }}
