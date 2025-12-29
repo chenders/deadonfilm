@@ -41,6 +41,9 @@ COPY server/newrelic.cjs ./server/
 # Copy frontend build
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
+# Create sitemaps directory for generated sitemap files
+RUN mkdir -p /app/sitemaps
+
 # Create nginx config for frontend with www redirect
 # Configure nginx to run as non-root user (node)
 RUN mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp && \
@@ -69,11 +72,22 @@ http {
         root /app/frontend/dist;
         index index.html;
 
-        # Sitemaps - proxy to backend for dynamic generation
+        # Sitemaps - try static files first, fallback to backend
         location ^~ /sitemap {
+            root /app/sitemaps;
+            try_files $uri @sitemap_backend;
+        }
+
+        location @sitemap_backend {
             proxy_pass http://localhost:8080;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
+        }
+
+        # IndexNow key file for Bing verification (UUID format, case-insensitive)
+        location ~ ^/[a-fA-F0-9-]{36}\.txt$ {
+            root /app/sitemaps;
+            try_files $uri =404;
         }
 
         # Hashed assets - cache forever (1 year, immutable)
