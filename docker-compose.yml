@@ -30,9 +30,6 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql://deadonfilm:deadonfilm@db:5432/deadonfilm}
       - NODE_ENV=${NODE_ENV}
       - ENV=${ENV}
-      # New Relic APM (optional - agent won't start if not set)
-      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
-      - NEW_RELIC_APP_NAME=Dead on Film (Docker)
     env_file:
       - server/.env
     depends_on:
