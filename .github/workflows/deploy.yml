@@ -67,7 +67,7 @@ jobs:
 
           echo "Waiting for health check (up to 90 seconds)..."
           for i in {1..45}; do
-            if curl -sf http://localhost:8080/health > /dev/null; then
+            if curl -sf http://localhost:3000/health > /dev/null; then
               echo "Application is healthy!"
               exit 0
             fi

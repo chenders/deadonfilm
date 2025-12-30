@@ -63,7 +63,7 @@ EXPOSE 8080 3000
 # Switch to non-root user
 USER node
 
-# Health check for backend
+# Health check for backend (used in CI and standalone; docker-compose overrides for each service)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
