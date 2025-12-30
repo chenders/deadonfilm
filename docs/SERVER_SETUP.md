@@ -39,7 +39,7 @@ This guide walks you through setting up a self-hosted Ubuntu server to run Dead 
 - **Cloudflare account** with your domain added (free tier works)
 - **GitHub account** with access to the repository
 - **New Relic account** (optional, for monitoring)
-- **Neon PostgreSQL** database (or other PostgreSQL provider)
+- **PostgreSQL** database (runs as a container)
 
 ### Information to Gather
 
@@ -53,7 +53,7 @@ Before starting, collect these values:
 | GitHub runner token | Repo Settings → Actions → Runners → New |
 | TMDB API token | developer.themoviedb.org |
 | Anthropic API key | console.anthropic.com |
-| Database URL | Neon dashboard |
+| Database password | Secure password for PostgreSQL container |
 | New Relic license key | New Relic → API Keys |
 | SSH public key | `cat ~/.ssh/id_ed25519.pub` on your local machine |
 
@@ -238,13 +238,15 @@ credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
   - hostname: deadonfilm.com
-    service: http://localhost:8080
+    service: http://localhost:3000
 
   - hostname: www.deadonfilm.com
-    service: http://localhost:8080
+    service: http://localhost:3000
 
   - service: http_status:404
 ```
+
+> **Note**: Port 3000 is nginx inside the container, which serves the frontend and proxies `/api/*` to Express on port 8080.
 
 ### 5. Route DNS to Tunnel
 
@@ -482,23 +484,46 @@ sudo systemctl start newrelic-infra
 
 ## Deploy the Application
 
-### 1. Create Environment File
+### 1. Set Up Application Directory
+
+```bash
+sudo mkdir -p /opt/deadonfilm
+sudo chown deploy:deploy /opt/deadonfilm
+```
+
+### 2. Copy Production Docker Compose
+
+From the repository, copy `docker-compose.prod.yml`:
 
 ```bash
 sudo su - deploy
 cd /opt/deadonfilm
-cp .env.example .env
+# Copy from repo or download
+curl -o docker-compose.yml https://raw.githubusercontent.com/chenders/deadonfilm/main/docker-compose.prod.yml
+```
+
+### 3. Create Environment File
+
+```bash
 vim .env
 ```
 
-Fill in your values:
+Fill in your values (see `.env.production.example` in the repo):
 
 ```bash
+# Database (PostgreSQL container)
+POSTGRES_USER=deadonfilm
+POSTGRES_PASSWORD=your_secure_password_here
+POSTGRES_DB=deadonfilm
+
+# APIs
 TMDB_API_TOKEN=your_tmdb_token
-DATABASE_URL=postgresql://user:pass@host:5432/dbname?sslmode=require
 ANTHROPIC_API_KEY=your_anthropic_key
+
+# Optional
 NEW_RELIC_LICENSE_KEY=your_newrelic_key
 NEW_RELIC_APP_NAME=Dead on Film
+INDEXNOW_KEY=your-uuid-for-bing
 ```
 
 Secure the file:
@@ -507,42 +532,31 @@ Secure the file:
 chmod 600 .env
 ```
 
-### 2. Build or Pull Docker Image
-
-#### Option A: Build Locally
+### 4. Start the Application
 
 ```bash
-cd /opt/deadonfilm
-git clone https://github.com/chenders/deadonfilm.git .
-docker build -t deadonfilm:latest .
-```
+# Pull the latest image
+docker compose pull
 
-#### Option B: Pull from Registry
+# Start app and cron containers
+docker compose up -d
 
-Update `docker-compose.yml` to use your registry:
-
-```yaml
-services:
-  app:
-    image: ghcr.io/chenders/deadonfilm:latest
-```
-
-### 3. Start the Application
-
-```bash
-exit  # Exit deploy user if still in that shell
+# Enable on boot
+exit  # Exit deploy user
 sudo systemctl enable deadonfilm
-sudo systemctl start deadonfilm
 ```
 
-### 4. Verify Deployment
+### 5. Verify Deployment
 
 ```bash
-# Check container is running
-docker ps
+# Check containers are running
+docker compose ps
 
-# Check logs
-docker compose -f /opt/deadonfilm/docker-compose.yml logs -f
+# Check app logs
+docker compose logs -f app
+
+# Check cron logs
+docker compose logs -f cron
 
 # Test health endpoint (locally)
 curl http://localhost:8080/health
@@ -550,6 +564,20 @@ curl http://localhost:8080/health
 # Test via Cloudflare
 curl https://deadonfilm.com/health
 ```
+
+### Container Architecture
+
+The deployment uses three containers:
+
+| Container | Purpose | Notes |
+|-----------|---------|-------|
+| `deadonfilm-db` | PostgreSQL database | Data persisted in `postgres-data` volume |
+| `deadonfilm-app` | Main application | nginx on :3000, Express on :8080 |
+| `deadonfilm-cron` | Scheduled jobs | TMDB sync, sitemap, movie seeding |
+
+Containers share volumes:
+- `postgres-data` - Database files (persisted across restarts)
+- `sitemap-data` - Pre-generated sitemaps (shared between app and cron)
 
 ---
 
@@ -610,54 +638,23 @@ Navigate to: Network
 
 ## GitHub Actions Workflow
 
-Create `.github/workflows/deploy.yml` in your repository:
+The repository uses `.github/workflows/deploy.yml` which:
 
-```yaml
-name: Deploy to Production
+1. Triggers automatically when CI passes on main (or via manual dispatch)
+2. Builds and pushes the Docker image to GitHub Container Registry (ghcr.io)
+3. Deploys locally since the runner is on the production server
+4. Runs a health check to verify the deployment
 
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:  # Allow manual trigger
-
-jobs:
-  build-and-deploy:
-    runs-on: self-hosted
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: |
-          docker build -t deadonfilm:latest .
-
-      - name: Deploy application
-        run: |
-          cd /opt/deadonfilm
-          sudo docker compose down
-          sudo docker compose up -d
-
-      - name: Wait for startup
-        run: sleep 10
-
-      - name: Health check
-        run: |
-          curl -f http://localhost:8080/health || exit 1
-
-      - name: Cleanup old images
-        run: |
-          docker image prune -f
-```
-
-### Alternative: Using GitHub Container Registry
-
-If you prefer to push images to a registry:
+The workflow uses a single self-hosted runner job that handles both build and deploy:
 
 ```yaml
 name: Build and Deploy
 
 on:
-  push:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
 
 env:
@@ -665,44 +662,37 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-deploy:
+    runs-on: self-hosted
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     permissions:
       contents: read
       packages: write
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Log in to registry
-        uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-
-  deploy:
-    needs: build
-    runs-on: self-hosted
-    steps:
-      - name: Pull and deploy
-        run: |
-          cd /opt/deadonfilm
-          sudo docker compose pull
-          sudo docker compose up -d
-
-      - name: Health check
-        run: |
-          sleep 10
-          curl -f http://localhost:8080/health
+      # ... build, push, and deploy steps
 ```
+
+### Rollback
+
+To rollback to a previous version:
+
+```bash
+cd /opt/deadonfilm
+IMAGE_TAG=abc1234 docker compose up -d
+```
+
+Replace `abc1234` with the commit SHA you want to rollback to.
 
 ---
 
@@ -856,12 +846,21 @@ If locked out:
 
 ### Database Connection Issues
 
-1. Test from server:
+1. Check if the db container is running:
    ```bash
-   psql "$DATABASE_URL" -c "SELECT 1"
+   docker compose ps db
+   docker compose logs db
    ```
 
-2. Check if Neon allows your IP (or enable "Allow all IPs" for Cloudflare egress)
+2. Test connection from app container:
+   ```bash
+   docker compose exec app sh -c 'wget -qO- http://localhost:8080/health'
+   ```
+
+3. Connect directly to database:
+   ```bash
+   docker compose exec db psql -U deadonfilm -d deadonfilm -c "SELECT 1"
+   ```
 
 ---
 
