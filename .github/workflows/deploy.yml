@@ -65,8 +65,9 @@ jobs:
           docker compose pull
 
           # Start containers and wait for all to be healthy
+          # Using --force-recreate to ensure containers use the new image
           echo "Starting containers and waiting for health checks..."
-          if ! docker compose up -d --remove-orphans --wait --wait-timeout 120; then
+          if ! docker compose up -d --force-recreate --remove-orphans --wait --wait-timeout 120; then
             echo "Container health check failed! Diagnostics:"
             docker compose ps -a
             echo "--- nginx logs ---"
