@@ -25,8 +25,10 @@ RUN npm run build
 FROM node:22-alpine AS production
 WORKDIR /app
 
-# Install nginx for frontend static files with redirect support
-RUN apk add --no-cache nginx
+# Install nginx for frontend static files and supercronic for cron container
+RUN apk add --no-cache nginx && \
+    wget -qO /usr/local/bin/supercronic https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64 && \
+    chmod +x /usr/local/bin/supercronic
 
 # Copy backend
 COPY --from=backend-builder /app/server/dist ./server/dist

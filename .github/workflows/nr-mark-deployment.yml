@@ -2,7 +2,7 @@ name: New Relic Deployment Marker
 
 on:
   workflow_run:
-    workflows: [Deploy to GKE]
+    workflows: [Build and Deploy]
     types: [completed]
 
 jobs:

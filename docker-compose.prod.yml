@@ -1,0 +1,94 @@
+# Production Docker Compose for bare-metal deployment
+# Copy to /opt/deadonfilm/docker-compose.yml on the server
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: deadonfilm-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-deadonfilm}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-deadonfilm}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-deadonfilm} -d ${POSTGRES_DB:-deadonfilm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
+    container_name: deadonfilm-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"   # nginx (frontend + API proxy)
+      - "8080:8080"   # Express backend (for health checks)
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - TZ=America/Los_Angeles
+      # DATABASE_URL is set here to use the db container; this overrides any value from .env file
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - sitemap-data:/app/sitemaps
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  cron:
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
+    container_name: deadonfilm-cron
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        cat > /tmp/crontab <<'CRON'
+        # TMDB sync - every 2 hours
+        0 */2 * * * cd /app/server && node dist/scripts/sync-tmdb-changes.js
+        # Sitemap generation - daily at 6 AM UTC
+        0 6 * * * cd /app/server && node dist/scripts/sitemap-generate.js
+        # Movie seeding - weekly Sunday 4 AM UTC
+        0 4 * * 0 cd /app/server && node dist/scripts/seed-movies.js $(($(date +%Y)-1)) $(date +%Y) --count 500
+        CRON
+        exec supercronic /tmp/crontab
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Los_Angeles
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
+    volumes:
+      - sitemap-data:/app/sitemaps
+    depends_on:
+      app:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data:
+  sitemap-data:

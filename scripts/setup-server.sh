@@ -425,17 +425,13 @@ tunnel: YOUR_TUNNEL_ID
 credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
-  # Main application
+  # Main application (nginx on port 3000 serves frontend and proxies /api/* to Express)
   - hostname: deadonfilm.com
-    service: http://localhost:8080
+    service: http://localhost:3000
 
   # www subdomain
   - hostname: www.deadonfilm.com
-    service: http://localhost:8080
-
-  # Health check endpoint (optional, for monitoring)
-  # - hostname: health.deadonfilm.com
-  #   service: http://localhost:8080/health
+    service: http://localhost:3000
 
   # Catch-all rule (required - must be last)
   - service: http_status:404
@@ -443,54 +439,139 @@ EOF
 chmod 644 /etc/cloudflared/config.yml
 echo "  Created /etc/cloudflared/config.yml (template)"
 
-# Docker Compose template
+# Docker Compose template (production config from docker-compose.prod.yml)
 cat > $APP_DIR/docker-compose.yml << 'EOF'
-# Dead on Film Docker Compose Configuration
+# Dead on Film Production Docker Compose
 #
 # IMPORTANT: Create a .env file with required environment variables:
+#   POSTGRES_USER=deadonfilm
+#   POSTGRES_PASSWORD=your_secure_password
+#   POSTGRES_DB=deadonfilm
 #   TMDB_API_TOKEN=your_token
-#   DATABASE_URL=postgresql://...
 #   ANTHROPIC_API_KEY=your_key
 #   NEW_RELIC_LICENSE_KEY=your_key (optional)
+#   INDEXNOW_KEY=your-uuid (optional)
 #
 # See: docs/SERVER_SETUP.md for complete instructions
 
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: deadonfilm-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-deadonfilm}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-deadonfilm}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-deadonfilm} -d ${POSTGRES_DB:-deadonfilm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   app:
-    image: deadonfilm:latest
-    # Or use a registry:
-    # image: ghcr.io/chenders/deadonfilm:latest
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
+    container_name: deadonfilm-app
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "3000:3000"   # nginx (frontend + API proxy)
+      - "8080:8080"   # Express backend (for health checks)
     env_file:
       - .env
     environment:
       - NODE_ENV=production
       - PORT=8080
+      - TZ=America/Los_Angeles
+      # DATABASE_URL is set here to use the db container; this overrides any value from .env file
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    volumes:
+      - sitemap-data:/app/sitemaps
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  cron:
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
+    container_name: deadonfilm-cron
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        cat > /tmp/crontab <<'CRON'
+        # TMDB sync - every 2 hours
+        0 */2 * * * cd /app/server && node dist/scripts/sync-tmdb-changes.js
+        # Sitemap generation - daily at 6 AM UTC
+        0 6 * * * cd /app/server && node dist/scripts/sitemap-generate.js
+        # Movie seeding - weekly Sunday 4 AM UTC
+        0 4 * * 0 cd /app/server && node dist/scripts/seed-movies.js $(($(date +%Y)-1)) $(date +%Y) --count 500
+        CRON
+        exec supercronic /tmp/crontab
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Los_Angeles
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
+    volumes:
+      - sitemap-data:/app/sitemaps
+    depends_on:
+      app:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data:
+  sitemap-data:
 EOF
 chown $DEPLOY_USER:$DEPLOY_USER $APP_DIR/docker-compose.yml
-echo "  Created $APP_DIR/docker-compose.yml (template)"
+echo "  Created $APP_DIR/docker-compose.yml (production template)"
 
 # Environment file template
 cat > $APP_DIR/.env.example << 'EOF'
 # Dead on Film Environment Variables
 # Copy this to .env and fill in your values
 
-# Required
-TMDB_API_TOKEN=your_tmdb_api_token
-DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
-ANTHROPIC_API_KEY=your_anthropic_api_key
+# Required - Database (PostgreSQL container)
+# NOTE: Password must not contain URL-special characters (@, :, /, #)
+POSTGRES_USER=deadonfilm
+POSTGRES_PASSWORD=your_secure_password_here
+POSTGRES_DB=deadonfilm
+
+# Required - TMDB API
+TMDB_API_TOKEN=your_tmdb_api_token_here
+
+# Required - Anthropic API (for cause of death lookup)
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
 # Optional - New Relic APM
 NEW_RELIC_LICENSE_KEY=your_newrelic_license_key
 NEW_RELIC_APP_NAME=Dead on Film
+
+# Optional - IndexNow for Bing sitemap submission (UUID format)
+INDEXNOW_KEY=your-uuid-key-here
 EOF
 chown $DEPLOY_USER:$DEPLOY_USER $APP_DIR/.env.example
 echo "  Created $APP_DIR/.env.example"

@@ -138,10 +138,10 @@ The `is_obscure` column in the `actors` table is a regular boolean column update
 
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
 - **Backend**: Node.js + Express.js + TypeScript
-- **Database**: PostgreSQL (Neon Launch plan - $19/month, 10GB storage)
+- **Database**: PostgreSQL 16 (containerized)
 - **State Management**: TanStack Query (React Query)
 - **Routing**: React Router v6
-- **Deployment**: Google Kubernetes Engine (GKE)
+- **Deployment**: Docker on bare-metal with Cloudflare Tunnel
 - **Data Sources**: TMDB API, Claude API (primary for cause of death), Wikidata SPARQL (fallback)
 
 ## Project Structure
@@ -159,15 +159,7 @@ The `is_obscure` column in the `actors` table is a regular boolean column update
 │       ├── index.ts        # Server entry point
 │       ├── lib/            # Shared utilities (db, tmdb, wikidata, claude)
 │       └── routes/         # API route handlers
-├── k8s/                    # Kubernetes manifests
-│   ├── namespace.yaml
-│   ├── secret.yaml
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   ├── ingress.yaml
-│   ├── managed-cert.yaml   # GKE managed SSL certificate
-│   ├── cronjob-sync.yaml   # Daily TMDB sync job
-│   └── cronjob-seed.yaml   # Weekly movie seeding job
+├── docker-compose.prod.yml # Production Docker Compose
 ├── Dockerfile              # Multi-stage Docker build
 └── public/                 # Static assets
 ```
@@ -218,7 +210,7 @@ cd server && npm test        # Backend unit tests
 - `GET /api/cursed-actors` - List actors ranked by co-star mortality (with pagination/filters)
 - `GET /api/covid-deaths` - List actors who died from COVID-19 (with pagination)
 - `GET /api/stats` - Get site-wide statistics
-- `GET /health` - Health check for Kubernetes
+- `GET /health` - Health check endpoint
 
 ### TV Show Endpoints
 
@@ -572,28 +564,49 @@ The sync script uses TMDB's Changes API to detect:
 - Actors in our database who have died (adds them to deceased_persons)
 - Changes to movies in our database (recalculates mortality stats)
 
-A Kubernetes CronJob (`k8s/cronjob-sync.yaml`) runs this every 6 hours (midnight, 6 AM, noon, 6 PM UTC).
+A cron container (see `docker-compose.prod.yml`) runs scheduled jobs including TMDB sync every 2 hours.
 
-## GKE Deployment
+## Production Deployment
 
-**IMPORTANT**: GKE runs on AMD64 architecture. When building on Apple Silicon (ARM), you must specify the target platform to avoid "exec format error":
+The app runs on a bare-metal server using Docker with Cloudflare Tunnel for SSL/routing.
+
+### Architecture
+
+- **Container Registry**: GitHub Container Registry (ghcr.io)
+- **App Container**: nginx (port 3000) serves frontend and proxies API to Express (port 8080)
+- **Cron Container**: Runs scheduled jobs with supercronic (TMDB sync, sitemap generation, movie seeding)
+- **SSL/Routing**: Cloudflare Tunnel points to localhost:3000
+
+### GitHub Actions Deployment
+
+Deployment is automatic on merge to main (after CI passes):
+1. Self-hosted runner builds and pushes image to ghcr.io
+2. Runner deploys locally using `docker compose pull && docker compose up -d`
+3. Health check verifies deployment success
+
+### Manual Deployment
 
 ```bash
-docker buildx build --platform linux/amd64 -t IMAGE:TAG --push .
+cd /opt/deadonfilm
+
+# Pull latest and deploy
+docker compose pull
+docker compose up -d
+
+# Check status
+docker compose ps
+docker compose logs -f app
+
+# Rollback to specific commit
+IMAGE_TAG=abc1234 docker compose up -d
 ```
 
-### Quick Deploy
+### Server Setup
 
-```bash
-GCP_PROJECT_ID=your-project-id ./scripts/deploy.sh
-```
-
-### Manual Deploy
-
-1. Build Docker image for AMD64: `docker buildx build --platform linux/amd64 -t us-central1-docker.pkg.dev/deadonfilm/deadonfilm-repo/dead-on-film:TAG --push .`
-2. Apply Kubernetes manifests: `kubectl apply -f k8s/`
-3. Create secrets with TMDB_API_TOKEN, ANTHROPIC_API_KEY, DATABASE_URL, and optionally NEW_RELIC_LICENSE_KEY
-4. Restart deployment: `kubectl rollout restart deployment/dead-on-film -n deadonfilm`
+See `docs/SERVER_SETUP.md` for initial server configuration including:
+- GitHub self-hosted runner installation
+- Cloudflare Tunnel setup
+- Environment variable configuration
 
 ## URL Structure
 
