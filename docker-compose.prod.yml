@@ -86,6 +86,24 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        echo "=== Environment Debug ==="
+        echo "User: $(whoami)"
+        echo "Shell: $SHELL"
+        echo "Arch: $(uname -m)"
+        echo "OS: $(uname -s)"
+        echo ""
+        echo "=== Checking /bin/sh ==="
+        ls -la /bin/sh
+        file /bin/sh 2>/dev/null || echo "file command not available"
+        echo ""
+        echo "=== Checking supercronic ==="
+        which supercronic
+        ls -la /usr/local/bin/supercronic
+        file /usr/local/bin/supercronic 2>/dev/null || echo "file command not available"
+        echo ""
+        echo "=== Testing supercronic binary ==="
+        /usr/local/bin/supercronic -version || echo "supercronic -version failed with exit code $?"
+        echo ""
         echo "Creating crontab..."
         cat > /tmp/crontab << 'EOF'
         SHELL=/bin/sh
@@ -99,10 +117,15 @@ services:
         EOF
         # Strip leading spaces from heredoc (YAML adds 8 spaces)
         sed -i 's/^[[:space:]]*//' /tmp/crontab
-        echo "Crontab contents:"
+        echo ""
+        echo "=== Crontab contents ==="
         cat /tmp/crontab
-        echo "Starting supercronic..."
-        exec supercronic /tmp/crontab
+        echo ""
+        echo "=== Testing crontab parse ==="
+        supercronic -test /tmp/crontab && echo "Crontab parse OK" || echo "Crontab parse FAILED with exit code $?"
+        echo ""
+        echo "=== Starting supercronic with debug ==="
+        exec supercronic -debug /tmp/crontab
     env_file:
       - .env
     environment:
