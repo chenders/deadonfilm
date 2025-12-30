@@ -490,6 +490,7 @@ services:
       - NODE_ENV=production
       - PORT=8080
       - TZ=America/Los_Angeles
+      # DATABASE_URL is set here to use the db container; this overrides any value from .env file
       - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
     depends_on:
       db:
@@ -515,7 +516,6 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        apk add --no-cache supercronic
         cat > /tmp/crontab <<'CRON'
         # TMDB sync - every 2 hours
         0 */2 * * * cd /app/server && node dist/scripts/sync-tmdb-changes.js
@@ -555,6 +555,7 @@ cat > $APP_DIR/.env.example << 'EOF'
 # Copy this to .env and fill in your values
 
 # Required - Database (PostgreSQL container)
+# NOTE: Password must not contain URL-special characters (@, :, /, #)
 POSTGRES_USER=deadonfilm
 POSTGRES_PASSWORD=your_secure_password_here
 POSTGRES_DB=deadonfilm
