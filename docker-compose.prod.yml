@@ -112,6 +112,12 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
       # PATH needed so supercronic can find itself when forking for process reaping
       - PATH=/usr/local/bin:/usr/bin:/bin
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x supercronic > /dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     volumes:
       - sitemap-data:/app/sitemaps
     depends_on:
