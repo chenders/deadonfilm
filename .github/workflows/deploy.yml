@@ -60,12 +60,14 @@ jobs:
       - name: Deploy application
         run: |
           cd /opt/deadonfilm
+          # Copy latest docker-compose config
+          cp ${{ github.workspace }}/docker-compose.prod.yml docker-compose.yml
           docker compose pull
           docker compose up -d --remove-orphans
 
           echo "Waiting for health check (up to 90 seconds)..."
           for i in {1..45}; do
-            if curl -sf http://localhost:8080/health > /dev/null; then
+            if curl -sf http://localhost:3000/health > /dev/null; then
               echo "Application is healthy!"
               exit 0
             fi
