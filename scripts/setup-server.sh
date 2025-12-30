@@ -532,6 +532,8 @@ EOF
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner-$i-work:/tmp/github-runner
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     security_opt:
       - label:disable
 
