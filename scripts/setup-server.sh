@@ -172,9 +172,11 @@ if [[ "$SKIP_NEWRELIC" != true ]]; then
   echo "deb [signed-by=/etc/apt/keyrings/newrelic-infra.gpg] https://download.newrelic.com/infrastructure_agent/linux/apt noble main" | tee /etc/apt/sources.list.d/newrelic-infra.list > /dev/null
 fi
 
-# Node.js
+# Node.js (remove old versions first to avoid conflicts)
 echo "  - Node.js..."
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
+apt-get remove -y nodejs npm nodejs-legacy 2>/dev/null || true
+apt-get autoremove -y 2>/dev/null || true
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash - > /dev/null 2>&1
 
 # PostgreSQL
 echo "  - PostgreSQL..."
@@ -604,7 +606,7 @@ echo ""
 echo "Installed packages:"
 echo "  - Docker CE with Compose and Buildx"
 echo "  - Cloudflare Tunnel (cloudflared)"
-echo "  - Node.js 20 LTS"
+echo "  - Node.js 22 LTS"
 echo "  - PostgreSQL Client 16"
 echo "  - GitHub CLI"
 if [[ "$SKIP_NEWRELIC" != true ]]; then
