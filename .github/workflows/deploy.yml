@@ -70,6 +70,8 @@ jobs:
           if ! docker compose up -d --force-recreate --remove-orphans --wait --wait-timeout 120; then
             echo "Container health check failed! Diagnostics:"
             docker compose ps -a
+            echo "--- cron logs ---"
+            docker compose logs cron --tail=100
             echo "--- nginx logs ---"
             docker compose logs nginx --tail=100
             echo "--- app logs ---"
