@@ -512,6 +512,7 @@ Fill in your values (see `.env.production.example` in the repo):
 
 ```bash
 # Database (PostgreSQL container)
+# NOTE: Password must not contain URL-special characters (@, :, /, #)
 POSTGRES_USER=deadonfilm
 POSTGRES_PASSWORD=your_secure_password_here
 POSTGRES_DB=deadonfilm
@@ -549,6 +550,8 @@ sudo systemctl enable deadonfilm
 ### 5. Verify Deployment
 
 ```bash
+cd /opt/deadonfilm
+
 # Check containers are running
 docker compose ps
 

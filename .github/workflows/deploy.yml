@@ -63,8 +63,8 @@ jobs:
           docker compose pull
           docker compose up -d --remove-orphans
 
-          echo "Waiting for health check..."
-          for i in {1..30}; do
+          echo "Waiting for health check (up to 90 seconds)..."
+          for i in {1..45}; do
             if curl -sf http://localhost:8080/health > /dev/null; then
               echo "Application is healthy!"
               exit 0
