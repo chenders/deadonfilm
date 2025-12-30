@@ -66,23 +66,50 @@ jobs:
 
           # Start containers and wait for all to be healthy
           # Using --force-recreate to ensure containers use the new image
-          echo "Starting containers and waiting for health checks..."
+          echo "=== Starting containers ==="
           if ! docker compose up -d --force-recreate --remove-orphans --wait --wait-timeout 120; then
-            echo "Container health check failed! Diagnostics:"
+            echo "=== Container health check failed! ==="
             docker compose ps -a
-            echo "--- cron logs ---"
-            docker compose logs cron --tail=100
+            echo "--- db logs ---"
+            docker compose logs db --tail=50
+            echo "--- app logs ---"
+            docker compose logs app --tail=100
             echo "--- nginx logs ---"
             docker compose logs nginx --tail=100
+            echo "--- cron logs ---"
+            docker compose logs cron --tail=50
+            exit 1
+          fi
+
+          echo "=== All containers healthy ==="
+          docker compose ps
+
+          # Verify endpoints with verbose output on failure
+          echo "=== Verifying app healthcheck (direct) ==="
+          if ! curl -sf --max-time 10 http://localhost:8080/health; then
+            echo "Direct app healthcheck failed!"
+            echo "--- curl verbose output ---"
+            curl -v --max-time 10 http://localhost:8080/health || true
             echo "--- app logs ---"
             docker compose logs app --tail=50
             exit 1
           fi
+          echo "App healthcheck OK"
 
-          echo "All containers healthy! Verifying endpoint..."
-          # Give nginx a moment to initialize proxy connections
-          sleep 2
-          curl -sf --retry 3 --retry-delay 2 http://localhost:3000/health && echo "Application is healthy!" || exit 1
+          echo "=== Verifying nginx proxy ==="
+          if ! curl -sf --max-time 10 http://localhost:3000/health; then
+            echo "Nginx proxy healthcheck failed!"
+            echo "--- curl verbose output ---"
+            curl -v --max-time 10 http://localhost:3000/health || true
+            echo "--- nginx logs ---"
+            docker compose logs nginx --tail=50
+            echo "--- nginx error log ---"
+            docker compose exec -T nginx cat /var/log/nginx/error.log 2>/dev/null || true
+            exit 1
+          fi
+          echo "Nginx proxy OK"
+
+          echo "=== Deployment successful ==="
 
       - name: Cleanup old images
         run: docker image prune -f --filter "until=24h"
