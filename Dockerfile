@@ -26,8 +26,9 @@ FROM node:22-alpine AS production
 WORKDIR /app
 
 # Install nginx for frontend static files and supercronic for cron container
+# Note: Alpine uses musl libc, so we need the musl build of supercronic
 RUN apk add --no-cache nginx && \
-    wget -qO /usr/local/bin/supercronic https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64 && \
+    wget -qO /usr/local/bin/supercronic https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-musl-amd64 && \
     chmod +x /usr/local/bin/supercronic
 
 # Copy backend
