@@ -80,7 +80,9 @@ jobs:
           fi
 
           echo "All containers healthy! Verifying endpoint..."
-          curl -sf http://localhost:3000/health && echo "Application is healthy!" || exit 1
+          # Give nginx a moment to initialize proxy connections
+          sleep 2
+          curl -sf --retry 3 --retry-delay 2 http://localhost:3000/health && echo "Application is healthy!" || exit 1
 
       - name: Cleanup old images
         run: docker image prune -f --filter "until=24h"
