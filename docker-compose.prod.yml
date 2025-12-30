@@ -86,7 +86,8 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        cat > /tmp/crontab <<'CRON'
+        echo "Creating crontab..."
+        cat > /tmp/crontab << 'EOF'
         SHELL=/bin/sh
         PATH=/usr/local/bin:/usr/bin:/bin
         # TMDB sync - every 2 hours
@@ -95,8 +96,12 @@ services:
         0 6 * * * cd /app/server && node dist/scripts/sitemap-generate.js
         # Movie seeding - weekly Sunday 4 AM UTC
         0 4 * * 0 cd /app/server && node dist/scripts/seed-movies.js $(($(date +%Y)-1)) $(date +%Y) --count 500
-        CRON
-        sed -i 's/^        //' /tmp/crontab
+        EOF
+        # Strip leading spaces from heredoc (YAML adds 8 spaces)
+        sed -i 's/^[[:space:]]*//' /tmp/crontab
+        echo "Crontab contents:"
+        cat /tmp/crontab
+        echo "Starting supercronic..."
         exec supercronic /tmp/crontab
     env_file:
       - .env
