@@ -63,18 +63,21 @@ jobs:
           # Copy latest docker-compose config
           cp ${{ github.workspace }}/docker-compose.prod.yml docker-compose.yml
           docker compose pull
-          docker compose up -d --remove-orphans
+          # Use --wait to wait for all services to be healthy
+          docker compose up -d --remove-orphans --wait
 
-          echo "Waiting for health check (up to 90 seconds)..."
-          for i in {1..45}; do
-            if curl -sf http://localhost:3000/health > /dev/null; then
-              echo "Application is healthy!"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Health check failed!"
-          exit 1
+          echo "All containers healthy! Verifying endpoint..."
+          if curl -sf http://localhost:3000/health > /dev/null; then
+            echo "Application is healthy!"
+          else
+            echo "Health check failed! Diagnostics:"
+            docker compose ps
+            echo "--- nginx logs ---"
+            docker compose logs nginx --tail=50
+            echo "--- app logs ---"
+            docker compose logs app --tail=20
+            exit 1
+          fi
 
       - name: Cleanup old images
         run: docker image prune -f --filter "until=24h"
