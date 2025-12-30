@@ -176,6 +176,7 @@ fi
 echo "  - Node.js..."
 apt-get remove -y nodejs npm nodejs-legacy 2>/dev/null || true
 apt-get autoremove -y 2>/dev/null || true
+# nosemgrep: bash.curl.security.curl-pipe-bash.curl-pipe-bash -- NodeSource official install script
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash - > /dev/null 2>&1
 
 # PostgreSQL
