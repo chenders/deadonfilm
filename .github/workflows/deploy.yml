@@ -60,6 +60,8 @@ jobs:
       - name: Deploy application
         run: |
           cd /opt/deadonfilm
+          # Copy latest docker-compose config
+          cp ${{ github.workspace }}/docker-compose.prod.yml docker-compose.yml
           docker compose pull
           docker compose up -d --remove-orphans
 

@@ -25,8 +25,7 @@ RUN npm run build
 FROM node:22-alpine AS production
 WORKDIR /app
 
-# Install nginx for frontend static files and supercronic for cron container
-# Note: Go binaries are statically compiled, so the standard amd64 build works on Alpine
+# Install nginx (for nginx container) and supercronic (for cron container)
 # Checksum from: https://github.com/aptible/supercronic/releases/tag/v0.2.33
 ENV SUPERCRONIC_SHA1SUM=71b0d58cc53f6bd72cf2f293e09e294b79c666d8
 RUN apk add --no-cache nginx && \
@@ -50,76 +49,10 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 # Create sitemaps directory for generated sitemap files
 RUN mkdir -p /app/sitemaps
 
-# Create nginx config for frontend with www redirect
-# Configure nginx to run as non-root user (node)
+# Copy nginx config and configure nginx to run as non-root user (node)
+COPY nginx.conf /etc/nginx/nginx.conf
 RUN mkdir -p /run/nginx /var/log/nginx /var/lib/nginx/tmp && \
-    chown -R node:node /run/nginx /var/log/nginx /var/lib/nginx && \
-    cat > /etc/nginx/nginx.conf <<'EOF'
-pid /tmp/nginx.pid;
-worker_processes auto;
-error_log /var/log/nginx/error.log warn;
-events { worker_connections 1024; }
-http {
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-    client_body_temp_path /tmp/client_temp;
-    proxy_temp_path /tmp/proxy_temp;
-    fastcgi_temp_path /tmp/fastcgi_temp;
-    uwsgi_temp_path /tmp/uwsgi_temp;
-    scgi_temp_path /tmp/scgi_temp;
-    server {
-        listen 3000;
-        server_name www.deadonfilm.com;
-        return 301 https://deadonfilm.com$request_uri;
-    }
-    server {
-        listen 3000 default_server;
-        server_name deadonfilm.com localhost;
-        root /app/frontend/dist;
-        index index.html;
-
-        # Sitemaps - try static files first, fallback to backend
-        location ^~ /sitemap {
-            root /app/sitemaps;
-            try_files $uri @sitemap_backend;
-        }
-
-        location @sitemap_backend {
-            proxy_pass http://localhost:8080;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-
-        # IndexNow key file for Bing verification (UUID format, case-insensitive)
-        location ~ ^/[a-fA-F0-9-]{36}\.txt$ {
-            root /app/sitemaps;
-            try_files $uri =404;
-        }
-
-        # Hashed assets - cache forever (1 year, immutable)
-        location /assets/ {
-            add_header Cache-Control "public, max-age=31536000, immutable";
-            try_files $uri =404;
-        }
-
-        # HTML and other files - no cache (always revalidate)
-        location / {
-            add_header Cache-Control "no-cache";
-            try_files $uri $uri/ /index.html;
-        }
-
-        gzip on;
-        gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
-    }
-}
-EOF
-
-# Create startup script
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'cd /app/server && node dist/src/index.js &' >> /app/start.sh && \
-    echo 'nginx -g "daemon off;" &' >> /app/start.sh && \
-    echo 'wait' >> /app/start.sh && \
-    chmod +x /app/start.sh
+    chown -R node:node /run/nginx /var/log/nginx /var/lib/nginx
 
 # Ensure app files are owned by the non-root node user
 RUN chown -R node:node /app
@@ -130,8 +63,10 @@ EXPOSE 8080 3000
 # Switch to non-root user
 USER node
 
-# Health check
+# Health check for backend
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-CMD ["/app/start.sh"]
+# Default command runs the backend server
+# nginx and cron containers override this in docker-compose
+CMD ["node", "server/dist/src/index.js"]

@@ -28,9 +28,8 @@ services:
     image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
     container_name: deadonfilm-app
     restart: unless-stopped
-    ports:
-      - "3000:3000"   # nginx (frontend + API proxy)
-      - "8080:8080"   # Express backend (for health checks)
+    expose:
+      - "8080"
     env_file:
       - .env
     environment:
@@ -50,6 +49,30 @@ services:
       start_period: 40s
     volumes:
       - sitemap-data:/app/sitemaps
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
+    container_name: deadonfilm-nginx
+    restart: unless-stopped
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    ports:
+      - "3000:3000"
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - sitemap-data:/app/sitemaps:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     logging:
       driver: json-file
       options:
