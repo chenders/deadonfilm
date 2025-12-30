@@ -68,8 +68,8 @@ services:
     volumes:
       - sitemap-data:/app/sitemaps:ro
     healthcheck:
-      # Use wget without --spider flag as busybox wget may not support it properly
-      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3000/ || exit 1"]
+      # Use same pattern as app container; target nginx-health to avoid try_files
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/nginx-health"]
       interval: 30s
       timeout: 10s
       retries: 3
