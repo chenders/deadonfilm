@@ -94,7 +94,7 @@ jobs:
           POSTGRES_PASSWORD: test
           POSTGRES_DB: deadonfilm_test
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -106,7 +106,7 @@ jobs:
         working-directory: server
 
     env:
-      DATABASE_URL: postgresql://test:test@localhost:5432/deadonfilm_test
+      DATABASE_URL: postgresql://test:test@localhost:5433/deadonfilm_test
 
     steps:
       - uses: actions/checkout@v4
