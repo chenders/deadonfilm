@@ -87,6 +87,8 @@ services:
     command:
       - |
         cat > /tmp/crontab <<'CRON'
+        SHELL=/bin/sh
+        PATH=/usr/local/bin:/usr/bin:/bin
         # TMDB sync - every 2 hours
         0 */2 * * * cd /app/server && node dist/scripts/sync-tmdb-changes.js
         # Sitemap generation - daily at 6 AM UTC
@@ -94,6 +96,7 @@ services:
         # Movie seeding - weekly Sunday 4 AM UTC
         0 4 * * 0 cd /app/server && node dist/scripts/seed-movies.js $(($(date +%Y)-1)) $(date +%Y) --count 500
         CRON
+        sed -i 's/^        //' /tmp/crontab
         exec supercronic /tmp/crontab
     env_file:
       - .env
