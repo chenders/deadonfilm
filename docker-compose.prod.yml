@@ -113,7 +113,8 @@ services:
       # PATH needed so supercronic can find itself when forking for process reaping
       - PATH=/usr/local/bin:/usr/bin:/bin
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -x supercronic > /dev/null"]
+      # Use pidof instead of pgrep -x since busybox pgrep may not support -x flag
+      test: ["CMD-SHELL", "pidof supercronic > /dev/null"]
       interval: 30s
       timeout: 5s
       retries: 3
