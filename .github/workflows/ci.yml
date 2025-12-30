@@ -258,7 +258,8 @@ jobs:
         run: |
           # Clean up any existing container from previous runs
           docker rm -f test-container 2>/dev/null || true
-          docker run -d --name test-container -p 8080:8080 -p 3000:3000 \
+          # App container only runs Express backend on 8080 (nginx is separate)
+          docker run -d --name test-container -p 8080:8080 \
             -e TMDB_API_TOKEN=test \
             dead-on-film:test
           sleep 5
