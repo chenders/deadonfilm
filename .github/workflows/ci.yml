@@ -9,7 +9,7 @@ on:
 jobs:
   codeql:
     name: CodeQL Security Scan
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       actions: read
       contents: read
@@ -35,7 +35,7 @@ jobs:
 
   frontend:
     name: Frontend
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v4
@@ -84,7 +84,7 @@ jobs:
 
   backend:
     name: Backend
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     services:
       postgres:
@@ -158,7 +158,7 @@ jobs:
 
   e2e:
     name: E2E Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [frontend, backend]
     container:
       image: mcr.microsoft.com/playwright:v1.57.0-jammy
@@ -225,7 +225,7 @@ jobs:
 
   docker:
     name: Docker Build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [frontend, backend]
 
     steps:

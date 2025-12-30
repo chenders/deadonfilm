@@ -7,7 +7,7 @@ on:
 
 jobs:
   newrelic:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     name: Mark Deployment in New Relic
     # Only run if deploy succeeded
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
