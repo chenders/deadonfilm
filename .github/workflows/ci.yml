@@ -111,8 +111,8 @@ jobs:
         working-directory: server
 
     env:
-      # Use service name 'postgres' as hostname (not localhost) for Docker-in-Docker networking
-      DATABASE_URL: postgresql://test:test@postgres:5432/deadonfilm_test
+      # Use host.docker.internal to reach host from runner container (Docker-in-Docker)
+      DATABASE_URL: postgresql://test:test@host.docker.internal:5433/deadonfilm_test
 
     steps:
       - uses: actions/checkout@v4
