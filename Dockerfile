@@ -26,8 +26,12 @@ FROM node:22-alpine AS production
 WORKDIR /app
 
 # Install nginx for frontend static files and supercronic for cron container
+# Note: Go binaries are statically compiled, so the standard amd64 build works on Alpine
+# Checksum from: https://github.com/aptible/supercronic/releases/tag/v0.2.33
+ENV SUPERCRONIC_SHA1SUM=71b0d58cc53f6bd72cf2f293e09e294b79c666d8
 RUN apk add --no-cache nginx && \
     wget -qO /usr/local/bin/supercronic https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64 && \
+    echo "${SUPERCRONIC_SHA1SUM}  /usr/local/bin/supercronic" | sha1sum -c - && \
     chmod +x /usr/local/bin/supercronic
 
 # Copy backend
