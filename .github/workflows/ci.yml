@@ -166,8 +166,7 @@ jobs:
     name: E2E Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: self-hosted
     needs: [frontend, backend]
-    container:
-      image: mcr.microsoft.com/playwright:v1.57.0-jammy
+    # Note: No container - run directly on runner to avoid Docker-in-Docker issues
     strategy:
       fail-fast: false
       matrix:
@@ -188,6 +187,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Install backend dependencies
         run: cd server && npm ci
