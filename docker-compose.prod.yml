@@ -68,8 +68,8 @@ services:
     volumes:
       - sitemap-data:/app/sitemaps:ro
     healthcheck:
-      # Use same pattern as app container; target nginx-health to avoid try_files
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/nginx-health"]
+      # Use 127.0.0.1 to avoid DNS resolution issues in container
+      test: ["CMD", "wget", "-q", "--spider", "-T", "5", "http://127.0.0.1:3000/nginx-health"]
       interval: 30s
       timeout: 10s
       retries: 3
