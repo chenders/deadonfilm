@@ -84,23 +84,18 @@ jobs:
           echo "=== All containers healthy ==="
           docker compose ps
 
-          # Verify health endpoint through nginx (the only host-accessible port)
-          # Note: App port 8080 uses 'expose' (internal only), not 'ports' (host-accessible)
+          # Verify health endpoint from within Docker network
+          # Note: Can't use localhost:3000 because self-hosted runner is Docker-in-Docker
+          # The runner container can't reach ports bound to the Docker host
           echo "=== Verifying health endpoint ==="
-          if ! curl -sf --max-time 10 http://localhost:3000/health; then
+          if ! docker compose exec -T nginx wget -q -O- --timeout=10 http://app:8080/health; then
             echo "Health check failed!"
-            echo ""
-            echo "--- curl verbose output ---"
-            curl -v --max-time 10 http://localhost:3000/health 2>&1 || true
             echo ""
             echo "--- nginx logs ---"
             docker compose logs nginx --tail=50
             echo ""
             echo "--- app logs ---"
-            docker compose logs app --tail=50
-            echo ""
-            echo "--- testing nginx-to-app connectivity ---"
-            docker compose exec -T nginx wget -q -O- --timeout=5 http://app:8080/health 2>&1 || echo "FAILED: nginx cannot reach app:8080"
+            docker compose logs app --tail=100
             exit 1
           fi
 
