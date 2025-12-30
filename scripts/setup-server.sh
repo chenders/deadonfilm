@@ -279,8 +279,13 @@ $DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart cloudflared
 $DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart github-runners
 $DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop github-runners
 $DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start github-runners
-$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/docker compose *
-$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/docker *
+# Docker compose commands for deployment (restricted to specific subcommands)
+$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/docker compose up *
+$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/docker compose down *
+$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/docker compose pull *
+$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/docker compose logs *
+$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/docker compose ps *
+$DEPLOY_USER ALL=(ALL) NOPASSWD: /usr/bin/docker image prune *
 EOF
 chmod 440 /etc/sudoers.d/deploy
 echo "  Configured sudoers for $DEPLOY_USER"
@@ -530,13 +535,23 @@ EOF
       - DISABLE_AUTO_UPDATE=true
     env_file:
       - .env
+    # SECURITY NOTE:
+    # This runner mounts the host Docker socket, which grants containers
+    # effectively full control over the host via the Docker daemon. This is
+    # required so CI jobs can build and run Docker images, but it is a
+    # high-privilege configuration.
+    #
+    # When using these runners, ensure that:
+    #   1) The GitHub runner token has only the minimal permissions required.
+    #   2) Branch protection and required reviews are properly configured on
+    #      the repository to prevent unreviewed workflows from running.
+    #   3) Workflows from forks are not automatically trusted or run with the
+    #      same privileges as trusted branches.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner-$i-work:/tmp/github-runner
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    security_opt:
-      - label:disable
 
 EOF
   done
