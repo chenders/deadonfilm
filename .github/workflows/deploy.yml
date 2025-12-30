@@ -84,30 +84,25 @@ jobs:
           echo "=== All containers healthy ==="
           docker compose ps
 
-          # Verify endpoints with verbose output on failure
-          echo "=== Verifying app healthcheck (direct) ==="
-          if ! curl -sf --max-time 10 http://localhost:8080/health; then
-            echo "Direct app healthcheck failed!"
-            echo "--- curl verbose output ---"
-            curl -v --max-time 10 http://localhost:8080/health || true
-            echo "--- app logs ---"
-            docker compose logs app --tail=50
-            exit 1
-          fi
-          echo "App healthcheck OK"
-
-          echo "=== Verifying nginx proxy ==="
+          # Verify health endpoint through nginx (the only host-accessible port)
+          # Note: App port 8080 uses 'expose' (internal only), not 'ports' (host-accessible)
+          echo "=== Verifying health endpoint ==="
           if ! curl -sf --max-time 10 http://localhost:3000/health; then
-            echo "Nginx proxy healthcheck failed!"
+            echo "Health check failed!"
+            echo ""
             echo "--- curl verbose output ---"
-            curl -v --max-time 10 http://localhost:3000/health || true
+            curl -v --max-time 10 http://localhost:3000/health 2>&1 || true
+            echo ""
             echo "--- nginx logs ---"
             docker compose logs nginx --tail=50
-            echo "--- nginx error log ---"
-            docker compose exec -T nginx cat /var/log/nginx/error.log 2>/dev/null || true
+            echo ""
+            echo "--- app logs ---"
+            docker compose logs app --tail=50
+            echo ""
+            echo "--- testing nginx-to-app connectivity ---"
+            docker compose exec -T nginx wget -q -O- --timeout=5 http://app:8080/health 2>&1 || echo "FAILED: nginx cannot reach app:8080"
             exit 1
           fi
-          echo "Nginx proxy OK"
 
           echo "=== Deployment successful ==="
 
