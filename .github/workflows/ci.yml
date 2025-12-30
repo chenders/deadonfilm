@@ -111,7 +111,8 @@ jobs:
         working-directory: server
 
     env:
-      DATABASE_URL: postgresql://test:test@localhost:5433/deadonfilm_test
+      # Use service name 'postgres' as hostname (not localhost) for Docker-in-Docker networking
+      DATABASE_URL: postgresql://test:test@postgres:5432/deadonfilm_test
 
     steps:
       - uses: actions/checkout@v4
