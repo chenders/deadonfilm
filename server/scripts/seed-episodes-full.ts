@@ -74,12 +74,26 @@ export function deduplicateAppearances(
 ): ShowActorAppearanceRecord[] {
   const uniqueAppearances = new Map<string, ShowActorAppearanceRecord>()
   for (const appearance of appearances) {
-    const key = `${appearance.actor_tmdb_id}-${appearance.show_tmdb_id}-${appearance.season_number}-${appearance.episode_number}`
+    const key = `${appearance.actor_id}-${appearance.show_tmdb_id}-${appearance.season_number}-${appearance.episode_number}`
     if (!uniqueAppearances.has(key)) {
       uniqueAppearances.set(key, appearance)
     }
   }
   return [...uniqueAppearances.values()]
+}
+
+/**
+ * Temporary appearance record using TMDB ID, to be converted to actor_id later
+ */
+interface TempAppearanceRecord {
+  actor_tmdb_id: number
+  show_tmdb_id: number
+  season_number: number
+  episode_number: number
+  character_name: string | null
+  appearance_type: "guest" | "regular" | "recurring"
+  billing_order: number | null
+  age_at_filming: number | null
 }
 
 // Checkpoint file to track progress
@@ -422,7 +436,7 @@ async function runSeeding(options: SeedOptions) {
 
             // Process episodes in this season
             const episodes = seasonDetails.episodes || []
-            const guestStarAppearances: ShowActorAppearanceRecord[] = []
+            const tempAppearances: TempAppearanceRecord[] = []
 
             for (const ep of episodes) {
               const guestStars = filterValidGuestStars(ep.guest_stars || [])
@@ -435,8 +449,8 @@ async function runSeeding(options: SeedOptions) {
                   episodeDeceasedCount++
                 }
 
-                // Collect guest star appearance for database
-                guestStarAppearances.push({
+                // Collect guest star appearance (using tmdb_id temporarily)
+                tempAppearances.push({
                   actor_tmdb_id: gs.id,
                   show_tmdb_id: showInfo.tmdb_id,
                   season_number: ep.season_number,
@@ -504,20 +518,42 @@ async function runSeeding(options: SeedOptions) {
               showGuestStarCount += guestStars.length
             }
 
-            // Save new actors to database
+            // Save new actors to database and get their internal IDs
+            let tmdbToActorId = new Map<number, number>()
             if (!dryRun && newActors.length > 0) {
               try {
-                await batchUpsertActors(newActors)
+                tmdbToActorId = await batchUpsertActors(newActors)
                 newActorsSaved += newActors.length
               } catch (actorError) {
                 console.error(`    Error saving actors: ${actorError}`)
               }
             }
 
-            // Save guest star appearances to database
+            // Convert temp appearances to real appearances using actor_id
             // Deduplicate first to avoid "ON CONFLICT cannot affect row a second time" error
-            if (!dryRun && guestStarAppearances.length > 0) {
+            if (!dryRun && tempAppearances.length > 0) {
               try {
+                const guestStarAppearances: ShowActorAppearanceRecord[] = []
+                for (const temp of tempAppearances) {
+                  const actorId = tmdbToActorId.get(temp.actor_tmdb_id)
+                  if (!actorId) {
+                    console.warn(
+                      `    Warning: No actor_id for tmdb_id ${temp.actor_tmdb_id}`
+                    )
+                    continue
+                  }
+                  guestStarAppearances.push({
+                    actor_id: actorId,
+                    show_tmdb_id: temp.show_tmdb_id,
+                    season_number: temp.season_number,
+                    episode_number: temp.episode_number,
+                    character_name: temp.character_name,
+                    appearance_type: temp.appearance_type,
+                    billing_order: temp.billing_order,
+                    age_at_filming: temp.age_at_filming,
+                  })
+                }
+
                 const uniqueAppearances = deduplicateAppearances(guestStarAppearances)
                 await batchUpsertShowActorAppearances(uniqueAppearances)
               } catch (appearanceError) {

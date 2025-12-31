@@ -21,7 +21,8 @@ export type DeathInfoSource = "claude" | "wikipedia" | null
 
 // Actor record - unified table for all actors (living and deceased)
 export interface ActorRecord {
-  tmdb_id: number
+  id: number
+  tmdb_id: number | null // null for non-TMDB actors (from TVmaze/TheTVDB)
   name: string
   birthday: string | null
   deathday: string | null // null for living actors
@@ -39,18 +40,22 @@ export interface ActorRecord {
   years_lost: number | null
   violent_death: boolean | null
 
+  // External IDs for cross-platform matching
+  tvmaze_person_id: number | null
+  thetvdb_person_id: number | null
+
   // Computed column
   is_obscure: boolean | null
 }
 
-// Input type for upserting actors - only tmdb_id and name are required
-// All other fields are optional and will be preserved if not provided
-export type ActorInput = Pick<ActorRecord, "tmdb_id" | "name"> &
-  Partial<Omit<ActorRecord, "tmdb_id" | "name" | "is_obscure">>
+// Input type for upserting actors - only name is required
+// tmdb_id can be null for non-TMDB actors
+export type ActorInput = Pick<ActorRecord, "name"> &
+  Partial<Omit<ActorRecord, "name" | "is_obscure">>
 
 // Simplified movie appearance record (junction table only)
 export interface ActorMovieAppearanceRecord {
-  actor_tmdb_id: number
+  actor_id: number
   movie_tmdb_id: number
   character_name: string | null
   billing_order: number | null
@@ -81,7 +86,11 @@ export async function getActors(tmdbIds: number[]): Promise<Map<number, ActorRec
 
   const map = new Map<number, ActorRecord>()
   for (const row of result.rows) {
-    map.set(row.tmdb_id, row)
+    // tmdb_id should never be null here since we're querying by tmdb_id,
+    // but we need to satisfy TypeScript
+    if (row.tmdb_id !== null) {
+      map.set(row.tmdb_id, row)
+    }
   }
   return map
 }
@@ -90,9 +99,74 @@ export async function getActors(tmdbIds: number[]): Promise<Map<number, ActorRec
 // Note: COALESCE prioritizes existing values over new values to preserve first-found data.
 // This is intentional - once we have death info, we don't overwrite it with potentially
 // different/conflicting data from later lookups.
-export async function upsertActor(actor: ActorInput): Promise<void> {
+// Returns the actor's internal id (useful for creating appearance records)
+export async function upsertActor(actor: ActorInput): Promise<number> {
   const db = getPool()
-  await db.query(
+
+  // For actors with tmdb_id, use ON CONFLICT on tmdb_id
+  // For actors without tmdb_id (TVmaze/TheTVDB only), use a different approach
+  if (actor.tmdb_id === null || actor.tmdb_id === undefined) {
+    // Non-TMDB actor - look up by external IDs or insert new
+    if (actor.tvmaze_person_id) {
+      const existing = await db.query<{ id: number }>(
+        `SELECT id FROM actors WHERE tvmaze_person_id = $1`,
+        [actor.tvmaze_person_id]
+      )
+      if (existing.rows.length > 0) {
+        // Update existing actor
+        await db.query(
+          `UPDATE actors SET
+             name = $2,
+             birthday = COALESCE(birthday, $3),
+             deathday = COALESCE(deathday, $4),
+             profile_path = COALESCE(profile_path, $5),
+             updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [existing.rows[0].id, actor.name, actor.birthday ?? null, actor.deathday ?? null, actor.profile_path ?? null]
+        )
+        return existing.rows[0].id
+      }
+    }
+    if (actor.thetvdb_person_id) {
+      const existing = await db.query<{ id: number }>(
+        `SELECT id FROM actors WHERE thetvdb_person_id = $1`,
+        [actor.thetvdb_person_id]
+      )
+      if (existing.rows.length > 0) {
+        // Update existing actor
+        await db.query(
+          `UPDATE actors SET
+             name = $2,
+             birthday = COALESCE(birthday, $3),
+             deathday = COALESCE(deathday, $4),
+             profile_path = COALESCE(profile_path, $5),
+             updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [existing.rows[0].id, actor.name, actor.birthday ?? null, actor.deathday ?? null, actor.profile_path ?? null]
+        )
+        return existing.rows[0].id
+      }
+    }
+    // Insert new non-TMDB actor
+    const result = await db.query<{ id: number }>(
+      `INSERT INTO actors (name, birthday, deathday, profile_path, popularity, tvmaze_person_id, thetvdb_person_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+       RETURNING id`,
+      [
+        actor.name,
+        actor.birthday ?? null,
+        actor.deathday ?? null,
+        actor.profile_path ?? null,
+        actor.popularity ?? null,
+        actor.tvmaze_person_id ?? null,
+        actor.thetvdb_person_id ?? null,
+      ]
+    )
+    return result.rows[0].id
+  }
+
+  // TMDB actor - use ON CONFLICT on tmdb_id
+  const result = await db.query<{ id: number }>(
     `INSERT INTO actors (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, popularity, violent_death, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
      ON CONFLICT (tmdb_id) DO UPDATE SET
@@ -110,7 +184,8 @@ export async function upsertActor(actor: ActorInput): Promise<void> {
        years_lost = COALESCE(actors.years_lost, EXCLUDED.years_lost),
        popularity = COALESCE(actors.popularity, EXCLUDED.popularity),
        violent_death = COALESCE(actors.violent_death, EXCLUDED.violent_death),
-       updated_at = CURRENT_TIMESTAMP`,
+       updated_at = CURRENT_TIMESTAMP
+     RETURNING id`,
     [
       actor.tmdb_id,
       actor.name,
@@ -129,11 +204,16 @@ export async function upsertActor(actor: ActorInput): Promise<void> {
       actor.violent_death ?? null,
     ]
   )
+  return result.rows[0].id
 }
 
 // Batch insert/update actors
-export async function batchUpsertActors(actors: ActorInput[]): Promise<void> {
-  if (actors.length === 0) return
+// Returns a map of tmdb_id -> internal actor id (for creating appearance records)
+export async function batchUpsertActors(
+  actors: ActorInput[]
+): Promise<Map<number, number>> {
+  const tmdbIdToActorId = new Map<number, number>()
+  if (actors.length === 0) return tmdbIdToActorId
 
   const db = getPool()
 
@@ -143,7 +223,13 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<void> {
     await client.query("BEGIN")
 
     for (const actor of actors) {
-      await client.query(
+      // Skip actors without TMDB IDs - they should use upsertActor directly
+      if (actor.tmdb_id === null || actor.tmdb_id === undefined) {
+        console.warn(`Skipping actor without tmdb_id in batchUpsertActors: ${actor.name}`)
+        continue
+      }
+
+      const result = await client.query<{ id: number; tmdb_id: number }>(
         `INSERT INTO actors (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, popularity, violent_death, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
          ON CONFLICT (tmdb_id) DO UPDATE SET
@@ -161,7 +247,8 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<void> {
            years_lost = COALESCE(actors.years_lost, EXCLUDED.years_lost),
            popularity = COALESCE(actors.popularity, EXCLUDED.popularity),
            violent_death = COALESCE(actors.violent_death, EXCLUDED.violent_death),
-           updated_at = CURRENT_TIMESTAMP`,
+           updated_at = CURRENT_TIMESTAMP
+         RETURNING id, tmdb_id`,
         [
           actor.tmdb_id,
           actor.name,
@@ -180,6 +267,10 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<void> {
           actor.violent_death ?? null,
         ]
       )
+
+      if (result.rows[0]) {
+        tmdbIdToActorId.set(result.rows[0].tmdb_id, result.rows[0].id)
+      }
     }
 
     await client.query("COMMIT")
@@ -189,6 +280,8 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<void> {
   } finally {
     client.release()
   }
+
+  return tmdbIdToActorId
 }
 
 // Update just the cause of death and wikipedia URL for an existing actor
@@ -888,14 +981,14 @@ export async function upsertActorMovieAppearance(
 ): Promise<void> {
   const db = getPool()
   await db.query(
-    `INSERT INTO actor_movie_appearances (actor_tmdb_id, movie_tmdb_id, character_name, billing_order, age_at_filming)
+    `INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming)
      VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (actor_tmdb_id, movie_tmdb_id) DO UPDATE SET
+     ON CONFLICT (actor_id, movie_tmdb_id) DO UPDATE SET
        character_name = EXCLUDED.character_name,
        billing_order = EXCLUDED.billing_order,
        age_at_filming = EXCLUDED.age_at_filming`,
     [
-      appearance.actor_tmdb_id,
+      appearance.actor_id,
       appearance.movie_tmdb_id,
       appearance.character_name,
       appearance.billing_order,
@@ -917,14 +1010,14 @@ export async function batchUpsertActorMovieAppearances(
 
     for (const appearance of appearances) {
       await client.query(
-        `INSERT INTO actor_movie_appearances (actor_tmdb_id, movie_tmdb_id, character_name, billing_order, age_at_filming)
+        `INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (actor_tmdb_id, movie_tmdb_id) DO UPDATE SET
+         ON CONFLICT (actor_id, movie_tmdb_id) DO UPDATE SET
            character_name = EXCLUDED.character_name,
            billing_order = EXCLUDED.billing_order,
            age_at_filming = EXCLUDED.age_at_filming`,
         [
-          appearance.actor_tmdb_id,
+          appearance.actor_id,
           appearance.movie_tmdb_id,
           appearance.character_name,
           appearance.billing_order,
@@ -952,8 +1045,8 @@ export async function getActorMovies(
   >(
     `SELECT ama.*, a.name as actor_name, a.deathday IS NOT NULL as is_deceased
      FROM actor_movie_appearances ama
-     JOIN actors a ON ama.actor_tmdb_id = a.tmdb_id
-     WHERE ama.actor_tmdb_id = $1`,
+     JOIN actors a ON ama.actor_id = a.id
+     WHERE a.tmdb_id = $1`,
     [actorTmdbId]
   )
   return result.rows
@@ -971,7 +1064,8 @@ export interface CursedActorsOptions {
 
 // Cursed actor record returned from database
 export interface CursedActorRecord {
-  actor_tmdb_id: number
+  actor_id: number
+  actor_tmdb_id: number | null
   actor_name: string
   is_deceased: boolean
   total_movies: number
@@ -1027,7 +1121,8 @@ export async function getCursedActors(options: CursedActorsOptions = {}): Promis
 
   const query = `
     SELECT
-      aa.actor_tmdb_id,
+      aa.actor_id,
+      a.tmdb_id as actor_tmdb_id,
       a.name as actor_name,
       (a.deathday IS NOT NULL) as is_deceased,
       COUNT(DISTINCT aa.movie_tmdb_id)::integer as total_movies,
@@ -1037,9 +1132,9 @@ export async function getCursedActors(options: CursedActorsOptions = {}): Promis
       COUNT(*) OVER() as total_count
     FROM actor_movie_appearances aa
     JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-    JOIN actors a ON aa.actor_tmdb_id = a.tmdb_id
+    JOIN actors a ON aa.actor_id = a.id
     WHERE ${whereClause}
-    GROUP BY aa.actor_tmdb_id, a.name, a.deathday
+    GROUP BY aa.actor_id, a.tmdb_id, a.name, a.deathday
     HAVING COUNT(DISTINCT aa.movie_tmdb_id) >= $${minMoviesParamIndex}
     ORDER BY curse_score DESC
     LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
@@ -1196,13 +1291,16 @@ export async function updateSyncState(
   )
 }
 
-// Get all unique actor TMDB IDs from actor_appearances
+// Get all unique actor TMDB IDs from actor_appearances (excludes actors without TMDB IDs)
 export async function getAllActorTmdbIds(): Promise<Set<number>> {
   const db = getPool()
-  const result = await db.query<{ actor_tmdb_id: number }>(
-    `SELECT DISTINCT actor_tmdb_id FROM actor_movie_appearances`
+  const result = await db.query<{ tmdb_id: number }>(
+    `SELECT DISTINCT a.tmdb_id
+     FROM actor_movie_appearances ama
+     JOIN actors a ON ama.actor_id = a.id
+     WHERE a.tmdb_id IS NOT NULL`
   )
-  return new Set(result.rows.map((r) => r.actor_tmdb_id))
+  return new Set(result.rows.map((r) => r.tmdb_id))
 }
 
 // Get all TMDB IDs of deceased persons in our database
@@ -1270,7 +1368,7 @@ export async function getForeverYoungMovies(limit: number = 100): Promise<Foreve
        a.years_lost
      FROM actor_movie_appearances aa
      JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-     JOIN actors a ON aa.actor_tmdb_id = a.tmdb_id
+     JOIN actors a ON aa.actor_id = a.id
      WHERE aa.billing_order <= 3
        AND a.years_lost > a.expected_lifespan * 0.40
      ORDER BY m.tmdb_id, a.years_lost DESC`,
@@ -1287,7 +1385,8 @@ export interface ForeverYoungMovieRecord {
   movie_title: string
   movie_release_year: number | null
   movie_poster_path: string | null
-  actor_tmdb_id: number
+  actor_id: number
+  actor_tmdb_id: number | null
   actor_name: string
   actor_profile_path: string | null
   years_lost: number
@@ -1317,6 +1416,7 @@ export async function getForeverYoungMoviesPaginated(
          m.title as movie_title,
          m.release_year as movie_release_year,
          m.poster_path as movie_poster_path,
+         a.id as actor_id,
          a.tmdb_id as actor_tmdb_id,
          a.name as actor_name,
          a.profile_path as actor_profile_path,
@@ -1325,7 +1425,7 @@ export async function getForeverYoungMoviesPaginated(
          a.cause_of_death_details
        FROM actor_movie_appearances aa
        JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-       JOIN actors a ON aa.actor_tmdb_id = a.tmdb_id
+       JOIN actors a ON aa.actor_id = a.id
        WHERE aa.billing_order <= 3
          AND a.years_lost > a.expected_lifespan * 0.40
        ORDER BY m.tmdb_id, a.years_lost DESC
@@ -1650,20 +1750,20 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
   const result = await db.query<ActorRecord & { total_count: string }>(
     `WITH actor_appearances AS (
        SELECT
-         a.tmdb_id,
+         a.id,
          COUNT(DISTINCT ama.movie_tmdb_id) as movie_count,
          COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as episode_count
        FROM actors a
-       LEFT JOIN actor_movie_appearances ama ON ama.actor_tmdb_id = a.tmdb_id
-       LEFT JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id
+       LEFT JOIN actor_movie_appearances ama ON ama.actor_id = a.id
+       LEFT JOIN actor_show_appearances asa ON asa.actor_id = a.id
        WHERE a.deathday IS NOT NULL
-       GROUP BY a.tmdb_id
+       GROUP BY a.id
        HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
           OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
      )
      SELECT COUNT(*) OVER () as total_count, actors.*
      FROM actors
-     JOIN actor_appearances aa ON aa.tmdb_id = actors.tmdb_id
+     JOIN actor_appearances aa ON aa.id = actors.id
      WHERE ($3 = true OR is_obscure = false)
        AND ($4::text IS NULL OR actors.name ILIKE $4)
      ORDER BY deathday DESC
@@ -1700,7 +1800,8 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
        m.cast_count
      FROM actor_movie_appearances aa
      JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-     WHERE aa.actor_tmdb_id = $1
+     JOIN actors a ON aa.actor_id = a.id
+     WHERE a.tmdb_id = $1
      ORDER BY m.release_year DESC NULLS LAST`,
     [actorTmdbId]
   )
@@ -1729,7 +1830,8 @@ export interface DeathWatchOptions {
 }
 
 export interface DeathWatchActorRecord {
-  actor_tmdb_id: number
+  actor_id: number
+  actor_tmdb_id: number | null
   actor_name: string
   birthday: string
   age: number
@@ -1787,6 +1889,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
   const query = `
     WITH living_actors AS (
       SELECT
+        a.id as actor_id,
         a.tmdb_id as actor_tmdb_id,
         a.name as actor_name,
         a.birthday,
@@ -1796,15 +1899,16 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
         COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as total_episodes,
         EXTRACT(YEAR FROM age(a.birthday))::integer as age
       FROM actors a
-      LEFT JOIN actor_movie_appearances ama ON ama.actor_tmdb_id = a.tmdb_id
-      LEFT JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id
+      LEFT JOIN actor_movie_appearances ama ON ama.actor_id = a.id
+      LEFT JOIN actor_show_appearances asa ON asa.actor_id = a.id
       WHERE a.deathday IS NULL
         AND a.birthday IS NOT NULL
-      GROUP BY a.tmdb_id, a.name, a.birthday, a.profile_path, a.popularity
+      GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.profile_path, a.popularity
       HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
          OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
     )
     SELECT
+      actor_id,
       actor_tmdb_id,
       actor_name,
       birthday::text,
@@ -2165,7 +2269,7 @@ export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
 
 // Show actor appearance record (junction table only - actor metadata comes from actors table)
 export interface ShowActorAppearanceRecord {
-  actor_tmdb_id: number
+  actor_id: number
   show_tmdb_id: number
   season_number: number
   episode_number: number
@@ -2182,17 +2286,17 @@ export async function upsertShowActorAppearance(
   const db = getPool()
   await db.query(
     `INSERT INTO actor_show_appearances (
-       actor_tmdb_id, show_tmdb_id, season_number, episode_number,
+       actor_id, show_tmdb_id, season_number, episode_number,
        character_name, appearance_type, billing_order, age_at_filming
      )
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     ON CONFLICT (actor_tmdb_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
+     ON CONFLICT (actor_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
        character_name = EXCLUDED.character_name,
        appearance_type = EXCLUDED.appearance_type,
        billing_order = EXCLUDED.billing_order,
        age_at_filming = EXCLUDED.age_at_filming`,
     [
-      appearance.actor_tmdb_id,
+      appearance.actor_id,
       appearance.show_tmdb_id,
       appearance.season_number,
       appearance.episode_number,
@@ -2222,7 +2326,7 @@ export async function batchUpsertShowActorAppearances(
     const placeholders = chunk.map((appearance, index) => {
       const offset = index * 8
       values.push(
-        appearance.actor_tmdb_id,
+        appearance.actor_id,
         appearance.show_tmdb_id,
         appearance.season_number,
         appearance.episode_number,
@@ -2236,11 +2340,11 @@ export async function batchUpsertShowActorAppearances(
 
     await db.query(
       `INSERT INTO actor_show_appearances (
-         actor_tmdb_id, show_tmdb_id, season_number, episode_number,
+         actor_id, show_tmdb_id, season_number, episode_number,
          character_name, appearance_type, billing_order, age_at_filming
        )
        VALUES ${placeholders.join(", ")}
-       ON CONFLICT (actor_tmdb_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
+       ON CONFLICT (actor_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
          character_name = EXCLUDED.character_name,
          appearance_type = EXCLUDED.appearance_type,
          billing_order = EXCLUDED.billing_order,
@@ -2253,21 +2357,30 @@ export async function batchUpsertShowActorAppearances(
 // Get unique actors for a show (aggregated across all episodes)
 export async function getShowActors(
   showTmdbId: number
-): Promise<Array<{ actorTmdbId: number; actorName: string; isDeceased: boolean }>> {
+): Promise<
+  Array<{
+    actorId: number
+    actorTmdbId: number | null
+    actorName: string
+    isDeceased: boolean
+  }>
+> {
   const db = getPool()
   const result = await db.query<{
-    actor_tmdb_id: number
+    actor_id: number
+    actor_tmdb_id: number | null
     actor_name: string
     is_deceased: boolean
   }>(
-    `SELECT DISTINCT asa.actor_tmdb_id, a.name as actor_name, (a.deathday IS NOT NULL) as is_deceased
+    `SELECT DISTINCT asa.actor_id, a.tmdb_id as actor_tmdb_id, a.name as actor_name, (a.deathday IS NOT NULL) as is_deceased
      FROM actor_show_appearances asa
-     JOIN actors a ON asa.actor_tmdb_id = a.tmdb_id
+     JOIN actors a ON asa.actor_id = a.id
      WHERE asa.show_tmdb_id = $1
      ORDER BY a.name`,
     [showTmdbId]
   )
   return result.rows.map((row) => ({
+    actorId: row.actor_id,
     actorTmdbId: row.actor_tmdb_id,
     actorName: row.actor_name,
     isDeceased: row.is_deceased,
@@ -2276,7 +2389,8 @@ export async function getShowActors(
 
 // Deceased actor with episode appearances for show page
 export interface DeceasedShowActor {
-  tmdb_id: number
+  id: number
+  tmdb_id: number | null
   name: string
   profile_path: string | null
   birthday: string | null
@@ -2303,7 +2417,8 @@ export async function getDeceasedActorsForShow(showTmdbId: number): Promise<Dece
 
   // First get all deceased actors with their aggregated episode count
   const actorsResult = await db.query<{
-    tmdb_id: number
+    id: number
+    tmdb_id: number | null
     name: string
     profile_path: string | null
     birthday: string | null
@@ -2318,6 +2433,7 @@ export async function getDeceasedActorsForShow(showTmdbId: number): Promise<Dece
     total_episodes: number
   }>(
     `SELECT
+       a.id,
        a.tmdb_id,
        a.name,
        a.profile_path,
@@ -2332,10 +2448,10 @@ export async function getDeceasedActorsForShow(showTmdbId: number): Promise<Dece
        a.years_lost,
        COUNT(DISTINCT (asa.season_number, asa.episode_number))::int as total_episodes
      FROM actors a
-     JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id
+     JOIN actor_show_appearances asa ON asa.actor_id = a.id
      WHERE asa.show_tmdb_id = $1
        AND a.deathday IS NOT NULL
-     GROUP BY a.tmdb_id, a.name, a.profile_path, a.birthday, a.deathday,
+     GROUP BY a.id, a.tmdb_id, a.name, a.profile_path, a.birthday, a.deathday,
               a.cause_of_death, a.cause_of_death_source, a.cause_of_death_details,
               a.cause_of_death_details_source, a.wikipedia_url, a.age_at_death, a.years_lost
      ORDER BY a.deathday DESC`,
@@ -2346,17 +2462,17 @@ export async function getDeceasedActorsForShow(showTmdbId: number): Promise<Dece
     return []
   }
 
-  // Get episode appearances for all deceased actors
-  const actorIds = actorsResult.rows.map((a) => a.tmdb_id)
+  // Get episode appearances for all deceased actors (using internal id)
+  const actorIds = actorsResult.rows.map((a) => a.id)
   const episodesResult = await db.query<{
-    actor_tmdb_id: number
+    actor_id: number
     season_number: number
     episode_number: number
     episode_name: string | null
     character_name: string | null
   }>(
     `SELECT
-       asa.actor_tmdb_id,
+       asa.actor_id,
        asa.season_number,
        asa.episode_number,
        e.name as episode_name,
@@ -2366,12 +2482,12 @@ export async function getDeceasedActorsForShow(showTmdbId: number): Promise<Dece
        AND e.season_number = asa.season_number
        AND e.episode_number = asa.episode_number
      WHERE asa.show_tmdb_id = $1
-       AND asa.actor_tmdb_id = ANY($2)
+       AND asa.actor_id = ANY($2)
      ORDER BY asa.season_number, asa.episode_number`,
     [showTmdbId, actorIds]
   )
 
-  // Group episodes by actor
+  // Group episodes by actor (using internal id)
   const episodesByActor = new Map<
     number,
     Array<{
@@ -2382,24 +2498,25 @@ export async function getDeceasedActorsForShow(showTmdbId: number): Promise<Dece
     }>
   >()
   for (const ep of episodesResult.rows) {
-    const existing = episodesByActor.get(ep.actor_tmdb_id) || []
+    const existing = episodesByActor.get(ep.actor_id) || []
     existing.push({
       season_number: ep.season_number,
       episode_number: ep.episode_number,
       episode_name: ep.episode_name,
       character_name: ep.character_name,
     })
-    episodesByActor.set(ep.actor_tmdb_id, existing)
+    episodesByActor.set(ep.actor_id, existing)
   }
 
   return actorsResult.rows.map((actor) => ({
     ...actor,
-    episodes: episodesByActor.get(actor.tmdb_id) || [],
+    episodes: episodesByActor.get(actor.id) || [],
   }))
 }
 
 export interface LivingShowActor {
-  tmdb_id: number
+  id: number
+  tmdb_id: number | null
   name: string
   profile_path: string | null
   birthday: string | null
@@ -2418,23 +2535,25 @@ export async function getLivingActorsForShow(showTmdbId: number): Promise<Living
 
   // First get all living actors with their aggregated episode count
   const actorsResult = await db.query<{
-    tmdb_id: number
+    id: number
+    tmdb_id: number | null
     name: string
     profile_path: string | null
     birthday: string | null
     total_episodes: number
   }>(
     `SELECT
+       a.id,
        a.tmdb_id,
        a.name,
        a.profile_path,
        a.birthday,
        COUNT(DISTINCT (asa.season_number, asa.episode_number))::int as total_episodes
      FROM actors a
-     JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id
+     JOIN actor_show_appearances asa ON asa.actor_id = a.id
      WHERE asa.show_tmdb_id = $1
        AND a.deathday IS NULL
-     GROUP BY a.tmdb_id, a.name, a.profile_path, a.birthday
+     GROUP BY a.id, a.tmdb_id, a.name, a.profile_path, a.birthday
      ORDER BY total_episodes DESC, a.name`,
     [showTmdbId]
   )
@@ -2443,17 +2562,17 @@ export async function getLivingActorsForShow(showTmdbId: number): Promise<Living
     return []
   }
 
-  // Get episode appearances for all living actors
-  const actorIds = actorsResult.rows.map((a) => a.tmdb_id)
+  // Get episode appearances for all living actors (using internal id)
+  const actorIds = actorsResult.rows.map((a) => a.id)
   const episodesResult = await db.query<{
-    actor_tmdb_id: number
+    actor_id: number
     season_number: number
     episode_number: number
     episode_name: string | null
     character_name: string | null
   }>(
     `SELECT
-       asa.actor_tmdb_id,
+       asa.actor_id,
        asa.season_number,
        asa.episode_number,
        e.name as episode_name,
@@ -2463,12 +2582,12 @@ export async function getLivingActorsForShow(showTmdbId: number): Promise<Living
        AND e.season_number = asa.season_number
        AND e.episode_number = asa.episode_number
      WHERE asa.show_tmdb_id = $1
-       AND asa.actor_tmdb_id = ANY($2)
+       AND asa.actor_id = ANY($2)
      ORDER BY asa.season_number, asa.episode_number`,
     [showTmdbId, actorIds]
   )
 
-  // Group episodes by actor
+  // Group episodes by actor (using internal id)
   const episodesByActor = new Map<
     number,
     Array<{
@@ -2479,18 +2598,18 @@ export async function getLivingActorsForShow(showTmdbId: number): Promise<Living
     }>
   >()
   for (const ep of episodesResult.rows) {
-    const existing = episodesByActor.get(ep.actor_tmdb_id) || []
+    const existing = episodesByActor.get(ep.actor_id) || []
     existing.push({
       season_number: ep.season_number,
       episode_number: ep.episode_number,
       episode_name: ep.episode_name,
       character_name: ep.character_name,
     })
-    episodesByActor.set(ep.actor_tmdb_id, existing)
+    episodesByActor.set(ep.actor_id, existing)
   }
 
   return actorsResult.rows.map((actor) => ({
     ...actor,
-    episodes: episodesByActor.get(actor.tmdb_id) || [],
+    episodes: episodesByActor.get(actor.id) || [],
   }))
 }

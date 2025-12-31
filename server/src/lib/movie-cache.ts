@@ -20,10 +20,8 @@ export interface MovieCacheInput {
 }
 
 export interface ActorAppearanceInput {
-  castMember: {
-    id: number
-    character: string | null
-  }
+  actorId: number
+  character: string | null
   movieId: number
   billingOrder: number
   releaseYear: number | null
@@ -81,12 +79,12 @@ export function calculateAgeAtFilming(
 export function buildActorMovieAppearanceRecord(
   input: ActorAppearanceInput
 ): ActorMovieAppearanceRecord {
-  const { castMember, movieId, billingOrder, releaseYear, birthday } = input
+  const { actorId, character, movieId, billingOrder, releaseYear, birthday } = input
 
   return {
-    actor_tmdb_id: castMember.id,
+    actor_id: actorId,
     movie_tmdb_id: movieId,
-    character_name: castMember.character || null,
+    character_name: character || null,
     billing_order: billingOrder,
     age_at_filming: calculateAgeAtFilming(birthday, releaseYear),
   }
