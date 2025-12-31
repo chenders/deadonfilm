@@ -251,6 +251,11 @@ export async function getShow(req: Request, res: Response) {
         const existingIds = new Set(deceased.map((d) => d.id))
 
         for (const dbActor of dbDeceasedActors) {
+          // Skip actors without TMDB IDs for now (non-TMDB actors from TVmaze/TheTVDB)
+          if (dbActor.tmdb_id === null) {
+            continue
+          }
+
           // Skip if already in deceased list from TMDB aggregate credits
           if (existingIds.has(dbActor.tmdb_id)) {
             continue
@@ -294,6 +299,11 @@ export async function getShow(req: Request, res: Response) {
         const existingLivingIds = new Set(living.map((l) => l.id))
 
         for (const dbActor of dbLivingActors) {
+          // Skip actors without TMDB IDs for now (non-TMDB actors from TVmaze/TheTVDB)
+          if (dbActor.tmdb_id === null) {
+            continue
+          }
+
           // Skip if already in living list from TMDB aggregate credits
           if (existingLivingIds.has(dbActor.tmdb_id)) {
             continue
