@@ -63,6 +63,7 @@ describe("getActor", () => {
   ]
 
   const mockDeceasedRecord = {
+    id: 1,
     tmdb_id: 67890,
     name: "Deceased Actor",
     birthday: "1940-03-10",
@@ -78,6 +79,8 @@ describe("getActor", () => {
     years_lost: -5,
     popularity: 50.0,
     violent_death: false,
+    tvmaze_person_id: null,
+    thetvdb_person_id: null,
     is_obscure: false,
   }
 

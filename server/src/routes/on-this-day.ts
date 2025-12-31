@@ -69,19 +69,34 @@ export async function getOnThisDay(_req: Request, res: Response) {
       return res.json(response)
     }
 
-    // Pick one random actor from the list
+    // Pick one random actor from the list (filter to actors with TMDB IDs for now)
     // We intentionally return only one actor to keep the homepage focused.
     // The response uses an array structure for future extensibility.
-    const randomIndex = Math.floor(Math.random() * deceasedOnThisDay.length)
-    const person = deceasedOnThisDay[randomIndex]
+    const actorsWithTmdb = deceasedOnThisDay.filter((p) => p.tmdb_id !== null)
+    if (actorsWithTmdb.length === 0) {
+      // All actors on this day are non-TMDB actors - return empty deaths
+      const response: OnThisDayResponse = {
+        date: dateKey,
+        month: today.toLocaleDateString("en-US", { month: "long" }),
+        day: today.toLocaleDateString("en-US", { day: "numeric" }),
+        deaths: [],
+        message:
+          "No recorded deaths on this day yet. Browse more movies to discover who passed away on this date!",
+      }
+      return res.json(response)
+    }
+
+    const randomIndex = Math.floor(Math.random() * actorsWithTmdb.length)
+    const person = actorsWithTmdb[randomIndex]
+    const tmdbId = person.tmdb_id! // Safe - we filtered above
     const deaths: OnThisDayDeath[] = []
 
     {
       try {
         // Get their filmography from TMDB
         const [credits, personDetails] = await Promise.all([
-          getPersonCredits(person.tmdb_id).catch(() => null),
-          getPersonDetails(person.tmdb_id).catch(() => null),
+          getPersonCredits(tmdbId).catch(() => null),
+          getPersonDetails(tmdbId).catch(() => null),
         ])
 
         // Get top 3 most popular films
@@ -98,7 +113,7 @@ export async function getOnThisDay(_req: Request, res: Response) {
 
         deaths.push({
           actor: {
-            id: person.tmdb_id,
+            id: tmdbId,
             name: person.name,
             profile_path: personDetails?.profile_path || null,
             deathday: formatDeathDate(person.deathday!),
@@ -111,7 +126,7 @@ export async function getOnThisDay(_req: Request, res: Response) {
         // Still include the actor even if we couldn't get their films
         deaths.push({
           actor: {
-            id: person.tmdb_id,
+            id: tmdbId,
             name: person.name,
             profile_path: null,
             deathday: formatDeathDate(person.deathday!),

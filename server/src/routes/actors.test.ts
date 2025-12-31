@@ -24,6 +24,7 @@ describe("getCursedActorsRoute", () => {
 
   const mockActors = [
     {
+      actor_id: 1,
       actor_tmdb_id: 1,
       actor_name: "Actor One",
       is_deceased: false,
@@ -33,6 +34,7 @@ describe("getCursedActorsRoute", () => {
       curse_score: 1.0,
     },
     {
+      actor_id: 2,
       actor_tmdb_id: 2,
       actor_name: "Actor Two",
       is_deceased: true,

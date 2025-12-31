@@ -120,7 +120,7 @@ describe("deduplicateAppearances", () => {
     episode: number,
     character?: string
   ): ShowActorAppearanceRecord => ({
-    actor_tmdb_id: actorId,
+    actor_id: actorId,
     show_tmdb_id: showId,
     season_number: season,
     episode_number: episode,
@@ -154,7 +154,7 @@ describe("deduplicateAppearances", () => {
     expect(result).toHaveLength(2)
     // First occurrence should be kept
     expect(result[0].character_name).toBe("First Role")
-    expect(result[1].actor_tmdb_id).toBe(2)
+    expect(result[1].actor_id).toBe(2)
   })
 
   it("treats same actor in different episodes as unique", () => {

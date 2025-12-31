@@ -227,6 +227,7 @@ describe("getCovidDeathsHandler", () => {
 
   const mockCovidPersons = [
     {
+      id: 1,
       tmdb_id: 1,
       name: "Actor One",
       birthday: "1950-01-01",
@@ -242,9 +243,12 @@ describe("getCovidDeathsHandler", () => {
       years_lost: 7,
       popularity: 15.0,
       violent_death: false,
+      tvmaze_person_id: null,
+      thetvdb_person_id: null,
       is_obscure: false,
     },
     {
+      id: 2,
       tmdb_id: 2,
       name: "Actor Two",
       birthday: "1945-05-20",
@@ -260,6 +264,8 @@ describe("getCovidDeathsHandler", () => {
       years_lost: 5,
       popularity: null,
       violent_death: null,
+      tvmaze_person_id: null,
+      thetvdb_person_id: null,
       is_obscure: true,
     },
   ]
@@ -463,6 +469,7 @@ describe("getUnnaturalDeathsHandler", () => {
 
   const mockUnnaturalPersons = [
     {
+      id: 1,
       tmdb_id: 1,
       name: "Actor One",
       birthday: "1960-01-01",
@@ -478,9 +485,12 @@ describe("getUnnaturalDeathsHandler", () => {
       years_lost: 18,
       popularity: 25.0,
       violent_death: true,
+      tvmaze_person_id: null,
+      thetvdb_person_id: null,
       is_obscure: false,
     },
     {
+      id: 2,
       tmdb_id: 2,
       name: "Actor Two",
       birthday: "1970-03-20",
@@ -496,6 +506,8 @@ describe("getUnnaturalDeathsHandler", () => {
       years_lost: 31,
       popularity: null,
       violent_death: true,
+      tvmaze_person_id: null,
+      thetvdb_person_id: null,
       is_obscure: true,
     },
   ]
