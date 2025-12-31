@@ -41,9 +41,11 @@ import {
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
   upsertMovie,
+  batchUpsertActors,
   batchUpsertActorMovieAppearances,
   type MovieRecord,
   type ActorMovieAppearanceRecord,
+  type ActorInput,
 } from "../src/lib/db.js"
 
 const CAST_LIMIT = 30 // Top 30 actors per movie
@@ -177,18 +179,41 @@ async function processMovie(
     `    Saved: ${mortalityStats.actualDeaths} deceased, ${mortalityStats.expectedDeaths.toFixed(1)} expected, score: ${mortalityStats.mortalitySurpriseScore.toFixed(3)}`
   )
 
-  // Save actor appearances
-  const appearances: ActorMovieAppearanceRecord[] = topCast.map((castMember, index) => {
+  // Create actor records for each cast member
+  const actorInputs: ActorInput[] = topCast.map((castMember) => {
+    const person = personDetails.get(castMember.id)
+    return {
+      tmdb_id: castMember.id,
+      name: castMember.name,
+      birthday: person?.birthday ?? null,
+      deathday: person?.deathday ?? null,
+      profile_path: person?.profile_path ?? null,
+      popularity: person?.popularity ?? null,
+    }
+  })
+
+  // Upsert actors and get the mapping of tmdb_id -> actor_id
+  const tmdbToActorId = await batchUpsertActors(actorInputs)
+
+  // Save actor appearances using internal actor_id
+  const appearances: ActorMovieAppearanceRecord[] = []
+  for (let index = 0; index < topCast.length; index++) {
+    const castMember = topCast[index]
+    const actorId = tmdbToActorId.get(castMember.id)
+    if (!actorId) {
+      console.warn(`    Warning: No actor_id for ${castMember.name} (tmdb_id: ${castMember.id})`)
+      continue
+    }
     const person = personDetails.get(castMember.id)
 
-    return {
-      actor_tmdb_id: castMember.id,
+    appearances.push({
+      actor_id: actorId,
       movie_tmdb_id: movieId,
       character_name: castMember.character || null,
       billing_order: index,
       age_at_filming: calculateAgeAtFilming(person?.birthday ?? null, releaseYear),
-    }
-  })
+    })
+  }
 
   await batchUpsertActorMovieAppearances(appearances)
   console.log(`    Saved ${appearances.length} actor appearances`)
