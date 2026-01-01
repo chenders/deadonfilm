@@ -245,6 +245,7 @@ describe("getCovidDeathsHandler", () => {
       violent_death: false,
       tvmaze_person_id: null,
       thetvdb_person_id: null,
+      imdb_person_id: null,
       is_obscure: false,
     },
     {
@@ -266,6 +267,7 @@ describe("getCovidDeathsHandler", () => {
       violent_death: null,
       tvmaze_person_id: null,
       thetvdb_person_id: null,
+      imdb_person_id: null,
       is_obscure: true,
     },
   ]
@@ -487,6 +489,7 @@ describe("getUnnaturalDeathsHandler", () => {
       violent_death: true,
       tvmaze_person_id: null,
       thetvdb_person_id: null,
+      imdb_person_id: null,
       is_obscure: false,
     },
     {
@@ -508,6 +511,7 @@ describe("getUnnaturalDeathsHandler", () => {
       violent_death: true,
       tvmaze_person_id: null,
       thetvdb_person_id: null,
+      imdb_person_id: null,
       is_obscure: true,
     },
   ]

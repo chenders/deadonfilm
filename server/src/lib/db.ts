@@ -43,6 +43,7 @@ export interface ActorRecord {
   // External IDs for cross-platform matching
   tvmaze_person_id: number | null
   thetvdb_person_id: number | null
+  imdb_person_id: string | null // IMDb uses string IDs like "nm0000001"
 
   // Computed column
   is_obscure: boolean | null
@@ -159,10 +160,36 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
         return existing.rows[0].id
       }
     }
+    if (actor.imdb_person_id) {
+      const existing = await db.query<{ id: number }>(
+        `SELECT id FROM actors WHERE imdb_person_id = $1`,
+        [actor.imdb_person_id]
+      )
+      if (existing.rows.length > 0) {
+        // Update existing actor
+        await db.query(
+          `UPDATE actors SET
+             name = $2,
+             birthday = COALESCE(birthday, $3),
+             deathday = COALESCE(deathday, $4),
+             profile_path = COALESCE(profile_path, $5),
+             updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [
+            existing.rows[0].id,
+            actor.name,
+            actor.birthday ?? null,
+            actor.deathday ?? null,
+            actor.profile_path ?? null,
+          ]
+        )
+        return existing.rows[0].id
+      }
+    }
     // Insert new non-TMDB actor
     const result = await db.query<{ id: number }>(
-      `INSERT INTO actors (name, birthday, deathday, profile_path, popularity, tvmaze_person_id, thetvdb_person_id, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      `INSERT INTO actors (name, birthday, deathday, profile_path, popularity, tvmaze_person_id, thetvdb_person_id, imdb_person_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
        RETURNING id`,
       [
         actor.name,
@@ -172,6 +199,7 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
         actor.popularity ?? null,
         actor.tvmaze_person_id ?? null,
         actor.thetvdb_person_id ?? null,
+        actor.imdb_person_id ?? null,
       ]
     )
     return result.rows[0].id
@@ -323,6 +351,44 @@ export async function updateDeathInfo(
       wikipediaUrl,
     ]
   )
+}
+
+// Update death info by internal actor ID (for non-TMDB actors like those from IMDb)
+// Note: COALESCE prioritizes existing values - see comment on upsertActor
+export async function updateDeathInfoByActorId(
+  actorId: number,
+  causeOfDeath: string | null,
+  causeOfDeathSource: DeathInfoSource,
+  causeOfDeathDetails: string | null,
+  causeOfDeathDetailsSource: DeathInfoSource,
+  wikipediaUrl: string | null
+): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `UPDATE actors
+     SET cause_of_death = COALESCE(cause_of_death, $2),
+         cause_of_death_source = COALESCE(cause_of_death_source, $3),
+         cause_of_death_details = COALESCE(cause_of_death_details, $4),
+         cause_of_death_details_source = COALESCE(cause_of_death_details_source, $5),
+         wikipedia_url = COALESCE(wikipedia_url, $6),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1`,
+    [
+      actorId,
+      causeOfDeath,
+      causeOfDeathSource,
+      causeOfDeathDetails,
+      causeOfDeathDetailsSource,
+      wikipediaUrl,
+    ]
+  )
+}
+
+// Get actor by internal ID
+export async function getActorById(id: number): Promise<ActorRecord | null> {
+  const db = getPool()
+  const result = await db.query<ActorRecord>("SELECT * FROM actors WHERE id = $1", [id])
+  return result.rows[0] || null
 }
 
 // Get deceased actors who died on a specific month/day (for "On This Day" feature)
@@ -2084,6 +2150,10 @@ export interface ShowRecord {
   living_count: number | null
   expected_deaths: number | null
   mortality_surprise_score: number | null
+  // External IDs
+  tvmaze_id: number | null
+  thetvdb_id: number | null
+  imdb_id: string | null
 }
 
 // Get a show by TMDB ID
@@ -2148,20 +2218,22 @@ export async function upsertShow(show: ShowRecord): Promise<void> {
   )
 }
 
-// Update external IDs for a show (TVmaze, TheTVDB)
+// Update external IDs for a show (TVmaze, TheTVDB, IMDb)
 export async function updateShowExternalIds(
   tmdbId: number,
   tvmazeId: number | null,
-  thetvdbId: number | null
+  thetvdbId: number | null,
+  imdbId?: string | null
 ): Promise<void> {
   const db = getPool()
   await db.query(
     `UPDATE shows
      SET tvmaze_id = COALESCE($2, tvmaze_id),
          thetvdb_id = COALESCE($3, thetvdb_id),
+         imdb_id = COALESCE($4, imdb_id),
          updated_at = CURRENT_TIMESTAMP
      WHERE tmdb_id = $1`,
-    [tmdbId, tvmazeId, thetvdbId]
+    [tmdbId, tvmazeId, thetvdbId, imdbId ?? null]
   )
 }
 
@@ -2246,6 +2318,7 @@ export interface EpisodeRecord {
   cast_data_source?: string | null
   tvmaze_episode_id?: number | null
   thetvdb_episode_id?: number | null
+  imdb_episode_id?: string | null
 }
 
 // Get episodes for a season
@@ -2268,9 +2341,9 @@ export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
     `INSERT INTO episodes (
        show_tmdb_id, season_number, episode_number, name, air_date, runtime,
        cast_count, deceased_count, guest_star_count, expected_deaths, mortality_surprise_score,
-       episode_data_source, cast_data_source, tvmaze_episode_id, thetvdb_episode_id
+       episode_data_source, cast_data_source, tvmaze_episode_id, thetvdb_episode_id, imdb_episode_id
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
      ON CONFLICT (show_tmdb_id, season_number, episode_number) DO UPDATE SET
        name = EXCLUDED.name,
        air_date = EXCLUDED.air_date,
@@ -2283,7 +2356,8 @@ export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
        episode_data_source = COALESCE(EXCLUDED.episode_data_source, episodes.episode_data_source),
        cast_data_source = COALESCE(EXCLUDED.cast_data_source, episodes.cast_data_source),
        tvmaze_episode_id = COALESCE(EXCLUDED.tvmaze_episode_id, episodes.tvmaze_episode_id),
-       thetvdb_episode_id = COALESCE(EXCLUDED.thetvdb_episode_id, episodes.thetvdb_episode_id)`,
+       thetvdb_episode_id = COALESCE(EXCLUDED.thetvdb_episode_id, episodes.thetvdb_episode_id),
+       imdb_episode_id = COALESCE(EXCLUDED.imdb_episode_id, episodes.imdb_episode_id)`,
     [
       episode.show_tmdb_id,
       episode.season_number,
@@ -2300,6 +2374,7 @@ export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
       episode.cast_data_source ?? "tmdb",
       episode.tvmaze_episode_id ?? null,
       episode.thetvdb_episode_id ?? null,
+      episode.imdb_episode_id ?? null,
     ]
   )
 }
