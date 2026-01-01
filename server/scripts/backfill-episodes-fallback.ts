@@ -109,7 +109,7 @@ const program = new Command()
   .description("Backfill episodes from TVmaze/TheTVDB for shows with TMDB data gaps")
   .option("--detect-gaps", "Scan shows and report which have TMDB data gaps")
   .option("-s, --show <id>", "Process a single show by TMDB ID", parsePositiveInt)
-  .option("--all-gaps", "Process all shows with detected gaps (default)")
+  .option("--all-gaps", "Process all shows with detected gaps (this is the default mode)")
   .option("--source <source>", "Force a specific source (tvmaze or thetvdb)", parseSource)
   .option("-n, --dry-run", "Preview without writing to database")
   .option("--fresh", "Start fresh (ignore checkpoint)")
@@ -292,6 +292,17 @@ async function backfillAllGaps(
   if (!dryRun && showsToCheck.length > 0 && allShowsProcessed && checkpoint.stats.errors === 0) {
     console.log("\nAll shows processed with no errors. Deleting checkpoint.")
     deleteCheckpoint()
+  } else if (
+    !dryRun &&
+    showsToCheck.length > 0 &&
+    allShowsProcessed &&
+    checkpoint.stats.errors > 0
+  ) {
+    console.log(
+      "\nAll shows were attempted, but some errors occurred. " +
+        "Progress saved to checkpoint - failed items will not be retried automatically."
+    )
+    console.log("To start fresh and retry all items, use the --fresh flag.")
   }
 }
 
@@ -446,6 +457,11 @@ async function backfillShow(
     } catch (error) {
       checkpoint.stats.errors++
       console.log(`    Error: ${error instanceof Error ? error.message : "unknown"}`)
+      // Mark season as processed even on error to avoid infinite retry loops
+      if (!checkpoint.processedSeasons.includes(seasonNumber)) {
+        checkpoint.processedSeasons.push(seasonNumber)
+        checkpoint.stats.seasonsProcessed++
+      }
       if (!dryRun) saveCheckpoint(checkpoint)
     }
   }
