@@ -591,6 +591,8 @@ async function processEpisodeCast(
   checkpoint: Checkpoint
 ): Promise<void> {
   const currentYear = new Date().getFullYear()
+  // Track unique actors across all episodes in this batch
+  const seenActorIds = new Set<number>()
 
   for (const ep of episodes) {
     try {
@@ -630,7 +632,11 @@ async function processEpisodeCast(
         let actorId: number
         if (!dryRun) {
           actorId = await upsertActor(actorInput)
-          checkpoint.stats.actorsSaved++
+          // Only count unique actors (not duplicate upserts)
+          if (!seenActorIds.has(actorId)) {
+            seenActorIds.add(actorId)
+            checkpoint.stats.actorsSaved++
+          }
 
           // If actor is deceased and we don't have cause of death, look it up
           if (castMember.deathYear) {

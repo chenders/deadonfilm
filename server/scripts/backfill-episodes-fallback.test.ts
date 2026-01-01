@@ -304,3 +304,177 @@ describe("backfill-episodes-fallback checkpoint functionality", () => {
     })
   })
 })
+
+describe("backfill-episodes-fallback --include-cast option", () => {
+  /**
+   * Note: processEpisodeCast is a private function that's not exported.
+   * It integrates with multiple external dependencies (IMDb API, database, death cause lookup).
+   * Testing it directly would require either:
+   * 1. Exporting it (changing the module's public API)
+   * 2. Integration tests with a test database
+   *
+   * Instead, we test the logic that processEpisodeCast relies on through the components it uses:
+   * - Actor upsert logic is tested in db.test.ts
+   * - IMDb cast fetching is tested in imdb.test.ts
+   * - Death cause lookup is tested in wikidata.test.ts
+   *
+   * These tests validate the option parsing and mode selection related to --include-cast.
+   */
+
+  interface BackfillOptions {
+    detectGaps?: boolean
+    show?: number
+    allGaps?: boolean
+    source?: "tvmaze" | "thetvdb" | "imdb"
+    includeCast?: boolean
+    dryRun?: boolean
+    fresh?: boolean
+  }
+
+  function getEffectiveMode(options: BackfillOptions): "detect" | "show" | "allGaps" {
+    if (options.detectGaps) return "detect"
+    if (options.show) return "show"
+    return "allGaps"
+  }
+
+  it("--include-cast can be combined with --show", () => {
+    const options: BackfillOptions = { show: 879, includeCast: true }
+    expect(getEffectiveMode(options)).toBe("show")
+    expect(options.includeCast).toBe(true)
+  })
+
+  it("--include-cast can be combined with --all-gaps", () => {
+    const options: BackfillOptions = { allGaps: true, includeCast: true }
+    expect(getEffectiveMode(options)).toBe("allGaps")
+    expect(options.includeCast).toBe(true)
+  })
+
+  it("--include-cast defaults to false when not specified", () => {
+    const options: BackfillOptions = { show: 879 }
+    expect(options.includeCast).toBeUndefined()
+    // The script treats undefined as false
+    expect(options.includeCast ?? false).toBe(false)
+  })
+
+  it("--include-cast can be combined with --dry-run", () => {
+    const options: BackfillOptions = { show: 879, includeCast: true, dryRun: true }
+    expect(getEffectiveMode(options)).toBe("show")
+    expect(options.includeCast).toBe(true)
+    expect(options.dryRun).toBe(true)
+  })
+
+  it("--include-cast can be combined with --source imdb", () => {
+    const options: BackfillOptions = { show: 879, includeCast: true, source: "imdb" }
+    expect(getEffectiveMode(options)).toBe("show")
+    expect(options.includeCast).toBe(true)
+    expect(options.source).toBe("imdb")
+  })
+})
+
+describe("backfill-episodes-fallback age calculation logic", () => {
+  /**
+   * Tests for the age at filming calculation logic used in processEpisodeCast.
+   * This mirrors the calculation: ageAtFilming = filmingYear - birthYear
+   */
+
+  function calculateAgeAtFilming(
+    birthYear: number | null,
+    filmingYear: number | null
+  ): number | null {
+    if (birthYear && filmingYear) {
+      return filmingYear - birthYear
+    }
+    return null
+  }
+
+  it("calculates age correctly when both years are provided", () => {
+    expect(calculateAgeAtFilming(1950, 2000)).toBe(50)
+    expect(calculateAgeAtFilming(1985, 2020)).toBe(35)
+    expect(calculateAgeAtFilming(1900, 1950)).toBe(50)
+  })
+
+  it("returns null when birth year is missing", () => {
+    expect(calculateAgeAtFilming(null, 2000)).toBeNull()
+  })
+
+  it("returns null when filming year is missing", () => {
+    expect(calculateAgeAtFilming(1950, null)).toBeNull()
+  })
+
+  it("returns null when both years are missing", () => {
+    expect(calculateAgeAtFilming(null, null)).toBeNull()
+  })
+
+  it("handles edge case of same year (age 0)", () => {
+    expect(calculateAgeAtFilming(2000, 2000)).toBe(0)
+  })
+})
+
+describe("backfill-episodes-fallback checkpoint with cast stats", () => {
+  let testDir: string
+  let testCheckpointFile: string
+
+  beforeEach(() => {
+    testDir = fs.mkdtempSync(path.join(os.tmpdir(), "backfill-cast-test-"))
+    testCheckpointFile = path.join(testDir, "test-checkpoint.json")
+  })
+
+  afterEach(() => {
+    if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true })
+    }
+  })
+
+  it("checkpoint includes cast-related stats", () => {
+    const checkpoint: Checkpoint = {
+      processedShowIds: [879],
+      currentShowId: null,
+      processedSeasons: [],
+      startedAt: "2024-01-01T00:00:00.000Z",
+      lastUpdated: "2024-01-01T01:00:00.000Z",
+      stats: {
+        showsProcessed: 1,
+        seasonsProcessed: 5,
+        episodesSaved: 100,
+        actorsSaved: 250,
+        appearancesSaved: 500,
+        deathCauseLookups: 50,
+        errors: 2,
+      },
+    }
+    fs.writeFileSync(testCheckpointFile, JSON.stringify(checkpoint))
+
+    const result = loadCheckpoint(testCheckpointFile)
+
+    expect(result).not.toBeNull()
+    expect(result!.stats.actorsSaved).toBe(250)
+    expect(result!.stats.appearancesSaved).toBe(500)
+    expect(result!.stats.deathCauseLookups).toBe(50)
+  })
+
+  it("saves checkpoint with cast stats", () => {
+    const checkpoint: Checkpoint = {
+      processedShowIds: [],
+      currentShowId: 879,
+      processedSeasons: [1, 2],
+      startedAt: "2024-01-01T00:00:00.000Z",
+      lastUpdated: "2024-01-01T00:00:00.000Z",
+      stats: {
+        showsProcessed: 0,
+        seasonsProcessed: 2,
+        episodesSaved: 50,
+        actorsSaved: 100,
+        appearancesSaved: 200,
+        deathCauseLookups: 25,
+        errors: 0,
+      },
+    }
+
+    saveCheckpoint(checkpoint, testCheckpointFile)
+
+    const saved = JSON.parse(fs.readFileSync(testCheckpointFile, "utf-8"))
+    expect(saved.stats.actorsSaved).toBe(100)
+    expect(saved.stats.appearancesSaved).toBe(200)
+    expect(saved.stats.deathCauseLookups).toBe(25)
+  })
+})

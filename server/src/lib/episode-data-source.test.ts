@@ -25,14 +25,29 @@ vi.mock("./thetvdb.js", () => ({
   getPerson: vi.fn(),
 }))
 
+vi.mock("./db.js", () => ({
+  getPool: vi.fn(() => ({
+    query: vi.fn(),
+  })),
+  getShow: vi.fn(),
+}))
+
+vi.mock("./imdb.js", () => ({
+  getShowEpisodes: vi.fn(),
+}))
+
 // Import mocks
 import * as tmdb from "./tmdb.js"
 import * as tvmaze from "./tvmaze.js"
 import * as thetvdb from "./thetvdb.js"
+import * as db from "./db.js"
+import * as imdb from "./imdb.js"
 
 // Import module under test
 import {
   detectTmdbDataGaps,
+  detectShowDataGaps,
+  countEpisodesInDb,
   getExternalIds,
   fetchEpisodesWithFallback,
   fetchEpisodeCastWithFallback,
@@ -734,6 +749,295 @@ describe("Episode Data Source Cascade", () => {
       })
 
       expect(result.episodes[0].overview).toBe("Text with whitespace")
+    })
+  })
+
+  describe("countEpisodesInDb", () => {
+    it("returns count of episodes for a show", async () => {
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({
+          rows: [{ count: "150" }],
+        }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      const result = await countEpisodesInDb(879)
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        "SELECT COUNT(*) as count FROM episodes WHERE show_tmdb_id = $1",
+        [879]
+      )
+      expect(result).toBe(150)
+    })
+
+    it("returns 0 when no episodes exist", async () => {
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({
+          rows: [{ count: "0" }],
+        }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      const result = await countEpisodesInDb(999)
+
+      expect(result).toBe(0)
+    })
+
+    it("handles empty result set", async () => {
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({
+          rows: [],
+        }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      const result = await countEpisodesInDb(999)
+
+      expect(result).toBe(0)
+    })
+  })
+
+  describe("detectShowDataGaps", () => {
+    beforeEach(() => {
+      // Reset all mocks for each test
+      vi.clearAllMocks()
+    })
+
+    it("returns no gaps when show not found in database", async () => {
+      vi.mocked(db.getShow).mockResolvedValue(null)
+
+      const result = await detectShowDataGaps(999)
+
+      expect(result.hasGaps).toBe(false)
+      expect(result.details).toContain("Show not found in database")
+    })
+
+    it("detects gaps when expected episodes exceed actual episodes by more than tolerance", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        number_of_episodes: 1000,
+        imdb_id: null,
+      } as never)
+
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ count: "100" }] }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      // Mock TMDB to return no gaps at season level
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 879,
+        name: "Test Show",
+        seasons: [],
+      } as never)
+
+      const result = await detectShowDataGaps(879)
+
+      expect(result.hasGaps).toBe(true)
+      expect(result.details[0]).toContain("Expected 1000 episodes (TMDB), have 100")
+    })
+
+    it("returns no gaps when episodes within tolerance", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        number_of_episodes: 100,
+        imdb_id: null,
+      } as never)
+
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ count: "95" }] }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      // Mock TMDB to return no gaps at season level
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 123,
+        name: "Test Show",
+        seasons: [],
+      } as never)
+
+      const result = await detectShowDataGaps(123)
+
+      // 95 out of 100 is within 10% tolerance (10 episodes)
+      expect(result.hasGaps).toBe(false)
+    })
+
+    it("uses 10% tolerance with minimum of 5 episodes", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        number_of_episodes: 20,
+        imdb_id: null,
+      } as never)
+
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ count: "15" }] }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      // Mock TMDB to return no gaps at season level
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 123,
+        name: "Test Show",
+        seasons: [],
+      } as never)
+
+      const result = await detectShowDataGaps(123)
+
+      // For 20 episodes, tolerance is max(5, 2) = 5
+      // Missing 5 is exactly at tolerance, so no gap
+      expect(result.hasGaps).toBe(false)
+    })
+
+    it("detects gaps when missing more than minimum tolerance", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        number_of_episodes: 20,
+        imdb_id: null,
+      } as never)
+
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ count: "10" }] }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      // Mock TMDB to return no gaps at season level
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 123,
+        name: "Test Show",
+        seasons: [],
+      } as never)
+
+      const result = await detectShowDataGaps(123)
+
+      // For 20 episodes, tolerance is 5. Missing 10 > 5, so gap detected
+      expect(result.hasGaps).toBe(true)
+    })
+
+    it("detects gaps from IMDb when IMDb has more episodes than database", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        number_of_episodes: 100,
+        imdb_id: "tt0123456",
+      } as never)
+
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ count: "100" }] }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      // Mock TMDB to return no gaps
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 123,
+        name: "Test Show",
+        seasons: [],
+      } as never)
+
+      // IMDb has more episodes
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue([
+        { tconst: "tt001", parentTconst: "tt0123456", seasonNumber: 1, episodeNumber: 1 },
+        { tconst: "tt002", parentTconst: "tt0123456", seasonNumber: 1, episodeNumber: 2 },
+        // ... many more
+        ...Array(198).fill({
+          tconst: "tt999",
+          parentTconst: "tt0123456",
+          seasonNumber: 1,
+          episodeNumber: 3,
+        }),
+      ])
+
+      const result = await detectShowDataGaps(123)
+
+      expect(result.hasGaps).toBe(true)
+      expect(result.details).toContain("IMDb has 200 episodes, database has 100")
+    })
+
+    it("uses provided imdbId over show imdb_id", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        number_of_episodes: 0,
+        imdb_id: "tt9999999",
+      } as never)
+
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ count: "0" }] }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      // Mock TMDB to return no gaps
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 123,
+        name: "Test Show",
+        seasons: [],
+      } as never)
+
+      // Mock IMDb lookup
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue([])
+
+      await detectShowDataGaps(123, "tt0000001")
+
+      // Should use the provided imdbId
+      expect(imdb.getShowEpisodes).toHaveBeenCalledWith("tt0000001")
+    })
+
+    it("handles IMDb lookup errors gracefully", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        number_of_episodes: 100,
+        imdb_id: "tt0123456",
+      } as never)
+
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ count: "100" }] }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      // Mock TMDB to return no gaps
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 123,
+        name: "Test Show",
+        seasons: [],
+      } as never)
+
+      // IMDb lookup fails
+      vi.mocked(imdb.getShowEpisodes).mockRejectedValue(new Error("IMDb download failed"))
+
+      const result = await detectShowDataGaps(123)
+
+      // Should not throw, just add error to details
+      expect(result.details.some((d) => d.includes("IMDb check failed"))).toBe(true)
+    })
+
+    it("includes missing seasons from IMDb in result", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        number_of_episodes: 50,
+        imdb_id: "tt0123456",
+      } as never)
+
+      const mockPool = {
+        query: vi.fn().mockResolvedValue({ rows: [{ count: "10" }] }),
+      }
+      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+
+      // Mock TMDB to return no gaps
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 123,
+        name: "Test Show",
+        seasons: [],
+      } as never)
+
+      // IMDb has episodes across multiple seasons
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue([
+        { tconst: "tt001", parentTconst: "tt0123456", seasonNumber: 1, episodeNumber: 1 },
+        { tconst: "tt002", parentTconst: "tt0123456", seasonNumber: 2, episodeNumber: 1 },
+        { tconst: "tt003", parentTconst: "tt0123456", seasonNumber: 3, episodeNumber: 1 },
+        ...Array(47).fill({
+          tconst: "tt999",
+          parentTconst: "tt0123456",
+          seasonNumber: 4,
+          episodeNumber: 1,
+        }),
+      ])
+
+      const result = await detectShowDataGaps(123)
+
+      expect(result.hasGaps).toBe(true)
+      expect(result.missingSeasons).toContain(1)
+      expect(result.missingSeasons).toContain(2)
+      expect(result.missingSeasons).toContain(3)
+      expect(result.missingSeasons).toContain(4)
     })
   })
 })
