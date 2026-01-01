@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/* eslint-disable security/detect-non-literal-fs-filename -- Checkpoint file paths are constructed from controlled constants */
 /**
  * Full seed script to populate seasons and episodes tables with complete data.
  * This includes guest star information and mortality statistics.
