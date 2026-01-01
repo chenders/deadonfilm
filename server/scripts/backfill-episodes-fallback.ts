@@ -648,9 +648,9 @@ async function processEpisodeCast(
                 actorInput.birthday ?? null,
                 actorInput.deathday!
               )
-              checkpoint.stats.deathCauseLookups++
 
               if (deathResult.causeOfDeath) {
+                checkpoint.stats.deathCauseLookups++
                 await updateDeathInfoByActorId(
                   actorId,
                   deathResult.causeOfDeath,
