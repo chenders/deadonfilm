@@ -170,9 +170,22 @@ exports.up = (pgm) => {
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.down = (pgm) => {
-  // NOTE: This rollback will FAIL if non-TMDB actors exist.
-  // You must delete them first:
-  //   DELETE FROM actors WHERE tmdb_id IS NULL;
+  // ============================================================
+  // STEP 0: Clean up non-TMDB data before schema rollback
+  // ============================================================
+  // Delete appearances for non-TMDB actors (they can't be represented in old schema)
+  pgm.sql(`
+    DELETE FROM actor_movie_appearances ama
+    USING actors a
+    WHERE a.id = ama.actor_id AND a.tmdb_id IS NULL
+  `)
+  pgm.sql(`
+    DELETE FROM actor_show_appearances asa
+    USING actors a
+    WHERE a.id = asa.actor_id AND a.tmdb_id IS NULL
+  `)
+  // Delete non-TMDB actors themselves
+  pgm.sql(`DELETE FROM actors WHERE tmdb_id IS NULL`)
 
   // ============================================================
   // STEP 5 ROLLBACK: Remove external person IDs from actors
@@ -211,7 +224,7 @@ exports.down = (pgm) => {
     WHERE a.id = asa.actor_id
   `)
 
-  // Make actor_tmdb_id NOT NULL (will fail if non-TMDB actors exist)
+  // Make actor_tmdb_id NOT NULL (safe now that non-TMDB actors have been removed)
   pgm.alterColumn("actor_movie_appearances", "actor_tmdb_id", { notNull: true })
   pgm.alterColumn("actor_show_appearances", "actor_tmdb_id", { notNull: true })
 

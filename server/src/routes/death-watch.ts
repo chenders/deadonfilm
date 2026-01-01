@@ -75,7 +75,7 @@ export async function getDeathWatchHandler(req: Request, res: Response) {
 
         return {
           rank: offset + index + 1,
-          id: actor.actor_id,
+          id: actor.actor_tmdb_id ?? actor.actor_id, // Use TMDB ID for API compatibility, fallback to internal ID
           name: actor.actor_name,
           age: actor.age,
           birthday: actor.birthday,
