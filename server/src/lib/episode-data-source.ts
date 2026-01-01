@@ -2,7 +2,7 @@
  * Episode Data Source Cascade Utility
  *
  * Handles fallback logic for fetching TV show episode and cast data:
- * TMDB → TVmaze → TheTVDB
+ * TMDB → TVmaze → TheTVDB → IMDb
  *
  * TMDB is always tried first (best data quality, existing actor IDs).
  * Fallback sources are used when TMDB lacks data (common for older soap operas).
@@ -11,12 +11,14 @@
 import * as tmdb from "./tmdb.js"
 import * as tvmaze from "./tvmaze.js"
 import * as thetvdb from "./thetvdb.js"
+import * as imdb from "./imdb.js"
+import { getPool, getShow } from "./db.js"
 
 // ============================================================
 // Types
 // ============================================================
 
-export type DataSource = "tmdb" | "tvmaze" | "thetvdb"
+export type DataSource = "tmdb" | "tvmaze" | "thetvdb" | "imdb"
 
 export interface NormalizedEpisode {
   seasonNumber: number
@@ -30,6 +32,7 @@ export interface NormalizedEpisode {
   tmdbEpisodeId?: number
   tvmazeEpisodeId?: number
   thetvdbEpisodeId?: number
+  imdbEpisodeId?: string
 }
 
 export interface NormalizedCastMember {
@@ -44,6 +47,10 @@ export interface NormalizedCastMember {
   tmdbPersonId?: number
   tvmazePersonId?: number
   thetvdbPersonId?: number
+  imdbPersonId?: string
+  // IMDb only has year, not full date
+  birthYear?: number | null
+  deathYear?: number | null
 }
 
 export interface ExternalShowIds {
@@ -106,6 +113,120 @@ export async function detectTmdbDataGaps(showTmdbId: number): Promise<DataGapRes
   } catch (error) {
     result.details.push(
       `Failed to get show details: ${error instanceof Error ? error.message : "unknown error"}`
+    )
+  }
+
+  return result
+}
+
+/**
+ * Count the number of episodes for a show in the database.
+ */
+export async function countEpisodesInDb(showTmdbId: number): Promise<number> {
+  const db = getPool()
+  const result = await db.query<{ count: string }>(
+    "SELECT COUNT(*) as count FROM episodes WHERE show_tmdb_id = $1",
+    [showTmdbId]
+  )
+  return parseInt(result.rows[0]?.count || "0", 10)
+}
+
+/**
+ * Improved gap detection that compares show's number_of_episodes metadata
+ * against actual episode count in database.
+ *
+ * This catches cases where TMDB's seasons array is empty but the show metadata
+ * indicates many episodes exist (common for old soap operas like "All My Children").
+ *
+ * Also checks against IMDb episode count when an IMDb ID is available, since
+ * IMDb often has more complete episode data for older shows.
+ *
+ * @param showTmdbId - TMDB show ID
+ * @param imdbId - Optional IMDb ID to check against (if not provided, will be looked up from show)
+ * @returns DataGapResult with hasGaps=true if database is missing episodes
+ */
+export async function detectShowDataGaps(
+  showTmdbId: number,
+  imdbId?: string | null
+): Promise<DataGapResult> {
+  const result: DataGapResult = {
+    hasGaps: false,
+    missingSeasons: [],
+    details: [],
+  }
+
+  try {
+    // Get show from database to check number_of_episodes and imdb_id
+    const show = await getShow(showTmdbId)
+    if (!show) {
+      result.details.push("Show not found in database")
+      return result
+    }
+
+    // Use provided imdbId or fall back to show's imdb_id
+    const showImdbId = imdbId ?? show.imdb_id
+
+    const expectedEpisodes = show.number_of_episodes || 0
+    const actualEpisodes = await countEpisodesInDb(showTmdbId)
+
+    // Check against TMDB expected count
+    if (expectedEpisodes > 0) {
+      // Allow 10% tolerance for minor discrepancies
+      const tolerance = Math.max(5, Math.floor(expectedEpisodes * 0.1))
+      const missingCount = expectedEpisodes - actualEpisodes
+
+      if (missingCount > tolerance) {
+        result.hasGaps = true
+        result.details.push(
+          `Expected ${expectedEpisodes} episodes (TMDB), have ${actualEpisodes} (missing ${missingCount})`
+        )
+      }
+    }
+
+    // Also check for TMDB season-level gaps (episodes that exist in TMDB but failed to import)
+    const tmdbGaps = await detectTmdbDataGaps(showTmdbId)
+    if (tmdbGaps.hasGaps) {
+      result.hasGaps = true
+      result.missingSeasons = tmdbGaps.missingSeasons
+      result.details.push(...tmdbGaps.details)
+    }
+
+    // Always check IMDb if we have an IMDb ID - it often has more complete data
+    if (showImdbId) {
+      try {
+        const imdbEpisodes = await imdb.getShowEpisodes(showImdbId)
+        if (imdbEpisodes.length > actualEpisodes) {
+          result.hasGaps = true
+          result.details.push(
+            `IMDb has ${imdbEpisodes.length} episodes, database has ${actualEpisodes}`
+          )
+
+          // Get unique season numbers from IMDb
+          const imdbSeasons = new Set(
+            imdbEpisodes.filter((e) => e.seasonNumber !== null).map((e) => e.seasonNumber!)
+          )
+          // Add seasons that aren't already in missingSeasons
+          for (const season of imdbSeasons) {
+            if (!result.missingSeasons.includes(season)) {
+              result.missingSeasons.push(season)
+            }
+          }
+          result.missingSeasons.sort((a, b) => a - b)
+        }
+      } catch (error) {
+        result.details.push(
+          `IMDb check failed: ${error instanceof Error ? error.message : "unknown error"}`
+        )
+      }
+    }
+
+    // If expected episodes is 0 and no gaps found yet, fall back to TMDB gaps
+    if (expectedEpisodes === 0 && !result.hasGaps) {
+      return tmdbGaps
+    }
+  } catch (error) {
+    result.details.push(
+      `Failed to detect gaps: ${error instanceof Error ? error.message : "unknown error"}`
     )
   }
 
@@ -206,6 +327,22 @@ function normalizeThetvdbEpisode(ep: thetvdb.TheTVDBEpisode): NormalizedEpisode 
 }
 
 /**
+ * Normalize IMDb episode data to common format.
+ */
+function normalizeImdbEpisode(ep: imdb.NormalizedImdbEpisode): NormalizedEpisode {
+  return {
+    seasonNumber: ep.seasonNumber,
+    episodeNumber: ep.episodeNumber,
+    name: ep.name,
+    overview: ep.overview,
+    airDate: ep.airDate,
+    runtime: ep.runtime,
+    stillPath: ep.stillPath,
+    imdbEpisodeId: ep.imdbEpisodeId,
+  }
+}
+
+/**
  * Strip HTML tags from a string (TVmaze includes HTML in summaries).
  * Uses iterative replacement to handle nested/malformed tags.
  */
@@ -279,6 +416,21 @@ export async function fetchEpisodesWithFallback(
     }
   }
 
+  // Try IMDb fourth (requires downloading and parsing TSV files)
+  if (ids.imdbId) {
+    try {
+      const episodes = await imdb.getSeasonEpisodesWithDetails(ids.imdbId, seasonNumber)
+      if (episodes.length > 0) {
+        return {
+          episodes: episodes.map(normalizeImdbEpisode),
+          source: "imdb",
+        }
+      }
+    } catch {
+      // IMDb failed
+    }
+  }
+
   // No data from any source
   return { episodes: [], source: "tmdb" }
 }
@@ -347,6 +499,24 @@ function normalizeThetvdbCast(
 }
 
 /**
+ * Normalize IMDb cast member data to common format.
+ */
+function normalizeImdbCast(member: imdb.NormalizedImdbCastMember): NormalizedCastMember {
+  return {
+    name: member.name,
+    characterName: member.characterName,
+    birthday: member.birthday, // null for IMDb (only has year)
+    deathday: member.deathday, // null for IMDb (only has year)
+    profilePath: member.profilePath,
+    billingOrder: member.billingOrder,
+    appearanceType: member.appearanceType,
+    imdbPersonId: member.imdbPersonId,
+    birthYear: member.birthYear,
+    deathYear: member.deathYear,
+  }
+}
+
+/**
  * Fetch cast for an episode with fallback through data sources.
  *
  * Always tries TMDB first (best data quality, existing actor IDs).
@@ -365,6 +535,7 @@ export async function fetchEpisodeCastWithFallback(
   externalEpisodeIds?: {
     tvmazeEpisodeId?: number
     thetvdbEpisodeId?: number
+    imdbEpisodeId?: string
   }
 ): Promise<{ cast: NormalizedCastMember[]; source: DataSource }> {
   // Always try TMDB first
@@ -409,7 +580,21 @@ export async function fetchEpisodeCastWithFallback(
 
   // TheTVDB doesn't have per-episode cast, only series-level cast
   // This is a limitation - we can't get guest stars per episode from TheTVDB
-  // We could potentially return the main cast, but that's not episode-specific
+
+  // Try IMDb if we have the episode ID
+  if (externalEpisodeIds?.imdbEpisodeId) {
+    try {
+      const imdbCast = await imdb.getEpisodeCastWithDetails(externalEpisodeIds.imdbEpisodeId)
+      if (imdbCast.length > 0) {
+        return {
+          cast: imdbCast.map(normalizeImdbCast),
+          source: "imdb",
+        }
+      }
+    } catch {
+      // IMDb failed
+    }
+  }
 
   return { cast: [], source: "tmdb" }
 }
