@@ -43,7 +43,7 @@ const ALLOWED_FILENAMES = new Set([
  */
 function validateFilename(filename: string): string {
   if (!ALLOWED_FILENAMES.has(filename)) {
-    throw new Error(`Invalid IMDb dataset filename: ${filename}`)
+    throw new Error("Invalid IMDb dataset filename")
   }
   return filename
 }

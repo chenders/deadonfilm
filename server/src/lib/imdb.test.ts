@@ -21,6 +21,58 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {})
 })
 
+describe("IMDb filename validation", () => {
+  /**
+   * Tests for validateFilename - security function that prevents path traversal
+   * by only allowing known IMDb dataset filenames.
+   */
+
+  const ALLOWED_FILENAMES = new Set([
+    "title.episode.tsv.gz",
+    "title.basics.tsv.gz",
+    "title.principals.tsv.gz",
+    "name.basics.tsv.gz",
+  ])
+
+  function validateFilename(filename: string): string {
+    if (!ALLOWED_FILENAMES.has(filename)) {
+      throw new Error("Invalid IMDb dataset filename")
+    }
+    return filename
+  }
+
+  it("accepts valid filenames and returns them unchanged", () => {
+    expect(validateFilename("title.episode.tsv.gz")).toBe("title.episode.tsv.gz")
+    expect(validateFilename("title.basics.tsv.gz")).toBe("title.basics.tsv.gz")
+    expect(validateFilename("title.principals.tsv.gz")).toBe("title.principals.tsv.gz")
+    expect(validateFilename("name.basics.tsv.gz")).toBe("name.basics.tsv.gz")
+  })
+
+  it("throws error for path traversal attempts", () => {
+    expect(() => validateFilename("../../../etc/passwd")).toThrow("Invalid IMDb dataset filename")
+    expect(() => validateFilename("..\\..\\..\\etc\\passwd")).toThrow(
+      "Invalid IMDb dataset filename"
+    )
+    expect(() => validateFilename("/etc/passwd")).toThrow("Invalid IMDb dataset filename")
+  })
+
+  it("throws error for arbitrary filenames", () => {
+    expect(() => validateFilename("malicious.txt")).toThrow("Invalid IMDb dataset filename")
+    expect(() => validateFilename("")).toThrow("Invalid IMDb dataset filename")
+    expect(() => validateFilename("title.episode.tsv")).toThrow("Invalid IMDb dataset filename")
+  })
+
+  it("uses generic error message without leaking filename", () => {
+    try {
+      validateFilename("secret-file.txt")
+      expect.fail("Should have thrown")
+    } catch (error) {
+      expect((error as Error).message).toBe("Invalid IMDb dataset filename")
+      expect((error as Error).message).not.toContain("secret-file.txt")
+    }
+  })
+})
+
 describe("IMDb utility functions", () => {
   /**
    * These tests mirror the internal parseNullable and parseNullableInt functions.
