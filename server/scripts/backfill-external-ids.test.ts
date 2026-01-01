@@ -1,11 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { InvalidArgumentError } from "commander"
-import { parsePositiveInt } from "./backfill-external-ids.js"
+import fs from "fs"
+import path from "path"
+import os from "os"
+import {
+  parsePositiveInt,
+  loadCheckpoint,
+  saveCheckpoint,
+  deleteCheckpoint,
+  type Checkpoint,
+} from "./backfill-external-ids.js"
 
 // Suppress console output during tests
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {})
   vi.spyOn(console, "error").mockImplementation(() => {})
+  vi.spyOn(console, "warn").mockImplementation(() => {})
 })
 
 describe("backfill-external-ids argument parsing", () => {
@@ -238,5 +248,96 @@ describe("backfill-external-ids update logic", () => {
     expect(
       shouldUpdate({ tvmaze_id: 82, thetvdb_id: null }, { tvmazeId: 82, thetvdbId: null })
     ).toBe(false)
+  })
+})
+
+describe("backfill-external-ids checkpoint functionality", () => {
+  let testDir: string
+  let testCheckpointFile: string
+
+  beforeEach(() => {
+    testDir = fs.mkdtempSync(path.join(os.tmpdir(), "backfill-test-"))
+    testCheckpointFile = path.join(testDir, "test-checkpoint.json")
+  })
+
+  afterEach(() => {
+    // Clean up temp directory
+    if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true })
+    }
+  })
+
+  describe("loadCheckpoint", () => {
+    it("returns null when checkpoint file does not exist", () => {
+      const result = loadCheckpoint(testCheckpointFile)
+      expect(result).toBeNull()
+    })
+
+    it("loads checkpoint from existing file", () => {
+      const checkpoint: Checkpoint = {
+        processedShowIds: [123, 456],
+        startedAt: "2024-01-01T00:00:00.000Z",
+        lastUpdated: "2024-01-01T01:00:00.000Z",
+        stats: { processed: 2, updated: 1, errors: 0 },
+      }
+      fs.writeFileSync(testCheckpointFile, JSON.stringify(checkpoint))
+
+      const result = loadCheckpoint(testCheckpointFile)
+      expect(result).toEqual(checkpoint)
+    })
+
+    it("returns null on invalid JSON", () => {
+      fs.writeFileSync(testCheckpointFile, "invalid json")
+      const result = loadCheckpoint(testCheckpointFile)
+      expect(result).toBeNull()
+    })
+  })
+
+  describe("saveCheckpoint", () => {
+    it("saves checkpoint to file", () => {
+      const checkpoint: Checkpoint = {
+        processedShowIds: [789],
+        startedAt: "2024-01-01T00:00:00.000Z",
+        lastUpdated: "2024-01-01T00:00:00.000Z",
+        stats: { processed: 1, updated: 1, errors: 0 },
+      }
+
+      saveCheckpoint(checkpoint, testCheckpointFile)
+
+      const saved = JSON.parse(fs.readFileSync(testCheckpointFile, "utf-8"))
+      expect(saved.processedShowIds).toEqual([789])
+      expect(saved.stats.processed).toBe(1)
+    })
+
+    it("updates lastUpdated timestamp", () => {
+      const checkpoint: Checkpoint = {
+        processedShowIds: [],
+        startedAt: "2024-01-01T00:00:00.000Z",
+        lastUpdated: "2024-01-01T00:00:00.000Z",
+        stats: { processed: 0, updated: 0, errors: 0 },
+      }
+
+      const before = new Date().toISOString()
+      saveCheckpoint(checkpoint, testCheckpointFile)
+      const after = new Date().toISOString()
+
+      const saved = JSON.parse(fs.readFileSync(testCheckpointFile, "utf-8"))
+      expect(saved.lastUpdated >= before).toBe(true)
+      expect(saved.lastUpdated <= after).toBe(true)
+    })
+  })
+
+  describe("deleteCheckpoint", () => {
+    it("deletes existing checkpoint file", () => {
+      fs.writeFileSync(testCheckpointFile, "{}")
+      expect(fs.existsSync(testCheckpointFile)).toBe(true)
+
+      deleteCheckpoint(testCheckpointFile)
+      expect(fs.existsSync(testCheckpointFile)).toBe(false)
+    })
+
+    it("does not throw when file does not exist", () => {
+      expect(() => deleteCheckpoint(testCheckpointFile)).not.toThrow()
+    })
   })
 })

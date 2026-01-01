@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/* eslint-disable security/detect-non-literal-fs-filename -- Checkpoint file paths are constructed from controlled constants */
 /**
  * Backfill episodes using fallback data sources (TVmaze/TheTVDB).
  *
@@ -6,23 +7,31 @@
  * from alternative sources. Useful for older shows like soap operas where
  * TMDB lacks episode data.
  *
+ * The script automatically saves progress to a checkpoint file and resumes
+ * from where it left off if interrupted. Use --fresh to start over.
+ *
  * Usage:
  *   npm run backfill:episodes:fallback -- [options]
  *
  * Options:
  *   --detect-gaps    Scan shows and report which have TMDB data gaps
  *   --show <id>      Process a single show by TMDB ID
+ *   --all-gaps       Process all shows with detected gaps (default)
  *   --source <src>   Force a specific source (tvmaze or thetvdb)
  *   --dry-run        Preview without writing to database
+ *   --fresh          Start fresh (ignore checkpoint)
  *
  * Examples:
- *   npm run backfill:episodes:fallback -- --detect-gaps      # Find shows with gaps
- *   npm run backfill:episodes:fallback -- --show 987         # Backfill General Hospital
+ *   npm run backfill:episodes:fallback                       # Backfill all shows with gaps (default)
+ *   npm run backfill:episodes:fallback -- --detect-gaps      # Find shows with gaps (report only)
+ *   npm run backfill:episodes:fallback -- --show 987         # Backfill General Hospital only
  *   npm run backfill:episodes:fallback -- --show 987 --source tvmaze
- *   npm run backfill:episodes:fallback -- --show 987 --dry-run
+ *   npm run backfill:episodes:fallback -- --fresh            # Start fresh, ignore checkpoint
  */
 
 import "dotenv/config"
+import fs from "fs"
+import path from "path"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, upsertEpisode, updateShowExternalIds, type EpisodeRecord } from "../src/lib/db.js"
 import { getTVShowDetails } from "../src/lib/tmdb.js"
@@ -32,6 +41,56 @@ import {
   fetchEpisodesWithFallback,
   type DataSource,
 } from "../src/lib/episode-data-source.js"
+
+// Checkpoint file to track progress
+const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-episodes-fallback-checkpoint.json")
+
+export interface Checkpoint {
+  // For --all-gaps mode: track processed shows
+  processedShowIds: number[]
+  // For single show mode: track processed seasons within a show
+  currentShowId: number | null
+  processedSeasons: number[]
+  startedAt: string
+  lastUpdated: string
+  stats: {
+    showsProcessed: number
+    seasonsProcessed: number
+    episodesSaved: number
+    errors: number
+  }
+}
+
+export function loadCheckpoint(filePath: string = CHECKPOINT_FILE): Checkpoint | null {
+  try {
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, "utf-8")
+      return JSON.parse(data) as Checkpoint
+    }
+  } catch (error) {
+    console.warn("Warning: Could not load checkpoint file:", error)
+  }
+  return null
+}
+
+export function saveCheckpoint(checkpoint: Checkpoint, filePath: string = CHECKPOINT_FILE): void {
+  try {
+    checkpoint.lastUpdated = new Date().toISOString()
+    fs.writeFileSync(filePath, JSON.stringify(checkpoint, null, 2))
+  } catch (error) {
+    console.error("Warning: Could not save checkpoint:", error)
+  }
+}
+
+export function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath)
+    }
+  } catch (error) {
+    console.error("Warning: Could not delete checkpoint:", error)
+  }
+}
 
 export function parsePositiveInt(value: string): number {
   // Validate the entire string is a positive integer (no decimals, no trailing chars)
@@ -64,14 +123,18 @@ const program = new Command()
   .description("Backfill episodes from TVmaze/TheTVDB for shows with TMDB data gaps")
   .option("--detect-gaps", "Scan shows and report which have TMDB data gaps")
   .option("-s, --show <id>", "Process a single show by TMDB ID", parsePositiveInt)
+  .option("--all-gaps", "Process all shows with detected gaps (default)")
   .option("--source <source>", "Force a specific source (tvmaze or thetvdb)", parseSource)
   .option("-n, --dry-run", "Preview without writing to database")
+  .option("--fresh", "Start fresh (ignore checkpoint)")
   .action(
     async (options: {
       detectGaps?: boolean
       show?: number
+      allGaps?: boolean
       source?: DataSource
       dryRun?: boolean
+      fresh?: boolean
     }) => {
       await runBackfill(options)
     }
@@ -80,15 +143,15 @@ const program = new Command()
 async function runBackfill(options: {
   detectGaps?: boolean
   show?: number
+  allGaps?: boolean
   source?: DataSource
   dryRun?: boolean
+  fresh?: boolean
 }) {
-  const { detectGaps, show: showId, source: forcedSource, dryRun } = options
+  const { detectGaps, show: showId, allGaps, source: forcedSource, dryRun, fresh } = options
 
-  if (!detectGaps && !showId) {
-    console.error("Error: Must specify either --detect-gaps or --show <id>")
-    process.exit(1)
-  }
+  // Default to --all-gaps if no mode specified
+  const effectiveAllGaps = allGaps ?? (!detectGaps && !showId)
 
   if (!process.env.DATABASE_URL && !dryRun) {
     console.error("DATABASE_URL environment variable is required (or use --dry-run)")
@@ -107,8 +170,33 @@ async function runBackfill(options: {
     return
   }
 
-  if (showId) {
-    await backfillShow(db, showId, forcedSource, dryRun ?? false)
+  // Load or create checkpoint
+  let checkpoint: Checkpoint | null = null
+  if (!fresh && !dryRun) {
+    checkpoint = loadCheckpoint()
+    if (checkpoint) {
+      console.log(`\nResuming from checkpoint (started ${checkpoint.startedAt})`)
+      console.log(`  Shows processed: ${checkpoint.stats.showsProcessed}`)
+      console.log(`  Episodes saved: ${checkpoint.stats.episodesSaved}`)
+      console.log(`  Errors: ${checkpoint.stats.errors}`)
+    }
+  }
+
+  if (!checkpoint) {
+    checkpoint = {
+      processedShowIds: [],
+      currentShowId: null,
+      processedSeasons: [],
+      startedAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
+      stats: { showsProcessed: 0, seasonsProcessed: 0, episodesSaved: 0, errors: 0 },
+    }
+  }
+
+  if (effectiveAllGaps) {
+    await backfillAllGaps(db, forcedSource, dryRun ?? false, checkpoint)
+  } else if (showId) {
+    await backfillShow(db, showId, forcedSource, dryRun ?? false, checkpoint)
   }
 }
 
@@ -152,11 +240,77 @@ async function detectDataGaps(db: ReturnType<typeof getPool>) {
   console.log("  npm run backfill:episodes:fallback -- --show <tmdb_id>")
 }
 
+async function backfillAllGaps(
+  db: ReturnType<typeof getPool>,
+  forcedSource: DataSource | undefined,
+  dryRun: boolean,
+  checkpoint: Checkpoint
+) {
+  console.log(`\nBackfilling all shows with TMDB data gaps${dryRun ? " (DRY RUN)" : ""}`)
+
+  const result = await db.query<ShowInfo>(
+    "SELECT tmdb_id, name, tvmaze_id, thetvdb_id FROM shows ORDER BY popularity DESC NULLS LAST"
+  )
+
+  const processedSet = new Set(checkpoint.processedShowIds)
+  const showsToCheck = result.rows.filter((show) => !processedSet.has(show.tmdb_id))
+
+  console.log(
+    `Checking ${showsToCheck.length} shows for gaps (${processedSet.size} already processed)\n`
+  )
+
+  let showsWithGaps = 0
+
+  for (const show of showsToCheck) {
+    // Check for gaps
+    const gapResult = await detectTmdbDataGaps(show.tmdb_id)
+
+    if (!gapResult.hasGaps) {
+      // No gaps, mark as processed and continue
+      checkpoint.processedShowIds.push(show.tmdb_id)
+      if (!dryRun) saveCheckpoint(checkpoint)
+      continue
+    }
+
+    showsWithGaps++
+    console.log(`\n${"=".repeat(60)}`)
+    console.log(`Found gaps in: ${show.name} (${show.tmdb_id})`)
+
+    // Backfill this show
+    await backfillShow(db, show.tmdb_id, forcedSource, dryRun, checkpoint)
+
+    // Mark show as processed
+    checkpoint.processedShowIds.push(show.tmdb_id)
+    checkpoint.stats.showsProcessed++
+    if (!dryRun) saveCheckpoint(checkpoint)
+
+    // Small delay between shows
+    await delay(500)
+  }
+
+  console.log("\n" + "=".repeat(60))
+  console.log("Summary:")
+  console.log(`  Shows checked: ${showsToCheck.length}`)
+  console.log(`  Shows with gaps: ${showsWithGaps}`)
+  console.log(`  Total shows processed: ${checkpoint.stats.showsProcessed}`)
+  console.log(`  Total episodes saved: ${checkpoint.stats.episodesSaved}`)
+  if (checkpoint.stats.errors > 0) {
+    console.log(`  Errors: ${checkpoint.stats.errors}`)
+  }
+
+  // Delete checkpoint on successful completion
+  if (!dryRun && showsToCheck.length > 0) {
+    console.log("\nAll shows processed. Deleting checkpoint.")
+    deleteCheckpoint()
+  }
+}
+
 async function backfillShow(
   db: ReturnType<typeof getPool>,
   showTmdbId: number,
   forcedSource: DataSource | undefined,
-  dryRun: boolean
+  dryRun: boolean,
+  checkpoint: Checkpoint
 ) {
   // Get show info from database
   const showResult = await db.query<ShowInfo>(
@@ -171,6 +325,21 @@ async function backfillShow(
 
   const show = showResult.rows[0]
   console.log(`\nBackfilling: ${show.name} (${show.tmdb_id})${dryRun ? " (DRY RUN)" : ""}`)
+
+  // Check if we're resuming this specific show
+  const isResumingSameShow = checkpoint.currentShowId === showTmdbId
+  const processedSeasonSet = new Set(isResumingSameShow ? checkpoint.processedSeasons : [])
+
+  if (isResumingSameShow && processedSeasonSet.size > 0) {
+    console.log(`  Resuming - already processed seasons: ${checkpoint.processedSeasons.join(", ")}`)
+  }
+
+  // Update checkpoint to track current show
+  checkpoint.currentShowId = showTmdbId
+  if (!isResumingSameShow) {
+    checkpoint.processedSeasons = []
+  }
+  if (!dryRun) saveCheckpoint(checkpoint)
 
   // Get external IDs if not already stored
   let externalIds = {
@@ -200,75 +369,103 @@ async function backfillShow(
     return
   }
 
-  console.log(`  Missing seasons: ${gapResult.missingSeasons.join(", ")}`)
+  // Filter out already processed seasons
+  const seasonsToProcess = gapResult.missingSeasons.filter((s) => !processedSeasonSet.has(s))
+
+  if (seasonsToProcess.length === 0) {
+    console.log("  All missing seasons already processed")
+    return
+  }
+
+  console.log(`  Missing seasons to process: ${seasonsToProcess.join(", ")}`)
 
   // Get show details for context
   const showDetails = await getTVShowDetails(showTmdbId)
 
-  let totalEpisodes = 0
+  let showEpisodeCount = 0
 
-  for (const seasonNumber of gapResult.missingSeasons) {
+  for (const seasonNumber of seasonsToProcess) {
     console.log(`\n  Processing Season ${seasonNumber}...`)
 
     const seasonSummary = showDetails.seasons.find((s) => s.season_number === seasonNumber)
     const expectedCount = seasonSummary?.episode_count ?? 0
 
-    const { episodes, source } = await fetchEpisodesWithFallback(
-      showTmdbId,
-      seasonNumber,
-      externalIds
-    )
-
-    if (episodes.length === 0) {
-      console.log(`    No episodes found from any source`)
-      continue
-    }
-
-    if (forcedSource && source !== forcedSource) {
-      console.log(
-        `    Found ${episodes.length} episodes from ${source}, but --source ${forcedSource} was specified`
+    try {
+      const { episodes, source } = await fetchEpisodesWithFallback(
+        showTmdbId,
+        seasonNumber,
+        externalIds
       )
-      // Try the forced source directly
-      // For now, skip if the forced source didn't provide data
-      continue
-    }
 
-    console.log(`    Found ${episodes.length} episodes from ${source} (expected ${expectedCount})`)
-
-    for (const ep of episodes) {
-      const episodeRecord: EpisodeRecord = {
-        show_tmdb_id: showTmdbId,
-        season_number: ep.seasonNumber,
-        episode_number: ep.episodeNumber,
-        name: ep.name,
-        air_date: ep.airDate,
-        runtime: ep.runtime,
-        cast_count: 0, // Cast not yet available from fallback sources
-        deceased_count: 0,
-        guest_star_count: 0,
-        expected_deaths: 0,
-        mortality_surprise_score: 0,
-        episode_data_source: source,
-        cast_data_source: null,
-        tvmaze_episode_id: ep.tvmazeEpisodeId ?? null,
-        thetvdb_episode_id: ep.thetvdbEpisodeId ?? null,
+      if (episodes.length === 0) {
+        console.log(`    No episodes found from any source`)
+        // Mark season as processed even if no episodes found
+        checkpoint.processedSeasons.push(seasonNumber)
+        checkpoint.stats.seasonsProcessed++
+        if (!dryRun) saveCheckpoint(checkpoint)
+        continue
       }
 
-      if (!dryRun) {
-        await upsertEpisode(episodeRecord)
-      }
-      totalEpisodes++
-
-      if (dryRun) {
+      if (forcedSource && source !== forcedSource) {
         console.log(
-          `      Would save: S${ep.seasonNumber}E${ep.episodeNumber} - ${ep.name ?? "(no title)"}`
+          `    Found ${episodes.length} episodes from ${source}, but --source ${forcedSource} was specified`
         )
+        continue
       }
+
+      console.log(
+        `    Found ${episodes.length} episodes from ${source} (expected ${expectedCount})`
+      )
+
+      for (const ep of episodes) {
+        const episodeRecord: EpisodeRecord = {
+          show_tmdb_id: showTmdbId,
+          season_number: ep.seasonNumber,
+          episode_number: ep.episodeNumber,
+          name: ep.name,
+          air_date: ep.airDate,
+          runtime: ep.runtime,
+          cast_count: 0, // Cast not yet available from fallback sources
+          deceased_count: 0,
+          guest_star_count: 0,
+          expected_deaths: 0,
+          mortality_surprise_score: 0,
+          episode_data_source: source,
+          cast_data_source: null,
+          tvmaze_episode_id: ep.tvmazeEpisodeId ?? null,
+          thetvdb_episode_id: ep.thetvdbEpisodeId ?? null,
+        }
+
+        if (!dryRun) {
+          await upsertEpisode(episodeRecord)
+        }
+        showEpisodeCount++
+        checkpoint.stats.episodesSaved++
+
+        if (dryRun) {
+          console.log(
+            `      Would save: S${ep.seasonNumber}E${ep.episodeNumber} - ${ep.name ?? "(no title)"}`
+          )
+        }
+      }
+
+      // Mark season as processed
+      checkpoint.processedSeasons.push(seasonNumber)
+      checkpoint.stats.seasonsProcessed++
+      if (!dryRun) saveCheckpoint(checkpoint)
+    } catch (error) {
+      checkpoint.stats.errors++
+      console.log(`    Error: ${error instanceof Error ? error.message : "unknown"}`)
+      if (!dryRun) saveCheckpoint(checkpoint)
     }
   }
 
-  console.log("\n" + "=".repeat(60))
-  console.log(`${dryRun ? "Would save" : "Saved"} ${totalEpisodes} episodes`)
+  console.log(`\n  ${dryRun ? "Would save" : "Saved"} ${showEpisodeCount} episodes for this show`)
+
+  // Clear current show tracking since we're done with this show
+  checkpoint.currentShowId = null
+  checkpoint.processedSeasons = []
+  if (!dryRun) saveCheckpoint(checkpoint)
 }
 
 function delay(ms: number): Promise<void> {
