@@ -58,6 +58,23 @@ exports.up = (pgm) => {
   // ============================================================
   // STEP 4: Add actor_id to appearance tables
   // ============================================================
+
+  // First, delete orphaned appearances that reference actors not in the actors table.
+  // These are data integrity issues from past seeding scripts that didn't properly
+  // ensure actors existed before creating appearances.
+  pgm.sql(`
+    DELETE FROM actor_movie_appearances ama
+    WHERE NOT EXISTS (
+      SELECT 1 FROM actors a WHERE a.tmdb_id = ama.actor_tmdb_id
+    )
+  `)
+  pgm.sql(`
+    DELETE FROM actor_show_appearances asa
+    WHERE NOT EXISTS (
+      SELECT 1 FROM actors a WHERE a.tmdb_id = asa.actor_tmdb_id
+    )
+  `)
+
   pgm.addColumn("actor_movie_appearances", {
     actor_id: { type: "integer" },
   })

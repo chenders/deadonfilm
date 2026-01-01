@@ -166,9 +166,7 @@ describe("Sync State Functions", () => {
 
       const result = await getAllActorTmdbIds()
 
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT DISTINCT a.tmdb_id")
-      )
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("SELECT DISTINCT a.tmdb_id"))
       expect(result).toBeInstanceOf(Set)
       expect(result.size).toBe(3)
       expect(result.has(123)).toBe(true)

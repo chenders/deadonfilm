@@ -122,7 +122,13 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
              profile_path = COALESCE(profile_path, $5),
              updated_at = CURRENT_TIMESTAMP
            WHERE id = $1`,
-          [existing.rows[0].id, actor.name, actor.birthday ?? null, actor.deathday ?? null, actor.profile_path ?? null]
+          [
+            existing.rows[0].id,
+            actor.name,
+            actor.birthday ?? null,
+            actor.deathday ?? null,
+            actor.profile_path ?? null,
+          ]
         )
         return existing.rows[0].id
       }
@@ -142,7 +148,13 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
              profile_path = COALESCE(profile_path, $5),
              updated_at = CURRENT_TIMESTAMP
            WHERE id = $1`,
-          [existing.rows[0].id, actor.name, actor.birthday ?? null, actor.deathday ?? null, actor.profile_path ?? null]
+          [
+            existing.rows[0].id,
+            actor.name,
+            actor.birthday ?? null,
+            actor.deathday ?? null,
+            actor.profile_path ?? null,
+          ]
         )
         return existing.rows[0].id
       }
@@ -209,9 +221,7 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
 
 // Batch insert/update actors
 // Returns a map of tmdb_id -> internal actor id (for creating appearance records)
-export async function batchUpsertActors(
-  actors: ActorInput[]
-): Promise<Map<number, number>> {
+export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<number, number>> {
   const tmdbIdToActorId = new Map<number, number>()
   if (actors.length === 0) return tmdbIdToActorId
 
@@ -2138,6 +2148,23 @@ export async function upsertShow(show: ShowRecord): Promise<void> {
   )
 }
 
+// Update external IDs for a show (TVmaze, TheTVDB)
+export async function updateShowExternalIds(
+  tmdbId: number,
+  tvmazeId: number | null,
+  thetvdbId: number | null
+): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `UPDATE shows
+     SET tvmaze_id = COALESCE($2, tvmaze_id),
+         thetvdb_id = COALESCE($3, thetvdb_id),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE tmdb_id = $1`,
+    [tmdbId, tvmazeId, thetvdbId]
+  )
+}
+
 // ============================================================================
 // Seasons table functions
 // ============================================================================
@@ -2214,6 +2241,11 @@ export interface EpisodeRecord {
   guest_star_count: number | null
   expected_deaths: number | null
   mortality_surprise_score: number | null
+  // Data source tracking for fallback sources
+  episode_data_source?: string | null
+  cast_data_source?: string | null
+  tvmaze_episode_id?: number | null
+  thetvdb_episode_id?: number | null
 }
 
 // Get episodes for a season
@@ -2235,9 +2267,10 @@ export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
   await db.query(
     `INSERT INTO episodes (
        show_tmdb_id, season_number, episode_number, name, air_date, runtime,
-       cast_count, deceased_count, guest_star_count, expected_deaths, mortality_surprise_score
+       cast_count, deceased_count, guest_star_count, expected_deaths, mortality_surprise_score,
+       episode_data_source, cast_data_source, tvmaze_episode_id, thetvdb_episode_id
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      ON CONFLICT (show_tmdb_id, season_number, episode_number) DO UPDATE SET
        name = EXCLUDED.name,
        air_date = EXCLUDED.air_date,
@@ -2246,7 +2279,11 @@ export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
        deceased_count = EXCLUDED.deceased_count,
        guest_star_count = EXCLUDED.guest_star_count,
        expected_deaths = EXCLUDED.expected_deaths,
-       mortality_surprise_score = EXCLUDED.mortality_surprise_score`,
+       mortality_surprise_score = EXCLUDED.mortality_surprise_score,
+       episode_data_source = COALESCE(EXCLUDED.episode_data_source, episodes.episode_data_source),
+       cast_data_source = COALESCE(EXCLUDED.cast_data_source, episodes.cast_data_source),
+       tvmaze_episode_id = COALESCE(EXCLUDED.tvmaze_episode_id, episodes.tvmaze_episode_id),
+       thetvdb_episode_id = COALESCE(EXCLUDED.thetvdb_episode_id, episodes.thetvdb_episode_id)`,
     [
       episode.show_tmdb_id,
       episode.season_number,
@@ -2259,6 +2296,10 @@ export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
       episode.guest_star_count,
       episode.expected_deaths,
       episode.mortality_surprise_score,
+      episode.episode_data_source ?? "tmdb",
+      episode.cast_data_source ?? "tmdb",
+      episode.tvmaze_episode_id ?? null,
+      episode.thetvdb_episode_id ?? null,
     ]
   )
 }
@@ -2355,9 +2396,7 @@ export async function batchUpsertShowActorAppearances(
 }
 
 // Get unique actors for a show (aggregated across all episodes)
-export async function getShowActors(
-  showTmdbId: number
-): Promise<
+export async function getShowActors(showTmdbId: number): Promise<
   Array<{
     actorId: number
     actorTmdbId: number | null

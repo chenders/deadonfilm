@@ -16,11 +16,13 @@
  *   --limit <n>      Limit number of shows to process
  *   --dry-run        Preview without writing to database
  *   --fresh          Start fresh (ignore checkpoint)
+ *   --use-fallback   Enable fallback to TVmaze/TheTVDB when TMDB lacks episode data
  *
  * Examples:
  *   npm run seed:episodes:full                        # Seed all shows (resumes if interrupted)
  *   npm run seed:episodes:full -- --active-only       # Only active shows (for cron)
  *   npm run seed:episodes:full -- --show 1400         # Only Seinfeld
+ *   npm run seed:episodes:full -- --show 987 --use-fallback  # General Hospital with fallback
  *   npm run seed:episodes:full -- --limit 10          # First 10 shows
  *   npm run seed:episodes:full -- --dry-run           # Preview what would be seeded
  *   npm run seed:episodes:full -- --fresh             # Start fresh, ignore checkpoint
@@ -36,6 +38,7 @@ import {
   upsertEpisode,
   batchUpsertActors,
   batchUpsertShowActorAppearances,
+  updateShowExternalIds,
   type SeasonRecord,
   type EpisodeRecord,
   type ActorInput,
@@ -47,6 +50,12 @@ import {
   calculateYearsLost,
   type ActorForMortality,
 } from "../src/lib/mortality-stats.js"
+import {
+  fetchEpisodesWithFallback,
+  getExternalIds,
+  type DataSource,
+  type NormalizedEpisode,
+} from "../src/lib/episode-data-source.js"
 
 export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
@@ -154,6 +163,7 @@ const program = new Command()
   .option("-l, --limit <number>", "Limit number of shows to process", parsePositiveInt)
   .option("-n, --dry-run", "Preview without writing to database")
   .option("--fresh", "Start fresh, ignoring any saved checkpoint")
+  .option("--use-fallback", "Enable fallback to TVmaze/TheTVDB when TMDB lacks episode data")
   .action(
     async (options: {
       activeOnly?: boolean
@@ -161,6 +171,7 @@ const program = new Command()
       limit?: number
       dryRun?: boolean
       fresh?: boolean
+      useFallback?: boolean
     }) => {
       await runSeeding(options)
     }
@@ -172,6 +183,7 @@ interface SeedOptions {
   limit?: number
   dryRun?: boolean
   fresh?: boolean
+  useFallback?: boolean
 }
 
 interface ShowInfo {
@@ -183,7 +195,7 @@ interface ShowInfo {
 }
 
 async function runSeeding(options: SeedOptions) {
-  const { activeOnly, show: showId, limit, dryRun, fresh = false } = options
+  const { activeOnly, show: showId, limit, dryRun, fresh = false, useFallback = false } = options
 
   // Check required environment variables
   if (!process.env.TMDB_API_TOKEN) {
@@ -236,6 +248,8 @@ async function runSeeding(options: SeedOptions) {
 
   console.log(`\nSeeding episodes (FULL) for ${modeDesc}${dryRun ? " (DRY RUN)" : ""}`)
   if (limit) console.log(`Limit: ${limit} shows`)
+  if (useFallback)
+    console.log("Fallback mode enabled: will try TVmaze/TheTVDB when TMDB lacks data")
   console.log()
 
   try {
@@ -310,6 +324,27 @@ async function runSeeding(options: SeedOptions) {
 
         console.log(`  Found ${seasons.length} seasons`)
 
+        // Fetch external IDs if fallback mode is enabled
+        let externalIds: {
+          tvmazeId: number | null
+          thetvdbId: number | null
+          imdbId: string | null
+        } | null = null
+        if (useFallback) {
+          externalIds = await getExternalIds(showInfo.tmdb_id)
+          // Save external IDs to database
+          if (!dryRun && (externalIds.tvmazeId || externalIds.thetvdbId)) {
+            await updateShowExternalIds(
+              showInfo.tmdb_id,
+              externalIds.tvmazeId,
+              externalIds.thetvdbId
+            )
+            console.log(
+              `  External IDs: TVmaze=${externalIds.tvmazeId ?? "none"}, TheTVDB=${externalIds.thetvdbId ?? "none"}`
+            )
+          }
+        }
+
         let showSeasonCount = 0
         let showEpisodeCount = 0
         let showGuestStarCount = 0
@@ -327,6 +362,31 @@ async function runSeeding(options: SeedOptions) {
               seasonSummary.season_number
             )
             await delay(50)
+
+            // Check if TMDB returned no episodes but should have some
+            const tmdbHasEpisodes = seasonDetails.episodes && seasonDetails.episodes.length > 0
+            let episodeDataSource: DataSource = "tmdb"
+            let fallbackEpisodes: NormalizedEpisode[] = []
+
+            if (!tmdbHasEpisodes && useFallback && seasonSummary.episode_count > 0) {
+              console.log(
+                `    Season ${seasonSummary.season_number}: TMDB returned 0 episodes (expected ${seasonSummary.episode_count}), trying fallback...`
+              )
+              const fallbackResult = await fetchEpisodesWithFallback(
+                showInfo.tmdb_id,
+                seasonSummary.season_number,
+                externalIds ?? undefined
+              )
+              if (fallbackResult.episodes.length > 0) {
+                episodeDataSource = fallbackResult.source
+                fallbackEpisodes = fallbackResult.episodes
+                console.log(
+                  `    Found ${fallbackEpisodes.length} episodes from ${episodeDataSource}`
+                )
+              } else {
+                console.log(`    No episodes found from any source`)
+              }
+            }
 
             // Collect all unique guest stars from all episodes in this season
             const seasonGuestStarIds = new Set<number>()
@@ -435,87 +495,122 @@ async function runSeeding(options: SeedOptions) {
             totalSeasons++
 
             // Process episodes in this season
+            // Use fallback episodes if TMDB had none and fallback found some
             const episodes = seasonDetails.episodes || []
             const tempAppearances: TempAppearanceRecord[] = []
 
-            for (const ep of episodes) {
-              const guestStars = filterValidGuestStars(ep.guest_stars || [])
-              let episodeDeceasedCount = 0
-
-              // Count deceased in this episode and collect appearances
-              for (const gs of guestStars) {
-                const person = personDetails.get(gs.id)
-                if (person?.deathday) {
-                  episodeDeceasedCount++
+            if (fallbackEpisodes.length > 0) {
+              // Process fallback episodes (from TVmaze/TheTVDB)
+              // For now, we save episode metadata only - cast handling for non-TMDB sources
+              // is more complex and will be added in a future iteration
+              for (const ep of fallbackEpisodes) {
+                const episodeRecord: EpisodeRecord = {
+                  show_tmdb_id: showInfo.tmdb_id,
+                  season_number: ep.seasonNumber,
+                  episode_number: ep.episodeNumber,
+                  name: ep.name,
+                  air_date: ep.airDate,
+                  runtime: ep.runtime,
+                  cast_count: 0, // Cast not yet available from fallback sources
+                  deceased_count: 0,
+                  guest_star_count: 0,
+                  expected_deaths: 0,
+                  mortality_surprise_score: 0,
+                  episode_data_source: episodeDataSource,
+                  cast_data_source: null, // Cast not yet processed
+                  tvmaze_episode_id: ep.tvmazeEpisodeId ?? null,
+                  thetvdb_episode_id: ep.thetvdbEpisodeId ?? null,
                 }
 
-                // Collect guest star appearance (using tmdb_id temporarily)
-                tempAppearances.push({
-                  actor_tmdb_id: gs.id,
+                if (!dryRun) {
+                  await upsertEpisode(episodeRecord)
+                }
+                showEpisodeCount++
+                totalEpisodes++
+              }
+            } else {
+              // Process TMDB episodes (original code path)
+              for (const ep of episodes) {
+                const guestStars = filterValidGuestStars(ep.guest_stars || [])
+                let episodeDeceasedCount = 0
+
+                // Count deceased in this episode and collect appearances
+                for (const gs of guestStars) {
+                  const person = personDetails.get(gs.id)
+                  if (person?.deathday) {
+                    episodeDeceasedCount++
+                  }
+
+                  // Collect guest star appearance (using tmdb_id temporarily)
+                  tempAppearances.push({
+                    actor_tmdb_id: gs.id,
+                    show_tmdb_id: showInfo.tmdb_id,
+                    season_number: ep.season_number,
+                    episode_number: ep.episode_number,
+                    character_name: gs.character || null,
+                    appearance_type: "guest",
+                    billing_order: gs.order ?? null,
+                    age_at_filming: null, // Could calculate from birthday and air_date
+                  })
+                }
+
+                // Calculate episode mortality stats
+                let episodeExpectedDeaths = 0
+                let episodeMortalitySurpriseScore = 0
+
+                if (firstAirYear && guestStars.length > 0) {
+                  const episodeActors: ActorForMortality[] = guestStars
+                    .map((gs) => {
+                      const person = personDetails.get(gs.id)
+                      return person
+                        ? {
+                            tmdbId: person.id,
+                            name: person.name,
+                            birthday: person.birthday,
+                            deathday: person.deathday,
+                          }
+                        : null
+                    })
+                    .filter((a): a is ActorForMortality => a !== null)
+
+                  if (episodeActors.length > 0) {
+                    try {
+                      const mortalityResult = await calculateMovieMortality(
+                        firstAirYear,
+                        episodeActors,
+                        currentYear
+                      )
+                      episodeExpectedDeaths = mortalityResult.expectedDeaths
+                      episodeMortalitySurpriseScore = mortalityResult.mortalitySurpriseScore
+                    } catch {
+                      // Ignore episode-level mortality errors
+                    }
+                  }
+                }
+
+                const episodeRecord: EpisodeRecord = {
                   show_tmdb_id: showInfo.tmdb_id,
                   season_number: ep.season_number,
                   episode_number: ep.episode_number,
-                  character_name: gs.character || null,
-                  appearance_type: "guest",
-                  billing_order: gs.order ?? null,
-                  age_at_filming: null, // Could calculate from birthday and air_date
-                })
-              }
-
-              // Calculate episode mortality stats
-              let episodeExpectedDeaths = 0
-              let episodeMortalitySurpriseScore = 0
-
-              if (firstAirYear && guestStars.length > 0) {
-                const episodeActors: ActorForMortality[] = guestStars
-                  .map((gs) => {
-                    const person = personDetails.get(gs.id)
-                    return person
-                      ? {
-                          tmdbId: person.id,
-                          name: person.name,
-                          birthday: person.birthday,
-                          deathday: person.deathday,
-                        }
-                      : null
-                  })
-                  .filter((a): a is ActorForMortality => a !== null)
-
-                if (episodeActors.length > 0) {
-                  try {
-                    const mortalityResult = await calculateMovieMortality(
-                      firstAirYear,
-                      episodeActors,
-                      currentYear
-                    )
-                    episodeExpectedDeaths = mortalityResult.expectedDeaths
-                    episodeMortalitySurpriseScore = mortalityResult.mortalitySurpriseScore
-                  } catch {
-                    // Ignore episode-level mortality errors
-                  }
+                  name: ep.name,
+                  air_date: ep.air_date,
+                  runtime: ep.runtime,
+                  cast_count: guestStars.length,
+                  deceased_count: episodeDeceasedCount,
+                  guest_star_count: guestStars.length,
+                  expected_deaths: episodeExpectedDeaths,
+                  mortality_surprise_score: episodeMortalitySurpriseScore,
+                  episode_data_source: "tmdb",
+                  cast_data_source: "tmdb",
                 }
-              }
 
-              const episodeRecord: EpisodeRecord = {
-                show_tmdb_id: showInfo.tmdb_id,
-                season_number: ep.season_number,
-                episode_number: ep.episode_number,
-                name: ep.name,
-                air_date: ep.air_date,
-                runtime: ep.runtime,
-                cast_count: guestStars.length,
-                deceased_count: episodeDeceasedCount,
-                guest_star_count: guestStars.length,
-                expected_deaths: episodeExpectedDeaths,
-                mortality_surprise_score: episodeMortalitySurpriseScore,
+                if (!dryRun) {
+                  await upsertEpisode(episodeRecord)
+                }
+                showEpisodeCount++
+                totalEpisodes++
+                showGuestStarCount += guestStars.length
               }
-
-              if (!dryRun) {
-                await upsertEpisode(episodeRecord)
-              }
-              showEpisodeCount++
-              totalEpisodes++
-              showGuestStarCount += guestStars.length
             }
 
             // Save new actors to database and get their internal IDs
@@ -537,9 +632,7 @@ async function runSeeding(options: SeedOptions) {
                 for (const temp of tempAppearances) {
                   const actorId = tmdbToActorId.get(temp.actor_tmdb_id)
                   if (!actorId) {
-                    console.warn(
-                      `    Warning: No actor_id for tmdb_id ${temp.actor_tmdb_id}`
-                    )
+                    console.warn(`    Warning: No actor_id for tmdb_id ${temp.actor_tmdb_id}`)
                     continue
                   }
                   guestStarAppearances.push({

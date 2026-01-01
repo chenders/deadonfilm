@@ -53,6 +53,7 @@ services:
       - "5437:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./server:/tmp/server
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U deadonfilm -d deadonfilm"]

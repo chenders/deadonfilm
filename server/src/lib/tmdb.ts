@@ -535,3 +535,56 @@ export async function discoverTVShows(page: number = 1): Promise<TMDBTVSearchRes
       `page=${page}`
   )
 }
+
+// External IDs Response Types
+export interface TMDBExternalIds {
+  imdb_id: string | null
+  freebase_mid: string | null
+  freebase_id: string | null
+  tvdb_id: number | null
+  tvrage_id: number | null
+  wikidata_id: string | null
+  facebook_id: string | null
+  instagram_id: string | null
+  twitter_id: string | null
+}
+
+/**
+ * Get external IDs for a TV show (IMDB, TheTVDB, etc.)
+ */
+export async function getTVShowExternalIds(showId: number): Promise<TMDBExternalIds> {
+  return tmdbFetch<TMDBExternalIds>(`/tv/${showId}/external_ids`)
+}
+
+/**
+ * Get external IDs for a person (IMDB, etc.)
+ */
+export async function getPersonExternalIds(personId: number): Promise<TMDBExternalIds> {
+  return tmdbFetch<TMDBExternalIds>(`/person/${personId}/external_ids`)
+}
+
+/**
+ * Search for a person by name
+ */
+export interface TMDBPersonSearchResult {
+  id: number
+  name: string
+  known_for_department: string
+  popularity: number
+  profile_path: string | null
+  gender: number
+}
+
+export interface TMDBPersonSearchResponse {
+  page: number
+  results: TMDBPersonSearchResult[]
+  total_pages: number
+  total_results: number
+}
+
+export async function searchPerson(query: string): Promise<TMDBPersonSearchResponse> {
+  const encoded = encodeURIComponent(query)
+  return tmdbFetch<TMDBPersonSearchResponse>(
+    `/search/person?query=${encoded}&include_adult=false&language=en-US&page=1`
+  )
+}
