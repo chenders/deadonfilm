@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  waitForElementToBeRemoved,
+} from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter } from "react-router-dom"
 import TriviaFacts from "./TriviaFacts"
@@ -167,30 +173,26 @@ describe("TriviaFacts", () => {
   it("renders nothing when no facts available", async () => {
     vi.mocked(api.getTrivia).mockResolvedValue({ facts: [] })
 
-    const { container } = renderWithProviders(<TriviaFacts />)
+    renderWithProviders(<TriviaFacts />)
 
-    await waitFor(() => {
-      expect(api.getTrivia).toHaveBeenCalled()
-    })
+    // Wait for the loading skeleton to disappear (component returns null when no facts)
+    await waitForElementToBeRemoved(() => screen.queryByTestId("trivia-facts"))
 
-    // Wait a bit for the component to update
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    expect(container.querySelector("[data-testid='trivia-content']")).toBeNull()
+    expect(screen.queryByTestId("trivia-facts")).not.toBeInTheDocument()
   })
 
   it("renders nothing on error", async () => {
     vi.mocked(api.getTrivia).mockRejectedValue(new Error("API Error"))
 
-    const { container } = renderWithProviders(<TriviaFacts />)
+    renderWithProviders(<TriviaFacts />)
 
-    await waitFor(() => {
-      expect(api.getTrivia).toHaveBeenCalled()
-    })
-
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    expect(container.querySelector("[data-testid='trivia-content']")).toBeNull()
+    // Wait for the component to finish loading and render nothing on error
+    await waitFor(
+      () => {
+        expect(screen.queryByTestId("trivia-facts")).not.toBeInTheDocument()
+      },
+      { timeout: 2000 }
+    )
   })
 
   it("displays fact without link as plain text", async () => {

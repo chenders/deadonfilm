@@ -28,9 +28,11 @@ import {
 import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import {
   upsertShow,
+  batchUpsertActors,
   batchUpsertShowActorAppearances,
   type ShowRecord,
   type ShowActorAppearanceRecord,
+  type ActorInput,
 } from "../src/lib/db.js"
 
 const DEFAULT_SHOWS_TO_FETCH = 100
@@ -159,10 +161,39 @@ async function runSeeding({ showsToFetch, dryRun }: SeedOptions) {
           `  ${mortalityStats.actualDeaths} deceased, ${mortalityStats.expectedDeaths.toFixed(1)} expected, score: ${mortalityStats.mortalitySurpriseScore.toFixed(3)}`
         )
 
-        // Prepare actor appearances
+        // Create actor records for each cast member
+        const actorInputs: ActorInput[] = topCast.map((castMember) => {
+          const person = personDetails.get(castMember.id)
+          return {
+            tmdb_id: castMember.id,
+            name: castMember.name,
+            birthday: person?.birthday ?? null,
+            deathday: person?.deathday ?? null,
+            profile_path: person?.profile_path ?? null,
+            popularity: person?.popularity ?? null,
+          }
+        })
+
+        // Upsert actors and get the mapping of tmdb_id -> actor_id
+        let tmdbToActorId = new Map<number, number>()
+        if (!dryRun) {
+          tmdbToActorId = await batchUpsertActors(actorInputs)
+        }
+
+        // Prepare actor appearances using internal actor_id
         // For now, we save at show level without episode details
         // Episode-level data can be fetched later for more granular tracking
-        const appearances: ShowActorAppearanceRecord[] = topCast.map((castMember, index) => {
+        const appearances: ShowActorAppearanceRecord[] = []
+        for (let index = 0; index < topCast.length; index++) {
+          const castMember = topCast[index]
+          const actorId = tmdbToActorId.get(castMember.id)
+          if (!actorId && !dryRun) {
+            console.warn(
+              `  Warning: No actor_id for ${castMember.name} (tmdb_id: ${castMember.id})`
+            )
+            continue
+          }
+
           const person = personDetails.get(castMember.id)
           const birthday = person?.birthday
           let ageAtFilming: number | null = null
@@ -176,8 +207,8 @@ async function runSeeding({ showsToFetch, dryRun }: SeedOptions) {
           const mainRole = castMember.roles?.[0]
           const characterName = mainRole?.character || null
 
-          return {
-            actor_tmdb_id: castMember.id,
+          appearances.push({
+            actor_id: actorId ?? 0, // 0 is placeholder for dry-run
             show_tmdb_id: show.id,
             season_number: 1, // Placeholder - we're tracking at show level for now
             episode_number: 1, // Placeholder
@@ -185,8 +216,8 @@ async function runSeeding({ showsToFetch, dryRun }: SeedOptions) {
             appearance_type: "regular" as const,
             billing_order: index,
             age_at_filming: ageAtFilming,
-          }
-        })
+          })
+        }
 
         if (!dryRun) {
           await batchUpsertShowActorAppearances(appearances)

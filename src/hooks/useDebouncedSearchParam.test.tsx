@@ -3,9 +3,14 @@ import { renderHook, act } from "@testing-library/react"
 import { BrowserRouter } from "react-router-dom"
 import { useDebouncedSearchParam } from "./useDebouncedSearchParam"
 
+const routerFutureConfig = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+}
+
 // Helper to wrap hook with router
 function wrapper({ children }: { children: React.ReactNode }) {
-  return <BrowserRouter>{children}</BrowserRouter>
+  return <BrowserRouter future={routerFutureConfig}>{children}</BrowserRouter>
 }
 
 describe("useDebouncedSearchParam", () => {

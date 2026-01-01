@@ -129,7 +129,7 @@ describe("getMovie route", () => {
       ])
     )
     vi.mocked(getActors).mockResolvedValue(new Map())
-    vi.mocked(batchUpsertActors).mockResolvedValue()
+    vi.mocked(batchUpsertActors).mockResolvedValue(new Map())
     vi.mocked(calculateMovieMortality).mockResolvedValue({
       expectedDeaths: 1.8,
       actualDeaths: 2,

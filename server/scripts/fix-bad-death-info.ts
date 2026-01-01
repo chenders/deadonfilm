@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/* eslint-disable security/detect-non-literal-regexp -- Pattern matching uses controlled actor names from database */
 /**
  * Script to identify and fix death info records that incorrectly reference
  * family members' deaths instead of the person's own death.

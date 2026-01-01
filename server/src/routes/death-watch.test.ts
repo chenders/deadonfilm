@@ -23,6 +23,7 @@ describe("getDeathWatchHandler", () => {
 
   const mockActors = [
     {
+      actor_id: 1,
       actor_tmdb_id: 1,
       actor_name: "Actor One",
       birthday: "1935-01-15",
@@ -33,6 +34,7 @@ describe("getDeathWatchHandler", () => {
       total_episodes: 50,
     },
     {
+      actor_id: 2,
       actor_tmdb_id: 2,
       actor_name: "Actor Two",
       birthday: "1940-06-20",

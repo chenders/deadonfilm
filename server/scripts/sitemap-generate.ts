@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/* eslint-disable security/detect-non-literal-fs-filename -- Output paths are constructed from controlled constants */
 /**
  * Sitemap generation and search engine submission script.
  *

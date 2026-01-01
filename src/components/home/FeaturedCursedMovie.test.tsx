@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, waitForElementToBeRemoved } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter } from "react-router-dom"
 import FeaturedCursedMovie from "./FeaturedCursedMovie"
@@ -133,31 +133,26 @@ describe("FeaturedCursedMovie", () => {
   it("renders nothing when movie is null", async () => {
     vi.mocked(api.getFeaturedMovie).mockResolvedValue({ movie: null })
 
-    const { container } = renderWithProviders(<FeaturedCursedMovie />)
+    renderWithProviders(<FeaturedCursedMovie />)
 
-    await waitFor(() => {
-      expect(api.getFeaturedMovie).toHaveBeenCalled()
-    })
+    // Wait for the loading skeleton to disappear (component returns null when no movie)
+    await waitForElementToBeRemoved(() => screen.queryByTestId("featured-movie"))
 
-    // Wait a bit for the component to update
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    expect(container.querySelector("[data-testid='featured-movie-link']")).toBeNull()
+    expect(screen.queryByTestId("featured-movie")).not.toBeInTheDocument()
   })
 
   it("renders nothing on error", async () => {
     vi.mocked(api.getFeaturedMovie).mockRejectedValue(new Error("API Error"))
 
-    const { container } = renderWithProviders(<FeaturedCursedMovie />)
+    renderWithProviders(<FeaturedCursedMovie />)
 
-    await waitFor(() => {
-      expect(api.getFeaturedMovie).toHaveBeenCalled()
-    })
-
-    // Wait a bit for the component to update
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    expect(container.querySelector("[data-testid='featured-movie-link']")).toBeNull()
+    // Wait for the component to finish loading and render nothing on error
+    await waitFor(
+      () => {
+        expect(screen.queryByTestId("featured-movie")).not.toBeInTheDocument()
+      },
+      { timeout: 2000 }
+    )
   })
 
   it("handles movie without release year", async () => {

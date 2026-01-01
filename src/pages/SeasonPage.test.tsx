@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { MemoryRouter, Route, Routes } from "react-router-dom"
+import { MemoryRouter, Route, Routes, type MemoryRouterProps } from "react-router-dom"
+
+const routerFutureConfig: MemoryRouterProps["future"] = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+}
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { HelmetProvider } from "react-helmet-async"
 import SeasonPage from "./SeasonPage"
@@ -73,7 +78,7 @@ const renderWithProviders = (initialRoute: string) => {
   return render(
     <QueryClientProvider client={createQueryClient()}>
       <HelmetProvider>
-        <MemoryRouter initialEntries={[initialRoute]}>
+        <MemoryRouter initialEntries={[initialRoute]} future={routerFutureConfig}>
           <Routes>
             <Route path="/show/:slug/season/:seasonNumber" element={<SeasonPage />} />
           </Routes>
@@ -122,7 +127,10 @@ describe("SeasonPage", () => {
     render(
       <QueryClientProvider client={createQueryClient()}>
         <HelmetProvider>
-          <MemoryRouter initialEntries={["/show/invalid-slug/season/4"]}>
+          <MemoryRouter
+            initialEntries={["/show/invalid-slug/season/4"]}
+            future={routerFutureConfig}
+          >
             <Routes>
               <Route path="/show/:slug/season/:seasonNumber" element={<SeasonPage />} />
             </Routes>

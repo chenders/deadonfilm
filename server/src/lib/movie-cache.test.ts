@@ -144,17 +144,15 @@ describe("movie-cache", () => {
   describe("buildActorMovieAppearanceRecord", () => {
     it("builds a complete actor movie appearance record", () => {
       const result = buildActorMovieAppearanceRecord({
-        castMember: {
-          id: 999,
-          character: "The Hero",
-        },
+        actorId: 999,
+        character: "The Hero",
         movieId: 12345,
         billingOrder: 0,
         releaseYear: 2020,
         birthday: "1980-03-20",
       })
 
-      expect(result.actor_tmdb_id).toBe(999)
+      expect(result.actor_id).toBe(999)
       expect(result.movie_tmdb_id).toBe(12345)
       expect(result.character_name).toBe("The Hero")
       expect(result.billing_order).toBe(0)
@@ -163,10 +161,8 @@ describe("movie-cache", () => {
 
     it("handles null character name", () => {
       const result = buildActorMovieAppearanceRecord({
-        castMember: {
-          id: 999,
-          character: null,
-        },
+        actorId: 999,
+        character: null,
         movieId: 12345,
         billingOrder: 5,
         releaseYear: 2020,
@@ -178,10 +174,8 @@ describe("movie-cache", () => {
 
     it("handles missing birthday", () => {
       const result = buildActorMovieAppearanceRecord({
-        castMember: {
-          id: 999,
-          character: "Villain",
-        },
+        actorId: 999,
+        character: "Villain",
         movieId: 12345,
         billingOrder: 1,
         releaseYear: 2020,
@@ -193,10 +187,8 @@ describe("movie-cache", () => {
 
     it("handles missing release year", () => {
       const result = buildActorMovieAppearanceRecord({
-        castMember: {
-          id: 999,
-          character: "Villain",
-        },
+        actorId: 999,
+        character: "Villain",
         movieId: 12345,
         billingOrder: 1,
         releaseYear: null,
@@ -208,10 +200,8 @@ describe("movie-cache", () => {
 
     it("calculates age at filming correctly", () => {
       const result = buildActorMovieAppearanceRecord({
-        castMember: {
-          id: 999,
-          character: "Supporting",
-        },
+        actorId: 999,
+        character: "Supporting",
         movieId: 12345,
         billingOrder: 3,
         releaseYear: 2010,

@@ -362,7 +362,7 @@ interface CacheMovieParams {
   mainCast: Array<{ id: number; name: string; character: string | null }>
 }
 
-function cacheMovieInBackground(params: CacheMovieParams): void {
+async function cacheMovieInBackground(params: CacheMovieParams): Promise<void> {
   if (!process.env.DATABASE_URL) return
 
   const {
@@ -376,33 +376,53 @@ function cacheMovieInBackground(params: CacheMovieParams): void {
   } = params
   const releaseYear = movie.release_date ? parseInt(movie.release_date.split("-")[0]) : null
 
-  // Build movie record using extracted utility
-  const movieRecord = buildMovieRecord({
-    movie,
-    deceasedCount: deceased.length,
-    livingCount: living.length,
-    expectedDeaths,
-    mortalitySurpriseScore,
-  })
-
-  // Build actor appearance records using extracted utility
-  const appearances: ActorMovieAppearanceRecord[] = mainCast.map((castMember, index) => {
-    const person = personDetails.get(castMember.id)
-    return buildActorMovieAppearanceRecord({
-      castMember,
-      movieId: movie.id,
-      billingOrder: index,
-      releaseYear,
-      birthday: person?.birthday ?? null,
+  try {
+    // Build movie record using extracted utility
+    const movieRecord = buildMovieRecord({
+      movie,
+      deceasedCount: deceased.length,
+      livingCount: living.length,
+      expectedDeaths,
+      mortalitySurpriseScore,
     })
-  })
 
-  // Save in background
-  Promise.all([upsertMovie(movieRecord), batchUpsertActorMovieAppearances(appearances)]).catch(
-    (error) => {
-      console.error("Movie cache error:", error)
-    }
-  )
+    // Build actor input records
+    const actorInputs: ActorInput[] = mainCast.map((castMember) => {
+      const person = personDetails.get(castMember.id)
+      return {
+        tmdb_id: castMember.id,
+        name: castMember.name,
+        birthday: person?.birthday ?? null,
+        deathday: person?.deathday ?? null,
+        profile_path: null, // Not available from credits
+      }
+    })
+
+    // Upsert actors and get tmdb_id -> actor_id mapping
+    const tmdbToActorId = await batchUpsertActors(actorInputs)
+
+    // Build actor appearance records using the actor_id
+    const appearances: ActorMovieAppearanceRecord[] = mainCast
+      .map((castMember, index) => {
+        const actorId = tmdbToActorId.get(castMember.id)
+        if (!actorId) return null
+        const person = personDetails.get(castMember.id)
+        return buildActorMovieAppearanceRecord({
+          actorId,
+          character: castMember.character,
+          movieId: movie.id,
+          billingOrder: index,
+          releaseYear,
+          birthday: person?.birthday ?? null,
+        })
+      })
+      .filter((a): a is ActorMovieAppearanceRecord => a !== null)
+
+    // Save movie and appearances
+    await Promise.all([upsertMovie(movieRecord), batchUpsertActorMovieAppearances(appearances)])
+  } catch (error) {
+    console.error("Movie cache error:", error)
+  }
 }
 
 // Helper to update death info in database
