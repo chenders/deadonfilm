@@ -50,3 +50,5 @@ docs/potentially-wrong-language-data.md
 .filmography-seed-progress.json
 .seed-episodes-full-checkpoint.json
 .verify-death-info-checkpoint.json
+.backfill-external-ids-checkpoint.json
+.backfill-episodes-fallback-checkpoint.json

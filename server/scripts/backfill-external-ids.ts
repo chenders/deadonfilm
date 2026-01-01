@@ -29,7 +29,7 @@
 import "dotenv/config"
 import path from "path"
 import { Command, InvalidArgumentError } from "commander"
-import { getPool, updateShowExternalIds } from "../src/lib/db.js"
+import { getPool, resetPool, updateShowExternalIds } from "../src/lib/db.js"
 import { getExternalIds } from "../src/lib/episode-data-source.js"
 import {
   loadCheckpoint as loadCheckpointGeneric,
@@ -246,6 +246,9 @@ async function runBackfill(options: {
     console.log("\nAll shows processed with no errors. Deleting checkpoint.")
     deleteCheckpoint()
   }
+
+  // Close database pool to allow process to exit
+  await resetPool()
 }
 
 function delay(ms: number): Promise<void> {
