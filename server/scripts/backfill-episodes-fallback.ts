@@ -31,7 +31,13 @@
 import "dotenv/config"
 import path from "path"
 import { Command, InvalidArgumentError } from "commander"
-import { getPool, upsertEpisode, updateShowExternalIds, type EpisodeRecord } from "../src/lib/db.js"
+import {
+  getPool,
+  resetPool,
+  upsertEpisode,
+  updateShowExternalIds,
+  type EpisodeRecord,
+} from "../src/lib/db.js"
 import { getTVShowDetails } from "../src/lib/tmdb.js"
 import {
   detectTmdbDataGaps,
@@ -153,6 +159,7 @@ async function runBackfill(options: {
 
   if (detectGaps) {
     await detectDataGaps(db)
+    await resetPool()
     return
   }
 
@@ -184,6 +191,9 @@ async function runBackfill(options: {
   } else if (showId) {
     await backfillShow(db, showId, forcedSource, dryRun ?? false, checkpoint)
   }
+
+  // Close database pool to allow process to exit
+  await resetPool()
 }
 
 async function detectDataGaps(db: ReturnType<typeof getPool>) {
