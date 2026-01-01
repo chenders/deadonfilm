@@ -207,9 +207,17 @@ function normalizeThetvdbEpisode(ep: thetvdb.TheTVDBEpisode): NormalizedEpisode 
 
 /**
  * Strip HTML tags from a string (TVmaze includes HTML in summaries).
+ * Uses iterative replacement to handle nested/malformed tags.
  */
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim()
+  let result = html
+  let previous = ""
+  // Iteratively remove tags until no more are found (handles nested cases like "<scr<script>ipt>")
+  while (result !== previous) {
+    previous = result
+    result = result.replace(/<[^>]*>/g, "")
+  }
+  return result.trim()
 }
 
 /**
