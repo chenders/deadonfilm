@@ -25,7 +25,8 @@ export function loadCheckpoint<T>(filePath: string): T | null {
     return JSON.parse(data) as T
   } catch (error) {
     const err = error as NodeJS.ErrnoException
-    // Treat "file not found" as "no checkpoint" even if it occurs due to a race
+    // Handle race condition: file deleted between existsSync (above) and readFileSync.
+    // In this narrow ENOENT case, treat it the same as "no checkpoint" and return null.
     if (err.code === "ENOENT") {
       return null
     }

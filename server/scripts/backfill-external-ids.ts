@@ -184,7 +184,7 @@ async function runBackfill(options: {
       `[${sessionProcessed}/${showsToProcess.length}] (${totalProcessed} total) ${show.name}... `
     )
 
-    // Skip if already has both IDs
+    // Skip if already has both IDs (still counts as processed)
     if (show.tvmaze_id && show.thetvdb_id) {
       console.log("already has both IDs")
       checkpoint.processedShowIds.push(show.tmdb_id)
@@ -218,11 +218,11 @@ async function runBackfill(options: {
     } catch (error) {
       checkpoint.stats.errors++
       console.log(`error: ${error instanceof Error ? error.message : "unknown"}`)
+    } finally {
+      // Update checkpoint after each show (even on error to avoid infinite retry loops)
+      checkpoint.processedShowIds.push(show.tmdb_id)
+      if (!dryRun) saveCheckpoint(checkpoint)
     }
-
-    // Update checkpoint after each show
-    checkpoint.processedShowIds.push(show.tmdb_id)
-    if (!dryRun) saveCheckpoint(checkpoint)
   }
 
   // Update final stats

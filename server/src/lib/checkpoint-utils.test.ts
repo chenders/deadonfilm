@@ -60,10 +60,9 @@ describe("checkpoint-utils", () => {
       expect(() => loadCheckpoint<TestCheckpoint>(dirAsFile)).toThrow()
     })
 
-    it("returns null for ENOENT race condition", () => {
-      // Simulate race condition where file is deleted between existsSync and readFileSync
-      // This is tested indirectly - if existsSync returns true but file is gone,
-      // the ENOENT error should be caught and return null
+    it("returns null for deeply nested non-existent path", () => {
+      // When the file doesn't exist, loadCheckpoint returns null
+      // (This also covers the ENOENT error path if existsSync returns false)
       const result = loadCheckpoint<TestCheckpoint>(
         path.join(testDir, "nonexistent", "deeply", "nested.json")
       )
