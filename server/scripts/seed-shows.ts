@@ -188,7 +188,9 @@ async function runSeeding({ showsToFetch, dryRun }: SeedOptions) {
           const castMember = topCast[index]
           const actorId = tmdbToActorId.get(castMember.id)
           if (!actorId && !dryRun) {
-            console.warn(`  Warning: No actor_id for ${castMember.name} (tmdb_id: ${castMember.id})`)
+            console.warn(
+              `  Warning: No actor_id for ${castMember.name} (tmdb_id: ${castMember.id})`
+            )
             continue
           }
 
