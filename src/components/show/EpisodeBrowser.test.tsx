@@ -4,6 +4,11 @@ import { MemoryRouter } from "react-router-dom"
 import EpisodeBrowser from "./EpisodeBrowser"
 import type { SeasonSummary } from "@/types"
 
+const routerFutureConfig = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+}
+
 // Mock the hook
 vi.mock("@/hooks/useSeasonEpisodes", () => ({
   useSeasonEpisodes: vi.fn(),
@@ -22,7 +27,7 @@ const mockEpisodes = [
 ]
 
 const renderWithRouter = (component: React.ReactNode) => {
-  return render(<MemoryRouter>{component}</MemoryRouter>)
+  return render(<MemoryRouter future={routerFutureConfig}>{component}</MemoryRouter>)
 }
 
 describe("EpisodeBrowser", () => {
