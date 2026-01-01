@@ -26,9 +26,13 @@ import { Command, InvalidArgumentError } from "commander"
 import { getPool, updateShowExternalIds } from "../src/lib/db.js"
 import { getExternalIds } from "../src/lib/episode-data-source.js"
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
+  // Validate the entire string is a positive integer (no decimals, no trailing chars)
+  if (!/^\d+$/.test(value)) {
+    throw new InvalidArgumentError("Must be a positive integer")
+  }
   const parsed = parseInt(value, 10)
-  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+  if (parsed <= 0) {
     throw new InvalidArgumentError("Must be a positive integer")
   }
   return parsed
@@ -145,4 +149,8 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-program.parse()
+// Only run when executed directly, not when imported for testing
+const isMainModule = import.meta.url === `file://${process.argv[1]}`
+if (isMainModule) {
+  program.parse()
+}
