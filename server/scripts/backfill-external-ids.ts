@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/* eslint-disable security/detect-non-literal-fs-filename -- Checkpoint file paths are constructed from controlled constants */
 /**
  * Backfill external IDs (TVmaze, TheTVDB) for shows in the database.
  *
@@ -28,11 +27,15 @@
  */
 
 import "dotenv/config"
-import fs from "fs"
 import path from "path"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, updateShowExternalIds } from "../src/lib/db.js"
 import { getExternalIds } from "../src/lib/episode-data-source.js"
+import {
+  loadCheckpoint as loadCheckpointGeneric,
+  saveCheckpoint as saveCheckpointGeneric,
+  deleteCheckpoint as deleteCheckpointGeneric,
+} from "../src/lib/checkpoint-utils.js"
 
 // Checkpoint file to track progress
 const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-external-ids-checkpoint.json")
@@ -49,34 +52,17 @@ export interface Checkpoint {
 }
 
 export function loadCheckpoint(filePath: string = CHECKPOINT_FILE): Checkpoint | null {
-  try {
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf-8")
-      return JSON.parse(data) as Checkpoint
-    }
-  } catch (error) {
-    console.warn("Warning: Could not load checkpoint file:", error)
-  }
-  return null
+  return loadCheckpointGeneric<Checkpoint>(filePath)
 }
 
 export function saveCheckpoint(checkpoint: Checkpoint, filePath: string = CHECKPOINT_FILE): void {
-  try {
-    checkpoint.lastUpdated = new Date().toISOString()
-    fs.writeFileSync(filePath, JSON.stringify(checkpoint, null, 2))
-  } catch (error) {
-    console.error("Warning: Could not save checkpoint:", error)
-  }
+  saveCheckpointGeneric(filePath, checkpoint, (cp) => {
+    cp.lastUpdated = new Date().toISOString()
+  })
 }
 
 export function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
-  try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath)
-    }
-  } catch (error) {
-    console.error("Warning: Could not delete checkpoint:", error)
-  }
+  deleteCheckpointGeneric(filePath)
 }
 
 export function parsePositiveInt(value: string): number {
@@ -250,9 +236,14 @@ async function runBackfill(options: {
     console.log(`Errors: ${checkpoint.stats.errors}`)
   }
 
-  // Delete checkpoint on successful completion (all shows processed)
-  if (!dryRun && showsToProcess.length > 0 && showsToProcess.length === sessionProcessed) {
-    console.log("\nAll shows processed. Deleting checkpoint.")
+  // Delete checkpoint on successful completion (all shows processed with no errors)
+  if (
+    !dryRun &&
+    showsToProcess.length > 0 &&
+    showsToProcess.length === sessionProcessed &&
+    checkpoint.stats.errors === 0
+  ) {
+    console.log("\nAll shows processed with no errors. Deleting checkpoint.")
     deleteCheckpoint()
   }
 }
