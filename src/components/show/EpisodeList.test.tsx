@@ -4,6 +4,11 @@ import { MemoryRouter } from "react-router-dom"
 import EpisodeList from "./EpisodeList"
 import type { EpisodeSummary } from "@/types"
 
+const routerFutureConfig = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+}
+
 const mockEpisodes: EpisodeSummary[] = [
   { episodeNumber: 1, seasonNumber: 1, name: "Pilot", airDate: "1990-01-01" },
   { episodeNumber: 2, seasonNumber: 1, name: "The Second Episode", airDate: "1990-01-08" },
@@ -11,7 +16,7 @@ const mockEpisodes: EpisodeSummary[] = [
 ]
 
 const renderWithRouter = (component: React.ReactNode) => {
-  return render(<MemoryRouter>{component}</MemoryRouter>)
+  return render(<MemoryRouter future={routerFutureConfig}>{component}</MemoryRouter>)
 }
 
 describe("EpisodeList", () => {
