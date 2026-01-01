@@ -10,6 +10,7 @@ import {
   deleteCheckpoint,
   type Checkpoint,
 } from "./backfill-external-ids.js"
+import { loadCheckpoint as loadCheckpointGeneric } from "../src/lib/checkpoint-utils.js"
 
 // Suppress console output during tests
 beforeEach(() => {
@@ -286,10 +287,16 @@ describe("backfill-external-ids checkpoint functionality", () => {
       expect(result).toEqual(checkpoint)
     })
 
-    it("returns null on invalid JSON", () => {
+    it("throws on invalid JSON (via generic loader)", () => {
       fs.writeFileSync(testCheckpointFile, "invalid json")
-      const result = loadCheckpoint(testCheckpointFile)
-      expect(result).toBeNull()
+      expect(() => loadCheckpointGeneric<Checkpoint>(testCheckpointFile)).toThrow(SyntaxError)
+    })
+
+    it("throws on permission errors (via generic loader)", () => {
+      // Create a directory with the checkpoint name - reading it will cause an error
+      const dirAsFile = path.join(testDir, "dir-checkpoint.json")
+      fs.mkdirSync(dirAsFile)
+      expect(() => loadCheckpointGeneric<Checkpoint>(dirAsFile)).toThrow()
     })
   })
 

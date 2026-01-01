@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/* eslint-disable security/detect-non-literal-fs-filename -- Checkpoint file paths are constructed from controlled constants */
 /**
  * Backfill episodes using fallback data sources (TVmaze/TheTVDB).
  *
@@ -30,7 +29,6 @@
  */
 
 import "dotenv/config"
-import fs from "fs"
 import path from "path"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, upsertEpisode, updateShowExternalIds, type EpisodeRecord } from "../src/lib/db.js"
@@ -41,6 +39,11 @@ import {
   fetchEpisodesWithFallback,
   type DataSource,
 } from "../src/lib/episode-data-source.js"
+import {
+  loadCheckpoint as loadCheckpointGeneric,
+  saveCheckpoint as saveCheckpointGeneric,
+  deleteCheckpoint as deleteCheckpointGeneric,
+} from "../src/lib/checkpoint-utils.js"
 
 // Checkpoint file to track progress
 const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-episodes-fallback-checkpoint.json")
@@ -62,34 +65,17 @@ export interface Checkpoint {
 }
 
 export function loadCheckpoint(filePath: string = CHECKPOINT_FILE): Checkpoint | null {
-  try {
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf-8")
-      return JSON.parse(data) as Checkpoint
-    }
-  } catch (error) {
-    console.warn("Warning: Could not load checkpoint file:", error)
-  }
-  return null
+  return loadCheckpointGeneric<Checkpoint>(filePath)
 }
 
 export function saveCheckpoint(checkpoint: Checkpoint, filePath: string = CHECKPOINT_FILE): void {
-  try {
-    checkpoint.lastUpdated = new Date().toISOString()
-    fs.writeFileSync(filePath, JSON.stringify(checkpoint, null, 2))
-  } catch (error) {
-    console.error("Warning: Could not save checkpoint:", error)
-  }
+  saveCheckpointGeneric(filePath, checkpoint, (cp) => {
+    cp.lastUpdated = new Date().toISOString()
+  })
 }
 
 export function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
-  try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath)
-    }
-  } catch (error) {
-    console.error("Warning: Could not delete checkpoint:", error)
-  }
+  deleteCheckpointGeneric(filePath)
 }
 
 export function parsePositiveInt(value: string): number {
@@ -298,9 +284,13 @@ async function backfillAllGaps(
     console.log(`  Errors: ${checkpoint.stats.errors}`)
   }
 
-  // Delete checkpoint on successful completion
-  if (!dryRun && showsToCheck.length > 0) {
-    console.log("\nAll shows processed. Deleting checkpoint.")
+  // Determine whether all shows in this run were actually processed
+  const finalProcessedSet = new Set(checkpoint.processedShowIds)
+  const allShowsProcessed = showsToCheck.every((show) => finalProcessedSet.has(show.tmdb_id))
+
+  // Delete checkpoint on successful completion (all shows processed, no errors)
+  if (!dryRun && showsToCheck.length > 0 && allShowsProcessed && checkpoint.stats.errors === 0) {
+    console.log("\nAll shows processed with no errors. Deleting checkpoint.")
     deleteCheckpoint()
   }
 }
