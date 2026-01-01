@@ -14,8 +14,10 @@ import { getMovieCredits, batchGetPersonDetails } from "../src/lib/tmdb.js"
 import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import {
   getPool,
+  batchUpsertActors,
   batchUpsertActorMovieAppearances,
   type ActorMovieAppearanceRecord,
+  type ActorInput,
 } from "../src/lib/db.js"
 
 const CAST_LIMIT = 30 // Top 30 actors per movie
@@ -132,8 +134,33 @@ async function runBackfill() {
           ]
         )
 
-        // Save actor appearances
-        const appearances: ActorMovieAppearanceRecord[] = topCast.map((castMember, index) => {
+        // Create actor records for each cast member
+        const actorInputs: ActorInput[] = topCast.map((castMember) => {
+          const person = personDetails.get(castMember.id)
+          return {
+            tmdb_id: castMember.id,
+            name: castMember.name,
+            birthday: person?.birthday ?? null,
+            deathday: person?.deathday ?? null,
+            profile_path: person?.profile_path ?? null,
+            popularity: person?.popularity ?? null,
+          }
+        })
+
+        // Upsert actors and get the mapping of tmdb_id -> actor_id
+        const tmdbToActorId = await batchUpsertActors(actorInputs)
+
+        // Save actor appearances using internal actor_id
+        const appearances: ActorMovieAppearanceRecord[] = []
+        for (let index = 0; index < topCast.length; index++) {
+          const castMember = topCast[index]
+          const actorId = tmdbToActorId.get(castMember.id)
+          if (!actorId) {
+            console.warn(
+              `  Warning: No actor_id for ${castMember.name} (tmdb_id: ${castMember.id})`
+            )
+            continue
+          }
           const person = personDetails.get(castMember.id)
           const birthday = person?.birthday
           let ageAtFilming: number | null = null
@@ -143,14 +170,14 @@ async function runBackfill() {
             ageAtFilming = releaseYear - birthYear
           }
 
-          return {
-            actor_tmdb_id: castMember.id,
+          appearances.push({
+            actor_id: actorId,
             movie_tmdb_id: movie.tmdb_id,
             character_name: castMember.character || null,
             billing_order: index,
             age_at_filming: ageAtFilming,
-          }
-        })
+          })
+        }
 
         await batchUpsertActorMovieAppearances(appearances)
         totalAppearances += appearances.length

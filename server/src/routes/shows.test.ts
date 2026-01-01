@@ -138,7 +138,7 @@ describe("getShow route", () => {
       ])
     )
     vi.mocked(getActors).mockResolvedValue(new Map())
-    vi.mocked(batchUpsertActors).mockResolvedValue()
+    vi.mocked(batchUpsertActors).mockResolvedValue(new Map())
     vi.mocked(upsertShow).mockResolvedValue()
     vi.mocked(getSeasons).mockResolvedValue([])
     vi.mocked(getDeceasedActorsForShow).mockResolvedValue([])
@@ -235,6 +235,7 @@ describe("getShow route", () => {
       // Return database deceased actor that's not in TMDB aggregate credits
       vi.mocked(getDeceasedActorsForShow).mockResolvedValue([
         {
+          id: 1,
           tmdb_id: 20753,
           name: "Fred Willard",
           profile_path: "/fred.jpg",
@@ -302,6 +303,7 @@ describe("getShow route", () => {
       // Database also returns actor 101 - should be skipped
       vi.mocked(getDeceasedActorsForShow).mockResolvedValue([
         {
+          id: 1,
           tmdb_id: 101,
           name: "Actor One",
           profile_path: "/actor1.jpg",
@@ -359,6 +361,7 @@ describe("getShow route", () => {
       vi.mocked(getTVShowDetails).mockResolvedValue(createMockShow("Ended"))
       vi.mocked(getDeceasedActorsForShow).mockResolvedValue([
         {
+          id: 1,
           tmdb_id: 999,
           name: "Test Actor",
           profile_path: null,

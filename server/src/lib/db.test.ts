@@ -161,14 +161,12 @@ describe("Sync State Functions", () => {
   describe("getAllActorTmdbIds", () => {
     it("returns a Set of all actor TMDB IDs", async () => {
       mockQuery.mockResolvedValueOnce({
-        rows: [{ actor_tmdb_id: 123 }, { actor_tmdb_id: 456 }, { actor_tmdb_id: 789 }],
+        rows: [{ tmdb_id: 123 }, { tmdb_id: 456 }, { tmdb_id: 789 }],
       })
 
       const result = await getAllActorTmdbIds()
 
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT DISTINCT actor_tmdb_id")
-      )
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("SELECT DISTINCT a.tmdb_id"))
       expect(result).toBeInstanceOf(Set)
       expect(result.size).toBe(3)
       expect(result.has(123)).toBe(true)
@@ -1015,6 +1013,7 @@ describe("getDeceasedActorsForShow", () => {
   it("handles actors with multiple episode appearances", async () => {
     const mockActors = [
       {
+        id: 1,
         tmdb_id: 200,
         name: "Multi-Episode Actor",
         profile_path: null,
@@ -1032,35 +1031,35 @@ describe("getDeceasedActorsForShow", () => {
     ]
     const mockEpisodes = [
       {
-        actor_tmdb_id: 200,
+        actor_id: 1,
         season_number: 1,
         episode_number: 1,
         episode_name: "Pilot",
         character_name: "Guest",
       },
       {
-        actor_tmdb_id: 200,
+        actor_id: 1,
         season_number: 1,
         episode_number: 2,
         episode_name: "Episode 2",
         character_name: "Guest",
       },
       {
-        actor_tmdb_id: 200,
+        actor_id: 1,
         season_number: 1,
         episode_number: 3,
         episode_name: "Episode 3",
         character_name: "Guest",
       },
       {
-        actor_tmdb_id: 200,
+        actor_id: 1,
         season_number: 2,
         episode_number: 1,
         episode_name: "Season 2 Premiere",
         character_name: "Recurring",
       },
       {
-        actor_tmdb_id: 200,
+        actor_id: 1,
         season_number: 2,
         episode_number: 2,
         episode_name: "Episode 2",
@@ -1085,6 +1084,7 @@ describe("getDeceasedActorsForShow", () => {
   it("handles multiple deceased actors with their respective episodes", async () => {
     const mockActors = [
       {
+        id: 1,
         tmdb_id: 300,
         name: "Actor A",
         profile_path: null,
@@ -1100,6 +1100,7 @@ describe("getDeceasedActorsForShow", () => {
         total_episodes: 2,
       },
       {
+        id: 2,
         tmdb_id: 400,
         name: "Actor B",
         profile_path: null,
@@ -1117,21 +1118,21 @@ describe("getDeceasedActorsForShow", () => {
     ]
     const mockEpisodes = [
       {
-        actor_tmdb_id: 300,
+        actor_id: 1,
         season_number: 1,
         episode_number: 1,
         episode_name: "Ep 1",
         character_name: "Char A",
       },
       {
-        actor_tmdb_id: 300,
+        actor_id: 1,
         season_number: 1,
         episode_number: 2,
         episode_name: "Ep 2",
         character_name: "Char A",
       },
       {
-        actor_tmdb_id: 400,
+        actor_id: 2,
         season_number: 3,
         episode_number: 5,
         episode_name: "Ep 5",
@@ -1159,7 +1160,7 @@ describe("getDeceasedActorsForShow", () => {
     await getDeceasedActorsForShow(18347)
 
     const query = mockQuery.mock.calls[0][0] as string
-    expect(query).toContain("JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id")
+    expect(query).toContain("JOIN actor_show_appearances asa ON asa.actor_id = a.id")
     expect(query).toContain("WHERE asa.show_tmdb_id = $1")
   })
 
@@ -1270,6 +1271,7 @@ describe("getLivingActorsForShow", () => {
   it("handles multiple living actors with their respective episodes", async () => {
     const mockActors = [
       {
+        id: 1,
         tmdb_id: 300,
         name: "Actor A",
         profile_path: null,
@@ -1277,6 +1279,7 @@ describe("getLivingActorsForShow", () => {
         total_episodes: 5,
       },
       {
+        id: 2,
         tmdb_id: 400,
         name: "Actor B",
         profile_path: null,
@@ -1286,21 +1289,21 @@ describe("getLivingActorsForShow", () => {
     ]
     const mockEpisodes = [
       {
-        actor_tmdb_id: 300,
+        actor_id: 1,
         season_number: 1,
         episode_number: 1,
         episode_name: "Ep 1",
         character_name: "Char A",
       },
       {
-        actor_tmdb_id: 300,
+        actor_id: 1,
         season_number: 1,
         episode_number: 2,
         episode_name: "Ep 2",
         character_name: "Char A",
       },
       {
-        actor_tmdb_id: 400,
+        actor_id: 2,
         season_number: 3,
         episode_number: 5,
         episode_name: "Ep 5",
@@ -1328,7 +1331,7 @@ describe("getLivingActorsForShow", () => {
     await getLivingActorsForShow(18347)
 
     const query = mockQuery.mock.calls[0][0] as string
-    expect(query).toContain("JOIN actor_show_appearances asa ON asa.actor_tmdb_id = a.tmdb_id")
+    expect(query).toContain("JOIN actor_show_appearances asa ON asa.actor_id = a.id")
     expect(query).toContain("WHERE asa.show_tmdb_id = $1")
   })
 

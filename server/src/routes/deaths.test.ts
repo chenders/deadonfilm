@@ -535,6 +535,7 @@ describe("getAllDeathsHandler", () => {
 
   const mockPersons = [
     {
+      id: 1,
       tmdb_id: 1,
       name: "Actor One",
       birthday: "1939-01-01",
@@ -550,9 +551,12 @@ describe("getAllDeathsHandler", () => {
       years_lost: -5,
       popularity: 10.5,
       violent_death: false,
+      tvmaze_person_id: null,
+      thetvdb_person_id: null,
       is_obscure: false,
     },
     {
+      id: 2,
       tmdb_id: 2,
       name: "Actor Two",
       birthday: "1952-01-01",
@@ -568,6 +572,8 @@ describe("getAllDeathsHandler", () => {
       years_lost: 6,
       popularity: null,
       violent_death: null,
+      tvmaze_person_id: null,
+      thetvdb_person_id: null,
       is_obscure: true,
     },
   ]

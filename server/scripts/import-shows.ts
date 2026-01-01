@@ -355,43 +355,52 @@ async function runImport(options: ImportOptions) {
           `  ${mortalityStats.actualDeaths} deceased, ${mortalityStats.expectedDeaths.toFixed(1)} expected`
         )
 
-        // Collect deceased actors for batch insert
-        const deceasedRecords: ActorInput[] = []
-        for (const castMember of topCast) {
+        // Collect ALL actors for batch insert (needed for FK constraint)
+        const actorRecords: ActorInput[] = topCast.map((castMember) => {
           const person = personDetails.get(castMember.id)
-          if (person?.deathday) {
-            let ageAtDeath: number | null = null
-            if (person.birthday) {
-              const birthYear = parseInt(person.birthday.split("-")[0], 10)
-              const deathYear = parseInt(person.deathday.split("-")[0], 10)
-              ageAtDeath = deathYear - birthYear
-            }
-
-            deceasedRecords.push({
-              tmdb_id: castMember.id,
-              name: castMember.name,
-              birthday: person.birthday || null,
-              deathday: person.deathday,
-              cause_of_death: null,
-              cause_of_death_source: null,
-              cause_of_death_details: null,
-              cause_of_death_details_source: null,
-              wikipedia_url: null,
-              profile_path: person.profile_path || null,
-              age_at_death: ageAtDeath,
-              expected_lifespan: null,
-              years_lost: null,
-            })
+          let ageAtDeath: number | null = null
+          if (person?.deathday && person.birthday) {
+            const birthYear = parseInt(person.birthday.split("-")[0], 10)
+            const deathYear = parseInt(person.deathday.split("-")[0], 10)
+            ageAtDeath = deathYear - birthYear
           }
+
+          return {
+            tmdb_id: castMember.id,
+            name: castMember.name,
+            birthday: person?.birthday || null,
+            deathday: person?.deathday || null,
+            cause_of_death: null,
+            cause_of_death_source: null,
+            cause_of_death_details: null,
+            cause_of_death_details_source: null,
+            wikipedia_url: null,
+            profile_path: person?.profile_path || null,
+            age_at_death: ageAtDeath,
+            expected_lifespan: null,
+            years_lost: null,
+            popularity: person?.popularity || null,
+          }
+        })
+
+        // Batch insert actors and get tmdb_id -> actor_id mapping
+        let tmdbToActorId = new Map<number, number>()
+        if (!dryRun && actorRecords.length > 0) {
+          tmdbToActorId = await batchUpsertActors(actorRecords)
         }
 
-        // Batch insert deceased actors
-        if (!dryRun && deceasedRecords.length > 0) {
-          await batchUpsertActors(deceasedRecords)
-        }
+        // Prepare actor appearances using internal actor_id
+        const appearances: ShowActorAppearanceRecord[] = []
+        for (let index = 0; index < topCast.length; index++) {
+          const castMember = topCast[index]
+          const actorId = tmdbToActorId.get(castMember.id)
+          if (!actorId && !dryRun) {
+            console.warn(
+              `  Warning: No actor_id for ${castMember.name} (tmdb_id: ${castMember.id})`
+            )
+            continue
+          }
 
-        // Prepare actor appearances
-        const appearances: ShowActorAppearanceRecord[] = topCast.map((castMember, index) => {
           const person = personDetails.get(castMember.id)
           const birthday = person?.birthday
           let ageAtFilming: number | null = null
@@ -404,8 +413,8 @@ async function runImport(options: ImportOptions) {
           const mainRole = castMember.roles?.[0]
           const characterName = mainRole?.character || null
 
-          return {
-            actor_tmdb_id: castMember.id,
+          appearances.push({
+            actor_id: actorId ?? 0, // 0 is placeholder for dry-run
             show_tmdb_id: show.id,
             // Placeholder values - aggregate credits don't track per-episode appearances.
             // These represent "appeared in the show" rather than a specific episode.
@@ -415,8 +424,8 @@ async function runImport(options: ImportOptions) {
             appearance_type: "regular" as const,
             billing_order: index,
             age_at_filming: ageAtFilming,
-          }
-        })
+          })
+        }
 
         if (!dryRun) {
           await batchUpsertShowActorAppearances(appearances)

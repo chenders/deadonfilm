@@ -121,7 +121,8 @@ async function seedMovie(tmdbId: number) {
     const appearances: ActorMovieAppearanceRecord[] = []
     let deceasedCount = 0
 
-    for (const castMember of topCast) {
+    for (let i = 0; i < topCast.length; i++) {
+      const castMember = topCast[i]
       const person = personDetails.get(castMember.id)
       const birthday = person?.birthday
       let ageAtFilming: number | null = null
@@ -131,21 +132,21 @@ async function seedMovie(tmdbId: number) {
         ageAtFilming = releaseYear - birthYear
       }
 
-      appearances.push({
-        actor_tmdb_id: castMember.id,
-        movie_tmdb_id: tmdbId,
-        character_name: castMember.character || null,
-        billing_order: topCast.indexOf(castMember),
-        age_at_filming: ageAtFilming,
-      })
-
-      // Upsert actor to actors table
-      await upsertActor({
+      // Upsert actor to actors table and get internal ID
+      const actorId = await upsertActor({
         tmdb_id: castMember.id,
         name: castMember.name,
         birthday: person?.birthday || null,
         deathday: person?.deathday || null,
         profile_path: person?.profile_path || null,
+      })
+
+      appearances.push({
+        actor_id: actorId,
+        movie_tmdb_id: tmdbId,
+        character_name: castMember.character || null,
+        billing_order: i,
+        age_at_filming: ageAtFilming,
       })
 
       if (person?.deathday) {

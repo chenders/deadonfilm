@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, waitForElementToBeRemoved } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter } from "react-router-dom"
 import PopularMovies from "./PopularMovies"
@@ -150,28 +150,25 @@ describe("PopularMovies", () => {
   it("renders nothing when no movies available", async () => {
     vi.mocked(api.getPopularMovies).mockResolvedValue({ movies: [] })
 
-    const { container } = renderWithProviders(<PopularMovies />)
+    renderWithProviders(<PopularMovies />)
 
-    await waitFor(() => {
-      expect(api.getPopularMovies).toHaveBeenCalled()
-    })
+    // Wait for the loading skeleton to disappear (component returns null when no movies)
+    await waitForElementToBeRemoved(() => screen.queryByTestId("popular-movies"))
 
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    expect(container.querySelector("[data-testid='popular-movies-list']")).toBeNull()
+    expect(screen.queryByTestId("popular-movies")).not.toBeInTheDocument()
   })
 
   it("renders nothing on error", async () => {
     vi.mocked(api.getPopularMovies).mockRejectedValue(new Error("API Error"))
 
-    const { container } = renderWithProviders(<PopularMovies />)
+    renderWithProviders(<PopularMovies />)
 
-    await waitFor(() => {
-      expect(api.getPopularMovies).toHaveBeenCalled()
-    })
-
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    expect(container.querySelector("[data-testid='popular-movies-list']")).toBeNull()
+    // Wait for the component to finish loading and render nothing on error
+    await waitFor(
+      () => {
+        expect(screen.queryByTestId("popular-movies")).not.toBeInTheDocument()
+      },
+      { timeout: 2000 }
+    )
   })
 })

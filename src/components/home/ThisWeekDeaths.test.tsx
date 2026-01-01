@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, waitForElementToBeRemoved } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter } from "react-router-dom"
 import ThisWeekDeaths from "./ThisWeekDeaths"
@@ -149,29 +149,26 @@ describe("ThisWeekDeaths", () => {
       weekRange: { start: "Dec 15", end: "Dec 21" },
     })
 
-    const { container } = renderWithProviders(<ThisWeekDeaths />)
+    renderWithProviders(<ThisWeekDeaths />)
 
-    await waitFor(() => {
-      expect(api.getThisWeekDeaths).toHaveBeenCalled()
-    })
+    // Wait for the loading skeleton to disappear (component returns null when no deaths)
+    await waitForElementToBeRemoved(() => screen.queryByTestId("this-week-deaths"))
 
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    expect(container.querySelector("[data-testid='this-week-list']")).toBeNull()
+    expect(screen.queryByTestId("this-week-deaths")).not.toBeInTheDocument()
   })
 
   it("renders nothing on error", async () => {
     vi.mocked(api.getThisWeekDeaths).mockRejectedValue(new Error("API Error"))
 
-    const { container } = renderWithProviders(<ThisWeekDeaths />)
+    renderWithProviders(<ThisWeekDeaths />)
 
-    await waitFor(() => {
-      expect(api.getThisWeekDeaths).toHaveBeenCalled()
-    })
-
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    expect(container.querySelector("[data-testid='this-week-list']")).toBeNull()
+    // Wait for the component to finish loading and render nothing on error
+    await waitFor(
+      () => {
+        expect(screen.queryByTestId("this-week-deaths")).not.toBeInTheDocument()
+      },
+      { timeout: 2000 }
+    )
   })
 
   it("limits display to 8 deaths", async () => {
