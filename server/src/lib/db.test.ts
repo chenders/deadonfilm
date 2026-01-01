@@ -40,6 +40,8 @@ import {
   getDeathWatchActors,
   getDeceasedActorsForShow,
   getLivingActorsForShow,
+  updateDeathInfoByActorId,
+  getActorById,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -1342,5 +1344,136 @@ describe("getLivingActorsForShow", () => {
 
     const query = mockQuery.mock.calls[0][0] as string
     expect(query).toContain("AND a.deathday IS NULL")
+  })
+})
+
+describe("updateDeathInfoByActorId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  it("updates death info for an actor by id", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await updateDeathInfoByActorId(
+      123,
+      "Heart attack",
+      "claude",
+      "Suffered cardiac arrest at home",
+      "claude",
+      "https://en.wikipedia.org/wiki/Test_Actor"
+    )
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("UPDATE actors"), [
+      123,
+      "Heart attack",
+      "claude",
+      "Suffered cardiac arrest at home",
+      "claude",
+      "https://en.wikipedia.org/wiki/Test_Actor",
+    ])
+  })
+
+  it("uses COALESCE to preserve existing values when new values are null", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await updateDeathInfoByActorId(456, null, null, null, null, null)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("COALESCE(cause_of_death, $2)")
+    expect(query).toContain("COALESCE(cause_of_death_source, $3)")
+    expect(query).toContain("COALESCE(cause_of_death_details, $4)")
+    expect(query).toContain("COALESCE(cause_of_death_details_source, $5)")
+    expect(query).toContain("COALESCE(wikipedia_url, $6)")
+  })
+
+  it("updates the updated_at timestamp", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await updateDeathInfoByActorId(789, "Cancer", "wikipedia", null, null, null)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("updated_at = CURRENT_TIMESTAMP")
+  })
+
+  it("targets the correct actor by id", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await updateDeathInfoByActorId(999, "Natural causes", "wikipedia", null, null, null)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("WHERE id = $1")
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [
+      999,
+      "Natural causes",
+      "wikipedia",
+      null,
+      null,
+      null,
+    ])
+  })
+})
+
+describe("getActorById", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  it("returns actor when found", async () => {
+    const mockActor = {
+      id: 123,
+      tmdb_id: 456,
+      name: "Test Actor",
+      birthday: "1950-01-01",
+      deathday: "2020-12-15",
+      profile_path: "/path.jpg",
+      cause_of_death: "Heart attack",
+      cause_of_death_source: "claude",
+      cause_of_death_details: "Detailed explanation",
+      cause_of_death_details_source: "claude",
+      wikipedia_url: "https://en.wikipedia.org/wiki/Test_Actor",
+      age_at_death: 70,
+      expected_lifespan: 78.5,
+      years_lost: 8.5,
+      violent_death: false,
+      popularity: 15.5,
+      is_obscure: false,
+      imdb_person_id: "nm0000001",
+      created_at: new Date("2024-01-01"),
+      updated_at: new Date("2024-01-15"),
+    }
+    mockQuery.mockResolvedValueOnce({ rows: [mockActor] })
+
+    const result = await getActorById(123)
+
+    expect(mockQuery).toHaveBeenCalledWith("SELECT * FROM actors WHERE id = $1", [123])
+    expect(result).toEqual(mockActor)
+  })
+
+  it("returns null when actor not found", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const result = await getActorById(999)
+
+    expect(mockQuery).toHaveBeenCalledWith("SELECT * FROM actors WHERE id = $1", [999])
+    expect(result).toBeNull()
+  })
+
+  it("queries by internal id, not tmdb_id", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getActorById(42)
+
+    expect(mockQuery).toHaveBeenCalledWith("SELECT * FROM actors WHERE id = $1", [42])
   })
 })
