@@ -612,6 +612,9 @@ function cacheShowInBackground(params: CacheShowParams): void {
     living_count: living.length,
     expected_deaths: expectedDeaths,
     mortality_surprise_score: mortalitySurpriseScore,
+    tvmaze_id: null,
+    thetvdb_id: null,
+    imdb_id: null,
   }
 
   upsertShow(showRecord).catch((error) => {

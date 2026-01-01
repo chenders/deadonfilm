@@ -150,6 +150,9 @@ async function runSeeding({ showsToFetch, dryRun }: SeedOptions) {
           living_count: topCast.length - mortalityStats.actualDeaths,
           expected_deaths: mortalityStats.expectedDeaths,
           mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
+          tvmaze_id: null,
+          thetvdb_id: null,
+          imdb_id: null,
         }
 
         if (!dryRun) {
