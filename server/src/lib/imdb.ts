@@ -29,6 +29,25 @@ const IMDB_DATASETS_BASE_URL = "https://datasets.imdbws.com"
 const CACHE_DIR = path.join(process.cwd(), ".imdb-cache")
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
+// Allowed IMDb dataset filenames - prevents path traversal attacks
+const ALLOWED_FILENAMES = new Set([
+  "title.episode.tsv.gz",
+  "title.basics.tsv.gz",
+  "title.principals.tsv.gz",
+  "name.basics.tsv.gz",
+])
+
+/**
+ * Validate a filename is an allowed IMDb dataset file.
+ * Prevents path traversal by only allowing known filenames.
+ */
+function validateFilename(filename: string): string {
+  if (!ALLOWED_FILENAMES.has(filename)) {
+    throw new Error(`Invalid IMDb dataset filename: ${filename}`)
+  }
+  return filename
+}
+
 // ============================================================
 // Types
 // ============================================================
@@ -109,7 +128,9 @@ async function ensureCacheDir(): Promise<void> {
 }
 
 async function getCacheMetadata(filename: string): Promise<CacheMetadata | null> {
-  const metaPath = path.join(CACHE_DIR, `${filename}.meta.json`)
+  const safeFilename = validateFilename(filename)
+  // nosemgrep: path-join-resolve-traversal - validated against allowlist
+  const metaPath = path.join(CACHE_DIR, `${safeFilename}.meta.json`)
   try {
     const content = await fsp.readFile(metaPath, "utf-8")
     return JSON.parse(content) as CacheMetadata
@@ -119,7 +140,9 @@ async function getCacheMetadata(filename: string): Promise<CacheMetadata | null>
 }
 
 async function saveCacheMetadata(filename: string, metadata: CacheMetadata): Promise<void> {
-  const metaPath = path.join(CACHE_DIR, `${filename}.meta.json`)
+  const safeFilename = validateFilename(filename)
+  // nosemgrep: path-join-resolve-traversal - validated against allowlist
+  const metaPath = path.join(CACHE_DIR, `${safeFilename}.meta.json`)
   await fsp.writeFile(metaPath, JSON.stringify(metadata), "utf-8")
 }
 
@@ -129,10 +152,12 @@ function isCacheValid(metadata: CacheMetadata | null): boolean {
 }
 
 async function downloadFile(filename: string): Promise<string> {
+  const safeFilename = validateFilename(filename)
   await ensureCacheDir()
 
-  const url = `${IMDB_DATASETS_BASE_URL}/${filename}`
-  const filePath = path.join(CACHE_DIR, filename)
+  const url = `${IMDB_DATASETS_BASE_URL}/${safeFilename}`
+  // nosemgrep: path-join-resolve-traversal - validated against allowlist
+  const filePath = path.join(CACHE_DIR, safeFilename)
 
   console.log(`Downloading ${filename}...`)
   const response = await fetch(url)
@@ -195,14 +220,16 @@ async function downloadFile(filename: string): Promise<string> {
 }
 
 async function ensureFileDownloaded(filename: string): Promise<string> {
-  const filePath = path.join(CACHE_DIR, filename)
-  const metadata = await getCacheMetadata(filename)
+  const safeFilename = validateFilename(filename)
+  // nosemgrep: path-join-resolve-traversal - validated against allowlist
+  const filePath = path.join(CACHE_DIR, safeFilename)
+  const metadata = await getCacheMetadata(safeFilename)
 
   if (isCacheValid(metadata) && fs.existsSync(filePath)) {
     return filePath
   }
 
-  return downloadFile(filename)
+  return downloadFile(safeFilename)
 }
 
 // ============================================================
@@ -661,8 +688,10 @@ export async function getCacheStatus(): Promise<{
   ]
   const fileStatuses = await Promise.all(
     files.map(async (name) => {
-      const filePath = path.join(CACHE_DIR, name)
-      const metadata = await getCacheMetadata(name)
+      const safeName = validateFilename(name)
+      // nosemgrep: path-join-resolve-traversal - validated against allowlist
+      const filePath = path.join(CACHE_DIR, safeName)
+      const metadata = await getCacheMetadata(safeName)
       const exists = fs.existsSync(filePath)
 
       return {
