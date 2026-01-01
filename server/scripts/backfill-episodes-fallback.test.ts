@@ -1,6 +1,24 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { InvalidArgumentError } from "commander"
-import { parsePositiveInt, parseSource } from "./backfill-episodes-fallback.js"
+import fs from "fs"
+import path from "path"
+import os from "os"
+import {
+  parsePositiveInt,
+  parseSource,
+  loadCheckpoint,
+  saveCheckpoint,
+  deleteCheckpoint,
+  type Checkpoint,
+} from "./backfill-episodes-fallback.js"
+import { loadCheckpoint as loadCheckpointGeneric } from "../src/lib/checkpoint-utils.js"
+
+// Suppress console output during tests
+beforeEach(() => {
+  vi.spyOn(console, "log").mockImplementation(() => {})
+  vi.spyOn(console, "error").mockImplementation(() => {})
+  vi.spyOn(console, "warn").mockImplementation(() => {})
+})
 
 describe("backfill-episodes-fallback argument parsing", () => {
   describe("parsePositiveInt", () => {
@@ -69,41 +87,47 @@ describe("backfill-episodes-fallback validation logic", () => {
   interface BackfillOptions {
     detectGaps?: boolean
     show?: number
+    allGaps?: boolean
     source?: "tvmaze" | "thetvdb"
     dryRun?: boolean
   }
 
-  function validateOptions(options: BackfillOptions): string | null {
-    if (!options.detectGaps && !options.show) {
-      return "Must specify either --detect-gaps or --show <id>"
-    }
-    return null
+  // The script now defaults to --all-gaps if no mode is specified
+  function getEffectiveMode(options: BackfillOptions): "detect" | "show" | "allGaps" {
+    if (options.detectGaps) return "detect"
+    if (options.show) return "show"
+    return "allGaps" // Default
   }
 
-  it("requires either --detect-gaps or --show option", () => {
-    expect(validateOptions({})).toBe("Must specify either --detect-gaps or --show <id>")
+  it("defaults to --all-gaps when no mode specified", () => {
+    expect(getEffectiveMode({})).toBe("allGaps")
   })
 
-  it("accepts --detect-gaps without --show", () => {
-    expect(validateOptions({ detectGaps: true })).toBeNull()
+  it("uses --detect-gaps when specified", () => {
+    expect(getEffectiveMode({ detectGaps: true })).toBe("detect")
   })
 
-  it("accepts --show without --detect-gaps", () => {
-    expect(validateOptions({ show: 123 })).toBeNull()
+  it("uses --show when specified", () => {
+    expect(getEffectiveMode({ show: 123 })).toBe("show")
   })
 
-  it("accepts both --detect-gaps and --show (detect-gaps takes precedence)", () => {
-    expect(validateOptions({ detectGaps: true, show: 123 })).toBeNull()
+  it("prefers --detect-gaps over --all-gaps", () => {
+    expect(getEffectiveMode({ detectGaps: true, allGaps: true })).toBe("detect")
   })
 
-  it("accepts --dry-run with either mode", () => {
-    expect(validateOptions({ detectGaps: true, dryRun: true })).toBeNull()
-    expect(validateOptions({ show: 123, dryRun: true })).toBeNull()
+  it("prefers --show over --all-gaps", () => {
+    expect(getEffectiveMode({ show: 123, allGaps: true })).toBe("show")
+  })
+
+  it("accepts --dry-run with any mode", () => {
+    expect(getEffectiveMode({ detectGaps: true, dryRun: true })).toBe("detect")
+    expect(getEffectiveMode({ show: 123, dryRun: true })).toBe("show")
+    expect(getEffectiveMode({ dryRun: true })).toBe("allGaps")
   })
 
   it("accepts --source with --show", () => {
-    expect(validateOptions({ show: 123, source: "tvmaze" })).toBeNull()
-    expect(validateOptions({ show: 123, source: "thetvdb" })).toBeNull()
+    expect(getEffectiveMode({ show: 123, source: "tvmaze" })).toBe("show")
+    expect(getEffectiveMode({ show: 123, source: "thetvdb" })).toBe("show")
   })
 })
 
@@ -146,5 +170,110 @@ describe("backfill-episodes-fallback environment validation", () => {
   it("passes when all required env vars are present", () => {
     const errors = checkEnv({ databaseUrl: "postgres://...", tmdbApiToken: "token" })
     expect(errors).toHaveLength(0)
+  })
+})
+
+describe("backfill-episodes-fallback checkpoint functionality", () => {
+  let testDir: string
+  let testCheckpointFile: string
+
+  beforeEach(() => {
+    testDir = fs.mkdtempSync(path.join(os.tmpdir(), "backfill-test-"))
+    testCheckpointFile = path.join(testDir, "test-checkpoint.json")
+  })
+
+  afterEach(() => {
+    // Clean up temp directory
+    if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true })
+    }
+  })
+
+  describe("loadCheckpoint", () => {
+    it("returns null when checkpoint file does not exist", () => {
+      const result = loadCheckpoint(testCheckpointFile)
+      expect(result).toBeNull()
+    })
+
+    it("loads checkpoint from existing file", () => {
+      const checkpoint: Checkpoint = {
+        processedShowIds: [123, 456],
+        currentShowId: 789,
+        processedSeasons: [1, 2],
+        startedAt: "2024-01-01T00:00:00.000Z",
+        lastUpdated: "2024-01-01T01:00:00.000Z",
+        stats: { showsProcessed: 2, seasonsProcessed: 5, episodesSaved: 100, errors: 1 },
+      }
+      fs.writeFileSync(testCheckpointFile, JSON.stringify(checkpoint))
+
+      const result = loadCheckpoint(testCheckpointFile)
+      expect(result).toEqual(checkpoint)
+    })
+
+    it("throws on invalid JSON (via generic loader)", () => {
+      fs.writeFileSync(testCheckpointFile, "invalid json")
+      expect(() => loadCheckpointGeneric<Checkpoint>(testCheckpointFile)).toThrow(SyntaxError)
+    })
+
+    it("throws on permission errors (via generic loader)", () => {
+      // Create a directory with the checkpoint name - reading it will cause an error
+      const dirAsFile = path.join(testDir, "dir-checkpoint.json")
+      fs.mkdirSync(dirAsFile)
+      expect(() => loadCheckpointGeneric<Checkpoint>(dirAsFile)).toThrow()
+    })
+  })
+
+  describe("saveCheckpoint", () => {
+    it("saves checkpoint to file", () => {
+      const checkpoint: Checkpoint = {
+        processedShowIds: [789],
+        currentShowId: 1000,
+        processedSeasons: [3],
+        startedAt: "2024-01-01T00:00:00.000Z",
+        lastUpdated: "2024-01-01T00:00:00.000Z",
+        stats: { showsProcessed: 1, seasonsProcessed: 1, episodesSaved: 20, errors: 0 },
+      }
+
+      saveCheckpoint(checkpoint, testCheckpointFile)
+
+      const saved = JSON.parse(fs.readFileSync(testCheckpointFile, "utf-8"))
+      expect(saved.processedShowIds).toEqual([789])
+      expect(saved.currentShowId).toBe(1000)
+      expect(saved.processedSeasons).toEqual([3])
+      expect(saved.stats.episodesSaved).toBe(20)
+    })
+
+    it("updates lastUpdated timestamp", () => {
+      const checkpoint: Checkpoint = {
+        processedShowIds: [],
+        currentShowId: null,
+        processedSeasons: [],
+        startedAt: "2024-01-01T00:00:00.000Z",
+        lastUpdated: "2024-01-01T00:00:00.000Z",
+        stats: { showsProcessed: 0, seasonsProcessed: 0, episodesSaved: 0, errors: 0 },
+      }
+
+      const before = new Date().toISOString()
+      saveCheckpoint(checkpoint, testCheckpointFile)
+      const after = new Date().toISOString()
+
+      const saved = JSON.parse(fs.readFileSync(testCheckpointFile, "utf-8"))
+      expect(saved.lastUpdated >= before).toBe(true)
+      expect(saved.lastUpdated <= after).toBe(true)
+    })
+  })
+
+  describe("deleteCheckpoint", () => {
+    it("deletes existing checkpoint file", () => {
+      fs.writeFileSync(testCheckpointFile, "{}")
+      expect(fs.existsSync(testCheckpointFile)).toBe(true)
+
+      deleteCheckpoint(testCheckpointFile)
+      expect(fs.existsSync(testCheckpointFile)).toBe(false)
+    })
+
+    it("does not throw when file does not exist", () => {
+      expect(() => deleteCheckpoint(testCheckpointFile)).not.toThrow()
+    })
   })
 })
