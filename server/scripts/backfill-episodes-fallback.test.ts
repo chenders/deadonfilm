@@ -63,9 +63,13 @@ describe("backfill-episodes-fallback argument parsing", () => {
       expect(parseSource("thetvdb")).toBe("thetvdb")
     })
 
+    it("accepts 'imdb' as valid source", () => {
+      expect(parseSource("imdb")).toBe("imdb")
+    })
+
     it("rejects 'tmdb' (not a fallback source)", () => {
       expect(() => parseSource("tmdb")).toThrow(InvalidArgumentError)
-      expect(() => parseSource("tmdb")).toThrow("Source must be 'tvmaze' or 'thetvdb'")
+      expect(() => parseSource("tmdb")).toThrow("Source must be 'tvmaze', 'thetvdb', or 'imdb'")
     })
 
     it("rejects empty string", () => {
@@ -74,7 +78,6 @@ describe("backfill-episodes-fallback argument parsing", () => {
 
     it("rejects invalid source names", () => {
       expect(() => parseSource("tvrage")).toThrow(InvalidArgumentError)
-      expect(() => parseSource("imdb")).toThrow(InvalidArgumentError)
       expect(() => parseSource("TVmaze")).toThrow(InvalidArgumentError) // Case-sensitive
     })
   })
@@ -202,7 +205,15 @@ describe("backfill-episodes-fallback checkpoint functionality", () => {
         processedSeasons: [1, 2],
         startedAt: "2024-01-01T00:00:00.000Z",
         lastUpdated: "2024-01-01T01:00:00.000Z",
-        stats: { showsProcessed: 2, seasonsProcessed: 5, episodesSaved: 100, errors: 1 },
+        stats: {
+          showsProcessed: 2,
+          seasonsProcessed: 5,
+          episodesSaved: 100,
+          actorsSaved: 0,
+          appearancesSaved: 0,
+          deathCauseLookups: 0,
+          errors: 1,
+        },
       }
       fs.writeFileSync(testCheckpointFile, JSON.stringify(checkpoint))
 
@@ -231,7 +242,15 @@ describe("backfill-episodes-fallback checkpoint functionality", () => {
         processedSeasons: [3],
         startedAt: "2024-01-01T00:00:00.000Z",
         lastUpdated: "2024-01-01T00:00:00.000Z",
-        stats: { showsProcessed: 1, seasonsProcessed: 1, episodesSaved: 20, errors: 0 },
+        stats: {
+          showsProcessed: 1,
+          seasonsProcessed: 1,
+          episodesSaved: 20,
+          actorsSaved: 0,
+          appearancesSaved: 0,
+          deathCauseLookups: 0,
+          errors: 0,
+        },
       }
 
       saveCheckpoint(checkpoint, testCheckpointFile)
@@ -250,7 +269,15 @@ describe("backfill-episodes-fallback checkpoint functionality", () => {
         processedSeasons: [],
         startedAt: "2024-01-01T00:00:00.000Z",
         lastUpdated: "2024-01-01T00:00:00.000Z",
-        stats: { showsProcessed: 0, seasonsProcessed: 0, episodesSaved: 0, errors: 0 },
+        stats: {
+          showsProcessed: 0,
+          seasonsProcessed: 0,
+          episodesSaved: 0,
+          actorsSaved: 0,
+          appearancesSaved: 0,
+          deathCauseLookups: 0,
+          errors: 0,
+        },
       }
 
       const before = new Date().toISOString()

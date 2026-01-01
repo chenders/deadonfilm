@@ -52,3 +52,6 @@ docs/potentially-wrong-language-data.md
 .verify-death-info-checkpoint.json
 .backfill-external-ids-checkpoint.json
 .backfill-episodes-fallback-checkpoint.json
+
+# IMDb dataset cache
+.imdb-cache/

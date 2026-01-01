@@ -553,6 +553,7 @@ describe("getAllDeathsHandler", () => {
       violent_death: false,
       tvmaze_person_id: null,
       thetvdb_person_id: null,
+      imdb_person_id: null,
       is_obscure: false,
     },
     {
@@ -574,6 +575,7 @@ describe("getAllDeathsHandler", () => {
       violent_death: null,
       tvmaze_person_id: null,
       thetvdb_person_id: null,
+      imdb_person_id: null,
       is_obscure: true,
     },
   ]
