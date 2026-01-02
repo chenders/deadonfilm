@@ -42,6 +42,7 @@ import {
   getLivingActorsForShow,
   updateDeathInfoByActorId,
   getActorById,
+  getEpisodeCountsBySeasonFromDb,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -1475,5 +1476,82 @@ describe("getActorById", () => {
     await getActorById(42)
 
     expect(mockQuery).toHaveBeenCalledWith("SELECT * FROM actors WHERE id = $1", [42])
+  })
+})
+
+describe("getEpisodeCountsBySeasonFromDb", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  it("returns a Map with episode counts per season", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { season_number: 1, count: "10" },
+        { season_number: 2, count: "12" },
+        { season_number: 3, count: "8" },
+      ],
+    })
+
+    const result = await getEpisodeCountsBySeasonFromDb(987)
+
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("SELECT season_number, COUNT(*) as count FROM episodes"),
+      [987]
+    )
+    expect(result).toBeInstanceOf(Map)
+    expect(result.size).toBe(3)
+    expect(result.get(1)).toBe(10)
+    expect(result.get(2)).toBe(12)
+    expect(result.get(3)).toBe(8)
+  })
+
+  it("returns empty Map when show has no episodes", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const result = await getEpisodeCountsBySeasonFromDb(999)
+
+    expect(result).toBeInstanceOf(Map)
+    expect(result.size).toBe(0)
+  })
+
+  it("correctly parses string count values to integers", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { season_number: 1, count: "250" },
+        { season_number: 2, count: "312" },
+      ],
+    })
+
+    const result = await getEpisodeCountsBySeasonFromDb(987)
+
+    expect(result.get(1)).toBe(250)
+    expect(result.get(2)).toBe(312)
+    expect(typeof result.get(1)).toBe("number")
+  })
+
+  it("groups by season_number and orders by season_number", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getEpisodeCountsBySeasonFromDb(1234)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("GROUP BY season_number")
+    expect(query).toContain("ORDER BY season_number")
+  })
+
+  it("filters by show_tmdb_id", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getEpisodeCountsBySeasonFromDb(5678)
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("WHERE show_tmdb_id = $1")
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [5678])
   })
 })
