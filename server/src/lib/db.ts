@@ -19,13 +19,18 @@ import { getPool } from "./db/pool.js"
 
 export type DeathInfoSource = "claude" | "wikipedia" | null
 
+// Date precision for partial dates (year-only, year+month, full date)
+export type DatePrecision = "year" | "month" | "day"
+
 // Actor record - unified table for all actors (living and deceased)
 export interface ActorRecord {
   id: number
   tmdb_id: number | null // null for non-TMDB actors (from TVmaze/TheTVDB)
   name: string
   birthday: string | null
+  birthday_precision?: DatePrecision | null // null/undefined means 'day' (full precision)
   deathday: string | null // null for living actors
+  deathday_precision?: DatePrecision | null // null/undefined means 'day' (full precision)
   profile_path: string | null
   popularity: number | null
 
