@@ -186,19 +186,18 @@ export async function detectShowDataGaps(
             }
           }
 
-          // Check if IMDb season data is reliable
-          // Soap operas often have all episodes dumped into Season 1, which is unreliable
+          // Check if IMDb season data is reliable using shared helper
           const maxEpisodesInSeason = Math.max(...imdbSeasonCounts.values(), 0)
           const imdbSeasonCount = imdbSeasonCounts.size
           const tmdbSeasonCount = show.number_of_seasons || 0
 
-          // IMDb data is unreliable if:
-          // 1. A single season has 500+ episodes (no normal show has this)
-          // 2. IMDb shows 1 season but TMDB shows 10+ seasons
-          const isImdbSeasonDataUnreliable =
-            maxEpisodesInSeason >= 500 || (imdbSeasonCount === 1 && tmdbSeasonCount >= 10)
+          const imdbDataUnreliable = checkImdbSeasonDataUnreliable(
+            maxEpisodesInSeason,
+            imdbSeasonCount,
+            tmdbSeasonCount
+          )
 
-          if (isImdbSeasonDataUnreliable) {
+          if (imdbDataUnreliable) {
             result.details.push(
               `IMDb season data unreliable (${imdbEpisodes.length} episodes in ${imdbSeasonCount} season(s), TMDB shows ${tmdbSeasonCount} seasons) - using TMDB for season structure`
             )
@@ -329,6 +328,28 @@ interface SeasonEpisodeCount {
 }
 
 /**
+ * Pure function to check if IMDb season data is unreliable based on computed counts.
+ *
+ * IMDb data is considered unreliable if:
+ * 1. A single season has 500+ episodes (no normal show has this)
+ * 2. IMDb shows 1 season but TMDB shows 10+ seasons
+ *
+ * This is a pure helper extracted for reuse across gap detection and episode fetching.
+ *
+ * @param maxEpisodesInSeason - Maximum episodes in any single IMDb season
+ * @param imdbSeasonCount - Number of seasons in IMDb data
+ * @param tmdbSeasonCount - Number of seasons in TMDB data
+ * @returns true if IMDb season data should NOT be trusted
+ */
+export function checkImdbSeasonDataUnreliable(
+  maxEpisodesInSeason: number,
+  imdbSeasonCount: number,
+  tmdbSeasonCount: number
+): boolean {
+  return maxEpisodesInSeason >= 500 || (imdbSeasonCount === 1 && tmdbSeasonCount >= 10)
+}
+
+/**
  * Check if IMDb's season structure is unreliable for a show.
  *
  * Soap operas and very long-running shows often have all episodes dumped into
@@ -355,10 +376,7 @@ export async function isImdbSeasonDataUnreliable(
   const maxEpisodesInSeason = Math.max(...imdbSeasonCounts.values(), 0)
   const imdbSeasonCount = imdbSeasonCounts.size
 
-  // IMDb data is unreliable if:
-  // 1. A single season has 500+ episodes (no normal show has this)
-  // 2. IMDb shows 1 season but TMDB shows 10+ seasons
-  return maxEpisodesInSeason >= 500 || (imdbSeasonCount === 1 && tmdbSeasonCount >= 10)
+  return checkImdbSeasonDataUnreliable(maxEpisodesInSeason, imdbSeasonCount, tmdbSeasonCount)
 }
 
 /**
@@ -551,7 +569,7 @@ async function fetchImdbEpisodesWithRedistribution(
     return []
   }
 
-  // Check for unreliable patterns
+  // Check for unreliable patterns using shared helper
   const imdbSeasonCounts = new Map<number, number>()
   for (const ep of allImdbEpisodes) {
     if (ep.seasonNumber !== null && ep.seasonNumber > 0) {
@@ -562,11 +580,11 @@ async function fetchImdbEpisodesWithRedistribution(
   const maxEpisodesInSeason = Math.max(...imdbSeasonCounts.values(), 0)
   const imdbSeasonCount = imdbSeasonCounts.size
 
-  // IMDb data is unreliable if:
-  // 1. A single season has 500+ episodes (no normal show has this)
-  // 2. IMDb shows 1 season but TMDB shows 10+ seasons
-  const isUnreliable =
-    maxEpisodesInSeason >= 500 || (imdbSeasonCount === 1 && tmdbSeasonCount >= 10)
+  const isUnreliable = checkImdbSeasonDataUnreliable(
+    maxEpisodesInSeason,
+    imdbSeasonCount,
+    tmdbSeasonCount
+  )
 
   if (!isUnreliable) {
     // IMDb data is reliable but this season is just empty
