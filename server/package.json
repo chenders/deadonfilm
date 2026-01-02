@@ -66,6 +66,8 @@
     "backfill:shows:full": "tsx scripts/backfill-shows-full.ts",
     "//backfill:external-ids": "Backfill TVmaze/TheTVDB IDs for shows",
     "backfill:external-ids": "tsx scripts/backfill-external-ids.ts",
+    "//backfill:cause-of-death-batch": "Backfill cause of death using Claude Opus 4.5 Batch API",
+    "backfill:cause-of-death-batch": "tsx scripts/backfill-cause-of-death-batch.ts",
 
     "// === Death Info Management ===": "",
     "//fix:death-info": "Scan and fix suspicious death records",
