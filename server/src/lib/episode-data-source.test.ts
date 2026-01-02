@@ -1520,18 +1520,60 @@ describe("Episode Data Source Cascade", () => {
         ],
       } as never)
 
-      // TMDB API returns fewer episodes than metadata says - this creates a gap
-      vi.mocked(tmdb.getSeasonDetails)
-        .mockResolvedValueOnce({ season_number: 1, episodes: Array(100).fill({ id: 1 }) } as never)
-        .mockResolvedValueOnce({ season_number: 2, episodes: [] } as never) // Missing
-        .mockResolvedValueOnce({ season_number: 3, episodes: [] } as never) // Missing
-
       const result = await detectShowDataGaps(987)
 
       // Should include detail about unreliable IMDb data
       expect(result.details.some((d) => d.includes("unreliable"))).toBe(true)
-      // Should have found gaps via TMDB fallback (seasons 2 and 3 missing)
+      // Should have found gaps via per-season TMDB comparison
       expect(result.hasGaps).toBe(true)
+      // Should identify seasons where TMDB has more episodes than database
+      // Season 1: TMDB has 250, DB has 100 - gap of 150
+      // Season 2: TMDB has 260, DB has 0 - gap
+      // Season 3: TMDB has 250, DB has 0 - gap
+      expect(result.missingSeasons).toContain(1)
+      expect(result.missingSeasons).toContain(2)
+      expect(result.missingSeasons).toContain(3)
+      expect(result.details.some((d) => d.includes("Season 1: TMDB has 250"))).toBe(true)
+    })
+
+    it("handles empty TMDB season counts when IMDb is unreliable", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        tmdb_id: 987,
+        imdb_id: "tt0056758",
+        name: "General Hospital",
+        number_of_seasons: 63,
+      } as never)
+
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map([[1, 100]]))
+
+      // IMDb has 11000 episodes all in Season 1 (unreliable)
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue(
+        Array(11000)
+          .fill(null)
+          .map((_, i) => ({
+            tconst: `tt${String(i).padStart(7, "0")}`,
+            parentTconst: "tt0056758",
+            seasonNumber: 1,
+            episodeNumber: i + 1,
+          }))
+      )
+
+      // TMDB returns no seasons (e.g., API error or no data)
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 987,
+        name: "General Hospital",
+        number_of_seasons: 63,
+        seasons: [], // No season data
+      } as never)
+
+      const result = await detectShowDataGaps(987)
+
+      // Should indicate that TMDB data couldn't be fetched
+      expect(result.details.some((d) => d.includes("Failed to fetch TMDB season counts"))).toBe(
+        true
+      )
+      // Should not report gaps if we couldn't verify
+      expect(result.hasGaps).toBe(false)
     })
 
     it("uses IMDb for gap detection when season structure is reliable", async () => {
