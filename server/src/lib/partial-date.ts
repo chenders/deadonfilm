@@ -152,8 +152,10 @@ export function formatPartialDate(
     return "Unknown"
   }
 
-  // Parse the date - add time component to avoid timezone issues
-  const parsed = new Date(date + "T00:00:00")
+  // Parse the date - add time component to avoid timezone issues (if not already present)
+  const hasTimeComponent = /[T ]\d{2}:\d{2}/.test(date)
+  const dateString = hasTimeComponent ? date : `${date}T00:00:00`
+  const parsed = new Date(dateString)
   if (isNaN(parsed.getTime())) {
     return "Unknown"
   }
