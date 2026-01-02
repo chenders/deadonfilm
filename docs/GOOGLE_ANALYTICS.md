@@ -31,7 +31,7 @@ After creating the stream, you'll see a **Measurement ID** starting with `G-` (e
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 ```
 
-**Production (Docker/Kubernetes):** Create a `.env.production` file before building the Docker image:
+**Production (Docker):** Create a `.env.production` file before building the Docker image:
 
 ```
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
