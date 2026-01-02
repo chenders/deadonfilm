@@ -8,6 +8,10 @@ import {
   loadCheckpoint,
   saveCheckpoint,
   deleteCheckpoint,
+  normalizeDateToString,
+  getYearFromDate,
+  getMonthDayFromDate,
+  stripMarkdownCodeFences,
   type Checkpoint,
 } from "./backfill-cause-of-death-batch.js"
 import { loadCheckpoint as loadCheckpointGeneric } from "../src/lib/checkpoint-utils.js"
@@ -673,5 +677,191 @@ describe("backfill-cause-of-death-batch stats tracking", () => {
     expect(stats.updatedDetails).toBe(40)
     expect(stats.updatedBirthday).toBe(5)
     expect(stats.updatedDeathday).toBe(3)
+  })
+})
+
+describe("date normalization helpers", () => {
+  describe("normalizeDateToString", () => {
+    it("returns null for null input", () => {
+      expect(normalizeDateToString(null)).toBeNull()
+    })
+
+    it("returns null for undefined input", () => {
+      expect(normalizeDateToString(undefined)).toBeNull()
+    })
+
+    it("returns null for empty string", () => {
+      expect(normalizeDateToString("")).toBeNull()
+    })
+
+    it("normalizes Date object to YYYY-MM-DD", () => {
+      const date = new Date(Date.UTC(1945, 5, 15)) // June 15, 1945 UTC
+      expect(normalizeDateToString(date)).toBe("1945-06-15")
+    })
+
+    it("returns null for invalid Date object", () => {
+      const invalidDate = new Date("invalid")
+      expect(normalizeDateToString(invalidDate)).toBeNull()
+    })
+
+    it("returns YYYY-MM-DD string as-is", () => {
+      expect(normalizeDateToString("1945-06-15")).toBe("1945-06-15")
+    })
+
+    it("converts year-only string to YYYY-01-01", () => {
+      expect(normalizeDateToString("1945")).toBe("1945-01-01")
+    })
+
+    it("parses ISO date strings with time component", () => {
+      expect(normalizeDateToString("1945-06-15T00:00:00Z")).toBe("1945-06-15")
+    })
+
+    it("parses various date string formats", () => {
+      // These test that new Date() parsing works
+      expect(normalizeDateToString("June 15, 1945")).toBe("1945-06-15")
+    })
+  })
+
+  describe("getYearFromDate", () => {
+    it("returns null for null input", () => {
+      expect(getYearFromDate(null)).toBeNull()
+    })
+
+    it("returns null for undefined input", () => {
+      expect(getYearFromDate(undefined)).toBeNull()
+    })
+
+    it("extracts year from Date object", () => {
+      const date = new Date(Date.UTC(1945, 5, 15))
+      expect(getYearFromDate(date)).toBe(1945)
+    })
+
+    it("extracts year from YYYY-MM-DD string", () => {
+      expect(getYearFromDate("1945-06-15")).toBe(1945)
+    })
+
+    it("extracts year from year-only string", () => {
+      expect(getYearFromDate("1945")).toBe(1945)
+    })
+
+    it("extracts year from ISO date string", () => {
+      expect(getYearFromDate("2023-12-25T10:30:00Z")).toBe(2023)
+    })
+  })
+
+  describe("getMonthDayFromDate", () => {
+    it("returns null for null input", () => {
+      expect(getMonthDayFromDate(null)).toBeNull()
+    })
+
+    it("returns null for undefined input", () => {
+      expect(getMonthDayFromDate(undefined)).toBeNull()
+    })
+
+    it("returns null for empty string", () => {
+      expect(getMonthDayFromDate("")).toBeNull()
+    })
+
+    it("extracts month and day from Date object", () => {
+      const date = new Date(Date.UTC(1945, 5, 15)) // June 15, 1945 UTC
+      expect(getMonthDayFromDate(date)).toEqual({ month: "06", day: "15" })
+    })
+
+    it("extracts month and day from YYYY-MM-DD string", () => {
+      expect(getMonthDayFromDate("1945-06-15")).toEqual({ month: "06", day: "15" })
+    })
+
+    it("returns null month and day for year-only string", () => {
+      expect(getMonthDayFromDate("1945")).toEqual({ month: null, day: null })
+    })
+
+    it("returns month and null day for YYYY-MM string", () => {
+      expect(getMonthDayFromDate("1945-06")).toEqual({ month: "06", day: null })
+    })
+
+    it("extracts month and day from ISO date string", () => {
+      expect(getMonthDayFromDate("2023-12-25T10:30:00Z")).toEqual({ month: "12", day: "25" })
+    })
+
+    it("pads single-digit months and days", () => {
+      const date = new Date(Date.UTC(2000, 0, 5)) // January 5, 2000 UTC
+      expect(getMonthDayFromDate(date)).toEqual({ month: "01", day: "05" })
+    })
+  })
+
+  describe("normalizeDateToString with YYYY-MM format", () => {
+    it("converts year-month string to YYYY-MM-01", () => {
+      expect(normalizeDateToString("1945-06")).toBe("1945-06-01")
+    })
+
+    it("handles all months correctly", () => {
+      expect(normalizeDateToString("2000-01")).toBe("2000-01-01")
+      expect(normalizeDateToString("2000-12")).toBe("2000-12-01")
+    })
+
+    it("rejects invalid month values", () => {
+      expect(normalizeDateToString("2000-00")).toBeNull()
+      expect(normalizeDateToString("2000-13")).toBeNull()
+    })
+  })
+
+  describe("normalizeDateToString year validation", () => {
+    it("accepts years in reasonable range", () => {
+      expect(normalizeDateToString("1800")).toBe("1800-01-01")
+      expect(normalizeDateToString("2000")).toBe("2000-01-01")
+      expect(normalizeDateToString("2100")).toBe("2100-01-01")
+    })
+
+    it("rejects years outside reasonable range", () => {
+      expect(normalizeDateToString("1799")).toBeNull()
+      expect(normalizeDateToString("2101")).toBeNull()
+      expect(normalizeDateToString("0001")).toBeNull()
+      expect(normalizeDateToString("9999")).toBeNull()
+    })
+  })
+
+  describe("stripMarkdownCodeFences", () => {
+    it("returns plain JSON unchanged", () => {
+      const json = '{"cause": "cancer", "details": "lung cancer"}'
+      expect(stripMarkdownCodeFences(json)).toBe(json)
+    })
+
+    it("strips ```json code fence", () => {
+      const wrapped = '```json\n{"cause": "cancer"}\n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("strips ``` code fence without language tag", () => {
+      const wrapped = '```\n{"cause": "cancer"}\n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("handles code fence with extra whitespace", () => {
+      const wrapped = '```json\n\n{"cause": "cancer"}\n\n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("handles opening fence without closing fence", () => {
+      const wrapped = '```json\n{"cause": "cancer"}'
+      const result = stripMarkdownCodeFences(wrapped)
+      expect(result).toBe('{"cause": "cancer"}')
+    })
+
+    it("ignores text after closing fence", () => {
+      const wrapped = '```json\n{"cause": "cancer"}\n```\nSome extra text'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("trims whitespace from result", () => {
+      const wrapped = '```json\n  {"cause": "cancer"}  \n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("handles multiline JSON content", () => {
+      const wrapped = '```json\n{\n  "cause": "cancer",\n  "details": "lung cancer"\n}\n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe(
+        '{\n  "cause": "cancer",\n  "details": "lung cancer"\n}'
+      )
+    })
   })
 })

@@ -1,10 +1,27 @@
+import type { DatePrecision } from "../types/actor"
+
 /**
- * Formats a date string (YYYY-MM-DD or ISO timestamp) to a readable format
- * Example: "1977-06-14" → "Jun 14, 1977"
- * Example: "2025-12-10T08:00:00.000Z" → "Dec 10, 2025"
+ * Formats a date string (YYYY-MM-DD or ISO timestamp) to a readable format.
+ * Respects precision level for partial dates.
+ *
+ * Examples with precision='day' (default):
+ *   "1977-06-14" → "Jun 14, 1977"
+ *   "2025-12-10T08:00:00.000Z" → "Dec 10, 2025"
+ *
+ * Examples with precision='month':
+ *   "1977-06-01" → "June 1977"
+ *
+ * Examples with precision='year':
+ *   "1977-01-01" → "1977"
+ *
+ * @param dateString - Date in YYYY-MM-DD or ISO format
+ * @param precision - How much of the date to display (null defaults to 'day')
  */
-export function formatDate(dateString: string | null): string {
+export function formatDate(dateString: string | null, precision?: DatePrecision | null): string {
   if (!dateString) return "Unknown"
+
+  // Default precision to 'day' if not specified
+  const effectivePrecision = precision ?? "day"
 
   try {
     // If it's already an ISO timestamp (contains 'T'), parse directly
@@ -15,11 +32,26 @@ export function formatDate(dateString: string | null): string {
 
     if (isNaN(date.getTime())) return "Unknown"
 
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
+    switch (effectivePrecision) {
+      case "year":
+        return date.getUTCFullYear().toString()
+
+      case "month":
+        return date.toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        })
+
+      case "day":
+      default:
+        return date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "UTC",
+        })
+    }
   } catch {
     return dateString
   }

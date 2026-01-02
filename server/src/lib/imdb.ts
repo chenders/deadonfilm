@@ -20,6 +20,7 @@ import { createGunzip } from "zlib"
 import readline from "readline"
 import { pipeline } from "stream/promises"
 import { Readable } from "stream"
+import type { DatePrecision } from "./db.js"
 
 // ============================================================
 // Configuration
@@ -105,7 +106,9 @@ export interface NormalizedImdbCastMember {
   name: string
   characterName: string | null
   birthday: string | null
+  birthdayPrecision: DatePrecision | null
   deathday: string | null
+  deathdayPrecision: DatePrecision | null
   profilePath: string | null
   billingOrder: number
   appearanceType: "regular" | "guest"
@@ -697,17 +700,23 @@ export async function getEpisodeCastWithDetails(
 
   return cast.map((c, index): NormalizedImdbCastMember => {
     const person = persons.get(c.nconst)
+    // Convert year-only values to dates with precision
+    const birthYear = person?.birthYear || null
+    const deathYear = person?.deathYear || null
     return {
       name: person?.primaryName || "Unknown",
       characterName: c.characters?.[0] || null,
-      birthday: null, // IMDb only has year, not full date
-      deathday: null, // IMDb only has year, not full date
+      // IMDb only has year - store as YYYY-01-01 with precision='year'
+      birthday: birthYear ? `${birthYear}-01-01` : null,
+      birthdayPrecision: birthYear ? "year" : null,
+      deathday: deathYear ? `${deathYear}-01-01` : null,
+      deathdayPrecision: deathYear ? "year" : null,
       profilePath: null, // IMDb datasets don't include images
       billingOrder: index,
       appearanceType: "guest", // Can't distinguish regular vs guest from IMDb data
       imdbPersonId: c.nconst,
-      birthYear: person?.birthYear || null,
-      deathYear: person?.deathYear || null,
+      birthYear,
+      deathYear,
     }
   })
 }
