@@ -622,6 +622,45 @@ export async function getSeasonEpisodesWithDetails(
 }
 
 /**
+ * Get ALL episodes for a show with title details (names, runtime, etc.)
+ * Does NOT filter by season - returns all episodes for the show.
+ * Useful when IMDb season data is unreliable (e.g., soap operas with all
+ * episodes dumped into "Season 1").
+ */
+export async function getAllShowEpisodesWithDetails(
+  imdbShowId: string
+): Promise<NormalizedImdbEpisode[]> {
+  const episodes = await getShowEpisodes(imdbShowId)
+  if (episodes.length === 0) return []
+
+  // Get title details for all episodes
+  const tconsts = episodes.map((ep) => ep.tconst)
+  const titles = await getTitles(tconsts)
+
+  return episodes
+    .map((ep): NormalizedImdbEpisode => {
+      const title = titles.get(ep.tconst)
+      return {
+        seasonNumber: ep.seasonNumber ?? 1,
+        episodeNumber: ep.episodeNumber ?? 1,
+        name: title?.primaryTitle || null,
+        overview: null,
+        airDate: null,
+        runtime: title?.runtimeMinutes || null,
+        stillPath: null,
+        imdbEpisodeId: ep.tconst,
+      }
+    })
+    .sort((a, b) => {
+      // Sort by season first, then by episode number
+      if (a.seasonNumber !== b.seasonNumber) {
+        return a.seasonNumber - b.seasonNumber
+      }
+      return a.episodeNumber - b.episodeNumber
+    })
+}
+
+/**
  * Get cast for an episode with person details (birth/death year).
  * Returns normalized cast members compatible with other data sources.
  */

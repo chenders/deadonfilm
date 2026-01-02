@@ -320,6 +320,118 @@ export async function getExternalIds(showTmdbId: number): Promise<ExternalShowId
 }
 
 // ============================================================
+// IMDb Season Data Reliability Check
+// ============================================================
+
+interface SeasonEpisodeCount {
+  seasonNumber: number
+  episodeCount: number
+}
+
+/**
+ * Check if IMDb's season structure is unreliable for a show.
+ *
+ * Soap operas and very long-running shows often have all episodes dumped into
+ * "Season 1" in IMDb's data, which is incorrect. This function detects that
+ * situation by comparing IMDb's season structure to TMDB's.
+ *
+ * @returns true if IMDb season data should NOT be trusted
+ */
+export async function isImdbSeasonDataUnreliable(
+  imdbId: string,
+  tmdbSeasonCount: number
+): Promise<boolean> {
+  const imdbEpisodes = await imdb.getShowEpisodes(imdbId)
+  if (imdbEpisodes.length === 0) return false
+
+  // Group by season and count
+  const imdbSeasonCounts = new Map<number, number>()
+  for (const ep of imdbEpisodes) {
+    if (ep.seasonNumber !== null && ep.seasonNumber > 0) {
+      imdbSeasonCounts.set(ep.seasonNumber, (imdbSeasonCounts.get(ep.seasonNumber) || 0) + 1)
+    }
+  }
+
+  const maxEpisodesInSeason = Math.max(...imdbSeasonCounts.values(), 0)
+  const imdbSeasonCount = imdbSeasonCounts.size
+
+  // IMDb data is unreliable if:
+  // 1. A single season has 500+ episodes (no normal show has this)
+  // 2. IMDb shows 1 season but TMDB shows 10+ seasons
+  return maxEpisodesInSeason >= 500 || (imdbSeasonCount === 1 && tmdbSeasonCount >= 10)
+}
+
+/**
+ * Get the episode count per season from TMDB for redistribution.
+ */
+async function getTmdbSeasonEpisodeCounts(showTmdbId: number): Promise<SeasonEpisodeCount[]> {
+  try {
+    const showDetails = await tmdb.getTVShowDetails(showTmdbId)
+    return showDetails.seasons
+      .filter((s) => s.season_number > 0) // Skip season 0 (specials)
+      .map((s) => ({
+        seasonNumber: s.season_number,
+        episodeCount: s.episode_count,
+      }))
+      .sort((a, b) => a.seasonNumber - b.seasonNumber)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Redistribute IMDb episodes to correct seasons using TMDB's season structure.
+ *
+ * When IMDb has all episodes dumped into "Season 1" (common for soap operas),
+ * we use TMDB's season info to distribute episodes sequentially:
+ * - Season 1 has 250 episodes → first 250 IMDb episodes
+ * - Season 2 has 260 episodes → episodes 251-510
+ * - etc.
+ *
+ * Episodes are sorted by their IMDb episode number and distributed in order.
+ *
+ * @param allImdbEpisodes - All episodes from IMDb (typically all in "Season 1")
+ * @param tmdbSeasonCounts - Episode counts per season from TMDB
+ * @param targetSeason - The season we want episodes for
+ * @returns Episodes redistributed to the target season
+ */
+export function redistributeEpisodesToSeason(
+  allImdbEpisodes: NormalizedEpisode[],
+  tmdbSeasonCounts: SeasonEpisodeCount[],
+  targetSeason: number
+): NormalizedEpisode[] {
+  if (allImdbEpisodes.length === 0 || tmdbSeasonCounts.length === 0) {
+    return []
+  }
+
+  // Sort episodes by original episode number (since they're all in "Season 1")
+  const sortedEpisodes = [...allImdbEpisodes].sort((a, b) => a.episodeNumber - b.episodeNumber)
+
+  // Calculate which range of episodes belong to the target season
+  let episodeOffset = 0
+  for (const season of tmdbSeasonCounts) {
+    if (season.seasonNumber === targetSeason) {
+      // Extract episodes for this season
+      const seasonEpisodes = sortedEpisodes.slice(
+        episodeOffset,
+        episodeOffset + season.episodeCount
+      )
+
+      // Re-number episodes for this season (1, 2, 3, ...)
+      return seasonEpisodes.map((ep, idx) => ({
+        ...ep,
+        seasonNumber: targetSeason,
+        episodeNumber: idx + 1,
+      }))
+    }
+    episodeOffset += season.episodeCount
+  }
+
+  // Season not found in TMDB data
+  return []
+}
+
+// ============================================================
 // Episode Fetching with Fallback
 // ============================================================
 
@@ -403,6 +515,76 @@ function stripHtml(html: string): string {
 }
 
 /**
+ * Fetch IMDb episodes with automatic redistribution for unreliable season data.
+ *
+ * For soap operas and long-running shows where IMDb has all episodes in "Season 1",
+ * this function redistributes episodes using TMDB's season structure.
+ */
+async function fetchImdbEpisodesWithRedistribution(
+  showTmdbId: number,
+  seasonNumber: number,
+  imdbId: string
+): Promise<NormalizedEpisode[]> {
+  // First, try the normal approach (season-filtered)
+  const seasonEpisodes = await imdb.getSeasonEpisodesWithDetails(imdbId, seasonNumber)
+
+  if (seasonEpisodes.length > 0) {
+    // Normal case: IMDb has proper season structure
+    return seasonEpisodes.map(normalizeImdbEpisode)
+  }
+
+  // No episodes for this season - check if IMDb data is unreliable
+  // Get TMDB season count to check reliability
+  const tmdbSeasonCounts = await getTmdbSeasonEpisodeCounts(showTmdbId)
+  const tmdbSeasonCount = tmdbSeasonCounts.length
+
+  // If TMDB has this season but IMDb doesn't, check for redistribution
+  const hasTmdbSeason = tmdbSeasonCounts.some((s) => s.seasonNumber === seasonNumber)
+  if (!hasTmdbSeason) {
+    // Season doesn't exist in TMDB either
+    return []
+  }
+
+  // Check if this is an unreliable IMDb data situation
+  const allImdbEpisodes = await imdb.getShowEpisodes(imdbId)
+  if (allImdbEpisodes.length === 0) {
+    return []
+  }
+
+  // Check for unreliable patterns
+  const imdbSeasonCounts = new Map<number, number>()
+  for (const ep of allImdbEpisodes) {
+    if (ep.seasonNumber !== null && ep.seasonNumber > 0) {
+      imdbSeasonCounts.set(ep.seasonNumber, (imdbSeasonCounts.get(ep.seasonNumber) || 0) + 1)
+    }
+  }
+
+  const maxEpisodesInSeason = Math.max(...imdbSeasonCounts.values(), 0)
+  const imdbSeasonCount = imdbSeasonCounts.size
+
+  // IMDb data is unreliable if:
+  // 1. A single season has 500+ episodes (no normal show has this)
+  // 2. IMDb shows 1 season but TMDB shows 10+ seasons
+  const isUnreliable =
+    maxEpisodesInSeason >= 500 || (imdbSeasonCount === 1 && tmdbSeasonCount >= 10)
+
+  if (!isUnreliable) {
+    // IMDb data is reliable but this season is just empty
+    return []
+  }
+
+  // Use redistribution: fetch ALL episodes and redistribute to correct seasons
+  console.log(
+    `  IMDb season data unreliable (${allImdbEpisodes.length} eps in ${imdbSeasonCount} season(s), TMDB shows ${tmdbSeasonCount}), redistributing...`
+  )
+
+  const allWithDetails = await imdb.getAllShowEpisodesWithDetails(imdbId)
+  const normalizedAll = allWithDetails.map(normalizeImdbEpisode)
+
+  return redistributeEpisodesToSeason(normalizedAll, tmdbSeasonCounts, seasonNumber)
+}
+
+/**
  * Fetch episodes for a season with fallback through data sources.
  *
  * @param showTmdbId - TMDB show ID
@@ -424,10 +606,14 @@ export async function fetchEpisodesWithFallback(
   if (preferredSource === "imdb") {
     if (ids.imdbId) {
       try {
-        const episodes = await imdb.getSeasonEpisodesWithDetails(ids.imdbId, seasonNumber)
+        const episodes = await fetchImdbEpisodesWithRedistribution(
+          showTmdbId,
+          seasonNumber,
+          ids.imdbId
+        )
         if (episodes.length > 0) {
           return {
-            episodes: episodes.map(normalizeImdbEpisode),
+            episodes,
             source: "imdb",
           }
         }
@@ -519,12 +705,17 @@ export async function fetchEpisodesWithFallback(
   }
 
   // Try IMDb fourth (requires downloading and parsing TSV files)
+  // Uses redistribution for unreliable season data (soap operas, etc.)
   if (ids.imdbId) {
     try {
-      const episodes = await imdb.getSeasonEpisodesWithDetails(ids.imdbId, seasonNumber)
+      const episodes = await fetchImdbEpisodesWithRedistribution(
+        showTmdbId,
+        seasonNumber,
+        ids.imdbId
+      )
       if (episodes.length > 0) {
         return {
-          episodes: episodes.map(normalizeImdbEpisode),
+          episodes,
           source: "imdb",
         }
       }

@@ -54,6 +54,7 @@ import {
   fetchEpisodeCastWithFallback,
   fetchShowCastWithFallback,
   tryMatchToTmdb,
+  redistributeEpisodesToSeason,
   type NormalizedEpisode,
   type NormalizedCastMember,
 } from "./episode-data-source.js"
@@ -1204,6 +1205,159 @@ describe("Episode Data Source Cascade", () => {
       expect(result.missingSeasons).toContain(2)
       expect(result.missingSeasons).toContain(3)
       expect(result.missingSeasons).toContain(4)
+    })
+  })
+
+  describe("redistributeEpisodesToSeason", () => {
+    it("distributes episodes sequentially to seasons based on TMDB counts", () => {
+      // Simulate soap opera with all 100 episodes in "Season 1" from IMDb
+      const allEpisodes: NormalizedEpisode[] = Array.from({ length: 100 }, (_, i) => ({
+        seasonNumber: 1, // All in season 1 (unreliable data)
+        episodeNumber: i + 1,
+        name: `Episode ${i + 1}`,
+        overview: null,
+        airDate: null,
+        runtime: 30,
+        stillPath: null,
+        imdbEpisodeId: `tt${String(i).padStart(7, "0")}`,
+      }))
+
+      // TMDB says: Season 1 = 40 eps, Season 2 = 35 eps, Season 3 = 25 eps
+      const tmdbSeasonCounts = [
+        { seasonNumber: 1, episodeCount: 40 },
+        { seasonNumber: 2, episodeCount: 35 },
+        { seasonNumber: 3, episodeCount: 25 },
+      ]
+
+      // Get season 1: should get first 40 episodes
+      const season1 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 1)
+      expect(season1).toHaveLength(40)
+      expect(season1[0].episodeNumber).toBe(1)
+      expect(season1[0].seasonNumber).toBe(1)
+      expect(season1[39].episodeNumber).toBe(40)
+      expect(season1[0].name).toBe("Episode 1")
+      expect(season1[39].name).toBe("Episode 40")
+
+      // Get season 2: should get episodes 41-75 (renumbered as 1-35)
+      const season2 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 2)
+      expect(season2).toHaveLength(35)
+      expect(season2[0].episodeNumber).toBe(1) // Renumbered
+      expect(season2[0].seasonNumber).toBe(2)
+      expect(season2[0].name).toBe("Episode 41") // Original name preserved
+      expect(season2[34].episodeNumber).toBe(35)
+      expect(season2[34].name).toBe("Episode 75")
+
+      // Get season 3: should get episodes 76-100 (renumbered as 1-25)
+      const season3 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 3)
+      expect(season3).toHaveLength(25)
+      expect(season3[0].episodeNumber).toBe(1)
+      expect(season3[0].seasonNumber).toBe(3)
+      expect(season3[0].name).toBe("Episode 76")
+      expect(season3[24].name).toBe("Episode 100")
+    })
+
+    it("returns empty array for non-existent season", () => {
+      const allEpisodes: NormalizedEpisode[] = [
+        {
+          seasonNumber: 1,
+          episodeNumber: 1,
+          name: "Test",
+          overview: null,
+          airDate: null,
+          runtime: 30,
+          stillPath: null,
+        },
+      ]
+
+      const tmdbSeasonCounts = [{ seasonNumber: 1, episodeCount: 10 }]
+
+      const result = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 5)
+      expect(result).toEqual([])
+    })
+
+    it("returns empty array when no episodes provided", () => {
+      const result = redistributeEpisodesToSeason([], [{ seasonNumber: 1, episodeCount: 10 }], 1)
+      expect(result).toEqual([])
+    })
+
+    it("returns empty array when no season counts provided", () => {
+      const allEpisodes: NormalizedEpisode[] = [
+        {
+          seasonNumber: 1,
+          episodeNumber: 1,
+          name: "Test",
+          overview: null,
+          airDate: null,
+          runtime: 30,
+          stillPath: null,
+        },
+      ]
+
+      const result = redistributeEpisodesToSeason(allEpisodes, [], 1)
+      expect(result).toEqual([])
+    })
+
+    it("handles case where TMDB expects more episodes than IMDb has", () => {
+      // IMDb only has 50 episodes, but TMDB says season 1 has 100
+      const allEpisodes: NormalizedEpisode[] = Array.from({ length: 50 }, (_, i) => ({
+        seasonNumber: 1,
+        episodeNumber: i + 1,
+        name: `Episode ${i + 1}`,
+        overview: null,
+        airDate: null,
+        runtime: 30,
+        stillPath: null,
+      }))
+
+      const tmdbSeasonCounts = [
+        { seasonNumber: 1, episodeCount: 100 }, // Expects 100
+        { seasonNumber: 2, episodeCount: 50 },
+      ]
+
+      // Should get all 50 available episodes for season 1
+      const season1 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 1)
+      expect(season1).toHaveLength(50)
+
+      // Season 2 should be empty since we ran out of episodes
+      const season2 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 2)
+      expect(season2).toHaveLength(0)
+    })
+
+    it("preserves original episode IDs during redistribution", () => {
+      const allEpisodes: NormalizedEpisode[] = [
+        {
+          seasonNumber: 1,
+          episodeNumber: 1,
+          name: "Pilot",
+          overview: null,
+          airDate: null,
+          runtime: 30,
+          stillPath: null,
+          imdbEpisodeId: "tt1111111",
+        },
+        {
+          seasonNumber: 1,
+          episodeNumber: 2,
+          name: "Second",
+          overview: null,
+          airDate: null,
+          runtime: 30,
+          stillPath: null,
+          imdbEpisodeId: "tt2222222",
+        },
+      ]
+
+      const tmdbSeasonCounts = [
+        { seasonNumber: 1, episodeCount: 1 },
+        { seasonNumber: 2, episodeCount: 1 },
+      ]
+
+      const season2 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 2)
+      expect(season2).toHaveLength(1)
+      expect(season2[0].imdbEpisodeId).toBe("tt2222222")
+      expect(season2[0].name).toBe("Second")
+      expect(season2[0].episodeNumber).toBe(1) // Renumbered
+      expect(season2[0].seasonNumber).toBe(2)
     })
   })
 })
