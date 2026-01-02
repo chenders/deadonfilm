@@ -136,7 +136,7 @@ export async function withNewRelicTransaction<T>(
           success: true,
         })
 
-        transaction.end()
+        transaction?.end()
         resolve(result)
       } catch (error) {
         // Record failure metrics
@@ -156,7 +156,7 @@ export async function withNewRelicTransaction<T>(
           errorMessage: error instanceof Error ? error.message : String(error),
         })
 
-        transaction.end()
+        transaction?.end()
         reject(error)
       }
     })
