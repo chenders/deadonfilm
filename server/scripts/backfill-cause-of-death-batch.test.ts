@@ -798,6 +798,26 @@ describe("date normalization helpers", () => {
       expect(normalizeDateToString("2000-01")).toBe("2000-01-01")
       expect(normalizeDateToString("2000-12")).toBe("2000-12-01")
     })
+
+    it("rejects invalid month values", () => {
+      expect(normalizeDateToString("2000-00")).toBeNull()
+      expect(normalizeDateToString("2000-13")).toBeNull()
+    })
+  })
+
+  describe("normalizeDateToString year validation", () => {
+    it("accepts years in reasonable range", () => {
+      expect(normalizeDateToString("1800")).toBe("1800-01-01")
+      expect(normalizeDateToString("2000")).toBe("2000-01-01")
+      expect(normalizeDateToString("2100")).toBe("2100-01-01")
+    })
+
+    it("rejects years outside reasonable range", () => {
+      expect(normalizeDateToString("1799")).toBeNull()
+      expect(normalizeDateToString("2101")).toBeNull()
+      expect(normalizeDateToString("0001")).toBeNull()
+      expect(normalizeDateToString("9999")).toBeNull()
+    })
   })
 
   describe("stripMarkdownCodeFences", () => {

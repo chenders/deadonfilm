@@ -120,6 +120,12 @@ describe("partial-date", () => {
       expect(formatPartialDate("2000-12-31", "day")).toBe("Dec 31, 2000")
       expect(formatPartialDate("2001-01-01", "day")).toBe("Jan 1, 2001")
     })
+
+    it("handles ISO date strings with time component", () => {
+      expect(formatPartialDate("1945-06-15T10:30:00Z", "day")).toBe("Jun 15, 1945")
+      expect(formatPartialDate("1945-06-15T10:30:00Z", "month")).toBe("June 1945")
+      expect(formatPartialDate("1945-06-15T10:30:00Z", "year")).toBe("1945")
+    })
   })
 
   describe("getEffectivePrecision", () => {

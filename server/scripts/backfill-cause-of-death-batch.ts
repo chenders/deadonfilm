@@ -202,13 +202,21 @@ export function normalizeDateToString(value: Date | string | null | undefined): 
     return str
   }
 
-  // Year-only format (YYYY)
+  // Year-only format (YYYY) - validate reasonable year range
   if (/^\d{4}$/.test(str)) {
+    const year = Number(str)
+    if (year < 1800 || year > 2100) {
+      return null
+    }
     return `${str}-01-01`
   }
 
-  // Year-month format (YYYY-MM)
+  // Year-month format (YYYY-MM) - validate month range
   if (/^\d{4}-\d{2}$/.test(str)) {
+    const monthNum = Number(str.slice(5, 7))
+    if (monthNum < 1 || monthNum > 12) {
+      return null
+    }
     return `${str}-01`
   }
 
