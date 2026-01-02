@@ -235,7 +235,7 @@ const program = new Command()
         if (!shouldSubmit) {
           console.log("No submission needed. Exiting.")
           await getPool().end()
-          process.exit(0)
+          return
         }
 
         // Write files
@@ -313,11 +313,10 @@ const program = new Command()
         })
 
         await getPool().end()
-        process.exit(0)
       } catch (error) {
         console.error("Error:", error)
         await getPool().end()
-        process.exit(1)
+        throw error
       }
     })
   })
