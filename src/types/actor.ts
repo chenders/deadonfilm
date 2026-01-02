@@ -2,6 +2,9 @@
 
 import type { PaginationInfo } from "./common"
 
+// Date precision for partial dates (year-only, year+month, full date)
+export type DatePrecision = "year" | "month" | "day"
+
 export interface CastMember {
   id: number
   name: string
@@ -14,7 +17,9 @@ export interface PersonDetails {
   id: number
   name: string
   birthday: string | null
+  birthdayPrecision?: DatePrecision | null
   deathday: string | null
+  deathdayPrecision?: DatePrecision | null
   biography: string
   profile_path: string | null
   place_of_birth: string | null
@@ -26,7 +31,9 @@ export interface DeceasedActor {
   character: string
   profile_path: string | null
   birthday: string | null
+  birthdayPrecision?: DatePrecision | null
   deathday: string
+  deathdayPrecision?: DatePrecision | null
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   wikipediaUrl: string | null
@@ -42,6 +49,7 @@ export interface LivingActor {
   character: string
   profile_path: string | null
   birthday: string | null
+  birthdayPrecision?: DatePrecision | null
   age: number | null
 }
 
@@ -86,7 +94,9 @@ export interface ActorProfileResponse {
     id: number
     name: string
     birthday: string | null
+    birthdayPrecision?: DatePrecision | null
     deathday: string | null
+    deathdayPrecision?: DatePrecision | null
     biography: string
     profilePath: string | null
     placeOfBirth: string | null
