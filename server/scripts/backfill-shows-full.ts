@@ -338,6 +338,13 @@ async function runBackfill(options: {
   if (!dryRun && allCompleted && checkpoint.stats.errors === 0) {
     console.log("\nAll shows processed with no errors. Deleting checkpoint.")
     deleteCheckpoint()
+  } else if (!dryRun && allCompleted && checkpoint.stats.errors > 0) {
+    console.log(
+      "\nAll shows processed but some errors occurred. Keeping checkpoint so you can resume or investigate."
+    )
+    console.log(
+      "If you've fixed the issues and want to start fresh, rerun with --fresh or manually delete the checkpoint file."
+    )
   }
 
   await resetPool()
@@ -367,6 +374,7 @@ async function processShow(
       errorType: "ShowNotFound",
       errorMessage: "Show not found in database",
     })
+    if (!dryRun) saveCheckpoint(checkpoint)
     return
   }
 
@@ -521,10 +529,11 @@ async function processShow(
       }
 
       // Process cast if requested
+      let seasonCastCount = 0
       if (includeCast && episodesWithImdb.length > 0) {
         console.log(`    Processing cast for ${episodesWithImdb.length} episodes with IMDb IDs...`)
-        const castSaved = await processEpisodeCast(showTmdbId, episodesWithImdb, source, session)
-        showCastCount += castSaved
+        seasonCastCount = await processEpisodeCast(showTmdbId, episodesWithImdb, source, session)
+        showCastCount += seasonCastCount
       }
 
       // Record season completion
@@ -533,7 +542,7 @@ async function processShow(
         showTmdbId,
         seasonNumber,
         episodesSaved: episodes.length,
-        castMembersSaved: showCastCount,
+        castMembersSaved: seasonCastCount,
         durationMs: seasonDuration,
       })
 
@@ -622,6 +631,9 @@ async function processEpisodeCast(
           }
 
           // Session-wide deduplication for death cause lookups
+          // Note: We add to the Set early (before checking cause_of_death) to prevent
+          // both redundant database queries AND redundant API lookups within this session.
+          // deathCauseLookups counter only tracks actual API calls that found results.
           if (castMember.deathYear && !deathCauseLookedUp.has(actorId)) {
             deathCauseLookedUp.add(actorId)
 
