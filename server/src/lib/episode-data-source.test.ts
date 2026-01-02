@@ -30,6 +30,7 @@ vi.mock("./db.js", () => ({
     query: vi.fn(),
   })),
   getShow: vi.fn(),
+  getEpisodeCountsBySeasonFromDb: vi.fn(),
 }))
 
 vi.mock("./imdb.js", () => ({
@@ -818,10 +819,8 @@ describe("Episode Data Source Cascade", () => {
         imdb_id: null,
       } as never)
 
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ count: "100" }] }),
-      }
-      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+      // Mock episode counts per season (total 100 episodes)
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map([[1, 100]]))
 
       // Mock TMDB to return no gaps at season level
       vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
@@ -842,10 +841,8 @@ describe("Episode Data Source Cascade", () => {
         imdb_id: null,
       } as never)
 
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ count: "95" }] }),
-      }
-      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+      // Mock episode counts per season (total 95 episodes)
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map([[1, 95]]))
 
       // Mock TMDB to return no gaps at season level
       vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
@@ -866,10 +863,8 @@ describe("Episode Data Source Cascade", () => {
         imdb_id: null,
       } as never)
 
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ count: "15" }] }),
-      }
-      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+      // Mock episode counts per season (total 15 episodes)
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map([[1, 15]]))
 
       // Mock TMDB to return no gaps at season level
       vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
@@ -891,10 +886,8 @@ describe("Episode Data Source Cascade", () => {
         imdb_id: null,
       } as never)
 
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ count: "10" }] }),
-      }
-      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+      // Mock episode counts per season (total 10 episodes)
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map([[1, 10]]))
 
       // Mock TMDB to return no gaps at season level
       vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
@@ -915,10 +908,8 @@ describe("Episode Data Source Cascade", () => {
         imdb_id: "tt0123456",
       } as never)
 
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ count: "100" }] }),
-      }
-      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+      // Mock episode counts per season (total 100 episodes in season 1)
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map([[1, 100]]))
 
       // Mock TMDB to return no gaps
       vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
@@ -927,7 +918,7 @@ describe("Episode Data Source Cascade", () => {
         seasons: [],
       } as never)
 
-      // IMDb has more episodes
+      // IMDb has 200 episodes in season 1 (more than the 100 in db)
       vi.mocked(imdb.getShowEpisodes).mockResolvedValue([
         { tconst: "tt001", parentTconst: "tt0123456", seasonNumber: 1, episodeNumber: 1 },
         { tconst: "tt002", parentTconst: "tt0123456", seasonNumber: 1, episodeNumber: 2 },
@@ -943,7 +934,8 @@ describe("Episode Data Source Cascade", () => {
       const result = await detectShowDataGaps(123)
 
       expect(result.hasGaps).toBe(true)
-      expect(result.details).toContain("IMDb has 200 episodes, database has 100")
+      expect(result.details[0]).toContain("Total: IMDb has 200 episodes, database has 100")
+      expect(result.missingSeasons).toContain(1)
     })
 
     it("uses provided imdbId over show imdb_id", async () => {
@@ -952,10 +944,8 @@ describe("Episode Data Source Cascade", () => {
         imdb_id: "tt9999999",
       } as never)
 
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ count: "0" }] }),
-      }
-      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+      // Mock episode counts per season (empty)
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map())
 
       // Mock TMDB to return no gaps
       vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
@@ -979,10 +969,8 @@ describe("Episode Data Source Cascade", () => {
         imdb_id: "tt0123456",
       } as never)
 
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ count: "100" }] }),
-      }
-      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+      // Mock episode counts per season (total 100 episodes)
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map([[1, 100]]))
 
       // Mock TMDB to return no gaps
       vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
@@ -1006,10 +994,8 @@ describe("Episode Data Source Cascade", () => {
         imdb_id: "tt0123456",
       } as never)
 
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ count: "10" }] }),
-      }
-      vi.mocked(db.getPool).mockReturnValue(mockPool as never)
+      // Mock episode counts per season (database has 10 episodes in season 1 only)
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map([[1, 10]]))
 
       // Mock TMDB to return no gaps
       vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
@@ -1018,13 +1004,32 @@ describe("Episode Data Source Cascade", () => {
         seasons: [],
       } as never)
 
-      // IMDb has episodes across multiple seasons
+      // IMDb has episodes across multiple seasons (more than db has per season)
       vi.mocked(imdb.getShowEpisodes).mockResolvedValue([
-        { tconst: "tt001", parentTconst: "tt0123456", seasonNumber: 1, episodeNumber: 1 },
-        { tconst: "tt002", parentTconst: "tt0123456", seasonNumber: 2, episodeNumber: 1 },
-        { tconst: "tt003", parentTconst: "tt0123456", seasonNumber: 3, episodeNumber: 1 },
-        ...Array(47).fill({
-          tconst: "tt999",
+        // Season 1: 15 episodes (db has 10, so gap)
+        ...Array(15).fill({
+          tconst: "tt001",
+          parentTconst: "tt0123456",
+          seasonNumber: 1,
+          episodeNumber: 1,
+        }),
+        // Season 2: 10 episodes (db has 0, so gap)
+        ...Array(10).fill({
+          tconst: "tt002",
+          parentTconst: "tt0123456",
+          seasonNumber: 2,
+          episodeNumber: 1,
+        }),
+        // Season 3: 10 episodes (db has 0, so gap)
+        ...Array(10).fill({
+          tconst: "tt003",
+          parentTconst: "tt0123456",
+          seasonNumber: 3,
+          episodeNumber: 1,
+        }),
+        // Season 4: 15 episodes (db has 0, so gap)
+        ...Array(15).fill({
+          tconst: "tt004",
           parentTconst: "tt0123456",
           seasonNumber: 4,
           episodeNumber: 1,

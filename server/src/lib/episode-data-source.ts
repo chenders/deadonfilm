@@ -12,7 +12,7 @@ import * as tmdb from "./tmdb.js"
 import * as tvmaze from "./tvmaze.js"
 import * as thetvdb from "./thetvdb.js"
 import * as imdb from "./imdb.js"
-import { getPool, getShow } from "./db.js"
+import { getPool, getShow, getEpisodeCountsBySeasonFromDb } from "./db.js"
 
 // ============================================================
 // Types
@@ -132,17 +132,15 @@ export async function countEpisodesInDb(showTmdbId: number): Promise<number> {
 }
 
 /**
- * Improved gap detection that compares show's number_of_episodes metadata
- * against actual episode count in database.
+ * Improved gap detection that uses IMDb as the primary source of truth
+ * when available, falling back to TMDB metadata.
  *
- * This catches cases where TMDB's seasons array is empty but the show metadata
- * indicates many episodes exist (common for old soap operas like "All My Children").
- *
- * Also checks against IMDb episode count when an IMDb ID is available, since
- * IMDb often has more complete episode data for older shows.
+ * The key insight: For older soap operas like General Hospital (60+ seasons),
+ * TMDB often only has a few seasons in its seasons array, but IMDb has complete
+ * episode data. We need to compare each IMDb season against what's in our database.
  *
  * @param showTmdbId - TMDB show ID
- * @param imdbId - Optional IMDb ID to check against (if not provided, will be looked up from show)
+ * @param imdbId - Optional IMDb ID (if not provided, will be looked up from show)
  * @returns DataGapResult with hasGaps=true if database is missing episodes
  */
 export async function detectShowDataGaps(
@@ -156,7 +154,7 @@ export async function detectShowDataGaps(
   }
 
   try {
-    // Get show from database to check number_of_episodes and imdb_id
+    // Get show from database to check imdb_id
     const show = await getShow(showTmdbId)
     if (!show) {
       result.details.push("Show not found in database")
@@ -166,63 +164,93 @@ export async function detectShowDataGaps(
     // Use provided imdbId or fall back to show's imdb_id
     const showImdbId = imdbId ?? show.imdb_id
 
-    const expectedEpisodes = show.number_of_episodes || 0
-    const actualEpisodes = await countEpisodesInDb(showTmdbId)
+    // Get current episode counts per season from our database
+    const dbSeasonCounts = await getEpisodeCountsBySeasonFromDb(showTmdbId)
+    const totalDbEpisodes = Array.from(dbSeasonCounts.values()).reduce((a, b) => a + b, 0)
 
-    // Check against TMDB expected count
-    if (expectedEpisodes > 0) {
-      // Allow 10% tolerance for minor discrepancies
-      const tolerance = Math.max(5, Math.floor(expectedEpisodes * 0.1))
-      const missingCount = expectedEpisodes - actualEpisodes
-
-      if (missingCount > tolerance) {
-        result.hasGaps = true
-        result.details.push(
-          `Expected ${expectedEpisodes} episodes (TMDB), have ${actualEpisodes} (missing ${missingCount})`
-        )
-      }
-    }
-
-    // Also check for TMDB season-level gaps (episodes that exist in TMDB but failed to import)
-    const tmdbGaps = await detectTmdbDataGaps(showTmdbId)
-    if (tmdbGaps.hasGaps) {
-      result.hasGaps = true
-      result.missingSeasons = tmdbGaps.missingSeasons
-      result.details.push(...tmdbGaps.details)
-    }
-
-    // Always check IMDb if we have an IMDb ID - it often has more complete data
+    // PRIMARY: Use IMDb as source of truth when available
+    // IMDb has the most complete data for older shows
     if (showImdbId) {
       try {
         const imdbEpisodes = await imdb.getShowEpisodes(showImdbId)
-        if (imdbEpisodes.length > actualEpisodes) {
-          result.hasGaps = true
-          result.details.push(
-            `IMDb has ${imdbEpisodes.length} episodes, database has ${actualEpisodes}`
-          )
 
-          // Get unique season numbers from IMDb
-          const imdbSeasons = new Set(
-            imdbEpisodes.filter((e) => e.seasonNumber !== null).map((e) => e.seasonNumber!)
-          )
-          // Add seasons that aren't already in missingSeasons
-          for (const season of imdbSeasons) {
-            if (!result.missingSeasons.includes(season)) {
-              result.missingSeasons.push(season)
+        if (imdbEpisodes.length > 0) {
+          // Group IMDb episodes by season
+          const imdbSeasonCounts = new Map<number, number>()
+          for (const ep of imdbEpisodes) {
+            if (ep.seasonNumber !== null && ep.seasonNumber > 0) {
+              imdbSeasonCounts.set(
+                ep.seasonNumber,
+                (imdbSeasonCounts.get(ep.seasonNumber) || 0) + 1
+              )
             }
           }
+
+          // Compare each IMDb season against our database
+          for (const [seasonNum, imdbCount] of imdbSeasonCounts) {
+            const dbCount = dbSeasonCounts.get(seasonNum) || 0
+
+            // If IMDb has more episodes than our database, it's a gap
+            if (imdbCount > dbCount) {
+              result.hasGaps = true
+              result.missingSeasons.push(seasonNum)
+              result.details.push(
+                `Season ${seasonNum}: IMDb has ${imdbCount} episodes, database has ${dbCount}`
+              )
+            }
+          }
+
+          // Sort seasons numerically
           result.missingSeasons.sort((a, b) => a - b)
+
+          // Add overall summary
+          if (imdbEpisodes.length > totalDbEpisodes) {
+            result.details.unshift(
+              `Total: IMDb has ${imdbEpisodes.length} episodes, database has ${totalDbEpisodes}`
+            )
+          }
+
+          // If we found IMDb data, we're done
+          if (result.missingSeasons.length > 0 || imdbEpisodes.length <= totalDbEpisodes) {
+            return result
+          }
         }
       } catch (error) {
         result.details.push(
           `IMDb check failed: ${error instanceof Error ? error.message : "unknown error"}`
         )
+        // Fall through to TMDB check
       }
     }
 
-    // If expected episodes is 0 and no gaps found yet, fall back to TMDB gaps
-    if (expectedEpisodes === 0 && !result.hasGaps) {
-      return tmdbGaps
+    // FALLBACK: Check TMDB metadata if no IMDb or IMDb check failed
+    const expectedEpisodes = show.number_of_episodes || 0
+
+    if (expectedEpisodes > 0) {
+      // Allow 10% tolerance for minor discrepancies
+      const tolerance = Math.max(5, Math.floor(expectedEpisodes * 0.1))
+      const missingCount = expectedEpisodes - totalDbEpisodes
+
+      if (missingCount > tolerance) {
+        result.hasGaps = true
+        result.details.push(
+          `Expected ${expectedEpisodes} episodes (TMDB), have ${totalDbEpisodes} (missing ${missingCount})`
+        )
+      }
+    }
+
+    // Also check for TMDB season-level gaps
+    const tmdbGaps = await detectTmdbDataGaps(showTmdbId)
+    if (tmdbGaps.hasGaps) {
+      result.hasGaps = true
+      // Add TMDB gap seasons that aren't already in missingSeasons
+      for (const season of tmdbGaps.missingSeasons) {
+        if (!result.missingSeasons.includes(season)) {
+          result.missingSeasons.push(season)
+        }
+      }
+      result.missingSeasons.sort((a, b) => a - b)
+      result.details.push(...tmdbGaps.details)
     }
   } catch (error) {
     result.details.push(
@@ -363,13 +391,73 @@ function stripHtml(html: string): string {
  * @param showTmdbId - TMDB show ID
  * @param seasonNumber - Season number to fetch
  * @param externalIds - Pre-fetched external IDs (optional, will be fetched if not provided)
+ * @param preferredSource - If set, try this source first (or exclusively for imdb)
  * @returns Episodes and the source they came from
  */
 export async function fetchEpisodesWithFallback(
   showTmdbId: number,
   seasonNumber: number,
-  externalIds?: ExternalShowIds
+  externalIds?: ExternalShowIds,
+  preferredSource?: DataSource
 ): Promise<{ episodes: NormalizedEpisode[]; source: DataSource }> {
+  // Get external IDs upfront if needed for non-TMDB sources
+  const ids = externalIds ?? (await getExternalIds(showTmdbId))
+
+  // If preferred source is IMDb, go directly to IMDb (skip cascade)
+  if (preferredSource === "imdb") {
+    if (ids.imdbId) {
+      try {
+        const episodes = await imdb.getSeasonEpisodesWithDetails(ids.imdbId, seasonNumber)
+        if (episodes.length > 0) {
+          return {
+            episodes: episodes.map(normalizeImdbEpisode),
+            source: "imdb",
+          }
+        }
+      } catch {
+        // IMDb failed
+      }
+    }
+    // IMDb was requested but not available or failed
+    return { episodes: [], source: "imdb" }
+  }
+
+  // If preferred source is TVmaze, try it first
+  if (preferredSource === "tvmaze") {
+    if (ids.tvmazeId) {
+      try {
+        const episodes = await tvmaze.getSeasonEpisodes(ids.tvmazeId, seasonNumber)
+        if (episodes.length > 0) {
+          return {
+            episodes: episodes.map(normalizeTvmazeEpisode),
+            source: "tvmaze",
+          }
+        }
+      } catch {
+        // TVmaze failed, fall through to normal cascade
+      }
+    }
+  }
+
+  // If preferred source is TheTVDB, try it first
+  if (preferredSource === "thetvdb") {
+    if (ids.thetvdbId) {
+      try {
+        const episodes = await thetvdb.getSeasonEpisodes(ids.thetvdbId, seasonNumber)
+        if (episodes.length > 0) {
+          return {
+            episodes: episodes.map(normalizeThetvdbEpisode),
+            source: "thetvdb",
+          }
+        }
+      } catch {
+        // TheTVDB failed, fall through to normal cascade
+      }
+    }
+  }
+
+  // Normal cascade: TMDB -> TVmaze -> TheTVDB -> IMDb
+
   // Try TMDB first
   try {
     const seasonDetails = await tmdb.getSeasonDetails(showTmdbId, seasonNumber)
@@ -383,11 +471,8 @@ export async function fetchEpisodesWithFallback(
     // TMDB failed, continue to fallback
   }
 
-  // Get external IDs if not provided
-  const ids = externalIds ?? (await getExternalIds(showTmdbId))
-
-  // Try TVmaze second
-  if (ids.tvmazeId) {
+  // Try TVmaze second (skip if already tried as preferred)
+  if (ids.tvmazeId && preferredSource !== "tvmaze") {
     try {
       const episodes = await tvmaze.getSeasonEpisodes(ids.tvmazeId, seasonNumber)
       if (episodes.length > 0) {
@@ -401,8 +486,8 @@ export async function fetchEpisodesWithFallback(
     }
   }
 
-  // Try TheTVDB third
-  if (ids.thetvdbId) {
+  // Try TheTVDB third (skip if already tried as preferred)
+  if (ids.thetvdbId && preferredSource !== "thetvdb") {
     try {
       const episodes = await thetvdb.getSeasonEpisodes(ids.thetvdbId, seasonNumber)
       if (episodes.length > 0) {
