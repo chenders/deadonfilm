@@ -226,10 +226,29 @@ async function runBackfill(options: {
   if (checkpoint.stats.appearancesSaved === undefined) checkpoint.stats.appearancesSaved = 0
   if (checkpoint.stats.deathCauseLookups === undefined) checkpoint.stats.deathCauseLookups = 0
 
+  // Session-wide cache to track actors whose death cause has already been looked up
+  // This prevents looking up the same actor's death cause multiple times across episodes/shows
+  const deathCauseLookedUp = new Set<number>()
+
   if (effectiveAllGaps) {
-    await backfillAllGaps(db, forcedSource, includeCast ?? false, dryRun ?? false, checkpoint)
+    await backfillAllGaps(
+      db,
+      forcedSource,
+      includeCast ?? false,
+      dryRun ?? false,
+      checkpoint,
+      deathCauseLookedUp
+    )
   } else if (showId) {
-    await backfillShow(db, showId, forcedSource, includeCast ?? false, dryRun ?? false, checkpoint)
+    await backfillShow(
+      db,
+      showId,
+      forcedSource,
+      includeCast ?? false,
+      dryRun ?? false,
+      checkpoint,
+      deathCauseLookedUp
+    )
   }
 
   // Close database pool to allow process to exit
@@ -281,7 +300,8 @@ async function backfillAllGaps(
   forcedSource: DataSource | undefined,
   includeCast: boolean,
   dryRun: boolean,
-  checkpoint: Checkpoint
+  checkpoint: Checkpoint,
+  deathCauseLookedUp: Set<number>
 ) {
   console.log(
     `\nBackfilling all shows with TMDB data gaps${includeCast ? " (including cast)" : ""}${dryRun ? " (DRY RUN)" : ""}`
@@ -316,7 +336,15 @@ async function backfillAllGaps(
     console.log(`Found gaps in: ${show.name} (${show.tmdb_id})`)
 
     // Backfill this show
-    await backfillShow(db, show.tmdb_id, forcedSource, includeCast, dryRun, checkpoint)
+    await backfillShow(
+      db,
+      show.tmdb_id,
+      forcedSource,
+      includeCast,
+      dryRun,
+      checkpoint,
+      deathCauseLookedUp
+    )
 
     // Mark show as processed
     checkpoint.processedShowIds.push(show.tmdb_id)
@@ -370,7 +398,8 @@ async function backfillShow(
   forcedSource: DataSource | undefined,
   includeCast: boolean,
   dryRun: boolean,
-  checkpoint: Checkpoint
+  checkpoint: Checkpoint,
+  deathCauseLookedUp: Set<number>
 ) {
   // Get show info from database
   const showResult = await db.query<ShowInfo>(
@@ -463,25 +492,22 @@ async function backfillShow(
     const expectedCount = seasonSummary?.episode_count ?? 0
 
     try {
+      // Pass forcedSource to fetch function so it tries that source first/exclusively
       const { episodes, source } = await fetchEpisodesWithFallback(
         showTmdbId,
         seasonNumber,
-        externalIds
+        externalIds,
+        forcedSource
       )
 
       if (episodes.length === 0) {
-        console.log(`    No episodes found from any source`)
+        console.log(
+          `    No episodes found${forcedSource ? ` from ${forcedSource}` : " from any source"}`
+        )
         // Mark season as processed even if no episodes found
         checkpoint.processedSeasons.push(seasonNumber)
         checkpoint.stats.seasonsProcessed++
         if (!dryRun) saveCheckpoint(checkpoint)
-        continue
-      }
-
-      if (forcedSource && source !== forcedSource) {
-        console.log(
-          `    Found ${episodes.length} episodes from ${source}, but --source ${forcedSource} was specified`
-        )
         continue
       }
 
@@ -543,7 +569,14 @@ async function backfillShow(
       // Process cast if requested and we have IMDb episode IDs
       if (includeCast && episodesWithImdb.length > 0) {
         console.log(`    Processing cast for ${episodesWithImdb.length} episodes with IMDb IDs...`)
-        await processEpisodeCast(showTmdbId, episodesWithImdb, source, dryRun, checkpoint)
+        await processEpisodeCast(
+          showTmdbId,
+          episodesWithImdb,
+          source,
+          dryRun,
+          checkpoint,
+          deathCauseLookedUp
+        )
       }
 
       // Mark season as processed
@@ -574,9 +607,12 @@ async function backfillShow(
  * Process cast for episodes with IMDb IDs.
  * - Fetches cast from IMDb datasets
  * - Creates/updates actors
- * - Looks up death causes for deceased actors
+ * - Looks up death causes for deceased actors (with session-wide deduplication)
  * - Creates actor_show_appearances records
  * - Updates episode with cast_count, deceased_count, and mortality stats
+ *
+ * @param deathCauseLookedUp - Set of actor IDs that have already had death cause looked up
+ *                             in this session. Passed in from caller to persist across shows.
  */
 async function processEpisodeCast(
   showTmdbId: number,
@@ -588,7 +624,8 @@ async function processEpisodeCast(
   }>,
   source: DataSource,
   dryRun: boolean,
-  checkpoint: Checkpoint
+  checkpoint: Checkpoint,
+  deathCauseLookedUp: Set<number>
 ): Promise<void> {
   const currentYear = new Date().getFullYear()
   // Track unique actors across all episodes in this batch
@@ -638,8 +675,11 @@ async function processEpisodeCast(
             checkpoint.stats.actorsSaved++
           }
 
-          // If actor is deceased and we don't have cause of death, look it up
-          if (castMember.deathYear) {
+          // If actor is deceased and we haven't already looked up their death cause in this session
+          if (castMember.deathYear && !deathCauseLookedUp.has(actorId)) {
+            // Mark as looked up BEFORE the lookup to prevent duplicate lookups
+            deathCauseLookedUp.add(actorId)
+
             const actor = await getActorById(actorId)
             if (actor && !actor.cause_of_death) {
               console.log(`        Looking up death cause for ${castMember.name}...`)

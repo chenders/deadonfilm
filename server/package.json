@@ -62,6 +62,8 @@
     "backfill:actor-obscure": "tsx scripts/backfill-actor-obscure.ts",
     "//backfill:episodes:fallback": "Backfill episodes from TVmaze/TheTVDB",
     "backfill:episodes:fallback": "tsx scripts/backfill-episodes-fallback.ts",
+    "//backfill:shows:full": "All-in-one TV show backfill with session-wide caching",
+    "backfill:shows:full": "tsx scripts/backfill-shows-full.ts",
     "//backfill:external-ids": "Backfill TVmaze/TheTVDB IDs for shows",
     "backfill:external-ids": "tsx scripts/backfill-external-ids.ts",
 
