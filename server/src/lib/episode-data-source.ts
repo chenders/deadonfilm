@@ -201,7 +201,27 @@ export async function detectShowDataGaps(
             result.details.push(
               `IMDb season data unreliable (${imdbEpisodes.length} episodes in ${imdbSeasonCount} season(s), TMDB shows ${tmdbSeasonCount} seasons) - using TMDB for season structure`
             )
-            // Fall through to TMDB check instead of returning
+
+            // Compare TMDB's per-season counts against our database
+            const tmdbSeasonCounts = await getTmdbSeasonEpisodeCounts(showTmdbId)
+            for (const season of tmdbSeasonCounts) {
+              const dbCount = dbSeasonCounts.get(season.seasonNumber) || 0
+
+              // If TMDB has more episodes than our database, it's a gap
+              if (season.episodeCount > dbCount) {
+                result.hasGaps = true
+                result.missingSeasons.push(season.seasonNumber)
+                result.details.push(
+                  `Season ${season.seasonNumber}: TMDB has ${season.episodeCount} episodes, database has ${dbCount}`
+                )
+              }
+            }
+
+            // Sort seasons numerically
+            result.missingSeasons.sort((a, b) => a - b)
+
+            // Return with TMDB-based gaps
+            return result
           } else {
             // Compare each IMDb season against our database
             for (const [seasonNum, imdbCount] of imdbSeasonCounts) {
