@@ -578,14 +578,15 @@ async function applyUpdate(
   if (parsed.corrections) {
     // Birthday correction
     if (parsed.corrections.birthYear) {
-      const currentBirthYear = actor.birthday ? new Date(actor.birthday).getFullYear() : null
+      // Parse year directly from YYYY-MM-DD string to avoid timezone issues
+      const currentBirthYear = actor.birthday ? parseInt(actor.birthday.split("-")[0], 10) : null
       if (currentBirthYear !== parsed.corrections.birthYear) {
         // Create a new birthday with corrected year, keeping month/day if available
         let newBirthday: string
         if (actor.birthday) {
-          const d = new Date(actor.birthday)
-          d.setFullYear(parsed.corrections.birthYear)
-          newBirthday = d.toISOString().split("T")[0]
+          // Replace year in YYYY-MM-DD string directly to avoid timezone issues
+          const [, month, day] = actor.birthday.split("-")
+          newBirthday = `${parsed.corrections.birthYear}-${month}-${day}`
         } else {
           newBirthday = `${parsed.corrections.birthYear}-01-01`
         }
@@ -606,11 +607,12 @@ async function applyUpdate(
       if (parsed.corrections.deathDate) {
         newDeathday = parsed.corrections.deathDate
       } else if (parsed.corrections.deathYear) {
-        const currentDeathYear = new Date(actor.deathday).getFullYear()
+        // Parse year directly from YYYY-MM-DD string to avoid timezone issues
+        const currentDeathYear = parseInt(actor.deathday.split("-")[0], 10)
         if (currentDeathYear !== parsed.corrections.deathYear) {
-          const d = new Date(actor.deathday)
-          d.setFullYear(parsed.corrections.deathYear)
-          newDeathday = d.toISOString().split("T")[0]
+          // Replace year in YYYY-MM-DD string directly to avoid timezone issues
+          const [, month, day] = actor.deathday.split("-")
+          newDeathday = `${parsed.corrections.deathYear}-${month}-${day}`
         } else {
           newDeathday = actor.deathday
         }
