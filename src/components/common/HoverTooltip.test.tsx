@@ -1,8 +1,17 @@
-import { describe, it, expect, vi } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { render, screen, fireEvent, act } from "@testing-library/react"
 import HoverTooltip from "./HoverTooltip"
 
 describe("HoverTooltip", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+  })
+
   it("renders children", () => {
     render(
       <HoverTooltip content="Tooltip content">
@@ -30,12 +39,13 @@ describe("HoverTooltip", () => {
       </HoverTooltip>
     )
 
-    fireEvent.mouseEnter(screen.getByText("Trigger text"))
-
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
-      expect(screen.getByText("Tooltip content")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.mouseEnter(screen.getByText("Trigger text"))
+      vi.advanceTimersByTime(0)
     })
+
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    expect(screen.getByText("Tooltip content")).toBeInTheDocument()
   })
 
   it("hides tooltip on mouse leave with delay", async () => {
@@ -46,21 +56,24 @@ describe("HoverTooltip", () => {
     )
 
     // Show tooltip
-    fireEvent.mouseEnter(screen.getByText("Trigger text"))
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.mouseEnter(screen.getByText("Trigger text"))
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
-    // Hide tooltip
-    fireEvent.mouseLeave(screen.getByText("Trigger text"))
+    // Hide tooltip - should still be visible immediately after mouse leave
+    await act(async () => {
+      fireEvent.mouseLeave(screen.getByText("Trigger text"))
+      vi.advanceTimersByTime(50) // Less than 100ms delay
+    })
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
-    // Wait for the hide delay (100ms) plus some buffer
-    await waitFor(
-      () => {
-        expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
-      },
-      { timeout: 500 }
-    )
+    // After the full delay, tooltip should be hidden
+    await act(async () => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
   })
 
   it("applies custom className", () => {
@@ -82,24 +95,26 @@ describe("HoverTooltip", () => {
     )
 
     // Show tooltip
-    fireEvent.mouseEnter(screen.getByText("Trigger text"))
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.mouseEnter(screen.getByText("Trigger text"))
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
     // Start leaving trigger
-    fireEvent.mouseLeave(screen.getByText("Trigger text"))
+    await act(async () => {
+      fireEvent.mouseLeave(screen.getByText("Trigger text"))
+      vi.advanceTimersByTime(50) // Before hide timeout
+    })
 
-    // Enter tooltip before hide timeout
-    fireEvent.mouseEnter(screen.getByTestId("hover-tooltip"))
+    // Enter tooltip before hide timeout completes
+    await act(async () => {
+      fireEvent.mouseEnter(screen.getByTestId("hover-tooltip"))
+      vi.advanceTimersByTime(100) // Past the original timeout
+    })
 
     // Tooltip should still be visible
-    await waitFor(
-      () => {
-        expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
-      },
-      { timeout: 300 }
-    )
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
   })
 
   it("has cursor-help class on trigger", () => {
@@ -120,12 +135,12 @@ describe("HoverTooltip", () => {
       </HoverTooltip>
     )
 
-    // Click to show tooltip
-    fireEvent.click(screen.getByText("Trigger text"))
-
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByText("Trigger text"))
+      vi.advanceTimersByTime(0)
     })
+
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
   })
 
   it("hides tooltip on second click (toggle behavior)", async () => {
@@ -138,16 +153,18 @@ describe("HoverTooltip", () => {
     const trigger = screen.getByText("Trigger text")
 
     // Click to show
-    fireEvent.click(trigger)
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(trigger)
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
     // Click again to hide
-    fireEvent.click(trigger)
-    await waitFor(() => {
-      expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(trigger)
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
   })
 
   it("uses custom testId when provided", async () => {
@@ -157,11 +174,12 @@ describe("HoverTooltip", () => {
       </HoverTooltip>
     )
 
-    fireEvent.click(screen.getByText("Trigger text"))
-
-    await waitFor(() => {
-      expect(screen.getByTestId("custom-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByText("Trigger text"))
+      vi.advanceTimersByTime(0)
     })
+
+    expect(screen.getByTestId("custom-tooltip")).toBeInTheDocument()
   })
 
   it("shows tooltip on Enter key press (keyboard accessibility)", async () => {
@@ -172,11 +190,13 @@ describe("HoverTooltip", () => {
     )
 
     const trigger = screen.getByText("Trigger text").parentElement!
-    fireEvent.keyDown(trigger, { key: "Enter" })
 
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.keyDown(trigger, { key: "Enter" })
+      vi.advanceTimersByTime(0)
     })
+
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
   })
 
   it("hides tooltip on Escape key press", async () => {
@@ -189,16 +209,18 @@ describe("HoverTooltip", () => {
     const trigger = screen.getByText("Trigger text").parentElement!
 
     // Open with click
-    fireEvent.click(trigger)
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(trigger)
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
     // Close with Escape
-    fireEvent.keyDown(trigger, { key: "Escape" })
-    await waitFor(() => {
-      expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
+    await act(async () => {
+      fireEvent.keyDown(trigger, { key: "Escape" })
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
   })
 
   it("has proper accessibility attributes", () => {
@@ -221,12 +243,12 @@ describe("HoverTooltip", () => {
       </HoverTooltip>
     )
 
-    fireEvent.mouseEnter(screen.getByText("Trigger text"))
-
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.mouseEnter(screen.getByText("Trigger text"))
+      vi.advanceTimersByTime(0)
     })
 
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
@@ -238,12 +260,12 @@ describe("HoverTooltip", () => {
       </HoverTooltip>
     )
 
-    fireEvent.click(screen.getByText("Trigger text"))
-
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByText("Trigger text"))
+      vi.advanceTimersByTime(0)
     })
 
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
@@ -258,17 +280,28 @@ describe("HoverTooltip", () => {
     const trigger = screen.getByText("Trigger text")
 
     // Open via hover
-    fireEvent.mouseEnter(trigger)
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.mouseEnter(trigger)
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+
+    const tooltip = screen.getByTestId("hover-tooltip")
 
     // Move to tooltip and back - should not trigger onOpen again
-    const tooltip = screen.getByTestId("hover-tooltip")
-    fireEvent.mouseLeave(trigger)
-    fireEvent.mouseEnter(tooltip)
-    fireEvent.mouseLeave(tooltip)
-    fireEvent.mouseEnter(trigger)
+    await act(async () => {
+      fireEvent.mouseLeave(trigger)
+      vi.advanceTimersByTime(50)
+      fireEvent.mouseEnter(tooltip)
+      vi.advanceTimersByTime(0)
+    })
+
+    await act(async () => {
+      fireEvent.mouseLeave(tooltip)
+      vi.advanceTimersByTime(50)
+      fireEvent.mouseEnter(trigger)
+      vi.advanceTimersByTime(0)
+    })
 
     // Should still only be called once
     expect(onOpen).toHaveBeenCalledTimes(1)
@@ -283,12 +316,13 @@ describe("HoverTooltip", () => {
     )
 
     const trigger = screen.getByText("Trigger text").parentElement!
-    fireEvent.keyDown(trigger, { key: "Enter" })
 
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.keyDown(trigger, { key: "Enter" })
+      vi.advanceTimersByTime(0)
     })
 
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
@@ -301,12 +335,13 @@ describe("HoverTooltip", () => {
     )
 
     const trigger = screen.getByText("Trigger text").parentElement!
-    fireEvent.keyDown(trigger, { key: " " })
 
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.keyDown(trigger, { key: " " })
+      vi.advanceTimersByTime(0)
     })
 
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
@@ -321,23 +356,26 @@ describe("HoverTooltip", () => {
     const trigger = screen.getByText("Trigger text").parentElement!
 
     // Open with Enter
-    fireEvent.keyDown(trigger, { key: "Enter" })
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.keyDown(trigger, { key: "Enter" })
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
     expect(onOpen).toHaveBeenCalledTimes(1)
 
     // Close with Escape
-    fireEvent.keyDown(trigger, { key: "Escape" })
-    await waitFor(() => {
-      expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
+    await act(async () => {
+      fireEvent.keyDown(trigger, { key: "Escape" })
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
 
     // Open again with Enter - onOpen should be called again
-    fireEvent.keyDown(trigger, { key: "Enter" })
-    await waitFor(() => {
-      expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.keyDown(trigger, { key: "Enter" })
+      vi.advanceTimersByTime(0)
     })
+    expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
     expect(onOpen).toHaveBeenCalledTimes(2)
   })
 })
