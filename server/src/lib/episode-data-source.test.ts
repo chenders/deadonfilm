@@ -54,6 +54,9 @@ import {
   fetchEpisodeCastWithFallback,
   fetchShowCastWithFallback,
   tryMatchToTmdb,
+  redistributeEpisodesToSeason,
+  checkImdbSeasonDataUnreliable,
+  isImdbSeasonDataUnreliable,
   type NormalizedEpisode,
   type NormalizedCastMember,
 } from "./episode-data-source.js"
@@ -1204,6 +1207,368 @@ describe("Episode Data Source Cascade", () => {
       expect(result.missingSeasons).toContain(2)
       expect(result.missingSeasons).toContain(3)
       expect(result.missingSeasons).toContain(4)
+    })
+  })
+
+  describe("redistributeEpisodesToSeason", () => {
+    it("distributes episodes sequentially to seasons based on TMDB counts", () => {
+      // Simulate soap opera with all 100 episodes in "Season 1" from IMDb
+      const allEpisodes: NormalizedEpisode[] = Array.from({ length: 100 }, (_, i) => ({
+        seasonNumber: 1, // All in season 1 (unreliable data)
+        episodeNumber: i + 1,
+        name: `Episode ${i + 1}`,
+        overview: null,
+        airDate: null,
+        runtime: 30,
+        stillPath: null,
+        imdbEpisodeId: `tt${String(i).padStart(7, "0")}`,
+      }))
+
+      // TMDB says: Season 1 = 40 eps, Season 2 = 35 eps, Season 3 = 25 eps
+      const tmdbSeasonCounts = [
+        { seasonNumber: 1, episodeCount: 40 },
+        { seasonNumber: 2, episodeCount: 35 },
+        { seasonNumber: 3, episodeCount: 25 },
+      ]
+
+      // Get season 1: should get first 40 episodes
+      const season1 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 1)
+      expect(season1).toHaveLength(40)
+      expect(season1[0].episodeNumber).toBe(1)
+      expect(season1[0].seasonNumber).toBe(1)
+      expect(season1[39].episodeNumber).toBe(40)
+      expect(season1[0].name).toBe("Episode 1")
+      expect(season1[39].name).toBe("Episode 40")
+
+      // Get season 2: should get episodes 41-75 (renumbered as 1-35)
+      const season2 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 2)
+      expect(season2).toHaveLength(35)
+      expect(season2[0].episodeNumber).toBe(1) // Renumbered
+      expect(season2[0].seasonNumber).toBe(2)
+      expect(season2[0].name).toBe("Episode 41") // Original name preserved
+      expect(season2[34].episodeNumber).toBe(35)
+      expect(season2[34].name).toBe("Episode 75")
+
+      // Get season 3: should get episodes 76-100 (renumbered as 1-25)
+      const season3 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 3)
+      expect(season3).toHaveLength(25)
+      expect(season3[0].episodeNumber).toBe(1)
+      expect(season3[0].seasonNumber).toBe(3)
+      expect(season3[0].name).toBe("Episode 76")
+      expect(season3[24].name).toBe("Episode 100")
+    })
+
+    it("returns empty array for non-existent season", () => {
+      const allEpisodes: NormalizedEpisode[] = [
+        {
+          seasonNumber: 1,
+          episodeNumber: 1,
+          name: "Test",
+          overview: null,
+          airDate: null,
+          runtime: 30,
+          stillPath: null,
+        },
+      ]
+
+      const tmdbSeasonCounts = [{ seasonNumber: 1, episodeCount: 10 }]
+
+      const result = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 5)
+      expect(result).toEqual([])
+    })
+
+    it("returns empty array when no episodes provided", () => {
+      const result = redistributeEpisodesToSeason([], [{ seasonNumber: 1, episodeCount: 10 }], 1)
+      expect(result).toEqual([])
+    })
+
+    it("returns empty array when no season counts provided", () => {
+      const allEpisodes: NormalizedEpisode[] = [
+        {
+          seasonNumber: 1,
+          episodeNumber: 1,
+          name: "Test",
+          overview: null,
+          airDate: null,
+          runtime: 30,
+          stillPath: null,
+        },
+      ]
+
+      const result = redistributeEpisodesToSeason(allEpisodes, [], 1)
+      expect(result).toEqual([])
+    })
+
+    it("handles case where TMDB expects more episodes than IMDb has", () => {
+      // IMDb only has 50 episodes, but TMDB says season 1 has 100
+      const allEpisodes: NormalizedEpisode[] = Array.from({ length: 50 }, (_, i) => ({
+        seasonNumber: 1,
+        episodeNumber: i + 1,
+        name: `Episode ${i + 1}`,
+        overview: null,
+        airDate: null,
+        runtime: 30,
+        stillPath: null,
+      }))
+
+      const tmdbSeasonCounts = [
+        { seasonNumber: 1, episodeCount: 100 }, // Expects 100
+        { seasonNumber: 2, episodeCount: 50 },
+      ]
+
+      // Should get all 50 available episodes for season 1
+      const season1 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 1)
+      expect(season1).toHaveLength(50)
+
+      // Season 2 should be empty since we ran out of episodes
+      const season2 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 2)
+      expect(season2).toHaveLength(0)
+    })
+
+    it("preserves original episode IDs during redistribution", () => {
+      const allEpisodes: NormalizedEpisode[] = [
+        {
+          seasonNumber: 1,
+          episodeNumber: 1,
+          name: "Pilot",
+          overview: null,
+          airDate: null,
+          runtime: 30,
+          stillPath: null,
+          imdbEpisodeId: "tt1111111",
+        },
+        {
+          seasonNumber: 1,
+          episodeNumber: 2,
+          name: "Second",
+          overview: null,
+          airDate: null,
+          runtime: 30,
+          stillPath: null,
+          imdbEpisodeId: "tt2222222",
+        },
+      ]
+
+      const tmdbSeasonCounts = [
+        { seasonNumber: 1, episodeCount: 1 },
+        { seasonNumber: 2, episodeCount: 1 },
+      ]
+
+      const season2 = redistributeEpisodesToSeason(allEpisodes, tmdbSeasonCounts, 2)
+      expect(season2).toHaveLength(1)
+      expect(season2[0].imdbEpisodeId).toBe("tt2222222")
+      expect(season2[0].name).toBe("Second")
+      expect(season2[0].episodeNumber).toBe(1) // Renumbered
+      expect(season2[0].seasonNumber).toBe(2)
+    })
+  })
+
+  describe("checkImdbSeasonDataUnreliable", () => {
+    it("returns true when a single season has 500+ episodes", () => {
+      // Soap opera pattern: all 11000 episodes in season 1
+      expect(checkImdbSeasonDataUnreliable(11000, 1, 63)).toBe(true)
+    })
+
+    it("returns true when IMDb has 1 season but TMDB has 10+ seasons", () => {
+      // Even with normal episode count per season, mismatch is unreliable
+      expect(checkImdbSeasonDataUnreliable(250, 1, 10)).toBe(true)
+      expect(checkImdbSeasonDataUnreliable(100, 1, 15)).toBe(true)
+    })
+
+    it("returns false for normal season structures", () => {
+      // Normal show: 3 seasons, max 24 eps per season
+      expect(checkImdbSeasonDataUnreliable(24, 3, 3)).toBe(false)
+      // Normal show: 10 seasons, max 22 eps per season
+      expect(checkImdbSeasonDataUnreliable(22, 10, 10)).toBe(false)
+    })
+
+    it("returns false when season counts roughly match", () => {
+      // IMDb has 5 seasons, TMDB has 5 seasons
+      expect(checkImdbSeasonDataUnreliable(100, 5, 5)).toBe(false)
+      // IMDb has 8 seasons, TMDB has 9 seasons (close enough)
+      expect(checkImdbSeasonDataUnreliable(200, 8, 9)).toBe(false)
+    })
+
+    it("returns false at boundary conditions", () => {
+      // Exactly 499 episodes - below threshold
+      expect(checkImdbSeasonDataUnreliable(499, 1, 1)).toBe(false)
+      // 1 IMDb season but only 9 TMDB seasons - below threshold
+      expect(checkImdbSeasonDataUnreliable(100, 1, 9)).toBe(false)
+    })
+
+    it("returns true at boundary conditions", () => {
+      // Exactly 500 episodes - at threshold
+      expect(checkImdbSeasonDataUnreliable(500, 1, 1)).toBe(true)
+      // 1 IMDb season and exactly 10 TMDB seasons - at threshold
+      expect(checkImdbSeasonDataUnreliable(100, 1, 10)).toBe(true)
+    })
+  })
+
+  describe("isImdbSeasonDataUnreliable", () => {
+    it("returns false when IMDb has no episodes", async () => {
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue([])
+
+      const result = await isImdbSeasonDataUnreliable("tt0056758", 63)
+
+      expect(result).toBe(false)
+    })
+
+    it("returns true for soap opera pattern (all episodes in season 1)", async () => {
+      // Simulate General Hospital: 11000+ episodes all in Season 1
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue(
+        Array(11000)
+          .fill(null)
+          .map((_, i) => ({
+            tconst: `tt${String(i).padStart(7, "0")}`,
+            parentTconst: "tt0056758",
+            seasonNumber: 1,
+            episodeNumber: i + 1,
+          }))
+      )
+
+      const result = await isImdbSeasonDataUnreliable("tt0056758", 63)
+
+      expect(result).toBe(true)
+    })
+
+    it("returns true when IMDb has 1 season but TMDB has many", async () => {
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue(
+        Array(250)
+          .fill(null)
+          .map((_, i) => ({
+            tconst: `tt${String(i).padStart(7, "0")}`,
+            parentTconst: "tt0123456",
+            seasonNumber: 1,
+            episodeNumber: i + 1,
+          }))
+      )
+
+      const result = await isImdbSeasonDataUnreliable("tt0123456", 15)
+
+      expect(result).toBe(true)
+    })
+
+    it("returns false for normal shows with proper season structure", async () => {
+      // Normal show: 3 seasons, 10 episodes each
+      const episodes = []
+      for (let season = 1; season <= 3; season++) {
+        for (let ep = 1; ep <= 10; ep++) {
+          episodes.push({
+            tconst: `tt${String(season * 100 + ep).padStart(7, "0")}`,
+            parentTconst: "tt0123456",
+            seasonNumber: season,
+            episodeNumber: ep,
+          })
+        }
+      }
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue(episodes)
+
+      const result = await isImdbSeasonDataUnreliable("tt0123456", 3)
+
+      expect(result).toBe(false)
+    })
+
+    it("ignores episodes with null or zero season numbers", async () => {
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue([
+        { tconst: "tt001", parentTconst: "tt000", seasonNumber: null, episodeNumber: 1 },
+        { tconst: "tt002", parentTconst: "tt000", seasonNumber: 0, episodeNumber: 2 },
+        { tconst: "tt003", parentTconst: "tt000", seasonNumber: -1, episodeNumber: 3 },
+        { tconst: "tt004", parentTconst: "tt000", seasonNumber: 1, episodeNumber: 4 },
+        { tconst: "tt005", parentTconst: "tt000", seasonNumber: 1, episodeNumber: 5 },
+      ])
+
+      // Only 2 valid episodes in season 1, TMDB has 10 seasons - should be unreliable
+      const result = await isImdbSeasonDataUnreliable("tt0123456", 10)
+
+      expect(result).toBe(true)
+    })
+  })
+
+  describe("detectShowDataGaps with unreliable IMDb data", () => {
+    it("falls through to TMDB when IMDb has 500+ episodes in one season", async () => {
+      // Setup: show exists in database
+      vi.mocked(db.getShow).mockResolvedValue({
+        tmdb_id: 987,
+        imdb_id: "tt0056758",
+        name: "General Hospital",
+        number_of_seasons: 63,
+      } as never)
+
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(new Map([[1, 100]]))
+
+      // IMDb has 11000 episodes all in Season 1 (unreliable)
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue(
+        Array(11000)
+          .fill(null)
+          .map((_, i) => ({
+            tconst: `tt${String(i).padStart(7, "0")}`,
+            parentTconst: "tt0056758",
+            seasonNumber: 1,
+            episodeNumber: i + 1,
+          }))
+      )
+
+      // TMDB shows 63 seasons - metadata says 250 eps but API returns fewer (gap)
+      vi.mocked(tmdb.getTVShowDetails).mockResolvedValue({
+        id: 987,
+        name: "General Hospital",
+        number_of_seasons: 63,
+        seasons: [
+          { season_number: 1, episode_count: 250 },
+          { season_number: 2, episode_count: 260 },
+          { season_number: 3, episode_count: 250 },
+        ],
+      } as never)
+
+      // TMDB API returns fewer episodes than metadata says - this creates a gap
+      vi.mocked(tmdb.getSeasonDetails)
+        .mockResolvedValueOnce({ season_number: 1, episodes: Array(100).fill({ id: 1 }) } as never)
+        .mockResolvedValueOnce({ season_number: 2, episodes: [] } as never) // Missing
+        .mockResolvedValueOnce({ season_number: 3, episodes: [] } as never) // Missing
+
+      const result = await detectShowDataGaps(987)
+
+      // Should include detail about unreliable IMDb data
+      expect(result.details.some((d) => d.includes("unreliable"))).toBe(true)
+      // Should have found gaps via TMDB fallback (seasons 2 and 3 missing)
+      expect(result.hasGaps).toBe(true)
+    })
+
+    it("uses IMDb for gap detection when season structure is reliable", async () => {
+      vi.mocked(db.getShow).mockResolvedValue({
+        tmdb_id: 123,
+        imdb_id: "tt0123456",
+        name: "Normal Show",
+        number_of_seasons: 5,
+      } as never)
+
+      vi.mocked(db.getEpisodeCountsBySeasonFromDb).mockResolvedValue(
+        new Map([
+          [1, 10],
+          [2, 5], // Gap: IMDb has 10
+        ])
+      )
+
+      // Normal IMDb data: 5 seasons, 10 eps each
+      const episodes = []
+      for (let season = 1; season <= 5; season++) {
+        for (let ep = 1; ep <= 10; ep++) {
+          episodes.push({
+            tconst: `tt${String(season * 100 + ep).padStart(7, "0")}`,
+            parentTconst: "tt0123456",
+            seasonNumber: season,
+            episodeNumber: ep,
+          })
+        }
+      }
+      vi.mocked(imdb.getShowEpisodes).mockResolvedValue(episodes)
+
+      const result = await detectShowDataGaps(123)
+
+      expect(result.hasGaps).toBe(true)
+      expect(result.missingSeasons).toContain(2)
+      // Should NOT include unreliable message
+      expect(result.details.some((d) => d.includes("unreliable"))).toBe(false)
     })
   })
 })
