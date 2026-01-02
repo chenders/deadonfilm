@@ -18,6 +18,9 @@
  *   npm run sync:tmdb -- --shows-only    # Only sync active TV show episodes
  */
 
+// New Relic must be initialized first for full transaction traces
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
+
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool } from "../src/lib/db.js"
@@ -100,12 +103,30 @@ const program = new Command()
         process.exit(1)
       }
 
-      await runSync({
-        days: options.days,
-        dryRun: options.dryRun ?? false,
-        peopleOnly: options.peopleOnly ?? false,
-        moviesOnly: options.moviesOnly ?? false,
-        showsOnly: options.showsOnly ?? false,
+      // Wrap in New Relic transaction for monitoring
+      await withNewRelicTransaction("sync-tmdb", async (recordMetrics) => {
+        const result = await runSync({
+          days: options.days,
+          dryRun: options.dryRun ?? false,
+          peopleOnly: options.peopleOnly ?? false,
+          moviesOnly: options.moviesOnly ?? false,
+          showsOnly: options.showsOnly ?? false,
+        })
+
+        // Record metrics for New Relic
+        recordMetrics({
+          dryRun: options.dryRun ?? false,
+          peopleOnly: options.peopleOnly ?? false,
+          moviesOnly: options.moviesOnly ?? false,
+          showsOnly: options.showsOnly ?? false,
+          peopleChecked: result.peopleChecked,
+          newDeathsFound: result.newDeathsFound,
+          moviesChecked: result.moviesChecked,
+          moviesUpdated: result.moviesUpdated,
+          showsChecked: result.showsChecked,
+          newEpisodesFound: result.newEpisodesFound,
+          errorsEncountered: result.errors.length,
+        })
       })
     }
   )
@@ -118,7 +139,7 @@ interface SyncOptions {
   showsOnly: boolean
 }
 
-async function runSync(options: SyncOptions): Promise<void> {
+async function runSync(options: SyncOptions): Promise<SyncResult> {
   // Check required environment variables
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -234,6 +255,7 @@ async function runSync(options: SyncOptions): Promise<void> {
     }
 
     console.log("\nDone!")
+    return result
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)

@@ -59,7 +59,7 @@ import { initializeDatabase } from "./lib/startup.js"
 const app = express()
 const PORT = process.env.PORT || 8080
 
-// Trust first proxy (for running behind Docker, nginx, GKE ingress, etc.)
+// Trust first proxy (for running behind Docker/nginx reverse proxy)
 // Required for express-rate-limit to correctly identify client IPs
 app.set("trust proxy", 1)
 
@@ -120,7 +120,7 @@ app.use((req, res, next) => {
   next()
 })
 
-// Health check endpoint for GKE (internal pod health checks)
+// Health check endpoint (internal container health checks)
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" })
 })
