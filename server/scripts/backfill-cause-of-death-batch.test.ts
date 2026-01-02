@@ -149,7 +149,19 @@ describe("backfill-cause-of-death-batch response parsing", () => {
 
   function parseResponse(responseText: string): ClaudeResponse | null {
     try {
-      return JSON.parse(responseText) as ClaudeResponse
+      // Strip markdown code fences if present (Claude sometimes wraps JSON in ```json ... ```)
+      let jsonText = responseText.trim()
+      if (jsonText.startsWith("```")) {
+        // Extract content between code fences, ignoring any text after closing fence
+        const match = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+        if (match) {
+          jsonText = match[1].trim()
+        } else {
+          // Fallback: just strip opening fence if no closing fence found
+          jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").trim()
+        }
+      }
+      return JSON.parse(jsonText) as ClaudeResponse
     } catch {
       return null
     }
@@ -208,6 +220,53 @@ describe("backfill-cause-of-death-batch response parsing", () => {
     expect(parseResponse("not valid json")).toBeNull()
     expect(parseResponse("")).toBeNull()
     expect(parseResponse("{cause: missing quotes}")).toBeNull()
+  })
+
+  it("strips markdown code fences from response", () => {
+    const response = parseResponse(`\`\`\`json
+{
+  "cause": "cardiac arrest",
+  "details": "Found unresponsive at home.",
+  "corrections": null
+}
+\`\`\``)
+    expect(response).toEqual({
+      cause: "cardiac arrest",
+      details: "Found unresponsive at home.",
+      corrections: null,
+    })
+  })
+
+  it("strips markdown code fences without json language tag", () => {
+    const response = parseResponse(`\`\`\`
+{
+  "cause": "cancer",
+  "details": null,
+  "corrections": null
+}
+\`\`\``)
+    expect(response).toEqual({
+      cause: "cancer",
+      details: null,
+      corrections: null,
+    })
+  })
+
+  it("handles text after closing code fence", () => {
+    const response = parseResponse(`\`\`\`json
+{
+  "cause": null,
+  "details": null,
+  "corrections": null
+}
+\`\`\`
+
+Note: As of my knowledge cutoff, this person was still alive.`)
+    expect(response).toEqual({
+      cause: null,
+      details: null,
+      corrections: null,
+    })
   })
 })
 

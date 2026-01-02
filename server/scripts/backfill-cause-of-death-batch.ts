@@ -433,7 +433,20 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
         const responseText = message.content[0].type === "text" ? message.content[0].text : ""
 
         try {
-          const parsed = JSON.parse(responseText) as ClaudeResponse
+          // Strip markdown code fences if present (Claude sometimes wraps JSON in ```json ... ```)
+          let jsonText = responseText.trim()
+          if (jsonText.startsWith("```")) {
+            // Extract content between code fences, ignoring any text after closing fence
+            const match = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+            if (match) {
+              jsonText = match[1].trim()
+            } else {
+              // Fallback: just strip opening fence if no closing fence found
+              jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").trim()
+            }
+          }
+
+          const parsed = JSON.parse(jsonText) as ClaudeResponse
 
           if (dryRun) {
             console.log(`\n[${processed}] Actor ${actorId}:`)
