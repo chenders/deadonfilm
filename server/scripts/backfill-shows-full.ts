@@ -140,6 +140,8 @@ export function parseShowIds(value: string): number[] {
 }
 
 export function parseSource(value: string): DataSource {
+  // Note: 'tmdb' is excluded because it's the primary source, not a fallback.
+  // The --source flag forces fetching from a specific *fallback* source.
   if (value !== "tvmaze" && value !== "thetvdb" && value !== "imdb") {
     throw new InvalidArgumentError("Source must be 'tvmaze', 'thetvdb', or 'imdb'")
   }

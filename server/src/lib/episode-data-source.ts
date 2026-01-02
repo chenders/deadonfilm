@@ -210,10 +210,8 @@ export async function detectShowDataGaps(
             )
           }
 
-          // If we found IMDb data, we're done
-          if (result.missingSeasons.length > 0 || imdbEpisodes.length <= totalDbEpisodes) {
-            return result
-          }
+          // If we have IMDb data, use it as source of truth and skip TMDB fallback
+          return result
         }
       } catch (error) {
         result.details.push(
