@@ -186,32 +186,51 @@ export async function detectShowDataGaps(
             }
           }
 
-          // Compare each IMDb season against our database
-          for (const [seasonNum, imdbCount] of imdbSeasonCounts) {
-            const dbCount = dbSeasonCounts.get(seasonNum) || 0
+          // Check if IMDb season data is reliable
+          // Soap operas often have all episodes dumped into Season 1, which is unreliable
+          const maxEpisodesInSeason = Math.max(...imdbSeasonCounts.values(), 0)
+          const imdbSeasonCount = imdbSeasonCounts.size
+          const tmdbSeasonCount = show.number_of_seasons || 0
 
-            // If IMDb has more episodes than our database, it's a gap
-            if (imdbCount > dbCount) {
-              result.hasGaps = true
-              result.missingSeasons.push(seasonNum)
-              result.details.push(
-                `Season ${seasonNum}: IMDb has ${imdbCount} episodes, database has ${dbCount}`
+          // IMDb data is unreliable if:
+          // 1. A single season has 500+ episodes (no normal show has this)
+          // 2. IMDb shows 1 season but TMDB shows 10+ seasons
+          const isImdbSeasonDataUnreliable =
+            maxEpisodesInSeason >= 500 || (imdbSeasonCount === 1 && tmdbSeasonCount >= 10)
+
+          if (isImdbSeasonDataUnreliable) {
+            result.details.push(
+              `IMDb season data unreliable (${imdbEpisodes.length} episodes in ${imdbSeasonCount} season(s), TMDB shows ${tmdbSeasonCount} seasons) - using TMDB for season structure`
+            )
+            // Fall through to TMDB check instead of returning
+          } else {
+            // Compare each IMDb season against our database
+            for (const [seasonNum, imdbCount] of imdbSeasonCounts) {
+              const dbCount = dbSeasonCounts.get(seasonNum) || 0
+
+              // If IMDb has more episodes than our database, it's a gap
+              if (imdbCount > dbCount) {
+                result.hasGaps = true
+                result.missingSeasons.push(seasonNum)
+                result.details.push(
+                  `Season ${seasonNum}: IMDb has ${imdbCount} episodes, database has ${dbCount}`
+                )
+              }
+            }
+
+            // Sort seasons numerically
+            result.missingSeasons.sort((a, b) => a - b)
+
+            // Add overall summary
+            if (imdbEpisodes.length > totalDbEpisodes) {
+              result.details.unshift(
+                `Total: IMDb has ${imdbEpisodes.length} episodes, database has ${totalDbEpisodes}`
               )
             }
+
+            // If we have reliable IMDb data, use it as source of truth
+            return result
           }
-
-          // Sort seasons numerically
-          result.missingSeasons.sort((a, b) => a - b)
-
-          // Add overall summary
-          if (imdbEpisodes.length > totalDbEpisodes) {
-            result.details.unshift(
-              `Total: IMDb has ${imdbEpisodes.length} episodes, database has ${totalDbEpisodes}`
-            )
-          }
-
-          // If we have IMDb data, use it as source of truth and skip TMDB fallback
-          return result
         }
       } catch (error) {
         result.details.push(
