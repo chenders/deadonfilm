@@ -204,6 +204,12 @@ export async function detectShowDataGaps(
 
             // Compare TMDB's per-season counts against our database
             const tmdbSeasonCounts = await getTmdbSeasonEpisodeCounts(showTmdbId)
+
+            if (tmdbSeasonCounts.length === 0) {
+              result.details.push("Failed to fetch TMDB season counts - unable to verify gaps")
+              return result
+            }
+
             for (const season of tmdbSeasonCounts) {
               const dbCount = dbSeasonCounts.get(season.seasonNumber) || 0
 
