@@ -622,6 +622,65 @@ export async function getSeasonEpisodesWithDetails(
 }
 
 /**
+ * Get ALL episodes for a show with title details (names, runtime, etc.)
+ * Does NOT filter by season - returns all episodes for the show.
+ * Useful when IMDb season data is unreliable (e.g., soap operas with all
+ * episodes dumped into "Season 1").
+ *
+ * @param imdbShowId - The IMDb ID of the show
+ * @param prefetchedEpisodes - Optional pre-fetched episodes to avoid duplicate API calls
+ */
+export async function getAllShowEpisodesWithDetails(
+  imdbShowId: string,
+  prefetchedEpisodes?: ImdbEpisode[]
+): Promise<NormalizedImdbEpisode[]> {
+  const episodes = prefetchedEpisodes ?? (await getShowEpisodes(imdbShowId))
+  if (episodes.length === 0) return []
+
+  // Get title details for all episodes
+  const tconsts = episodes.map((ep) => ep.tconst)
+  const titles = await getTitles(tconsts)
+
+  // Track episode numbers per season to handle null episodeNumber values
+  // by assigning sequential numbers instead of defaulting all to 1
+  const seasonEpisodeCounters = new Map<number, number>()
+
+  return episodes
+    .map((ep): NormalizedImdbEpisode => {
+      const title = titles.get(ep.tconst)
+      const seasonNumber = ep.seasonNumber ?? 1
+
+      // Handle null episode numbers by assigning sequential values per season
+      let episodeNumber: number
+      if (ep.episodeNumber != null) {
+        episodeNumber = ep.episodeNumber
+      } else {
+        const current = seasonEpisodeCounters.get(seasonNumber) ?? 0
+        episodeNumber = current + 1
+        seasonEpisodeCounters.set(seasonNumber, episodeNumber)
+      }
+
+      return {
+        seasonNumber,
+        episodeNumber,
+        name: title?.primaryTitle || null,
+        overview: null,
+        airDate: null,
+        runtime: title?.runtimeMinutes || null,
+        stillPath: null,
+        imdbEpisodeId: ep.tconst,
+      }
+    })
+    .sort((a, b) => {
+      // Sort by season first, then by episode number
+      if (a.seasonNumber !== b.seasonNumber) {
+        return a.seasonNumber - b.seasonNumber
+      }
+      return a.episodeNumber - b.episodeNumber
+    })
+}
+
+/**
  * Get cast for an episode with person details (birth/death year).
  * Returns normalized cast members compatible with other data sources.
  */
