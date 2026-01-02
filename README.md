@@ -37,7 +37,7 @@ A website to look up movies and TV shows to see which actors have passed away. S
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, TanStack Query
 - **Backend**: Node.js, Express.js, TypeScript
 - **Database**: PostgreSQL (Neon serverless)
-- **Deployment**: Google Kubernetes Engine (GKE)
+- **Deployment**: Bare-metal Docker with Cloudflare Tunnel
 - **Data Sources**: TMDB API, Claude API, Wikidata
 
 ## Quick Start

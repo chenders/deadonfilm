@@ -13,7 +13,7 @@ This file provides guidance to GitHub Copilot when working with code in this rep
 - **Database**: PostgreSQL (Neon serverless in production)
 - **State Management**: TanStack Query (React Query)
 - **Routing**: React Router v6
-- **Deployment**: Google Kubernetes Engine (GKE)
+- **Deployment**: Bare-metal Docker with self-hosted GitHub runners
 - **Data Sources**: TMDB API, Claude API (cause of death), Wikidata SPARQL (fallback)
 
 ## Project Structure
@@ -31,7 +31,6 @@ This file provides guidance to GitHub Copilot when working with code in this rep
 │       ├── index.ts        # Server entry point
 │       ├── lib/            # Shared utilities (db, tmdb, wikidata, claude)
 │       └── routes/         # API route handlers
-├── k8s/                    # Kubernetes manifests
 ├── Dockerfile              # Multi-stage Docker build
 └── public/                 # Static assets
 ```
@@ -49,7 +48,7 @@ This file provides guidance to GitHub Copilot when working with code in this rep
 - `GET /api/cursed-actors` - List actors ranked by co-star mortality (paginated)
 - `GET /api/covid-deaths` - List actors who died from COVID-19 (paginated)
 - `GET /api/stats` - Get site-wide statistics
-- `GET /health` - Health check for Kubernetes
+- `GET /health` - Health check for container orchestration
 
 ## Database Schema
 

@@ -42,8 +42,6 @@ test-results/
 # Generated reports
 *-report.md
 
-# Kubernetes secrets
-k8s/values-secrets.yaml
 docs/potentially-wrong-language-data.md
 
 # Script progress files
