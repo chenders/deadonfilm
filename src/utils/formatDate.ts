@@ -34,12 +34,13 @@ export function formatDate(dateString: string | null, precision?: DatePrecision 
 
     switch (effectivePrecision) {
       case "year":
-        return date.getFullYear().toString()
+        return date.getUTCFullYear().toString()
 
       case "month":
         return date.toLocaleDateString("en-US", {
           month: "long",
           year: "numeric",
+          timeZone: "UTC",
         })
 
       case "day":
@@ -48,6 +49,7 @@ export function formatDate(dateString: string | null, precision?: DatePrecision 
           month: "short",
           day: "numeric",
           year: "numeric",
+          timeZone: "UTC",
         })
     }
   } catch {

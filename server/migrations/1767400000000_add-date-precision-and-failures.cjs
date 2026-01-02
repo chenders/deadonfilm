@@ -82,6 +82,11 @@ exports.up = (pgm) => {
     },
   })
 
+  // Add unique constraint on (batch_id, custom_id) for ON CONFLICT support
+  pgm.addConstraint("batch_response_failures", "batch_response_failures_unique", {
+    unique: ["batch_id", "custom_id"],
+  })
+
   // Index for finding pending failures by batch
   pgm.createIndex("batch_response_failures", "batch_id", {
     name: "idx_batch_response_failures_batch_id",
@@ -104,7 +109,7 @@ exports.up = (pgm) => {
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.down = (pgm) => {
-  // Drop batch_response_failures table
+  // Drop batch_response_failures table (cascade will handle constraint)
   pgm.dropTable("batch_response_failures", { cascade: true })
 
   // Drop constraints from actors

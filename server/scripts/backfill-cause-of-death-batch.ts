@@ -137,7 +137,7 @@ async function storeFailure(
  * Strips markdown code fences from JSON text.
  * Claude sometimes wraps JSON responses in ```json ... ```
  */
-function stripMarkdownCodeFences(text: string): string {
+export function stripMarkdownCodeFences(text: string): string {
   let jsonText = text.trim()
   if (jsonText.startsWith("```")) {
     // Extract content between code fences, ignoring any text after closing fence
@@ -205,6 +205,11 @@ export function normalizeDateToString(value: Date | string | null | undefined): 
   // Year-only format (YYYY)
   if (/^\d{4}$/.test(str)) {
     return `${str}-01-01`
+  }
+
+  // Year-month format (YYYY-MM)
+  if (/^\d{4}-\d{2}$/.test(str)) {
+    return `${str}-01`
   }
 
   // Try parsing as a date string and normalizing
