@@ -42,6 +42,10 @@ import {
   saveCheckpoint as saveCheckpointGeneric,
   deleteCheckpoint as deleteCheckpointGeneric,
 } from "../src/lib/checkpoint-utils.js"
+import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
+
+// Initialize New Relic for monitoring
+initNewRelic()
 
 // Checkpoint file to track progress
 const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-cause-of-death-batch-checkpoint.json")
@@ -290,6 +294,13 @@ async function submitBatch(options: {
     console.log(`Status: ${batch.processing_status}`)
     console.log(`Requests: ${batch.request_counts.processing} processing`)
 
+    // Record batch submission event
+    recordCustomEvent("CauseOfDeathBatchSubmitted", {
+      batchId: batch.id,
+      actorCount: actorsToProcess.length,
+      model: MODEL_ID,
+    })
+
     // Save checkpoint with batch ID
     checkpoint.batchId = batch.id
     checkpoint.stats.submitted = actorsToProcess.length
@@ -299,6 +310,10 @@ async function submitBatch(options: {
     console.log(`  npm run backfill:cause-of-death-batch -- status --batch-id ${batch.id}`)
     console.log(`  npm run backfill:cause-of-death-batch -- process --batch-id ${batch.id}`)
   } catch (error) {
+    recordCustomEvent("CauseOfDeathBatchError", {
+      operation: "submit",
+      error: error instanceof Error ? error.message : "Unknown error",
+    })
     console.error("Error submitting batch:", error)
     process.exit(1)
   }
@@ -467,12 +482,32 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
     console.log(`  Birthday corrections: ${checkpoint.stats.updatedBirthday}`)
     console.log(`  Deathday corrections: ${checkpoint.stats.updatedDeathday}`)
 
+    // Record batch processing completion
+    if (!dryRun) {
+      recordCustomEvent("CauseOfDeathBatchProcessed", {
+        batchId,
+        processed,
+        succeeded: checkpoint.stats.succeeded,
+        errored: checkpoint.stats.errored,
+        expired: checkpoint.stats.expired,
+        updatedCause: checkpoint.stats.updatedCause,
+        updatedDetails: checkpoint.stats.updatedDetails,
+        updatedBirthday: checkpoint.stats.updatedBirthday,
+        updatedDeathday: checkpoint.stats.updatedDeathday,
+      })
+    }
+
     // Clean up checkpoint if fully processed
     if (!dryRun && checkpoint.stats.errored === 0 && checkpoint.stats.expired === 0) {
       console.log("\nAll results processed successfully. Cleaning up checkpoint.")
       deleteCheckpoint()
     }
   } catch (error) {
+    recordCustomEvent("CauseOfDeathBatchError", {
+      operation: "process",
+      batchId,
+      error: error instanceof Error ? error.message : "Unknown error",
+    })
     console.error("Error processing results:", error)
     process.exit(1)
   }
