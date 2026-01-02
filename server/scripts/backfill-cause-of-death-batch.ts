@@ -74,8 +74,10 @@ interface ActorToProcess {
   id: number
   tmdb_id: number
   name: string
-  birthday: string | null
-  deathday: string
+  // PostgreSQL returns Date objects for date columns, but they might also be strings
+  // if the data comes from a different source or is normalized elsewhere
+  birthday: Date | string | null
+  deathday: Date | string // Deceased actors always have a deathday
   cause_of_death: string | null
   cause_of_death_details: string | null
 }
@@ -104,6 +106,52 @@ export function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
   deleteCheckpointGeneric(filePath)
 }
 
+/**
+ * Store a failed batch response for later reprocessing.
+ * This allows us to fix parsing bugs and retry without re-running the batch.
+ */
+async function storeFailure(
+  db: ReturnType<typeof getPool>,
+  batchId: string,
+  actorId: number,
+  customId: string,
+  rawResponse: string,
+  errorMessage: string,
+  errorType: "json_parse" | "date_parse" | "validation" | "unknown"
+): Promise<void> {
+  try {
+    await db.query(
+      `INSERT INTO batch_response_failures
+       (batch_id, actor_id, custom_id, raw_response, error_message, error_type)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT DO NOTHING`,
+      [batchId, actorId, customId, rawResponse, errorMessage, errorType]
+    )
+  } catch (err) {
+    // Log but don't fail - storing the failure shouldn't prevent processing
+    console.error(`Failed to store failure record for actor ${actorId}:`, err)
+  }
+}
+
+/**
+ * Strips markdown code fences from JSON text.
+ * Claude sometimes wraps JSON responses in ```json ... ```
+ */
+export function stripMarkdownCodeFences(text: string): string {
+  let jsonText = text.trim()
+  if (jsonText.startsWith("```")) {
+    // Extract content between code fences, ignoring any text after closing fence
+    const match = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+    if (match) {
+      jsonText = match[1].trim()
+    } else {
+      // Fallback: just strip opening fence if no closing fence found
+      jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").trim()
+    }
+  }
+  return jsonText
+}
+
 export function parsePositiveInt(value: string): number {
   if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError("Must be a positive integer")
@@ -115,15 +163,157 @@ export function parsePositiveInt(value: string): number {
   return parsed
 }
 
-function getBirthYear(birthday: string | null): number | null {
-  if (!birthday) return null
-  const date = new Date(birthday)
-  return date.getFullYear()
+/**
+ * Safely normalizes a date value to YYYY-MM-DD string format.
+ * Handles:
+ * - Date objects (from PostgreSQL)
+ * - Strings in YYYY-MM-DD format
+ * - Strings that are just a year (YYYY) -> converts to YYYY-01-01
+ * - null/undefined values
+ *
+ * @param value - Date object, string, null, or undefined
+ * @returns YYYY-MM-DD string or null if invalid/empty
+ */
+export function normalizeDateToString(value: Date | string | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  // Handle Date objects from PostgreSQL
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) {
+      return null // Invalid date
+    }
+    // Use UTC methods to avoid timezone shifts
+    const year = value.getUTCFullYear()
+    const month = String(value.getUTCMonth() + 1).padStart(2, "0")
+    const day = String(value.getUTCDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
+  // Handle strings
+  const str = String(value).trim()
+  if (!str) {
+    return null
+  }
+
+  // Already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str
+  }
+
+  // Year-only format (YYYY) - validate reasonable year range
+  if (/^\d{4}$/.test(str)) {
+    const year = Number(str)
+    if (year < 1800 || year > 2100) {
+      return null
+    }
+    return `${str}-01-01`
+  }
+
+  // Year-month format (YYYY-MM) - validate month range
+  if (/^\d{4}-\d{2}$/.test(str)) {
+    const monthNum = Number(str.slice(5, 7))
+    if (monthNum < 1 || monthNum > 12) {
+      return null
+    }
+    return `${str}-01`
+  }
+
+  // Try parsing as a date string and normalizing
+  const parsed = new Date(str)
+  if (!isNaN(parsed.getTime())) {
+    const year = parsed.getUTCFullYear()
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, "0")
+    const day = String(parsed.getUTCDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
+  return null
 }
 
-function getDeathYear(deathday: string): number {
-  const date = new Date(deathday)
-  return date.getFullYear()
+/**
+ * Safely extracts year from a date value.
+ * @returns Year as number, or null if invalid/empty
+ */
+export function getYearFromDate(value: Date | string | null | undefined): number | null {
+  const normalized = normalizeDateToString(value)
+  if (!normalized) {
+    return null
+  }
+  const year = parseInt(normalized.split("-")[0], 10)
+  return isNaN(year) ? null : year
+}
+
+/**
+ * Safely extracts month and day from a date value.
+ * Handles partial dates (year-only, year+month).
+ *
+ * @returns Object with month and day (nullable if partial date), or null if invalid input
+ *
+ * Examples:
+ * - Date object "1945-06-15" → { month: "06", day: "15" }
+ * - "1945-06-15" → { month: "06", day: "15" }
+ * - "1945-06" → { month: "06", day: null }
+ * - "1945" → { month: null, day: null }
+ * - null → null
+ */
+export function getMonthDayFromDate(
+  value: Date | string | null | undefined
+): { month: string | null; day: string | null } | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  // Handle Date objects - always have full precision
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) {
+      return null
+    }
+    const month = String(value.getUTCMonth() + 1).padStart(2, "0")
+    const day = String(value.getUTCDate()).padStart(2, "0")
+    return { month, day }
+  }
+
+  // Handle strings - check for partial formats
+  const str = String(value).trim()
+  if (!str) {
+    return null
+  }
+
+  // Year-only format (YYYY)
+  if (/^\d{4}$/.test(str)) {
+    return { month: null, day: null }
+  }
+
+  // Year-month format (YYYY-MM)
+  if (/^\d{4}-\d{2}$/.test(str)) {
+    return { month: str.split("-")[1], day: null }
+  }
+
+  // Full date format (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const parts = str.split("-")
+    return { month: parts[1], day: parts[2] }
+  }
+
+  // Try parsing as a date string
+  const parsed = new Date(str)
+  if (!isNaN(parsed.getTime())) {
+    const month = String(parsed.getUTCMonth() + 1).padStart(2, "0")
+    const day = String(parsed.getUTCDate()).padStart(2, "0")
+    return { month, day }
+  }
+
+  return null
+}
+
+function getBirthYear(birthday: Date | string | null | undefined): number | null {
+  return getYearFromDate(birthday)
+}
+
+function getDeathYear(deathday: Date | string | null | undefined): number | null {
+  return getYearFromDate(deathday)
 }
 
 function buildPrompt(actor: ActorToProcess): string {
@@ -433,20 +623,28 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
         const responseText = message.content[0].type === "text" ? message.content[0].text : ""
 
         try {
-          // Strip markdown code fences if present (Claude sometimes wraps JSON in ```json ... ```)
-          let jsonText = responseText.trim()
-          if (jsonText.startsWith("```")) {
-            // Extract content between code fences, ignoring any text after closing fence
-            const match = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-            if (match) {
-              jsonText = match[1].trim()
-            } else {
-              // Fallback: just strip opening fence if no closing fence found
-              jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").trim()
-            }
-          }
+          const jsonText = stripMarkdownCodeFences(responseText)
 
-          const parsed = JSON.parse(jsonText) as ClaudeResponse
+          let parsed: ClaudeResponse
+          try {
+            parsed = JSON.parse(jsonText) as ClaudeResponse
+          } catch (jsonError) {
+            const errorMsg = jsonError instanceof Error ? jsonError.message : "JSON parse error"
+            console.error(`JSON parse error for actor ${actorId}: ${errorMsg}`)
+            if (db) {
+              await storeFailure(
+                db,
+                batchId,
+                actorId,
+                customId,
+                responseText,
+                errorMsg,
+                "json_parse"
+              )
+            }
+            checkpoint.stats.errored++
+            continue
+          }
 
           if (dryRun) {
             console.log(`\n[${processed}] Actor ${actorId}:`)
@@ -456,10 +654,29 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
               console.log(`  Corrections: ${JSON.stringify(parsed.corrections)}`)
             }
           } else if (db) {
-            await applyUpdate(db, actorId, parsed, batchId, checkpoint)
+            try {
+              await applyUpdate(db, actorId, parsed, batchId, checkpoint)
+            } catch (updateError) {
+              const errorMsg = updateError instanceof Error ? updateError.message : "Update error"
+              console.error(`Update error for actor ${actorId}: ${errorMsg}`)
+              await storeFailure(
+                db,
+                batchId,
+                actorId,
+                customId,
+                responseText,
+                errorMsg,
+                "date_parse"
+              )
+              checkpoint.stats.errored++
+            }
           }
         } catch (error) {
-          console.error(`Failed to parse response for actor ${actorId}:`, responseText, error)
+          const errorMsg = error instanceof Error ? error.message : "Unknown error"
+          console.error(`Unexpected error for actor ${actorId}: ${errorMsg}`)
+          if (db) {
+            await storeFailure(db, batchId, actorId, customId, responseText, errorMsg, "unknown")
+          }
           checkpoint.stats.errored++
         }
       } else if (result.result.type === "errored") {
@@ -591,23 +808,25 @@ async function applyUpdate(
   if (parsed.corrections) {
     // Birthday correction
     if (parsed.corrections.birthYear) {
-      // Parse year directly from YYYY-MM-DD string to avoid timezone issues
-      const currentBirthYear = actor.birthday ? parseInt(actor.birthday.split("-")[0], 10) : null
+      const currentBirthYear = getYearFromDate(actor.birthday)
       if (currentBirthYear !== parsed.corrections.birthYear) {
         // Create a new birthday with corrected year, keeping month/day if available
         let newBirthday: string
-        if (actor.birthday) {
-          // Replace year in YYYY-MM-DD string directly to avoid timezone issues
-          const [, month, day] = actor.birthday.split("-")
-          newBirthday = `${parsed.corrections.birthYear}-${month}-${day}`
+        const monthDay = getMonthDayFromDate(actor.birthday)
+        if (monthDay && monthDay.month && monthDay.day) {
+          newBirthday = `${parsed.corrections.birthYear}-${monthDay.month}-${monthDay.day}`
+        } else if (monthDay && monthDay.month) {
+          // Year+month only - preserve month, default day to 01
+          newBirthday = `${parsed.corrections.birthYear}-${monthDay.month}-01`
         } else {
+          // Year only or no existing date - default to 01-01
           newBirthday = `${parsed.corrections.birthYear}-01-01`
         }
         updates.push(`birthday = $${paramIndex++}`)
         values.push(newBirthday)
         historyEntries.push({
           field: "birthday",
-          oldValue: actor.birthday,
+          oldValue: normalizeDateToString(actor.birthday),
           newValue: newBirthday,
         })
         checkpoint.stats.updatedBirthday++
@@ -616,29 +835,35 @@ async function applyUpdate(
 
     // Deathday correction
     if (parsed.corrections.deathDate || parsed.corrections.deathYear) {
+      const normalizedOldDeathday = normalizeDateToString(actor.deathday)
       let newDeathday: string
       if (parsed.corrections.deathDate) {
         newDeathday = parsed.corrections.deathDate
       } else if (parsed.corrections.deathYear) {
-        // Parse year directly from YYYY-MM-DD string to avoid timezone issues
-        const currentDeathYear = parseInt(actor.deathday.split("-")[0], 10)
+        const currentDeathYear = getYearFromDate(actor.deathday)
         if (currentDeathYear !== parsed.corrections.deathYear) {
-          // Replace year in YYYY-MM-DD string directly to avoid timezone issues
-          const [, month, day] = actor.deathday.split("-")
-          newDeathday = `${parsed.corrections.deathYear}-${month}-${day}`
+          // Create new deathday with corrected year, keeping month/day if available
+          const monthDay = getMonthDayFromDate(actor.deathday)
+          if (monthDay && monthDay.month && monthDay.day) {
+            newDeathday = `${parsed.corrections.deathYear}-${monthDay.month}-${monthDay.day}`
+          } else if (monthDay && monthDay.month) {
+            newDeathday = `${parsed.corrections.deathYear}-${monthDay.month}-01`
+          } else {
+            newDeathday = `${parsed.corrections.deathYear}-01-01`
+          }
         } else {
-          newDeathday = actor.deathday
+          newDeathday = normalizedOldDeathday || `${parsed.corrections.deathYear}-01-01`
         }
       } else {
-        newDeathday = actor.deathday
+        newDeathday = normalizedOldDeathday || ""
       }
 
-      if (newDeathday !== actor.deathday) {
+      if (newDeathday && newDeathday !== normalizedOldDeathday) {
         updates.push(`deathday = $${paramIndex++}`)
         values.push(newDeathday)
         historyEntries.push({
           field: "deathday",
-          oldValue: actor.deathday,
+          oldValue: normalizedOldDeathday,
           newValue: newDeathday,
         })
         checkpoint.stats.updatedDeathday++
@@ -662,6 +887,109 @@ async function applyUpdate(
         [actorId, entry.field, entry.oldValue, entry.newValue, SOURCE_NAME, batchId]
       )
     }
+  }
+}
+
+/**
+ * Reprocess failed responses from previous batch runs.
+ * This is useful when parsing bugs have been fixed and we want to retry.
+ */
+async function reprocessFailures(batchId?: string): Promise<void> {
+  const db = getPool()
+
+  try {
+    // Get unprocessed failures
+    const query = batchId
+      ? `SELECT id, batch_id, actor_id, custom_id, raw_response, error_type
+         FROM batch_response_failures
+         WHERE reprocessed_at IS NULL AND batch_id = $1
+         ORDER BY created_at`
+      : `SELECT id, batch_id, actor_id, custom_id, raw_response, error_type
+         FROM batch_response_failures
+         WHERE reprocessed_at IS NULL
+         ORDER BY created_at`
+
+    const result = await db.query<{
+      id: number
+      batch_id: string
+      actor_id: number
+      custom_id: string
+      raw_response: string
+      error_type: string
+    }>(query, batchId ? [batchId] : [])
+
+    if (result.rows.length === 0) {
+      console.log("No unprocessed failures found.")
+      return
+    }
+
+    console.log(`Found ${result.rows.length} unprocessed failures to retry...`)
+
+    const stats = {
+      total: result.rows.length,
+      succeeded: 0,
+      failed: 0,
+    }
+
+    const reprocessBatchId = `reprocess-${Date.now()}`
+
+    for (const failure of result.rows) {
+      const {
+        id,
+        batch_id: originalBatchId,
+        actor_id: actorId,
+        raw_response: rawResponse,
+      } = failure
+
+      try {
+        // Try to parse the raw response
+        const jsonText = stripMarkdownCodeFences(rawResponse)
+        const parsed = JSON.parse(jsonText) as ClaudeResponse
+
+        // Create a minimal checkpoint for applyUpdate
+        const checkpoint: Checkpoint = {
+          batchId: originalBatchId,
+          processedActorIds: [],
+          startedAt: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+          stats: {
+            submitted: 0,
+            succeeded: 0,
+            errored: 0,
+            expired: 0,
+            updatedCause: 0,
+            updatedDetails: 0,
+            updatedBirthday: 0,
+            updatedDeathday: 0,
+          },
+        }
+
+        // Apply the update
+        await applyUpdate(db, actorId, parsed, originalBatchId, checkpoint)
+
+        // Mark as reprocessed
+        await db.query(
+          `UPDATE batch_response_failures
+           SET reprocessed_at = NOW(), reprocessed_batch_id = $1
+           WHERE id = $2`,
+          [reprocessBatchId, id]
+        )
+
+        stats.succeeded++
+        console.log(`✓ Actor ${actorId}: Successfully reprocessed`)
+      } catch (error) {
+        stats.failed++
+        const errorMsg = error instanceof Error ? error.message : "Unknown error"
+        console.error(`✗ Actor ${actorId}: ${errorMsg}`)
+      }
+    }
+
+    console.log("\nReprocessing complete:")
+    console.log(`  Total:     ${stats.total}`)
+    console.log(`  Succeeded: ${stats.succeeded}`)
+    console.log(`  Failed:    ${stats.failed}`)
+  } finally {
+    await db.end()
   }
 }
 
@@ -695,6 +1023,14 @@ program
   .option("-n, --dry-run", "Preview without writing to database")
   .action(async (options) => {
     await processResults(options.batchId, options.dryRun)
+  })
+
+program
+  .command("reprocess")
+  .description("Retry parsing failed responses after code fixes")
+  .option("-b, --batch-id <id>", "Only reprocess failures from specific batch")
+  .action(async (options) => {
+    await reprocessFailures(options.batchId)
   })
 
 // Only run when executed directly
