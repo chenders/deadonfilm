@@ -11,6 +11,7 @@ import {
   normalizeDateToString,
   getYearFromDate,
   getMonthDayFromDate,
+  stripMarkdownCodeFences,
   type Checkpoint,
 } from "./backfill-cause-of-death-batch.js"
 import { loadCheckpoint as loadCheckpointGeneric } from "../src/lib/checkpoint-utils.js"
@@ -785,6 +786,62 @@ describe("date normalization helpers", () => {
     it("pads single-digit months and days", () => {
       const date = new Date(Date.UTC(2000, 0, 5)) // January 5, 2000 UTC
       expect(getMonthDayFromDate(date)).toEqual({ month: "01", day: "05" })
+    })
+  })
+
+  describe("normalizeDateToString with YYYY-MM format", () => {
+    it("converts year-month string to YYYY-MM-01", () => {
+      expect(normalizeDateToString("1945-06")).toBe("1945-06-01")
+    })
+
+    it("handles all months correctly", () => {
+      expect(normalizeDateToString("2000-01")).toBe("2000-01-01")
+      expect(normalizeDateToString("2000-12")).toBe("2000-12-01")
+    })
+  })
+
+  describe("stripMarkdownCodeFences", () => {
+    it("returns plain JSON unchanged", () => {
+      const json = '{"cause": "cancer", "details": "lung cancer"}'
+      expect(stripMarkdownCodeFences(json)).toBe(json)
+    })
+
+    it("strips ```json code fence", () => {
+      const wrapped = '```json\n{"cause": "cancer"}\n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("strips ``` code fence without language tag", () => {
+      const wrapped = '```\n{"cause": "cancer"}\n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("handles code fence with extra whitespace", () => {
+      const wrapped = '```json\n\n{"cause": "cancer"}\n\n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("handles opening fence without closing fence", () => {
+      const wrapped = '```json\n{"cause": "cancer"}'
+      const result = stripMarkdownCodeFences(wrapped)
+      expect(result).toBe('{"cause": "cancer"}')
+    })
+
+    it("ignores text after closing fence", () => {
+      const wrapped = '```json\n{"cause": "cancer"}\n```\nSome extra text'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("trims whitespace from result", () => {
+      const wrapped = '```json\n  {"cause": "cancer"}  \n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe('{"cause": "cancer"}')
+    })
+
+    it("handles multiline JSON content", () => {
+      const wrapped = '```json\n{\n  "cause": "cancer",\n  "details": "lung cancer"\n}\n```'
+      expect(stripMarkdownCodeFences(wrapped)).toBe(
+        '{\n  "cause": "cancer",\n  "details": "lung cancer"\n}'
+      )
     })
   })
 })
