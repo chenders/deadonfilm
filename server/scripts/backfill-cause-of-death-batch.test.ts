@@ -268,6 +268,16 @@ Note: As of my knowledge cutoff, this person was still alive.`)
       corrections: null,
     })
   })
+
+  it("handles opening code fence without closing fence (fallback)", () => {
+    const response = parseResponse(`\`\`\`json
+{"cause": "cancer", "details": null, "corrections": null}`)
+    expect(response).toEqual({
+      cause: "cancer",
+      details: null,
+      corrections: null,
+    })
+  })
 })
 
 describe("backfill-cause-of-death-batch update logic", () => {
