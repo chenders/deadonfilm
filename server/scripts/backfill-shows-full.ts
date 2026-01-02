@@ -65,7 +65,7 @@ initNewRelic()
 // Checkpoint file to track progress
 const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-shows-full-checkpoint.json")
 
-interface Checkpoint {
+export interface Checkpoint {
   startedAt: string
   lastUpdated: string
   showsToProcess: number[]
@@ -100,21 +100,21 @@ interface ShowInfo {
   imdb_id: string | null
 }
 
-function loadCheckpoint(filePath: string = CHECKPOINT_FILE): Checkpoint | null {
+export function loadCheckpoint(filePath: string = CHECKPOINT_FILE): Checkpoint | null {
   return loadCheckpointGeneric<Checkpoint>(filePath)
 }
 
-function saveCheckpoint(checkpoint: Checkpoint, filePath: string = CHECKPOINT_FILE): void {
+export function saveCheckpoint(checkpoint: Checkpoint, filePath: string = CHECKPOINT_FILE): void {
   saveCheckpointGeneric(filePath, checkpoint, (cp) => {
     cp.lastUpdated = new Date().toISOString()
   })
 }
 
-function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
+export function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
   deleteCheckpointGeneric(filePath)
 }
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
   if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError("Must be a positive integer")
   }
@@ -125,7 +125,7 @@ function parsePositiveInt(value: string): number {
   return parsed
 }
 
-function parseShowIds(value: string): number[] {
+export function parseShowIds(value: string): number[] {
   const ids = value.split(",").map((id) => {
     const trimmed = id.trim()
     if (!/^\d+$/.test(trimmed)) {
@@ -139,7 +139,7 @@ function parseShowIds(value: string): number[] {
   return ids
 }
 
-function parseSource(value: string): DataSource {
+export function parseSource(value: string): DataSource {
   if (value !== "tvmaze" && value !== "thetvdb" && value !== "imdb") {
     throw new InvalidArgumentError("Source must be 'tvmaze', 'thetvdb', or 'imdb'")
   }
@@ -581,6 +581,8 @@ async function processEpisodeCast(
   const currentYear = new Date().getFullYear()
   let castSaved = 0
   const seenActorIds = new Set<number>()
+  let episodesProcessedSinceCheckpoint = 0
+  const CHECKPOINT_INTERVAL = 10 // Save checkpoint every N episodes
 
   for (const ep of episodes) {
     try {
@@ -711,13 +713,23 @@ async function processEpisodeCast(
         await upsertEpisode(episodeRecord)
       }
 
-      if (!dryRun) saveCheckpoint(checkpoint)
+      // Batch checkpoint saves for performance (every N episodes instead of every single one)
+      episodesProcessedSinceCheckpoint++
+      if (!dryRun && episodesProcessedSinceCheckpoint >= CHECKPOINT_INTERVAL) {
+        saveCheckpoint(checkpoint)
+        episodesProcessedSinceCheckpoint = 0
+      }
     } catch (error) {
       checkpoint.stats.errors++
       console.log(
         `      Error processing cast for S${ep.seasonNumber}E${ep.episodeNumber}: ${error instanceof Error ? error.message : "unknown"}`
       )
     }
+  }
+
+  // Final checkpoint save for any remaining episodes
+  if (!dryRun && episodesProcessedSinceCheckpoint > 0) {
+    saveCheckpoint(checkpoint)
   }
 
   return castSaved
