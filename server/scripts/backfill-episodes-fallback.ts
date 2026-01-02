@@ -675,9 +675,11 @@ async function processEpisodeCast(
             checkpoint.stats.actorsSaved++
           }
 
-          // If actor is deceased and we haven't already looked up their death cause in this session
+          // Session-wide deduplication for death cause lookups
+          // Note: We add to the Set early (before checking cause_of_death) to prevent
+          // both redundant database queries AND redundant API lookups within this session.
+          // deathCauseLookups counter only tracks actual API calls that found results.
           if (castMember.deathYear && !deathCauseLookedUp.has(actorId)) {
-            // Mark as looked up BEFORE the lookup to prevent duplicate lookups
             deathCauseLookedUp.add(actorId)
 
             const actor = await getActorById(actorId)
