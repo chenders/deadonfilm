@@ -1,14 +1,14 @@
 # New Relic Integration
 
-This project supports optional New Relic monitoring for both backend (APM) and frontend (Browser) performance tracking.
+This project supports optional New Relic monitoring for backend (APM), frontend (Browser), and CLI script performance tracking.
 
 ## Overview
 
 - **Backend APM**: Tracks Express routes, database queries, and external API calls (TMDB, Claude, Wikidata)
 - **Browser Monitoring**: Tracks page load times, JavaScript errors, and user sessions in the React SPA
-- **Kubernetes Monitoring**: Tracks cluster health, pod metrics, and logs via the New Relic nri-bundle
+- **CLI Script Monitoring**: Tracks data scripts (sync, seed, backfill, import) as background transactions
 
-Both are optional - the application works fine without New Relic configured.
+All monitoring is optional - the application works fine without New Relic configured.
 
 ## Backend APM Setup
 
@@ -27,24 +27,14 @@ NEW_RELIC_LICENSE_KEY=your_license_key_here
 NEW_RELIC_APP_NAME=Dead on Film (Dev)
 ```
 
-**Production (Kubernetes):** Add to the secrets:
+**Production (Docker):** Add to your `.env` file in `/opt/deadonfilm/`:
 
-```bash
-kubectl create secret generic dead-on-film-secrets \
-  --namespace=deadonfilm \
-  --from-literal=TMDB_API_TOKEN=your_tmdb_token \
-  --from-literal=ANTHROPIC_API_KEY=your_anthropic_key \
-  --from-literal=DATABASE_URL=your_database_url \
-  --from-literal=NEW_RELIC_LICENSE_KEY=your_newrelic_key
+```
+NEW_RELIC_LICENSE_KEY=your_license_key_here
+NEW_RELIC_APP_NAME=Dead on Film
 ```
 
-Or update existing secret:
-
-```bash
-kubectl patch secret dead-on-film-secrets -n deadonfilm \
-  --type='json' \
-  -p='[{"op": "add", "path": "/data/NEW_RELIC_LICENSE_KEY", "value": "'$(echo -n 'your_key' | base64)'"}]'
-```
+The Docker Compose configuration will pass these to the app container.
 
 ### What's Automatically Tracked
 
@@ -86,6 +76,71 @@ Note: These are not secrets - they're visible in browser source code. This is ex
 - AJAX/fetch request timing
 - SPA route changes
 - User sessions
+
+## CLI Script Monitoring
+
+Data scripts (sync, seed, backfill, import) are instrumented as New Relic background transactions, providing full visibility into:
+
+- Script execution time and success/failure status
+- Database queries executed during the script
+- Custom metrics (records processed, errors encountered)
+
+### Instrumented Scripts
+
+The following production scripts are instrumented:
+
+| Script | Description |
+|--------|-------------|
+| `sync:tmdb` | Syncs with TMDB Changes API (runs every 2h in production) |
+| `sitemap:generate` | Generates sitemap files (runs daily in production) |
+
+### Viewing CLI Transactions
+
+1. Go to **APM & Services** → **Dead on Film**
+2. Click **Transactions**
+3. Select **Non-web** tab (CLI scripts appear as background transactions)
+4. Look for transactions named `script/sync-tmdb`, `script/sitemap-generate`, etc.
+
+### Custom Events
+
+CLI scripts record `CliScriptRun` events with attributes:
+
+| Attribute | Description |
+|-----------|-------------|
+| `scriptName` | Name of the script |
+| `durationMs` | Execution time in milliseconds |
+| `success` | Whether the script completed successfully |
+| `errorMessage` | Error message if script failed |
+
+Example NRQL query:
+
+```sql
+SELECT * FROM CliScriptRun SINCE 1 day ago
+```
+
+### Adding Instrumentation to New Scripts
+
+To add New Relic monitoring to a CLI script:
+
+```typescript
+#!/usr/bin/env tsx
+// Import New Relic first
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
+
+import "dotenv/config"
+// ... other imports
+
+// Wrap your main execution with withNewRelicTransaction
+await withNewRelicTransaction("my-script", async (recordMetrics) => {
+  // ... script logic ...
+
+  // Record custom metrics
+  recordMetrics({
+    recordsProcessed: 100,
+    recordsUpdated: 5,
+  })
+})
+```
 
 ## Viewing Data in New Relic
 
@@ -159,6 +214,7 @@ The application tracks the following custom events automatically:
 | `DeathsByDecadeQuery` | decade, page, includeObscure, resultCount, totalCount, responseTimeMs | Deaths filtered by decade |
 | `AllDeathsQuery` | page, includeObscure, resultCount, totalCount, responseTimeMs | All recorded deaths list queries |
 | `CauseOfDeathLookup` | personName, source, success, hasDetails | Death info lookups (source: claude/wikipedia/none) |
+| `CliScriptRun` | scriptName, durationMs, success, errorMessage | CLI script execution tracking |
 
 ### Frontend Events (Page Actions)
 
@@ -180,24 +236,9 @@ SELECT count(*) FROM CauseOfDeathLookup FACET source SINCE 1 day ago
 
 -- Average response times by endpoint
 SELECT average(responseTimeMs) FROM MovieView, ShowView, Search FACET eventType SINCE 1 hour ago TIMESERIES
-```
 
-## Updating nri-bundle
-
-Check current version:
-
-```bash
-helm list -n deadonfilm | grep newrelic
-```
-
-Update to latest:
-
-```bash
-helm repo update newrelic
-helm upgrade newrelic-bundle newrelic/nri-bundle \
-  -n deadonfilm \
-  --values k8s/values.yaml \
-  --values k8s/values-secrets.yaml
+-- CLI script execution times
+SELECT average(durationMs) FROM CliScriptRun FACET scriptName SINCE 1 week ago
 ```
 
 ## Neon Database Monitoring (Optional)
@@ -231,8 +272,8 @@ See: https://neon.com/guides/newrelic-otel-neon
 
 ### Backend agent not starting
 
-1. Check `NEW_RELIC_LICENSE_KEY` is set: `kubectl exec -it <pod> -n deadonfilm -- printenv | grep NEW_RELIC`
-2. Check server logs for "New Relic APM initialized" or error messages
+1. Check `NEW_RELIC_LICENSE_KEY` is set: `docker compose exec app printenv | grep NEW_RELIC`
+2. Check server logs for "New Relic APM initialized" or error messages: `docker compose logs app | grep -i newrelic`
 3. Ensure `newrelic.cjs` exists in the server directory
 
 ### Browser data not appearing
@@ -250,75 +291,11 @@ See: https://neon.com/guides/newrelic-otel-neon
 3. Wait 2-3 minutes for data to propagate
 4. Ensure you're looking at the correct application/account in New Relic
 
-## Kubernetes Monitoring Setup
-
-The project includes Helm configuration for the New Relic Kubernetes integration (`nri-bundle`), which provides cluster-level monitoring including pod metrics, events, and logs.
-
-### 1. Create Secrets File
-
-Copy the example secrets file and add your license key:
-
-```bash
-cp k8s/values-secrets.yaml.example k8s/values-secrets.yaml
-```
-
-Edit `k8s/values-secrets.yaml`:
-
-```yaml
-global:
-  licenseKey: YOUR_NEW_RELIC_LICENSE_KEY_HERE
-```
-
-**Important:** `k8s/values-secrets.yaml` is gitignored and should never be committed.
-
-### 2. Install the New Relic Bundle
-
-```bash
-helm repo add newrelic https://helm-charts.newrelic.com
-helm repo update
-
-helm upgrade --install newrelic-bundle newrelic/nri-bundle \
-  -n deadonfilm \
-  --values k8s/values.yaml \
-  --values k8s/values-secrets.yaml
-```
-
-### 3. Apply Instrumentation (Optional)
-
-For automatic APM injection into pods:
-
-```bash
-kubectl apply -f k8s/instrumentation.yaml -n deadonfilm
-```
-
-### What's Tracked
-
-- Pod/container CPU and memory metrics
-- Kubernetes events
-- Container logs (via Fluent Bit)
-- Prometheus metrics
-- Cluster state (via kube-state-metrics)
-
-### Updating Configuration
-
-The main configuration is in `k8s/values.yaml`. Key settings:
-
-- `global.cluster`: Cluster name shown in New Relic
-- `global.provider`: Set to `GKE_AUTOPILOT` for GKE Autopilot clusters
-- `global.lowDataMode`: Reduces data sent to save costs
-- `k8s-agents-operator.enabled`: Enables automatic APM injection
-
-### Uninstalling
-
-```bash
-helm uninstall newrelic-bundle -n deadonfilm
-```
-
 ## Deployment Markers
 
 Deployment markers appear on New Relic charts to show when deployments occurred, making it easy to correlate performance changes with releases.
 
-A GitHub Actions workflow (`.github/workflows/nr-mark-deployment.yml`) automatically creates deployment markers after each successful deploy to GKE.
+A GitHub Actions workflow (`.github/workflows/nr-mark-deployment.yml`) automatically creates deployment markers after each successful deploy.
 
 ### Required GitHub Secrets
 

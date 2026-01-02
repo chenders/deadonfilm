@@ -17,6 +17,9 @@
  *   npm run sitemap:generate -- --output-dir /tmp/sm  # Custom output directory
  */
 
+// New Relic must be initialized first for full transaction traces
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
+
 import "dotenv/config"
 import { Command } from "commander"
 import crypto from "crypto"
@@ -181,130 +184,142 @@ const program = new Command()
   .option("-n, --dry-run", "Preview changes without writing files or submitting")
   .option("-f, --force-submit", "Submit to search engines even if hash unchanged")
   .action(async (options: { outputDir: string; dryRun?: boolean; forceSubmit?: boolean }) => {
-    const startTime = Date.now()
-    console.log("Sitemap Generation Script")
-    console.log("=".repeat(50))
+    // Wrap in New Relic transaction for monitoring
+    await withNewRelicTransaction("sitemap-generate", async (recordMetrics) => {
+      const startTime = Date.now()
+      console.log("Sitemap Generation Script")
+      console.log("=".repeat(50))
 
-    if (options.dryRun) {
-      console.log("DRY RUN MODE - No files will be written or submissions made\n")
-    }
-
-    try {
-      // Get previous hash from database
-      console.log("Fetching previous sync state...")
-      const syncState = await getSyncState()
-      if (syncState.lastHash) {
-        console.log(`  Previous hash: ${syncState.lastHash.substring(0, 16)}...`)
-        console.log(`  Last run: ${syncState.lastRunAt?.toISOString() || "never"}`)
-      } else {
-        console.log("  No previous sync state found")
-      }
-      console.log()
-
-      // Generate all sitemaps
-      console.log("Generating sitemaps...")
-      const { files, pageCounts } = await generateAllSitemaps()
-      console.log(`  Generated ${files.size} sitemap files`)
-      console.log(
-        `  Page counts - Movies: ${pageCounts.movies}, Actors: ${pageCounts.actors}, Shows: ${pageCounts.shows}`
-      )
-      console.log()
-
-      // Compute hash
-      const currentHash = computeCombinedHash(files)
-      console.log(`Current hash: ${currentHash.substring(0, 16)}...`)
-
-      const hashChanged = currentHash !== syncState.lastHash
-      const shouldSubmit = hashChanged || options.forceSubmit
-
-      if (!hashChanged) {
-        console.log("Hash unchanged from previous run")
-        if (options.forceSubmit) {
-          console.log("Force submit enabled - will submit anyway")
-        }
-      } else {
-        console.log("Hash changed - sitemap content has been updated")
-      }
-      console.log()
-
-      if (!shouldSubmit) {
-        console.log("No submission needed. Exiting.")
-        await getPool().end()
-        process.exit(0)
+      if (options.dryRun) {
+        console.log("DRY RUN MODE - No files will be written or submissions made\n")
       }
 
-      // Write files
-      if (!options.dryRun) {
-        console.log(`Writing files to ${options.outputDir}...`)
-        await writeFiles(files, options.outputDir)
-
-        // Write IndexNow key file if key is available
-        const indexNowKey = process.env.INDEXNOW_KEY
-        if (indexNowKey) {
-          await writeIndexNowKeyFile(options.outputDir, indexNowKey)
-        }
-        console.log()
-      } else {
-        console.log("Would write files to:", options.outputDir)
-        for (const filename of files.keys()) {
-          console.log(`  - ${filename}`)
-        }
-        console.log()
-      }
-
-      // Submit to search engines
-      const sitemapUrl = `${BASE_URL}/sitemap.xml`
-
-      if (!options.dryRun) {
-        console.log("Submitting to search engines...")
-
-        // Submit to Google
-        const googleSuccess = await submitToGoogle(sitemapUrl)
-
-        // Submit to Bing via IndexNow (if key is available)
-        const indexNowKey = process.env.INDEXNOW_KEY
-        let bingSuccess = false
-        if (indexNowKey) {
-          bingSuccess = await submitToBing(sitemapUrl, indexNowKey)
+      try {
+        // Get previous hash from database
+        console.log("Fetching previous sync state...")
+        const syncState = await getSyncState()
+        if (syncState.lastHash) {
+          console.log(`  Previous hash: ${syncState.lastHash.substring(0, 16)}...`)
+          console.log(`  Last run: ${syncState.lastRunAt?.toISOString() || "never"}`)
         } else {
-          console.log("  Skipping IndexNow - INDEXNOW_KEY not set")
+          console.log("  No previous sync state found")
         }
-
         console.log()
-        console.log("Submission results:")
-        console.log(`  Google: ${googleSuccess ? "SUCCESS" : "FAILED"}`)
+
+        // Generate all sitemaps
+        console.log("Generating sitemaps...")
+        const { files, pageCounts } = await generateAllSitemaps()
+        console.log(`  Generated ${files.size} sitemap files`)
         console.log(
-          `  Bing (IndexNow): ${indexNowKey ? (bingSuccess ? "SUCCESS" : "FAILED") : "SKIPPED"}`
+          `  Page counts - Movies: ${pageCounts.movies}, Actors: ${pageCounts.actors}, Shows: ${pageCounts.shows}`
         )
         console.log()
 
-        // Update sync state
-        console.log("Updating sync state...")
-        await updateSyncState(currentHash, files.size)
-        console.log("  Done")
-      } else {
-        console.log("Would submit to search engines:")
-        console.log(`  - Google ping: ${sitemapUrl}`)
-        if (process.env.INDEXNOW_KEY) {
-          console.log(`  - IndexNow (Bing): ${sitemapUrl}`)
+        // Compute hash
+        const currentHash = computeCombinedHash(files)
+        console.log(`Current hash: ${currentHash.substring(0, 16)}...`)
+
+        const hashChanged = currentHash !== syncState.lastHash
+        const shouldSubmit = hashChanged || options.forceSubmit
+
+        if (!hashChanged) {
+          console.log("Hash unchanged from previous run")
+          if (options.forceSubmit) {
+            console.log("Force submit enabled - will submit anyway")
+          }
         } else {
-          console.log("  - IndexNow (Bing): SKIPPED (INDEXNOW_KEY not set)")
+          console.log("Hash changed - sitemap content has been updated")
         }
         console.log()
-        console.log("Would update sync state with new hash")
+
+        if (!shouldSubmit) {
+          console.log("No submission needed. Exiting.")
+          await getPool().end()
+          process.exit(0)
+        }
+
+        // Write files
+        if (!options.dryRun) {
+          console.log(`Writing files to ${options.outputDir}...`)
+          await writeFiles(files, options.outputDir)
+
+          // Write IndexNow key file if key is available
+          const indexNowKey = process.env.INDEXNOW_KEY
+          if (indexNowKey) {
+            await writeIndexNowKeyFile(options.outputDir, indexNowKey)
+          }
+          console.log()
+        } else {
+          console.log("Would write files to:", options.outputDir)
+          for (const filename of files.keys()) {
+            console.log(`  - ${filename}`)
+          }
+          console.log()
+        }
+
+        // Submit to search engines
+        const sitemapUrl = `${BASE_URL}/sitemap.xml`
+
+        if (!options.dryRun) {
+          console.log("Submitting to search engines...")
+
+          // Submit to Google
+          const googleSuccess = await submitToGoogle(sitemapUrl)
+
+          // Submit to Bing via IndexNow (if key is available)
+          const indexNowKey = process.env.INDEXNOW_KEY
+          let bingSuccess = false
+          if (indexNowKey) {
+            bingSuccess = await submitToBing(sitemapUrl, indexNowKey)
+          } else {
+            console.log("  Skipping IndexNow - INDEXNOW_KEY not set")
+          }
+
+          console.log()
+          console.log("Submission results:")
+          console.log(`  Google: ${googleSuccess ? "SUCCESS" : "FAILED"}`)
+          console.log(
+            `  Bing (IndexNow): ${indexNowKey ? (bingSuccess ? "SUCCESS" : "FAILED") : "SKIPPED"}`
+          )
+          console.log()
+
+          // Update sync state
+          console.log("Updating sync state...")
+          await updateSyncState(currentHash, files.size)
+          console.log("  Done")
+        } else {
+          console.log("Would submit to search engines:")
+          console.log(`  - Google ping: ${sitemapUrl}`)
+          if (process.env.INDEXNOW_KEY) {
+            console.log(`  - IndexNow (Bing): ${sitemapUrl}`)
+          } else {
+            console.log("  - IndexNow (Bing): SKIPPED (INDEXNOW_KEY not set)")
+          }
+          console.log()
+          console.log("Would update sync state with new hash")
+        }
+
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
+        console.log()
+        console.log(`Completed in ${elapsed}s`)
+
+        // Record metrics for New Relic
+        recordMetrics({
+          dryRun: options.dryRun ?? false,
+          forceSubmit: options.forceSubmit ?? false,
+          filesGenerated: files.size,
+          hashChanged,
+          submitted: shouldSubmit && !options.dryRun,
+        })
+
+        await getPool().end()
+        process.exit(0)
+      } catch (error) {
+        console.error("Error:", error)
+        await getPool().end()
+        process.exit(1)
       }
-
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
-      console.log()
-      console.log(`Completed in ${elapsed}s`)
-
-      await getPool().end()
-      process.exit(0)
-    } catch (error) {
-      console.error("Error:", error)
-      await getPool().end()
-      process.exit(1)
-    }
+    })
   })
 
 program.parse()
