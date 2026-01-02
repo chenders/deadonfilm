@@ -2334,6 +2334,22 @@ export async function getEpisodes(
   return result.rows
 }
 
+// Get episode counts grouped by season for a show
+export async function getEpisodeCountsBySeasonFromDb(
+  showTmdbId: number
+): Promise<Map<number, number>> {
+  const db = getPool()
+  const result = await db.query<{ season_number: number; count: string }>(
+    "SELECT season_number, COUNT(*) as count FROM episodes WHERE show_tmdb_id = $1 GROUP BY season_number ORDER BY season_number",
+    [showTmdbId]
+  )
+  const counts = new Map<number, number>()
+  for (const row of result.rows) {
+    counts.set(row.season_number, parseInt(row.count, 10))
+  }
+  return counts
+}
+
 // Insert or update an episode
 export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
   const db = getPool()
