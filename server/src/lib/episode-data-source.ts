@@ -327,12 +327,35 @@ interface SeasonEpisodeCount {
   episodeCount: number
 }
 
+// Threshold constants for IMDb data reliability checks
+// These are intentionally conservative to avoid false positives
+
+/**
+ * Maximum episodes in a single season before we consider IMDb data unreliable.
+ * No legitimate TV show has 500+ episodes in a single season - this indicates
+ * all episodes were incorrectly dumped into "Season 1" (common for soap operas).
+ * Examples: General Hospital (~15,000 episodes), One Life to Live (~11,000 episodes)
+ */
+const MAX_EPISODES_PER_SEASON_THRESHOLD = 500
+
+/**
+ * Minimum TMDB season count before we consider a 1-season IMDb show unreliable.
+ * If TMDB shows 10+ seasons but IMDb only has 1, the IMDb data is likely wrong.
+ * We use 10 as a conservative threshold to avoid flagging shows where IMDb
+ * legitimately groups content differently (e.g., some anime or miniseries).
+ */
+const MIN_TMDB_SEASONS_FOR_MISMATCH = 10
+
 /**
  * Pure function to check if IMDb season data is unreliable based on computed counts.
  *
  * IMDb data is considered unreliable if:
- * 1. A single season has 500+ episodes (no normal show has this)
- * 2. IMDb shows 1 season but TMDB shows 10+ seasons
+ * 1. A single season has 500+ episodes (no legitimate show has this many per season)
+ * 2. IMDb shows 1 season but TMDB shows 10+ seasons (major structural mismatch)
+ *
+ * These thresholds were chosen based on analysis of soap operas like General Hospital
+ * and One Life to Live, where IMDb has all episodes in "Season 1" but TMDB correctly
+ * structures them across 50-60+ seasons.
  *
  * This is a pure helper extracted for reuse across gap detection and episode fetching.
  *
@@ -346,7 +369,10 @@ export function checkImdbSeasonDataUnreliable(
   imdbSeasonCount: number,
   tmdbSeasonCount: number
 ): boolean {
-  return maxEpisodesInSeason >= 500 || (imdbSeasonCount === 1 && tmdbSeasonCount >= 10)
+  return (
+    maxEpisodesInSeason >= MAX_EPISODES_PER_SEASON_THRESHOLD ||
+    (imdbSeasonCount === 1 && tmdbSeasonCount >= MIN_TMDB_SEASONS_FOR_MISMATCH)
+  )
 }
 
 /**
@@ -392,7 +418,8 @@ async function getTmdbSeasonEpisodeCounts(showTmdbId: number): Promise<SeasonEpi
         episodeCount: s.episode_count,
       }))
       .sort((a, b) => a.seasonNumber - b.seasonNumber)
-  } catch {
+  } catch (error) {
+    console.error(`Failed to fetch TMDB season episode counts for show ${showTmdbId}:`, error)
     return []
   }
 }
@@ -596,7 +623,8 @@ async function fetchImdbEpisodesWithRedistribution(
     `  IMDb season data unreliable (${allImdbEpisodes.length} eps in ${imdbSeasonCount} season(s), TMDB shows ${tmdbSeasonCount}), redistributing...`
   )
 
-  const allWithDetails = await imdb.getAllShowEpisodesWithDetails(imdbId)
+  // Pass pre-fetched episodes to avoid duplicate API call
+  const allWithDetails = await imdb.getAllShowEpisodesWithDetails(imdbId, allImdbEpisodes)
   const normalizedAll = allWithDetails.map(normalizeImdbEpisode)
 
   return redistributeEpisodesToSeason(normalizedAll, tmdbSeasonCounts, seasonNumber)
