@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import SiteStats from "./SiteStats"
 import * as api from "@/services/api"
@@ -14,6 +14,8 @@ const mockStats = {
   totalMoviesAnalyzed: 350,
   topCauseOfDeath: "Cancer",
   avgMortalityPercentage: 42.5,
+  causeOfDeathPercentage: 25.8,
+  actorsWithCauseKnown: 387,
 }
 
 function renderWithProviders(ui: React.ReactElement) {
@@ -68,6 +70,7 @@ describe("SiteStats", () => {
       expect(screen.getByText("actors tracked")).toBeInTheDocument()
       expect(screen.getByText("movies analyzed")).toBeInTheDocument()
       expect(screen.getByText("avg. mortality")).toBeInTheDocument()
+      expect(screen.getByText("causes known")).toBeInTheDocument()
       expect(screen.getByText("leading cause")).toBeInTheDocument()
     })
   })
@@ -89,6 +92,8 @@ describe("SiteStats", () => {
       totalMoviesAnalyzed: 0,
       topCauseOfDeath: null,
       avgMortalityPercentage: null,
+      causeOfDeathPercentage: null,
+      actorsWithCauseKnown: null,
     })
 
     const { container } = renderWithProviders(<SiteStats />)
@@ -121,6 +126,8 @@ describe("SiteStats", () => {
       totalMoviesAnalyzed: 200,
       topCauseOfDeath: null,
       avgMortalityPercentage: null,
+      causeOfDeathPercentage: null,
+      actorsWithCauseKnown: null,
     })
 
     renderWithProviders(<SiteStats />)
@@ -135,7 +142,42 @@ describe("SiteStats", () => {
 
     // Optional stats should not be shown
     expect(screen.queryByText("avg. mortality")).not.toBeInTheDocument()
+    expect(screen.queryByText("causes known")).not.toBeInTheDocument()
     expect(screen.queryByText("leading cause")).not.toBeInTheDocument()
+  })
+
+  it("displays cause of death percentage when available", async () => {
+    vi.mocked(api.getSiteStats).mockResolvedValue(mockStats)
+
+    renderWithProviders(<SiteStats />)
+
+    await waitFor(() => {
+      expect(screen.getByText("25.8%")).toBeInTheDocument()
+      expect(screen.getByText("causes known")).toBeInTheDocument()
+    })
+  })
+
+  it("shows tooltip with actor counts on hover over causes known stat", async () => {
+    vi.mocked(api.getSiteStats).mockResolvedValue(mockStats)
+
+    renderWithProviders(<SiteStats />)
+
+    await waitFor(() => {
+      expect(screen.getByText("causes known")).toBeInTheDocument()
+    })
+
+    // Find the causes known stat wrapper (HoverTooltip adds role="button")
+    const causesKnownLabel = screen.getByText("causes known")
+    // The HoverTooltip wrapper is a parent span with role="button"
+    const tooltipTrigger = causesKnownLabel.closest('[role="button"]')
+    expect(tooltipTrigger).toBeInTheDocument()
+
+    fireEvent.mouseEnter(tooltipTrigger!)
+
+    // Tooltip should show the actual counts
+    await waitFor(() => {
+      expect(screen.getByText("387 of 1,500 deceased actors")).toBeInTheDocument()
+    })
   })
 
   it("shows mortality percentage when available", async () => {

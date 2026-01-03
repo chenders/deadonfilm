@@ -1242,6 +1242,8 @@ export interface SiteStats {
   totalMoviesAnalyzed: number
   topCauseOfDeath: string | null
   avgMortalityPercentage: number | null
+  causeOfDeathPercentage: number | null
+  actorsWithCauseKnown: number | null
 }
 
 // In-memory cache for site stats (5-minute TTL)
@@ -1267,6 +1269,8 @@ export async function getSiteStats(): Promise<SiteStats> {
     total_movies: string
     top_cause: string | null
     avg_mortality: string | null
+    cause_pct: string | null
+    cause_known_count: string | null
   }>(`
     SELECT
       (SELECT COUNT(*) FROM actors WHERE deathday IS NOT NULL) as total_actors,
@@ -1281,7 +1285,12 @@ export async function getSiteStats(): Promise<SiteStats> {
           THEN (deceased_count::numeric / cast_count) * 100
           ELSE NULL
         END
-      ), 1) FROM movies WHERE cast_count > 0) as avg_mortality
+      ), 1) FROM movies WHERE cast_count > 0) as avg_mortality,
+      (SELECT ROUND(
+        COUNT(*) FILTER (WHERE cause_of_death IS NOT NULL)::numeric /
+        NULLIF(COUNT(*), 0) * 100, 1
+      ) FROM actors WHERE deathday IS NOT NULL) as cause_pct,
+      (SELECT COUNT(*) FROM actors WHERE deathday IS NOT NULL AND cause_of_death IS NOT NULL) as cause_known_count
   `)
 
   const row = result.rows[0]
@@ -1290,6 +1299,8 @@ export async function getSiteStats(): Promise<SiteStats> {
     totalMoviesAnalyzed: parseInt(row.total_movies, 10) || 0,
     topCauseOfDeath: row.top_cause,
     avgMortalityPercentage: row.avg_mortality ? parseFloat(row.avg_mortality) : null,
+    causeOfDeathPercentage: row.cause_pct ? parseFloat(row.cause_pct) : null,
+    actorsWithCauseKnown: row.cause_known_count ? parseInt(row.cause_known_count, 10) : null,
   }
 
   // Cache the result
