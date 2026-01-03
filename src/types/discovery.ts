@@ -77,3 +77,101 @@ export interface GenreCategory {
 export interface GenreCategoriesResponse {
   genres: GenreCategory[]
 }
+
+// Causes of Death - 3-level hierarchy types
+
+// Top cause preview shown on category cards
+export interface TopCause {
+  cause: string
+  slug: string
+  count: number
+}
+
+// Category stats for index page
+export interface CauseCategoryStats {
+  slug: string
+  label: string
+  count: number
+  avgAge: number | null
+  avgYearsLost: number | null
+  topCauses: TopCause[]
+}
+
+// Index page response
+export interface CauseCategoryIndexResponse {
+  categories: CauseCategoryStats[]
+  totalWithKnownCause: number
+  overallAvgAge: number | null
+  overallAvgYearsLost: number | null
+  mostCommonCategory: string | null
+}
+
+// Notable actor for category/cause pages
+export interface NotableActor {
+  id: number
+  tmdbId: number | null
+  name: string
+  profilePath: string | null
+  deathday: string
+  causeOfDeath?: string
+  causeOfDeathDetails: string | null
+  ageAtDeath: number | null
+}
+
+// Decade breakdown entry
+export interface DecadeBreakdown {
+  decade: string
+  count: number
+}
+
+// Specific cause within a category
+export interface SpecificCauseStats {
+  cause: string
+  slug: string
+  count: number
+  avgAge: number | null
+}
+
+// Actor entry for cause listings
+export interface CauseActor {
+  rank: number
+  id: number
+  tmdbId: number | null
+  name: string
+  profilePath: string | null
+  deathday: string
+  causeOfDeath?: string
+  causeOfDeathDetails: string | null
+  ageAtDeath: number | null
+  yearsLost: number | null
+}
+
+// Category detail response
+export interface CauseCategoryDetailResponse {
+  slug: string
+  label: string
+  count: number
+  avgAge: number | null
+  avgYearsLost: number | null
+  percentage: number
+  notableActors: NotableActor[]
+  decadeBreakdown: DecadeBreakdown[]
+  specificCauses: SpecificCauseStats[]
+  actors: CauseActor[]
+  pagination: PaginationInfo
+}
+
+// Specific cause detail response
+export interface SpecificCauseDetailResponse {
+  cause: string
+  slug: string
+  categorySlug: string
+  categoryLabel: string
+  count: number
+  avgAge: number | null
+  avgYearsLost: number | null
+  notableActors: NotableActor[]
+  decadeBreakdown: DecadeBreakdown[]
+  actors: CauseActor[]
+  pagination: PaginationInfo
+}

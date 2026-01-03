@@ -2865,3 +2865,573 @@ export async function getLivingActorsForShow(showTmdbId: number): Promise<Living
     episodes: episodesByActor.get(actor.id) || [],
   }))
 }
+
+// ============================================================================
+// Causes of Death Category Functions
+// ============================================================================
+
+import {
+  CAUSE_CATEGORIES,
+  buildCategoryCaseStatement,
+  buildCategoryCondition as buildCauseCategoryCondition,
+  getCategoryBySlug,
+  createCauseSlug,
+} from "./cause-categories.js"
+
+// Re-export for convenience
+export { CAUSE_CATEGORIES, type CauseCategoryKey } from "./cause-categories.js"
+
+export interface CauseCategoryStats {
+  slug: string
+  label: string
+  count: number
+  avgAge: number | null
+  avgYearsLost: number | null
+  topCauses: Array<{ cause: string; count: number; slug: string }>
+}
+
+export interface CauseCategoryIndexResponse {
+  categories: CauseCategoryStats[]
+  totalWithKnownCause: number
+  overallAvgAge: number | null
+  overallAvgYearsLost: number | null
+  mostCommonCategory: string | null
+}
+
+/**
+ * Get all cause categories with counts and statistics for the index page.
+ */
+export async function getCauseCategoryIndex(): Promise<CauseCategoryIndexResponse> {
+  const db = getPool()
+  const categoryCase = buildCategoryCaseStatement()
+
+  // Get category counts and stats
+  const categoriesResult = await db.query<{
+    category_slug: string
+    count: string
+    avg_age: string | null
+    avg_years_lost: string | null
+  }>(
+    `SELECT
+       ${categoryCase} as category_slug,
+       COUNT(*) as count,
+       ROUND(AVG(age_at_death)::numeric, 1) as avg_age,
+       ROUND(AVG(years_lost)::numeric, 1) as avg_years_lost
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND cause_of_death IS NOT NULL
+       AND is_obscure = false
+     GROUP BY category_slug
+     ORDER BY count DESC`
+  )
+
+  // Get top 3 specific causes per category
+  const topCausesResult = await db.query<{
+    category_slug: string
+    cause: string
+    count: string
+  }>(
+    `WITH ranked_causes AS (
+       SELECT
+         ${categoryCase} as category_slug,
+         cause_of_death as cause,
+         COUNT(*) as count,
+         ROW_NUMBER() OVER (PARTITION BY ${categoryCase} ORDER BY COUNT(*) DESC) as rn
+       FROM actors
+       WHERE deathday IS NOT NULL
+         AND cause_of_death IS NOT NULL
+         AND is_obscure = false
+       GROUP BY category_slug, cause_of_death
+     )
+     SELECT category_slug, cause, count
+     FROM ranked_causes
+     WHERE rn <= 3
+     ORDER BY category_slug, count DESC`
+  )
+
+  // Get overall stats
+  const overallResult = await db.query<{
+    total_count: string
+    avg_age: string | null
+    avg_years_lost: string | null
+  }>(
+    `SELECT
+       COUNT(*) as total_count,
+       ROUND(AVG(age_at_death)::numeric, 1) as avg_age,
+       ROUND(AVG(years_lost)::numeric, 1) as avg_years_lost
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND cause_of_death IS NOT NULL
+       AND is_obscure = false`
+  )
+
+  // Group top causes by category
+  const topCausesByCategory = new Map<
+    string,
+    Array<{ cause: string; count: number; slug: string }>
+  >()
+  for (const row of topCausesResult.rows) {
+    const existing = topCausesByCategory.get(row.category_slug) || []
+    existing.push({
+      cause: row.cause,
+      count: parseInt(row.count, 10),
+      slug: createCauseSlug(row.cause),
+    })
+    topCausesByCategory.set(row.category_slug, existing)
+  }
+
+  // Build categories array with labels
+  const categories: CauseCategoryStats[] = categoriesResult.rows.map((row) => {
+    const categoryInfo = getCategoryBySlug(row.category_slug)
+    return {
+      slug: row.category_slug,
+      label: categoryInfo?.label || "Other",
+      count: parseInt(row.count, 10),
+      avgAge: row.avg_age ? parseFloat(row.avg_age) : null,
+      avgYearsLost: row.avg_years_lost ? parseFloat(row.avg_years_lost) : null,
+      topCauses: topCausesByCategory.get(row.category_slug) || [],
+    }
+  })
+
+  const overall = overallResult.rows[0]
+  const mostCommon = categories.length > 0 ? categories[0].slug : null
+
+  return {
+    categories,
+    totalWithKnownCause: parseInt(overall?.total_count || "0", 10),
+    overallAvgAge: overall?.avg_age ? parseFloat(overall.avg_age) : null,
+    overallAvgYearsLost: overall?.avg_years_lost ? parseFloat(overall.avg_years_lost) : null,
+    mostCommonCategory: mostCommon,
+  }
+}
+
+export interface CauseCategoryDetailResponse {
+  slug: string
+  label: string
+  count: number
+  percentage: number
+  avgAge: number | null
+  avgYearsLost: number | null
+  notableActors: Array<{
+    id: number
+    tmdbId: number | null
+    name: string
+    profilePath: string | null
+    deathday: string
+    causeOfDeath: string
+    causeOfDeathDetails: string | null
+    ageAtDeath: number | null
+  }>
+  decadeBreakdown: Array<{ decade: string; count: number }>
+  specificCauses: Array<{ cause: string; slug: string; count: number }>
+  actors: Array<{
+    rank: number
+    id: number
+    tmdbId: number | null
+    name: string
+    profilePath: string | null
+    deathday: string
+    causeOfDeath: string
+    causeOfDeathDetails: string | null
+    ageAtDeath: number | null
+    yearsLost: number | null
+  }>
+  pagination: {
+    page: number
+    pageSize: number
+    totalCount: number
+    totalPages: number
+  }
+}
+
+export interface CauseCategoryOptions {
+  page?: number
+  pageSize?: number
+  specificCause?: string | null
+  includeObscure?: boolean
+}
+
+/**
+ * Get details for a specific category with actor list.
+ */
+export async function getCauseCategory(
+  categorySlug: string,
+  options: CauseCategoryOptions = {}
+): Promise<CauseCategoryDetailResponse | null> {
+  const db = getPool()
+  const { page = 1, pageSize = 50, specificCause = null, includeObscure = false } = options
+
+  const categoryInfo = getCategoryBySlug(categorySlug)
+  if (!categoryInfo) return null
+
+  // Build the category filter condition
+  const isOtherCategory = categorySlug === "other"
+  let categoryCondition: string
+
+  if (isOtherCategory) {
+    // 'other' category = doesn't match any known patterns
+    const allKnownPatterns = Object.entries(CAUSE_CATEGORIES)
+      .filter(([key]) => key !== "other")
+      .flatMap(([, cat]) => cat.patterns)
+    categoryCondition = `NOT (${buildCauseCategoryCondition(allKnownPatterns)})`
+  } else {
+    categoryCondition = buildCauseCategoryCondition(categoryInfo.patterns)
+  }
+
+  // Add specific cause filter if provided
+  const causeFilter = specificCause ? `AND LOWER(cause_of_death) = LOWER($3)` : ""
+  const obscureFilter = includeObscure ? "" : "AND is_obscure = false"
+
+  // Get category stats
+  const statsResult = await db.query<{
+    count: string
+    avg_age: string | null
+    avg_years_lost: string | null
+  }>(
+    `SELECT
+       COUNT(*) as count,
+       ROUND(AVG(age_at_death)::numeric, 1) as avg_age,
+       ROUND(AVG(years_lost)::numeric, 1) as avg_years_lost
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND cause_of_death IS NOT NULL
+       AND (${categoryCondition})
+       ${obscureFilter}`,
+    []
+  )
+
+  // Get total actors with known cause (for percentage)
+  const totalResult = await db.query<{ total: string }>(
+    `SELECT COUNT(*) as total
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND cause_of_death IS NOT NULL
+       ${obscureFilter}`
+  )
+
+  // Get notable actors (top 5 by popularity)
+  const notableResult = await db.query<ActorRecord>(
+    `SELECT
+       id, tmdb_id, name, profile_path, deathday,
+       cause_of_death, cause_of_death_details, age_at_death
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND cause_of_death IS NOT NULL
+       AND (${categoryCondition})
+       ${obscureFilter}
+     ORDER BY popularity DESC NULLS LAST
+     LIMIT 5`
+  )
+
+  // Get decade breakdown
+  const decadeResult = await db.query<{ decade: string; count: string }>(
+    `SELECT
+       (EXTRACT(YEAR FROM deathday::date) / 10 * 10)::text || 's' as decade,
+       COUNT(*) as count
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND cause_of_death IS NOT NULL
+       AND (${categoryCondition})
+       ${obscureFilter}
+     GROUP BY decade
+     ORDER BY decade`
+  )
+
+  // Get specific causes within category
+  const causesResult = await db.query<{ cause: string; count: string; avg_age: string | null }>(
+    `SELECT cause_of_death as cause, COUNT(*) as count, AVG(age_at_death)::numeric(10,1) as avg_age
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND cause_of_death IS NOT NULL
+       AND (${categoryCondition})
+       ${obscureFilter}
+     GROUP BY cause_of_death
+     HAVING COUNT(*) >= 2
+     ORDER BY count DESC
+     LIMIT 20`
+  )
+
+  // Get paginated actors
+  const offset = (page - 1) * pageSize
+  const actorsParams: (string | number | boolean)[] = [pageSize, offset]
+  if (specificCause) actorsParams.push(specificCause)
+
+  const actorsResult = await db.query<ActorRecord & { total_count: string }>(
+    `SELECT
+       id, tmdb_id, name, profile_path, deathday,
+       cause_of_death, cause_of_death_details, age_at_death, years_lost,
+       COUNT(*) OVER() as total_count
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND cause_of_death IS NOT NULL
+       AND (${categoryCondition})
+       ${obscureFilter}
+       ${causeFilter}
+     ORDER BY popularity DESC NULLS LAST, name
+     LIMIT $1 OFFSET $2`,
+    actorsParams
+  )
+
+  const stats = statsResult.rows[0]
+  const total = parseInt(totalResult.rows[0]?.total || "0", 10)
+  const count = parseInt(stats?.count || "0", 10)
+  const totalActorsInQuery = parseInt(actorsResult.rows[0]?.total_count || "0", 10)
+
+  return {
+    slug: categorySlug,
+    label: categoryInfo.label,
+    count,
+    percentage: total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
+    avgAge: stats?.avg_age ? parseFloat(stats.avg_age) : null,
+    avgYearsLost: stats?.avg_years_lost ? parseFloat(stats.avg_years_lost) : null,
+    notableActors: notableResult.rows.map((a) => ({
+      id: a.id,
+      tmdbId: a.tmdb_id,
+      name: a.name,
+      profilePath: a.profile_path,
+      deathday: a.deathday!,
+      causeOfDeath: a.cause_of_death!,
+      causeOfDeathDetails: a.cause_of_death_details,
+      ageAtDeath: a.age_at_death,
+    })),
+    decadeBreakdown: decadeResult.rows.map((d) => ({
+      decade: d.decade,
+      count: parseInt(d.count, 10),
+    })),
+    specificCauses: causesResult.rows.map((c) => ({
+      cause: c.cause,
+      slug: createCauseSlug(c.cause),
+      count: parseInt(c.count, 10),
+      avgAge: c.avg_age ? parseFloat(c.avg_age) : null,
+    })),
+    actors: actorsResult.rows.map((a, idx) => ({
+      rank: offset + idx + 1,
+      id: a.id,
+      tmdbId: a.tmdb_id,
+      name: a.name,
+      profilePath: a.profile_path,
+      deathday: a.deathday!,
+      causeOfDeath: a.cause_of_death!,
+      causeOfDeathDetails: a.cause_of_death_details,
+      ageAtDeath: a.age_at_death,
+      yearsLost: a.years_lost ? parseFloat(a.years_lost.toString()) : null,
+    })),
+    pagination: {
+      page,
+      pageSize,
+      totalCount: totalActorsInQuery,
+      totalPages: Math.ceil(totalActorsInQuery / pageSize),
+    },
+  }
+}
+
+export interface SpecificCauseResponse {
+  cause: string
+  slug: string
+  categorySlug: string
+  categoryLabel: string
+  count: number
+  avgAge: number | null
+  avgYearsLost: number | null
+  notableActors: Array<{
+    id: number
+    tmdbId: number | null
+    name: string
+    profilePath: string | null
+    deathday: string
+    causeOfDeathDetails: string | null
+    ageAtDeath: number | null
+  }>
+  decadeBreakdown: Array<{ decade: string; count: number }>
+  actors: Array<{
+    rank: number
+    id: number
+    tmdbId: number | null
+    name: string
+    profilePath: string | null
+    deathday: string
+    causeOfDeathDetails: string | null
+    ageAtDeath: number | null
+    yearsLost: number | null
+  }>
+  pagination: {
+    page: number
+    pageSize: number
+    totalCount: number
+    totalPages: number
+  }
+}
+
+export interface SpecificCauseOptions {
+  page?: number
+  pageSize?: number
+  includeObscure?: boolean
+}
+
+/**
+ * Find the original cause_of_death string from a slug within a category.
+ */
+export async function getCauseFromSlugInCategory(
+  categorySlug: string,
+  causeSlug: string
+): Promise<string | null> {
+  const db = getPool()
+  const categoryInfo = getCategoryBySlug(categorySlug)
+  if (!categoryInfo) return null
+
+  // Build category condition
+  const isOtherCategory = categorySlug === "other"
+  let categoryCondition: string
+
+  if (isOtherCategory) {
+    const allKnownPatterns = Object.entries(CAUSE_CATEGORIES)
+      .filter(([key]) => key !== "other")
+      .flatMap(([, cat]) => cat.patterns)
+    categoryCondition = `NOT (${buildCauseCategoryCondition(allKnownPatterns)})`
+  } else {
+    categoryCondition = buildCauseCategoryCondition(categoryInfo.patterns)
+  }
+
+  // Get all distinct causes in this category and find the one matching the slug
+  const result = await db.query<{ cause: string }>(
+    `SELECT DISTINCT cause_of_death as cause
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND cause_of_death IS NOT NULL
+       AND (${categoryCondition})`
+  )
+
+  for (const row of result.rows) {
+    if (createCauseSlug(row.cause) === causeSlug) {
+      return row.cause
+    }
+  }
+
+  return null
+}
+
+/**
+ * Get details for a specific cause of death with actor list.
+ */
+export async function getSpecificCause(
+  categorySlug: string,
+  causeSlug: string,
+  options: SpecificCauseOptions = {}
+): Promise<SpecificCauseResponse | null> {
+  const db = getPool()
+  const { page = 1, pageSize = 50, includeObscure = false } = options
+
+  const categoryInfo = getCategoryBySlug(categorySlug)
+  if (!categoryInfo) return null
+
+  // Find the actual cause string from the slug
+  const actualCause = await getCauseFromSlugInCategory(categorySlug, causeSlug)
+  if (!actualCause) return null
+
+  const obscureFilter = includeObscure ? "" : "AND is_obscure = false"
+
+  // Get stats for this specific cause
+  const statsResult = await db.query<{
+    count: string
+    avg_age: string | null
+    avg_years_lost: string | null
+  }>(
+    `SELECT
+       COUNT(*) as count,
+       ROUND(AVG(age_at_death)::numeric, 1) as avg_age,
+       ROUND(AVG(years_lost)::numeric, 1) as avg_years_lost
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND LOWER(cause_of_death) = LOWER($1)
+       ${obscureFilter}`,
+    [actualCause]
+  )
+
+  // Get notable actors (top 3 by popularity)
+  const notableResult = await db.query<ActorRecord>(
+    `SELECT
+       id, tmdb_id, name, profile_path, deathday,
+       cause_of_death_details, age_at_death
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND LOWER(cause_of_death) = LOWER($1)
+       ${obscureFilter}
+     ORDER BY popularity DESC NULLS LAST
+     LIMIT 3`,
+    [actualCause]
+  )
+
+  // Get decade breakdown
+  const decadeResult = await db.query<{ decade: string; count: string }>(
+    `SELECT
+       (EXTRACT(YEAR FROM deathday::date) / 10 * 10)::text || 's' as decade,
+       COUNT(*) as count
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND LOWER(cause_of_death) = LOWER($1)
+       ${obscureFilter}
+     GROUP BY decade
+     ORDER BY decade`,
+    [actualCause]
+  )
+
+  // Get paginated actors
+  const offset = (page - 1) * pageSize
+  const actorsResult = await db.query<ActorRecord & { total_count: string }>(
+    `SELECT
+       id, tmdb_id, name, profile_path, deathday,
+       cause_of_death_details, age_at_death, years_lost,
+       COUNT(*) OVER() as total_count
+     FROM actors
+     WHERE deathday IS NOT NULL
+       AND LOWER(cause_of_death) = LOWER($1)
+       ${obscureFilter}
+     ORDER BY popularity DESC NULLS LAST, name
+     LIMIT $2 OFFSET $3`,
+    [actualCause, pageSize, offset]
+  )
+
+  const stats = statsResult.rows[0]
+  const count = parseInt(stats?.count || "0", 10)
+  const totalActorsInQuery = parseInt(actorsResult.rows[0]?.total_count || "0", 10)
+
+  return {
+    cause: actualCause,
+    slug: causeSlug,
+    categorySlug,
+    categoryLabel: categoryInfo.label,
+    count,
+    avgAge: stats?.avg_age ? parseFloat(stats.avg_age) : null,
+    avgYearsLost: stats?.avg_years_lost ? parseFloat(stats.avg_years_lost) : null,
+    notableActors: notableResult.rows.map((a) => ({
+      id: a.id,
+      tmdbId: a.tmdb_id,
+      name: a.name,
+      profilePath: a.profile_path,
+      deathday: a.deathday!,
+      causeOfDeathDetails: a.cause_of_death_details,
+      ageAtDeath: a.age_at_death,
+    })),
+    decadeBreakdown: decadeResult.rows.map((d) => ({
+      decade: d.decade,
+      count: parseInt(d.count, 10),
+    })),
+    actors: actorsResult.rows.map((a, idx) => ({
+      rank: offset + idx + 1,
+      id: a.id,
+      tmdbId: a.tmdb_id,
+      name: a.name,
+      profilePath: a.profile_path,
+      deathday: a.deathday!,
+      causeOfDeathDetails: a.cause_of_death_details,
+      ageAtDeath: a.age_at_death,
+      yearsLost: a.years_lost ? parseFloat(a.years_lost.toString()) : null,
+    })),
+    pagination: {
+      page,
+      pageSize,
+      totalCount: totalActorsInQuery,
+      totalPages: Math.ceil(totalActorsInQuery / pageSize),
+    },
+  }
+}

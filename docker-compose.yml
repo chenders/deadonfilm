@@ -1,12 +1,14 @@
 services:
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["nginx", "-g", "daemon off;"]
     ports:
-      - "8000:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - "8000:3000"
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     restart: unless-stopped
 
   app:
