@@ -45,6 +45,14 @@ export default function QuickActions() {
         </Link>
         <span className={tooltipClass}>Living actors most likely to die soon</span>
       </div>
+
+      <div className="group relative">
+        <Link data-testid="causes-of-death-btn" to="/causes-of-death" className={linkClass}>
+          <span className={emojiClass}>📊</span>
+          Causes of Death
+        </Link>
+        <span className={tooltipClass}>Browse actors by cause of death</span>
+      </div>
     </div>
   )
 }
