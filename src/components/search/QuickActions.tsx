@@ -40,7 +40,7 @@ export default function QuickActions() {
 
       <div className="group relative">
         <Link data-testid="death-watch-btn" to="/death-watch" className={linkClass}>
-          <span className="text-sm">⏳</span>
+          <span className={emojiClass}>⏳</span>
           Death Watch
         </Link>
         <span className={tooltipClass}>Living actors most likely to die soon</span>

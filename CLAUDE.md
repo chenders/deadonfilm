@@ -54,6 +54,30 @@ const result = await db.query(`SELECT * FROM actors WHERE id = $1`, [userId])
 | `cohort_life_expectancy` | SSA cohort life expectancy by birth year |
 | `sync_state` | Tracks TMDB sync progress |
 
+### Actor Schema Notes
+
+The `actors` table supports multiple data sources:
+- `tmdb_id` is **nullable** - actors can exist without a TMDB profile
+- `imdb_person_id`, `tvmaze_person_id`, `thetvdb_person_id` columns exist for external IDs
+- Appearance tables (`actor_movie_appearances`, `actor_show_appearances`) reference actors by `actor_id` (the primary key), NOT by `tmdb_id`
+
+## UI Component Patterns
+
+### QuickActions Buttons
+
+When adding new buttons to `src/components/search/QuickActions.tsx`:
+- **Always use the shared `emojiClass` variable** for emoji spans (provides `text-base leading-none`)
+- Do NOT use custom classes like `text-sm` for emojis - this causes inconsistent button heights
+- The test suite verifies all emoji spans use consistent classes to prevent regressions
+
+```tsx
+// CORRECT - use the shared emojiClass
+<span className={emojiClass}>⏳</span>
+
+// WRONG - causes height inconsistency
+<span className="text-sm">⏳</span>
+```
+
 ## URL Structure
 
 - Movies: `/movie/{slug}-{year}-{tmdbId}` (e.g., `/movie/breakfast-at-tiffanys-1961-14629`)
