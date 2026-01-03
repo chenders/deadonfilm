@@ -54,6 +54,13 @@ export default function SiteStats() {
             label="avg. mortality"
           />
         )}
+        {data.causeOfDeathPercentage !== null && (
+          <StatCard
+            icon={<span className="text-xs">?</span>}
+            value={`${data.causeOfDeathPercentage}%`}
+            label="causes known"
+          />
+        )}
         {data.topCauseOfDeath && (
           <StatCard
             icon={<span className="text-xs">†</span>}
