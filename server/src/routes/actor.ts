@@ -1,6 +1,10 @@
 import type { Request, Response } from "express"
 import { getPersonDetails } from "../lib/tmdb.js"
-import { getActorFilmography, getActor as getActorRecord } from "../lib/db.js"
+import {
+  getActorFilmography,
+  getActorShowFilmography,
+  getActor as getActorRecord,
+} from "../lib/db.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
 
 interface ActorProfileResponse {
@@ -22,6 +26,17 @@ interface ActorProfileResponse {
     deceasedCount: number
     castCount: number
   }>
+  analyzedTVFilmography: Array<{
+    showId: number
+    name: string
+    firstAirYear: number | null
+    lastAirYear: number | null
+    character: string | null
+    posterPath: string | null
+    deceasedCount: number
+    castCount: number
+    episodeCount: number
+  }>
   deathInfo: {
     causeOfDeath: string | null
     causeOfDeathDetails: string | null
@@ -41,11 +56,12 @@ export async function getActor(req: Request, res: Response) {
   try {
     const startTime = Date.now()
 
-    // Fetch actor details from TMDB
-    const person = await getPersonDetails(actorId)
-
-    // Query our database for filmography
-    const filmography = await getActorFilmography(actorId)
+    // Fetch actor details from TMDB and filmographies in parallel
+    const [person, filmography, tvFilmography] = await Promise.all([
+      getPersonDetails(actorId),
+      getActorFilmography(actorId),
+      getActorShowFilmography(actorId),
+    ])
 
     // Get death info if deceased
     let deathInfo: ActorProfileResponse["deathInfo"] = null
@@ -82,6 +98,7 @@ export async function getActor(req: Request, res: Response) {
         placeOfBirth: person.place_of_birth,
       },
       analyzedFilmography: filmography,
+      analyzedTVFilmography: tvFilmography,
       deathInfo,
     }
 
@@ -90,6 +107,7 @@ export async function getActor(req: Request, res: Response) {
       name: person.name,
       isDeceased: !!person.deathday,
       filmographyCount: filmography.length,
+      tvFilmographyCount: tvFilmography.length,
       hasCauseOfDeath: !!deathInfo?.causeOfDeath,
       responseTimeMs: Date.now() - startTime,
     })

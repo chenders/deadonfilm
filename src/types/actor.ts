@@ -81,6 +81,18 @@ export interface ActorFilmographyMovie {
   castCount: number
 }
 
+export interface ActorFilmographyShow {
+  showId: number
+  name: string
+  firstAirYear: number | null
+  lastAirYear: number | null
+  character: string | null
+  posterPath: string | null
+  deceasedCount: number
+  castCount: number
+  episodeCount: number
+}
+
 export interface ActorDeathInfo {
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
@@ -102,6 +114,7 @@ export interface ActorProfileResponse {
     placeOfBirth: string | null
   }
   analyzedFilmography: ActorFilmographyMovie[]
+  analyzedTVFilmography: ActorFilmographyShow[]
   deathInfo: ActorDeathInfo | null
 }
 
