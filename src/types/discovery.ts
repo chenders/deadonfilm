@@ -140,7 +140,7 @@ export interface CauseActor {
   name: string
   profilePath: string | null
   deathday: string
-  causeOfDeath?: string | null
+  causeOfDeath?: string
   causeOfDeathDetails: string | null
   ageAtDeath: number | null
   yearsLost: number | null
