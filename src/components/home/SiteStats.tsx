@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { useSiteStats } from "@/hooks/useSiteStats"
 import { SkullIcon, FilmReelIcon } from "@/components/icons"
 import HoverTooltip from "@/components/common/HoverTooltip"
@@ -7,11 +8,15 @@ function StatCard({
   value,
   label,
   tooltip,
+  to,
+  testId,
 }: {
   icon: React.ReactNode
   value: string | number
   label: string
   tooltip?: string
+  to?: string
+  testId?: string
 }) {
   const content = (
     <div className="flex items-center gap-2 text-text-muted">
@@ -23,15 +28,23 @@ function StatCard({
     </div>
   )
 
+  const wrappedContent = to ? (
+    <Link to={to} data-testid={testId} className="transition-opacity hover:opacity-70">
+      {content}
+    </Link>
+  ) : (
+    content
+  )
+
   if (tooltip) {
     return (
       <HoverTooltip content={tooltip} testId="causes-known-tooltip">
-        {content}
+        {wrappedContent}
       </HoverTooltip>
     )
   }
 
-  return content
+  return wrappedContent
 }
 
 export default function SiteStats() {
@@ -73,6 +86,8 @@ export default function SiteStats() {
             value={`${data.causeOfDeathPercentage}%`}
             label="causes known"
             tooltip={`${data.actorsWithCauseKnown.toLocaleString()} of ${data.totalDeceasedActors.toLocaleString()} deceased actors`}
+            to="/causes-of-death"
+            testId="causes-known-link"
           />
         )}
         {data.topCauseOfDeath && (
@@ -80,6 +95,8 @@ export default function SiteStats() {
             icon={<span className="text-xs">†</span>}
             value={data.topCauseOfDeath}
             label="leading cause"
+            to="/causes-of-death/cancer"
+            testId="leading-cause-link"
           />
         )}
       </div>

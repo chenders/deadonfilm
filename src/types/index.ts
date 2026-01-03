@@ -94,4 +94,13 @@ export type {
   DecadeCategoriesResponse,
   GenreCategory,
   GenreCategoriesResponse,
+  TopCause,
+  CauseCategoryStats,
+  CauseCategoryIndexResponse,
+  NotableActor,
+  DecadeBreakdown,
+  SpecificCauseStats,
+  CauseActor,
+  CauseCategoryDetailResponse,
+  SpecificCauseDetailResponse,
 } from "./discovery"

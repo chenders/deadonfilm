@@ -33,6 +33,9 @@ import type {
   SeasonResponse,
   UnifiedSearchResponse,
   SearchMediaType,
+  CauseCategoryIndexResponse,
+  CauseCategoryDetailResponse,
+  SpecificCauseDetailResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -360,4 +363,55 @@ export async function getSeasonEpisodes(
 
 export async function getSeason(showId: number, seasonNumber: number): Promise<SeasonResponse> {
   return fetchJson(`/show/${showId}/season/${seasonNumber}`)
+}
+
+// Causes of Death 3-level hierarchy API functions
+
+export async function getCauseCategoryIndex(): Promise<CauseCategoryIndexResponse> {
+  return fetchJson("/causes-of-death")
+}
+
+export interface CauseCategoryParams {
+  page?: number
+  includeObscure?: boolean
+  specificCause?: string
+}
+
+export async function getCauseCategoryDetail(
+  categorySlug: string,
+  params: CauseCategoryParams = {}
+): Promise<CauseCategoryDetailResponse> {
+  const { page = 1, includeObscure = false, specificCause } = params
+  const searchParams = new URLSearchParams()
+  searchParams.set("page", String(page))
+  if (includeObscure) {
+    searchParams.set("includeObscure", "true")
+  }
+  if (specificCause) {
+    searchParams.set("cause", specificCause)
+  }
+  return fetchJson(
+    `/causes-of-death/${encodeURIComponent(categorySlug)}?${searchParams.toString()}`
+  )
+}
+
+export interface SpecificCauseParams {
+  page?: number
+  includeObscure?: boolean
+}
+
+export async function getSpecificCauseDetail(
+  categorySlug: string,
+  causeSlug: string,
+  params: SpecificCauseParams = {}
+): Promise<SpecificCauseDetailResponse> {
+  const { page = 1, includeObscure = false } = params
+  const searchParams = new URLSearchParams()
+  searchParams.set("page", String(page))
+  if (includeObscure) {
+    searchParams.set("includeObscure", "true")
+  }
+  return fetchJson(
+    `/causes-of-death/${encodeURIComponent(categorySlug)}/${encodeURIComponent(causeSlug)}?${searchParams.toString()}`
+  )
 }

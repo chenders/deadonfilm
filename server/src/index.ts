@@ -45,6 +45,11 @@ import {
   getDeathsByDecadeHandler,
   getAllDeathsHandler,
 } from "./routes/deaths.js"
+import {
+  getCauseCategoryIndexHandler,
+  getCauseCategoryHandler,
+  getSpecificCauseHandler,
+} from "./routes/causes.js"
 import { getGenreCategoriesHandler, getMoviesByGenreHandler } from "./routes/movies.js"
 import {
   getShow,
@@ -167,6 +172,12 @@ app.get("/api/deaths/cause/:cause", getDeathsByCauseHandler)
 app.get("/api/deaths/decades", getDecadeCategoriesHandler)
 app.get("/api/deaths/decade/:decade", getDeathsByDecadeHandler)
 app.get("/api/deaths/all", getAllDeathsHandler)
+
+// Cause of death category routes (new 3-level hierarchy)
+app.get("/api/causes-of-death", getCauseCategoryIndexHandler)
+app.get("/api/causes-of-death/:categorySlug", getCauseCategoryHandler)
+app.get("/api/causes-of-death/:categorySlug/:causeSlug", getSpecificCauseHandler)
+
 app.get("/api/movies/genres", getGenreCategoriesHandler)
 app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
 
