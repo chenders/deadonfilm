@@ -4,6 +4,7 @@ import { getProfileUrl } from "@/services/api"
 import { createActorSlug } from "@/utils/slugify"
 import { PersonIcon } from "@/components/icons"
 import { formatDate } from "@/utils/formatDate"
+import CauseOfDeathBadge from "@/components/common/CauseOfDeathBadge"
 
 export default function RecentDeaths() {
   // Fetch 8 for 2 rows of 4 on desktop, or 2 rows of 2 on mobile
@@ -71,11 +72,12 @@ export default function RecentDeaths() {
             </h3>
             <p className="text-xs text-accent">{formatDate(death.deathday)}</p>
             {death.cause_of_death && (
-              <p
-                className="mt-1 w-full truncate text-xs text-text-muted"
-                title={death.cause_of_death}
-              >
-                {death.cause_of_death}
+              <p className="mt-1 w-full truncate text-xs text-text-muted">
+                <CauseOfDeathBadge
+                  causeOfDeath={death.cause_of_death}
+                  causeOfDeathDetails={death.cause_of_death_details}
+                  testId={`death-details-tooltip-${death.tmdb_id}`}
+                />
               </p>
             )}
           </Link>

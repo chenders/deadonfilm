@@ -6,6 +6,7 @@ import { getProfileUrl } from "@/services/api"
 import { formatDate } from "@/utils/formatDate"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import CauseOfDeathBadge from "@/components/common/CauseOfDeathBadge"
 import { PersonIcon } from "@/components/icons"
 import type { CovidDeath } from "@/types"
 
@@ -46,13 +47,14 @@ function ActorRow({ person }: { person: CovidDeath }) {
         </div>
 
         <div className="flex-shrink-0 text-right">
-          {person.causeOfDeath && <p className="text-sm text-brown-dark">{person.causeOfDeath}</p>}
-          {person.causeOfDeathDetails && (
-            <p
-              className="max-w-xs truncate text-xs text-text-muted"
-              title={person.causeOfDeathDetails}
-            >
-              {person.causeOfDeathDetails}
+          {person.causeOfDeath && (
+            <p className="text-sm text-brown-dark">
+              <CauseOfDeathBadge
+                causeOfDeath={person.causeOfDeath}
+                causeOfDeathDetails={person.causeOfDeathDetails}
+                testId={`covid-death-details-${person.id}`}
+                iconSize={14}
+              />
             </p>
           )}
         </div>
@@ -83,7 +85,13 @@ function ActorRow({ person }: { person: CovidDeath }) {
             {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
           </p>
           {person.causeOfDeath && (
-            <p className="mt-1 text-xs text-brown-dark">{person.causeOfDeath}</p>
+            <p className="mt-1 text-xs text-brown-dark">
+              <CauseOfDeathBadge
+                causeOfDeath={person.causeOfDeath}
+                causeOfDeathDetails={person.causeOfDeathDetails}
+                testId={`covid-death-details-mobile-${person.id}`}
+              />
+            </p>
           )}
         </div>
       </div>
