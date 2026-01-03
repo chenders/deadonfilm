@@ -23,6 +23,7 @@ vi.mock("@/services/api", () => ({
       topCauseOfDeath: "Cancer",
       avgMortalityPercentage: 42.5,
       causeOfDeathPercentage: 25.8,
+      actorsWithCauseKnown: 387,
     })
   ),
   getRecentDeaths: vi.fn(() => Promise.resolve({ deaths: [] })),

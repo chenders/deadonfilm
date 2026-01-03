@@ -24,6 +24,7 @@ export async function getStats(req: Request, res: Response) {
         topCauseOfDeath: null,
         avgMortalityPercentage: null,
         causeOfDeathPercentage: null,
+        actorsWithCauseKnown: null,
       })
     }
 

@@ -23,6 +23,7 @@ const mockStats = {
   topCauseOfDeath: "Cancer",
   avgMortalityPercentage: 42.5,
   causeOfDeathPercentage: 25.8,
+  actorsWithCauseKnown: 387,
 }
 
 const mockDeaths = {
