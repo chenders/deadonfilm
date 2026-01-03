@@ -328,7 +328,7 @@ export function categorizeCauseOfDeath(cause: string | null): CauseCategoryKey {
 export function createCauseSlug(cause: string): string {
   return cause
     .toLowerCase()
-    .replace(/[''\u2019\u02BC]/g, "") // Remove apostrophes (straight, curly, modifier)
+    .replace(/['\u2019\u02BC]/g, "") // Remove apostrophes (straight, curly, modifier)
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
 }

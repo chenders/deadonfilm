@@ -3138,8 +3138,8 @@ export async function getCauseCategory(
   )
 
   // Get specific causes within category
-  const causesResult = await db.query<{ cause: string; count: string }>(
-    `SELECT cause_of_death as cause, COUNT(*) as count
+  const causesResult = await db.query<{ cause: string; count: string; avg_age: string | null }>(
+    `SELECT cause_of_death as cause, COUNT(*) as count, AVG(age_at_death)::numeric(10,1) as avg_age
      FROM actors
      WHERE deathday IS NOT NULL
        AND cause_of_death IS NOT NULL
@@ -3202,6 +3202,7 @@ export async function getCauseCategory(
       cause: c.cause,
       slug: createCauseSlug(c.cause),
       count: parseInt(c.count, 10),
+      avgAge: c.avg_age ? parseFloat(c.avg_age) : null,
     })),
     actors: actorsResult.rows.map((a, idx) => ({
       rank: offset + idx + 1,
