@@ -11,6 +11,7 @@ vi.mock("../lib/tmdb.js", () => ({
 
 vi.mock("../lib/db.js", () => ({
   getActorFilmography: vi.fn(),
+  getActorShowFilmography: vi.fn(),
   getActor: vi.fn(),
 }))
 
@@ -59,6 +60,20 @@ describe("getActor", () => {
       posterPath: "/poster.jpg",
       deceasedCount: 3,
       castCount: 10,
+    },
+  ]
+
+  const mockTVFilmography = [
+    {
+      showId: 200,
+      name: "Great Show",
+      firstAirYear: 2018,
+      lastAirYear: 2022,
+      character: "Main Role",
+      posterPath: "/show-poster.jpg",
+      deceasedCount: 2,
+      castCount: 8,
+      episodeCount: 24,
     },
   ]
 
@@ -125,11 +140,13 @@ describe("getActor", () => {
   it("returns actor profile for living actor without death info", async () => {
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce(mockTVFilmography)
 
     await getActor(mockReq as Request, mockRes as Response)
 
     expect(tmdb.getPersonDetails).toHaveBeenCalledWith(12345)
     expect(db.getActorFilmography).toHaveBeenCalledWith(12345)
+    expect(db.getActorShowFilmography).toHaveBeenCalledWith(12345)
     expect(db.getActor).not.toHaveBeenCalled()
     expect(jsonSpy).toHaveBeenCalledWith({
       actor: {
@@ -142,6 +159,7 @@ describe("getActor", () => {
         placeOfBirth: "Los Angeles, CA",
       },
       analyzedFilmography: mockFilmography,
+      analyzedTVFilmography: mockTVFilmography,
       deathInfo: null,
     })
   })
@@ -150,12 +168,14 @@ describe("getActor", () => {
     mockReq.params = { id: "67890" }
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
     vi.mocked(db.getActor).mockResolvedValueOnce(mockDeceasedRecord)
 
     await getActor(mockReq as Request, mockRes as Response)
 
     expect(tmdb.getPersonDetails).toHaveBeenCalledWith(67890)
     expect(db.getActorFilmography).toHaveBeenCalledWith(67890)
+    expect(db.getActorShowFilmography).toHaveBeenCalledWith(67890)
     expect(db.getActor).toHaveBeenCalledWith(67890)
     expect(jsonSpy).toHaveBeenCalledWith({
       actor: {
@@ -168,6 +188,7 @@ describe("getActor", () => {
         placeOfBirth: "New York, NY",
       },
       analyzedFilmography: mockFilmography,
+      analyzedTVFilmography: [],
       deathInfo: {
         causeOfDeath: "Natural causes",
         causeOfDeathDetails: "Passed peacefully in sleep.",
@@ -182,6 +203,7 @@ describe("getActor", () => {
     mockReq.params = { id: "67890" }
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce([])
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
     vi.mocked(db.getActor).mockResolvedValueOnce(null)
 
     await getActor(mockReq as Request, mockRes as Response)
@@ -203,12 +225,14 @@ describe("getActor", () => {
   it("returns empty filmography when actor has no movies in database", async () => {
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce([])
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
 
     await getActor(mockReq as Request, mockRes as Response)
 
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         analyzedFilmography: [],
+        analyzedTVFilmography: [],
       })
     )
   })
@@ -227,6 +251,7 @@ describe("getActor", () => {
   it("returns 500 on database error", async () => {
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
     vi.mocked(db.getActorFilmography).mockRejectedValueOnce(new Error("Database error"))
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
 
     await getActor(mockReq as Request, mockRes as Response)
 
@@ -239,18 +264,25 @@ describe("getActor", () => {
   it("response structure does not include costarStats", async () => {
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce(mockTVFilmography)
 
     await getActor(mockReq as Request, mockRes as Response)
 
     const response = jsonSpy.mock.calls[0][0]
     expect(response).not.toHaveProperty("costarStats")
-    expect(Object.keys(response)).toEqual(["actor", "analyzedFilmography", "deathInfo"])
+    expect(Object.keys(response)).toEqual([
+      "actor",
+      "analyzedFilmography",
+      "analyzedTVFilmography",
+      "deathInfo",
+    ])
   })
 
   describe("recordCustomEvent tracking", () => {
     it("records ActorView custom event for living actor", async () => {
       vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
       vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+      vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce(mockTVFilmography)
 
       await getActor(mockReq as Request, mockRes as Response)
 
@@ -261,6 +293,7 @@ describe("getActor", () => {
           name: "Living Actor",
           isDeceased: false,
           filmographyCount: 1,
+          tvFilmographyCount: 1,
           hasCauseOfDeath: false,
           responseTimeMs: expect.any(Number),
         })
@@ -271,6 +304,7 @@ describe("getActor", () => {
       mockReq.params = { id: "67890" }
       vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
       vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+      vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
       vi.mocked(db.getActor).mockResolvedValueOnce(mockDeceasedRecord)
 
       await getActor(mockReq as Request, mockRes as Response)
@@ -282,6 +316,7 @@ describe("getActor", () => {
           name: "Deceased Actor",
           isDeceased: true,
           filmographyCount: 1,
+          tvFilmographyCount: 0,
           hasCauseOfDeath: true,
           responseTimeMs: expect.any(Number),
         })

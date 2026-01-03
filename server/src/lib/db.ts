@@ -1549,6 +1549,18 @@ export interface ActorFilmographyMovie {
   castCount: number
 }
 
+export interface ActorFilmographyShow {
+  showId: number
+  name: string
+  firstAirYear: number | null
+  lastAirYear: number | null
+  character: string | null
+  posterPath: string | null
+  deceasedCount: number
+  castCount: number
+  episodeCount: number
+}
+
 // ============================================================================
 // COVID-19 deaths functions
 // ============================================================================
@@ -1906,6 +1918,60 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
     posterPath: row.poster_path,
     deceasedCount: row.deceased_count,
     castCount: row.cast_count,
+  }))
+}
+
+export async function getActorShowFilmography(
+  actorTmdbId: number
+): Promise<ActorFilmographyShow[]> {
+  const db = getPool()
+
+  const filmographyResult = await db.query<{
+    show_id: number
+    name: string
+    first_air_year: number | null
+    last_air_year: number | null
+    character_name: string | null
+    poster_path: string | null
+    deceased_count: number
+    cast_count: number
+    episode_count: number
+  }>(
+    `SELECT
+       s.tmdb_id as show_id,
+       s.name,
+       EXTRACT(YEAR FROM s.first_air_date)::int as first_air_year,
+       EXTRACT(YEAR FROM s.last_air_date)::int as last_air_year,
+       (SELECT asa2.character_name
+        FROM actor_show_appearances asa2
+        WHERE asa2.actor_id = a.id AND asa2.show_tmdb_id = s.tmdb_id
+        GROUP BY asa2.character_name
+        ORDER BY COUNT(*) DESC
+        LIMIT 1) as character_name,
+       s.poster_path,
+       s.deceased_count,
+       s.cast_count,
+       COUNT(DISTINCT (asa.season_number, asa.episode_number))::int as episode_count
+     FROM actor_show_appearances asa
+     JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
+     JOIN actors a ON asa.actor_id = a.id
+     WHERE a.tmdb_id = $1
+     GROUP BY s.tmdb_id, s.name, s.first_air_date, s.last_air_date,
+              s.poster_path, s.deceased_count, s.cast_count, a.id
+     ORDER BY s.first_air_date DESC NULLS LAST`,
+    [actorTmdbId]
+  )
+
+  return filmographyResult.rows.map((row) => ({
+    showId: row.show_id,
+    name: row.name,
+    firstAirYear: row.first_air_year,
+    lastAirYear: row.last_air_year,
+    character: row.character_name,
+    posterPath: row.poster_path,
+    deceasedCount: row.deceased_count,
+    castCount: row.cast_count,
+    episodeCount: row.episode_count,
   }))
 }
 
