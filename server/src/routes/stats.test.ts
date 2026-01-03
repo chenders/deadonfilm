@@ -41,6 +41,7 @@ describe("getStats", () => {
     topCauseOfDeath: "Cancer",
     avgMortalityPercentage: 42.5,
     causeOfDeathPercentage: 25.8,
+    actorsWithCauseKnown: 387,
   }
 
   beforeEach(() => {
@@ -83,6 +84,7 @@ describe("getStats", () => {
       topCauseOfDeath: null,
       avgMortalityPercentage: null,
       causeOfDeathPercentage: null,
+      actorsWithCauseKnown: null,
     })
   })
 
@@ -104,6 +106,7 @@ describe("getStats", () => {
       topCauseOfDeath: null,
       avgMortalityPercentage: null,
       causeOfDeathPercentage: null,
+      actorsWithCauseKnown: null,
     }
     vi.mocked(db.getSiteStats).mockResolvedValueOnce(statsWithNulls)
 

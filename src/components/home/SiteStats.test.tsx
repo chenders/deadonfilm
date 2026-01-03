@@ -15,6 +15,7 @@ const mockStats = {
   topCauseOfDeath: "Cancer",
   avgMortalityPercentage: 42.5,
   causeOfDeathPercentage: 25.8,
+  actorsWithCauseKnown: 387,
 }
 
 function renderWithProviders(ui: React.ReactElement) {
@@ -92,6 +93,7 @@ describe("SiteStats", () => {
       topCauseOfDeath: null,
       avgMortalityPercentage: null,
       causeOfDeathPercentage: null,
+      actorsWithCauseKnown: null,
     })
 
     const { container } = renderWithProviders(<SiteStats />)
@@ -125,6 +127,7 @@ describe("SiteStats", () => {
       topCauseOfDeath: null,
       avgMortalityPercentage: null,
       causeOfDeathPercentage: null,
+      actorsWithCauseKnown: null,
     })
 
     renderWithProviders(<SiteStats />)

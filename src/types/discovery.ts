@@ -31,6 +31,7 @@ export interface SiteStatsResponse {
   topCauseOfDeath: string | null
   avgMortalityPercentage: number | null
   causeOfDeathPercentage: number | null
+  actorsWithCauseKnown: number | null
 }
 
 // Trivia types
