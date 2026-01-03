@@ -23,6 +23,7 @@ export async function getStats(req: Request, res: Response) {
         totalMoviesAnalyzed: 0,
         topCauseOfDeath: null,
         avgMortalityPercentage: null,
+        causeOfDeathPercentage: null,
       })
     }
 

@@ -14,6 +14,7 @@ const mockStats = {
   totalMoviesAnalyzed: 350,
   topCauseOfDeath: "Cancer",
   avgMortalityPercentage: 42.5,
+  causeOfDeathPercentage: 25.8,
 }
 
 function renderWithProviders(ui: React.ReactElement) {
@@ -68,6 +69,7 @@ describe("SiteStats", () => {
       expect(screen.getByText("actors tracked")).toBeInTheDocument()
       expect(screen.getByText("movies analyzed")).toBeInTheDocument()
       expect(screen.getByText("avg. mortality")).toBeInTheDocument()
+      expect(screen.getByText("causes known")).toBeInTheDocument()
       expect(screen.getByText("leading cause")).toBeInTheDocument()
     })
   })
@@ -89,6 +91,7 @@ describe("SiteStats", () => {
       totalMoviesAnalyzed: 0,
       topCauseOfDeath: null,
       avgMortalityPercentage: null,
+      causeOfDeathPercentage: null,
     })
 
     const { container } = renderWithProviders(<SiteStats />)
@@ -121,6 +124,7 @@ describe("SiteStats", () => {
       totalMoviesAnalyzed: 200,
       topCauseOfDeath: null,
       avgMortalityPercentage: null,
+      causeOfDeathPercentage: null,
     })
 
     renderWithProviders(<SiteStats />)
@@ -135,7 +139,19 @@ describe("SiteStats", () => {
 
     // Optional stats should not be shown
     expect(screen.queryByText("avg. mortality")).not.toBeInTheDocument()
+    expect(screen.queryByText("causes known")).not.toBeInTheDocument()
     expect(screen.queryByText("leading cause")).not.toBeInTheDocument()
+  })
+
+  it("displays cause of death percentage when available", async () => {
+    vi.mocked(api.getSiteStats).mockResolvedValue(mockStats)
+
+    renderWithProviders(<SiteStats />)
+
+    await waitFor(() => {
+      expect(screen.getByText("25.8%")).toBeInTheDocument()
+      expect(screen.getByText("causes known")).toBeInTheDocument()
+    })
   })
 
   it("shows mortality percentage when available", async () => {

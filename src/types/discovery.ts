@@ -30,6 +30,7 @@ export interface SiteStatsResponse {
   totalMoviesAnalyzed: number
   topCauseOfDeath: string | null
   avgMortalityPercentage: number | null
+  causeOfDeathPercentage: number | null
 }
 
 // Trivia types
