@@ -275,4 +275,19 @@ describe("CausesOfDeathPage", () => {
       expect(screen.getByTestId("category-grid")).toBeInTheDocument()
     })
   })
+
+  it("renders category-specific icons for each category", async () => {
+    vi.mocked(api.getCauseCategoryIndex).mockResolvedValue(mockCategoryIndex)
+
+    renderWithProviders(<CausesOfDeathPage />)
+
+    await waitFor(() => {
+      // Each category card should have an SVG icon
+      const cancerCard = screen.getByTestId("category-card-cancer")
+      const heartCard = screen.getByTestId("category-card-heart-disease")
+
+      expect(cancerCard.querySelector("svg")).toBeInTheDocument()
+      expect(heartCard.querySelector("svg")).toBeInTheDocument()
+    })
+  })
 })

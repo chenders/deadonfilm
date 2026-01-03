@@ -3,10 +3,43 @@ import { Helmet } from "react-helmet-async"
 import { useCauseCategoryIndex } from "@/hooks/useCausesOfDeath"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
-import { SkullIcon } from "@/components/icons"
+import {
+  RibbonIcon,
+  HeartIcon,
+  LungsIcon,
+  BrainIcon,
+  PillIcon,
+  CarCrashIcon,
+  SkullIcon,
+  VirusIcon,
+  KidneyIcon,
+  LeafIcon,
+  QuestionIcon,
+} from "@/components/icons"
 import type { CauseCategoryStats } from "@/types"
 
+// Map category slugs to their icons
+const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  cancer: RibbonIcon,
+  "heart-disease": HeartIcon,
+  respiratory: LungsIcon,
+  neurological: BrainIcon,
+  overdose: PillIcon,
+  accident: CarCrashIcon,
+  suicide: SkullIcon,
+  homicide: SkullIcon,
+  infectious: VirusIcon,
+  "liver-kidney": KidneyIcon,
+  natural: LeafIcon,
+  other: QuestionIcon,
+}
+
+function getCategoryIcon(slug: string) {
+  return categoryIcons[slug] || QuestionIcon
+}
+
 function CategoryCard({ category }: { category: CauseCategoryStats }) {
+  const Icon = getCategoryIcon(category.slug)
   return (
     <Link
       to={`/causes-of-death/${category.slug}`}
@@ -14,7 +47,7 @@ function CategoryCard({ category }: { category: CauseCategoryStats }) {
       className="flex flex-col rounded-lg bg-beige p-4 transition-colors hover:bg-cream"
     >
       <div className="mb-2 flex items-center gap-3">
-        <SkullIcon size={20} className="shrink-0 text-accent" />
+        <Icon size={20} className="shrink-0 text-accent" />
         <h2 className="truncate font-display text-lg text-brown-dark">{category.label}</h2>
       </div>
 
