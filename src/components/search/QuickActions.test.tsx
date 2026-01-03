@@ -128,4 +128,19 @@ describe("QuickActions", () => {
       })
     })
   })
+
+  it("all emoji spans have consistent styling to ensure equal button heights", () => {
+    renderWithRouter(<QuickActions />)
+
+    // Each button's emoji should use the same emojiClass for consistent sizing
+    const emojiClasses = ["text-base", "leading-none"]
+
+    const emojis = ["👼", "🦠", "⚠️", "⏳"]
+    emojis.forEach((emoji) => {
+      const emojiSpan = screen.getByText(emoji)
+      emojiClasses.forEach((cls) => {
+        expect(emojiSpan.className).toContain(cls)
+      })
+    })
+  })
 })
