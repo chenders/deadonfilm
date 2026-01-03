@@ -68,6 +68,8 @@
     "backfill:external-ids": "tsx scripts/backfill-external-ids.ts",
     "//backfill:cause-of-death-batch": "Backfill cause of death using Claude Opus 4.5 Batch API",
     "backfill:cause-of-death-batch": "tsx scripts/backfill-cause-of-death-batch.ts",
+    "//backfill:cause-of-death-runner": "Continuous runner for cause of death batches",
+    "backfill:cause-of-death-runner": "tsx scripts/run-cause-of-death-batch.ts",
 
     "// === Death Info Management ===": "",
     "//fix:death-info": "Scan and fix suspicious death records",
