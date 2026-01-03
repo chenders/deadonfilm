@@ -12,6 +12,7 @@ export type {
   CursedActor,
   CursedActorsResponse,
   ActorFilmographyMovie,
+  ActorFilmographyShow,
   ActorDeathInfo,
   ActorProfileResponse,
   DeathWatchActor,

@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { useParams, useLocation, Link } from "react-router-dom"
 import { createPortal } from "react-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
-import { extractActorId, createMovieSlug } from "@/utils/slugify"
+import { extractActorId, createMovieSlug, createShowSlug } from "@/utils/slugify"
 import { formatDate, calculateCurrentAge } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import { getProfileUrl, getPosterUrl } from "@/services/api"
@@ -11,8 +11,12 @@ import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildPersonSchema, buildBreadcrumbSchema } from "@/utils/schema"
-import { PersonIcon, FilmReelIcon, InfoIcon } from "@/components/icons"
-import type { ActorFilmographyMovie } from "@/types"
+import { PersonIcon, FilmReelIcon, TVIcon, InfoIcon } from "@/components/icons"
+import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
+
+type FilmographyItem =
+  | { type: "movie"; data: ActorFilmographyMovie; year: number | null }
+  | { type: "show"; data: ActorFilmographyShow; year: number | null }
 
 interface TooltipProps {
   content: string
@@ -68,26 +72,82 @@ function Tooltip({ content, triggerRef, isVisible, onMouseEnter, onMouseLeave }:
   )
 }
 
-function FilmographyRow({ movie }: { movie: ActorFilmographyMovie }) {
-  const posterUrl = getPosterUrl(movie.posterPath, "w92")
-  const slug = createMovieSlug(
-    movie.title,
-    movie.releaseYear?.toString() || "unknown",
-    movie.movieId
-  )
+function FilmographyRow({ item }: { item: FilmographyItem }) {
+  if (item.type === "movie") {
+    const movie = item.data
+    const posterUrl = getPosterUrl(movie.posterPath, "w92")
+    const slug = createMovieSlug(
+      movie.title,
+      movie.releaseYear?.toString() || "unknown",
+      movie.movieId
+    )
+    const mortalityPercent =
+      movie.castCount > 0 ? Math.round((movie.deceasedCount / movie.castCount) * 100) : 0
+
+    return (
+      <Link
+        to={`/movie/${slug}`}
+        className="flex items-center gap-3 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+        data-testid="filmography-row"
+      >
+        {posterUrl ? (
+          <img
+            src={posterUrl}
+            alt={movie.title}
+            width={46}
+            height={69}
+            loading="lazy"
+            className="h-[69px] w-[46px] flex-shrink-0 rounded object-cover"
+          />
+        ) : (
+          <div className="flex h-[69px] w-[46px] flex-shrink-0 items-center justify-center rounded bg-beige">
+            <FilmReelIcon size={24} className="text-text-muted" />
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-display text-base text-brown-dark">{movie.title}</h3>
+          {movie.releaseYear && <p className="text-sm text-text-muted">{movie.releaseYear}</p>}
+          {movie.character && (
+            <p className="truncate text-sm italic text-text-muted">as {movie.character}</p>
+          )}
+        </div>
+
+        <div className="flex-shrink-0 text-right">
+          <p className="font-display text-lg text-brown-dark">
+            {movie.deceasedCount.toLocaleString()}/{movie.castCount.toLocaleString()}
+          </p>
+          <p className="text-xs text-text-muted">{mortalityPercent}% deceased</p>
+        </div>
+      </Link>
+    )
+  }
+
+  // TV Show
+  const show = item.data
+  const posterUrl = getPosterUrl(show.posterPath, "w92")
+  // createShowSlug expects a date string, so we construct one from the year
+  const firstAirDate = show.firstAirYear ? `${show.firstAirYear}-01-01` : null
+  const slug = createShowSlug(show.name, firstAirDate, show.showId)
   const mortalityPercent =
-    movie.castCount > 0 ? Math.round((movie.deceasedCount / movie.castCount) * 100) : 0
+    show.castCount > 0 ? Math.round((show.deceasedCount / show.castCount) * 100) : 0
+
+  // Format year range
+  const yearDisplay =
+    show.firstAirYear && show.lastAirYear && show.firstAirYear !== show.lastAirYear
+      ? `${show.firstAirYear}–${show.lastAirYear}`
+      : show.firstAirYear?.toString() || ""
 
   return (
     <Link
-      to={`/movie/${slug}`}
+      to={`/show/${slug}`}
       className="flex items-center gap-3 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
       data-testid="filmography-row"
     >
       {posterUrl ? (
         <img
           src={posterUrl}
-          alt={movie.title}
+          alt={show.name}
           width={46}
           height={69}
           loading="lazy"
@@ -95,21 +155,25 @@ function FilmographyRow({ movie }: { movie: ActorFilmographyMovie }) {
         />
       ) : (
         <div className="flex h-[69px] w-[46px] flex-shrink-0 items-center justify-center rounded bg-beige">
-          <FilmReelIcon size={24} className="text-text-muted" />
+          <TVIcon size={24} className="text-text-muted" />
         </div>
       )}
 
       <div className="min-w-0 flex-1">
-        <h3 className="truncate font-display text-base text-brown-dark">{movie.title}</h3>
-        {movie.releaseYear && <p className="text-sm text-text-muted">{movie.releaseYear}</p>}
-        {movie.character && (
-          <p className="truncate text-sm italic text-text-muted">as {movie.character}</p>
+        <h3 className="truncate font-display text-base text-brown-dark">{show.name}</h3>
+        <p className="text-sm text-text-muted">
+          {yearDisplay}
+          {yearDisplay && " · "}
+          {show.episodeCount} episode{show.episodeCount !== 1 ? "s" : ""}
+        </p>
+        {show.character && (
+          <p className="truncate text-sm italic text-text-muted">as {show.character}</p>
         )}
       </div>
 
       <div className="flex-shrink-0 text-right">
         <p className="font-display text-lg text-brown-dark">
-          {movie.deceasedCount.toLocaleString()}/{movie.castCount.toLocaleString()}
+          {show.deceasedCount.toLocaleString()}/{show.castCount.toLocaleString()}
         </p>
         <p className="text-xs text-text-muted">{mortalityPercent}% deceased</p>
       </div>
@@ -142,6 +206,24 @@ export default function ActorPage() {
     }, 100)
   }
 
+  // Combine and sort movies and TV shows chronologically (newest first)
+  // Must be before early returns to maintain consistent hook order
+  const combinedFilmography = useMemo(() => {
+    if (!data) return []
+    const { analyzedFilmography, analyzedTVFilmography } = data
+    const movies: FilmographyItem[] = analyzedFilmography.map((m) => ({
+      type: "movie" as const,
+      data: m,
+      year: m.releaseYear,
+    }))
+    const shows: FilmographyItem[] = (analyzedTVFilmography || []).map((s) => ({
+      type: "show" as const,
+      data: s,
+      year: s.firstAirYear,
+    }))
+    return [...movies, ...shows].sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
+  }, [data])
+
   if (!actorId) {
     return <ErrorMessage message="Invalid actor URL" />
   }
@@ -158,7 +240,7 @@ export default function ActorPage() {
     return <ErrorMessage message="Actor not found" />
   }
 
-  const { actor, analyzedFilmography, deathInfo } = data
+  const { actor, analyzedFilmography, analyzedTVFilmography, deathInfo } = data
   const profileUrl = getProfileUrl(actor.profilePath, "h632")
   const currentAge = actor.deathday ? null : calculateCurrentAge(actor.birthday)
   const isDeceased = !!actor.deathday
@@ -345,24 +427,39 @@ export default function ActorPage() {
         <div>
           <h2 className="mb-3 font-display text-lg text-brown-dark">
             Analyzed Filmography
-            {analyzedFilmography.length > 0 && (
+            {combinedFilmography.length > 0 && (
               <span className="ml-2 text-sm font-normal text-text-muted">
-                ({analyzedFilmography.length} movies)
+                ({analyzedFilmography.length} movie{analyzedFilmography.length !== 1 ? "s" : ""}
+                {(analyzedTVFilmography?.length ?? 0) > 0 && (
+                  <>
+                    , {analyzedTVFilmography.length} TV show
+                    {analyzedTVFilmography.length !== 1 ? "s" : ""}
+                  </>
+                )}
+                )
               </span>
             )}
           </h2>
 
-          {analyzedFilmography.length === 0 ? (
+          {combinedFilmography.length === 0 ? (
             <div className="rounded-lg bg-white p-6 text-center text-text-muted">
-              <p>No movies in our database yet.</p>
+              <p>No movies or TV shows in our database yet.</p>
               <p className="mt-1 text-sm">
-                This actor hasn't appeared in any movies we've analyzed for mortality statistics.
+                This actor hasn't appeared in any productions we've analyzed for mortality
+                statistics.
               </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {analyzedFilmography.map((movie) => (
-                <FilmographyRow key={movie.movieId} movie={movie} />
+              {combinedFilmography.map((item) => (
+                <FilmographyRow
+                  key={
+                    item.type === "movie"
+                      ? `movie-${item.data.movieId}`
+                      : `show-${item.data.showId}`
+                  }
+                  item={item}
+                />
               ))}
             </div>
           )}
