@@ -17,25 +17,17 @@
 
 import "dotenv/config"
 import Anthropic from "@anthropic-ai/sdk"
-import { Command, InvalidArgumentError } from "commander"
+import { Command } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
 import {
   loadCheckpoint,
   saveCheckpoint,
   deleteCheckpoint,
+  parsePositiveInt,
+  stripMarkdownCodeFences,
+  getYearFromDate,
   type Checkpoint,
 } from "./backfill-cause-of-death-batch.js"
-
-function parsePositiveInt(value: string): number {
-  if (!/^\d+$/.test(value)) {
-    throw new InvalidArgumentError("Must be a positive integer")
-  }
-  const parsed = parseInt(value, 10)
-  if (parsed <= 0) {
-    throw new InvalidArgumentError("Must be a positive integer")
-  }
-  return parsed
-}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -65,6 +57,8 @@ interface ActorToProcess {
   id: number
   tmdb_id: number
   name: string
+  birthday: Date | string | null
+  deathday: Date | string | null
 }
 
 let isShuttingDown = false
@@ -127,7 +121,7 @@ async function run(options: {
 
       const db = getPool()
       const result = await db.query<ActorToProcess>(
-        `SELECT id, tmdb_id, name
+        `SELECT id, tmdb_id, name, birthday, deathday
          FROM actors
          WHERE deathday IS NOT NULL
            AND (cause_of_death IS NULL OR cause_of_death_details IS NULL)
@@ -279,8 +273,12 @@ async function run(options: {
   console.log(`${"=".repeat(60)}\n`)
 }
 
-function buildPrompt(actor: { name: string }): string {
-  return `What was the cause of death for ${actor.name}?
+function buildPrompt(actor: ActorToProcess): string {
+  const birthYear = getYearFromDate(actor.birthday)
+  const deathYear = getYearFromDate(actor.deathday)
+  const birthInfo = birthYear ? `born ${birthYear}, ` : ""
+
+  return `What was the cause of death for ${actor.name} (${birthInfo}died ${deathYear})?
 
 Return JSON with these fields:
 - cause: specific medical cause (e.g., "heart failure", "pancreatic cancer") or null if unknown
@@ -321,15 +319,7 @@ async function processResults(
         const responseText = message.content[0].type === "text" ? message.content[0].text : ""
 
         try {
-          // Strip markdown code fences if present
-          let jsonText = responseText.trim()
-          if (jsonText.startsWith("```")) {
-            const match = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-            if (match) {
-              jsonText = match[1].trim()
-            }
-          }
-
+          const jsonText = stripMarkdownCodeFences(responseText)
           const parsed = JSON.parse(jsonText)
 
           // Apply update to database
