@@ -141,7 +141,9 @@ describe("UnnaturalDeathsPage", () => {
     await waitFor(() => {
       expect(screen.getAllByText(/Age 45/).length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText("Car Accident").length).toBeGreaterThanOrEqual(1)
-      expect(screen.getByText("Fatal crash on highway")).toBeInTheDocument()
+      // Check that the death details trigger exists with info icon (details shown in tooltip on hover)
+      const detailsTrigger = screen.getByTestId("unnatural-death-details-123")
+      expect(detailsTrigger).toBeInTheDocument()
     })
   })
 

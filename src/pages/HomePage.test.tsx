@@ -33,6 +33,7 @@ const mockDeaths = {
       name: "Actor One",
       deathday: "2024-12-01",
       cause_of_death: "Natural causes",
+      cause_of_death_details: null,
       profile_path: "/path1.jpg",
     },
   ],
