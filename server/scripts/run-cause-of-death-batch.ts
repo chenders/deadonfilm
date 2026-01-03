@@ -19,6 +19,7 @@ import "dotenv/config"
 import Anthropic from "@anthropic-ai/sdk"
 import { Command } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
+import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import {
   loadCheckpoint,
   saveCheckpoint,
@@ -28,6 +29,9 @@ import {
   getYearFromDate,
   type Checkpoint,
 } from "./backfill-cause-of-death-batch.js"
+
+// Initialize New Relic for monitoring
+initNewRelic()
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -93,6 +97,13 @@ async function run(options: {
   console.log(`Mode: ${dryRun ? "DRY RUN" : "LIVE"}`)
   console.log(`Press Ctrl-C to stop after current batch completes`)
   console.log(`${"=".repeat(60)}\n`)
+
+  if (!dryRun) {
+    recordCustomEvent("CauseOfDeathRunnerStarted", {
+      limit,
+      pollInterval,
+    })
+  }
 
   // Handle graceful shutdown
   process.on("SIGINT", () => {
@@ -193,7 +204,18 @@ async function run(options: {
           },
         }
         saveCheckpoint(checkpoint)
+
+        recordCustomEvent("CauseOfDeathBatchSubmitted", {
+          batchId: batch.id,
+          actorCount: result.rows.length,
+          batchNumber: batchCount,
+        })
       } catch (error) {
+        recordCustomEvent("CauseOfDeathRunnerError", {
+          operation: "submit",
+          batchNumber: batchCount,
+          error: error instanceof Error ? error.message : "Unknown error",
+        })
         console.error("Error submitting batch:", error)
         await resetPool()
         process.exit(1)
@@ -249,7 +271,24 @@ async function run(options: {
       // Clean up checkpoint on success
       deleteCheckpoint()
       console.log(`\nBatch #${batchCount} complete: ${batchProcessed} actors processed`)
+
+      recordCustomEvent("CauseOfDeathBatchProcessed", {
+        batchId: batchId!,
+        batchNumber: batchCount,
+        processed: batchProcessed,
+        succeeded: checkpoint!.stats.succeeded,
+        errored: checkpoint!.stats.errored,
+        expired: checkpoint!.stats.expired,
+        updatedCause: checkpoint!.stats.updatedCause,
+        updatedDetails: checkpoint!.stats.updatedDetails,
+      })
     } catch (error) {
+      recordCustomEvent("CauseOfDeathRunnerError", {
+        operation: "process",
+        batchId: batchId!,
+        batchNumber: batchCount,
+        error: error instanceof Error ? error.message : "Unknown error",
+      })
       console.error("Error processing results:", error)
       console.log("Batch checkpoint preserved. Will retry on next run.")
       break
@@ -271,6 +310,15 @@ async function run(options: {
   console.log(`Total actors processed: ${totalProcessed}`)
   console.log(`Total time: ${formatDuration(totalElapsed)}`)
   console.log(`${"=".repeat(60)}\n`)
+
+  if (!dryRun) {
+    recordCustomEvent("CauseOfDeathRunnerCompleted", {
+      totalBatches: batchCount,
+      totalProcessed,
+      durationSeconds: totalElapsed,
+      stoppedByUser: isShuttingDown,
+    })
+  }
 }
 
 function buildPrompt(actor: ActorToProcess): string {
