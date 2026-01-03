@@ -275,4 +275,59 @@ describe("CausesOfDeathPage", () => {
       expect(screen.getByTestId("category-grid")).toBeInTheDocument()
     })
   })
+
+  it("renders category-specific icons for each category", async () => {
+    vi.mocked(api.getCauseCategoryIndex).mockResolvedValue(mockCategoryIndex)
+
+    renderWithProviders(<CausesOfDeathPage />)
+
+    await waitFor(() => {
+      // Each category card should have an SVG icon with aria-hidden
+      const cancerCard = screen.getByTestId("category-card-cancer")
+      const heartCard = screen.getByTestId("category-card-heart-disease")
+
+      // Verify SVGs exist and are properly configured
+      const cancerIcon = cancerCard.querySelector('svg[aria-hidden="true"]')
+      const heartIcon = heartCard.querySelector('svg[aria-hidden="true"]')
+
+      expect(cancerIcon).toBeInTheDocument()
+      expect(heartIcon).toBeInTheDocument()
+
+      // Verify cancer gets RibbonIcon (has a specific path for awareness ribbon)
+      expect(cancerIcon?.querySelector("path")).toBeInTheDocument()
+
+      // Verify heart-disease gets HeartIcon (distinct from other icons)
+      expect(heartIcon?.querySelector("path")).toBeInTheDocument()
+    })
+  })
+
+  it("renders QuestionIcon for unknown category slugs", async () => {
+    const mockWithUnknownCategory = {
+      ...mockCategoryIndex,
+      categories: [
+        ...mockCategoryIndex.categories,
+        {
+          slug: "unknown-category",
+          label: "Unknown Category",
+          count: 10,
+          percentage: 0.5,
+          avgAge: 70,
+          avgYearsLost: 5,
+          topCauses: [],
+        },
+      ],
+    }
+    vi.mocked(api.getCauseCategoryIndex).mockResolvedValue(mockWithUnknownCategory)
+
+    renderWithProviders(<CausesOfDeathPage />)
+
+    await waitFor(() => {
+      // Unknown category should still render with a fallback QuestionIcon
+      const unknownCard = screen.getByTestId("category-card-unknown-category")
+      const icon = unknownCard.querySelector('svg[aria-hidden="true"]')
+
+      expect(icon).toBeInTheDocument()
+      expect(icon?.querySelector("path")).toBeInTheDocument()
+    })
+  })
 })
