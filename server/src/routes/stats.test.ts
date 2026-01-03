@@ -128,6 +128,7 @@ describe("getRecentDeathsHandler", () => {
       name: "Actor One",
       deathday: "2024-01-15",
       cause_of_death: "Natural causes",
+      cause_of_death_details: "Died peacefully at home",
       profile_path: "/path1.jpg",
     },
     {
@@ -135,6 +136,7 @@ describe("getRecentDeathsHandler", () => {
       name: "Actor Two",
       deathday: "2024-01-10",
       cause_of_death: null,
+      cause_of_death_details: null,
       profile_path: null,
     },
   ]

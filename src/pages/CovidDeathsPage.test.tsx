@@ -137,8 +137,9 @@ describe("CovidDeathsPage", () => {
       // Check death info is displayed - use getAllByText since responsive layout renders both desktop and mobile versions
       expect(screen.getAllByText(/Age 72/).length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText("COVID-19").length).toBeGreaterThanOrEqual(1)
-      // Details only shown in desktop view
-      expect(screen.getByText("Complications from COVID-19")).toBeInTheDocument()
+      // Check that the death details trigger exists with info icon (details shown in tooltip on hover)
+      const detailsTrigger = screen.getByTestId("covid-death-details-123")
+      expect(detailsTrigger).toBeInTheDocument()
     })
   })
 

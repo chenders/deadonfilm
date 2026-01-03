@@ -18,6 +18,7 @@ const mockDeaths = {
       name: "Actor One",
       deathday: "2024-12-01",
       cause_of_death: "Natural causes",
+      cause_of_death_details: "Died peacefully at home",
       profile_path: "/path1.jpg",
     },
     {
@@ -25,6 +26,7 @@ const mockDeaths = {
       name: "Actor Two",
       deathday: "2024-11-15",
       cause_of_death: null,
+      cause_of_death_details: null,
       profile_path: null,
     },
     {
@@ -32,6 +34,7 @@ const mockDeaths = {
       name: "Actor Three",
       deathday: "2024-10-20",
       cause_of_death: "Heart attack",
+      cause_of_death_details: null,
       profile_path: "/path3.jpg",
     },
   ],

@@ -5,6 +5,7 @@ import { createMovieSlug, createActorSlug } from "@/utils/slugify"
 import { getPosterUrl, getProfileUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import CauseOfDeathBadge from "@/components/common/CauseOfDeathBadge"
 import { PersonIcon } from "@/components/icons"
 import type { ForeverYoungMovie } from "@/types"
 
@@ -60,11 +61,12 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
               Died {Math.round(movie.actor.yearsLost)} years early
             </p>
             {movie.actor.causeOfDeath && (
-              <p
-                className="max-w-xs truncate text-xs text-text-muted"
-                title={movie.actor.causeOfDeathDetails || movie.actor.causeOfDeath}
-              >
-                {movie.actor.causeOfDeath}
+              <p className="max-w-xs truncate text-xs text-text-muted">
+                <CauseOfDeathBadge
+                  causeOfDeath={movie.actor.causeOfDeath}
+                  causeOfDeathDetails={movie.actor.causeOfDeathDetails}
+                  testId={`forever-young-death-details-${movie.id}`}
+                />
               </p>
             )}
           </div>
@@ -119,7 +121,13 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
             </p>
           </Link>
           {movie.actor.causeOfDeath && (
-            <p className="truncate text-xs text-text-muted">{movie.actor.causeOfDeath}</p>
+            <p className="truncate text-xs text-text-muted">
+              <CauseOfDeathBadge
+                causeOfDeath={movie.actor.causeOfDeath}
+                causeOfDeathDetails={movie.actor.causeOfDeathDetails}
+                testId={`forever-young-death-details-mobile-${movie.id}`}
+              />
+            </p>
           )}
         </div>
       </div>

@@ -30,6 +30,7 @@ export interface RecentDeathsResponse {
     name: string
     deathday: string
     cause_of_death: string | null
+    cause_of_death_details: string | null
     profile_path: string | null
   }>
 }
