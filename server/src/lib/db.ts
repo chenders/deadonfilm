@@ -2925,7 +2925,7 @@ export async function getCauseCategoryIndex(): Promise<CauseCategoryIndexRespons
      ORDER BY count DESC`
   )
 
-  // Get top 3 specific causes per category
+  // Get top 3 specific causes per category (using normalized causes for grouping)
   const topCausesResult = await db.query<{
     category_slug: string
     cause: string
@@ -2934,14 +2934,15 @@ export async function getCauseCategoryIndex(): Promise<CauseCategoryIndexRespons
     `WITH ranked_causes AS (
        SELECT
          ${categoryCase} as category_slug,
-         cause_of_death as cause,
+         COALESCE(n.normalized_cause, a.cause_of_death) as cause,
          COUNT(*) as count,
          ROW_NUMBER() OVER (PARTITION BY ${categoryCase} ORDER BY COUNT(*) DESC) as rn
-       FROM actors
-       WHERE deathday IS NOT NULL
-         AND cause_of_death IS NOT NULL
-         AND is_obscure = false
-       GROUP BY category_slug, cause_of_death
+       FROM actors a
+       LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+       WHERE a.deathday IS NOT NULL
+         AND a.cause_of_death IS NOT NULL
+         AND a.is_obscure = false
+       GROUP BY category_slug, COALESCE(n.normalized_cause, a.cause_of_death)
      )
      SELECT category_slug, cause, count
      FROM ranked_causes
@@ -3137,15 +3138,18 @@ export async function getCauseCategory(
      ORDER BY decade`
   )
 
-  // Get specific causes within category
+  // Get specific causes within category (using normalized causes for grouping)
   const causesResult = await db.query<{ cause: string; count: string; avg_age: string | null }>(
-    `SELECT cause_of_death as cause, COUNT(*) as count, AVG(age_at_death)::numeric(10,1) as avg_age
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND cause_of_death IS NOT NULL
+    `SELECT COALESCE(n.normalized_cause, a.cause_of_death) as cause,
+            COUNT(*) as count,
+            AVG(a.age_at_death)::numeric(10,1) as avg_age
+     FROM actors a
+     LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     WHERE a.deathday IS NOT NULL
+       AND a.cause_of_death IS NOT NULL
        AND (${categoryCondition})
        ${obscureFilter}
-     GROUP BY cause_of_death
+     GROUP BY COALESCE(n.normalized_cause, a.cause_of_death)
      HAVING COUNT(*) >= 2
      ORDER BY count DESC
      LIMIT 20`
@@ -3292,12 +3296,13 @@ export async function getCauseFromSlugInCategory(
     categoryCondition = buildCauseCategoryCondition(categoryInfo.patterns)
   }
 
-  // Get all distinct causes in this category and find the one matching the slug
+  // Get all distinct normalized causes in this category and find the one matching the slug
   const result = await db.query<{ cause: string }>(
-    `SELECT DISTINCT cause_of_death as cause
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND cause_of_death IS NOT NULL
+    `SELECT DISTINCT COALESCE(n.normalized_cause, a.cause_of_death) as cause
+     FROM actors a
+     LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     WHERE a.deathday IS NOT NULL
+       AND a.cause_of_death IS NOT NULL
        AND (${categoryCondition})`
   )
 
@@ -3325,12 +3330,13 @@ export async function getSpecificCause(
   if (!categoryInfo) return null
 
   // Find the actual cause string from the slug
+  // actualCause is now the normalized cause name
   const actualCause = await getCauseFromSlugInCategory(categorySlug, causeSlug)
   if (!actualCause) return null
 
-  const obscureFilter = includeObscure ? "" : "AND is_obscure = false"
+  const obscureFilter = includeObscure ? "" : "AND a.is_obscure = false"
 
-  // Get stats for this specific cause
+  // Get stats for this specific cause (matching by normalized cause)
   const statsResult = await db.query<{
     count: string
     avg_age: string | null
@@ -3338,11 +3344,12 @@ export async function getSpecificCause(
   }>(
     `SELECT
        COUNT(*) as count,
-       ROUND(AVG(age_at_death)::numeric, 1) as avg_age,
-       ROUND(AVG(years_lost)::numeric, 1) as avg_years_lost
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND LOWER(cause_of_death) = LOWER($1)
+       ROUND(AVG(a.age_at_death)::numeric, 1) as avg_age,
+       ROUND(AVG(a.years_lost)::numeric, 1) as avg_years_lost
+     FROM actors a
+     LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     WHERE a.deathday IS NOT NULL
+       AND LOWER(COALESCE(n.normalized_cause, a.cause_of_death)) = LOWER($1)
        ${obscureFilter}`,
     [actualCause]
   )
@@ -3350,13 +3357,14 @@ export async function getSpecificCause(
   // Get notable actors (top 3 by popularity)
   const notableResult = await db.query<ActorRecord>(
     `SELECT
-       id, tmdb_id, name, profile_path, deathday,
-       cause_of_death_details, age_at_death
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND LOWER(cause_of_death) = LOWER($1)
+       a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
+       a.cause_of_death_details, a.age_at_death
+     FROM actors a
+     LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     WHERE a.deathday IS NOT NULL
+       AND LOWER(COALESCE(n.normalized_cause, a.cause_of_death)) = LOWER($1)
        ${obscureFilter}
-     ORDER BY popularity DESC NULLS LAST
+     ORDER BY a.popularity DESC NULLS LAST
      LIMIT 3`,
     [actualCause]
   )
@@ -3364,11 +3372,12 @@ export async function getSpecificCause(
   // Get decade breakdown
   const decadeResult = await db.query<{ decade: string; count: string }>(
     `SELECT
-       (EXTRACT(YEAR FROM deathday::date) / 10 * 10)::text || 's' as decade,
+       (EXTRACT(YEAR FROM a.deathday::date) / 10 * 10)::text || 's' as decade,
        COUNT(*) as count
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND LOWER(cause_of_death) = LOWER($1)
+     FROM actors a
+     LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     WHERE a.deathday IS NOT NULL
+       AND LOWER(COALESCE(n.normalized_cause, a.cause_of_death)) = LOWER($1)
        ${obscureFilter}
      GROUP BY decade
      ORDER BY decade`,
@@ -3379,14 +3388,15 @@ export async function getSpecificCause(
   const offset = (page - 1) * pageSize
   const actorsResult = await db.query<ActorRecord & { total_count: string }>(
     `SELECT
-       id, tmdb_id, name, profile_path, deathday,
-       cause_of_death_details, age_at_death, years_lost,
+       a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
+       a.cause_of_death_details, a.age_at_death, a.years_lost,
        COUNT(*) OVER() as total_count
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND LOWER(cause_of_death) = LOWER($1)
+     FROM actors a
+     LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     WHERE a.deathday IS NOT NULL
+       AND LOWER(COALESCE(n.normalized_cause, a.cause_of_death)) = LOWER($1)
        ${obscureFilter}
-     ORDER BY popularity DESC NULLS LAST, name
+     ORDER BY a.popularity DESC NULLS LAST, a.name
      LIMIT $2 OFFSET $3`,
     [actualCause, pageSize, offset]
   )
