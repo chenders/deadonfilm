@@ -17,6 +17,20 @@ const staticPages = [
   { loc: "/forever-young", priority: "0.6", changefreq: "weekly" },
   { loc: "/deaths", priority: "0.5", changefreq: "weekly" },
   { loc: "/movies/genres", priority: "0.5", changefreq: "weekly" },
+  // Causes of death 3-level hierarchy
+  { loc: "/causes-of-death", priority: "0.7", changefreq: "weekly" },
+  { loc: "/causes-of-death/cancer", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/heart-disease", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/respiratory", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/neurological", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/overdose", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/accident", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/suicide", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/homicide", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/infectious", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/liver-kidney", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/natural", priority: "0.6", changefreq: "weekly" },
+  { loc: "/causes-of-death/other", priority: "0.5", changefreq: "weekly" },
 ]
 
 /**

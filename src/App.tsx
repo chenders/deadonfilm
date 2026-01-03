@@ -26,6 +26,9 @@ const AllDeathsPage = lazy(() => import("./pages/AllDeathsPage"))
 const DeathsByDecadePage = lazy(() => import("./pages/DeathsByDecadePage"))
 const GenresIndexPage = lazy(() => import("./pages/GenresIndexPage"))
 const GenreMoviesPage = lazy(() => import("./pages/GenreMoviesPage"))
+const CausesOfDeathPage = lazy(() => import("./pages/CausesOfDeathPage"))
+const CauseCategoryPage = lazy(() => import("./pages/CauseCategoryPage"))
+const SpecificCausePage = lazy(() => import("./pages/SpecificCausePage"))
 
 function App() {
   useGoogleAnalytics()
@@ -55,6 +58,10 @@ function App() {
           <Route path="/deaths/:cause" element={<DeathsByCausePage />} />
           <Route path="/movies/genres" element={<GenresIndexPage />} />
           <Route path="/movies/genre/:genre" element={<GenreMoviesPage />} />
+          {/* New 3-level causes of death hierarchy */}
+          <Route path="/causes-of-death" element={<CausesOfDeathPage />} />
+          <Route path="/causes-of-death/:categorySlug" element={<CauseCategoryPage />} />
+          <Route path="/causes-of-death/:categorySlug/:causeSlug" element={<SpecificCausePage />} />
         </Routes>
       </Suspense>
     </Layout>
