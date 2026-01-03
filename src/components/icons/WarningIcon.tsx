@@ -1,8 +1,8 @@
-interface CarCrashIconProps extends React.SVGProps<SVGSVGElement> {
+interface WarningIconProps extends React.SVGProps<SVGSVGElement> {
   size?: number
 }
 
-export default function CarCrashIcon({ size = 24, className, ...props }: CarCrashIconProps) {
+export default function WarningIcon({ size = 24, className, ...props }: WarningIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
