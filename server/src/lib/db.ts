@@ -1422,11 +1422,26 @@ export async function getRecentDeaths(limit: number = 5): Promise<
   }>
 > {
   const db = getPool()
+  // Use same filtering as getAllDeaths: require 2+ movies or 10+ TV episodes
   const result = await db.query(
-    `SELECT tmdb_id, name, deathday, cause_of_death, profile_path
-     FROM actors
-     WHERE deathday IS NOT NULL
-     ORDER BY deathday DESC
+    `WITH actor_appearances AS (
+       SELECT
+         a.id,
+         COUNT(DISTINCT ama.movie_tmdb_id) as movie_count,
+         COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as episode_count
+       FROM actors a
+       LEFT JOIN actor_movie_appearances ama ON ama.actor_id = a.id
+       LEFT JOIN actor_show_appearances asa ON asa.actor_id = a.id
+       WHERE a.deathday IS NOT NULL
+       GROUP BY a.id
+       HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
+          OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
+     )
+     SELECT a.tmdb_id, a.name, a.deathday, a.cause_of_death, a.profile_path
+     FROM actors a
+     JOIN actor_appearances aa ON aa.id = a.id
+     WHERE a.is_obscure = false
+     ORDER BY a.deathday DESC
      LIMIT $1`,
     [limit]
   )
