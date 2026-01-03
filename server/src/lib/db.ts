@@ -1885,6 +1885,9 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
 export async function getActorFilmography(actorTmdbId: number): Promise<ActorFilmographyMovie[]> {
   const db = getPool()
 
+  // Calculate actual deceased/cast counts dynamically from actor_movie_appearances
+  // rather than relying on potentially stale pre-calculated stats in the movies table.
+  // This ensures accuracy even if the movie's mortality stats haven't been recalculated.
   const filmographyResult = await db.query<{
     movie_id: number
     title: string
@@ -1900,8 +1903,17 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
        m.release_year,
        aa.character_name,
        m.poster_path,
-       m.deceased_count,
-       m.cast_count
+       -- Calculate actual deceased count from actors who appeared in this movie
+       (SELECT COUNT(DISTINCT a2.id)
+        FROM actor_movie_appearances aa2
+        JOIN actors a2 ON aa2.actor_id = a2.id
+        WHERE aa2.movie_tmdb_id = m.tmdb_id
+          AND a2.deathday IS NOT NULL)::int as deceased_count,
+       -- Calculate actual cast count from actors who appeared in this movie
+       (SELECT COUNT(DISTINCT a2.id)
+        FROM actor_movie_appearances aa2
+        JOIN actors a2 ON aa2.actor_id = a2.id
+        WHERE aa2.movie_tmdb_id = m.tmdb_id)::int as cast_count
      FROM actor_movie_appearances aa
      JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
      JOIN actors a ON aa.actor_id = a.id
@@ -1926,6 +1938,9 @@ export async function getActorShowFilmography(
 ): Promise<ActorFilmographyShow[]> {
   const db = getPool()
 
+  // Calculate actual deceased/cast counts dynamically from actor_show_appearances
+  // rather than relying on potentially stale pre-calculated stats in the shows table.
+  // This ensures accuracy even if the show's mortality stats haven't been recalculated.
   const filmographyResult = await db.query<{
     show_id: number
     name: string
@@ -1949,15 +1964,24 @@ export async function getActorShowFilmography(
         ORDER BY COUNT(*) DESC
         LIMIT 1) as character_name,
        s.poster_path,
-       s.deceased_count,
-       s.cast_count,
+       -- Calculate actual deceased count from actors who appeared in this show
+       (SELECT COUNT(DISTINCT a2.id)
+        FROM actor_show_appearances asa2
+        JOIN actors a2 ON asa2.actor_id = a2.id
+        WHERE asa2.show_tmdb_id = s.tmdb_id
+          AND a2.deathday IS NOT NULL)::int as deceased_count,
+       -- Calculate actual cast count from actors who appeared in this show
+       (SELECT COUNT(DISTINCT a2.id)
+        FROM actor_show_appearances asa2
+        JOIN actors a2 ON asa2.actor_id = a2.id
+        WHERE asa2.show_tmdb_id = s.tmdb_id)::int as cast_count,
        COUNT(DISTINCT (asa.season_number, asa.episode_number))::int as episode_count
      FROM actor_show_appearances asa
      JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
      JOIN actors a ON asa.actor_id = a.id
      WHERE a.tmdb_id = $1
      GROUP BY s.tmdb_id, s.name, s.first_air_date, s.last_air_date,
-              s.poster_path, s.deceased_count, s.cast_count, a.id
+              s.poster_path, a.id
      ORDER BY s.first_air_date DESC NULLS LAST`,
     [actorTmdbId]
   )
