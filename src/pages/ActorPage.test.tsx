@@ -43,6 +43,7 @@ const mockLivingActor = {
       castCount: 15,
     },
   ],
+  analyzedTVFilmography: [],
   deathInfo: null,
 }
 
@@ -67,6 +68,7 @@ const mockDeceasedActor = {
       castCount: 12,
     },
   ],
+  analyzedTVFilmography: [],
   deathInfo: {
     causeOfDeath: "Natural causes",
     causeOfDeathDetails: "Passed peacefully at home surrounded by family.",
@@ -181,16 +183,17 @@ describe("ActorPage", () => {
     expect(screen.getByText("33% deceased")).toBeInTheDocument()
   })
 
-  it("renders empty filmography message when no movies", async () => {
+  it("renders empty filmography message when no movies or shows", async () => {
     vi.mocked(api.getActor).mockResolvedValue({
       ...mockLivingActor,
       analyzedFilmography: [],
+      analyzedTVFilmography: [],
     })
 
     renderWithProviders(<ActorPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("No movies in our database yet.")).toBeInTheDocument()
+      expect(screen.getByText("No movies or TV shows in our database yet.")).toBeInTheDocument()
     })
   })
 
@@ -283,7 +286,12 @@ describe("ActorPage", () => {
 
     // Verify costarStats is not in the mock data structure
     expect(mockLivingActor).not.toHaveProperty("costarStats")
-    expect(Object.keys(mockLivingActor)).toEqual(["actor", "analyzedFilmography", "deathInfo"])
+    expect(Object.keys(mockLivingActor)).toEqual([
+      "actor",
+      "analyzedFilmography",
+      "analyzedTVFilmography",
+      "deathInfo",
+    ])
   })
 
   it("shows years lost when positive", async () => {
@@ -321,5 +329,110 @@ describe("ActorPage", () => {
     const firstLink = filmRows[0] as HTMLAnchorElement
     expect(firstLink.tagName).toBe("A")
     expect(firstLink.getAttribute("href")).toContain("/movie/")
+  })
+
+  describe("TV show appearances", () => {
+    const mockActorWithTV = {
+      ...mockLivingActor,
+      analyzedTVFilmography: [
+        {
+          showId: 500,
+          name: "Great TV Show",
+          firstAirYear: 2018,
+          lastAirYear: 2022,
+          character: "Main Character",
+          posterPath: "/tv-poster.jpg",
+          deceasedCount: 2,
+          castCount: 8,
+          episodeCount: 24,
+        },
+        {
+          showId: 600,
+          name: "Another Show",
+          firstAirYear: 2020,
+          lastAirYear: null,
+          character: null,
+          posterPath: null,
+          deceasedCount: 1,
+          castCount: 5,
+          episodeCount: 5,
+        },
+      ],
+    }
+
+    it("renders TV show appearances with episode count", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockActorWithTV)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Great TV Show")).toBeInTheDocument()
+      })
+
+      // Should show episode count
+      expect(screen.getByText(/24 episodes/)).toBeInTheDocument()
+      expect(screen.getByText(/5 episodes/)).toBeInTheDocument()
+    })
+
+    it("renders TV show year range", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockActorWithTV)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Great TV Show")).toBeInTheDocument()
+      })
+
+      // Should show year range for show with start and end years
+      expect(screen.getByText(/2018–2022/)).toBeInTheDocument()
+    })
+
+    it("links TV shows to show pages", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockActorWithTV)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Great TV Show")).toBeInTheDocument()
+      })
+
+      const filmRows = screen.getAllByTestId("filmography-row")
+      // Movies (2) + TV shows (2) = 4 total
+      expect(filmRows).toHaveLength(4)
+
+      // Find the TV show row and verify it links to show page
+      const tvShowLink = filmRows.find((row) => row.textContent?.includes("Great TV Show"))
+      expect(tvShowLink).toBeTruthy()
+      expect(tvShowLink?.getAttribute("href")).toContain("/show/")
+    })
+
+    it("shows combined filmography count in header", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockActorWithTV)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Living Actor")).toBeInTheDocument()
+      })
+
+      // Should show counts for movies and TV shows
+      expect(screen.getByText(/2 movies/)).toBeInTheDocument()
+      expect(screen.getByText(/2 TV shows/)).toBeInTheDocument()
+    })
+
+    it("sorts combined filmography by year (newest first)", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockActorWithTV)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByText("Living Actor")).toBeInTheDocument()
+      })
+
+      const filmRows = screen.getAllByTestId("filmography-row")
+      // Order should be: Another Show (2020), Great TV Show (2018), Great Movie (2015), Another Film (2010)
+      const titles = filmRows.map((row) => row.querySelector("h3")?.textContent)
+      expect(titles).toEqual(["Another Show", "Great TV Show", "Great Movie", "Another Film"])
+    })
   })
 })
