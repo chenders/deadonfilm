@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import SiteStats from "./SiteStats"
 import * as api from "@/services/api"
@@ -154,6 +154,29 @@ describe("SiteStats", () => {
     await waitFor(() => {
       expect(screen.getByText("25.8%")).toBeInTheDocument()
       expect(screen.getByText("causes known")).toBeInTheDocument()
+    })
+  })
+
+  it("shows tooltip with actor counts on hover over causes known stat", async () => {
+    vi.mocked(api.getSiteStats).mockResolvedValue(mockStats)
+
+    renderWithProviders(<SiteStats />)
+
+    await waitFor(() => {
+      expect(screen.getByText("causes known")).toBeInTheDocument()
+    })
+
+    // Find the causes known stat wrapper (HoverTooltip adds role="button")
+    const causesKnownLabel = screen.getByText("causes known")
+    // The HoverTooltip wrapper is a parent span with role="button"
+    const tooltipTrigger = causesKnownLabel.closest('[role="button"]')
+    expect(tooltipTrigger).toBeInTheDocument()
+
+    fireEvent.mouseEnter(tooltipTrigger!)
+
+    // Tooltip should show the actual counts
+    await waitFor(() => {
+      expect(screen.getByText("387 of 1,500 deceased actors")).toBeInTheDocument()
     })
   })
 
