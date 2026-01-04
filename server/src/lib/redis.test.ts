@@ -338,7 +338,8 @@ describe("redis", () => {
       let capturedOptions: { retryStrategy?: (times: number) => number | null } | undefined
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(MockRedis as any).mockImplementation(function (
+      const mockRedisAny = MockRedis as any
+      mockRedisAny.mockImplementation(function (
         this: unknown,
         _url: string,
         options: typeof capturedOptions
