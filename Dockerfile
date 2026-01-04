@@ -1,13 +1,16 @@
 # Build stage for frontend
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
+
+# Build args for Vite (must be present at build time)
+ARG VITE_GA_MEASUREMENT_ID
+ENV VITE_GA_MEASUREMENT_ID=$VITE_GA_MEASUREMENT_ID
+
 COPY package*.json ./
 RUN npm ci
 COPY src/ ./src/
 COPY public/ ./public/
 COPY index.html vite.config.ts tsconfig.json tailwind.config.js postcss.config.js ./
-# Copy .env.production if it exists (optional - for GA config)
-COPY .env.productio[n] ./
 RUN npm run build
 
 # Build stage for backend
