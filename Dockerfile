@@ -1,13 +1,22 @@
 # Build stage for frontend
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
+
+# Build args for Vite (must be present at build time)
+ARG VITE_GA_MEASUREMENT_ID
+ARG VITE_NEW_RELIC_BROWSER_LICENSE_KEY
+ARG VITE_NEW_RELIC_BROWSER_APP_ID
+ARG VITE_NEW_RELIC_BROWSER_ACCOUNT_ID
+ENV VITE_GA_MEASUREMENT_ID=$VITE_GA_MEASUREMENT_ID
+ENV VITE_NEW_RELIC_BROWSER_LICENSE_KEY=$VITE_NEW_RELIC_BROWSER_LICENSE_KEY
+ENV VITE_NEW_RELIC_BROWSER_APP_ID=$VITE_NEW_RELIC_BROWSER_APP_ID
+ENV VITE_NEW_RELIC_BROWSER_ACCOUNT_ID=$VITE_NEW_RELIC_BROWSER_ACCOUNT_ID
+
 COPY package*.json ./
 RUN npm ci
 COPY src/ ./src/
 COPY public/ ./public/
 COPY index.html vite.config.ts tsconfig.json tailwind.config.js postcss.config.js ./
-# Copy .env.production if it exists (optional - for GA config)
-COPY .env.productio[n] ./
 RUN npm run build
 
 # Build stage for backend
@@ -69,4 +78,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Default command runs the backend server
 # nginx and cron containers override this in docker-compose
-CMD ["node", "server/dist/src/index.js"]
+# --import newrelic/esm-loader.mjs ensures New Relic patches pg BEFORE ESM imports run
+WORKDIR /app/server
+CMD ["node", "--import", "newrelic/esm-loader.mjs", "dist/src/index.js"]

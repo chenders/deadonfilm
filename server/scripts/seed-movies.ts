@@ -18,6 +18,9 @@
  *   npm run seed:movies -- --all-time --count 1000 # 1000 movies per year, all years
  */
 
+// New Relic must be initialized first for full transaction traces
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
+
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import {
@@ -41,7 +44,7 @@ const DEFAULT_MOVIES_TO_FETCH = 200
 const CAST_LIMIT = 30 // Top 30 actors per movie
 const EARLIEST_YEAR = 1920
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
   if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
     throw new InvalidArgumentError("Must be a positive integer")
@@ -49,7 +52,7 @@ function parsePositiveInt(value: string): number {
   return parsed
 }
 
-function parseYear(value: string): number {
+export function parseYear(value: string): number {
   const parsed = parseInt(value, 10)
   const maxYear = new Date().getFullYear() + 1
   if (isNaN(parsed) || parsed < EARLIEST_YEAR || parsed > maxYear) {
@@ -108,7 +111,14 @@ const program = new Command()
         process.exit(1)
       }
 
-      await runSeeding({ startYear, endYear, moviesPerYear: options.count })
+      // Wrap in New Relic transaction for monitoring
+      await withNewRelicTransaction("seed-movies", async (recordMetrics) => {
+        const result = await runSeeding({ startYear, endYear, moviesPerYear: options.count })
+        recordMetrics({
+          recordsProcessed: result.totalMovies,
+          recordsCreated: result.totalAppearances,
+        })
+      })
     }
   )
 
@@ -118,16 +128,19 @@ interface SeedOptions {
   moviesPerYear: number
 }
 
-async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
+export interface SeedResult {
+  totalMovies: number
+  totalAppearances: number
+}
+
+async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions): Promise<SeedResult> {
   // Check required environment variables
   if (!process.env.TMDB_API_TOKEN) {
-    console.error("TMDB_API_TOKEN environment variable is required")
-    process.exit(1)
+    throw new Error("TMDB_API_TOKEN environment variable is required")
   }
 
   if (!process.env.DATABASE_URL) {
-    console.error("DATABASE_URL environment variable is required")
-    process.exit(1)
+    throw new Error("DATABASE_URL environment variable is required")
   }
 
   const totalYears = endYear - startYear + 1
@@ -290,10 +303,14 @@ async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
     console.log(`  Total movies saved: ${grandTotalMoviesSaved}`)
     console.log(`  Total actor appearances: ${grandTotalActorAppearances}`)
     console.log("\nDone!")
-    process.exit(0)
+
+    return {
+      totalMovies: grandTotalMoviesSaved,
+      totalAppearances: grandTotalActorAppearances,
+    }
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    throw error
   }
 }
 
@@ -336,4 +353,8 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-program.parse()
+// Only run if executed directly, not when imported for testing
+const isMainModule = import.meta.url === `file://${process.argv[1]}`
+if (isMainModule) {
+  program.parse()
+}
