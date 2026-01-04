@@ -337,7 +337,8 @@ describe("redis", () => {
       // Capture the options passed to Redis constructor
       let capturedOptions: { retryStrategy?: (times: number) => number | null } | undefined
 
-      MockRedis.mockImplementation(function (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(MockRedis as any).mockImplementation(function (
         this: unknown,
         _url: string,
         options: typeof capturedOptions
