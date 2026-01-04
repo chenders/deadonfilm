@@ -27,6 +27,7 @@ import {
   parsePositiveInt,
   stripMarkdownCodeFences,
   getYearFromDate,
+  storeFailure,
   type Checkpoint,
 } from "./backfill-cause-of-death-batch.js"
 
@@ -394,12 +395,32 @@ async function processResults(
           checkpoint.stats.succeeded++
         } catch (error) {
           checkpoint.stats.errored++
+          const errorMsg = error instanceof Error ? error.message : "Unknown error"
           console.error(`\n  Error processing actor ${actorId}:`, error)
+
+          // Log failure for later reprocessing
+          await storeFailure(db, batchId, actorId, customId, responseText, errorMsg, "json_parse")
+
+          // Mark actor as checked to prevent infinite reprocessing
+          await db.query(
+            `UPDATE actors SET cause_of_death_checked_at = NOW(), updated_at = NOW() WHERE id = $1`,
+            [actorId]
+          )
         }
       } else if (result.result.type === "errored") {
         checkpoint.stats.errored++
+        // Mark actor as checked to prevent infinite reprocessing on API errors
+        await db.query(
+          `UPDATE actors SET cause_of_death_checked_at = NOW(), updated_at = NOW() WHERE id = $1`,
+          [actorId]
+        )
       } else if (result.result.type === "expired") {
         checkpoint.stats.expired++
+        // Mark actor as checked to prevent infinite reprocessing on expired requests
+        await db.query(
+          `UPDATE actors SET cause_of_death_checked_at = NOW(), updated_at = NOW() WHERE id = $1`,
+          [actorId]
+        )
       }
 
       checkpoint.processedActorIds.push(actorId)
