@@ -13,6 +13,7 @@ import {
 } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
+import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
 
 export async function getStats(req: Request, res: Response) {
   try {
@@ -28,8 +29,15 @@ export async function getStats(req: Request, res: Response) {
       })
     }
 
+    const cacheKey = CACHE_PREFIX.STATS
+    const cached = await getCached<Awaited<ReturnType<typeof getSiteStats>>>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+    }
+
     const stats = await getSiteStats()
-    sendWithETag(req, res, stats, 3600) // 1 hour cache
+    await setCached(cacheKey, stats, CACHE_TTL.HOUR)
+    sendWithETag(req, res, stats, CACHE_TTL.HOUR)
   } catch (error) {
     console.error("Stats error:", error)
     res.status(500).json({ error: { message: "Failed to fetch site statistics" } })
@@ -44,8 +52,16 @@ export async function getRecentDeathsHandler(req: Request, res: Response) {
     }
 
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 5, 1), 20)
+    const cacheKey = buildCacheKey(CACHE_PREFIX.RECENT_DEATHS, { limit })
+
+    const cached = await getCached<Awaited<ReturnType<typeof getRecentDeaths>>>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, { deaths: cached }, CACHE_TTL.MEDIUM)
+    }
+
     const deaths = await getRecentDeaths(limit)
-    res.json({ deaths })
+    await setCached(cacheKey, deaths, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, { deaths }, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("Recent deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch recent deaths" } })
@@ -69,13 +85,39 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
     const offset = (page - 1) * pageSize
     const includeObscure = req.query.includeObscure === "true"
 
+    const cacheKey = buildCacheKey(CACHE_PREFIX.COVID_DEATHS, { page, includeObscure })
+
+    type CovidDeathsResponse = {
+      persons: Array<{
+        rank: number
+        id: number | null
+        name: string
+        deathday: string | null
+        causeOfDeath: string | null
+        causeOfDeathDetails: string | null
+        profilePath: string | null
+        ageAtDeath: number | null
+      }>
+      pagination: {
+        page: number
+        pageSize: number
+        totalCount: number
+        totalPages: number
+      }
+    }
+
+    const cached = await getCached<CovidDeathsResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+    }
+
     const { persons, totalCount } = await getCovidDeaths({
       limit: pageSize,
       offset,
       includeObscure,
     })
 
-    const response = {
+    const response: CovidDeathsResponse = {
       persons: persons.map((p, i) => ({
         rank: offset + i + 1,
         id: p.tmdb_id,
@@ -102,27 +144,50 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
       responseTimeMs: Date.now() - startTime,
     })
 
-    sendWithETag(req, res, response, 300) // 5 min cache
+    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("COVID deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch COVID deaths" } })
   }
 }
 
-export async function getFeaturedMovieHandler(_req: Request, res: Response) {
+export async function getFeaturedMovieHandler(req: Request, res: Response) {
   try {
     // Check if database is available
     if (!process.env.DATABASE_URL) {
       return res.json({ movie: null })
     }
 
+    const cacheKey = CACHE_PREFIX.FEATURED_MOVIE
+
+    type FeaturedMovieResponse = {
+      movie: {
+        tmdbId: number
+        title: string
+        releaseYear: number | null
+        posterPath: string | null
+        deceasedCount: number
+        castCount: number
+        expectedDeaths: number
+        mortalitySurpriseScore: number
+      } | null
+    }
+
+    const cached = await getCached<FeaturedMovieResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+    }
+
     const movie = await getMostCursedMovie()
 
     if (!movie) {
-      return res.json({ movie: null })
+      const response: FeaturedMovieResponse = { movie: null }
+      await setCached(cacheKey, response, CACHE_TTL.HOUR)
+      return sendWithETag(req, res, response, CACHE_TTL.HOUR)
     }
 
-    res.json({
+    const response: FeaturedMovieResponse = {
       movie: {
         tmdbId: movie.tmdb_id,
         title: movie.title,
@@ -133,7 +198,9 @@ export async function getFeaturedMovieHandler(_req: Request, res: Response) {
         expectedDeaths: parseFloat(String(movie.expected_deaths)),
         mortalitySurpriseScore: parseFloat(String(movie.mortality_surprise_score)),
       },
-    })
+    }
+    await setCached(cacheKey, response, CACHE_TTL.HOUR)
+    sendWithETag(req, res, response, CACHE_TTL.HOUR)
   } catch (error) {
     console.error("Featured movie error:", error)
     res.status(500).json({ error: { message: "Failed to fetch featured movie" } })
@@ -147,24 +214,30 @@ export async function getTriviaHandler(req: Request, res: Response) {
       return res.json({ facts: [] })
     }
 
+    const cacheKey = CACHE_PREFIX.TRIVIA
+    const cached = await getCached<{ facts: Awaited<ReturnType<typeof getTrivia>> }>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+    }
+
     const facts = await getTrivia()
-    sendWithETag(req, res, { facts }, 3600) // 1 hour cache
+    const response = { facts }
+    await setCached(cacheKey, response, CACHE_TTL.HOUR)
+    sendWithETag(req, res, response, CACHE_TTL.HOUR)
   } catch (error) {
     console.error("Trivia error:", error)
     res.status(500).json({ error: { message: "Failed to fetch trivia" } })
   }
 }
 
-export async function getThisWeekDeathsHandler(_req: Request, res: Response) {
+export async function getThisWeekDeathsHandler(req: Request, res: Response) {
   try {
     // Check if database is available
     if (!process.env.DATABASE_URL) {
       return res.json({ deaths: [], weekRange: { start: "", end: "" } })
     }
 
-    const deaths = await getDeathsThisWeekSimple()
-
-    // Calculate week range for display
+    // Calculate week range for display and cache key
     const now = new Date()
     const dayOfWeek = now.getDay() // 0 = Sunday
     const weekStart = new Date(now)
@@ -172,7 +245,31 @@ export async function getThisWeekDeathsHandler(_req: Request, res: Response) {
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6)
 
-    res.json({
+    // Use week start date in cache key so cache is invalidated weekly
+    const weekKey = weekStart.toISOString().split("T")[0]
+    const cacheKey = buildCacheKey(CACHE_PREFIX.THIS_WEEK, { week: weekKey })
+
+    type ThisWeekResponse = {
+      deaths: Array<{
+        id: number | null
+        name: string
+        deathday: string | null
+        profilePath: string | null
+        causeOfDeath: string | null
+        ageAtDeath: number | null
+        yearOfDeath: number | null
+      }>
+      weekRange: { start: string; end: string }
+    }
+
+    const cached = await getCached<ThisWeekResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+    }
+
+    const deaths = await getDeathsThisWeekSimple()
+
+    const response: ThisWeekResponse = {
       deaths: deaths.map((d) => ({
         id: d.tmdb_id,
         name: d.name,
@@ -186,7 +283,10 @@ export async function getThisWeekDeathsHandler(_req: Request, res: Response) {
         start: `${weekStart.toLocaleString("en-US", { month: "short" })} ${weekStart.getDate()}`,
         end: `${weekEnd.toLocaleString("en-US", { month: "short" })} ${weekEnd.getDate()}`,
       },
-    })
+    }
+
+    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("This week deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch this week deaths" } })
@@ -201,9 +301,28 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
     }
 
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 20)
+    const cacheKey = buildCacheKey(CACHE_PREFIX.POPULAR_MOVIES, { limit })
+
+    type PopularMoviesResponse = {
+      movies: Array<{
+        id: number
+        title: string
+        releaseYear: number | null
+        posterPath: string | null
+        deceasedCount: number
+        castCount: number
+        popularity: number
+      }>
+    }
+
+    const cached = await getCached<PopularMoviesResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+    }
+
     const movies = await getPopularMovies(limit)
 
-    const response = {
+    const response: PopularMoviesResponse = {
       movies: movies.map((m) => ({
         id: m.tmdb_id,
         title: m.title,
@@ -214,7 +333,8 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
         popularity: m.popularity,
       })),
     }
-    sendWithETag(req, res, response, 300) // 5 min cache
+    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("Popular movies error:", error)
     res.status(500).json({ error: { message: "Failed to fetch popular movies" } })
@@ -253,6 +373,40 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
     const showSelfInflicted =
       req.query.showSelfInflicted === "true" || req.query.hideSuicides === "false"
 
+    const cacheKey = buildCacheKey(CACHE_PREFIX.UNNATURAL_DEATHS, {
+      page,
+      category,
+      showSelfInflicted,
+      includeObscure,
+    })
+
+    type UnnaturalDeathsResponse = {
+      persons: Array<{
+        rank: number
+        id: number | null
+        name: string
+        deathday: string | null
+        causeOfDeath: string | null
+        causeOfDeathDetails: string | null
+        profilePath: string | null
+        ageAtDeath: number | null
+      }>
+      pagination: {
+        page: number
+        pageSize: number
+        totalCount: number
+        totalPages: number
+      }
+      categories: Array<{ id: string; label: string; count: number }>
+      selectedCategory: string
+      showSelfInflicted: boolean
+    }
+
+    const cached = await getCached<UnnaturalDeathsResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+    }
+
     const { persons, totalCount, categoryCounts } = await getUnnaturalDeaths({
       limit: pageSize,
       offset,
@@ -268,7 +422,7 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
       count: categoryCounts[key],
     }))
 
-    const response = {
+    const response: UnnaturalDeathsResponse = {
       persons: persons.map((p, i) => ({
         rank: offset + i + 1,
         id: p.tmdb_id,
@@ -289,7 +443,8 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
       selectedCategory: category,
       showSelfInflicted,
     }
-    sendWithETag(req, res, response, 300) // 5 min cache
+    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("Unnatural deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch unnatural deaths" } })
