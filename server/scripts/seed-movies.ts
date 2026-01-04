@@ -44,7 +44,7 @@ const DEFAULT_MOVIES_TO_FETCH = 200
 const CAST_LIMIT = 30 // Top 30 actors per movie
 const EARLIEST_YEAR = 1920
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
   if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
     throw new InvalidArgumentError("Must be a positive integer")
@@ -52,7 +52,7 @@ function parsePositiveInt(value: string): number {
   return parsed
 }
 
-function parseYear(value: string): number {
+export function parseYear(value: string): number {
   const parsed = parseInt(value, 10)
   const maxYear = new Date().getFullYear() + 1
   if (isNaN(parsed) || parsed < EARLIEST_YEAR || parsed > maxYear) {
@@ -128,7 +128,7 @@ interface SeedOptions {
   moviesPerYear: number
 }
 
-interface SeedResult {
+export interface SeedResult {
   totalMovies: number
   totalAppearances: number
 }
@@ -136,13 +136,11 @@ interface SeedResult {
 async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions): Promise<SeedResult> {
   // Check required environment variables
   if (!process.env.TMDB_API_TOKEN) {
-    console.error("TMDB_API_TOKEN environment variable is required")
-    process.exit(1)
+    throw new Error("TMDB_API_TOKEN environment variable is required")
   }
 
   if (!process.env.DATABASE_URL) {
-    console.error("DATABASE_URL environment variable is required")
-    process.exit(1)
+    throw new Error("DATABASE_URL environment variable is required")
   }
 
   const totalYears = endYear - startYear + 1
@@ -355,4 +353,8 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-program.parse()
+// Only run if executed directly, not when imported for testing
+const isMainModule = import.meta.url === `file://${process.argv[1]}`
+if (isMainModule) {
+  program.parse()
+}
