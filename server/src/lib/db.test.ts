@@ -43,6 +43,8 @@ import {
   updateDeathInfoByActorId,
   getActorById,
   getEpisodeCountsBySeasonFromDb,
+  getCauseCategory,
+  getSpecificCause,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -1553,5 +1555,134 @@ describe("getEpisodeCountsBySeasonFromDb", () => {
     const query = mockQuery.mock.calls[0][0] as string
     expect(query).toContain("WHERE show_tmdb_id = $1")
     expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [5678])
+  })
+})
+
+describe("getCauseCategory", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  it("returns null for unknown category", async () => {
+    const result = await getCauseCategory("nonexistent-category")
+    expect(result).toBeNull()
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+  it("calculates decades correctly as integers", async () => {
+    // Set up mocks for all the queries getCauseCategory makes
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [{ count: "10", avg_age: "65.5", avg_years_lost: "12.3" }],
+      }) // stats
+      .mockResolvedValueOnce({ rows: [{ total: "100" }] }) // total
+      .mockResolvedValueOnce({ rows: [] }) // notable actors
+      .mockResolvedValueOnce({
+        rows: [
+          { decade: "1950s", count: "3" },
+          { decade: "1960s", count: "5" },
+          { decade: "2020s", count: "2" },
+        ],
+      }) // decades
+      .mockResolvedValueOnce({ rows: [] }) // causes
+      .mockResolvedValueOnce({ rows: [] }) // actors
+
+    const result = await getCauseCategory("cancer")
+
+    expect(result).not.toBeNull()
+    expect(result?.decadeBreakdown).toEqual([
+      { decade: "1950s", count: 3 },
+      { decade: "1960s", count: 5 },
+      { decade: "2020s", count: 2 },
+    ])
+  })
+
+  it("uses integer division for decade calculation in SQL", async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ count: "0", avg_age: null, avg_years_lost: null }] })
+      .mockResolvedValueOnce({ rows: [{ total: "0" }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+
+    await getCauseCategory("cancer")
+
+    // Find the decade query (4th query)
+    const decadeQuery = mockQuery.mock.calls[3][0] as string
+    expect(decadeQuery).toContain("EXTRACT(YEAR FROM deathday::date)::int / 10 * 10")
+    expect(decadeQuery).toContain("'s' as decade")
+  })
+})
+
+describe("getSpecificCause", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  it("calculates decades correctly as integers", async () => {
+    // getSpecificCause calls getCauseFromSlugInCategory first (which queries for causes)
+    // then makes stats, notable, decades, and actors queries
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ cause: "Lung cancer" }] }) // getCauseFromSlugInCategory
+      .mockResolvedValueOnce({
+        rows: [{ count: "5", avg_age: "70.2", avg_years_lost: "9.8" }],
+      }) // stats
+      .mockResolvedValueOnce({ rows: [] }) // notable actors
+      .mockResolvedValueOnce({
+        rows: [
+          { decade: "1970s", count: "2" },
+          { decade: "1990s", count: "3" },
+        ],
+      }) // decades
+      .mockResolvedValueOnce({ rows: [] }) // actors
+
+    const result = await getSpecificCause("cancer", "lung-cancer")
+
+    expect(result).not.toBeNull()
+    expect(result?.decadeBreakdown).toEqual([
+      { decade: "1970s", count: 2 },
+      { decade: "1990s", count: 3 },
+    ])
+  })
+
+  it("uses integer division for decade calculation in SQL", async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ cause: "Lung cancer" }] }) // getCauseFromSlugInCategory
+      .mockResolvedValueOnce({ rows: [{ count: "0", avg_age: null, avg_years_lost: null }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+
+    await getSpecificCause("cancer", "lung-cancer")
+
+    // Find the decade query (4th query, index 3)
+    const decadeQuery = mockQuery.mock.calls[3][0] as string
+    expect(decadeQuery).toContain("EXTRACT(YEAR FROM a.deathday::date)::int / 10 * 10")
+    expect(decadeQuery).toContain("'s' as decade")
+  })
+
+  it("returns null for unknown category", async () => {
+    const result = await getSpecificCause("nonexistent-category", "some-cause")
+    expect(result).toBeNull()
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
+
+  it("returns null when cause slug not found in category", async () => {
+    // getCauseFromSlugInCategory returns null when no match found
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const result = await getSpecificCause("cancer", "nonexistent-cause")
+    expect(result).toBeNull()
   })
 })
