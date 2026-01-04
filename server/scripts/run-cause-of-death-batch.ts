@@ -118,9 +118,27 @@ async function run(options: {
 
   while (!isShuttingDown) {
     batchCount++
+
+    // Count remaining actors before each batch
+    const db = getPool()
+    const countResult = await db.query<{ count: string }>(
+      `SELECT COUNT(*) as count
+       FROM actors
+       WHERE deathday IS NOT NULL
+         AND cause_of_death IS NULL
+         AND cause_of_death_checked_at IS NULL`
+    )
+    const remaining = parseInt(countResult.rows[0].count, 10)
+    await resetPool()
+
     console.log(`\n${"─".repeat(60)}`)
-    console.log(`BATCH #${batchCount}`)
+    console.log(`BATCH #${batchCount} | Remaining actors: ${remaining.toLocaleString()}`)
     console.log(`${"─".repeat(60)}`)
+
+    if (remaining === 0) {
+      console.log("\nNo more actors need processing. All done!")
+      break
+    }
 
     // Step 1: Check for existing batch or submit new one
     let checkpoint = loadCheckpoint()
@@ -135,7 +153,8 @@ async function run(options: {
         `SELECT id, tmdb_id, name, birthday, deathday
          FROM actors
          WHERE deathday IS NOT NULL
-           AND (cause_of_death IS NULL OR cause_of_death_details IS NULL)
+           AND cause_of_death IS NULL
+           AND cause_of_death_checked_at IS NULL
          ORDER BY popularity DESC NULLS LAST
          LIMIT $1`,
         [limit]
@@ -445,33 +464,33 @@ async function applyUpdate(
     checkpoint.stats.updatedDetails++
   }
 
-  if (updates.length > 0) {
-    updates.push(`updated_at = NOW()`)
-    values.push(actorId)
-    await db.query(`UPDATE actors SET ${updates.join(", ")} WHERE id = $${paramIndex}`, values)
+  // ALWAYS mark as checked to prevent re-processing
+  updates.push(`cause_of_death_checked_at = NOW()`)
+  updates.push(`updated_at = NOW()`)
+  values.push(actorId)
+  await db.query(`UPDATE actors SET ${updates.join(", ")} WHERE id = $${paramIndex}`, values)
 
-    // Record history
-    if (parsed.cause && !actor.cause_of_death) {
-      await db.query(
-        `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [actorId, "cause_of_death", actor.cause_of_death, parsed.cause, SOURCE_NAME, batchId]
-      )
-    }
-    if (parsed.details && !actor.cause_of_death_details) {
-      await db.query(
-        `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          actorId,
-          "cause_of_death_details",
-          actor.cause_of_death_details,
-          parsed.details,
-          SOURCE_NAME,
-          batchId,
-        ]
-      )
-    }
+  // Record history
+  if (parsed.cause && !actor.cause_of_death) {
+    await db.query(
+      `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [actorId, "cause_of_death", actor.cause_of_death, parsed.cause, SOURCE_NAME, batchId]
+    )
+  }
+  if (parsed.details && !actor.cause_of_death_details) {
+    await db.query(
+      `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        actorId,
+        "cause_of_death_details",
+        actor.cause_of_death_details,
+        parsed.details,
+        SOURCE_NAME,
+        batchId,
+      ]
+    )
   }
 }
 
