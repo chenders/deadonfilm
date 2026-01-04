@@ -1,3 +1,7 @@
+// New Relic must be imported FIRST, before any other code
+// This ensures browser APIs are instrumented before React uses them
+import "./lib/newrelic-browser"
+
 import React from "react"
 import ReactDOM from "react-dom/client"
 import { BrowserRouter } from "react-router-dom"
