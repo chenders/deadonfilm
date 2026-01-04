@@ -1901,9 +1901,8 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
 export async function getActorFilmography(actorTmdbId: number): Promise<ActorFilmographyMovie[]> {
   const db = getPool()
 
-  // Calculate actual deceased/cast counts dynamically from actor_movie_appearances
-  // rather than relying on potentially stale pre-calculated stats in the movies table.
-  // This ensures accuracy even if the movie's mortality stats haven't been recalculated.
+  // Use CTE to calculate mortality stats once per movie, then join with actor's appearances.
+  // This avoids N+1 correlated subqueries that were causing slow performance.
   const filmographyResult = await db.query<{
     movie_id: number
     title: string
@@ -1913,27 +1912,35 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
     deceased_count: number
     cast_count: number
   }>(
-    `SELECT
+    `WITH actor_movies AS (
+       -- Get all movies this actor appeared in
+       SELECT aa.movie_tmdb_id, aa.character_name
+       FROM actor_movie_appearances aa
+       JOIN actors a ON aa.actor_id = a.id
+       WHERE a.tmdb_id = $1
+     ),
+     movie_stats AS (
+       -- Calculate stats for just these movies (single pass)
+       SELECT
+         aa.movie_tmdb_id,
+         COUNT(DISTINCT a.id)::int as cast_count,
+         COUNT(DISTINCT a.id) FILTER (WHERE a.deathday IS NOT NULL)::int as deceased_count
+       FROM actor_movie_appearances aa
+       JOIN actors a ON aa.actor_id = a.id
+       WHERE aa.movie_tmdb_id IN (SELECT movie_tmdb_id FROM actor_movies)
+       GROUP BY aa.movie_tmdb_id
+     )
+     SELECT
        m.tmdb_id as movie_id,
        m.title,
        m.release_year,
-       aa.character_name,
+       am.character_name,
        m.poster_path,
-       -- Calculate actual deceased count from actors who appeared in this movie
-       (SELECT COUNT(DISTINCT a2.id)
-        FROM actor_movie_appearances aa2
-        JOIN actors a2 ON aa2.actor_id = a2.id
-        WHERE aa2.movie_tmdb_id = m.tmdb_id
-          AND a2.deathday IS NOT NULL)::int as deceased_count,
-       -- Calculate actual cast count from actors who appeared in this movie
-       (SELECT COUNT(DISTINCT a2.id)
-        FROM actor_movie_appearances aa2
-        JOIN actors a2 ON aa2.actor_id = a2.id
-        WHERE aa2.movie_tmdb_id = m.tmdb_id)::int as cast_count
-     FROM actor_movie_appearances aa
-     JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-     JOIN actors a ON aa.actor_id = a.id
-     WHERE a.tmdb_id = $1
+       COALESCE(ms.deceased_count, 0) as deceased_count,
+       COALESCE(ms.cast_count, 0) as cast_count
+     FROM actor_movies am
+     JOIN movies m ON am.movie_tmdb_id = m.tmdb_id
+     LEFT JOIN movie_stats ms ON m.tmdb_id = ms.movie_tmdb_id
      ORDER BY m.release_year DESC NULLS LAST`,
     [actorTmdbId]
   )
@@ -1954,9 +1961,8 @@ export async function getActorShowFilmography(
 ): Promise<ActorFilmographyShow[]> {
   const db = getPool()
 
-  // Calculate actual deceased/cast counts dynamically from actor_show_appearances
-  // rather than relying on potentially stale pre-calculated stats in the shows table.
-  // This ensures accuracy even if the show's mortality stats haven't been recalculated.
+  // Use CTE to calculate mortality stats once per show, then join with actor's appearances.
+  // This avoids N+1 correlated subqueries that were causing slow performance.
   const filmographyResult = await db.query<{
     show_id: number
     name: string
@@ -1968,36 +1974,44 @@ export async function getActorShowFilmography(
     cast_count: number
     episode_count: number
   }>(
-    `SELECT
+    `WITH actor_shows AS (
+       -- Get all shows this actor appeared in with their character and episode count
+       SELECT
+         asa.show_tmdb_id,
+         asa.actor_id,
+         COUNT(DISTINCT (asa.season_number, asa.episode_number))::int as episode_count,
+         -- Get most common character name for this actor in this show
+         (ARRAY_AGG(asa.character_name ORDER BY asa.character_name)
+          FILTER (WHERE asa.character_name IS NOT NULL))[1] as character_name
+       FROM actor_show_appearances asa
+       JOIN actors a ON asa.actor_id = a.id
+       WHERE a.tmdb_id = $1
+       GROUP BY asa.show_tmdb_id, asa.actor_id
+     ),
+     show_stats AS (
+       -- Calculate stats for just these shows (single pass)
+       SELECT
+         asa.show_tmdb_id,
+         COUNT(DISTINCT a.id)::int as cast_count,
+         COUNT(DISTINCT a.id) FILTER (WHERE a.deathday IS NOT NULL)::int as deceased_count
+       FROM actor_show_appearances asa
+       JOIN actors a ON asa.actor_id = a.id
+       WHERE asa.show_tmdb_id IN (SELECT show_tmdb_id FROM actor_shows)
+       GROUP BY asa.show_tmdb_id
+     )
+     SELECT
        s.tmdb_id as show_id,
        s.name,
        EXTRACT(YEAR FROM s.first_air_date)::int as first_air_year,
        EXTRACT(YEAR FROM s.last_air_date)::int as last_air_year,
-       (SELECT asa2.character_name
-        FROM actor_show_appearances asa2
-        WHERE asa2.actor_id = a.id AND asa2.show_tmdb_id = s.tmdb_id
-        GROUP BY asa2.character_name
-        ORDER BY COUNT(*) DESC
-        LIMIT 1) as character_name,
+       ash.character_name,
        s.poster_path,
-       -- Calculate actual deceased count from actors who appeared in this show
-       (SELECT COUNT(DISTINCT a2.id)
-        FROM actor_show_appearances asa2
-        JOIN actors a2 ON asa2.actor_id = a2.id
-        WHERE asa2.show_tmdb_id = s.tmdb_id
-          AND a2.deathday IS NOT NULL)::int as deceased_count,
-       -- Calculate actual cast count from actors who appeared in this show
-       (SELECT COUNT(DISTINCT a2.id)
-        FROM actor_show_appearances asa2
-        JOIN actors a2 ON asa2.actor_id = a2.id
-        WHERE asa2.show_tmdb_id = s.tmdb_id)::int as cast_count,
-       COUNT(DISTINCT (asa.season_number, asa.episode_number))::int as episode_count
-     FROM actor_show_appearances asa
-     JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
-     JOIN actors a ON asa.actor_id = a.id
-     WHERE a.tmdb_id = $1
-     GROUP BY s.tmdb_id, s.name, s.first_air_date, s.last_air_date,
-              s.poster_path, a.id
+       COALESCE(ss.deceased_count, 0) as deceased_count,
+       COALESCE(ss.cast_count, 0) as cast_count,
+       ash.episode_count
+     FROM actor_shows ash
+     JOIN shows s ON ash.show_tmdb_id = s.tmdb_id
+     LEFT JOIN show_stats ss ON s.tmdb_id = ss.show_tmdb_id
      ORDER BY s.first_air_date DESC NULLS LAST`,
     [actorTmdbId]
   )
