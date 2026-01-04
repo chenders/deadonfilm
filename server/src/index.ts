@@ -8,6 +8,7 @@ import cors from "cors"
 import compression from "compression"
 import rateLimit from "express-rate-limit"
 import { logger } from "./lib/logger.js"
+import { initRedis, isRedisAvailable } from "./lib/redis.js"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
 import { getOnThisDay } from "./routes/on-this-day.js"
@@ -127,12 +128,18 @@ app.use((req, res, next) => {
 
 // Health check endpoint (internal container health checks)
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" })
+  res.json({
+    status: "ok",
+    redis: isRedisAvailable() ? "connected" : "unavailable",
+  })
 })
 
 // External health check endpoint (routed via /api/* ingress rule)
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok" })
+  res.json({
+    status: "ok",
+    redis: isRedisAvailable() ? "connected" : "unavailable",
+  })
 })
 
 // SEO endpoints (not under /api since they're for crawlers)
@@ -195,6 +202,9 @@ async function startServer() {
     // Initialize database (runs migrations and seeds required data)
     await initializeDatabase()
 
+    // Initialize Redis (optional - caching disabled if not available)
+    const redisAvailable = await initRedis()
+
     // Start accepting requests
     app.listen(PORT, () => {
       logger.info(
@@ -202,6 +212,7 @@ async function startServer() {
           port: PORT,
           tmdbConfigured: !!process.env.TMDB_API_TOKEN,
           newRelicConfigured: !!process.env.NEW_RELIC_LICENSE_KEY,
+          redisConfigured: redisAvailable,
         },
         `Server running on port ${PORT}`
       )

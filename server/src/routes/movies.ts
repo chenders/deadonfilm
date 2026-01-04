@@ -1,12 +1,24 @@
 import { Request, Response } from "express"
 import { getGenreCategories, getMoviesByGenre, getGenreFromSlug } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
+import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
 
 export async function getGenreCategoriesHandler(req: Request, res: Response) {
   try {
-    const genres = await getGenreCategories()
+    const cacheKey = CACHE_PREFIX.GENRES
 
-    sendWithETag(req, res, { genres }, 3600) // 1 hour cache
+    type GenresResponse = { genres: Awaited<ReturnType<typeof getGenreCategories>> }
+
+    const cached = await getCached<GenresResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.DAY)
+    }
+
+    const genres = await getGenreCategories()
+    const response: GenresResponse = { genres }
+
+    await setCached(cacheKey, response, CACHE_TTL.DAY)
+    sendWithETag(req, res, response, CACHE_TTL.DAY)
   } catch (error) {
     console.error("Error getting genre categories:", error)
     res.status(500).json({ error: { message: "Failed to load genre categories" } })
@@ -32,9 +44,37 @@ export async function getMoviesByGenreHandler(req: Request, res: Response) {
     const limit = 50
     const offset = (page - 1) * limit
 
+    const cacheKey = buildCacheKey(CACHE_PREFIX.CURSED_MOVIES, { genre: genreSlug, page })
+
+    type MoviesByGenreResponse = {
+      genre: string
+      slug: string
+      movies: Array<{
+        id: number
+        title: string
+        releaseYear: number | null
+        posterPath: string | null
+        deceasedCount: number
+        castCount: number
+        expectedDeaths: number | null
+        mortalitySurpriseScore: number | null
+      }>
+      pagination: {
+        page: number
+        pageSize: number
+        totalCount: number
+        totalPages: number
+      }
+    }
+
+    const cached = await getCached<MoviesByGenreResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+    }
+
     const { movies, totalCount } = await getMoviesByGenre(genre, { limit, offset })
 
-    const response = {
+    const response: MoviesByGenreResponse = {
       genre,
       slug: genreSlug,
       movies: movies.map((movie) => ({
@@ -54,7 +94,9 @@ export async function getMoviesByGenreHandler(req: Request, res: Response) {
         totalPages: Math.ceil(totalCount / limit),
       },
     }
-    sendWithETag(req, res, response, 300) // 5 min cache
+
+    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("Error getting movies by genre:", error)
     res.status(500).json({ error: { message: "Failed to load movies for this genre" } })
