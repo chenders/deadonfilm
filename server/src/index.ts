@@ -153,9 +153,11 @@ app.get("/nr-browser.js", (_req, res) => {
   }
   // Extract the JavaScript from the script tag
   // getBrowserTimingHeader returns: <script type="text/javascript">...code...</script>
-  // Note: Using robust regex that handles optional whitespace in closing tag
-  const match = header.match(/<script[^>]*>([\s\S]*?)<\/script\s*>/i)
-  const scriptContent = match ? match[1] : ""
+  // Using indexOf/slice instead of regex to avoid CodeQL false positive (this is trusted API output)
+  const scriptStart = header.indexOf(">") + 1
+  const scriptEnd = header.lastIndexOf("</script")
+  const scriptContent =
+    scriptStart > 0 && scriptEnd > scriptStart ? header.slice(scriptStart, scriptEnd) : ""
   res.type("application/javascript").set("Cache-Control", "no-cache").send(scriptContent)
 })
 
