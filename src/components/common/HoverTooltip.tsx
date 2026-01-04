@@ -209,7 +209,7 @@ export default function HoverTooltip({
       ref={triggerRef}
       role="button"
       tabIndex={0}
-      className={`cursor-help ${className}`}
+      className={`inline-flex min-h-6 cursor-help items-center ${className}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
