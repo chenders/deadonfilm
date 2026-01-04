@@ -306,6 +306,8 @@ export default function ActorPage() {
             <img
               src={profileUrl}
               alt={actor.name}
+              width={144}
+              height={192}
               className="h-48 w-36 flex-shrink-0 rounded-lg object-cover shadow-md"
               data-testid="actor-profile-photo"
             />

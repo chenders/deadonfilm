@@ -19,6 +19,14 @@ vi.mock("../lib/newrelic.js", () => ({
   recordCustomEvent: vi.fn(),
 }))
 
+vi.mock("../lib/cache.js", () => ({
+  getCached: vi.fn().mockResolvedValue(null), // Always miss cache in tests
+  setCached: vi.fn().mockResolvedValue(undefined),
+  buildCacheKey: vi.fn((prefix, params) => `${prefix}:id:${params?.id}`),
+  CACHE_PREFIX: { ACTOR: "actor" },
+  CACHE_TTL: { LONG: 600 },
+}))
+
 import { recordCustomEvent } from "../lib/newrelic.js"
 
 describe("getActor", () => {
@@ -105,6 +113,7 @@ describe("getActor", () => {
 
     jsonSpy = vi.fn()
     statusSpy = vi.fn().mockReturnThis()
+    const setSpy = vi.fn().mockReturnThis()
 
     mockReq = {
       params: { id: "12345" },
@@ -112,6 +121,7 @@ describe("getActor", () => {
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
+      set: setSpy as Response["set"],
     }
   })
 
