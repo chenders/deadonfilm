@@ -9,6 +9,7 @@ import {
 } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
+import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
 
 export async function getCauseCategoriesHandler(req: Request, res: Response) {
   try {
@@ -16,8 +17,20 @@ export async function getCauseCategoriesHandler(req: Request, res: Response) {
       return res.json({ causes: [] })
     }
 
+    const cacheKey = CACHE_PREFIX.CAUSES
+
+    type CausesResponse = { causes: Awaited<ReturnType<typeof getCauseCategories>> }
+
+    const cached = await getCached<CausesResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+    }
+
     const causes = await getCauseCategories()
-    sendWithETag(req, res, { causes }, 3600) // 1 hour cache
+    const response: CausesResponse = { causes }
+
+    await setCached(cacheKey, response, CACHE_TTL.HOUR)
+    sendWithETag(req, res, response, CACHE_TTL.HOUR)
   } catch (error) {
     console.error("Cause categories error:", error)
     res.status(500).json({ error: { message: "Failed to fetch cause categories" } })
@@ -52,13 +65,41 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
     const offset = (page - 1) * pageSize
     const includeObscure = req.query.includeObscure === "true"
 
+    const cacheKey = buildCacheKey(CACHE_PREFIX.CAUSES, { slug, page, includeObscure })
+
+    type DeathsByCauseResponse = {
+      cause: string
+      slug: string
+      deaths: Array<{
+        id: number
+        name: string
+        deathday: string
+        profilePath: string | null
+        causeOfDeath: string | null
+        causeOfDeathDetails: string | null
+        ageAtDeath: number | null
+        yearsLost: number | null
+      }>
+      pagination: {
+        page: number
+        pageSize: number
+        totalCount: number
+        totalPages: number
+      }
+    }
+
+    const cached = await getCached<DeathsByCauseResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+    }
+
     const { deaths, totalCount } = await getDeathsByCause(cause, {
       limit: pageSize,
       offset,
       includeObscure,
     })
 
-    const response = {
+    const response: DeathsByCauseResponse = {
       cause,
       slug,
       deaths: deaths.map((d) => ({
@@ -88,7 +129,8 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
       responseTimeMs: Date.now() - startTime,
     })
 
-    sendWithETag(req, res, response, 300) // 5 min cache
+    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("Deaths by cause error:", error)
     res.status(500).json({ error: { message: "Failed to fetch deaths by cause" } })
@@ -101,8 +143,20 @@ export async function getDecadeCategoriesHandler(req: Request, res: Response) {
       return res.json({ decades: [] })
     }
 
+    const cacheKey = CACHE_PREFIX.DECADES
+
+    type DecadesResponse = { decades: Awaited<ReturnType<typeof getDecadeCategories>> }
+
+    const cached = await getCached<DecadesResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+    }
+
     const decades = await getDecadeCategories()
-    sendWithETag(req, res, { decades }, 3600) // 1 hour cache
+    const response: DecadesResponse = { decades }
+
+    await setCached(cacheKey, response, CACHE_TTL.HOUR)
+    sendWithETag(req, res, response, CACHE_TTL.HOUR)
   } catch (error) {
     console.error("Decade categories error:", error)
     res.status(500).json({ error: { message: "Failed to fetch decade categories" } })
@@ -143,13 +197,40 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
     const offset = (page - 1) * pageSize
     const includeObscure = req.query.includeObscure === "true"
 
+    const cacheKey = buildCacheKey(CACHE_PREFIX.DECADES, { decade, page, includeObscure })
+
+    type DeathsByDecadeResponse = {
+      decade: number
+      decadeLabel: string
+      deaths: Array<{
+        id: number
+        name: string
+        deathday: string
+        profilePath: string | null
+        causeOfDeath: string | null
+        ageAtDeath: number | null
+        yearsLost: number | null
+      }>
+      pagination: {
+        page: number
+        pageSize: number
+        totalCount: number
+        totalPages: number
+      }
+    }
+
+    const cached = await getCached<DeathsByDecadeResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+    }
+
     const { deaths, totalCount } = await getDeathsByDecade(decade, {
       limit: pageSize,
       offset,
       includeObscure,
     })
 
-    const response = {
+    const response: DeathsByDecadeResponse = {
       decade,
       decadeLabel: `${decade}s`,
       deaths: deaths.map((d) => ({
@@ -178,7 +259,8 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
       responseTimeMs: Date.now() - startTime,
     })
 
-    sendWithETag(req, res, response, 300) // 5 min cache
+    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("Deaths by decade error:", error)
     res.status(500).json({ error: { message: "Failed to fetch deaths by decade" } })
@@ -202,6 +284,37 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
     const includeObscure = req.query.includeObscure === "true"
     const search = (req.query.search as string) || undefined
 
+    // Only cache if there's no search query (search results are too varied)
+    const cacheKey = search
+      ? null
+      : buildCacheKey(CACHE_PREFIX.RECENT_DEATHS, { all: true, page, includeObscure })
+
+    type AllDeathsResponse = {
+      deaths: Array<{
+        rank: number
+        id: number | null
+        name: string
+        deathday: string | null
+        profilePath: string | null
+        causeOfDeath: string | null
+        causeOfDeathDetails: string | null
+        ageAtDeath: number | null
+      }>
+      pagination: {
+        page: number
+        pageSize: number
+        totalCount: number
+        totalPages: number
+      }
+    }
+
+    if (cacheKey) {
+      const cached = await getCached<AllDeathsResponse>(cacheKey)
+      if (cached) {
+        return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+      }
+    }
+
     const { persons, totalCount } = await getAllDeaths({
       limit: pageSize,
       offset,
@@ -209,7 +322,7 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
       search,
     })
 
-    const response = {
+    const response: AllDeathsResponse = {
       deaths: persons.map((p, i) => ({
         rank: offset + i + 1,
         id: p.tmdb_id,
@@ -236,7 +349,10 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
       responseTimeMs: Date.now() - startTime,
     })
 
-    sendWithETag(req, res, response, 300) // 5 min cache
+    if (cacheKey) {
+      await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    }
+    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("All deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch all deaths" } })
