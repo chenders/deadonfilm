@@ -110,7 +110,7 @@ export function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
  * Store a failed batch response for later reprocessing.
  * This allows us to fix parsing bugs and retry without re-running the batch.
  */
-async function storeFailure(
+export async function storeFailure(
   db: ReturnType<typeof getPool>,
   batchId: string,
   actorId: number,
