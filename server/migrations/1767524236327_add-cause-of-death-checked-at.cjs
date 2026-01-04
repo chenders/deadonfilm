@@ -12,8 +12,10 @@ exports.up = (pgm) => {
   })
 
   // Index for efficient querying of unchecked deceased actors
+  // Matches the exact query pattern: WHERE deathday IS NOT NULL AND cause_of_death IS NULL AND cause_of_death_checked_at IS NULL
   pgm.createIndex("actors", "cause_of_death_checked_at", {
-    where: "deathday IS NOT NULL AND cause_of_death IS NULL",
+    where:
+      "deathday IS NOT NULL AND cause_of_death IS NULL AND cause_of_death_checked_at IS NULL",
   })
 }
 
