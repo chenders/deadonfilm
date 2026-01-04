@@ -291,4 +291,81 @@ describe("cache operations with mocked Redis", () => {
       expect(mockRedisClient.flushdb).toHaveBeenCalled()
     })
   })
+
+  describe("invalidateDeathCaches", () => {
+    it("invalidates all death-related cache patterns", async () => {
+      // Mock scan to return empty keys (no deletions) for each pattern
+      mockRedisClient.scan.mockResolvedValue(["0", []])
+
+      const { invalidateDeathCaches, CACHE_PREFIX } = await import("./cache.js")
+      await invalidateDeathCaches()
+
+      // Should call scan for each pattern
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.RECENT_DEATHS}:*`,
+        "COUNT",
+        100
+      )
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.THIS_WEEK}:*`,
+        "COUNT",
+        100
+      )
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.STATS}:*`,
+        "COUNT",
+        100
+      )
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.DEATH_WATCH}:*`,
+        "COUNT",
+        100
+      )
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.CURSED_ACTORS}:*`,
+        "COUNT",
+        100
+      )
+      // Should also delete the trivia key directly
+      expect(mockRedisClient.del).toHaveBeenCalledWith(CACHE_PREFIX.TRIVIA)
+    })
+  })
+
+  describe("invalidateMovieCaches", () => {
+    it("invalidates all movie-related cache patterns", async () => {
+      // Mock scan to return empty keys (no deletions) for each pattern
+      mockRedisClient.scan.mockResolvedValue(["0", []])
+
+      const { invalidateMovieCaches, CACHE_PREFIX } = await import("./cache.js")
+      await invalidateMovieCaches()
+
+      // Should call scan for each pattern
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.CURSED_MOVIES}:*`,
+        "COUNT",
+        100
+      )
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.POPULAR_MOVIES}:*`,
+        "COUNT",
+        100
+      )
+      // Should also delete the featured-movie key directly
+      expect(mockRedisClient.del).toHaveBeenCalledWith(CACHE_PREFIX.FEATURED_MOVIE)
+    })
+  })
 })

@@ -24,6 +24,7 @@ export const CACHE_PREFIX = {
   COVID_DEATHS: "covid-deaths",
   UNNATURAL_DEATHS: "unnatural-deaths",
   FEATURED_MOVIE: "featured-movie",
+  GENRES: "genres",
 } as const
 
 // TTL values in seconds
