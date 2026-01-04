@@ -1,5 +1,5 @@
 // New Relic must be initialized FIRST, before any other imports
-import { initNewRelic } from "./lib/newrelic.js"
+import { initNewRelic, getBrowserTimingHeader } from "./lib/newrelic.js"
 initNewRelic()
 
 import "dotenv/config"
@@ -140,6 +140,22 @@ app.get("/api/health", (_req, res) => {
     status: "ok",
     redis: isRedisAvailable() ? "connected" : "unavailable",
   })
+})
+
+// New Relic browser agent script (served by Express for server-side injection)
+// This enables distributed tracing between browser and server
+app.get("/nr-browser.js", (_req, res) => {
+  const header = getBrowserTimingHeader()
+  if (!header) {
+    // No New Relic configured - return empty script
+    res.type("application/javascript").send("// New Relic not configured")
+    return
+  }
+  // Extract the JavaScript from the script tag
+  // getBrowserTimingHeader returns: <script type="text/javascript">...code...</script>
+  const match = header.match(/<script[^>]*>([\s\S]*?)<\/script>/i)
+  const scriptContent = match ? match[1] : ""
+  res.type("application/javascript").set("Cache-Control", "no-cache").send(scriptContent)
 })
 
 // SEO endpoints (not under /api since they're for crawlers)

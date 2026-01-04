@@ -58,3 +58,15 @@ export function recordCustomEvent(
     newrelicAgent.recordCustomEvent(eventType, attributes)
   }
 }
+
+/**
+ * Get the browser timing header script for injection into HTML.
+ * This returns a complete <script> tag that should be placed in the <head>.
+ * Returns empty string if New Relic is not initialized.
+ */
+export function getBrowserTimingHeader(): string {
+  if (newrelicAgent) {
+    return newrelicAgent.getBrowserTimingHeader()
+  }
+  return ""
+}
