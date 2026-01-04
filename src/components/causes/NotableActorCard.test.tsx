@@ -57,10 +57,10 @@ describe("NotableActorCard", () => {
     expect(document.querySelector("svg")).toBeInTheDocument()
   })
 
-  it("links to actor profile page", () => {
+  it("links to actor profile page using tmdbId", () => {
     renderWithRouter(mockActor)
-    const link = screen.getByTestId("notable-actor-123")
-    expect(link).toHaveAttribute("href", "/actor/john-smith-123")
+    const link = screen.getByTestId("notable-actor-456")
+    expect(link).toHaveAttribute("href", "/actor/john-smith-456")
   })
 
   it("shows question mark when age is null", () => {
@@ -69,8 +69,15 @@ describe("NotableActorCard", () => {
     expect(screen.getByText(/Age \?/)).toBeInTheDocument()
   })
 
-  it("has correct test ID", () => {
+  it("has correct test ID using tmdbId", () => {
     renderWithRouter(mockActor)
-    expect(screen.getByTestId("notable-actor-123")).toBeInTheDocument()
+    expect(screen.getByTestId("notable-actor-456")).toBeInTheDocument()
+  })
+
+  it("falls back to id when tmdbId is null", () => {
+    const actorWithoutTmdbId = { ...mockActor, tmdbId: null }
+    renderWithRouter(actorWithoutTmdbId)
+    const link = screen.getByTestId("notable-actor-123")
+    expect(link).toHaveAttribute("href", "/actor/john-smith-123")
   })
 })

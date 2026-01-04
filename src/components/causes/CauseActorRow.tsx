@@ -14,7 +14,8 @@ interface CauseActorRowProps {
 }
 
 export default function CauseActorRow({ actor, rank, showCauseBadge = true }: CauseActorRowProps) {
-  const slug = createActorSlug(actor.name, actor.id)
+  const actorId = actor.tmdbId ?? actor.id
+  const slug = createActorSlug(actor.name, actorId)
   const profileUrl = getProfileUrl(actor.profilePath, "w185")
 
   // For category pages, show the cause. For specific cause pages, show details only.
@@ -23,7 +24,7 @@ export default function CauseActorRow({ actor, rank, showCauseBadge = true }: Ca
   return (
     <Link
       to={`/actor/${slug}`}
-      data-testid={`actor-row-${actor.id}`}
+      data-testid={`actor-row-${actorId}`}
       className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
@@ -56,7 +57,7 @@ export default function CauseActorRow({ actor, rank, showCauseBadge = true }: Ca
               <CauseOfDeathBadge
                 causeOfDeath={actor.causeOfDeath || ""}
                 causeOfDeathDetails={actor.causeOfDeathDetails}
-                testId={`actor-cause-${actor.id}`}
+                testId={`actor-cause-${actorId}`}
                 iconSize={14}
               />
             </p>
