@@ -158,7 +158,11 @@ app.get("/nr-browser.js", (_req, res) => {
   const scriptEnd = header.lastIndexOf("</script")
   const scriptContent =
     scriptStart > 0 && scriptEnd > scriptStart ? header.slice(scriptStart, scriptEnd) : ""
-  res.type("application/javascript").set("Cache-Control", "no-cache").send(scriptContent)
+  // Cache for 1 hour - script content is stable but may update with SDK changes
+  res
+    .type("application/javascript")
+    .set("Cache-Control", "public, max-age=3600")
+    .send(scriptContent)
 })
 
 // SEO endpoints (not under /api since they're for crawlers)

@@ -19,6 +19,8 @@ export default function ShowHeader({ show, hidePoster = false }: ShowHeaderProps
             data-testid="show-poster"
             src={posterUrl}
             alt={`${show.name} poster`}
+            width={342}
+            height={513}
             className="mb-2 h-auto w-[clamp(6rem,18vh,12rem)] rounded-lg shadow-md"
           />
         ) : (
@@ -64,6 +66,8 @@ export function ShowPoster({ show }: { show: ShowDetails }) {
           data-testid="show-poster"
           src={posterUrl}
           alt={`${show.name} poster`}
+          width={342}
+          height={513}
           className="h-auto w-32 cursor-pointer rounded-lg shadow-md md:w-44"
         />
       </a>

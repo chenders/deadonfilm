@@ -44,7 +44,7 @@ export default function SearchBar() {
 
   const siteExplanation = (
     <>
-      <h3 className="mb-3 font-display text-lg text-brown-dark">Cast Mortality Database</h3>
+      <h2 className="mb-3 font-display text-lg text-brown-dark">Cast Mortality Database</h2>
       <div className="space-y-3 text-sm text-text-muted">
         <p>
           Dead on Film lets you discover which actors from your favorite films and TV shows have
