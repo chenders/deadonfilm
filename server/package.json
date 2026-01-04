@@ -7,7 +7,7 @@
     "// === Development & Build ===": "",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/src/index.js",
+    "start": "node --import newrelic/esm-loader.mjs dist/src/index.js",
 
     "// === Code Quality ===": "",
     "type-check": "tsc --noEmit",

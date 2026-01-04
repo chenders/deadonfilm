@@ -18,6 +18,9 @@
  *   npm run seed:movies -- --all-time --count 1000 # 1000 movies per year, all years
  */
 
+// New Relic must be initialized first for full transaction traces
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
+
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import {
@@ -108,7 +111,14 @@ const program = new Command()
         process.exit(1)
       }
 
-      await runSeeding({ startYear, endYear, moviesPerYear: options.count })
+      // Wrap in New Relic transaction for monitoring
+      await withNewRelicTransaction("seed-movies", async (recordMetrics) => {
+        const result = await runSeeding({ startYear, endYear, moviesPerYear: options.count })
+        recordMetrics({
+          recordsProcessed: result.totalMovies,
+          recordsCreated: result.totalAppearances,
+        })
+      })
     }
   )
 
@@ -118,7 +128,12 @@ interface SeedOptions {
   moviesPerYear: number
 }
 
-async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
+interface SeedResult {
+  totalMovies: number
+  totalAppearances: number
+}
+
+async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions): Promise<SeedResult> {
   // Check required environment variables
   if (!process.env.TMDB_API_TOKEN) {
     console.error("TMDB_API_TOKEN environment variable is required")
@@ -290,10 +305,14 @@ async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions) {
     console.log(`  Total movies saved: ${grandTotalMoviesSaved}`)
     console.log(`  Total actor appearances: ${grandTotalActorAppearances}`)
     console.log("\nDone!")
-    process.exit(0)
+
+    return {
+      totalMovies: grandTotalMoviesSaved,
+      totalAppearances: grandTotalActorAppearances,
+    }
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    throw error
   }
 }
 
