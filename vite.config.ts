@@ -27,6 +27,10 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/nr-browser.js': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
 })
