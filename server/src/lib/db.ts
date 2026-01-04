@@ -3127,7 +3127,7 @@ export async function getCauseCategory(
   // Get decade breakdown
   const decadeResult = await db.query<{ decade: string; count: string }>(
     `SELECT
-       ((EXTRACT(YEAR FROM deathday::date)::int / 10) * 10)::text || 's' as decade,
+       (EXTRACT(YEAR FROM deathday::date)::int / 10 * 10)::text || 's' as decade,
        COUNT(*) as count
      FROM actors
      WHERE deathday IS NOT NULL
@@ -3372,7 +3372,7 @@ export async function getSpecificCause(
   // Get decade breakdown
   const decadeResult = await db.query<{ decade: string; count: string }>(
     `SELECT
-       ((EXTRACT(YEAR FROM a.deathday::date)::int / 10) * 10)::text || 's' as decade,
+       (EXTRACT(YEAR FROM a.deathday::date)::int / 10 * 10)::text || 's' as decade,
        COUNT(*) as count
      FROM actors a
      LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
