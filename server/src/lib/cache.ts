@@ -160,10 +160,14 @@ export async function invalidateDeathCaches(): Promise<void> {
   await Promise.all([
     invalidateByPattern(`${CACHE_PREFIX.RECENT_DEATHS}:*`),
     invalidateByPattern(`${CACHE_PREFIX.THIS_WEEK}:*`),
-    invalidateByPattern(`${CACHE_PREFIX.STATS}:*`),
     invalidateByPattern(`${CACHE_PREFIX.DEATH_WATCH}:*`),
     invalidateByPattern(`${CACHE_PREFIX.CURSED_ACTORS}:*`),
-    invalidateKeys(CACHE_PREFIX.TRIVIA),
+    invalidateByPattern(`${CACHE_PREFIX.CAUSES}:*`),
+    invalidateByPattern(`${CACHE_PREFIX.DECADES}:*`),
+    invalidateByPattern(`${CACHE_PREFIX.COVID_DEATHS}:*`),
+    invalidateByPattern(`${CACHE_PREFIX.UNNATURAL_DEATHS}:*`),
+    // STATS and TRIVIA use simple keys (no parameters), so use invalidateKeys
+    invalidateKeys(CACHE_PREFIX.STATS, CACHE_PREFIX.TRIVIA, CACHE_PREFIX.FEATURED_MOVIE),
   ])
 }
 
