@@ -52,6 +52,8 @@ import {
 import { getCauseOfDeath } from "../src/lib/wikidata.js"
 import { calculateYearsLost, calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import { formatDate, subtractDays, getDateRanges } from "../src/lib/date-utils.js"
+import { invalidateDeathCaches, invalidateMovieCaches } from "../src/lib/cache.js"
+import { initRedis, closeRedis } from "../src/lib/redis.js"
 
 const SYNC_TYPE_PEOPLE = "person_changes"
 const SYNC_TYPE_MOVIES = "movie_changes"
@@ -235,6 +237,24 @@ async function runSync(options: SyncOptions): Promise<SyncResult> {
           errors_count: showResult.errors.length,
         })
       }
+    }
+
+    // Invalidate caches after successful sync (if not dry run)
+    if (!options.dryRun) {
+      console.log("\n=== Invalidating Caches ===")
+      await initRedis()
+
+      if (result.newDeathsFound > 0) {
+        console.log("Invalidating death-related caches...")
+        await invalidateDeathCaches()
+      }
+
+      if (result.moviesUpdated > 0) {
+        console.log("Invalidating movie-related caches...")
+        await invalidateMovieCaches()
+      }
+
+      await closeRedis()
     }
 
     // Print summary

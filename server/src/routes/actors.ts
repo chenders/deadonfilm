@@ -2,6 +2,7 @@ import type { Request, Response } from "express"
 import { getCursedActors } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
+import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
 
 // Get list of cursed actors (actors whose co-stars have died at unusually high rates)
 // Supports pagination and filtering by actor status, decade range, and minimum movies
@@ -24,6 +25,39 @@ export async function getCursedActorsRoute(req: Request, res: Response) {
     // Convert decades to year ranges
     const fromYear = fromDecade || undefined
     const toYear = toDecade ? toDecade + 9 : undefined
+
+    const cacheKey = buildCacheKey(CACHE_PREFIX.CURSED_ACTORS, {
+      page,
+      pageSize,
+      minMovies,
+      actorStatus,
+      fromYear,
+      toYear,
+    })
+
+    type CursedActorsResponse = {
+      actors: Array<{
+        rank: number
+        id: number | null
+        name: string
+        isDeceased: boolean
+        totalMovies: number
+        totalActualDeaths: number
+        totalExpectedDeaths: number
+        curseScore: number
+      }>
+      pagination: {
+        page: number
+        pageSize: number
+        totalCount: number
+        totalPages: number
+      }
+    }
+
+    const cached = await getCached<CursedActorsResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+    }
 
     const { actors, totalCount } = await getCursedActors({
       limit: pageSize,
@@ -49,7 +83,7 @@ export async function getCursedActorsRoute(req: Request, res: Response) {
     // Enforce max 20 pages
     const totalPages = Math.min(Math.ceil(totalCount / pageSize), 20)
 
-    const response = {
+    const response: CursedActorsResponse = {
       actors: result,
       pagination: {
         page,
@@ -70,7 +104,8 @@ export async function getCursedActorsRoute(req: Request, res: Response) {
       responseTimeMs: Date.now() - startTime,
     })
 
-    sendWithETag(req, res, response, 300) // 5 min cache
+    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
   } catch (error) {
     console.error("Cursed actors error:", error)
     res.status(500).json({ error: { message: "Failed to fetch cursed actors" } })
