@@ -5,7 +5,7 @@ import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "..
 
 export async function getGenreCategoriesHandler(req: Request, res: Response) {
   try {
-    const cacheKey = "genres"
+    const cacheKey = CACHE_PREFIX.GENRES
 
     type GenresResponse = { genres: Awaited<ReturnType<typeof getGenreCategories>> }
 
