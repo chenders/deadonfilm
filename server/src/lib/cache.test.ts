@@ -300,7 +300,7 @@ describe("cache operations with mocked Redis", () => {
       const { invalidateDeathCaches, CACHE_PREFIX } = await import("./cache.js")
       await invalidateDeathCaches()
 
-      // Should call scan for each pattern
+      // Should call scan for each pattern-based cache
       expect(mockRedisClient.scan).toHaveBeenCalledWith(
         "0",
         "MATCH",
@@ -318,13 +318,6 @@ describe("cache operations with mocked Redis", () => {
       expect(mockRedisClient.scan).toHaveBeenCalledWith(
         "0",
         "MATCH",
-        `${CACHE_PREFIX.STATS}:*`,
-        "COUNT",
-        100
-      )
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
         `${CACHE_PREFIX.DEATH_WATCH}:*`,
         "COUNT",
         100
@@ -336,8 +329,40 @@ describe("cache operations with mocked Redis", () => {
         "COUNT",
         100
       )
-      // Should also delete the trivia key directly
-      expect(mockRedisClient.del).toHaveBeenCalledWith(CACHE_PREFIX.TRIVIA)
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.CAUSES}:*`,
+        "COUNT",
+        100
+      )
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.DECADES}:*`,
+        "COUNT",
+        100
+      )
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.COVID_DEATHS}:*`,
+        "COUNT",
+        100
+      )
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(
+        "0",
+        "MATCH",
+        `${CACHE_PREFIX.UNNATURAL_DEATHS}:*`,
+        "COUNT",
+        100
+      )
+      // Should delete simple key caches directly (no pattern)
+      expect(mockRedisClient.del).toHaveBeenCalledWith(
+        CACHE_PREFIX.STATS,
+        CACHE_PREFIX.TRIVIA,
+        CACHE_PREFIX.FEATURED_MOVIE
+      )
     })
   })
 
