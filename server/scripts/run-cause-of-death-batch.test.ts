@@ -82,6 +82,10 @@ describe("processResults", () => {
         updatedDetails: 0,
         updatedBirthday: 0,
         updatedDeathday: 0,
+        updatedManner: 0,
+        updatedCategories: 0,
+        updatedCircumstances: 0,
+        createdCircumstancesRecord: 0,
       },
     }
   })
