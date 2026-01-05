@@ -68,7 +68,7 @@ async function promptToContinue(message: string): Promise<boolean> {
  * Set via --quiet flag which inverts this to false.
  * Must be global because processResults is an exported function used by tests.
  */
-let verboseMode = false
+let verboseMode = true
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
