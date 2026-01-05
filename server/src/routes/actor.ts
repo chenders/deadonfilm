@@ -6,6 +6,7 @@ import {
   getActor as getActorRecord,
 } from "../lib/db.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
+import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -55,6 +56,23 @@ export async function getActor(req: Request, res: Response) {
 
   try {
     const startTime = Date.now()
+    const cacheKey = buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId })
+
+    // Check cache first
+    const cached = await getCached<ActorProfileResponse>(cacheKey)
+    if (cached) {
+      recordCustomEvent("ActorView", {
+        tmdbId: actorId,
+        name: cached.actor.name,
+        isDeceased: !!cached.actor.deathday,
+        filmographyCount: cached.analyzedFilmography.length,
+        tvFilmographyCount: cached.analyzedTVFilmography.length,
+        hasCauseOfDeath: !!cached.deathInfo?.causeOfDeath,
+        responseTimeMs: Date.now() - startTime,
+        cacheHit: true,
+      })
+      return res.set("Cache-Control", "public, max-age=600").json(cached)
+    }
 
     // Fetch actor details from TMDB and filmographies in parallel
     const [person, filmography, tvFilmography] = await Promise.all([
@@ -102,6 +120,9 @@ export async function getActor(req: Request, res: Response) {
       deathInfo,
     }
 
+    // Cache the response
+    await setCached(cacheKey, response, CACHE_TTL.LONG)
+
     recordCustomEvent("ActorView", {
       tmdbId: actorId,
       name: person.name,
@@ -110,9 +131,10 @@ export async function getActor(req: Request, res: Response) {
       tvFilmographyCount: tvFilmography.length,
       hasCauseOfDeath: !!deathInfo?.causeOfDeath,
       responseTimeMs: Date.now() - startTime,
+      cacheHit: false,
     })
 
-    res.json(response)
+    res.set("Cache-Control", "public, max-age=600").json(response)
   } catch (error) {
     console.error("Actor fetch error:", error)
     res.status(500).json({ error: { message: "Failed to fetch actor data" } })
