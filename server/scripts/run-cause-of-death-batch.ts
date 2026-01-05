@@ -165,13 +165,14 @@ async function run(options: {
 
     // Count remaining actors before each batch
     const db = getPool()
-    const countResult = await db.query<{ count: string }>(
-      `SELECT COUNT(*) as count
-       FROM actors
-       WHERE deathday IS NOT NULL
-         AND cause_of_death IS NULL
-         AND cause_of_death_checked_at IS NULL`
-    )
+    const countQuery = all
+      ? `SELECT COUNT(*) as count FROM actors WHERE deathday IS NOT NULL`
+      : `SELECT COUNT(*) as count
+         FROM actors
+         WHERE deathday IS NOT NULL
+           AND cause_of_death IS NULL
+           AND cause_of_death_checked_at IS NULL`
+    const countResult = await db.query<{ count: string }>(countQuery)
     const remaining = parseInt(countResult.rows[0].count, 10)
     await resetPool()
 
@@ -193,16 +194,20 @@ async function run(options: {
       console.log(`\n[1/3] Submitting batch (limit: ${limit})...`)
 
       const db = getPool()
-      const result = await db.query<ActorToProcess>(
-        `SELECT id, tmdb_id, name, birthday, deathday
-         FROM actors
-         WHERE deathday IS NOT NULL
-           AND cause_of_death IS NULL
-           AND cause_of_death_checked_at IS NULL
-         ORDER BY popularity DESC NULLS LAST
-         LIMIT $1`,
-        [limit]
-      )
+      const selectQuery = all
+        ? `SELECT id, tmdb_id, name, birthday, deathday
+           FROM actors
+           WHERE deathday IS NOT NULL
+           ORDER BY popularity DESC NULLS LAST
+           LIMIT $1`
+        : `SELECT id, tmdb_id, name, birthday, deathday
+           FROM actors
+           WHERE deathday IS NOT NULL
+             AND cause_of_death IS NULL
+             AND cause_of_death_checked_at IS NULL
+           ORDER BY popularity DESC NULLS LAST
+           LIMIT $1`
+      const result = await db.query<ActorToProcess>(selectQuery, [limit])
 
       if (result.rows.length === 0) {
         console.log("\nNo more actors need processing. All done!")

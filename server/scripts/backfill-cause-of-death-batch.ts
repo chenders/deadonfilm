@@ -1080,6 +1080,11 @@ async function applyUpdate(
     rawResponse
 
   if (hasCircumstancesData) {
+    // Extract tmdb_ids from related_celebrities for the indexed array column
+    const relatedCelebrityIds = parsed.related_celebrities
+      ?.map((c) => c.tmdb_id)
+      .filter((id): id is number => id !== undefined && id !== null)
+
     await db.query(
       `INSERT INTO actor_death_circumstances (
         actor_id,
@@ -1094,6 +1099,7 @@ async function applyUpdate(
         last_project,
         career_status_at_death,
         posthumous_releases,
+        related_celebrity_ids,
         related_celebrities,
         additional_context,
         notable_factors,
@@ -1101,7 +1107,7 @@ async function applyUpdate(
         raw_response,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
       ON CONFLICT (actor_id) DO UPDATE SET
         circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
         circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
@@ -1114,6 +1120,7 @@ async function applyUpdate(
         last_project = COALESCE(EXCLUDED.last_project, actor_death_circumstances.last_project),
         career_status_at_death = COALESCE(EXCLUDED.career_status_at_death, actor_death_circumstances.career_status_at_death),
         posthumous_releases = COALESCE(EXCLUDED.posthumous_releases, actor_death_circumstances.posthumous_releases),
+        related_celebrity_ids = COALESCE(EXCLUDED.related_celebrity_ids, actor_death_circumstances.related_celebrity_ids),
         related_celebrities = COALESCE(EXCLUDED.related_celebrities, actor_death_circumstances.related_celebrities),
         additional_context = COALESCE(EXCLUDED.additional_context, actor_death_circumstances.additional_context),
         notable_factors = COALESCE(EXCLUDED.notable_factors, actor_death_circumstances.notable_factors),
@@ -1133,6 +1140,7 @@ async function applyUpdate(
         parsed.last_project ? JSON.stringify(parsed.last_project) : null,
         parsed.career_status_at_death,
         parsed.posthumous_releases ? JSON.stringify(parsed.posthumous_releases) : null,
+        relatedCelebrityIds && relatedCelebrityIds.length > 0 ? relatedCelebrityIds : null,
         parsed.related_celebrities ? JSON.stringify(parsed.related_celebrities) : null,
         parsed.additional_context,
         parsed.notable_factors,
