@@ -362,14 +362,17 @@ Rules:
 Respond with valid JSON only.`
 }
 
-async function markActorAsChecked(db: ReturnType<typeof getPool>, actorId: number): Promise<void> {
+export async function markActorAsChecked(
+  db: ReturnType<typeof getPool>,
+  actorId: number
+): Promise<void> {
   await db.query(
     `UPDATE actors SET cause_of_death_checked_at = NOW(), updated_at = NOW() WHERE id = $1`,
     [actorId]
   )
 }
 
-async function processResults(
+export async function processResults(
   anthropic: Anthropic,
   batchId: string,
   checkpoint: Checkpoint
@@ -539,4 +542,11 @@ const program = new Command()
     })
   })
 
-program.parse()
+// Only run CLI when executed directly (not when imported for testing)
+const isMainModule =
+  import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1]?.endsWith("run-cause-of-death-batch.ts")
+
+if (isMainModule) {
+  program.parse()
+}
