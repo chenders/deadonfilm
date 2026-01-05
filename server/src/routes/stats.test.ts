@@ -36,6 +36,7 @@ describe("getStats", () => {
   let statusSpy: ReturnType<typeof vi.fn>
 
   const mockStats = {
+    totalActors: 500000,
     totalDeceasedActors: 1500,
     totalMoviesAnalyzed: 350,
     topCauseOfDeath: "Cancer",
@@ -79,6 +80,7 @@ describe("getStats", () => {
 
     expect(db.getSiteStats).not.toHaveBeenCalled()
     expect(jsonSpy).toHaveBeenCalledWith({
+      totalActors: 0,
       totalDeceasedActors: 0,
       totalMoviesAnalyzed: 0,
       topCauseOfDeath: null,
@@ -101,6 +103,7 @@ describe("getStats", () => {
 
   it("handles null values in stats", async () => {
     const statsWithNulls = {
+      totalActors: 10000,
       totalDeceasedActors: 100,
       totalMoviesAnalyzed: 50,
       topCauseOfDeath: null,
