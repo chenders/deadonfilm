@@ -362,6 +362,53 @@ Rules:
 Respond with valid JSON only.`
 }
 
+/**
+ * Log all non-null/non-empty fields from the parsed response
+ */
+function logParsedResponse(actorName: string, parsed: Record<string, unknown>): void {
+  const fieldsToLog: Array<{ key: string; label: string }> = [
+    { key: "cause", label: "Cause" },
+    { key: "details", label: "Details" },
+    { key: "manner", label: "Manner" },
+    { key: "categories", label: "Categories" },
+    { key: "covid_related", label: "COVID-related" },
+    { key: "circumstances", label: "Circumstances" },
+    { key: "rumored_circumstances", label: "Rumored" },
+    { key: "strange_death", label: "Strange death" },
+    { key: "location_of_death", label: "Location" },
+    { key: "career_status_at_death", label: "Career status" },
+    { key: "cause_confidence", label: "Cause confidence" },
+    { key: "corrections", label: "Corrections" },
+  ]
+
+  // Build output lines for non-empty values
+  const lines: string[] = []
+  for (const { key, label } of fieldsToLog) {
+    const value = parsed[key]
+    if (value === null || value === undefined || value === "") continue
+    if (Array.isArray(value) && value.length === 0) continue
+    if (typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0)
+      continue
+
+    let displayValue: string
+    if (Array.isArray(value)) {
+      displayValue = value.join(", ")
+    } else if (typeof value === "object") {
+      displayValue = JSON.stringify(value)
+    } else {
+      displayValue = String(value)
+    }
+    lines.push(`    ${label}: ${displayValue}`)
+  }
+
+  // Print actor name with cause on first line, then other fields indented
+  const cause = parsed.cause || "(no cause)"
+  console.log(`\n  ${actorName}: ${cause}`)
+  for (const line of lines.filter((l) => !l.includes("Cause:"))) {
+    console.log(line)
+  }
+}
+
 export async function markActorAsChecked(
   db: ReturnType<typeof getPool>,
   actorId: number
@@ -392,6 +439,13 @@ export async function processResults(
 
       processed++
 
+      // Look up actor name for logging
+      const actorResult = await db.query<{ name: string }>(
+        "SELECT name FROM actors WHERE id = $1",
+        [actorId]
+      )
+      const actorName = actorResult.rows[0]?.name || `Actor ${actorId}`
+
       if (result.result.type === "succeeded") {
         const message = result.result.message
         const responseText = message.content[0].type === "text" ? message.content[0].text : ""
@@ -400,13 +454,16 @@ export async function processResults(
           const jsonText = stripMarkdownCodeFences(responseText)
           const parsed = JSON.parse(jsonText)
 
+          // Log the response
+          logParsedResponse(actorName, parsed)
+
           // Apply update to database
           await applyUpdate(db, actorId, parsed, batchId, checkpoint)
           checkpoint.stats.succeeded++
         } catch (error) {
           checkpoint.stats.errored++
           const errorMsg = error instanceof Error ? error.message : "Unknown error"
-          console.error(`\n  Error processing actor ${actorId}:`, error)
+          console.error(`\n  Error processing ${actorName}:`, error)
 
           // Log failure for later reprocessing
           await storeFailure(db, batchId, actorId, customId, responseText, errorMsg, "json_parse")
@@ -417,7 +474,7 @@ export async function processResults(
       } else if (result.result.type === "errored") {
         checkpoint.stats.errored++
         const errorInfo = JSON.stringify(result.result.error)
-        console.error(`\n  API error for actor ${actorId}:`, errorInfo)
+        console.error(`\n  API error for ${actorName}:`, errorInfo)
 
         // Log failure for debugging and potential reprocessing
         await storeFailure(db, batchId, actorId, customId, "", errorInfo, "api_error")
@@ -426,7 +483,7 @@ export async function processResults(
         await markActorAsChecked(db, actorId)
       } else if (result.result.type === "expired") {
         checkpoint.stats.expired++
-        console.log(`\n  Request expired for actor ${actorId}`)
+        console.log(`\n  Request expired for ${actorName}`)
 
         // Log failure for debugging and potential reprocessing
         await storeFailure(db, batchId, actorId, customId, "", "Request expired", "expired")
