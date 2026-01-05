@@ -15,8 +15,6 @@ services:
       - "/:/host:ro"
       - "/var/run/docker.sock:/var/run/docker.sock"
     restart: unless-stopped
-    networks:
-      - deadonfilm_default
 
   db:
     image: postgres:16-alpine
