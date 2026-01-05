@@ -118,16 +118,6 @@ async function run(options: {
     process.exit(1)
   }
 
-  // Show mode info
-  console.log(`\n${"=".repeat(60)}`)
-  console.log(`CAUSE OF DEATH BATCH RUNNER`)
-  console.log(`${"=".repeat(60)}`)
-  console.log(`Mode: ${all ? "ALL deceased actors" : "Only missing cause of death"}`)
-  console.log(`Batch size: ${limit}`)
-  console.log(`Verbose: ${verbose}`)
-  console.log(`Pause between batches: ${pause}`)
-  if (dryRun) console.log(`*** DRY RUN - no changes will be made ***`)
-
   if (!process.env.ANTHROPIC_API_KEY && !dryRun) {
     console.error("ANTHROPIC_API_KEY environment variable is required")
     process.exit(1)
@@ -138,12 +128,16 @@ async function run(options: {
   let totalProcessed = 0
   let batchCount = 0
 
+  // Show consolidated header
   console.log(`\n${"=".repeat(60)}`)
-  console.log(`Cause of Death Batch Runner`)
+  console.log(`CAUSE OF DEATH BATCH RUNNER`)
   console.log(`${"=".repeat(60)}`)
-  console.log(`Limit per batch: ${limit}`)
-  console.log(`Poll interval: ${pollInterval}s`)
-  console.log(`Mode: ${dryRun ? "DRY RUN" : "LIVE"}`)
+  console.log(
+    `Mode: ${dryRun ? "DRY RUN" : "LIVE"} - ${all ? "ALL deceased actors" : "Only missing cause of death"}`
+  )
+  console.log(`Batch size: ${limit} | Poll interval: ${pollInterval}s`)
+  console.log(`Verbose: ${verbose} | Pause between batches: ${pause}`)
+  if (dryRun) console.log(`*** DRY RUN - no changes will be made ***`)
   console.log(`Press Ctrl-C to stop after current batch completes`)
   console.log(`${"=".repeat(60)}\n`)
 
