@@ -973,7 +973,7 @@ async function applyUpdate(
     parsed.strange_death === true ||
     parsed.circumstances_confidence === "disputed" ||
     (parsed.notable_factors && parsed.notable_factors.length > 0) ||
-    parsed.rumored_circumstances !== null ||
+    (parsed.rumored_circumstances !== null && parsed.rumored_circumstances !== "") ||
     (parsed.related_celebrities && parsed.related_celebrities.length > 0)
 
   if (hasDetailedDeathInfo) {

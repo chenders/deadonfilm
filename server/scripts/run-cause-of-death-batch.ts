@@ -50,7 +50,7 @@ async function promptToContinue(message: string): Promise<boolean> {
   })
 
   return new Promise((resolve) => {
-    rl.question(`\n${message} (y/n/q): `, (answer) => {
+    rl.question(`\n${message} [Y/n/q]: `, (answer) => {
       rl.close()
       const lower = answer.toLowerCase().trim()
       if (lower === "q" || lower === "quit") {
@@ -62,7 +62,12 @@ async function promptToContinue(message: string): Promise<boolean> {
   })
 }
 
-// Global options for verbose mode
+/**
+ * Global flag controlling per-actor output in processResults().
+ * When true (default), shows cause/details for each processed actor.
+ * Set via --quiet flag which inverts this to false.
+ * Must be global because processResults is an exported function used by tests.
+ */
 let verboseMode = false
 
 function formatDuration(seconds: number): string {
