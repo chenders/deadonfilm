@@ -2,6 +2,31 @@
 # Copy to /opt/deadonfilm/docker-compose.yml on the server
 
 services:
+  agent:
+    container_name: newrelic-infra
+    build:
+      context: .
+      dockerfile: newrelic-infra.dockerfile
+    cap_add:
+      - SYS_PTRACE
+    pid: host
+    privileged: true
+    volumes:
+      - "/:/host:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/bin/newrelic-infra", "-validate"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   db:
     image: postgres:16-alpine
     container_name: deadonfilm-db
