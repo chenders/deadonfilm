@@ -479,6 +479,10 @@ describe("backfill-cause-of-death-batch checkpoint functionality", () => {
           updatedDetails: 3,
           updatedBirthday: 1,
           updatedDeathday: 0,
+          updatedManner: 0,
+          updatedCategories: 0,
+          updatedCircumstances: 0,
+          createdCircumstancesRecord: 0,
         },
       }
       fs.writeFileSync(testCheckpointFile, JSON.stringify(checkpoint))
@@ -509,6 +513,10 @@ describe("backfill-cause-of-death-batch checkpoint functionality", () => {
           updatedDetails: 2,
           updatedBirthday: 0,
           updatedDeathday: 0,
+          updatedManner: 0,
+          updatedCategories: 0,
+          updatedCircumstances: 0,
+          createdCircumstancesRecord: 0,
         },
       }
 
@@ -535,6 +543,10 @@ describe("backfill-cause-of-death-batch checkpoint functionality", () => {
           updatedDetails: 0,
           updatedBirthday: 0,
           updatedDeathday: 0,
+          updatedManner: 0,
+          updatedCategories: 0,
+          updatedCircumstances: 0,
+          createdCircumstancesRecord: 0,
         },
       }
 
@@ -626,6 +638,10 @@ describe("backfill-cause-of-death-batch stats tracking", () => {
     updatedDetails: number
     updatedBirthday: number
     updatedDeathday: number
+    updatedManner: number
+    updatedCategories: number
+    updatedCircumstances: number
+    createdCircumstancesRecord: number
   }
 
   function createEmptyStats(): Stats {
@@ -638,6 +654,10 @@ describe("backfill-cause-of-death-batch stats tracking", () => {
       updatedDetails: 0,
       updatedBirthday: 0,
       updatedDeathday: 0,
+      updatedManner: 0,
+      updatedCategories: 0,
+      updatedCircumstances: 0,
+      createdCircumstancesRecord: 0,
     }
   }
 
@@ -651,6 +671,10 @@ describe("backfill-cause-of-death-batch stats tracking", () => {
     expect(stats.updatedDetails).toBe(0)
     expect(stats.updatedBirthday).toBe(0)
     expect(stats.updatedDeathday).toBe(0)
+    expect(stats.updatedManner).toBe(0)
+    expect(stats.updatedCategories).toBe(0)
+    expect(stats.updatedCircumstances).toBe(0)
+    expect(stats.createdCircumstancesRecord).toBe(0)
   })
 
   it("tracks submitted count", () => {

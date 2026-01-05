@@ -8,16 +8,21 @@
  * Usage:
  *   npm run backfill:cause-of-death-runner -- --limit 100
  *   npm run backfill:cause-of-death-runner -- --limit 50 --poll-interval 30
+ *   npm run backfill:cause-of-death-runner -- --quiet --no-pause  # Run silently without stops
  *
  * Options:
  *   --limit <n>           Number of actors per batch (default: 100)
  *   --poll-interval <s>   Seconds between status checks (default: 60)
  *   --dry-run             Preview without submitting or processing
+ *   --quiet               Suppress per-actor output (default: verbose)
+ *   --no-pause            Run continuously without pausing between batches (default: pause)
+ *   --all                 Process ALL deceased actors (not just those missing cause)
  */
 
 import "dotenv/config"
 import Anthropic from "@anthropic-ai/sdk"
 import { Command } from "commander"
+import * as readline from "readline"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import {
@@ -37,6 +42,28 @@ initNewRelic()
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
+
+async function promptToContinue(message: string): Promise<boolean> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+
+  return new Promise((resolve) => {
+    rl.question(`\n${message} (y/n/q): `, (answer) => {
+      rl.close()
+      const lower = answer.toLowerCase().trim()
+      if (lower === "q" || lower === "quit") {
+        console.log("\nQuitting...")
+        process.exit(0)
+      }
+      resolve(lower === "y" || lower === "yes" || lower === "")
+    })
+  })
+}
+
+// Global options for verbose mode
+let verboseMode = false
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
@@ -72,13 +99,29 @@ async function run(options: {
   limit: number
   pollInterval: number
   dryRun: boolean
+  verbose: boolean
+  pause: boolean
+  all: boolean
 }): Promise<void> {
-  const { limit, pollInterval, dryRun } = options
+  const { limit, pollInterval, dryRun, verbose, pause, all } = options
+
+  // Set global verbose mode for use in processResults
+  verboseMode = verbose
 
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
     process.exit(1)
   }
+
+  // Show mode info
+  console.log(`\n${"=".repeat(60)}`)
+  console.log(`CAUSE OF DEATH BATCH RUNNER`)
+  console.log(`${"=".repeat(60)}`)
+  console.log(`Mode: ${all ? "ALL deceased actors" : "Only missing cause of death"}`)
+  console.log(`Batch size: ${limit}`)
+  console.log(`Verbose: ${verbose}`)
+  console.log(`Pause between batches: ${pause}`)
+  if (dryRun) console.log(`*** DRY RUN - no changes will be made ***`)
 
   if (!process.env.ANTHROPIC_API_KEY && !dryRun) {
     console.error("ANTHROPIC_API_KEY environment variable is required")
@@ -221,6 +264,10 @@ async function run(options: {
             updatedDetails: 0,
             updatedBirthday: 0,
             updatedDeathday: 0,
+            updatedManner: 0,
+            updatedCategories: 0,
+            updatedCircumstances: 0,
+            createdCircumstancesRecord: 0,
           },
         }
         saveCheckpoint(checkpoint)
@@ -314,10 +361,18 @@ async function run(options: {
       break
     }
 
-    // Brief pause before next batch
+    // Pause or continue before next batch
     if (!isShuttingDown) {
-      console.log("\nStarting next batch in 5 seconds...")
-      await sleep(5000)
+      if (pause) {
+        const shouldContinue = await promptToContinue("Continue with next batch?")
+        if (!shouldContinue) {
+          console.log("Stopping at user request.")
+          break
+        }
+      } else {
+        console.log("\nStarting next batch in 5 seconds...")
+        await sleep(5000)
+      }
     }
   }
 
@@ -403,6 +458,14 @@ export async function processResults(
           // Apply update to database
           await applyUpdate(db, actorId, parsed, batchId, checkpoint)
           checkpoint.stats.succeeded++
+
+          // Show per-actor output in verbose mode
+          if (verboseMode && (parsed.cause || parsed.details)) {
+            console.log(`\n  Actor ${actorId}: ${parsed.cause || "(no cause)"}`)
+            if (parsed.details) {
+              console.log(`    Details: ${parsed.details}`)
+            }
+          }
         } catch (error) {
           checkpoint.stats.errored++
           const errorMsg = error instanceof Error ? error.message : "Unknown error"
@@ -534,11 +597,17 @@ const program = new Command()
   .option("-l, --limit <number>", "Number of actors per batch", parsePositiveInt, 100)
   .option("-p, --poll-interval <seconds>", "Seconds between status checks", parsePositiveInt, 60)
   .option("-n, --dry-run", "Preview without submitting or processing")
+  .option("-q, --quiet", "Suppress per-actor output (default: verbose)")
+  .option("--no-pause", "Run continuously without pausing between batches")
+  .option("-a, --all", "Process ALL deceased actors (not just those missing cause)")
   .action(async (options) => {
     await run({
       limit: options.limit,
       pollInterval: options.pollInterval,
       dryRun: options.dryRun ?? false,
+      verbose: !options.quiet, // Default verbose=true, --quiet sets to false
+      pause: options.pause !== false, // Default pause=true, --no-pause sets to false
+      all: options.all ?? false,
     })
   })
 

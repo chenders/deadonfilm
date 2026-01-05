@@ -67,6 +67,10 @@ export interface Checkpoint {
     updatedDetails: number
     updatedBirthday: number
     updatedDeathday: number
+    updatedManner: number
+    updatedCategories: number
+    updatedCircumstances: number
+    createdCircumstancesRecord: number
   }
 }
 
@@ -82,9 +86,75 @@ interface ActorToProcess {
   cause_of_death_details: string | null
 }
 
+interface SourceEntry {
+  url: string | null
+  archive_url: string | null
+  description: string
+}
+
+interface ProjectInfo {
+  title: string
+  year: number | null
+  tmdb_id: number | null
+  imdb_id: string | null
+  type: "movie" | "show" | "documentary" | "unknown"
+}
+
+interface RelatedCelebrity {
+  name: string
+  tmdb_id: number | null
+  relationship: string
+}
+
+type ConfidenceLevel = "high" | "medium" | "low" | "disputed"
+type DeathManner = "natural" | "accident" | "suicide" | "homicide" | "undetermined" | "pending"
+type CareerStatus = "active" | "semi-retired" | "retired" | "hiatus" | "unknown"
+
 interface ClaudeResponse {
+  // Core death info
   cause: string | null
+  cause_confidence: ConfidenceLevel | null
   details: string | null
+  details_confidence: ConfidenceLevel | null
+
+  // Categorization
+  manner: DeathManner | null
+  categories: string[] | null
+  covid_related: boolean | null
+  strange_death: boolean | null
+
+  // Circumstances
+  circumstances: string | null
+  circumstances_confidence: ConfidenceLevel | null
+  rumored_circumstances: string | null
+  notable_factors: string[] | null
+
+  // Date confidence
+  birthday_confidence: ConfidenceLevel | null
+  deathday_confidence: ConfidenceLevel | null
+
+  // Career context
+  location_of_death: string | null
+  last_project: ProjectInfo | null
+  career_status_at_death: CareerStatus | null
+  posthumous_releases: ProjectInfo[] | null
+
+  // Related celebrities
+  related_celebrities: RelatedCelebrity[] | null
+
+  // Sources (per-field)
+  sources: {
+    cause?: SourceEntry[]
+    birthday?: SourceEntry[]
+    deathday?: SourceEntry[]
+    circumstances?: SourceEntry[]
+    rumored?: SourceEntry[]
+  } | null
+
+  // Additional context
+  additional_context: string | null
+
+  // Date corrections (legacy support)
   corrections: {
     birthYear?: number
     deathYear?: number
@@ -321,20 +391,58 @@ function buildPrompt(actor: ActorToProcess): string {
   const deathYear = getDeathYear(actor.deathday)
   const birthInfo = birthYear ? `born ${birthYear}, ` : ""
 
-  return `What was the cause of death for ${actor.name} (${birthInfo}died ${deathYear})?
+  return `Research the death of ${actor.name} (${birthInfo}died ${deathYear}), an actor/entertainer.
 
-Return JSON with these fields:
-- cause: specific medical cause (e.g., "heart failure", "pancreatic cancer") or null if unknown
-- details: 1-2 sentences of medical context about their death, or null if no additional info
-- corrections: object with corrected birthYear, deathYear, or deathDate (YYYY-MM-DD) if our data is wrong, or null
+Return a JSON object with these fields:
 
-Rules:
-- Be specific (e.g., "pancreatic cancer" not "cancer")
-- Details = medical circumstances only (duration of illness, complications, etc.)
-- No family/career/tribute info in details
-- Only include corrections if you're confident our dates are wrong
+**Core Death Info:**
+- cause: specific medical cause (e.g., "pancreatic cancer", "heart failure", "drowning") or null if unknown
+- cause_confidence: "high" | "medium" | "low" | "disputed" - how well-documented is the cause
+- details: 2-4 sentences of medical/circumstantial context about their death, or null
+- details_confidence: confidence level for details
 
-Respond with valid JSON only.`
+**Categorization:**
+- manner: "natural" | "accident" | "suicide" | "homicide" | "undetermined" | "pending" - medical examiner classification
+- categories: array of contributing factors, e.g. ["cancer"], ["heart_disease", "diabetes"], ["vehicle_accident", "fire"], ["overdose"]
+- covid_related: true/false if COVID was a factor
+- strange_death: true if death was unusual/notable beyond cause (dramatic circumstances, suspicious, controversial)
+
+**Circumstances:**
+- circumstances: Detailed narrative of how death occurred (official account). Be thorough - location, timeline, who was present, how discovered, hospital/hospice care, etc.
+- circumstances_confidence: confidence level for circumstances
+- rumored_circumstances: Any alternative accounts, rumors, disputed information, or theories that differ from official account. Include industry cover-up allegations if any. Null if none.
+- notable_factors: array of tags like ["vehicle_crash", "fire", "drowning", "public_incident", "substance_involvement", "celebrity_involvement", "controversial", "possible_coverup", "reopened_investigation", "on_set", "workplace"]
+
+**Date Confidence:**
+- birthday_confidence: how confident is the birth date
+- deathday_confidence: how confident is the death date
+
+**Career Context:**
+- location_of_death: city/state/country where they died
+- last_project: {"title": "...", "year": 2022, "tmdb_id": 123, "imdb_id": "tt123", "type": "movie|show"} - their last released work (prefer tmdb_id, include imdb_id as fallback)
+- career_status_at_death: "active" | "semi-retired" | "retired" | "hiatus" | "unknown"
+- posthumous_releases: array of projects released after death, same format as last_project
+
+**Related Celebrities:**
+- related_celebrities: array of celebrities involved in or connected to their death. Format: [{"name": "...", "tmdb_id": 123, "relationship": "description of connection to death"}]. Include ex-partners who spoke publicly, people present at death, co-stars from fatal incidents, etc.
+
+**Sources:**
+- sources: object with arrays of sources per field. Format: {"cause": [{"url": "...", "archive_url": "web.archive.org/...", "description": "..."}], "birthday": [...], "deathday": [...], "circumstances": [...], "rumored": [...]}
+  - Include archive.org URLs when available
+  - Include official sources (medical examiner, coroner, death certificate)
+  - Include news sources with dates
+
+**Additional:**
+- additional_context: Any notable background that provides context (career significance, historical importance, impact of death). Null if standard death.
+- corrections: {"birthYear": 1945, "deathYear": 2020, "deathDate": "2020-03-15"} if our dates are wrong, else null
+
+**Confidence Levels:**
+- high: Official records, medical examiner, multiple reliable sources
+- medium: Reliable news sources, family statements, consistent reports
+- low: Single source, tabloid, unverified
+- disputed: Conflicting official accounts, contested, ongoing investigation
+
+Respond with valid JSON only. Be thorough in circumstances and details - capture as much information as possible.`
 }
 
 function createBatchRequest(
@@ -344,7 +452,7 @@ function createBatchRequest(
     custom_id: `actor-${actor.id}`,
     params: {
       model: MODEL_ID,
-      max_tokens: 300,
+      max_tokens: 2000, // Increased for comprehensive death info response
       messages: [
         {
           role: "user",
@@ -402,6 +510,10 @@ async function submitBatch(options: {
         updatedDetails: 0,
         updatedBirthday: 0,
         updatedDeathday: 0,
+        updatedManner: 0,
+        updatedCategories: 0,
+        updatedCircumstances: 0,
+        createdCircumstancesRecord: 0,
       },
     }
   }
@@ -576,6 +688,10 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
         updatedDetails: 0,
         updatedBirthday: 0,
         updatedDeathday: 0,
+        updatedManner: 0,
+        updatedCategories: 0,
+        updatedCircumstances: 0,
+        createdCircumstancesRecord: 0,
       },
     }
   }
@@ -648,14 +764,26 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
 
           if (dryRun) {
             console.log(`\n[${processed}] Actor ${actorId}:`)
-            console.log(`  Cause: ${parsed.cause || "(none)"}`)
-            console.log(`  Details: ${parsed.details?.substring(0, 60) || "(none)"}...`)
+            console.log(`  Cause: ${parsed.cause || "(none)"} (${parsed.cause_confidence || "?"})`)
+            console.log(`  Manner: ${parsed.manner || "(none)"}`)
+            console.log(`  Categories: ${parsed.categories?.join(", ") || "(none)"}`)
+            console.log(`  Details: ${parsed.details?.substring(0, 80) || "(none)"}...`)
+            console.log(`  Circumstances: ${parsed.circumstances?.substring(0, 80) || "(none)"}...`)
+            if (parsed.rumored_circumstances) {
+              console.log(`  Rumored: ${parsed.rumored_circumstances.substring(0, 60)}...`)
+            }
+            if (parsed.strange_death) {
+              console.log(`  Strange death: YES`)
+            }
+            if (parsed.notable_factors && parsed.notable_factors.length > 0) {
+              console.log(`  Notable factors: ${parsed.notable_factors.join(", ")}`)
+            }
             if (parsed.corrections) {
               console.log(`  Corrections: ${JSON.stringify(parsed.corrections)}`)
             }
           } else if (db) {
             try {
-              await applyUpdate(db, actorId, parsed, batchId, checkpoint)
+              await applyUpdate(db, actorId, parsed, batchId, checkpoint, responseText)
             } catch (updateError) {
               const errorMsg = updateError instanceof Error ? updateError.message : "Update error"
               console.error(`Update error for actor ${actorId}: ${errorMsg}`)
@@ -709,6 +837,10 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
     console.log(`\nUpdates applied:`)
     console.log(`  Cause of death: ${checkpoint.stats.updatedCause}`)
     console.log(`  Details: ${checkpoint.stats.updatedDetails}`)
+    console.log(`  Death manner: ${checkpoint.stats.updatedManner}`)
+    console.log(`  Death categories: ${checkpoint.stats.updatedCategories}`)
+    console.log(`  Circumstances: ${checkpoint.stats.updatedCircumstances}`)
+    console.log(`  Circumstances records: ${checkpoint.stats.createdCircumstancesRecord}`)
     console.log(`  Birthday corrections: ${checkpoint.stats.updatedBirthday}`)
     console.log(`  Deathday corrections: ${checkpoint.stats.updatedDeathday}`)
 
@@ -722,6 +854,10 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
         expired: checkpoint.stats.expired,
         updatedCause: checkpoint.stats.updatedCause,
         updatedDetails: checkpoint.stats.updatedDetails,
+        updatedManner: checkpoint.stats.updatedManner,
+        updatedCategories: checkpoint.stats.updatedCategories,
+        updatedCircumstances: checkpoint.stats.updatedCircumstances,
+        createdCircumstancesRecord: checkpoint.stats.createdCircumstancesRecord,
         updatedBirthday: checkpoint.stats.updatedBirthday,
         updatedDeathday: checkpoint.stats.updatedDeathday,
       })
@@ -752,7 +888,8 @@ async function applyUpdate(
   actorId: number,
   parsed: ClaudeResponse,
   batchId: string,
-  checkpoint: Checkpoint
+  checkpoint: Checkpoint,
+  rawResponse?: string
 ): Promise<void> {
   // Get current actor data
   const actorResult = await db.query<ActorToProcess>(
@@ -767,7 +904,8 @@ async function applyUpdate(
 
   const actor = actorResult.rows[0]
   const updates: string[] = []
-  const values: (string | number | null)[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const values: any[] = []
   const historyEntries: Array<{
     field: string
     oldValue: string | null
@@ -802,6 +940,45 @@ async function applyUpdate(
       newValue: parsed.details,
     })
     checkpoint.stats.updatedDetails++
+  }
+
+  // Update death_manner if provided
+  if (parsed.manner) {
+    updates.push(`death_manner = $${paramIndex++}`)
+    values.push(parsed.manner)
+    checkpoint.stats.updatedManner++
+  }
+
+  // Update death_categories if provided
+  if (parsed.categories && parsed.categories.length > 0) {
+    updates.push(`death_categories = $${paramIndex++}`)
+    values.push(parsed.categories)
+    checkpoint.stats.updatedCategories++
+  }
+
+  // Update covid_related if provided
+  if (parsed.covid_related !== null && parsed.covid_related !== undefined) {
+    updates.push(`covid_related = $${paramIndex++}`)
+    values.push(parsed.covid_related)
+  }
+
+  // Update strange_death if provided
+  if (parsed.strange_death !== null && parsed.strange_death !== undefined) {
+    updates.push(`strange_death = $${paramIndex++}`)
+    values.push(parsed.strange_death)
+  }
+
+  // Determine if actor has detailed death info (for dedicated death page)
+  const hasDetailedDeathInfo =
+    parsed.strange_death === true ||
+    parsed.circumstances_confidence === "disputed" ||
+    (parsed.notable_factors && parsed.notable_factors.length > 0) ||
+    parsed.rumored_circumstances !== null ||
+    (parsed.related_celebrities && parsed.related_celebrities.length > 0)
+
+  if (hasDetailedDeathInfo) {
+    updates.push(`has_detailed_death_info = $${paramIndex++}`)
+    values.push(true)
   }
 
   // Handle date corrections
@@ -871,7 +1048,7 @@ async function applyUpdate(
     }
   }
 
-  // Apply updates if any
+  // Apply actor table updates if any
   if (updates.length > 0) {
     updates.push(`updated_at = NOW()`)
     values.push(actorId)
@@ -887,6 +1064,89 @@ async function applyUpdate(
         [actorId, entry.field, entry.oldValue, entry.newValue, SOURCE_NAME, batchId]
       )
     }
+  }
+
+  // Create/update actor_death_circumstances record if we have detailed info
+  const hasCircumstancesData =
+    parsed.circumstances ||
+    parsed.rumored_circumstances ||
+    parsed.location_of_death ||
+    parsed.last_project ||
+    parsed.posthumous_releases ||
+    parsed.related_celebrities ||
+    parsed.notable_factors ||
+    parsed.sources ||
+    parsed.additional_context ||
+    rawResponse
+
+  if (hasCircumstancesData) {
+    await db.query(
+      `INSERT INTO actor_death_circumstances (
+        actor_id,
+        circumstances,
+        circumstances_confidence,
+        rumored_circumstances,
+        cause_confidence,
+        details_confidence,
+        birthday_confidence,
+        deathday_confidence,
+        location_of_death,
+        last_project,
+        career_status_at_death,
+        posthumous_releases,
+        related_celebrities,
+        additional_context,
+        notable_factors,
+        sources,
+        raw_response,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW())
+      ON CONFLICT (actor_id) DO UPDATE SET
+        circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
+        circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
+        rumored_circumstances = COALESCE(EXCLUDED.rumored_circumstances, actor_death_circumstances.rumored_circumstances),
+        cause_confidence = COALESCE(EXCLUDED.cause_confidence, actor_death_circumstances.cause_confidence),
+        details_confidence = COALESCE(EXCLUDED.details_confidence, actor_death_circumstances.details_confidence),
+        birthday_confidence = COALESCE(EXCLUDED.birthday_confidence, actor_death_circumstances.birthday_confidence),
+        deathday_confidence = COALESCE(EXCLUDED.deathday_confidence, actor_death_circumstances.deathday_confidence),
+        location_of_death = COALESCE(EXCLUDED.location_of_death, actor_death_circumstances.location_of_death),
+        last_project = COALESCE(EXCLUDED.last_project, actor_death_circumstances.last_project),
+        career_status_at_death = COALESCE(EXCLUDED.career_status_at_death, actor_death_circumstances.career_status_at_death),
+        posthumous_releases = COALESCE(EXCLUDED.posthumous_releases, actor_death_circumstances.posthumous_releases),
+        related_celebrities = COALESCE(EXCLUDED.related_celebrities, actor_death_circumstances.related_celebrities),
+        additional_context = COALESCE(EXCLUDED.additional_context, actor_death_circumstances.additional_context),
+        notable_factors = COALESCE(EXCLUDED.notable_factors, actor_death_circumstances.notable_factors),
+        sources = COALESCE(EXCLUDED.sources, actor_death_circumstances.sources),
+        raw_response = COALESCE(EXCLUDED.raw_response, actor_death_circumstances.raw_response),
+        updated_at = NOW()`,
+      [
+        actorId,
+        parsed.circumstances,
+        parsed.circumstances_confidence,
+        parsed.rumored_circumstances,
+        parsed.cause_confidence,
+        parsed.details_confidence,
+        parsed.birthday_confidence,
+        parsed.deathday_confidence,
+        parsed.location_of_death,
+        parsed.last_project ? JSON.stringify(parsed.last_project) : null,
+        parsed.career_status_at_death,
+        parsed.posthumous_releases ? JSON.stringify(parsed.posthumous_releases) : null,
+        parsed.related_celebrities ? JSON.stringify(parsed.related_celebrities) : null,
+        parsed.additional_context,
+        parsed.notable_factors,
+        parsed.sources ? JSON.stringify(parsed.sources) : null,
+        rawResponse
+          ? JSON.stringify({ response: rawResponse, parsed_at: new Date().toISOString() })
+          : null,
+      ]
+    )
+
+    if (parsed.circumstances) {
+      checkpoint.stats.updatedCircumstances++
+    }
+    checkpoint.stats.createdCircumstancesRecord++
   }
 }
 
@@ -959,13 +1219,17 @@ async function reprocessFailures(batchId?: string): Promise<void> {
             expired: 0,
             updatedCause: 0,
             updatedDetails: 0,
+            updatedManner: 0,
+            updatedCategories: 0,
+            updatedCircumstances: 0,
+            createdCircumstancesRecord: 0,
             updatedBirthday: 0,
             updatedDeathday: 0,
           },
         }
 
         // Apply the update
-        await applyUpdate(db, actorId, parsed, originalBatchId, checkpoint)
+        await applyUpdate(db, actorId, parsed, originalBatchId, checkpoint, rawResponse)
 
         // Mark as reprocessed
         await db.query(
