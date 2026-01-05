@@ -375,8 +375,11 @@ function logParsedResponse(actorName: string, parsed: Record<string, unknown>): 
     { key: "circumstances", label: "Circumstances" },
     { key: "rumored_circumstances", label: "Rumored" },
     { key: "strange_death", label: "Strange death" },
+    { key: "notable_factors", label: "Notable factors" },
     { key: "location_of_death", label: "Location" },
     { key: "career_status_at_death", label: "Career status" },
+    { key: "related_celebrities", label: "Related celebrities" },
+    { key: "additional_context", label: "Additional context" },
     { key: "cause_confidence", label: "Cause confidence" },
     { key: "corrections", label: "Corrections" },
   ]
