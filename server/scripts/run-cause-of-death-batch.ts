@@ -362,6 +362,13 @@ Rules:
 Respond with valid JSON only.`
 }
 
+async function markActorAsChecked(db: ReturnType<typeof getPool>, actorId: number): Promise<void> {
+  await db.query(
+    `UPDATE actors SET cause_of_death_checked_at = NOW(), updated_at = NOW() WHERE id = $1`,
+    [actorId]
+  )
+}
+
 async function processResults(
   anthropic: Anthropic,
   batchId: string,
@@ -402,25 +409,27 @@ async function processResults(
           await storeFailure(db, batchId, actorId, customId, responseText, errorMsg, "json_parse")
 
           // Mark actor as checked to prevent infinite reprocessing
-          await db.query(
-            `UPDATE actors SET cause_of_death_checked_at = NOW(), updated_at = NOW() WHERE id = $1`,
-            [actorId]
-          )
+          await markActorAsChecked(db, actorId)
         }
       } else if (result.result.type === "errored") {
         checkpoint.stats.errored++
-        // Mark actor as checked to prevent infinite reprocessing on API errors
-        await db.query(
-          `UPDATE actors SET cause_of_death_checked_at = NOW(), updated_at = NOW() WHERE id = $1`,
-          [actorId]
-        )
+        const errorInfo = JSON.stringify(result.result.error)
+        console.error(`\n  API error for actor ${actorId}:`, errorInfo)
+
+        // Log failure for debugging and potential reprocessing
+        await storeFailure(db, batchId, actorId, customId, "", errorInfo, "api_error")
+
+        // Mark actor as checked to prevent infinite reprocessing
+        await markActorAsChecked(db, actorId)
       } else if (result.result.type === "expired") {
         checkpoint.stats.expired++
-        // Mark actor as checked to prevent infinite reprocessing on expired requests
-        await db.query(
-          `UPDATE actors SET cause_of_death_checked_at = NOW(), updated_at = NOW() WHERE id = $1`,
-          [actorId]
-        )
+        console.log(`\n  Request expired for actor ${actorId}`)
+
+        // Log failure for debugging and potential reprocessing
+        await storeFailure(db, batchId, actorId, customId, "", "Request expired", "expired")
+
+        // Mark actor as checked to prevent infinite reprocessing
+        await markActorAsChecked(db, actorId)
       }
 
       checkpoint.processedActorIds.push(actorId)

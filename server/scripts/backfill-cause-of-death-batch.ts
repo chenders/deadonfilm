@@ -117,7 +117,7 @@ export async function storeFailure(
   customId: string,
   rawResponse: string,
   errorMessage: string,
-  errorType: "json_parse" | "date_parse" | "validation" | "unknown"
+  errorType: "json_parse" | "date_parse" | "validation" | "api_error" | "expired" | "unknown"
 ): Promise<void> {
   try {
     await db.query(
