@@ -56,7 +56,7 @@ export default function SiteStats() {
   }
 
   // Don't show if there's no meaningful data
-  if (data.totalDeceasedActors === 0 && data.totalMoviesAnalyzed === 0) {
+  if (data.totalActors === 0 && data.totalMoviesAnalyzed === 0) {
     return null
   }
 
@@ -64,9 +64,14 @@ export default function SiteStats() {
     <section data-testid="site-stats" className="mt-10">
       <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
         <StatCard
+          icon={<span className="text-xs">👤</span>}
+          value={data.totalActors.toLocaleString()}
+          label="actors tracked"
+        />
+        <StatCard
           icon={<SkullIcon size={14} />}
           value={data.totalDeceasedActors.toLocaleString()}
-          label="actors tracked"
+          label="known dead"
         />
         <StatCard
           icon={<FilmReelIcon size={14} />}

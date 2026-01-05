@@ -18,6 +18,7 @@ vi.mock("@/services/api", () => ({
 }))
 
 const mockStats = {
+  totalActors: 500000,
   totalDeceasedActors: 1500,
   totalMoviesAnalyzed: 350,
   topCauseOfDeath: "Cancer",
@@ -127,7 +128,8 @@ describe("HomePage", () => {
       expect(screen.getByTestId("site-stats")).toBeInTheDocument()
     })
 
-    expect(screen.getByText("1,500")).toBeInTheDocument()
+    expect(screen.getByText("500,000")).toBeInTheDocument() // total actors
+    expect(screen.getByText("1,500")).toBeInTheDocument() // deceased actors
     expect(screen.getByText("350")).toBeInTheDocument()
   })
 

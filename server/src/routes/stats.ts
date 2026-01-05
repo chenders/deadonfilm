@@ -20,6 +20,7 @@ export async function getStats(req: Request, res: Response) {
     // Check if database is available
     if (!process.env.DATABASE_URL) {
       return res.json({
+        totalActors: 0,
         totalDeceasedActors: 0,
         totalMoviesAnalyzed: 0,
         topCauseOfDeath: null,
