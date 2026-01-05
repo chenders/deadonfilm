@@ -28,12 +28,14 @@ vi.mock("../lib/cache.js", () => ({
 }))
 
 import { recordCustomEvent } from "../lib/newrelic.js"
+import { getCached, setCached, buildCacheKey, CACHE_TTL } from "../lib/cache.js"
 
 describe("getActor", () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
   let jsonSpy: ReturnType<typeof vi.fn>
   let statusSpy: ReturnType<typeof vi.fn>
+  let setSpy: ReturnType<typeof vi.fn>
 
   const mockLivingPerson = {
     id: 12345,
@@ -113,7 +115,7 @@ describe("getActor", () => {
 
     jsonSpy = vi.fn()
     statusSpy = vi.fn().mockReturnThis()
-    const setSpy = vi.fn().mockReturnThis()
+    setSpy = vi.fn().mockReturnThis()
 
     mockReq = {
       params: { id: "12345" },
@@ -158,6 +160,7 @@ describe("getActor", () => {
     expect(db.getActorFilmography).toHaveBeenCalledWith(12345)
     expect(db.getActorShowFilmography).toHaveBeenCalledWith(12345)
     expect(db.getActor).not.toHaveBeenCalled()
+    expect(setSpy).toHaveBeenCalledWith("Cache-Control", "public, max-age=600")
     expect(jsonSpy).toHaveBeenCalledWith({
       actor: {
         id: 12345,
@@ -172,6 +175,69 @@ describe("getActor", () => {
       analyzedTVFilmography: mockTVFilmography,
       deathInfo: null,
     })
+  })
+
+  it("sets response in cache on cache miss", async () => {
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
+    vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce(mockTVFilmography)
+
+    await getActor(mockReq as Request, mockRes as Response)
+
+    expect(buildCacheKey).toHaveBeenCalledWith("actor", { id: 12345 })
+    expect(setCached).toHaveBeenCalledWith(
+      "actor:id:12345",
+      expect.objectContaining({
+        actor: expect.objectContaining({ id: 12345, name: "Living Actor" }),
+        analyzedFilmography: mockFilmography,
+        analyzedTVFilmography: mockTVFilmography,
+        deathInfo: null,
+      }),
+      CACHE_TTL.LONG
+    )
+  })
+
+  it("returns cached response without calling TMDB/database on cache hit", async () => {
+    const cachedResponse = {
+      actor: {
+        id: 12345,
+        name: "Cached Actor",
+        birthday: "1980-05-15",
+        deathday: null,
+        biography: "From cache",
+        profilePath: "/cached.jpg",
+        placeOfBirth: "Cache City",
+      },
+      analyzedFilmography: [],
+      analyzedTVFilmography: [],
+      deathInfo: null,
+    }
+    vi.mocked(getCached).mockResolvedValueOnce(cachedResponse)
+
+    await getActor(mockReq as Request, mockRes as Response)
+
+    // Should not call TMDB or database
+    expect(tmdb.getPersonDetails).not.toHaveBeenCalled()
+    expect(db.getActorFilmography).not.toHaveBeenCalled()
+    expect(db.getActorShowFilmography).not.toHaveBeenCalled()
+    expect(db.getActor).not.toHaveBeenCalled()
+
+    // Should not call setCached (already cached)
+    expect(setCached).not.toHaveBeenCalled()
+
+    // Should set Cache-Control header and return cached data
+    expect(setSpy).toHaveBeenCalledWith("Cache-Control", "public, max-age=600")
+    expect(jsonSpy).toHaveBeenCalledWith(cachedResponse)
+
+    // Should record custom event with cacheHit: true
+    expect(recordCustomEvent).toHaveBeenCalledWith(
+      "ActorView",
+      expect.objectContaining({
+        tmdbId: 12345,
+        name: "Cached Actor",
+        cacheHit: true,
+      })
+    )
   })
 
   it("returns actor profile for deceased actor with death info from database", async () => {
