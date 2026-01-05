@@ -479,6 +479,10 @@ describe("backfill-cause-of-death-batch checkpoint functionality", () => {
           updatedDetails: 3,
           updatedBirthday: 1,
           updatedDeathday: 0,
+          updatedManner: 0,
+          updatedCategories: 0,
+          updatedCircumstances: 0,
+          createdCircumstancesRecord: 0,
         },
       }
       fs.writeFileSync(testCheckpointFile, JSON.stringify(checkpoint))
@@ -509,6 +513,10 @@ describe("backfill-cause-of-death-batch checkpoint functionality", () => {
           updatedDetails: 2,
           updatedBirthday: 0,
           updatedDeathday: 0,
+          updatedManner: 0,
+          updatedCategories: 0,
+          updatedCircumstances: 0,
+          createdCircumstancesRecord: 0,
         },
       }
 
@@ -535,6 +543,10 @@ describe("backfill-cause-of-death-batch checkpoint functionality", () => {
           updatedDetails: 0,
           updatedBirthday: 0,
           updatedDeathday: 0,
+          updatedManner: 0,
+          updatedCategories: 0,
+          updatedCircumstances: 0,
+          createdCircumstancesRecord: 0,
         },
       }
 
@@ -626,6 +638,10 @@ describe("backfill-cause-of-death-batch stats tracking", () => {
     updatedDetails: number
     updatedBirthday: number
     updatedDeathday: number
+    updatedManner: number
+    updatedCategories: number
+    updatedCircumstances: number
+    createdCircumstancesRecord: number
   }
 
   function createEmptyStats(): Stats {
@@ -638,6 +654,10 @@ describe("backfill-cause-of-death-batch stats tracking", () => {
       updatedDetails: 0,
       updatedBirthday: 0,
       updatedDeathday: 0,
+      updatedManner: 0,
+      updatedCategories: 0,
+      updatedCircumstances: 0,
+      createdCircumstancesRecord: 0,
     }
   }
 
@@ -651,6 +671,10 @@ describe("backfill-cause-of-death-batch stats tracking", () => {
     expect(stats.updatedDetails).toBe(0)
     expect(stats.updatedBirthday).toBe(0)
     expect(stats.updatedDeathday).toBe(0)
+    expect(stats.updatedManner).toBe(0)
+    expect(stats.updatedCategories).toBe(0)
+    expect(stats.updatedCircumstances).toBe(0)
+    expect(stats.createdCircumstancesRecord).toBe(0)
   })
 
   it("tracks submitted count", () => {
@@ -863,5 +887,504 @@ describe("date normalization helpers", () => {
         '{\n  "cause": "cancer",\n  "details": "lung cancer"\n}'
       )
     })
+  })
+})
+
+describe("death categorization update logic", () => {
+  interface ActorState {
+    death_manner: string | null
+    death_categories: string[] | null
+    covid_related: boolean | null
+    strange_death: boolean | null
+    has_detailed_death_info: boolean | null
+  }
+
+  interface ClaudeCategorizationResponse {
+    manner: string | null
+    categories: string[] | null
+    covid_related: boolean | null
+    strange_death: boolean | null
+    circumstances_confidence: string | null
+    notable_factors: string[] | null
+    rumored_circumstances: string | null
+    related_celebrities: Array<{ name: string; tmdb_id?: number }> | null
+  }
+
+  function getCategorizationUpdates(
+    _actor: ActorState,
+    response: ClaudeCategorizationResponse
+  ): string[] {
+    const updates: string[] = []
+
+    if (response.manner) {
+      updates.push("death_manner")
+    }
+
+    if (response.categories && response.categories.length > 0) {
+      updates.push("death_categories")
+    }
+
+    if (response.covid_related !== null && response.covid_related !== undefined) {
+      updates.push("covid_related")
+    }
+
+    if (response.strange_death !== null && response.strange_death !== undefined) {
+      updates.push("strange_death")
+    }
+
+    // Determine if actor has detailed death info
+    const hasDetailedDeathInfo =
+      response.strange_death === true ||
+      response.circumstances_confidence === "disputed" ||
+      (response.notable_factors && response.notable_factors.length > 0) ||
+      (response.rumored_circumstances !== null && response.rumored_circumstances !== "") ||
+      (response.related_celebrities && response.related_celebrities.length > 0)
+
+    if (hasDetailedDeathInfo) {
+      updates.push("has_detailed_death_info")
+    }
+
+    return updates
+  }
+
+  it("updates death_manner when provided", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: "natural",
+        categories: null,
+        covid_related: null,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: null,
+        related_celebrities: null,
+      }
+    )
+    expect(updates).toContain("death_manner")
+  })
+
+  it("updates death_categories when non-empty array provided", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: ["cancer", "respiratory"],
+        covid_related: null,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: null,
+        related_celebrities: null,
+      }
+    )
+    expect(updates).toContain("death_categories")
+  })
+
+  it("does not update death_categories when empty array provided", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: [],
+        covid_related: null,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: null,
+        related_celebrities: null,
+      }
+    )
+    expect(updates).not.toContain("death_categories")
+  })
+
+  it("updates covid_related when explicitly set to true", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: null,
+        covid_related: true,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: null,
+        related_celebrities: null,
+      }
+    )
+    expect(updates).toContain("covid_related")
+  })
+
+  it("updates covid_related when explicitly set to false", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: null,
+        covid_related: false,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: null,
+        related_celebrities: null,
+      }
+    )
+    expect(updates).toContain("covid_related")
+  })
+
+  it("sets has_detailed_death_info when strange_death is true", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: null,
+        covid_related: null,
+        strange_death: true,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: null,
+        related_celebrities: null,
+      }
+    )
+    expect(updates).toContain("has_detailed_death_info")
+  })
+
+  it("sets has_detailed_death_info when circumstances_confidence is disputed", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: null,
+        covid_related: null,
+        strange_death: null,
+        circumstances_confidence: "disputed",
+        notable_factors: null,
+        rumored_circumstances: null,
+        related_celebrities: null,
+      }
+    )
+    expect(updates).toContain("has_detailed_death_info")
+  })
+
+  it("sets has_detailed_death_info when notable_factors is non-empty", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: null,
+        covid_related: null,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: ["vehicle_crash", "public_incident"],
+        rumored_circumstances: null,
+        related_celebrities: null,
+      }
+    )
+    expect(updates).toContain("has_detailed_death_info")
+  })
+
+  it("sets has_detailed_death_info when rumored_circumstances is present", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: null,
+        covid_related: null,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: "Some disputed account",
+        related_celebrities: null,
+      }
+    )
+    expect(updates).toContain("has_detailed_death_info")
+  })
+
+  it("does NOT set has_detailed_death_info when rumored_circumstances is empty string", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: null,
+        covid_related: null,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: "",
+        related_celebrities: null,
+      }
+    )
+    expect(updates).not.toContain("has_detailed_death_info")
+  })
+
+  it("sets has_detailed_death_info when related_celebrities is non-empty", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: null,
+        covid_related: null,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: null,
+        related_celebrities: [{ name: "John Doe", tmdb_id: 12345 }],
+      }
+    )
+    expect(updates).toContain("has_detailed_death_info")
+  })
+
+  it("handles multiple categorization updates", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: "accident",
+        categories: ["vehicle_accident", "fire"],
+        covid_related: false,
+        strange_death: true,
+        circumstances_confidence: "high",
+        notable_factors: ["public_incident"],
+        rumored_circumstances: null,
+        related_celebrities: null,
+      }
+    )
+    expect(updates).toContain("death_manner")
+    expect(updates).toContain("death_categories")
+    expect(updates).toContain("covid_related")
+    expect(updates).toContain("strange_death")
+    expect(updates).toContain("has_detailed_death_info")
+  })
+})
+
+describe("actor_death_circumstances data extraction", () => {
+  interface RelatedCelebrity {
+    name: string
+    tmdb_id?: number
+    relationship?: string
+  }
+
+  function extractRelatedCelebrityIds(
+    celebrities: RelatedCelebrity[] | null | undefined
+  ): number[] | null {
+    if (!celebrities) return null
+    const ids = celebrities
+      .map((c) => c.tmdb_id)
+      .filter((id): id is number => id !== undefined && id !== null)
+    return ids.length > 0 ? ids : null
+  }
+
+  it("extracts tmdb_ids from related_celebrities array", () => {
+    const celebrities: RelatedCelebrity[] = [
+      { name: "Actor One", tmdb_id: 123 },
+      { name: "Actor Two", tmdb_id: 456 },
+    ]
+    expect(extractRelatedCelebrityIds(celebrities)).toEqual([123, 456])
+  })
+
+  it("filters out celebrities without tmdb_id", () => {
+    const celebrities: RelatedCelebrity[] = [
+      { name: "Actor One", tmdb_id: 123 },
+      { name: "Actor Two" }, // no tmdb_id
+      { name: "Actor Three", tmdb_id: 789 },
+    ]
+    expect(extractRelatedCelebrityIds(celebrities)).toEqual([123, 789])
+  })
+
+  it("returns null for null input", () => {
+    expect(extractRelatedCelebrityIds(null)).toBeNull()
+  })
+
+  it("returns null for undefined input", () => {
+    expect(extractRelatedCelebrityIds(undefined)).toBeNull()
+  })
+
+  it("returns null when no celebrities have tmdb_id", () => {
+    const celebrities: RelatedCelebrity[] = [{ name: "Actor One" }, { name: "Actor Two" }]
+    expect(extractRelatedCelebrityIds(celebrities)).toBeNull()
+  })
+
+  it("returns null for empty array", () => {
+    expect(extractRelatedCelebrityIds([])).toBeNull()
+  })
+})
+
+describe("actor_death_circumstances insertion logic", () => {
+  interface CircumstancesData {
+    circumstances?: string | null
+    rumored_circumstances?: string | null
+    location_of_death?: string | null
+    last_project?: object | null
+    posthumous_releases?: object[] | null
+    related_celebrities?: Array<{ name: string; tmdb_id?: number }> | null
+    notable_factors?: string[] | null
+    sources?: object | null
+    additional_context?: string | null
+  }
+
+  function shouldCreateCircumstancesRecord(
+    data: CircumstancesData,
+    rawResponse: string | null
+  ): boolean {
+    return !!(
+      data.circumstances ||
+      data.rumored_circumstances ||
+      data.location_of_death ||
+      data.last_project ||
+      data.posthumous_releases ||
+      data.related_celebrities ||
+      data.notable_factors ||
+      data.sources ||
+      data.additional_context ||
+      rawResponse
+    )
+  }
+
+  it("returns true when circumstances is present", () => {
+    expect(shouldCreateCircumstancesRecord({ circumstances: "Died at home" }, null)).toBe(true)
+  })
+
+  it("returns true when rumored_circumstances is present", () => {
+    expect(shouldCreateCircumstancesRecord({ rumored_circumstances: "Some rumors" }, null)).toBe(
+      true
+    )
+  })
+
+  it("returns true when location_of_death is present", () => {
+    expect(shouldCreateCircumstancesRecord({ location_of_death: "Los Angeles, CA" }, null)).toBe(
+      true
+    )
+  })
+
+  it("returns true when last_project is present", () => {
+    expect(
+      shouldCreateCircumstancesRecord({ last_project: { title: "Final Movie", year: 2020 } }, null)
+    ).toBe(true)
+  })
+
+  it("returns true when posthumous_releases is present", () => {
+    expect(
+      shouldCreateCircumstancesRecord(
+        { posthumous_releases: [{ title: "Posthumous Film", year: 2021 }] },
+        null
+      )
+    ).toBe(true)
+  })
+
+  it("returns true when related_celebrities is present", () => {
+    expect(
+      shouldCreateCircumstancesRecord(
+        { related_celebrities: [{ name: "John Doe", tmdb_id: 123 }] },
+        null
+      )
+    ).toBe(true)
+  })
+
+  it("returns true when notable_factors is present", () => {
+    expect(shouldCreateCircumstancesRecord({ notable_factors: ["public_incident"] }, null)).toBe(
+      true
+    )
+  })
+
+  it("returns true when sources is present", () => {
+    expect(shouldCreateCircumstancesRecord({ sources: { cause: ["Wikipedia"] } }, null)).toBe(true)
+  })
+
+  it("returns true when additional_context is present", () => {
+    expect(shouldCreateCircumstancesRecord({ additional_context: "Some context" }, null)).toBe(true)
+  })
+
+  it("returns true when rawResponse is present even if no other data", () => {
+    expect(shouldCreateCircumstancesRecord({}, '{"some": "response"}')).toBe(true)
+  })
+
+  it("returns false when all fields are null/empty and no rawResponse", () => {
+    expect(
+      shouldCreateCircumstancesRecord(
+        {
+          circumstances: null,
+          rumored_circumstances: null,
+          location_of_death: null,
+          last_project: null,
+          posthumous_releases: null,
+          related_celebrities: null,
+          notable_factors: null,
+          sources: null,
+          additional_context: null,
+        },
+        null
+      )
+    ).toBe(false)
   })
 })
