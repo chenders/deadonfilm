@@ -27,6 +27,7 @@ import {
   parsePositiveInt,
   stripMarkdownCodeFences,
   getYearFromDate,
+  storeFailure,
   type Checkpoint,
 } from "./backfill-cause-of-death-batch.js"
 
@@ -361,7 +362,17 @@ Rules:
 Respond with valid JSON only.`
 }
 
-async function processResults(
+export async function markActorAsChecked(
+  db: ReturnType<typeof getPool>,
+  actorId: number
+): Promise<void> {
+  await db.query(
+    `UPDATE actors SET cause_of_death_checked_at = NOW(), updated_at = NOW() WHERE id = $1`,
+    [actorId]
+  )
+}
+
+export async function processResults(
   anthropic: Anthropic,
   batchId: string,
   checkpoint: Checkpoint
@@ -394,12 +405,34 @@ async function processResults(
           checkpoint.stats.succeeded++
         } catch (error) {
           checkpoint.stats.errored++
+          const errorMsg = error instanceof Error ? error.message : "Unknown error"
           console.error(`\n  Error processing actor ${actorId}:`, error)
+
+          // Log failure for later reprocessing
+          await storeFailure(db, batchId, actorId, customId, responseText, errorMsg, "json_parse")
+
+          // Mark actor as checked to prevent infinite reprocessing
+          await markActorAsChecked(db, actorId)
         }
       } else if (result.result.type === "errored") {
         checkpoint.stats.errored++
+        const errorInfo = JSON.stringify(result.result.error)
+        console.error(`\n  API error for actor ${actorId}:`, errorInfo)
+
+        // Log failure for debugging and potential reprocessing
+        await storeFailure(db, batchId, actorId, customId, "", errorInfo, "api_error")
+
+        // Mark actor as checked to prevent infinite reprocessing
+        await markActorAsChecked(db, actorId)
       } else if (result.result.type === "expired") {
         checkpoint.stats.expired++
+        console.log(`\n  Request expired for actor ${actorId}`)
+
+        // Log failure for debugging and potential reprocessing
+        await storeFailure(db, batchId, actorId, customId, "", "Request expired", "expired")
+
+        // Mark actor as checked to prevent infinite reprocessing
+        await markActorAsChecked(db, actorId)
       }
 
       checkpoint.processedActorIds.push(actorId)
@@ -509,4 +542,11 @@ const program = new Command()
     })
   })
 
-program.parse()
+// Only run CLI when executed directly (not when imported for testing)
+const isMainModule =
+  import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1]?.endsWith("run-cause-of-death-batch.ts")
+
+if (isMainModule) {
+  program.parse()
+}
