@@ -937,7 +937,7 @@ describe("death categorization update logic", () => {
       response.strange_death === true ||
       response.circumstances_confidence === "disputed" ||
       (response.notable_factors && response.notable_factors.length > 0) ||
-      response.rumored_circumstances !== null ||
+      (response.rumored_circumstances !== null && response.rumored_circumstances !== "") ||
       (response.related_celebrities && response.related_celebrities.length > 0)
 
     if (hasDetailedDeathInfo) {
@@ -1152,6 +1152,29 @@ describe("death categorization update logic", () => {
       }
     )
     expect(updates).toContain("has_detailed_death_info")
+  })
+
+  it("does NOT set has_detailed_death_info when rumored_circumstances is empty string", () => {
+    const updates = getCategorizationUpdates(
+      {
+        death_manner: null,
+        death_categories: null,
+        covid_related: null,
+        strange_death: null,
+        has_detailed_death_info: null,
+      },
+      {
+        manner: null,
+        categories: null,
+        covid_related: null,
+        strange_death: null,
+        circumstances_confidence: null,
+        notable_factors: null,
+        rumored_circumstances: "",
+        related_celebrities: null,
+      }
+    )
+    expect(updates).not.toContain("has_detailed_death_info")
   })
 
   it("sets has_detailed_death_info when related_celebrities is non-empty", () => {
