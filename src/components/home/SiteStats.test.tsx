@@ -11,6 +11,7 @@ vi.mock("@/services/api", () => ({
 }))
 
 const mockStats = {
+  totalActors: 500000,
   totalDeceasedActors: 1500,
   totalMoviesAnalyzed: 350,
   topCauseOfDeath: "Cancer",
@@ -61,7 +62,8 @@ describe("SiteStats", () => {
     })
 
     // Check that stats are displayed
-    expect(screen.getByText("1,500")).toBeInTheDocument() // formatted with locale
+    expect(screen.getByText("500,000")).toBeInTheDocument() // total actors
+    expect(screen.getByText("1,500")).toBeInTheDocument() // deceased actors
     expect(screen.getByText("350")).toBeInTheDocument()
     expect(screen.getByText("42.5%")).toBeInTheDocument()
   })
@@ -73,6 +75,7 @@ describe("SiteStats", () => {
 
     await waitFor(() => {
       expect(screen.getByText("actors tracked")).toBeInTheDocument()
+      expect(screen.getByText("known dead")).toBeInTheDocument()
       expect(screen.getByText("movies analyzed")).toBeInTheDocument()
       expect(screen.getByText("avg. mortality")).toBeInTheDocument()
       expect(screen.getByText("causes known")).toBeInTheDocument()
@@ -93,6 +96,7 @@ describe("SiteStats", () => {
 
   it("renders nothing when stats are all zero", async () => {
     vi.mocked(api.getSiteStats).mockResolvedValue({
+      totalActors: 0,
       totalDeceasedActors: 0,
       totalMoviesAnalyzed: 0,
       topCauseOfDeath: null,
@@ -127,6 +131,7 @@ describe("SiteStats", () => {
 
   it("hides optional stats when null", async () => {
     vi.mocked(api.getSiteStats).mockResolvedValue({
+      totalActors: 100000,
       totalDeceasedActors: 1000,
       totalMoviesAnalyzed: 200,
       topCauseOfDeath: null,
@@ -142,7 +147,8 @@ describe("SiteStats", () => {
     })
 
     // Required stats should be shown
-    expect(screen.getByText("1,000")).toBeInTheDocument()
+    expect(screen.getByText("100,000")).toBeInTheDocument() // total actors
+    expect(screen.getByText("1,000")).toBeInTheDocument() // deceased actors
     expect(screen.getByText("200")).toBeInTheDocument()
 
     // Optional stats should not be shown

@@ -18,6 +18,7 @@ vi.mock("./hooks/useNewRelicBrowser", () => ({
 vi.mock("@/services/api", () => ({
   getSiteStats: vi.fn(() =>
     Promise.resolve({
+      totalActors: 500000,
       totalDeceasedActors: 1500,
       totalMoviesAnalyzed: 350,
       topCauseOfDeath: "Cancer",

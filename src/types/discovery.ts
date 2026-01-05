@@ -26,6 +26,7 @@ export interface ForeverYoungResponse {
 
 // Site Stats types
 export interface SiteStatsResponse {
+  totalActors: number
   totalDeceasedActors: number
   totalMoviesAnalyzed: number
   topCauseOfDeath: string | null

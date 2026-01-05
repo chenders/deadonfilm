@@ -1238,6 +1238,7 @@ export async function getCursedActors(options: CursedActorsOptions = {}): Promis
 // ============================================================================
 
 export interface SiteStats {
+  totalActors: number
   totalDeceasedActors: number
   totalMoviesAnalyzed: number
   topCauseOfDeath: string | null
@@ -1265,7 +1266,8 @@ export async function getSiteStats(): Promise<SiteStats> {
 
   // Get counts and top cause of death in a single query
   const result = await db.query<{
-    total_actors: string
+    total_all_actors: string
+    total_deceased_actors: string
     total_movies: string
     top_cause: string | null
     avg_mortality: string | null
@@ -1273,7 +1275,8 @@ export async function getSiteStats(): Promise<SiteStats> {
     cause_known_count: string | null
   }>(`
     SELECT
-      (SELECT COUNT(*) FROM actors WHERE deathday IS NOT NULL) as total_actors,
+      (SELECT COUNT(*) FROM actors) as total_all_actors,
+      (SELECT COUNT(*) FROM actors WHERE deathday IS NOT NULL) as total_deceased_actors,
       (SELECT COUNT(*) FROM movies WHERE mortality_surprise_score IS NOT NULL) as total_movies,
       (SELECT cause_of_death FROM actors
        WHERE cause_of_death IS NOT NULL
@@ -1295,7 +1298,8 @@ export async function getSiteStats(): Promise<SiteStats> {
 
   const row = result.rows[0]
   const stats: SiteStats = {
-    totalDeceasedActors: parseInt(row.total_actors, 10) || 0,
+    totalActors: parseInt(row.total_all_actors, 10) || 0,
+    totalDeceasedActors: parseInt(row.total_deceased_actors, 10) || 0,
     totalMoviesAnalyzed: parseInt(row.total_movies, 10) || 0,
     topCauseOfDeath: row.top_cause,
     avgMortalityPercentage: row.avg_mortality ? parseFloat(row.avg_mortality) : null,
