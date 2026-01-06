@@ -414,12 +414,16 @@ function buildPrompt(actor: ActorToProcess): string {
 
 Return JSON with these fields:
 - cause: specific medical cause (e.g., "heart failure", "pancreatic cancer") or null if unknown
-- details: 1-2 sentences of medical context about their death, or null if no additional info
+- details: 1-2 sentences of actual medical context (duration of illness, complications, treatment, surgery, hospitalization) or null
 - corrections: object with corrected birthYear, deathYear, or deathDate (YYYY-MM-DD) if our data is wrong, or null
 
 Rules:
 - Be specific (e.g., "pancreatic cancer" not "cancer")
-- Details = medical circumstances only (duration of illness, complications, etc.)
+- Details must contain actual medical information, NOT:
+  - Date or location of death (we already have this)
+  - Statements that cause was "not disclosed" or "not publicly known"
+  - Generic statements with no medical value
+- If you don't have specific medical details, return null for details
 - No family/career/tribute info in details
 - Only include corrections if you're confident our dates are wrong
 
