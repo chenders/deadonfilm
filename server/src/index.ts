@@ -38,6 +38,7 @@ import {
   getMoviesSitemap,
   getActorsSitemap,
   getShowsSitemap,
+  getDeathDetailsSitemap,
 } from "./routes/sitemap.js"
 import {
   getCauseCategoriesHandler,
@@ -46,6 +47,7 @@ import {
   getDeathsByDecadeHandler,
   getAllDeathsHandler,
 } from "./routes/deaths.js"
+import { getActorDeathDetails, getNotableDeaths } from "./routes/death-details.js"
 import {
   getCauseCategoryIndexHandler,
   getCauseCategoryHandler,
@@ -175,6 +177,8 @@ app.get("/sitemap-actors.xml", heavyEndpointLimiter, getActorsSitemap)
 app.get("/sitemap-actors-:page.xml", heavyEndpointLimiter, getActorsSitemap)
 app.get("/sitemap-shows.xml", heavyEndpointLimiter, getShowsSitemap)
 app.get("/sitemap-shows-:page.xml", heavyEndpointLimiter, getShowsSitemap)
+app.get("/sitemap-death-details.xml", heavyEndpointLimiter, getDeathDetailsSitemap)
+app.get("/sitemap-death-details-:page.xml", heavyEndpointLimiter, getDeathDetailsSitemap)
 
 // API routes - apply rate limiting to all API endpoints
 app.use("/api", apiLimiter)
@@ -196,7 +200,9 @@ app.get("/api/this-week", getThisWeekDeathsHandler)
 app.get("/api/popular-movies", getPopularMoviesHandler)
 app.get("/api/cursed-actors", getCursedActorsRoute)
 app.get("/api/actor/:id", getActor)
+app.get("/api/actor/:id/death", getActorDeathDetails)
 app.get("/api/death-watch", getDeathWatchHandler)
+app.get("/api/deaths/notable", getNotableDeaths)
 app.get("/api/deaths/causes", getCauseCategoriesHandler)
 app.get("/api/deaths/cause/:cause", getDeathsByCauseHandler)
 app.get("/api/deaths/decades", getDecadeCategoriesHandler)

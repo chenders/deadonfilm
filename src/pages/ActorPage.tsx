@@ -26,7 +26,42 @@ interface TooltipProps {
   onMouseLeave: () => void
 }
 
-function Tooltip({ content, triggerRef, isVisible, onMouseEnter, onMouseLeave }: TooltipProps) {
+interface TooltipContentProps {
+  content: string
+  actorSlug?: string
+  hasDetailedInfo?: boolean
+}
+
+function TooltipContent({ content, actorSlug, hasDetailedInfo }: TooltipContentProps) {
+  return (
+    <>
+      <p className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</p>
+      {hasDetailedInfo && actorSlug && (
+        <Link
+          to={`/actor/${actorSlug}/death`}
+          className="mt-2 block text-right text-xs text-cream/80 underline hover:text-cream"
+        >
+          Read more →
+        </Link>
+      )}
+    </>
+  )
+}
+
+interface ExtendedTooltipProps extends TooltipProps {
+  actorSlug?: string
+  hasDetailedInfo?: boolean
+}
+
+function Tooltip({
+  content,
+  triggerRef,
+  isVisible,
+  onMouseEnter,
+  onMouseLeave,
+  actorSlug,
+  hasDetailedInfo,
+}: ExtendedTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
 
@@ -66,7 +101,7 @@ function Tooltip({ content, triggerRef, isVisible, onMouseEnter, onMouseLeave }:
           <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
         ))}
       </div>
-      <p className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</p>
+      <TooltipContent content={content} actorSlug={actorSlug} hasDetailedInfo={hasDetailedInfo} />
     </div>,
     document.body
   )
@@ -376,6 +411,8 @@ export default function ActorPage() {
                         isVisible={showTooltip}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
+                        actorSlug={slug}
+                        hasDetailedInfo={deathInfo.hasDetailedDeathInfo}
                       />
                     </span>
                   ) : (
@@ -410,6 +447,15 @@ export default function ActorPage() {
                 >
                   Wikipedia
                 </a>
+              )}
+              {isDeceased && deathInfo?.hasDetailedDeathInfo && (
+                <Link
+                  to={`/actor/${slug}/death`}
+                  data-testid="death-details-button"
+                  className="rounded-full bg-brown-medium px-3 py-1.5 text-xs text-cream transition-colors hover:bg-brown-dark"
+                >
+                  View Full Death Details →
+                </Link>
               )}
             </div>
           </div>
