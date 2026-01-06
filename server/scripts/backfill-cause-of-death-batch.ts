@@ -223,6 +223,43 @@ export function stripMarkdownCodeFences(text: string): string {
   return jsonText
 }
 
+/**
+ * Attempts to repair common JSON malformations from Claude responses.
+ * Handles:
+ * - Invalid unquoted values like `97aborr` (converts to null)
+ * - Trailing commas before } or ]
+ * - NaN, undefined, Infinity literals (converts to null)
+ */
+export function repairJson(text: string): string {
+  let repaired = text
+
+  // Fix invalid unquoted values that look like number+garbage (e.g., "97aborr", "123abc")
+  // These appear in contexts like: "tmdb_id": 97aborr,
+  // Match: colon, optional whitespace, digits followed by non-digit/non-whitespace chars, then comma or }
+  repaired = repaired.replace(/:\s*(\d+[a-zA-Z_][a-zA-Z0-9_]*)\s*([,}\]])/g, ": null$2")
+
+  // Fix standalone invalid identifiers that should be null (NaN, undefined, Infinity)
+  repaired = repaired.replace(/:\s*(NaN|undefined|Infinity)\s*([,}\]])/gi, ": null$2")
+
+  // Fix unquoted string values that aren't true/false/null (e.g., "status": active)
+  // But be careful not to break valid JSON - only fix obvious cases
+  repaired = repaired.replace(
+    /:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*([,}\]])/g,
+    (match, value, ending) => {
+      const lower = value.toLowerCase()
+      if (lower === "true" || lower === "false" || lower === "null") {
+        return match // Keep valid JSON literals
+      }
+      return `: null${ending}` // Replace invalid unquoted strings with null
+    }
+  )
+
+  // Remove trailing commas before } or ]
+  repaired = repaired.replace(/,(\s*[}\]])/g, "$1")
+
+  return repaired
+}
+
 export function parsePositiveInt(value: string): number {
   if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError("Must be a positive integer")
@@ -746,21 +783,28 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
           try {
             parsed = JSON.parse(jsonText) as ClaudeResponse
           } catch (jsonError) {
-            const errorMsg = jsonError instanceof Error ? jsonError.message : "JSON parse error"
-            console.error(`JSON parse error for actor ${actorId}: ${errorMsg}`)
-            if (db) {
-              await storeFailure(
-                db,
-                batchId,
-                actorId,
-                customId,
-                responseText,
-                errorMsg,
-                "json_parse"
-              )
+            // Try to repair common JSON issues and retry
+            const repairedJson = repairJson(jsonText)
+            try {
+              parsed = JSON.parse(repairedJson) as ClaudeResponse
+              console.log(`  [Repaired JSON for actor ${actorId}]`)
+            } catch {
+              const errorMsg = jsonError instanceof Error ? jsonError.message : "JSON parse error"
+              console.error(`JSON parse error for actor ${actorId}: ${errorMsg}`)
+              if (db) {
+                await storeFailure(
+                  db,
+                  batchId,
+                  actorId,
+                  customId,
+                  responseText,
+                  errorMsg,
+                  "json_parse"
+                )
+              }
+              checkpoint.stats.errored++
+              continue
             }
-            checkpoint.stats.errored++
-            continue
           }
 
           if (dryRun) {
