@@ -75,6 +75,7 @@ const mockDeceasedActor = {
     wikipediaUrl: "https://en.wikipedia.org/wiki/Deceased_Actor",
     ageAtDeath: 80,
     yearsLost: -5,
+    hasDetailedDeathInfo: false,
   },
 }
 

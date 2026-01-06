@@ -4,6 +4,7 @@ import {
   getActorFilmography,
   getActorShowFilmography,
   getActor as getActorRecord,
+  hasDetailedDeathInfo,
 } from "../lib/db.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
@@ -44,6 +45,7 @@ interface ActorProfileResponse {
     wikipediaUrl: string | null
     ageAtDeath: number | null
     yearsLost: number | null
+    hasDetailedDeathInfo: boolean
   } | null
 }
 
@@ -84,7 +86,10 @@ export async function getActor(req: Request, res: Response) {
     // Get death info if deceased
     let deathInfo: ActorProfileResponse["deathInfo"] = null
     if (person.deathday) {
-      const deceasedRecord = await getActorRecord(actorId)
+      const [deceasedRecord, hasDetailedInfo] = await Promise.all([
+        getActorRecord(actorId),
+        hasDetailedDeathInfo(actorId),
+      ])
       if (deceasedRecord) {
         deathInfo = {
           causeOfDeath: deceasedRecord.cause_of_death,
@@ -92,6 +97,7 @@ export async function getActor(req: Request, res: Response) {
           wikipediaUrl: deceasedRecord.wikipedia_url,
           ageAtDeath: deceasedRecord.age_at_death,
           yearsLost: deceasedRecord.years_lost,
+          hasDetailedDeathInfo: hasDetailedInfo,
         }
       } else {
         // Basic death info from TMDB only
@@ -101,6 +107,7 @@ export async function getActor(req: Request, res: Response) {
           wikipediaUrl: null,
           ageAtDeath: calculateAge(person.birthday, person.deathday),
           yearsLost: null,
+          hasDetailedDeathInfo: hasDetailedInfo,
         }
       }
     }

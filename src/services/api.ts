@@ -36,6 +36,9 @@ import type {
   CauseCategoryIndexResponse,
   CauseCategoryDetailResponse,
   SpecificCauseDetailResponse,
+  DeathDetailsResponse,
+  NotableDeathsResponse,
+  NotableDeathsFilter,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -414,4 +417,39 @@ export async function getSpecificCauseDetail(
   return fetchJson(
     `/causes-of-death/${encodeURIComponent(categorySlug)}/${encodeURIComponent(causeSlug)}?${searchParams.toString()}`
   )
+}
+
+// Death Details API functions
+
+/**
+ * Get detailed death circumstances for an actor
+ */
+export async function getActorDeathDetails(actorId: number): Promise<DeathDetailsResponse> {
+  return fetchJson(`/actor/${actorId}/death`)
+}
+
+export interface NotableDeathsParams {
+  page?: number
+  pageSize?: number
+  filter?: NotableDeathsFilter
+  includeObscure?: boolean
+}
+
+/**
+ * Get paginated list of actors with notable/detailed death information
+ */
+export async function getNotableDeaths(
+  params: NotableDeathsParams = {}
+): Promise<NotableDeathsResponse> {
+  const { page = 1, pageSize = 50, filter = "all", includeObscure = false } = params
+  const searchParams = new URLSearchParams()
+  searchParams.set("page", String(page))
+  searchParams.set("pageSize", String(pageSize))
+  if (filter !== "all") {
+    searchParams.set("filter", filter)
+  }
+  if (includeObscure) {
+    searchParams.set("includeObscure", "true")
+  }
+  return fetchJson(`/deaths/notable?${searchParams.toString()}`)
 }
