@@ -9,6 +9,7 @@ export { default as CursedActorIcon } from "./CursedActorIcon"
 export { default as ListIcon } from "./ListIcon"
 export { default as TimelineIcon } from "./TimelineIcon"
 export { default as TVIcon } from "./TVIcon"
+export { default as ExternalLinkIcon } from "./ExternalLinkIcon"
 
 // Cause of death category icons
 export { default as HeartIcon } from "./HeartIcon"

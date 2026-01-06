@@ -13,6 +13,7 @@ vi.mock("../lib/db.js", () => ({
   getActorFilmography: vi.fn(),
   getActorShowFilmography: vi.fn(),
   getActor: vi.fn(),
+  hasDetailedDeathInfo: vi.fn().mockResolvedValue(false),
 }))
 
 vi.mock("../lib/newrelic.js", () => ({
@@ -271,6 +272,7 @@ describe("getActor", () => {
         wikipediaUrl: "https://en.wikipedia.org/wiki/Actor",
         ageAtDeath: 80,
         yearsLost: -5,
+        hasDetailedDeathInfo: false,
       },
     })
   })
@@ -293,6 +295,7 @@ describe("getActor", () => {
           wikipediaUrl: null,
           ageAtDeath: 80, // 2020 - 1940
           yearsLost: null,
+          hasDetailedDeathInfo: false,
         },
       })
     )

@@ -59,6 +59,14 @@ export type {
   DeathsByCauseResponse,
   DeathByDecade,
   DeathsByDecadeResponse,
+  // Death details (dedicated death page)
+  ProjectInfo,
+  RelatedCelebrity,
+  SourceEntry,
+  DeathDetailsResponse,
+  NotableDeathActor,
+  NotableDeathsResponse,
+  NotableDeathsFilter,
 } from "./death"
 
 // Show types

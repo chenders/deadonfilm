@@ -1,0 +1,266 @@
+import type { Request, Response } from "express"
+import {
+  getActor as getActorRecord,
+  getActorDeathCircumstancesByTmdbId,
+  getNotableDeaths as getNotableDeathsFromDb,
+  hasDetailedDeathInfo,
+  type ProjectInfo,
+  type RelatedCelebrity,
+  type SourceEntry,
+} from "../lib/db.js"
+import { getPersonDetails } from "../lib/tmdb.js"
+import { createActorSlug } from "../lib/slug-utils.js"
+import { recordCustomEvent } from "../lib/newrelic.js"
+import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
+
+// Response type for death details endpoint
+interface DeathDetailsResponse {
+  actor: {
+    id: number
+    tmdbId: number
+    name: string
+    birthday: string | null
+    deathday: string
+    profilePath: string | null
+    causeOfDeath: string | null
+    causeOfDeathDetails: string | null
+    ageAtDeath: number | null
+    yearsLost: number | null
+    deathManner: string | null
+    deathCategories: string[] | null
+    strangeDeath: boolean
+  }
+  circumstances: {
+    official: string | null
+    confidence: string | null
+    rumored: string | null
+    locationOfDeath: string | null
+    notableFactors: string[] | null
+    additionalContext: string | null
+  }
+  career: {
+    statusAtDeath: string | null
+    lastProject: ProjectInfo | null
+    posthumousReleases: ProjectInfo[] | null
+  }
+  relatedCelebrities: Array<{
+    name: string
+    tmdbId: number | null
+    relationship: string
+    slug: string | null
+  }>
+  sources: {
+    cause: SourceEntry[] | null
+    circumstances: SourceEntry[] | null
+    rumored: SourceEntry[] | null
+  }
+}
+
+/**
+ * GET /api/actor/:id/death
+ * Get detailed death circumstances for an actor
+ */
+export async function getActorDeathDetails(req: Request, res: Response) {
+  const actorId = parseInt(req.params.id, 10)
+
+  if (!actorId || isNaN(actorId)) {
+    return res.status(400).json({ error: { message: "Invalid actor ID" } })
+  }
+
+  try {
+    const startTime = Date.now()
+    const cacheKey = buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId, type: "death" })
+
+    // Check cache first
+    const cached = await getCached<DeathDetailsResponse>(cacheKey)
+    if (cached) {
+      recordCustomEvent("DeathDetailsView", {
+        tmdbId: actorId,
+        name: cached.actor.name,
+        hasCircumstances: !!cached.circumstances.official,
+        hasRumored: !!cached.circumstances.rumored,
+        responseTimeMs: Date.now() - startTime,
+        cacheHit: true,
+      })
+      return res.set("Cache-Control", "public, max-age=600").json(cached)
+    }
+
+    // First check if actor has detailed death info
+    const hasDetailed = await hasDetailedDeathInfo(actorId)
+    if (!hasDetailed) {
+      return res.status(404).json({
+        error: { message: "No detailed death information available for this actor" },
+      })
+    }
+
+    // Fetch actor data and circumstances in parallel
+    const [actorRecord, person, circumstances] = await Promise.all([
+      getActorRecord(actorId),
+      getPersonDetails(actorId),
+      getActorDeathCircumstancesByTmdbId(actorId),
+    ])
+
+    if (!actorRecord || !actorRecord.deathday) {
+      return res.status(404).json({ error: { message: "Actor not found or not deceased" } })
+    }
+
+    // Generate slugs for related celebrities
+    const relatedCelebrities = (circumstances?.related_celebrities || []).map(
+      (celeb: RelatedCelebrity) => ({
+        name: celeb.name,
+        tmdbId: celeb.tmdb_id,
+        relationship: celeb.relationship,
+        slug: celeb.tmdb_id ? createActorSlug(celeb.name, celeb.tmdb_id) : null,
+      })
+    )
+
+    const response: DeathDetailsResponse = {
+      actor: {
+        id: actorRecord.id,
+        tmdbId: actorRecord.tmdb_id!,
+        name: actorRecord.name,
+        birthday: actorRecord.birthday,
+        deathday: actorRecord.deathday,
+        profilePath: actorRecord.profile_path || person.profile_path,
+        causeOfDeath: actorRecord.cause_of_death,
+        causeOfDeathDetails: actorRecord.cause_of_death_details,
+        ageAtDeath: actorRecord.age_at_death,
+        yearsLost: actorRecord.years_lost,
+        deathManner: (actorRecord as unknown as { death_manner: string | null }).death_manner,
+        deathCategories: (actorRecord as unknown as { death_categories: string[] | null })
+          .death_categories,
+        strangeDeath:
+          (actorRecord as unknown as { strange_death: boolean | null }).strange_death ?? false,
+      },
+      circumstances: {
+        official: circumstances?.circumstances || null,
+        confidence: circumstances?.circumstances_confidence || null,
+        rumored: circumstances?.rumored_circumstances || null,
+        locationOfDeath: circumstances?.location_of_death || null,
+        notableFactors: circumstances?.notable_factors || null,
+        additionalContext: circumstances?.additional_context || null,
+      },
+      career: {
+        statusAtDeath: circumstances?.career_status_at_death || null,
+        lastProject: circumstances?.last_project || null,
+        posthumousReleases: circumstances?.posthumous_releases || null,
+      },
+      relatedCelebrities,
+      sources: {
+        cause: circumstances?.sources?.cause || null,
+        circumstances: circumstances?.sources?.circumstances || null,
+        rumored: circumstances?.sources?.rumored || null,
+      },
+    }
+
+    // Cache the response
+    await setCached(cacheKey, response, CACHE_TTL.LONG)
+
+    recordCustomEvent("DeathDetailsView", {
+      tmdbId: actorId,
+      name: actorRecord.name,
+      hasCircumstances: !!circumstances?.circumstances,
+      hasRumored: !!circumstances?.rumored_circumstances,
+      confidence: circumstances?.circumstances_confidence || "unknown",
+      responseTimeMs: Date.now() - startTime,
+      cacheHit: false,
+    })
+
+    res.set("Cache-Control", "public, max-age=600").json(response)
+  } catch (error) {
+    console.error("Death details fetch error:", error)
+    res.status(500).json({ error: { message: "Failed to fetch death details" } })
+  }
+}
+
+// Response type for notable deaths list
+interface NotableDeathsResponse {
+  actors: Array<{
+    id: number
+    tmdbId: number | null
+    name: string
+    profilePath: string | null
+    deathday: string
+    ageAtDeath: number | null
+    causeOfDeath: string | null
+    deathManner: string | null
+    strangeDeath: boolean
+    notableFactors: string[] | null
+    circumstancesConfidence: string | null
+    slug: string
+  }>
+  pagination: {
+    page: number
+    pageSize: number
+    totalCount: number
+    totalPages: number
+  }
+}
+
+/**
+ * GET /api/deaths/notable
+ * Get paginated list of actors with detailed death information
+ */
+export async function getNotableDeaths(req: Request, res: Response) {
+  try {
+    const startTime = Date.now()
+
+    // Parse query params
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1)
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string, 10) || 50))
+    const filter = (req.query.filter as "all" | "strange" | "disputed" | "controversial") || "all"
+    const includeObscure = req.query.includeObscure === "true"
+
+    // Validate filter
+    if (!["all", "strange", "disputed", "controversial"].includes(filter)) {
+      return res.status(400).json({ error: { message: "Invalid filter value" } })
+    }
+
+    const cacheKey = buildCacheKey(CACHE_PREFIX.DEATHS, {
+      type: "notable",
+      page,
+      pageSize,
+      filter,
+      includeObscure,
+    })
+
+    // Check cache first
+    const cached = await getCached<NotableDeathsResponse>(cacheKey)
+    if (cached) {
+      recordCustomEvent("NotableDeathsView", {
+        filter,
+        page,
+        totalCount: cached.pagination.totalCount,
+        responseTimeMs: Date.now() - startTime,
+        cacheHit: true,
+      })
+      return res.set("Cache-Control", "public, max-age=300").json(cached)
+    }
+
+    // Fetch from database
+    const result = await getNotableDeathsFromDb({
+      page,
+      pageSize,
+      filter,
+      includeObscure,
+    })
+
+    const response: NotableDeathsResponse = result
+
+    // Cache for 5 minutes
+    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+
+    recordCustomEvent("NotableDeathsView", {
+      filter,
+      page,
+      totalCount: result.pagination.totalCount,
+      responseTimeMs: Date.now() - startTime,
+      cacheHit: false,
+    })
+
+    res.set("Cache-Control", "public, max-age=300").json(response)
+  } catch (error) {
+    console.error("Notable deaths fetch error:", error)
+    res.status(500).json({ error: { message: "Failed to fetch notable deaths" } })
+  }
+}

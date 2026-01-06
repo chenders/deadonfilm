@@ -29,6 +29,8 @@ const GenreMoviesPage = lazy(() => import("./pages/GenreMoviesPage"))
 const CausesOfDeathPage = lazy(() => import("./pages/CausesOfDeathPage"))
 const CauseCategoryPage = lazy(() => import("./pages/CauseCategoryPage"))
 const SpecificCausePage = lazy(() => import("./pages/SpecificCausePage"))
+const ActorDeathPage = lazy(() => import("./pages/ActorDeathPage"))
+const NotableDeathsPage = lazy(() => import("./pages/NotableDeathsPage"))
 
 function App() {
   useGoogleAnalytics()
@@ -44,6 +46,7 @@ function App() {
           <Route path="/show/:slug/season/:seasonNumber" element={<SeasonPage />} />
           <Route path="/episode/:slug" element={<EpisodePage />} />
           <Route path="/actor/:slug" element={<ActorPage />} />
+          <Route path="/actor/:slug/death" element={<ActorDeathPage />} />
           {/* Temporarily hidden - see plan in kind-brewing-moore.md */}
           {/* <Route path="/cursed-movies" element={<CursedMoviesPage />} /> */}
           {/* <Route path="/cursed-actors" element={<CursedActorsPage />} /> */}
@@ -53,6 +56,7 @@ function App() {
           <Route path="/death-watch" element={<DeathWatchPage />} />
           <Route path="/deaths" element={<CausesIndexPage />} />
           <Route path="/deaths/all" element={<AllDeathsPage />} />
+          <Route path="/deaths/notable" element={<NotableDeathsPage />} />
           <Route path="/deaths/decades" element={<DecadesIndexPage />} />
           <Route path="/deaths/decade/:decade" element={<DeathsByDecadePage />} />
           <Route path="/deaths/:cause" element={<DeathsByCausePage />} />
