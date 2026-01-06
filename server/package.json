@@ -65,6 +65,8 @@
     "backfill:cause-of-death-batch": "tsx scripts/backfill-cause-of-death-batch.ts",
     "//backfill:cause-of-death-runner": "Continuous runner for cause of death batches",
     "backfill:cause-of-death-runner": "tsx scripts/run-cause-of-death-batch.ts",
+    "//backfill:cause-capitalization": "Normalize cause_of_death capitalization to sentence case",
+    "backfill:cause-capitalization": "tsx scripts/backfill-cause-capitalization.ts",
     "// === Death Info Management ===": "",
     "//fix:death-info": "Scan and fix suspicious death records",
     "fix:death-info": "tsx scripts/fix-bad-death-info.ts",

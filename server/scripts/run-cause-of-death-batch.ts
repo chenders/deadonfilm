@@ -25,6 +25,7 @@ import { Command } from "commander"
 import * as readline from "readline"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
+import { toSentenceCase } from "../src/lib/text-utils.js"
 import {
   loadCheckpoint,
   saveCheckpoint,
@@ -606,10 +607,13 @@ async function applyUpdate(
   const values: (string | number | null)[] = []
   let paramIndex = 1
 
+  // Normalize cause if provided
+  const normalizedCause = parsed.cause ? toSentenceCase(parsed.cause) : null
+
   // Update cause_of_death if we have a new one and actor doesn't have one
-  if (parsed.cause && !actor.cause_of_death) {
+  if (normalizedCause && !actor.cause_of_death) {
     updates.push(`cause_of_death = $${paramIndex++}`)
-    values.push(parsed.cause)
+    values.push(normalizedCause)
     updates.push(`cause_of_death_source = $${paramIndex++}`)
     values.push(SOURCE_NAME)
     checkpoint.stats.updatedCause++
@@ -631,11 +635,11 @@ async function applyUpdate(
   await db.query(`UPDATE actors SET ${updates.join(", ")} WHERE id = $${paramIndex}`, values)
 
   // Record history
-  if (parsed.cause && !actor.cause_of_death) {
+  if (normalizedCause && !actor.cause_of_death) {
     await db.query(
       `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      [actorId, "cause_of_death", actor.cause_of_death, parsed.cause, SOURCE_NAME, batchId]
+      [actorId, "cause_of_death", actor.cause_of_death, normalizedCause, SOURCE_NAME, batchId]
     )
   }
   if (parsed.details && !actor.cause_of_death_details) {

@@ -43,6 +43,7 @@ import {
   deleteCheckpoint as deleteCheckpointGeneric,
 } from "../src/lib/checkpoint-utils.js"
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
+import { toSentenceCase } from "../src/lib/text-utils.js"
 
 // Initialize New Relic for monitoring
 initNewRelic()
@@ -916,14 +917,15 @@ async function applyUpdate(
 
   // Update cause_of_death if we have a new one and actor doesn't have one
   if (parsed.cause && !actor.cause_of_death) {
+    const normalizedCause = toSentenceCase(parsed.cause)
     updates.push(`cause_of_death = $${paramIndex++}`)
-    values.push(parsed.cause)
+    values.push(normalizedCause)
     updates.push(`cause_of_death_source = $${paramIndex++}`)
     values.push(SOURCE_NAME)
     historyEntries.push({
       field: "cause_of_death",
       oldValue: actor.cause_of_death,
-      newValue: parsed.cause,
+      newValue: normalizedCause,
     })
     checkpoint.stats.updatedCause++
   }
