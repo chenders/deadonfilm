@@ -480,6 +480,253 @@ describe("processResults", () => {
     })
   })
 
+  describe("force parameter behavior", () => {
+    it("overwrites existing cause_of_death when force=true", async () => {
+      // Mock actor with existing cause
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ name: "Test Actor" }] }) // Name lookup
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              cause_of_death: "existing cause",
+              cause_of_death_details: "existing details",
+            },
+          ],
+        }) // Actor data lookup
+        .mockResolvedValue({ rows: [] }) // Subsequent queries
+
+      const validJson = JSON.stringify({ cause: "new cause", details: "new details" })
+      vi.mocked(stripMarkdownCodeFences).mockReturnValue(validJson)
+
+      const mockResults = [
+        {
+          custom_id: "actor-700",
+          result: {
+            type: "succeeded" as const,
+            message: {
+              content: [{ type: "text" as const, text: validJson }],
+            },
+          },
+        },
+      ]
+
+      const mockAnthropicResults = async function* () {
+        for (const result of mockResults) {
+          yield result
+        }
+      }
+
+      const mockAnthropic = {
+        messages: {
+          batches: {
+            results: vi.fn().mockResolvedValue(mockAnthropicResults()),
+          },
+        },
+      } as unknown as Anthropic
+
+      await processResults(mockAnthropic, "test-batch", mockCheckpoint, true) // force=true
+
+      // Should have called UPDATE with cause_of_death
+      const updateCalls = mockDb.query.mock.calls.filter(
+        (call) => typeof call[0] === "string" && call[0].includes("UPDATE actors SET")
+      )
+      expect(updateCalls.length).toBeGreaterThan(0)
+      const updateCall = updateCalls[0]
+      expect(updateCall[0]).toContain("cause_of_death =")
+      expect(updateCall[1]).toContain("New cause") // Sentence case applied
+
+      // Stats should show updated
+      expect(mockCheckpoint.stats.updatedCause).toBe(1)
+      expect(mockCheckpoint.stats.updatedDetails).toBe(1)
+    })
+
+    it("preserves existing cause_of_death when force=false (default)", async () => {
+      // Mock actor with existing cause
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ name: "Test Actor" }] }) // Name lookup
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              cause_of_death: "existing cause",
+              cause_of_death_details: "existing details",
+            },
+          ],
+        }) // Actor data lookup
+        .mockResolvedValue({ rows: [] }) // Subsequent queries
+
+      const validJson = JSON.stringify({ cause: "new cause", details: "new details" })
+      vi.mocked(stripMarkdownCodeFences).mockReturnValue(validJson)
+
+      const mockResults = [
+        {
+          custom_id: "actor-701",
+          result: {
+            type: "succeeded" as const,
+            message: {
+              content: [{ type: "text" as const, text: validJson }],
+            },
+          },
+        },
+      ]
+
+      const mockAnthropicResults = async function* () {
+        for (const result of mockResults) {
+          yield result
+        }
+      }
+
+      const mockAnthropic = {
+        messages: {
+          batches: {
+            results: vi.fn().mockResolvedValue(mockAnthropicResults()),
+          },
+        },
+      } as unknown as Anthropic
+
+      await processResults(mockAnthropic, "test-batch", mockCheckpoint, false) // force=false
+
+      // The UPDATE should NOT include cause_of_death (only checked_at and updated_at)
+      const updateCalls = mockDb.query.mock.calls.filter(
+        (call) => typeof call[0] === "string" && call[0].includes("UPDATE actors SET")
+      )
+      expect(updateCalls.length).toBeGreaterThan(0)
+      const updateCall = updateCalls[0]
+      // Should not have cause_of_death param value in values array (only actor ID)
+      expect(updateCall[1]).toEqual([701])
+
+      // Stats should NOT show updates
+      expect(mockCheckpoint.stats.updatedCause).toBe(0)
+      expect(mockCheckpoint.stats.updatedDetails).toBe(0)
+    })
+
+    it("updates cause_of_death when force=false and actor has no existing cause", async () => {
+      // Mock actor WITHOUT existing cause
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ name: "Test Actor" }] }) // Name lookup
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              cause_of_death: null,
+              cause_of_death_details: null,
+            },
+          ],
+        }) // Actor data lookup
+        .mockResolvedValue({ rows: [] }) // Subsequent queries
+
+      const validJson = JSON.stringify({ cause: "heart attack", details: "sudden cardiac arrest" })
+      vi.mocked(stripMarkdownCodeFences).mockReturnValue(validJson)
+
+      const mockResults = [
+        {
+          custom_id: "actor-702",
+          result: {
+            type: "succeeded" as const,
+            message: {
+              content: [{ type: "text" as const, text: validJson }],
+            },
+          },
+        },
+      ]
+
+      const mockAnthropicResults = async function* () {
+        for (const result of mockResults) {
+          yield result
+        }
+      }
+
+      const mockAnthropic = {
+        messages: {
+          batches: {
+            results: vi.fn().mockResolvedValue(mockAnthropicResults()),
+          },
+        },
+      } as unknown as Anthropic
+
+      await processResults(mockAnthropic, "test-batch", mockCheckpoint, false) // force=false
+
+      // Should have called UPDATE with cause_of_death (because no existing value)
+      const updateCalls = mockDb.query.mock.calls.filter(
+        (call) => typeof call[0] === "string" && call[0].includes("UPDATE actors SET")
+      )
+      expect(updateCalls.length).toBeGreaterThan(0)
+      const updateCall = updateCalls[0]
+      expect(updateCall[0]).toContain("cause_of_death =")
+
+      // Stats should show updated
+      expect(mockCheckpoint.stats.updatedCause).toBe(1)
+      expect(mockCheckpoint.stats.updatedDetails).toBe(1)
+    })
+
+    it("creates history records when force overwrites existing values", async () => {
+      // Mock actor with existing cause
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ name: "Test Actor" }] }) // Name lookup
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              cause_of_death: "old cause",
+              cause_of_death_details: "old details",
+            },
+          ],
+        }) // Actor data lookup
+        .mockResolvedValue({ rows: [] }) // Subsequent queries
+
+      const validJson = JSON.stringify({ cause: "new cause", details: "new details" })
+      vi.mocked(stripMarkdownCodeFences).mockReturnValue(validJson)
+
+      const mockResults = [
+        {
+          custom_id: "actor-703",
+          result: {
+            type: "succeeded" as const,
+            message: {
+              content: [{ type: "text" as const, text: validJson }],
+            },
+          },
+        },
+      ]
+
+      const mockAnthropicResults = async function* () {
+        for (const result of mockResults) {
+          yield result
+        }
+      }
+
+      const mockAnthropic = {
+        messages: {
+          batches: {
+            results: vi.fn().mockResolvedValue(mockAnthropicResults()),
+          },
+        },
+      } as unknown as Anthropic
+
+      await processResults(mockAnthropic, "test-batch", mockCheckpoint, true) // force=true
+
+      // Should have created history records
+      const historyInserts = mockDb.query.mock.calls.filter(
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("INSERT INTO actor_death_info_history")
+      )
+
+      // Should have 2 history inserts (one for cause, one for details)
+      expect(historyInserts.length).toBe(2)
+
+      // Check cause history record
+      const causeHistory = historyInserts.find((call) => call[1]?.[1] === "cause_of_death")
+      expect(causeHistory).toBeDefined()
+      expect(causeHistory![1]).toContain("old cause") // old_value
+      expect(causeHistory![1]).toContain("New cause") // new_value (sentence case)
+
+      // Check details history record
+      const detailsHistory = historyInserts.find(
+        (call) => call[1]?.[1] === "cause_of_death_details"
+      )
+      expect(detailsHistory).toBeDefined()
+      expect(detailsHistory![1]).toContain("old details") // old_value
+      expect(detailsHistory![1]).toContain("new details") // new_value
+    })
+  })
+
   describe("checkpoint tracking", () => {
     it("adds processed actor IDs to checkpoint", async () => {
       vi.mocked(stripMarkdownCodeFences).mockReturnValue("invalid")
