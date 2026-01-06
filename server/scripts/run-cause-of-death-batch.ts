@@ -72,6 +72,11 @@ async function promptToContinue(message: string): Promise<boolean> {
  */
 let verboseMode = true
 
+/** Exported for testing purposes */
+export function setVerboseMode(value: boolean): void {
+  verboseMode = value
+}
+
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
