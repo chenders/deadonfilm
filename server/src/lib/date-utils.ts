@@ -37,6 +37,30 @@ export function subtractDays(dateStr: string, days: number): string {
  * @param endDate - End date in YYYY-MM-DD format
  * @returns Array of date ranges, each with start and end in YYYY-MM-DD format
  */
+/**
+ * Calculate age from a birthday to an optional reference date.
+ * If no reference date provided, calculates age as of today.
+ *
+ * @param birthday - Birth date in YYYY-MM-DD format
+ * @param referenceDate - Optional end date (e.g., death date). Defaults to today.
+ * @returns Age in years, or null if birthday is missing
+ */
+export function calculateAge(birthday: string | null, referenceDate?: string | null): number | null {
+  if (!birthday) return null
+
+  const birth = new Date(birthday)
+  const ref = referenceDate ? new Date(referenceDate) : new Date()
+
+  let age = ref.getFullYear() - birth.getFullYear()
+  const monthDiff = ref.getMonth() - birth.getMonth()
+
+  if (monthDiff < 0 || (monthDiff === 0 && ref.getDate() < birth.getDate())) {
+    age--
+  }
+
+  return age
+}
+
 export function getDateRanges(
   startDate: string,
   endDate: string
