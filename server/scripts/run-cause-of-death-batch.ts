@@ -168,9 +168,11 @@ async function run(options: {
     batchCount++
 
     // Count remaining actors before each batch
+    // --all mode: all deceased actors not yet checked in this run
+    // default mode: only those missing cause_of_death and never checked
     const db = getPool()
     const countQuery = all
-      ? `SELECT COUNT(*) as count FROM actors WHERE deathday IS NOT NULL`
+      ? `SELECT COUNT(*) as count FROM actors WHERE deathday IS NOT NULL AND cause_of_death_checked_at IS NULL`
       : `SELECT COUNT(*) as count
          FROM actors
          WHERE deathday IS NOT NULL
@@ -202,6 +204,7 @@ async function run(options: {
         ? `SELECT id, tmdb_id, name, birthday, deathday
            FROM actors
            WHERE deathday IS NOT NULL
+             AND cause_of_death_checked_at IS NULL
            ORDER BY popularity DESC NULLS LAST
            LIMIT $1`
         : `SELECT id, tmdb_id, name, birthday, deathday
