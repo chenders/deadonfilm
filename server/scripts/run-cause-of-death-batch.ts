@@ -32,6 +32,7 @@ import {
   deleteCheckpoint,
   parsePositiveInt,
   stripMarkdownCodeFences,
+  repairJson,
   getYearFromDate,
   storeFailure,
   type Checkpoint,
@@ -515,7 +516,20 @@ export async function processResults(
 
         try {
           const jsonText = stripMarkdownCodeFences(responseText)
-          const parsed = JSON.parse(jsonText)
+          let parsed: Record<string, unknown>
+          try {
+            parsed = JSON.parse(jsonText)
+          } catch (jsonError) {
+            // Try to repair common JSON issues and retry
+            const repairedJson = repairJson(jsonText)
+            try {
+              parsed = JSON.parse(repairedJson)
+              console.log(`  [Repaired JSON for ${actorName}]`)
+            } catch {
+              // Re-throw original error if repair also fails
+              throw jsonError
+            }
+          }
 
           // Log the response
           logParsedResponse(actorName, parsed)
