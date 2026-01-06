@@ -276,12 +276,7 @@ export interface UnnaturalDeathsOptions {
   includeObscure?: boolean
 }
 
-export type UnnaturalDeathCategory =
-  | "suicide"
-  | "accident"
-  | "overdose"
-  | "homicide"
-  | "other"
+export type UnnaturalDeathCategory = "suicide" | "accident" | "overdose" | "homicide" | "other"
 
 export interface AllDeathsOptions {
   limit?: number
