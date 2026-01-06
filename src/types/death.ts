@@ -152,3 +152,85 @@ export interface DeathsByDecadeResponse {
   deaths: DeathByDecade[]
   pagination: PaginationInfo
 }
+
+// Death Details types (for dedicated death page)
+export interface ProjectInfo {
+  title: string
+  year: number | null
+  tmdb_id: number | null
+  imdb_id: string | null
+  type: "movie" | "show" | "documentary" | "unknown"
+}
+
+export interface RelatedCelebrity {
+  name: string
+  tmdbId: number | null
+  relationship: string
+  slug: string | null
+}
+
+export interface SourceEntry {
+  url: string | null
+  archiveUrl: string | null
+  description: string
+}
+
+export interface DeathDetailsResponse {
+  actor: {
+    id: number
+    tmdbId: number
+    name: string
+    birthday: string | null
+    deathday: string
+    profilePath: string | null
+    causeOfDeath: string | null
+    causeOfDeathDetails: string | null
+    ageAtDeath: number | null
+    yearsLost: number | null
+    deathManner: string | null
+    deathCategories: string[] | null
+    strangeDeath: boolean
+  }
+  circumstances: {
+    official: string | null
+    confidence: string | null
+    rumored: string | null
+    locationOfDeath: string | null
+    notableFactors: string[] | null
+    additionalContext: string | null
+  }
+  career: {
+    statusAtDeath: string | null
+    lastProject: ProjectInfo | null
+    posthumousReleases: ProjectInfo[] | null
+  }
+  relatedCelebrities: RelatedCelebrity[]
+  sources: {
+    cause: SourceEntry[] | null
+    circumstances: SourceEntry[] | null
+    rumored: SourceEntry[] | null
+  }
+}
+
+// Notable Deaths types (discovery page)
+export interface NotableDeathActor {
+  id: number
+  tmdbId: number | null
+  name: string
+  profilePath: string | null
+  deathday: string
+  ageAtDeath: number | null
+  causeOfDeath: string | null
+  deathManner: string | null
+  strangeDeath: boolean
+  notableFactors: string[] | null
+  circumstancesConfidence: string | null
+  slug: string
+}
+
+export interface NotableDeathsResponse {
+  actors: NotableDeathActor[]
+  pagination: PaginationInfo
+}
+
+export type NotableDeathsFilter = "all" | "strange" | "disputed" | "controversial"

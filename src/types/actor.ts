@@ -99,6 +99,7 @@ export interface ActorDeathInfo {
   wikipediaUrl: string | null
   ageAtDeath: number | null
   yearsLost: number | null
+  hasDetailedDeathInfo: boolean
 }
 
 export interface ActorProfileResponse {

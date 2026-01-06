@@ -53,6 +53,14 @@ export default function QuickActions() {
         </Link>
         <span className={tooltipClass}>Browse actors by cause of death</span>
       </div>
+
+      <div className="group relative">
+        <Link data-testid="notable-deaths-btn" to="/deaths/notable" className={linkClass}>
+          <span className={emojiClass}>🔍</span>
+          Notable Deaths
+        </Link>
+        <span className={tooltipClass}>Strange, disputed, and controversial celebrity deaths</span>
+      </div>
     </div>
   )
 }
