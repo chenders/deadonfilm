@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest"
-import { formatDate, subtractDays, getDateRanges, MAX_QUERY_DAYS } from "./date-utils.js"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { formatDate, subtractDays, getDateRanges, MAX_QUERY_DAYS, calculateAge } from "./date-utils.js"
 
 describe("date-utils", () => {
   describe("formatDate", () => {
@@ -136,6 +136,67 @@ describe("date-utils", () => {
   describe("MAX_QUERY_DAYS constant", () => {
     it("is set to 14 (TMDB API limit)", () => {
       expect(MAX_QUERY_DAYS).toBe(14)
+    })
+  })
+
+  describe("calculateAge", () => {
+    beforeEach(() => {
+      // Mock current date to 2024-06-15 for consistent testing
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date("2024-06-15T12:00:00Z"))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it("returns null for null birthday", () => {
+      expect(calculateAge(null)).toBeNull()
+    })
+
+    it("calculates age to today when no reference date provided", () => {
+      // Born June 1, 1990 - should be 34 on June 15, 2024
+      expect(calculateAge("1990-06-01")).toBe(34)
+    })
+
+    it("calculates age correctly when birthday has not occurred yet this year", () => {
+      // Born July 1, 1990 - should be 33 on June 15, 2024 (birthday not yet)
+      expect(calculateAge("1990-07-01")).toBe(33)
+    })
+
+    it("calculates age on exact birthday", () => {
+      // Born June 15, 1990 - should be exactly 34 on June 15, 2024
+      expect(calculateAge("1990-06-15")).toBe(34)
+    })
+
+    it("calculates age at death with reference date", () => {
+      // Born Jan 1, 1950, died Jan 1, 2020 - exactly 70 years
+      expect(calculateAge("1950-01-01", "2020-01-01")).toBe(70)
+    })
+
+    it("calculates age at death when death occurred before birthday that year", () => {
+      // Born June 15, 1950, died March 10, 2020 - should be 69 (birthday hadn't occurred yet)
+      expect(calculateAge("1950-06-15", "2020-03-10")).toBe(69)
+    })
+
+    it("calculates age at death when death occurred after birthday that year", () => {
+      // Born March 10, 1950, died June 15, 2020 - should be 70
+      expect(calculateAge("1950-03-10", "2020-06-15")).toBe(70)
+    })
+
+    it("handles null reference date (calculates to today)", () => {
+      // Born June 1, 1990 - null reference should use today
+      expect(calculateAge("1990-06-01", null)).toBe(34)
+    })
+
+    it("handles same day birth and reference", () => {
+      // Born and died on same day - age 0
+      expect(calculateAge("2020-05-15", "2020-05-15")).toBe(0)
+    })
+
+    it("handles leap year birthdays", () => {
+      // Born Feb 29, 2000 - on June 15, 2024 should be 24
+      expect(calculateAge("2000-02-29")).toBe(24)
     })
   })
 })

@@ -8,6 +8,7 @@ import {
 } from "../lib/db.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
+import { calculateAge } from "../lib/date-utils.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -146,19 +147,4 @@ export async function getActor(req: Request, res: Response) {
     console.error("Actor fetch error:", error)
     res.status(500).json({ error: { message: "Failed to fetch actor data" } })
   }
-}
-
-function calculateAge(birthday: string | null, deathday: string | null): number | null {
-  if (!birthday || !deathday) return null
-
-  const birth = new Date(birthday)
-  const death = new Date(deathday)
-  let age = death.getFullYear() - birth.getFullYear()
-  const monthDiff = death.getMonth() - birth.getMonth()
-
-  if (monthDiff < 0 || (monthDiff === 0 && death.getDate() < birth.getDate())) {
-    age--
-  }
-
-  return age
 }

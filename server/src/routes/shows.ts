@@ -11,16 +11,15 @@ import {
 } from "../lib/tmdb.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
 import {
-  getActors,
-  batchUpsertActors,
   upsertShow,
   getSeasons as getSeasonsFromDb,
   getDeceasedActorsForShow,
   getLivingActorsForShow,
-  type ActorRecord,
   type ActorInput,
   type ShowRecord,
 } from "../lib/db.js"
+import { getActorsIfAvailable, saveDeceasedToDb } from "../lib/db-helpers.js"
+import { calculateAge } from "../lib/date-utils.js"
 import {
   calculateMovieMortality,
   calculateYearsLost,
@@ -458,21 +457,6 @@ export async function getShow(req: Request, res: Response) {
   }
 }
 
-function calculateAge(birthday: string | null): number | null {
-  if (!birthday) return null
-
-  const birth = new Date(birthday)
-  const today = new Date()
-  let age = today.getFullYear() - birth.getFullYear()
-  const monthDiff = today.getMonth() - birth.getMonth()
-
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-    age--
-  }
-
-  return age
-}
-
 // Fetch episode appearances for all actors in a show with exponential backoff
 async function fetchEpisodeAppearances(
   showId: number,
@@ -542,25 +526,6 @@ async function fetchEpisodeAppearances(
   }
 
   return actorEpisodes
-}
-
-// Helper to safely get actors from database
-async function getActorsIfAvailable(tmdbIds: number[]): Promise<Map<number, ActorRecord>> {
-  if (!process.env.DATABASE_URL) return new Map()
-  try {
-    return await getActors(tmdbIds)
-  } catch (error) {
-    console.error("Database read error:", error)
-    return new Map()
-  }
-}
-
-// Helper to save deceased persons to database in background
-function saveDeceasedToDb(persons: ActorInput[]): void {
-  if (!process.env.DATABASE_URL) return
-  batchUpsertActors(persons).catch((error) => {
-    console.error("Database write error:", error)
-  })
 }
 
 // Cache show in database in background
