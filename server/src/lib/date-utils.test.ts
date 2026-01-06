@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { formatDate, subtractDays, getDateRanges, MAX_QUERY_DAYS, calculateAge } from "./date-utils.js"
+import {
+  formatDate,
+  subtractDays,
+  getDateRanges,
+  MAX_QUERY_DAYS,
+  calculateAge,
+} from "./date-utils.js"
 
 describe("date-utils", () => {
   describe("formatDate", () => {

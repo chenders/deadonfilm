@@ -45,7 +45,10 @@ export function subtractDays(dateStr: string, days: number): string {
  * @param referenceDate - Optional end date (e.g., death date). Defaults to today.
  * @returns Age in years, or null if birthday is missing
  */
-export function calculateAge(birthday: string | null, referenceDate?: string | null): number | null {
+export function calculateAge(
+  birthday: string | null,
+  referenceDate?: string | null
+): number | null {
   if (!birthday) return null
 
   const birth = new Date(birthday)
