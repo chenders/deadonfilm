@@ -109,8 +109,9 @@ async function run(options: {
   verbose: boolean
   pause: boolean
   all: boolean
+  force: boolean
 }): Promise<void> {
-  const { limit, pollInterval, dryRun, verbose, pause, all } = options
+  const { limit, pollInterval, dryRun, verbose, pause, all, force } = options
 
   // Set global verbose mode for use in processResults
   verboseMode = verbose
@@ -138,7 +139,9 @@ async function run(options: {
     `Mode: ${dryRun ? "DRY RUN" : "LIVE"} - ${all ? "ALL deceased actors" : "Only missing cause of death"}`
   )
   console.log(`Batch size: ${limit} | Poll interval: ${pollInterval}s`)
-  console.log(`Verbose: ${verbose} | Pause between batches: ${pause}`)
+  console.log(
+    `Verbose: ${verbose} | Pause between batches: ${pause}${force ? " | Force overwrite: ON" : ""}`
+  )
   if (dryRun) console.log(`*** DRY RUN - no changes will be made ***`)
   console.log(`Press Ctrl-C to stop after current batch completes`)
   console.log(`${"=".repeat(60)}\n`)
@@ -338,7 +341,7 @@ async function run(options: {
     console.log(`\n[3/3] Processing results...`)
 
     try {
-      const batchProcessed = await processResults(anthropic!, batchId!, checkpoint!)
+      const batchProcessed = await processResults(anthropic!, batchId!, checkpoint!, force)
       totalProcessed += batchProcessed
 
       // Clean up checkpoint on success
@@ -486,7 +489,8 @@ export async function markActorAsChecked(
 export async function processResults(
   anthropic: Anthropic,
   batchId: string,
-  checkpoint: Checkpoint
+  checkpoint: Checkpoint,
+  force: boolean = false
 ): Promise<number> {
   const db = getPool()
   let processed = 0
@@ -535,7 +539,7 @@ export async function processResults(
           logParsedResponse(actorName, parsed)
 
           // Apply update to database
-          await applyUpdate(db, actorId, parsed, batchId, checkpoint)
+          await applyUpdate(db, actorId, parsed, batchId, checkpoint, force)
           checkpoint.stats.succeeded++
 
           // Show per-actor output in verbose mode
@@ -604,7 +608,8 @@ async function applyUpdate(
   actorId: number,
   parsed: { cause?: string | null; details?: string | null },
   batchId: string,
-  checkpoint: Checkpoint
+  checkpoint: Checkpoint,
+  force: boolean = false
 ): Promise<void> {
   const SOURCE_NAME = "claude-opus-4.5-batch"
 
@@ -624,8 +629,8 @@ async function applyUpdate(
   // Normalize cause if provided
   const normalizedCause = parsed.cause ? toSentenceCase(parsed.cause) : null
 
-  // Update cause_of_death if we have a new one and actor doesn't have one
-  if (normalizedCause && !actor.cause_of_death) {
+  // Update cause_of_death if we have a new one and (force OR actor doesn't have one)
+  if (normalizedCause && (force || !actor.cause_of_death)) {
     updates.push(`cause_of_death = $${paramIndex++}`)
     values.push(normalizedCause)
     updates.push(`cause_of_death_source = $${paramIndex++}`)
@@ -633,8 +638,8 @@ async function applyUpdate(
     checkpoint.stats.updatedCause++
   }
 
-  // Update details if we have new ones and actor doesn't have them
-  if (parsed.details && !actor.cause_of_death_details) {
+  // Update details if we have new ones and (force OR actor doesn't have them)
+  if (parsed.details && (force || !actor.cause_of_death_details)) {
     updates.push(`cause_of_death_details = $${paramIndex++}`)
     values.push(parsed.details)
     updates.push(`cause_of_death_details_source = $${paramIndex++}`)
@@ -648,15 +653,15 @@ async function applyUpdate(
   values.push(actorId)
   await db.query(`UPDATE actors SET ${updates.join(", ")} WHERE id = $${paramIndex}`, values)
 
-  // Record history
-  if (normalizedCause && !actor.cause_of_death) {
+  // Record history (only if we actually updated something)
+  if (normalizedCause && (force || !actor.cause_of_death)) {
     await db.query(
       `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [actorId, "cause_of_death", actor.cause_of_death, normalizedCause, SOURCE_NAME, batchId]
     )
   }
-  if (parsed.details && !actor.cause_of_death_details) {
+  if (parsed.details && (force || !actor.cause_of_death_details)) {
     await db.query(
       `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
        VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -682,6 +687,7 @@ const program = new Command()
   .option("-q, --quiet", "Suppress per-actor output (default: verbose)")
   .option("--no-pause", "Run continuously without pausing between batches")
   .option("-a, --all", "Process ALL deceased actors (not just those missing cause)")
+  .option("-f, --force", "Overwrite existing cause/details (use with --all)")
   .action(async (options) => {
     await run({
       limit: options.limit,
@@ -690,6 +696,7 @@ const program = new Command()
       verbose: !options.quiet, // Default verbose=true, --quiet sets to false
       pause: options.pause !== false, // Default pause=true, --no-pause sets to false
       all: options.all ?? false,
+      force: options.force ?? false,
     })
   })
 
