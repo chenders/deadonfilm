@@ -6,6 +6,7 @@
  */
 
 import { createActorSlug, createMovieSlug } from "./slug-utils.js"
+import { categorizeCauseOfDeath, CAUSE_CATEGORIES as CauseCategories } from "./cause-categories.js"
 
 // Re-export pool functions for backward compatibility
 export { getPool, resetPool, queryWithRetry, initDatabase } from "./db/pool.js"
@@ -1242,6 +1243,7 @@ export interface SiteStats {
   totalDeceasedActors: number
   totalMoviesAnalyzed: number
   topCauseOfDeath: string | null
+  topCauseOfDeathCategorySlug: string | null
   avgMortalityPercentage: number | null
   causeOfDeathPercentage: number | null
   actorsWithCauseKnown: number | null
@@ -1297,11 +1299,13 @@ export async function getSiteStats(): Promise<SiteStats> {
   `)
 
   const row = result.rows[0]
+  const categoryKey = row.top_cause ? categorizeCauseOfDeath(row.top_cause) : null
   const stats: SiteStats = {
     totalActors: parseInt(row.total_all_actors, 10) || 0,
     totalDeceasedActors: parseInt(row.total_deceased_actors, 10) || 0,
     totalMoviesAnalyzed: parseInt(row.total_movies, 10) || 0,
     topCauseOfDeath: row.top_cause,
+    topCauseOfDeathCategorySlug: categoryKey ? CauseCategories[categoryKey].slug : null,
     avgMortalityPercentage: row.avg_mortality ? parseFloat(row.avg_mortality) : null,
     causeOfDeathPercentage: row.cause_pct ? parseFloat(row.cause_pct) : null,
     actorsWithCauseKnown: row.cause_known_count ? parseInt(row.cause_known_count, 10) : null,
