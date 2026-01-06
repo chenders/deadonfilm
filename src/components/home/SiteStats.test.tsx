@@ -15,6 +15,7 @@ const mockStats = {
   totalDeceasedActors: 1500,
   totalMoviesAnalyzed: 350,
   topCauseOfDeath: "Cancer",
+  topCauseOfDeathCategorySlug: "cancer",
   avgMortalityPercentage: 42.5,
   causeOfDeathPercentage: 25.8,
   actorsWithCauseKnown: 387,
@@ -94,12 +95,28 @@ describe("SiteStats", () => {
     })
   })
 
+  it("links leading cause to the correct category page", async () => {
+    vi.mocked(api.getSiteStats).mockResolvedValue({
+      ...mockStats,
+      topCauseOfDeath: "Heart Attack",
+      topCauseOfDeathCategorySlug: "heart-disease",
+    })
+
+    renderWithProviders(<SiteStats />)
+
+    await waitFor(() => {
+      const leadingCauseLink = screen.getByTestId("leading-cause-link")
+      expect(leadingCauseLink).toHaveAttribute("href", "/causes-of-death/heart-disease")
+    })
+  })
+
   it("renders nothing when stats are all zero", async () => {
     vi.mocked(api.getSiteStats).mockResolvedValue({
       totalActors: 0,
       totalDeceasedActors: 0,
       totalMoviesAnalyzed: 0,
       topCauseOfDeath: null,
+      topCauseOfDeathCategorySlug: null,
       avgMortalityPercentage: null,
       causeOfDeathPercentage: null,
       actorsWithCauseKnown: null,
@@ -135,6 +152,7 @@ describe("SiteStats", () => {
       totalDeceasedActors: 1000,
       totalMoviesAnalyzed: 200,
       topCauseOfDeath: null,
+      topCauseOfDeathCategorySlug: null,
       avgMortalityPercentage: null,
       causeOfDeathPercentage: null,
       actorsWithCauseKnown: null,
@@ -195,6 +213,7 @@ describe("SiteStats", () => {
     vi.mocked(api.getSiteStats).mockResolvedValue({
       ...mockStats,
       topCauseOfDeath: null, // Only mortality, no cause
+      topCauseOfDeathCategorySlug: null,
     })
 
     renderWithProviders(<SiteStats />)

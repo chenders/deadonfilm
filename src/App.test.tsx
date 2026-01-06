@@ -22,6 +22,7 @@ vi.mock("@/services/api", () => ({
       totalDeceasedActors: 1500,
       totalMoviesAnalyzed: 350,
       topCauseOfDeath: "Cancer",
+      topCauseOfDeathCategorySlug: "cancer",
       avgMortalityPercentage: 42.5,
       causeOfDeathPercentage: 25.8,
       actorsWithCauseKnown: 387,

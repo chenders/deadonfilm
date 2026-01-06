@@ -95,12 +95,12 @@ export default function SiteStats() {
             testId="causes-known-link"
           />
         )}
-        {data.topCauseOfDeath && (
+        {data.topCauseOfDeath && data.topCauseOfDeathCategorySlug && (
           <StatCard
             icon={<span className="text-xs">†</span>}
             value={data.topCauseOfDeath}
             label="leading cause"
-            to="/causes-of-death/cancer"
+            to={`/causes-of-death/${data.topCauseOfDeathCategorySlug}`}
             testId="leading-cause-link"
           />
         )}
