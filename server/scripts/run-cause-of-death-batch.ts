@@ -542,20 +542,14 @@ export async function processResults(
             }
           }
 
-          // Log the response
-          logParsedResponse(actorName, parsed)
+          // Log the response (in verbose mode)
+          if (verboseMode) {
+            logParsedResponse(actorName, parsed)
+          }
 
           // Apply update to database
           await applyUpdate(db, actorId, parsed, batchId, checkpoint, force)
           checkpoint.stats.succeeded++
-
-          // Show per-actor output in verbose mode
-          if (verboseMode && (parsed.cause || parsed.details)) {
-            console.log(`\n  Actor ${actorId}: ${parsed.cause || "(no cause)"}`)
-            if (parsed.details) {
-              console.log(`    Details: ${parsed.details}`)
-            }
-          }
         } catch (error) {
           checkpoint.stats.errored++
           const errorMsg = error instanceof Error ? error.message : "Unknown error"
