@@ -72,6 +72,11 @@ async function promptToContinue(message: string): Promise<boolean> {
  */
 let verboseMode = true
 
+/** Exported for testing purposes */
+export function setVerboseMode(value: boolean): void {
+  verboseMode = value
+}
+
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
@@ -542,20 +547,14 @@ export async function processResults(
             }
           }
 
-          // Log the response
-          logParsedResponse(actorName, parsed)
+          // Log the response (in verbose mode)
+          if (verboseMode) {
+            logParsedResponse(actorName, parsed)
+          }
 
           // Apply update to database
           await applyUpdate(db, actorId, parsed, batchId, checkpoint, force)
           checkpoint.stats.succeeded++
-
-          // Show per-actor output in verbose mode
-          if (verboseMode && (parsed.cause || parsed.details)) {
-            console.log(`\n  Actor ${actorId}: ${parsed.cause || "(no cause)"}`)
-            if (parsed.details) {
-              console.log(`    Details: ${parsed.details}`)
-            }
-          }
         } catch (error) {
           checkpoint.stats.errored++
           const errorMsg = error instanceof Error ? error.message : "Unknown error"

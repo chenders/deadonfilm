@@ -23,7 +23,7 @@ vi.mock("../src/lib/newrelic.js", () => ({
   recordCustomEvent: vi.fn(),
 }))
 
-import { processResults, markActorAsChecked } from "./run-cause-of-death-batch.js"
+import { processResults, markActorAsChecked, setVerboseMode } from "./run-cause-of-death-batch.js"
 import { getPool, resetPool } from "../src/lib/db.js"
 import {
   saveCheckpoint,
@@ -724,6 +724,116 @@ describe("processResults", () => {
       expect(detailsHistory).toBeDefined()
       expect(detailsHistory![1]).toContain("old details") // old_value
       expect(detailsHistory![1]).toContain("new details") // new_value
+    })
+  })
+
+  describe("verbose mode logging", () => {
+    afterEach(() => {
+      // Reset to default verbose mode after each test
+      setVerboseMode(true)
+    })
+
+    it("calls console.log when verboseMode is true", async () => {
+      setVerboseMode(true)
+
+      // Mock actor without existing cause
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ name: "Test Actor" }] }) // Name lookup
+        .mockResolvedValueOnce({
+          rows: [{ cause_of_death: null, cause_of_death_details: null }],
+        }) // Actor data lookup
+        .mockResolvedValue({ rows: [] }) // Subsequent queries
+
+      const validJson = JSON.stringify({ cause: "heart attack", details: "sudden cardiac arrest" })
+      vi.mocked(stripMarkdownCodeFences).mockReturnValue(validJson)
+
+      const mockResults = [
+        {
+          custom_id: "actor-800",
+          result: {
+            type: "succeeded" as const,
+            message: {
+              content: [{ type: "text" as const, text: validJson }],
+            },
+          },
+        },
+      ]
+
+      const mockAnthropicResults = async function* () {
+        for (const result of mockResults) {
+          yield result
+        }
+      }
+
+      const mockAnthropic = {
+        messages: {
+          batches: {
+            results: vi.fn().mockResolvedValue(mockAnthropicResults()),
+          },
+        },
+      } as unknown as Anthropic
+
+      await processResults(mockAnthropic, "test-batch", mockCheckpoint, false)
+
+      // In verbose mode, console.log should have been called with actor info
+      expect(console.log).toHaveBeenCalled()
+    })
+
+    it("does not log actor details when verboseMode is false", async () => {
+      setVerboseMode(false)
+
+      // Mock actor without existing cause
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ name: "Test Actor" }] }) // Name lookup
+        .mockResolvedValueOnce({
+          rows: [{ cause_of_death: null, cause_of_death_details: null }],
+        }) // Actor data lookup
+        .mockResolvedValue({ rows: [] }) // Subsequent queries
+
+      const validJson = JSON.stringify({ cause: "heart attack", details: "sudden cardiac arrest" })
+      vi.mocked(stripMarkdownCodeFences).mockReturnValue(validJson)
+
+      const mockResults = [
+        {
+          custom_id: "actor-801",
+          result: {
+            type: "succeeded" as const,
+            message: {
+              content: [{ type: "text" as const, text: validJson }],
+            },
+          },
+        },
+      ]
+
+      const mockAnthropicResults = async function* () {
+        for (const result of mockResults) {
+          yield result
+        }
+      }
+
+      const mockAnthropic = {
+        messages: {
+          batches: {
+            results: vi.fn().mockResolvedValue(mockAnthropicResults()),
+          },
+        },
+      } as unknown as Anthropic
+
+      // Clear previous console.log calls from beforeEach setup
+      vi.mocked(console.log).mockClear()
+
+      await processResults(mockAnthropic, "test-batch", mockCheckpoint, false)
+
+      // In quiet mode, console.log should NOT have been called with actor-specific info
+      // (only checkpoint progress messages are allowed)
+      const logCalls = vi.mocked(console.log).mock.calls
+      const actorLogCalls = logCalls.filter(
+        (call) =>
+          call[0]?.toString().includes("Test Actor") ||
+          call[0]?.toString().includes("heart attack") ||
+          call[0]?.toString().includes("Cause:")
+      )
+      expect(actorLogCalls).toHaveLength(0)
     })
   })
 
