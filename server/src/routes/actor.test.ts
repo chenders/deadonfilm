@@ -25,7 +25,7 @@ vi.mock("../lib/cache.js", () => ({
   setCached: vi.fn().mockResolvedValue(undefined),
   buildCacheKey: vi.fn((prefix, params) => `${prefix}:id:${params?.id}`),
   CACHE_PREFIX: { ACTOR: "actor" },
-  CACHE_TTL: { LONG: 600 },
+  CACHE_TTL: { WEEK: 604800 },
 }))
 
 import { recordCustomEvent } from "../lib/newrelic.js"
@@ -194,7 +194,7 @@ describe("getActor", () => {
         analyzedTVFilmography: mockTVFilmography,
         deathInfo: null,
       }),
-      CACHE_TTL.LONG
+      CACHE_TTL.WEEK
     )
   })
 

@@ -11,14 +11,14 @@ export async function getGenreCategoriesHandler(req: Request, res: Response) {
 
     const cached = await getCached<GenresResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.DAY)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const genres = await getGenreCategories()
     const response: GenresResponse = { genres }
 
-    await setCached(cacheKey, response, CACHE_TTL.DAY)
-    sendWithETag(req, res, response, CACHE_TTL.DAY)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Error getting genre categories:", error)
     res.status(500).json({ error: { message: "Failed to load genre categories" } })
@@ -69,7 +69,7 @@ export async function getMoviesByGenreHandler(req: Request, res: Response) {
 
     const cached = await getCached<MoviesByGenreResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const { movies, totalCount } = await getMoviesByGenre(genre, { limit, offset })
@@ -95,8 +95,8 @@ export async function getMoviesByGenreHandler(req: Request, res: Response) {
       },
     }
 
-    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
-    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Error getting movies by genre:", error)
     res.status(500).json({ error: { message: "Failed to load movies for this genre" } })

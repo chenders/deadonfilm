@@ -5,6 +5,7 @@
 import { getRedisClient } from "./redis.js"
 import { logger } from "./logger.js"
 import { recordCustomEvent } from "./newrelic.js"
+import { getRecentDeaths, getSiteStats, getDeathsThisWeekSimple } from "./db.js"
 
 // Cache key prefixes for different data types
 export const CACHE_PREFIX = {
@@ -29,12 +30,10 @@ export const CACHE_PREFIX = {
 } as const
 
 // TTL values in seconds
+// Using long TTLs since we invalidate/rebuild caches when data changes
 export const CACHE_TTL = {
-  SHORT: 120, // 2 minutes - search results
-  MEDIUM: 300, // 5 minutes - list endpoints
-  LONG: 600, // 10 minutes - entity lookups
-  HOUR: 3600, // 1 hour - aggregate stats
-  DAY: 86400, // 24 hours - static reference data
+  SHORT: 300, // 5 minutes - search results, transient data
+  WEEK: 604800, // 1 week - standard TTL for data invalidated on change
 } as const
 
 /**
@@ -182,4 +181,49 @@ export async function invalidateMovieCaches(): Promise<void> {
     invalidateByPattern(`${CACHE_PREFIX.POPULAR_MOVIES}:*`),
     invalidateKeys(CACHE_PREFIX.FEATURED_MOVIE),
   ])
+}
+
+/**
+ * Get the current week's start date as ISO string (YYYY-MM-DD).
+ * Used as cache key component for this-week deaths.
+ */
+function getWeekKey(): string {
+  const now = new Date()
+  const dayOfWeek = now.getDay() // 0 = Sunday
+  const weekStart = new Date(now)
+  weekStart.setDate(now.getDate() - dayOfWeek)
+  return weekStart.toISOString().split("T")[0]
+}
+
+/**
+ * Invalidate and rebuild death-related caches.
+ * Call this after batch processing updates death data.
+ */
+export async function rebuildDeathCaches(): Promise<void> {
+  // First invalidate all death caches
+  await invalidateDeathCaches()
+
+  // Then rebuild the most commonly requested caches
+  try {
+    // Rebuild recent deaths for common limits (5, 10, 20)
+    for (const limit of [5, 10, 20]) {
+      const deaths = await getRecentDeaths(limit)
+      const key = buildCacheKey(CACHE_PREFIX.RECENT_DEATHS, { limit })
+      await setCached(key, deaths, CACHE_TTL.WEEK)
+    }
+
+    // Rebuild site stats
+    const stats = await getSiteStats()
+    await setCached(CACHE_PREFIX.STATS, stats, CACHE_TTL.WEEK)
+
+    // Rebuild this week's deaths
+    const thisWeekDeaths = await getDeathsThisWeekSimple()
+    const weekKey = getWeekKey()
+    const thisWeekCacheKey = buildCacheKey(CACHE_PREFIX.THIS_WEEK, { week: weekKey })
+    await setCached(thisWeekCacheKey, thisWeekDeaths, CACHE_TTL.WEEK)
+
+    logger.info("Death caches rebuilt")
+  } catch (err) {
+    logger.warn({ err: (err as Error).message }, "Error rebuilding death caches")
+  }
 }
