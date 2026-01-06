@@ -9,6 +9,7 @@
  * - ./pool.ts - Connection pool management
  * - ./types.ts - Type definitions (interfaces, type aliases)
  * - ./stats.ts - Site statistics and sync state functions
+ * - ./trivia.ts - Trivia facts and popular/featured content
  */
 
 // Re-export pool functions
@@ -23,6 +24,15 @@ export {
   getDeceasedTmdbIds,
   getAllMovieTmdbIds,
 } from "./stats.js"
+
+// Re-export trivia functions
+export {
+  getMostCursedMovie,
+  getTrivia,
+  getDeathsThisWeek,
+  getDeathsThisWeekSimple,
+  getPopularMovies,
+} from "./trivia.js"
 
 // Re-export all types
 export type * from "./types.js"
