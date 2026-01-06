@@ -56,7 +56,7 @@ export async function getCursedActorsRoute(req: Request, res: Response) {
 
     const cached = await getCached<CursedActorsResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const { actors, totalCount } = await getCursedActors({
@@ -104,8 +104,8 @@ export async function getCursedActorsRoute(req: Request, res: Response) {
       responseTimeMs: Date.now() - startTime,
     })
 
-    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
-    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Cursed actors error:", error)
     res.status(500).json({ error: { message: "Failed to fetch cursed actors" } })

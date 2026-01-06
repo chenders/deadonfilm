@@ -128,7 +128,7 @@ export async function getActor(req: Request, res: Response) {
     }
 
     // Cache the response
-    await setCached(cacheKey, response, CACHE_TTL.LONG)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
 
     recordCustomEvent("ActorView", {
       tmdbId: actorId,

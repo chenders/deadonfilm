@@ -23,14 +23,14 @@ export async function getCauseCategoriesHandler(req: Request, res: Response) {
 
     const cached = await getCached<CausesResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const causes = await getCauseCategories()
     const response: CausesResponse = { causes }
 
-    await setCached(cacheKey, response, CACHE_TTL.HOUR)
-    sendWithETag(req, res, response, CACHE_TTL.HOUR)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Cause categories error:", error)
     res.status(500).json({ error: { message: "Failed to fetch cause categories" } })
@@ -90,7 +90,7 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
 
     const cached = await getCached<DeathsByCauseResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const { deaths, totalCount } = await getDeathsByCause(cause, {
@@ -129,8 +129,8 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
       responseTimeMs: Date.now() - startTime,
     })
 
-    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
-    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Deaths by cause error:", error)
     res.status(500).json({ error: { message: "Failed to fetch deaths by cause" } })
@@ -149,14 +149,14 @@ export async function getDecadeCategoriesHandler(req: Request, res: Response) {
 
     const cached = await getCached<DecadesResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const decades = await getDecadeCategories()
     const response: DecadesResponse = { decades }
 
-    await setCached(cacheKey, response, CACHE_TTL.HOUR)
-    sendWithETag(req, res, response, CACHE_TTL.HOUR)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Decade categories error:", error)
     res.status(500).json({ error: { message: "Failed to fetch decade categories" } })
@@ -221,7 +221,7 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
 
     const cached = await getCached<DeathsByDecadeResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const { deaths, totalCount } = await getDeathsByDecade(decade, {
@@ -259,8 +259,8 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
       responseTimeMs: Date.now() - startTime,
     })
 
-    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
-    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Deaths by decade error:", error)
     res.status(500).json({ error: { message: "Failed to fetch deaths by decade" } })
@@ -311,7 +311,7 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
     if (cacheKey) {
       const cached = await getCached<AllDeathsResponse>(cacheKey)
       if (cached) {
-        return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+        return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
       }
     }
 
@@ -350,9 +350,9 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
     })
 
     if (cacheKey) {
-      await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+      await setCached(cacheKey, response, CACHE_TTL.WEEK)
     }
-    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("All deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch all deaths" } })

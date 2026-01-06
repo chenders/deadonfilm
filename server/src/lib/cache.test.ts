@@ -33,11 +33,8 @@ describe("cache", () => {
 
   describe("CACHE_TTL", () => {
     it("has expected TTL values in seconds", () => {
-      expect(CACHE_TTL.SHORT).toBe(120) // 2 minutes
-      expect(CACHE_TTL.MEDIUM).toBe(300) // 5 minutes
-      expect(CACHE_TTL.LONG).toBe(600) // 10 minutes
-      expect(CACHE_TTL.HOUR).toBe(3600) // 1 hour
-      expect(CACHE_TTL.DAY).toBe(86400) // 24 hours
+      expect(CACHE_TTL.SHORT).toBe(300) // 5 minutes
+      expect(CACHE_TTL.WEEK).toBe(604800) // 1 week
     })
   })
 

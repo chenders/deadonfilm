@@ -154,7 +154,7 @@ export async function getActorDeathDetails(req: Request, res: Response) {
     }
 
     // Cache the response
-    await setCached(cacheKey, response, CACHE_TTL.LONG)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
 
     recordCustomEvent("DeathDetailsView", {
       tmdbId: actorId,
@@ -248,7 +248,7 @@ export async function getNotableDeaths(req: Request, res: Response) {
     const response: NotableDeathsResponse = result
 
     // Cache for 5 minutes
-    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
 
     recordCustomEvent("NotableDeathsView", {
       filter,
