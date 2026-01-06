@@ -85,6 +85,8 @@ interface ActorToProcess {
   deathday: Date | string // Deceased actors always have a deathday
   cause_of_death: string | null
   cause_of_death_details: string | null
+  imdb_person_id: string | null
+  known_for: string | null // Comma-separated list of notable works
 }
 
 interface SourceEntry {
@@ -429,7 +431,19 @@ function buildPrompt(actor: ActorToProcess): string {
   const deathYear = getDeathYear(actor.deathday)
   const birthInfo = birthYear ? `born ${birthYear}, ` : ""
 
-  return `Research the death of ${actor.name} (${birthInfo}died ${deathYear}), an actor/entertainer.
+  // Build disambiguation context
+  const disambigParts: string[] = []
+  if (actor.known_for) {
+    disambigParts.push(`Known for: ${actor.known_for}`)
+  }
+  if (actor.imdb_person_id) {
+    disambigParts.push(`IMDb: ${actor.imdb_person_id}`)
+  }
+  disambigParts.push(`TMDB ID: ${actor.tmdb_id}`)
+
+  const disambigInfo = disambigParts.length > 0 ? `\n${disambigParts.join(". ")}.` : ""
+
+  return `Research the death of ${actor.name} (${birthInfo}died ${deathYear}), an actor/entertainer.${disambigInfo}
 
 Return a JSON object with these fields:
 
@@ -479,6 +493,8 @@ Return a JSON object with these fields:
 - medium: Reliable news sources, family statements, consistent reports
 - low: Single source, tabloid, unverified
 - disputed: Conflicting official accounts, contested, ongoing investigation
+
+**Important:** If you cannot identify this specific person with the given information (e.g., common name with no distinguishing works), return {"cause": null, "details": null, "manner": null, "circumstances": null} with all other fields null.
 
 Respond with valid JSON only. Be thorough in circumstances and details - capture as much information as possible.`
 }
@@ -559,12 +575,23 @@ async function submitBatch(options: {
   console.log(`\nQuerying actors missing cause of death info...`)
 
   // Query actors missing cause_of_death OR cause_of_death_details
+  // Includes known_for: up to 3 notable movies for disambiguation
   let query = `
-    SELECT id, tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_details
-    FROM actors
-    WHERE deathday IS NOT NULL
-      AND (cause_of_death IS NULL OR cause_of_death_details IS NULL)
-    ORDER BY popularity DESC NULLS LAST
+    SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday,
+           a.cause_of_death, a.cause_of_death_details, a.imdb_person_id,
+           (SELECT string_agg(title, ', ' ORDER BY popularity DESC NULLS LAST)
+            FROM (
+              SELECT m.title, m.popularity
+              FROM actor_movie_appearances ama
+              JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
+              WHERE ama.actor_id = a.id
+              ORDER BY m.popularity DESC NULLS LAST
+              LIMIT 3
+            ) top_movies) as known_for
+    FROM actors a
+    WHERE a.deathday IS NOT NULL
+      AND (a.cause_of_death IS NULL OR a.cause_of_death_details IS NULL)
+    ORDER BY a.popularity DESC NULLS LAST
   `
 
   const params: number[] = []

@@ -98,6 +98,8 @@ interface ActorToProcess {
   name: string
   birthday: Date | string | null
   deathday: Date | string | null
+  imdb_person_id: string | null
+  known_for: string | null // Comma-separated list of notable works
 }
 
 let isShuttingDown = false
@@ -195,18 +197,37 @@ async function run(options: {
       console.log(`\n[1/3] Submitting batch (limit: ${limit})...`)
 
       const db = getPool()
+      // Query includes known_for: up to 3 notable movies/shows for disambiguation
       const selectQuery = all
-        ? `SELECT id, tmdb_id, name, birthday, deathday
-           FROM actors
-           WHERE deathday IS NOT NULL
-           ORDER BY popularity DESC NULLS LAST
+        ? `SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday, a.imdb_person_id,
+             (SELECT string_agg(title, ', ' ORDER BY popularity DESC NULLS LAST)
+              FROM (
+                SELECT m.title, m.popularity
+                FROM actor_movie_appearances ama
+                JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
+                WHERE ama.actor_id = a.id
+                ORDER BY m.popularity DESC NULLS LAST
+                LIMIT 3
+              ) top_movies) as known_for
+           FROM actors a
+           WHERE a.deathday IS NOT NULL
+           ORDER BY a.popularity DESC NULLS LAST
            LIMIT $1`
-        : `SELECT id, tmdb_id, name, birthday, deathday
-           FROM actors
-           WHERE deathday IS NOT NULL
-             AND cause_of_death IS NULL
-             AND cause_of_death_checked_at IS NULL
-           ORDER BY popularity DESC NULLS LAST
+        : `SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday, a.imdb_person_id,
+             (SELECT string_agg(title, ', ' ORDER BY popularity DESC NULLS LAST)
+              FROM (
+                SELECT m.title, m.popularity
+                FROM actor_movie_appearances ama
+                JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
+                WHERE ama.actor_id = a.id
+                ORDER BY m.popularity DESC NULLS LAST
+                LIMIT 3
+              ) top_movies) as known_for
+           FROM actors a
+           WHERE a.deathday IS NOT NULL
+             AND a.cause_of_death IS NULL
+             AND a.cause_of_death_checked_at IS NULL
+           ORDER BY a.popularity DESC NULLS LAST
            LIMIT $1`
       const result = await db.query<ActorToProcess>(selectQuery, [limit])
 
@@ -407,7 +428,19 @@ function buildPrompt(actor: ActorToProcess): string {
   const deathYear = getYearFromDate(actor.deathday)
   const birthInfo = birthYear ? `born ${birthYear}, ` : ""
 
-  return `What was the cause of death for ${actor.name} (${birthInfo}died ${deathYear})?
+  // Build disambiguation context
+  const disambigParts: string[] = []
+  if (actor.known_for) {
+    disambigParts.push(`Known for: ${actor.known_for}`)
+  }
+  if (actor.imdb_person_id) {
+    disambigParts.push(`IMDb: ${actor.imdb_person_id}`)
+  }
+  disambigParts.push(`TMDB ID: ${actor.tmdb_id}`)
+
+  const disambigInfo = disambigParts.length > 0 ? `\n${disambigParts.join(". ")}.` : ""
+
+  return `What was the cause of death for ${actor.name} (${birthInfo}died ${deathYear}), an actor/entertainer?${disambigInfo}
 
 Return JSON with these fields:
 - cause: specific medical cause (e.g., "heart failure", "pancreatic cancer") or null if unknown
@@ -419,6 +452,7 @@ Rules:
 - Details = medical circumstances only (duration of illness, complications, etc.)
 - No family/career/tribute info in details
 - Only include corrections if you're confident our dates are wrong
+- If you cannot identify this specific person with the given information, return {"cause": null, "details": null, "corrections": null}
 
 Respond with valid JSON only.`
 }
