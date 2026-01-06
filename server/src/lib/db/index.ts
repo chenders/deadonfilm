@@ -10,6 +10,7 @@
  * - ./types.ts - Type definitions (interfaces, type aliases)
  * - ./stats.ts - Site statistics and sync state functions
  * - ./trivia.ts - Trivia facts and popular/featured content
+ * - ./actors.ts - Actor CRUD and filmography functions
  */
 
 // Re-export pool functions
@@ -33,6 +34,20 @@ export {
   getDeathsThisWeekSimple,
   getPopularMovies,
 } from "./trivia.js"
+
+// Re-export actor functions
+export {
+  getActor,
+  getActors,
+  upsertActor,
+  batchUpsertActors,
+  updateDeathInfo,
+  updateDeathInfoByActorId,
+  getActorById,
+  getDeceasedByMonthDay,
+  getActorFilmography,
+  getActorShowFilmography,
+} from "./actors.js"
 
 // Re-export all types
 export type * from "./types.js"
