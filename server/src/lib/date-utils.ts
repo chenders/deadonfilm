@@ -30,14 +30,6 @@ export function subtractDays(dateStr: string, days: number): string {
 }
 
 /**
- * Split a date range into chunks of MAX_QUERY_DAYS or less.
- * TMDB API allows up to 14 days inclusive per query.
- *
- * @param startDate - Start date in YYYY-MM-DD format
- * @param endDate - End date in YYYY-MM-DD format
- * @returns Array of date ranges, each with start and end in YYYY-MM-DD format
- */
-/**
  * Calculate age from a birthday to an optional reference date.
  * If no reference date provided, calculates age as of today.
  *
@@ -64,6 +56,14 @@ export function calculateAge(
   return age
 }
 
+/**
+ * Split a date range into chunks of MAX_QUERY_DAYS or less.
+ * TMDB API allows up to 14 days inclusive per query.
+ *
+ * @param startDate - Start date in YYYY-MM-DD format
+ * @param endDate - End date in YYYY-MM-DD format
+ * @returns Array of date ranges, each with start and end in YYYY-MM-DD format
+ */
 export function getDateRanges(
   startDate: string,
   endDate: string
