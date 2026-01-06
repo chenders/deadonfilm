@@ -163,24 +163,48 @@ async function run(options: {
     isShuttingDown = true
   })
 
+  // Track all processed actor IDs across batches for --all mode
+  let allProcessedIds: Set<number> = new Set()
+
+  // Load existing checkpoint to get previously processed IDs
+  const existingCheckpoint = loadCheckpoint()
+  if (existingCheckpoint?.processedActorIds) {
+    allProcessedIds = new Set(existingCheckpoint.processedActorIds)
+  }
+
   while (!isShuttingDown) {
     batchCount++
 
     // Count remaining actors before each batch
     const db = getPool()
-    const countQuery = all
-      ? `SELECT COUNT(*) as count FROM actors WHERE deathday IS NOT NULL`
-      : `SELECT COUNT(*) as count
+    let remaining: number
+    if (all) {
+      // For --all mode, count total deceased and subtract already processed in this run
+      const countResult = await db.query<{ count: string }>(
+        `SELECT COUNT(*) as count FROM actors WHERE deathday IS NOT NULL`
+      )
+      const total = parseInt(countResult.rows[0].count, 10)
+      remaining = total - allProcessedIds.size
+    } else {
+      const countResult = await db.query<{ count: string }>(
+        `SELECT COUNT(*) as count
          FROM actors
          WHERE deathday IS NOT NULL
            AND cause_of_death IS NULL
            AND cause_of_death_checked_at IS NULL`
-    const countResult = await db.query<{ count: string }>(countQuery)
-    const remaining = parseInt(countResult.rows[0].count, 10)
+      )
+      remaining = parseInt(countResult.rows[0].count, 10)
+    }
     await resetPool()
 
     console.log(`\n${"─".repeat(60)}`)
-    console.log(`BATCH #${batchCount} | Remaining actors: ${remaining.toLocaleString()}`)
+    if (all) {
+      console.log(
+        `BATCH #${batchCount} | Remaining: ${remaining.toLocaleString()} (${allProcessedIds.size.toLocaleString()} processed this run)`
+      )
+    } else {
+      console.log(`BATCH #${batchCount} | Remaining actors: ${remaining.toLocaleString()}`)
+    }
     console.log(`${"─".repeat(60)}`)
 
     if (remaining === 0) {
@@ -198,6 +222,12 @@ async function run(options: {
 
       const db = getPool()
       // Query includes known_for: up to 3 notable movies/shows for disambiguation
+      // For --all mode, exclude already processed actors from this run
+      const excludeClause =
+        all && allProcessedIds.size > 0
+          ? `AND a.id NOT IN (${Array.from(allProcessedIds).join(",")})`
+          : ""
+
       const selectQuery = all
         ? `SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday, a.imdb_person_id,
              (SELECT string_agg(title, ', ' ORDER BY popularity DESC NULLS LAST)
@@ -211,6 +241,7 @@ async function run(options: {
               ) top_movies) as known_for
            FROM actors a
            WHERE a.deathday IS NOT NULL
+           ${excludeClause}
            ORDER BY a.popularity DESC NULLS LAST
            LIMIT $1`
         : `SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday, a.imdb_person_id,
@@ -362,8 +393,40 @@ async function run(options: {
       const batchProcessed = await processResults(anthropic!, batchId!, checkpoint!)
       totalProcessed += batchProcessed
 
+      // Track processed actor IDs for --all mode
+      if (all && checkpoint?.processedActorIds) {
+        for (const id of checkpoint.processedActorIds) {
+          allProcessedIds.add(id)
+        }
+      }
+
       // Clean up checkpoint on success
       deleteCheckpoint()
+
+      // For --all mode, save the cumulative processed IDs to a new checkpoint
+      if (all) {
+        saveCheckpoint({
+          batchId: null as unknown as string, // No active batch
+          processedActorIds: Array.from(allProcessedIds),
+          startedAt: existingCheckpoint?.startedAt || new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+          stats: {
+            submitted: 0,
+            succeeded: 0,
+            errored: 0,
+            expired: 0,
+            updatedCause: 0,
+            updatedDetails: 0,
+            updatedBirthday: 0,
+            updatedDeathday: 0,
+            updatedManner: 0,
+            updatedCategories: 0,
+            updatedCircumstances: 0,
+            createdCircumstancesRecord: 0,
+          },
+        })
+      }
+
       console.log(`\nBatch #${batchCount} complete: ${batchProcessed} actors processed`)
 
       recordCustomEvent("CauseOfDeathBatchProcessed", {
