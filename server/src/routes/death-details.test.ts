@@ -25,7 +25,7 @@ vi.mock("../lib/cache.js", () => ({
   setCached: vi.fn().mockResolvedValue(undefined),
   buildCacheKey: vi.fn((prefix, params) => `${prefix}:${JSON.stringify(params)}`),
   CACHE_PREFIX: { ACTOR: "actor", DEATHS: "deaths" },
-  CACHE_TTL: { LONG: 600, MEDIUM: 300 },
+  CACHE_TTL: { WEEK: 604800 },
 }))
 
 import { recordCustomEvent } from "../lib/newrelic.js"
@@ -233,7 +233,7 @@ describe("getActorDeathDetails", () => {
       expect.objectContaining({
         actor: expect.objectContaining({ tmdbId: 12345 }),
       }),
-      600
+      604800
     )
   })
 
@@ -467,7 +467,7 @@ describe("getNotableDeaths", () => {
 
     await getNotableDeaths(mockReq as Request, mockRes as Response)
 
-    expect(setCached).toHaveBeenCalledWith(expect.any(String), mockNotableDeathsResponse, 300)
+    expect(setCached).toHaveBeenCalledWith(expect.any(String), mockNotableDeathsResponse, 604800)
   })
 
   it("returns cached response without calling database on cache hit", async () => {

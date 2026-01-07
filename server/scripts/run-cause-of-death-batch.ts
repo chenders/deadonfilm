@@ -26,6 +26,7 @@ import * as readline from "readline"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { toSentenceCase } from "../src/lib/text-utils.js"
+import { rebuildDeathCaches } from "../src/lib/cache.js"
 import {
   loadCheckpoint,
   saveCheckpoint,
@@ -366,6 +367,12 @@ async function run(options: {
         updatedCause: checkpoint!.stats.updatedCause,
         updatedDetails: checkpoint!.stats.updatedDetails,
       })
+
+      // Rebuild death caches so lists reflect updated cause_of_death data
+      if (checkpoint!.stats.updatedCause > 0 || checkpoint!.stats.updatedDetails > 0) {
+        await rebuildDeathCaches()
+        console.log("  Rebuilt death caches")
+      }
     } catch (error) {
       recordCustomEvent("CauseOfDeathRunnerError", {
         operation: "process",

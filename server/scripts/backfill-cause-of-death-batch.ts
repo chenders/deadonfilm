@@ -44,6 +44,7 @@ import {
 } from "../src/lib/checkpoint-utils.js"
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { toSentenceCase } from "../src/lib/text-utils.js"
+import { rebuildDeathCaches } from "../src/lib/cache.js"
 
 // Initialize New Relic for monitoring
 initNewRelic()
@@ -906,6 +907,12 @@ async function processResults(batchId: string, dryRun: boolean = false): Promise
         updatedBirthday: checkpoint.stats.updatedBirthday,
         updatedDeathday: checkpoint.stats.updatedDeathday,
       })
+
+      // Rebuild death caches so lists reflect updated cause_of_death data
+      if (checkpoint.stats.updatedCause > 0 || checkpoint.stats.updatedDetails > 0) {
+        await rebuildDeathCaches()
+        console.log("\nRebuilt death caches")
+      }
     }
 
     // Clean up checkpoint if fully processed

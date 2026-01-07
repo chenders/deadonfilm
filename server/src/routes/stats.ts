@@ -33,12 +33,12 @@ export async function getStats(req: Request, res: Response) {
     const cacheKey = CACHE_PREFIX.STATS
     const cached = await getCached<Awaited<ReturnType<typeof getSiteStats>>>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const stats = await getSiteStats()
-    await setCached(cacheKey, stats, CACHE_TTL.HOUR)
-    sendWithETag(req, res, stats, CACHE_TTL.HOUR)
+    await setCached(cacheKey, stats, CACHE_TTL.WEEK)
+    sendWithETag(req, res, stats, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Stats error:", error)
     res.status(500).json({ error: { message: "Failed to fetch site statistics" } })
@@ -57,12 +57,12 @@ export async function getRecentDeathsHandler(req: Request, res: Response) {
 
     const cached = await getCached<Awaited<ReturnType<typeof getRecentDeaths>>>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, { deaths: cached }, CACHE_TTL.MEDIUM)
+      return sendWithETag(req, res, { deaths: cached }, CACHE_TTL.WEEK)
     }
 
     const deaths = await getRecentDeaths(limit)
-    await setCached(cacheKey, deaths, CACHE_TTL.MEDIUM)
-    sendWithETag(req, res, { deaths }, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, deaths, CACHE_TTL.WEEK)
+    sendWithETag(req, res, { deaths }, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Recent deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch recent deaths" } })
@@ -109,7 +109,7 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
 
     const cached = await getCached<CovidDeathsResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const { persons, totalCount } = await getCovidDeaths({
@@ -145,8 +145,8 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
       responseTimeMs: Date.now() - startTime,
     })
 
-    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
-    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("COVID deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch COVID deaths" } })
@@ -177,15 +177,15 @@ export async function getFeaturedMovieHandler(req: Request, res: Response) {
 
     const cached = await getCached<FeaturedMovieResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const movie = await getMostCursedMovie()
 
     if (!movie) {
       const response: FeaturedMovieResponse = { movie: null }
-      await setCached(cacheKey, response, CACHE_TTL.HOUR)
-      return sendWithETag(req, res, response, CACHE_TTL.HOUR)
+      await setCached(cacheKey, response, CACHE_TTL.WEEK)
+      return sendWithETag(req, res, response, CACHE_TTL.WEEK)
     }
 
     const response: FeaturedMovieResponse = {
@@ -200,8 +200,8 @@ export async function getFeaturedMovieHandler(req: Request, res: Response) {
         mortalitySurpriseScore: parseFloat(String(movie.mortality_surprise_score)),
       },
     }
-    await setCached(cacheKey, response, CACHE_TTL.HOUR)
-    sendWithETag(req, res, response, CACHE_TTL.HOUR)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Featured movie error:", error)
     res.status(500).json({ error: { message: "Failed to fetch featured movie" } })
@@ -218,13 +218,13 @@ export async function getTriviaHandler(req: Request, res: Response) {
     const cacheKey = CACHE_PREFIX.TRIVIA
     const cached = await getCached<{ facts: Awaited<ReturnType<typeof getTrivia>> }>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.HOUR)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const facts = await getTrivia()
     const response = { facts }
-    await setCached(cacheKey, response, CACHE_TTL.HOUR)
-    sendWithETag(req, res, response, CACHE_TTL.HOUR)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Trivia error:", error)
     res.status(500).json({ error: { message: "Failed to fetch trivia" } })
@@ -265,7 +265,7 @@ export async function getThisWeekDeathsHandler(req: Request, res: Response) {
 
     const cached = await getCached<ThisWeekResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const deaths = await getDeathsThisWeekSimple()
@@ -286,8 +286,8 @@ export async function getThisWeekDeathsHandler(req: Request, res: Response) {
       },
     }
 
-    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
-    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("This week deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch this week deaths" } })
@@ -318,7 +318,7 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
 
     const cached = await getCached<PopularMoviesResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const movies = await getPopularMovies(limit)
@@ -334,8 +334,8 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
         popularity: m.popularity,
       })),
     }
-    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
-    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Popular movies error:", error)
     res.status(500).json({ error: { message: "Failed to fetch popular movies" } })
@@ -405,7 +405,7 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
 
     const cached = await getCached<UnnaturalDeathsResponse>(cacheKey)
     if (cached) {
-      return sendWithETag(req, res, cached, CACHE_TTL.MEDIUM)
+      return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
     const { persons, totalCount, categoryCounts } = await getUnnaturalDeaths({
@@ -444,8 +444,8 @@ export async function getUnnaturalDeathsHandler(req: Request, res: Response) {
       selectedCategory: category,
       showSelfInflicted,
     }
-    await setCached(cacheKey, response, CACHE_TTL.MEDIUM)
-    sendWithETag(req, res, response, CACHE_TTL.MEDIUM)
+    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Unnatural deaths error:", error)
     res.status(500).json({ error: { message: "Failed to fetch unnatural deaths" } })
