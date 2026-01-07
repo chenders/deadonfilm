@@ -102,7 +102,7 @@ describe("getCursedActorsRoute", () => {
     await getCursedActorsRoute(mockReq as Request, mockRes as Response)
 
     expect(setSpy).toHaveBeenCalledWith("ETag", expect.stringMatching(/^"[a-f0-9]{32}"$/))
-    expect(setSpy).toHaveBeenCalledWith("Cache-Control", "public, max-age=300")
+    expect(setSpy).toHaveBeenCalledWith("Cache-Control", "public, max-age=604800")
   })
 
   it("returns 304 Not Modified when ETag matches", async () => {

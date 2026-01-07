@@ -33,11 +33,8 @@ describe("cache", () => {
 
   describe("CACHE_TTL", () => {
     it("has expected TTL values in seconds", () => {
-      expect(CACHE_TTL.SHORT).toBe(120) // 2 minutes
-      expect(CACHE_TTL.MEDIUM).toBe(300) // 5 minutes
-      expect(CACHE_TTL.LONG).toBe(600) // 10 minutes
-      expect(CACHE_TTL.HOUR).toBe(3600) // 1 hour
-      expect(CACHE_TTL.DAY).toBe(86400) // 24 hours
+      expect(CACHE_TTL.SHORT).toBe(300) // 5 minutes
+      expect(CACHE_TTL.WEEK).toBe(604800) // 1 week
     })
   })
 
@@ -391,6 +388,79 @@ describe("cache operations with mocked Redis", () => {
       )
       // Should also delete the featured-movie key directly
       expect(mockRedisClient.del).toHaveBeenCalledWith(CACHE_PREFIX.FEATURED_MOVIE)
+    })
+  })
+
+  describe("rebuildDeathCaches", () => {
+    const mockDeaths = [{ id: 1, name: "Actor 1" }]
+    const mockStats = { totalActors: 100 }
+    const mockThisWeekDeaths = [{ id: 2, name: "Actor 2" }]
+
+    beforeEach(() => {
+      // Mock db functions
+      vi.doMock("./db.js", () => ({
+        getRecentDeaths: vi.fn().mockResolvedValue(mockDeaths),
+        getSiteStats: vi.fn().mockResolvedValue(mockStats),
+        getDeathsThisWeekSimple: vi.fn().mockResolvedValue(mockThisWeekDeaths),
+      }))
+    })
+
+    it("invalidates death caches first, then rebuilds common caches", async () => {
+      mockRedisClient.scan.mockResolvedValue(["0", []])
+      mockRedisClient.setex.mockResolvedValue("OK")
+
+      const { rebuildDeathCaches, CACHE_PREFIX, CACHE_TTL } = await import("./cache.js")
+      await rebuildDeathCaches()
+
+      // Should invalidate first (via scan calls)
+      expect(mockRedisClient.scan).toHaveBeenCalled()
+
+      // Should rebuild recent deaths for limits 5, 10, 20
+      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+        "recent-deaths:limit:5",
+        CACHE_TTL.WEEK,
+        JSON.stringify(mockDeaths)
+      )
+      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+        "recent-deaths:limit:10",
+        CACHE_TTL.WEEK,
+        JSON.stringify(mockDeaths)
+      )
+      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+        "recent-deaths:limit:20",
+        CACHE_TTL.WEEK,
+        JSON.stringify(mockDeaths)
+      )
+
+      // Should rebuild stats
+      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+        CACHE_PREFIX.STATS,
+        CACHE_TTL.WEEK,
+        JSON.stringify(mockStats)
+      )
+
+      // Should rebuild this-week deaths (with week key)
+      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+        expect.stringMatching(/^this-week:week:\d{4}-\d{2}-\d{2}$/),
+        CACHE_TTL.WEEK,
+        JSON.stringify(mockThisWeekDeaths)
+      )
+    })
+
+    it("handles errors gracefully without throwing", async () => {
+      mockRedisClient.scan.mockResolvedValue(["0", []])
+
+      // Mock db function to throw
+      vi.doMock("./db.js", () => ({
+        getRecentDeaths: vi.fn().mockRejectedValue(new Error("DB error")),
+        getSiteStats: vi.fn().mockResolvedValue(mockStats),
+        getDeathsThisWeekSimple: vi.fn().mockResolvedValue(mockThisWeekDeaths),
+      }))
+
+      const { rebuildDeathCaches } = await import("./cache.js")
+
+      // Should not throw
+      await expect(rebuildDeathCaches()).resolves.toBeUndefined()
     })
   })
 })
