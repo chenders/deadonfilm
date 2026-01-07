@@ -1,0 +1,199 @@
+/**
+ * Actor appearances database functions.
+ *
+ * Functions for managing actor appearances in movies and TV shows.
+ */
+
+import { getPool } from "./pool.js"
+import type { ActorMovieAppearanceRecord, ShowActorAppearanceRecord } from "./types.js"
+
+// ============================================================================
+// Movie actor appearances
+// ============================================================================
+
+// Insert or update an actor movie appearance
+export async function upsertActorMovieAppearance(
+  appearance: ActorMovieAppearanceRecord
+): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (actor_id, movie_tmdb_id) DO UPDATE SET
+       character_name = EXCLUDED.character_name,
+       billing_order = EXCLUDED.billing_order,
+       age_at_filming = EXCLUDED.age_at_filming`,
+    [
+      appearance.actor_id,
+      appearance.movie_tmdb_id,
+      appearance.character_name,
+      appearance.billing_order,
+      appearance.age_at_filming,
+    ]
+  )
+}
+
+// Batch insert actor movie appearances
+export async function batchUpsertActorMovieAppearances(
+  appearances: ActorMovieAppearanceRecord[]
+): Promise<void> {
+  if (appearances.length === 0) return
+
+  const db = getPool()
+  const client = await db.connect()
+  try {
+    await client.query("BEGIN")
+
+    for (const appearance of appearances) {
+      await client.query(
+        `INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (actor_id, movie_tmdb_id) DO UPDATE SET
+           character_name = EXCLUDED.character_name,
+           billing_order = EXCLUDED.billing_order,
+           age_at_filming = EXCLUDED.age_at_filming`,
+        [
+          appearance.actor_id,
+          appearance.movie_tmdb_id,
+          appearance.character_name,
+          appearance.billing_order,
+          appearance.age_at_filming,
+        ]
+      )
+    }
+
+    await client.query("COMMIT")
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+// Get all movies an actor has appeared in (with actor info from actors table)
+export async function getActorMovies(
+  actorTmdbId: number
+): Promise<(ActorMovieAppearanceRecord & { actor_name: string; is_deceased: boolean })[]> {
+  const db = getPool()
+  const result = await db.query<
+    ActorMovieAppearanceRecord & { actor_name: string; is_deceased: boolean }
+  >(
+    `SELECT ama.*, a.name as actor_name, a.deathday IS NOT NULL as is_deceased
+     FROM actor_movie_appearances ama
+     JOIN actors a ON ama.actor_id = a.id
+     WHERE a.tmdb_id = $1`,
+    [actorTmdbId]
+  )
+  return result.rows
+}
+
+// ============================================================================
+// Show actor appearances
+// ============================================================================
+
+// Insert or update a show actor appearance
+export async function upsertShowActorAppearance(
+  appearance: ShowActorAppearanceRecord
+): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO actor_show_appearances (
+       actor_id, show_tmdb_id, season_number, episode_number,
+       character_name, appearance_type, billing_order, age_at_filming
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (actor_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
+       character_name = EXCLUDED.character_name,
+       appearance_type = EXCLUDED.appearance_type,
+       billing_order = EXCLUDED.billing_order,
+       age_at_filming = EXCLUDED.age_at_filming`,
+    [
+      appearance.actor_id,
+      appearance.show_tmdb_id,
+      appearance.season_number,
+      appearance.episode_number,
+      appearance.character_name,
+      appearance.appearance_type,
+      appearance.billing_order,
+      appearance.age_at_filming,
+    ]
+  )
+}
+
+// Batch insert show actor appearances using bulk VALUES for efficiency
+export async function batchUpsertShowActorAppearances(
+  appearances: ShowActorAppearanceRecord[]
+): Promise<void> {
+  if (appearances.length === 0) return
+
+  const db = getPool()
+
+  // Process in chunks of 100 to avoid query size limits
+  const CHUNK_SIZE = 100
+  for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
+    const chunk = appearances.slice(i, i + CHUNK_SIZE)
+
+    // Build VALUES clause with numbered parameters (8 columns now)
+    const values: unknown[] = []
+    const placeholders = chunk.map((appearance, index) => {
+      const offset = index * 8
+      values.push(
+        appearance.actor_id,
+        appearance.show_tmdb_id,
+        appearance.season_number,
+        appearance.episode_number,
+        appearance.character_name,
+        appearance.appearance_type,
+        appearance.billing_order,
+        appearance.age_at_filming
+      )
+      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8})`
+    })
+
+    await db.query(
+      `INSERT INTO actor_show_appearances (
+         actor_id, show_tmdb_id, season_number, episode_number,
+         character_name, appearance_type, billing_order, age_at_filming
+       )
+       VALUES ${placeholders.join(", ")}
+       ON CONFLICT (actor_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
+         character_name = EXCLUDED.character_name,
+         appearance_type = EXCLUDED.appearance_type,
+         billing_order = EXCLUDED.billing_order,
+         age_at_filming = EXCLUDED.age_at_filming`,
+      values
+    )
+  }
+}
+
+// Get unique actors for a show (aggregated across all episodes)
+export async function getShowActors(showTmdbId: number): Promise<
+  Array<{
+    actorId: number
+    actorTmdbId: number | null
+    actorName: string
+    isDeceased: boolean
+  }>
+> {
+  const db = getPool()
+  const result = await db.query<{
+    actor_id: number
+    actor_tmdb_id: number | null
+    actor_name: string
+    is_deceased: boolean
+  }>(
+    `SELECT DISTINCT asa.actor_id, a.tmdb_id as actor_tmdb_id, a.name as actor_name, (a.deathday IS NOT NULL) as is_deceased
+     FROM actor_show_appearances asa
+     JOIN actors a ON asa.actor_id = a.id
+     WHERE asa.show_tmdb_id = $1
+     ORDER BY a.name`,
+    [showTmdbId]
+  )
+  return result.rows.map((row) => ({
+    actorId: row.actor_id,
+    actorTmdbId: row.actor_tmdb_id,
+    actorName: row.actor_name,
+    isDeceased: row.is_deceased,
+  }))
+}
