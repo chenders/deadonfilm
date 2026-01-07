@@ -4,6 +4,7 @@
 
 import { getPool } from "./pool.js"
 import type { SiteStats, SyncStateRecord } from "./types.js"
+import { categorizeCauseOfDeath, CAUSE_CATEGORIES } from "../cause-categories.js"
 
 // ============================================================================
 // Site Stats caching
@@ -12,6 +13,14 @@ import type { SiteStats, SyncStateRecord } from "./types.js"
 let siteStatsCache: SiteStats | null = null
 let siteStatsCacheExpiry = 0
 const SITE_STATS_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+/**
+ * Clear the site stats cache (used in tests).
+ */
+export function clearSiteStatsCache(): void {
+  siteStatsCache = null
+  siteStatsCacheExpiry = 0
+}
 
 /**
  * Get aggregated site statistics (cached for 5 minutes).
@@ -59,11 +68,20 @@ export async function getSiteStats(): Promise<SiteStats> {
   `)
 
   const row = result.rows[0]
+
+  // Compute category slug from top cause of death
+  let topCauseOfDeathCategorySlug: string | null = null
+  if (row.top_cause) {
+    const categoryKey = categorizeCauseOfDeath(row.top_cause)
+    topCauseOfDeathCategorySlug = CAUSE_CATEGORIES[categoryKey].slug
+  }
+
   const stats: SiteStats = {
     totalActors: parseInt(row.total_all_actors, 10) || 0,
     totalDeceasedActors: parseInt(row.total_deceased_actors, 10) || 0,
     totalMoviesAnalyzed: parseInt(row.total_movies, 10) || 0,
     topCauseOfDeath: row.top_cause,
+    topCauseOfDeathCategorySlug,
     avgMortalityPercentage: row.avg_mortality ? parseFloat(row.avg_mortality) : null,
     causeOfDeathPercentage: row.cause_pct ? parseFloat(row.cause_pct) : null,
     actorsWithCauseKnown: row.cause_known_count ? parseInt(row.cause_known_count, 10) : null,
