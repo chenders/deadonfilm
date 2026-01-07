@@ -11,6 +11,7 @@ export { getPool, resetPool, queryWithRetry, initDatabase } from "./db/pool.js"
 // Re-export stats functions for backward compatibility
 export {
   getSiteStats,
+  clearSiteStatsCache,
   getSyncState,
   updateSyncState,
   getAllActorTmdbIds,
