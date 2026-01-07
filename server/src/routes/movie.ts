@@ -3,15 +3,15 @@ import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../lib/
 import { getCauseOfDeath, type DeathInfoSource } from "../lib/wikidata.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
 import {
-  getActors,
   batchUpsertActors,
   updateDeathInfo,
   upsertMovie,
   batchUpsertActorMovieAppearances,
-  type ActorRecord,
   type ActorInput,
   type ActorMovieAppearanceRecord,
 } from "../lib/db.js"
+import { getActorsIfAvailable, saveDeceasedToDb } from "../lib/db-helpers.js"
+import { calculateAge } from "../lib/date-utils.js"
 import {
   calculateMovieMortality,
   calculateYearsLost,
@@ -308,42 +308,8 @@ export async function getMovie(req: Request, res: Response) {
   }
 }
 
-function calculateAge(birthday: string | null): number | null {
-  if (!birthday) return null
-
-  const birth = new Date(birthday)
-  const today = new Date()
-  let age = today.getFullYear() - birth.getFullYear()
-  const monthDiff = today.getMonth() - birth.getMonth()
-
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-    age--
-  }
-
-  return age
-}
-
 // Track movies with pending enrichment
 const pendingEnrichment = new Map<number, Promise<void>>()
-
-// Helper to safely get actors from database (returns empty map if DB unavailable)
-async function getActorsIfAvailable(tmdbIds: number[]): Promise<Map<number, ActorRecord>> {
-  if (!process.env.DATABASE_URL) return new Map()
-  try {
-    return await getActors(tmdbIds)
-  } catch (error) {
-    console.error("Database read error:", error)
-    return new Map()
-  }
-}
-
-// Helper to save deceased persons to database in background
-function saveDeceasedToDb(persons: ActorInput[]): void {
-  if (!process.env.DATABASE_URL) return
-  batchUpsertActors(persons).catch((error) => {
-    console.error("Database write error:", error)
-  })
-}
 
 // Helper to cache movie and actor appearances in background (on-demand seeding)
 interface CacheMovieParams {

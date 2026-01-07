@@ -1,0 +1,218 @@
+/**
+ * Shows database functions.
+ *
+ * Functions for managing TV shows, seasons, and episodes in the database.
+ */
+
+import { getPool } from "./pool.js"
+import type { ShowRecord, SeasonRecord, EpisodeRecord } from "./types.js"
+
+// ============================================================================
+// TV Shows CRUD functions
+// ============================================================================
+
+// Get a show by TMDB ID
+export async function getShow(tmdbId: number): Promise<ShowRecord | null> {
+  const db = getPool()
+  const result = await db.query<ShowRecord>("SELECT * FROM shows WHERE tmdb_id = $1", [tmdbId])
+  return result.rows[0] || null
+}
+
+// Insert or update a show
+export async function upsertShow(show: ShowRecord): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO shows (
+       tmdb_id, name, first_air_date, last_air_date, poster_path, backdrop_path,
+       genres, status, number_of_seasons, number_of_episodes, popularity, vote_average,
+       origin_country, original_language, cast_count, deceased_count, living_count,
+       expected_deaths, mortality_surprise_score, updated_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, CURRENT_TIMESTAMP)
+     ON CONFLICT (tmdb_id) DO UPDATE SET
+       name = EXCLUDED.name,
+       first_air_date = EXCLUDED.first_air_date,
+       last_air_date = EXCLUDED.last_air_date,
+       poster_path = EXCLUDED.poster_path,
+       backdrop_path = EXCLUDED.backdrop_path,
+       genres = EXCLUDED.genres,
+       status = EXCLUDED.status,
+       number_of_seasons = EXCLUDED.number_of_seasons,
+       number_of_episodes = EXCLUDED.number_of_episodes,
+       popularity = EXCLUDED.popularity,
+       vote_average = EXCLUDED.vote_average,
+       origin_country = EXCLUDED.origin_country,
+       original_language = COALESCE(EXCLUDED.original_language, shows.original_language),
+       cast_count = EXCLUDED.cast_count,
+       deceased_count = EXCLUDED.deceased_count,
+       living_count = EXCLUDED.living_count,
+       expected_deaths = EXCLUDED.expected_deaths,
+       mortality_surprise_score = EXCLUDED.mortality_surprise_score,
+       updated_at = CURRENT_TIMESTAMP`,
+    [
+      show.tmdb_id,
+      show.name,
+      show.first_air_date,
+      show.last_air_date,
+      show.poster_path,
+      show.backdrop_path,
+      show.genres,
+      show.status,
+      show.number_of_seasons,
+      show.number_of_episodes,
+      show.popularity,
+      show.vote_average,
+      show.origin_country,
+      show.original_language,
+      show.cast_count,
+      show.deceased_count,
+      show.living_count,
+      show.expected_deaths,
+      show.mortality_surprise_score,
+    ]
+  )
+}
+
+// Update external IDs for a show (TVmaze, TheTVDB, IMDb)
+export async function updateShowExternalIds(
+  tmdbId: number,
+  tvmazeId: number | null,
+  thetvdbId: number | null,
+  imdbId?: string | null
+): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `UPDATE shows
+     SET tvmaze_id = COALESCE($2, tvmaze_id),
+         thetvdb_id = COALESCE($3, thetvdb_id),
+         imdb_id = COALESCE($4, imdb_id),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE tmdb_id = $1`,
+    [tmdbId, tvmazeId, thetvdbId, imdbId ?? null]
+  )
+}
+
+// ============================================================================
+// Seasons CRUD functions
+// ============================================================================
+
+// Get seasons for a show
+export async function getSeasons(showTmdbId: number): Promise<SeasonRecord[]> {
+  const db = getPool()
+  const result = await db.query<SeasonRecord>(
+    "SELECT * FROM seasons WHERE show_tmdb_id = $1 ORDER BY season_number",
+    [showTmdbId]
+  )
+  return result.rows
+}
+
+// Insert or update a season
+export async function upsertSeason(season: SeasonRecord): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO seasons (
+       show_tmdb_id, season_number, name, air_date, episode_count, poster_path,
+       cast_count, deceased_count, expected_deaths, mortality_surprise_score
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT (show_tmdb_id, season_number) DO UPDATE SET
+       name = EXCLUDED.name,
+       air_date = EXCLUDED.air_date,
+       episode_count = EXCLUDED.episode_count,
+       poster_path = EXCLUDED.poster_path,
+       cast_count = EXCLUDED.cast_count,
+       deceased_count = EXCLUDED.deceased_count,
+       expected_deaths = EXCLUDED.expected_deaths,
+       mortality_surprise_score = EXCLUDED.mortality_surprise_score`,
+    [
+      season.show_tmdb_id,
+      season.season_number,
+      season.name,
+      season.air_date,
+      season.episode_count,
+      season.poster_path,
+      season.cast_count,
+      season.deceased_count,
+      season.expected_deaths,
+      season.mortality_surprise_score,
+    ]
+  )
+}
+
+// ============================================================================
+// Episodes CRUD functions
+// ============================================================================
+
+// Get episodes for a season
+export async function getEpisodes(
+  showTmdbId: number,
+  seasonNumber: number
+): Promise<EpisodeRecord[]> {
+  const db = getPool()
+  const result = await db.query<EpisodeRecord>(
+    "SELECT * FROM episodes WHERE show_tmdb_id = $1 AND season_number = $2 ORDER BY episode_number",
+    [showTmdbId, seasonNumber]
+  )
+  return result.rows
+}
+
+// Get episode counts grouped by season for a show
+export async function getEpisodeCountsBySeasonFromDb(
+  showTmdbId: number
+): Promise<Map<number, number>> {
+  const db = getPool()
+  const result = await db.query<{ season_number: number; count: string }>(
+    "SELECT season_number, COUNT(*) as count FROM episodes WHERE show_tmdb_id = $1 GROUP BY season_number ORDER BY season_number",
+    [showTmdbId]
+  )
+  const counts = new Map<number, number>()
+  for (const row of result.rows) {
+    counts.set(row.season_number, parseInt(row.count, 10))
+  }
+  return counts
+}
+
+// Insert or update an episode
+export async function upsertEpisode(episode: EpisodeRecord): Promise<void> {
+  const db = getPool()
+  await db.query(
+    `INSERT INTO episodes (
+       show_tmdb_id, season_number, episode_number, name, air_date, runtime,
+       cast_count, deceased_count, guest_star_count, expected_deaths, mortality_surprise_score,
+       episode_data_source, cast_data_source, tvmaze_episode_id, thetvdb_episode_id, imdb_episode_id
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+     ON CONFLICT (show_tmdb_id, season_number, episode_number) DO UPDATE SET
+       name = EXCLUDED.name,
+       air_date = EXCLUDED.air_date,
+       runtime = EXCLUDED.runtime,
+       cast_count = EXCLUDED.cast_count,
+       deceased_count = EXCLUDED.deceased_count,
+       guest_star_count = EXCLUDED.guest_star_count,
+       expected_deaths = EXCLUDED.expected_deaths,
+       mortality_surprise_score = EXCLUDED.mortality_surprise_score,
+       episode_data_source = COALESCE(EXCLUDED.episode_data_source, episodes.episode_data_source),
+       cast_data_source = COALESCE(EXCLUDED.cast_data_source, episodes.cast_data_source),
+       tvmaze_episode_id = COALESCE(EXCLUDED.tvmaze_episode_id, episodes.tvmaze_episode_id),
+       thetvdb_episode_id = COALESCE(EXCLUDED.thetvdb_episode_id, episodes.thetvdb_episode_id),
+       imdb_episode_id = COALESCE(EXCLUDED.imdb_episode_id, episodes.imdb_episode_id)`,
+    [
+      episode.show_tmdb_id,
+      episode.season_number,
+      episode.episode_number,
+      episode.name,
+      episode.air_date,
+      episode.runtime,
+      episode.cast_count,
+      episode.deceased_count,
+      episode.guest_star_count,
+      episode.expected_deaths,
+      episode.mortality_surprise_score,
+      episode.episode_data_source ?? "tmdb",
+      episode.cast_data_source ?? "tmdb",
+      episode.tvmaze_episode_id ?? null,
+      episode.thetvdb_episode_id ?? null,
+      episode.imdb_episode_id ?? null,
+    ]
+  )
+}
