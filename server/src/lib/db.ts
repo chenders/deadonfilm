@@ -1255,6 +1255,12 @@ let siteStatsCache: SiteStats | null = null
 let siteStatsCacheExpiry = 0
 const SITE_STATS_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
+// Clear the site stats cache (used in tests)
+export function clearSiteStatsCache(): void {
+  siteStatsCache = null
+  siteStatsCacheExpiry = 0
+}
+
 // Get aggregate site statistics for the homepage (cached)
 export async function getSiteStats(): Promise<SiteStats> {
   const now = Date.now()
