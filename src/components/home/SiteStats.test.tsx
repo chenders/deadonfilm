@@ -110,6 +110,24 @@ describe("SiteStats", () => {
     })
   })
 
+  it("hides leading cause when category slug is null but cause exists", async () => {
+    vi.mocked(api.getSiteStats).mockResolvedValue({
+      ...mockStats,
+      topCauseOfDeath: "Unrecognized Cause",
+      topCauseOfDeathCategorySlug: null,
+    })
+
+    renderWithProviders(<SiteStats />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("site-stats")).toBeInTheDocument()
+    })
+
+    // Leading cause should NOT be shown when slug is null
+    expect(screen.queryByText("leading cause")).not.toBeInTheDocument()
+    expect(screen.queryByText("Unrecognized Cause")).not.toBeInTheDocument()
+  })
+
   it("renders nothing when stats are all zero", async () => {
     vi.mocked(api.getSiteStats).mockResolvedValue({
       totalActors: 0,

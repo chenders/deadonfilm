@@ -45,6 +45,8 @@ import {
   getEpisodeCountsBySeasonFromDb,
   getCauseCategory,
   getSpecificCause,
+  getSiteStats,
+  clearSiteStatsCache,
 } from "./db.js"
 
 describe("Sync State Functions", () => {
@@ -1684,5 +1686,132 @@ describe("getSpecificCause", () => {
 
     const result = await getSpecificCause("cancer", "nonexistent-cause")
     expect(result).toBeNull()
+  })
+})
+
+describe("getSiteStats", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+    // Clear the site stats cache before each test
+    clearSiteStatsCache()
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  it("returns correct topCauseOfDeathCategorySlug for cancer", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          total_all_actors: "100000",
+          total_deceased_actors: "5000",
+          total_movies: "1000",
+          top_cause: "Cancer",
+          avg_mortality: "25.5",
+          cause_pct: "30.0",
+          cause_known_count: "1500",
+        },
+      ],
+    })
+
+    const result = await getSiteStats()
+
+    expect(result.topCauseOfDeath).toBe("Cancer")
+    expect(result.topCauseOfDeathCategorySlug).toBe("cancer")
+  })
+
+  it("returns correct topCauseOfDeathCategorySlug for heart-related causes", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          total_all_actors: "100000",
+          total_deceased_actors: "5000",
+          total_movies: "1000",
+          top_cause: "Heart Attack",
+          avg_mortality: "25.5",
+          cause_pct: "30.0",
+          cause_known_count: "1500",
+        },
+      ],
+    })
+
+    const result = await getSiteStats()
+
+    expect(result.topCauseOfDeath).toBe("Heart Attack")
+    expect(result.topCauseOfDeathCategorySlug).toBe("heart-disease")
+  })
+
+  it("returns null topCauseOfDeathCategorySlug when top_cause is null", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          total_all_actors: "100000",
+          total_deceased_actors: "5000",
+          total_movies: "1000",
+          top_cause: null,
+          avg_mortality: "25.5",
+          cause_pct: "30.0",
+          cause_known_count: "1500",
+        },
+      ],
+    })
+
+    const result = await getSiteStats()
+
+    expect(result.topCauseOfDeath).toBeNull()
+    expect(result.topCauseOfDeathCategorySlug).toBeNull()
+  })
+
+  it("returns null topCauseOfDeathCategorySlug for uncategorized causes", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          total_all_actors: "100000",
+          total_deceased_actors: "5000",
+          total_movies: "1000",
+          top_cause: "Some Unknown Condition XYZ",
+          avg_mortality: "25.5",
+          cause_pct: "30.0",
+          cause_known_count: "1500",
+        },
+      ],
+    })
+
+    const result = await getSiteStats()
+
+    expect(result.topCauseOfDeath).toBe("Some Unknown Condition XYZ")
+    // Uncategorized causes should map to "other" category
+    expect(result.topCauseOfDeathCategorySlug).toBe("other")
+  })
+
+  it("returns all expected stats fields", async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          total_all_actors: "100000",
+          total_deceased_actors: "5000",
+          total_movies: "1000",
+          top_cause: "Cancer",
+          avg_mortality: "25.5",
+          cause_pct: "30.0",
+          cause_known_count: "1500",
+        },
+      ],
+    })
+
+    const result = await getSiteStats()
+
+    expect(result).toEqual({
+      totalActors: 100000,
+      totalDeceasedActors: 5000,
+      totalMoviesAnalyzed: 1000,
+      topCauseOfDeath: "Cancer",
+      topCauseOfDeathCategorySlug: "cancer",
+      avgMortalityPercentage: 25.5,
+      causeOfDeathPercentage: 30.0,
+      actorsWithCauseKnown: 1500,
+    })
   })
 })
