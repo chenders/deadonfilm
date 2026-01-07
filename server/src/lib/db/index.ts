@@ -11,6 +11,10 @@
  * - ./stats.ts - Site statistics and sync state functions
  * - ./trivia.ts - Trivia facts and popular/featured content
  * - ./actors.ts - Actor CRUD and filmography functions
+ * - ./movies.ts - Movie CRUD and discovery functions
+ * - ./shows.ts - Shows, seasons, and episodes CRUD functions
+ * - ./appearances.ts - Actor movie and show appearances
+ * - ./deaths-discovery.ts - Death discovery features (by decade, COVID, unnatural, etc.)
  */
 
 // Re-export pool functions
@@ -48,6 +52,44 @@ export {
   getActorFilmography,
   getActorShowFilmography,
 } from "./actors.js"
+
+// Re-export movie functions
+export { getMovie, upsertMovie, getHighMortalityMovies, getMaxValidMinDeaths } from "./movies.js"
+
+// Re-export show functions
+export {
+  getShow,
+  upsertShow,
+  updateShowExternalIds,
+  getSeasons,
+  upsertSeason,
+  getEpisodes,
+  getEpisodeCountsBySeasonFromDb,
+  upsertEpisode,
+} from "./shows.js"
+
+// Re-export appearances functions
+export {
+  upsertActorMovieAppearance,
+  batchUpsertActorMovieAppearances,
+  getActorMovies,
+  upsertShowActorAppearance,
+  batchUpsertShowActorAppearances,
+  getShowActors,
+} from "./appearances.js"
+
+// Re-export deaths-discovery functions
+export {
+  getDeathsByDecade,
+  getRecentDeaths,
+  getForeverYoungMovies,
+  getForeverYoungMoviesPaginated,
+  getCovidDeaths,
+  UNNATURAL_DEATH_CATEGORIES,
+  getUnnaturalDeaths,
+  getAllDeaths,
+  getDeathWatchActors,
+} from "./deaths-discovery.js"
 
 // Re-export all types
 export type * from "./types.js"
