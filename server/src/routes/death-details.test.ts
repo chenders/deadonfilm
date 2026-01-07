@@ -156,10 +156,8 @@ describe("getActorDeathDetails", () => {
 
   it("returns death details for actor with full circumstances", async () => {
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(mockCircumstances as any)
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
@@ -220,10 +218,8 @@ describe("getActorDeathDetails", () => {
 
   it("caches the response on cache miss", async () => {
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(mockCircumstances as any)
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
@@ -291,10 +287,8 @@ describe("getActorDeathDetails", () => {
 
   it("records custom event on successful response", async () => {
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(mockCircumstances as any)
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)

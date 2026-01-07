@@ -47,7 +47,6 @@ describe("markActorAsChecked", () => {
     const mockQuery = vi.fn().mockResolvedValue({ rows: [] })
     const mockDb = { query: mockQuery }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await markActorAsChecked(mockDb as any, 123)
 
     expect(mockQuery).toHaveBeenCalledWith(
@@ -65,7 +64,6 @@ describe("processResults", () => {
     mockDb = {
       query: vi.fn().mockResolvedValue({ rows: [] }),
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(getPool).mockReturnValue(mockDb as any)
 
     mockCheckpoint = {
