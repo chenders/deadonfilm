@@ -30,6 +30,7 @@ export interface SiteStatsResponse {
   totalDeceasedActors: number
   totalMoviesAnalyzed: number
   topCauseOfDeath: string | null
+  topCauseOfDeathCategorySlug: string | null
   avgMortalityPercentage: number | null
   causeOfDeathPercentage: number | null
   actorsWithCauseKnown: number | null
