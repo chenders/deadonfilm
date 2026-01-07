@@ -91,5 +91,27 @@ export {
   getDeathWatchActors,
 } from "./deaths-discovery.js"
 
+// Re-export cause-categories functions
+export {
+  CAUSE_CATEGORIES,
+  getCauseCategories,
+  getDeathsByCause,
+  getCauseFromSlug,
+  getDecadeCategories,
+  getCauseCategoryIndex,
+  getCauseCategory,
+  getCauseFromSlugInCategory,
+  getSpecificCause,
+} from "./cause-categories.js"
+export type { CauseCategoryKey } from "./cause-categories.js"
+
+// Re-export death-circumstances functions
+export {
+  getActorDeathCircumstances,
+  getActorDeathCircumstancesByTmdbId,
+  getNotableDeaths,
+  hasDetailedDeathInfo,
+} from "./death-circumstances.js"
+
 // Re-export all types
 export type * from "./types.js"
