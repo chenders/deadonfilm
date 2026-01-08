@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { BrowserRouter } from "react-router-dom"
+import { MemoryRouter } from "react-router-dom"
 import Header from "./Header"
 
 // Mock SearchTrigger to avoid complex context setup
@@ -8,11 +8,11 @@ vi.mock("@/components/search/SearchTrigger", () => ({
   default: () => <button data-testid="search-trigger">Search</button>,
 }))
 
-function renderHeader() {
+function renderHeader(initialPath = "/movie/test") {
   return render(
-    <BrowserRouter>
+    <MemoryRouter initialEntries={[initialPath]}>
       <Header />
-    </BrowserRouter>
+    </MemoryRouter>
   )
 }
 
@@ -34,10 +34,30 @@ describe("Header", () => {
     expect(screen.getByTestId("site-title")).toHaveTextContent("Dead on Film")
   })
 
-  it("renders search trigger", () => {
-    renderHeader()
+  describe("search trigger visibility", () => {
+    it("shows search trigger on non-home pages", () => {
+      renderHeader("/movie/test")
 
-    expect(screen.getByTestId("search-trigger")).toBeInTheDocument()
+      expect(screen.getByTestId("search-trigger")).toBeInTheDocument()
+    })
+
+    it("hides search trigger on home page", () => {
+      renderHeader("/")
+
+      expect(screen.queryByTestId("search-trigger")).not.toBeInTheDocument()
+    })
+
+    it("shows search trigger on show pages", () => {
+      renderHeader("/show/test")
+
+      expect(screen.getByTestId("search-trigger")).toBeInTheDocument()
+    })
+
+    it("shows search trigger on actor pages", () => {
+      renderHeader("/actor/123")
+
+      expect(screen.getByTestId("search-trigger")).toBeInTheDocument()
+    })
   })
 
   describe("layout centering", () => {
