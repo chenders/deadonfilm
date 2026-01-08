@@ -176,6 +176,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 selectedIndex={selectedIndex}
                 onSelect={handleSelect}
                 searchQuery={query}
+                inline
               />
             </div>
           )}
