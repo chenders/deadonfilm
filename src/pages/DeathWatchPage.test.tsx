@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { HelmetProvider } from "react-helmet-async"
@@ -401,6 +401,118 @@ describe("DeathWatchPage", () => {
           includeObscure: true,
           search: "Clint",
         })
+      })
+    })
+
+    describe("debounce behavior", () => {
+      it("does not call API on every keypress - only after debounce delay", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.mocked(api.getDeathWatch).mockResolvedValue({
+            actors: mockActors,
+            pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+          })
+
+          renderWithProviders(<DeathWatchPage />)
+
+          // Wait for initial load
+          await act(async () => {
+            await vi.runAllTimersAsync()
+          })
+
+          // Clear mock to track new calls
+          vi.mocked(api.getDeathWatch).mockClear()
+
+          const searchInput = screen.getByTestId("search-input")
+
+          // Type each character rapidly (simulating fast typing)
+          await act(async () => {
+            fireEvent.change(searchInput, { target: { value: "C" } })
+            fireEvent.change(searchInput, { target: { value: "Cl" } })
+            fireEvent.change(searchInput, { target: { value: "Cli" } })
+            fireEvent.change(searchInput, { target: { value: "Clin" } })
+            fireEvent.change(searchInput, { target: { value: "Clint" } })
+          })
+
+          // Advance time by less than debounce delay (300ms)
+          await act(async () => {
+            vi.advanceTimersByTime(100)
+          })
+
+          // API should NOT have been called yet during rapid typing
+          expect(api.getDeathWatch).not.toHaveBeenCalled()
+
+          // Advance past the debounce delay and flush promises
+          await act(async () => {
+            await vi.advanceTimersByTimeAsync(300)
+          })
+
+          // Now the API should be called exactly once with the final search term
+          expect(api.getDeathWatch).toHaveBeenCalledTimes(1)
+          expect(api.getDeathWatch).toHaveBeenCalledWith({
+            page: 1,
+            includeObscure: false,
+            search: "Clint",
+          })
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("cancels pending search when user continues typing", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.mocked(api.getDeathWatch).mockResolvedValue({
+            actors: mockActors,
+            pagination: { page: 1, pageSize: 50, totalPages: 1, totalCount: 2 },
+          })
+
+          renderWithProviders(<DeathWatchPage />)
+
+          // Wait for initial load
+          await act(async () => {
+            await vi.runAllTimersAsync()
+          })
+
+          vi.mocked(api.getDeathWatch).mockClear()
+
+          const searchInput = screen.getByTestId("search-input")
+
+          // Type first term
+          await act(async () => {
+            fireEvent.change(searchInput, { target: { value: "Morgan" } })
+          })
+
+          // Wait 200ms (less than 300ms debounce)
+          await act(async () => {
+            vi.advanceTimersByTime(200)
+          })
+
+          // Change to a different search term before debounce completes
+          await act(async () => {
+            fireEvent.change(searchInput, { target: { value: "Clint" } })
+          })
+
+          // Advance past the debounce delay and flush promises
+          await act(async () => {
+            await vi.advanceTimersByTimeAsync(300)
+          })
+
+          // Should only have called API with "Clint", never with "Morgan"
+          expect(api.getDeathWatch).toHaveBeenCalledTimes(1)
+          expect(api.getDeathWatch).toHaveBeenCalledWith({
+            page: 1,
+            includeObscure: false,
+            search: "Clint",
+          })
+
+          // Verify "Morgan" was never sent to API
+          expect(api.getDeathWatch).not.toHaveBeenCalledWith(
+            expect.objectContaining({ search: "Morgan" })
+          )
+        } finally {
+          vi.useRealTimers()
+        }
       })
     })
   })

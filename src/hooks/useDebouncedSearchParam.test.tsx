@@ -181,4 +181,73 @@ describe("useDebouncedSearchParam", () => {
     // Should only have "second", not "first"
     expect(window.location.search).toBe("?search=second")
   })
+
+  it("debouncedValue (third return value) does not change during debounce period", () => {
+    const { result } = renderHook(() => useDebouncedSearchParam(), { wrapper })
+
+    // Get the initial debounced value
+    const initialDebouncedValue = result.current[2]
+    expect(initialDebouncedValue).toBe("")
+
+    // Type a value
+    act(() => {
+      result.current[1]("test")
+    })
+
+    // Input value should be updated immediately
+    expect(result.current[0]).toBe("test")
+
+    // But debounced value should still be empty (URL hasn't updated yet)
+    expect(result.current[2]).toBe("")
+
+    // Advance time but not enough for debounce to complete
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+
+    // Debounced value should still be empty
+    expect(result.current[2]).toBe("")
+
+    // Complete the debounce
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+
+    // Now the debounced value should be updated
+    expect(result.current[2]).toBe("test")
+    expect(window.location.search).toBe("?search=test")
+  })
+
+  it("multiple rapid changes only result in one final debounced value", () => {
+    const { result } = renderHook(() => useDebouncedSearchParam(), { wrapper })
+
+    // Simulate rapid typing
+    act(() => {
+      result.current[1]("a")
+    })
+    act(() => {
+      result.current[1]("ab")
+    })
+    act(() => {
+      result.current[1]("abc")
+    })
+    act(() => {
+      result.current[1]("abcd")
+    })
+
+    // Input value should be the latest
+    expect(result.current[0]).toBe("abcd")
+
+    // Debounced value should still be empty
+    expect(result.current[2]).toBe("")
+
+    // Complete the debounce
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+
+    // Now debounced value should be the final input
+    expect(result.current[2]).toBe("abcd")
+    expect(window.location.search).toBe("?search=abcd")
+  })
 })
