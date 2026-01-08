@@ -321,4 +321,7 @@ const program = new Command()
     })
   })
 
-program.parse()
+// Only run CLI when executed directly (not when imported by tests)
+if (process.env.VITEST !== "true") {
+  program.parse()
+}

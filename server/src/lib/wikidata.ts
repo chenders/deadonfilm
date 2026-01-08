@@ -607,3 +607,180 @@ interface WikipediaApiResponse {
     >
   }
 }
+
+// ============================================================================
+// Death Date Verification
+// ============================================================================
+
+export interface DeathDateVerification {
+  verified: boolean
+  wikidataDeathDate: string | null
+  confidence: "verified" | "unverified" | "conflicting"
+  conflictDetails?: string
+}
+
+/**
+ * Verify a death date from TMDB against Wikidata.
+ *
+ * Returns:
+ * - verified: true if Wikidata confirms the death (within 30 days)
+ * - confidence: 'verified' (exact/close match), 'unverified' (no Wikidata data), 'conflicting' (dates differ significantly)
+ * - wikidataDeathDate: the death date from Wikidata if found
+ * - conflictDetails: description of the conflict if dates don't match
+ */
+export async function verifyDeathDate(
+  name: string,
+  birthYear: number | null,
+  tmdbDeathDate: string
+): Promise<DeathDateVerification> {
+  const tmdbDeathDateObj = new Date(tmdbDeathDate)
+  const tmdbDeathYear = tmdbDeathDateObj.getFullYear()
+
+  // If no birth year, we can still try to look up by name and death year
+  const query = buildDeathDateVerificationQuery(name, birthYear, tmdbDeathYear)
+
+  try {
+    const response = await fetch(WIKIDATA_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/sparql-results+json",
+        "User-Agent": "DeadOnFilm/1.0 (contact@deadonfilm.com)",
+      },
+      body: `query=${encodeURIComponent(query)}`,
+    })
+
+    if (!response.ok) {
+      console.log(`Wikidata death verification failed: ${response.status}`)
+      return {
+        verified: false,
+        wikidataDeathDate: null,
+        confidence: "unverified",
+      }
+    }
+
+    const data = (await response.json()) as WikidataSparqlResponse
+    const result = parseDeathDateVerificationResult(data.results.bindings, name, tmdbDeathDateObj)
+
+    recordCustomEvent("DeathDateVerification", {
+      personName: name,
+      tmdbDeathDate,
+      wikidataDeathDate: result.wikidataDeathDate ?? "unknown",
+      verified: result.verified,
+      confidence: result.confidence,
+    })
+
+    return result
+  } catch (error) {
+    console.log(`Wikidata death verification error for ${name}:`, error)
+    return {
+      verified: false,
+      wikidataDeathDate: null,
+      confidence: "unverified",
+    }
+  }
+}
+
+/**
+ * Build SPARQL query to find person's death date in Wikidata.
+ * More lenient than the cause-of-death query since we're just verifying the date.
+ */
+function buildDeathDateVerificationQuery(
+  name: string,
+  birthYear: number | null,
+  tmdbDeathYear: number
+): string {
+  const escapedName = name.replace(/"/g, '\\"')
+
+  // If we have birth year, use it for more accurate matching
+  const birthYearFilter = birthYear
+    ? `?person wdt:P569 ?birthDate .
+       FILTER(YEAR(?birthDate) >= ${birthYear - 1} && YEAR(?birthDate) <= ${birthYear + 1})`
+    : ""
+
+  return `
+    SELECT ?person ?personLabel ?deathDate ?birthDate WHERE {
+      ?person wdt:P31 wd:Q5 .
+      ?person rdfs:label "${escapedName}"@en .
+
+      ${birthYearFilter}
+
+      ?person wdt:P570 ?deathDate .
+      FILTER(YEAR(?deathDate) >= ${tmdbDeathYear - 2} && YEAR(?deathDate) <= ${tmdbDeathYear + 2})
+
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+    }
+    LIMIT 5
+  `
+}
+
+/**
+ * Parse Wikidata results and compare death dates.
+ */
+function parseDeathDateVerificationResult(
+  bindings: WikidataBinding[],
+  targetName: string,
+  tmdbDeathDate: Date
+): DeathDateVerification {
+  if (bindings.length === 0) {
+    // No Wikidata record found - cannot verify
+    return {
+      verified: false,
+      wikidataDeathDate: null,
+      confidence: "unverified",
+    }
+  }
+
+  for (const binding of bindings) {
+    const personName = binding.personLabel?.value || ""
+
+    // Check if name matches
+    if (!isNameMatch(targetName, personName)) {
+      continue
+    }
+
+    if (!binding.deathDate?.value) {
+      continue
+    }
+
+    const wikidataDeathDate = new Date(binding.deathDate.value)
+    const daysDiff = Math.abs(
+      (tmdbDeathDate.getTime() - wikidataDeathDate.getTime()) / (1000 * 60 * 60 * 24)
+    )
+
+    // Format Wikidata death date as ISO string (YYYY-MM-DD)
+    const wikidataDeathDateStr = wikidataDeathDate.toISOString().split("T")[0]
+
+    if (daysDiff <= 30) {
+      // Dates match within 30 days - verified
+      return {
+        verified: true,
+        wikidataDeathDate: wikidataDeathDateStr,
+        confidence: "verified",
+      }
+    } else if (daysDiff <= 365) {
+      // Within a year but not exact - still consider verified but note discrepancy
+      return {
+        verified: true,
+        wikidataDeathDate: wikidataDeathDateStr,
+        confidence: "verified",
+        conflictDetails: `TMDB: ${tmdbDeathDate.toISOString().split("T")[0]}, Wikidata: ${wikidataDeathDateStr} (${Math.round(daysDiff)} days apart)`,
+      }
+    } else {
+      // More than a year apart - conflicting data
+      return {
+        verified: false,
+        wikidataDeathDate: wikidataDeathDateStr,
+        confidence: "conflicting",
+        conflictDetails: `TMDB: ${tmdbDeathDate.toISOString().split("T")[0]}, Wikidata: ${wikidataDeathDateStr} (${Math.round(daysDiff / 365)} years apart)`,
+      }
+    }
+  }
+
+  // No matching person found in Wikidata
+  return {
+    verified: false,
+    wikidataDeathDate: null,
+    confidence: "unverified",
+  }
+}

@@ -555,6 +555,9 @@ describe("getAllDeathsHandler", () => {
       thetvdb_person_id: null,
       imdb_person_id: null,
       is_obscure: false,
+      deathday_confidence: null,
+      deathday_verification_source: null,
+      deathday_verified_at: null,
     },
     {
       id: 2,
@@ -577,6 +580,9 @@ describe("getAllDeathsHandler", () => {
       thetvdb_person_id: null,
       imdb_person_id: null,
       is_obscure: true,
+      deathday_confidence: null,
+      deathday_verification_source: null,
+      deathday_verified_at: null,
     },
   ]
 
