@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { getCauseOfDeath, getWikipediaDeathDetails, type DeathInfoSource } from "./wikidata.js"
+import {
+  getCauseOfDeath,
+  getWikipediaDeathDetails,
+  verifyDeathDate,
+  type DeathInfoSource,
+} from "./wikidata.js"
 
 // Mock the claude module
 vi.mock("./claude.js", () => ({
@@ -636,5 +641,155 @@ describe("DeathInfoSource type", () => {
     expect(claudeSource).toBe("claude")
     expect(wikipediaSource).toBe("wikipedia")
     expect(nullSource).toBeNull()
+  })
+})
+
+describe("verifyDeathDate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns verified with high confidence when dates match within 30 days", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          results: {
+            bindings: [
+              {
+                personLabel: { value: "John Smith" },
+                deathDate: { value: "2024-09-26" },
+              },
+            ],
+          },
+        }),
+    })
+
+    const result = await verifyDeathDate("John Smith", 1950, "2024-09-28")
+
+    expect(result.verified).toBe(true)
+    expect(result.confidence).toBe("verified")
+    expect(result.wikidataDeathDate).toBe("2024-09-26")
+  })
+
+  it("returns verified when dates are within same year but more than 30 days apart", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          results: {
+            bindings: [
+              {
+                personLabel: { value: "Jane Doe" },
+                deathDate: { value: "2024-01-15" },
+              },
+            ],
+          },
+        }),
+    })
+
+    const result = await verifyDeathDate("Jane Doe", 1940, "2024-06-20")
+
+    expect(result.verified).toBe(true)
+    expect(result.confidence).toBe("verified")
+    expect(result.conflictDetails).toContain("days apart")
+  })
+
+  it("returns conflicting when dates differ by more than a year", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          results: {
+            bindings: [
+              {
+                personLabel: { value: "Brigitte Bardot" },
+                deathDate: { value: "2024-09-26" },
+              },
+            ],
+          },
+        }),
+    })
+
+    const result = await verifyDeathDate("Brigitte Bardot", 1934, "2025-12-28")
+
+    expect(result.verified).toBe(false)
+    expect(result.confidence).toBe("conflicting")
+    expect(result.wikidataDeathDate).toBe("2024-09-26")
+    expect(result.conflictDetails).toContain("years apart")
+  })
+
+  it("returns unverified when no Wikidata records found", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          results: {
+            bindings: [],
+          },
+        }),
+    })
+
+    const result = await verifyDeathDate("Unknown Person", 1970, "2024-01-01")
+
+    expect(result.verified).toBe(false)
+    expect(result.confidence).toBe("unverified")
+    expect(result.wikidataDeathDate).toBeNull()
+  })
+
+  it("returns unverified when Wikidata API fails", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    })
+
+    const result = await verifyDeathDate("Actor Name", 1960, "2024-05-15")
+
+    expect(result.verified).toBe(false)
+    expect(result.confidence).toBe("unverified")
+  })
+
+  it("returns unverified when name does not match", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          results: {
+            bindings: [
+              {
+                personLabel: { value: "Someone Else" },
+                deathDate: { value: "2024-09-26" },
+              },
+            ],
+          },
+        }),
+    })
+
+    const result = await verifyDeathDate("John Smith", 1950, "2024-09-26")
+
+    expect(result.verified).toBe(false)
+    expect(result.confidence).toBe("unverified")
+  })
+
+  it("works without birth year", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          results: {
+            bindings: [
+              {
+                personLabel: { value: "Actor Name" },
+                deathDate: { value: "2024-03-15" },
+              },
+            ],
+          },
+        }),
+    })
+
+    const result = await verifyDeathDate("Actor Name", null, "2024-03-15")
+
+    expect(result.verified).toBe(true)
+    expect(result.confidence).toBe("verified")
   })
 })
