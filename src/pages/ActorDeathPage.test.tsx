@@ -282,4 +282,77 @@ describe("ActorDeathPage", () => {
 
     expect(screen.getByText("Invalid actor URL")).toBeInTheDocument()
   })
+
+  describe("Low Confidence Warning Banner", () => {
+    it("shows warning banner when confidence is low", async () => {
+      const dataWithLowConfidence = {
+        ...mockDeathDetails,
+        circumstances: {
+          ...mockDeathDetails.circumstances,
+          confidence: "low",
+        },
+      }
+      vi.mocked(api.getActorDeathDetails).mockResolvedValue(dataWithLowConfidence)
+
+      renderWithProviders(<ActorDeathPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("low-confidence-warning")).toBeInTheDocument()
+      })
+
+      expect(screen.getByText("Unverified Information")).toBeInTheDocument()
+      expect(screen.getByText(/could not be fully verified/i)).toBeInTheDocument()
+    })
+
+    it("shows disputed warning banner when confidence is disputed", async () => {
+      const dataWithDisputedConfidence = {
+        ...mockDeathDetails,
+        circumstances: {
+          ...mockDeathDetails.circumstances,
+          confidence: "disputed",
+        },
+      }
+      vi.mocked(api.getActorDeathDetails).mockResolvedValue(dataWithDisputedConfidence)
+
+      renderWithProviders(<ActorDeathPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("low-confidence-warning")).toBeInTheDocument()
+      })
+
+      expect(screen.getByText("Information Disputed")).toBeInTheDocument()
+      expect(screen.getByText(/Multiple conflicting accounts exist/i)).toBeInTheDocument()
+    })
+
+    it("does not show warning banner when confidence is high", async () => {
+      vi.mocked(api.getActorDeathDetails).mockResolvedValue(mockDeathDetails)
+
+      renderWithProviders(<ActorDeathPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("official-section")).toBeInTheDocument()
+      })
+
+      expect(screen.queryByTestId("low-confidence-warning")).not.toBeInTheDocument()
+    })
+
+    it("does not show warning banner when confidence is medium", async () => {
+      const dataWithMediumConfidence = {
+        ...mockDeathDetails,
+        circumstances: {
+          ...mockDeathDetails.circumstances,
+          confidence: "medium",
+        },
+      }
+      vi.mocked(api.getActorDeathDetails).mockResolvedValue(dataWithMediumConfidence)
+
+      renderWithProviders(<ActorDeathPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("official-section")).toBeInTheDocument()
+      })
+
+      expect(screen.queryByTestId("low-confidence-warning")).not.toBeInTheDocument()
+    })
+  })
 })

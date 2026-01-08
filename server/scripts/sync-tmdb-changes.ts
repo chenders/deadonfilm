@@ -49,7 +49,7 @@ import {
   getSeasonDetails,
   type TMDBPerson,
 } from "../src/lib/tmdb.js"
-import { getCauseOfDeath } from "../src/lib/wikidata.js"
+import { getCauseOfDeath, verifyDeathDate } from "../src/lib/wikidata.js"
 import { calculateYearsLost, calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import { formatDate, subtractDays, getDateRanges } from "../src/lib/date-utils.js"
 import { invalidateDeathCaches, invalidateMovieCaches } from "../src/lib/cache.js"
@@ -469,6 +469,19 @@ async function syncPeopleChanges(
 }
 
 async function processNewDeath(person: TMDBPerson): Promise<void> {
+  const birthYear = person.birthday ? new Date(person.birthday).getFullYear() : null
+
+  // Verify death date against Wikidata before storing
+  const deathVerification = await verifyDeathDate(person.name, birthYear, person.deathday!)
+
+  if (!deathVerification.verified) {
+    if (deathVerification.confidence === "conflicting") {
+      console.log(`  [CONFLICTING] ${person.name}: ${deathVerification.conflictDetails}`)
+    } else {
+      console.log(`  [UNVERIFIED] ${person.name}: No Wikidata record found to verify death date`)
+    }
+  }
+
   // Look up cause of death
   const {
     causeOfDeath,
@@ -481,7 +494,7 @@ async function processNewDeath(person: TMDBPerson): Promise<void> {
   // Calculate mortality stats
   const yearsLostResult = await calculateYearsLost(person.birthday, person.deathday!)
 
-  // Create actor record
+  // Create actor record with death date verification info
   const record: ActorInput = {
     tmdb_id: person.id,
     name: person.name,
@@ -496,6 +509,10 @@ async function processNewDeath(person: TMDBPerson): Promise<void> {
     age_at_death: yearsLostResult?.ageAtDeath ?? null,
     expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
     years_lost: yearsLostResult?.yearsLost ?? null,
+    // Death date verification fields
+    deathday_confidence: deathVerification.confidence,
+    deathday_verification_source: deathVerification.wikidataDeathDate ? "wikidata" : null,
+    deathday_verified_at: new Date().toISOString(),
   }
 
   await upsertActor(record)
