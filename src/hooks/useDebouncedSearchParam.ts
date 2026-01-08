@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useSearchParams } from "react-router-dom"
 
 interface UseDebouncedSearchParamOptions {
@@ -30,38 +30,46 @@ export function useDebouncedSearchParam(
   // Local state for immediate input feedback
   const [inputValue, setInputValue] = useState(urlValue)
 
+  // Use ref to store the latest searchParams to avoid dependency issues
+  // searchParams from useSearchParams can be a new object on every render
+  const searchParamsRef = useRef(searchParams)
+  searchParamsRef.current = searchParams
+
   // Sync local state when URL changes (e.g., browser back/forward)
   useEffect(() => {
     setInputValue(urlValue)
   }, [urlValue])
 
+  // Memoized update function to avoid unnecessary effect re-runs
+  const updateUrl = useCallback(
+    (value: string) => {
+      const newParams = new URLSearchParams(searchParamsRef.current)
+      if (value) {
+        newParams.set(paramName, value)
+      } else {
+        newParams.delete(paramName)
+      }
+      if (resetPageOnChange) {
+        newParams.delete("page")
+      }
+      setSearchParams(newParams)
+    },
+    [paramName, resetPageOnChange, setSearchParams]
+  )
+
   // Debounce input - update URL after user stops typing
   useEffect(() => {
+    // Only set up debounce if input differs from URL
+    if (inputValue === urlValue) {
+      return
+    }
+
     const timer = setTimeout(() => {
-      if (inputValue !== urlValue) {
-        const newParams = new URLSearchParams(searchParams)
-        if (inputValue) {
-          newParams.set(paramName, inputValue)
-        } else {
-          newParams.delete(paramName)
-        }
-        if (resetPageOnChange) {
-          newParams.delete("page")
-        }
-        setSearchParams(newParams)
-      }
+      updateUrl(inputValue)
     }, debounceMs)
 
     return () => clearTimeout(timer)
-  }, [
-    inputValue,
-    urlValue,
-    searchParams,
-    setSearchParams,
-    paramName,
-    debounceMs,
-    resetPageOnChange,
-  ])
+  }, [inputValue, urlValue, debounceMs, updateUrl])
 
   return [inputValue, setInputValue, urlValue]
 }
