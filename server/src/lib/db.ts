@@ -171,11 +171,6 @@ import { getPool } from "./db/pool.js"
 
 // Import types for local use (also re-exported above)
 import type { DeathInfoSource } from "./db/types.js"
-
-// ============================================================================
-// Cursed Actors functions
-// ============================================================================
-
 // Options for getCursedActors query
 export interface CursedActorsOptions {
   limit?: number

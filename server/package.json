@@ -73,6 +73,8 @@
     "fix:death-details": "tsx scripts/fix-death-details.ts",
     "refetch:death-details": "tsx scripts/refetch-death-details.ts",
     "verify:death-info": "tsx scripts/verify-death-info.ts",
+    "//find:uncertain-deaths": "Find actors with uncertain death data for review (weekly cron)",
+    "find:uncertain-deaths": "tsx scripts/find-uncertain-deaths.ts",
     "// === Synchronization ===": "",
     "//sync:tmdb": "Sync with TMDB Changes API (runs every 2h in prod)",
     "sync:tmdb": "node dist/scripts/sync-tmdb-changes.js || tsx scripts/sync-tmdb-changes.ts",
