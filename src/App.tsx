@@ -1,36 +1,38 @@
-import { lazy, Suspense } from "react"
+import { Suspense } from "react"
 import { Routes, Route } from "react-router-dom"
 import Layout from "./components/layout/Layout"
 import HomePage from "./pages/HomePage"
 import LoadingSpinner from "./components/common/LoadingSpinner"
 import { useGoogleAnalytics } from "./hooks/useGoogleAnalytics"
 import { useNewRelicBrowser } from "./hooks/useNewRelicBrowser"
+import { lazyWithRetry } from "./utils/lazyWithRetry"
 
 // Lazy load pages that aren't the landing page
-const MoviePage = lazy(() => import("./pages/MoviePage"))
-const ShowPage = lazy(() => import("./pages/ShowPage"))
-const SeasonPage = lazy(() => import("./pages/SeasonPage"))
-const EpisodePage = lazy(() => import("./pages/EpisodePage"))
-const ActorPage = lazy(() => import("./pages/ActorPage"))
+// Using lazyWithRetry to handle chunk loading failures after deployments
+const MoviePage = lazyWithRetry(() => import("./pages/MoviePage"))
+const ShowPage = lazyWithRetry(() => import("./pages/ShowPage"))
+const SeasonPage = lazyWithRetry(() => import("./pages/SeasonPage"))
+const EpisodePage = lazyWithRetry(() => import("./pages/EpisodePage"))
+const ActorPage = lazyWithRetry(() => import("./pages/ActorPage"))
 // Temporarily hidden - see plan in kind-brewing-moore.md
-// const CursedMoviesPage = lazy(() => import("./pages/CursedMoviesPage"))
-// const CursedActorsPage = lazy(() => import("./pages/CursedActorsPage"))
-const ForeverYoungPage = lazy(() => import("./pages/ForeverYoungPage"))
-const CovidDeathsPage = lazy(() => import("./pages/CovidDeathsPage"))
-const UnnaturalDeathsPage = lazy(() => import("./pages/UnnaturalDeathsPage"))
-const DeathWatchPage = lazy(() => import("./pages/DeathWatchPage"))
-const CausesIndexPage = lazy(() => import("./pages/CausesIndexPage"))
-const DeathsByCausePage = lazy(() => import("./pages/DeathsByCausePage"))
-const DecadesIndexPage = lazy(() => import("./pages/DecadesIndexPage"))
-const AllDeathsPage = lazy(() => import("./pages/AllDeathsPage"))
-const DeathsByDecadePage = lazy(() => import("./pages/DeathsByDecadePage"))
-const GenresIndexPage = lazy(() => import("./pages/GenresIndexPage"))
-const GenreMoviesPage = lazy(() => import("./pages/GenreMoviesPage"))
-const CausesOfDeathPage = lazy(() => import("./pages/CausesOfDeathPage"))
-const CauseCategoryPage = lazy(() => import("./pages/CauseCategoryPage"))
-const SpecificCausePage = lazy(() => import("./pages/SpecificCausePage"))
-const ActorDeathPage = lazy(() => import("./pages/ActorDeathPage"))
-const NotableDeathsPage = lazy(() => import("./pages/NotableDeathsPage"))
+// const CursedMoviesPage = lazyWithRetry(() => import("./pages/CursedMoviesPage"))
+// const CursedActorsPage = lazyWithRetry(() => import("./pages/CursedActorsPage"))
+const ForeverYoungPage = lazyWithRetry(() => import("./pages/ForeverYoungPage"))
+const CovidDeathsPage = lazyWithRetry(() => import("./pages/CovidDeathsPage"))
+const UnnaturalDeathsPage = lazyWithRetry(() => import("./pages/UnnaturalDeathsPage"))
+const DeathWatchPage = lazyWithRetry(() => import("./pages/DeathWatchPage"))
+const CausesIndexPage = lazyWithRetry(() => import("./pages/CausesIndexPage"))
+const DeathsByCausePage = lazyWithRetry(() => import("./pages/DeathsByCausePage"))
+const DecadesIndexPage = lazyWithRetry(() => import("./pages/DecadesIndexPage"))
+const AllDeathsPage = lazyWithRetry(() => import("./pages/AllDeathsPage"))
+const DeathsByDecadePage = lazyWithRetry(() => import("./pages/DeathsByDecadePage"))
+const GenresIndexPage = lazyWithRetry(() => import("./pages/GenresIndexPage"))
+const GenreMoviesPage = lazyWithRetry(() => import("./pages/GenreMoviesPage"))
+const CausesOfDeathPage = lazyWithRetry(() => import("./pages/CausesOfDeathPage"))
+const CauseCategoryPage = lazyWithRetry(() => import("./pages/CauseCategoryPage"))
+const SpecificCausePage = lazyWithRetry(() => import("./pages/SpecificCausePage"))
+const ActorDeathPage = lazyWithRetry(() => import("./pages/ActorDeathPage"))
+const NotableDeathsPage = lazyWithRetry(() => import("./pages/NotableDeathsPage"))
 
 function App() {
   useGoogleAnalytics()
