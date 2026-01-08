@@ -8,7 +8,7 @@
 import "dotenv/config"
 import { getPool, resetPool } from "../src/lib/db.js"
 
-const UNCERTAINTY_PATTERNS = [
+export const UNCERTAINTY_PATTERNS = [
   "cannot verify",
   "cannot confirm",
   "may contain incorrect",
@@ -30,7 +30,7 @@ const UNCERTAINTY_PATTERNS = [
   "reportedly alive",
 ]
 
-async function findUncertainDeaths(): Promise<void> {
+export async function findUncertainDeaths(): Promise<void> {
   const db = getPool()
 
   try {
@@ -117,4 +117,7 @@ async function findUncertainDeaths(): Promise<void> {
   }
 }
 
-findUncertainDeaths().catch(console.error)
+// Only run when executed directly (not when imported by tests)
+if (process.env.VITEST !== "true") {
+  findUncertainDeaths().catch(console.error)
+}

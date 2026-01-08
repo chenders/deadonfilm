@@ -234,7 +234,8 @@ async function getWikipediaUrl(
 
 function buildSparqlQuery(name: string, birthYear: number, deathYear: number): string {
   // Use exact label match for efficiency - CONTAINS is too slow
-  const escapedName = name.replace(/"/g, '\\"')
+  // Escape backslashes first, then double quotes for SPARQL string literal
+  const escapedName = name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 
   return `
     SELECT ?person ?personLabel ?causeOfDeathLabel ?birthDate ?deathDate ?article WHERE {
@@ -690,7 +691,8 @@ function buildDeathDateVerificationQuery(
   birthYear: number | null,
   tmdbDeathYear: number
 ): string {
-  const escapedName = name.replace(/"/g, '\\"')
+  // Escape backslashes first, then double quotes for SPARQL string literal
+  const escapedName = name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 
   // If we have birth year, use it for more accurate matching
   const birthYearFilter = birthYear
