@@ -3,9 +3,9 @@ globs: ["server/scripts/**"]
 ---
 # CLI Script Patterns
 
-All CLI scripts use [Commander.js](https://github.com/tj/commander.js) for argument parsing.
+All CLI scripts MUST use [Commander.js](https://github.com/tj/commander.js) for argument parsing.
 
-## Standard Pattern
+## Required Pattern
 
 ```typescript
 #!/usr/bin/env tsx
@@ -36,7 +36,7 @@ const program = new Command()
   .option("-n, --dry-run", "Preview changes without writing")
   .option("-c, --count <number>", "Number of items", parsePositiveInt, 100)
   .action(async (arg1, arg2, options) => {
-    // Validate mutually exclusive options
+    // Validate mutually exclusive options in action handler
     if (options.optionA && options.optionB) {
       console.error("Error: Cannot specify both --option-a and --option-b")
       process.exit(1)
@@ -47,10 +47,13 @@ const program = new Command()
 program.parse()
 ```
 
-## Key Conventions
+## Conventions
 
-- Use `InvalidArgumentError` for argument validation errors
-- Validate mutually exclusive options in the action handler
-- Use optional arguments with `[brackets]`, required with `<brackets>`
-- Provide sensible defaults via the fourth parameter to `.option()`
-- Always call `program.parse()` at the end
+| Pattern | Usage |
+|---------|-------|
+| `[brackets]` | Optional arguments |
+| `<brackets>` | Required arguments |
+| `InvalidArgumentError` | Throw for validation errors |
+| 4th param to `.option()` | Default values |
+| Action handler | Validate mutually exclusive options |
+| End of file | MUST call `program.parse()` |

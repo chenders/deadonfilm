@@ -3,41 +3,47 @@ globs: ["server/migrations/**", "**/*.cjs"]
 ---
 # Database Migrations
 
-The project uses `node-pg-migrate` for database migrations.
+This project uses `node-pg-migrate` for database migrations.
 
 ## Commands
 
 ```bash
 cd server
-npm run migrate:up      # Run pending migrations
-npm run migrate:down    # Rollback last migration
+npm run migrate:up                        # Run pending migrations
+npm run migrate:down                      # Rollback last migration
 npm run migrate:create -- migration-name  # Create new migration
 ```
 
-Migration files are stored in `server/migrations/` as CommonJS files.
+Migration files location: `server/migrations/*.cjs`
 
-## JavaScript Files and JSDoc
+---
 
-Some files remain as JavaScript/CommonJS for tooling compatibility:
+## JavaScript/CommonJS Files
 
-- **Config files** (`eslint.config.js`, `postcss.config.js`, `tailwind.config.js`)
-- **Migration files** (`server/migrations/*.cjs`)
-- **New Relic config** (`server/newrelic.cjs`)
+Some files MUST remain as JavaScript/CommonJS for tooling compatibility:
 
-All JavaScript files use JSDoc annotations for type safety:
+| File Type | Examples |
+|-----------|----------|
+| Config files | `eslint.config.js`, `postcss.config.js`, `tailwind.config.js` |
+| Migrations | `server/migrations/*.cjs` |
+| New Relic | `server/newrelic.cjs` |
+
+## JSDoc Type Annotations
+
+All JavaScript files MUST use JSDoc annotations for type safety:
 
 ```javascript
-// Config files use @type for the default export
+// Config files - use @type for the default export
 /** @type {import('tailwindcss').Config} */
 export default {
-  // config here gets full autocomplete
+  // Full autocomplete available
 }
 
-// Migration files annotate function parameters
+// Migration files - annotate function parameters
 /**
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.up = (pgm) => {
-  // pgm methods get full type checking
+  // Full type checking on pgm methods
 }
 ```

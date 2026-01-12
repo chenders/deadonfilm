@@ -8,47 +8,53 @@ The app calculates expected mortality using US Social Security Administration ac
 ## Key Formulas
 
 ```
-Expected Death Probability:
+Expected Death Probability
   For each actor: P(death) = cumulative probability of dying between age at filming and current age
   Expected Deaths = sum of all actor death probabilities
 
-Mortality Surprise Score (Curse Score):
-  (Actual Deaths - Expected Deaths) / Expected Deaths
-  Positive = more deaths than expected ("cursed" movie)
-  Negative = fewer deaths than expected ("blessed" movie)
+Mortality Surprise Score (Curse Score)
+  Formula: (Actual Deaths - Expected Deaths) / Expected Deaths
+  Positive score = more deaths than expected ("cursed")
+  Negative score = fewer deaths than expected ("blessed")
 
-Years Lost:
-  Expected Lifespan - Actual Lifespan
-  Uses birth-year-specific cohort life expectancy from US SSA data
-  Positive = died early, Negative = lived longer than expected
+Years Lost
+  Formula: Expected Lifespan - Actual Lifespan
+  Data source: Birth-year-specific cohort life expectancy from US SSA
+  Positive = died early | Negative = lived longer than expected
 ```
 
 ## Calculation Rules
 
-1. **Archived Footage Exclusion**: Actors who died more than 3 years before a movie/show's release are excluded. They appeared via archived footage.
+| Rule | Description |
+|------|-------------|
+| Archived Footage | Exclude actors who died >3 years before release |
+| Same-Year Death | Count with minimum 1 year of death probability |
+| Cursed Actors | Sum expected/actual co-star deaths across filmography, then compute curse score |
 
-2. **Same-Year Death Handling**: Actors who died the same year as release are counted with at least 1 year of death probability.
+---
 
-3. **Cursed Actors**: Sum expected and actual co-star deaths across all filmography, then compute curse score.
+## Obscure Content Filtering
 
-## Obscure Movie Filtering
+### Obscure Movies
 
-A movie is "obscure" if:
-- No poster image: `poster_path IS NULL`
-- English movies: `popularity < 5.0 AND cast_count < 5`
-- Non-English movies: `popularity < 20.0`
+A movie is marked `is_obscure = true` if ANY of:
+- `poster_path IS NULL`
+- English movie: `popularity < 5.0 AND cast_count < 5`
+- Non-English movie: `popularity < 20.0`
 
-Implemented as computed column `is_obscure` in movies table.
+Implemented as computed column in `movies` table.
 
-## Obscure Actor Filtering
+### Non-Obscure Actors
 
 An actor is NOT obscure if ANY of:
-- Has appeared in a movie/TV show with popularity >= 20
-- Has 3+ English movies/shows with popularity >= 5
-- Has 10+ movies total or 50+ TV episodes total
+- Appeared in movie/show with `popularity >= 20`
+- Has 3+ English movies/shows with `popularity >= 5`
+- Has 10+ movies total OR 50+ TV episodes total
 
-See `npm run backfill:actor-obscure` for the backfill script.
+Backfill script: `npm run backfill:actor-obscure`
 
-## Server Library
+---
 
-- `server/src/lib/mortality-stats.ts` - Calculation utilities
+## Implementation
+
+Core library: `server/src/lib/mortality-stats.ts`

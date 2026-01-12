@@ -4,18 +4,20 @@ description: "Load when creating PRs with UI changes"
 ---
 # Pull Request Screenshots
 
-When creating a PR that includes UI changes:
+When creating a PR with UI changes, you MUST:
 
-1. **Take screenshots** of all affected UI areas using Playwright or the browser
-2. **Commit screenshots** to the `e2e/screenshots/` directory
-3. **Include screenshots in the PR description** using GitHub raw URLs
-4. **Verify screenshots are visible** by checking the PR on GitHub after creating it
+1. Take screenshots of all affected UI areas
+2. Commit screenshots to `e2e/screenshots/`
+3. Include screenshots in PR description using GitHub raw URLs
+4. Verify screenshots render correctly on GitHub after creating PR
 
 ## Screenshot Requirements
 
-- **Before/After screenshots**: If making visual changes, include both
-- **After-only screenshots**: If before screenshots aren't available (e.g., new feature)
-- **Multiple viewports**: Include both desktop and mobile when the change affects responsive layouts
+| Scenario | What to Include |
+|----------|-----------------|
+| Visual changes | Before AND after screenshots |
+| New features | After-only screenshots |
+| Responsive changes | Both desktop AND mobile viewports |
 
 ## Taking Screenshots with Playwright
 
@@ -35,11 +37,12 @@ await browser.close();
 
 ## Including in PR Description
 
-**IMPORTANT: Do NOT use relative paths** - they appear as broken images on GitHub!
+**IMPORTANT: NEVER use relative paths** - they render as broken images on GitHub.
 
-Use GitHub raw URLs:
+Use GitHub raw URLs with the commit SHA:
+
 ```markdown
 ![Feature Name](https://raw.githubusercontent.com/chenders/deadonfilm/{commit-sha}/e2e/screenshots/feature-name.png)
 ```
 
-Get the commit SHA after pushing: `git rev-parse HEAD`
+Get commit SHA after pushing: `git rev-parse HEAD`
