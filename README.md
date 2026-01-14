@@ -42,6 +42,8 @@ A website to look up movies and TV shows to see which actors have passed away. S
 
 ## Quick Start
 
+### Development
+
 ```bash
 # Install dependencies
 npm install && cd server && npm install && cd ..
@@ -50,11 +52,21 @@ npm install && cd server && npm install && cd ..
 cp server/.env.example server/.env
 # Edit server/.env with your API keys
 
-# Run development servers
-npm run dev:all
+# Start everything (db + redis containers, frontend + backend with HMR)
+npm run dev
+
+# Stop when done
+npm run dev:stop
 ```
 
 Access at http://localhost:5173
+
+### Production
+
+```bash
+npm run docker:up    # Build and deploy
+npm run docker:down  # Stop
+```
 
 ### Seed actuarial data (required for mortality statistics)
 

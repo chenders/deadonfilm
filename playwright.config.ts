@@ -35,7 +35,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev:all",
+    command: "npx concurrently \"npm run dev:frontend\" \"npm run dev:server\"",
     url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
