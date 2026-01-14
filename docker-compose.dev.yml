@@ -1,0 +1,41 @@
+# Hybrid development - infrastructure services only
+# Run database and Redis in Docker, frontend/backend natively with full HMR
+#
+# Usage:
+#   npm run docker:dev      # Start db + redis
+#   npm run dev:all         # Start frontend + backend with hot reloading
+#
+# Or use the combined command:
+#   npm run start:dev       # Starts everything
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: deadonfilm-db-dev
+    ports:
+      - "5437:5432"
+    environment:
+      - POSTGRES_USER=deadonfilm
+      - POSTGRES_PASSWORD=deadonfilm
+      - POSTGRES_DB=deadonfilm
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deadonfilm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: deadonfilm-redis-dev
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data-dev:
