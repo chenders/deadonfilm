@@ -3,14 +3,10 @@ globs: ["server/src/routes/sitemap.ts", "server/src/lib/slug-utils.ts"]
 ---
 # Sitemap Updates
 
-When adding a new page or URL route, you MUST update the sitemap.
+When adding new pages/routes, update the sitemap:
 
-## Update Checklist
-
-| Page Type | Action Required |
-|-----------|-----------------|
-| Static pages (discovery, landing) | Add to `staticPages` array in `server/src/routes/sitemap.ts` |
-| Dynamic pages (movie/show/actor detail) | Add query + loop to generate URLs in `server/src/routes/sitemap.ts` |
-| New page type needing slug | Add function to `server/src/lib/slug-utils.ts` |
-
-Sitemap location: `server/src/routes/sitemap.ts` → generates `/sitemap.xml`
+| Page Type | Action |
+|-----------|--------|
+| Static (discovery, landing) | Add to `staticPages` in `server/src/routes/sitemap.ts` |
+| Dynamic (movie/show/actor) | Add query + loop in `server/src/routes/sitemap.ts` |
+| New slug type | Add function to `server/src/lib/slug-utils.ts` |
