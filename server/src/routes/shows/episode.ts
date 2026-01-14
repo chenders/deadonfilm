@@ -7,6 +7,7 @@
 import type { Request, Response } from "express"
 import {
   getTVShowDetails,
+  getTVShowAggregateCredits,
   getSeasonDetails,
   getEpisodeDetails,
   getEpisodeCredits,
@@ -34,16 +35,23 @@ export async function getEpisode(req: Request, res: Response) {
   }
 
   try {
-    // Fetch show details, episode details, and episode credits in parallel
-    const [show, episode, credits] = await Promise.all([
+    // Fetch show details, episode details, episode credits, and aggregate credits in parallel
+    const [show, episode, credits, aggregateCredits] = await Promise.all([
       getTVShowDetails(showId),
       getEpisodeDetails(showId, seasonNumber, episodeNumber),
       getEpisodeCredits(showId, seasonNumber, episodeNumber),
+      getTVShowAggregateCredits(showId),
     ])
 
     // Filter to English-language US shows
     if (show.original_language !== "en" || !show.origin_country.includes("US")) {
       return res.status(404).json({ error: { message: "Show not available" } })
+    }
+
+    // Build map of actor ID → total episode count from aggregate credits
+    const episodeCountMap = new Map<number, number>()
+    for (const actor of aggregateCredits.cast) {
+      episodeCountMap.set(actor.id, actor.total_episode_count)
     }
 
     // Combine cast and guest stars
@@ -75,7 +83,7 @@ export async function getEpisode(req: Request, res: Response) {
           profile_path: castMember.profile_path,
           birthday: null,
           age: null,
-          totalEpisodes: 1,
+          totalEpisodes: episodeCountMap.get(castMember.id) ?? 1,
           episodes: [],
         })
         continue
@@ -99,7 +107,7 @@ export async function getEpisode(req: Request, res: Response) {
           tmdbUrl,
           ageAtDeath: dbRecord?.age_at_death ?? null,
           yearsLost: dbRecord?.years_lost ?? null,
-          totalEpisodes: 1,
+          totalEpisodes: episodeCountMap.get(castMember.id) ?? 1,
           episodes: [],
         })
       } else {
@@ -110,7 +118,7 @@ export async function getEpisode(req: Request, res: Response) {
           profile_path: person.profile_path,
           birthday: person.birthday,
           age: calculateAge(person.birthday),
-          totalEpisodes: 1,
+          totalEpisodes: episodeCountMap.get(castMember.id) ?? 1,
           episodes: [],
         })
       }
