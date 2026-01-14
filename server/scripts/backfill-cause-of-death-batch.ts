@@ -21,6 +21,7 @@
  *
  * Options:
  *   --limit <n>        Limit number of actors to process
+ *   --tmdb-id <id>     Process a specific actor by TMDB ID (re-process even if data exists)
  *   --dry-run          Preview without submitting batch
  *   --fresh            Start fresh (ignore checkpoint)
  *   --batch-id <id>    Batch ID for status/process commands
@@ -28,6 +29,7 @@
  * Examples:
  *   npm run backfill:cause-of-death-batch -- submit --limit 100 --dry-run
  *   npm run backfill:cause-of-death-batch -- submit
+ *   npm run backfill:cause-of-death-batch -- submit --tmdb-id 1488908  # Re-process specific actor
  *   npm run backfill:cause-of-death-batch -- status --batch-id msgbatch_xxx
  *   npm run backfill:cause-of-death-batch -- process --batch-id msgbatch_xxx
  */
@@ -506,8 +508,9 @@ async function submitBatch(options: {
   limit?: number
   dryRun?: boolean
   fresh?: boolean
+  tmdbId?: number
 }): Promise<void> {
-  const { limit, dryRun, fresh } = options
+  const { limit, dryRun, fresh, tmdbId } = options
 
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -557,21 +560,35 @@ async function submitBatch(options: {
     }
   }
 
-  console.log(`\nQuerying actors missing cause of death info...`)
+  // Query actors to process
+  const params: (number | null)[] = []
+  let query: string
 
-  // Query actors missing cause_of_death OR cause_of_death_details
-  let query = `
-    SELECT id, tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_details
-    FROM actors
-    WHERE deathday IS NOT NULL
-      AND (cause_of_death IS NULL OR cause_of_death_details IS NULL)
-    ORDER BY popularity DESC NULLS LAST
-  `
+  if (tmdbId) {
+    // Target a specific actor by TMDB ID (re-process even if they have data)
+    console.log(`\nQuerying actor with TMDB ID ${tmdbId}...`)
+    params.push(tmdbId)
+    query = `
+      SELECT id, tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_details
+      FROM actors
+      WHERE tmdb_id = $1
+        AND deathday IS NOT NULL
+    `
+  } else {
+    // Default: query actors missing cause_of_death OR cause_of_death_details
+    console.log(`\nQuerying actors missing cause of death info...`)
+    query = `
+      SELECT id, tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_details
+      FROM actors
+      WHERE deathday IS NOT NULL
+        AND (cause_of_death IS NULL OR cause_of_death_details IS NULL)
+      ORDER BY popularity DESC NULLS LAST
+    `
 
-  const params: number[] = []
-  if (limit) {
-    params.push(limit)
-    query += ` LIMIT $${params.length}`
+    if (limit) {
+      params.push(limit)
+      query += ` LIMIT $${params.length}`
+    }
   }
 
   const result = await db.query<ActorToProcess>(query, params)
@@ -1325,6 +1342,7 @@ program
   .command("submit")
   .description("Create and submit a new batch")
   .option("-l, --limit <number>", "Limit number of actors to process", parsePositiveInt)
+  .option("-t, --tmdb-id <number>", "Process a specific actor by TMDB ID", parsePositiveInt)
   .option("-n, --dry-run", "Preview without submitting batch")
   .option("--fresh", "Start fresh (ignore checkpoint)")
   .action(async (options) => {
