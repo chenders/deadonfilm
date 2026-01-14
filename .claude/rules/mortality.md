@@ -3,52 +3,24 @@ globs: ["**/mortality*", "**/curse*", "server/src/lib/mortality-stats.ts"]
 ---
 # Mortality Statistics
 
-The app calculates expected mortality using US Social Security Administration actuarial life tables.
+Uses US SSA actuarial life tables. Implementation: `server/src/lib/mortality-stats.ts`
 
-## Key Formulas
+## Formulas
 
-```
-Expected Death Probability:
-  For each actor: P(death) = cumulative probability of dying between age at filming and current age
-  Expected Deaths = sum of all actor death probabilities
+| Metric | Formula |
+|--------|---------|
+| Expected Deaths | Sum of P(death) for each actor from filming age to current age |
+| Curse Score | `(Actual - Expected) / Expected`. Positive = "cursed" |
+| Years Lost | `Expected Lifespan - Actual`. Positive = died early |
 
-Mortality Surprise Score (Curse Score):
-  (Actual Deaths - Expected Deaths) / Expected Deaths
-  Positive = more deaths than expected ("cursed" movie)
-  Negative = fewer deaths than expected ("blessed" movie)
+## Rules
 
-Years Lost:
-  Expected Lifespan - Actual Lifespan
-  Uses birth-year-specific cohort life expectancy from US SSA data
-  Positive = died early, Negative = lived longer than expected
-```
+1. **Archived Footage**: Exclude actors who died >3 years before release
+2. **Same-Year Death**: Count with minimum 1 year death probability
+3. **Cursed Actors**: Sum co-star deaths across filmography, then compute score
 
-## Calculation Rules
+## Obscure Filtering
 
-1. **Archived Footage Exclusion**: Actors who died more than 3 years before a movie/show's release are excluded. They appeared via archived footage.
+**Movies** are obscure if: no poster, OR (English + popularity <5 + cast <5), OR (non-English + popularity <20)
 
-2. **Same-Year Death Handling**: Actors who died the same year as release are counted with at least 1 year of death probability.
-
-3. **Cursed Actors**: Sum expected and actual co-star deaths across all filmography, then compute curse score.
-
-## Obscure Movie Filtering
-
-A movie is "obscure" if:
-- No poster image: `poster_path IS NULL`
-- English movies: `popularity < 5.0 AND cast_count < 5`
-- Non-English movies: `popularity < 20.0`
-
-Implemented as computed column `is_obscure` in movies table.
-
-## Obscure Actor Filtering
-
-An actor is NOT obscure if ANY of:
-- Has appeared in a movie/TV show with popularity >= 20
-- Has 3+ English movies/shows with popularity >= 5
-- Has 10+ movies total or 50+ TV episodes total
-
-See `npm run backfill:actor-obscure` for the backfill script.
-
-## Server Library
-
-- `server/src/lib/mortality-stats.ts` - Calculation utilities
+**Actors** are NOT obscure if: appeared in content with popularity ≥20, OR 3+ English works with popularity ≥5, OR 10+ movies OR 50+ TV episodes
