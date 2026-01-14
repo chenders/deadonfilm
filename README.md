@@ -42,6 +42,10 @@ A website to look up movies and TV shows to see which actors have passed away. S
 
 ## Quick Start
 
+### Option 1: Hybrid Mode (Recommended)
+
+Run database in Docker, code runs natively for best IDE integration:
+
 ```bash
 # Install dependencies
 npm install && cd server && npm install && cd ..
@@ -50,7 +54,39 @@ npm install && cd server && npm install && cd ..
 cp server/.env.example server/.env
 # Edit server/.env with your API keys
 
-# Run development servers
+# Start db + redis in Docker, then run dev servers
+npm run start:dev
+
+# When done, stop the containers
+npm run stop:dev
+```
+
+### Option 2: Fully Containerized
+
+Everything runs in Docker with hot reloading:
+
+```bash
+# Set up environment variables
+cp server/.env.example server/.env
+
+# Start all services
+npm run docker:dev:full
+
+# Stop all services
+npm run docker:dev:full:down
+```
+
+### Option 3: Manual Setup
+
+```bash
+# Install dependencies
+npm install && cd server && npm install && cd ..
+
+# Start infrastructure separately
+npm run docker:dev      # Start db + redis
+npm run dev:all         # Start frontend + backend
+
+# Or run your own PostgreSQL and Redis
 npm run dev:all
 ```
 
