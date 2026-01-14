@@ -19,6 +19,9 @@ import type {
 import { DataSourceType } from "./types.js"
 import { WikidataSource } from "./sources/wikidata.js"
 import { DuckDuckGoSource } from "./sources/duckduckgo.js"
+import { FindAGraveSource } from "./sources/findagrave.js"
+import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
+import { PerplexitySource } from "./ai-providers/perplexity.js"
 
 /**
  * Default enrichment configuration.
@@ -63,9 +66,9 @@ export class DeathEnrichmentOrchestrator {
     const freeSources: DataSource[] = [
       new WikidataSource(),
       new DuckDuckGoSource(),
+      new FindAGraveSource(),
       // Add more free sources as they are implemented:
       // new WikipediaSource(),
-      // new FindAGraveSource(),
       // new LegacySource(),
     ]
 
@@ -78,32 +81,23 @@ export class DeathEnrichmentOrchestrator {
       }
     }
 
-    // Paid sources - ordered by cost (cheapest first)
-    // if (this.config.sourceCategories.paid) {
-    //   const paidSources: DataSource[] = [
-    //     // Add paid sources as they are implemented
-    //   ]
-    //   for (const source of paidSources) {
-    //     if (source.isAvailable()) {
-    //       this.sources.push(source)
-    //     }
-    //   }
-    // }
-
     // AI sources - ordered by cost (cheapest first)
-    // if (this.config.sourceCategories.ai) {
-    //   const aiSources: DataSource[] = [
-    //     // Add AI sources as they are implemented:
-    //     // new DeepSeekSource(),
-    //     // new GPT4oMiniSource(),
-    //     // new PerplexitySource(),
-    //   ]
-    //   for (const source of aiSources) {
-    //     if (source.isAvailable()) {
-    //       this.sources.push(source)
-    //     }
-    //   }
-    // }
+    if (this.config.sourceCategories.ai) {
+      const aiSources: DataSource[] = [
+        // Cheapest first
+        new GPT4oMiniSource(), // ~$0.0003/query
+        new PerplexitySource(), // ~$0.005/query (but has web search!)
+        new GPT4oSource(), // ~$0.01/query
+        // Add more as implemented:
+        // new DeepSeekSource(),
+        // new GrokSource(),
+      ]
+      for (const source of aiSources) {
+        if (source.isAvailable()) {
+          this.sources.push(source)
+        }
+      }
+    }
 
     console.log(`Initialized ${this.sources.length} data sources:`)
     for (const source of this.sources) {
