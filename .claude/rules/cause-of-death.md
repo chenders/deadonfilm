@@ -1,12 +1,10 @@
 ---
 globs: ["server/src/lib/claude.ts", "**/wikidata*", "**/wikipedia*"]
 ---
-# Cause of Death Lookup Priority
+# Cause of Death Lookup
 
-When looking up cause of death for deceased actors, the priority order is:
+Priority order (NEVER skip to Wikipedia first):
 
-1. **Claude API (primary)** - Most accurate, should always be tried first
-2. **Wikidata SPARQL (fallback)** - Only if Claude returns null or a vague answer
-3. **Wikipedia article text (last resort)** - Extract from Death sections, Personal life, or infobox
-
-Wikipedia should NEVER be the first method used. Claude should always be tried first.
+1. **Claude API** - Most accurate, always try first
+2. **Wikidata SPARQL** - Fallback if Claude returns null/vague
+3. **Wikipedia text** - Last resort, extract from Death/Personal life sections

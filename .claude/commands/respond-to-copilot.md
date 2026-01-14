@@ -60,20 +60,48 @@ Review and respond to GitHub Copilot review comments on a pull request.
    - **If needs discussion**: Ask clarifying questions
 
 7. **Resolve implemented comments**
-   After responding to comments you implemented fixes for, resolve them using the GraphQL API:
+   After responding to comments you implemented fixes for, resolve them using the GraphQL API.
+
+   **Important:** Thread IDs (`PRRT_` prefix) are different from comment IDs (`PRRC_` prefix). Query for thread IDs first:
+
+   ```bash
+   gh api graphql -f query='
+     query {
+       repository(owner: "{owner}", name: "{repo}") {
+         pullRequest(number: {pr_number}) {
+           reviewThreads(first: 50) {
+             nodes {
+               id
+               isResolved
+               comments(first: 1) { nodes { body } }
+             }
+           }
+         }
+       }
+     }
+   '
+   ```
+
+   Then resolve each implemented thread using its `PRRT_` ID:
    ```bash
    gh api graphql -f query='
      mutation {
-       resolveReviewThread(input: {threadId: "THREAD_NODE_ID"}) {
+       resolveReviewThread(input: {threadId: "PRRT_kwDO..."}) {
          thread { isResolved }
        }
      }
    '
    ```
 
-   To get the thread ID, use the `node_id` from the comment (e.g., `PRRC_kwDO...`).
+   **Important**: Only resolve comments where you implemented the suggested fix. Do NOT resolve comments where you declined to make changes.
 
-   **Important**: Only resolve comments where you implemented the suggested fix. Do NOT resolve comments where you declined to make changes - leave those open for the reviewer to acknowledge your reasoning.
+8. **Request another Copilot review if changes were made**
+   If any changes were committed and pushed, request a new Copilot review:
+   ```bash
+   gh pr edit {pr_number} --add-reviewer Copilot
+   ```
+
+   This ensures Copilot reviews the fixes and any new issues introduced by the changes.
 
 ## Example Responses
 
