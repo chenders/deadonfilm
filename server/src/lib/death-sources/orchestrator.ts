@@ -20,8 +20,10 @@ import { DataSourceType } from "./types.js"
 import { WikidataSource } from "./sources/wikidata.js"
 import { DuckDuckGoSource } from "./sources/duckduckgo.js"
 import { FindAGraveSource } from "./sources/findagrave.js"
+import { LegacySource } from "./sources/legacy.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
+import { DeepSeekSource } from "./ai-providers/deepseek.js"
 
 /**
  * Default enrichment configuration.
@@ -67,9 +69,9 @@ export class DeathEnrichmentOrchestrator {
       new WikidataSource(),
       new DuckDuckGoSource(),
       new FindAGraveSource(),
+      new LegacySource(),
       // Add more free sources as they are implemented:
       // new WikipediaSource(),
-      // new LegacySource(),
     ]
 
     // Filter based on configuration
@@ -85,11 +87,11 @@ export class DeathEnrichmentOrchestrator {
     if (this.config.sourceCategories.ai) {
       const aiSources: DataSource[] = [
         // Cheapest first
+        new DeepSeekSource(), // ~$0.0005/query - cheapest AI option
         new GPT4oMiniSource(), // ~$0.0003/query
         new PerplexitySource(), // ~$0.005/query (but has web search!)
         new GPT4oSource(), // ~$0.01/query
         // Add more as implemented:
-        // new DeepSeekSource(),
         // new GrokSource(),
       ]
       for (const source of aiSources) {
