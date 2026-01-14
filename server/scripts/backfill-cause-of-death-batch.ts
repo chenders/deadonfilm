@@ -49,6 +49,11 @@ import {
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { toSentenceCase } from "../src/lib/text-utils.js"
 import { rebuildDeathCaches } from "../src/lib/cache.js"
+import {
+  DeathEnrichmentOrchestrator,
+  type EnrichmentConfig,
+  type ActorForEnrichment,
+} from "../src/lib/death-sources/index.js"
 
 // Initialize New Relic for monitoring
 initNewRelic()
@@ -1393,6 +1398,321 @@ program
   .option("-b, --batch-id <id>", "Only reprocess failures from specific batch")
   .action(async (options) => {
     await reprocessFailures(options.batchId)
+  })
+
+/**
+ * Enrich actors with missing death details using multi-source fallbacks.
+ * This queries additional sources when Claude Batch API didn't return
+ * sufficient circumstances/notable_factors/etc.
+ */
+async function enrichMissingDetails(options: {
+  limit?: number
+  minPopularity?: number
+  recentOnly?: boolean
+  dryRun?: boolean
+  free?: boolean
+  paid?: boolean
+  ai?: boolean
+  stopOnMatch?: boolean
+  confidenceThreshold?: number
+  tmdbId?: number
+}): Promise<void> {
+  const {
+    limit = 100,
+    minPopularity = 0,
+    recentOnly = false,
+    dryRun = false,
+    free = true,
+    paid = false,
+    ai = false,
+    stopOnMatch = true,
+    confidenceThreshold = 0.5,
+    tmdbId,
+  } = options
+
+  if (!process.env.DATABASE_URL) {
+    console.error("DATABASE_URL environment variable is required")
+    process.exit(1)
+  }
+
+  const db = getPool()
+
+  try {
+    // Build query for actors needing enrichment
+    const params: (number | string)[] = []
+    let query: string
+
+    if (tmdbId) {
+      // Target a specific actor
+      console.log(`\nQuerying actor with TMDB ID ${tmdbId}...`)
+      params.push(tmdbId)
+      query = `
+        SELECT
+          a.id,
+          a.tmdb_id,
+          a.name,
+          a.birthday,
+          a.deathday,
+          a.cause_of_death,
+          a.cause_of_death_details,
+          a.popularity,
+          c.circumstances,
+          c.notable_factors
+        FROM actors a
+        LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+        WHERE a.tmdb_id = $1
+          AND a.deathday IS NOT NULL
+      `
+    } else {
+      // Query actors where Claude returned nulls for detailed fields
+      console.log(`\nQuerying actors with missing death circumstances...`)
+      query = `
+        SELECT
+          a.id,
+          a.tmdb_id,
+          a.name,
+          a.birthday,
+          a.deathday,
+          a.cause_of_death,
+          a.cause_of_death_details,
+          a.popularity,
+          c.circumstances,
+          c.notable_factors
+        FROM actors a
+        LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+        WHERE a.deathday IS NOT NULL
+          AND a.cause_of_death IS NOT NULL
+          AND (c.circumstances IS NULL OR c.notable_factors IS NULL OR array_length(c.notable_factors, 1) IS NULL)
+      `
+
+      if (minPopularity > 0) {
+        params.push(minPopularity)
+        query += ` AND a.popularity >= $${params.length}`
+      }
+
+      if (recentOnly) {
+        // Deaths in last 2 years
+        const twoYearsAgo = new Date()
+        twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+        params.push(twoYearsAgo.toISOString().split("T")[0])
+        query += ` AND a.deathday >= $${params.length}`
+      }
+
+      query += ` ORDER BY a.popularity DESC NULLS LAST`
+
+      if (limit) {
+        params.push(limit)
+        query += ` LIMIT $${params.length}`
+      }
+    }
+
+    const result = await db.query<{
+      id: number
+      tmdb_id: number | null
+      name: string
+      birthday: Date | string | null
+      deathday: Date | string
+      cause_of_death: string | null
+      cause_of_death_details: string | null
+      popularity: number | null
+      circumstances: string | null
+      notable_factors: string[] | null
+    }>(query, params)
+
+    const actors = result.rows
+
+    console.log(`Found ${actors.length} actors needing enrichment`)
+
+    if (actors.length === 0) {
+      console.log("\nNo actors to enrich. Done!")
+      await resetPool()
+      return
+    }
+
+    // Configure the orchestrator
+    const config: Partial<EnrichmentConfig> = {
+      sourceCategories: {
+        free: free,
+        paid: paid,
+        ai: ai,
+      },
+      stopOnMatch: stopOnMatch,
+      confidenceThreshold: confidenceThreshold,
+    }
+
+    const orchestrator = new DeathEnrichmentOrchestrator(config)
+
+    // Convert to ActorForEnrichment format
+    const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
+      id: a.id,
+      tmdbId: a.tmdb_id,
+      name: a.name,
+      birthday: normalizeDateToString(a.birthday),
+      deathday: normalizeDateToString(a.deathday) || "",
+      causeOfDeath: a.cause_of_death,
+      causeOfDeathDetails: a.cause_of_death_details,
+      popularity: a.popularity,
+    }))
+
+    if (dryRun) {
+      console.log(`\n--- Dry Run Mode ---`)
+      console.log(`Would enrich ${actorsToEnrich.length} actors`)
+      console.log(`\nSample actors (first 5):`)
+      for (const actor of actorsToEnrich.slice(0, 5)) {
+        console.log(`  - ${actor.name} (ID: ${actor.id}, TMDB: ${actor.tmdbId || "N/A"})`)
+        console.log(`    Death: ${actor.deathday}, Cause: ${actor.causeOfDeath || "(none)"}`)
+      }
+      console.log(`\nSource configuration:`)
+      console.log(`  Free sources: ${free ? "enabled" : "disabled"}`)
+      console.log(`  Paid sources: ${paid ? "enabled" : "disabled"}`)
+      console.log(`  AI sources: ${ai ? "enabled" : "disabled"}`)
+      console.log(`  Stop on match: ${stopOnMatch}`)
+      console.log(`  Confidence threshold: ${confidenceThreshold}`)
+      await resetPool()
+      return
+    }
+
+    // Run enrichment
+    const results = await orchestrator.enrichBatch(actorsToEnrich)
+
+    // Apply results to database
+    let updated = 0
+    for (const [actorId, enrichment] of results) {
+      if (!enrichment.circumstances && !enrichment.notableFactors?.length) {
+        continue
+      }
+
+      // Update actor_death_circumstances table
+      await db.query(
+        `INSERT INTO actor_death_circumstances (
+          actor_id,
+          circumstances,
+          circumstances_confidence,
+          rumored_circumstances,
+          location_of_death,
+          notable_factors,
+          enrichment_sources,
+          created_at,
+          updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        ON CONFLICT (actor_id) DO UPDATE SET
+          circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
+          circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
+          rumored_circumstances = COALESCE(EXCLUDED.rumored_circumstances, actor_death_circumstances.rumored_circumstances),
+          location_of_death = COALESCE(EXCLUDED.location_of_death, actor_death_circumstances.location_of_death),
+          notable_factors = COALESCE(EXCLUDED.notable_factors, actor_death_circumstances.notable_factors),
+          enrichment_sources = COALESCE(EXCLUDED.enrichment_sources, actor_death_circumstances.enrichment_sources),
+          updated_at = NOW()`,
+        [
+          actorId,
+          enrichment.circumstances,
+          enrichment.circumstancesSource?.confidence
+            ? enrichment.circumstancesSource.confidence >= 0.7
+              ? "high"
+              : enrichment.circumstancesSource.confidence >= 0.4
+                ? "medium"
+                : "low"
+            : null,
+          enrichment.rumoredCircumstances,
+          enrichment.locationOfDeath,
+          enrichment.notableFactors && enrichment.notableFactors.length > 0
+            ? enrichment.notableFactors
+            : null,
+          JSON.stringify({
+            circumstances: enrichment.circumstancesSource,
+            rumoredCircumstances: enrichment.rumoredCircumstancesSource,
+            notableFactors: enrichment.notableFactorsSource,
+            locationOfDeath: enrichment.locationOfDeathSource,
+          }),
+        ]
+      )
+
+      // Set has_detailed_death_info flag if we found notable content
+      if (
+        enrichment.notableFactors?.length ||
+        enrichment.rumoredCircumstances ||
+        enrichment.relatedCelebrities?.length
+      ) {
+        await db.query(`UPDATE actors SET has_detailed_death_info = true WHERE id = $1`, [actorId])
+      }
+
+      updated++
+    }
+
+    // Print final stats
+    const stats = orchestrator.getStats()
+    console.log(`\n${"=".repeat(60)}`)
+    console.log(`Enrichment Complete!`)
+    console.log(`${"=".repeat(60)}`)
+    console.log(`  Actors processed: ${stats.actorsProcessed}`)
+    console.log(`  Actors enriched: ${stats.actorsEnriched}`)
+    console.log(`  Fill rate: ${stats.fillRate.toFixed(1)}%`)
+    console.log(`  Database updates: ${updated}`)
+    console.log(`  Total cost: $${stats.totalCostUsd.toFixed(4)}`)
+    console.log(`  Total time: ${(stats.totalTimeMs / 1000).toFixed(1)}s`)
+
+    // Record event
+    recordCustomEvent("DeathEnrichmentCompleted", {
+      actorsProcessed: stats.actorsProcessed,
+      actorsEnriched: stats.actorsEnriched,
+      fillRate: stats.fillRate,
+      databaseUpdates: updated,
+      totalCostUsd: stats.totalCostUsd,
+      totalTimeMs: stats.totalTimeMs,
+    })
+
+    // Rebuild caches if we updated anything
+    if (updated > 0) {
+      await rebuildDeathCaches()
+      console.log("\nRebuilt death caches")
+    }
+  } catch (error) {
+    recordCustomEvent("DeathEnrichmentError", {
+      error: error instanceof Error ? error.message : "Unknown error",
+    })
+    console.error("Error during enrichment:", error)
+    process.exit(1)
+  } finally {
+    await resetPool()
+  }
+}
+
+program
+  .command("enrich")
+  .description("Enrich actors with missing death details using multi-source fallbacks")
+  .option("-l, --limit <number>", "Limit number of actors to process", parsePositiveInt, 100)
+  .option(
+    "-p, --min-popularity <number>",
+    "Only process actors above popularity threshold",
+    parsePositiveInt,
+    0
+  )
+  .option("-r, --recent-only", "Only deaths in last 2 years")
+  .option("-n, --dry-run", "Preview without writing to database")
+  .option("--free", "Use all free sources (default)", true)
+  .option("--paid", "Include paid sources (ordered by cost)")
+  .option("--ai", "Include AI model fallbacks")
+  .option("--stop-on-match", "Stop searching additional sources once we get results", true)
+  .option(
+    "-c, --confidence <number>",
+    "Minimum confidence threshold to accept results (0-1)",
+    parseFloat,
+    0.5
+  )
+  .option("-t, --tmdb-id <number>", "Process a specific actor by TMDB ID", parsePositiveInt)
+  .action(async (options) => {
+    await enrichMissingDetails({
+      limit: options.limit,
+      minPopularity: options.minPopularity,
+      recentOnly: options.recentOnly,
+      dryRun: options.dryRun,
+      free: options.free !== false,
+      paid: options.paid || false,
+      ai: options.ai || false,
+      stopOnMatch: options.stopOnMatch !== false,
+      confidenceThreshold: options.confidence,
+      tmdbId: options.tmdbId,
+    })
   })
 
 // Only run when executed directly
