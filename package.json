@@ -40,6 +40,8 @@
     "docker:dev:full:down": "docker compose -f docker-compose.dev-full.yml down",
     "//start:dev": "One command to start everything (hybrid mode)",
     "start:dev": "docker compose -f docker-compose.dev.yml up -d && npm run dev:all",
+    "//stop:dev": "Stop hybrid dev containers (run after Ctrl+C to stop dev servers)",
+    "stop:dev": "docker compose -f docker-compose.dev.yml down",
     "// === Docker Production ===": "",
     "docker:up": "docker compose up --build -d",
     "//docker:watch": "Watch mode with file sync to containers",

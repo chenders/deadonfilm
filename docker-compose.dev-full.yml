@@ -57,8 +57,11 @@ services:
       - ./tsconfig.json:/app/tsconfig.json
     environment:
       - VITE_HMR_HOST=localhost
+      # Docker service hostname for Vite's server-side proxy (browser still accesses localhost:8080)
       - VITE_API_URL=http://server:8080
-    command: npm run dev -- --host 0.0.0.0
+    depends_on:
+      - server
+    command: npm run dev
 
   server:
     build:
@@ -74,6 +77,7 @@ services:
       - ./server/migrations:/app/server/migrations
       - ./server/data:/app/server/data
       - ./server/tsconfig.json:/app/server/tsconfig.json
+      # Note: package.json not mounted - rebuild container after dependency changes
     env_file:
       - .env
     environment:
