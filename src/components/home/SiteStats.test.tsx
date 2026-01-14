@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { MemoryRouter } from "react-router-dom"
+import { TestMemoryRouter } from "@/test/test-utils"
 import SiteStats from "./SiteStats"
 import * as api from "@/services/api"
 
@@ -31,9 +31,9 @@ function renderWithProviders(ui: React.ReactElement) {
   })
 
   return render(
-    <MemoryRouter>
+    <TestMemoryRouter>
       <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-    </MemoryRouter>
+    </TestMemoryRouter>
   )
 }
 
