@@ -98,7 +98,7 @@ Review and respond to GitHub Copilot review comments on a pull request.
 8. **Request another Copilot review if changes were made**
    If any changes were committed and pushed, request a new Copilot review:
    ```bash
-   gh pr edit {pr_number} --add-reviewer @chenders/copilot-swe-agent
+   gh pr edit {pr_number} --add-reviewer Copilot
    ```
 
    This ensures Copilot reviews the fixes and any new issues introduced by the changes.
