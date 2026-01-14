@@ -13,7 +13,7 @@ import { Command, InvalidArgumentError } from "commander"
 
 function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
-  if (isNaN(parsed) || parsed <= 0) {
+  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
     throw new InvalidArgumentError("Must be a positive integer")
   }
   return parsed

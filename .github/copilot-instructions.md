@@ -15,7 +15,7 @@ Verify before stating any TMDB ID, URL, database value, or API response. If unve
 ### 2. NEVER Use String Interpolation in SQL
 
 ```typescript
-// WRONG - SQL injection
+// WRONG - SQL injection vulnerability
 db.query(`SELECT * FROM actors WHERE id = ${userId}`)
 
 // CORRECT - parameterized
@@ -59,8 +59,10 @@ PRs are NOT ready for review without tests. Never defer tests to follow-up PRs.
 |-------|---------|
 | `actors` | All actors, death info, popularity. **`tmdb_id` is nullable.** |
 | `movies` / `shows` / `episodes` | Content metadata with mortality stats |
-| `actor_movie_appearances` / `actor_show_appearances` | Links actors to content (**use `actor_id`, not `tmdb_id`**) |
+| `actor_movie_appearances` / `actor_show_appearances` | Links actors to content via `actor_id` (primary key) |
 | `actuarial_life_tables` / `cohort_life_expectancy` | SSA mortality data |
+
+**Important**: Always join actors using `actor_id`, never `tmdb_id`. The `tmdb_id` field can be NULL for actors from non-TMDB sources.
 
 ---
 
