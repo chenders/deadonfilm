@@ -1,28 +1,14 @@
 ---
 globs: ["CLAUDE.md", ".claude/rules/*.md", ".github/copilot-instructions.md"]
 ---
-# Documentation Synchronization
+# Documentation Sync
 
-## Keep Instructions Aligned
-
-When modifying any of these files, **update the others to match**:
+When modifying instruction files, **update the others to match**:
 
 | File | Purpose |
 |------|---------|
-| `CLAUDE.md` | Primary instructions for Claude Code |
-| `.claude/rules/*.md` | Detailed rules by topic |
+| `CLAUDE.md` | Primary Claude Code instructions |
+| `.claude/rules/*.md` | Topic-specific rules |
 | `.github/copilot-instructions.md` | GitHub Copilot instructions |
 
-## Synchronization Rules
-
-1. **CLAUDE.md changes** → Update `copilot-instructions.md`
-2. **Rules file changes** → Update `copilot-instructions.md` if the rule is relevant to Copilot
-3. **Critical rules** must be identical across all files
-
-## What to Sync
-
-- Critical constraints (SQL injection, test requirements, ID verification)
-- Database schema notes (nullable fields, foreign key relationships)
-- Testing requirements and conventions
-- Mortality calculation rules
-- Code quality standards
+Sync: critical constraints, database schema, testing requirements, mortality rules, code quality standards.

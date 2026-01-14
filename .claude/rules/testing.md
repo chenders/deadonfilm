@@ -3,72 +3,43 @@ globs: ["**/*.test.ts", "**/*.test.tsx", "**/e2e/**"]
 ---
 # Testing Standards
 
-## Test Coverage Requirements
+## Coverage Requirements
 
-Every PR must include tests covering:
+Every PR must test: happy path, error handling, edge cases, all branching logic.
 
-1. **Happy path** - normal operation
-2. **Error handling** - database errors, API failures, invalid input
-3. **Edge cases** - empty results, pagination boundaries, null values
-4. **All branching logic** - every if/else path in new code
+## Conventions
 
-## Test File Conventions
+- Files: `*.test.ts` / `*.test.tsx` alongside source
+- Import actual production code, not reimplementations
+- Add `data-testid="kebab-case-name"` to interactive elements
+- Query order: `getByRole` > `getByLabelText` > `getByText` > `getByTestId`
+- **NEVER use CSS class selectors**
 
-- Place test files alongside code: `*.test.ts` or `*.test.tsx`
-- Tests MUST import actual production code, not reimplementations
-- Add `data-testid` to interactive UI elements: `data-testid="kebab-case-name"`
-
-## Query Preference Order
-
-1. `getByRole` - accessibility-first
-2. `getByLabelText` - form elements
-3. `getByText` - visible text
-4. `getByTestId` - last resort
-
-**NEVER use CSS class selectors in tests.**
-
-## Test All Conditional UI States
-
-When UI changes based on state/props, test EACH condition:
+## Test Conditional UI States
 
 ```typescript
-// BAD: Only tests default state
-it("renders description", () => {
-  expect(screen.getByText(/some description/)).toBeInTheDocument()
-})
+// BAD: Only tests default
+it("renders", () => { expect(screen.getByText(/desc/)).toBeInTheDocument() })
 
 // GOOD: Tests both states
-it("shows filtered description when unchecked", () => {
-  expect(screen.getByText(/without optional/)).toBeInTheDocument()
-  expect(screen.queryByText(/optional/)).not.toBeInTheDocument()
-})
-
-it("shows full description when checked", () => {
-  fireEvent.click(screen.getByRole("checkbox"))
-  expect(screen.getByText(/with optional/)).toBeInTheDocument()
-})
+it("unchecked", () => { expect(screen.queryByText(/opt/)).not.toBeInTheDocument() })
+it("checked", () => { fireEvent.click(checkbox); expect(screen.getByText(/opt/)).toBeInTheDocument() })
 ```
 
-## Playwright Visual Snapshots
+## Playwright Snapshots
 
-**ALWAYS use Docker** for visual regression snapshots (CI runs Linux):
+**Use Docker** (CI runs Linux):
 
 ```bash
-docker run --rm -v /path/to/project:/app -w /app --ipc=host \
+docker run --rm -v $(pwd):/app -w /app --ipc=host \
   mcr.microsoft.com/playwright:v1.57.0-noble \
-  sh -c "npm ci && npx playwright test --update-snapshots --grep 'test name'"
+  sh -c "npm ci && npx playwright test --update-snapshots"
 ```
 
-| Rule | Requirement |
-|------|-------------|
-| Commit | Only `*-linux.png` snapshots |
-| Never commit | macOS/darwin snapshots |
-| Docker version | MUST match Playwright version in package.json |
+Only commit `*-linux.png`. Docker version must match `package.json`.
 
-## Responding to Review Comments
-
-When reviewers suggest adding tests:
+## Review Responses
 
 | Acceptable | Unacceptable |
 |------------|--------------|
-| "Fixed. Added tests for [component]." | "Out of scope" / "Will address later" |
+| "Fixed. Added tests." | "Out of scope" / "Later" |
