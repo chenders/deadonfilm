@@ -3,41 +3,32 @@ globs: ["server/scripts/**"]
 ---
 # CLI Scripts
 
-All CLI scripts MUST use [Commander.js](https://github.com/tj/commander.js).
-
-## Required Pattern
+All scripts MUST use [Commander.js](https://github.com/tj/commander.js).
 
 ```typescript
 #!/usr/bin/env tsx
 import { Command, InvalidArgumentError } from "commander"
 
 function parsePositiveInt(value: string): number {
-  const parsed = parseInt(value, 10)
-  if (isNaN(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
-    throw new InvalidArgumentError("Must be a positive integer")
-  }
-  return parsed
+  const n = parseInt(value, 10)
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0) throw new InvalidArgumentError("Must be positive integer")
+  return n
 }
 
 const program = new Command()
   .name("script-name")
-  .description("What the script does")
-  .argument("[optional]", "Description", parsePositiveInt)
-  .argument("<required>", "Description")
-  .option("-n, --dry-run", "Preview without writing")
-  .option("-c, --count <n>", "Number of items", parsePositiveInt, 100)
-  .action(async (arg1, arg2, options) => {
-    await runScript(options)
-  })
+  .description("What it does")
+  .argument("[optional]", "Desc", parsePositiveInt)
+  .argument("<required>", "Desc")
+  .option("-n, --dry-run", "Preview")
+  .option("-c, --count <n>", "Count", parsePositiveInt, 100)
+  .action(async (opt, req, opts) => { await run(opts) })
 
 program.parse()
 ```
 
-## Conventions
-
-| Pattern | Usage |
-|---------|-------|
-| `[brackets]` | Optional arguments |
-| `<brackets>` | Required arguments |
-| `InvalidArgumentError` | Validation errors |
+| Pattern | Meaning |
+|---------|---------|
+| `[arg]` | Optional |
+| `<arg>` | Required |
 | End of file | MUST call `program.parse()` |
