@@ -22,13 +22,18 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: true, // Listen on all interfaces (needed for Docker)
+    hmr: {
+      // Support both native and Docker development
+      host: process.env.VITE_HMR_HOST || 'localhost',
+    },
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: process.env.VITE_API_URL || 'http://localhost:8080',
         changeOrigin: true,
       },
       '/nr-browser.js': {
-        target: 'http://localhost:8080',
+        target: process.env.VITE_API_URL || 'http://localhost:8080',
         changeOrigin: true,
       },
     },
