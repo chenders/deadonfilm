@@ -1,45 +1,40 @@
 ---
-globs: []
 description: "Load when creating PRs with UI changes"
 ---
-# Pull Request Screenshots
+# PR Screenshots
 
-When creating a PR that includes UI changes:
+For PRs with UI changes:
 
-1. **Take screenshots** of all affected UI areas using Playwright or the browser
-2. **Commit screenshots** to the `e2e/screenshots/` directory
-3. **Include screenshots in the PR description** using GitHub raw URLs
-4. **Verify screenshots are visible** by checking the PR on GitHub after creating it
+1. Take screenshots of affected UI areas
+2. Commit to `e2e/screenshots/`
+3. Include in PR description using GitHub raw URLs
 
-## Screenshot Requirements
+| Scenario | Include |
+|----------|---------|
+| Visual changes | Before AND after |
+| New features | After only |
+| Responsive | Desktop AND mobile |
 
-- **Before/After screenshots**: If making visual changes, include both
-- **After-only screenshots**: If before screenshots aren't available (e.g., new feature)
-- **Multiple viewports**: Include both desktop and mobile when the change affects responsive layouts
-
-## Taking Screenshots with Playwright
+## Taking Screenshots
 
 ```javascript
 import { chromium } from 'playwright';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-
 await page.goto('http://localhost:5173/your-page');
 await page.waitForLoadState('networkidle');
-await page.waitForTimeout(500); // Allow animations to complete
+await page.waitForTimeout(500);
 await page.screenshot({ path: 'e2e/screenshots/feature-name.png' });
-
 await browser.close();
 ```
 
-## Including in PR Description
+## PR Description Format
 
-**IMPORTANT: Do NOT use relative paths** - they appear as broken images on GitHub!
+**NEVER use relative paths** - they break on GitHub.
 
-Use GitHub raw URLs:
 ```markdown
-![Feature Name](https://raw.githubusercontent.com/chenders/deadonfilm/{commit-sha}/e2e/screenshots/feature-name.png)
+![Feature](https://raw.githubusercontent.com/chenders/deadonfilm/{commit-sha}/e2e/screenshots/feature.png)
 ```
 
-Get the commit SHA after pushing: `git rev-parse HEAD`
+Get SHA after pushing: `git rev-parse HEAD`
