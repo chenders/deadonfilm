@@ -42,6 +42,10 @@ import { InternetArchiveSource } from "./sources/internet-archive.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
+import { GrokSource } from "./ai-providers/grok.js"
+import { GeminiFlashSource, GeminiProSource } from "./ai-providers/gemini.js"
+import { MistralSource } from "./ai-providers/mistral.js"
+import { GroqLlamaSource } from "./ai-providers/groq.js"
 
 /**
  * Extended enrichment result that includes raw sources and Claude cleanup data.
@@ -144,12 +148,15 @@ export class DeathEnrichmentOrchestrator {
     if (this.config.sourceCategories.ai) {
       const aiSources: DataSource[] = [
         // Cheapest first
-        new DeepSeekSource(), // ~$0.0005/query - cheapest AI option
+        new GeminiFlashSource(), // ~$0.0001/query - cheapest
+        new GroqLlamaSource(), // ~$0.0002/query - fast Llama inference
         new GPT4oMiniSource(), // ~$0.0003/query
-        new PerplexitySource(), // ~$0.005/query (but has web search!)
-        new GPT4oSource(), // ~$0.01/query
-        // Add more as implemented:
-        // new GrokSource(),
+        new DeepSeekSource(), // ~$0.0005/query
+        new MistralSource(), // ~$0.001/query - European training data
+        new GeminiProSource(), // ~$0.002/query (has search grounding!)
+        new GrokSource(), // ~$0.005/query (has X/Twitter data!)
+        new PerplexitySource(), // ~$0.005/query (has web search!)
+        new GPT4oSource(), // ~$0.01/query - most capable
       ]
       for (const source of aiSources) {
         if (source.isAvailable()) {
