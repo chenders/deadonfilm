@@ -18,7 +18,7 @@
  */
 
 // Re-export pool functions
-export { getPool, resetPool, queryWithRetry, initDatabase } from "./pool.js"
+export { getPool, resetPool, queryWithRetry } from "./pool.js"
 
 // Re-export stats functions
 export {

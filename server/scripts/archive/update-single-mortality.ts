@@ -8,8 +8,8 @@
 
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
-import { getPool } from "../src/lib/db.js"
-import { calculateYearsLost } from "../src/lib/mortality-stats.js"
+import { getPool } from "../../src/lib/db.js"
+import { calculateYearsLost } from "../../src/lib/mortality-stats.js"
 
 function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
