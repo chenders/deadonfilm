@@ -35,6 +35,10 @@ import { AlloCineSource } from "./sources/allocine.js"
 import { DoubanSource } from "./sources/douban.js"
 import { SoompiSource } from "./sources/soompi.js"
 import { FilmiBeatSource } from "./sources/filmibeat.js"
+import { ChroniclingAmericaSource } from "./sources/chronicling-america.js"
+import { TroveSource } from "./sources/trove.js"
+import { EuropeanaSource } from "./sources/europeana.js"
+import { InternetArchiveSource } from "./sources/internet-archive.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
@@ -119,6 +123,12 @@ export class DeathEnrichmentOrchestrator {
       new DoubanSource(), // Chinese entertainment database
       new SoompiSource(), // Korean entertainment news
       new FilmiBeatSource(), // Indian (Bollywood) entertainment news
+
+      // Phase 4: Historical archives (for pre-internet deaths)
+      new ChroniclingAmericaSource(), // US newspapers 1756-1963
+      new TroveSource(), // Australian newspapers (requires API key)
+      new EuropeanaSource(), // European archives (requires API key)
+      new InternetArchiveSource(), // Books, documents, historical media
     ]
 
     // Filter based on configuration
