@@ -5,7 +5,11 @@ import { vi } from "vitest"
 // This prevents act() warnings from components that use rAF for positioning
 // Using vi.stubGlobal ensures it persists through fake timers
 vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-  callback(0)
+  const timestamp =
+    typeof performance !== "undefined" && typeof performance.now === "function"
+      ? performance.now()
+      : Date.now()
+  callback(timestamp)
   return 0
 })
 

@@ -13,16 +13,14 @@ export function TestRouter({ children }: { children: React.ReactNode }) {
 /**
  * Test wrapper for MemoryRouter with React Router v7 future flags enabled.
  * Use this instead of MemoryRouter directly in tests to avoid future flag warnings.
+ * Accepts all MemoryRouterProps for flexibility.
  */
 export function TestMemoryRouter({
   children,
-  initialEntries,
-}: {
-  children: React.ReactNode
-  initialEntries?: MemoryRouterProps["initialEntries"]
-}) {
+  ...routerProps
+}: MemoryRouterProps & { children: React.ReactNode }) {
   return (
-    <MemoryRouter future={futureFlags} initialEntries={initialEntries}>
+    <MemoryRouter future={futureFlags} {...routerProps}>
       {children}
     </MemoryRouter>
   )
