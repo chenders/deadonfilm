@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
+import { TestMemoryRouter } from "@/test/test-utils"
 import Header from "./Header"
 
 // Mock SearchTrigger to avoid complex context setup
@@ -10,9 +10,9 @@ vi.mock("@/components/search/SearchTrigger", () => ({
 
 function renderHeader(initialPath = "/movie/test") {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
+    <TestMemoryRouter initialEntries={[initialPath]}>
       <Header />
-    </MemoryRouter>
+    </TestMemoryRouter>
   )
 }
 
