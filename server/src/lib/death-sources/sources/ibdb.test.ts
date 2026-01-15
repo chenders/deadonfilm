@@ -348,7 +348,7 @@ describe("IBDBSource", () => {
         text: async () => "<html><body></body></html>",
       })
 
-      const result = await source.lookup(actor)
+      await source.lookup(actor)
 
       // Should find the match via last name
       expect(mockFetch).toHaveBeenCalledTimes(2)
