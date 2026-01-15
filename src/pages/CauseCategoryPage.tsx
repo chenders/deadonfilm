@@ -21,10 +21,10 @@ function SpecificCauseList({
         <Link
           key={cause.slug}
           to={`/causes-of-death/${categorySlug}/${cause.slug}`}
-          className="flex items-center justify-between rounded p-2 text-sm transition-colors hover:bg-cream"
+          className="flex items-center justify-between rounded p-2 text-sm transition-colors hover:bg-surface-muted"
         >
-          <span className="truncate text-brown-dark">{cause.cause}</span>
-          <span className="shrink-0 text-text-muted">
+          <span className="truncate text-foreground">{cause.cause}</span>
+          <span className="shrink-0 text-foreground-muted">
             {cause.count} · Avg {Math.round(cause.avgAge || 0)}
           </span>
         </Link>
@@ -100,43 +100,46 @@ export default function CauseCategoryPage() {
       <div data-testid="cause-category-page" className="mx-auto max-w-5xl">
         {/* Breadcrumb */}
         <div className="mb-4">
-          <Link to="/causes-of-death" className="text-sm text-brown-medium hover:text-brown-dark">
+          <Link
+            to="/causes-of-death"
+            className="text-sm text-foreground-muted hover:text-foreground"
+          >
             &larr; Causes of Death
           </Link>
         </div>
 
         {/* Header */}
         <div className="mb-6 text-center">
-          <h1 className="mb-2 font-display text-3xl text-brown-dark">{data.label}</h1>
-          <p className="text-text-muted">
+          <h1 className="mb-2 font-display text-3xl text-foreground">{data.label}</h1>
+          <p className="text-foreground-muted">
             {data.count.toLocaleString()} actors ({data.percentage.toFixed(1)}% of known causes)
           </p>
         </div>
 
         {/* Stats Panel */}
-        <div className="mb-8 grid gap-4 rounded-lg bg-beige p-4 sm:grid-cols-3">
+        <div className="mb-8 grid gap-4 rounded-lg bg-surface-muted p-4 sm:grid-cols-3">
           <div className="text-center">
-            <p className="font-display text-2xl text-brown-dark">{data.count.toLocaleString()}</p>
-            <p className="text-xs text-text-muted">Total Deaths</p>
+            <p className="font-display text-2xl text-foreground">{data.count.toLocaleString()}</p>
+            <p className="text-xs text-foreground-muted">Total Deaths</p>
           </div>
           <div className="text-center">
-            <p className="font-display text-2xl text-brown-dark">
+            <p className="font-display text-2xl text-foreground">
               {data.avgAge ? Math.round(data.avgAge) : "-"}
             </p>
-            <p className="text-xs text-text-muted">Avg Age at Death</p>
+            <p className="text-xs text-foreground-muted">Avg Age at Death</p>
           </div>
           <div className="text-center">
             <p className="font-display text-2xl text-accent">
               {data.avgYearsLost ? Math.round(data.avgYearsLost) : "-"}
             </p>
-            <p className="text-xs text-text-muted">Avg Years Lost</p>
+            <p className="text-xs text-foreground-muted">Avg Years Lost</p>
           </div>
         </div>
 
         {/* Notable Actors */}
         {data.notableActors.length > 0 && (
           <div className="mb-8">
-            <h2 className="mb-4 font-display text-xl text-brown-dark">Notable Actors</h2>
+            <h2 className="mb-4 font-display text-xl text-foreground">Notable Actors</h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
               {data.notableActors.map((actor) => (
                 <NotableActorCard key={actor.id} actor={actor} />
@@ -150,7 +153,7 @@ export default function CauseCategoryPage() {
           {/* Decade Breakdown */}
           {data.decadeBreakdown.length > 0 && (
             <div className="rounded-lg bg-white p-4">
-              <h2 className="mb-4 font-display text-lg text-brown-dark">Deaths by Decade</h2>
+              <h2 className="mb-4 font-display text-lg text-foreground">Deaths by Decade</h2>
               <DecadeChart breakdown={data.decadeBreakdown} />
             </div>
           )}
@@ -158,7 +161,7 @@ export default function CauseCategoryPage() {
           {/* Specific Causes */}
           {data.specificCauses.length > 0 && (
             <div className="rounded-lg bg-white p-4">
-              <h2 className="mb-4 font-display text-lg text-brown-dark">Specific Causes</h2>
+              <h2 className="mb-4 font-display text-lg text-foreground">Specific Causes</h2>
               <SpecificCauseList causes={data.specificCauses} categorySlug={data.slug} />
             </div>
           )}
@@ -167,14 +170,14 @@ export default function CauseCategoryPage() {
         {/* Filter */}
         <div className="mb-4 flex justify-center">
           <label
-            className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+            className="flex cursor-pointer items-center gap-2 text-sm text-foreground-muted"
             data-testid="include-obscure-filter"
           >
             <input
               type="checkbox"
               checked={includeObscure}
               onChange={(e) => toggleIncludeObscure(e.target.checked)}
-              className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+              className="h-4 w-4 rounded border-border-theme text-foreground focus:ring-border-theme"
             />
             Include lesser-known actors
           </label>
@@ -182,7 +185,7 @@ export default function CauseCategoryPage() {
 
         {/* Actor List */}
         <div className="mb-4">
-          <h2 className="mb-4 font-display text-xl text-brown-dark">All Actors</h2>
+          <h2 className="mb-4 font-display text-xl text-foreground">All Actors</h2>
           <div className="space-y-2">
             {data.actors.map((actor, index) => (
               <CauseActorRow
@@ -201,19 +204,19 @@ export default function CauseCategoryPage() {
             <button
               onClick={() => goToPage(page - 1)}
               disabled={page <= 1}
-              className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
 
-            <span className="text-sm text-text-muted">
+            <span className="text-sm text-foreground-muted">
               Page {page} of {data.pagination.totalPages}
             </span>
 
             <button
               onClick={() => goToPage(page + 1)}
               disabled={page >= data.pagination.totalPages}
-              className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>
@@ -221,7 +224,7 @@ export default function CauseCategoryPage() {
         )}
 
         {/* Total count */}
-        <p className="mt-4 text-center text-sm text-text-muted">
+        <p className="mt-4 text-center text-sm text-foreground-muted">
           Showing {data.actors.length.toLocaleString()} of{" "}
           {data.pagination.totalCount.toLocaleString()} actors
         </p>

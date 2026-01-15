@@ -37,35 +37,30 @@ export default function EmptyStateCard({ type, searchQuery }: EmptyStateCardProp
       data-testid="empty-state-card"
       className="flex flex-col items-center justify-center py-8 text-center"
     >
-      <div className="max-w-sm rounded-lg border-2 border-brown-medium/20 bg-beige p-6 dark:border-[#4a3d32] dark:bg-[#2a221c]">
+      <div className="max-w-sm rounded-lg border-2 border-border-theme/20 bg-surface-muted p-6">
         {/* Film strip decoration top */}
         <div className="mb-4 flex justify-center gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-1.5 w-2.5 rounded-sm bg-brown-medium/15" />
+            <div key={i} className="h-1.5 w-2.5 rounded-sm bg-border-theme/15" />
           ))}
         </div>
 
-        <IconComponent
-          size={36}
-          className="mx-auto mb-3 text-brown-medium/50 dark:text-[#9a8b7a]"
-        />
+        <IconComponent size={36} className="mx-auto mb-3 text-foreground-muted/50" />
 
-        <h3 className="mb-1 font-display text-base uppercase tracking-wide text-brown-dark dark:text-[#d4c8b5]">
+        <h3 className="mb-1 font-display text-base uppercase tracking-wide text-foreground">
           {title}
         </h3>
-        <p className="text-sm text-text-muted dark:text-[#9a8b7a]">
+        <p className="text-sm text-foreground-muted">
           {subtitle}
           {searchQuery && type === "no-results" && (
-            <span className="mt-1 block italic text-brown-medium dark:text-[#9a8b7a]">
-              "{searchQuery}"
-            </span>
+            <span className="mt-1 block italic text-foreground-muted">"{searchQuery}"</span>
           )}
         </p>
 
         {/* Film strip decoration bottom */}
         <div className="mt-4 flex justify-center gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-1.5 w-2.5 rounded-sm bg-brown-medium/15" />
+            <div key={i} className="h-1.5 w-2.5 rounded-sm bg-border-theme/15" />
           ))}
         </div>
       </div>

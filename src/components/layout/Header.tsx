@@ -22,7 +22,7 @@ export default function Header() {
           <SkullLogo data-testid="skull-logo" className="h-auto w-16 md:w-24" />
           <h1
             data-testid="site-title"
-            className="font-display text-2xl italic text-brown-dark dark:text-[#d4c8b5] md:text-5xl"
+            className="font-display text-2xl italic text-foreground dark:text-[#d4c8b5] md:text-5xl"
           >
             Dead on Film
           </h1>

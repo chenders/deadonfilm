@@ -41,7 +41,7 @@ export default function HomePage() {
       <JsonLd data={buildWebsiteSchema()} />
 
       <div data-testid="home-page" className="mx-auto max-w-2xl text-center">
-        <p data-testid="home-tagline" className="mb-6 text-lg text-text-muted dark:text-[#9a8b7a]">
+        <p data-testid="home-tagline" className="mb-6 text-lg text-foreground-muted">
           Search for a movie or TV show to see which cast members have passed away
         </p>
 

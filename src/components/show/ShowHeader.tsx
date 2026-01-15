@@ -26,9 +26,9 @@ export default function ShowHeader({ show, hidePoster = false }: ShowHeaderProps
         ) : (
           <div
             data-testid="show-poster-placeholder"
-            className="mb-2 flex aspect-[2/3] w-[clamp(6rem,18vh,12rem)] items-center justify-center rounded-lg bg-beige"
+            className="mb-2 flex aspect-[2/3] w-[clamp(6rem,18vh,12rem)] items-center justify-center rounded-lg bg-surface-muted"
           >
-            <span className="text-text-muted">No poster</span>
+            <span className="text-foreground-muted">No poster</span>
           </div>
         ))}
 
@@ -38,10 +38,10 @@ export default function ShowHeader({ show, hidePoster = false }: ShowHeaderProps
       >
         {show.name}
       </h1>
-      <p data-testid="show-year" className="text-lg text-brown-medium md:text-xl">
+      <p data-testid="show-year" className="text-lg text-foreground-muted md:text-xl">
         ({year})
       </p>
-      <p data-testid="show-meta" className="mt-1 text-sm text-text-muted">
+      <p data-testid="show-meta" className="mt-1 text-sm text-foreground-muted">
         {show.numberOfSeasons} season{show.numberOfSeasons !== 1 ? "s" : ""} &bull;{" "}
         {show.numberOfEpisodes} episode{show.numberOfEpisodes !== 1 ? "s" : ""} &bull; {show.status}
       </p>
@@ -84,9 +84,9 @@ export function ShowPoster({ show }: { show: ShowDetails }) {
     >
       <div
         data-testid="show-poster-placeholder"
-        className="flex aspect-[2/3] w-32 cursor-pointer items-center justify-center rounded-lg bg-beige transition-colors hover:bg-cream md:w-44"
+        className="flex aspect-[2/3] w-32 cursor-pointer items-center justify-center rounded-lg bg-surface-muted transition-colors hover:bg-surface-muted md:w-44"
       >
-        <span className="text-sm text-text-muted">No poster</span>
+        <span className="text-sm text-foreground-muted">No poster</span>
       </div>
     </a>
   )

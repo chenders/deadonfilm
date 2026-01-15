@@ -16,7 +16,7 @@ export default function SkullLogo({ className = "w-32 h-auto", ...props }: Skull
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
       {/* Left Wing Feathers */}
       <path
@@ -24,21 +24,21 @@ export default function SkullLogo({ className = "w-32 h-auto", ...props }: Skull
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
       <path
         d="M20 55 Q30 45 45 48"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
       <path
         d="M25 60 Q40 50 55 52"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
 
       {/* Right Wing */}
@@ -47,7 +47,7 @@ export default function SkullLogo({ className = "w-32 h-auto", ...props }: Skull
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
       {/* Right Wing Feathers */}
       <path
@@ -55,21 +55,21 @@ export default function SkullLogo({ className = "w-32 h-auto", ...props }: Skull
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
       <path
         d="M180 55 Q170 45 155 48"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
       <path
         d="M175 60 Q160 50 145 52"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
 
       {/* Skull */}
@@ -81,40 +81,22 @@ export default function SkullLogo({ className = "w-32 h-auto", ...props }: Skull
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
 
       {/* Eye Sockets */}
-      <ellipse
-        cx="90"
-        cy="42"
-        rx="7"
-        ry="8"
-        fill="currentColor"
-        className="text-brown-dark dark:text-[#d4c8b5]"
-      />
-      <ellipse
-        cx="110"
-        cy="42"
-        rx="7"
-        ry="8"
-        fill="currentColor"
-        className="text-brown-dark dark:text-[#d4c8b5]"
-      />
+      <ellipse cx="90" cy="42" rx="7" ry="8" fill="currentColor" className="text-foreground" />
+      <ellipse cx="110" cy="42" rx="7" ry="8" fill="currentColor" className="text-foreground" />
 
       {/* Nose */}
-      <path
-        d="M100 50 L97 58 L103 58 Z"
-        fill="currentColor"
-        className="text-brown-dark dark:text-[#d4c8b5]"
-      />
+      <path d="M100 50 L97 58 L103 58 Z" fill="currentColor" className="text-foreground" />
 
       {/* Teeth */}
       <path
         d="M88 65 L88 72 M93 65 L93 72 M98 65 L98 72 M103 65 L103 72 M108 65 L108 72 M113 65 L113 72"
         stroke="currentColor"
         strokeWidth="2"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
 
       {/* Jaw line */}
@@ -123,7 +105,7 @@ export default function SkullLogo({ className = "w-32 h-auto", ...props }: Skull
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
-        className="text-brown-dark dark:text-[#d4c8b5]"
+        className="text-foreground"
       />
     </svg>
   )

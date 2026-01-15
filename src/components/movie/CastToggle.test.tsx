@@ -91,11 +91,11 @@ describe("CastToggle", () => {
       expect(onToggle).not.toHaveBeenCalled()
     })
 
-    it("applies grey styling to disabled buttons", () => {
+    it("applies disabled styling to disabled buttons", () => {
       render(<CastToggle {...defaultProps} deceasedCount={0} livingCount={0} />)
 
-      expect(screen.getByTestId("deceased-toggle-btn")).toHaveClass("bg-gray-100")
-      expect(screen.getByTestId("living-toggle-btn")).toHaveClass("bg-gray-100")
+      expect(screen.getByTestId("deceased-toggle-btn")).toHaveClass("bg-surface-muted")
+      expect(screen.getByTestId("living-toggle-btn")).toHaveClass("bg-surface-muted")
     })
   })
 

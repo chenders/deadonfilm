@@ -51,13 +51,13 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
   return (
     <div data-testid="mini-timeline" className="space-y-4">
       {/* Header */}
-      <h2 className="font-display text-xl text-brown-dark">Deaths Over Time</h2>
+      <h2 className="font-display text-xl text-foreground">Deaths Over Time</h2>
 
       {/* Vertical Timeline */}
-      <div className="rounded-lg border border-brown-medium/20 bg-white p-4">
+      <div className="rounded-lg border border-border-theme/20 bg-surface p-4">
         <div className="relative pl-4">
           {/* Vertical timeline line */}
-          <div className="absolute bottom-2 left-[7px] top-2 w-0.5 bg-brown-medium/20" />
+          <div className="absolute bottom-2 left-[7px] top-2 w-0.5 bg-border-theme/20" />
 
           {/* Timeline events */}
           <div className="space-y-4">
@@ -66,14 +66,14 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
               <div className="absolute -left-4 top-1 h-3 w-3 rounded-full border-2 border-living bg-living-bg" />
               <div className="ml-4 flex items-center gap-2 text-sm">
                 <span className="font-semibold text-living-dark">{releaseYear}</span>
-                <span className="text-text-muted">Movie Released</span>
+                <span className="text-foreground-muted">Movie Released</span>
               </div>
             </div>
 
             {/* Death year events */}
             {deathYearData.map((yearData) => (
               <div key={yearData.year} className="relative">
-                <div className="absolute -left-4 top-1 h-3 w-3 rounded-full border-2 border-accent bg-cream" />
+                <div className="absolute -left-4 top-1 h-3 w-3 rounded-full border-2 border-accent bg-surface" />
                 <div className="ml-4">
                   <button
                     onClick={() => toggleYear(yearData.year)}
@@ -83,11 +83,11 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                     aria-controls={`timeline-content-${yearData.year}`}
                   >
                     <span className="font-semibold text-accent">{yearData.year}</span>
-                    <span className="text-text-muted">
+                    <span className="text-foreground-muted">
                       {yearData.count.toLocaleString()} death{yearData.count !== 1 ? "s" : ""}
                     </span>
                     <svg
-                      className={`ml-auto h-4 w-4 text-brown-medium/50 transition-transform duration-300 ${
+                      className={`ml-auto h-4 w-4 text-foreground-muted/50 transition-transform duration-300 ${
                         expandedYear === yearData.year ? "rotate-180" : ""
                       }`}
                       fill="none"
@@ -117,7 +117,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                       {yearData.actors.map((actor) => (
                         <div
                           key={actor.id}
-                          className="relative rounded-lg bg-beige/30 p-3 transition-colors hover:bg-beige/50"
+                          className="relative rounded-lg bg-surface-muted/30 p-3 transition-colors hover:bg-surface-muted/50"
                           data-testid={`timeline-actor-${actor.id}`}
                         >
                           <div className="flex items-start gap-3">
@@ -133,7 +133,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                                 />
                               ) : (
                                 <div
-                                  className="flex h-16 w-12 items-center justify-center rounded bg-beige text-text-muted"
+                                  className="flex h-16 w-12 items-center justify-center rounded bg-surface-muted text-foreground-muted"
                                   aria-hidden="true"
                                 >
                                   <PersonIcon size={24} />
@@ -143,16 +143,16 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                             <div className="min-w-0 flex-1">
                               <Link
                                 to={`/actor/${createActorSlug(actor.name, actor.id)}`}
-                                className="font-medium text-brown-dark hover:text-accent hover:underline"
+                                className="font-medium text-foreground hover:text-accent hover:underline"
                               >
                                 {actor.name}
                               </Link>
                               {actor.character && (
-                                <p className="text-xs italic text-text-muted">
+                                <p className="text-xs italic text-foreground-muted">
                                   as {actor.character}
                                 </p>
                               )}
-                              <p className="mt-1 text-sm text-text-muted">
+                              <p className="mt-1 text-sm text-foreground-muted">
                                 {formatDate(actor.deathday)}
                                 {actor.ageAtDeath && ` · Age ${actor.ageAtDeath}`}
                               </p>
@@ -167,12 +167,12 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                                     >
                                       <InfoIcon
                                         size={14}
-                                        className="text-brown-medium hover:text-brown-dark"
+                                        className="text-foreground-muted hover:text-foreground"
                                       />
                                       {/* Tooltip for cause of death details */}
                                       {hoveredActorId === actor.id && (
                                         <div
-                                          className="absolute bottom-full left-0 z-20 mb-2 w-72 rounded-lg border border-brown-medium/30 bg-white p-3 text-left text-xs text-brown-dark shadow-lg"
+                                          className="absolute bottom-full left-0 z-20 mb-2 w-72 rounded-lg border border-border-theme/30 bg-surface p-3 text-left text-xs text-foreground shadow-lg"
                                           data-testid="cause-details-tooltip-expanded"
                                         >
                                           <span className="leading-relaxed">
@@ -203,7 +203,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                       {yearData.actors.map((actor) => (
                         <div
                           key={actor.id}
-                          className="flex items-center gap-2 rounded-lg bg-beige/30 p-2 transition-colors hover:bg-beige/50"
+                          className="flex items-center gap-2 rounded-lg bg-surface-muted/30 p-2 transition-colors hover:bg-surface-muted/50"
                         >
                           <Link
                             to={`/actor/${createActorSlug(actor.name, actor.id)}`}
@@ -217,7 +217,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                               />
                             ) : (
                               <div
-                                className="flex h-full w-full items-center justify-center bg-beige text-text-muted"
+                                className="flex h-full w-full items-center justify-center bg-surface-muted text-foreground-muted"
                                 aria-hidden="true"
                               >
                                 <PersonIcon size={18} />
@@ -227,7 +227,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                           <div className="min-w-0 flex-1">
                             <Link
                               to={`/actor/${createActorSlug(actor.name, actor.id)}`}
-                              className="block truncate text-sm font-medium text-brown-dark hover:text-accent hover:underline"
+                              className="block truncate text-sm font-medium text-foreground hover:text-accent hover:underline"
                             >
                               {actor.name}
                             </Link>
@@ -242,11 +242,11 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                                   >
                                     <InfoIcon
                                       size={12}
-                                      className="text-brown-medium hover:text-brown-dark"
+                                      className="text-foreground-muted hover:text-foreground"
                                     />
                                     {hoveredActorId === actor.id && (
                                       <div
-                                        className="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-brown-medium/30 bg-white p-3 text-left text-xs text-brown-dark shadow-lg"
+                                        className="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-border-theme/30 bg-surface p-3 text-left text-xs text-foreground shadow-lg"
                                         data-testid="cause-details-tooltip"
                                       >
                                         <span className="leading-relaxed">
@@ -258,7 +258,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                                 )}
                               </div>
                             ) : (
-                              <div className="truncate text-xs text-text-muted">
+                              <div className="truncate text-xs text-foreground-muted">
                                 {actor.character
                                   ? `as ${actor.character}`
                                   : formatDate(actor.deathday)}
@@ -275,17 +275,17 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
 
             {/* Current year event */}
             <div className="relative">
-              <div className="absolute -left-4 top-1 h-3 w-3 rounded-full border-2 border-brown-medium bg-beige" />
+              <div className="absolute -left-4 top-1 h-3 w-3 rounded-full border-2 border-brown-medium bg-surface-muted" />
               <div className="ml-4 flex items-center gap-2 text-sm">
-                <span className="font-semibold text-brown-dark">{currentYear}</span>
-                <span className="text-text-muted">Now</span>
+                <span className="font-semibold text-foreground">{currentYear}</span>
+                <span className="text-foreground-muted">Now</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Summary */}
-        <div className="mt-4 border-t border-brown-medium/10 pt-3 text-center text-sm text-text-muted">
+        <div className="mt-4 border-t border-border-theme/10 pt-3 text-center text-sm text-foreground-muted">
           {deceased.length} death{deceased.length !== 1 ? "s" : ""} over {totalYears} years since
           release
         </div>

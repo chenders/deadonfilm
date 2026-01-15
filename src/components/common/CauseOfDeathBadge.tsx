@@ -32,7 +32,7 @@ export default function CauseOfDeathBadge({
           {causeOfDeath}
           <InfoIcon
             size={iconSize}
-            className="ml-0.5 inline-block align-text-bottom text-brown-medium"
+            className="ml-0.5 inline-block align-text-bottom text-foreground-muted"
           />
         </span>
       </HoverTooltip>

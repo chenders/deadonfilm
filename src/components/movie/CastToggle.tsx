@@ -27,7 +27,7 @@ export default function CastToggle({
       className="mb-6 flex flex-wrap items-center justify-center gap-3"
     >
       {/* Deceased/Living toggle */}
-      <div className="inline-flex overflow-hidden rounded-lg border border-brown-medium/30 bg-white">
+      <div className="inline-flex overflow-hidden rounded-lg border border-border-theme/30 bg-surface">
         <button
           data-testid="deceased-toggle-btn"
           aria-pressed={!showLiving}
@@ -35,10 +35,10 @@ export default function CastToggle({
           disabled={deceasedDisabled}
           className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
             deceasedDisabled
-              ? "cursor-not-allowed bg-gray-100 text-gray-400"
+              ? "cursor-not-allowed bg-surface-muted text-foreground-muted/50"
               : !showLiving
                 ? "bg-accent text-white"
-                : "bg-white text-brown-dark hover:bg-beige"
+                : "bg-surface text-foreground hover:bg-surface-muted"
           }`}
         >
           Deceased ({deceasedCount.toLocaleString()})
@@ -50,10 +50,10 @@ export default function CastToggle({
           disabled={livingDisabled}
           className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
             livingDisabled
-              ? "cursor-not-allowed bg-gray-100 text-gray-400"
+              ? "cursor-not-allowed bg-surface-muted text-foreground-muted/50"
               : showLiving
                 ? "bg-living text-white"
-                : "bg-white text-brown-dark hover:bg-beige"
+                : "bg-surface text-foreground hover:bg-surface-muted"
           }`}
         >
           Living ({livingCount.toLocaleString()})
@@ -62,7 +62,7 @@ export default function CastToggle({
 
       {/* List/Timeline toggle - only show when viewing deceased */}
       {!showLiving && deceasedCount > 0 && (
-        <div className="inline-flex items-center gap-1 rounded-lg border border-brown-medium/30 bg-white p-1">
+        <div className="inline-flex items-center gap-1 rounded-lg border border-border-theme/30 bg-surface p-1">
           <button
             data-testid="list-view-btn"
             aria-pressed={viewMode === "list"}
@@ -70,8 +70,8 @@ export default function CastToggle({
             onClick={() => onViewModeChange("list")}
             className={`rounded-md p-1.5 transition-colors duration-200 ${
               viewMode === "list"
-                ? "bg-beige text-brown-dark"
-                : "text-text-muted hover:bg-beige/50 hover:text-brown-dark"
+                ? "bg-surface-muted text-foreground"
+                : "text-foreground-muted hover:bg-surface-muted/50 hover:text-foreground"
             }`}
             title="List view"
           >
@@ -84,8 +84,8 @@ export default function CastToggle({
             onClick={() => onViewModeChange("timeline")}
             className={`rounded-md p-1.5 transition-colors duration-200 ${
               viewMode === "timeline"
-                ? "bg-beige text-brown-dark"
-                : "text-text-muted hover:bg-beige/50 hover:text-brown-dark"
+                ? "bg-surface-muted text-foreground"
+                : "text-foreground-muted hover:bg-surface-muted/50 hover:text-foreground"
             }`}
             title="Timeline view"
           >

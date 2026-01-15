@@ -79,7 +79,7 @@ export default function InfoPopover({
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-controls={dialogId}
-        className="flex h-5 w-5 items-center justify-center rounded-full border border-text-muted/50 text-xs text-text-muted transition-colors hover:border-brown-dark hover:text-brown-dark dark:border-[#9a8b7a]/50 dark:text-[#9a8b7a] dark:hover:border-[#d4c8b5] dark:hover:text-[#d4c8b5]"
+        className="flex h-5 w-5 items-center justify-center rounded-full border border-foreground-muted/50 text-xs text-foreground-muted transition-colors hover:border-foreground hover:text-foreground"
       >
         ?
       </button>
@@ -93,13 +93,13 @@ export default function InfoPopover({
         aria-labelledby={`${dialogId}-title`}
         className={
           isOpen
-            ? "absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-brown-medium/30 bg-cream p-4 shadow-xl dark:border-[#4a3d32] dark:bg-[#241e18] sm:w-80"
+            ? "absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-border-theme/30 bg-surface p-4 shadow-xl sm:w-80"
             : "sr-only"
         }
       >
         {/* Arrow */}
         {isOpen && (
-          <div className="absolute -top-2 right-2 h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-cream dark:border-b-[#241e18]" />
+          <div className="absolute -top-2 right-2 h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-surface" />
         )}
 
         {/* Content */}
@@ -109,7 +109,7 @@ export default function InfoPopover({
         {isOpen && (
           <button
             onClick={closePopover}
-            className="mt-4 w-full rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark dark:bg-[#d4c8b5] dark:text-[#1a1612] dark:hover:bg-[#c4b8a5]"
+            className="mt-4 w-full rounded bg-foreground px-4 py-2 text-sm text-surface transition-colors hover:bg-foreground/80"
           >
             Got it
           </button>

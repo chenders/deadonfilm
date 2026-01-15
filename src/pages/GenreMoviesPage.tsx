@@ -18,11 +18,11 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
     <Link
       to={`/movie/${slug}`}
       data-testid={`movie-row-${movie.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface p-3 transition-colors hover:bg-surface-muted"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
-        <span className="w-8 text-center font-display text-lg text-brown-medium">{rank}</span>
+        <span className="w-8 text-center font-display text-lg text-foreground-muted">{rank}</span>
 
         {posterUrl ? (
           <img
@@ -31,19 +31,19 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
             className="h-16 w-11 flex-shrink-0 rounded object-cover"
           />
         ) : (
-          <div className="flex h-16 w-11 flex-shrink-0 items-center justify-center rounded bg-beige">
-            <FilmReelIcon size={20} className="text-brown-medium" />
+          <div className="flex h-16 w-11 flex-shrink-0 items-center justify-center rounded bg-surface-muted">
+            <FilmReelIcon size={20} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-lg text-brown-dark">
+          <h3 className="truncate font-display text-lg text-foreground">
             {movie.title}
             {movie.releaseYear && (
-              <span className="ml-2 text-base text-text-muted">({movie.releaseYear})</span>
+              <span className="ml-2 text-base text-foreground-muted">({movie.releaseYear})</span>
             )}
           </h3>
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-foreground-muted">
             {movie.deceasedCount.toLocaleString()} of {movie.castCount.toLocaleString()} cast
             deceased
           </p>
@@ -55,7 +55,7 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
             <span className="font-medium">{movie.deceasedCount.toLocaleString()}</span>
           </div>
           {movie.mortalitySurpriseScore !== null && movie.mortalitySurpriseScore > 0 && (
-            <p className="text-xs text-brown-medium">
+            <p className="text-xs text-foreground-muted">
               +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% curse
             </p>
           )}
@@ -64,7 +64,7 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
 
       {/* Mobile layout */}
       <div className="flex items-start gap-3 md:hidden">
-        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+        <span className="mt-1 w-6 text-center font-display text-base text-foreground-muted">
           {rank}
         </span>
 
@@ -75,19 +75,19 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
             className="h-14 w-10 flex-shrink-0 rounded object-cover"
           />
         ) : (
-          <div className="flex h-14 w-10 flex-shrink-0 items-center justify-center rounded bg-beige">
-            <FilmReelIcon size={16} className="text-brown-medium" />
+          <div className="flex h-14 w-10 flex-shrink-0 items-center justify-center rounded bg-surface-muted">
+            <FilmReelIcon size={16} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-base text-brown-dark">
+          <h3 className="truncate font-display text-base text-foreground">
             {movie.title}
             {movie.releaseYear && (
-              <span className="ml-1 text-sm text-text-muted">({movie.releaseYear})</span>
+              <span className="ml-1 text-sm text-foreground-muted">({movie.releaseYear})</span>
             )}
           </h3>
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-foreground-muted">
             {movie.deceasedCount.toLocaleString()} of {movie.castCount.toLocaleString()} cast
             deceased
           </p>
@@ -119,7 +119,9 @@ function GenreSelector({ currentGenreSlug }: { currentGenreSlug: string }) {
             key={g.slug}
             to={`/movies/genre/${g.slug}`}
             className={`rounded-full px-3 py-1 text-sm transition-colors ${
-              isActive ? "bg-brown-dark text-white" : "bg-beige text-brown-dark hover:bg-cream"
+              isActive
+                ? "bg-foreground text-white"
+                : "bg-surface-muted text-foreground hover:bg-foreground/20"
             }`}
           >
             {g.genre}
@@ -178,12 +180,12 @@ export default function GenreMoviesPage() {
         <div className="mb-4 text-center">
           <Link
             to="/movies/genres"
-            className="mb-2 inline-block text-sm text-brown-medium hover:text-brown-dark"
+            className="mb-2 inline-block text-sm text-foreground-muted hover:text-foreground"
           >
             &larr; All Genres
           </Link>
-          <h1 className="font-display text-3xl text-brown-dark">{data.genre} Movies</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <h1 className="font-display text-3xl text-foreground">{data.genre} Movies</h1>
+          <p className="mt-2 text-sm text-foreground-muted">
             {data.pagination.totalCount.toLocaleString()}{" "}
             {data.pagination.totalCount === 1 ? "movie" : "movies"} ranked by curse score
           </p>
@@ -192,7 +194,7 @@ export default function GenreMoviesPage() {
         <GenreSelector currentGenreSlug={genreSlug || ""} />
 
         {noResults ? (
-          <div className="text-center text-text-muted">
+          <div className="text-center text-foreground-muted">
             <p>No movies found for this genre.</p>
           </div>
         ) : (
@@ -209,19 +211,19 @@ export default function GenreMoviesPage() {
                 <button
                   onClick={() => goToPage(page - 1)}
                   disabled={page <= 1}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
 
-                <span className="text-sm text-text-muted">
+                <span className="text-sm text-foreground-muted">
                   Page {page} of {data.pagination.totalPages}
                 </span>
 
                 <button
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= data.pagination.totalPages}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -229,7 +231,7 @@ export default function GenreMoviesPage() {
             )}
 
             {/* Total count */}
-            <p className="mt-4 text-center text-sm text-text-muted">
+            <p className="mt-4 text-center text-sm text-foreground-muted">
               Showing {data.movies.length.toLocaleString()} of{" "}
               {data.pagination.totalCount.toLocaleString()} movies
             </p>

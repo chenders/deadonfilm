@@ -74,48 +74,48 @@ export default function SpecificCausePage() {
 
       <div data-testid="specific-cause-page" className="mx-auto max-w-4xl">
         {/* Breadcrumb */}
-        <div className="mb-4 flex flex-wrap gap-1 text-sm text-brown-medium">
-          <Link to="/causes-of-death" className="hover:text-brown-dark">
+        <div className="mb-4 flex flex-wrap gap-1 text-sm text-foreground-muted">
+          <Link to="/causes-of-death" className="hover:text-foreground">
             Causes of Death
           </Link>
           <span>&rsaquo;</span>
-          <Link to={`/causes-of-death/${data.categorySlug}`} className="hover:text-brown-dark">
+          <Link to={`/causes-of-death/${data.categorySlug}`} className="hover:text-foreground">
             {data.categoryLabel}
           </Link>
           <span>&rsaquo;</span>
-          <span className="text-brown-dark">{data.cause}</span>
+          <span className="text-foreground">{data.cause}</span>
         </div>
 
         {/* Header */}
         <div className="mb-6 text-center">
-          <h1 className="mb-2 font-display text-3xl text-brown-dark">{data.cause}</h1>
-          <p className="text-text-muted">{data.count.toLocaleString()} actors</p>
+          <h1 className="mb-2 font-display text-3xl text-foreground">{data.cause}</h1>
+          <p className="text-foreground-muted">{data.count.toLocaleString()} actors</p>
         </div>
 
         {/* Stats Panel */}
-        <div className="mb-8 grid gap-4 rounded-lg bg-beige p-4 sm:grid-cols-3">
+        <div className="mb-8 grid gap-4 rounded-lg bg-surface-muted p-4 sm:grid-cols-3">
           <div className="text-center">
-            <p className="font-display text-2xl text-brown-dark">{data.count.toLocaleString()}</p>
-            <p className="text-xs text-text-muted">Total Deaths</p>
+            <p className="font-display text-2xl text-foreground">{data.count.toLocaleString()}</p>
+            <p className="text-xs text-foreground-muted">Total Deaths</p>
           </div>
           <div className="text-center">
-            <p className="font-display text-2xl text-brown-dark">
+            <p className="font-display text-2xl text-foreground">
               {data.avgAge ? Math.round(data.avgAge) : "-"}
             </p>
-            <p className="text-xs text-text-muted">Avg Age at Death</p>
+            <p className="text-xs text-foreground-muted">Avg Age at Death</p>
           </div>
           <div className="text-center">
             <p className="font-display text-2xl text-accent">
               {data.avgYearsLost ? Math.round(data.avgYearsLost) : "-"}
             </p>
-            <p className="text-xs text-text-muted">Avg Years Lost</p>
+            <p className="text-xs text-foreground-muted">Avg Years Lost</p>
           </div>
         </div>
 
         {/* Notable Actors */}
         {data.notableActors.length > 0 && (
           <div className="mb-8">
-            <h2 className="mb-4 font-display text-xl text-brown-dark">Notable Actors</h2>
+            <h2 className="mb-4 font-display text-xl text-foreground">Notable Actors</h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {data.notableActors.map((actor) => (
                 <NotableActorCard key={actor.id} actor={actor} />
@@ -127,7 +127,7 @@ export default function SpecificCausePage() {
         {/* Decade Breakdown */}
         {data.decadeBreakdown.length > 0 && (
           <div className="mb-8 rounded-lg bg-white p-4">
-            <h2 className="mb-4 font-display text-lg text-brown-dark">Deaths by Decade</h2>
+            <h2 className="mb-4 font-display text-lg text-foreground">Deaths by Decade</h2>
             <DecadeChart breakdown={data.decadeBreakdown} />
           </div>
         )}
@@ -135,14 +135,14 @@ export default function SpecificCausePage() {
         {/* Filter */}
         <div className="mb-4 flex justify-center">
           <label
-            className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+            className="flex cursor-pointer items-center gap-2 text-sm text-foreground-muted"
             data-testid="include-obscure-filter"
           >
             <input
               type="checkbox"
               checked={includeObscure}
               onChange={(e) => toggleIncludeObscure(e.target.checked)}
-              className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+              className="h-4 w-4 rounded border-border-theme text-foreground focus:ring-border-theme"
             />
             Include lesser-known actors
           </label>
@@ -150,9 +150,9 @@ export default function SpecificCausePage() {
 
         {/* Actor List */}
         <div className="mb-4">
-          <h2 className="mb-4 font-display text-xl text-brown-dark">All Actors</h2>
+          <h2 className="mb-4 font-display text-xl text-foreground">All Actors</h2>
           {data.actors.length === 0 ? (
-            <p className="text-center text-text-muted">No actors found for this cause.</p>
+            <p className="text-center text-foreground-muted">No actors found for this cause.</p>
           ) : (
             <div className="space-y-2">
               {data.actors.map((actor, index) => (
@@ -173,19 +173,19 @@ export default function SpecificCausePage() {
             <button
               onClick={() => goToPage(page - 1)}
               disabled={page <= 1}
-              className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
 
-            <span className="text-sm text-text-muted">
+            <span className="text-sm text-foreground-muted">
               Page {page} of {data.pagination.totalPages}
             </span>
 
             <button
               onClick={() => goToPage(page + 1)}
               disabled={page >= data.pagination.totalPages}
-              className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>
@@ -194,7 +194,7 @@ export default function SpecificCausePage() {
 
         {/* Total count */}
         {data.actors.length > 0 && (
-          <p className="mt-4 text-center text-sm text-text-muted">
+          <p className="mt-4 text-center text-sm text-foreground-muted">
             Showing {data.actors.length.toLocaleString()} of{" "}
             {data.pagination.totalCount.toLocaleString()} actors
           </p>

@@ -21,9 +21,9 @@ export default function TriviaFacts() {
   if (isLoading) {
     return (
       <section data-testid="trivia-facts" className="mt-8">
-        <div className="animate-pulse rounded-lg bg-beige p-4">
-          <div className="mb-2 h-5 w-32 rounded bg-brown-medium/20" />
-          <div className="h-4 w-3/4 rounded bg-brown-medium/20" />
+        <div className="animate-pulse rounded-lg bg-surface p-4">
+          <div className="mb-2 h-5 w-32 rounded bg-border-theme/20" />
+          <div className="h-4 w-3/4 rounded bg-border-theme/20" />
         </div>
       </section>
     )
@@ -46,9 +46,9 @@ export default function TriviaFacts() {
 
   return (
     <section data-testid="trivia-facts" className="mt-8">
-      <div className="rounded-lg bg-beige p-4">
+      <div className="rounded-lg bg-surface p-4">
         <div className="flex items-center justify-between">
-          <h2 data-testid="trivia-title" className="font-display text-lg text-brown-dark">
+          <h2 data-testid="trivia-title" className="font-display text-lg text-foreground">
             Did You Know?
           </h2>
           {hasMultipleFacts && (
@@ -56,18 +56,18 @@ export default function TriviaFacts() {
               <button
                 onClick={prevFact}
                 data-testid="trivia-prev"
-                className="rounded px-2 py-1 text-sm text-brown-medium hover:bg-cream"
+                className="rounded px-2 py-1 text-sm text-foreground-muted hover:bg-surface-muted"
                 aria-label="Previous fact"
               >
                 &larr;
               </button>
-              <span className="text-xs text-text-muted">
+              <span className="text-xs text-foreground-muted">
                 {currentIndex + 1} / {shuffledFacts.length}
               </span>
               <button
                 onClick={nextFact}
                 data-testid="trivia-next"
-                className="rounded px-2 py-1 text-sm text-brown-medium hover:bg-cream"
+                className="rounded px-2 py-1 text-sm text-foreground-muted hover:bg-surface-muted"
                 aria-label="Next fact"
               >
                 &rarr;
@@ -77,19 +77,19 @@ export default function TriviaFacts() {
         </div>
 
         <div data-testid="trivia-content" className="mt-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-brown-medium">
+          <p className="text-xs font-medium uppercase tracking-wide text-foreground-muted">
             {currentFact.title}
           </p>
           {currentFact.link ? (
             <Link
               to={currentFact.link}
               data-testid="trivia-link"
-              className="mt-1 block text-sm text-brown-dark hover:text-accent hover:underline"
+              className="mt-1 block text-sm text-foreground hover:text-accent hover:underline"
             >
               {currentFact.value}
             </Link>
           ) : (
-            <p className="mt-1 text-sm text-brown-dark">{currentFact.value}</p>
+            <p className="mt-1 text-sm text-foreground">{currentFact.value}</p>
           )}
         </div>
       </div>

@@ -5,39 +5,37 @@
 @tailwind utilities;
 
 :root {
-  /* Light mode colors */
+  /* Legacy colors (keeping for reference) */
   --color-cream: #f5f0e8;
   --color-beige: #e8dcc8;
   --color-brown-dark: #3d2914;
   --color-brown-medium: #6b4423;
   --color-accent: #8b0000;
 
-  /* Theme-aware colors (light mode defaults) */
-  --color-bg-primary: #f5f0e8;
-  --color-bg-secondary: #e8dcc8;
-  --color-bg-surface: #ffffff;
-  --color-text-primary: #3d2914;
-  --color-text-muted: #6b5b4f;
-  --color-border: rgba(107, 68, 35, 0.2);
-  --color-accent-red: #8b0000;
-  --color-accent-gold: #b8860b;
+  /* Semantic tokens - RGB values for Tailwind alpha support
+     Format: R G B (space-separated, no commas) */
+  --color-surface: 255 255 255; /* white - cards */
+  --color-surface-elevated: 245 240 232; /* cream - page bg */
+  --color-surface-muted: 232 220 200; /* beige - secondary */
+  --color-foreground: 61 41 20; /* brown-dark */
+  --color-foreground-muted: 107 91 79; /* muted brown */
+  --color-border-theme: 107 68 35; /* brown-medium for borders */
+  --color-accent-semantic: 139 0 0; /* #8b0000 - dark red for light mode */
 }
 
-/* Dark mode overrides - vintage cinema aesthetic */
+/* Cinema Dark theme - high contrast zinc palette */
 .dark {
-  --color-bg-primary: #1a1612;
-  --color-bg-secondary: #2a221c;
-  --color-bg-surface: #241e18;
-  --color-text-primary: #d4c8b5;
-  --color-text-muted: #9a8b7a;
-  --color-border: #4a3d32;
-  --color-accent-red: #b31515;
-  --color-accent-gold: #c9a227;
+  --color-surface: 24 24 27; /* zinc-900 */
+  --color-surface-elevated: 9 9 11; /* zinc-950 */
+  --color-surface-muted: 39 39 42; /* zinc-800 */
+  --color-foreground: 250 250 250; /* zinc-50 */
+  --color-foreground-muted: 161 161 170; /* zinc-400 */
+  --color-border-theme: 63 63 70; /* zinc-700 */
+  --color-accent-semantic: 239 68 68; /* #ef4444 - red-500 for dark mode (7:1 contrast) */
 }
 
 body {
-  @apply bg-cream font-body text-text-primary;
-  @apply dark:bg-[#1a1612] dark:text-[#d4c8b5];
+  @apply bg-surface-elevated font-body text-foreground;
   min-height: 100vh;
   transition:
     background-color 0.2s ease,
@@ -50,28 +48,15 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-beige;
+  @apply bg-surface-muted;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply rounded bg-brown-medium;
+  @apply rounded bg-border-theme;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-brown-dark;
-}
-
-/* Dark mode scrollbar */
-.dark ::-webkit-scrollbar-track {
-  background: #2a221c;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: #4a3d32;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #5a4d42;
+  @apply bg-foreground/50;
 }
 
 /* Stagger fade-in animation for list items */

@@ -131,7 +131,7 @@ describe("RecentDeaths", () => {
     })
 
     // Actor Two has no profile_path, so there should be a placeholder
-    const placeholders = document.querySelectorAll(".bg-brown-medium\\/20")
+    const placeholders = document.querySelectorAll('[class*="bg-border-theme"]')
     expect(placeholders.length).toBeGreaterThan(0)
   })
 

@@ -10,14 +10,14 @@ export default function FeaturedCursedMovie() {
   if (isLoading) {
     return (
       <section data-testid="featured-movie" className="mt-8">
-        <div className="animate-pulse rounded-lg bg-beige p-4">
-          <div className="mb-3 h-5 w-48 rounded bg-brown-medium/20" />
+        <div className="animate-pulse rounded-lg bg-surface-muted p-4">
+          <div className="mb-3 h-5 w-48 rounded bg-border-theme/20" />
           <div className="flex gap-4">
-            <div className="h-36 w-24 shrink-0 rounded bg-brown-medium/20" />
+            <div className="h-36 w-24 shrink-0 rounded bg-border-theme/20" />
             <div className="flex-1 space-y-2">
-              <div className="h-5 w-3/4 rounded bg-brown-medium/20" />
-              <div className="h-4 w-1/2 rounded bg-brown-medium/20" />
-              <div className="h-4 w-2/3 rounded bg-brown-medium/20" />
+              <div className="h-5 w-3/4 rounded bg-border-theme/20" />
+              <div className="h-4 w-1/2 rounded bg-border-theme/20" />
+              <div className="h-4 w-2/3 rounded bg-border-theme/20" />
             </div>
           </div>
         </div>
@@ -38,7 +38,7 @@ export default function FeaturedCursedMovie() {
     <section data-testid="featured-movie" className="mt-8">
       <h2
         data-testid="featured-movie-title"
-        className="mb-3 text-center font-display text-xl text-brown-dark"
+        className="mb-3 text-center font-display text-xl text-foreground"
       >
         Most Cursed Movie
       </h2>
@@ -46,7 +46,7 @@ export default function FeaturedCursedMovie() {
       <Link
         to={`/movie/${movieSlug}`}
         data-testid="featured-movie-link"
-        className="block rounded-lg bg-beige p-4 transition-colors hover:bg-cream"
+        className="block rounded-lg bg-surface-muted p-4 transition-colors hover:bg-surface-muted"
       >
         <div className="flex gap-4">
           {movie.posterPath ? (
@@ -59,16 +59,16 @@ export default function FeaturedCursedMovie() {
               className="h-36 w-24 shrink-0 rounded object-cover shadow-md"
             />
           ) : (
-            <div className="flex h-36 w-24 shrink-0 items-center justify-center rounded bg-brown-medium/20">
-              <FilmReelIcon size={32} className="text-text-muted" />
+            <div className="flex h-36 w-24 shrink-0 items-center justify-center rounded bg-border-theme/20">
+              <FilmReelIcon size={32} className="text-foreground-muted" />
             </div>
           )}
 
           <div className="flex flex-col justify-center">
-            <h3 className="font-display text-lg font-semibold text-brown-dark">
+            <h3 className="font-display text-lg font-semibold text-foreground">
               {movie.title}
               {movie.releaseYear && (
-                <span className="ml-2 text-base font-normal text-text-muted">
+                <span className="ml-2 text-base font-normal text-foreground-muted">
                   ({movie.releaseYear})
                 </span>
               )}
@@ -82,8 +82,10 @@ export default function FeaturedCursedMovie() {
                   deceased ({mortalityPercentage}%)
                 </span>
               </p>
-              <p className="text-text-muted">Expected: {movie.expectedDeaths.toFixed(1)} deaths</p>
-              <p className="font-medium text-brown-dark">
+              <p className="text-foreground-muted">
+                Expected: {movie.expectedDeaths.toFixed(1)} deaths
+              </p>
+              <p className="font-medium text-foreground">
                 Curse Score: +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% above expected
               </p>
             </div>
