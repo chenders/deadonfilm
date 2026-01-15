@@ -19,10 +19,10 @@ export default function SearchDropdown({
   searchQuery,
   inline = false,
 }: SearchDropdownProps) {
-  const baseClasses = "max-h-80 w-full overflow-y-auto bg-cream"
+  const baseClasses = "max-h-80 w-full overflow-y-auto bg-cream dark:bg-[#241e18]"
   const positionClasses = inline
     ? "" // Inline mode for modal - no extra positioning/borders
-    : "absolute z-50 mt-1 rounded-lg border border-brown-medium/30 shadow-lg" // Absolute mode for search bar
+    : "absolute z-50 mt-1 rounded-lg border border-brown-medium/30 shadow-lg dark:border-[#4a3d32]" // Absolute mode for search bar
 
   return (
     <ul

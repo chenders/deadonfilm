@@ -5,16 +5,43 @@
 @tailwind utilities;
 
 :root {
+  /* Light mode colors */
   --color-cream: #f5f0e8;
   --color-beige: #e8dcc8;
   --color-brown-dark: #3d2914;
   --color-brown-medium: #6b4423;
   --color-accent: #8b0000;
+
+  /* Theme-aware colors (light mode defaults) */
+  --color-bg-primary: #f5f0e8;
+  --color-bg-secondary: #e8dcc8;
+  --color-bg-surface: #ffffff;
+  --color-text-primary: #3d2914;
+  --color-text-muted: #6b5b4f;
+  --color-border: rgba(107, 68, 35, 0.2);
+  --color-accent-red: #8b0000;
+  --color-accent-gold: #b8860b;
+}
+
+/* Dark mode overrides - vintage cinema aesthetic */
+.dark {
+  --color-bg-primary: #1a1612;
+  --color-bg-secondary: #2a221c;
+  --color-bg-surface: #241e18;
+  --color-text-primary: #d4c8b5;
+  --color-text-muted: #9a8b7a;
+  --color-border: #4a3d32;
+  --color-accent-red: #b31515;
+  --color-accent-gold: #c9a227;
 }
 
 body {
   @apply bg-cream font-body text-text-primary;
+  @apply dark:bg-[#1a1612] dark:text-[#d4c8b5];
   min-height: 100vh;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Custom scrollbar for vintage feel */
@@ -32,6 +59,19 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-brown-dark;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: #2a221c;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4a3d32;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #5a4d42;
 }
 
 /* Stagger fade-in animation for list items */

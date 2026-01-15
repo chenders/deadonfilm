@@ -37,7 +37,7 @@ export default function EmptyStateCard({ type, searchQuery }: EmptyStateCardProp
       data-testid="empty-state-card"
       className="flex flex-col items-center justify-center py-8 text-center"
     >
-      <div className="max-w-sm rounded-lg border-2 border-brown-medium/20 bg-beige p-6">
+      <div className="max-w-sm rounded-lg border-2 border-brown-medium/20 bg-beige p-6 dark:border-[#4a3d32] dark:bg-[#2a221c]">
         {/* Film strip decoration top */}
         <div className="mb-4 flex justify-center gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -45,15 +45,20 @@ export default function EmptyStateCard({ type, searchQuery }: EmptyStateCardProp
           ))}
         </div>
 
-        <IconComponent size={36} className="mx-auto mb-3 text-brown-medium/50" />
+        <IconComponent
+          size={36}
+          className="mx-auto mb-3 text-brown-medium/50 dark:text-[#9a8b7a]"
+        />
 
-        <h3 className="mb-1 font-display text-base uppercase tracking-wide text-brown-dark">
+        <h3 className="mb-1 font-display text-base uppercase tracking-wide text-brown-dark dark:text-[#d4c8b5]">
           {title}
         </h3>
-        <p className="text-sm text-text-muted">
+        <p className="text-sm text-text-muted dark:text-[#9a8b7a]">
           {subtitle}
           {searchQuery && type === "no-results" && (
-            <span className="mt-1 block italic text-brown-medium">"{searchQuery}"</span>
+            <span className="mt-1 block italic text-brown-medium dark:text-[#9a8b7a]">
+              "{searchQuery}"
+            </span>
           )}
         </p>
 
