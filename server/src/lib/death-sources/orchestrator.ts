@@ -31,6 +31,10 @@ import { TelevisionAcademySource } from "./sources/television-academy.js"
 import { IBDBSource } from "./sources/ibdb.js"
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
+import { AlloCineSource } from "./sources/allocine.js"
+import { DoubanSource } from "./sources/douban.js"
+import { SoompiSource } from "./sources/soompi.js"
+import { FilmiBeatSource } from "./sources/filmibeat.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
@@ -98,14 +102,23 @@ export class DeathEnrichmentOrchestrator {
     // Free sources - always available, ordered by expected quality
     // High-accuracy film industry archives first, then structured data, then search
     const freeSources: DataSource[] = [
+      // Phase 1: Structured data and industry archives
       new WikidataSource(),
       new WikipediaSource(), // Wikipedia Death section extraction
       new TelevisionAcademySource(), // Official TV industry deaths
       new IBDBSource(), // Broadway actor deaths (may be blocked)
       new BFISightSoundSource(), // International film obituaries
+
+      // Phase 2: Search and obituaries
       new DuckDuckGoSource(),
       new FindAGraveSource(),
       new LegacySource(),
+
+      // Phase 3: International sources (regional film databases)
+      new AlloCineSource(), // French film database
+      new DoubanSource(), // Chinese entertainment database
+      new SoompiSource(), // Korean entertainment news
+      new FilmiBeatSource(), // Indian (Bollywood) entertainment news
     ]
 
     // Filter based on configuration
