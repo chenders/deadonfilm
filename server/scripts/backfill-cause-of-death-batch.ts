@@ -65,6 +65,11 @@ const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-cause-of-death-batch
 const MODEL_ID = "claude-opus-4-5-20251101"
 const SOURCE_NAME = "claude-opus-4.5-batch"
 
+// Minimum content length thresholds for determining if actor has detailed death info
+// Content must be substantive (not just "natural causes" or similar brief text)
+const MIN_CIRCUMSTANCES_LENGTH = 200
+const MIN_RUMORED_CIRCUMSTANCES_LENGTH = 100
+
 export interface Checkpoint {
   batchId: string | null
   processedActorIds: number[]
@@ -1065,11 +1070,12 @@ async function applyUpdate(
   }
 
   // Determine if actor has detailed death info (for dedicated death page)
-  // Criteria: substantive circumstances (>200 chars) or rumored_circumstances (>100 chars)
+  // Criteria: substantive circumstances or rumored_circumstances
   // Note: strange_death, notable_factors, related_celebrities are shown on actor's main page
   const hasDetailedDeathInfo =
-    (parsed.circumstances && parsed.circumstances.length > 200) ||
-    (parsed.rumored_circumstances && parsed.rumored_circumstances.length > 100)
+    (parsed.circumstances && parsed.circumstances.length > MIN_CIRCUMSTANCES_LENGTH) ||
+    (parsed.rumored_circumstances &&
+      parsed.rumored_circumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH)
 
   if (hasDetailedDeathInfo) {
     updates.push(`has_detailed_death_info = $${paramIndex++}`)
@@ -1717,9 +1723,10 @@ async function enrichMissingDetails(options: {
       )
 
       // Set has_detailed_death_info flag if we found substantive text for death page
-      // Criteria: circumstances (>200 chars) or rumored_circumstances (>100 chars) or related_deaths
-      const hasSubstantiveCircumstances = circumstances && circumstances.length > 200
-      const hasSubstantiveRumors = rumoredCircumstances && rumoredCircumstances.length > 100
+      const hasSubstantiveCircumstances =
+        circumstances && circumstances.length > MIN_CIRCUMSTANCES_LENGTH
+      const hasSubstantiveRumors =
+        rumoredCircumstances && rumoredCircumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH
       const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
 
       if (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths) {

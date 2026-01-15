@@ -22,6 +22,7 @@ import {
 import { createGzip } from "zlib"
 import { pipeline } from "stream/promises"
 import { dirname, join, resolve } from "path"
+import { fileURLToPath } from "url"
 import { parse as parseIni } from "ini"
 import { DataSourceType } from "./types.js"
 
@@ -73,7 +74,7 @@ export class EnrichmentLogger {
   constructor(config: Partial<LogConfig> = {}, baseDir?: string) {
     this.config = { ...DEFAULT_CONFIG, ...config }
     // Resolve base directory (server directory)
-    this.baseDir = baseDir || resolve(dirname(new URL(import.meta.url).pathname), "../../..")
+    this.baseDir = baseDir || resolve(dirname(fileURLToPath(import.meta.url)), "../../..")
   }
 
   /**
@@ -81,8 +82,7 @@ export class EnrichmentLogger {
    * Falls back to defaults if file doesn't exist.
    */
   static fromConfigFile(configPath?: string, baseDir?: string): EnrichmentLogger {
-    const resolvedBaseDir =
-      baseDir || resolve(dirname(new URL(import.meta.url).pathname), "../../..")
+    const resolvedBaseDir = baseDir || resolve(dirname(fileURLToPath(import.meta.url)), "../../..")
     // nosemgrep: path-join-resolve-traversal - path is not user-controlled
     const defaultPath = join(resolvedBaseDir, "config/enrichment-logging.ini")
     const path = configPath || defaultPath

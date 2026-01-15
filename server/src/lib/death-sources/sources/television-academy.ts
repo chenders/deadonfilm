@@ -182,7 +182,7 @@ export class TelevisionAcademySource extends BaseDataSource {
   private nameToSlug(name: string): string {
     return name
       .toLowerCase()
-      .replace(/['']/g, "") // Remove apostrophes
+      .replace(/['']/g, "") // Remove apostrophes (straight and curly)
       .replace(/[^a-z0-9\s-]/g, "") // Remove special chars
       .replace(/\s+/g, "-") // Spaces to hyphens
       .replace(/-+/g, "-") // Collapse multiple hyphens

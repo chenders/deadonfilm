@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { DataSourceType, CostLimitExceededError, SourceAccessBlockedError } from "./types.js"
+import { DataSourceType, SourceAccessBlockedError } from "./types.js"
 import type {
   CostBreakdown,
   CostLimitConfig,
