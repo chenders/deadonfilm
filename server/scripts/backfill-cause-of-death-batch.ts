@@ -51,6 +51,7 @@ import { toSentenceCase } from "../src/lib/text-utils.js"
 import { rebuildDeathCaches } from "../src/lib/cache.js"
 import {
   DeathEnrichmentOrchestrator,
+  CostLimitExceededError,
   type EnrichmentConfig,
   type ActorForEnrichment,
 } from "../src/lib/death-sources/index.js"
@@ -1064,7 +1065,8 @@ async function applyUpdate(
   }
 
   // Determine if actor has detailed death info (for dedicated death page)
-  // Criteria: substantive circumstances (>200 chars) OR substantive rumors (>100 chars)
+  // Criteria: substantive circumstances (>200 chars) or rumored_circumstances (>100 chars)
+  // Note: strange_death, notable_factors, related_celebrities are shown on actor's main page
   const hasDetailedDeathInfo =
     (parsed.circumstances && parsed.circumstances.length > 200) ||
     (parsed.rumored_circumstances && parsed.rumored_circumstances.length > 100)
@@ -1416,6 +1418,8 @@ async function enrichMissingDetails(options: {
   stopOnMatch?: boolean
   confidenceThreshold?: number
   tmdbId?: number
+  maxCostPerActor?: number
+  maxTotalCost?: number
 }): Promise<void> {
   const {
     limit = 100,
@@ -1428,6 +1432,8 @@ async function enrichMissingDetails(options: {
     stopOnMatch = true,
     confidenceThreshold = 0.5,
     tmdbId,
+    maxCostPerActor,
+    maxTotalCost,
   } = options
 
   if (!process.env.DATABASE_URL) {
@@ -1538,6 +1544,10 @@ async function enrichMissingDetails(options: {
       },
       stopOnMatch: stopOnMatch,
       confidenceThreshold: confidenceThreshold,
+      costLimits: {
+        maxCostPerActor: maxCostPerActor,
+        maxTotalCost: maxTotalCost,
+      },
     }
 
     const orchestrator = new DeathEnrichmentOrchestrator(config)
@@ -1568,12 +1578,40 @@ async function enrichMissingDetails(options: {
       console.log(`  AI sources: ${ai ? "enabled" : "disabled"}`)
       console.log(`  Stop on match: ${stopOnMatch}`)
       console.log(`  Confidence threshold: ${confidenceThreshold}`)
+      if (maxCostPerActor !== undefined) {
+        console.log(`  Max cost per actor: $${maxCostPerActor}`)
+      }
+      if (maxTotalCost !== undefined) {
+        console.log(`  Max total cost: $${maxTotalCost}`)
+      }
       await resetPool()
       return
     }
 
     // Run enrichment
-    const results = await orchestrator.enrichBatch(actorsToEnrich)
+    let results = new Map<number, Awaited<ReturnType<typeof orchestrator.enrichActor>>>()
+    let costLimitReached = false
+
+    try {
+      results = await orchestrator.enrichBatch(actorsToEnrich)
+    } catch (error) {
+      if (error instanceof CostLimitExceededError) {
+        console.log(`\n${"!".repeat(60)}`)
+        console.log(`Cost limit reached - exiting gracefully`)
+        console.log(`Limit: $${error.limit}, Current: $${error.currentCost.toFixed(4)}`)
+        console.log(`${"!".repeat(60)}`)
+        costLimitReached = true
+        // Note: partial results were already processed by the orchestrator before throwing
+        // Record the cost limit event
+        recordCustomEvent("DeathEnrichmentCostLimitReached", {
+          limitType: error.limitType,
+          limit: error.limit,
+          currentCost: error.currentCost,
+        })
+      } else {
+        throw error
+      }
+    }
 
     // Apply results to database
     let updated = 0
@@ -1627,12 +1665,12 @@ async function enrichMissingDetails(options: {
         ]
       )
 
-      // Set has_detailed_death_info flag if we found notable content
-      if (
-        enrichment.notableFactors?.length ||
-        enrichment.rumoredCircumstances ||
-        enrichment.relatedCelebrities?.length
-      ) {
+      // Set has_detailed_death_info flag if we found substantive text for death page
+      // Criteria: circumstances (>200 chars) or rumored_circumstances (>100 chars)
+      const hasSubstantiveCircumstances = enrichment.circumstances && enrichment.circumstances.length > 200
+      const hasSubstantiveRumors = enrichment.rumoredCircumstances && enrichment.rumoredCircumstances.length > 100
+
+      if (hasSubstantiveCircumstances || hasSubstantiveRumors) {
         await db.query(`UPDATE actors SET has_detailed_death_info = true WHERE id = $1`, [actorId])
       }
 
@@ -1642,7 +1680,7 @@ async function enrichMissingDetails(options: {
     // Print final stats
     const stats = orchestrator.getStats()
     console.log(`\n${"=".repeat(60)}`)
-    console.log(`Enrichment Complete!`)
+    console.log(costLimitReached ? `Enrichment Stopped (Cost Limit Reached)` : `Enrichment Complete!`)
     console.log(`${"=".repeat(60)}`)
     console.log(`  Actors processed: ${stats.actorsProcessed}`)
     console.log(`  Actors enriched: ${stats.actorsEnriched}`)
@@ -1650,6 +1688,17 @@ async function enrichMissingDetails(options: {
     console.log(`  Database updates: ${updated}`)
     console.log(`  Total cost: $${stats.totalCostUsd.toFixed(4)}`)
     console.log(`  Total time: ${(stats.totalTimeMs / 1000).toFixed(1)}s`)
+
+    // Print cost breakdown by source
+    const costEntries = Object.entries(stats.costBySource).filter(([, cost]) => cost > 0)
+    if (costEntries.length > 0) {
+      console.log(`\nCost Breakdown by Source:`)
+      costEntries.sort((a, b) => (b[1] as number) - (a[1] as number))
+      for (const [source, cost] of costEntries) {
+        const percentage = stats.totalCostUsd > 0 ? ((cost as number) / stats.totalCostUsd) * 100 : 0
+        console.log(`  ${source}: $${(cost as number).toFixed(4)} (${percentage.toFixed(1)}%)`)
+      }
+    }
 
     // Record event
     recordCustomEvent("DeathEnrichmentCompleted", {
@@ -1700,6 +1749,16 @@ program
     0.5
   )
   .option("-t, --tmdb-id <number>", "Process a specific actor by TMDB ID", parsePositiveInt)
+  .option(
+    "--max-cost-per-actor <number>",
+    "Maximum cost allowed per actor (USD) - stops trying sources for that actor if exceeded",
+    parseFloat
+  )
+  .option(
+    "--max-total-cost <number>",
+    "Maximum total cost for the entire run (USD) - exits script if exceeded",
+    parseFloat
+  )
   .action(async (options) => {
     await enrichMissingDetails({
       limit: options.limit,
@@ -1712,6 +1771,8 @@ program
       stopOnMatch: options.stopOnMatch !== false,
       confidenceThreshold: options.confidence,
       tmdbId: options.tmdbId,
+      maxCostPerActor: options.maxCostPerActor,
+      maxTotalCost: options.maxTotalCost,
     })
   })
 

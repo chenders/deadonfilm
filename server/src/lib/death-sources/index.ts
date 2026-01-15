@@ -26,3 +26,6 @@ export { DeepSeekSource } from "./ai-providers/deepseek.js"
 
 // Main orchestrator
 export { DeathEnrichmentOrchestrator, DEFAULT_CONFIG } from "./orchestrator.js"
+
+// Status bar
+export { StatusBar, createNoOpStatusBar, type StatusBarState } from "./status-bar.js"

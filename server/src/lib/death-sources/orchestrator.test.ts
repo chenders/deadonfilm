@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { DEFAULT_CONFIG } from "./orchestrator.js"
+import { DEFAULT_CONFIG, DeathEnrichmentOrchestrator } from "./orchestrator.js"
+import { CostLimitExceededError } from "./types.js"
 
 /**
  * Tests for the DeathEnrichmentOrchestrator.
@@ -53,5 +54,87 @@ describe("DeathEnrichmentOrchestrator", () => {
     it("has empty aiModels object", () => {
       expect(DEFAULT_CONFIG.aiModels).toEqual({})
     })
+
+    it("has no cost limits by default", () => {
+      expect(DEFAULT_CONFIG.costLimits).toBeUndefined()
+    })
+  })
+
+  describe("constructor", () => {
+    it("creates orchestrator with default config", () => {
+      // Disable status bar for test to avoid TTY checks
+      const orchestrator = new DeathEnrichmentOrchestrator({}, false)
+      expect(orchestrator).toBeDefined()
+    })
+
+    it("accepts custom cost limits", () => {
+      const orchestrator = new DeathEnrichmentOrchestrator(
+        {
+          costLimits: {
+            maxCostPerActor: 0.01,
+            maxTotalCost: 1.0,
+          },
+        },
+        false
+      )
+      expect(orchestrator).toBeDefined()
+    })
+  })
+
+  describe("getStats", () => {
+    it("returns empty stats initially", () => {
+      const orchestrator = new DeathEnrichmentOrchestrator({}, false)
+      const stats = orchestrator.getStats()
+
+      expect(stats.actorsProcessed).toBe(0)
+      expect(stats.actorsEnriched).toBe(0)
+      expect(stats.fillRate).toBe(0)
+      expect(stats.totalCostUsd).toBe(0)
+      expect(stats.totalTimeMs).toBe(0)
+      expect(stats.costBySource).toEqual({})
+      expect(stats.errors).toEqual([])
+    })
+  })
+})
+
+describe("CostLimitExceededError", () => {
+  it("creates error with per-actor limit type", () => {
+    const error = new CostLimitExceededError(
+      "Cost limit exceeded",
+      "per-actor",
+      0.015,
+      0.01,
+      123,
+      "John Doe"
+    )
+
+    expect(error.name).toBe("CostLimitExceededError")
+    expect(error.message).toBe("Cost limit exceeded")
+    expect(error.limitType).toBe("per-actor")
+    expect(error.currentCost).toBe(0.015)
+    expect(error.limit).toBe(0.01)
+    expect(error.actorId).toBe(123)
+    expect(error.actorName).toBe("John Doe")
+  })
+
+  it("creates error with total limit type", () => {
+    const error = new CostLimitExceededError(
+      "Total cost limit exceeded",
+      "total",
+      1.5,
+      1.0
+    )
+
+    expect(error.name).toBe("CostLimitExceededError")
+    expect(error.limitType).toBe("total")
+    expect(error.currentCost).toBe(1.5)
+    expect(error.limit).toBe(1.0)
+    expect(error.actorId).toBeUndefined()
+    expect(error.actorName).toBeUndefined()
+  })
+
+  it("extends Error class", () => {
+    const error = new CostLimitExceededError("Test", "total", 1, 0.5)
+    expect(error instanceof Error).toBe(true)
   })
 })
