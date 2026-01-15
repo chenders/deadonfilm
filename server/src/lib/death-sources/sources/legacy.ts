@@ -252,7 +252,7 @@ export class LegacySource extends BaseDataSource {
     }
 
     // Extract location - look for common patterns
-    // eslint-disable-next-line security/detect-unsafe-regex
+     
     const locationPatterns = [
       /(?:died|passed away)[^.]{0,50}(?:in|at)\s+([A-Z][a-zA-Z\s,]{1,50}(?:,\s*[A-Z]{2})?)/i,
       /([A-Z][a-zA-Z]+(?:,\s*[A-Z]{2})?)\s*[-–]\s*[A-Z][a-z]+\s+\d/,
