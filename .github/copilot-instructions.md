@@ -184,11 +184,15 @@ function stripHtmlTags(html: string): string {
 Decode `&amp;` LAST to avoid double-unescaping:
 
 ```typescript
-text.replace(/&nbsp;/g, " ")
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, " ")
     .replace(/&quot;/g, '"')
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")  // MUST be last
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&amp;/g, "&") // MUST be last
+}
 ```
 
 ### Regex Safety
