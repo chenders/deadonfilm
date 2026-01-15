@@ -27,6 +27,9 @@ Thumbs.db
 npm-debug.log*
 newrelic_agent.log
 newrelic-infra.yml
+server/logs/*
+!server/logs/.gitkeep
+!server/logs/**/.gitkeep
 
 # TypeScript
 *.tsbuildinfo

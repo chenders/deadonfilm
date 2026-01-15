@@ -57,6 +57,80 @@ interface DeathDetailsResponse {
 }
 
 /**
+ * Raw source entry as stored in the database from the enrichment script.
+ * Different from the SourceEntry type used in the API response.
+ */
+interface RawSourceEntry {
+  type?: string
+  url?: string | null
+  confidence?: number
+  retrievedAt?: string
+  rawData?: unknown
+  costUsd?: number
+  queryUsed?: string
+}
+
+/**
+ * Raw sources object as stored in the database.
+ * Keys match what the enrichment script stores.
+ */
+interface RawSources {
+  circumstances?: RawSourceEntry
+  rumoredCircumstances?: RawSourceEntry
+  cause?: RawSourceEntry
+  cleanupSource?: string
+}
+
+/**
+ * Transform source entries from database to API response format.
+ * Handles both legacy array format and new enrichment object format.
+ */
+function buildSourcesResponse(
+  rawSources: RawSources | SourceEntry[] | null | undefined
+): DeathDetailsResponse["sources"] {
+  if (!rawSources) {
+    return { cause: null, circumstances: null, rumored: null }
+  }
+
+  // Convert a raw source entry object to SourceEntry array format
+  const rawToSourceEntry = (raw: RawSourceEntry | undefined): SourceEntry[] | null => {
+    if (!raw) return null
+    return [
+      {
+        url: raw.url || null,
+        archive_url: null,
+        description: raw.type ? `Source: ${raw.type}` : "Source",
+      },
+    ]
+  }
+
+  // Check if a value is already a valid SourceEntry array
+  const isSourceEntryArray = (val: unknown): val is SourceEntry[] => {
+    return (
+      Array.isArray(val) && val.length > 0 && typeof val[0] === "object" && "description" in val[0]
+    )
+  }
+
+  // Handle RawSources object format (from enrichment script)
+  const sources = rawSources as RawSources
+
+  // For each field, check if it's already an array (legacy format) or needs conversion
+  const causeVal = sources.cause
+  const circumstancesVal = sources.circumstances
+  const rumoredVal = sources.rumoredCircumstances
+
+  return {
+    cause: isSourceEntryArray(causeVal) ? causeVal : rawToSourceEntry(causeVal as RawSourceEntry),
+    circumstances: isSourceEntryArray(circumstancesVal)
+      ? circumstancesVal
+      : rawToSourceEntry(circumstancesVal as RawSourceEntry),
+    rumored: isSourceEntryArray(rumoredVal)
+      ? rumoredVal
+      : rawToSourceEntry(rumoredVal as RawSourceEntry),
+  }
+}
+
+/**
  * GET /api/actor/:id/death
  * Get detailed death circumstances for an actor
  */
@@ -146,11 +220,7 @@ export async function getActorDeathDetails(req: Request, res: Response) {
         posthumousReleases: circumstances?.posthumous_releases || null,
       },
       relatedCelebrities,
-      sources: {
-        cause: circumstances?.sources?.cause || null,
-        circumstances: circumstances?.sources?.circumstances || null,
-        rumored: circumstances?.sources?.rumored || null,
-      },
+      sources: buildSourcesResponse(circumstances?.sources as unknown as RawSources),
     }
 
     // Cache the response
