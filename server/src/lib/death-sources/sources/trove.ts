@@ -378,8 +378,15 @@ export class TroveSource extends BaseDataSource {
     }
 
     if (article.snippet) {
-      // Clean up snippet
-      const cleanSnippet = article.snippet.replace(/<[^>]+>/g, "").substring(0, 400)
+      // Clean up snippet - use iterative replacement to handle malformed/nested tags
+      let cleanSnippet = article.snippet
+      let previousLength: number
+      do {
+        previousLength = cleanSnippet.length
+        cleanSnippet = cleanSnippet.replace(/<[^>]*>/g, "")
+      } while (cleanSnippet.length < previousLength)
+      // Also remove any remaining < or > characters that could be part of incomplete tags
+      cleanSnippet = cleanSnippet.replace(/[<>]/g, "").substring(0, 400)
       parts.push(cleanSnippet)
     }
 

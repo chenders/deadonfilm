@@ -92,7 +92,7 @@ describe("DoubanSource", () => {
         text: async () => "<html><body>No results</body></html>",
       })
 
-      const result = await source.lookup(testActor)
+      await source.lookup(testActor)
 
       expect(mockFetch).toHaveBeenCalledTimes(2)
       expect(mockFetch.mock.calls[0][0]).toContain("query.wikidata.org")
