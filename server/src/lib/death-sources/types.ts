@@ -80,6 +80,11 @@ export enum DataSourceType {
   NEWSPAPER_ARCHIVE = "newspaper_archive",
   GENEALOGY_BANK = "genealogy_bank",
 
+  // Historical Archives (free, for pre-internet deaths)
+  CHRONICLING_AMERICA = "chronicling_america", // Library of Congress, 1756-1963
+  TROVE = "trove", // National Library of Australia
+  EUROPEANA = "europeana", // European digital archives
+
   // Genealogy/Vital Records
   ANCESTRY = "ancestry",
   FAMILYSEARCH = "familysearch",
