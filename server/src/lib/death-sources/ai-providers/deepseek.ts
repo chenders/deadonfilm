@@ -11,10 +11,7 @@
 
 import OpenAI from "openai"
 import { BaseDataSource } from "../base-source.js"
-import type {
-  ActorForEnrichment,
-  SourceLookupResult,
-} from "../types.js"
+import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
 
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com"
@@ -110,7 +107,8 @@ export class DeepSeekSource extends BaseDataSource {
       }
 
       // DeepSeek without web search gets moderate confidence
-      const confidence = parsed.confidence === "high" ? 0.7 : parsed.confidence === "medium" ? 0.5 : 0.3
+      const confidence =
+        parsed.confidence === "high" ? 0.7 : parsed.confidence === "medium" ? 0.5 : 0.3
 
       return {
         success: true,

@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest"
-import { DataSourceType, CostLimitExceededError } from "./types.js"
-import type { CostBreakdown, CostLimitConfig, EnrichmentStats, BatchEnrichmentStats } from "./types.js"
+import { DataSourceType, CostLimitExceededError, SourceAccessBlockedError } from "./types.js"
+import type {
+  CostBreakdown,
+  CostLimitConfig,
+  EnrichmentStats,
+  BatchEnrichmentStats,
+} from "./types.js"
 
 describe("DataSourceType", () => {
   describe("AI Models", () => {
@@ -41,6 +46,20 @@ describe("DataSourceType", () => {
     it("includes TMDB and IMDB", () => {
       expect(DataSourceType.TMDB).toBe("tmdb")
       expect(DataSourceType.IMDB).toBe("imdb")
+    })
+  })
+
+  describe("Film Industry Archives", () => {
+    it("includes Television Academy", () => {
+      expect(DataSourceType.TELEVISION_ACADEMY).toBe("television_academy")
+    })
+
+    it("includes IBDB (Broadway)", () => {
+      expect(DataSourceType.IBDB).toBe("ibdb")
+    })
+
+    it("includes BFI Sight & Sound", () => {
+      expect(DataSourceType.BFI_SIGHT_SOUND).toBe("bfi_sight_sound")
     })
   })
 
@@ -236,12 +255,62 @@ describe("Cost Types", () => {
         sourceHitRates: {} as Record<DataSourceType, number>,
         costBySource: {
           [DataSourceType.OPENAI_GPT4O_MINI]: 0.05,
-          [DataSourceType.PERPLEXITY]: 0.10,
+          [DataSourceType.PERPLEXITY]: 0.1,
         } as Record<DataSourceType, number>,
         errors: [],
       }
       expect(stats.costBySource[DataSourceType.OPENAI_GPT4O_MINI]).toBe(0.05)
-      expect(stats.costBySource[DataSourceType.PERPLEXITY]).toBe(0.10)
+      expect(stats.costBySource[DataSourceType.PERPLEXITY]).toBe(0.1)
     })
+  })
+})
+
+describe("SourceAccessBlockedError", () => {
+  it("can be constructed with all fields", () => {
+    const error = new SourceAccessBlockedError(
+      "IBDB returned 403 Forbidden",
+      DataSourceType.IBDB,
+      "https://www.ibdb.com/search",
+      403
+    )
+
+    expect(error.message).toBe("IBDB returned 403 Forbidden")
+    expect(error.sourceType).toBe(DataSourceType.IBDB)
+    expect(error.url).toBe("https://www.ibdb.com/search")
+    expect(error.statusCode).toBe(403)
+    expect(error.name).toBe("SourceAccessBlockedError")
+  })
+
+  it("is an instance of Error", () => {
+    const error = new SourceAccessBlockedError(
+      "Test error",
+      DataSourceType.TELEVISION_ACADEMY,
+      "https://example.com",
+      403
+    )
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error).toBeInstanceOf(SourceAccessBlockedError)
+  })
+
+  it("can be caught specifically", () => {
+    const error = new SourceAccessBlockedError(
+      "BFI blocked",
+      DataSourceType.BFI_SIGHT_SOUND,
+      "https://www.bfi.org.uk",
+      403
+    )
+
+    let caught = false
+    try {
+      throw error
+    } catch (e) {
+      if (e instanceof SourceAccessBlockedError) {
+        caught = true
+        expect(e.sourceType).toBe(DataSourceType.BFI_SIGHT_SOUND)
+      }
+    }
+
+    expect(caught).toBe(true)
   })
 })

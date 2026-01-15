@@ -9,13 +9,8 @@
  * - P793: Significant event (for notable death circumstances)
  */
 
-import {
-  BaseDataSource,
-} from "../base-source.js"
-import type {
-  ActorForEnrichment,
-  SourceLookupResult,
-} from "../types.js"
+import { BaseDataSource } from "../base-source.js"
+import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"

@@ -119,9 +119,10 @@ export class StatusBar {
 
     // Current actor
     if (this.state.currentActor) {
-      const truncatedName = this.state.currentActor.length > 25
-        ? this.state.currentActor.substring(0, 22) + "..."
-        : this.state.currentActor
+      const truncatedName =
+        this.state.currentActor.length > 25
+          ? this.state.currentActor.substring(0, 22) + "..."
+          : this.state.currentActor
       parts.push(truncatedName)
     }
 
@@ -135,9 +136,10 @@ export class StatusBar {
     parts.push(costStr)
 
     // Calculate percentage
-    const percentage = this.state.totalActors > 0
-      ? ((this.state.actorsProcessed / this.state.totalActors) * 100).toFixed(0)
-      : "0"
+    const percentage =
+      this.state.totalActors > 0
+        ? ((this.state.actorsProcessed / this.state.totalActors) * 100).toFixed(0)
+        : "0"
     parts.push(`(${percentage}%)`)
 
     // Join and pad

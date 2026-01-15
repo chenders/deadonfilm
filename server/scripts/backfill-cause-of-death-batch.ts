@@ -1370,7 +1370,10 @@ program
   .description("Create and submit a new batch")
   .option("-l, --limit <number>", "Limit number of actors to process", parsePositiveInt)
   .option("-t, --tmdb-id <number>", "Process a specific actor by TMDB ID", parsePositiveInt)
-  .option("--missing-details-flag", "Re-process actors with cause/details but missing has_detailed_death_info")
+  .option(
+    "--missing-details-flag",
+    "Re-process actors with cause/details but missing has_detailed_death_info"
+  )
   .option("-n, --dry-run", "Preview without submitting batch")
   .option("--fresh", "Start fresh (ignore checkpoint)")
   .action(async (options) => {
@@ -1667,8 +1670,10 @@ async function enrichMissingDetails(options: {
 
       // Set has_detailed_death_info flag if we found substantive text for death page
       // Criteria: circumstances (>200 chars) or rumored_circumstances (>100 chars)
-      const hasSubstantiveCircumstances = enrichment.circumstances && enrichment.circumstances.length > 200
-      const hasSubstantiveRumors = enrichment.rumoredCircumstances && enrichment.rumoredCircumstances.length > 100
+      const hasSubstantiveCircumstances =
+        enrichment.circumstances && enrichment.circumstances.length > 200
+      const hasSubstantiveRumors =
+        enrichment.rumoredCircumstances && enrichment.rumoredCircumstances.length > 100
 
       if (hasSubstantiveCircumstances || hasSubstantiveRumors) {
         await db.query(`UPDATE actors SET has_detailed_death_info = true WHERE id = $1`, [actorId])
@@ -1680,7 +1685,9 @@ async function enrichMissingDetails(options: {
     // Print final stats
     const stats = orchestrator.getStats()
     console.log(`\n${"=".repeat(60)}`)
-    console.log(costLimitReached ? `Enrichment Stopped (Cost Limit Reached)` : `Enrichment Complete!`)
+    console.log(
+      costLimitReached ? `Enrichment Stopped (Cost Limit Reached)` : `Enrichment Complete!`
+    )
     console.log(`${"=".repeat(60)}`)
     console.log(`  Actors processed: ${stats.actorsProcessed}`)
     console.log(`  Actors enriched: ${stats.actorsEnriched}`)
@@ -1695,7 +1702,8 @@ async function enrichMissingDetails(options: {
       console.log(`\nCost Breakdown by Source:`)
       costEntries.sort((a, b) => (b[1] as number) - (a[1] as number))
       for (const [source, cost] of costEntries) {
-        const percentage = stats.totalCostUsd > 0 ? ((cost as number) / stats.totalCostUsd) * 100 : 0
+        const percentage =
+          stats.totalCostUsd > 0 ? ((cost as number) / stats.totalCostUsd) * 100 : 0
         console.log(`  ${source}: $${(cost as number).toFixed(4)} (${percentage.toFixed(1)}%)`)
       }
     }
