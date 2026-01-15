@@ -1022,12 +1022,10 @@ async function applyUpdate(
   }
 
   // Determine if actor has detailed death info (for dedicated death page)
+  // Criteria: substantive circumstances (>200 chars) OR substantive rumors (>100 chars)
   const hasDetailedDeathInfo =
-    parsed.strange_death === true ||
-    parsed.circumstances_confidence === "disputed" ||
-    (parsed.notable_factors && parsed.notable_factors.length > 0) ||
-    (parsed.rumored_circumstances !== null && parsed.rumored_circumstances !== "") ||
-    (parsed.related_celebrities && parsed.related_celebrities.length > 0)
+    (parsed.circumstances && parsed.circumstances.length > 200) ||
+    (parsed.rumored_circumstances && parsed.rumored_circumstances.length > 100)
 
   if (hasDetailedDeathInfo) {
     updates.push(`has_detailed_death_info = $${paramIndex++}`)
