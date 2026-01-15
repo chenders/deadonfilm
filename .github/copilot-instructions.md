@@ -181,19 +181,15 @@ function stripHtmlTags(html: string): string {
 
 ### HTML Entity Decoding
 
-Decode `&amp;` LAST to avoid double-unescaping:
+Use the `he` library - never write custom entity decoding:
 
 ```typescript
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
-    .replace(/&amp;/g, "&") // MUST be last
-}
+import he from "he"
+he.decode("&lt;script&gt;") // "<script>"
+he.escape("<script>")       // "&lt;script&gt;"
 ```
+
+Use `decodeHtmlEntities()` from `server/src/lib/death-sources/html-utils.ts`
 
 ### Regex Safety
 
