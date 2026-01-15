@@ -1632,7 +1632,7 @@ async function enrichMissingDetails(options: {
           rumored_circumstances,
           location_of_death,
           notable_factors,
-          enrichment_sources,
+          sources,
           created_at,
           updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
@@ -1642,7 +1642,7 @@ async function enrichMissingDetails(options: {
           rumored_circumstances = COALESCE(EXCLUDED.rumored_circumstances, actor_death_circumstances.rumored_circumstances),
           location_of_death = COALESCE(EXCLUDED.location_of_death, actor_death_circumstances.location_of_death),
           notable_factors = COALESCE(EXCLUDED.notable_factors, actor_death_circumstances.notable_factors),
-          enrichment_sources = COALESCE(EXCLUDED.enrichment_sources, actor_death_circumstances.enrichment_sources),
+          sources = COALESCE(EXCLUDED.sources, actor_death_circumstances.sources),
           updated_at = NOW()`,
         [
           actorId,
