@@ -44,10 +44,8 @@ export default function SearchBar() {
 
   const siteExplanation = (
     <>
-      <h2 className="mb-3 font-display text-lg text-brown-dark dark:text-[#d4c8b5]">
-        Cast Mortality Database
-      </h2>
-      <div className="space-y-3 text-sm text-text-muted dark:text-[#9a8b7a]">
+      <h2 className="mb-3 font-display text-lg text-foreground">Cast Mortality Database</h2>
+      <div className="space-y-3 text-sm text-foreground-muted">
         <p>
           Dead on Film lets you discover which actors from your favorite films and TV shows have
           passed away.
@@ -119,12 +117,12 @@ export default function SearchBar() {
       {isOpen && query.length >= 2 && !isLoading && results.length === 0 && (
         <div
           data-testid="search-no-results"
-          className="absolute z-50 mt-1 w-full rounded-lg border border-brown-medium/30 bg-cream p-4 text-center shadow-lg dark:border-[#4a3d32] dark:bg-[#241e18]"
+          className="absolute z-50 mt-1 w-full rounded-lg border border-border-theme/30 bg-surface p-4 text-center shadow-lg"
         >
-          <p className="mb-1 font-display text-sm uppercase tracking-wide text-brown-dark dark:text-[#d4c8b5]">
+          <p className="mb-1 font-display text-sm uppercase tracking-wide text-foreground">
             End of Reel
           </p>
-          <p className="text-sm text-text-muted dark:text-[#9a8b7a]">
+          <p className="text-sm text-foreground-muted">
             No results found for "<span className="italic">{query}</span>"
           </p>
         </div>

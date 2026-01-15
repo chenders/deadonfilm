@@ -11,12 +11,12 @@ export default function LoadingSpinner({ message = "Loading..." }: LoadingSpinne
       <div className="relative">
         {/* Subtle glow effect behind the reel */}
         <div className="absolute inset-0 animate-pulse">
-          <div className="h-16 w-16 rounded-full bg-brown-medium/10 blur-md" />
+          <div className="h-16 w-16 rounded-full bg-border-theme/10 blur-md" />
         </div>
 
         {/* Spinning film reel */}
         <div data-testid="spinner" className="relative animate-[spin_2s_linear_infinite]">
-          <FilmReelIcon size={56} className="text-brown-dark dark:text-[#d4c8b5]" />
+          <FilmReelIcon size={56} className="text-foreground" />
         </div>
       </div>
 
@@ -26,22 +26,19 @@ export default function LoadingSpinner({ message = "Loading..." }: LoadingSpinne
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="h-3 w-1.5 animate-pulse rounded-sm bg-brown-medium/30"
+              className="h-3 w-1.5 animate-pulse rounded-sm bg-border-theme/30"
               style={{ animationDelay: `${i * 150}ms` }}
             />
           ))}
         </div>
-        <p
-          data-testid="loading-message"
-          className="mx-3 font-medium text-text-muted dark:text-[#9a8b7a]"
-        >
+        <p data-testid="loading-message" className="mx-3 font-medium text-foreground-muted">
           {message}
         </p>
         <div className="flex gap-0.5">
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="h-3 w-1.5 animate-pulse rounded-sm bg-brown-medium/30"
+              className="h-3 w-1.5 animate-pulse rounded-sm bg-border-theme/30"
               style={{ animationDelay: `${(3 - i) * 150}ms` }}
             />
           ))}

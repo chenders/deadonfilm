@@ -15,7 +15,7 @@ export default function MediaTypeToggle({ value, onChange }: MediaTypeToggleProp
   return (
     <div
       data-testid="media-type-toggle"
-      className="flex rounded-lg border border-brown-medium/20 bg-cream p-0.5 dark:border-[#4a3d32] dark:bg-[#2a221c]"
+      className="flex rounded-lg border border-border-theme/20 bg-surface-muted p-0.5"
       role="radiogroup"
       aria-label="Search type"
     >
@@ -29,8 +29,8 @@ export default function MediaTypeToggle({ value, onChange }: MediaTypeToggleProp
           onClick={() => onChange(option.value)}
           className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
             value === option.value
-              ? "bg-brown-dark text-cream dark:bg-[#d4c8b5] dark:text-[#1a1612]"
-              : "text-brown-medium hover:bg-beige/50 hover:text-brown-dark dark:text-[#9a8b7a] dark:hover:bg-[#4a3d32]/50 dark:hover:text-[#d4c8b5]"
+              ? "bg-foreground text-surface"
+              : "text-foreground-muted hover:bg-surface hover:text-foreground"
           }`}
         >
           {option.label}

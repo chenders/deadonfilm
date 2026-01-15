@@ -18,11 +18,11 @@ function ActorRow({ person }: { person: CovidDeath }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`covid-death-row-${person.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface p-3 transition-colors hover:bg-surface-muted"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
-        <span className="w-8 text-center font-display text-lg text-brown-medium">
+        <span className="w-8 text-center font-display text-lg text-foreground-muted">
           {person.rank}
         </span>
 
@@ -33,14 +33,14 @@ function ActorRow({ person }: { person: CovidDeath }) {
             className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={24} className="text-brown-medium" />
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-surface-muted">
+            <PersonIcon size={24} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-lg text-brown-dark">{person.name}</h3>
-          <p className="text-sm text-text-muted">
+          <h3 className="truncate font-display text-lg text-foreground">{person.name}</h3>
+          <p className="text-sm text-foreground-muted">
             Died {formatDate(person.deathday)}
             {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
           </p>
@@ -48,7 +48,7 @@ function ActorRow({ person }: { person: CovidDeath }) {
 
         <div className="flex-shrink-0 text-right">
           {person.causeOfDeath && (
-            <p className="text-sm text-brown-dark">
+            <p className="text-sm text-foreground">
               <CauseOfDeathBadge
                 causeOfDeath={person.causeOfDeath}
                 causeOfDeathDetails={person.causeOfDeathDetails}
@@ -62,7 +62,7 @@ function ActorRow({ person }: { person: CovidDeath }) {
 
       {/* Mobile layout */}
       <div className="flex items-start gap-3 md:hidden">
-        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+        <span className="mt-1 w-6 text-center font-display text-base text-foreground-muted">
           {person.rank}
         </span>
 
@@ -73,19 +73,19 @@ function ActorRow({ person }: { person: CovidDeath }) {
             className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={20} className="text-brown-medium" />
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-surface-muted">
+            <PersonIcon size={20} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-base text-brown-dark">{person.name}</h3>
-          <p className="text-xs text-text-muted">
+          <h3 className="truncate font-display text-base text-foreground">{person.name}</h3>
+          <p className="text-xs text-foreground-muted">
             Died {formatDate(person.deathday)}
             {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
           </p>
           {person.causeOfDeath && (
-            <p className="mt-1 text-xs text-brown-dark">
+            <p className="mt-1 text-xs text-foreground">
               <CauseOfDeathBadge
                 causeOfDeath={person.causeOfDeath}
                 causeOfDeathDetails={person.causeOfDeathDetails}
@@ -164,8 +164,8 @@ export default function CovidDeathsPage() {
 
       <div data-testid="covid-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">COVID-19 Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <h1 className="font-display text-3xl text-foreground">COVID-19 Deaths</h1>
+          <p className="mt-2 text-sm text-foreground-muted">
             {includeObscure
               ? "All actors in our database who died from COVID-19, coronavirus, or related complications. Ordered by death date, most recent first."
               : "Well-known actors in our database who died from COVID-19, coronavirus, or related complications. Ordered by death date, most recent first."}
@@ -175,21 +175,21 @@ export default function CovidDeathsPage() {
         {/* Filter */}
         <div className="mb-4 flex justify-center">
           <label
-            className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+            className="flex cursor-pointer items-center gap-2 text-sm text-foreground-muted"
             data-testid="include-obscure-filter"
           >
             <input
               type="checkbox"
               checked={includeObscure}
               onChange={(e) => toggleIncludeObscure(e.target.checked)}
-              className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+              className="h-4 w-4 rounded border-border-theme text-foreground focus:ring-border-theme"
             />
             Include lesser-known actors
           </label>
         </div>
 
         {noResults ? (
-          <div className="text-center text-text-muted">
+          <div className="text-center text-foreground-muted">
             <p>No COVID-19 deaths found in our database.</p>
           </div>
         ) : (
@@ -206,19 +206,19 @@ export default function CovidDeathsPage() {
                 <button
                   onClick={() => goToPage(page - 1)}
                   disabled={page <= 1}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
 
-                <span className="text-sm text-text-muted">
+                <span className="text-sm text-foreground-muted">
                   Page {page} of {data.pagination.totalPages}
                 </span>
 
                 <button
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= data.pagination.totalPages}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -226,7 +226,7 @@ export default function CovidDeathsPage() {
             )}
 
             {/* Total count */}
-            <p className="mt-4 text-center text-sm text-text-muted">
+            <p className="mt-4 text-center text-sm text-foreground-muted">
               Showing {data.persons.length.toLocaleString()} of{" "}
               {data.pagination.totalCount.toLocaleString()} actors
             </p>

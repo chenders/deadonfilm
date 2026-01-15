@@ -8,6 +8,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Legacy colors (keep for gradual migration)
         cream: '#f5f0e8',
         beige: '#e8dcc8',
         'brown-dark': '#3d2914',
@@ -16,15 +17,27 @@ export default {
         accent: '#8b0000',
         'text-primary': '#2c1810',
         'text-muted': '#6b5b4f',
-        // Living actors - antique gold palette (replaces Tailwind greens)
+        // Living actors - antique gold palette
         living: {
-          DEFAULT: '#b8860b',   // Dark goldenrod - main accent
-          light: '#daa520',     // Goldenrod - highlights
-          dark: '#6b5010',      // Darker gold for text on light backgrounds (WCAG AA contrast)
-          muted: '#c9a227',     // Muted gold for backgrounds
-          bg: '#faf6e9',        // Very light cream-gold for cards
-          border: '#d4af37',    // Gold border
+          DEFAULT: '#b8860b',
+          light: '#daa520',
+          dark: '#6b5010',
+          muted: '#c9a227',
+          bg: '#faf6e9',
+          border: '#d4af37',
         },
+        // Semantic tokens - auto-switch light/dark via CSS variables
+        surface: {
+          DEFAULT: 'rgb(var(--color-surface) / <alpha-value>)',
+          elevated: 'rgb(var(--color-surface-elevated) / <alpha-value>)',
+          muted: 'rgb(var(--color-surface-muted) / <alpha-value>)',
+        },
+        foreground: {
+          DEFAULT: 'rgb(var(--color-foreground) / <alpha-value>)',
+          muted: 'rgb(var(--color-foreground-muted) / <alpha-value>)',
+        },
+        'border-theme': 'rgb(var(--color-border-theme) / <alpha-value>)',
+        'accent-adaptive': 'rgb(var(--color-accent-semantic) / <alpha-value>)',
       },
       fontFamily: {
         display: ['Playfair Display', 'Georgia', 'serif'],

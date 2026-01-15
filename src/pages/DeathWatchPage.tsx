@@ -25,11 +25,13 @@ function ActorRow({ actor }: { actor: DeathWatchActor }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`death-watch-row-${actor.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface p-3 transition-colors hover:bg-surface-muted"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
-        <span className="w-8 text-center font-display text-lg text-brown-medium">{actor.rank}</span>
+        <span className="w-8 text-center font-display text-lg text-foreground-muted">
+          {actor.rank}
+        </span>
 
         {profileUrl ? (
           <img
@@ -38,36 +40,36 @@ function ActorRow({ actor }: { actor: DeathWatchActor }) {
             className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={24} className="text-brown-medium" />
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-surface-muted">
+            <PersonIcon size={24} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-lg text-brown-dark">{actor.name}</h3>
-          <p className="text-sm text-text-muted">
+          <h3 className="truncate font-display text-lg text-foreground">{actor.name}</h3>
+          <p className="text-sm text-foreground-muted">
             Age {actor.age} &middot; {actor.totalMovies} movie{actor.totalMovies !== 1 && "s"}
           </p>
         </div>
 
         <div className="flex-shrink-0 text-right">
-          <p className="font-display text-lg text-brown-dark">
+          <p className="font-display text-lg text-foreground">
             {formatPercentage(actor.deathProbability)}
           </p>
-          <p className="text-xs text-text-muted">chance this year</p>
+          <p className="text-xs text-foreground-muted">chance this year</p>
         </div>
 
         {actor.yearsRemaining !== null && (
           <div className="flex-shrink-0 text-right">
-            <p className="font-display text-lg text-brown-dark">~{actor.yearsRemaining}</p>
-            <p className="text-xs text-text-muted">years left</p>
+            <p className="font-display text-lg text-foreground">~{actor.yearsRemaining}</p>
+            <p className="text-xs text-foreground-muted">years left</p>
           </div>
         )}
       </div>
 
       {/* Mobile layout */}
       <div className="flex items-start gap-3 md:hidden">
-        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+        <span className="mt-1 w-6 text-center font-display text-base text-foreground-muted">
           {actor.rank}
         </span>
 
@@ -78,22 +80,22 @@ function ActorRow({ actor }: { actor: DeathWatchActor }) {
             className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={20} className="text-brown-medium" />
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-surface-muted">
+            <PersonIcon size={20} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-base text-brown-dark">{actor.name}</h3>
-          <p className="text-xs text-text-muted">
+          <h3 className="truncate font-display text-base text-foreground">{actor.name}</h3>
+          <p className="text-xs text-foreground-muted">
             Age {actor.age} &middot; {actor.totalMovies} movie{actor.totalMovies !== 1 && "s"}
           </p>
           <div className="mt-1 flex items-center gap-3 text-xs">
-            <span className="font-medium text-brown-dark">
+            <span className="font-medium text-foreground">
               {formatPercentage(actor.deathProbability)} risk
             </span>
             {actor.yearsRemaining !== null && (
-              <span className="text-text-muted">~{actor.yearsRemaining} yrs left</span>
+              <span className="text-foreground-muted">~{actor.yearsRemaining} yrs left</span>
             )}
           </div>
         </div>
@@ -170,8 +172,8 @@ export default function DeathWatchPage() {
 
       <div data-testid="death-watch-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">Death Watch</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <h1 className="font-display text-3xl text-foreground">Death Watch</h1>
+          <p className="mt-2 text-sm text-foreground-muted">
             Living actors in our database ranked by their probability of dying in the next year,
             based on US Social Security Administration actuarial tables.
           </p>
@@ -186,7 +188,7 @@ export default function DeathWatchPage() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search for an actor..."
               data-testid="search-input"
-              className="w-full max-w-md rounded-lg border border-brown-medium/30 bg-white px-4 py-2 text-sm text-brown-dark placeholder-text-muted focus:border-brown-medium focus:outline-none focus:ring-1 focus:ring-brown-medium"
+              className="w-full max-w-md rounded-lg border border-border-theme/30 bg-surface px-4 py-2 text-sm text-foreground placeholder-text-muted focus:border-border-theme focus:outline-none focus:ring-1 focus:ring-border-theme"
             />
           </div>
           <div className="flex justify-center">
@@ -195,15 +197,15 @@ export default function DeathWatchPage() {
                 type="checkbox"
                 checked={includeObscure}
                 onChange={toggleObscure}
-                className="rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+                className="rounded border-border-theme text-foreground focus:ring-border-theme"
               />
-              <span className="text-text-muted">Include lesser-known actors</span>
+              <span className="text-foreground-muted">Include lesser-known actors</span>
             </label>
           </div>
         </div>
 
         {noResults ? (
-          <div className="text-center text-text-muted">
+          <div className="text-center text-foreground-muted">
             {searchQuery ? (
               <>
                 <p>No actors found matching "{searchQuery}".</p>
@@ -234,19 +236,19 @@ export default function DeathWatchPage() {
                 <button
                   onClick={() => goToPage(page - 1)}
                   disabled={page <= 1}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
 
-                <span className="text-sm text-text-muted">
+                <span className="text-sm text-foreground-muted">
                   Page {page} of {data.pagination.totalPages}
                 </span>
 
                 <button
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= data.pagination.totalPages}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -254,7 +256,7 @@ export default function DeathWatchPage() {
             )}
 
             {/* Total count */}
-            <p className="mt-4 text-center text-sm text-text-muted">
+            <p className="mt-4 text-center text-sm text-foreground-muted">
               Showing {data.actors.length.toLocaleString()} of{" "}
               {data.pagination.totalCount.toLocaleString()} actors
             </p>

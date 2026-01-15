@@ -94,11 +94,11 @@ export default function DeathInfo({
       </p>
 
       {ageAtDeath !== null && (
-        <p data-testid="age-at-death" className="text-sm text-text-muted">
+        <p data-testid="age-at-death" className="text-sm text-foreground-muted">
           Age {ageAtDeath}
           {yearsLostNum !== null && (
             <span
-              className={yearsLostNum > 0 ? "text-accent" : "text-green-700"}
+              className={yearsLostNum > 0 ? "text-accent" : "text-green-600 dark:text-green-400"}
               title={
                 yearsLostNum > 0
                   ? `Died ${Math.abs(yearsLostNum).toFixed(1)} years earlier than expected for their birth year`
@@ -124,12 +124,12 @@ export default function DeathInfo({
               : `Lived ${ageAtDeath} years, ${Math.abs(Math.round(yearsLostNum))} more than expected`
           }
         >
-          <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-200">
+          <div className="flex h-2 w-full overflow-hidden rounded-full bg-surface-muted">
             {yearsLostNum > 0 ? (
               <>
                 {/* Life lived (solid) - died early */}
                 <div
-                  className="bg-brown-medium"
+                  className="bg-foreground-muted"
                   style={{ width: `${(ageAtDeath / expectedLifespan) * 100}%` }}
                 />
                 {/* Life lost (striped/faded) */}
@@ -147,7 +147,7 @@ export default function DeathInfo({
               <div className="w-full bg-green-600" />
             )}
           </div>
-          <div className="mt-0.5 flex justify-between text-[10px] text-text-muted">
+          <div className="mt-0.5 flex justify-between text-[10px] text-foreground-muted">
             <span>0</span>
             <span>{yearsLostNum > 0 ? Math.round(expectedLifespan) : ageAtDeath} yrs</span>
           </div>
@@ -155,7 +155,7 @@ export default function DeathInfo({
       )}
 
       {causeOfDeath && (
-        <p className="mt-1 text-sm text-text-muted">
+        <p className="mt-1 text-sm text-foreground-muted">
           {hasDetails ? (
             <HoverTooltip
               content={causeOfDeathDetails}
@@ -172,7 +172,7 @@ export default function DeathInfo({
                 {toTitleCase(causeOfDeath)}
                 <InfoIcon
                   size={14}
-                  className="ml-1 inline-block align-text-bottom text-brown-medium"
+                  className="ml-1 inline-block align-text-bottom text-foreground-muted"
                 />
               </span>
             </HoverTooltip>
@@ -181,7 +181,7 @@ export default function DeathInfo({
               href={profileLink.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-brown-dark"
+              className="underline hover:text-foreground"
             >
               {toTitleCase(causeOfDeath)}
             </a>
@@ -190,14 +190,14 @@ export default function DeathInfo({
       )}
 
       {!causeOfDeath && (wikipediaUrl || !isLoading) && (
-        <p className="mt-1 text-sm text-text-muted">
+        <p className="mt-1 text-sm text-foreground-muted">
           <span className="italic">(cause unknown)</span>
           {" - "}
           <a
             href={profileLink.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-brown-medium underline hover:text-brown-dark"
+            className="underline hover:text-foreground"
           >
             {profileLink.label}
           </a>
@@ -205,7 +205,7 @@ export default function DeathInfo({
       )}
 
       {!causeOfDeath && !wikipediaUrl && isLoading && (
-        <p className="mt-1 text-sm italic text-brown-medium">
+        <p className="mt-1 text-sm italic text-foreground-muted">
           Looking up cause
           <LoadingEllipsis />
         </p>

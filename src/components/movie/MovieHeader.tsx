@@ -26,9 +26,9 @@ export default function MovieHeader({ movie, hidePoster = false }: MovieHeaderPr
         ) : (
           <div
             data-testid="movie-poster-placeholder"
-            className="mb-2 flex aspect-[2/3] w-[clamp(6rem,18vh,12rem)] items-center justify-center rounded-lg bg-beige"
+            className="mb-2 flex aspect-[2/3] w-[clamp(6rem,18vh,12rem)] items-center justify-center rounded-lg bg-surface-muted"
           >
-            <span className="text-text-muted">No poster</span>
+            <span className="text-foreground-muted">No poster</span>
           </div>
         ))}
 
@@ -38,7 +38,7 @@ export default function MovieHeader({ movie, hidePoster = false }: MovieHeaderPr
       >
         {movie.title}
       </h1>
-      <p data-testid="movie-year" className="text-lg text-brown-medium md:text-xl">
+      <p data-testid="movie-year" className="text-lg text-foreground-muted md:text-xl">
         ({year})
       </p>
     </div>
@@ -80,9 +80,9 @@ export function MoviePoster({ movie }: { movie: MovieDetails }) {
     >
       <div
         data-testid="movie-poster-placeholder"
-        className="flex aspect-[2/3] w-32 cursor-pointer items-center justify-center rounded-lg bg-beige transition-colors hover:bg-cream md:w-44"
+        className="flex aspect-[2/3] w-32 cursor-pointer items-center justify-center rounded-lg bg-surface-muted transition-colors hover:bg-surface md:w-44"
       >
-        <span className="text-sm text-text-muted">No poster</span>
+        <span className="text-sm text-foreground-muted">No poster</span>
       </div>
     </a>
   )

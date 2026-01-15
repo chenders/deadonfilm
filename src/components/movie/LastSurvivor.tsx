@@ -23,7 +23,7 @@ export default function LastSurvivor({ actor, totalLiving }: LastSurvivorProps) 
       data-testid="last-survivor"
       className="mb-8 rounded-lg border border-living-border/30 bg-living-bg p-4"
     >
-      <h3 data-testid="last-survivor-title" className="mb-3 font-display text-lg text-brown-dark">
+      <h3 data-testid="last-survivor-title" className="mb-3 font-display text-lg text-foreground">
         {title}
       </h3>
 
@@ -48,7 +48,7 @@ export default function LastSurvivor({ actor, totalLiving }: LastSurvivorProps) 
         )}
 
         <div>
-          <p data-testid="last-survivor-name" className="font-semibold text-brown-dark">
+          <p data-testid="last-survivor-name" className="font-semibold text-foreground">
             {actor.name}
           </p>
           <p data-testid="last-survivor-character" className="text-sm text-living-dark">

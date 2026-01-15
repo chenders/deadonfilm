@@ -2,10 +2,10 @@ import { Link } from "react-router-dom"
 
 export default function QuickActions() {
   const linkClass =
-    "inline-flex items-center gap-1.5 rounded-full border border-brown-medium/30 bg-beige px-3 py-1.5 text-xs font-medium text-brown-dark transition-all duration-200 hover:border-brown-medium/50 hover:bg-cream dark:border-[#4a3d32] dark:bg-[#2a221c] dark:text-[#d4c8b5] dark:hover:border-[#5a4d42] dark:hover:bg-[#241e18]"
+    "inline-flex items-center gap-1.5 rounded-full border border-border-theme/30 bg-surface-muted px-3 py-1.5 text-xs font-medium text-foreground transition-all duration-200 hover:border-border-theme/50 hover:bg-surface"
 
   const tooltipClass =
-    "pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 rounded-lg bg-brown-dark px-3 py-2 text-center text-xs text-cream opacity-0 shadow-lg transition-opacity delay-300 duration-200 group-hover:opacity-100 group-hover:delay-300 dark:bg-[#d4c8b5] dark:text-[#1a1612]"
+    "pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 rounded-lg bg-foreground px-3 py-2 text-center text-xs text-surface opacity-0 shadow-lg transition-opacity delay-300 duration-200 group-hover:opacity-100 group-hover:delay-300"
 
   const emojiClass = "text-base leading-none"
 

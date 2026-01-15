@@ -87,7 +87,7 @@ function Tooltip({
     <div
       ref={tooltipRef}
       data-testid="death-details-tooltip"
-      className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
+      className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-border-theme/50 bg-foreground px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
       style={{
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,
@@ -98,7 +98,7 @@ function Tooltip({
     >
       <div className="absolute -top-1 left-4 right-4 flex justify-between">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
+          <div key={i} className="h-2 w-1.5 rounded-sm bg-border-theme/50" />
         ))}
       </div>
       <TooltipContent content={content} actorSlug={actorSlug} hasDetailedInfo={hasDetailedInfo} />
@@ -122,7 +122,7 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
     return (
       <Link
         to={`/movie/${slug}`}
-        className="flex items-center gap-3 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+        className="flex items-center gap-3 rounded-lg bg-surface p-3 transition-colors hover:bg-surface-muted"
         data-testid="filmography-row"
       >
         {posterUrl ? (
@@ -135,24 +135,26 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
             className="h-[69px] w-[46px] flex-shrink-0 rounded object-cover"
           />
         ) : (
-          <div className="flex h-[69px] w-[46px] flex-shrink-0 items-center justify-center rounded bg-beige">
-            <FilmReelIcon size={24} className="text-text-muted" />
+          <div className="flex h-[69px] w-[46px] flex-shrink-0 items-center justify-center rounded bg-surface-muted">
+            <FilmReelIcon size={24} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-base text-brown-dark">{movie.title}</h3>
-          {movie.releaseYear && <p className="text-sm text-text-muted">{movie.releaseYear}</p>}
+          <h3 className="truncate font-display text-base text-foreground">{movie.title}</h3>
+          {movie.releaseYear && (
+            <p className="text-sm text-foreground-muted">{movie.releaseYear}</p>
+          )}
           {movie.character && (
-            <p className="truncate text-sm italic text-text-muted">as {movie.character}</p>
+            <p className="truncate text-sm italic text-foreground-muted">as {movie.character}</p>
           )}
         </div>
 
         <div className="flex-shrink-0 text-right">
-          <p className="font-display text-lg text-brown-dark">
+          <p className="font-display text-lg text-foreground">
             {movie.deceasedCount.toLocaleString()}/{movie.castCount.toLocaleString()}
           </p>
-          <p className="text-xs text-text-muted">{mortalityPercent}% deceased</p>
+          <p className="text-xs text-foreground-muted">{mortalityPercent}% deceased</p>
         </div>
       </Link>
     )
@@ -176,7 +178,7 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
   return (
     <Link
       to={`/show/${slug}`}
-      className="flex items-center gap-3 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="flex items-center gap-3 rounded-lg bg-surface p-3 transition-colors hover:bg-surface-muted"
       data-testid="filmography-row"
     >
       {posterUrl ? (
@@ -189,28 +191,28 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
           className="h-[69px] w-[46px] flex-shrink-0 rounded object-cover"
         />
       ) : (
-        <div className="flex h-[69px] w-[46px] flex-shrink-0 items-center justify-center rounded bg-beige">
-          <TVIcon size={24} className="text-text-muted" />
+        <div className="flex h-[69px] w-[46px] flex-shrink-0 items-center justify-center rounded bg-surface-muted">
+          <TVIcon size={24} className="text-foreground-muted" />
         </div>
       )}
 
       <div className="min-w-0 flex-1">
-        <h3 className="truncate font-display text-base text-brown-dark">{show.name}</h3>
-        <p className="text-sm text-text-muted">
+        <h3 className="truncate font-display text-base text-foreground">{show.name}</h3>
+        <p className="text-sm text-foreground-muted">
           {yearDisplay}
           {yearDisplay && " · "}
           {show.episodeCount} episode{show.episodeCount !== 1 ? "s" : ""}
         </p>
         {show.character && (
-          <p className="truncate text-sm italic text-text-muted">as {show.character}</p>
+          <p className="truncate text-sm italic text-foreground-muted">as {show.character}</p>
         )}
       </div>
 
       <div className="flex-shrink-0 text-right">
-        <p className="font-display text-lg text-brown-dark">
+        <p className="font-display text-lg text-foreground">
           {show.deceasedCount.toLocaleString()}/{show.castCount.toLocaleString()}
         </p>
-        <p className="text-xs text-text-muted">{mortalityPercent}% deceased</p>
+        <p className="text-xs text-foreground-muted">{mortalityPercent}% deceased</p>
       </div>
     </Link>
   )
@@ -348,17 +350,17 @@ export default function ActorPage() {
             />
           ) : (
             <div
-              className="flex h-48 w-36 flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-md"
+              className="flex h-48 w-36 flex-shrink-0 items-center justify-center rounded-lg bg-surface-muted shadow-md"
               data-testid="actor-profile-placeholder"
             >
-              <PersonIcon size={64} className="text-text-muted" />
+              <PersonIcon size={64} className="text-foreground-muted" />
             </div>
           )}
 
           {/* Basic info */}
           <div className="flex-1 text-center sm:text-left">
             <h1
-              className={`font-display text-3xl ${isDeceased ? "text-accent" : "text-brown-dark"}`}
+              className={`font-display text-3xl ${isDeceased ? "text-accent" : "text-foreground"}`}
             >
               {actor.name}
               {isDeceased && (
@@ -368,7 +370,7 @@ export default function ActorPage() {
               )}
             </h1>
 
-            <div className="mt-2 space-y-1 text-sm text-text-muted">
+            <div className="mt-2 space-y-1 text-sm text-foreground-muted">
               {actor.birthday && (
                 <p>
                   <span className="font-medium">Born:</span> {formatDate(actor.birthday)}
@@ -403,7 +405,7 @@ export default function ActorPage() {
                       {toTitleCase(deathInfo.causeOfDeath)}
                       <InfoIcon
                         size={14}
-                        className="ml-1 inline-block align-text-bottom text-brown-medium"
+                        className="ml-1 inline-block align-text-bottom text-foreground-muted"
                       />
                       <Tooltip
                         content={deathInfo.causeOfDeathDetails!}
@@ -434,7 +436,7 @@ export default function ActorPage() {
                 href={`https://www.themoviedb.org/person/${actor.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+                className="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-surface"
               >
                 TMDB
               </a>
@@ -443,7 +445,7 @@ export default function ActorPage() {
                   href={deathInfo.wikipediaUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+                  className="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-surface"
                 >
                   Wikipedia
                 </a>
@@ -452,7 +454,7 @@ export default function ActorPage() {
                 <Link
                   to={`/actor/${slug}/death`}
                   data-testid="death-details-button"
-                  className="rounded-full bg-brown-medium px-3 py-1.5 text-xs text-cream transition-colors hover:bg-brown-dark"
+                  className="rounded-full bg-foreground px-3 py-1.5 text-xs text-surface transition-colors hover:bg-foreground/80"
                 >
                   View Full Death Details →
                 </Link>
@@ -463,9 +465,9 @@ export default function ActorPage() {
 
         {/* Biography */}
         {actor.biography && (
-          <div className="mb-6 rounded-lg bg-white p-4">
-            <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
-            <p className="line-clamp-6 text-sm leading-relaxed text-text-muted">
+          <div className="mb-6 rounded-lg bg-surface p-4">
+            <h2 className="mb-2 font-display text-lg text-foreground">Biography</h2>
+            <p className="line-clamp-6 text-sm leading-relaxed text-foreground-muted">
               {actor.biography}
             </p>
           </div>
@@ -473,10 +475,10 @@ export default function ActorPage() {
 
         {/* Filmography */}
         <div>
-          <h2 className="mb-3 font-display text-lg text-brown-dark">
+          <h2 className="mb-3 font-display text-lg text-foreground">
             Analyzed Filmography
             {combinedFilmography.length > 0 && (
-              <span className="ml-2 text-sm font-normal text-text-muted">
+              <span className="ml-2 text-sm font-normal text-foreground-muted">
                 ({analyzedFilmography.length} movie{analyzedFilmography.length !== 1 ? "s" : ""}
                 {(analyzedTVFilmography?.length ?? 0) > 0 && (
                   <>
@@ -490,7 +492,7 @@ export default function ActorPage() {
           </h2>
 
           {combinedFilmography.length === 0 ? (
-            <div className="rounded-lg bg-white p-6 text-center text-text-muted">
+            <div className="rounded-lg bg-surface p-6 text-center text-foreground-muted">
               <p>No movies or TV shows in our database yet.</p>
               <p className="mt-1 text-sm">
                 This actor hasn't appeared in any productions we've analyzed for mortality

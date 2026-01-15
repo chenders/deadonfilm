@@ -56,7 +56,7 @@ function MediaPoster({
   const PlaceholderIcon = mediaType === "tv" ? TVIcon : FilmReelIcon
 
   return (
-    <div className="-my-1 h-14 w-[38px] flex-shrink-0 overflow-hidden rounded bg-brown-medium/10 dark:bg-[#4a3d32]/30">
+    <div className="-my-1 h-14 w-[38px] flex-shrink-0 overflow-hidden rounded bg-border-theme/10">
       {poster ? (
         <img
           src={poster.src}
@@ -67,7 +67,7 @@ function MediaPoster({
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-brown-medium/30 dark:text-[#9a8b7a]/30">
+        <div className="flex h-full w-full items-center justify-center text-foreground-muted/30">
           <PlaceholderIcon size={16} />
         </div>
       )}
@@ -99,7 +99,7 @@ export default function SearchResult({
       role="option"
       aria-selected={isSelected}
       data-testid="search-result"
-      className={`cursor-pointer border-b border-brown-medium/10 px-4 py-2 transition-colors last:border-b-0 dark:border-[#4a3d32]/50 ${isSelected ? "bg-beige dark:bg-[#2a221c]" : "hover:bg-beige/50 dark:hover:bg-[#2a221c]/50"}`}
+      className={`cursor-pointer border-b border-border-theme/10 px-4 py-2 transition-colors last:border-b-0 ${isSelected ? "bg-surface-muted" : "hover:bg-surface-muted/50"}`}
       onClick={onSelect}
       onMouseDown={(e) => e.preventDefault()} // Prevent input blur before click
       data-track-event="search_select"
@@ -120,21 +120,19 @@ export default function SearchResult({
         {/* Title, year, and media type badge */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate font-medium text-brown-dark dark:text-[#d4c8b5]">
-              {result.title}
-            </span>
+            <span className="truncate font-medium text-foreground">{result.title}</span>
             <span
               data-testid={`media-badge-${result.media_type}`}
               className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                 result.media_type === "tv"
-                  ? "bg-living/20 text-living-dark dark:bg-[#c9a227]/20 dark:text-[#c9a227]"
-                  : "bg-brown-medium/10 text-brown-medium dark:bg-[#4a3d32]/30 dark:text-[#9a8b7a]"
+                  ? "bg-living/20 text-living-dark dark:bg-living/30 dark:text-living-light"
+                  : "bg-border-theme/10 text-foreground-muted"
               }`}
             >
               {result.media_type === "tv" ? "TV" : "Film"}
             </span>
           </div>
-          <div className="text-sm text-text-muted dark:text-[#9a8b7a]">{year}</div>
+          <div className="text-sm text-foreground-muted">{year}</div>
         </div>
 
         {/* Mortality indicator */}
@@ -143,7 +141,7 @@ export default function SearchResult({
             mortality.level === "high"
               ? "text-accent"
               : mortality.level === "medium"
-                ? "text-brown-medium/60"
+                ? "text-foreground-muted/60"
                 : ""
           }`}
           title={mortality.label || undefined}

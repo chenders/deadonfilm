@@ -68,7 +68,7 @@ export default function SeasonPage() {
 
       <div data-testid="season-page" className="mx-auto max-w-4xl">
         {/* Breadcrumb */}
-        <nav className="mb-4 text-sm text-text-muted">
+        <nav className="mb-4 text-sm text-foreground-muted">
           <Link to={`/show/${showSlug}`} className="hover:text-accent hover:underline">
             {show.name}
           </Link>
@@ -86,8 +86,8 @@ export default function SeasonPage() {
               className="h-auto w-48 flex-shrink-0 self-center rounded-lg shadow-md md:self-start"
             />
           ) : (
-            <div className="flex h-72 w-48 flex-shrink-0 items-center justify-center self-center rounded-lg bg-beige md:self-start">
-              <span className="text-center text-sm text-text-muted">No poster</span>
+            <div className="flex h-72 w-48 flex-shrink-0 items-center justify-center self-center rounded-lg bg-surface-muted md:self-start">
+              <span className="text-center text-sm text-foreground-muted">No poster</span>
             </div>
           )}
 
@@ -96,31 +96,33 @@ export default function SeasonPage() {
             <h1 className="font-display text-3xl leading-tight text-accent md:text-4xl">
               {season.name}
             </h1>
-            <p className="mt-1 text-lg text-brown-medium">{show.name}</p>
+            <p className="mt-1 text-lg text-foreground-muted">{show.name}</p>
 
             {season.airDate && (
-              <p className="mt-2 text-sm text-text-muted">Premiered {formatDate(season.airDate)}</p>
+              <p className="mt-2 text-sm text-foreground-muted">
+                Premiered {formatDate(season.airDate)}
+              </p>
             )}
 
             {/* Stats */}
             <div className="mt-4 flex flex-wrap justify-center gap-4 md:justify-start">
-              <div className="rounded-lg border border-brown-medium/20 bg-white px-4 py-2 text-center">
-                <div className="text-2xl font-bold text-brown-dark">
+              <div className="rounded-lg border border-border-theme/20 bg-surface px-4 py-2 text-center">
+                <div className="text-2xl font-bold text-foreground">
                   {stats.totalEpisodes.toLocaleString()}
                 </div>
-                <div className="text-xs text-text-muted">Episodes</div>
+                <div className="text-xs text-foreground-muted">Episodes</div>
               </div>
-              <div className="rounded-lg border border-brown-medium/20 bg-white px-4 py-2 text-center">
-                <div className="text-2xl font-bold text-brown-dark">
+              <div className="rounded-lg border border-border-theme/20 bg-surface px-4 py-2 text-center">
+                <div className="text-2xl font-bold text-foreground">
                   {stats.uniqueGuestStars.toLocaleString()}
                 </div>
-                <div className="text-xs text-text-muted">Guest Stars</div>
+                <div className="text-xs text-foreground-muted">Guest Stars</div>
               </div>
               <div className="rounded-lg border border-accent/20 bg-accent/5 px-4 py-2 text-center">
                 <div className="text-2xl font-bold text-accent">
                   {stats.uniqueDeceasedGuestStars.toLocaleString()}
                 </div>
-                <div className="text-xs text-text-muted">Deceased</div>
+                <div className="text-xs text-foreground-muted">Deceased</div>
               </div>
             </div>
 
@@ -146,7 +148,7 @@ export default function SeasonPage() {
 
         {/* Episode List */}
         <div className="mt-8">
-          <h2 className="mb-4 border-b border-brown-medium/20 pb-2 font-display text-xl text-brown-dark">
+          <h2 className="mb-4 border-b border-border-theme/20 pb-2 font-display text-xl text-foreground">
             Episodes
           </h2>
 
@@ -165,16 +167,16 @@ export default function SeasonPage() {
                   key={episode.episodeNumber}
                   to={`/episode/${slug}`}
                   data-testid={`episode-link-${episode.episodeNumber}`}
-                  className="block rounded-lg border border-brown-medium/20 bg-white p-4 transition-colors hover:border-accent/30 hover:bg-beige/30"
+                  className="block rounded-lg border border-border-theme/20 bg-surface p-4 transition-colors hover:border-accent/30 hover:bg-surface-muted/30"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline gap-2">
                         <span className="font-semibold text-accent">E{episode.episodeNumber}</span>
-                        <span className="text-brown-dark">{episode.name}</span>
+                        <span className="text-foreground">{episode.name}</span>
                       </div>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-foreground-muted">
                         {episode.airDate && <span>{formatDate(episode.airDate)}</span>}
                         {episode.runtime && <span>{episode.runtime} min</span>}
                         {episode.guestStarCount > 0 && (

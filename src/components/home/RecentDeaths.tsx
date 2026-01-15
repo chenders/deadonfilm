@@ -14,10 +14,10 @@ export default function RecentDeaths() {
     return (
       <div className="mt-8">
         <div className="animate-pulse">
-          <div className="mx-auto mb-4 h-6 w-40 rounded bg-brown-medium/20" />
+          <div className="mx-auto mb-4 h-6 w-40 rounded bg-border-theme/20" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-32 rounded-lg bg-brown-medium/20" />
+              <div key={i} className="h-32 rounded-lg bg-border-theme/20" />
             ))}
           </div>
         </div>
@@ -32,13 +32,13 @@ export default function RecentDeaths() {
   return (
     <section data-testid="recent-deaths" className="mt-8">
       <div className="mb-4 flex items-center justify-between">
-        <h2 data-testid="recent-deaths-title" className="font-display text-xl text-brown-dark">
+        <h2 data-testid="recent-deaths-title" className="font-display text-xl text-foreground">
           Recent Passings
         </h2>
         <Link
           to="/deaths/all"
           data-testid="view-all-deaths-link"
-          className="text-sm text-brown-medium hover:text-brown-dark"
+          className="text-sm text-foreground-muted hover:text-foreground"
         >
           View all &rarr;
         </Link>
@@ -49,7 +49,7 @@ export default function RecentDeaths() {
           <Link
             key={death.tmdb_id}
             to={`/actor/${createActorSlug(death.name, death.tmdb_id)}`}
-            className="animate-fade-slide-in flex flex-col items-center rounded-lg bg-beige p-3 text-center transition-colors hover:bg-cream"
+            className="animate-fade-slide-in flex flex-col items-center rounded-lg bg-surface p-3 text-center transition-colors hover:bg-surface-muted"
             style={{ animationDelay: `${index * 50}ms` }}
           >
             {death.profile_path ? (
@@ -62,17 +62,17 @@ export default function RecentDeaths() {
                 className="mb-2 h-20 w-16 rounded object-cover"
               />
             ) : (
-              <div className="mb-2 flex h-20 w-16 items-center justify-center rounded bg-brown-medium/20">
-                <PersonIcon size={28} className="text-text-muted" />
+              <div className="mb-2 flex h-20 w-16 items-center justify-center rounded bg-border-theme/20">
+                <PersonIcon size={28} className="text-foreground-muted" />
               </div>
             )}
 
-            <h3 className="w-full truncate text-sm font-medium text-brown-dark" title={death.name}>
+            <h3 className="w-full truncate text-sm font-medium text-foreground" title={death.name}>
               {death.name}
             </h3>
             <p className="text-xs text-accent">{formatDate(death.deathday)}</p>
             {death.cause_of_death && (
-              <p className="mt-1 w-full truncate text-xs text-text-muted">
+              <p className="mt-1 w-full truncate text-xs text-foreground-muted">
                 <CauseOfDeathBadge
                   causeOfDeath={death.cause_of_death}
                   causeOfDeathDetails={death.cause_of_death_details}
