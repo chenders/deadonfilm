@@ -237,6 +237,50 @@ export class EnrichmentLogger {
     })
   }
 
+  /**
+   * Log Claude cleanup request (prompt sent to Claude).
+   */
+  logClaudeCleanupRequest(
+    actorId: number,
+    actorName: string,
+    sourceCount: number,
+    prompt: string
+  ): void {
+    this.debug("[CLAUDE_REQUEST]", {
+      actor_id: actorId,
+      actor: actorName,
+      sources: sourceCount,
+    })
+    // Log the full prompt on a separate line for easy reading
+    this.debug("[CLAUDE_PROMPT]", {
+      prompt: prompt.substring(0, 2000) + (prompt.length > 2000 ? "..." : ""),
+    })
+  }
+
+  /**
+   * Log Claude cleanup response.
+   */
+  logClaudeCleanupResponse(
+    actorId: number,
+    actorName: string,
+    inputTokens: number,
+    outputTokens: number,
+    costUsd: number,
+    response: string
+  ): void {
+    this.info("[CLAUDE_RESPONSE]", {
+      actor_id: actorId,
+      actor: actorName,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      cost_usd: costUsd.toFixed(4),
+    })
+    // Log the full response on a separate line for easy reading
+    this.debug("[CLAUDE_OUTPUT]", {
+      response: response.substring(0, 3000) + (response.length > 3000 ? "..." : ""),
+    })
+  }
+
   // ==========================================================================
   // Internal Implementation
   // ==========================================================================

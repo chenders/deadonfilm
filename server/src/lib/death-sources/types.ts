@@ -296,6 +296,74 @@ export interface BatchEnrichmentStats {
 }
 
 // ============================================================================
+// Claude Cleanup Types
+// ============================================================================
+
+/**
+ * Confidence level for extracted death information.
+ */
+export type ConfidenceLevel = "high" | "medium" | "low" | "disputed"
+
+/**
+ * Raw data collected from a single source, before Claude cleanup.
+ */
+export interface RawSourceData {
+  sourceName: string
+  sourceType: DataSourceType
+  text: string
+  url?: string
+  confidence: number
+}
+
+/**
+ * Enriched death information extracted from raw data.
+ * This matches the structure we ask Claude to return.
+ */
+export interface EnrichedDeathInfo {
+  circumstances: string | null
+  rumoredCircumstances: string | null
+  notableFactors: string[]
+  relatedCelebrities: RelatedCelebrity[]
+  locationOfDeath: string | null
+  additionalContext: string | null
+}
+
+/**
+ * Clean, structured death information returned by Claude Opus 4.5.
+ * These are the user-facing fields for the /death page.
+ */
+export interface CleanedDeathInfo {
+  // Core death info (also shown on main actor page)
+  cause: string | null
+  causeConfidence: ConfidenceLevel | null
+  details: string | null
+  detailsConfidence: ConfidenceLevel | null
+
+  // Extended info for /death page
+  circumstances: string | null // Full narrative - the main content
+  circumstancesConfidence: ConfidenceLevel | null
+  rumoredCircumstances: string | null // Alternative accounts, disputed info
+
+  locationOfDeath: string | null
+  notableFactors: string[] // Tags: multiple_deaths, investigation, etc.
+  relatedDeaths: string | null // Family/others who died in connection
+  additionalContext: string | null // Career context relevant to death
+
+  // Metadata
+  cleanupSource: "claude-opus-4.5"
+  cleanupTimestamp: string
+}
+
+/**
+ * Configuration for Claude cleanup step.
+ */
+export interface ClaudeCleanupConfig {
+  enabled: boolean
+  model: "claude-opus-4-5-20251101"
+  gatherAllSources: boolean // true = don't stop on first match
+}
+
+// ============================================================================
 // Configuration Types
 // ============================================================================
 
@@ -359,6 +427,8 @@ export interface EnrichmentConfig {
   statsFile?: string
   /** Cost limits to control spending */
   costLimits?: CostLimitConfig
+  /** Claude Opus 4.5 cleanup configuration */
+  claudeCleanup?: ClaudeCleanupConfig
 }
 
 // ============================================================================
