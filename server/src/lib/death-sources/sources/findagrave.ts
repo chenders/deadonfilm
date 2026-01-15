@@ -18,6 +18,7 @@ import {
 } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
+import { htmlToText } from "../html-utils.js"
 
 const FINDAGRAVE_SEARCH_URL = "https://www.findagrave.com/memorial/search"
 const FINDAGRAVE_BASE_URL = "https://www.findagrave.com"
@@ -316,16 +317,7 @@ export class FindAGraveSource extends BaseDataSource {
    * Clean HTML tags and entities from text.
    */
   private cleanHtml(html: string): string {
-    return html
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s+/g, " ")
-      .trim()
+    return htmlToText(html)
   }
 }
 

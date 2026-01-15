@@ -10,6 +10,12 @@
 import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult, EnrichedDeathInfo } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import {
+  removeScriptTags,
+  removeStyleTags,
+  stripHtmlTags,
+  decodeHtmlEntities,
+} from "../html-utils.js"
 
 const WIKIPEDIA_API_BASE = "https://en.wikipedia.org/w/api.php"
 
@@ -240,9 +246,9 @@ export class WikipediaSource extends BaseDataSource {
    * Extract plain text from Wikipedia HTML content.
    */
   private extractTextFromHtml(html: string): string {
-    // Remove script and style tags
-    let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-    text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    // Remove script and style tags using robust state-machine approach
+    let text = removeScriptTags(html)
+    text = removeStyleTags(text)
 
     // Remove reference tags [1], [2], etc.
     text = text.replace(/\[\d+\]/g, "")
@@ -251,18 +257,13 @@ export class WikipediaSource extends BaseDataSource {
     text = text.replace(/\[citation needed\]/gi, "")
 
     // Remove edit section links
-    text = text.replace(/<span class="mw-editsection">[\s\S]*?<\/span>/gi, "")
+    text = text.replace(/<span class="mw-editsection">[^<]*(?:(?!<\/span>)<[^<]*)*<\/span>/gi, "")
 
     // Remove HTML tags but keep content
-    text = text.replace(/<[^>]+>/g, " ")
+    text = stripHtmlTags(text)
 
-    // Decode HTML entities
-    text = text.replace(/&nbsp;/g, " ")
-    text = text.replace(/&amp;/g, "&")
-    text = text.replace(/&lt;/g, "<")
-    text = text.replace(/&gt;/g, ">")
-    text = text.replace(/&quot;/g, '"')
-    text = text.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    // Decode HTML entities using the 'he' library
+    text = decodeHtmlEntities(text)
 
     // Normalize whitespace
     text = text.replace(/\s+/g, " ").trim()
