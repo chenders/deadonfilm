@@ -70,8 +70,10 @@ Patterns with nested quantifiers can cause ReDoS:
 /(a+)+b/
 /([a-zA-Z]+)*,/
 
-// SAFE - use atomic groups or possessive quantifiers
-// Or restructure to avoid nested repetition
+// SAFER - remove nested quantifiers, use single-level repetition
+/^\w*$/                           // instead of /(\w+)*$/
+/^a+b$/                           // instead of /(a+)+b/
+/^[a-zA-Z]+(?:,[a-zA-Z]+)*,$/     // instead of /([a-zA-Z]+)*,/
 ```
 
 ## SPARQL String Escaping
