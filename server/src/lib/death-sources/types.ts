@@ -38,6 +38,12 @@ export enum DataSourceType {
   IBDB = "ibdb",
   BFI_SIGHT_SOUND = "bfi_sight_sound",
 
+  // International Film Databases
+  ALLOCINE = "allocine", // French
+  DOUBAN = "douban", // Chinese
+  SOOMPI = "soompi", // Korean
+  FILMIBEAT = "filmibeat", // Indian
+
   // Cemetery/Obituary
   FINDAGRAVE = "findagrave",
   BILLIONGRAVES = "billiongraves",

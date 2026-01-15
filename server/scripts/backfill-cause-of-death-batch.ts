@@ -52,6 +52,7 @@ import { rebuildDeathCaches, invalidateActorCache } from "../src/lib/cache.js"
 import {
   DeathEnrichmentOrchestrator,
   CostLimitExceededError,
+  setIgnoreCache,
   type EnrichmentConfig,
   type ActorForEnrichment,
 } from "../src/lib/death-sources/index.js"
@@ -1431,6 +1432,7 @@ async function enrichMissingDetails(options: {
   maxTotalCost?: number
   claudeCleanup?: boolean
   gatherAllSources?: boolean
+  ignoreCache?: boolean
 }): Promise<void> {
   const {
     limit = 100,
@@ -1447,7 +1449,14 @@ async function enrichMissingDetails(options: {
     maxTotalCost,
     claudeCleanup = false,
     gatherAllSources = false,
+    ignoreCache = false,
   } = options
+
+  // Configure cache behavior
+  if (ignoreCache) {
+    setIgnoreCache(true)
+    console.log("Cache disabled - all requests will be made fresh")
+  }
 
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -1835,6 +1844,7 @@ program
     "--gather-all-sources",
     "Gather data from ALL sources before cleanup (requires --claude-cleanup)"
   )
+  .option("--ignore-cache", "Ignore cached responses and make fresh requests to all sources")
   .action(async (options) => {
     await enrichMissingDetails({
       limit: options.limit,
@@ -1851,6 +1861,7 @@ program
       maxTotalCost: options.maxTotalCost,
       claudeCleanup: options.claudeCleanup || false,
       gatherAllSources: options.gatherAllSources || false,
+      ignoreCache: options.ignoreCache || false,
     })
   })
 

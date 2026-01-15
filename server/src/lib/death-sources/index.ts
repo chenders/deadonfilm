@@ -14,6 +14,8 @@ export {
   DEATH_KEYWORDS,
   CIRCUMSTANCE_KEYWORDS,
   NOTABLE_FACTOR_KEYWORDS,
+  setIgnoreCache,
+  getIgnoreCache,
 } from "./base-source.js"
 
 // Source implementations
@@ -53,3 +55,19 @@ export {
   type LogConfig,
   type LogLevel,
 } from "./logger.js"
+
+// Cache
+export {
+  getCachedQuery,
+  setCachedQuery,
+  generateQueryHash,
+  getCacheStats,
+  getCostStats,
+  getCachedQueriesForActor,
+  deleteCachedQueriesOlderThan,
+  deleteCachedQueriesForSource,
+  type CachedQueryResult,
+  type CacheEntry,
+  type CacheStats,
+  type CostStats,
+} from "./cache.js"

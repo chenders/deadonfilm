@@ -1,4 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+
+// Mock cache module before importing source
+vi.mock("../cache.js", () => ({
+  getCachedQuery: vi.fn().mockResolvedValue(null),
+  setCachedQuery: vi.fn().mockResolvedValue(undefined),
+}))
+
+// Mock logger to avoid file operations during tests
+vi.mock("../logger.js", () => ({
+  getEnrichmentLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
+}))
+
 import { IBDBSource } from "./ibdb.js"
 import type { ActorForEnrichment } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
