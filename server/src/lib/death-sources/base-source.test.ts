@@ -145,7 +145,9 @@ describe("BaseDataSource", () => {
     })
 
     it("includes optional rawData when provided", () => {
-      const entry = source.testCreateSourceEntry(Date.now(), 0.5, undefined, undefined, { key: "value" })
+      const entry = source.testCreateSourceEntry(Date.now(), 0.5, undefined, undefined, {
+        key: "value",
+      })
       expect(entry.rawData).toEqual({ key: "value" })
     })
 

@@ -17,12 +17,16 @@ import type {
   EnrichmentStats,
   SourceAttemptStats,
 } from "./types.js"
-import { DataSourceType, CostLimitExceededError } from "./types.js"
+import { DataSourceType, CostLimitExceededError, SourceAccessBlockedError } from "./types.js"
 import { StatusBar } from "./status-bar.js"
+import { EnrichmentLogger, getEnrichmentLogger } from "./logger.js"
 import { WikidataSource } from "./sources/wikidata.js"
 import { DuckDuckGoSource } from "./sources/duckduckgo.js"
 import { FindAGraveSource } from "./sources/findagrave.js"
 import { LegacySource } from "./sources/legacy.js"
+import { TelevisionAcademySource } from "./sources/television-academy.js"
+import { IBDBSource } from "./sources/ibdb.js"
+import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
@@ -54,9 +58,15 @@ export class DeathEnrichmentOrchestrator {
   private sources: DataSource[] = []
   private stats: BatchEnrichmentStats
   private statusBar: StatusBar
+  private logger: EnrichmentLogger
 
-  constructor(config: Partial<EnrichmentConfig> = {}, enableStatusBar = true) {
+  constructor(
+    config: Partial<EnrichmentConfig> = {},
+    enableStatusBar = true,
+    logger?: EnrichmentLogger
+  ) {
     this.config = { ...DEFAULT_CONFIG, ...config }
+    this.logger = logger || getEnrichmentLogger()
     this.initializeSources()
     this.stats = this.createEmptyStats()
     this.statusBar = new StatusBar(enableStatusBar)
@@ -69,13 +79,15 @@ export class DeathEnrichmentOrchestrator {
     this.sources = []
 
     // Free sources - always available, ordered by expected quality
+    // High-accuracy film industry archives first, then structured data, then search
     const freeSources: DataSource[] = [
       new WikidataSource(),
+      new TelevisionAcademySource(), // Official TV industry deaths
+      new IBDBSource(), // Broadway actor deaths (may be blocked)
+      new BFISightSoundSource(), // International film obituaries
       new DuckDuckGoSource(),
       new FindAGraveSource(),
       new LegacySource(),
-      // Add more free sources as they are implemented:
-      // new WikipediaSource(),
     ]
 
     // Filter based on configuration
@@ -107,7 +119,9 @@ export class DeathEnrichmentOrchestrator {
 
     console.log(`Initialized ${this.sources.length} data sources:`)
     for (const source of this.sources) {
-      console.log(`  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`})`)
+      console.log(
+        `  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`})`
+      )
     }
   }
 
@@ -163,7 +177,29 @@ export class DeathEnrichmentOrchestrator {
 
       this.statusBar.setCurrentSource(source.name)
       this.statusBar.log(`  Trying ${source.name}...`)
-      const lookupResult = await source.lookup(actor)
+
+      let lookupResult
+      try {
+        this.logger.sourceAttempt(actor.name, source.type, source.name)
+        lookupResult = await source.lookup(actor)
+      } catch (error) {
+        // Handle SourceAccessBlockedError specially
+        if (error instanceof SourceAccessBlockedError) {
+          this.logger.sourceBlocked(actor.name, source.type, error.statusCode, error.url)
+          this.statusBar.log(`    BLOCKED (${error.statusCode}) - flagged for review`)
+          // Continue to next source, don't fail the whole enrichment
+          const attemptStats: SourceAttemptStats = {
+            source: source.type,
+            success: false,
+            timeMs: Date.now() - sourceStartTime,
+            costUsd: 0,
+            error: `Blocked: ${error.statusCode}`,
+          }
+          actorStats.sourcesAttempted.push(attemptStats)
+          continue
+        }
+        throw error
+      }
 
       // Record stats
       const sourceCost = lookupResult.source.costUsd || 0
@@ -188,7 +224,9 @@ export class DeathEnrichmentOrchestrator {
       // Check per-actor cost limit
       if (this.config.costLimits?.maxCostPerActor !== undefined) {
         if (actorStats.totalCostUsd >= this.config.costLimits.maxCostPerActor) {
-          this.statusBar.log(`    Cost limit reached for actor ($${actorStats.totalCostUsd.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`)
+          this.statusBar.log(
+            `    Cost limit reached for actor ($${actorStats.totalCostUsd.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
+          )
           // Update stats before stopping
           actorStats.totalTimeMs = Date.now() - startTime
           actorStats.fieldsFilledAfter = this.getFilledFieldsFromResult(result)
@@ -199,10 +237,14 @@ export class DeathEnrichmentOrchestrator {
       }
 
       if (!lookupResult.success || !lookupResult.data) {
+        this.logger.sourceFailed(actor.name, source.type, lookupResult.error || "No data")
         this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
         continue
       }
 
+      // Log successful fields found
+      const fieldsFound = this.getFieldsFromData(lookupResult.data)
+      this.logger.sourceSuccess(actor.name, source.type, fieldsFound)
       this.statusBar.log(`    Success! Confidence: ${lookupResult.source.confidence.toFixed(2)}`)
 
       // Merge data into result
@@ -235,10 +277,36 @@ export class DeathEnrichmentOrchestrator {
 
     // Mark actor complete in status bar
     this.statusBar.completeActor()
-    this.statusBar.log(`  Complete in ${actorStats.totalTimeMs}ms, cost: $${actorStats.totalCostUsd.toFixed(4)}`)
+    this.statusBar.log(
+      `  Complete in ${actorStats.totalTimeMs}ms, cost: $${actorStats.totalCostUsd.toFixed(4)}`
+    )
     this.statusBar.log(`  Fields filled: ${actorStats.fieldsFilledAfter.join(", ") || "none"}`)
 
+    // Log enrichment completion
+    this.logger.enrichmentComplete(
+      actor.id,
+      actor.name,
+      actorStats.sourcesAttempted.length,
+      actorStats.sourcesAttempted.filter((s) => s.success).length,
+      actorStats.totalCostUsd
+    )
+
     return result
+  }
+
+  /**
+   * Get field names from enrichment data.
+   */
+  private getFieldsFromData(data: Partial<EnrichmentData>): string[] {
+    const fields: string[] = []
+    if (data.circumstances) fields.push("circumstances")
+    if (data.rumoredCircumstances) fields.push("rumoredCircumstances")
+    if (data.notableFactors && data.notableFactors.length > 0) fields.push("notableFactors")
+    if (data.relatedCelebrities && data.relatedCelebrities.length > 0)
+      fields.push("relatedCelebrities")
+    if (data.locationOfDeath) fields.push("locationOfDeath")
+    if (data.additionalContext) fields.push("additionalContext")
+    return fields
   }
 
   /**
@@ -248,8 +316,9 @@ export class DeathEnrichmentOrchestrator {
   async enrichBatch(actors: ActorForEnrichment[]): Promise<Map<number, EnrichmentResult>> {
     const results = new Map<number, EnrichmentResult>()
 
-    // Start the status bar
+    // Start the status bar and log batch start
     this.statusBar.start(actors.length)
+    this.logger.batchStart(actors.length)
 
     this.statusBar.log(`\n${"=".repeat(60)}`)
     this.statusBar.log(`Starting batch enrichment for ${actors.length} actors`)
@@ -279,7 +348,9 @@ export class DeathEnrichmentOrchestrator {
           if (this.stats.totalCostUsd >= this.config.costLimits.maxTotalCost) {
             this.statusBar.stop()
             console.log(`\n${"!".repeat(60)}`)
-            console.log(`TOTAL COST LIMIT REACHED: $${this.stats.totalCostUsd.toFixed(4)} >= $${this.config.costLimits.maxTotalCost}`)
+            console.log(
+              `TOTAL COST LIMIT REACHED: $${this.stats.totalCostUsd.toFixed(4)} >= $${this.config.costLimits.maxTotalCost}`
+            )
             console.log(`Processed ${i + 1} of ${actors.length} actors before limit`)
             console.log(`${"!".repeat(60)}`)
 
@@ -309,6 +380,14 @@ export class DeathEnrichmentOrchestrator {
     console.log("Batch enrichment complete!")
     this.printBatchStats()
     console.log(`${"=".repeat(60)}`)
+
+    // Log batch completion
+    this.logger.batchComplete(
+      this.stats.actorsProcessed,
+      this.stats.actorsEnriched,
+      this.stats.totalCostUsd,
+      this.stats.totalTimeMs
+    )
 
     return results
   }
@@ -344,7 +423,11 @@ export class DeathEnrichmentOrchestrator {
       result.notableFactorsSource = source
     }
 
-    if (data.relatedCelebrities && data.relatedCelebrities.length > 0 && !result.relatedCelebrities) {
+    if (
+      data.relatedCelebrities &&
+      data.relatedCelebrities.length > 0 &&
+      !result.relatedCelebrities
+    ) {
       result.relatedCelebrities = data.relatedCelebrities
       result.relatedCelebritiesSource = source
     }
@@ -365,10 +448,7 @@ export class DeathEnrichmentOrchestrator {
    */
   private hasEnoughData(result: EnrichmentResult): boolean {
     // We need at least circumstances or notable factors
-    return !!(
-      result.circumstances ||
-      (result.notableFactors && result.notableFactors.length > 0)
-    )
+    return !!(result.circumstances || (result.notableFactors && result.notableFactors.length > 0))
   }
 
   /**
@@ -389,7 +469,8 @@ export class DeathEnrichmentOrchestrator {
     if (result.circumstances) fields.push("circumstances")
     if (result.rumoredCircumstances) fields.push("rumoredCircumstances")
     if (result.notableFactors && result.notableFactors.length > 0) fields.push("notableFactors")
-    if (result.relatedCelebrities && result.relatedCelebrities.length > 0) fields.push("relatedCelebrities")
+    if (result.relatedCelebrities && result.relatedCelebrities.length > 0)
+      fields.push("relatedCelebrities")
     if (result.locationOfDeath) fields.push("locationOfDeath")
     if (result.additionalContext) fields.push("additionalContext")
     return fields
@@ -464,9 +545,7 @@ Source Hit Rates:`)
 
     for (const [source, count] of Object.entries(this.stats.sourceHitRates)) {
       const rate =
-        this.stats.actorsProcessed > 0
-          ? ((count as number) / this.stats.actorsProcessed) * 100
-          : 0
+        this.stats.actorsProcessed > 0 ? ((count as number) / this.stats.actorsProcessed) * 100 : 0
       console.log(`  ${source}: ${rate.toFixed(1)}%`)
     }
 
@@ -477,9 +556,8 @@ Source Hit Rates:`)
       // Sort by cost descending
       costEntries.sort((a, b) => (b[1] as number) - (a[1] as number))
       for (const [source, cost] of costEntries) {
-        const percentage = this.stats.totalCostUsd > 0
-          ? ((cost as number) / this.stats.totalCostUsd) * 100
-          : 0
+        const percentage =
+          this.stats.totalCostUsd > 0 ? ((cost as number) / this.stats.totalCostUsd) * 100 : 0
         console.log(`  ${source}: $${(cost as number).toFixed(4)} (${percentage.toFixed(1)}%)`)
       }
     }

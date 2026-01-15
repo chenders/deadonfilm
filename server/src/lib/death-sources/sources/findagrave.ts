@@ -16,10 +16,7 @@ import {
   DEATH_KEYWORDS,
   NOTABLE_FACTOR_KEYWORDS,
 } from "../base-source.js"
-import type {
-  ActorForEnrichment,
-  SourceLookupResult,
-} from "../types.js"
+import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
 
 const FINDAGRAVE_SEARCH_URL = "https://www.findagrave.com/memorial/search"
@@ -193,11 +190,7 @@ export class FindAGraveSource extends BaseDataSource {
 
     for (const memorialPath of matches) {
       // Extract name from URL path
-      const urlName = memorialPath
-        .split("/")
-        .pop()
-        ?.replace(/-/g, "")
-        .toLowerCase() || ""
+      const urlName = memorialPath.split("/").pop()?.replace(/-/g, "").toLowerCase() || ""
 
       if (urlName.includes(normalizedActorName) || normalizedActorName.includes(urlName)) {
         return `${FINDAGRAVE_BASE_URL}${memorialPath}`
@@ -245,7 +238,9 @@ export class FindAGraveSource extends BaseDataSource {
 
     // Extract location from the page (bounded quantifiers to prevent ReDoS)
     // eslint-disable-next-line security/detect-unsafe-regex
-    const locationMatch = html.match(/(?:died|death|passed away)[^.]{0,50}(?:in|at)\s+([A-Z][a-zA-Z\s,]{1,50}(?:,\s*[A-Z]{2})?)/i)
+    const locationMatch = html.match(
+      /(?:died|death|passed away)[^.]{0,50}(?:in|at)\s+([A-Z][a-zA-Z\s,]{1,50}(?:,\s*[A-Z]{2})?)/i
+    )
     if (locationMatch) {
       result.locationOfDeath = locationMatch[1].trim()
     }
@@ -289,11 +284,7 @@ export class FindAGraveSource extends BaseDataSource {
     }
 
     // Take first 2 relevant sentences
-    return deathSentences
-      .slice(0, 2)
-      .join(". ")
-      .replace(/\s+/g, " ")
-      .trim()
+    return deathSentences.slice(0, 2).join(". ").replace(/\s+/g, " ").trim()
   }
 
   /**

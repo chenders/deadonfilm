@@ -11,10 +11,7 @@
 
 import OpenAI from "openai"
 import { BaseDataSource } from "../base-source.js"
-import type {
-  ActorForEnrichment,
-  SourceLookupResult,
-} from "../types.js"
+import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
 
 const PERPLEXITY_BASE_URL = "https://api.perplexity.ai"
@@ -108,7 +105,8 @@ export class PerplexitySource extends BaseDataSource {
       }
 
       // Perplexity with web search gets higher base confidence
-      const confidence = parsed.confidence === "high" ? 0.85 : parsed.confidence === "medium" ? 0.65 : 0.45
+      const confidence =
+        parsed.confidence === "high" ? 0.85 : parsed.confidence === "medium" ? 0.65 : 0.45
 
       return {
         success: true,

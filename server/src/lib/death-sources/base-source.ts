@@ -11,6 +11,7 @@ import type {
   EnrichmentSourceEntry,
   SourceLookupResult,
 } from "./types.js"
+import { SourceAccessBlockedError } from "./types.js"
 
 /**
  * Abstract base class for data sources.
@@ -54,6 +55,11 @@ export abstract class BaseDataSource implements DataSource {
 
       return result
     } catch (error) {
+      // Re-throw SourceAccessBlockedError for special handling by orchestrator
+      if (error instanceof SourceAccessBlockedError) {
+        throw error
+      }
+
       const errorMessage = error instanceof Error ? error.message : "Unknown error"
 
       return {

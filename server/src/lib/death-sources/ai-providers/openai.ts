@@ -8,10 +8,7 @@
 
 import OpenAI from "openai"
 import { BaseDataSource } from "../base-source.js"
-import type {
-  ActorForEnrichment,
-  SourceLookupResult,
-} from "../types.js"
+import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
 
 /**
@@ -139,7 +136,9 @@ abstract class OpenAIBaseSource extends BaseDataSource {
       if (!parsed || !parsed.circumstances) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, undefined, prompt, { response: responseText }),
+          source: this.createSourceEntry(startTime, 0, undefined, prompt, {
+            response: responseText,
+          }),
           data: null,
           error: "No death information in response",
         }

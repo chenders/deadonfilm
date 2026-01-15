@@ -17,10 +17,7 @@ import {
   DEATH_KEYWORDS,
   NOTABLE_FACTOR_KEYWORDS,
 } from "../base-source.js"
-import type {
-  ActorForEnrichment,
-  SourceLookupResult,
-} from "../types.js"
+import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
 
 const LEGACY_SEARCH_URL = "https://www.legacy.com/search"
@@ -178,10 +175,7 @@ export class LegacySource extends BaseDataSource {
   private extractObituaryUrl(html: string, actor: ActorForEnrichment): string | null {
     // Look for obituary links in the search results
     // Legacy.com uses various URL patterns
-    const obituaryPatterns = [
-      /href="(\/us\/obituaries\/[^"]+)"/g,
-      /href="(\/obituaries\/[^"]+)"/g,
-    ]
+    const obituaryPatterns = [/href="(\/us\/obituaries\/[^"]+)"/g, /href="(\/obituaries\/[^"]+)"/g]
 
     const matches: string[] = []
 
@@ -201,12 +195,8 @@ export class LegacySource extends BaseDataSource {
 
     for (const obituaryPath of matches) {
       // Extract name from URL path
-      const urlName = obituaryPath
-        .split("/")
-        .pop()
-        ?.replace(/-/g, "")
-        .replace(/\d+/g, "")
-        .toLowerCase() || ""
+      const urlName =
+        obituaryPath.split("/").pop()?.replace(/-/g, "").replace(/\d+/g, "").toLowerCase() || ""
 
       if (urlName.includes(normalizedActorName) || normalizedActorName.includes(urlName)) {
         return `${LEGACY_BASE_URL}${obituaryPath}`
@@ -327,11 +317,7 @@ export class LegacySource extends BaseDataSource {
     }
 
     // Return first 2 relevant sentences
-    return deathSentences
-      .slice(0, 2)
-      .join(". ")
-      .replace(/\s+/g, " ")
-      .trim()
+    return deathSentences.slice(0, 2).join(". ").replace(/\s+/g, " ").trim()
   }
 
   /**

@@ -11,11 +11,7 @@ import {
   DEATH_KEYWORDS,
   NOTABLE_FACTOR_KEYWORDS,
 } from "../base-source.js"
-import type {
-  ActorForEnrichment,
-  SearchQualityScore,
-  SourceLookupResult,
-} from "../types.js"
+import type { ActorForEnrichment, SearchQualityScore, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
 
 const DUCKDUCKGO_API_URL = "https://api.duckduckgo.com/"

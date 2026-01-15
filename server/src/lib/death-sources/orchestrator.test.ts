@@ -118,12 +118,7 @@ describe("CostLimitExceededError", () => {
   })
 
   it("creates error with total limit type", () => {
-    const error = new CostLimitExceededError(
-      "Total cost limit exceeded",
-      "total",
-      1.5,
-      1.0
-    )
+    const error = new CostLimitExceededError("Total cost limit exceeded", "total", 1.5, 1.0)
 
     expect(error.name).toBe("CostLimitExceededError")
     expect(error.limitType).toBe("total")

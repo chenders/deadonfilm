@@ -33,6 +33,11 @@ export enum DataSourceType {
   IMDB = "imdb",
   TMDB = "tmdb",
 
+  // Film Industry Archives
+  TELEVISION_ACADEMY = "television_academy",
+  IBDB = "ibdb",
+  BFI_SIGHT_SOUND = "bfi_sight_sound",
+
   // Cemetery/Obituary
   FINDAGRAVE = "findagrave",
   BILLIONGRAVES = "billiongraves",
@@ -398,5 +403,25 @@ export class CostLimitExceededError extends Error {
   ) {
     super(message)
     this.name = "CostLimitExceededError"
+  }
+}
+
+/**
+ * Error thrown when a source access is blocked (403, rate limited, etc.)
+ * This flags the source for review rather than treating it as a permanent failure.
+ * Blocked sources should be investigated for alternative access methods:
+ * - Browser automation (Puppeteer)
+ * - API access requests
+ * - Different request patterns
+ */
+export class SourceAccessBlockedError extends Error {
+  constructor(
+    message: string,
+    public readonly sourceType: DataSourceType,
+    public readonly url: string,
+    public readonly statusCode: number
+  ) {
+    super(message)
+    this.name = "SourceAccessBlockedError"
   }
 }
