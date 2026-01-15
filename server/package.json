@@ -95,7 +95,7 @@
     "ini": "^6.0.0",
     "ioredis": "^5.8.2",
     "newrelic": "^13.6.6",
-    "node-pg-migrate": "^8.0.3",
+    "node-pg-migrate": "^8.0.4",
     "openai": "^6.16.0",
     "pg": "^8.16.3",
     "pino": "^10.1.0"
