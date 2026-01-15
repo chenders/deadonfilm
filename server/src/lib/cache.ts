@@ -153,6 +153,15 @@ export async function flushCache(): Promise<void> {
 }
 
 /**
+ * Invalidate cache for a specific actor by TMDB ID.
+ * Call this after updating an actor's death information.
+ */
+export async function invalidateActorCache(tmdbId: number): Promise<void> {
+  const key = buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId })
+  await invalidateKeys(key)
+}
+
+/**
  * Invalidate caches related to death data.
  * Call this when new deaths are recorded.
  */

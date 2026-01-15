@@ -20,14 +20,18 @@
  *   npm run backfill:cause-of-death-batch -- process --batch-id <id>
  *
  * Options:
- *   --limit <n>        Limit number of actors to process
- *   --dry-run          Preview without submitting batch
- *   --fresh            Start fresh (ignore checkpoint)
- *   --batch-id <id>    Batch ID for status/process commands
+ *   --limit <n>             Limit number of actors to process
+ *   --tmdb-id <id>          Process a specific actor by TMDB ID (re-process even if data exists)
+ *   --missing-details-flag  Re-process actors with cause/details but missing has_detailed_death_info
+ *   --dry-run               Preview without submitting batch
+ *   --fresh                 Start fresh (ignore checkpoint)
+ *   --batch-id <id>         Batch ID for status/process commands
  *
  * Examples:
  *   npm run backfill:cause-of-death-batch -- submit --limit 100 --dry-run
  *   npm run backfill:cause-of-death-batch -- submit
+ *   npm run backfill:cause-of-death-batch -- submit --tmdb-id 1488908  # Re-process specific actor
+ *   npm run backfill:cause-of-death-batch -- submit --missing-details-flag --limit 50  # Backfill missing flags
  *   npm run backfill:cause-of-death-batch -- status --batch-id msgbatch_xxx
  *   npm run backfill:cause-of-death-batch -- process --batch-id msgbatch_xxx
  */
@@ -44,7 +48,13 @@ import {
 } from "../src/lib/checkpoint-utils.js"
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { toSentenceCase } from "../src/lib/text-utils.js"
-import { rebuildDeathCaches } from "../src/lib/cache.js"
+import { rebuildDeathCaches, invalidateActorCache } from "../src/lib/cache.js"
+import {
+  DeathEnrichmentOrchestrator,
+  CostLimitExceededError,
+  type EnrichmentConfig,
+  type ActorForEnrichment,
+} from "../src/lib/death-sources/index.js"
 
 // Initialize New Relic for monitoring
 initNewRelic()
@@ -54,6 +64,11 @@ const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-cause-of-death-batch
 
 const MODEL_ID = "claude-opus-4-5-20251101"
 const SOURCE_NAME = "claude-opus-4.5-batch"
+
+// Minimum content length thresholds for determining if actor has detailed death info
+// Content must be substantive (not just "natural causes" or similar brief text)
+const MIN_CIRCUMSTANCES_LENGTH = 200
+const MIN_RUMORED_CIRCUMSTANCES_LENGTH = 100
 
 export interface Checkpoint {
   batchId: string | null
@@ -506,8 +521,10 @@ async function submitBatch(options: {
   limit?: number
   dryRun?: boolean
   fresh?: boolean
+  tmdbId?: number
+  missingDetailsFlag?: boolean
 }): Promise<void> {
-  const { limit, dryRun, fresh } = options
+  const { limit, dryRun, fresh, tmdbId, missingDetailsFlag } = options
 
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -557,21 +574,52 @@ async function submitBatch(options: {
     }
   }
 
-  console.log(`\nQuerying actors missing cause of death info...`)
+  // Query actors to process
+  const params: (number | null)[] = []
+  let query: string
 
-  // Query actors missing cause_of_death OR cause_of_death_details
-  let query = `
-    SELECT id, tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_details
-    FROM actors
-    WHERE deathday IS NOT NULL
-      AND (cause_of_death IS NULL OR cause_of_death_details IS NULL)
-    ORDER BY popularity DESC NULLS LAST
-  `
+  if (tmdbId) {
+    // Target a specific actor by TMDB ID (re-process even if they have data)
+    console.log(`\nQuerying actor with TMDB ID ${tmdbId}...`)
+    params.push(tmdbId)
+    query = `
+      SELECT id, tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_details
+      FROM actors
+      WHERE tmdb_id = $1
+        AND deathday IS NOT NULL
+    `
+  } else if (missingDetailsFlag) {
+    // Re-process actors who have cause/details but missing has_detailed_death_info flag
+    console.log(`\nQuerying actors with cause of death but missing has_detailed_death_info flag...`)
+    query = `
+      SELECT id, tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_details
+      FROM actors
+      WHERE deathday IS NOT NULL
+        AND cause_of_death IS NOT NULL
+        AND cause_of_death_details IS NOT NULL
+        AND has_detailed_death_info IS NULL
+      ORDER BY popularity DESC NULLS LAST
+    `
 
-  const params: number[] = []
-  if (limit) {
-    params.push(limit)
-    query += ` LIMIT $${params.length}`
+    if (limit) {
+      params.push(limit)
+      query += ` LIMIT $${params.length}`
+    }
+  } else {
+    // Default: query actors missing cause_of_death OR cause_of_death_details
+    console.log(`\nQuerying actors missing cause of death info...`)
+    query = `
+      SELECT id, tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_details
+      FROM actors
+      WHERE deathday IS NOT NULL
+        AND (cause_of_death IS NULL OR cause_of_death_details IS NULL)
+      ORDER BY popularity DESC NULLS LAST
+    `
+
+    if (limit) {
+      params.push(limit)
+      query += ` LIMIT $${params.length}`
+    }
   }
 
   const result = await db.query<ActorToProcess>(query, params)
@@ -1022,10 +1070,12 @@ async function applyUpdate(
   }
 
   // Determine if actor has detailed death info (for dedicated death page)
-  // Criteria: substantive circumstances (>200 chars) OR substantive rumors (>100 chars)
+  // Criteria: substantive circumstances or rumored_circumstances
+  // Note: strange_death, notable_factors, related_celebrities are shown on actor's main page
   const hasDetailedDeathInfo =
-    (parsed.circumstances && parsed.circumstances.length > 200) ||
-    (parsed.rumored_circumstances && parsed.rumored_circumstances.length > 100)
+    (parsed.circumstances && parsed.circumstances.length > MIN_CIRCUMSTANCES_LENGTH) ||
+    (parsed.rumored_circumstances &&
+      parsed.rumored_circumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH)
 
   if (hasDetailedDeathInfo) {
     updates.push(`has_detailed_death_info = $${paramIndex++}`)
@@ -1325,6 +1375,11 @@ program
   .command("submit")
   .description("Create and submit a new batch")
   .option("-l, --limit <number>", "Limit number of actors to process", parsePositiveInt)
+  .option("-t, --tmdb-id <number>", "Process a specific actor by TMDB ID", parsePositiveInt)
+  .option(
+    "--missing-details-flag",
+    "Re-process actors with cause/details but missing has_detailed_death_info"
+  )
   .option("-n, --dry-run", "Preview without submitting batch")
   .option("--fresh", "Start fresh (ignore checkpoint)")
   .action(async (options) => {
@@ -1354,6 +1409,449 @@ program
   .option("-b, --batch-id <id>", "Only reprocess failures from specific batch")
   .action(async (options) => {
     await reprocessFailures(options.batchId)
+  })
+
+/**
+ * Enrich actors with missing death details using multi-source fallbacks.
+ * This queries additional sources when Claude Batch API didn't return
+ * sufficient circumstances/notable_factors/etc.
+ */
+async function enrichMissingDetails(options: {
+  limit?: number
+  minPopularity?: number
+  recentOnly?: boolean
+  dryRun?: boolean
+  free?: boolean
+  paid?: boolean
+  ai?: boolean
+  stopOnMatch?: boolean
+  confidenceThreshold?: number
+  tmdbId?: number
+  maxCostPerActor?: number
+  maxTotalCost?: number
+  claudeCleanup?: boolean
+  gatherAllSources?: boolean
+}): Promise<void> {
+  const {
+    limit = 100,
+    minPopularity = 0,
+    recentOnly = false,
+    dryRun = false,
+    free = true,
+    paid = false,
+    ai = false,
+    stopOnMatch = true,
+    confidenceThreshold = 0.5,
+    tmdbId,
+    maxCostPerActor,
+    maxTotalCost,
+    claudeCleanup = false,
+    gatherAllSources = false,
+  } = options
+
+  if (!process.env.DATABASE_URL) {
+    console.error("DATABASE_URL environment variable is required")
+    process.exit(1)
+  }
+
+  const db = getPool()
+
+  try {
+    // Build query for actors needing enrichment
+    const params: (number | string)[] = []
+    let query: string
+
+    if (tmdbId) {
+      // Target a specific actor
+      console.log(`\nQuerying actor with TMDB ID ${tmdbId}...`)
+      params.push(tmdbId)
+      query = `
+        SELECT
+          a.id,
+          a.tmdb_id,
+          a.name,
+          a.birthday,
+          a.deathday,
+          a.cause_of_death,
+          a.cause_of_death_details,
+          a.popularity,
+          c.circumstances,
+          c.notable_factors
+        FROM actors a
+        LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+        WHERE a.tmdb_id = $1
+          AND a.deathday IS NOT NULL
+      `
+    } else {
+      // Query actors where Claude returned nulls for detailed fields
+      console.log(`\nQuerying actors with missing death circumstances...`)
+      query = `
+        SELECT
+          a.id,
+          a.tmdb_id,
+          a.name,
+          a.birthday,
+          a.deathday,
+          a.cause_of_death,
+          a.cause_of_death_details,
+          a.popularity,
+          c.circumstances,
+          c.notable_factors
+        FROM actors a
+        LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+        WHERE a.deathday IS NOT NULL
+          AND a.cause_of_death IS NOT NULL
+          AND (c.circumstances IS NULL OR c.notable_factors IS NULL OR array_length(c.notable_factors, 1) IS NULL)
+      `
+
+      if (minPopularity > 0) {
+        params.push(minPopularity)
+        query += ` AND a.popularity >= $${params.length}`
+      }
+
+      if (recentOnly) {
+        // Deaths in last 2 years
+        const twoYearsAgo = new Date()
+        twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+        params.push(twoYearsAgo.toISOString().split("T")[0])
+        query += ` AND a.deathday >= $${params.length}`
+      }
+
+      query += ` ORDER BY a.popularity DESC NULLS LAST`
+
+      if (limit) {
+        params.push(limit)
+        query += ` LIMIT $${params.length}`
+      }
+    }
+
+    const result = await db.query<{
+      id: number
+      tmdb_id: number | null
+      name: string
+      birthday: Date | string | null
+      deathday: Date | string
+      cause_of_death: string | null
+      cause_of_death_details: string | null
+      popularity: number | null
+      circumstances: string | null
+      notable_factors: string[] | null
+    }>(query, params)
+
+    const actors = result.rows
+
+    console.log(`Found ${actors.length} actors needing enrichment`)
+
+    if (actors.length === 0) {
+      console.log("\nNo actors to enrich. Done!")
+      await resetPool()
+      return
+    }
+
+    // Configure the orchestrator
+    const config: Partial<EnrichmentConfig> = {
+      sourceCategories: {
+        free: free,
+        paid: paid,
+        ai: ai,
+      },
+      stopOnMatch: claudeCleanup && gatherAllSources ? false : stopOnMatch, // Don't stop if gathering all
+      confidenceThreshold: confidenceThreshold,
+      costLimits: {
+        maxCostPerActor: maxCostPerActor,
+        maxTotalCost: maxTotalCost,
+      },
+      claudeCleanup: claudeCleanup
+        ? {
+            enabled: true,
+            model: "claude-opus-4-5-20251101",
+            gatherAllSources: gatherAllSources,
+          }
+        : undefined,
+    }
+
+    const orchestrator = new DeathEnrichmentOrchestrator(config)
+
+    // Convert to ActorForEnrichment format
+    const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
+      id: a.id,
+      tmdbId: a.tmdb_id,
+      name: a.name,
+      birthday: normalizeDateToString(a.birthday),
+      deathday: normalizeDateToString(a.deathday) || "",
+      causeOfDeath: a.cause_of_death,
+      causeOfDeathDetails: a.cause_of_death_details,
+      popularity: a.popularity,
+    }))
+
+    if (dryRun) {
+      console.log(`\n--- Dry Run Mode ---`)
+      console.log(`Would enrich ${actorsToEnrich.length} actors`)
+      console.log(`\nSample actors (first 5):`)
+      for (const actor of actorsToEnrich.slice(0, 5)) {
+        console.log(`  - ${actor.name} (ID: ${actor.id}, TMDB: ${actor.tmdbId || "N/A"})`)
+        console.log(`    Death: ${actor.deathday}, Cause: ${actor.causeOfDeath || "(none)"}`)
+      }
+      console.log(`\nSource configuration:`)
+      console.log(`  Free sources: ${free ? "enabled" : "disabled"}`)
+      console.log(`  Paid sources: ${paid ? "enabled" : "disabled"}`)
+      console.log(`  AI sources: ${ai ? "enabled" : "disabled"}`)
+      console.log(`  Stop on match: ${claudeCleanup && gatherAllSources ? false : stopOnMatch}`)
+      console.log(`  Confidence threshold: ${confidenceThreshold}`)
+      if (claudeCleanup) {
+        console.log(`\nClaude cleanup configuration:`)
+        console.log(`  Claude cleanup: ENABLED (Opus 4.5)`)
+        console.log(`  Gather all sources: ${gatherAllSources ? "yes" : "no"}`)
+        console.log(`  Estimated cost per actor: ~$0.07`)
+      }
+      if (maxCostPerActor !== undefined) {
+        console.log(`  Max cost per actor: $${maxCostPerActor}`)
+      }
+      if (maxTotalCost !== undefined) {
+        console.log(`  Max total cost: $${maxTotalCost}`)
+      }
+      await resetPool()
+      return
+    }
+
+    // Run enrichment
+    let results = new Map<number, Awaited<ReturnType<typeof orchestrator.enrichActor>>>()
+    let costLimitReached = false
+
+    try {
+      results = await orchestrator.enrichBatch(actorsToEnrich)
+    } catch (error) {
+      if (error instanceof CostLimitExceededError) {
+        console.log(`\n${"!".repeat(60)}`)
+        console.log(`Cost limit reached - exiting gracefully`)
+        console.log(`Limit: $${error.limit}, Current: $${error.currentCost.toFixed(4)}`)
+        console.log(`${"!".repeat(60)}`)
+        costLimitReached = true
+        // Note: partial results were already processed by the orchestrator before throwing
+        // Record the cost limit event
+        recordCustomEvent("DeathEnrichmentCostLimitReached", {
+          limitType: error.limitType,
+          limit: error.limit,
+          currentCost: error.currentCost,
+        })
+      } else {
+        throw error
+      }
+    }
+
+    // Apply results to database
+    let updated = 0
+    for (const [actorId, enrichment] of results) {
+      if (
+        !enrichment.circumstances &&
+        !enrichment.notableFactors?.length &&
+        !enrichment.cleanedDeathInfo
+      ) {
+        continue
+      }
+
+      // Use cleaned death info if available (from Claude cleanup), otherwise use raw enrichment
+      const cleaned = enrichment.cleanedDeathInfo
+      const circumstances = cleaned?.circumstances || enrichment.circumstances
+      const rumoredCircumstances = cleaned?.rumoredCircumstances || enrichment.rumoredCircumstances
+      const locationOfDeath = cleaned?.locationOfDeath || enrichment.locationOfDeath
+      const notableFactors = cleaned?.notableFactors || enrichment.notableFactors
+      const additionalContext = cleaned?.additionalContext || enrichment.additionalContext
+      const relatedDeaths = cleaned?.relatedDeaths || null
+
+      // Determine confidence level
+      const circumstancesConfidence =
+        cleaned?.circumstancesConfidence ||
+        (enrichment.circumstancesSource?.confidence
+          ? enrichment.circumstancesSource.confidence >= 0.7
+            ? "high"
+            : enrichment.circumstancesSource.confidence >= 0.4
+              ? "medium"
+              : "low"
+          : null)
+
+      // Update actor_death_circumstances table
+      await db.query(
+        `INSERT INTO actor_death_circumstances (
+          actor_id,
+          circumstances,
+          circumstances_confidence,
+          rumored_circumstances,
+          location_of_death,
+          notable_factors,
+          additional_context,
+          related_deaths,
+          sources,
+          raw_response,
+          created_at,
+          updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        ON CONFLICT (actor_id) DO UPDATE SET
+          circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
+          circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
+          rumored_circumstances = COALESCE(EXCLUDED.rumored_circumstances, actor_death_circumstances.rumored_circumstances),
+          location_of_death = COALESCE(EXCLUDED.location_of_death, actor_death_circumstances.location_of_death),
+          notable_factors = COALESCE(EXCLUDED.notable_factors, actor_death_circumstances.notable_factors),
+          additional_context = COALESCE(EXCLUDED.additional_context, actor_death_circumstances.additional_context),
+          related_deaths = COALESCE(EXCLUDED.related_deaths, actor_death_circumstances.related_deaths),
+          sources = COALESCE(EXCLUDED.sources, actor_death_circumstances.sources),
+          raw_response = COALESCE(EXCLUDED.raw_response, actor_death_circumstances.raw_response),
+          updated_at = NOW()`,
+        [
+          actorId,
+          circumstances,
+          circumstancesConfidence,
+          rumoredCircumstances,
+          locationOfDeath,
+          notableFactors && notableFactors.length > 0 ? notableFactors : null,
+          additionalContext,
+          relatedDeaths,
+          JSON.stringify({
+            circumstances: enrichment.circumstancesSource,
+            rumoredCircumstances: enrichment.rumoredCircumstancesSource,
+            notableFactors: enrichment.notableFactorsSource,
+            locationOfDeath: enrichment.locationOfDeathSource,
+            cleanupSource: cleaned ? "claude-opus-4.5" : null,
+          }),
+          enrichment.rawSources
+            ? JSON.stringify({
+                rawSources: enrichment.rawSources,
+                gatheredAt: new Date().toISOString(),
+              })
+            : null,
+        ]
+      )
+
+      // Set has_detailed_death_info flag if we found substantive text for death page
+      const hasSubstantiveCircumstances =
+        circumstances && circumstances.length > MIN_CIRCUMSTANCES_LENGTH
+      const hasSubstantiveRumors =
+        rumoredCircumstances && rumoredCircumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH
+      const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
+
+      if (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths) {
+        await db.query(`UPDATE actors SET has_detailed_death_info = true WHERE id = $1`, [actorId])
+      }
+
+      // Invalidate the actor's cache so updated death info is reflected immediately
+      const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
+      if (actorRecord?.tmdbId) {
+        await invalidateActorCache(actorRecord.tmdbId)
+      }
+
+      updated++
+    }
+
+    // Print final stats
+    const stats = orchestrator.getStats()
+    console.log(`\n${"=".repeat(60)}`)
+    console.log(
+      costLimitReached ? `Enrichment Stopped (Cost Limit Reached)` : `Enrichment Complete!`
+    )
+    console.log(`${"=".repeat(60)}`)
+    console.log(`  Actors processed: ${stats.actorsProcessed}`)
+    console.log(`  Actors enriched: ${stats.actorsEnriched}`)
+    console.log(`  Fill rate: ${stats.fillRate.toFixed(1)}%`)
+    console.log(`  Database updates: ${updated}`)
+    console.log(`  Total cost: $${stats.totalCostUsd.toFixed(4)}`)
+    console.log(`  Total time: ${(stats.totalTimeMs / 1000).toFixed(1)}s`)
+
+    // Print cost breakdown by source
+    const costEntries = Object.entries(stats.costBySource).filter(([, cost]) => cost > 0)
+    if (costEntries.length > 0) {
+      console.log(`\nCost Breakdown by Source:`)
+      costEntries.sort((a, b) => (b[1] as number) - (a[1] as number))
+      for (const [source, cost] of costEntries) {
+        const percentage =
+          stats.totalCostUsd > 0 ? ((cost as number) / stats.totalCostUsd) * 100 : 0
+        console.log(`  ${source}: $${(cost as number).toFixed(4)} (${percentage.toFixed(1)}%)`)
+      }
+    }
+
+    // Record event
+    recordCustomEvent("DeathEnrichmentCompleted", {
+      actorsProcessed: stats.actorsProcessed,
+      actorsEnriched: stats.actorsEnriched,
+      fillRate: stats.fillRate,
+      databaseUpdates: updated,
+      totalCostUsd: stats.totalCostUsd,
+      totalTimeMs: stats.totalTimeMs,
+    })
+
+    // Rebuild caches if we updated anything
+    if (updated > 0) {
+      await rebuildDeathCaches()
+      console.log("\nRebuilt death caches")
+    }
+  } catch (error) {
+    recordCustomEvent("DeathEnrichmentError", {
+      error: error instanceof Error ? error.message : "Unknown error",
+    })
+    console.error("Error during enrichment:", error)
+    process.exit(1)
+  } finally {
+    await resetPool()
+  }
+}
+
+program
+  .command("enrich")
+  .description("Enrich actors with missing death details using multi-source fallbacks")
+  .option("-l, --limit <number>", "Limit number of actors to process", parsePositiveInt, 100)
+  .option(
+    "-p, --min-popularity <number>",
+    "Only process actors above popularity threshold",
+    parsePositiveInt,
+    0
+  )
+  .option("-r, --recent-only", "Only deaths in last 2 years")
+  .option("-n, --dry-run", "Preview without writing to database")
+  .option("--free", "Use all free sources (default)", true)
+  .option("--paid", "Include paid sources (ordered by cost)")
+  .option("--ai", "Include AI model fallbacks")
+  .option("--stop-on-match", "Stop searching additional sources once we get results", true)
+  .option(
+    "-c, --confidence <number>",
+    "Minimum confidence threshold to accept results (0-1)",
+    parseFloat,
+    0.5
+  )
+  .option("-t, --tmdb-id <number>", "Process a specific actor by TMDB ID", parsePositiveInt)
+  .option(
+    "--max-cost-per-actor <number>",
+    "Maximum cost allowed per actor (USD) - stops trying sources for that actor if exceeded",
+    parseFloat
+  )
+  .option(
+    "--max-total-cost <number>",
+    "Maximum total cost for the entire run (USD) - exits script if exceeded",
+    parseFloat
+  )
+  .option(
+    "--claude-cleanup",
+    "Enable Claude Opus 4.5 cleanup to extract clean, structured data from raw sources"
+  )
+  .option(
+    "--gather-all-sources",
+    "Gather data from ALL sources before cleanup (requires --claude-cleanup)"
+  )
+  .action(async (options) => {
+    await enrichMissingDetails({
+      limit: options.limit,
+      minPopularity: options.minPopularity,
+      recentOnly: options.recentOnly,
+      dryRun: options.dryRun,
+      free: options.free !== false,
+      paid: options.paid || false,
+      ai: options.ai || false,
+      stopOnMatch: options.stopOnMatch !== false,
+      confidenceThreshold: options.confidence,
+      tmdbId: options.tmdbId,
+      maxCostPerActor: options.maxCostPerActor,
+      maxTotalCost: options.maxTotalCost,
+      claudeCleanup: options.claudeCleanup || false,
+      gatherAllSources: options.gatherAllSources || false,
+    })
   })
 
 // Only run when executed directly
