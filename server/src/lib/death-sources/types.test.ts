@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { DataSourceType } from "./types.js"
+import { DataSourceType, CostLimitExceededError } from "./types.js"
+import type { CostBreakdown, CostLimitConfig, EnrichmentStats, BatchEnrichmentStats } from "./types.js"
 
 describe("DataSourceType", () => {
   describe("AI Models", () => {
@@ -143,5 +144,104 @@ describe("DataSourceType", () => {
   it("has at least 60 source types defined", () => {
     const sourceCount = Object.keys(DataSourceType).length
     expect(sourceCount).toBeGreaterThanOrEqual(60)
+  })
+})
+
+describe("Cost Types", () => {
+  describe("CostBreakdown", () => {
+    it("can be created with empty bySource", () => {
+      const breakdown: CostBreakdown = {
+        bySource: {} as Record<DataSourceType, number>,
+        total: 0,
+      }
+      expect(breakdown.total).toBe(0)
+      expect(Object.keys(breakdown.bySource).length).toBe(0)
+    })
+
+    it("can track costs by source", () => {
+      const breakdown: CostBreakdown = {
+        bySource: {
+          [DataSourceType.OPENAI_GPT4O]: 0.01,
+          [DataSourceType.PERPLEXITY]: 0.005,
+        } as Record<DataSourceType, number>,
+        total: 0.015,
+      }
+      expect(breakdown.bySource[DataSourceType.OPENAI_GPT4O]).toBe(0.01)
+      expect(breakdown.bySource[DataSourceType.PERPLEXITY]).toBe(0.005)
+      expect(breakdown.total).toBe(0.015)
+    })
+  })
+
+  describe("CostLimitConfig", () => {
+    it("can have both limits defined", () => {
+      const config: CostLimitConfig = {
+        maxCostPerActor: 0.05,
+        maxTotalCost: 2.0,
+      }
+      expect(config.maxCostPerActor).toBe(0.05)
+      expect(config.maxTotalCost).toBe(2.0)
+    })
+
+    it("can have only per-actor limit", () => {
+      const config: CostLimitConfig = {
+        maxCostPerActor: 0.05,
+      }
+      expect(config.maxCostPerActor).toBe(0.05)
+      expect(config.maxTotalCost).toBeUndefined()
+    })
+
+    it("can have only total limit", () => {
+      const config: CostLimitConfig = {
+        maxTotalCost: 2.0,
+      }
+      expect(config.maxCostPerActor).toBeUndefined()
+      expect(config.maxTotalCost).toBe(2.0)
+    })
+  })
+
+  describe("EnrichmentStats costBreakdown", () => {
+    it("includes costBreakdown field", () => {
+      const stats: EnrichmentStats = {
+        actorId: 1,
+        actorName: "Test Actor",
+        deathYear: 2020,
+        fieldsFilledBefore: [],
+        fieldsFilledAfter: ["circumstances"],
+        sourcesAttempted: [],
+        finalSource: DataSourceType.WIKIDATA,
+        confidence: 0.8,
+        totalCostUsd: 0.015,
+        totalTimeMs: 1000,
+        costBreakdown: {
+          bySource: {
+            [DataSourceType.WIKIDATA]: 0,
+            [DataSourceType.OPENAI_GPT4O_MINI]: 0.015,
+          } as Record<DataSourceType, number>,
+          total: 0.015,
+        },
+      }
+      expect(stats.costBreakdown.total).toBe(0.015)
+      expect(stats.costBreakdown.bySource[DataSourceType.OPENAI_GPT4O_MINI]).toBe(0.015)
+    })
+  })
+
+  describe("BatchEnrichmentStats costBySource", () => {
+    it("includes costBySource field", () => {
+      const stats: BatchEnrichmentStats = {
+        actorsProcessed: 10,
+        actorsEnriched: 8,
+        fillRate: 80,
+        totalCostUsd: 0.15,
+        totalTimeMs: 10000,
+        sourceHitRates: {} as Record<DataSourceType, number>,
+        costBySource: {
+          [DataSourceType.OPENAI_GPT4O_MINI]: 0.05,
+          [DataSourceType.PERPLEXITY]: 0.10,
+        } as Record<DataSourceType, number>,
+        errors: [],
+      }
+      expect(stats.costBySource[DataSourceType.OPENAI_GPT4O_MINI]).toBe(0.05)
+      expect(stats.costBySource[DataSourceType.PERPLEXITY]).toBe(0.10)
+    })
   })
 })

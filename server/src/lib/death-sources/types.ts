@@ -237,6 +237,16 @@ export interface AIQueryResult {
 // ============================================================================
 
 /**
+ * Cost breakdown by source for an actor enrichment.
+ */
+export interface CostBreakdown {
+  /** Cost per source type used */
+  bySource: Record<DataSourceType, number>
+  /** Total cost for this actor */
+  total: number
+}
+
+/**
  * Statistics for a single actor enrichment run.
  */
 export interface EnrichmentStats {
@@ -250,6 +260,8 @@ export interface EnrichmentStats {
   confidence: number
   totalCostUsd: number
   totalTimeMs: number
+  /** Detailed cost breakdown by source */
+  costBreakdown: CostBreakdown
 }
 
 /**
@@ -273,6 +285,8 @@ export interface BatchEnrichmentStats {
   totalCostUsd: number
   totalTimeMs: number
   sourceHitRates: Record<DataSourceType, number>
+  /** Cost breakdown by source type across all actors */
+  costBySource: Record<DataSourceType, number>
   errors: Array<{ actorId: number; error: string }>
 }
 
@@ -315,6 +329,16 @@ export interface AIModelFlags {
 }
 
 /**
+ * Cost limit configuration.
+ */
+export interface CostLimitConfig {
+  /** Maximum cost allowed per actor (USD) - stops processing actor if exceeded */
+  maxCostPerActor?: number
+  /** Maximum total cost for the entire batch (USD) - exits if exceeded */
+  maxTotalCost?: number
+}
+
+/**
  * Complete enrichment configuration.
  */
 export interface EnrichmentConfig {
@@ -328,6 +352,8 @@ export interface EnrichmentConfig {
   stopOnMatch: boolean
   confidenceThreshold: number
   statsFile?: string
+  /** Cost limits to control spending */
+  costLimits?: CostLimitConfig
 }
 
 // ============================================================================
@@ -352,4 +378,25 @@ export interface DataSource {
    * Look up death information for an actor.
    */
   lookup(actor: ActorForEnrichment): Promise<SourceLookupResult>
+}
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+/**
+ * Error thrown when a cost limit is exceeded.
+ */
+export class CostLimitExceededError extends Error {
+  constructor(
+    message: string,
+    public readonly limitType: "per-actor" | "total",
+    public readonly currentCost: number,
+    public readonly limit: number,
+    public readonly actorId?: number,
+    public readonly actorName?: string
+  ) {
+    super(message)
+    this.name = "CostLimitExceededError"
+  }
 }
