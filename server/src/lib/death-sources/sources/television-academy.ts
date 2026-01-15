@@ -15,6 +15,7 @@
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { htmlToText } from "../html-utils.js"
 
 const TV_ACADEMY_BASE_URL = "https://www.televisionacademy.com"
 const IN_MEMORIAM_URL = `${TV_ACADEMY_BASE_URL}/in-memoriam`
@@ -384,16 +385,7 @@ export class TelevisionAcademySource extends BaseDataSource {
    * Clean HTML tags and entities.
    */
   private cleanHtml(html: string): string {
-    return html
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s+/g, " ")
-      .trim()
+    return htmlToText(html)
   }
 }
 

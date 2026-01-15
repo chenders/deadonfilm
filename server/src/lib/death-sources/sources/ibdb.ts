@@ -17,6 +17,7 @@
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { htmlToText } from "../html-utils.js"
 
 const IBDB_BASE_URL = "https://www.ibdb.com"
 const IBDB_SEARCH_URL = `${IBDB_BASE_URL}/search`
@@ -313,16 +314,7 @@ export class IBDBSource extends BaseDataSource {
    * Clean HTML tags and entities.
    */
   private cleanHtml(html: string): string {
-    return html
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s+/g, " ")
-      .trim()
+    return htmlToText(html)
   }
 }
 

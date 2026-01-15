@@ -13,6 +13,7 @@ import {
 } from "../base-source.js"
 import type { ActorForEnrichment, SearchQualityScore, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
+import { decodeHtmlEntities as decodeEntities } from "../html-utils.js"
 
 const DUCKDUCKGO_API_URL = "https://api.duckduckgo.com/"
 const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
@@ -423,12 +424,6 @@ export class DuckDuckGoSource extends BaseDataSource {
    * Decode HTML entities in text.
    */
   private decodeHtmlEntities(text: string): string {
-    return text
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&nbsp;/g, " ")
+    return decodeEntities(text)
   }
 }
