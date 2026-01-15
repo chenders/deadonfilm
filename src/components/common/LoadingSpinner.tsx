@@ -16,7 +16,7 @@ export default function LoadingSpinner({ message = "Loading..." }: LoadingSpinne
 
         {/* Spinning film reel */}
         <div data-testid="spinner" className="relative animate-[spin_2s_linear_infinite]">
-          <FilmReelIcon size={56} className="text-brown-dark" />
+          <FilmReelIcon size={56} className="text-brown-dark dark:text-[#d4c8b5]" />
         </div>
       </div>
 
@@ -31,7 +31,10 @@ export default function LoadingSpinner({ message = "Loading..." }: LoadingSpinne
             />
           ))}
         </div>
-        <p data-testid="loading-message" className="mx-3 font-medium text-text-muted">
+        <p
+          data-testid="loading-message"
+          className="mx-3 font-medium text-text-muted dark:text-[#9a8b7a]"
+        >
           {message}
         </p>
         <div className="flex gap-0.5">

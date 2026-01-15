@@ -7,7 +7,7 @@ export default function SearchTrigger() {
     <button
       data-testid="search-trigger"
       onClick={openSearch}
-      className="group relative rounded-full p-2 text-brown-dark transition-colors hover:bg-brown-medium/10"
+      className="group relative rounded-full p-2 text-brown-dark transition-colors hover:bg-brown-medium/10 dark:text-[#d4c8b5] dark:hover:bg-white/10"
       aria-label="Search movies and TV shows"
       title="Search (⌘K)"
     >
@@ -27,7 +27,7 @@ export default function SearchTrigger() {
       </svg>
 
       {/* Keyboard shortcut hint - hidden on mobile */}
-      <span className="pointer-events-none absolute -bottom-8 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-brown-dark px-2 py-1 text-xs text-cream opacity-0 transition-opacity group-hover:opacity-100 sm:block">
+      <span className="pointer-events-none absolute -bottom-8 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-brown-dark px-2 py-1 text-xs text-cream opacity-0 transition-opacity group-hover:opacity-100 dark:bg-[#d4c8b5] dark:text-[#1a1612] sm:block">
         ⌘K
       </span>
     </button>

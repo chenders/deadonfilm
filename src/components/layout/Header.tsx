@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom"
 import SkullLogo from "./SkullLogo"
 import SearchTrigger from "@/components/search/SearchTrigger"
+import ThemeToggle from "./ThemeToggle"
 
 export default function Header() {
   const location = useLocation()
@@ -21,14 +22,17 @@ export default function Header() {
           <SkullLogo data-testid="skull-logo" className="h-auto w-16 md:w-24" />
           <h1
             data-testid="site-title"
-            className="font-display text-2xl italic text-brown-dark md:text-5xl"
+            className="font-display text-2xl italic text-brown-dark dark:text-[#d4c8b5] md:text-5xl"
           >
             Dead on Film
           </h1>
         </Link>
 
-        {/* Right-aligned search trigger - hidden on home page which has its own search */}
-        <div className="flex justify-end">{!isHomePage && <SearchTrigger />}</div>
+        {/* Right-aligned controls - search hidden on home page which has its own search */}
+        <div className="flex items-center justify-end gap-1">
+          {!isHomePage && <SearchTrigger />}
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   )

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { HelmetProvider } from "react-helmet-async"
+import { ThemeProvider } from "./contexts/ThemeContext"
 import App from "./App"
 
 // Mock the analytics hooks
@@ -76,25 +77,37 @@ function renderApp(initialRoute = "/") {
   })
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      <HelmetProvider>
-        <MemoryRouter
-          initialEntries={[initialRoute]}
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
-          <App />
-        </MemoryRouter>
-      </HelmetProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <HelmetProvider>
+          <MemoryRouter
+            initialEntries={[initialRoute]}
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            <App />
+          </MemoryRouter>
+        </HelmetProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   )
 }
 
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Mock matchMedia for ThemeProvider
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockImplementation((query: string) => ({
+        matches: query === "(prefers-color-scheme: dark)" ? false : false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }))
+    )
   })
 
   describe("routing", () => {

@@ -26,7 +26,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onBlur={onBlur}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          className="w-full rounded-lg border-2 border-brown-medium/30 bg-white px-4 py-3 text-lg placeholder:text-text-muted/50 focus:border-brown-medium focus:outline-none focus:ring-2 focus:ring-brown-medium/20"
+          className="w-full rounded-lg border-2 border-brown-medium/30 bg-white px-4 py-3 text-lg placeholder:text-text-muted/50 focus:border-brown-medium focus:outline-none focus:ring-2 focus:ring-brown-medium/20 dark:border-[#4a3d32] dark:bg-[#2a221c] dark:text-[#d4c8b5] dark:placeholder:text-[#9a8b7a]/50 dark:focus:border-[#6a5d52] dark:focus:ring-[#4a3d32]"
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={isExpanded}
@@ -37,12 +37,12 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
         {isLoading && (
           <div data-testid="search-loading" className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-beige border-t-brown-dark" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-beige border-t-brown-dark dark:border-[#4a3d32] dark:border-t-[#d4c8b5]" />
           </div>
         )}
 
         {!isLoading && value.length === 0 && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted dark:text-[#9a8b7a]">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-5 w-5"
