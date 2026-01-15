@@ -24,7 +24,7 @@ export { LegacySource } from "./sources/legacy.js"
 export { TelevisionAcademySource } from "./sources/television-academy.js"
 export { IBDBSource } from "./sources/ibdb.js"
 export { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
-// export { WikipediaSource } from "./sources/wikipedia.js"
+export { WikipediaSource } from "./sources/wikipedia.js"
 
 // AI providers
 export { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
@@ -33,7 +33,14 @@ export { DeepSeekSource } from "./ai-providers/deepseek.js"
 // export { GrokSource } from "./ai-providers/grok.js"
 
 // Main orchestrator
-export { DeathEnrichmentOrchestrator, DEFAULT_CONFIG } from "./orchestrator.js"
+export {
+  DeathEnrichmentOrchestrator,
+  DEFAULT_CONFIG,
+  type ExtendedEnrichmentResult,
+} from "./orchestrator.js"
+
+// Claude cleanup
+export { cleanupWithClaude, buildCleanupPrompt, estimateCleanupCost } from "./claude-cleanup.js"
 
 // Status bar
 export { StatusBar, createNoOpStatusBar, type StatusBarState } from "./status-bar.js"

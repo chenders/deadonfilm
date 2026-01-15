@@ -16,8 +16,11 @@ import type {
   EnrichmentSourceEntry,
   EnrichmentStats,
   SourceAttemptStats,
+  RawSourceData,
+  CleanedDeathInfo,
 } from "./types.js"
 import { DataSourceType, CostLimitExceededError, SourceAccessBlockedError } from "./types.js"
+import { cleanupWithClaude } from "./claude-cleanup.js"
 import { StatusBar } from "./status-bar.js"
 import { EnrichmentLogger, getEnrichmentLogger } from "./logger.js"
 import { WikidataSource } from "./sources/wikidata.js"
@@ -27,9 +30,23 @@ import { LegacySource } from "./sources/legacy.js"
 import { TelevisionAcademySource } from "./sources/television-academy.js"
 import { IBDBSource } from "./sources/ibdb.js"
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
+import { WikipediaSource } from "./sources/wikipedia.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
+
+/**
+ * Extended enrichment result that includes raw sources and Claude cleanup data.
+ * Used when claudeCleanup is enabled.
+ */
+export interface ExtendedEnrichmentResult extends EnrichmentResult {
+  /** Raw data gathered from all sources (for audit/debugging) */
+  rawSources?: RawSourceData[]
+  /** Cleaned death info from Claude Opus 4.5 */
+  cleanedDeathInfo?: CleanedDeathInfo
+  /** Cost of Claude cleanup call */
+  cleanupCostUsd?: number
+}
 
 /**
  * Default enrichment configuration.
@@ -82,6 +99,7 @@ export class DeathEnrichmentOrchestrator {
     // High-accuracy film industry archives first, then structured data, then search
     const freeSources: DataSource[] = [
       new WikidataSource(),
+      new WikipediaSource(), // Wikipedia Death section extraction
       new TelevisionAcademySource(), // Official TV industry deaths
       new IBDBSource(), // Broadway actor deaths (may be blocked)
       new BFISightSoundSource(), // International film obituaries
@@ -150,7 +168,7 @@ export class DeathEnrichmentOrchestrator {
    * Enrich death information for a single actor.
    * @throws {CostLimitExceededError} If cost limits are exceeded
    */
-  async enrichActor(actor: ActorForEnrichment): Promise<EnrichmentResult> {
+  async enrichActor(actor: ActorForEnrichment): Promise<ExtendedEnrichmentResult> {
     const startTime = Date.now()
     const costBreakdown = this.createEmptyCostBreakdown()
     const actorStats: EnrichmentStats = {
@@ -169,7 +187,18 @@ export class DeathEnrichmentOrchestrator {
 
     this.statusBar.log(`\nEnriching: ${actor.name} (ID: ${actor.id})`)
 
-    const result: EnrichmentResult = {}
+    const result: ExtendedEnrichmentResult = {}
+
+    // Collect raw data when Claude cleanup is enabled
+    const rawSources: RawSourceData[] = []
+    const isCleanupMode = this.config.claudeCleanup?.enabled === true
+    const gatherAll = isCleanupMode && this.config.claudeCleanup?.gatherAllSources === true
+
+    if (isCleanupMode) {
+      this.statusBar.log(
+        `  Claude cleanup mode: ${gatherAll ? "gathering all sources" : "standard"}`
+      )
+    }
 
     // Try each source in order until we have enough data
     for (const source of this.sources) {
@@ -247,10 +276,32 @@ export class DeathEnrichmentOrchestrator {
       this.logger.sourceSuccess(actor.name, source.type, fieldsFound)
       this.statusBar.log(`    Success! Confidence: ${lookupResult.source.confidence.toFixed(2)}`)
 
-      // Merge data into result
+      // In cleanup mode, collect raw data for later processing
+      if (isCleanupMode && lookupResult.data.circumstances) {
+        rawSources.push({
+          sourceName: source.name,
+          sourceType: source.type,
+          text: lookupResult.data.circumstances,
+          url: lookupResult.source.url || undefined,
+          confidence: lookupResult.source.confidence,
+        })
+        this.statusBar.log(
+          `    Collected ${lookupResult.data.circumstances.length} chars for cleanup`
+        )
+      }
+
+      // Merge data into result (for non-cleanup mode or as fallback)
       this.mergeData(result, lookupResult.data, lookupResult.source)
 
-      // Check if we have enough data
+      // In gather-all mode, keep going through all sources
+      if (gatherAll) {
+        actorStats.finalSource = source.type
+        actorStats.confidence = Math.max(actorStats.confidence, lookupResult.source.confidence)
+        // Don't break - continue to gather from all sources
+        continue
+      }
+
+      // Standard mode: Check if we have enough data
       if (this.config.stopOnMatch && this.hasEnoughData(result)) {
         this.statusBar.log(`    Stopping - sufficient data collected`)
         actorStats.finalSource = source.type
@@ -266,6 +317,48 @@ export class DeathEnrichmentOrchestrator {
           this.statusBar.log(`    Stopping - confidence threshold met`)
           break
         }
+      }
+    }
+
+    // After gathering, run Claude cleanup if enabled and we have raw data
+    if (isCleanupMode && rawSources.length > 0) {
+      this.statusBar.log(`  Running Claude Opus 4.5 cleanup on ${rawSources.length} sources...`)
+      try {
+        const { cleaned, costUsd } = await cleanupWithClaude(actor, rawSources)
+
+        // Add cleanup cost to stats
+        actorStats.totalCostUsd += costUsd
+        this.addCostToBreakdown(costBreakdown, DataSourceType.CLAUDE, costUsd)
+        this.statusBar.addCost(costUsd)
+
+        // Store raw sources and cleaned data in result
+        result.rawSources = rawSources
+        result.cleanedDeathInfo = cleaned
+        result.cleanupCostUsd = costUsd
+
+        // Also update the main result fields with cleaned data
+        if (cleaned.circumstances) {
+          result.circumstances = cleaned.circumstances
+        }
+        if (cleaned.rumoredCircumstances) {
+          result.rumoredCircumstances = cleaned.rumoredCircumstances
+        }
+        if (cleaned.notableFactors && cleaned.notableFactors.length > 0) {
+          result.notableFactors = cleaned.notableFactors
+        }
+        if (cleaned.locationOfDeath) {
+          result.locationOfDeath = cleaned.locationOfDeath
+        }
+        if (cleaned.additionalContext) {
+          result.additionalContext = cleaned.additionalContext
+        }
+
+        this.statusBar.log(`    Cleanup complete, cost: $${costUsd.toFixed(4)}`)
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Unknown cleanup error"
+        this.statusBar.log(`    Cleanup failed: ${errorMsg}`)
+        // Continue with raw data as fallback
+        result.rawSources = rawSources
       }
     }
 
@@ -313,8 +406,8 @@ export class DeathEnrichmentOrchestrator {
    * Enrich a batch of actors.
    * @throws {CostLimitExceededError} If total cost limit is exceeded
    */
-  async enrichBatch(actors: ActorForEnrichment[]): Promise<Map<number, EnrichmentResult>> {
-    const results = new Map<number, EnrichmentResult>()
+  async enrichBatch(actors: ActorForEnrichment[]): Promise<Map<number, ExtendedEnrichmentResult>> {
+    const results = new Map<number, ExtendedEnrichmentResult>()
 
     // Start the status bar and log batch start
     this.statusBar.start(actors.length)

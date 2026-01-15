@@ -221,7 +221,7 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
       const result = await client.query<{ id: number; tmdb_id: number }>(
         `INSERT INTO actors (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, popularity, violent_death, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
-         ON CONFLICT (tmdb_id) DO UPDATE SET
+         ON CONFLICT (tmdb_id) WHERE tmdb_id IS NOT NULL DO UPDATE SET
            name = EXCLUDED.name,
            birthday = COALESCE(actors.birthday, EXCLUDED.birthday),
            deathday = COALESCE(actors.deathday, EXCLUDED.deathday),

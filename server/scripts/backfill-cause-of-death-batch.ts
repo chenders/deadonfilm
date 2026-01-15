@@ -48,7 +48,7 @@ import {
 } from "../src/lib/checkpoint-utils.js"
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { toSentenceCase } from "../src/lib/text-utils.js"
-import { rebuildDeathCaches } from "../src/lib/cache.js"
+import { rebuildDeathCaches, invalidateActorCache } from "../src/lib/cache.js"
 import {
   DeathEnrichmentOrchestrator,
   CostLimitExceededError,
@@ -1423,6 +1423,8 @@ async function enrichMissingDetails(options: {
   tmdbId?: number
   maxCostPerActor?: number
   maxTotalCost?: number
+  claudeCleanup?: boolean
+  gatherAllSources?: boolean
 }): Promise<void> {
   const {
     limit = 100,
@@ -1437,6 +1439,8 @@ async function enrichMissingDetails(options: {
     tmdbId,
     maxCostPerActor,
     maxTotalCost,
+    claudeCleanup = false,
+    gatherAllSources = false,
   } = options
 
   if (!process.env.DATABASE_URL) {
@@ -1545,12 +1549,19 @@ async function enrichMissingDetails(options: {
         paid: paid,
         ai: ai,
       },
-      stopOnMatch: stopOnMatch,
+      stopOnMatch: claudeCleanup && gatherAllSources ? false : stopOnMatch, // Don't stop if gathering all
       confidenceThreshold: confidenceThreshold,
       costLimits: {
         maxCostPerActor: maxCostPerActor,
         maxTotalCost: maxTotalCost,
       },
+      claudeCleanup: claudeCleanup
+        ? {
+            enabled: true,
+            model: "claude-opus-4-5-20251101",
+            gatherAllSources: gatherAllSources,
+          }
+        : undefined,
     }
 
     const orchestrator = new DeathEnrichmentOrchestrator(config)
@@ -1579,8 +1590,14 @@ async function enrichMissingDetails(options: {
       console.log(`  Free sources: ${free ? "enabled" : "disabled"}`)
       console.log(`  Paid sources: ${paid ? "enabled" : "disabled"}`)
       console.log(`  AI sources: ${ai ? "enabled" : "disabled"}`)
-      console.log(`  Stop on match: ${stopOnMatch}`)
+      console.log(`  Stop on match: ${claudeCleanup && gatherAllSources ? false : stopOnMatch}`)
       console.log(`  Confidence threshold: ${confidenceThreshold}`)
+      if (claudeCleanup) {
+        console.log(`\nClaude cleanup configuration:`)
+        console.log(`  Claude cleanup: ENABLED (Opus 4.5)`)
+        console.log(`  Gather all sources: ${gatherAllSources ? "yes" : "no"}`)
+        console.log(`  Estimated cost per actor: ~$0.07`)
+      }
       if (maxCostPerActor !== undefined) {
         console.log(`  Max cost per actor: $${maxCostPerActor}`)
       }
@@ -1619,9 +1636,33 @@ async function enrichMissingDetails(options: {
     // Apply results to database
     let updated = 0
     for (const [actorId, enrichment] of results) {
-      if (!enrichment.circumstances && !enrichment.notableFactors?.length) {
+      if (
+        !enrichment.circumstances &&
+        !enrichment.notableFactors?.length &&
+        !enrichment.cleanedDeathInfo
+      ) {
         continue
       }
+
+      // Use cleaned death info if available (from Claude cleanup), otherwise use raw enrichment
+      const cleaned = enrichment.cleanedDeathInfo
+      const circumstances = cleaned?.circumstances || enrichment.circumstances
+      const rumoredCircumstances = cleaned?.rumoredCircumstances || enrichment.rumoredCircumstances
+      const locationOfDeath = cleaned?.locationOfDeath || enrichment.locationOfDeath
+      const notableFactors = cleaned?.notableFactors || enrichment.notableFactors
+      const additionalContext = cleaned?.additionalContext || enrichment.additionalContext
+      const relatedDeaths = cleaned?.relatedDeaths || null
+
+      // Determine confidence level
+      const circumstancesConfidence =
+        cleaned?.circumstancesConfidence ||
+        (enrichment.circumstancesSource?.confidence
+          ? enrichment.circumstancesSource.confidence >= 0.7
+            ? "high"
+            : enrichment.circumstancesSource.confidence >= 0.4
+              ? "medium"
+              : "low"
+          : null)
 
       // Update actor_death_circumstances table
       await db.query(
@@ -1632,51 +1673,63 @@ async function enrichMissingDetails(options: {
           rumored_circumstances,
           location_of_death,
           notable_factors,
+          additional_context,
+          related_deaths,
           sources,
+          raw_response,
           created_at,
           updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
         ON CONFLICT (actor_id) DO UPDATE SET
           circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
           circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
           rumored_circumstances = COALESCE(EXCLUDED.rumored_circumstances, actor_death_circumstances.rumored_circumstances),
           location_of_death = COALESCE(EXCLUDED.location_of_death, actor_death_circumstances.location_of_death),
           notable_factors = COALESCE(EXCLUDED.notable_factors, actor_death_circumstances.notable_factors),
+          additional_context = COALESCE(EXCLUDED.additional_context, actor_death_circumstances.additional_context),
+          related_deaths = COALESCE(EXCLUDED.related_deaths, actor_death_circumstances.related_deaths),
           sources = COALESCE(EXCLUDED.sources, actor_death_circumstances.sources),
+          raw_response = COALESCE(EXCLUDED.raw_response, actor_death_circumstances.raw_response),
           updated_at = NOW()`,
         [
           actorId,
-          enrichment.circumstances,
-          enrichment.circumstancesSource?.confidence
-            ? enrichment.circumstancesSource.confidence >= 0.7
-              ? "high"
-              : enrichment.circumstancesSource.confidence >= 0.4
-                ? "medium"
-                : "low"
-            : null,
-          enrichment.rumoredCircumstances,
-          enrichment.locationOfDeath,
-          enrichment.notableFactors && enrichment.notableFactors.length > 0
-            ? enrichment.notableFactors
-            : null,
+          circumstances,
+          circumstancesConfidence,
+          rumoredCircumstances,
+          locationOfDeath,
+          notableFactors && notableFactors.length > 0 ? notableFactors : null,
+          additionalContext,
+          relatedDeaths,
           JSON.stringify({
             circumstances: enrichment.circumstancesSource,
             rumoredCircumstances: enrichment.rumoredCircumstancesSource,
             notableFactors: enrichment.notableFactorsSource,
             locationOfDeath: enrichment.locationOfDeathSource,
+            cleanupSource: cleaned ? "claude-opus-4.5" : null,
           }),
+          enrichment.rawSources
+            ? JSON.stringify({
+                rawSources: enrichment.rawSources,
+                gatheredAt: new Date().toISOString(),
+              })
+            : null,
         ]
       )
 
       // Set has_detailed_death_info flag if we found substantive text for death page
-      // Criteria: circumstances (>200 chars) or rumored_circumstances (>100 chars)
-      const hasSubstantiveCircumstances =
-        enrichment.circumstances && enrichment.circumstances.length > 200
-      const hasSubstantiveRumors =
-        enrichment.rumoredCircumstances && enrichment.rumoredCircumstances.length > 100
+      // Criteria: circumstances (>200 chars) or rumored_circumstances (>100 chars) or related_deaths
+      const hasSubstantiveCircumstances = circumstances && circumstances.length > 200
+      const hasSubstantiveRumors = rumoredCircumstances && rumoredCircumstances.length > 100
+      const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
 
-      if (hasSubstantiveCircumstances || hasSubstantiveRumors) {
+      if (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths) {
         await db.query(`UPDATE actors SET has_detailed_death_info = true WHERE id = $1`, [actorId])
+      }
+
+      // Invalidate the actor's cache so updated death info is reflected immediately
+      const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
+      if (actorRecord?.tmdbId) {
+        await invalidateActorCache(actorRecord.tmdbId)
       }
 
       updated++
@@ -1767,6 +1820,14 @@ program
     "Maximum total cost for the entire run (USD) - exits script if exceeded",
     parseFloat
   )
+  .option(
+    "--claude-cleanup",
+    "Enable Claude Opus 4.5 cleanup to extract clean, structured data from raw sources"
+  )
+  .option(
+    "--gather-all-sources",
+    "Gather data from ALL sources before cleanup (requires --claude-cleanup)"
+  )
   .action(async (options) => {
     await enrichMissingDetails({
       limit: options.limit,
@@ -1781,6 +1842,8 @@ program
       tmdbId: options.tmdbId,
       maxCostPerActor: options.maxCostPerActor,
       maxTotalCost: options.maxTotalCost,
+      claudeCleanup: options.claudeCleanup || false,
+      gatherAllSources: options.gatherAllSources || false,
     })
   })
 
