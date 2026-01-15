@@ -233,7 +233,18 @@ export class BFISightSoundSource extends BaseDataSource {
 
     // Try multiple patterns to find the entry
     const patterns = [
-      // Full name with dates pattern
+      // BFI actual format: <strong>Name (dates)</strong>: description
+      // Example: <strong>Gene Hackman (30 Jan 1930 – c.18 Feb 2025)</strong>: description
+      new RegExp(
+        `<strong>\\s*(${this.escapeRegex(actor.name)})\\s*\\(([^)]+)\\)\\s*</strong>\\s*:?\\s*([^<]{10,500})`,
+        "i"
+      ),
+      // Full name with dates inside any tag
+      new RegExp(
+        `<[^>]*>\\s*(${this.escapeRegex(actor.name)})\\s*\\(([^)]+)\\)\\s*</[^>]*>\\s*:?\\s*([^<]{10,500})`,
+        "i"
+      ),
+      // Full name with dates pattern (dates outside tag)
       new RegExp(
         `<[^>]*>([^<]*${this.escapeRegex(actor.name)}[^<]*)<[^>]*>\\s*\\(([^)]+)\\)\\s*:?\\s*([^<]{10,500})`,
         "i"
