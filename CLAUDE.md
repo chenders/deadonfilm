@@ -27,6 +27,16 @@ db.query(`SELECT * FROM actors WHERE id = $1`, [userId])
 
 PRs are NOT ready for review without tests. Never defer tests to follow-up PRs.
 
+### 4. NEVER Commit Directly to Main
+
+Always create a feature branch for new work. Push to the branch and create a PR.
+
+```bash
+# Before starting ANY new work:
+git checkout main && git pull
+git checkout -b feat/feature-name   # or fix/, chore/
+```
+
 </critical_constraints>
 
 ## Project Overview
@@ -73,14 +83,6 @@ npm test && cd server && npm test
 
 ### Git Workflow
 
-**NEVER commit directly to `main`** - use pull requests.
-
-```bash
-git checkout -b feat/feature-name   # features
-git checkout -b fix/bug-name        # fixes
-git checkout -b chore/task-name     # maintenance
-```
-
 Commit format:
 
 ```bash
@@ -98,3 +100,26 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 - **DRY**: Extract repeated logic, consolidate identical branches
 - **QuickActions.tsx**: Use shared `emojiClass` variable for emoji spans
 - **Background commands**: Chain properly: `cmd 2>&1 & sleep 3 && next-cmd`
+- **Magic numbers**: Extract to named constants at module level
+
+```typescript
+// BAD
+if (text.length > 200) { ... }
+
+// GOOD
+const MIN_CIRCUMSTANCES_LENGTH = 200
+if (text.length > MIN_CIRCUMSTANCES_LENGTH) { ... }
+```
+
+- **N+1 queries**: Batch database lookups, never query inside loops
+
+```typescript
+// BAD - N+1 queries
+for (const actor of actors) {
+  const details = await getActorDetails(actor.id)
+}
+
+// GOOD - batch fetch
+const actorIds = actors.map(a => a.id)
+const detailsMap = await batchGetActorDetails(actorIds)
+```

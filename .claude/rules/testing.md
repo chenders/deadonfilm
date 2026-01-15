@@ -38,6 +38,41 @@ docker run --rm -v $(pwd):/app -w /app --ipc=host \
 
 Only commit `*-linux.png`. Docker version must match `package.json`.
 
+## Test Cache Scenarios
+
+When testing routes/functions with caching, test BOTH paths:
+
+```typescript
+// Cache miss - data fetched from source
+it("fetches from database on cache miss", async () => {
+  vi.mocked(getCached).mockResolvedValue(null)
+  await handler(req, res)
+  expect(setCached).toHaveBeenCalledWith(expectedKey, expectedData, expectedTTL)
+})
+
+// Cache hit - data returned from cache
+it("returns cached data on cache hit", async () => {
+  vi.mocked(getCached).mockResolvedValue(cachedData)
+  await handler(req, res)
+  expect(jsonSpy).toHaveBeenCalledWith(cachedData)
+  expect(fetchFromDb).not.toHaveBeenCalled()
+})
+```
+
+## Avoid Unused Variables
+
+Remove unused variables before committing, especially in tests:
+
+```typescript
+// BAD - unused result
+const result = await source.lookup(actor)
+expect(mockFetch).toHaveBeenCalled()
+
+// GOOD - no unused variable
+await source.lookup(actor)
+expect(mockFetch).toHaveBeenCalled()
+```
+
 ## Review Responses
 
 | Acceptable | Unacceptable |
