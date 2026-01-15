@@ -27,21 +27,19 @@ function stripHtmlTags(html: string): string {
 
 ## HTML Entity Decoding
 
-Avoid double-unescaping vulnerabilities when decoding HTML entities. The pattern `&amp;` → `&` can create new entities if done incorrectly.
-
-**Safe order:** Decode `&amp;` LAST, after all other entities:
+Use the `he` library for robust HTML entity handling. Never write custom entity decoding.
 
 ```typescript
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
-    .replace(/&amp;/g, "&") // MUST be last
-}
+import he from "he"
+
+// Decode entities
+const text = he.decode("&lt;script&gt;") // "<script>"
+
+// Encode for HTML output
+const safe = he.escape("<script>") // "&lt;script&gt;"
 ```
+
+**Shared utility:** Use `decodeHtmlEntities()` from `server/src/lib/death-sources/html-utils.ts`
 
 ## Regex Safety
 
