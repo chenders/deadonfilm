@@ -1,4 +1,21 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
+
+// Mock cache module before importing base-source
+vi.mock("./cache.js", () => ({
+  getCachedQuery: vi.fn().mockResolvedValue(null),
+  setCachedQuery: vi.fn().mockResolvedValue(undefined),
+}))
+
+// Mock logger to avoid file operations during tests
+vi.mock("./logger.js", () => ({
+  getEnrichmentLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
+}))
+
 import {
   BaseDataSource,
   DEATH_KEYWORDS,
@@ -63,6 +80,7 @@ describe("BaseDataSource", () => {
   let source: TestSource
 
   beforeEach(() => {
+    vi.clearAllMocks()
     source = new TestSource()
   })
 

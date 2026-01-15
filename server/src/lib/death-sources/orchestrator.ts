@@ -31,9 +31,21 @@ import { TelevisionAcademySource } from "./sources/television-academy.js"
 import { IBDBSource } from "./sources/ibdb.js"
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
+import { AlloCineSource } from "./sources/allocine.js"
+import { DoubanSource } from "./sources/douban.js"
+import { SoompiSource } from "./sources/soompi.js"
+import { FilmiBeatSource } from "./sources/filmibeat.js"
+import { ChroniclingAmericaSource } from "./sources/chronicling-america.js"
+import { TroveSource } from "./sources/trove.js"
+import { EuropeanaSource } from "./sources/europeana.js"
+import { InternetArchiveSource } from "./sources/internet-archive.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
+import { GrokSource } from "./ai-providers/grok.js"
+import { GeminiFlashSource, GeminiProSource } from "./ai-providers/gemini.js"
+import { MistralSource } from "./ai-providers/mistral.js"
+import { GroqLlamaSource } from "./ai-providers/groq.js"
 
 /**
  * Extended enrichment result that includes raw sources and Claude cleanup data.
@@ -98,14 +110,29 @@ export class DeathEnrichmentOrchestrator {
     // Free sources - always available, ordered by expected quality
     // High-accuracy film industry archives first, then structured data, then search
     const freeSources: DataSource[] = [
+      // Phase 1: Structured data and industry archives
       new WikidataSource(),
       new WikipediaSource(), // Wikipedia Death section extraction
       new TelevisionAcademySource(), // Official TV industry deaths
       new IBDBSource(), // Broadway actor deaths (may be blocked)
       new BFISightSoundSource(), // International film obituaries
+
+      // Phase 2: Search and obituaries
       new DuckDuckGoSource(),
       new FindAGraveSource(),
       new LegacySource(),
+
+      // Phase 3: International sources (regional film databases)
+      new AlloCineSource(), // French film database
+      new DoubanSource(), // Chinese entertainment database
+      new SoompiSource(), // Korean entertainment news
+      new FilmiBeatSource(), // Indian (Bollywood) entertainment news
+
+      // Phase 4: Historical archives (for pre-internet deaths)
+      new ChroniclingAmericaSource(), // US newspapers 1756-1963
+      new TroveSource(), // Australian newspapers (requires API key)
+      new EuropeanaSource(), // European archives (requires API key)
+      new InternetArchiveSource(), // Books, documents, historical media
     ]
 
     // Filter based on configuration
@@ -121,12 +148,15 @@ export class DeathEnrichmentOrchestrator {
     if (this.config.sourceCategories.ai) {
       const aiSources: DataSource[] = [
         // Cheapest first
-        new DeepSeekSource(), // ~$0.0005/query - cheapest AI option
+        new GeminiFlashSource(), // ~$0.0001/query - cheapest
+        new GroqLlamaSource(), // ~$0.0002/query - fast Llama inference
         new GPT4oMiniSource(), // ~$0.0003/query
-        new PerplexitySource(), // ~$0.005/query (but has web search!)
-        new GPT4oSource(), // ~$0.01/query
-        // Add more as implemented:
-        // new GrokSource(),
+        new DeepSeekSource(), // ~$0.0005/query
+        new MistralSource(), // ~$0.001/query - European training data
+        new GeminiProSource(), // ~$0.002/query (has search grounding!)
+        new GrokSource(), // ~$0.005/query (has X/Twitter data!)
+        new PerplexitySource(), // ~$0.005/query (has web search!)
+        new GPT4oSource(), // ~$0.01/query - most capable
       ]
       for (const source of aiSources) {
         if (source.isAvailable()) {
