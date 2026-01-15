@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { BrowserRouter } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { TestRouter } from "@/test/test-utils"
 import SearchModal from "./SearchModal"
 
 // Mock useUnifiedSearch hook
@@ -49,9 +49,9 @@ function renderModal(isOpen: boolean, onClose = vi.fn()) {
     onClose,
     ...render(
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        <TestRouter>
           <SearchModal isOpen={isOpen} onClose={onClose} />
-        </BrowserRouter>
+        </TestRouter>
       </QueryClientProvider>
     ),
   }
@@ -221,16 +221,16 @@ describe("SearchModal", () => {
     })
     rerender(
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        <TestRouter>
           <SearchModal isOpen={false} onClose={vi.fn()} />
-        </BrowserRouter>
+        </TestRouter>
       </QueryClientProvider>
     )
     rerender(
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+        <TestRouter>
           <SearchModal isOpen={true} onClose={vi.fn()} />
-        </BrowserRouter>
+        </TestRouter>
       </QueryClientProvider>
     )
 

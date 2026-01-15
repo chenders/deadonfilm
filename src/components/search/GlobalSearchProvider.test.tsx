@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
-import { BrowserRouter } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { TestRouter } from "@/test/test-utils"
 import { GlobalSearchProvider, useGlobalSearch } from "./GlobalSearchProvider"
 
 // Mock SearchModal to avoid complex setup
@@ -35,7 +35,7 @@ function renderWithProviders(ui: React.ReactElement) {
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>{ui}</BrowserRouter>
+      <TestRouter>{ui}</TestRouter>
     </QueryClientProvider>
   )
 }
