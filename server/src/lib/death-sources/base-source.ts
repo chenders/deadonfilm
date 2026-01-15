@@ -12,6 +12,28 @@ import type {
   SourceLookupResult,
 } from "./types.js"
 import { SourceAccessBlockedError } from "./types.js"
+import { getCachedQuery, setCachedQuery } from "./cache.js"
+import { getEnrichmentLogger } from "./logger.js"
+
+/**
+ * Global configuration for cache behavior.
+ */
+let globalIgnoreCache = false
+
+/**
+ * Set whether to ignore the cache globally.
+ * When true, all sources will make fresh requests.
+ */
+export function setIgnoreCache(ignore: boolean): void {
+  globalIgnoreCache = ignore
+}
+
+/**
+ * Get the current cache ignore setting.
+ */
+export function getIgnoreCache(): boolean {
+  return globalIgnoreCache
+}
 
 /**
  * Abstract base class for data sources.
@@ -41,26 +63,105 @@ export abstract class BaseDataSource implements DataSource {
   }
 
   /**
-   * Main lookup method - orchestrates rate limiting and error handling.
+   * Generate the cache key for an actor lookup.
+   * Override in subclasses that use different query formats.
+   */
+  protected getCacheKey(actor: ActorForEnrichment): string {
+    return this.buildDeathQuery(actor)
+  }
+
+  /**
+   * Main lookup method - orchestrates caching, rate limiting, and error handling.
    */
   async lookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
+    const cacheKey = this.getCacheKey(actor)
+    const logger = getEnrichmentLogger()
 
     try {
+      // Check cache first (unless ignoreCache is set)
+      if (!globalIgnoreCache) {
+        const cached = await getCachedQuery(this.type, cacheKey)
+        if (cached) {
+          logger.debug(`[CACHE_HIT] ${this.name}`, {
+            actor: actor.name,
+            source: this.type,
+            cached_at: cached.queriedAt.toISOString(),
+          })
+
+          // Reconstruct result from cache
+          if (cached.errorMessage) {
+            return {
+              success: false,
+              source: this.createSourceEntry(startTime, 0, undefined, cacheKey, cached.responseRaw),
+              data: null,
+              error: cached.errorMessage,
+            }
+          }
+
+          // Return cached successful result
+          const cachedResult = cached.responseRaw as SourceLookupResult | null
+          if (cachedResult) {
+            // Update the source entry timestamp to now but keep cached data
+            return {
+              ...cachedResult,
+              source: {
+                ...cachedResult.source,
+                retrievedAt: new Date(),
+              },
+            }
+          }
+        }
+      }
+
       // Apply rate limiting
       await this.waitForRateLimit()
 
       // Perform the actual lookup
       const result = await this.performLookup(actor)
+      const responseTimeMs = Date.now() - startTime
+
+      // Store result in cache
+      await setCachedQuery({
+        sourceType: this.type,
+        actorId: actor.id,
+        queryString: cacheKey,
+        responseStatus: result.success ? 200 : 500,
+        responseData: result,
+        errorMessage: result.error ?? null,
+        responseTimeMs,
+        costUsd: result.source.costUsd ?? null,
+      })
 
       return result
     } catch (error) {
+      const responseTimeMs = Date.now() - startTime
+
       // Re-throw SourceAccessBlockedError for special handling by orchestrator
       if (error instanceof SourceAccessBlockedError) {
+        // Cache blocked errors too (403, etc.)
+        await setCachedQuery({
+          sourceType: this.type,
+          actorId: actor.id,
+          queryString: cacheKey,
+          responseStatus: error.statusCode,
+          errorMessage: error.message,
+          responseTimeMs,
+        })
         throw error
       }
 
       const errorMessage = error instanceof Error ? error.message : "Unknown error"
+
+      // Cache other errors
+      await setCachedQuery({
+        sourceType: this.type,
+        actorId: actor.id,
+        queryString: cacheKey,
+        responseStatus: null,
+        errorMessage,
+        responseTimeMs,
+      })
 
       return {
         success: false,
