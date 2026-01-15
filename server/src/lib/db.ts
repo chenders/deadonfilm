@@ -6,7 +6,7 @@
  */
 
 // Re-export pool functions for backward compatibility
-export { getPool, resetPool, queryWithRetry, initDatabase } from "./db/pool.js"
+export { getPool, resetPool, queryWithRetry } from "./db/pool.js"
 
 // Re-export stats functions for backward compatibility
 export {

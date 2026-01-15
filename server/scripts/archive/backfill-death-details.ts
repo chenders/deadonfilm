@@ -15,7 +15,7 @@ import "dotenv/config"
 import { Command } from "commander"
 import pg from "pg"
 // Note: Rate limiting is handled by the centralized rate limiter in claude.ts
-import { getCauseOfDeath } from "../src/lib/wikidata.js"
+import { getCauseOfDeath } from "../../src/lib/wikidata.js"
 
 const { Pool } = pg
 
