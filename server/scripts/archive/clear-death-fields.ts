@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import "dotenv/config"
-import { getPool, resetPool } from "../src/lib/db.js"
+import { getPool, resetPool } from "../../src/lib/db.js"
 
 async function main() {
   const db = getPool()

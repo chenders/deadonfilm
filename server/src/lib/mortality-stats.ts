@@ -147,27 +147,6 @@ async function loadActuarialData(): Promise<Map<string, ActuarialEntry[]>> {
 }
 
 /**
- * Get life expectancy at a specific age
- * @internal Currently unused but may be useful for future features
- */
-async function _getLifeExpectancy(
-  age: number,
-  gender: "male" | "female" | "combined" = "combined"
-): Promise<number> {
-  const data = await loadActuarialData()
-  const entries = data.get(gender)
-
-  if (!entries || entries.length === 0) {
-    throw new Error(`No actuarial data found for gender: ${gender}`)
-  }
-
-  const clampedAge = Math.max(0, Math.min(119, Math.floor(age)))
-  const entry = entries.find((e) => e.age === clampedAge)
-
-  return entry?.life_expectancy ?? 0
-}
-
-/**
  * Calculate the probability that someone has died between two ages.
  *
  * Uses the cumulative death probability formula:
