@@ -29,6 +29,15 @@ db.query(`SELECT * FROM actors WHERE id = $1`, [userId])
 
 PRs are NOT ready for review without tests. Never defer tests to follow-up PRs.
 
+### 4. NEVER Commit Directly to Main
+
+Always create a feature branch for new work. Push to the branch and create a PR.
+
+```bash
+git checkout main && git pull
+git checkout -b feat/feature-name   # or fix/, chore/
+```
+
 ---
 
 ## Project Overview
@@ -146,6 +155,53 @@ A movie is "obscure" if:
 - **DRY**: Extract repeated logic, consolidate identical branches
 - **QuickActions.tsx**: Use shared `emojiClass` variable for emoji spans
 - Run format/lint/type-check before committing
+- **Magic numbers**: Extract to named constants at module level
+- **N+1 queries**: Batch database lookups, never query inside loops
+- **Unused variables**: Remove before committing
+
+---
+
+## Security Best Practices
+
+### HTML Sanitization
+
+Simple regex `/<[^>]+>/g` is insufficient for standalone use. Use the `htmlToText()` function from `server/src/lib/death-sources/html-utils.ts` which provides complete sanitization:
+
+1. Removes script/style tags via state machines
+2. Strips remaining HTML tags
+3. Decodes HTML entities
+4. Normalizes whitespace
+
+### HTML Entity Decoding
+
+Use the `he` library - never write custom entity decoding:
+
+```typescript
+import he from "he"
+he.decode("&lt;script&gt;") // "<script>"
+he.escape("<script>")       // "&lt;script&gt;"
+```
+
+Use `decodeHtmlEntities()` from `server/src/lib/death-sources/html-utils.ts`
+
+### Regex Safety
+
+Escape user input in RegExp:
+
+```typescript
+function escapeRegex(str: string): string {
+  return str.replace(/[-.*+?^${}()|[\]\\]/g, "\\$&")
+}
+```
+
+### Cross-Platform Paths
+
+Use `fileURLToPath` instead of `new URL().pathname`:
+
+```typescript
+import { fileURLToPath } from "url"
+const __filename = fileURLToPath(import.meta.url)
+```
 
 ---
 
