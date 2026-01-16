@@ -644,6 +644,150 @@ describe("DeathInfoSource type", () => {
   })
 })
 
+describe("cleanWikiMarkup HTML entity decoding", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("decodes &nbsp; entities in Wikipedia content", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          query: {
+            pages: {
+              "1": {
+                revisions: [
+                  {
+                    slots: {
+                      main: {
+                        "*": `'''Actor Name''' was an actor.
+
+== Death ==
+He&nbsp;died of a heart attack&nbsp;in Beverly Hills.`,
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+    })
+
+    const result = await getWikipediaDeathDetails("https://en.wikipedia.org/wiki/Actor_Name")
+
+    expect(result).not.toBeNull()
+    // Should not contain &nbsp; - should be decoded to regular space
+    expect(result).not.toContain("&nbsp;")
+    expect(result).toContain("died of a heart attack")
+  })
+
+  it("decodes &ndash; and &mdash; entities", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          query: {
+            pages: {
+              "2": {
+                revisions: [
+                  {
+                    slots: {
+                      main: {
+                        "*": `'''Actress Name''' (1930&ndash;2015) was a British actress.
+
+== Death ==
+She died of cancer &mdash; a long battle that lasted years.`,
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+    })
+
+    const result = await getWikipediaDeathDetails("https://en.wikipedia.org/wiki/Actress_Name")
+
+    expect(result).not.toBeNull()
+    // Should not contain HTML entity codes
+    expect(result).not.toContain("&ndash;")
+    expect(result).not.toContain("&mdash;")
+    expect(result).toContain("died of cancer")
+  })
+
+  it("decodes &amp; entities", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          query: {
+            pages: {
+              "3": {
+                revisions: [
+                  {
+                    slots: {
+                      main: {
+                        "*": `'''Actor Name''' worked for M&amp;M Studios.
+
+== Death ==
+He died of natural causes at M&amp;M Memorial Hospital.`,
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+    })
+
+    const result = await getWikipediaDeathDetails("https://en.wikipedia.org/wiki/Actor_Name")
+
+    expect(result).not.toBeNull()
+    // Should decode &amp; to &
+    expect(result).not.toContain("&amp;")
+    expect(result).toContain("M&M")
+    expect(result).toContain("died of natural causes")
+  })
+
+  it("decodes numeric HTML entities", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          query: {
+            pages: {
+              "4": {
+                revisions: [
+                  {
+                    slots: {
+                      main: {
+                        "*": `'''Actor Name''' was an actor.
+
+== Death ==
+He died in Paris&#44; France on January 15&#44; 2020.`,
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+    })
+
+    const result = await getWikipediaDeathDetails("https://en.wikipedia.org/wiki/Actor_Name")
+
+    expect(result).not.toBeNull()
+    // Should decode &#44; (comma)
+    expect(result).not.toContain("&#44;")
+    expect(result).toContain("died in Paris, France")
+  })
+})
+
 describe("verifyDeathDate", () => {
   beforeEach(() => {
     vi.clearAllMocks()

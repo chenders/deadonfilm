@@ -11,4 +11,4 @@ When modifying instruction files, **update the others to match**:
 | `.claude/rules/*.md` | Topic-specific rules |
 | `.github/copilot-instructions.md` | GitHub Copilot instructions |
 
-Sync: critical constraints, database schema, testing requirements, mortality rules, code quality standards.
+Sync: critical constraints, database schema, testing requirements, mortality rules, code quality standards, security best practices.

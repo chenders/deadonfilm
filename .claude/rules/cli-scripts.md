@@ -32,3 +32,21 @@ program.parse()
 | `[arg]` | Optional |
 | `<arg>` | Required |
 | End of file | MUST call `program.parse()` |
+
+## Error Handling
+
+Wrap main logic in try-catch with `process.exit(1)` on fatal errors:
+
+```typescript
+async function run(options: Options) {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  try {
+    // ... main logic
+  } catch (error) {
+    console.error("Fatal error:", error)
+    process.exit(1)
+  } finally {
+    await pool.end()
+  }
+}
+```

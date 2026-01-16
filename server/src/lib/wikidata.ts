@@ -1,3 +1,4 @@
+import he from "he"
 import { getCauseOfDeathFromClaude, isVagueCause, type ClaudeModel } from "./claude.js"
 import { recordCustomEvent } from "./newrelic.js"
 
@@ -441,16 +442,14 @@ function cleanWikiMarkup(text: string): string {
     .replace(/'{2,5}/g, "")
     // Remove section headers
     .replace(/^=+\s*|\s*=+$/gm, "")
-    // Clean up entities and whitespace
-    .replace(/&nbsp;/g, " ")
-    .replace(/&ndash;/g, "–")
-    .replace(/&mdash;/g, "—")
-    .replace(/&amp;/g, "&")
     // Remove leading pipes or equals (from partially parsed templates)
     .replace(/^\s*[|=]\s*/gm, "")
     // Collapse multiple spaces/newlines
     .replace(/\s+/g, " ")
     .trim()
+
+  // Decode HTML entities (handles &nbsp;, &ndash;, &mdash;, &amp;, etc.)
+  cleaned = he.decode(cleaned)
 
   // Remove any sentence fragments that look like leftover markup
   // (starting with lowercase after period, or very short fragments)
