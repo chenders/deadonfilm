@@ -341,6 +341,11 @@ function getNonSuicideUnnaturalPatterns(): string {
   return conditions
 }
 
+// Get suicide pattern conditions (for exclusion)
+function getSuicidePatterns(): string {
+  return buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)
+}
+
 // Get deceased persons who died from unnatural causes
 export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): Promise<{
   persons: ActorRecord[]
@@ -382,11 +387,15 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
     whereCondition = buildCategoryCondition(categoryInfo.patterns)
   }
 
+  // When hiding suicides, also exclude records that match suicide patterns
+  // (e.g., "suicide by gunshot wound" matches homicide pattern but should be excluded)
+  const suicideExclusion = shouldHideSuicides ? `AND NOT (${getSuicidePatterns()})` : ""
+
   // Get persons matching the filter
   const result = await db.query<ActorRecord & { total_count: string }>(
     `SELECT COUNT(*) OVER () as total_count, *
      FROM actors
-     WHERE (${whereCondition}) AND ($3 = true OR is_obscure = false)
+     WHERE (${whereCondition}) ${suicideExclusion} AND ($3 = true OR is_obscure = false)
      ORDER BY deathday DESC
      LIMIT $1 OFFSET $2`,
     [limit, offset, includeObscure]
