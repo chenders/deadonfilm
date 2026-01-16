@@ -37,7 +37,7 @@ export default function ShowDeceasedList({ actors, showId, showName }: ShowDecea
 
   return (
     <div data-testid="show-deceased-list">
-      <h2 data-testid="deceased-list-title" className="mb-4 font-display text-2xl text-brown-dark">
+      <h2 data-testid="deceased-list-title" className="mb-4 font-display text-2xl text-foreground">
         Deceased Cast Members
       </h2>
 
@@ -59,7 +59,7 @@ export default function ShowDeceasedList({ actors, showId, showName }: ShowDecea
             type="button"
             data-testid="show-more-deceased"
             onClick={handleShowMore}
-            className="rounded-lg bg-brown-medium/10 px-6 py-2 text-sm font-medium text-brown-dark transition-colors hover:bg-brown-medium/20"
+            className="rounded-lg bg-border-theme/10 px-6 py-2 text-sm font-medium text-foreground transition-colors hover:bg-border-theme/20"
           >
             Show more ({remainingCount.toLocaleString()} remaining)
           </button>
@@ -85,7 +85,7 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
   return (
     <div
       data-testid="deceased-card"
-      className="group rounded-lg border border-brown-medium/20 bg-white p-4"
+      className="group rounded-lg border border-border-theme/20 bg-surface p-4"
     >
       <div className="flex items-start gap-4">
         {profileUrl ? (
@@ -101,16 +101,16 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
         ) : (
           <div
             data-testid="actor-photo-placeholder"
-            className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded bg-beige"
+            className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded bg-surface-muted"
           >
-            <PersonIcon size={32} className="text-text-muted" />
+            <PersonIcon size={32} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 data-testid="actor-name" className="font-semibold text-brown-dark">
+              <h3 data-testid="actor-name" className="font-semibold text-foreground">
                 <Link
                   to={`/actor/${createActorSlug(actor.name, actor.id)}`}
                   className="hover:text-accent hover:underline"
@@ -118,11 +118,11 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
                   {actor.name}
                 </Link>
               </h3>
-              <p data-testid="actor-character" className="text-sm italic text-text-muted">
+              <p data-testid="actor-character" className="text-sm italic text-foreground-muted">
                 as {actor.character}
               </p>
               {/* Episode info */}
-              <div data-testid="actor-episodes" className="mt-1 text-xs text-brown-medium">
+              <div data-testid="actor-episodes" className="mt-1 text-xs text-foreground-muted">
                 {episodeDisplay}
               </div>
             </div>
@@ -150,7 +150,7 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
           isExpanded ? `Collapse details for ${actor.name}` : `Show details for ${actor.name}`
         }
         onClick={() => setIsExpanded(!isExpanded)}
-        className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-xs text-brown-medium transition-colors hover:text-brown-dark focus:outline-none"
+        className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-xs text-foreground-muted transition-colors hover:text-foreground focus:outline-none"
       >
         <span>{isExpanded ? "Hide details" : "Show details"}</span>
         <ChevronIcon
@@ -162,12 +162,12 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
 
       {/* Expanded section with episode list and external links */}
       {isExpanded && (
-        <div data-testid="actor-expanded" className="mt-2 border-t border-brown-medium/10 pt-3">
+        <div data-testid="actor-expanded" className="mt-2 border-t border-border-theme/10 pt-3">
           {/* Episode appearances */}
           {actor.episodes.length > 0 && (
             <div className="mb-3">
-              <h4 className="mb-2 text-xs font-medium text-brown-dark">Episode Appearances:</h4>
-              <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-text-muted">
+              <h4 className="mb-2 text-xs font-medium text-foreground">Episode Appearances:</h4>
+              <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-foreground-muted">
                 {actor.episodes.slice(0, 20).map((ep, i) => (
                   <li key={i}>
                     <span className="font-medium">
@@ -189,7 +189,7 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
               href={actor.tmdbUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+              className="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-surface-muted"
             >
               View on TMDB
             </a>
@@ -198,7 +198,7 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
                 href={actor.wikipediaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+                className="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-surface-muted"
               >
                 Wikipedia
               </a>

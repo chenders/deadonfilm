@@ -21,7 +21,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
   return (
     <div
       data-testid="deceased-card"
-      className="group rounded-lg border border-brown-medium/20 bg-white p-4"
+      className="group rounded-lg border border-border-theme/20 bg-surface p-4"
     >
       <div className="flex items-start gap-4">
         {profileUrl ? (
@@ -37,16 +37,16 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
         ) : (
           <div
             data-testid="actor-photo-placeholder"
-            className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded bg-beige"
+            className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded bg-surface-muted"
           >
-            <PersonIcon size={32} className="text-text-muted" />
+            <PersonIcon size={32} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 data-testid="actor-name" className="font-semibold text-brown-dark">
+              <h3 data-testid="actor-name" className="font-semibold text-foreground">
                 <Link
                   to={`/actor/${createActorSlug(actor.name, actor.id)}`}
                   className="hover:text-accent hover:underline"
@@ -54,7 +54,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
                   {actor.name}
                 </Link>
               </h3>
-              <p data-testid="actor-character" className="text-sm italic text-text-muted">
+              <p data-testid="actor-character" className="text-sm italic text-foreground-muted">
                 as {actor.character}
               </p>
             </div>
@@ -83,7 +83,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
           isExpanded ? `Collapse links for ${actor.name}` : `Show links for ${actor.name}`
         }
         onClick={() => setIsExpanded(!isExpanded)}
-        className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-xs text-brown-medium transition-colors hover:text-brown-dark focus:outline-none"
+        className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-xs text-foreground-muted transition-colors hover:text-foreground focus:outline-none"
       >
         <span>{isExpanded ? "Hide links" : "Show links"}</span>
         <ChevronIcon
@@ -97,13 +97,13 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
       {isExpanded && (
         <div
           data-testid="actor-expanded"
-          className="mt-2 flex flex-wrap gap-3 border-t border-brown-medium/10 pt-3"
+          className="mt-2 flex flex-wrap gap-3 border-t border-border-theme/10 pt-3"
         >
           <a
             href={actor.tmdbUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+            className="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-surface-elevated"
           >
             View on TMDB →
           </a>
@@ -112,7 +112,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
               href={actor.wikipediaUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+              className="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-surface-elevated"
             >
               Wikipedia →
             </a>
@@ -121,7 +121,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
             href={`https://www.google.com/search?q=${encodeURIComponent(actor.name + " actor filmography")}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+            className="rounded-full bg-surface-muted px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-surface-elevated"
           >
             Search Filmography →
           </a>

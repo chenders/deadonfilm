@@ -86,7 +86,7 @@ export default function EpisodePage() {
 
       <div data-testid="episode-page" className="mx-auto max-w-4xl">
         {/* Breadcrumb */}
-        <nav className="mb-4 text-sm text-text-muted">
+        <nav className="mb-4 text-sm text-foreground-muted">
           <Link to={`/show/${showSlug}`} className="hover:text-accent hover:underline">
             {show.name}
           </Link>
@@ -98,12 +98,12 @@ export default function EpisodePage() {
 
         {/* Episode Header */}
         <div className="mb-6 text-center">
-          <p className="text-lg text-brown-medium">{episodeCode}</p>
+          <p className="text-lg text-foreground-muted">{episodeCode}</p>
           <h1 className="font-display text-3xl leading-tight text-accent md:text-4xl">
             {episode.name}
           </h1>
           {episode.airDate && (
-            <p className="mt-1 text-sm text-text-muted">
+            <p className="mt-1 text-sm text-foreground-muted">
               Aired {formatDate(episode.airDate)}
               {episode.runtime && ` • ${episode.runtime} min`}
             </p>
@@ -119,8 +119,8 @@ export default function EpisodePage() {
               className="h-auto w-full max-w-md rounded-lg shadow-md md:w-80"
             />
           ) : (
-            <div className="flex h-44 w-full max-w-md items-center justify-center rounded-lg bg-beige md:w-80">
-              <span className="text-text-muted">No image available</span>
+            <div className="flex h-44 w-full max-w-md items-center justify-center rounded-lg bg-surface-muted md:w-80">
+              <span className="text-foreground-muted">No image available</span>
             </div>
           )}
 
@@ -129,8 +129,8 @@ export default function EpisodePage() {
 
         {/* Overview */}
         {episode.overview && (
-          <div className="mb-6 rounded-lg border border-brown-medium/10 bg-beige/30 p-4">
-            <p className="text-sm text-brown-dark">{episode.overview}</p>
+          <div className="mb-6 rounded-lg border border-border-theme/10 bg-surface-muted/30 p-4">
+            <p className="text-sm text-foreground">{episode.overview}</p>
           </div>
         )}
 

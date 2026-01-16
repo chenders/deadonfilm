@@ -10,10 +10,10 @@ export default function DecadesIndexPage() {
     return (
       <div className="mx-auto max-w-4xl">
         <div className="animate-pulse">
-          <div className="mb-6 h-8 w-64 rounded bg-brown-medium/20" />
+          <div className="mb-6 h-8 w-64 rounded bg-border-theme/20" />
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {[...Array(9)].map((_, i) => (
-              <div key={i} className="h-16 rounded-lg bg-brown-medium/20" />
+              <div key={i} className="h-16 rounded-lg bg-border-theme/20" />
             ))}
           </div>
         </div>
@@ -24,8 +24,10 @@ export default function DecadesIndexPage() {
   if (error || !data) {
     return (
       <div className="mx-auto max-w-4xl text-center">
-        <h1 className="mb-4 font-display text-3xl text-brown-dark">Deaths by Decade</h1>
-        <p className="text-text-muted">Failed to load decade categories. Please try again later.</p>
+        <h1 className="mb-4 font-display text-3xl text-foreground">Deaths by Decade</h1>
+        <p className="text-foreground-muted">
+          Failed to load decade categories. Please try again later.
+        </p>
       </div>
     )
   }
@@ -45,8 +47,8 @@ export default function DecadesIndexPage() {
 
       <div data-testid="decades-index-page" className="mx-auto max-w-4xl">
         <div className="mb-6 text-center">
-          <h1 className="mb-2 font-display text-3xl text-brown-dark">Deaths by Decade</h1>
-          <p className="text-text-muted">
+          <h1 className="mb-2 font-display text-3xl text-foreground">Deaths by Decade</h1>
+          <p className="text-foreground-muted">
             {totalDeaths.toLocaleString()} deaths across {data.decades.length} decades
           </p>
         </div>
@@ -58,12 +60,12 @@ export default function DecadesIndexPage() {
               <Link
                 key={category.decade}
                 to={`/deaths/decade/${decadeLabel}`}
-                className="flex items-center gap-3 rounded-lg bg-beige p-4 transition-colors hover:bg-cream"
+                className="flex items-center gap-3 rounded-lg bg-surface-muted p-4 transition-colors hover:bg-surface-muted"
               >
                 <SkullIcon size={20} className="shrink-0 text-accent" />
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-medium text-brown-dark">{decadeLabel}</h2>
-                  <p className="text-sm text-text-muted">
+                  <h2 className="font-medium text-foreground">{decadeLabel}</h2>
+                  <p className="text-sm text-foreground-muted">
                     {category.count.toLocaleString()} {category.count === 1 ? "death" : "deaths"}
                   </p>
                 </div>

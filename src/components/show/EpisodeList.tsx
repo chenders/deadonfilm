@@ -24,7 +24,7 @@ export default function EpisodeList({
 }: EpisodeListProps) {
   if (isLoading) {
     return (
-      <div data-testid="episode-list-loading" className="py-4 text-center text-text-muted">
+      <div data-testid="episode-list-loading" className="py-4 text-center text-foreground-muted">
         Loading episodes...
       </div>
     )
@@ -32,7 +32,7 @@ export default function EpisodeList({
 
   if (episodes.length === 0) {
     return (
-      <div data-testid="episode-list-empty" className="py-4 text-center text-text-muted">
+      <div data-testid="episode-list-empty" className="py-4 text-center text-foreground-muted">
         No episodes available
       </div>
     )
@@ -41,13 +41,13 @@ export default function EpisodeList({
   return (
     <div data-testid="episode-list" className="mt-4">
       {/* Season divider and header */}
-      <div className="mb-3 flex items-center justify-between border-t border-brown-medium/30 pt-3">
+      <div className="mb-3 flex items-center justify-between border-t border-border-theme/30 pt-3">
         <h3
           data-testid="season-header"
-          className="text-sm font-semibold uppercase tracking-wide text-brown-dark"
+          className="text-sm font-semibold uppercase tracking-wide text-foreground"
         >
           {seasonName || `Season ${seasonNumber}`}
-          <span className="ml-2 font-normal text-text-muted">
+          <span className="ml-2 font-normal text-foreground-muted">
             ({episodes.length} episode{episodes.length !== 1 ? "s" : ""})
           </span>
         </h3>
@@ -75,19 +75,19 @@ export default function EpisodeList({
               key={`${episode.seasonNumber}-${episode.episodeNumber}`}
               to={`/episode/${slug}`}
               data-testid={`episode-link-${episode.episodeNumber}`}
-              className="block rounded-lg border border-brown-medium/20 bg-white p-3 transition-colors hover:border-accent/30 hover:bg-beige/30"
+              className="block rounded-lg border border-border-theme/20 bg-surface p-3 transition-colors hover:border-accent/30 hover:bg-surface-muted/30"
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <div className="flex items-baseline justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <span className="font-medium text-accent">E{episode.episodeNumber}</span>
-                  <span className="mx-2 text-brown-medium">·</span>
-                  <span className="text-brown-dark" title={episode.name}>
+                  <span className="mx-2 text-foreground-muted">·</span>
+                  <span className="text-foreground" title={episode.name}>
                     {episode.name.length > 40 ? `${episode.name.slice(0, 40)}...` : episode.name}
                   </span>
                 </div>
                 {episode.airDate && (
-                  <span className="flex-shrink-0 text-xs text-text-muted">
+                  <span className="flex-shrink-0 text-xs text-foreground-muted">
                     {formatDate(episode.airDate)}
                   </span>
                 )}

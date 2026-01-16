@@ -22,11 +22,13 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
   return (
     <div
       data-testid={`forever-young-row-${movie.id}`}
-      className="rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="rounded-lg bg-surface p-3 transition-colors hover:bg-surface-muted"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
-        <span className="w-8 text-center font-display text-lg text-brown-medium">{movie.rank}</span>
+        <span className="w-8 text-center font-display text-lg text-foreground-muted">
+          {movie.rank}
+        </span>
 
         {/* Movie section (left) */}
         <Link to={`/movie/${movieSlug}`} className="flex items-center gap-3">
@@ -38,15 +40,15 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
               loading="lazy"
             />
           ) : (
-            <div className="flex h-16 w-11 flex-shrink-0 items-center justify-center rounded bg-beige text-xs text-brown-medium">
+            <div className="flex h-16 w-11 flex-shrink-0 items-center justify-center rounded bg-surface-muted text-xs text-foreground-muted">
               No poster
             </div>
           )}
           <div className="min-w-0">
-            <h3 className="truncate font-display text-lg text-brown-dark hover:underline">
+            <h3 className="truncate font-display text-lg text-foreground hover:underline">
               {movie.title}
             </h3>
-            <p className="text-sm text-text-muted">{movie.releaseYear || "Unknown year"}</p>
+            <p className="text-sm text-foreground-muted">{movie.releaseYear || "Unknown year"}</p>
           </div>
         </Link>
 
@@ -56,12 +58,12 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
         {/* Actor section (right) */}
         <Link to={`/actor/${actorSlug}`} className="flex items-center gap-3 text-right">
           <div className="min-w-0">
-            <p className="font-display text-brown-dark hover:underline">{movie.actor.name}</p>
+            <p className="font-display text-foreground hover:underline">{movie.actor.name}</p>
             <p className="text-sm text-red-700">
               Died {Math.round(movie.actor.yearsLost)} years early
             </p>
             {movie.actor.causeOfDeath && (
-              <p className="max-w-xs truncate text-xs text-text-muted">
+              <p className="max-w-xs truncate text-xs text-foreground-muted">
                 <CauseOfDeathBadge
                   causeOfDeath={movie.actor.causeOfDeath}
                   causeOfDeathDetails={movie.actor.causeOfDeathDetails}
@@ -78,8 +80,8 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
               loading="lazy"
             />
           ) : (
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-              <PersonIcon size={24} className="text-brown-medium" />
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-surface-muted">
+              <PersonIcon size={24} className="text-foreground-muted" />
             </div>
           )}
         </Link>
@@ -87,7 +89,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
 
       {/* Mobile layout */}
       <div className="flex items-start gap-3 md:hidden">
-        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+        <span className="mt-1 w-6 text-center font-display text-base text-foreground-muted">
           {movie.rank}
         </span>
 
@@ -100,7 +102,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
               loading="lazy"
             />
           ) : (
-            <div className="flex h-14 w-10 items-center justify-center rounded bg-beige text-[8px] text-brown-medium">
+            <div className="flex h-14 w-10 items-center justify-center rounded bg-surface-muted text-[8px] text-foreground-muted">
               No poster
             </div>
           )}
@@ -108,11 +110,11 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
 
         <div className="min-w-0 flex-1">
           <Link to={`/movie/${movieSlug}`}>
-            <h3 className="truncate font-display text-base text-brown-dark">{movie.title}</h3>
+            <h3 className="truncate font-display text-base text-foreground">{movie.title}</h3>
           </Link>
-          <p className="text-xs text-text-muted">{movie.releaseYear || "Unknown year"}</p>
+          <p className="text-xs text-foreground-muted">{movie.releaseYear || "Unknown year"}</p>
           <Link to={`/actor/${actorSlug}`} className="mt-1 block">
-            <p className="text-xs text-brown-dark">
+            <p className="text-xs text-foreground">
               <span className="font-medium">{movie.actor.name}</span>
               <span className="text-red-700">
                 {" "}
@@ -121,7 +123,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
             </p>
           </Link>
           {movie.actor.causeOfDeath && (
-            <p className="truncate text-xs text-text-muted">
+            <p className="truncate text-xs text-foreground-muted">
               <CauseOfDeathBadge
                 causeOfDeath={movie.actor.causeOfDeath}
                 causeOfDeathDetails={movie.actor.causeOfDeathDetails}
@@ -187,18 +189,18 @@ export default function ForeverYoungPage() {
 
       <div data-testid="forever-young-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">
+          <h1 className="font-display text-3xl text-foreground">
             <span className="mr-2">👼</span>
             Forever Young
           </h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-foreground-muted">
             Movies featuring leading actors who died tragically young, losing 40% or more of their
             expected lifespan. Ranked by years of life lost.
           </p>
         </div>
 
         {noResults ? (
-          <div className="text-center text-text-muted">
+          <div className="text-center text-foreground-muted">
             <p>No forever young movies found in our database.</p>
           </div>
         ) : (
@@ -215,19 +217,19 @@ export default function ForeverYoungPage() {
                 <button
                   onClick={() => goToPage(page - 1)}
                   disabled={page <= 1}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
 
-                <span className="text-sm text-text-muted">
+                <span className="text-sm text-foreground-muted">
                   Page {page} of {data.pagination.totalPages}
                 </span>
 
                 <button
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= data.pagination.totalPages}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -235,7 +237,7 @@ export default function ForeverYoungPage() {
             )}
 
             {/* Total count */}
-            <p className="mt-4 text-center text-sm text-text-muted">
+            <p className="mt-4 text-center text-sm text-foreground-muted">
               Showing {data.movies.length.toLocaleString()} of{" "}
               {data.pagination.totalCount.toLocaleString()} movies
               {data.pagination.totalPages === 20 && " (showing first 1,000)"}

@@ -11,10 +11,10 @@ export default function PopularMovies() {
     return (
       <section data-testid="popular-movies" className="mt-8">
         <div className="animate-pulse">
-          <div className="mx-auto mb-3 h-5 w-40 rounded bg-brown-medium/20" />
+          <div className="mx-auto mb-3 h-5 w-40 rounded bg-border-theme/20" />
           <div className="flex justify-center gap-2">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-28 w-20 rounded bg-brown-medium/20" />
+              <div key={i} className="h-28 w-20 rounded bg-border-theme/20" />
             ))}
           </div>
         </div>
@@ -30,7 +30,7 @@ export default function PopularMovies() {
     <section data-testid="popular-movies" className="mt-8">
       <h2
         data-testid="popular-movies-title"
-        className="mb-3 text-center font-display text-xl text-brown-dark"
+        className="mb-3 text-center font-display text-xl text-foreground"
       >
         Popular Movies
       </h2>
@@ -48,7 +48,7 @@ export default function PopularMovies() {
             <Link
               key={movie.id}
               to={`/movie/${slug}`}
-              className="animate-fade-slide-in group flex w-20 flex-col items-center rounded-lg bg-beige p-2 text-center transition-colors hover:bg-cream"
+              className="animate-fade-slide-in group flex w-20 flex-col items-center rounded-lg bg-surface p-2 text-center transition-colors hover:bg-surface-muted"
               style={{ animationDelay: `${index * 50}ms` }}
             >
               {movie.posterPath ? (
@@ -61,18 +61,20 @@ export default function PopularMovies() {
                   className="mb-1 h-24 w-16 rounded object-cover shadow-sm"
                 />
               ) : (
-                <div className="mb-1 flex h-24 w-16 items-center justify-center rounded bg-brown-medium/20">
-                  <FilmReelIcon size={24} className="text-text-muted" />
+                <div className="mb-1 flex h-24 w-16 items-center justify-center rounded bg-border-theme/20">
+                  <FilmReelIcon size={24} className="text-foreground-muted" />
                 </div>
               )}
 
               <h3
-                className="w-full truncate text-xs font-medium text-brown-dark"
+                className="w-full truncate text-xs font-medium text-foreground"
                 title={movie.title}
               >
                 {movie.title}
               </h3>
-              {movie.releaseYear && <p className="text-xs text-text-muted">{movie.releaseYear}</p>}
+              {movie.releaseYear && (
+                <p className="text-xs text-foreground-muted">{movie.releaseYear}</p>
+              )}
               <p className="text-xs text-accent">{mortalityPercent}% deceased</p>
             </Link>
           )

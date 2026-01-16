@@ -25,11 +25,11 @@ export default function CauseActorRow({ actor, rank, showCauseBadge = true }: Ca
     <Link
       to={`/actor/${slug}`}
       data-testid={`actor-row-${actorId}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface p-3 transition-colors hover:bg-surface-muted"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
-        <span className="w-8 text-center font-display text-lg text-brown-medium">{rank}</span>
+        <span className="w-8 text-center font-display text-lg text-foreground-muted">{rank}</span>
 
         {profileUrl ? (
           <img
@@ -38,14 +38,14 @@ export default function CauseActorRow({ actor, rank, showCauseBadge = true }: Ca
             className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={24} className="text-brown-medium" />
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-surface-muted">
+            <PersonIcon size={24} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-lg text-brown-dark">{actor.name}</h3>
-          <p className="text-sm text-text-muted">
+          <h3 className="truncate font-display text-lg text-foreground">{actor.name}</h3>
+          <p className="text-sm text-foreground-muted">
             Died {formatDate(actor.deathday)}
             {actor.ageAtDeath && ` · Age ${actor.ageAtDeath}`}
           </p>
@@ -53,7 +53,7 @@ export default function CauseActorRow({ actor, rank, showCauseBadge = true }: Ca
 
         <div className="flex-shrink-0 text-right">
           {shouldShowBadge && (
-            <p className="text-sm text-brown-dark">
+            <p className="text-sm text-foreground">
               <CauseOfDeathBadge
                 causeOfDeath={actor.causeOfDeath || ""}
                 causeOfDeathDetails={actor.causeOfDeathDetails}
@@ -70,7 +70,7 @@ export default function CauseActorRow({ actor, rank, showCauseBadge = true }: Ca
 
       {/* Mobile layout */}
       <div className="flex items-start gap-3 md:hidden">
-        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+        <span className="mt-1 w-6 text-center font-display text-base text-foreground-muted">
           {rank}
         </span>
 
@@ -81,14 +81,14 @@ export default function CauseActorRow({ actor, rank, showCauseBadge = true }: Ca
             className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={20} className="text-brown-medium" />
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-surface-muted">
+            <PersonIcon size={20} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-base text-brown-dark">{actor.name}</h3>
-          <p className="text-xs text-text-muted">
+          <h3 className="truncate font-display text-base text-foreground">{actor.name}</h3>
+          <p className="text-xs text-foreground-muted">
             Died {formatDate(actor.deathday)}
             {actor.ageAtDeath && ` · Age ${actor.ageAtDeath}`}
           </p>

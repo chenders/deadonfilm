@@ -44,26 +44,26 @@ function CategoryCard({ category }: { category: CauseCategoryStats }) {
     <Link
       to={`/causes-of-death/${category.slug}`}
       data-testid={`category-card-${category.slug}`}
-      className="flex flex-col rounded-lg bg-beige p-4 transition-colors hover:bg-cream"
+      className="flex flex-col rounded-lg bg-surface-muted p-4 transition-colors hover:bg-surface-muted"
     >
       <div className="mb-2 flex items-center gap-3">
         <Icon size={20} className="shrink-0 text-accent" />
-        <h2 className="truncate font-display text-lg text-brown-dark">{category.label}</h2>
+        <h2 className="truncate font-display text-lg text-foreground">{category.label}</h2>
       </div>
 
-      <p className="text-sm text-text-muted">
+      <p className="text-sm text-foreground-muted">
         {category.count.toLocaleString()} {category.count === 1 ? "death" : "deaths"}
       </p>
 
       {category.avgAge && (
-        <p className="text-xs text-text-muted">Avg age: {Math.round(category.avgAge)}</p>
+        <p className="text-xs text-foreground-muted">Avg age: {Math.round(category.avgAge)}</p>
       )}
 
       {category.topCauses.length > 0 && (
         <div className="mt-3 border-t border-brown-medium/10 pt-2">
           <ul className="space-y-1">
             {category.topCauses.slice(0, 3).map((cause) => (
-              <li key={cause.slug} className="truncate text-xs text-text-muted">
+              <li key={cause.slug} className="truncate text-xs text-foreground-muted">
                 {cause.cause} ({cause.count})
               </li>
             ))}
@@ -109,38 +109,38 @@ export default function CausesOfDeathPage() {
       <div data-testid="causes-of-death-page" className="mx-auto max-w-5xl">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="mb-2 font-display text-3xl text-brown-dark">Causes of Death</h1>
-          <p className="text-text-muted">
+          <h1 className="mb-2 font-display text-3xl text-foreground">Causes of Death</h1>
+          <p className="text-foreground-muted">
             Explore how actors from movies and TV shows have passed away
           </p>
         </div>
 
         {/* Stats Banner */}
-        <div className="mb-8 grid gap-4 rounded-lg bg-beige p-4 sm:grid-cols-4">
+        <div className="mb-8 grid gap-4 rounded-lg bg-surface-muted p-4 sm:grid-cols-4">
           <div className="text-center">
-            <p className="font-display text-2xl text-brown-dark">
+            <p className="font-display text-2xl text-foreground">
               {data.totalWithKnownCause.toLocaleString()}
             </p>
-            <p className="text-xs text-text-muted">Known Causes</p>
+            <p className="text-xs text-foreground-muted">Known Causes</p>
           </div>
 
           <div className="text-center">
-            <p className="font-display text-2xl text-brown-dark">
+            <p className="font-display text-2xl text-foreground">
               {data.overallAvgAge ? Math.round(data.overallAvgAge) : "-"}
             </p>
-            <p className="text-xs text-text-muted">Avg Age at Death</p>
+            <p className="text-xs text-foreground-muted">Avg Age at Death</p>
           </div>
 
           <div className="text-center">
             <p className="font-display text-2xl text-accent">
               {data.overallAvgYearsLost ? Math.round(data.overallAvgYearsLost) : "-"}
             </p>
-            <p className="text-xs text-text-muted">Avg Years Lost</p>
+            <p className="text-xs text-foreground-muted">Avg Years Lost</p>
           </div>
 
           <div className="text-center">
-            <p className="font-display text-2xl text-brown-dark">{data.categories.length}</p>
-            <p className="text-xs text-text-muted">Categories</p>
+            <p className="font-display text-2xl text-foreground">{data.categories.length}</p>
+            <p className="text-xs text-foreground-muted">Categories</p>
           </div>
         </div>
 

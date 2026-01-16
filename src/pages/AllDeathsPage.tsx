@@ -20,11 +20,11 @@ function ActorRow({ person }: { person: AllDeath }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`death-row-${person.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface p-3 transition-colors hover:bg-surface-muted"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
-        <span className="w-8 text-center font-display text-lg text-brown-medium">
+        <span className="w-8 text-center font-display text-lg text-foreground-muted">
           {person.rank}
         </span>
 
@@ -35,14 +35,14 @@ function ActorRow({ person }: { person: AllDeath }) {
             className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={24} className="text-brown-medium" />
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-surface-muted">
+            <PersonIcon size={24} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-lg text-brown-dark">{person.name}</h3>
-          <p className="text-sm text-text-muted">
+          <h3 className="truncate font-display text-lg text-foreground">{person.name}</h3>
+          <p className="text-sm text-foreground-muted">
             Died {formatDate(person.deathday)}
             {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
           </p>
@@ -50,7 +50,7 @@ function ActorRow({ person }: { person: AllDeath }) {
 
         {person.causeOfDeath && (
           <div className="flex-shrink-0 text-right">
-            <p className="text-sm text-brown-dark">
+            <p className="text-sm text-foreground">
               {person.causeOfDeathDetails ? (
                 <HoverTooltip content={person.causeOfDeathDetails}>
                   <span
@@ -60,7 +60,7 @@ function ActorRow({ person }: { person: AllDeath }) {
                     {toTitleCase(person.causeOfDeath)}
                     <InfoIcon
                       size={14}
-                      className="ml-1 inline-block align-text-bottom text-brown-medium"
+                      className="ml-1 inline-block align-text-bottom text-foreground-muted"
                     />
                   </span>
                 </HoverTooltip>
@@ -74,7 +74,7 @@ function ActorRow({ person }: { person: AllDeath }) {
 
       {/* Mobile layout */}
       <div className="flex items-start gap-3 md:hidden">
-        <span className="mt-1 w-6 text-center font-display text-base text-brown-medium">
+        <span className="mt-1 w-6 text-center font-display text-base text-foreground-muted">
           {person.rank}
         </span>
 
@@ -85,19 +85,19 @@ function ActorRow({ person }: { person: AllDeath }) {
             className="h-10 w-10 flex-shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-beige">
-            <PersonIcon size={20} className="text-brown-medium" />
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-surface-muted">
+            <PersonIcon size={20} className="text-foreground-muted" />
           </div>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-display text-base text-brown-dark">{person.name}</h3>
-          <p className="text-xs text-text-muted">
+          <h3 className="truncate font-display text-base text-foreground">{person.name}</h3>
+          <p className="text-xs text-foreground-muted">
             Died {formatDate(person.deathday)}
             {person.ageAtDeath && ` · Age ${person.ageAtDeath}`}
           </p>
           {person.causeOfDeath && (
-            <p className="mt-1 text-xs text-brown-dark">{toTitleCase(person.causeOfDeath)}</p>
+            <p className="mt-1 text-xs text-foreground">{toTitleCase(person.causeOfDeath)}</p>
           )}
         </div>
       </div>
@@ -172,8 +172,8 @@ export default function AllDeathsPage() {
 
       <div data-testid="all-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">All Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <h1 className="font-display text-3xl text-foreground">All Deaths</h1>
+          <p className="mt-2 text-sm text-foreground-muted">
             {includeObscure
               ? "All deceased actors in our database, ordered by death date (most recent first)."
               : "Well-known deceased actors in our database, ordered by death date (most recent first)."}
@@ -189,19 +189,19 @@ export default function AllDeathsPage() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search for an actor..."
               data-testid="search-input"
-              className="w-full max-w-md rounded-lg border border-brown-medium/30 bg-white px-4 py-2 text-sm text-brown-dark placeholder-text-muted focus:border-brown-medium focus:outline-none focus:ring-1 focus:ring-brown-medium"
+              className="w-full max-w-md rounded-lg border border-border-theme/30 bg-surface px-4 py-2 text-sm text-foreground placeholder-text-muted focus:border-border-theme focus:outline-none focus:ring-1 focus:ring-border-theme"
             />
           </div>
           <div className="flex justify-center">
             <label
-              className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+              className="flex cursor-pointer items-center gap-2 text-sm text-foreground-muted"
               data-testid="include-obscure-filter"
             >
               <input
                 type="checkbox"
                 checked={includeObscure}
                 onChange={(e) => toggleIncludeObscure(e.target.checked)}
-                className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+                className="h-4 w-4 rounded border-border-theme text-foreground focus:ring-border-theme"
               />
               Include lesser-known actors
             </label>
@@ -209,7 +209,7 @@ export default function AllDeathsPage() {
         </div>
 
         {noResults ? (
-          <div className="text-center text-text-muted">
+          <div className="text-center text-foreground-muted">
             {searchQuery ? (
               <>
                 <p>No actors found matching "{searchQuery}".</p>
@@ -235,19 +235,19 @@ export default function AllDeathsPage() {
                 <button
                   onClick={() => goToPage(page - 1)}
                   disabled={page <= 1}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
 
-                <span className="text-sm text-text-muted">
+                <span className="text-sm text-foreground-muted">
                   Page {page} of {data.pagination.totalPages}
                 </span>
 
                 <button
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= data.pagination.totalPages}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-white transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -255,7 +255,7 @@ export default function AllDeathsPage() {
             )}
 
             {/* Total count */}
-            <p className="mt-4 text-center text-sm text-text-muted">
+            <p className="mt-4 text-center text-sm text-foreground-muted">
               Showing {data.deaths.length.toLocaleString()} of{" "}
               {data.pagination.totalCount.toLocaleString()} actors
             </p>

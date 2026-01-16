@@ -26,7 +26,7 @@ function FactorBadge({ factor }: { factor: string }) {
 
   return (
     <span
-      className="inline-block rounded-full bg-beige px-2 py-0.5 text-xs text-brown-dark"
+      className="inline-block rounded-full bg-surface-muted px-2 py-0.5 text-xs text-foreground"
       data-testid="factor-badge"
     >
       {formatted}
@@ -64,7 +64,7 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
     <Link
       to={`/actor/${actor.slug}/death`}
       data-testid={`notable-death-${actor.id}`}
-      className="block rounded-lg bg-white p-4 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface p-4 transition-colors hover:bg-surface-muted"
     >
       <div className="flex items-start gap-4">
         {/* Profile image */}
@@ -75,15 +75,15 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
             className="h-20 w-16 flex-shrink-0 rounded-lg object-cover shadow-sm"
           />
         ) : (
-          <div className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-sm">
-            <PersonIcon size={32} className="text-brown-medium" />
+          <div className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-surface-muted shadow-sm">
+            <PersonIcon size={32} className="text-foreground-muted" />
           </div>
         )}
 
         {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-display text-lg text-brown-dark">{actor.name}</h3>
+            <h3 className="font-display text-lg text-foreground">{actor.name}</h3>
             {actor.strangeDeath && (
               <span
                 className="flex-shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs text-white"
@@ -94,19 +94,19 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
             )}
           </div>
 
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-foreground-muted">
             Died {formatDate(actor.deathday)}
             {actor.ageAtDeath && ` · Age ${actor.ageAtDeath}`}
           </p>
 
           {actor.causeOfDeath && (
-            <p className="mt-1 text-sm text-brown-dark">{toTitleCase(actor.causeOfDeath)}</p>
+            <p className="mt-1 text-sm text-foreground">{toTitleCase(actor.causeOfDeath)}</p>
           )}
 
           {/* Death manner and confidence */}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {actor.deathManner && (
-              <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
+              <span className="rounded-full bg-border-theme/10 px-2 py-0.5 text-xs text-foreground">
                 {toTitleCase(actor.deathManner)}
               </span>
             )}
@@ -122,7 +122,7 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
                 <FactorBadge key={factor} factor={factor} />
               ))}
               {actor.notableFactors.length > 3 && (
-                <span className="text-xs text-text-muted">
+                <span className="text-xs text-foreground-muted">
                   +{actor.notableFactors.length - 3} more
                 </span>
               )}
@@ -211,8 +211,8 @@ export default function NotableDeathsPage() {
 
       <div data-testid="notable-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">Notable Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <h1 className="font-display text-3xl text-foreground">Notable Deaths</h1>
+          <p className="mt-2 text-sm text-foreground-muted">
             Detailed accounts of celebrity deaths with sources and context
           </p>
         </div>
@@ -227,8 +227,8 @@ export default function NotableDeathsPage() {
               data-testid={`filter-${f.id}`}
               className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
                 filter === f.id
-                  ? "bg-brown-dark text-white"
-                  : "bg-brown-medium/10 text-brown-dark hover:bg-brown-medium/20"
+                  ? "bg-foreground text-surface"
+                  : "bg-border-theme/10 text-foreground hover:bg-border-theme/20"
               }`}
             >
               {f.label}
@@ -239,14 +239,14 @@ export default function NotableDeathsPage() {
         {/* Include obscure checkbox */}
         <div className="mb-4 flex justify-center">
           <label
-            className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"
+            className="flex cursor-pointer items-center gap-2 text-sm text-foreground-muted"
             data-testid="include-obscure-filter"
           >
             <input
               type="checkbox"
               checked={includeObscure}
               onChange={(e) => toggleIncludeObscure(e.target.checked)}
-              className="h-4 w-4 rounded border-brown-medium text-brown-dark focus:ring-brown-medium"
+              className="h-4 w-4 rounded border-border-theme text-foreground focus:ring-border-theme"
             />
             Include lesser-known actors
           </label>
@@ -254,11 +254,13 @@ export default function NotableDeathsPage() {
 
         {/* Filter description */}
         {currentFilter && filter !== "all" && (
-          <p className="mb-4 text-center text-sm text-text-muted">{currentFilter.description}</p>
+          <p className="mb-4 text-center text-sm text-foreground-muted">
+            {currentFilter.description}
+          </p>
         )}
 
         {noResults ? (
-          <div className="text-center text-text-muted">
+          <div className="text-center text-foreground-muted">
             <p>No notable deaths found for this filter.</p>
             <p className="mt-2 text-xs">
               Try a different filter or enable "Include lesser-known actors".
@@ -278,19 +280,19 @@ export default function NotableDeathsPage() {
                 <button
                   onClick={() => goToPage(page - 1)}
                   disabled={page <= 1}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-surface transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Previous
                 </button>
 
-                <span className="text-sm text-text-muted">
+                <span className="text-sm text-foreground-muted">
                   Page {page} of {data.pagination.totalPages}
                 </span>
 
                 <button
                   onClick={() => goToPage(page + 1)}
                   disabled={page >= data.pagination.totalPages}
-                  className="rounded bg-brown-medium px-4 py-2 text-sm text-white transition-colors hover:bg-brown-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-foreground-muted px-4 py-2 text-sm text-surface transition-colors hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -298,7 +300,7 @@ export default function NotableDeathsPage() {
             )}
 
             {/* Total count */}
-            <p className="mt-4 text-center text-sm text-text-muted">
+            <p className="mt-4 text-center text-sm text-foreground-muted">
               Showing {data.actors.length.toLocaleString()} of{" "}
               {data.pagination.totalCount.toLocaleString()} actors
             </p>

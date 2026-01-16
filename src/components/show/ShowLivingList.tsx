@@ -20,7 +20,7 @@ export default function ShowLivingList({ actors, showId, showName }: ShowLivingL
   if (actors.length === 0) {
     return (
       <div data-testid="no-living-message" className="py-8 text-center">
-        <p className="text-lg text-text-muted">No living cast members found</p>
+        <p className="text-lg text-foreground-muted">No living cast members found</p>
       </div>
     )
   }
@@ -35,7 +35,7 @@ export default function ShowLivingList({ actors, showId, showName }: ShowLivingL
 
   return (
     <div data-testid="show-living-list">
-      <h2 data-testid="living-list-title" className="mb-4 font-display text-2xl text-brown-dark">
+      <h2 data-testid="living-list-title" className="mb-4 font-display text-2xl text-foreground">
         Living Cast Members
       </h2>
 
@@ -108,7 +108,7 @@ function ShowLivingCard({ actor, showId, showName }: ShowLivingCardProps) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 data-testid="living-actor-name" className="font-semibold text-brown-dark">
+              <h3 data-testid="living-actor-name" className="font-semibold text-foreground">
                 <Link
                   to={`/actor/${createActorSlug(actor.name, actor.id)}`}
                   className="hover:text-accent hover:underline"
@@ -156,7 +156,7 @@ function ShowLivingCard({ actor, showId, showName }: ShowLivingCardProps) {
 
           {isExpanded && (
             <div className="mt-2 border-t border-living-border/20 pt-3">
-              <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-text-muted">
+              <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-foreground-muted">
                 {actor.episodes.slice(0, 20).map((ep, i) => (
                   <li key={i}>
                     <span className="font-medium">

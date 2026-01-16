@@ -12,14 +12,14 @@ export default function LivingList({ actors }: LivingListProps) {
   if (actors.length === 0) {
     return (
       <div data-testid="no-living-message" className="py-8 text-center">
-        <p className="text-lg text-text-muted">No living cast members found</p>
+        <p className="text-lg text-foreground-muted">No living cast members found</p>
       </div>
     )
   }
 
   return (
     <div data-testid="living-list">
-      <h2 data-testid="living-list-title" className="mb-4 font-display text-2xl text-brown-dark">
+      <h2 data-testid="living-list-title" className="mb-4 font-display text-2xl text-foreground">
         Living Cast Members
       </h2>
 
@@ -68,7 +68,7 @@ function LivingCard({ actor }: { actor: LivingActor }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 data-testid="living-actor-name" className="font-semibold text-brown-dark">
+            <h3 data-testid="living-actor-name" className="font-semibold text-foreground">
               <Link
                 to={`/actor/${createActorSlug(actor.name, actor.id)}`}
                 className="hover:text-accent hover:underline"

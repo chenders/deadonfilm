@@ -21,7 +21,7 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
     if (mortalitySurpriseScore > 0.5) return { text: "Unusually High", color: "text-accent" }
     if (mortalitySurpriseScore > 0.2) return { text: "Higher Than Expected", color: "text-accent" }
     if (mortalitySurpriseScore < -0.3) return { text: "Lower Than Expected", color: "text-living" }
-    return { text: "As Expected", color: "text-text-muted" }
+    return { text: "As Expected", color: "text-foreground-muted" }
   }
   const surpriseLabel = getSurpriseLabel()
 
@@ -71,12 +71,12 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
-            className="text-brown-medium/30"
+            className="text-border-theme/30"
           />
 
           {/* Sprocket holes */}
           {sprocketHoles.map((hole, i) => (
-            <circle key={i} cx={hole.cx} cy={hole.cy} r="4" className="fill-brown-medium/20" />
+            <circle key={i} cx={hole.cx} cy={hole.cy} r="4" className="fill-border-theme/20" />
           ))}
 
           {/* Background track (living portion) */}
@@ -104,7 +104,12 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
           />
 
           {/* Center hub */}
-          <circle cx={center} cy={center} r={radius - strokeWidth - 8} className="fill-beige" />
+          <circle
+            cx={center}
+            cy={center}
+            r={radius - strokeWidth - 8}
+            className="fill-surface-muted"
+          />
           <circle
             cx={center}
             cy={center}
@@ -112,7 +117,7 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
-            className="text-brown-medium/30"
+            className="text-border-theme/30"
           />
         </svg>
 
@@ -124,7 +129,7 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
           >
             {mortalityPercentage}%
           </span>
-          <span className="text-sm text-brown-dark">deceased</span>
+          <span className="text-sm text-foreground">deceased</span>
         </div>
       </div>
 
@@ -133,12 +138,12 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
         <div data-testid="mortality-comparison" className="text-center text-sm">
           <div className="flex items-center justify-center gap-4">
             <div>
-              <span className="text-text-muted">Expected: </span>
-              <span className="font-medium text-brown-dark">{expectedDeaths.toFixed(1)}</span>
+              <span className="text-foreground-muted">Expected: </span>
+              <span className="font-medium text-foreground">{expectedDeaths.toFixed(1)}</span>
             </div>
-            <div className="text-brown-medium/40">|</div>
+            <div className="text-border-theme/40">|</div>
             <div>
-              <span className="text-text-muted">Actual: </span>
+              <span className="text-foreground-muted">Actual: </span>
               <span className="font-medium text-accent">{deceasedCount.toLocaleString()}</span>
             </div>
           </div>

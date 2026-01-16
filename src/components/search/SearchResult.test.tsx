@@ -104,7 +104,7 @@ describe("SearchResult", () => {
 
     expect(screen.queryByRole("img")).not.toBeInTheDocument()
     // FilmReelIcon should be present as placeholder
-    const container = document.querySelector('[class*="bg-brown-medium"]')
+    const container = document.querySelector('[class*="bg-border-theme"]')
     expect(container?.querySelector("svg")).toBeInTheDocument()
   })
 
@@ -113,7 +113,7 @@ describe("SearchResult", () => {
 
     expect(screen.queryByRole("img")).not.toBeInTheDocument()
     // TVIcon should be present as placeholder
-    const container = document.querySelector('[class*="bg-brown-medium"]')
+    const container = document.querySelector('[class*="bg-border-theme"]')
     expect(container?.querySelector("svg")).toBeInTheDocument()
   })
 
@@ -156,7 +156,7 @@ describe("SearchResult", () => {
 
     const option = screen.getByRole("option")
     expect(option).toHaveAttribute("aria-selected", "true")
-    expect(option).toHaveClass("bg-beige")
+    expect(option).toHaveClass("bg-surface-muted")
   })
 
   it("displays Unknown for movies without release date", () => {

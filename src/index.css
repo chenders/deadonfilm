@@ -5,16 +5,41 @@
 @tailwind utilities;
 
 :root {
+  /* Legacy colors (keeping for reference) */
   --color-cream: #f5f0e8;
   --color-beige: #e8dcc8;
   --color-brown-dark: #3d2914;
   --color-brown-medium: #6b4423;
   --color-accent: #8b0000;
+
+  /* Semantic tokens - RGB values for Tailwind alpha support
+     Format: R G B (space-separated, no commas) */
+  --color-surface: 255 255 255; /* white - cards */
+  --color-surface-elevated: 245 240 232; /* cream - page bg */
+  --color-surface-muted: 232 220 200; /* beige - secondary */
+  --color-foreground: 61 41 20; /* brown-dark */
+  --color-foreground-muted: 107 91 79; /* muted brown */
+  --color-border-theme: 107 68 35; /* brown-medium for borders */
+  --color-accent-semantic: 139 0 0; /* #8b0000 - dark red for light mode */
+}
+
+/* Cinema Dark theme - high contrast zinc palette */
+.dark {
+  --color-surface: 24 24 27; /* zinc-900 */
+  --color-surface-elevated: 9 9 11; /* zinc-950 */
+  --color-surface-muted: 39 39 42; /* zinc-800 */
+  --color-foreground: 250 250 250; /* zinc-50 */
+  --color-foreground-muted: 161 161 170; /* zinc-400 */
+  --color-border-theme: 63 63 70; /* zinc-700 */
+  --color-accent-semantic: 239 68 68; /* #ef4444 - red-500 for dark mode (7:1 contrast) */
 }
 
 body {
-  @apply bg-cream font-body text-text-primary;
+  @apply bg-surface-elevated font-body text-foreground;
   min-height: 100vh;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Custom scrollbar for vintage feel */
@@ -23,15 +48,15 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-beige;
+  @apply bg-surface-muted;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply rounded bg-brown-medium;
+  @apply rounded bg-border-theme;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-brown-dark;
+  @apply bg-foreground/50;
 }
 
 /* Stagger fade-in animation for list items */

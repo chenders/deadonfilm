@@ -86,7 +86,7 @@ function TooltipContent({
     <div
       ref={tooltipRef}
       data-testid={testId}
-      className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
+      className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-border-theme/50 bg-foreground px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
       style={{
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,
@@ -99,7 +99,7 @@ function TooltipContent({
       {/* Film strip decoration at top */}
       <div className="absolute -top-1 left-4 right-4 flex justify-between">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
+          <div key={i} className="h-2 w-1.5 rounded-sm bg-border-theme/50" />
         ))}
       </div>
       <p className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</p>

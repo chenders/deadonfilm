@@ -26,7 +26,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onBlur={onBlur}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          className="w-full rounded-lg border-2 border-brown-medium/30 bg-white px-4 py-3 text-lg placeholder:text-text-muted/50 focus:border-brown-medium focus:outline-none focus:ring-2 focus:ring-brown-medium/20"
+          className="w-full rounded-lg border-2 border-border-theme/30 bg-surface px-4 py-3 text-lg text-foreground placeholder:text-foreground-muted/50 focus:border-border-theme focus:outline-none focus:ring-2 focus:ring-border-theme/20"
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={isExpanded}
@@ -37,12 +37,12 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
         {isLoading && (
           <div data-testid="search-loading" className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-beige border-t-brown-dark" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-surface-muted border-t-foreground" />
           </div>
         )}
 
         {!isLoading && value.length === 0 && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-5 w-5"

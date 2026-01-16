@@ -341,6 +341,6 @@ describe("DeathsByDecadePage", () => {
 
     // Current decade should be highlighted
     const currentDecade = screen.getByText("1990s")
-    expect(currentDecade).toHaveClass("bg-brown-dark")
+    expect(currentDecade).toHaveClass("bg-foreground")
   })
 })

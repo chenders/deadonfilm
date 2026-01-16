@@ -10,11 +10,11 @@ export default function ThisWeekDeaths() {
   if (isLoading) {
     return (
       <section data-testid="this-week-deaths" className="mt-8">
-        <div className="animate-pulse rounded-lg bg-beige p-4">
-          <div className="mb-3 h-5 w-56 rounded bg-brown-medium/20" />
+        <div className="animate-pulse rounded-lg bg-surface p-4">
+          <div className="mb-3 h-5 w-56 rounded bg-border-theme/20" />
           <div className="flex gap-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 w-16 rounded bg-brown-medium/20" />
+              <div key={i} className="h-24 w-16 rounded bg-border-theme/20" />
             ))}
           </div>
         </div>
@@ -30,7 +30,7 @@ export default function ThisWeekDeaths() {
     <section data-testid="this-week-deaths" className="mt-8">
       <h2
         data-testid="this-week-title"
-        className="mb-3 text-center font-display text-xl text-brown-dark"
+        className="mb-3 text-center font-display text-xl text-foreground"
       >
         This Week in History ({data.weekRange.start} - {data.weekRange.end})
       </h2>
@@ -40,7 +40,7 @@ export default function ThisWeekDeaths() {
           <Link
             key={death.id}
             to={`/actor/${createActorSlug(death.name, death.id)}`}
-            className="animate-fade-slide-in flex w-20 flex-col items-center rounded-lg bg-beige p-2 text-center transition-colors hover:bg-cream"
+            className="animate-fade-slide-in flex w-20 flex-col items-center rounded-lg bg-surface p-2 text-center transition-colors hover:bg-surface-muted"
             style={{ animationDelay: `${index * 50}ms` }}
           >
             {death.profilePath ? (
@@ -53,12 +53,12 @@ export default function ThisWeekDeaths() {
                 className="mb-1 h-[70px] w-14 rounded object-cover"
               />
             ) : (
-              <div className="mb-1 flex h-[70px] w-14 items-center justify-center rounded bg-brown-medium/20">
-                <PersonIcon size={24} className="text-text-muted" />
+              <div className="mb-1 flex h-[70px] w-14 items-center justify-center rounded bg-border-theme/20">
+                <PersonIcon size={24} className="text-foreground-muted" />
               </div>
             )}
 
-            <h3 className="w-full truncate text-xs font-medium text-brown-dark" title={death.name}>
+            <h3 className="w-full truncate text-xs font-medium text-foreground" title={death.name}>
               {death.name}
             </h3>
             <p className="text-xs text-accent">
@@ -67,7 +67,7 @@ export default function ThisWeekDeaths() {
                 day: "numeric",
               })}
             </p>
-            <p className="text-xs text-text-muted">{death.yearOfDeath}</p>
+            <p className="text-xs text-foreground-muted">{death.yearOfDeath}</p>
           </Link>
         ))}
       </div>

@@ -43,7 +43,7 @@ describe("EmptyStateCard", () => {
     const { container } = render(<EmptyStateCard type="no-results" />)
 
     // Check for film strip decoration elements (10 total - 5 top + 5 bottom)
-    const decorations = container.querySelectorAll(".bg-brown-medium\\/15")
+    const decorations = container.querySelectorAll('[class*="bg-border-theme"]')
     expect(decorations.length).toBe(10)
   })
 

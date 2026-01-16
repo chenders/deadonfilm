@@ -130,9 +130,9 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           </svg>
         </button>
 
-        <div className="rounded-lg bg-cream shadow-2xl">
+        <div className="rounded-lg bg-surface shadow-2xl">
           {/* Media type toggle */}
-          <div className="flex justify-center border-b border-brown-medium/20 pb-3 pt-4">
+          <div className="flex justify-center border-b border-border-theme/20 pb-3 pt-4">
             <MediaTypeToggle value={mediaType} onChange={setMediaType} />
           </div>
 
@@ -161,15 +161,15 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             />
 
             {/* Keyboard hint */}
-            <p className="mt-2 hidden text-center text-xs text-text-muted sm:block">
-              Press <kbd className="rounded bg-brown-medium/20 px-1.5 py-0.5 font-mono">Esc</kbd> to
+            <p className="mt-2 hidden text-center text-xs text-foreground-muted sm:block">
+              Press <kbd className="rounded bg-border-theme/20 px-1.5 py-0.5 font-mono">Esc</kbd> to
               close
             </p>
           </div>
 
           {/* Results dropdown */}
           {isDropdownOpen && results.length > 0 && (
-            <div className="border-t border-brown-medium/20">
+            <div className="border-t border-border-theme/20">
               <SearchDropdown
                 id={listboxId}
                 results={results}
@@ -185,12 +185,12 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           {isDropdownOpen && query.length >= 2 && !isLoading && results.length === 0 && (
             <div
               data-testid="search-modal-no-results"
-              className="border-t border-brown-medium/20 p-4 text-center"
+              className="border-t border-border-theme/20 p-4 text-center"
             >
-              <p className="mb-1 font-display text-sm uppercase tracking-wide text-brown-dark">
+              <p className="mb-1 font-display text-sm uppercase tracking-wide text-foreground">
                 End of Reel
               </p>
-              <p className="text-sm text-text-muted">
+              <p className="text-sm text-foreground-muted">
                 No results found for "<span className="italic">{query}</span>"
               </p>
             </div>

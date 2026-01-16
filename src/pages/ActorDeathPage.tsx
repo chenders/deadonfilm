@@ -37,7 +37,7 @@ function ConfidenceIndicator({ level }: { level: string | null }) {
           className={`h-2 w-2 rounded-full ${i <= config.dots ? config.color : "bg-gray-300"}`}
         />
       ))}
-      <span className="ml-1 text-xs text-text-muted">{config.label}</span>
+      <span className="ml-1 text-xs text-foreground-muted">{config.label}</span>
     </div>
   )
 }
@@ -92,7 +92,7 @@ function FactorBadge({ factor }: { factor: string }) {
 
   return (
     <span
-      className="inline-block rounded-full bg-beige px-2 py-0.5 text-xs text-brown-dark"
+      className="inline-block rounded-full bg-surface-muted px-2 py-0.5 text-xs text-foreground"
       data-testid="factor-badge"
     >
       {formatted}
@@ -118,7 +118,7 @@ function ProjectLink({ project }: { project: ProjectInfo }) {
 
   if (url) {
     return (
-      <Link to={url} className="text-brown-dark underline hover:text-brown-medium">
+      <Link to={url} className="text-foreground underline hover:text-foreground-muted">
         {displayText}
       </Link>
     )
@@ -131,7 +131,7 @@ function ProjectLink({ project }: { project: ProjectInfo }) {
         href={`https://www.imdb.com/title/${project.imdb_id}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-brown-dark underline hover:text-brown-medium"
+        className="text-foreground underline hover:text-foreground-muted"
       >
         {displayText}
         <ExternalLinkIcon size={12} className="ml-1 inline" />
@@ -148,16 +148,16 @@ function SourceList({ sources, title }: { sources: SourceEntry[] | null; title: 
 
   return (
     <div className="mt-2" data-testid={`sources-${title.toLowerCase()}`}>
-      <h4 className="text-xs font-medium text-text-muted">{title}:</h4>
+      <h4 className="text-xs font-medium text-foreground-muted">{title}:</h4>
       <ul className="mt-1 space-y-1">
         {sources.map((source, idx) => (
-          <li key={idx} className="text-xs text-text-muted">
+          <li key={idx} className="text-xs text-foreground-muted">
             {source.url || source.archiveUrl ? (
               <a
                 href={source.archiveUrl || source.url || "#"}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline hover:text-brown-dark"
+                className="underline hover:text-foreground"
               >
                 {source.description}
                 <ExternalLinkIcon size={10} className="ml-1 inline" />
@@ -176,8 +176,8 @@ function SourceList({ sources, title }: { sources: SourceEntry[] | null; title: 
 function RelatedCelebrityCard({ celebrity }: { celebrity: RelatedCelebrity }) {
   const content = (
     <div className="rounded-lg bg-white p-3">
-      <p className="font-medium text-brown-dark">{celebrity.name}</p>
-      <p className="mt-1 text-sm text-text-muted">{celebrity.relationship}</p>
+      <p className="font-medium text-foreground">{celebrity.name}</p>
+      <p className="mt-1 text-sm text-foreground-muted">{celebrity.relationship}</p>
     </div>
   )
 
@@ -185,7 +185,7 @@ function RelatedCelebrityCard({ celebrity }: { celebrity: RelatedCelebrity }) {
     return (
       <Link
         to={`/actor/${celebrity.slug}`}
-        className="block transition-colors hover:bg-cream"
+        className="block transition-colors hover:bg-surface-muted"
         data-testid="related-celebrity"
       >
         {content}
@@ -255,7 +255,7 @@ export default function ActorDeathPage() {
         {/* Back link */}
         <Link
           to={`/actor/${actorSlug}`}
-          className="mb-4 inline-flex items-center text-sm text-text-muted hover:text-brown-dark"
+          className="mb-4 inline-flex items-center text-sm text-foreground-muted hover:text-foreground"
           data-testid="back-to-actor"
         >
           &larr; Back to {actor.name}
@@ -275,8 +275,8 @@ export default function ActorDeathPage() {
                 data-testid="actor-photo"
               />
             ) : (
-              <div className="flex h-[133px] w-[100px] flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-md">
-                <PersonIcon size={48} className="text-text-muted" />
+              <div className="flex h-[133px] w-[100px] flex-shrink-0 items-center justify-center rounded-lg bg-surface-muted shadow-md">
+                <PersonIcon size={48} className="text-foreground-muted" />
               </div>
             )}
 
@@ -284,7 +284,7 @@ export default function ActorDeathPage() {
             <div className="flex-1 text-center sm:text-left">
               <h1 className="font-display text-2xl text-accent">{actor.name}</h1>
 
-              <div className="mt-2 space-y-1 text-sm text-text-muted">
+              <div className="mt-2 space-y-1 text-sm text-foreground-muted">
                 {actor.birthday && (
                   <p>
                     <span className="font-medium">Born:</span> {formatDate(actor.birthday)}
@@ -324,8 +324,8 @@ export default function ActorDeathPage() {
         {/* What We Know section */}
         {circumstances.official && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="official-section">
-            <h2 className="mb-3 font-display text-lg text-brown-dark">What We Know</h2>
-            <p className="leading-relaxed text-text-muted">{circumstances.official}</p>
+            <h2 className="mb-3 font-display text-lg text-foreground">What We Know</h2>
+            <p className="leading-relaxed text-foreground-muted">{circumstances.official}</p>
             {circumstances.confidence && (
               <div className="mt-3">
                 <ConfidenceIndicator level={circumstances.confidence} />
@@ -338,8 +338,8 @@ export default function ActorDeathPage() {
         {/* Disputed/Alternative Accounts section */}
         {circumstances.rumored && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="rumored-section">
-            <h2 className="mb-3 font-display text-lg text-brown-dark">Alternative Accounts</h2>
-            <p className="leading-relaxed text-text-muted">{circumstances.rumored}</p>
+            <h2 className="mb-3 font-display text-lg text-foreground">Alternative Accounts</h2>
+            <p className="leading-relaxed text-foreground-muted">{circumstances.rumored}</p>
             <SourceList sources={sources.rumored} title="Sources" />
           </section>
         )}
@@ -347,16 +347,18 @@ export default function ActorDeathPage() {
         {/* Additional Context */}
         {circumstances.additionalContext && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="context-section">
-            <h2 className="mb-3 font-display text-lg text-brown-dark">Additional Context</h2>
-            <p className="leading-relaxed text-text-muted">{circumstances.additionalContext}</p>
+            <h2 className="mb-3 font-display text-lg text-foreground">Additional Context</h2>
+            <p className="leading-relaxed text-foreground-muted">
+              {circumstances.additionalContext}
+            </p>
           </section>
         )}
 
         {/* Career Context section */}
         {(career.statusAtDeath || career.lastProject || career.posthumousReleases?.length) && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="career-section">
-            <h2 className="mb-3 font-display text-lg text-brown-dark">Career Context</h2>
-            <div className="space-y-2 text-sm text-text-muted">
+            <h2 className="mb-3 font-display text-lg text-foreground">Career Context</h2>
+            <div className="space-y-2 text-sm text-foreground-muted">
               {career.statusAtDeath && (
                 <p>
                   <span className="font-medium">Status at Death:</span>{" "}
@@ -388,7 +390,7 @@ export default function ActorDeathPage() {
         {/* Related People section */}
         {relatedCelebrities.length > 0 && (
           <section className="mb-6" data-testid="related-section">
-            <h2 className="mb-3 font-display text-lg text-brown-dark">Related People</h2>
+            <h2 className="mb-3 font-display text-lg text-foreground">Related People</h2>
             <div className="grid gap-2 sm:grid-cols-2">
               {relatedCelebrities.map((celebrity, idx) => (
                 <RelatedCelebrityCard key={idx} celebrity={celebrity} />
@@ -400,7 +402,7 @@ export default function ActorDeathPage() {
         {/* Sources section */}
         {sources.cause && sources.cause.length > 0 && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="sources-section">
-            <h2 className="mb-3 font-display text-lg text-brown-dark">Sources</h2>
+            <h2 className="mb-3 font-display text-lg text-foreground">Sources</h2>
             <SourceList sources={sources.cause} title="Cause of Death" />
           </section>
         )}

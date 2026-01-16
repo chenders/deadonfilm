@@ -18,7 +18,7 @@ export default function DeceasedList({ actors, isPolling = false }: DeceasedList
 
   return (
     <div data-testid="deceased-list">
-      <h2 data-testid="deceased-list-title" className="mb-4 font-display text-2xl text-brown-dark">
+      <h2 data-testid="deceased-list-title" className="mb-4 font-display text-2xl text-foreground">
         Deceased Cast Members
       </h2>
 

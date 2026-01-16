@@ -19,10 +19,10 @@ function StatCard({
   testId?: string
 }) {
   const content = (
-    <div className="flex items-center gap-2 text-text-muted">
-      <span className="text-brown-medium/60">{icon}</span>
+    <div className="flex items-center gap-2 text-foreground-muted">
+      <span className="text-foreground-muted/60">{icon}</span>
       <span className="text-sm">
-        <span className="font-medium text-brown-dark">{value}</span>{" "}
+        <span className="font-medium text-foreground">{value}</span>{" "}
         <span className="text-xs">{label}</span>
       </span>
     </div>

@@ -17,7 +17,7 @@ export default function NotableActorCard({ actor }: NotableActorCardProps) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`notable-actor-${actor.tmdbId ?? actor.id}`}
-      className="flex flex-col items-center rounded-lg bg-white p-3 text-center transition-colors hover:bg-cream"
+      className="flex flex-col items-center rounded-lg bg-surface p-3 text-center transition-colors hover:bg-surface-muted"
     >
       {profileUrl ? (
         <img
@@ -26,14 +26,14 @@ export default function NotableActorCard({ actor }: NotableActorCardProps) {
           className="mb-2 h-16 w-16 rounded-full object-cover"
         />
       ) : (
-        <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-beige">
-          <PersonIcon size={32} className="text-brown-medium" />
+        <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-surface-muted">
+          <PersonIcon size={32} className="text-foreground-muted" />
         </div>
       )}
-      <h3 className="truncate font-medium text-brown-dark" style={{ maxWidth: "100%" }}>
+      <h3 className="truncate font-medium text-foreground" style={{ maxWidth: "100%" }}>
         {actor.name}
       </h3>
-      <p className="text-xs text-text-muted">
+      <p className="text-xs text-foreground-muted">
         Age {actor.ageAtDeath || "?"} · {formatDate(actor.deathday)}
       </p>
     </Link>
