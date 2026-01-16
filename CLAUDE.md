@@ -83,6 +83,8 @@ npm test && cd server && npm test
 
 ### Git Workflow
 
+**NEVER commit directly to `main`** - always use feature branches (see Critical Rule #4).
+
 Commit format:
 
 ```bash
