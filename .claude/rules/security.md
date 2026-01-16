@@ -5,24 +5,22 @@ globs: ["**/*.ts", "**/*.tsx"]
 
 ## HTML Sanitization
 
-When stripping HTML tags from external content (scraping, API responses), simple regex like `/<[^>]+>/g` is **insufficient**. It fails on:
+Simple regex like `/<[^>]+>/g` is **insufficient** for standalone use. It fails on:
 - Malformed tags: `<script` (no closing `>`)
 - Tags with spaces: `</script >`
 - Nested/repeated patterns
 
-**Correct approach - iterative removal:**
+**Correct approach:** Use `htmlToText()` from `server/src/lib/death-sources/html-utils.ts`:
 
 ```typescript
-function stripHtmlTags(html: string): string {
-  let result = html
-  let previousLength: number
-  do {
-    previousLength = result.length
-    result = result.replace(/<[^>]*>/g, "")
-  } while (result.length < previousLength)
-  // Remove any remaining angle brackets from incomplete tags
-  return result.replace(/[<>]/g, "")
-}
+import { htmlToText } from "./html-utils.js"
+
+// Complete sanitization pipeline:
+// 1. Removes script/style tags via state machines
+// 2. Strips remaining HTML tags
+// 3. Decodes HTML entities
+// 4. Normalizes whitespace
+const cleanText = htmlToText(untrustedHtml)
 ```
 
 ## HTML Entity Decoding
@@ -53,7 +51,7 @@ const pattern = new RegExp(actorName)
 
 // CORRECT - escape special characters
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")
+  return str.replace(/[-.*+?^${}()|[\]\\]/g, "\\$&")
 }
 const pattern = new RegExp(escapeRegex(actorName))
 ```

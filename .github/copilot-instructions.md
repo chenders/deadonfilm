@@ -165,19 +165,12 @@ A movie is "obscure" if:
 
 ### HTML Sanitization
 
-Simple regex `/<[^>]+>/g` is insufficient. Use iterative removal:
+Simple regex `/<[^>]+>/g` is insufficient for standalone use. Use the `htmlToText()` function from `server/src/lib/death-sources/html-utils.ts` which provides complete sanitization:
 
-```typescript
-function stripHtmlTags(html: string): string {
-  let result = html
-  let previousLength: number
-  do {
-    previousLength = result.length
-    result = result.replace(/<[^>]*>/g, "")
-  } while (result.length < previousLength)
-  return result.replace(/[<>]/g, "")  // Remove remaining brackets
-}
-```
+1. Removes script/style tags via state machines
+2. Strips remaining HTML tags
+3. Decodes HTML entities
+4. Normalizes whitespace
 
 ### HTML Entity Decoding
 
@@ -197,7 +190,7 @@ Escape user input in RegExp:
 
 ```typescript
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")
+  return str.replace(/[-.*+?^${}()|[\]\\]/g, "\\$&")
 }
 ```
 
