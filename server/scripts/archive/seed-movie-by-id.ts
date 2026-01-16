@@ -13,15 +13,15 @@
 
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
-import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../src/lib/tmdb.js"
-import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
+import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../../src/lib/tmdb.js"
+import { calculateMovieMortality } from "../../src/lib/mortality-stats.js"
 import {
   upsertMovie,
   batchUpsertActorMovieAppearances,
   upsertActor,
   type MovieRecord,
   type ActorMovieAppearanceRecord,
-} from "../src/lib/db.js"
+} from "../../src/lib/db.js"
 
 const CAST_LIMIT = 30
 

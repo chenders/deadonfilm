@@ -32,7 +32,7 @@ export { WikipediaSource } from "./sources/wikipedia.js"
 export { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 export { PerplexitySource } from "./ai-providers/perplexity.js"
 export { DeepSeekSource } from "./ai-providers/deepseek.js"
-// export { GrokSource } from "./ai-providers/grok.js"
+export { GrokSource } from "./ai-providers/grok.js"
 
 // Main orchestrator
 export {
