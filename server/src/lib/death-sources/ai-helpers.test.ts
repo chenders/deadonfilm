@@ -6,12 +6,15 @@
  * and cost estimation.
  */
 
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   estimateLinkSelectionCost,
   estimateExtractionCost,
   DEFAULT_AI_HELPER_MODEL,
+  aiSelectLinks,
+  aiExtractDeathInfo,
 } from "./ai-helpers.js"
+import type { ActorForEnrichment } from "./types.js"
 
 describe("AI Helpers", () => {
   describe("DEFAULT_AI_HELPER_MODEL", () => {
@@ -75,6 +78,78 @@ describe("AI Helpers", () => {
       const cost10k = estimateExtractionCost(10000)
       // Longer content should cost more
       expect(cost10k).toBeGreaterThan(cost1k)
+    })
+  })
+
+  describe("aiSelectLinks", () => {
+    const mockActor: ActorForEnrichment = {
+      id: 123,
+      tmdbId: 456,
+      name: "Test Actor",
+      birthday: "1950-01-01",
+      deathday: "2020-01-15",
+      causeOfDeath: null,
+      causeOfDeathDetails: null,
+      popularity: 10,
+    }
+
+    const originalApiKey = process.env.ANTHROPIC_API_KEY
+
+    beforeEach(() => {
+      // Clear API key to test error handling
+      delete process.env.ANTHROPIC_API_KEY
+    })
+
+    afterEach(() => {
+      // Restore original API key
+      if (originalApiKey) {
+        process.env.ANTHROPIC_API_KEY = originalApiKey
+      } else {
+        delete process.env.ANTHROPIC_API_KEY
+      }
+    })
+
+    it("throws error when ANTHROPIC_API_KEY is missing", async () => {
+      const searchResults = [{ url: "https://example.com", title: "Test", snippet: "Test snippet" }]
+
+      await expect(aiSelectLinks(mockActor, searchResults, 3)).rejects.toThrow(
+        "ANTHROPIC_API_KEY required for AI link selection"
+      )
+    })
+  })
+
+  describe("aiExtractDeathInfo", () => {
+    const mockActor: ActorForEnrichment = {
+      id: 123,
+      tmdbId: 456,
+      name: "Test Actor",
+      birthday: "1950-01-01",
+      deathday: "2020-01-15",
+      causeOfDeath: null,
+      causeOfDeathDetails: null,
+      popularity: 10,
+    }
+
+    const originalApiKey = process.env.ANTHROPIC_API_KEY
+
+    beforeEach(() => {
+      // Clear API key to test error handling
+      delete process.env.ANTHROPIC_API_KEY
+    })
+
+    afterEach(() => {
+      // Restore original API key
+      if (originalApiKey) {
+        process.env.ANTHROPIC_API_KEY = originalApiKey
+      } else {
+        delete process.env.ANTHROPIC_API_KEY
+      }
+    })
+
+    it("throws error when ANTHROPIC_API_KEY is missing", async () => {
+      await expect(
+        aiExtractDeathInfo(mockActor, "Page content", "https://example.com")
+      ).rejects.toThrow("ANTHROPIC_API_KEY required for AI content extraction")
     })
   })
 })

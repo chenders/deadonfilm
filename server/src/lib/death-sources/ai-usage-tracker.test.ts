@@ -158,14 +158,16 @@ describe("AI Usage Tracker", () => {
             calls: "100",
             total_cost: "0.50",
             avg_latency: "1500",
-            avg_quality: "0.8",
+            high_quality_count: "80",
+            rated_count: "100",
           },
           {
             model: "gpt-4o-mini",
             calls: "50",
             total_cost: "0.15",
             avg_latency: "800",
-            avg_quality: "0.7",
+            high_quality_count: "35",
+            rated_count: "50",
           },
         ],
       })
@@ -174,7 +176,9 @@ describe("AI Usage Tracker", () => {
 
       expect(result.size).toBe(2)
       expect(result.get("claude-sonnet-4-20250514")?.calls).toBe(100)
+      expect(result.get("claude-sonnet-4-20250514")?.avgQuality).toBe(0.8) // 80/100
       expect(result.get("gpt-4o-mini")?.calls).toBe(50)
+      expect(result.get("gpt-4o-mini")?.avgQuality).toBe(0.7) // 35/50
     })
   })
 
