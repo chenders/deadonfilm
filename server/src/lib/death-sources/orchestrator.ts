@@ -18,6 +18,7 @@ import type {
   SourceAttemptStats,
   RawSourceData,
   CleanedDeathInfo,
+  LinkFollowConfig,
 } from "./types.js"
 import { DataSourceType, CostLimitExceededError, SourceAccessBlockedError } from "./types.js"
 import { cleanupWithClaude } from "./claude-cleanup.js"
@@ -25,20 +26,28 @@ import { StatusBar } from "./status-bar.js"
 import { EnrichmentLogger, getEnrichmentLogger } from "./logger.js"
 import { WikidataSource } from "./sources/wikidata.js"
 import { DuckDuckGoSource } from "./sources/duckduckgo.js"
+import { GoogleSearchSource } from "./sources/google.js"
+import { BingSearchSource } from "./sources/bing.js"
+import { WebSearchBase } from "./sources/web-search-base.js"
 import { FindAGraveSource } from "./sources/findagrave.js"
 import { LegacySource } from "./sources/legacy.js"
 import { TelevisionAcademySource } from "./sources/television-academy.js"
-import { IBDBSource } from "./sources/ibdb.js"
+// IBDBSource removed - consistently blocked by anti-scraping protection
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
 import { AlloCineSource } from "./sources/allocine.js"
 import { DoubanSource } from "./sources/douban.js"
 import { SoompiSource } from "./sources/soompi.js"
-import { FilmiBeatSource } from "./sources/filmibeat.js"
+// FilmiBeatSource removed - consistently blocked by anti-scraping protection (403)
 import { ChroniclingAmericaSource } from "./sources/chronicling-america.js"
 import { TroveSource } from "./sources/trove.js"
 import { EuropeanaSource } from "./sources/europeana.js"
 import { InternetArchiveSource } from "./sources/internet-archive.js"
+import { GuardianSource } from "./sources/guardian.js"
+import { NYTimesSource } from "./sources/nytimes.js"
+import { APNewsSource } from "./sources/ap-news.js"
+import { IMDbSource } from "./sources/imdb.js"
+import { FamilySearchSource } from "./sources/familysearch.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
@@ -61,6 +70,18 @@ export interface ExtendedEnrichmentResult extends EnrichmentResult {
 }
 
 /**
+ * Default link following configuration.
+ * Link following is enabled by default with heuristic selection.
+ */
+export const DEFAULT_LINK_FOLLOW_CONFIG: LinkFollowConfig = {
+  enabled: true,
+  maxLinksPerActor: 3,
+  maxCostPerActor: 0.01,
+  aiLinkSelection: false,
+  aiContentExtraction: false,
+}
+
+/**
  * Default enrichment configuration.
  */
 export const DEFAULT_CONFIG: EnrichmentConfig = {
@@ -77,6 +98,7 @@ export const DEFAULT_CONFIG: EnrichmentConfig = {
   aiModels: {},
   stopOnMatch: true,
   confidenceThreshold: 0.5,
+  linkFollow: DEFAULT_LINK_FOLLOW_CONFIG,
 }
 
 /**
@@ -113,26 +135,39 @@ export class DeathEnrichmentOrchestrator {
       // Phase 1: Structured data and industry archives
       new WikidataSource(),
       new WikipediaSource(), // Wikipedia Death section extraction
+      new IMDbSource(), // IMDb bio pages (scraped)
       new TelevisionAcademySource(), // Official TV industry deaths
-      new IBDBSource(), // Broadway actor deaths (may be blocked)
       new BFISightSoundSource(), // International film obituaries
 
-      // Phase 2: Search and obituaries
+      // Phase 2: Web Search (with link following)
+      // DuckDuckGo is free, Google and Bing have free tiers but may incur costs
       new DuckDuckGoSource(),
+      new GoogleSearchSource(),
+      new BingSearchSource(),
+
+      // Phase 3: News sources (APIs and scraping)
+      new GuardianSource(), // Guardian API - UK news (requires API key)
+      new NYTimesSource(), // NYT Article Search API (requires API key)
+      new APNewsSource(), // AP News (scraped)
+
+      // Phase 4: Obituary sites
       new FindAGraveSource(),
       new LegacySource(),
 
-      // Phase 3: International sources (regional film databases)
+      // Phase 5: International sources (regional film databases)
       new AlloCineSource(), // French film database
       new DoubanSource(), // Chinese entertainment database
       new SoompiSource(), // Korean entertainment news
-      new FilmiBeatSource(), // Indian (Bollywood) entertainment news
+      // FilmiBeatSource removed - consistently blocked by anti-scraping protection (403)
 
-      // Phase 4: Historical archives (for pre-internet deaths)
+      // Phase 6: Historical archives (for pre-internet deaths)
       new ChroniclingAmericaSource(), // US newspapers 1756-1963
       new TroveSource(), // Australian newspapers (requires API key)
       new EuropeanaSource(), // European archives (requires API key)
       new InternetArchiveSource(), // Books, documents, historical media
+
+      // Phase 7: Genealogical records (good for historical death dates/places)
+      new FamilySearchSource(), // FamilySearch API (requires API key)
     ]
 
     // Filter based on configuration
@@ -165,10 +200,30 @@ export class DeathEnrichmentOrchestrator {
       }
     }
 
+    // Configure link following for web search sources
+    if (this.config.linkFollow) {
+      for (const source of this.sources) {
+        if (source instanceof WebSearchBase) {
+          source.setLinkFollowConfig(this.config.linkFollow)
+        }
+      }
+    }
+
     console.log(`Initialized ${this.sources.length} data sources:`)
     for (const source of this.sources) {
       console.log(
         `  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`})`
+      )
+    }
+
+    // Log link following configuration
+    if (this.config.linkFollow?.enabled) {
+      console.log(`\nLink following enabled:`)
+      console.log(`  Max links per actor: ${this.config.linkFollow.maxLinksPerActor}`)
+      console.log(`  Max cost per actor: $${this.config.linkFollow.maxCostPerActor}`)
+      console.log(`  AI link selection: ${this.config.linkFollow.aiLinkSelection ? "yes" : "no"}`)
+      console.log(
+        `  AI content extraction: ${this.config.linkFollow.aiContentExtraction ? "yes" : "no"}`
       )
     }
   }
@@ -232,6 +287,11 @@ export class DeathEnrichmentOrchestrator {
 
     // Try each source in order until we have enough data
     for (const source of this.sources) {
+      // Skip sources that have hit rate limits
+      if (this.statusBar.getExhaustedSources().includes(source.name)) {
+        continue
+      }
+
       const sourceStartTime = Date.now()
 
       this.statusBar.setCurrentSource(source.name)
@@ -272,6 +332,9 @@ export class DeathEnrichmentOrchestrator {
       actorStats.sourcesAttempted.push(attemptStats)
       actorStats.totalCostUsd += sourceCost
 
+      // Track source attempt in status bar
+      this.statusBar.recordSourceAttempt(source.name, lookupResult.success)
+
       // Track cost breakdown by source
       this.addCostToBreakdown(costBreakdown, source.type, sourceCost)
 
@@ -298,6 +361,13 @@ export class DeathEnrichmentOrchestrator {
       if (!lookupResult.success || !lookupResult.data) {
         this.logger.sourceFailed(actor.name, source.type, lookupResult.error || "No data")
         this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
+
+        // Check for rate limit errors and mark source as exhausted
+        const errorLower = (lookupResult.error || "").toLowerCase()
+        if (errorLower.includes("rate limit") || errorLower.includes("quota exceeded")) {
+          this.statusBar.markSourceExhausted(source.name)
+        }
+
         continue
       }
 
@@ -305,6 +375,7 @@ export class DeathEnrichmentOrchestrator {
       const fieldsFound = this.getFieldsFromData(lookupResult.data)
       this.logger.sourceSuccess(actor.name, source.type, fieldsFound)
       this.statusBar.log(`    Success! Confidence: ${lookupResult.source.confidence.toFixed(2)}`)
+      this.statusBar.setLastWinningSource(source.name)
 
       // In cleanup mode, collect raw data for later processing
       if (isCleanupMode && lookupResult.data.circumstances) {
@@ -322,6 +393,42 @@ export class DeathEnrichmentOrchestrator {
 
       // Merge data into result (for non-cleanup mode or as fallback)
       this.mergeData(result, lookupResult.data, lookupResult.source)
+
+      // Process additional results (for multi-story sources like Guardian, NYT)
+      if (lookupResult.additionalResults && lookupResult.additionalResults.length > 0) {
+        this.statusBar.log(`    + ${lookupResult.additionalResults.length} additional stories`)
+
+        for (const additional of lookupResult.additionalResults) {
+          if (additional.data) {
+            // In cleanup mode, collect raw data for later processing
+            if (isCleanupMode && additional.data.circumstances) {
+              rawSources.push({
+                sourceName: `${source.name} (additional)`,
+                sourceType: source.type,
+                text: additional.data.circumstances,
+                url: additional.source.url || undefined,
+                confidence: additional.source.confidence,
+              })
+            }
+
+            // Merge additional context into result
+            if (additional.data.additionalContext && !result.additionalContext) {
+              result.additionalContext = additional.data.additionalContext
+              result.additionalContextSource = additional.source
+            }
+
+            // Merge notable factors
+            if (additional.data.notableFactors && additional.data.notableFactors.length > 0) {
+              const existing = result.notableFactors || []
+              const merged = [...new Set([...existing, ...additional.data.notableFactors])]
+              result.notableFactors = merged.slice(0, 10)
+              if (!result.notableFactorsSource) {
+                result.notableFactorsSource = additional.source
+              }
+            }
+          }
+        }
+      }
 
       // In gather-all mode, keep going through all sources
       if (gatherAll) {
@@ -523,6 +630,13 @@ export class DeathEnrichmentOrchestrator {
   }
 
   /**
+   * Get the status bar instance for direct access.
+   */
+  getStatusBar(): StatusBar {
+    return this.statusBar
+  }
+
+  /**
    * Merge enrichment data into result.
    */
   private mergeData(
@@ -625,6 +739,7 @@ export class DeathEnrichmentOrchestrator {
 
     if (actorStats.fieldsFilledAfter.length > 0) {
       this.stats.actorsEnriched++
+      this.statusBar.incrementEnriched()
     }
 
     // Update source hit rates and cost by source

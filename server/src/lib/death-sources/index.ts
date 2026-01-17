@@ -21,6 +21,8 @@ export {
 // Source implementations
 export { WikidataSource } from "./sources/wikidata.js"
 export { DuckDuckGoSource } from "./sources/duckduckgo.js"
+export { GoogleSearchSource } from "./sources/google.js"
+export { BingSearchSource } from "./sources/bing.js"
 export { FindAGraveSource } from "./sources/findagrave.js"
 export { LegacySource } from "./sources/legacy.js"
 export { TelevisionAcademySource } from "./sources/television-academy.js"
@@ -66,6 +68,11 @@ export {
   getCachedQueriesForActor,
   deleteCachedQueriesOlderThan,
   deleteCachedQueriesForSource,
+  clearWebSearchCache,
+  clearCacheForActor,
+  clearCacheForActors,
+  clearAllCache,
+  resetActorEnrichmentStatus,
   type CachedQueryResult,
   type CacheEntry,
   type CacheStats,
