@@ -2221,13 +2221,39 @@ async function enrichMissingDetails(options: {
           notableFactors && notableFactors.length > 0 ? notableFactors : null,
           additionalContext,
           relatedDeaths,
-          JSON.stringify({
-            circumstances: enrichment.circumstancesSource,
-            rumoredCircumstances: enrichment.rumoredCircumstancesSource,
-            notableFactors: enrichment.notableFactorsSource,
-            locationOfDeath: enrichment.locationOfDeathSource,
-            cleanupSource: cleaned ? "claude-opus-4.5" : null,
-          }),
+          (() => {
+            const rawSources = enrichment.rawSources
+            const hasRawSources = rawSources && rawSources.length > 0
+            return JSON.stringify(
+              hasRawSources
+                ? {
+                    // When Claude cleanup gathered multiple sources, include all of them
+                    circumstances: rawSources.map((rs) => ({
+                      url: rs.url || null,
+                      archive_url: null,
+                      description: `Source: ${rs.sourceName}`,
+                    })),
+                    rumoredCircumstances: enrichment.rumoredCircumstancesSource
+                      ? [
+                          {
+                            url: enrichment.rumoredCircumstancesSource.url || null,
+                            archive_url: null,
+                            description: `Source: ${enrichment.rumoredCircumstancesSource.type}`,
+                          },
+                        ]
+                      : null,
+                    cleanupSource: "claude-opus-4.5",
+                  }
+                : {
+                    // Single source mode - use the winning source for each field
+                    circumstances: enrichment.circumstancesSource,
+                    rumoredCircumstances: enrichment.rumoredCircumstancesSource,
+                    notableFactors: enrichment.notableFactorsSource,
+                    locationOfDeath: enrichment.locationOfDeathSource,
+                    cleanupSource: cleaned ? "claude-opus-4.5" : null,
+                  }
+            )
+          })(),
           enrichment.rawSources
             ? JSON.stringify({
                 rawSources: enrichment.rawSources,
@@ -2260,12 +2286,6 @@ async function enrichMissingDetails(options: {
             name: actorRecord.name,
           })
         }
-      }
-
-      // Invalidate the actor's cache so updated death info is reflected immediately
-      const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
-      if (actorRecord?.tmdbId) {
-        await invalidateActorCache(actorRecord.tmdbId)
       }
 
       updated++
@@ -2324,6 +2344,17 @@ async function enrichMissingDetails(options: {
     if (updated > 0) {
       await rebuildDeathCaches()
       console.log("\nRebuilt death caches")
+
+      // Invalidate individual actor caches (must happen after rebuildDeathCaches
+      // because that's when Redis connection is established)
+      for (const actor of deathPageActors) {
+        if (actor.tmdbId) {
+          await invalidateActorCache(actor.tmdbId)
+        }
+      }
+      if (deathPageActors.length > 0) {
+        console.log(`Invalidated cache for ${deathPageActors.length} actor(s)`)
+      }
     }
 
     // Remove signal handlers before normal exit
