@@ -232,25 +232,59 @@ export class IMDbSource extends BaseDataSource {
    * Extract bio text from IMDb HTML.
    */
   private extractBioText(html: string): string | null {
-    // Try to find the bio section
-    const patterns = [
-      // Modern IMDb layout - look for mini-bio or overview section
-      /<section[^>]*data-testid="mini-bio"[^>]*>([\s\S]*?)<\/section>/i,
-      /<div[^>]*class="[^"]*ipc-html-content[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
-      // Legacy layout patterns
-      /<div[^>]*id="bio_content"[^>]*>([\s\S]*?)<\/div>/i,
-      /<div[^>]*class="[^"]*soda[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
-    ]
-
     let bioText = ""
 
-    for (const pattern of patterns) {
-      const matches = html.match(pattern)
-      if (matches) {
-        for (const match of Array.isArray(matches) ? matches : [matches]) {
-          const text = htmlToText(match)
-          if (text.length > 50) {
-            bioText += " " + text
+    // Extract death info from the "died" section (modern IMDb layout)
+    const diedSectionMatch = html.match(/<li[^>]*id="died"[^>]*>([\s\S]*?)<\/li>/i)
+    if (diedSectionMatch) {
+      const diedText = htmlToText(diedSectionMatch[1])
+      if (diedText.length > 10) {
+        bioText += " Died: " + diedText
+      }
+    }
+
+    // Extract from ipc-html-content-inner-div (contains actual text in modern layout)
+    const innerDivMatches = html.match(
+      /<div[^>]*class="[^"]*ipc-html-content-inner-div[^"]*"[^>]*>([\s\S]*?)<\/div>/gi
+    )
+    if (innerDivMatches) {
+      for (const match of innerDivMatches) {
+        const text = htmlToText(match)
+        if (text.length > 20) {
+          bioText += " " + text
+        }
+      }
+    }
+
+    // Also try ipc-html-content without -inner-div (older layout or tests)
+    const htmlContentMatches = html.match(
+      /<div[^>]*class="[^"]*ipc-html-content(?!-inner)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi
+    )
+    if (htmlContentMatches) {
+      for (const match of htmlContentMatches) {
+        const text = htmlToText(match)
+        if (text.length > 30) {
+          bioText += " " + text
+        }
+      }
+    }
+
+    // Try legacy patterns if modern layout didn't work
+    if (bioText.length < 50) {
+      const legacyPatterns = [
+        /<section[^>]*data-testid="mini-bio"[^>]*>([\s\S]*?)<\/section>/i,
+        /<div[^>]*id="bio_content"[^>]*>([\s\S]*?)<\/div>/i,
+        /<div[^>]*class="[^"]*soda[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
+      ]
+
+      for (const pattern of legacyPatterns) {
+        const matches = html.match(pattern)
+        if (matches) {
+          for (const match of Array.isArray(matches) ? matches : [matches]) {
+            const text = htmlToText(match)
+            if (text.length > 50) {
+              bioText += " " + text
+            }
           }
         }
       }
