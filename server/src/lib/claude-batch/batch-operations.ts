@@ -316,17 +316,18 @@ export async function processResults(
       const responseText = message.content[0].type === "text" ? message.content[0].text : ""
 
       try {
-        const jsonText = stripMarkdownCodeFences(responseText)
-
+        // parseClaudeResponse handles markdown stripping, jsonrepair, and Zod validation
         let parsed: ClaudeResponse
         try {
-          parsed = parseClaudeResponse(jsonText)
+          parsed = parseClaudeResponse(responseText)
         } catch (parseError) {
-          // Try to repair common JSON issues and retry
+          // parseClaudeResponse failed (jsonrepair + Zod validation)
+          // Try legacy repairJson as a last resort for edge cases jsonrepair misses
+          const jsonText = stripMarkdownCodeFences(responseText)
           const repairedJson = repairJson(jsonText)
           try {
             parsed = JSON.parse(repairedJson) as ClaudeResponse
-            console.log(`  [Repaired JSON for actor ${actorId}]`)
+            console.log(`  [Repaired JSON for actor ${actorId} using legacy repair]`)
           } catch {
             const errorMsg = parseError instanceof Error ? parseError.message : "JSON parse error"
             console.error(`JSON parse error for actor ${actorId}: ${errorMsg}`)

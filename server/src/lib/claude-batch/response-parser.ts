@@ -41,8 +41,12 @@ export function parseClaudeResponse(text: string): ClaudeResponse {
   let repaired: string
   try {
     repaired = jsonrepair(jsonText)
-  } catch {
-    // If jsonrepair fails, try parsing the original
+  } catch (error) {
+    // jsonrepair failed - log warning and fall back to original text
+    console.warn(
+      "[claude-batch] jsonrepair failed, falling back to original text:",
+      error instanceof Error ? error.message : error
+    )
     repaired = jsonText
   }
 
@@ -79,7 +83,8 @@ export function safeParseClaudeResponse(
  * - Trailing commas before } or ]
  * - NaN, undefined, Infinity literals (converts to null)
  *
- * @deprecated Use parseClaudeResponse() which uses jsonrepair package
+ * Note: parseClaudeResponse() uses the jsonrepair package which handles most cases.
+ * This function is kept as a fallback for edge cases that jsonrepair might miss.
  */
 export function repairJson(text: string): string {
   let repaired = text
