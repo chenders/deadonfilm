@@ -11,7 +11,7 @@ let newrelicAgent: NewRelicAgent | null = null
 
 export function initNewRelic(): void {
   if (!process.env.NEW_RELIC_LICENSE_KEY) {
-    console.log("NEW_RELIC_LICENSE_KEY not set - running without New Relic APM")
+    // Silent when not configured
     return
   }
 
@@ -19,7 +19,7 @@ export function initNewRelic(): void {
     // New Relic is a CommonJS module, so we need createRequire in ESM
     const require = createRequire(import.meta.url)
     newrelicAgent = require("newrelic")
-    console.log("New Relic APM initialized")
+    // Silent on success - New Relic logs its own startup message
   } catch (error) {
     console.error("Failed to initialize New Relic:", error)
   }

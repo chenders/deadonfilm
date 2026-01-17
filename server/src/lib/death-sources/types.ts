@@ -17,6 +17,8 @@ export enum DataSourceType {
   // AI Models
   CLAUDE = "claude",
   CLAUDE_BATCH = "claude_batch",
+  CLAUDE_LINK_SELECTOR = "claude_link_selector", // AI-assisted link selection
+  CLAUDE_PAGE_EXTRACTOR = "claude_page_extractor", // AI-assisted page content extraction
   OPENAI_GPT4O = "openai_gpt4o",
   OPENAI_GPT4O_MINI = "openai_gpt4o_mini",
   PERPLEXITY = "perplexity",
@@ -210,6 +212,8 @@ export interface SearchResult {
   url: string
   snippet: string
   source: DataSourceType
+  /** Domain extracted from URL (e.g., "cnn.com") */
+  domain?: string
 }
 
 /**
@@ -423,6 +427,71 @@ export interface CostLimitConfig {
 }
 
 /**
+ * Configuration for following links from web search results.
+ */
+export interface LinkFollowConfig {
+  /** Enable link following from search results (default: true) */
+  enabled: boolean
+  /** Maximum number of links to follow per actor (default: 3) */
+  maxLinksPerActor: number
+  /** Maximum cost for link following operations per actor in USD (default: 0.01) */
+  maxCostPerActor: number
+  /** Use Claude to intelligently select which links to visit (default: false) */
+  aiLinkSelection: boolean
+  /** Use Claude to extract death info from fetched page content (default: false) */
+  aiContentExtraction: boolean
+  /** Optional allowlist of domains to prefer (e.g., ["cnn.com", "bbc.com"]) */
+  allowedDomains?: string[]
+  /** Optional blocklist of domains to skip (e.g., ["pinterest.com", "imdb.com"]) */
+  blockedDomains?: string[]
+}
+
+/**
+ * Default link follow configuration.
+ */
+export const DEFAULT_LINK_FOLLOW_CONFIG: LinkFollowConfig = {
+  enabled: true,
+  maxLinksPerActor: 3,
+  maxCostPerActor: 0.01,
+  aiLinkSelection: false,
+  aiContentExtraction: false,
+}
+
+/**
+ * Result from fetching a page for link following.
+ */
+export interface FetchedPage {
+  url: string
+  title: string
+  content: string // Plain text content extracted from HTML
+  contentLength: number
+  fetchTimeMs: number
+  error?: string
+}
+
+/**
+ * Result from AI link selection.
+ */
+export interface LinkSelectionResult {
+  selectedUrls: string[]
+  reasoning?: string
+  costUsd: number
+}
+
+/**
+ * Result from AI content extraction.
+ */
+export interface ContentExtractionResult {
+  circumstances: string | null
+  causeOfDeath: string | null
+  dateOfDeath: string | null
+  locationOfDeath: string | null
+  notableFactors: string[]
+  confidence: number
+  costUsd: number
+}
+
+/**
  * Complete enrichment configuration.
  */
 export interface EnrichmentConfig {
@@ -440,6 +509,82 @@ export interface EnrichmentConfig {
   costLimits?: CostLimitConfig
   /** Claude Opus 4.5 cleanup configuration */
   claudeCleanup?: ClaudeCleanupConfig
+  /** Link following configuration for web search sources */
+  linkFollow?: LinkFollowConfig
+}
+
+// ============================================================================
+// Enrichment Run Tracking Types
+// ============================================================================
+
+/**
+ * Database record for an enrichment script run.
+ */
+export interface EnrichmentRunRecord {
+  id?: number
+  startedAt: Date
+  completedAt?: Date
+  durationMs?: number
+
+  // Actor stats
+  actorsQueried: number
+  actorsProcessed: number
+  actorsEnriched: number
+  actorsWithDeathPage: number
+  fillRate?: number
+
+  // Cost tracking
+  totalCostUsd: number
+  costBySource: Record<string, number>
+
+  // Source stats
+  sourceHitRates: Record<string, number>
+  sourcesAttempted: string[]
+
+  // Configuration used
+  config: Partial<EnrichmentConfig>
+
+  // Link following stats
+  linksFollowed: number
+  pagesFetched: number
+  aiLinkSelections: number
+  aiContentExtractions: number
+
+  // Errors
+  errorCount: number
+  errors: Array<{ actorId: number; error: string }>
+
+  // Exit reason
+  exitReason?: "completed" | "cost_limit" | "error" | "interrupted"
+
+  // Metadata
+  scriptName?: string
+  scriptVersion?: string
+  hostname?: string
+}
+
+/**
+ * Per-actor stats within an enrichment run.
+ */
+export interface EnrichmentRunActorRecord {
+  id?: number
+  runId: number
+  actorId: number
+
+  wasEnriched: boolean
+  createdDeathPage: boolean
+  confidence?: number
+
+  sourcesAttempted: string[]
+  winningSource?: string
+
+  processingTimeMs?: number
+  costUsd: number
+
+  linksFollowed: number
+  pagesFetched: number
+
+  error?: string
 }
 
 // ============================================================================

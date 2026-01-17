@@ -218,18 +218,34 @@ export class WikipediaSource extends BaseDataSource {
    * Find the Death section or suitable fallback.
    */
   private findDeathSection(sections: WikipediaSection[]): WikipediaSection | null {
-    // Priority order for sections
+    // Priority order for sections - exact death sections first, then variations,
+    // then health sections (which often contain death info), then general fallbacks
     const sectionPriority = [
+      // Primary death sections
       /^death$/i,
       /^death and legacy$/i,
       /^death and funeral$/i,
       /^death and aftermath$/i,
+      /^death and tributes$/i,
+      /^death and memorials$/i,
+      /^death and reactions$/i,
+      // Combined life/death sections
       /^later life and death$/i,
       /^final years and death$/i,
       /^illness and death$/i,
+      /^decline and death$/i,
+      // Health sections (often contain death info for actors who died of illness)
+      /^health$/i,
+      /^health issues$/i,
+      /^health problems$/i,
+      /^declining health$/i,
+      /^illness$/i,
+      /^final illness$/i,
+      // Fallback sections
       /^personal life$/i, // Sometimes death info is in Personal life
       /^later life$/i,
       /^final years$/i,
+      /^later years$/i,
     ]
 
     for (const pattern of sectionPriority) {
