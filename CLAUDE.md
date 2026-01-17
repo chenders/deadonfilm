@@ -125,3 +125,27 @@ for (const actor of actors) {
 const actorIds = actors.map(a => a.id)
 const detailsMap = await batchGetActorDetails(actorIds)
 ```
+
+## Data Source Implementation
+
+When implementing a new death information data source:
+
+1. **Add source type** to `server/src/lib/death-sources/types.ts` enum
+2. **Create implementation** in `server/src/lib/death-sources/sources/`
+3. **Add tests** with mocked fetch responses
+4. **Export from** `server/src/lib/death-sources/index.ts`
+5. **Register in orchestrator** at `server/src/lib/death-sources/orchestrator.ts`
+6. **Document in `.env.example`** if API key required:
+   - How to get the API key (signup URL)
+   - Cost per query (or "free")
+   - Any rate limits or restrictions
+   - Quality estimate (e.g., "High quality - authoritative industry source")
+
+Example `.env.example` entry:
+```bash
+# NewsAPI - News aggregator (80,000+ sources)
+# Quality: High for recent deaths (aggregates major news outlets)
+# Free tier: 100 requests/day (450 in development)
+# Get yours at https://newsapi.org/register
+# NEWSAPI_KEY=
+```

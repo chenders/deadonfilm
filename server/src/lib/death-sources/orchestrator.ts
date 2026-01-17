@@ -48,6 +48,9 @@ import { NYTimesSource } from "./sources/nytimes.js"
 import { APNewsSource } from "./sources/ap-news.js"
 import { IMDbSource } from "./sources/imdb.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
+import { DeadlineSource } from "./sources/deadline.js"
+import { VarietySource } from "./sources/variety.js"
+import { NewsAPISource } from "./sources/newsapi.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
@@ -149,6 +152,9 @@ export class DeathEnrichmentOrchestrator {
       new GuardianSource(), // Guardian API - UK news (requires API key)
       new NYTimesSource(), // NYT Article Search API (requires API key)
       new APNewsSource(), // AP News (scraped)
+      new NewsAPISource(), // NewsAPI - aggregates 80,000+ sources (requires API key)
+      new DeadlineSource(), // Deadline Hollywood - entertainment news (scraped)
+      new VarietySource(), // Variety - entertainment trade publication (scraped)
 
       // Phase 4: Obituary sites
       new FindAGraveSource(),
