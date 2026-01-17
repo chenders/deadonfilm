@@ -13,15 +13,16 @@
  * Free to access via web scraping (no API key required).
  */
 
-import {
-  BaseDataSource,
-  DEATH_KEYWORDS,
-  CIRCUMSTANCE_KEYWORDS,
-  NOTABLE_FACTOR_KEYWORDS,
-} from "../base-source.js"
+import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
+import {
+  extractLocation,
+  extractNotableFactors,
+  extractDeathSentences,
+  extractUrlFromSearchResults,
+} from "./news-utils.js"
 
 const _DEADLINE_BASE_URL = "https://deadline.com"
 
@@ -149,38 +150,8 @@ export class DeadlineSource extends BaseDataSource {
    * Extract Deadline URL from search results.
    */
   private extractDeadlineUrl(html: string, actor: ActorForEnrichment): string | null {
-    // Look for deadline.com URLs in search results
     const urlPattern = /https?:\/\/(?:www\.)?deadline\.com\/\d{4}\/\d{2}\/[^"'\s<>]+/gi
-    const matches = html.match(urlPattern) || []
-
-    if (matches.length === 0) {
-      return null
-    }
-
-    // Prefer URLs that contain obituary-related terms (highest priority)
-    const obituaryTerms = ["obituary", "obit", "dies", "dead", "death", "rip", "passes"]
-
-    // First pass: look for obituary-related URLs
-    for (const url of matches) {
-      const lowerUrl = url.toLowerCase()
-      const hasObituaryTerm = obituaryTerms.some((term) => lowerUrl.includes(term))
-      if (hasObituaryTerm) {
-        return url
-      }
-    }
-
-    // Second pass: look for URLs with actor name parts
-    const nameParts = actor.name.toLowerCase().split(" ")
-    for (const url of matches) {
-      const lowerUrl = url.toLowerCase()
-      const hasNamePart = nameParts.some((part) => part.length > 2 && lowerUrl.includes(part))
-      if (hasNamePart) {
-        return url
-      }
-    }
-
-    // Return first result if no better match
-    return matches[0] ?? null
+    return extractUrlFromSearchResults(html, urlPattern, actor)
   }
 
   /**
@@ -212,125 +183,16 @@ export class DeadlineSource extends BaseDataSource {
    * Parse article HTML for death information.
    */
   private parseArticle(html: string, actor: ActorForEnrichment): ArticleData {
-    const data: ArticleData = {
-      circumstances: null,
-      locationOfDeath: null,
-      notableFactors: [],
-    }
-
     const text = htmlToText(html)
-    const lowerText = text.toLowerCase()
 
-    // Check if article mentions death
-    const hasDeathMention = DEATH_KEYWORDS.some((keyword) =>
-      lowerText.includes(keyword.toLowerCase())
-    )
+    // Extract death-related sentences using shared utility
+    const deathSentences = extractDeathSentences(text, actor, 4)
 
-    if (!hasDeathMention) {
-      return data
+    return {
+      circumstances: deathSentences.length > 0 ? deathSentences.join(". ") : null,
+      locationOfDeath: extractLocation(text),
+      notableFactors: extractNotableFactors(text),
     }
-
-    // Extract death-related sentences
-    const sentences = text.split(/[.!?]+/)
-    const deathSentences: string[] = []
-
-    for (const sentence of sentences) {
-      const trimmed = sentence.trim()
-      const lowerSentence = trimmed.toLowerCase()
-
-      // Check for death keywords
-      const hasDeathKeyword = DEATH_KEYWORDS.some((kw) => lowerSentence.includes(kw.toLowerCase()))
-
-      if (hasDeathKeyword && trimmed.length > 20 && trimmed.length < 500) {
-        // Verify this is about the right person
-        const nameParts = actor.name.split(" ")
-        const lastName = nameParts[nameParts.length - 1].toLowerCase()
-        const firstName = nameParts[0].toLowerCase()
-
-        const isAboutActor =
-          lowerSentence.includes(lastName) ||
-          lowerSentence.includes(firstName) ||
-          lowerSentence.includes(" he ") ||
-          lowerSentence.includes(" she ") ||
-          lowerSentence.includes(" his ") ||
-          lowerSentence.includes(" her ") ||
-          lowerSentence.startsWith("he ") ||
-          lowerSentence.startsWith("she ") ||
-          lowerSentence.includes(" the actor") ||
-          lowerSentence.includes(" the actress") ||
-          lowerSentence.includes(" the star")
-
-        if (isAboutActor) {
-          deathSentences.push(trimmed)
-        }
-      }
-    }
-
-    if (deathSentences.length > 0) {
-      // Take up to 4 most relevant sentences
-      data.circumstances = deathSentences.slice(0, 4).join(". ")
-    }
-
-    // Extract location of death
-    data.locationOfDeath = this.extractLocation(text)
-
-    // Extract notable factors
-    data.notableFactors = this.extractNotableFactors(text)
-
-    return data
-  }
-
-  /**
-   * Extract location of death from text.
-   */
-  private extractLocation(text: string): string | null {
-    const locationPatterns = [
-      /died\s+(?:in|at)\s+([A-Z][a-zA-Z\s,]+?)(?:\s+(?:on|at\s+age|from)|[.,]|$)/i,
-      /passed\s+away\s+(?:in|at)\s+([A-Z][a-zA-Z\s,]+?)(?:\s+(?:on|at\s+age|from)|[.,]|$)/i,
-      /death\s+(?:in|at)\s+([A-Z][a-zA-Z\s,]+?)(?:\s+(?:on|from)|[.,]|$)/i,
-    ]
-
-    for (const pattern of locationPatterns) {
-      const match = text.match(pattern)
-      if (match && match[1]) {
-        const location = match[1].trim()
-        if (
-          location.length >= 3 &&
-          location.length <= 60 &&
-          !location.match(/^\d/) &&
-          !location.match(
-            /january|february|march|april|may|june|july|august|september|october|november|december/i
-          )
-        ) {
-          return location
-        }
-      }
-    }
-
-    return null
-  }
-
-  /**
-   * Extract notable factors about the death.
-   */
-  private extractNotableFactors(text: string): string[] {
-    const factors: string[] = []
-    const lowerText = text.toLowerCase()
-
-    for (const keyword of NOTABLE_FACTOR_KEYWORDS) {
-      if (lowerText.includes(keyword.toLowerCase())) {
-        factors.push(keyword)
-      }
-    }
-
-    // Add circumstance keywords as factors
-    for (const keyword of CIRCUMSTANCE_KEYWORDS) {
-      if (lowerText.includes(keyword.toLowerCase()) && !factors.includes(keyword)) {
-        factors.push(keyword)
-      }
-    }
-
-    return [...new Set(factors)].slice(0, 5)
   }
 }
 
