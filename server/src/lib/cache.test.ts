@@ -241,6 +241,18 @@ describe("cache operations with mocked Redis", () => {
     })
   })
 
+  describe("invalidateActorCache", () => {
+    it("invalidates both profile and death cache keys", async () => {
+      mockRedisClient.del.mockResolvedValue(2)
+
+      const { invalidateActorCache } = await import("./cache.js")
+      await invalidateActorCache(5576)
+
+      // Should invalidate both profile and death detail cache keys
+      expect(mockRedisClient.del).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
+    })
+  })
+
   describe("invalidateByPattern", () => {
     it("returns 0 when Redis client is not available", async () => {
       vi.doMock("./redis.js", () => ({
