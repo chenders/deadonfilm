@@ -2137,7 +2137,11 @@ async function enrichMissingDetails(options: {
         console.log(`Limit: $${error.limit}, Current: $${error.currentCost.toFixed(4)}`)
         console.log(`${"!".repeat(60)}`)
         costLimitReached = true
-        // Note: partial results were already processed by the orchestrator before throwing
+        // Use partial results from the error so we can still update DB for processed actors
+        if (error.partialResults) {
+          results = error.partialResults as typeof results
+          console.log(`Partial results available for ${results.size} actor(s)`)
+        }
         // Record the cost limit event
         recordCustomEvent("DeathEnrichmentCostLimitReached", {
           limitType: error.limitType,
