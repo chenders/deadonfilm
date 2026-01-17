@@ -42,12 +42,12 @@ Review and respond to GitHub Copilot review comments on a pull request.
    - Run tests to ensure changes don't break anything: `npm test && cd server && npm test`
    - Run quality checks: `npm run lint && npm run type-check`
 
-5. **Commit and push changes before responding**
+6. **Commit and push changes before responding**
    - Stage and commit with a message like: "Address Copilot review feedback"
    - Push the changes to update the PR
    - Note the commit SHA for use in responses: `git rev-parse --short HEAD`
 
-6. **Respond to each comment on GitHub**
+7. **Respond to each comment on GitHub**
    Use `gh api` to reply to each comment:
    ```bash
    gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
@@ -59,10 +59,13 @@ Review and respond to GitHub Copilot review comments on a pull request.
    - **If not implemented**: Explain why (invalid suggestion, out of scope, trade-offs, etc.)
    - **If needs discussion**: Ask clarifying questions
 
-7. **Resolve implemented comments**
-   After responding to comments you implemented fixes for, resolve them using the GraphQL API.
+8. **REQUIRED: Resolve implemented comment threads**
 
-   **Important:** Thread IDs (`PRRT_` prefix) are different from comment IDs (`PRRC_` prefix). Query for thread IDs first:
+   **This step is mandatory for any comments where you implemented fixes.** Do not skip this step.
+
+   After responding to comments, resolve the threads using the GraphQL API:
+
+   **Step 8a:** Query for thread IDs (thread IDs have `PRRT_` prefix, different from comment IDs which have `PRRC_` prefix):
 
    ```bash
    gh api graphql -f query='
@@ -82,7 +85,7 @@ Review and respond to GitHub Copilot review comments on a pull request.
    '
    ```
 
-   Then resolve each implemented thread using its `PRRT_` ID:
+   **Step 8b:** For each comment where you implemented the fix, resolve its thread using the `PRRT_` ID:
    ```bash
    gh api graphql -f query='
      mutation {
@@ -93,9 +96,11 @@ Review and respond to GitHub Copilot review comments on a pull request.
    '
    ```
 
-   **Important**: Only resolve comments where you implemented the suggested fix. Do NOT resolve comments where you declined to make changes.
+   **Rules:**
+   - ✅ Resolve threads where you implemented the suggested fix
+   - ❌ Do NOT resolve threads where you declined to make changes
 
-8. **Request another Copilot review if changes were made**
+9. **Request another Copilot review if changes were made**
    If any changes were committed and pushed, request a new Copilot review:
    ```bash
    gh pr edit {pr_number} --add-reviewer Copilot
@@ -119,6 +124,18 @@ Review and respond to GitHub Copilot review comments on a pull request.
 
 **Not implemented (trade-off):**
 > Chose not to implement this. While the suggested abstraction would reduce duplication, it would also add complexity for a pattern that only appears twice in the codebase. Will reconsider if this pattern appears more frequently.
+
+## Completion Checklist
+
+Before finishing, verify you have completed ALL of these steps:
+
+- [ ] Analyzed all Copilot comments
+- [ ] Implemented accepted suggestions
+- [ ] Ran tests and quality checks
+- [ ] Committed and pushed changes
+- [ ] Responded to each comment on GitHub
+- [ ] **Resolved implemented comment threads** (step 8 - don't skip!)
+- [ ] Requested Copilot re-review (if changes were made)
 
 ## Notes
 
