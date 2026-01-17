@@ -133,7 +133,7 @@ describe("GuardianSource", () => {
       const result = await source.lookup(mockActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("No obituary articles found")
+      expect(result.error).toContain("No articles found")
     })
 
     it("handles network errors", async () => {
