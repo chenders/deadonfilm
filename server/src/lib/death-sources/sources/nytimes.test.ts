@@ -131,19 +131,7 @@ describe("NYTimesSource", () => {
       expect(result.error).toContain("Invalid NYT API key")
     })
 
-    it("handles no results with fallback search", async () => {
-      // First search returns no results
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          status: "OK",
-          response: {
-            docs: [],
-            meta: { hits: 0, offset: 0 },
-          },
-        }),
-      })
-      // Fallback search also returns no results
+    it("handles no results", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -161,14 +149,15 @@ describe("NYTimesSource", () => {
       const result = await resultPromise
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("No obituary")
+      expect(result.error).toContain("No articles found")
     })
 
     it("handles network errors", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Network timeout"))
 
       const resultPromise = source.lookup(mockActor)
-      await vi.advanceTimersByTimeAsync(1000)
+      // Advance timers to skip rate limiting (minDelayMs = 12000)
+      await vi.advanceTimersByTimeAsync(15000)
       const result = await resultPromise
 
       expect(result.success).toBe(false)
@@ -217,7 +206,8 @@ describe("NYTimesSource", () => {
       })
 
       const resultPromise = source.lookup(mockActor)
-      await vi.advanceTimersByTimeAsync(1000)
+      // Advance timers to skip rate limiting (minDelayMs = 12000)
+      await vi.advanceTimersByTimeAsync(15000)
       const result = await resultPromise
 
       expect(result.success).toBe(true)
@@ -226,13 +216,6 @@ describe("NYTimesSource", () => {
     })
 
     it("uses date filtering when death year is known", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          status: "OK",
-          response: { docs: [], meta: { hits: 0, offset: 0 } },
-        }),
-      })
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
