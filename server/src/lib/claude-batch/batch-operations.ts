@@ -14,7 +14,7 @@ import { recordCustomEvent } from "../newrelic.js"
 import { rebuildDeathCaches } from "../cache.js"
 import { MODEL_ID, DEFAULT_CHECKPOINT_FILE } from "./constants.js"
 import { createBatchRequest } from "./prompt-builder.js"
-import { parseClaudeResponse, stripMarkdownCodeFences, repairJson } from "./response-parser.js"
+import { parseClaudeResponse, repairJson } from "./response-parser.js"
 import { applyUpdate } from "./actor-updater.js"
 import { storeFailure } from "./failure-recovery.js"
 import {
@@ -316,14 +316,13 @@ export async function processResults(
       const responseText = message.content[0].type === "text" ? message.content[0].text : ""
 
       try {
-        const jsonText = stripMarkdownCodeFences(responseText)
-
+        // parseClaudeResponse handles markdown stripping, JSON repair, and validation
         let parsed: ClaudeResponse
         try {
-          parsed = parseClaudeResponse(jsonText)
+          parsed = parseClaudeResponse(responseText)
         } catch (parseError) {
           // Try to repair common JSON issues and retry
-          const repairedJson = repairJson(jsonText)
+          const repairedJson = repairJson(responseText)
           try {
             parsed = JSON.parse(repairedJson) as ClaudeResponse
             console.log(`  [Repaired JSON for actor ${actorId}]`)

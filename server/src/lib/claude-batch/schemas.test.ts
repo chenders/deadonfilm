@@ -179,8 +179,8 @@ describe("createEmptyCheckpoint", () => {
 
   it("creates a checkpoint with valid ISO date strings", () => {
     const checkpoint = createEmptyCheckpoint()
-    expect(() => new Date(checkpoint.startedAt)).not.toThrow()
-    expect(() => new Date(checkpoint.lastUpdated)).not.toThrow()
+    expect(Number.isNaN(new Date(checkpoint.startedAt).getTime())).toBe(false)
+    expect(Number.isNaN(new Date(checkpoint.lastUpdated).getTime())).toBe(false)
   })
 
   it("creates a checkpoint that passes schema validation", () => {

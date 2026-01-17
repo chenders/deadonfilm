@@ -295,14 +295,18 @@ export async function getAIUsageByModel(
 
 /**
  * Check if the ai_helper_usage table exists.
- * Returns false if the migration hasn't been run yet.
+ * Returns false if the migration hasn't been run yet or on error.
  */
 export async function aiUsageTableExists(db: Pool): Promise<boolean> {
-  const result = await db.query<{ exists: boolean }>(
-    `SELECT EXISTS (
-      SELECT FROM information_schema.tables
-      WHERE table_name = 'ai_helper_usage'
-    )`
-  )
-  return result.rows[0]?.exists ?? false
+  try {
+    const result = await db.query<{ exists: boolean }>(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'ai_helper_usage'
+      )`
+    )
+    return result.rows[0]?.exists ?? false
+  } catch {
+    return false
+  }
 }
