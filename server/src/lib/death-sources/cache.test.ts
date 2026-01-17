@@ -19,6 +19,11 @@ import {
   getCachedQueriesForActor,
   deleteCachedQueriesOlderThan,
   deleteCachedQueriesForSource,
+  clearWebSearchCache,
+  clearCacheForActor,
+  clearCacheForActors,
+  clearAllCache,
+  resetActorEnrichmentStatus,
 } from "./cache.js"
 
 describe("cache", () => {
@@ -327,6 +332,117 @@ describe("cache", () => {
       expect(mockQuery).toHaveBeenCalledWith(
         "DELETE FROM source_query_cache WHERE source_type = $1",
         ["ibdb"]
+      )
+    })
+  })
+
+  describe("clearWebSearchCache", () => {
+    it("clears all web search source caches", async () => {
+      // Mock delete for each web search source
+      mockQuery.mockResolvedValueOnce({ rowCount: 10 }) // duckduckgo
+      mockQuery.mockResolvedValueOnce({ rowCount: 5 }) // google_search
+      mockQuery.mockResolvedValueOnce({ rowCount: 3 }) // bing_search
+      mockQuery.mockResolvedValueOnce({ rowCount: 0 }) // brave_search
+
+      const result = await clearWebSearchCache()
+
+      expect(result.totalDeleted).toBe(18)
+      expect(result.deletedBySource["duckduckgo"]).toBe(10)
+      expect(result.deletedBySource["google_search"]).toBe(5)
+      expect(result.deletedBySource["bing_search"]).toBe(3)
+      expect(result.deletedBySource["brave_search"]).toBeUndefined() // 0 not included
+    })
+
+    it("handles empty cache gracefully", async () => {
+      mockQuery.mockResolvedValue({ rowCount: 0 })
+
+      const result = await clearWebSearchCache()
+
+      expect(result.totalDeleted).toBe(0)
+      expect(Object.keys(result.deletedBySource)).toHaveLength(0)
+    })
+  })
+
+  describe("clearCacheForActor", () => {
+    it("clears cache for a specific actor", async () => {
+      mockQuery.mockResolvedValueOnce({ rowCount: 8 })
+
+      const deleted = await clearCacheForActor(123)
+
+      expect(deleted).toBe(8)
+      expect(mockQuery).toHaveBeenCalledWith(
+        "DELETE FROM source_query_cache WHERE actor_id = $1",
+        [123]
+      )
+    })
+  })
+
+  describe("clearCacheForActors", () => {
+    it("clears cache for multiple actors", async () => {
+      mockQuery.mockResolvedValueOnce({ rowCount: 25 })
+
+      const deleted = await clearCacheForActors([123, 456, 789])
+
+      expect(deleted).toBe(25)
+      expect(mockQuery).toHaveBeenCalledWith(
+        "DELETE FROM source_query_cache WHERE actor_id = ANY($1)",
+        [[123, 456, 789]]
+      )
+    })
+
+    it("returns 0 for empty actor array", async () => {
+      const deleted = await clearCacheForActors([])
+
+      expect(deleted).toBe(0)
+      expect(mockQuery).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("clearAllCache", () => {
+    it("clears entire cache", async () => {
+      mockQuery.mockResolvedValueOnce({ rowCount: 500 })
+
+      const deleted = await clearAllCache()
+
+      expect(deleted).toBe(500)
+      expect(mockQuery).toHaveBeenCalledWith("DELETE FROM source_query_cache")
+    })
+  })
+
+  describe("resetActorEnrichmentStatus", () => {
+    it("resets all actors when no options provided", async () => {
+      mockQuery.mockResolvedValueOnce({ rowCount: 100 })
+
+      const count = await resetActorEnrichmentStatus()
+
+      expect(count).toBe(100)
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE actors SET cause_of_death_checked_at = NULL")
+      )
+    })
+
+    it("resets specific actors by ID", async () => {
+      mockQuery.mockResolvedValueOnce({ rowCount: 3 })
+
+      const count = await resetActorEnrichmentStatus({ actorIds: [1, 2, 3] })
+
+      expect(count).toBe(3)
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("WHERE id = ANY($1)"), [
+        [1, 2, 3],
+      ])
+    })
+
+    it("resets actors by source types", async () => {
+      mockQuery.mockResolvedValueOnce({ rowCount: 50 })
+
+      const count = await resetActorEnrichmentStatus({
+        sourceTypes: [DataSourceType.DUCKDUCKGO, DataSourceType.GOOGLE_SEARCH],
+      })
+
+      expect(count).toBe(50)
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("WHERE source_type = ANY($1)"),
+        [[DataSourceType.DUCKDUCKGO, DataSourceType.GOOGLE_SEARCH]]
       )
     })
   })

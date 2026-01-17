@@ -400,3 +400,110 @@ export async function deleteCachedQueriesForSource(sourceType: DataSourceType): 
   ])
   return result.rowCount ?? 0
 }
+
+/**
+ * Web search source types that can be cleared together.
+ */
+const WEB_SEARCH_SOURCES: DataSourceType[] = [
+  "duckduckgo" as DataSourceType,
+  "google_search" as DataSourceType,
+  "bing_search" as DataSourceType,
+  "brave_search" as DataSourceType,
+]
+
+/**
+ * Clear all cached web search results.
+ * Use when upgrading search functionality (e.g., adding link following).
+ */
+export async function clearWebSearchCache(): Promise<{
+  totalDeleted: number
+  deletedBySource: Record<string, number>
+}> {
+  const pool = getPool()
+  const deletedBySource: Record<string, number> = {}
+  let totalDeleted = 0
+
+  for (const sourceType of WEB_SEARCH_SOURCES) {
+    const result = await pool.query(`DELETE FROM source_query_cache WHERE source_type = $1`, [
+      sourceType,
+    ])
+    const count = result.rowCount ?? 0
+    if (count > 0) {
+      deletedBySource[sourceType] = count
+      totalDeleted += count
+    }
+  }
+
+  return { totalDeleted, deletedBySource }
+}
+
+/**
+ * Clear all cached queries for a specific actor.
+ * Use to re-process a specific actor with new settings.
+ */
+export async function clearCacheForActor(actorId: number): Promise<number> {
+  const pool = getPool()
+  const result = await pool.query(`DELETE FROM source_query_cache WHERE actor_id = $1`, [actorId])
+  return result.rowCount ?? 0
+}
+
+/**
+ * Clear all cached queries for multiple actors.
+ */
+export async function clearCacheForActors(actorIds: number[]): Promise<number> {
+  if (actorIds.length === 0) return 0
+
+  const pool = getPool()
+  const result = await pool.query(`DELETE FROM source_query_cache WHERE actor_id = ANY($1)`, [
+    actorIds,
+  ])
+  return result.rowCount ?? 0
+}
+
+/**
+ * Clear the entire source query cache.
+ * WARNING: This deletes all cached data permanently!
+ */
+export async function clearAllCache(): Promise<number> {
+  const pool = getPool()
+  const result = await pool.query(`DELETE FROM source_query_cache`)
+  return result.rowCount ?? 0
+}
+
+/**
+ * Reset cause_of_death_checked_at for actors to allow re-selection.
+ * Use with cache clearing to fully re-process actors.
+ */
+export async function resetActorEnrichmentStatus(options?: {
+  actorIds?: number[]
+  sourceTypes?: DataSourceType[]
+}): Promise<number> {
+  const pool = getPool()
+
+  if (options?.actorIds && options.actorIds.length > 0) {
+    // Reset specific actors
+    const result = await pool.query(
+      `UPDATE actors SET cause_of_death_checked_at = NULL WHERE id = ANY($1)`,
+      [options.actorIds]
+    )
+    return result.rowCount ?? 0
+  } else if (options?.sourceTypes && options.sourceTypes.length > 0) {
+    // Reset actors who were processed by specific sources
+    const result = await pool.query(
+      `UPDATE actors SET cause_of_death_checked_at = NULL
+       WHERE id IN (
+         SELECT DISTINCT actor_id FROM source_query_cache
+         WHERE source_type = ANY($1) AND actor_id IS NOT NULL
+       )`,
+      [options.sourceTypes]
+    )
+    return result.rowCount ?? 0
+  } else {
+    // Reset all actors with checked_at set
+    const result = await pool.query(
+      `UPDATE actors SET cause_of_death_checked_at = NULL
+       WHERE cause_of_death_checked_at IS NOT NULL`
+    )
+    return result.rowCount ?? 0
+  }
+}
