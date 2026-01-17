@@ -18,16 +18,19 @@ import type {
   SourceAttemptStats,
   RawSourceData,
   CleanedDeathInfo,
+  LinkFollowConfig,
 } from "./types.js"
 import {
   DataSourceType,
   CostLimitExceededError,
   SourceAccessBlockedError,
   SourceTimeoutError,
+  DEFAULT_LINK_FOLLOW_CONFIG,
 } from "./types.js"
 import { cleanupWithClaude } from "./claude-cleanup.js"
 import { StatusBar } from "./status-bar.js"
 import { EnrichmentLogger, getEnrichmentLogger } from "./logger.js"
+import { BaseDataSource } from "./base-source.js"
 import { WikidataSource } from "./sources/wikidata.js"
 import { DuckDuckGoSource } from "./sources/duckduckgo.js"
 import { FindAGraveSource } from "./sources/findagrave.js"
@@ -36,6 +39,10 @@ import { TelevisionAcademySource } from "./sources/television-academy.js"
 import { IBDBSource } from "./sources/ibdb.js"
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
+import { IMDbSource } from "./sources/imdb.js"
+import { VarietySource } from "./sources/variety.js"
+import { DeadlineSource } from "./sources/deadline.js"
+import { NewsAPISource } from "./sources/newsapi.js"
 import { AlloCineSource } from "./sources/allocine.js"
 import { DoubanSource } from "./sources/douban.js"
 import { SoompiSource } from "./sources/soompi.js"
@@ -93,6 +100,7 @@ export class DeathEnrichmentOrchestrator {
   private stats: BatchEnrichmentStats
   private statusBar: StatusBar
   private logger: EnrichmentLogger
+  private gracefulShutdownRequested = false
 
   constructor(
     config: Partial<EnrichmentConfig> = {},
@@ -117,35 +125,54 @@ export class DeathEnrichmentOrchestrator {
     const freeSources: DataSource[] = [
       // Phase 1: Structured data and industry archives
       new WikidataSource(),
+      new IMDbSource(), // IMDb bio pages - authoritative for film/TV actors
       new WikipediaSource(), // Wikipedia Death section extraction
       new TelevisionAcademySource(), // Official TV industry deaths
       new IBDBSource(), // Broadway actor deaths (may be blocked)
       new BFISightSoundSource(), // International film obituaries
 
-      // Phase 2: Search and obituaries
+      // Phase 2: Entertainment news (high-quality obituaries)
+      new VarietySource(), // Entertainment trade publication
+      new DeadlineSource(), // Entertainment news
+      new NewsAPISource(), // News aggregator (requires API key)
+
+      // Phase 3: Search and obituaries
       new DuckDuckGoSource(),
       new FindAGraveSource(),
-      new LegacySource(),
+      // new LegacySource(), // DISABLED: 0% success rate - needs investigation
 
-      // Phase 3: International sources (regional film databases)
-      new AlloCineSource(), // French film database
-      new DoubanSource(), // Chinese entertainment database
-      new SoompiSource(), // Korean entertainment news
+      // Phase 4: International sources (regional film databases)
+      // DISABLED: 0% success rate sources - need investigation
+      // new AlloCineSource(), // French film database - 0% success
+      // new DoubanSource(), // Chinese entertainment database - 0% success
+      // new SoompiSource(), // Korean entertainment news - 0% success
       new FilmiBeatSource(), // Indian (Bollywood) entertainment news
 
-      // Phase 4: Historical archives (for pre-internet deaths)
-      new ChroniclingAmericaSource(), // US newspapers 1756-1963
+      // Phase 5: Historical archives (for pre-internet deaths)
+      // new ChroniclingAmericaSource(), // DISABLED: 0% success rate - needs investigation
       new TroveSource(), // Australian newspapers (requires API key)
       new EuropeanaSource(), // European archives (requires API key)
       new InternetArchiveSource(), // Books, documents, historical media
     ]
 
+    // Get link follow config (use defaults if not specified)
+    const linkFollowConfig: LinkFollowConfig = this.config.linkFollow ?? DEFAULT_LINK_FOLLOW_CONFIG
+
+    // Helper to add source with config
+    const addSource = (source: DataSource): void => {
+      if (source.isAvailable()) {
+        // Pass link follow config to sources that support it
+        if (source instanceof BaseDataSource) {
+          source.setLinkFollowConfig(linkFollowConfig)
+        }
+        this.sources.push(source)
+      }
+    }
+
     // Filter based on configuration
     if (this.config.sourceCategories.free) {
       for (const source of freeSources) {
-        if (source.isAvailable()) {
-          this.sources.push(source)
-        }
+        addSource(source)
       }
     }
 
@@ -164,9 +191,7 @@ export class DeathEnrichmentOrchestrator {
         new GPT4oSource(), // ~$0.01/query - most capable
       ]
       for (const source of aiSources) {
-        if (source.isAvailable()) {
-          this.sources.push(source)
-        }
+        addSource(source)
       }
     }
 
@@ -175,6 +200,20 @@ export class DeathEnrichmentOrchestrator {
       console.log(
         `  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`})`
       )
+    }
+
+    // Log link follow configuration
+    if (linkFollowConfig.enabled) {
+      console.log(`\nLink following: ENABLED`)
+      console.log(`  Max links per actor: ${linkFollowConfig.maxLinksPerActor}`)
+      console.log(`  Max cost per actor: $${linkFollowConfig.maxCostPerActor}`)
+      console.log(`  AI link selection: ${linkFollowConfig.aiLinkSelection ? "yes" : "no"}`)
+      console.log(`  AI content extraction: ${linkFollowConfig.aiContentExtraction ? "yes" : "no"}`)
+      if (linkFollowConfig.aiModel) {
+        console.log(`  AI model: ${linkFollowConfig.aiModel}`)
+      }
+    } else {
+      console.log(`\nLink following: DISABLED`)
     }
   }
 
@@ -519,6 +558,14 @@ export class DeathEnrichmentOrchestrator {
           }
         }
 
+        // Check for graceful shutdown request
+        if (this.gracefulShutdownRequested) {
+          console.log(`\n${"=".repeat(60)}`)
+          console.log(`Graceful shutdown: Processed ${i + 1} of ${actors.length} actors`)
+          console.log(`${"=".repeat(60)}`)
+          break
+        }
+
         // Add delay between actors to be respectful to APIs
         if (i < actors.length - 1) {
           await new Promise((resolve) => setTimeout(resolve, 500))
@@ -529,8 +576,11 @@ export class DeathEnrichmentOrchestrator {
       this.statusBar.stop()
     }
 
+    const completionMessage = this.gracefulShutdownRequested
+      ? "Batch enrichment stopped (graceful shutdown)"
+      : "Batch enrichment complete!"
     console.log(`\n${"=".repeat(60)}`)
-    console.log("Batch enrichment complete!")
+    console.log(completionMessage)
     this.printBatchStats()
     console.log(`${"=".repeat(60)}`)
 
@@ -550,6 +600,23 @@ export class DeathEnrichmentOrchestrator {
    */
   getStats(): BatchEnrichmentStats {
     return { ...this.stats }
+  }
+
+  /**
+   * Request graceful shutdown after current actor completes.
+   * The batch will stop processing new actors but will finish the current one
+   * and return partial results normally (not throw an error).
+   */
+  requestGracefulShutdown(): void {
+    this.gracefulShutdownRequested = true
+    this.statusBar.log(`\n*** Graceful shutdown requested - will stop after current actor ***`)
+  }
+
+  /**
+   * Check if graceful shutdown was requested.
+   */
+  isShutdownRequested(): boolean {
+    return this.gracefulShutdownRequested
   }
 
   /**

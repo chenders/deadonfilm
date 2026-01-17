@@ -9,6 +9,7 @@ import type {
   DataSource,
   DataSourceType,
   EnrichmentSourceEntry,
+  LinkFollowConfig,
   SourceLookupResult,
 } from "./types.js"
 import { SourceAccessBlockedError, SourceTimeoutError } from "./types.js"
@@ -58,6 +59,9 @@ export abstract class BaseDataSource implements DataSource {
   // Request timeout (override in subclasses for different priorities)
   protected requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
 
+  // Link following configuration (set by orchestrator)
+  protected linkFollowConfig?: LinkFollowConfig
+
   /**
    * User agent for HTTP requests
    */
@@ -91,6 +95,21 @@ export abstract class BaseDataSource implements DataSource {
    */
   isAvailable(): boolean {
     return true
+  }
+
+  /**
+   * Set the link follow configuration for this source.
+   * Called by the orchestrator to pass configuration to search sources.
+   */
+  setLinkFollowConfig(config: LinkFollowConfig): void {
+    this.linkFollowConfig = config
+  }
+
+  /**
+   * Get the current link follow configuration.
+   */
+  getLinkFollowConfig(): LinkFollowConfig | undefined {
+    return this.linkFollowConfig
   }
 
   /**

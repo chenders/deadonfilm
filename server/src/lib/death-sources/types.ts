@@ -423,6 +423,42 @@ export interface CostLimitConfig {
 }
 
 /**
+ * Configuration for following links from search results.
+ * Controls how sources discover and process URLs found in search results.
+ */
+export interface LinkFollowConfig {
+  /** Whether to follow links from search results (default: true) */
+  enabled: boolean
+  /** Maximum number of links to follow per actor (default: 3) */
+  maxLinksPerActor: number
+  /** Maximum AI cost per actor for link following (default: 0.01 USD) */
+  maxCostPerActor: number
+  /** Use AI to select the most relevant links (default: true) */
+  aiLinkSelection: boolean
+  /** Use AI to extract death info from page content (default: true) */
+  aiContentExtraction: boolean
+  /** AI model to use for link selection and extraction */
+  aiModel?: string
+  /** Only follow links from these domains (optional whitelist) */
+  allowedDomains?: string[]
+  /** Never follow links from these domains (optional blacklist) */
+  blockedDomains?: string[]
+}
+
+/**
+ * Default link follow configuration.
+ * Features are enabled by default - use --disable-* flags to turn off.
+ */
+export const DEFAULT_LINK_FOLLOW_CONFIG: LinkFollowConfig = {
+  enabled: true,
+  maxLinksPerActor: 3,
+  maxCostPerActor: 0.01,
+  aiLinkSelection: true,
+  aiContentExtraction: true,
+  aiModel: "claude-sonnet-4-20250514",
+}
+
+/**
  * Complete enrichment configuration.
  */
 export interface EnrichmentConfig {
@@ -440,6 +476,8 @@ export interface EnrichmentConfig {
   costLimits?: CostLimitConfig
   /** Claude Opus 4.5 cleanup configuration */
   claudeCleanup?: ClaudeCleanupConfig
+  /** Link following configuration for search sources */
+  linkFollow?: LinkFollowConfig
 }
 
 // ============================================================================
