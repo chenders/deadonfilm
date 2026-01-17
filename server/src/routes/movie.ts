@@ -324,7 +324,10 @@ interface CacheMovieParams {
   living: LivingActor[]
   expectedDeaths: number
   mortalitySurpriseScore: number
-  personDetails: Map<number, { birthday?: string | null; deathday?: string | null }>
+  personDetails: Map<
+    number,
+    { birthday?: string | null; deathday?: string | null; popularity?: number }
+  >
   mainCast: Array<{ id: number; name: string; character: string | null }>
 }
 
@@ -361,6 +364,7 @@ async function cacheMovieInBackground(params: CacheMovieParams): Promise<void> {
         birthday: person?.birthday ?? null,
         deathday: person?.deathday ?? null,
         profile_path: null, // Not available from credits
+        popularity: person?.popularity ?? null,
       }
     })
 
