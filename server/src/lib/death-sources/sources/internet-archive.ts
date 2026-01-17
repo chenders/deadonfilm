@@ -85,6 +85,7 @@ export class InternetArchiveSource extends BaseDataSource {
           "User-Agent": this.userAgent,
           Accept: "application/json",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (!response.ok) {

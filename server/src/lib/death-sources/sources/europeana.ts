@@ -16,7 +16,7 @@
  * 3. Extract death information from item descriptions
  */
 
-import { BaseDataSource, DEATH_KEYWORDS } from "../base-source.js"
+import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
 
@@ -63,6 +63,9 @@ export class EuropeanaSource extends BaseDataSource {
   // Be polite to Europeana servers
   protected minDelayMs = 1000
 
+  // Low priority archive source - use shorter timeout
+  protected requestTimeoutMs = LOW_PRIORITY_TIMEOUT_MS
+
   private get apiKey(): string | undefined {
     return process.env.EUROPEANA_API_KEY
   }
@@ -104,6 +107,7 @@ export class EuropeanaSource extends BaseDataSource {
           "User-Agent": this.userAgent,
           Accept: "application/json",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (!response.ok) {

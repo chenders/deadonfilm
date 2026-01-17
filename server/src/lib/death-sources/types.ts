@@ -705,3 +705,20 @@ export class SourceAccessBlockedError extends Error {
     this.name = "SourceAccessBlockedError"
   }
 }
+
+/**
+ * Error thrown when a source request times out.
+ * High-priority sources should have timeouts stored for later review.
+ * Low-priority sources should just be logged and continue.
+ */
+export class SourceTimeoutError extends Error {
+  constructor(
+    message: string,
+    public readonly sourceType: DataSourceType,
+    public readonly timeoutMs: number,
+    public readonly isHighPriority: boolean
+  ) {
+    super(message)
+    this.name = "SourceTimeoutError"
+  }
+}
