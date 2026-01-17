@@ -151,6 +151,7 @@ export async function getShow(req: Request, res: Response) {
             age_at_death: yearsLostResult?.ageAtDeath ?? null,
             expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
             years_lost: yearsLostResult?.yearsLost ?? null,
+            popularity: person.popularity,
           })
         }
       } else {
