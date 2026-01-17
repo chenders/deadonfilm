@@ -161,6 +161,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         WHERE a.deathday IS NOT NULL
           AND a.cause_of_death IS NOT NULL
           AND (c.circumstances IS NULL OR c.notable_factors IS NULL OR array_length(c.notable_factors, 1) IS NULL)
+          AND a.deathday < CURRENT_DATE - INTERVAL '30 days'
       `
 
       if (minPopularity > 0) {
@@ -176,7 +177,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         query += ` AND a.deathday >= $${params.length}`
       }
 
-      query += ` ORDER BY a.popularity DESC NULLS LAST`
+      query += ` ORDER BY a.popularity DESC NULLS LAST, a.deathday DESC NULLS LAST`
 
       if (limit) {
         params.push(limit)
