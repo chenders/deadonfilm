@@ -152,7 +152,32 @@ export class NYTimesSource extends BaseDataSource {
 
       const data = (await response.json()) as NYTSearchResponse
 
-      const hits = data.response.meta?.hits ?? data.response.metadata?.hits ?? 0
+      // Validate response structure - API sometimes returns unexpected formats
+      if (!data || typeof data !== "object") {
+        return {
+          success: false,
+          source: this.createSourceEntry(startTime, 0),
+          data: null,
+          error: "Invalid API response: not an object",
+        }
+      }
+
+      if (!data.response || typeof data.response !== "object") {
+        return {
+          success: false,
+          source: this.createSourceEntry(startTime, 0),
+          data: null,
+          error: "Invalid API response: missing response object",
+        }
+      }
+
+      // Safely extract hits count with explicit null checks
+      const meta = data.response.meta
+      const metadata = data.response.metadata
+      const hits =
+        (meta && typeof meta === "object" ? meta.hits : null) ??
+        (metadata && typeof metadata === "object" ? metadata.hits : null) ??
+        0
       if (data.status !== "OK" || hits === 0) {
         return {
           success: false,
