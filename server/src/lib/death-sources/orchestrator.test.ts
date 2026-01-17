@@ -132,4 +132,80 @@ describe("CostLimitExceededError", () => {
     const error = new CostLimitExceededError("Test", "total", 1, 0.5)
     expect(error instanceof Error).toBe(true)
   })
+
+  describe("partialResults", () => {
+    it("stores partial results when provided", () => {
+      const partialResults = new Map<number, { circumstances: string }>([
+        [1, { circumstances: "Actor 1 details" }],
+        [2, { circumstances: "Actor 2 details" }],
+      ])
+
+      const error = new CostLimitExceededError(
+        "Cost limit exceeded",
+        "total",
+        1.5,
+        1.0,
+        undefined,
+        undefined,
+        partialResults
+      )
+
+      expect(error.partialResults).toBeDefined()
+      expect(error.partialResults?.size).toBe(2)
+      expect(error.partialResults?.get(1)).toEqual({ circumstances: "Actor 1 details" })
+      expect(error.partialResults?.get(2)).toEqual({ circumstances: "Actor 2 details" })
+    })
+
+    it("allows iterating over partial results", () => {
+      const partialResults = new Map<number, string>([
+        [100, "Result A"],
+        [200, "Result B"],
+        [300, "Result C"],
+      ])
+
+      const error = new CostLimitExceededError(
+        "Limit exceeded",
+        "total",
+        2.0,
+        1.5,
+        undefined,
+        undefined,
+        partialResults
+      )
+
+      const collectedResults: Array<[number, string]> = []
+      if (error.partialResults) {
+        for (const [actorId, result] of error.partialResults) {
+          collectedResults.push([actorId, result])
+        }
+      }
+
+      expect(collectedResults).toEqual([
+        [100, "Result A"],
+        [200, "Result B"],
+        [300, "Result C"],
+      ])
+    })
+
+    it("defaults to undefined when not provided", () => {
+      const error = new CostLimitExceededError("Cost limit exceeded", "total", 1.0, 0.5)
+      expect(error.partialResults).toBeUndefined()
+    })
+
+    it("can store empty map", () => {
+      const emptyMap = new Map<number, unknown>()
+      const error = new CostLimitExceededError(
+        "Limit exceeded",
+        "total",
+        1.0,
+        0.5,
+        undefined,
+        undefined,
+        emptyMap
+      )
+
+      expect(error.partialResults).toBeDefined()
+      expect(error.partialResults?.size).toBe(0)
+    })
+  })
 })

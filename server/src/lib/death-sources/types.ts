@@ -631,16 +631,55 @@ export interface DataSource {
 // ============================================================================
 
 /**
- * Error thrown when a cost limit is exceeded.
+ * Error thrown when a cost limit is exceeded during enrichment.
+ *
+ * This error is thrown by the orchestrator when either:
+ * - Per-actor cost limit is exceeded (limitType: "per-actor")
+ * - Total batch cost limit is exceeded (limitType: "total")
+ *
+ * For total cost limit errors, the `partialResults` property contains
+ * enrichment results that were successfully gathered before the limit
+ * was hit, allowing the caller to save partial progress.
+ *
+ * @template T - The type of results stored in partialResults (typically EnrichmentResult)
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   await orchestrator.enrichActors(actors)
+ * } catch (error) {
+ *   if (error instanceof CostLimitExceededError) {
+ *     // Save partial results before exiting
+ *     if (error.partialResults) {
+ *       for (const [actorId, result] of error.partialResults) {
+ *         await saveEnrichmentResult(actorId, result)
+ *       }
+ *     }
+ *     console.log(`Cost limit reached: $${error.currentCost} / $${error.limit}`)
+ *   }
+ * }
+ * ```
  */
-export class CostLimitExceededError extends Error {
+export class CostLimitExceededError<T = unknown> extends Error {
+  /**
+   * @param message - Human-readable error message
+   * @param limitType - Whether per-actor or total batch limit was exceeded
+   * @param currentCost - The cost that triggered the limit (USD)
+   * @param limit - The configured limit that was exceeded (USD)
+   * @param actorId - ID of the actor being processed when limit was hit (per-actor only)
+   * @param actorName - Name of the actor for logging purposes (per-actor only)
+   * @param partialResults - Map of actorId → enrichment results gathered before the limit was exceeded.
+   *                         Only populated for total cost limit errors. Allows callers to persist
+   *                         partial progress rather than losing all work when the limit is hit.
+   */
   constructor(
     message: string,
     public readonly limitType: "per-actor" | "total",
     public readonly currentCost: number,
     public readonly limit: number,
     public readonly actorId?: number,
-    public readonly actorName?: string
+    public readonly actorName?: string,
+    public readonly partialResults?: Map<number, T>
   ) {
     super(message)
     this.name = "CostLimitExceededError"
