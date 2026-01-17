@@ -233,13 +233,6 @@ export abstract class BaseDataSource implements DataSource {
   protected abstract performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult>
 
   /**
-   * Create an AbortSignal for request timeout.
-   */
-  protected createTimeoutSignal(): AbortSignal {
-    return AbortSignal.timeout(this.requestTimeoutMs)
-  }
-
-  /**
    * Wait if necessary to respect rate limits.
    */
   protected async waitForRateLimit(): Promise<void> {
