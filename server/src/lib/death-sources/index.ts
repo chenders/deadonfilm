@@ -29,6 +29,9 @@ export { TelevisionAcademySource } from "./sources/television-academy.js"
 export { IBDBSource } from "./sources/ibdb.js"
 export { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 export { WikipediaSource } from "./sources/wikipedia.js"
+export { DeadlineSource } from "./sources/deadline.js"
+export { VarietySource } from "./sources/variety.js"
+export { NewsAPISource } from "./sources/newsapi.js"
 
 // AI providers
 export { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
