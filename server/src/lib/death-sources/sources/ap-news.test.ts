@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { APNewsSource } from "./ap-news.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 
