@@ -591,7 +591,10 @@ export class DeathEnrichmentOrchestrator {
               `Total cost limit of $${this.config.costLimits.maxTotalCost} exceeded`,
               "total",
               this.stats.totalCostUsd,
-              this.config.costLimits.maxTotalCost
+              this.config.costLimits.maxTotalCost,
+              undefined, // actorId
+              undefined, // actorName
+              results // partialResults - pass collected results so caller can still update DB
             )
           }
         }
