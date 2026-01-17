@@ -72,7 +72,8 @@ export class NewsAPISource extends BaseDataSource {
     try {
       // Search for obituary/death news about the actor
       const deathDate = new Date(actor.deathday)
-      const deathYear = deathDate.getFullYear()
+      // deathYear unused but kept for potential future query refinement
+      const _deathYear = deathDate.getFullYear()
 
       // Build search query - search for obituary/death articles
       const searchQuery = `"${actor.name}" AND (obituary OR died OR death OR "passed away")`

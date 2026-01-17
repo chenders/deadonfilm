@@ -23,7 +23,7 @@ import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 
-const DEADLINE_BASE_URL = "https://deadline.com"
+const _DEADLINE_BASE_URL = "https://deadline.com"
 
 /**
  * Deadline source for actor death information.
