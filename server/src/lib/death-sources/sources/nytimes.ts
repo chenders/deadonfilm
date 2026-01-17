@@ -102,8 +102,8 @@ export class NYTimesSource extends BaseDataSource {
       url.searchParams.set("q", query)
       url.searchParams.set("sort", "relevance")
 
-      // Filter by type_of_material to prefer obituaries
-      url.searchParams.set("fq", 'type_of_material:("Obituary" "Obituary (Obit)")')
+      // Don't filter by type - we want any article about the person's death,
+      // not just obituaries. News articles, tributes, and follow-up stories are valuable.
 
       // Filter by date range if we have death year
       if (deathYear) {
@@ -146,22 +146,31 @@ export class NYTimesSource extends BaseDataSource {
 
       const hits = data.response.meta?.hits ?? data.response.metadata?.hits ?? 0
       if (data.status !== "OK" || hits === 0) {
-        // Try broader search without obituary filter
-        return this.searchWithoutFilter(actor, apiKey, startTime, deathYear)
+        return {
+          success: false,
+          source: this.createSourceEntry(startTime, 0),
+          data: null,
+          error: "No articles found",
+        }
       }
 
       console.log(`  Found ${data.response.docs.length} articles`)
 
-      // Find the most relevant obituary
-      const obituary = this.findBestArticle(data.response.docs, actor)
+      // Find the most relevant death-related article
+      const article = this.findBestArticle(data.response.docs, actor)
 
-      if (!obituary) {
-        return this.searchWithoutFilter(actor, apiKey, startTime, deathYear)
+      if (!article) {
+        return {
+          success: false,
+          source: this.createSourceEntry(startTime, 0),
+          data: null,
+          error: "No relevant death articles found",
+        }
       }
 
       // Extract death info from the article
       const text =
-        obituary.lead_paragraph || obituary.snippet || obituary.abstract || obituary.headline.main
+        article.lead_paragraph || article.snippet || article.abstract || article.headline.main
       const circumstances = this.extractCircumstances(text, actor.name)
       const locationOfDeath = this.extractLocation(text)
       const notableFactors = this.extractNotableFactors(text)
@@ -169,24 +178,24 @@ export class NYTimesSource extends BaseDataSource {
       // Calculate confidence
       let confidence = 0.6 // NYT is highly reliable
       if (
-        obituary.type_of_material?.toLowerCase().includes("obituary") ||
-        obituary.news_desk === "Obituaries"
+        article.type_of_material?.toLowerCase().includes("obituary") ||
+        article.news_desk === "Obituaries"
       ) {
-        confidence += 0.2
+        confidence += 0.2 // Obituary bonus
       }
       if (circumstances) confidence += 0.1
       if (text.length > 200) confidence += 0.1
 
       return {
         success: true,
-        source: this.createSourceEntry(startTime, Math.min(0.9, confidence), obituary.web_url),
+        source: this.createSourceEntry(startTime, Math.min(0.9, confidence), article.web_url),
         data: {
           circumstances,
           rumoredCircumstances: null,
           notableFactors,
           relatedCelebrities: [],
           locationOfDeath,
-          additionalContext: obituary.abstract || obituary.snippet || null,
+          additionalContext: article.abstract || article.snippet || null,
         },
       }
     } catch (error) {
@@ -195,92 +204,6 @@ export class NYTimesSource extends BaseDataSource {
         source: this.createSourceEntry(startTime, 0),
         data: null,
         error: error instanceof Error ? error.message : "Unknown error",
-      }
-    }
-  }
-
-  /**
-   * Retry search without the obituary filter.
-   */
-  private async searchWithoutFilter(
-    actor: ActorForEnrichment,
-    apiKey: string,
-    startTime: number,
-    deathYear: number | null
-  ): Promise<SourceLookupResult> {
-    try {
-      await this.waitForRateLimit()
-
-      const query = `"${actor.name}" died`
-      const url = new URL(NYT_API_URL)
-      url.searchParams.set("api-key", apiKey)
-      url.searchParams.set("q", query)
-      url.searchParams.set("sort", "relevance")
-
-      if (deathYear) {
-        url.searchParams.set("begin_date", `${deathYear - 1}0101`)
-        url.searchParams.set("end_date", `${deathYear + 1}1231`)
-      }
-
-      const response = await fetch(url.toString(), {
-        headers: {
-          "User-Agent": this.userAgent,
-        },
-      })
-
-      if (!response.ok || response.status === 429) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0),
-          data: null,
-          error: response.status === 429 ? "NYT API rate limit exceeded" : "No obituary found",
-        }
-      }
-
-      const data = (await response.json()) as NYTSearchResponse
-
-      const hits = data.response.meta?.hits ?? data.response.metadata?.hits ?? 0
-      if (hits === 0) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0),
-          data: null,
-          error: "No obituary or death article found",
-        }
-      }
-
-      const article = this.findBestArticle(data.response.docs, actor)
-
-      if (!article) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0),
-          data: null,
-          error: "No relevant article found",
-        }
-      }
-
-      const text = article.lead_paragraph || article.snippet || article.abstract || ""
-      const circumstances = this.extractCircumstances(text, actor.name)
-
-      return {
-        success: true,
-        source: this.createSourceEntry(startTime, circumstances ? 0.5 : 0.3, article.web_url),
-        data: {
-          circumstances,
-          rumoredCircumstances: null,
-          notableFactors: this.extractNotableFactors(text),
-          relatedCelebrities: [],
-          locationOfDeath: this.extractLocation(text),
-          additionalContext: article.abstract || null,
-        },
-      }
-    } catch {
-      return {
-        success: false,
-        source: this.createSourceEntry(startTime, 0),
-        data: null,
-        error: "Search failed",
       }
     }
   }

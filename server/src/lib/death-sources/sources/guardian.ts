@@ -93,8 +93,8 @@ export class GuardianSource extends BaseDataSource {
       url.searchParams.set("page-size", "10")
       url.searchParams.set("order-by", "relevance")
 
-      // Filter by section (obituaries, film, culture)
-      url.searchParams.set("section", "tone/obituaries|film|culture|tv-and-radio")
+      // Don't filter by section - we want any article about the person's death,
+      // not just obituaries. News articles, tributes, and follow-up stories are valuable.
 
       // Filter by date if we have death year
       if (deathYear) {
@@ -132,47 +132,47 @@ export class GuardianSource extends BaseDataSource {
           success: false,
           source: this.createSourceEntry(startTime, 0),
           data: null,
-          error: "No obituary articles found",
+          error: "No articles found",
         }
       }
 
       console.log(`  Found ${data.response.results.length} articles`)
 
-      // Find the most relevant obituary
-      const obituary = this.findBestObituary(data.response.results, actor)
+      // Find the most relevant death-related article
+      const article = this.findBestArticle(data.response.results, actor)
 
-      if (!obituary) {
+      if (!article) {
         return {
           success: false,
           source: this.createSourceEntry(startTime, 0),
           data: null,
-          error: "No relevant obituary found",
+          error: "No relevant death articles found",
         }
       }
 
       // Extract death info from the article
       const bodyText =
-        obituary.fields?.bodyText || obituary.fields?.standfirst || obituary.fields?.trailText || ""
+        article.fields?.bodyText || article.fields?.standfirst || article.fields?.trailText || ""
       const circumstances = this.extractCircumstances(bodyText, actor.name)
       const locationOfDeath = this.extractLocation(bodyText)
       const notableFactors = this.extractNotableFactors(bodyText)
 
       // Calculate confidence
       let confidence = 0.5 // Guardian is reliable
-      if (obituary.sectionId === "tone/obituaries") confidence += 0.2 // Obituary section
+      if (article.sectionId === "tone/obituaries") confidence += 0.2 // Obituary section bonus
       if (circumstances) confidence += 0.1
       if (bodyText.length > 500) confidence += 0.1
 
       return {
         success: true,
-        source: this.createSourceEntry(startTime, confidence, obituary.webUrl),
+        source: this.createSourceEntry(startTime, confidence, article.webUrl),
         data: {
           circumstances,
           rumoredCircumstances: null,
           notableFactors,
           relatedCelebrities: [],
           locationOfDeath,
-          additionalContext: obituary.fields?.standfirst || null,
+          additionalContext: article.fields?.standfirst || null,
         },
       }
     } catch (error) {
@@ -186,13 +186,13 @@ export class GuardianSource extends BaseDataSource {
   }
 
   /**
-   * Find the most relevant obituary from search results.
+   * Find the most relevant death-related article from search results.
    */
-  private findBestObituary(
+  private findBestArticle(
     results: GuardianSearchResponse["response"]["results"],
     actor: ActorForEnrichment
   ) {
-    // Prioritize actual obituaries
+    // Prioritize actual obituaries if present
     const obituaries = results.filter((r) => r.sectionId === "tone/obituaries")
     if (obituaries.length > 0) {
       // Find one that mentions the actor name prominently
@@ -204,7 +204,7 @@ export class GuardianSource extends BaseDataSource {
       return obituaries[0]
     }
 
-    // Fall back to any article that prominently mentions death
+    // Find any article that prominently mentions death
     for (const result of results) {
       const title = result.webTitle.toLowerCase()
       const hasName = title.includes(actor.name.split(" ")[0].toLowerCase())
@@ -215,7 +215,7 @@ export class GuardianSource extends BaseDataSource {
       }
     }
 
-    // Return first result if it seems relevant
+    // Return first result if it seems relevant (may be news, tribute, or follow-up story)
     if (results[0]?.webTitle.toLowerCase().includes(actor.name.split(" ")[0].toLowerCase())) {
       return results[0]
     }
