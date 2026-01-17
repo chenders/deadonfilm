@@ -49,6 +49,9 @@ export abstract class BaseDataSource implements DataSource {
   protected lastRequestTime = 0
   protected minDelayMs = 1000 // Default 1 second between requests
 
+  // Request timeout (default 30 seconds)
+  protected requestTimeoutMs = 30000
+
   /**
    * User agent for HTTP requests
    */
@@ -176,6 +179,13 @@ export abstract class BaseDataSource implements DataSource {
    * Implement this method in subclasses to perform the actual lookup.
    */
   protected abstract performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult>
+
+  /**
+   * Create an AbortSignal for request timeout.
+   */
+  protected createTimeoutSignal(): AbortSignal {
+    return AbortSignal.timeout(this.requestTimeoutMs)
+  }
 
   /**
    * Wait if necessary to respect rate limits.
