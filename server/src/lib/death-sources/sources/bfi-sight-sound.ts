@@ -61,6 +61,7 @@ export class BFISightSoundSource extends BaseDataSource {
           "User-Agent": this.userAgent,
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (response.status === 403) {
@@ -171,6 +172,7 @@ export class BFISightSoundSource extends BaseDataSource {
           "User-Agent": this.userAgent,
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (!response.ok) {
@@ -345,6 +347,7 @@ export class BFISightSoundSource extends BaseDataSource {
           "User-Agent": this.userAgent,
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (!response.ok) {

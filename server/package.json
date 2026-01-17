@@ -63,8 +63,8 @@
     "backfill:external-ids": "tsx scripts/backfill-external-ids.ts",
     "//backfill:cause-of-death-batch": "Backfill cause of death using Claude Opus 4.5 Batch API",
     "backfill:cause-of-death-batch": "tsx scripts/backfill-cause-of-death-batch.ts",
-    "//backfill:death-enrich": "Enrich death details using multi-source fallbacks (free/paid/AI)",
-    "backfill:death-enrich": "tsx scripts/backfill-cause-of-death-batch.ts enrich",
+    "//enrich:death-details": "Enrich death details using multi-source fallbacks (free/paid/AI)",
+    "enrich:death-details": "tsx scripts/enrich-death-details.ts",
     "//backfill:cause-of-death-runner": "Continuous runner for cause of death batches",
     "backfill:cause-of-death-runner": "tsx scripts/run-cause-of-death-batch.ts",
     "//backfill:cause-capitalization": "Normalize cause_of_death capitalization to sentence case",
@@ -94,11 +94,13 @@
     "he": "^1.2.0",
     "ini": "^6.0.0",
     "ioredis": "^5.8.2",
+    "jsonrepair": "^3.13.2",
     "newrelic": "^13.6.6",
     "node-pg-migrate": "^8.0.3",
     "openai": "^6.16.0",
     "pg": "^8.16.3",
-    "pino": "^10.1.0"
+    "pino": "^10.1.0",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.14",

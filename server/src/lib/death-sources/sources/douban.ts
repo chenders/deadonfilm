@@ -13,7 +13,7 @@
  * Note: Douban may require special handling for access from outside China.
  */
 
-import { BaseDataSource, DEATH_KEYWORDS } from "../base-source.js"
+import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
@@ -61,6 +61,9 @@ export class DoubanSource extends BaseDataSource {
   // Douban may rate limit aggressively
   protected minDelayMs = 3000
 
+  // Low priority source - use shorter timeout
+  protected requestTimeoutMs = LOW_PRIORITY_TIMEOUT_MS
+
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
 
@@ -101,6 +104,7 @@ export class DoubanSource extends BaseDataSource {
           "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (pageResponse.status === 403 || pageResponse.status === 418) {
@@ -189,6 +193,7 @@ export class DoubanSource extends BaseDataSource {
           Accept: "application/sparql-results+json",
           "User-Agent": this.userAgent,
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (!response.ok) {
@@ -222,6 +227,7 @@ export class DoubanSource extends BaseDataSource {
           "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (!response.ok) {

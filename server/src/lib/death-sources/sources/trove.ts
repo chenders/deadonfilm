@@ -16,7 +16,7 @@
  * 3. Extract death information from article text
  */
 
-import { BaseDataSource, DEATH_KEYWORDS } from "../base-source.js"
+import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
 
@@ -65,6 +65,9 @@ export class TroveSource extends BaseDataSource {
   // Be polite to NLA servers
   protected minDelayMs = 1000
 
+  // Low priority archive source - use shorter timeout
+  protected requestTimeoutMs = LOW_PRIORITY_TIMEOUT_MS
+
   private get apiKey(): string | undefined {
     return process.env.TROVE_API_KEY
   }
@@ -106,6 +109,7 @@ export class TroveSource extends BaseDataSource {
           "User-Agent": this.userAgent,
           Accept: "application/json",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (!response.ok) {
