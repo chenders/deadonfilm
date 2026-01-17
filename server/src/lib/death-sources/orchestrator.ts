@@ -19,7 +19,12 @@ import type {
   RawSourceData,
   CleanedDeathInfo,
 } from "./types.js"
-import { DataSourceType, CostLimitExceededError, SourceAccessBlockedError } from "./types.js"
+import {
+  DataSourceType,
+  CostLimitExceededError,
+  SourceAccessBlockedError,
+  SourceTimeoutError,
+} from "./types.js"
 import { cleanupWithClaude } from "./claude-cleanup.js"
 import { StatusBar } from "./status-bar.js"
 import { EnrichmentLogger, getEnrichmentLogger } from "./logger.js"
@@ -257,6 +262,31 @@ export class DeathEnrichmentOrchestrator {
           actorStats.sourcesAttempted.push(attemptStats)
           continue
         }
+
+        // Handle SourceTimeoutError specially
+        if (error instanceof SourceTimeoutError) {
+          if (error.isHighPriority) {
+            // High-priority source timeout - flag for review
+            this.logger.sourceBlocked(actor.name, source.type, 408, "timeout")
+            this.statusBar.log(
+              `    TIMEOUT (${error.timeoutMs}ms) - high-priority source, flagged for review`
+            )
+          } else {
+            // Low-priority source timeout - just log and continue
+            this.statusBar.log(`    TIMEOUT (${error.timeoutMs}ms) - low-priority source, skipping`)
+          }
+
+          const attemptStats: SourceAttemptStats = {
+            source: source.type,
+            success: false,
+            timeMs: Date.now() - sourceStartTime,
+            costUsd: 0,
+            error: `Timeout: ${error.timeoutMs}ms`,
+          }
+          actorStats.sourcesAttempted.push(attemptStats)
+          continue
+        }
+
         throw error
       }
 

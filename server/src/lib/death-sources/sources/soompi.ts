@@ -11,7 +11,7 @@
  * 3. Extract death circumstances from article content
  */
 
-import { BaseDataSource, DEATH_KEYWORDS } from "../base-source.js"
+import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
@@ -30,6 +30,9 @@ export class SoompiSource extends BaseDataSource {
 
   // Be polite to Soompi
   protected minDelayMs = 2000
+
+  // Low priority source - use shorter timeout
+  protected requestTimeoutMs = LOW_PRIORITY_TIMEOUT_MS
 
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
@@ -53,6 +56,7 @@ export class SoompiSource extends BaseDataSource {
           "User-Agent": this.userAgent,
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (searchResponse.status === 403) {
@@ -94,6 +98,7 @@ export class SoompiSource extends BaseDataSource {
           "User-Agent": this.userAgent,
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (articleResponse.status === 403) {
