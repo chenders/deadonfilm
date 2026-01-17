@@ -11,7 +11,7 @@ import type {
   EnrichmentSourceEntry,
   SourceLookupResult,
 } from "./types.js"
-import { SourceAccessBlockedError } from "./types.js"
+import { SourceAccessBlockedError, SourceTimeoutError } from "./types.js"
 import { getCachedQuery, setCachedQuery } from "./cache.js"
 import { getEnrichmentLogger } from "./logger.js"
 
@@ -35,6 +35,12 @@ export function getIgnoreCache(): boolean {
   return globalIgnoreCache
 }
 
+// Default timeout for fetch requests (30 seconds)
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30000
+
+// Shorter timeout for low-priority sources (10 seconds)
+export const LOW_PRIORITY_TIMEOUT_MS = 10000
+
 /**
  * Abstract base class for data sources.
  * Extend this class to implement new data sources.
@@ -49,13 +55,35 @@ export abstract class BaseDataSource implements DataSource {
   protected lastRequestTime = 0
   protected minDelayMs = 1000 // Default 1 second between requests
 
-  // Request timeout (default 30 seconds)
-  protected requestTimeoutMs = 30000
+  // Request timeout (override in subclasses for different priorities)
+  protected requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
 
   /**
    * User agent for HTTP requests
    */
   protected readonly userAgent = "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)"
+
+  /**
+   * Create an AbortSignal with the configured timeout.
+   */
+  protected createTimeoutSignal(): AbortSignal {
+    return AbortSignal.timeout(this.requestTimeoutMs)
+  }
+
+  /**
+   * Check if this source uses the high-priority (default) timeout.
+   * High-priority sources have their timeouts stored for later review.
+   */
+  protected isHighPrioritySource(): boolean {
+    return this.requestTimeoutMs === DEFAULT_REQUEST_TIMEOUT_MS
+  }
+
+  /**
+   * Check if an error is an AbortError from a timeout.
+   */
+  protected isTimeoutError(error: unknown): boolean {
+    return error instanceof Error && error.name === "TimeoutError"
+  }
 
   /**
    * Check if this source is available (API key configured, etc.)
@@ -152,6 +180,30 @@ export abstract class BaseDataSource implements DataSource {
           responseTimeMs,
         })
         throw error
+      }
+
+      // Handle timeout errors specially
+      if (this.isTimeoutError(error)) {
+        const isHighPriority = this.isHighPrioritySource()
+        const timeoutError = new SourceTimeoutError(
+          `${this.name} request timed out after ${this.requestTimeoutMs}ms`,
+          this.type,
+          this.requestTimeoutMs,
+          isHighPriority
+        )
+
+        // Cache timeout errors
+        await setCachedQuery({
+          sourceType: this.type,
+          actorId: actor.id,
+          queryString: cacheKey,
+          responseStatus: 408, // Request Timeout
+          errorMessage: timeoutError.message,
+          responseTimeMs,
+        })
+
+        // Re-throw for orchestrator to handle (high-priority = store for review, low-priority = log and continue)
+        throw timeoutError
       }
 
       const errorMessage = error instanceof Error ? error.message : "Unknown error"
