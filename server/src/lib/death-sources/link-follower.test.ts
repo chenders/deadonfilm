@@ -115,7 +115,9 @@ describe("link-follower", () => {
       }
       const result = selectLinksWithHeuristics(mockResults, 3, configWithBlocked)
 
-      expect(result.selectedUrls.some((url) => url.includes("legacy.com"))).toBe(false)
+      // Use extractDomain to properly check the domain, not substring matching
+      const selectedDomains = result.selectedUrls.map((url) => extractDomain(url))
+      expect(selectedDomains.some((domain) => domain === "legacy.com")).toBe(false)
     })
 
     it("only includes allowed domains when specified", () => {
@@ -125,7 +127,9 @@ describe("link-follower", () => {
       }
       const result = selectLinksWithHeuristics(mockResults, 3, configWithAllowed)
 
-      expect(result.selectedUrls.every((url) => url.includes("variety.com"))).toBe(true)
+      // Use extractDomain to properly check the domain, not substring matching
+      const selectedDomains = result.selectedUrls.map((url) => extractDomain(url))
+      expect(selectedDomains.every((domain) => domain === "variety.com")).toBe(true)
     })
   })
 
