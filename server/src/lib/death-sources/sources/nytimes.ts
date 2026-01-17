@@ -46,7 +46,11 @@ interface NYTSearchResponse {
         value: string
       }>
     }>
-    meta: {
+    meta?: {
+      hits: number
+      offset: number
+    }
+    metadata?: {
       hits: number
       offset: number
     }
@@ -140,7 +144,8 @@ export class NYTimesSource extends BaseDataSource {
 
       const data = (await response.json()) as NYTSearchResponse
 
-      if (data.status !== "OK" || data.response.meta.hits === 0) {
+      const hits = data.response.meta?.hits ?? data.response.metadata?.hits ?? 0
+      if (data.status !== "OK" || hits === 0) {
         // Try broader search without obituary filter
         return this.searchWithoutFilter(actor, apiKey, startTime, deathYear)
       }
@@ -234,7 +239,8 @@ export class NYTimesSource extends BaseDataSource {
 
       const data = (await response.json()) as NYTSearchResponse
 
-      if (data.response.meta.hits === 0) {
+      const hits = data.response.meta?.hits ?? data.response.metadata?.hits ?? 0
+      if (hits === 0) {
         return {
           success: false,
           source: this.createSourceEntry(startTime, 0),
