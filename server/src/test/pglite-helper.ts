@@ -92,6 +92,7 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
       expected_lifespan DECIMAL(5,2),
       years_lost DECIMAL(5,2),
       violent_death BOOLEAN,
+      is_obscure BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
@@ -204,18 +205,32 @@ export async function insertActor(
     name: string
     deathday?: string | null
     birthday?: string | null
+    cause_of_death?: string | null
+    cause_of_death_details?: string | null
+    is_obscure?: boolean
   }
 ): Promise<void> {
   await testDb.query(
     `
-    INSERT INTO actors (tmdb_id, name, deathday, birthday)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO actors (tmdb_id, name, deathday, birthday, cause_of_death, cause_of_death_details, is_obscure)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     ON CONFLICT (tmdb_id) DO UPDATE SET
       name = EXCLUDED.name,
       deathday = EXCLUDED.deathday,
-      birthday = EXCLUDED.birthday
+      birthday = EXCLUDED.birthday,
+      cause_of_death = EXCLUDED.cause_of_death,
+      cause_of_death_details = EXCLUDED.cause_of_death_details,
+      is_obscure = EXCLUDED.is_obscure
   `,
-    [actor.tmdb_id, actor.name, actor.deathday ?? null, actor.birthday ?? null]
+    [
+      actor.tmdb_id,
+      actor.name,
+      actor.deathday ?? null,
+      actor.birthday ?? null,
+      actor.cause_of_death ?? null,
+      actor.cause_of_death_details ?? null,
+      actor.is_obscure ?? false,
+    ]
   )
 }
 
