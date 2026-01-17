@@ -295,6 +295,7 @@ import {
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { toSentenceCase } from "../src/lib/text-utils.js"
 import { rebuildDeathCaches, invalidateActorCache } from "../src/lib/cache.js"
+import { createActorSlug } from "../src/lib/slug-utils.js"
 import {
   DeathEnrichmentOrchestrator,
   CostLimitExceededError,
@@ -2334,7 +2335,7 @@ async function enrichMissingDetails(options: {
       console.log(`\nNew/Updated Death Pages (${deathPageActors.length}):`)
       for (const actor of deathPageActors) {
         const url = actor.tmdbId
-          ? `https://deadonfilm.com/actor/${actor.tmdbId}/death`
+          ? `https://deadonfilm.com/actor/${createActorSlug(actor.name, actor.tmdbId)}/death`
           : `(no TMDB ID)`
         console.log(`  ${actor.name}: ${url}`)
       }
