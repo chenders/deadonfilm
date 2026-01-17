@@ -10,14 +10,10 @@
  * @see https://newsapi.org/docs/get-started
  */
 
-import {
-  BaseDataSource,
-  DEATH_KEYWORDS,
-  CIRCUMSTANCE_KEYWORDS,
-  NOTABLE_FACTOR_KEYWORDS,
-} from "../base-source.js"
+import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
+import { extractLocation, extractNotableFactors, isAboutActor } from "./news-utils.js"
 
 const NEWSAPI_BASE_URL = "https://newsapi.org/v2"
 
@@ -235,33 +231,16 @@ export class NewsAPISource extends BaseDataSource {
         )
 
         if (hasDeathKeyword && trimmed.length > 20 && trimmed.length < 400) {
-          // Verify this is about the right person
-          const nameParts = actor.name.split(" ")
-          const lastName = nameParts[nameParts.length - 1].toLowerCase()
-          const firstName = nameParts[0].toLowerCase()
-
-          const isAboutActor =
-            lowerSentence.includes(lastName) ||
-            lowerSentence.includes(firstName) ||
-            lowerSentence.includes(" he ") ||
-            lowerSentence.includes(" she ") ||
-            lowerSentence.includes(" his ") ||
-            lowerSentence.includes(" her ") ||
-            lowerSentence.startsWith("he ") ||
-            lowerSentence.startsWith("she ") ||
-            lowerSentence.includes(" the actor") ||
-            lowerSentence.includes(" the actress") ||
-            lowerSentence.includes(" the star")
-
-          if (isAboutActor && !allDeathSentences.includes(trimmed)) {
+          // Verify this is about the right person using shared utility
+          if (isAboutActor(lowerSentence, actor) && !allDeathSentences.includes(trimmed)) {
             allDeathSentences.push(trimmed)
           }
         }
       }
 
-      // Try to extract location
+      // Try to extract location using shared utility
       if (!result.locationOfDeath) {
-        result.locationOfDeath = this.extractLocation(text)
+        result.locationOfDeath = extractLocation(text)
       }
     }
 
@@ -270,70 +249,17 @@ export class NewsAPISource extends BaseDataSource {
       result.circumstances = allDeathSentences.slice(0, 4).join(". ")
     }
 
-    // Extract notable factors from all articles
+    // Extract notable factors from all articles using shared utility
     const allText = articles
       .map((a) => [a.title, a.description, a.content].filter(Boolean).join(" "))
       .join(" ")
-    result.notableFactors = this.extractNotableFactors(allText)
+    result.notableFactors = extractNotableFactors(allText)
 
     result.sources = Array.from(sourcesSet).slice(0, 5)
     result.sourceCount = sourcesSet.size
     result.bestArticleUrl = bestArticle?.url ?? null
 
     return result
-  }
-
-  /**
-   * Extract location of death from text.
-   */
-  private extractLocation(text: string): string | null {
-    const locationPatterns = [
-      /died\s+(?:in|at)\s+([A-Z][a-zA-Z\s,]+?)(?:\s+(?:on|at\s+age|from)|[.,]|$)/i,
-      /passed\s+away\s+(?:in|at)\s+([A-Z][a-zA-Z\s,]+?)(?:\s+(?:on|at\s+age|from)|[.,]|$)/i,
-      /death\s+(?:in|at)\s+([A-Z][a-zA-Z\s,]+?)(?:\s+(?:on|from)|[.,]|$)/i,
-    ]
-
-    for (const pattern of locationPatterns) {
-      const match = text.match(pattern)
-      if (match && match[1]) {
-        const location = match[1].trim()
-        if (
-          location.length >= 3 &&
-          location.length <= 60 &&
-          !location.match(/^\d/) &&
-          !location.match(
-            /january|february|march|april|may|june|july|august|september|october|november|december/i
-          )
-        ) {
-          return location
-        }
-      }
-    }
-
-    return null
-  }
-
-  /**
-   * Extract notable factors about the death.
-   */
-  private extractNotableFactors(text: string): string[] {
-    const factors: string[] = []
-    const lowerText = text.toLowerCase()
-
-    for (const keyword of NOTABLE_FACTOR_KEYWORDS) {
-      if (lowerText.includes(keyword.toLowerCase())) {
-        factors.push(keyword)
-      }
-    }
-
-    // Add circumstance keywords as factors
-    for (const keyword of CIRCUMSTANCE_KEYWORDS) {
-      if (lowerText.includes(keyword.toLowerCase()) && !factors.includes(keyword)) {
-        factors.push(keyword)
-      }
-    }
-
-    return [...new Set(factors)].slice(0, 5)
   }
 }
 

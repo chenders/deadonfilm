@@ -274,6 +274,42 @@ describe("VarietySource", () => {
       expect(result.error).toBe("Network error")
     })
 
+    it("returns error when search fails with non-403 status", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      })
+
+      const result = await source.lookup(testActor)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("Search failed: HTTP 500")
+    })
+
+    it("returns error when article fetch fails with non-403 status", async () => {
+      const searchHtml = `
+        <html><body>
+          <a href="https://variety.com/2023/tv/news/matthew-perry-dead/">Article</a>
+        </body></html>
+      `
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => searchHtml,
+      })
+
+      // Article returns 404
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      })
+
+      const result = await source.lookup(testActor)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("Could not fetch Variety article")
+    })
+
     it("prefers obituary URLs over other article types", async () => {
       const searchHtml = `
         <html><body>
