@@ -1,0 +1,206 @@
+/**
+ * Dead on Film — Theme Variables
+ * 
+ * This file defines all CSS custom properties for light and dark modes.
+ * Import this file at the root of your application.
+ */
+
+:root {
+  /* ===== SURFACES ===== */
+  --surface-base: #f5f0e8;
+  --surface-elevated: #ffffff;
+  --surface-muted: #e8dcc8;
+  --surface-inset: #ded4c4;
+  
+  /* ===== TEXT ===== */
+  --text-primary: #2c1810;
+  --text-secondary: #6b5b4f;
+  --text-muted: #8a7b6b;
+  
+  /* ===== DECEASED SEMANTIC ===== */
+  --deceased-primary: #8b0000;
+  --deceased-hover: #6b0000;
+  --deceased-bg: #faf5f5;
+  --deceased-border: #d4a5a5;
+  --deceased-tab-active: #8b0000;
+  
+  /* ===== LIVING SEMANTIC ===== */
+  --living-primary: #b8860b;
+  --living-hover: #6b5010;
+  --living-bg: #faf6e9;
+  --living-border: #d4af37;
+  --living-tab-active: #b8860b;
+  
+  /* ===== LIFESPAN INDICATOR ===== */
+  --lifespan-early: #8b0000;
+  --lifespan-early-track: #f5e5e5;
+  --lifespan-longer: #228b22;
+  --lifespan-longer-track: #e5f5e5;
+  --lifespan-expected: #9a8d7d;
+  
+  /* ===== DECORATIVE CIRCLE ===== */
+  --circle-bg: #f5f0e8;
+  --circle-track: #e8dcc8;
+  --circle-progress: #8b0000;
+  --circle-ornament: #d4c4a8;
+  
+  /* ===== TIMELINE ===== */
+  --timeline-line: #d4c4a8;
+  --timeline-dot: #8b0000;
+  --timeline-dot-neutral: #b8860b;
+  
+  /* ===== BUTTONS ===== */
+  --button-primary-bg: #6b4423;
+  --button-primary-text: #ffffff;
+  --button-secondary-border: #6b4423;
+  --button-secondary-text: #6b4423;
+  
+  /* ===== INPUTS ===== */
+  --input-bg: #ffffff;
+  --input-border: #d4c4a8;
+  --input-focus-border: #8b6914;
+  
+  /* ===== TAGS ===== */
+  --tag-bg: #f0ebe4;
+  --tag-border: #d4c4a8;
+  --tag-text: #6b5b4f;
+  --tag-hover-bg: #e8dcc8;
+  
+  /* ===== TOOLTIPS ===== */
+  --tooltip-bg: #3d2914;
+  --tooltip-text: #f5f0e8;
+  
+  /* ===== MISC ===== */
+  --focus-ring: rgba(139, 105, 20, 0.4);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* ===== DARK MODE ===== */
+.dark {
+  /* ===== SURFACES ===== */
+  --surface-base: #1a1613;
+  --surface-elevated: #252119;
+  --surface-muted: #2d2720;
+  --surface-inset: #151311;
+  
+  /* ===== TEXT ===== */
+  --text-primary: #f0ebe4;
+  --text-secondary: #c4b8a8;
+  --text-muted: #9a8d7d;
+  
+  /* ===== DECEASED SEMANTIC ===== */
+  --deceased-primary: #e85c5c;
+  --deceased-hover: #ff7070;
+  --deceased-bg: #2a1f1f;
+  --deceased-border: #5c3838;
+  --deceased-tab-active: #c94a4a;
+  
+  /* ===== LIVING SEMANTIC ===== */
+  --living-primary: #e8b84a;
+  --living-hover: #ffd666;
+  --living-bg: #282418;
+  --living-border: #6b5c2e;
+  --living-tab-active: #c9a227;
+  
+  /* ===== LIFESPAN INDICATOR ===== */
+  --lifespan-early: #e05555;
+  --lifespan-early-track: #3a2525;
+  --lifespan-longer: #4caf50;
+  --lifespan-longer-track: #253a25;
+  --lifespan-expected: #6a5d4d;
+  
+  /* ===== DECORATIVE CIRCLE ===== */
+  --circle-bg: #201c18;
+  --circle-track: #3d3530;
+  --circle-progress: #c94a4a;
+  --circle-ornament: #4d443a;
+  
+  /* ===== TIMELINE ===== */
+  --timeline-line: #4d443a;
+  --timeline-dot: #c94a4a;
+  --timeline-dot-neutral: #c9a227;
+  
+  /* ===== BUTTONS ===== */
+  --button-primary-bg: #c9a227;
+  --button-primary-text: #1a1613;
+  --button-secondary-border: #9a8d7d;
+  --button-secondary-text: #c4b8a8;
+  
+  /* ===== INPUTS ===== */
+  --input-bg: #1a1613;
+  --input-border: #4d443a;
+  --input-focus-border: #c9a227;
+  
+  /* ===== TAGS ===== */
+  --tag-bg: #2d2720;
+  --tag-border: #4d443a;
+  --tag-text: #c4b8a8;
+  --tag-hover-bg: #3d3530;
+  
+  /* ===== TOOLTIPS ===== */
+  --tooltip-bg: #f0ebe4;
+  --tooltip-text: #2c1810;
+  
+  /* ===== MISC ===== */
+  --focus-ring: rgba(201, 162, 39, 0.4);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== GLOBAL TRANSITIONS ===== */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* Disable transitions during theme change to prevent flash */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+/* ===== UTILITY CLASSES ===== */
+
+/* Surface backgrounds */
+.bg-surface { background-color: var(--surface-base); }
+.bg-surface-elevated { background-color: var(--surface-elevated); }
+.bg-surface-muted { background-color: var(--surface-muted); }
+.bg-surface-inset { background-color: var(--surface-inset); }
+
+/* Text colors */
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.text-theme-muted { color: var(--text-muted); }
+
+/* Deceased colors */
+.text-deceased { color: var(--deceased-primary); }
+.text-deceased-hover:hover { color: var(--deceased-hover); }
+.bg-deceased { background-color: var(--deceased-bg); }
+.border-deceased { border-color: var(--deceased-border); }
+
+/* Living colors */
+.text-living { color: var(--living-primary); }
+.text-living-hover:hover { color: var(--living-hover); }
+.bg-living { background-color: var(--living-bg); }
+.border-living { border-color: var(--living-border); }
+
+/* Lifespan indicator */
+.bg-lifespan-early { background-color: var(--lifespan-early); }
+.bg-lifespan-early-track { background-color: var(--lifespan-early-track); }
+.bg-lifespan-longer { background-color: var(--lifespan-longer); }
+.bg-lifespan-longer-track { background-color: var(--lifespan-longer-track); }
+
+/* Focus styles */
+.focus-ring:focus,
+.focus-ring:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Card shadow */
+.shadow-card {
+  box-shadow: var(--card-shadow);
+}

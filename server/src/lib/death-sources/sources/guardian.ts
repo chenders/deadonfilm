@@ -16,8 +16,8 @@
  */
 
 import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
-import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import type { ActorForEnrichment, SourceLookupResult, EnrichmentSourceEntry } from "../types.js"
+import { DataSourceType, DEFAULT_MAX_STORIES_PER_SOURCE } from "../types.js"
 
 const GUARDIAN_API_URL = "https://content.guardianapis.com/search"
 
@@ -58,6 +58,14 @@ export class GuardianSource extends BaseDataSource {
 
   // Guardian allows 12 requests/second
   protected minDelayMs = 200
+
+  /** Maximum number of stories to return (configurable) */
+  private maxStories: number
+
+  constructor(maxStories?: number) {
+    super()
+    this.maxStories = maxStories ?? DEFAULT_MAX_STORIES_PER_SOURCE
+  }
 
   /**
    * Check if Guardian API is available (API key configured).
@@ -138,10 +146,10 @@ export class GuardianSource extends BaseDataSource {
 
       console.log(`  Found ${data.response.results.length} articles`)
 
-      // Find the most relevant death-related article
-      const article = this.findBestArticle(data.response.results, actor)
+      // Find multiple relevant death-related articles (up to maxStories)
+      const articles = this.findRelevantArticles(data.response.results, actor, this.maxStories)
 
-      if (!article) {
+      if (articles.length === 0) {
         return {
           success: false,
           source: this.createSourceEntry(startTime, 0),
@@ -150,30 +158,32 @@ export class GuardianSource extends BaseDataSource {
         }
       }
 
-      // Extract death info from the article
-      const bodyText =
-        article.fields?.bodyText || article.fields?.standfirst || article.fields?.trailText || ""
-      const circumstances = this.extractCircumstances(bodyText, actor.name)
-      const locationOfDeath = this.extractLocation(bodyText)
-      const notableFactors = this.extractNotableFactors(bodyText)
+      // Process the primary (best) article
+      const primaryArticle = articles[0]
+      const primaryResult = this.processArticle(primaryArticle, actor.name, startTime)
 
-      // Calculate confidence
-      let confidence = 0.5 // Guardian is reliable
-      if (article.sectionId === "tone/obituaries") confidence += 0.2 // Obituary section bonus
-      if (circumstances) confidence += 0.1
-      if (bodyText.length > 500) confidence += 0.1
+      // Process additional articles
+      const additionalResults: Array<{
+        source: EnrichmentSourceEntry
+        data: typeof primaryResult.data
+      }> = []
+
+      for (let i = 1; i < articles.length; i++) {
+        const additionalArticle = articles[i]
+        const result = this.processArticle(additionalArticle, actor.name, startTime)
+        additionalResults.push({
+          source: result.source,
+          data: result.data,
+        })
+      }
+
+      console.log(`  Returning ${1 + additionalResults.length} stories`)
 
       return {
         success: true,
-        source: this.createSourceEntry(startTime, confidence, article.webUrl),
-        data: {
-          circumstances,
-          rumoredCircumstances: null,
-          notableFactors,
-          relatedCelebrities: [],
-          locationOfDeath,
-          additionalContext: article.fields?.standfirst || null,
-        },
+        source: primaryResult.source,
+        data: primaryResult.data,
+        additionalResults: additionalResults.length > 0 ? additionalResults : undefined,
       }
     } catch (error) {
       return {
@@ -186,41 +196,95 @@ export class GuardianSource extends BaseDataSource {
   }
 
   /**
-   * Find the most relevant death-related article from search results.
+   * Process a single article and extract death information.
    */
-  private findBestArticle(
-    results: GuardianSearchResponse["response"]["results"],
-    actor: ActorForEnrichment
+  private processArticle(
+    article: GuardianSearchResponse["response"]["results"][0],
+    actorName: string,
+    startTime: number
   ) {
-    // Prioritize actual obituaries if present
-    const obituaries = results.filter((r) => r.sectionId === "tone/obituaries")
-    if (obituaries.length > 0) {
-      // Find one that mentions the actor name prominently
-      for (const obit of obituaries) {
-        if (obit.webTitle.toLowerCase().includes(actor.name.toLowerCase())) {
-          return obit
-        }
+    const bodyText =
+      article.fields?.bodyText || article.fields?.standfirst || article.fields?.trailText || ""
+    const circumstances = this.extractCircumstances(bodyText, actorName)
+    const locationOfDeath = this.extractLocation(bodyText)
+    const notableFactors = this.extractNotableFactors(bodyText)
+
+    // Calculate confidence
+    let confidence = 0.5 // Guardian is reliable
+    if (article.sectionId === "tone/obituaries") confidence += 0.2 // Obituary section bonus
+    if (circumstances) confidence += 0.1
+    if (bodyText.length > 500) confidence += 0.1
+
+    return {
+      source: this.createSourceEntry(startTime, confidence, article.webUrl),
+      data: {
+        circumstances,
+        rumoredCircumstances: null,
+        notableFactors,
+        relatedCelebrities: [] as Array<{
+          name: string
+          tmdbId: number | null
+          relationship: string
+        }>,
+        locationOfDeath,
+        additionalContext: article.fields?.standfirst || null,
+      },
+    }
+  }
+
+  /**
+   * Find multiple relevant death-related articles from search results.
+   * Returns articles sorted by relevance (obituaries first, then death-keyword matches).
+   */
+  private findRelevantArticles(
+    results: GuardianSearchResponse["response"]["results"],
+    actor: ActorForEnrichment,
+    maxStories: number
+  ): GuardianSearchResponse["response"]["results"] {
+    const relevant: GuardianSearchResponse["response"]["results"] = []
+    const seen = new Set<string>()
+
+    // Helper to add article if not duplicate
+    const addArticle = (article: (typeof results)[0]) => {
+      if (!seen.has(article.webUrl) && relevant.length < maxStories) {
+        seen.add(article.webUrl)
+        relevant.push(article)
       }
-      return obituaries[0]
     }
 
-    // Find any article that prominently mentions death
+    // First pass: obituaries that mention the actor name
+    const obituaries = results.filter((r) => r.sectionId === "tone/obituaries")
+    for (const obit of obituaries) {
+      if (obit.webTitle.toLowerCase().includes(actor.name.toLowerCase())) {
+        addArticle(obit)
+      }
+    }
+    // Add remaining obituaries
+    for (const obit of obituaries) {
+      addArticle(obit)
+    }
+
+    // Second pass: articles with death keywords in title
     for (const result of results) {
       const title = result.webTitle.toLowerCase()
-      const hasName = title.includes(actor.name.split(" ")[0].toLowerCase())
+      const hasName =
+        title.includes(actor.name.toLowerCase()) ||
+        title.includes(actor.name.split(" ")[0].toLowerCase())
       const hasDeath = DEATH_KEYWORDS.some((kw) => title.includes(kw.toLowerCase()))
 
       if (hasName && hasDeath) {
-        return result
+        addArticle(result)
       }
     }
 
-    // Return first result if it seems relevant (may be news, tribute, or follow-up story)
-    if (results[0]?.webTitle.toLowerCase().includes(actor.name.split(" ")[0].toLowerCase())) {
-      return results[0]
+    // Third pass: any article that mentions the actor name
+    for (const result of results) {
+      if (result.webTitle.toLowerCase().includes(actor.name.split(" ")[0].toLowerCase())) {
+        addArticle(result)
+      }
     }
 
-    return null
+    return relevant
   }
 
   /**
