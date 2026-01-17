@@ -143,7 +143,7 @@ export type Checkpoint = z.infer<typeof CheckpointSchema>
 // Actor to process schema (from database)
 export const ActorToProcessSchema = z.object({
   id: z.number(),
-  tmdb_id: z.number().nullable(),
+  tmdb_id: z.number(),
   name: z.string(),
   // PostgreSQL returns Date objects for date columns, but they might also be strings
   birthday: z.union([z.date(), z.string(), z.null()]),
