@@ -1,4 +1,7 @@
 #!/usr/bin/env tsx
+// Suppress New Relic warnings before any imports
+process.env.NEW_RELIC_LOG_LEVEL = process.env.NEW_RELIC_LOG_LEVEL || "error"
+
 /**
  * Backfill cause of death information using Claude Opus 4.5 Batch API.
  *
@@ -7,10 +10,12 @@
  * - Actors missing cause_of_death_details
  * - Date corrections (birthday, deathday)
  *
- * The script operates in three modes:
+ * The script operates in several modes:
  * - submit: Create and submit a new batch
  * - status: Check status of a running batch
  * - process: Process results from a completed batch
+ * - enrich: Multi-source enrichment with link following
+ * - clear-cache: Clear cached search results for re-processing
  *
  * Checkpoint support ensures you can resume if the script is interrupted.
  *
@@ -18,8 +23,10 @@
  *   npm run backfill:cause-of-death-batch -- submit [options]
  *   npm run backfill:cause-of-death-batch -- status --batch-id <id>
  *   npm run backfill:cause-of-death-batch -- process --batch-id <id>
+ *   npm run backfill:cause-of-death-batch -- enrich [options]
+ *   npm run backfill:cause-of-death-batch -- clear-cache [options]
  *
- * Options:
+ * Submit/Status/Process Options:
  *   --limit <n>             Limit number of actors to process
  *   --tmdb-id <id>          Process a specific actor by TMDB ID (re-process even if data exists)
  *   --missing-details-flag  Re-process actors with cause/details but missing has_detailed_death_info
@@ -27,18 +34,257 @@
  *   --fresh                 Start fresh (ignore checkpoint)
  *   --batch-id <id>         Batch ID for status/process commands
  *
+ * Enrich Options:
+ *   --follow-links          Follow promising links from search results (default: true)
+ *   --no-follow-links       Disable link following (use snippets only)
+ *   --ai-link-selection     Use Claude to select which links to follow
+ *   --ai-content-extraction Use Claude to extract info from fetched pages
+ *   --max-links <n>         Maximum links to follow per actor (default: 3)
+ *   --max-link-cost <usd>   Maximum cost for link following per actor (default: 0.01)
+ *
+ * Clear-cache Options:
+ *   --web-search            Clear web search caches (DuckDuckGo, Google, Bing)
+ *   --all                   Clear ALL cached data (use with caution)
+ *   --tmdb-id <id>          Clear cache for a specific actor
+ *   --reset-actors          Also reset cause_of_death_checked_at to allow re-selection
+ *
  * Examples:
  *   npm run backfill:cause-of-death-batch -- submit --limit 100 --dry-run
  *   npm run backfill:cause-of-death-batch -- submit
- *   npm run backfill:cause-of-death-batch -- submit --tmdb-id 1488908  # Re-process specific actor
- *   npm run backfill:cause-of-death-batch -- submit --missing-details-flag --limit 50  # Backfill missing flags
+ *   npm run backfill:cause-of-death-batch -- submit --tmdb-id 1488908
  *   npm run backfill:cause-of-death-batch -- status --batch-id msgbatch_xxx
  *   npm run backfill:cause-of-death-batch -- process --batch-id msgbatch_xxx
+ *   npm run backfill:cause-of-death-batch -- enrich --tmdb-id 3895 --follow-links
+ *   npm run backfill:cause-of-death-batch -- enrich --ai-link-selection --ai-content-extraction
+ *   npm run backfill:cause-of-death-batch -- clear-cache --web-search --reset-actors
+ *   npm run backfill:cause-of-death-batch -- clear-cache --tmdb-id 3895
  */
 
 import "dotenv/config"
 import path from "path"
+import readline from "readline"
 import Anthropic from "@anthropic-ai/sdk"
+
+/**
+ * Prompts user to press Enter to continue or Ctrl+C to cancel.
+ * Returns a promise that resolves when the user presses Enter.
+ */
+function waitForConfirmation(message: string = "Press Enter to continue..."): Promise<void> {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    })
+
+    rl.question(`\n${message}`, () => {
+      rl.close()
+      resolve()
+    })
+  })
+}
+
+/**
+ * Displays a configuration summary for the enrich command.
+ * Shows what will run, what costs money, and relevant settings.
+ */
+function displayEnrichConfigSummary(options: {
+  actorCount: number
+  free: boolean
+  paid: boolean
+  ai: boolean
+  followLinks: boolean
+  aiLinkSelection: boolean
+  aiContentExtraction: boolean
+  maxLinks: number
+  maxLinkCost: number
+  maxCostPerActor?: number
+  maxTotalCost?: number
+  claudeCleanup: boolean
+  gatherAllSources: boolean
+  stopOnMatch: boolean
+  confidenceThreshold: number
+  ignoreCache: boolean
+  tmdbId?: number
+}): void {
+  const {
+    actorCount,
+    free,
+    paid,
+    ai,
+    followLinks,
+    aiLinkSelection,
+    aiContentExtraction,
+    maxLinks,
+    maxLinkCost,
+    maxCostPerActor,
+    maxTotalCost,
+    claudeCleanup,
+    gatherAllSources,
+    stopOnMatch,
+    confidenceThreshold,
+    ignoreCache,
+    tmdbId,
+  } = options
+
+  console.log(`\n${"═".repeat(70)}`)
+  console.log(`                    DEATH ENRICHMENT CONFIGURATION`)
+  console.log(`${"═".repeat(70)}`)
+
+  // Target info
+  console.log(`\n┌─ TARGET ─────────────────────────────────────────────────────────────┐`)
+  if (tmdbId) {
+    console.log(`│  Actor: TMDB ID ${tmdbId}`)
+  } else {
+    console.log(`│  Actors to process: ${actorCount}`)
+  }
+  console.log(`│  Confidence threshold: ${(confidenceThreshold * 100).toFixed(0)}%`)
+  console.log(`│  Stop on match: ${stopOnMatch ? "Yes" : "No (try all sources)"}`)
+  console.log(`│  Ignore cache: ${ignoreCache ? "Yes (fresh requests)" : "No (use cached)"}`)
+  console.log(`└──────────────────────────────────────────────────────────────────────┘`)
+
+  // Data sources section
+  console.log(`\n┌─ DATA SOURCES ───────────────────────────────────────────────────────┐`)
+  console.log(`│`)
+  console.log(`│  FREE SOURCES: ${free ? "✓ ENABLED" : "✗ DISABLED"}`)
+  if (free) {
+    const guardianKey = !!process.env.GUARDIAN_API_KEY
+    const nytimesKey = !!process.env.NYTIMES_API_KEY
+    const familysearchKey = !!process.env.FAMILYSEARCH_API_KEY
+    console.log(`│    • Wikipedia SPARQL      $0.00   (query Wikidata)`)
+    console.log(`│    • Wikipedia Text        $0.00   (scrape articles)`)
+    console.log(`│    • DuckDuckGo Search     $0.00   (web search)`)
+    console.log(`│    • IMDb                  $0.00   (scrape bio pages)`)
+    console.log(
+      `│    • The Guardian          $0.00   (API, ${guardianKey ? "✓ key configured" : "✗ no key"})`
+    )
+    console.log(
+      `│    • New York Times        $0.00   (API, ${nytimesKey ? "✓ key configured" : "✗ no key"})`
+    )
+    console.log(`│    • AP News               $0.00   (scrape)`)
+    console.log(
+      `│    • FamilySearch          $0.00   (API, ${familysearchKey ? "✓ key configured" : "✗ no key"})`
+    )
+  }
+  console.log(`│`)
+  console.log(`│  PAID SOURCES: ${paid ? "✓ ENABLED" : "✗ DISABLED"}`)
+  if (paid) {
+    const googleKey = !!(process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX)
+    const bingKey = !!process.env.BING_SEARCH_API_KEY
+    console.log(
+      `│    • Google Search         ~$0.005/query (${googleKey ? "✓ key configured" : "✗ no key"})`
+    )
+    console.log(
+      `│    • Bing Search           ~$0.005/query (${bingKey ? "✓ key configured" : "✗ no key"})`
+    )
+  }
+  console.log(`│`)
+  console.log(`│  AI SOURCES: ${ai ? "✓ ENABLED" : "✗ DISABLED"}`)
+  if (ai) {
+    console.log(`│    • Claude Opus 4.5       ~$0.05-0.10/actor`)
+  }
+  console.log(`│`)
+  console.log(`└──────────────────────────────────────────────────────────────────────┘`)
+
+  // Link following section
+  console.log(`\n┌─ LINK FOLLOWING ─────────────────────────────────────────────────────┐`)
+  console.log(`│`)
+  console.log(`│  Follow links: ${followLinks ? "✓ ENABLED" : "✗ DISABLED"}`)
+  if (followLinks) {
+    console.log(`│    Max links per actor: ${maxLinks}`)
+    console.log(`│    Max link cost per actor: $${maxLinkCost.toFixed(3)}`)
+    console.log(`│`)
+    console.log(
+      `│    AI Link Selection: ${aiLinkSelection ? "✓ ENABLED (~$0.002/actor)" : "✗ DISABLED (heuristic)"}`
+    )
+    console.log(
+      `│    AI Content Extraction: ${aiContentExtraction ? "✓ ENABLED (~$0.003/actor)" : "✗ DISABLED (regex)"}`
+    )
+  }
+  console.log(`│`)
+  console.log(`└──────────────────────────────────────────────────────────────────────┘`)
+
+  // Claude cleanup section
+  console.log(`\n┌─ CLAUDE CLEANUP ─────────────────────────────────────────────────────┐`)
+  console.log(`│`)
+  console.log(`│  Claude cleanup: ${claudeCleanup ? "✓ ENABLED" : "✗ DISABLED"}`)
+  if (claudeCleanup) {
+    console.log(`│    Model: Claude Opus 4.5`)
+    console.log(`│    Gather all sources: ${gatherAllSources ? "Yes" : "No"}`)
+    console.log(`│    Estimated cost: ~$0.05-0.10 per actor`)
+  }
+  console.log(`│`)
+  console.log(`└──────────────────────────────────────────────────────────────────────┘`)
+
+  // Cost limits section
+  console.log(`\n┌─ COST LIMITS ────────────────────────────────────────────────────────┐`)
+  console.log(`│`)
+  if (maxCostPerActor !== undefined) {
+    console.log(`│  Max cost per actor: $${maxCostPerActor.toFixed(2)}`)
+  } else {
+    console.log(`│  Max cost per actor: No limit`)
+  }
+  if (maxTotalCost !== undefined) {
+    console.log(`│  Max total cost: $${maxTotalCost.toFixed(2)}`)
+  } else {
+    console.log(`│  Max total cost: No limit`)
+  }
+  console.log(`│`)
+  console.log(`└──────────────────────────────────────────────────────────────────────┘`)
+
+  // Cost estimate
+  console.log(`\n┌─ ESTIMATED COST ─────────────────────────────────────────────────────┐`)
+  console.log(`│`)
+  let minCost = 0
+  let maxCost = 0
+
+  // Free sources don't add cost
+  if (free) {
+    // Free sources are $0
+  }
+
+  // Paid sources add ~$0.005-0.01 per actor
+  if (paid) {
+    minCost += 0.005 * actorCount
+    maxCost += 0.01 * actorCount
+  }
+
+  // AI sources add ~$0.05-0.10 per actor
+  if (ai) {
+    minCost += 0.05 * actorCount
+    maxCost += 0.1 * actorCount
+  }
+
+  // Link following with AI
+  if (followLinks) {
+    if (aiLinkSelection) {
+      minCost += 0.001 * actorCount
+      maxCost += 0.003 * actorCount
+    }
+    if (aiContentExtraction) {
+      minCost += 0.002 * actorCount
+      maxCost += 0.005 * actorCount
+    }
+  }
+
+  // Claude cleanup
+  if (claudeCleanup) {
+    minCost += 0.05 * actorCount
+    maxCost += 0.1 * actorCount
+  }
+
+  if (minCost === 0 && maxCost === 0) {
+    console.log(`│  Estimated cost: $0.00 (all free sources)`)
+  } else {
+    console.log(`│  Estimated cost: $${minCost.toFixed(2)} - $${maxCost.toFixed(2)}`)
+  }
+  console.log(`│`)
+  console.log(`│  Note: Actual costs depend on cache hits, source availability,`)
+  console.log(`│  and how many sources are needed per actor.`)
+  console.log(`│`)
+  console.log(`└──────────────────────────────────────────────────────────────────────┘`)
+
+  console.log(`\n${"═".repeat(70)}`)
+}
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
 import {
@@ -49,12 +295,19 @@ import {
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { toSentenceCase } from "../src/lib/text-utils.js"
 import { rebuildDeathCaches, invalidateActorCache } from "../src/lib/cache.js"
+import { createActorSlug } from "../src/lib/slug-utils.js"
 import {
   DeathEnrichmentOrchestrator,
   CostLimitExceededError,
   setIgnoreCache,
+  clearWebSearchCache,
+  clearCacheForActor,
+  clearAllCache,
+  resetActorEnrichmentStatus,
+  getCacheStats,
   type EnrichmentConfig,
   type ActorForEnrichment,
+  type LinkFollowConfig,
 } from "../src/lib/death-sources/index.js"
 
 // Initialize New Relic for monitoring
@@ -65,6 +318,8 @@ const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-cause-of-death-batch
 
 const MODEL_ID = "claude-opus-4-5-20251101"
 const SOURCE_NAME = "claude-opus-4.5-batch"
+// Version string to track script improvements - increment when making changes that warrant re-enrichment
+const ENRICHMENT_VERSION = "1.0.0"
 
 // Minimum content length thresholds for determining if actor has detailed death info
 // Content must be substantive (not just "natural causes" or similar brief text)
@@ -1150,6 +1405,13 @@ async function applyUpdate(
     }
   }
 
+  // Always add enrichment tracking columns to record that this script processed this actor
+  updates.push(`enriched_at = NOW()`)
+  updates.push(`enrichment_source = $${paramIndex++}`)
+  values.push(SOURCE_NAME)
+  updates.push(`enrichment_version = $${paramIndex++}`)
+  values.push(ENRICHMENT_VERSION)
+
   // Apply actor table updates if any
   if (updates.length > 0) {
     updates.push(`updated_at = NOW()`)
@@ -1207,9 +1469,12 @@ async function applyUpdate(
         notable_factors,
         sources,
         raw_response,
+        enriched_at,
+        enrichment_source,
+        enrichment_version,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), $19, $20, NOW(), NOW())
       ON CONFLICT (actor_id) DO UPDATE SET
         circumstances = EXCLUDED.circumstances,
         circumstances_confidence = EXCLUDED.circumstances_confidence,
@@ -1228,6 +1493,9 @@ async function applyUpdate(
         notable_factors = EXCLUDED.notable_factors,
         sources = EXCLUDED.sources,
         raw_response = COALESCE(EXCLUDED.raw_response, actor_death_circumstances.raw_response),
+        enriched_at = EXCLUDED.enriched_at,
+        enrichment_source = EXCLUDED.enrichment_source,
+        enrichment_version = EXCLUDED.enrichment_version,
         updated_at = NOW()`,
       [
         actorId,
@@ -1250,6 +1518,8 @@ async function applyUpdate(
         rawResponse
           ? JSON.stringify({ response: rawResponse, parsed_at: new Date().toISOString() })
           : null,
+        SOURCE_NAME,
+        ENRICHMENT_VERSION,
       ]
     )
 
@@ -1413,6 +1683,140 @@ program
   })
 
 /**
+ * Clear cached web search results and optionally reset actor enrichment status.
+ * This allows re-processing actors with improved methods.
+ */
+async function clearCache(options: {
+  webSearch?: boolean
+  all?: boolean
+  tmdbId?: number
+  resetActors?: boolean
+  dryRun?: boolean
+}): Promise<void> {
+  const { webSearch, all, tmdbId, resetActors, dryRun } = options
+
+  if (!webSearch && !all && !tmdbId) {
+    console.error("Must specify --web-search, --all, or --tmdb-id <id>")
+    process.exit(1)
+  }
+
+  if (!process.env.DATABASE_URL) {
+    console.error("DATABASE_URL environment variable is required")
+    process.exit(1)
+  }
+
+  // Show current cache stats
+  console.log("\n--- Current Cache Statistics ---")
+  const stats = await getCacheStats()
+  console.log(`Total entries: ${stats.totalEntries}`)
+  console.log(`Total size: ${(stats.totalSizeBytes / 1024 / 1024).toFixed(2)} MB`)
+  console.log(`Compressed entries: ${stats.compressedEntries}`)
+  console.log(`Error entries: ${stats.errorEntries}`)
+  console.log("\nEntries by source:")
+  for (const [source, count] of Object.entries(stats.entriesBySource)) {
+    console.log(`  ${source}: ${count}`)
+  }
+
+  if (dryRun) {
+    console.log("\n--- Dry Run Mode ---")
+    if (all) {
+      console.log(`Would delete ALL ${stats.totalEntries} cache entries`)
+    } else if (webSearch) {
+      const webSearchCount =
+        (stats.entriesBySource["duckduckgo"] || 0) +
+        (stats.entriesBySource["google_search"] || 0) +
+        (stats.entriesBySource["bing_search"] || 0)
+      console.log(`Would delete ${webSearchCount} web search cache entries`)
+    } else if (tmdbId) {
+      console.log(`Would delete cache entries for actor with TMDB ID ${tmdbId}`)
+    }
+    if (resetActors) {
+      console.log("Would reset cause_of_death_checked_at for affected actors")
+    }
+    return
+  }
+
+  console.log("\n--- Clearing Cache ---")
+
+  let deletedCount = 0
+
+  if (all) {
+    deletedCount = await clearAllCache()
+    console.log(`Deleted ${deletedCount} total cache entries`)
+  } else if (webSearch) {
+    const result = await clearWebSearchCache()
+    deletedCount = result.totalDeleted
+    console.log(`Deleted ${deletedCount} web search cache entries:`)
+    for (const [source, count] of Object.entries(result.deletedBySource)) {
+      console.log(`  ${source}: ${count}`)
+    }
+  } else if (tmdbId) {
+    // Need to get actor ID from TMDB ID
+    const db = getPool()
+    const actorResult = await db.query<{ id: number }>("SELECT id FROM actors WHERE tmdb_id = $1", [
+      tmdbId,
+    ])
+    if (actorResult.rows.length === 0) {
+      console.error(`Actor with TMDB ID ${tmdbId} not found`)
+      await resetPool()
+      process.exit(1)
+    }
+    const actorId = actorResult.rows[0].id
+    deletedCount = await clearCacheForActor(actorId)
+    console.log(`Deleted ${deletedCount} cache entries for actor ${actorId} (TMDB: ${tmdbId})`)
+  }
+
+  // Reset actor enrichment status if requested
+  if (resetActors) {
+    console.log("\n--- Resetting Actor Enrichment Status ---")
+    let resetCount = 0
+    if (tmdbId) {
+      const db = getPool()
+      const result = await db.query<{ id: number }>("SELECT id FROM actors WHERE tmdb_id = $1", [
+        tmdbId,
+      ])
+      if (result.rows.length > 0) {
+        resetCount = await resetActorEnrichmentStatus({ actorIds: [result.rows[0].id] })
+      }
+    } else if (webSearch) {
+      resetCount = await resetActorEnrichmentStatus({
+        sourceTypes: ["duckduckgo", "google_search", "bing_search"] as never[],
+      })
+    } else {
+      resetCount = await resetActorEnrichmentStatus()
+    }
+    console.log(`Reset cause_of_death_checked_at for ${resetCount} actors`)
+  }
+
+  // Show updated stats
+  console.log("\n--- Updated Cache Statistics ---")
+  const updatedStats = await getCacheStats()
+  console.log(`Total entries: ${updatedStats.totalEntries}`)
+  console.log(`Total size: ${(updatedStats.totalSizeBytes / 1024 / 1024).toFixed(2)} MB`)
+
+  await resetPool()
+  console.log("\nDone!")
+}
+
+program
+  .command("clear-cache")
+  .description("Clear cached search results to allow re-processing actors")
+  .option("--web-search", "Clear web search caches (DuckDuckGo, Google, Bing)")
+  .option("--all", "Clear ALL cached data (use with caution)")
+  .option("-t, --tmdb-id <number>", "Clear cache for a specific actor by TMDB ID", parsePositiveInt)
+  .option("--reset-actors", "Also reset cause_of_death_checked_at to allow re-selection")
+  .option("-n, --dry-run", "Preview what would be deleted without making changes")
+  .action(async (options) => {
+    await clearCache({
+      webSearch: options.webSearch || false,
+      all: options.all || false,
+      tmdbId: options.tmdbId,
+      resetActors: options.resetActors || false,
+      dryRun: options.dryRun || false,
+    })
+  })
+
+/**
  * Enrich actors with missing death details using multi-source fallbacks.
  * This queries additional sources when Claude Batch API didn't return
  * sufficient circumstances/notable_factors/etc.
@@ -1433,6 +1837,14 @@ async function enrichMissingDetails(options: {
   claudeCleanup?: boolean
   gatherAllSources?: boolean
   ignoreCache?: boolean
+  // Link following options
+  followLinks?: boolean
+  aiLinkSelection?: boolean
+  aiContentExtraction?: boolean
+  maxLinks?: number
+  maxLinkCost?: number
+  // Skip confirmation
+  yes?: boolean
 }): Promise<void> {
   const {
     limit = 100,
@@ -1450,6 +1862,14 @@ async function enrichMissingDetails(options: {
     claudeCleanup = false,
     gatherAllSources = false,
     ignoreCache = false,
+    // Link following defaults
+    followLinks = true,
+    aiLinkSelection = false,
+    aiContentExtraction = false,
+    maxLinks = 3,
+    maxLinkCost = 0.01,
+    // Skip confirmation (reserved for future interactive mode)
+    yes: _yes = false,
   } = options
 
   // Configure cache behavior
@@ -1526,7 +1946,7 @@ async function enrichMissingDetails(options: {
         query += ` AND a.deathday >= $${params.length}`
       }
 
-      query += ` ORDER BY a.popularity DESC NULLS LAST`
+      query += ` ORDER BY a.popularity DESC NULLS LAST, a.deathday DESC NULLS LAST`
 
       if (limit) {
         params.push(limit)
@@ -1557,6 +1977,41 @@ async function enrichMissingDetails(options: {
       return
     }
 
+    // Display configuration summary and ask for confirmation (unless dry-run)
+    if (!dryRun) {
+      displayEnrichConfigSummary({
+        actorCount: actors.length,
+        free,
+        paid,
+        ai,
+        followLinks,
+        aiLinkSelection,
+        aiContentExtraction,
+        maxLinks,
+        maxLinkCost,
+        maxCostPerActor,
+        maxTotalCost,
+        claudeCleanup,
+        gatherAllSources,
+        stopOnMatch: claudeCleanup && gatherAllSources ? false : stopOnMatch,
+        confidenceThreshold,
+        ignoreCache,
+        tmdbId,
+      })
+
+      await waitForConfirmation("Press Enter to start enrichment, or Ctrl+C to cancel...")
+      console.log("\nStarting enrichment...\n")
+    }
+
+    // Build link follow configuration
+    const linkFollowConfig: LinkFollowConfig = {
+      enabled: followLinks,
+      maxLinksPerActor: maxLinks,
+      maxCostPerActor: maxLinkCost,
+      aiLinkSelection: aiLinkSelection,
+      aiContentExtraction: aiContentExtraction,
+    }
+
     // Configure the orchestrator
     const config: Partial<EnrichmentConfig> = {
       sourceCategories: {
@@ -1577,6 +2032,7 @@ async function enrichMissingDetails(options: {
             gatherAllSources: gatherAllSources,
           }
         : undefined,
+      linkFollow: linkFollowConfig,
     }
 
     const orchestrator = new DeathEnrichmentOrchestrator(config)
@@ -1592,6 +2048,34 @@ async function enrichMissingDetails(options: {
       causeOfDeathDetails: a.cause_of_death_details,
       popularity: a.popularity,
     }))
+
+    // Track updated actors for cleanup on interrupt
+    let updatedActorCount = 0
+    let isInterrupted = false
+
+    // Handle SIGINT (Ctrl+C) gracefully
+    const handleInterrupt = async () => {
+      if (isInterrupted) return // Prevent double handling
+      isInterrupted = true
+
+      console.log("\n\nInterrupt received - cleaning up...")
+
+      // Stop the status bar
+      orchestrator.getStatusBar().stop()
+
+      // Rebuild death caches if any actors were updated
+      if (updatedActorCount > 0) {
+        console.log(`Rebuilding death caches for ${updatedActorCount} updated actors...`)
+        await rebuildDeathCaches()
+        console.log("Cache cleanup complete")
+      }
+
+      await resetPool()
+      process.exit(130) // Standard exit code for SIGINT
+    }
+
+    process.on("SIGINT", handleInterrupt)
+    process.on("SIGTERM", handleInterrupt)
 
     if (dryRun) {
       console.log(`\n--- Dry Run Mode ---`)
@@ -1612,6 +2096,23 @@ async function enrichMissingDetails(options: {
         console.log(`  Claude cleanup: ENABLED (Opus 4.5)`)
         console.log(`  Gather all sources: ${gatherAllSources ? "yes" : "no"}`)
         console.log(`  Estimated cost per actor: ~$0.07`)
+      }
+      console.log(`\nLink following configuration:`)
+      console.log(`  Follow links: ${followLinks ? "enabled" : "disabled"}`)
+      if (followLinks) {
+        console.log(`  Max links per actor: ${maxLinks}`)
+        console.log(`  Max link cost per actor: $${maxLinkCost}`)
+        console.log(`  AI link selection: ${aiLinkSelection ? "yes (Claude)" : "no (heuristic)"}`)
+        console.log(
+          `  AI content extraction: ${aiContentExtraction ? "yes (Claude)" : "no (regex)"}`
+        )
+        if (aiLinkSelection || aiContentExtraction) {
+          const estimatedLinkCost =
+            (aiLinkSelection ? 0.002 : 0) + (aiContentExtraction ? 0.003 : 0)
+          console.log(
+            `  Estimated link following cost per actor: ~$${estimatedLinkCost.toFixed(3)}`
+          )
+        }
       }
       if (maxCostPerActor !== undefined) {
         console.log(`  Max cost per actor: $${maxCostPerActor}`)
@@ -1692,9 +2193,12 @@ async function enrichMissingDetails(options: {
           related_deaths,
           sources,
           raw_response,
+          enriched_at,
+          enrichment_source,
+          enrichment_version,
           created_at,
           updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, $12, NOW(), NOW())
         ON CONFLICT (actor_id) DO UPDATE SET
           circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
           circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
@@ -1705,6 +2209,9 @@ async function enrichMissingDetails(options: {
           related_deaths = COALESCE(EXCLUDED.related_deaths, actor_death_circumstances.related_deaths),
           sources = COALESCE(EXCLUDED.sources, actor_death_circumstances.sources),
           raw_response = COALESCE(EXCLUDED.raw_response, actor_death_circumstances.raw_response),
+          enriched_at = EXCLUDED.enriched_at,
+          enrichment_source = EXCLUDED.enrichment_source,
+          enrichment_version = EXCLUDED.enrichment_version,
           updated_at = NOW()`,
         [
           actorId,
@@ -1715,19 +2222,47 @@ async function enrichMissingDetails(options: {
           notableFactors && notableFactors.length > 0 ? notableFactors : null,
           additionalContext,
           relatedDeaths,
-          JSON.stringify({
-            circumstances: enrichment.circumstancesSource,
-            rumoredCircumstances: enrichment.rumoredCircumstancesSource,
-            notableFactors: enrichment.notableFactorsSource,
-            locationOfDeath: enrichment.locationOfDeathSource,
-            cleanupSource: cleaned ? "claude-opus-4.5" : null,
-          }),
+          (() => {
+            const rawSources = enrichment.rawSources
+            const hasRawSources = rawSources && rawSources.length > 0
+            return JSON.stringify(
+              hasRawSources
+                ? {
+                    // When Claude cleanup gathered multiple sources, include all of them
+                    circumstances: rawSources.map((rs) => ({
+                      url: rs.url || null,
+                      archive_url: null,
+                      description: `Source: ${rs.sourceName}`,
+                    })),
+                    rumoredCircumstances: enrichment.rumoredCircumstancesSource
+                      ? [
+                          {
+                            url: enrichment.rumoredCircumstancesSource.url || null,
+                            archive_url: null,
+                            description: `Source: ${enrichment.rumoredCircumstancesSource.type}`,
+                          },
+                        ]
+                      : null,
+                    cleanupSource: "claude-opus-4.5",
+                  }
+                : {
+                    // Single source mode - use the winning source for each field
+                    circumstances: enrichment.circumstancesSource,
+                    rumoredCircumstances: enrichment.rumoredCircumstancesSource,
+                    notableFactors: enrichment.notableFactorsSource,
+                    locationOfDeath: enrichment.locationOfDeathSource,
+                    cleanupSource: cleaned ? "claude-opus-4.5" : null,
+                  }
+            )
+          })(),
           enrichment.rawSources
             ? JSON.stringify({
                 rawSources: enrichment.rawSources,
                 gatheredAt: new Date().toISOString(),
               })
             : null,
+          SOURCE_NAME,
+          ENRICHMENT_VERSION,
         ]
       )
 
@@ -1739,16 +2274,23 @@ async function enrichMissingDetails(options: {
       const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
 
       if (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths) {
-        await db.query(`UPDATE actors SET has_detailed_death_info = true WHERE id = $1`, [actorId])
-      }
-
-      // Invalidate the actor's cache so updated death info is reflected immediately
-      const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
-      if (actorRecord?.tmdbId) {
-        await invalidateActorCache(actorRecord.tmdbId)
+        await db.query(
+          `UPDATE actors SET has_detailed_death_info = true, enriched_at = NOW(), enrichment_source = $2, enrichment_version = $3, updated_at = NOW() WHERE id = $1`,
+          [actorId, SOURCE_NAME, ENRICHMENT_VERSION]
+        )
+        // Track this actor for the death pages summary
+        const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
+        if (actorRecord) {
+          orchestrator.getStatusBar().addDeathPageActor({
+            id: actorId,
+            tmdbId: actorRecord.tmdbId ?? null,
+            name: actorRecord.name,
+          })
+        }
       }
 
       updated++
+      updatedActorCount++
     }
 
     // Print final stats
@@ -1787,19 +2329,52 @@ async function enrichMissingDetails(options: {
       totalTimeMs: stats.totalTimeMs,
     })
 
+    // Print death page links if any were added
+    const deathPageActors = orchestrator.getStatusBar().getDeathPageActors()
+    if (deathPageActors.length > 0) {
+      console.log(`\nNew/Updated Death Pages (${deathPageActors.length}):`)
+      for (const actor of deathPageActors) {
+        const url = actor.tmdbId
+          ? `https://deadonfilm.com/actor/${createActorSlug(actor.name, actor.tmdbId)}/death`
+          : `(no TMDB ID)`
+        console.log(`  ${actor.name}: ${url}`)
+      }
+    }
+
     // Rebuild caches if we updated anything
     if (updated > 0) {
       await rebuildDeathCaches()
       console.log("\nRebuilt death caches")
+
+      // Invalidate individual actor caches (must happen after rebuildDeathCaches
+      // because that's when Redis connection is established)
+      for (const actor of deathPageActors) {
+        if (actor.tmdbId) {
+          await invalidateActorCache(actor.tmdbId)
+        }
+      }
+      if (deathPageActors.length > 0) {
+        console.log(`Invalidated cache for ${deathPageActors.length} actor(s)`)
+      }
     }
+
+    // Remove signal handlers before normal exit
+    process.off("SIGINT", handleInterrupt)
+    process.off("SIGTERM", handleInterrupt)
+
+    console.log("\nDone!")
   } catch (error) {
+    // Signal handlers will be cleaned up on process exit
     recordCustomEvent("DeathEnrichmentError", {
       error: error instanceof Error ? error.message : "Unknown error",
     })
     console.error("Error during enrichment:", error)
+    await resetPool()
     process.exit(1)
   } finally {
     await resetPool()
+    // Ensure the process exits
+    process.exit(0)
   }
 }
 
@@ -1845,6 +2420,18 @@ program
     "Gather data from ALL sources before cleanup (requires --claude-cleanup)"
   )
   .option("--ignore-cache", "Ignore cached responses and make fresh requests to all sources")
+  // Link following options
+  .option("--follow-links", "Follow promising links from search results (default: true)", true)
+  .option("--no-follow-links", "Disable link following (use snippets only)")
+  .option("--ai-link-selection", "Use Claude to select which links to follow")
+  .option("--ai-content-extraction", "Use Claude to extract info from fetched pages")
+  .option("--max-links <number>", "Maximum links to follow per actor", parsePositiveInt, 3)
+  .option(
+    "--max-link-cost <number>",
+    "Maximum cost for link following per actor (USD)",
+    parseFloat,
+    0.01
+  )
   .action(async (options) => {
     await enrichMissingDetails({
       limit: options.limit,
@@ -1862,6 +2449,12 @@ program
       claudeCleanup: options.claudeCleanup || false,
       gatherAllSources: options.gatherAllSources || false,
       ignoreCache: options.ignoreCache || false,
+      // Link following options
+      followLinks: options.followLinks !== false,
+      aiLinkSelection: options.aiLinkSelection || false,
+      aiContentExtraction: options.aiContentExtraction || false,
+      maxLinks: options.maxLinks,
+      maxLinkCost: options.maxLinkCost,
     })
   })
 

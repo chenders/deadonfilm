@@ -34,8 +34,9 @@ exports.config = {
   },
 
   // Agent logging (New Relic's own logs)
+  // Use NEW_RELIC_LOG_LEVEL env var to override (default: warn for scripts, info for server)
   logging: {
-    level: 'info',
+    level: process.env.NEW_RELIC_LOG_LEVEL || 'warn',
     filepath: 'stdout'
   },
 
@@ -64,7 +65,8 @@ exports.config = {
   // Custom instrumentation for external calls
   // Automatically instrument HTTP calls, database queries, etc.
   instrumentation: {
-    pg: { enabled: true }
+    pg: { enabled: true },
+    timers: { enabled: true }
   },
 
   // Span events for distributed tracing details

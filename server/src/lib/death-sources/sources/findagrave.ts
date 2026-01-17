@@ -170,6 +170,7 @@ export class FindAGraveSource extends BaseDataSource {
 
   /**
    * Extract memorial URL from search results.
+   * Returns null if no result matches the actor's name to avoid returning wrong people.
    */
   private extractMemorialUrl(html: string, actor: ActorForEnrichment): string | null {
     // Look for memorial links in the search results
@@ -186,20 +187,33 @@ export class FindAGraveSource extends BaseDataSource {
       return null
     }
 
-    // Try to find the best match based on name
-    const normalizedActorName = actor.name.toLowerCase().replace(/[^a-z]/g, "")
+    // Normalize actor name parts for matching
+    const nameParts = actor.name.toLowerCase().split(/\s+/)
+    const firstName = nameParts[0]?.replace(/[^a-z]/g, "") || ""
+    const lastName = nameParts[nameParts.length - 1]?.replace(/[^a-z]/g, "") || ""
+    const fullNameNormalized = actor.name.toLowerCase().replace(/[^a-z]/g, "")
 
     for (const memorialPath of matches) {
-      // Extract name from URL path
+      // Extract name from URL path (e.g., "/memorial/12345/john-smith" -> "johnsmith")
       const urlName = memorialPath.split("/").pop()?.replace(/-/g, "").toLowerCase() || ""
 
-      if (urlName.includes(normalizedActorName) || normalizedActorName.includes(urlName)) {
+      // Check for full name match
+      if (urlName.includes(fullNameNormalized) || fullNameNormalized.includes(urlName)) {
         return `${FINDAGRAVE_BASE_URL}${memorialPath}`
+      }
+
+      // Check for first AND last name both present in the URL
+      // This handles cases where middle names or different ordering exist
+      if (firstName.length >= 2 && lastName.length >= 2) {
+        if (urlName.includes(firstName) && urlName.includes(lastName)) {
+          return `${FINDAGRAVE_BASE_URL}${memorialPath}`
+        }
       }
     }
 
-    // If no good match, return the first result
-    return `${FINDAGRAVE_BASE_URL}${matches[0]}`
+    // No matching memorial found - do NOT return a random result
+    // This prevents returning completely wrong people
+    return null
   }
 
   /**
