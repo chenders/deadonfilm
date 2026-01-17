@@ -104,25 +104,40 @@ export class GoogleSearchSource extends WebSearchBase {
         },
       })
 
-      if (!response.ok) {
-        if (response.status === 429) {
+      const data = (await response.json()) as GoogleSearchResponse
+
+      if (!response.ok || data.error) {
+        const errorCode = data.error?.code || response.status
+        const errorMessage = data.error?.message || `HTTP ${response.status}`
+
+        // Provide helpful error messages for common issues
+        if (errorCode === 404) {
           return {
             results: [],
-            error: "Google API rate limit exceeded",
+            error: `Invalid GOOGLE_SEARCH_CX: Search engine "${cx}" not found. Create one at https://programmablesearchengine.google.com/`,
+          }
+        }
+        if (errorCode === 400) {
+          return {
+            results: [],
+            error: `Invalid request: ${errorMessage}. Check GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX format`,
+          }
+        }
+        if (errorCode === 403) {
+          return {
+            results: [],
+            error: `API access denied: ${errorMessage}. Enable Custom Search API at https://console.cloud.google.com/apis/library/customsearch.googleapis.com`,
+          }
+        }
+        if (errorCode === 429) {
+          return {
+            results: [],
+            error: "Google API rate limit exceeded (100 free queries/day)",
           }
         }
         return {
           results: [],
-          error: `HTTP ${response.status}`,
-        }
-      }
-
-      const data = (await response.json()) as GoogleSearchResponse
-
-      if (data.error) {
-        return {
-          results: [],
-          error: data.error.message,
+          error: `Google API error ${errorCode}: ${errorMessage}`,
         }
       }
 
