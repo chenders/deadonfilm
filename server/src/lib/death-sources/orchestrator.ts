@@ -38,7 +38,7 @@ import { WikipediaSource } from "./sources/wikipedia.js"
 import { AlloCineSource } from "./sources/allocine.js"
 import { DoubanSource } from "./sources/douban.js"
 import { SoompiSource } from "./sources/soompi.js"
-import { FilmiBeatSource } from "./sources/filmibeat.js"
+// FilmiBeatSource removed - consistently blocked by anti-scraping protection (403)
 import { ChroniclingAmericaSource } from "./sources/chronicling-america.js"
 import { TroveSource } from "./sources/trove.js"
 import { EuropeanaSource } from "./sources/europeana.js"
@@ -158,7 +158,7 @@ export class DeathEnrichmentOrchestrator {
       new AlloCineSource(), // French film database
       new DoubanSource(), // Chinese entertainment database
       new SoompiSource(), // Korean entertainment news
-      new FilmiBeatSource(), // Indian (Bollywood) entertainment news
+      // FilmiBeatSource removed - consistently blocked by anti-scraping protection (403)
 
       // Phase 6: Historical archives (for pre-internet deaths)
       new ChroniclingAmericaSource(), // US newspapers 1756-1963
@@ -393,6 +393,42 @@ export class DeathEnrichmentOrchestrator {
 
       // Merge data into result (for non-cleanup mode or as fallback)
       this.mergeData(result, lookupResult.data, lookupResult.source)
+
+      // Process additional results (for multi-story sources like Guardian, NYT)
+      if (lookupResult.additionalResults && lookupResult.additionalResults.length > 0) {
+        this.statusBar.log(`    + ${lookupResult.additionalResults.length} additional stories`)
+
+        for (const additional of lookupResult.additionalResults) {
+          if (additional.data) {
+            // In cleanup mode, collect raw data for later processing
+            if (isCleanupMode && additional.data.circumstances) {
+              rawSources.push({
+                sourceName: `${source.name} (additional)`,
+                sourceType: source.type,
+                text: additional.data.circumstances,
+                url: additional.source.url || undefined,
+                confidence: additional.source.confidence,
+              })
+            }
+
+            // Merge additional context into result
+            if (additional.data.additionalContext && !result.additionalContext) {
+              result.additionalContext = additional.data.additionalContext
+              result.additionalContextSource = additional.source
+            }
+
+            // Merge notable factors
+            if (additional.data.notableFactors && additional.data.notableFactors.length > 0) {
+              const existing = result.notableFactors || []
+              const merged = [...new Set([...existing, ...additional.data.notableFactors])]
+              result.notableFactors = merged.slice(0, 10)
+              if (!result.notableFactorsSource) {
+                result.notableFactorsSource = additional.source
+              }
+            }
+          }
+        }
+      }
 
       // In gather-all mode, keep going through all sources
       if (gatherAll) {

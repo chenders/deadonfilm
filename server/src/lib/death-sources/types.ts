@@ -159,6 +159,14 @@ export interface SourceLookupResult {
   source: EnrichmentSourceEntry
   data: Partial<EnrichmentData> | null
   error?: string
+  /**
+   * Additional results from multi-story sources (news, search engines).
+   * Each entry is a separate source/article that can provide death information.
+   */
+  additionalResults?: Array<{
+    source: EnrichmentSourceEntry
+    data: Partial<EnrichmentData> | null
+  }>
 }
 
 /**
@@ -511,7 +519,14 @@ export interface EnrichmentConfig {
   claudeCleanup?: ClaudeCleanupConfig
   /** Link following configuration for web search sources */
   linkFollow?: LinkFollowConfig
+  /** Maximum number of stories to collect from news sources (default: 3) */
+  maxStoriesPerSource?: number
 }
+
+/**
+ * Default maximum stories per news source.
+ */
+export const DEFAULT_MAX_STORIES_PER_SOURCE = 3
 
 // ============================================================================
 // Enrichment Run Tracking Types
