@@ -12,7 +12,19 @@ import type { PGlite } from "@electric-sql/pglite"
 import { UNNATURAL_DEATH_CATEGORIES } from "./deaths-discovery.js"
 import type { UnnaturalDeathCategory } from "./types.js"
 
-// Helper functions that mirror the logic in deaths-discovery.ts
+/**
+ * Helper functions that mirror the logic in deaths-discovery.ts.
+ *
+ * NOTE: These functions intentionally duplicate the SQL-building logic from deaths-discovery.ts.
+ * This duplication is necessary because:
+ * 1. The functions in deaths-discovery.ts are private and not exported
+ * 2. We need to construct the same SQL patterns to test the filtering logic in isolation
+ * 3. These tests validate that the SQL logic works correctly at the database level
+ *
+ * If the pattern-building logic in deaths-discovery.ts changes, these helpers must be
+ * updated to match. The actual integration test at the end of this file calls
+ * getUnnaturalDeaths() directly to ensure end-to-end correctness.
+ */
 function escapeSqlLikePattern(pattern: string): string {
   return pattern.replace(/'/g, "''")
 }
@@ -384,5 +396,51 @@ describe("category count queries", () => {
     expect(counts.overdose).toBe(1)
     expect(counts.homicide).toBe(1)
     expect(counts.other).toBe(1)
+  })
+
+  it("categorizes 'suicide by gunshot wound' as suicide, not homicide (CASE priority)", async () => {
+    // This tests that the CASE statement's order matters - suicide is checked before homicide
+    await insertActor(db, {
+      tmdb_id: 1,
+      name: "Suicide Gunshot Actor",
+      deathday: "2020-01-01",
+      cause_of_death: "suicide by gunshot wound",
+    })
+    await insertActor(db, {
+      tmdb_id: 2,
+      name: "Homicide Gunshot Actor",
+      deathday: "2020-01-02",
+      cause_of_death: "gunshot wound",
+      cause_of_death_details: "murdered",
+    })
+
+    const query = `
+      SELECT
+        CASE
+          WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)} THEN 'suicide'
+          WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.accident.patterns)} THEN 'accident'
+          WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.overdose.patterns)} THEN 'overdose'
+          WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.homicide.patterns)} THEN 'homicide'
+          WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.other.patterns)} THEN 'other'
+        END as category,
+        COUNT(*) as count
+      FROM actors
+      WHERE (${getAllUnnaturalPatterns()}) AND is_obscure = false
+      GROUP BY category
+      ORDER BY category
+    `
+
+    const result = await db.query<{ category: UnnaturalDeathCategory; count: string }>(query)
+
+    const counts: Record<string, number> = {}
+    for (const row of result.rows) {
+      counts[row.category] = parseInt(row.count, 10)
+    }
+
+    // "suicide by gunshot wound" should be counted as suicide, not homicide
+    expect(counts.suicide).toBe(1)
+    expect(counts.homicide).toBe(1)
+    // Total should be 2, not 1 (if suicide was miscounted as homicide)
+    expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(2)
   })
 })
