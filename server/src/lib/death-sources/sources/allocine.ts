@@ -11,7 +11,7 @@
  * 3. Extract death information from biography section
  */
 
-import { BaseDataSource, DEATH_KEYWORDS } from "../base-source.js"
+import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
@@ -62,6 +62,9 @@ export class AlloCineSource extends BaseDataSource {
   // Be polite to AlloCiné servers
   protected minDelayMs = 2000
 
+  // Low priority source - use shorter timeout
+  protected requestTimeoutMs = LOW_PRIORITY_TIMEOUT_MS
+
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
 
@@ -83,6 +86,7 @@ export class AlloCineSource extends BaseDataSource {
           "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (searchResponse.status === 403) {
@@ -130,6 +134,7 @@ export class AlloCineSource extends BaseDataSource {
           "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (actorResponse.status === 403) {
