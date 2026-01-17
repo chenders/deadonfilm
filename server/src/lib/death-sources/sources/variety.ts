@@ -22,8 +22,7 @@ import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 
-const VARIETY_BASE_URL = "https://variety.com"
-const VARIETY_SEARCH_URL = `${VARIETY_BASE_URL}/`
+const _VARIETY_BASE_URL = "https://variety.com"
 
 /**
  * Variety source for actor death information.
@@ -54,7 +53,8 @@ export class VarietySource extends BaseDataSource {
       // Search for obituary using Google site search (Variety's own search is limited)
       const deathYear = new Date(actor.deathday).getFullYear()
       const searchQuery = `site:variety.com "${actor.name}" obituary OR died OR death ${deathYear}`
-      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`
+      // Google fallback URL (not used currently, but kept for reference)
+      const _searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`
 
       // First, try to find the obituary URL via DuckDuckGo HTML (more scraping-friendly)
       const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
