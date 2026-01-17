@@ -168,7 +168,7 @@ Return ONLY valid JSON array, no markdown fences.`
 
   try {
     ranked = JSON.parse(jsonText) as RankedLink[]
-  } catch (error) {
+  } catch {
     logger.debug(`[AI_LINK_SELECT_PARSE_ERROR]`, { raw: textBlock.text.substring(0, 200) })
     // Return empty array on parse failure
     ranked = []
@@ -292,7 +292,7 @@ Instructions:
       locationOfDeath: parsed.locationOfDeath ?? null,
       additionalContext: parsed.additionalContext ?? null,
     }
-  } catch (error) {
+  } catch {
     logger.debug(`[AI_EXTRACT_PARSE_ERROR]`, { raw: textBlock.text.substring(0, 200) })
     // Return empty data on parse failure
     extracted = {
