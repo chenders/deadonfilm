@@ -630,7 +630,7 @@ export class DeathEnrichmentOrchestrator {
               this.config.costLimits.maxTotalCost,
               undefined, // actorId
               undefined, // actorName
-              results // partialResults - pass collected results so caller can still update DB
+              results // partialResults - actors already processed before limit hit
             )
           }
         }
