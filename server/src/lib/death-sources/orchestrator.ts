@@ -32,7 +32,7 @@ import { WebSearchBase } from "./sources/web-search-base.js"
 import { FindAGraveSource } from "./sources/findagrave.js"
 import { LegacySource } from "./sources/legacy.js"
 import { TelevisionAcademySource } from "./sources/television-academy.js"
-import { IBDBSource } from "./sources/ibdb.js"
+// IBDBSource removed - consistently blocked by anti-scraping protection
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
 import { AlloCineSource } from "./sources/allocine.js"
@@ -137,7 +137,6 @@ export class DeathEnrichmentOrchestrator {
       new WikipediaSource(), // Wikipedia Death section extraction
       new IMDbSource(), // IMDb bio pages (scraped)
       new TelevisionAcademySource(), // Official TV industry deaths
-      new IBDBSource(), // Broadway actor deaths (may be blocked)
       new BFISightSoundSource(), // International film obituaries
 
       // Phase 2: Web Search (with link following)
