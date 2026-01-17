@@ -633,14 +633,15 @@ export interface DataSource {
 /**
  * Error thrown when a cost limit is exceeded.
  */
-export class CostLimitExceededError extends Error {
+export class CostLimitExceededError<T = unknown> extends Error {
   constructor(
     message: string,
     public readonly limitType: "per-actor" | "total",
     public readonly currentCost: number,
     public readonly limit: number,
     public readonly actorId?: number,
-    public readonly actorName?: string
+    public readonly actorName?: string,
+    public readonly partialResults?: Map<number, T>
   ) {
     super(message)
     this.name = "CostLimitExceededError"
