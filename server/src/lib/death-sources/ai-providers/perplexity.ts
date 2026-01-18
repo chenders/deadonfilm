@@ -28,8 +28,9 @@ export class PerplexitySource extends BaseDataSource {
 
   private client: OpenAI | null = null
 
-  // Perplexity model that includes online search
-  private readonly modelId = "llama-3.1-sonar-large-128k-online"
+  // Perplexity Sonar Pro - handles multi-step reasoning with real-time web search
+  // See: https://docs.perplexity.ai/getting-started/models
+  private readonly modelId = "sonar-pro"
 
   // Rate limit - be conservative
   protected minDelayMs = 1000
@@ -72,7 +73,7 @@ export class PerplexitySource extends BaseDataSource {
 
       const response = await client.chat.completions.create({
         model: this.modelId,
-        max_tokens: 800,
+        max_tokens: 2000,
         messages: [
           {
             role: "system",
@@ -108,9 +109,12 @@ export class PerplexitySource extends BaseDataSource {
       const confidence =
         parsed.confidence === "high" ? 0.85 : parsed.confidence === "medium" ? 0.65 : 0.45
 
+      // Use the first source URL from Perplexity's web search results
+      const sourceUrl = parsed.sources?.[0] || undefined
+
       return {
         success: true,
-        source: this.createSourceEntry(startTime, confidence, undefined, prompt, {
+        source: this.createSourceEntry(startTime, confidence, sourceUrl, prompt, {
           response: responseText,
           parsed,
         }),
@@ -145,29 +149,31 @@ export class PerplexitySource extends BaseDataSource {
         })
       : "unknown date"
 
-    return `Search for information about the death of ${actor.name}, the actor who died on ${deathDate}.
+    return `Search for how ${actor.name} (actor) died on ${deathDate}.
 
-I need:
-1. How they died (the circumstances of their death)
-2. Any notable or unusual factors about their death
-3. Any rumors, controversies, or disputed aspects of their death
-4. Where they died (location)
+Respond with JSON only. No career info, awards, or biography.
 
-Please search for recent news articles, obituaries, and reliable sources.
+Fields:
+- circumstances: A narrative sentence describing how they died. Include context like where found, what led to death, medical details. Write as prose, not a list.
+- location_of_death: City, State/Country
+- notable_factors: Short tags only: "sudden", "long illness", "accident", "suicide", "overdose", "found unresponsive", "on life support". NOT medical conditions or diagnoses.
+- rumored_circumstances: ONLY if there are disputed facts, alternative theories, or controversy. null if death is straightforward.
+- sources: URLs where you found the information
 
-Respond with JSON in this format:
 {
-  "circumstances": "How they died - be specific",
-  "notable_factors": ["list of notable factors"] or [],
-  "rumored_circumstances": "Any disputed info or null",
-  "location_of_death": "City, State/Country or null",
-  "additional_context": "Any other relevant info or null",
+  "circumstances": "narrative sentence",
+  "location_of_death": "City, State or null",
+  "notable_factors": ["tag"] or [],
+  "rumored_circumstances": "disputed theory or null",
   "confidence": "high" | "medium" | "low",
-  "sources": ["list of sources found"]
+  "sources": ["url1"]
 }
 
-If you cannot find reliable information:
-{"circumstances": null, "notable_factors": [], "rumored_circumstances": null, "location_of_death": null, "additional_context": null, "confidence": null, "sources": []}`
+Good examples:
+{"circumstances": "She was found unresponsive at her home and pronounced dead at the scene. She had a history of seizures.", "location_of_death": "North Hills, California", "notable_factors": ["found unresponsive"], "rumored_circumstances": null, "confidence": "high", "sources": ["tmz.com/..."]}
+{"circumstances": "He had been battling pancreatic cancer for several months, keeping his diagnosis secret from the public.", "location_of_death": "London, England", "notable_factors": ["long illness"], "rumored_circumstances": null, "confidence": "high", "sources": ["bbc.com/..."]}
+
+If unknown: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null, "sources": []}`
   }
 
   /**

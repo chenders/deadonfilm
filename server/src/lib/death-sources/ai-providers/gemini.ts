@@ -23,33 +23,33 @@ const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
  * Build a prompt for extracting death circumstances from Gemini.
  */
 function buildDeathPrompt(actor: ActorForEnrichment): string {
-  const birthYear = actor.birthday ? new Date(actor.birthday).getFullYear() : "unknown"
   const deathYear = actor.deathday ? new Date(actor.deathday).getFullYear() : "unknown"
 
-  return `You are researching the death of ${actor.name}, an actor who was born in ${birthYear} and died in ${deathYear}.
+  return `How did ${actor.name} (actor, died ${deathYear}) die?
 
-Please provide information about how ${actor.name} died. Focus on:
-1. The circumstances surrounding their death (how it happened)
-2. Any notable or unusual factors about their death
-3. Any rumors or disputed information about their death (if any)
-4. The location where they died (if known)
+Respond with JSON only. No career info, awards, or biography.
 
-Important:
-- Only provide factual information you're confident about
-- Distinguish between confirmed facts and rumors/speculation
-- If you don't have reliable information, say so
+Fields:
+- circumstances: A narrative sentence describing how they died. Include context like where found, what led to death, medical details. Write as prose, not a list.
+- location_of_death: City, State/Country
+- notable_factors: Short tags only: "sudden", "long illness", "accident", "suicide", "overdose", "found unresponsive", "on life support". NOT medical conditions.
+- rumored_circumstances: ONLY if there are disputed facts, alternative theories, or controversy about the death. null if death is straightforward.
+- sources: URLs where you found the information
 
-Respond ONLY with JSON in this exact format:
 {
-  "circumstances": "Description of how they died, or null if unknown",
-  "notable_factors": ["factor1", "factor2"] or [] if none,
-  "rumored_circumstances": "Any disputed or rumored aspects, or null if none",
-  "location_of_death": "City, State/Country or null if unknown",
-  "confidence": "high" | "medium" | "low"
+  "circumstances": "narrative sentence",
+  "location_of_death": "City, State or null",
+  "notable_factors": ["tag"] or [],
+  "rumored_circumstances": "disputed theory or null",
+  "confidence": "high" | "medium" | "low",
+  "sources": ["url1"]
 }
 
-If you don't have any reliable information about their death:
-{"circumstances": null, "notable_factors": [], "rumored_circumstances": null, "location_of_death": null, "confidence": null}`
+Good examples:
+{"circumstances": "She was found unresponsive at her home and pronounced dead at the scene. She had a history of seizures.", "location_of_death": "North Hills, California", "notable_factors": ["found unresponsive"], "rumored_circumstances": null, "confidence": "high", "sources": ["tmz.com/..."]}
+{"circumstances": "He had been battling pancreatic cancer for several months, keeping his diagnosis secret from the public.", "location_of_death": "London, England", "notable_factors": ["long illness"], "rumored_circumstances": null, "confidence": "high", "sources": ["bbc.com/..."]}
+
+If unknown: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null, "sources": []}`
 }
 
 /**
@@ -71,6 +71,7 @@ function parseGeminiResponse(responseText: string): ParsedGeminiResponse | null 
       rumoredCircumstances: parsed.rumored_circumstances || null,
       locationOfDeath: parsed.location_of_death || null,
       confidence: parsed.confidence || null,
+      sources: Array.isArray(parsed.sources) ? parsed.sources : [],
     }
   } catch {
     return null
@@ -83,6 +84,7 @@ interface ParsedGeminiResponse {
   rumoredCircumstances: string | null
   locationOfDeath: string | null
   confidence: "high" | "medium" | "low" | null
+  sources: string[]
 }
 
 interface GeminiApiResponse {
@@ -156,7 +158,7 @@ abstract class GeminiBaseSource extends BaseDataSource {
         ],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 800,
+          maxOutputTokens: 2000,
         },
       }
 
@@ -223,9 +225,12 @@ abstract class GeminiBaseSource extends BaseDataSource {
 
       const confidence = parsed.confidence ? baseConfidenceMap[parsed.confidence] : 0.4
 
+      // Use the first source URL from search results
+      const sourceUrl = parsed.sources?.[0] || undefined
+
       return {
         success: true,
-        source: this.createSourceEntry(startTime, confidence, undefined, prompt, {
+        source: this.createSourceEntry(startTime, confidence, sourceUrl, prompt, {
           response: responseText,
           parsed,
           groundingMetadata: data.candidates?.[0]?.groundingMetadata,
@@ -269,13 +274,16 @@ export class GeminiFlashSource extends GeminiBaseSource {
 /**
  * Gemini Pro provider - more capable with search grounding (~$0.002/query).
  * Uses Google Search grounding for access to current information.
+ *
+ * Note: gemini-1.5-pro was retired April 29, 2025. Using gemini-2.5-flash
+ * which offers better performance with search grounding capabilities.
  */
 export class GeminiProSource extends GeminiBaseSource {
   readonly name = "Gemini Pro"
   readonly type = DataSourceType.GEMINI_PRO
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.002
-  readonly modelId = "gemini-1.5-pro"
+  readonly modelId = "gemini-2.5-flash"
   readonly useSearchGrounding = true
 
   // Rate limit
