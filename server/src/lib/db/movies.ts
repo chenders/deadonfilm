@@ -23,8 +23,8 @@ export async function getMovie(tmdbId: number): Promise<MovieRecord | null> {
 export async function upsertMovie(movie: MovieRecord): Promise<void> {
   const db = getPool()
   await db.query(
-    `INSERT INTO movies (tmdb_id, title, release_date, release_year, poster_path, genres, original_language, popularity, vote_average, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
+    `INSERT INTO movies (tmdb_id, title, release_date, release_year, poster_path, genres, original_language, production_countries, popularity, vote_average, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
      ON CONFLICT (tmdb_id) DO UPDATE SET
        title = EXCLUDED.title,
        release_date = EXCLUDED.release_date,
@@ -32,6 +32,7 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
        poster_path = EXCLUDED.poster_path,
        genres = EXCLUDED.genres,
        original_language = COALESCE(EXCLUDED.original_language, movies.original_language),
+       production_countries = COALESCE(EXCLUDED.production_countries, movies.production_countries),
        popularity = COALESCE(EXCLUDED.popularity, movies.popularity),
        vote_average = EXCLUDED.vote_average,
        cast_count = EXCLUDED.cast_count,
@@ -48,6 +49,7 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
       movie.poster_path,
       movie.genres,
       movie.original_language,
+      movie.production_countries,
       movie.popularity,
       movie.vote_average,
       movie.cast_count,

@@ -215,6 +215,7 @@ async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions): P
             poster_path: movie.poster_path,
             genres: details.genres?.map((g) => g.name) || [],
             original_language: movie.original_language || null,
+            production_countries: details.production_countries?.map((c) => c.iso_3166_1) ?? null,
             popularity: movie.popularity || null,
             vote_average: null, // Not in TMDBMovie type
             cast_count: topCast.length,
