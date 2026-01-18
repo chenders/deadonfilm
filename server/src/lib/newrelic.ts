@@ -101,11 +101,31 @@ export function startSegment<T>(
 }
 
 /**
+ * Sanitize custom attributes to only include New Relic-compatible primitive values.
+ * Filters out objects, arrays, functions, null, and undefined.
+ */
+export function sanitizeCustomAttributes(
+  customAttributes?: Record<string, unknown>
+): Record<string, string | number | boolean> {
+  if (!customAttributes) {
+    return {}
+  }
+
+  const result: Record<string, string | number | boolean> = {}
+  for (const [key, value] of Object.entries(customAttributes)) {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      result[key] = value
+    }
+  }
+  return result
+}
+
+/**
  * Notice an error in New Relic.
  */
 export function noticeError(error: Error, customAttributes?: Record<string, unknown>): void {
   if (newrelicAgent) {
-    newrelicAgent.noticeError(error, customAttributes as Record<string, string | number | boolean>)
+    newrelicAgent.noticeError(error, sanitizeCustomAttributes(customAttributes))
   }
 }
 
