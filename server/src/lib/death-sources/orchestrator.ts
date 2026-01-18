@@ -27,7 +27,7 @@ import {
   SourceTimeoutError,
   DEFAULT_BROWSER_FETCH_CONFIG,
 } from "./types.js"
-import { shutdownBrowser, registerBrowserCleanup } from "./browser-fetch.js"
+import { recordCustomEvent, startSegment, addCustomAttributes, noticeError } from "../newrelic.js"
 import { cleanupWithClaude } from "./claude-cleanup.js"
 import { StatusBar } from "./status-bar.js"
 import { EnrichmentLogger, getEnrichmentLogger } from "./logger.js"
@@ -242,9 +242,6 @@ export class DeathEnrichmentOrchestrator {
         console.log(`  Idle timeout: ${browserConfig.idleTimeoutMs}ms`)
       }
     }
-
-    // Register browser cleanup handler for graceful shutdown
-    registerBrowserCleanup()
   }
 
   /**
@@ -273,6 +270,13 @@ export class DeathEnrichmentOrchestrator {
    * @throws {CostLimitExceededError} If cost limits are exceeded
    */
   async enrichActor(actor: ActorForEnrichment): Promise<ExtendedEnrichmentResult> {
+    // Add New Relic attributes for this actor
+    addCustomAttributes({
+      "enrichment.actor.id": actor.id,
+      "enrichment.actor.name": actor.name,
+      "enrichment.actor.tmdbId": actor.tmdbId || 0,
+    })
+
     const startTime = Date.now()
     const costBreakdown = this.createEmptyCostBreakdown()
     const actorStats: EnrichmentStats = {
@@ -319,7 +323,10 @@ export class DeathEnrichmentOrchestrator {
       let lookupResult
       try {
         this.logger.sourceAttempt(actor.name, source.type, source.name)
-        lookupResult = await source.lookup(actor)
+        // Wrap source lookup in New Relic segment
+        lookupResult = await startSegment(`Source/${source.name}`, true, async () => {
+          return source.lookup(actor)
+        })
       } catch (error) {
         // Handle SourceAccessBlockedError specially
         if (error instanceof SourceAccessBlockedError) {
@@ -406,6 +413,15 @@ export class DeathEnrichmentOrchestrator {
         this.logger.sourceFailed(actor.name, source.type, lookupResult.error || "No data")
         this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
 
+        // Record source failure in New Relic
+        recordCustomEvent("EnrichmentSourceFailed", {
+          actorId: actor.id,
+          actorName: actor.name,
+          source: source.name,
+          sourceType: source.type,
+          error: lookupResult.error || "No data",
+        })
+
         // Check for rate limit errors and mark source as exhausted
         const errorLower = (lookupResult.error || "").toLowerCase()
         if (errorLower.includes("rate limit") || errorLower.includes("quota exceeded")) {
@@ -419,6 +435,17 @@ export class DeathEnrichmentOrchestrator {
       const fieldsFound = this.getFieldsFromData(lookupResult.data)
       this.logger.sourceSuccess(actor.name, source.type, fieldsFound)
       this.statusBar.log(`    Success! Confidence: ${lookupResult.source.confidence.toFixed(2)}`)
+
+      // Record source success in New Relic
+      recordCustomEvent("EnrichmentSourceSuccess", {
+        actorId: actor.id,
+        actorName: actor.name,
+        source: source.name,
+        sourceType: source.type,
+        confidence: lookupResult.source.confidence,
+        fieldsFound: fieldsFound.join(","),
+        costUsd: sourceCost,
+      })
       this.statusBar.setLastWinningSource(source.name)
 
       // In cleanup mode, collect raw data for later processing
@@ -505,7 +532,10 @@ export class DeathEnrichmentOrchestrator {
     if (isCleanupMode && rawSources.length > 0) {
       this.statusBar.log(`  Running Claude Opus 4.5 cleanup on ${rawSources.length} sources...`)
       try {
-        const { cleaned, costUsd } = await cleanupWithClaude(actor, rawSources)
+        // Wrap Claude cleanup in New Relic segment
+        const { cleaned, costUsd } = await startSegment("ClaudeCleanup", true, async () => {
+          return cleanupWithClaude(actor, rawSources)
+        })
 
         // Add cleanup cost to stats
         actorStats.totalCostUsd += costUsd
@@ -535,9 +565,30 @@ export class DeathEnrichmentOrchestrator {
         }
 
         this.statusBar.log(`    Cleanup complete, cost: $${costUsd.toFixed(4)}`)
+
+        // Record Claude cleanup success in New Relic
+        recordCustomEvent("EnrichmentClaudeCleanup", {
+          actorId: actor.id,
+          actorName: actor.name,
+          sourceCount: rawSources.length,
+          costUsd: costUsd,
+          hasCircumstances: !!cleaned.circumstances,
+          hasNotableFactors: (cleaned.notableFactors?.length || 0) > 0,
+        })
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown cleanup error"
         this.statusBar.log(`    Cleanup failed: ${errorMsg}`)
+
+        // Record cleanup error in New Relic
+        if (error instanceof Error) {
+          noticeError(error, { actorId: actor.id, actorName: actor.name })
+        }
+        recordCustomEvent("EnrichmentClaudeCleanupError", {
+          actorId: actor.id,
+          actorName: actor.name,
+          error: errorMsg,
+        })
+
         // Continue with raw data as fallback
         result.rawSources = rawSources
       }
@@ -565,6 +616,17 @@ export class DeathEnrichmentOrchestrator {
       actorStats.totalCostUsd
     )
 
+    // Record actor enrichment completion in New Relic
+    recordCustomEvent("EnrichmentActorComplete", {
+      actorId: actor.id,
+      actorName: actor.name,
+      sourcesAttempted: actorStats.sourcesAttempted.length,
+      sourcesSucceeded: actorStats.sourcesAttempted.filter((s) => s.success).length,
+      fieldsEnriched: actorStats.fieldsFilledAfter.length,
+      totalCostUsd: actorStats.totalCostUsd,
+      totalTimeMs: actorStats.totalTimeMs,
+    })
+
     return result
   }
 
@@ -589,6 +651,18 @@ export class DeathEnrichmentOrchestrator {
    */
   async enrichBatch(actors: ActorForEnrichment[]): Promise<Map<number, ExtendedEnrichmentResult>> {
     const results = new Map<number, ExtendedEnrichmentResult>()
+
+    // Record batch start in New Relic
+    addCustomAttributes({
+      "enrichment.batch.totalActors": actors.length,
+      "enrichment.batch.maxTotalCost": this.config.costLimits?.maxTotalCost || 0,
+    })
+    recordCustomEvent("EnrichmentBatchStart", {
+      totalActors: actors.length,
+      maxTotalCost: this.config.costLimits?.maxTotalCost || 0,
+      maxCostPerActor: this.config.costLimits?.maxCostPerActor || 0,
+      claudeCleanupEnabled: this.config.claudeCleanup?.enabled || false,
+    })
 
     // Start the status bar and log batch start
     this.statusBar.start(actors.length)
@@ -666,6 +740,15 @@ export class DeathEnrichmentOrchestrator {
       this.stats.totalTimeMs
     )
 
+    // Record batch completion in New Relic
+    recordCustomEvent("EnrichmentBatchComplete", {
+      actorsProcessed: this.stats.actorsProcessed,
+      actorsEnriched: this.stats.actorsEnriched,
+      fillRate: this.stats.fillRate,
+      totalCostUsd: this.stats.totalCostUsd,
+      totalTimeMs: this.stats.totalTimeMs,
+    })
+
     return results
   }
 
@@ -685,10 +768,10 @@ export class DeathEnrichmentOrchestrator {
 
   /**
    * Cleanup resources used by the orchestrator.
-   * Call this when done processing to close browser instances.
+   * Currently a no-op, but available for future resource cleanup.
    */
   async cleanup(): Promise<void> {
-    await shutdownBrowser()
+    // No-op - browser cleanup not currently needed
   }
 
   /**
