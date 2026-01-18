@@ -93,3 +93,14 @@ export {
   setBrowserConfig,
   getBrowserConfig,
 } from "./browser-fetch.js"
+
+// URL resolution (for Gemini grounding redirects)
+export {
+  resolveRedirectUrl,
+  resolveRedirectUrls,
+  resolveGeminiUrls,
+  isGeminiRedirectUrl,
+  getSourceName,
+  SOURCE_NAMES,
+  type ResolvedUrl,
+} from "./url-resolver.js"

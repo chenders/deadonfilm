@@ -12,6 +12,7 @@ import { getPersonDetails } from "../lib/tmdb.js"
 import { createActorSlug } from "../lib/slug-utils.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
+import type { ResolvedUrl } from "../lib/death-sources/url-resolver.js"
 
 // Response type for death details endpoint
 interface DeathDetailsResponse {
@@ -102,6 +103,26 @@ function buildSourcesResponse(
     if (!raw) return null
 
     const entries: SourceEntry[] = []
+
+    // Check for resolved sources from Gemini (new format with human-readable names)
+    const resolvedSources = raw.rawData?.resolvedSources as ResolvedUrl[] | undefined
+    if (resolvedSources && Array.isArray(resolvedSources) && resolvedSources.length > 0) {
+      for (const source of resolvedSources) {
+        // Only include sources that were successfully resolved
+        if (source.finalUrl && !source.error) {
+          entries.push({
+            url: source.finalUrl,
+            archive_url: null,
+            description: source.sourceName, // Human-readable name like "People" instead of "Source: gemini_pro"
+          })
+        }
+      }
+      // If we got resolved sources, return them
+      if (entries.length > 0) {
+        return entries
+      }
+    }
+
     const sourceType = raw.type ? `Source: ${raw.type}` : "Source"
 
     // Check for sources in rawData.parsed.sources (from AI providers like Perplexity/Gemini)
