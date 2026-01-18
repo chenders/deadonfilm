@@ -129,7 +129,8 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     // Show sample of movies to be processed
     console.log("Sample movies (first 5):")
     for (const movie of movies.slice(0, 5)) {
-      const popStr = movie.popularity ? `pop: ${movie.popularity.toFixed(1)}` : "pop: N/A"
+      const popStr =
+        movie.popularity != null ? `pop: ${Number(movie.popularity).toFixed(1)}` : "pop: N/A"
       const yearStr = movie.release_year ?? "N/A"
       console.log(`  - ${movie.title} (${yearStr}) [${movie.original_language || "?"}] ${popStr}`)
     }
