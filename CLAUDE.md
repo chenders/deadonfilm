@@ -49,6 +49,19 @@ cd server && npm run migrate:create -- add-new-table
 # 1767900000000_my-migration.cjs  (hardcoded timestamp may conflict)
 ```
 
+### 6. Use `docker compose` Not `docker-compose`
+
+Always use the modern `docker compose` command (Docker Compose V2), not the legacy `docker-compose`.
+
+```bash
+# CORRECT
+docker compose up -d
+docker compose build --no-cache
+
+# WRONG - legacy standalone binary
+docker-compose up -d
+```
+
 </critical_constraints>
 
 ## Project Overview
