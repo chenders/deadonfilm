@@ -65,7 +65,12 @@ interface RawSourceEntry {
   url?: string | null
   confidence?: number
   retrievedAt?: string
-  rawData?: unknown
+  rawData?: {
+    parsed?: {
+      sources?: string[]
+    }
+    [key: string]: unknown
+  }
   costUsd?: number
   queryUsed?: string
 }
@@ -95,13 +100,43 @@ function buildSourcesResponse(
   // Convert a raw source entry object to SourceEntry array format
   const rawToSourceEntry = (raw: RawSourceEntry | undefined): SourceEntry[] | null => {
     if (!raw) return null
-    return [
-      {
-        url: raw.url || null,
+
+    const entries: SourceEntry[] = []
+    const sourceType = raw.type ? `Source: ${raw.type}` : "Source"
+
+    // Check for sources in rawData.parsed.sources (from AI providers like Perplexity/Gemini)
+    const parsedSources = raw.rawData?.parsed?.sources
+    if (parsedSources && Array.isArray(parsedSources) && parsedSources.length > 0) {
+      for (const sourceUrl of parsedSources) {
+        if (typeof sourceUrl === "string" && sourceUrl.length > 0) {
+          entries.push({
+            url: sourceUrl,
+            archive_url: null,
+            description: sourceType,
+          })
+        }
+      }
+    }
+
+    // If no sources from parsed, use the top-level URL
+    if (entries.length === 0 && raw.url) {
+      entries.push({
+        url: raw.url,
         archive_url: null,
-        description: raw.type ? `Source: ${raw.type}` : "Source",
-      },
-    ]
+        description: sourceType,
+      })
+    }
+
+    // If still no entries, return at least a description
+    if (entries.length === 0) {
+      entries.push({
+        url: null,
+        archive_url: null,
+        description: sourceType,
+      })
+    }
+
+    return entries
   }
 
   // Check if a value is already a valid SourceEntry array

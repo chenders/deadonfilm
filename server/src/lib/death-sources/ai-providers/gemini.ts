@@ -34,20 +34,22 @@ Fields:
 - location_of_death: City, State/Country
 - notable_factors: Short tags only: "sudden", "long illness", "accident", "suicide", "overdose", "found unresponsive", "on life support". NOT medical conditions.
 - rumored_circumstances: ONLY if there are disputed facts, alternative theories, or controversy about the death. null if death is straightforward.
+- sources: URLs where you found the information
 
 {
   "circumstances": "narrative sentence",
   "location_of_death": "City, State or null",
   "notable_factors": ["tag"] or [],
   "rumored_circumstances": "disputed theory or null",
-  "confidence": "high" | "medium" | "low"
+  "confidence": "high" | "medium" | "low",
+  "sources": ["url1"]
 }
 
 Good examples:
-{"circumstances": "She was found unresponsive at her home and pronounced dead at the scene. She had a history of seizures.", "location_of_death": "North Hills, California", "notable_factors": ["found unresponsive"], "rumored_circumstances": null, "confidence": "high"}
-{"circumstances": "He had been battling pancreatic cancer for several months, keeping his diagnosis secret from the public.", "location_of_death": "London, England", "notable_factors": ["long illness"], "rumored_circumstances": null, "confidence": "high"}
+{"circumstances": "She was found unresponsive at her home and pronounced dead at the scene. She had a history of seizures.", "location_of_death": "North Hills, California", "notable_factors": ["found unresponsive"], "rumored_circumstances": null, "confidence": "high", "sources": ["tmz.com/..."]}
+{"circumstances": "He had been battling pancreatic cancer for several months, keeping his diagnosis secret from the public.", "location_of_death": "London, England", "notable_factors": ["long illness"], "rumored_circumstances": null, "confidence": "high", "sources": ["bbc.com/..."]}
 
-If unknown: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null}`
+If unknown: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null, "sources": []}`
 }
 
 /**
@@ -69,6 +71,7 @@ function parseGeminiResponse(responseText: string): ParsedGeminiResponse | null 
       rumoredCircumstances: parsed.rumored_circumstances || null,
       locationOfDeath: parsed.location_of_death || null,
       confidence: parsed.confidence || null,
+      sources: Array.isArray(parsed.sources) ? parsed.sources : [],
     }
   } catch {
     return null
@@ -81,6 +84,7 @@ interface ParsedGeminiResponse {
   rumoredCircumstances: string | null
   locationOfDeath: string | null
   confidence: "high" | "medium" | "low" | null
+  sources: string[]
 }
 
 interface GeminiApiResponse {
@@ -221,9 +225,12 @@ abstract class GeminiBaseSource extends BaseDataSource {
 
       const confidence = parsed.confidence ? baseConfidenceMap[parsed.confidence] : 0.4
 
+      // Use the first source URL from search results
+      const sourceUrl = parsed.sources?.[0] || undefined
+
       return {
         success: true,
-        source: this.createSourceEntry(startTime, confidence, undefined, prompt, {
+        source: this.createSourceEntry(startTime, confidence, sourceUrl, prompt, {
           response: responseText,
           parsed,
           groundingMetadata: data.candidates?.[0]?.groundingMetadata,
