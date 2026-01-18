@@ -10,6 +10,22 @@ vi.mock("./cache.js", () => ({
   setCachedQuery: vi.fn(),
 }))
 
+// Mock browser-fetch module to disable browser fallback in tests
+vi.mock("./browser-fetch.js", () => ({
+  shouldUseBrowserFetch: vi.fn().mockReturnValue(false),
+  isBlockedResponse: vi.fn().mockReturnValue(false),
+  // Return a proper FetchedPage with error when browser fallback is attempted
+  browserFetchPage: vi.fn().mockImplementation((url: string) => ({
+    url,
+    title: "",
+    content: "",
+    contentLength: 0,
+    fetchTimeMs: 0,
+    fetchMethod: "browser" as const,
+    error: "Browser fetch failed (mocked)",
+  })),
+}))
+
 // Import after mocking
 import {
   selectLinksWithHeuristics,
@@ -252,7 +268,15 @@ describe("link-follower", () => {
     it("handles fetch failures gracefully", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Network error"))
 
-      const result = await fetchPages(["https://example.com/page"])
+      // Pass config with browser fallback disabled to test pure fetch error handling
+      const result = await fetchPages(["https://example.com/page"], {
+        enabled: false,
+        browserProtectedDomains: [],
+        fallbackOnBlock: false,
+        idleTimeoutMs: 60000,
+        pageTimeoutMs: 30000,
+        maxContentLength: 100000,
+      })
 
       expect(result.length).toBe(1)
       expect(result[0].error).toBeDefined()
