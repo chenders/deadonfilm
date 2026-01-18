@@ -70,3 +70,72 @@ export function getBrowserTimingHeader(): string {
   }
   return ""
 }
+
+/**
+ * Start a background transaction for non-web operations.
+ * Useful for CLI scripts and background jobs.
+ */
+export function startBackgroundTransaction<T>(
+  name: string,
+  group: string,
+  handler: () => Promise<T>
+): Promise<T> {
+  if (newrelicAgent) {
+    return newrelicAgent.startBackgroundTransaction(name, group, handler)
+  }
+  return handler()
+}
+
+/**
+ * Start a segment within a transaction for measuring specific operations.
+ */
+export function startSegment<T>(
+  name: string,
+  record: boolean,
+  handler: () => Promise<T>
+): Promise<T> {
+  if (newrelicAgent) {
+    return newrelicAgent.startSegment(name, record, handler)
+  }
+  return handler()
+}
+
+/**
+ * Sanitize custom attributes to only include New Relic-compatible primitive values.
+ * Filters out objects, arrays, functions, null, and undefined.
+ */
+export function sanitizeCustomAttributes(
+  customAttributes?: Record<string, unknown>
+): Record<string, string | number | boolean> {
+  if (!customAttributes) {
+    return {}
+  }
+
+  const result: Record<string, string | number | boolean> = {}
+  for (const [key, value] of Object.entries(customAttributes)) {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      result[key] = value
+    }
+  }
+  return result
+}
+
+/**
+ * Notice an error in New Relic.
+ */
+export function noticeError(error: Error, customAttributes?: Record<string, unknown>): void {
+  if (newrelicAgent) {
+    newrelicAgent.noticeError(error, sanitizeCustomAttributes(customAttributes))
+  }
+}
+
+/**
+ * Add multiple custom attributes to the current transaction.
+ */
+export function addCustomAttributes(attributes: Record<string, string | number | boolean>): void {
+  if (newrelicAgent) {
+    for (const [key, value] of Object.entries(attributes)) {
+      newrelicAgent.addCustomAttribute(key, value)
+    }
+  }
+}
