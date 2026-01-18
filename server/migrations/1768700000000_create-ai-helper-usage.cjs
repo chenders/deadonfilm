@@ -15,8 +15,10 @@ exports.shorthands = undefined
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.up = (pgm) => {
-  pgm.createTable("ai_helper_usage", {
-    id: "id",
+  pgm.createTable(
+    "ai_helper_usage",
+    {
+      id: "id",
 
     // Actor reference
     actor_id: {
@@ -83,43 +85,51 @@ exports.up = (pgm) => {
     },
 
     // Timestamp
-    created_at: {
-      type: "timestamp",
-      notNull: true,
-      default: pgm.func("NOW()"),
-      comment: "When this AI call was made",
+      created_at: {
+        type: "timestamp",
+        notNull: true,
+        default: pgm.func("NOW()"),
+        comment: "When this AI call was made",
+      },
     },
-  })
+    { ifNotExists: true }
+  )
 
   // Index for model comparison queries
   pgm.createIndex("ai_helper_usage", "model", {
     name: "idx_ai_usage_model",
+    ifNotExists: true,
   })
 
   // Index for operation-specific analysis
   pgm.createIndex("ai_helper_usage", "operation", {
     name: "idx_ai_usage_operation",
+    ifNotExists: true,
   })
 
   // Index for time-based queries
   pgm.createIndex("ai_helper_usage", "created_at", {
     name: "idx_ai_usage_created_at",
+    ifNotExists: true,
   })
 
   // Index for finding usage by actor
   pgm.createIndex("ai_helper_usage", "actor_id", {
     name: "idx_ai_usage_actor_id",
+    ifNotExists: true,
   })
 
   // Index for quality analysis
   pgm.createIndex("ai_helper_usage", "result_quality", {
     name: "idx_ai_usage_quality",
     where: "result_quality IS NOT NULL",
+    ifNotExists: true,
   })
 
   // Composite index for model + operation analysis
   pgm.createIndex("ai_helper_usage", ["model", "operation"], {
     name: "idx_ai_usage_model_operation",
+    ifNotExists: true,
   })
 }
 
