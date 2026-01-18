@@ -20,11 +20,20 @@ import type { BrowserFetchConfig, FetchedPage } from "./types.js"
 import { DEFAULT_BROWSER_FETCH_CONFIG } from "./types.js"
 import { htmlToText } from "./html-utils.js"
 
+// Content extraction thresholds
+const JS_RENDER_WAIT_MS = 2000
+const MIN_ARTICLE_CONTENT_LENGTH = 500
+const MIN_TEXT_CONTENT_LENGTH = 100
+const SOFT_BLOCK_PAGE_SIZE_THRESHOLD = 50000
+const MODAL_BUTTON_TIMEOUT_MS = 1000
+const MODAL_CLOSE_WAIT_MS = 500
+
 // Browser instance management
 let browserInstance: Browser | null = null
 let browserInitPromise: Promise<Browser> | null = null
 let idleTimeoutHandle: ReturnType<typeof setTimeout> | null = null
 let lastActivityTime = Date.now()
+let cleanupHandlersRegistered = false
 
 // Configuration (can be overridden via setBrowserConfig)
 let activeConfig: BrowserFetchConfig = { ...DEFAULT_BROWSER_FETCH_CONFIG }
@@ -123,7 +132,7 @@ export function isBlockedResponse(status: number, body?: string): boolean {
       if (lowerBody.includes(pattern)) {
         // Make sure it's not just mentioned in an article
         // Check if the page is very short (likely a challenge page)
-        if (body.length < 50000) {
+        if (body.length < SOFT_BLOCK_PAGE_SIZE_THRESHOLD) {
           return true
         }
       }
@@ -131,7 +140,7 @@ export function isBlockedResponse(status: number, body?: string): boolean {
 
     // Check for empty or near-empty content that suggests blocking
     const textContent = htmlToText(body)
-    if (textContent.length < 100 && lowerBody.includes("<script")) {
+    if (textContent.length < MIN_TEXT_CONTENT_LENGTH && lowerBody.includes("<script")) {
       // Very little text content but has scripts - likely a challenge page
       return true
     }
@@ -193,8 +202,8 @@ async function getBrowser(): Promise<Browser> {
         "--disable-setuid-sandbox",
         "--disable-infobars",
         "--window-position=0,0",
-        "--ignore-certifcate-errors",
-        "--ignore-certifcate-errors-spki-list",
+        "--ignore-certificate-errors",
+        "--ignore-certificate-errors-spki-list",
       ],
     })
 
@@ -280,7 +289,7 @@ export async function browserFetchPage(
     })
 
     // Wait a bit for JavaScript to render
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(JS_RENDER_WAIT_MS)
 
     // Try to dismiss cookie/paywall modals
     await dismissModals(page)
@@ -358,9 +367,9 @@ async function dismissModals(page: Page): Promise<void> {
     try {
       const button = page.locator(selector).first()
       if ((await button.count()) > 0) {
-        await button.click({ timeout: 1000 })
+        await button.click({ timeout: MODAL_BUTTON_TIMEOUT_MS })
         // Wait a moment for modal to close
-        await page.waitForTimeout(500)
+        await page.waitForTimeout(MODAL_CLOSE_WAIT_MS)
         break
       }
     } catch {
@@ -401,7 +410,7 @@ async function extractPageContent(page: Page): Promise<string> {
           .replace(/\s+/g, " ")
           .replace(/\n\s*\n/g, "\n")
           .trim()
-        if (cleaned.length > 500) {
+        if (cleaned.length > MIN_ARTICLE_CONTENT_LENGTH) {
           return cleaned
         }
       }
@@ -425,8 +434,14 @@ async function extractPageContent(page: Page): Promise<string> {
 /**
  * Register cleanup handler for process termination.
  * Call this at script startup to ensure browser is closed on exit.
+ * Safe to call multiple times - handlers are only registered once.
  */
 export function registerBrowserCleanup(): void {
+  if (cleanupHandlersRegistered) {
+    return
+  }
+  cleanupHandlersRegistered = true
+
   const cleanup = async () => {
     await shutdownBrowser()
   }
