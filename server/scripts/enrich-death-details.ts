@@ -73,9 +73,19 @@ import {
   MIN_CIRCUMSTANCES_LENGTH,
   MIN_RUMORED_CIRCUMSTANCES_LENGTH,
 } from "../src/lib/claude-batch/index.js"
+import { createActorSlug } from "../src/lib/slug-utils.js"
 
-// Initialize New Relic for monitoring
+// Suppress pino console logging for CLI scripts by setting LOG_LEVEL to silent
+// before any logger imports. New Relic will still capture events via its API.
+if (!process.env.LOG_LEVEL) {
+  process.env.LOG_LEVEL = "silent"
+}
+
+// Initialize New Relic for monitoring (silent - no console output)
 initNewRelic()
+
+// Base URL for actor death pages
+const SITE_URL = process.env.SITE_URL || "https://deadonfilm.com"
 
 // Display formatting constants
 const SEPARATOR_WIDTH = 60
@@ -498,7 +508,6 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         console.log(`${"!".repeat(SEPARATOR_WIDTH)}`)
         costLimitReached = true
         // Note: partial results were already processed by the orchestrator before throwing
-        // Record the cost limit event
         recordCustomEvent("DeathEnrichmentCostLimitReached", {
           limitType: error.limitType,
           limit: error.limit,
@@ -511,6 +520,8 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
     // Apply results to database
     let updated = 0
+    const updatedActors: Array<{ name: string; tmdbId: number }> = []
+
     for (const [actorId, enrichment] of results) {
       if (
         !enrichment.circumstances &&
@@ -607,6 +618,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
       if (actorRecord?.tmdbId) {
         await invalidateActorCache(actorRecord.tmdbId)
+        updatedActors.push({ name: actorRecord.name, tmdbId: actorRecord.tmdbId })
       }
 
       updated++
@@ -638,7 +650,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       }
     }
 
-    // Record event
+    // Record completion event
     recordCustomEvent("DeathEnrichmentCompleted", {
       actorsProcessed: stats.actorsProcessed,
       actorsEnriched: stats.actorsEnriched,
@@ -653,6 +665,17 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       await rebuildDeathCaches()
       console.log("\nRebuilt death caches")
     }
+
+    // Print death page links for updated actors
+    if (updatedActors.length > 0) {
+      console.log(`\n${"─".repeat(SEPARATOR_WIDTH)}`)
+      console.log(`Death Page Links:`)
+      console.log(`${"─".repeat(SEPARATOR_WIDTH)}`)
+      for (const actor of updatedActors) {
+        const slug = createActorSlug(actor.name, actor.tmdbId)
+        console.log(`  ${actor.name}: ${SITE_URL}/actor/${slug}/death`)
+      }
+    }
   } catch (error) {
     recordCustomEvent("DeathEnrichmentError", {
       error: error instanceof Error ? error.message : "Unknown error",
@@ -662,6 +685,9 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
   } finally {
     await resetPool()
   }
+
+  // Exit cleanly to avoid hanging on background connections
+  process.exit(0)
 }
 
 // CLI setup
