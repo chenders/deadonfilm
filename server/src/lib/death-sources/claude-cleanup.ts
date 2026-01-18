@@ -20,6 +20,7 @@ import type {
   ConfidenceLevel,
 } from "./types.js"
 import { getEnrichmentLogger } from "./logger.js"
+import { recordCustomEvent, addCustomAttributes } from "../newrelic.js"
 
 const MODEL_ID = "claude-opus-4-5-20251101"
 const MAX_TOKENS = 2000
@@ -148,6 +149,13 @@ export async function cleanupWithClaude(
   const anthropic = new Anthropic()
   const prompt = buildCleanupPrompt(actor, rawSources)
 
+  // Add New Relic attributes for Claude cleanup
+  addCustomAttributes({
+    "claude.cleanup.actorId": actor.id,
+    "claude.cleanup.actorName": actor.name,
+    "claude.cleanup.sourceCount": rawSources.length,
+  })
+
   console.log(`  Claude cleanup for ${actor.name} (${rawSources.length} sources)...`)
 
   // Log the request
@@ -188,6 +196,17 @@ export async function cleanupWithClaude(
   console.log(
     `  Claude cleanup complete: ${inputTokens} input, ${outputTokens} output tokens ($${costUsd.toFixed(4)})`
   )
+
+  // Record Claude API call in New Relic
+  recordCustomEvent("ClaudeAPICall", {
+    actorId: actor.id,
+    actorName: actor.name,
+    model: MODEL_ID,
+    inputTokens: inputTokens,
+    outputTokens: outputTokens,
+    costUsd: costUsd,
+    purpose: "death_cleanup",
+  })
 
   // Verify we have text content
   if (!textBlock || textBlock.type !== "text") {
