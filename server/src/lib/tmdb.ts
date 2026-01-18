@@ -45,6 +45,7 @@ export interface TMDBMovieDetails {
   popularity?: number
   vote_average?: number
   original_language?: string
+  production_countries?: Array<{ iso_3166_1: string; name: string }>
 }
 
 export interface TMDBCreditsResponse {

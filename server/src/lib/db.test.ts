@@ -616,6 +616,7 @@ describe("Movie Functions", () => {
       poster_path: "/poster.jpg",
       genres: ["Drama", "Romance"],
       original_language: null,
+      production_countries: null,
       popularity: null,
       vote_average: 8.1,
       cast_count: 30,

@@ -38,7 +38,9 @@ export async function resetTestDb(): Promise<void> {
   const testDb = await getTestDb()
   await testDb.exec(`
     TRUNCATE shows CASCADE;
+    TRUNCATE movies CASCADE;
     TRUNCATE actor_show_appearances CASCADE;
+    TRUNCATE actor_movie_appearances CASCADE;
     TRUNCATE actors CASCADE;
   `)
 }
@@ -100,6 +102,7 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
     -- Actor show appearances table (junction table only)
     CREATE TABLE IF NOT EXISTS actor_show_appearances (
       id SERIAL PRIMARY KEY,
+      actor_id INTEGER,
       actor_tmdb_id INTEGER NOT NULL,
       show_tmdb_id INTEGER NOT NULL,
       season_number INTEGER NOT NULL DEFAULT 1,
@@ -114,6 +117,46 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
     -- Create indexes for foreign key lookups
     CREATE INDEX IF NOT EXISTS idx_asa_show_tmdb_id ON actor_show_appearances(show_tmdb_id);
     CREATE INDEX IF NOT EXISTS idx_asa_actor_tmdb_id ON actor_show_appearances(actor_tmdb_id);
+
+    -- Movies table (simplified for testing)
+    CREATE TABLE IF NOT EXISTS movies (
+      id SERIAL PRIMARY KEY,
+      tmdb_id INTEGER UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      release_date DATE,
+      release_year INTEGER,
+      poster_path TEXT,
+      backdrop_path TEXT,
+      genres TEXT[],
+      popularity DECIMAL(10,3),
+      vote_average DECIMAL(3,1),
+      original_language TEXT,
+      production_countries TEXT[],
+      cast_count INTEGER,
+      deceased_count INTEGER,
+      living_count INTEGER,
+      expected_deaths DECIMAL(5,2),
+      mortality_surprise_score DECIMAL(6,3),
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- Actor movie appearances table (junction table)
+    CREATE TABLE IF NOT EXISTS actor_movie_appearances (
+      id SERIAL PRIMARY KEY,
+      actor_id INTEGER NOT NULL,
+      actor_tmdb_id INTEGER,
+      movie_tmdb_id INTEGER NOT NULL,
+      character_name TEXT,
+      billing_order INTEGER,
+      age_at_filming INTEGER
+    );
+
+    -- Create indexes for foreign key lookups
+    CREATE INDEX IF NOT EXISTS idx_ama_movie_tmdb_id ON actor_movie_appearances(movie_tmdb_id);
+    CREATE INDEX IF NOT EXISTS idx_ama_actor_id ON actor_movie_appearances(actor_id);
+    CREATE INDEX IF NOT EXISTS idx_movies_production_countries ON movies USING gin(production_countries);
+    CREATE INDEX IF NOT EXISTS idx_shows_origin_country ON shows USING gin(origin_country);
   `)
 }
 
@@ -126,6 +169,7 @@ export async function insertShow(
     tmdb_id: number
     name: string
     popularity?: number
+    origin_country?: string[]
     cast_count?: number
     deceased_count?: number
     living_count?: number
@@ -135,11 +179,12 @@ export async function insertShow(
 ): Promise<void> {
   await testDb.query(
     `
-    INSERT INTO shows (tmdb_id, name, popularity, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    INSERT INTO shows (tmdb_id, name, popularity, origin_country, cast_count, deceased_count, living_count, expected_deaths, mortality_surprise_score)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     ON CONFLICT (tmdb_id) DO UPDATE SET
       name = EXCLUDED.name,
       popularity = EXCLUDED.popularity,
+      origin_country = EXCLUDED.origin_country,
       cast_count = EXCLUDED.cast_count,
       deceased_count = EXCLUDED.deceased_count,
       living_count = EXCLUDED.living_count,
@@ -150,6 +195,7 @@ export async function insertShow(
       show.tmdb_id,
       show.name,
       show.popularity ?? null,
+      show.origin_country ?? null,
       show.cast_count ?? null,
       show.deceased_count ?? null,
       show.living_count ?? null,
@@ -165,6 +211,7 @@ export async function insertShow(
 export async function insertShowActorAppearance(
   testDb: PGlite,
   appearance: {
+    actor_id?: number
     actor_tmdb_id: number
     show_tmdb_id: number
     season_number?: number
@@ -176,14 +223,16 @@ export async function insertShowActorAppearance(
 ): Promise<void> {
   await testDb.query(
     `
-    INSERT INTO actor_show_appearances (actor_tmdb_id, show_tmdb_id, season_number, episode_number, character_name, appearance_type, billing_order)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    INSERT INTO actor_show_appearances (actor_id, actor_tmdb_id, show_tmdb_id, season_number, episode_number, character_name, appearance_type, billing_order)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     ON CONFLICT (actor_tmdb_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
+      actor_id = EXCLUDED.actor_id,
       character_name = EXCLUDED.character_name,
       appearance_type = EXCLUDED.appearance_type,
       billing_order = EXCLUDED.billing_order
   `,
     [
+      appearance.actor_id ?? null,
       appearance.actor_tmdb_id,
       appearance.show_tmdb_id,
       appearance.season_number ?? 1,
@@ -236,3 +285,62 @@ export async function insertActor(
 
 // Backwards compatibility alias
 export const insertDeceasedPerson = insertActor
+
+/**
+ * Insert test movie data
+ */
+export async function insertMovie(
+  testDb: PGlite,
+  movie: {
+    tmdb_id: number
+    title: string
+    popularity?: number
+    original_language?: string | null
+    production_countries?: string[] | null
+  }
+): Promise<void> {
+  await testDb.query(
+    `
+    INSERT INTO movies (tmdb_id, title, popularity, original_language, production_countries)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (tmdb_id) DO UPDATE SET
+      title = EXCLUDED.title,
+      popularity = EXCLUDED.popularity,
+      original_language = EXCLUDED.original_language,
+      production_countries = EXCLUDED.production_countries
+  `,
+    [
+      movie.tmdb_id,
+      movie.title,
+      movie.popularity ?? null,
+      movie.original_language ?? null,
+      movie.production_countries ?? null,
+    ]
+  )
+}
+
+/**
+ * Insert test movie actor appearance data
+ */
+export async function insertMovieActorAppearance(
+  testDb: PGlite,
+  appearance: {
+    actor_id: number
+    movie_tmdb_id: number
+    character_name?: string | null
+    billing_order?: number | null
+  }
+): Promise<void> {
+  await testDb.query(
+    `
+    INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order)
+    VALUES ($1, $2, $3, $4)
+  `,
+    [
+      appearance.actor_id,
+      appearance.movie_tmdb_id,
+      appearance.character_name ?? null,
+      appearance.billing_order ?? null,
+    ]
+  )
+}
