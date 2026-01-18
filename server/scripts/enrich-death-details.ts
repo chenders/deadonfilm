@@ -56,6 +56,10 @@ import {
 // Initialize New Relic for monitoring
 initNewRelic()
 
+// Display formatting constants
+const SEPARATOR_WIDTH = 60
+const ESTIMATED_CLAUDE_COST_PER_ACTOR = 0.07
+
 function parsePositiveInt(value: string): number {
   if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError("Must be a positive integer")
@@ -104,10 +108,6 @@ async function waitForConfirmation(skipPrompt: boolean): Promise<boolean> {
     rl.question("\nPress Enter to continue, or Ctrl+C to cancel... ", () => {
       rl.close()
       resolve(true)
-    })
-
-    rl.on("close", () => {
-      resolve(false)
     })
   })
 }
@@ -236,9 +236,9 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     }
 
     // Display configuration summary
-    console.log(`\n${"=".repeat(60)}`)
+    console.log(`\n${"=".repeat(SEPARATOR_WIDTH)}`)
     console.log(`Enrichment Configuration`)
-    console.log(`${"=".repeat(60)}`)
+    console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
     console.log(`\nTarget:`)
     console.log(`  Actors to process: ${actors.length}`)
     if (tmdbId) {
@@ -263,7 +263,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       console.log(`\nClaude Cleanup:`)
       console.log(`  Enabled: yes (Opus 4.5)`)
       console.log(`  Gather all sources: ${gatherAllSources ? "yes" : "no"}`)
-      console.log(`  Estimated cost per actor: ~$0.07`)
+      console.log(`  Estimated cost per actor: ~$${ESTIMATED_CLAUDE_COST_PER_ACTOR}`)
     }
 
     console.log(`\nCost Limits:`)
@@ -285,7 +285,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     console.log(
       `\nMode: ${dryRun ? "DRY RUN (no database writes)" : "LIVE (will write to database)"}`
     )
-    console.log(`${"=".repeat(60)}`)
+    console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
 
     // Sample actors preview
     console.log(`\nSample actors (first 5):`)
@@ -358,10 +358,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       results = await orchestrator.enrichBatch(actorsToEnrich)
     } catch (error) {
       if (error instanceof CostLimitExceededError) {
-        console.log(`\n${"!".repeat(60)}`)
+        console.log(`\n${"!".repeat(SEPARATOR_WIDTH)}`)
         console.log(`Cost limit reached - exiting gracefully`)
         console.log(`Limit: $${error.limit}, Current: $${error.currentCost.toFixed(4)}`)
-        console.log(`${"!".repeat(60)}`)
+        console.log(`${"!".repeat(SEPARATOR_WIDTH)}`)
         costLimitReached = true
         // Note: partial results were already processed by the orchestrator before throwing
         // Record the cost limit event
@@ -480,11 +480,11 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
     // Print final stats
     const stats = orchestrator.getStats()
-    console.log(`\n${"=".repeat(60)}`)
+    console.log(`\n${"=".repeat(SEPARATOR_WIDTH)}`)
     console.log(
       costLimitReached ? `Enrichment Stopped (Cost Limit Reached)` : `Enrichment Complete!`
     )
-    console.log(`${"=".repeat(60)}`)
+    console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
     console.log(`  Actors processed: ${stats.actorsProcessed}`)
     console.log(`  Actors enriched: ${stats.actorsEnriched}`)
     console.log(`  Fill rate: ${stats.fillRate.toFixed(1)}%`)
