@@ -35,27 +35,23 @@ import { GoogleSearchSource } from "./sources/google.js"
 import { BingSearchSource } from "./sources/bing.js"
 import { WebSearchBase } from "./sources/web-search-base.js"
 import { FindAGraveSource } from "./sources/findagrave.js"
-import { LegacySource } from "./sources/legacy.js"
+// LegacySource disabled - 0% success rate
 import { TelevisionAcademySource } from "./sources/television-academy.js"
 // IBDBSource removed - consistently blocked by anti-scraping protection
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
-import { AlloCineSource } from "./sources/allocine.js"
-import { DoubanSource } from "./sources/douban.js"
-import { SoompiSource } from "./sources/soompi.js"
-// FilmiBeatSource removed - consistently blocked by anti-scraping protection (403)
-import { ChroniclingAmericaSource } from "./sources/chronicling-america.js"
+import { IMDbSource } from "./sources/imdb.js"
+import { VarietySource } from "./sources/variety.js"
+import { DeadlineSource } from "./sources/deadline.js"
+import { NewsAPISource } from "./sources/newsapi.js"
+// Disabled sources (0% success rate) - AlloCineSource, DoubanSource, SoompiSource, ChroniclingAmericaSource, FilmiBeatSource
 import { TroveSource } from "./sources/trove.js"
 import { EuropeanaSource } from "./sources/europeana.js"
 import { InternetArchiveSource } from "./sources/internet-archive.js"
 import { GuardianSource } from "./sources/guardian.js"
 import { NYTimesSource } from "./sources/nytimes.js"
 import { APNewsSource } from "./sources/ap-news.js"
-import { IMDbSource } from "./sources/imdb.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
-import { DeadlineSource } from "./sources/deadline.js"
-import { VarietySource } from "./sources/variety.js"
-import { NewsAPISource } from "./sources/newsapi.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
@@ -163,16 +159,13 @@ export class DeathEnrichmentOrchestrator {
 
       // Phase 4: Obituary sites
       new FindAGraveSource(),
-      new LegacySource(),
+      // LegacySource disabled - 0% success rate
 
       // Phase 5: International sources (regional film databases)
-      new AlloCineSource(), // French film database
-      new DoubanSource(), // Chinese entertainment database
-      new SoompiSource(), // Korean entertainment news
+      // AlloCineSource, DoubanSource, SoompiSource, ChroniclingAmericaSource disabled - 0% success rate
       // FilmiBeatSource removed - consistently blocked by anti-scraping protection (403)
 
       // Phase 6: Historical archives (for pre-internet deaths)
-      new ChroniclingAmericaSource(), // US newspapers 1756-1963
       new TroveSource(), // Australian newspapers (requires API key)
       new EuropeanaSource(), // European archives (requires API key)
       new InternetArchiveSource(), // Books, documents, historical media

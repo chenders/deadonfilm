@@ -179,8 +179,6 @@ describe("createEmptyCheckpoint", () => {
 
   it("creates a checkpoint with valid ISO date strings", () => {
     const checkpoint = createEmptyCheckpoint()
-    // Date constructor never throws - it returns Invalid Date instead
-    // Check that parsed dates are valid by verifying getTime() returns a number
     expect(Number.isNaN(new Date(checkpoint.startedAt).getTime())).toBe(false)
     expect(Number.isNaN(new Date(checkpoint.lastUpdated).getTime())).toBe(false)
   })
