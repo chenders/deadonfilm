@@ -452,6 +452,8 @@ export interface LinkFollowConfig {
   allowedDomains?: string[]
   /** Optional blocklist of domains to skip (e.g., ["pinterest.com", "imdb.com"]) */
   blockedDomains?: string[]
+  /** Browser-based fetching configuration for bot-protected sites */
+  browserFetch?: BrowserFetchConfig
 }
 
 /**
@@ -466,6 +468,46 @@ export const DEFAULT_LINK_FOLLOW_CONFIG: LinkFollowConfig = {
 }
 
 /**
+ * Configuration for browser-based page fetching.
+ * Used to bypass bot detection on protected sites.
+ */
+export interface BrowserFetchConfig {
+  /** Enable browser-based fetching (default: true) */
+  enabled: boolean
+  /** Domains that should always use browser fetching */
+  browserProtectedDomains: string[]
+  /** Fall back to browser if regular fetch is blocked (default: true) */
+  fallbackOnBlock: boolean
+  /** Idle timeout before auto-shutting down browser in ms (default: 60000) */
+  idleTimeoutMs: number
+  /** Page load timeout in ms (default: 30000) */
+  pageTimeoutMs: number
+  /** Maximum content length to extract (default: 100000) */
+  maxContentLength: number
+}
+
+/**
+ * Default browser fetch configuration.
+ */
+export const DEFAULT_BROWSER_FETCH_CONFIG: BrowserFetchConfig = {
+  enabled: true,
+  browserProtectedDomains: [
+    "nytimes.com",
+    "washingtonpost.com",
+    "wsj.com",
+    "latimes.com",
+    "bostonglobe.com",
+    "ft.com",
+    "economist.com",
+    "bloomberg.com",
+  ],
+  fallbackOnBlock: true,
+  idleTimeoutMs: 60000,
+  pageTimeoutMs: 30000,
+  maxContentLength: 100000,
+}
+
+/**
  * Result from fetching a page for link following.
  */
 export interface FetchedPage {
@@ -475,6 +517,8 @@ export interface FetchedPage {
   contentLength: number
   fetchTimeMs: number
   error?: string
+  /** How the page was fetched: regular HTTP or browser automation */
+  fetchMethod?: "fetch" | "browser"
 }
 
 /**
