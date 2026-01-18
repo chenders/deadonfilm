@@ -281,7 +281,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         query += `
           ORDER BY
             a.popularity DESC NULLS LAST,
-            EXTRACT(YEAR FROM a.birthday) DESC NULLS LAST,
+            a.birthday DESC NULLS LAST,
             (
               SELECT COUNT(*) FROM actor_show_appearances asa
               JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
@@ -293,7 +293,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
             ) DESC`
       } else {
-        query += ` ORDER BY a.popularity DESC NULLS LAST, EXTRACT(YEAR FROM a.birthday) DESC NULLS LAST, appearance_count DESC`
+        query += ` ORDER BY a.popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
       }
 
       if (limit) {
