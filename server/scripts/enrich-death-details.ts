@@ -300,8 +300,29 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     // Prompt for confirmation (unless --yes or --dry-run)
     if (!dryRun) {
       // Show summary before prompt
-      const costStr = maxTotalCost !== undefined ? `$${maxTotalCost}` : "unlimited"
-      console.log(`\nReady to enrich ${actors.length} actors (max cost: ${costStr})`)
+      console.log(`\n${"=".repeat(SEPARATOR_WIDTH)}`)
+      console.log(`Ready to enrich ${actors.length} actors`)
+      console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
+      console.log(`\nSource configuration:`)
+      console.log(`  Free sources: ${free ? "enabled" : "disabled"}`)
+      console.log(`  Paid sources: ${paid ? "enabled" : "disabled"}`)
+      console.log(`  AI sources: ${ai ? "enabled" : "disabled"}`)
+      console.log(
+        `  Stop on match: ${claudeCleanup && gatherAllSources ? "no (gathering all)" : stopOnMatch ? "yes" : "no"}`
+      )
+      console.log(`  Confidence threshold: ${confidenceThreshold}`)
+      if (claudeCleanup) {
+        console.log(`\nClaude cleanup configuration:`)
+        console.log(`  Claude cleanup: ENABLED (Opus 4.5)`)
+        console.log(`  Gather all sources: ${gatherAllSources ? "yes" : "no"}`)
+        console.log(`  Estimated cost per actor: ~$${ESTIMATED_CLAUDE_COST_PER_ACTOR}`)
+      }
+      if (maxCostPerActor !== undefined) {
+        console.log(`  Max cost per actor: $${maxCostPerActor}`)
+      }
+      if (maxTotalCost !== undefined) {
+        console.log(`  Max total cost: $${maxTotalCost}`)
+      }
 
       const confirmed = await waitForConfirmation(yes)
       if (!confirmed) {
