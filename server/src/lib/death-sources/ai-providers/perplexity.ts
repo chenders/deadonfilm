@@ -28,8 +28,9 @@ export class PerplexitySource extends BaseDataSource {
 
   private client: OpenAI | null = null
 
-  // Perplexity model that includes online search
-  private readonly modelId = "llama-3.1-sonar-large-128k-online"
+  // Perplexity Sonar Pro - handles multi-step reasoning with real-time web search
+  // See: https://docs.perplexity.ai/getting-started/models
+  private readonly modelId = "sonar-pro"
 
   // Rate limit - be conservative
   protected minDelayMs = 1000
