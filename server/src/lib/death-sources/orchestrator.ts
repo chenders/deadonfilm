@@ -25,7 +25,9 @@ import {
   CostLimitExceededError,
   SourceAccessBlockedError,
   SourceTimeoutError,
+  DEFAULT_BROWSER_FETCH_CONFIG,
 } from "./types.js"
+import { shutdownBrowser, registerBrowserCleanup } from "./browser-fetch.js"
 import { cleanupWithClaude } from "./claude-cleanup.js"
 import { StatusBar } from "./status-bar.js"
 import { EnrichmentLogger, getEnrichmentLogger } from "./logger.js"
@@ -229,7 +231,20 @@ export class DeathEnrichmentOrchestrator {
       console.log(
         `  AI content extraction: ${this.config.linkFollow.aiContentExtraction ? "yes" : "no"}`
       )
+
+      // Log browser fetch configuration
+      const browserConfig = this.config.linkFollow.browserFetch || DEFAULT_BROWSER_FETCH_CONFIG
+      if (browserConfig.enabled) {
+        console.log(`\nBrowser fetching enabled:`)
+        console.log(`  Protected domains: ${browserConfig.browserProtectedDomains.join(", ")}`)
+        console.log(`  Fallback on block: ${browserConfig.fallbackOnBlock ? "yes" : "no"}`)
+        console.log(`  Page timeout: ${browserConfig.pageTimeoutMs}ms`)
+        console.log(`  Idle timeout: ${browserConfig.idleTimeoutMs}ms`)
+      }
     }
+
+    // Register browser cleanup handler for graceful shutdown
+    registerBrowserCleanup()
   }
 
   /**
@@ -666,6 +681,14 @@ export class DeathEnrichmentOrchestrator {
    */
   getStatusBar(): StatusBar {
     return this.statusBar
+  }
+
+  /**
+   * Cleanup resources used by the orchestrator.
+   * Call this when done processing to close browser instances.
+   */
+  async cleanup(): Promise<void> {
+    await shutdownBrowser()
   }
 
   /**
