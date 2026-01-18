@@ -299,6 +299,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
     // Prompt for confirmation (unless --yes or --dry-run)
     if (!dryRun) {
+      // Show summary before prompt
+      const costStr = maxTotalCost !== undefined ? `$${maxTotalCost}` : "unlimited"
+      console.log(`\nReady to enrich ${actors.length} actors (max cost: ${costStr})`)
+
       const confirmed = await waitForConfirmation(yes)
       if (!confirmed) {
         console.log("\nCancelled.")
