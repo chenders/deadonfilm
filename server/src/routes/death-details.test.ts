@@ -316,6 +316,120 @@ describe("getActorDeathDetails", () => {
       error: { message: "Failed to fetch death details" },
     })
   })
+
+  it("uses resolved sources with human-readable names when available", async () => {
+    const circumstancesWithResolvedSources = {
+      ...mockCircumstances,
+      sources: {
+        circumstances: {
+          type: "gemini_pro",
+          url: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/ABC123",
+          confidence: 0.85,
+          rawData: {
+            resolvedSources: [
+              {
+                originalUrl:
+                  "https://vertexaisearch.cloud.google.com/grounding-api-redirect/ABC123",
+                finalUrl: "https://people.com/obituary/famous-actor",
+                domain: "people.com",
+                sourceName: "People",
+              },
+              {
+                originalUrl:
+                  "https://vertexaisearch.cloud.google.com/grounding-api-redirect/DEF456",
+                finalUrl: "https://variety.com/news/famous-actor-dies",
+                domain: "variety.com",
+                sourceName: "Variety",
+              },
+              {
+                originalUrl:
+                  "https://vertexaisearch.cloud.google.com/grounding-api-redirect/FAILED",
+                finalUrl: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/FAILED",
+                domain: "vertexaisearch.cloud.google.com",
+                sourceName: "Vertexaisearch.cloud.google.com",
+                error: "Timeout",
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(
+      circumstancesWithResolvedSources as any
+    )
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          circumstances: [
+            {
+              url: "https://people.com/obituary/famous-actor",
+              archive_url: null,
+              description: "People",
+            },
+            {
+              url: "https://variety.com/news/famous-actor-dies",
+              archive_url: null,
+              description: "Variety",
+            },
+            // Failed resolution should be filtered out (has error property)
+          ],
+        }),
+      })
+    )
+  })
+
+  it("falls back to parsed sources when no resolved sources available", async () => {
+    const circumstancesWithParsedSources = {
+      ...mockCircumstances,
+      sources: {
+        circumstances: {
+          type: "gemini_pro",
+          url: "https://example.com/article",
+          confidence: 0.85,
+          rawData: {
+            parsed: {
+              sources: ["https://news.example.com/obituary", "https://wiki.example.org/actor"],
+            },
+          },
+        },
+      },
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(
+      circumstancesWithParsedSources as any
+    )
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          circumstances: [
+            {
+              url: "https://news.example.com/obituary",
+              archive_url: null,
+              description: "Source: gemini_pro",
+            },
+            {
+              url: "https://wiki.example.org/actor",
+              archive_url: null,
+              description: "Source: gemini_pro",
+            },
+          ],
+        }),
+      })
+    )
+  })
 })
 
 describe("getNotableDeaths", () => {
