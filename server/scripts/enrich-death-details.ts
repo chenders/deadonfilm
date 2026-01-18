@@ -15,6 +15,7 @@
  *   -r, --recent-only            Only deaths in last 2 years
  *   -n, --dry-run                Preview without writing to database
  *   -t, --tmdb-id <id>           Process a specific actor by TMDB ID
+ *   -y, --yes                    Skip confirmation prompt
  *   --free                       Use all free sources (default)
  *   --paid                       Include paid sources (ordered by cost)
  *   --ai                         Include AI model fallbacks
@@ -34,6 +35,7 @@
  */
 
 import "dotenv/config"
+import * as readline from "readline"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
@@ -53,6 +55,10 @@ import {
 
 // Initialize New Relic for monitoring
 initNewRelic()
+
+// Display formatting constants
+const SEPARATOR_WIDTH = 60
+const ESTIMATED_CLAUDE_COST_PER_ACTOR = 0.07
 
 function parsePositiveInt(value: string): number {
   if (!/^\d+$/.test(value)) {
@@ -81,6 +87,29 @@ interface EnrichOptions {
   claudeCleanup: boolean
   gatherAllSources: boolean
   ignoreCache: boolean
+  yes: boolean
+}
+
+/**
+ * Wait for user confirmation before proceeding.
+ * Returns immediately if --yes flag was provided.
+ */
+async function waitForConfirmation(skipPrompt: boolean): Promise<boolean> {
+  if (skipPrompt) {
+    return true
+  }
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+
+  return new Promise((resolve) => {
+    rl.question("\nPress Enter to continue, or Ctrl+C to cancel... ", () => {
+      rl.close()
+      resolve(true)
+    })
+  })
 }
 
 async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
@@ -100,6 +129,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     claudeCleanup,
     gatherAllSources,
     ignoreCache,
+    yes,
   } = options
 
   // Configure cache behavior
@@ -199,10 +229,87 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
     const actors = result.rows
 
-    console.log(`Found ${actors.length} actors needing enrichment`)
-
     if (actors.length === 0) {
       console.log("\nNo actors to enrich. Done!")
+      await resetPool()
+      return
+    }
+
+    // Display configuration summary
+    console.log(`\n${"=".repeat(SEPARATOR_WIDTH)}`)
+    console.log(`Enrichment Configuration`)
+    console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
+    console.log(`\nTarget:`)
+    console.log(`  Actors to process: ${actors.length}`)
+    if (tmdbId) {
+      console.log(`  Specific actor: TMDB ID ${tmdbId}`)
+    } else {
+      console.log(`  Min popularity: ${minPopularity}`)
+      if (recentOnly) {
+        console.log(`  Filter: Recent deaths only (last 2 years)`)
+      }
+    }
+
+    console.log(`\nData Sources:`)
+    console.log(`  Free sources: ${free ? "enabled" : "disabled"}`)
+    console.log(`  Paid sources: ${paid ? "enabled" : "disabled"}`)
+    console.log(`  AI sources: ${ai ? "enabled" : "disabled"}`)
+    console.log(
+      `  Stop on match: ${claudeCleanup && gatherAllSources ? "no (gathering all)" : stopOnMatch ? "yes" : "no"}`
+    )
+    console.log(`  Confidence threshold: ${confidenceThreshold}`)
+
+    if (claudeCleanup) {
+      console.log(`\nClaude Cleanup:`)
+      console.log(`  Enabled: yes (Opus 4.5)`)
+      console.log(`  Gather all sources: ${gatherAllSources ? "yes" : "no"}`)
+      console.log(`  Estimated cost per actor: ~$${ESTIMATED_CLAUDE_COST_PER_ACTOR}`)
+    }
+
+    console.log(`\nCost Limits:`)
+    if (maxCostPerActor !== undefined) {
+      console.log(`  Max per actor: $${maxCostPerActor}`)
+    } else {
+      console.log(`  Max per actor: unlimited`)
+    }
+    if (maxTotalCost !== undefined) {
+      console.log(`  Max total: $${maxTotalCost}`)
+    } else {
+      console.log(`  Max total: unlimited`)
+    }
+
+    if (ignoreCache) {
+      console.log(`\nCache: DISABLED (fresh requests only)`)
+    }
+
+    console.log(
+      `\nMode: ${dryRun ? "DRY RUN (no database writes)" : "LIVE (will write to database)"}`
+    )
+    console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
+
+    // Sample actors preview
+    console.log(`\nSample actors (first 5):`)
+    for (const actor of actors.slice(0, 5)) {
+      console.log(`  - ${actor.name} (ID: ${actor.id}, TMDB: ${actor.tmdb_id || "N/A"})`)
+      console.log(`    Death: ${actor.deathday}, Cause: ${actor.cause_of_death || "(none)"}`)
+    }
+    if (actors.length > 5) {
+      console.log(`  ... and ${actors.length - 5} more`)
+    }
+
+    // Prompt for confirmation (unless --yes or --dry-run)
+    if (!dryRun) {
+      const confirmed = await waitForConfirmation(yes)
+      if (!confirmed) {
+        console.log("\nCancelled.")
+        await resetPool()
+        return
+      }
+    }
+
+    if (dryRun) {
+      console.log(`\n--- Dry Run Complete ---`)
+      console.log(`Would have processed ${actors.length} actors with the above configuration.`)
       await resetPool()
       return
     }
@@ -243,36 +350,6 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       popularity: a.popularity,
     }))
 
-    if (dryRun) {
-      console.log(`\n--- Dry Run Mode ---`)
-      console.log(`Would enrich ${actorsToEnrich.length} actors`)
-      console.log(`\nSample actors (first 5):`)
-      for (const actor of actorsToEnrich.slice(0, 5)) {
-        console.log(`  - ${actor.name} (ID: ${actor.id}, TMDB: ${actor.tmdbId || "N/A"})`)
-        console.log(`    Death: ${actor.deathday}, Cause: ${actor.causeOfDeath || "(none)"}`)
-      }
-      console.log(`\nSource configuration:`)
-      console.log(`  Free sources: ${free ? "enabled" : "disabled"}`)
-      console.log(`  Paid sources: ${paid ? "enabled" : "disabled"}`)
-      console.log(`  AI sources: ${ai ? "enabled" : "disabled"}`)
-      console.log(`  Stop on match: ${claudeCleanup && gatherAllSources ? false : stopOnMatch}`)
-      console.log(`  Confidence threshold: ${confidenceThreshold}`)
-      if (claudeCleanup) {
-        console.log(`\nClaude cleanup configuration:`)
-        console.log(`  Claude cleanup: ENABLED (Opus 4.5)`)
-        console.log(`  Gather all sources: ${gatherAllSources ? "yes" : "no"}`)
-        console.log(`  Estimated cost per actor: ~$0.07`)
-      }
-      if (maxCostPerActor !== undefined) {
-        console.log(`  Max cost per actor: $${maxCostPerActor}`)
-      }
-      if (maxTotalCost !== undefined) {
-        console.log(`  Max total cost: $${maxTotalCost}`)
-      }
-      await resetPool()
-      return
-    }
-
     // Run enrichment
     let results = new Map<number, Awaited<ReturnType<typeof orchestrator.enrichActor>>>()
     let costLimitReached = false
@@ -281,10 +358,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       results = await orchestrator.enrichBatch(actorsToEnrich)
     } catch (error) {
       if (error instanceof CostLimitExceededError) {
-        console.log(`\n${"!".repeat(60)}`)
+        console.log(`\n${"!".repeat(SEPARATOR_WIDTH)}`)
         console.log(`Cost limit reached - exiting gracefully`)
         console.log(`Limit: $${error.limit}, Current: $${error.currentCost.toFixed(4)}`)
-        console.log(`${"!".repeat(60)}`)
+        console.log(`${"!".repeat(SEPARATOR_WIDTH)}`)
         costLimitReached = true
         // Note: partial results were already processed by the orchestrator before throwing
         // Record the cost limit event
@@ -403,11 +480,11 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
     // Print final stats
     const stats = orchestrator.getStats()
-    console.log(`\n${"=".repeat(60)}`)
+    console.log(`\n${"=".repeat(SEPARATOR_WIDTH)}`)
     console.log(
       costLimitReached ? `Enrichment Stopped (Cost Limit Reached)` : `Enrichment Complete!`
     )
-    console.log(`${"=".repeat(60)}`)
+    console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
     console.log(`  Actors processed: ${stats.actorsProcessed}`)
     console.log(`  Actors enriched: ${stats.actorsEnriched}`)
     console.log(`  Fill rate: ${stats.fillRate.toFixed(1)}%`)
@@ -496,6 +573,7 @@ const program = new Command()
     "Gather data from ALL sources before cleanup (requires --claude-cleanup)"
   )
   .option("--ignore-cache", "Ignore cached responses and make fresh requests to all sources")
+  .option("-y, --yes", "Skip confirmation prompt")
   .action(async (options) => {
     await enrichMissingDetails({
       limit: options.limit,
@@ -513,6 +591,7 @@ const program = new Command()
       claudeCleanup: options.claudeCleanup || false,
       gatherAllSources: options.gatherAllSources || false,
       ignoreCache: options.ignoreCache || false,
+      yes: options.yes || false,
     })
   })
 
