@@ -51,6 +51,8 @@
     "backfill:appearances": "tsx scripts/backfill-actor-appearances.ts",
     "backfill:profiles": "tsx scripts/backfill-profile-paths.ts",
     "backfill:languages": "tsx scripts/backfill-languages.ts",
+    "//backfill:production-countries": "Backfill production_countries for --us-actors-only filter",
+    "backfill:production-countries": "tsx scripts/backfill-production-countries.ts",
     "backfill:actor-details": "tsx scripts/backfill-actor-details.ts",
     "backfill:violent-deaths": "tsx scripts/backfill-violent-deaths.ts",
     "//backfill:actor-obscure": "Set is_obscure flag for filtering",
