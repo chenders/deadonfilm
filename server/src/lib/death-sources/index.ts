@@ -81,3 +81,15 @@ export {
   type CacheStats,
   type CostStats,
 } from "./cache.js"
+
+// Browser fetch (for bot-protected sites)
+export {
+  shouldUseBrowserFetch,
+  isBlockedResponse,
+  browserFetchPage,
+  shutdownBrowser,
+  registerBrowserCleanup,
+  isBrowserFetchEnabled,
+  setBrowserConfig,
+  getBrowserConfig,
+} from "./browser-fetch.js"

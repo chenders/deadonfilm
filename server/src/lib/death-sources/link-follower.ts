@@ -16,9 +16,12 @@ import type {
   FetchedPage,
   LinkSelectionResult,
   ContentExtractionResult,
+  BrowserFetchConfig,
 } from "./types.js"
+import { DEFAULT_BROWSER_FETCH_CONFIG } from "./types.js"
 import { htmlToText } from "./html-utils.js"
 import { DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "./base-source.js"
+import { shouldUseBrowserFetch, isBlockedResponse, browserFetchPage } from "./browser-fetch.js"
 
 // Claude model for link operations (use a cheaper model than cleanup)
 const LINK_MODEL_ID = "claude-sonnet-4-20250514"
@@ -300,9 +303,16 @@ Respond with JSON only:
 
 /**
  * Fetch a single page and extract text content.
+ * Uses browser fetching for bot-protected domains or when regular fetch is blocked.
  */
-async function fetchPage(url: string): Promise<FetchedPage> {
+async function fetchPage(url: string, browserConfig?: BrowserFetchConfig): Promise<FetchedPage> {
   const startTime = Date.now()
+  const config = browserConfig || DEFAULT_BROWSER_FETCH_CONFIG
+
+  // Check if domain should always use browser
+  if (config.enabled && shouldUseBrowserFetch(url, config)) {
+    return browserFetchPage(url, config)
+  }
 
   try {
     const controller = new AbortController()
@@ -318,18 +328,30 @@ async function fetchPage(url: string): Promise<FetchedPage> {
 
     clearTimeout(timeoutId)
 
+    // Check for blocking status codes
     if (!response.ok) {
+      // If blocked and fallback is enabled, try browser
+      if (config.enabled && config.fallbackOnBlock && isBlockedResponse(response.status)) {
+        return browserFetchPage(url, config)
+      }
+
       return {
         url,
         title: "",
         content: "",
         contentLength: 0,
         fetchTimeMs: Date.now() - startTime,
+        fetchMethod: "fetch",
         error: `HTTP ${response.status}`,
       }
     }
 
     const html = await response.text()
+
+    // Check for soft blocks in HTML content
+    if (config.enabled && config.fallbackOnBlock && isBlockedResponse(200, html)) {
+      return browserFetchPage(url, config)
+    }
 
     // Extract title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
@@ -349,14 +371,25 @@ async function fetchPage(url: string): Promise<FetchedPage> {
       content,
       contentLength: content.length,
       fetchTimeMs: Date.now() - startTime,
+      fetchMethod: "fetch",
     }
   } catch (error) {
+    // On network errors, try browser if fallback is enabled
+    if (config.enabled && config.fallbackOnBlock) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error"
+      // Don't retry for abort errors (timeout)
+      if (!errorMsg.includes("abort")) {
+        return browserFetchPage(url, config)
+      }
+    }
+
     return {
       url,
       title: "",
       content: "",
       contentLength: 0,
       fetchTimeMs: Date.now() - startTime,
+      fetchMethod: "fetch",
       error: error instanceof Error ? error.message : "Unknown error",
     }
   }
@@ -365,8 +398,11 @@ async function fetchPage(url: string): Promise<FetchedPage> {
 /**
  * Fetch multiple pages in parallel.
  */
-export async function fetchPages(urls: string[]): Promise<FetchedPage[]> {
-  const results = await Promise.all(urls.map((url) => fetchPage(url)))
+export async function fetchPages(
+  urls: string[],
+  browserConfig?: BrowserFetchConfig
+): Promise<FetchedPage[]> {
+  const results = await Promise.all(urls.map((url) => fetchPage(url, browserConfig)))
   return results
 }
 
@@ -637,8 +673,8 @@ export async function followLinksAndExtract(
     }
   }
 
-  // Step 2: Fetch pages
-  const pages = await fetchPages(selection.selectedUrls)
+  // Step 2: Fetch pages (with browser fallback for protected sites)
+  const pages = await fetchPages(selection.selectedUrls, config.browserFetch)
   const successfulPages = pages.filter((p) => !p.error)
 
   // Step 3: Extract content (AI or regex)
