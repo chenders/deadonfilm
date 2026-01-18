@@ -242,7 +242,6 @@ export class DeathEnrichmentOrchestrator {
         console.log(`  Idle timeout: ${browserConfig.idleTimeoutMs}ms`)
       }
     }
-
   }
 
   /**
