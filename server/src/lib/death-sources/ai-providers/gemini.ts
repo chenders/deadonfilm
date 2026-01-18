@@ -16,6 +16,7 @@
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
+import { resolveGeminiUrls, type ResolvedUrl } from "../url-resolver.js"
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
@@ -107,6 +108,12 @@ interface GeminiApiResponse {
         }
         groundingChunkIndices: number[]
         confidenceScores: number[]
+      }>
+      groundingChunks?: Array<{
+        web?: {
+          uri: string
+          title?: string
+        }
       }>
     }
   }>
@@ -225,15 +232,33 @@ abstract class GeminiBaseSource extends BaseDataSource {
 
       const confidence = parsed.confidence ? baseConfidenceMap[parsed.confidence] : 0.4
 
-      // Use the first source URL from search results
-      const sourceUrl = parsed.sources?.[0] || undefined
+      // Extract grounding URLs from grounding chunks (redirect URLs)
+      const groundingMetadata = data.candidates?.[0]?.groundingMetadata
+      const groundingUrls =
+        groundingMetadata?.groundingChunks
+          ?.filter((chunk) => chunk.web?.uri)
+          ?.map((chunk) => chunk.web!.uri) || []
+
+      // Resolve grounding redirect URLs to their final destinations
+      let resolvedSources: ResolvedUrl[] = []
+      if (groundingUrls.length > 0) {
+        try {
+          resolvedSources = await resolveGeminiUrls(groundingUrls)
+        } catch (error) {
+          console.warn("Failed to resolve Gemini grounding URLs:", error)
+        }
+      }
+
+      // Use the first resolved source URL, falling back to parsed sources
+      const sourceUrl = resolvedSources[0]?.finalUrl || parsed.sources?.[0] || undefined
 
       return {
         success: true,
         source: this.createSourceEntry(startTime, confidence, sourceUrl, prompt, {
           response: responseText,
           parsed,
-          groundingMetadata: data.candidates?.[0]?.groundingMetadata,
+          groundingMetadata,
+          resolvedSources, // Store resolved URLs for display
         }),
         data: {
           circumstances: parsed.circumstances,
