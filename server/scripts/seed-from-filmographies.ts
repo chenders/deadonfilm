@@ -164,6 +164,7 @@ async function processMovie(
     poster_path: details.poster_path,
     genres: details.genres?.map((g) => g.name) || [],
     original_language: null, // Will be fetched by backfill:languages if needed
+    production_countries: details.production_countries?.map((c) => c.iso_3166_1) ?? null,
     popularity: null,
     vote_average: null,
     cast_count: topCast.length,
