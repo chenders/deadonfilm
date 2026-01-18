@@ -269,13 +269,16 @@ export class GeminiFlashSource extends GeminiBaseSource {
 /**
  * Gemini Pro provider - more capable with search grounding (~$0.002/query).
  * Uses Google Search grounding for access to current information.
+ *
+ * Note: gemini-1.5-pro was retired April 29, 2025. Using gemini-2.5-flash
+ * which offers better performance with search grounding capabilities.
  */
 export class GeminiProSource extends GeminiBaseSource {
   readonly name = "Gemini Pro"
   readonly type = DataSourceType.GEMINI_PRO
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.002
-  readonly modelId = "gemini-1.5-pro"
+  readonly modelId = "gemini-2.5-flash"
   readonly useSearchGrounding = true
 
   // Rate limit
