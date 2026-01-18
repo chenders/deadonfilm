@@ -154,7 +154,7 @@ abstract class GeminiBaseSource extends BaseDataSource {
         ],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 800,
+          maxOutputTokens: 2000,
         },
       }
 
