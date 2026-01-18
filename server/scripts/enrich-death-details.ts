@@ -26,24 +26,11 @@
  *   --gather-all-sources         Gather data from ALL sources before cleanup
  *   --ignore-cache               Ignore cached responses, make fresh requests
  *
- * Top-Billed Selection (for popular US movies/shows):
- *   --top-billed-year <year>     Select from movies/shows released in specific year
- *   --top-billed-from-year <y>   Start of year range for selection
- *   --top-billed-to-year <year>  End of year range for selection
- *   --max-billing <n>            Max billing order to consider (default: 10)
- *   --min-movie-popularity <n>   Min movie/show popularity threshold (default: 20)
- *
- * US Content Filter:
- *   --us-actors-only             Only actors who appeared in US (English) content
- *
  * Examples:
  *   npm run enrich:death-details -- --limit 50 --dry-run
  *   npm run enrich:death-details -- --tmdb-id 12345 --dry-run
  *   npm run enrich:death-details -- --limit 100 --paid --max-total-cost 5
  *   npm run enrich:death-details -- --claude-cleanup --gather-all-sources --limit 10
- *   npm run enrich:death-details -- --top-billed-year 2024 --limit 50 --dry-run
- *   npm run enrich:death-details -- --top-billed-from-year 2020 --top-billed-to-year 2024 --dry-run
- *   npm run enrich:death-details -- --us-actors-only --limit 100 --dry-run
  */
 
 import "dotenv/config"
@@ -94,14 +81,6 @@ interface EnrichOptions {
   claudeCleanup: boolean
   gatherAllSources: boolean
   ignoreCache: boolean
-  // Top-billed selection options
-  topBilledYear?: number
-  topBilledFromYear?: number
-  topBilledToYear?: number
-  maxBilling: number
-  minMoviePopularity: number
-  // US actors filter
-  usActorsOnly: boolean
 }
 
 async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
@@ -121,16 +100,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     claudeCleanup,
     gatherAllSources,
     ignoreCache,
-    topBilledYear,
-    topBilledFromYear,
-    topBilledToYear,
-    maxBilling,
-    minMoviePopularity,
-    usActorsOnly,
   } = options
-
-  // Determine if we're using top-billed selection mode
-  const useTopBilledMode = topBilledYear || topBilledFromYear || topBilledToYear
 
   // Configure cache behavior
   if (ignoreCache) {
@@ -171,146 +141,6 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         WHERE a.tmdb_id = $1
           AND a.deathday IS NOT NULL
       `
-    } else if (useTopBilledMode) {
-      // Query deceased actors who are top-billed in popular US movies or TV shows
-      const yearFrom = topBilledYear || topBilledFromYear
-      const yearTo = topBilledYear || topBilledToYear
-      const yearDesc = topBilledYear
-        ? `year ${topBilledYear}`
-        : `years ${yearFrom || "any"}-${yearTo || "any"}`
-      console.log(
-        `\nQuerying top-billed deceased actors in popular US movies/shows (${yearDesc})...`
-      )
-
-      // Build parameterized query with billing and popularity filters
-      params.push(maxBilling) // $1
-      params.push(minMoviePopularity) // $2
-
-      let yearFromParam = ""
-      let yearToParam = ""
-      if (yearFrom) {
-        params.push(yearFrom)
-        yearFromParam = `$${params.length}`
-      }
-      if (yearTo) {
-        params.push(yearTo)
-        yearToParam = `$${params.length}`
-      }
-
-      // Use a CTE to combine movie and show appearances
-      query = `
-        WITH top_billed_content AS (
-          -- Movies
-          SELECT
-            a.id as actor_id,
-            m.popularity as content_popularity,
-            m.release_year as content_year
-          FROM actors a
-          INNER JOIN actor_movie_appearances ama ON ama.actor_id = a.id
-          INNER JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-          WHERE a.deathday IS NOT NULL
-            AND a.deathday < CURRENT_DATE - INTERVAL '30 days'
-            AND m.original_language = 'en'
-            AND ama.billing_order <= $1
-            AND m.popularity >= $2
-            ${yearFromParam ? `AND m.release_year >= ${yearFromParam}` : ""}
-            ${yearToParam ? `AND m.release_year <= ${yearToParam}` : ""}
-
-          UNION ALL
-
-          -- TV Shows
-          SELECT
-            a.id as actor_id,
-            s.popularity as content_popularity,
-            EXTRACT(YEAR FROM s.first_air_date)::int as content_year
-          FROM actors a
-          INNER JOIN actor_show_appearances asa ON asa.actor_id = a.id
-          INNER JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
-          WHERE a.deathday IS NOT NULL
-            AND a.deathday < CURRENT_DATE - INTERVAL '30 days'
-            AND s.original_language = 'en'
-            AND asa.billing_order <= $1
-            AND s.popularity >= $2
-            ${yearFromParam ? `AND EXTRACT(YEAR FROM s.first_air_date) >= ${yearFromParam}` : ""}
-            ${yearToParam ? `AND EXTRACT(YEAR FROM s.first_air_date) <= ${yearToParam}` : ""}
-        ),
-        actor_max_popularity AS (
-          SELECT
-            actor_id,
-            MAX(content_popularity) as max_content_popularity
-          FROM top_billed_content
-          GROUP BY actor_id
-        )
-        SELECT
-          a.id,
-          a.tmdb_id,
-          a.name,
-          a.birthday,
-          a.deathday,
-          a.cause_of_death,
-          a.cause_of_death_details,
-          a.popularity,
-          c.circumstances,
-          c.notable_factors,
-          amp.max_content_popularity
-        FROM actors a
-        LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
-        INNER JOIN actor_max_popularity amp ON amp.actor_id = a.id
-        WHERE (c.circumstances IS NULL OR c.notable_factors IS NULL OR array_length(c.notable_factors, 1) IS NULL)
-        ORDER BY amp.max_content_popularity DESC NULLS LAST, a.popularity DESC NULLS LAST
-      `
-
-      if (limit) {
-        params.push(limit)
-        query += ` LIMIT $${params.length}`
-      }
-    } else if (usActorsOnly) {
-      // Query deceased actors who primarily appear in US (English-language) content
-      console.log(`\nQuerying deceased actors primarily in US movies/shows...`)
-      query = `
-        SELECT
-          a.id,
-          a.tmdb_id,
-          a.name,
-          a.birthday,
-          a.deathday,
-          a.cause_of_death,
-          a.cause_of_death_details,
-          a.popularity,
-          c.circumstances,
-          c.notable_factors
-        FROM actors a
-        LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
-        WHERE a.deathday IS NOT NULL
-          AND a.cause_of_death IS NOT NULL
-          AND (c.circumstances IS NULL OR c.notable_factors IS NULL OR array_length(c.notable_factors, 1) IS NULL)
-          AND a.deathday < CURRENT_DATE - INTERVAL '30 days'
-          AND EXISTS (
-            SELECT 1 FROM actor_movie_appearances ama
-            INNER JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-            WHERE ama.actor_id = a.id AND m.original_language = 'en'
-          )
-      `
-
-      if (minPopularity > 0) {
-        params.push(minPopularity)
-        query += ` AND a.popularity >= $${params.length}`
-      }
-
-      if (recentOnly) {
-        // Deaths in last 2 years
-        const twoYearsAgo = new Date()
-        twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-        params.push(twoYearsAgo.toISOString().split("T")[0])
-        query += ` AND a.deathday >= $${params.length}`
-      }
-
-      query += ` ORDER BY a.popularity DESC NULLS LAST, a.deathday DESC NULLS LAST`
-
-      if (limit) {
-        params.push(limit)
-        query += ` LIMIT $${params.length}`
-      }
     } else {
       // Query actors where Claude returned nulls for detailed fields
       console.log(`\nQuerying actors with missing death circumstances...`)
@@ -331,7 +161,6 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         WHERE a.deathday IS NOT NULL
           AND a.cause_of_death IS NOT NULL
           AND (c.circumstances IS NULL OR c.notable_factors IS NULL OR array_length(c.notable_factors, 1) IS NULL)
-          AND a.deathday < CURRENT_DATE - INTERVAL '30 days'
       `
 
       if (minPopularity > 0) {
@@ -347,7 +176,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         query += ` AND a.deathday >= $${params.length}`
       }
 
-      query += ` ORDER BY a.popularity DESC NULLS LAST, a.deathday DESC NULLS LAST`
+      query += ` ORDER BY a.popularity DESC NULLS LAST`
 
       if (limit) {
         params.push(limit)
@@ -667,37 +496,6 @@ const program = new Command()
     "Gather data from ALL sources before cleanup (requires --claude-cleanup)"
   )
   .option("--ignore-cache", "Ignore cached responses and make fresh requests to all sources")
-  .option(
-    "--top-billed-year <year>",
-    "Select actors from movies/shows released in a specific year",
-    parsePositiveInt
-  )
-  .option(
-    "--top-billed-from-year <year>",
-    "Start of year range for top-billed movie/show selection",
-    parsePositiveInt
-  )
-  .option(
-    "--top-billed-to-year <year>",
-    "End of year range for top-billed movie/show selection",
-    parsePositiveInt
-  )
-  .option(
-    "--max-billing <order>",
-    "Maximum billing order to consider as 'top-billed' (default: 10)",
-    parsePositiveInt,
-    10
-  )
-  .option(
-    "--min-movie-popularity <popularity>",
-    "Minimum movie/show popularity to include (default: 20)",
-    parsePositiveInt,
-    20
-  )
-  .option(
-    "--us-actors-only",
-    "Only include actors who have appeared in US (English-language) content"
-  )
   .action(async (options) => {
     await enrichMissingDetails({
       limit: options.limit,
@@ -715,12 +513,6 @@ const program = new Command()
       claudeCleanup: options.claudeCleanup || false,
       gatherAllSources: options.gatherAllSources || false,
       ignoreCache: options.ignoreCache || false,
-      topBilledYear: options.topBilledYear,
-      topBilledFromYear: options.topBilledFromYear,
-      topBilledToYear: options.topBilledToYear,
-      maxBilling: options.maxBilling,
-      minMoviePopularity: options.minMoviePopularity,
-      usActorsOnly: options.usActorsOnly || false,
     })
   })
 
