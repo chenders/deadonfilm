@@ -230,7 +230,12 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           a.cause_of_death_details,
           a.popularity,
           c.circumstances,
-          c.notable_factors
+          c.notable_factors,
+          (
+            SELECT COUNT(*) FROM actor_movie_appearances WHERE actor_id = a.id
+          ) + (
+            SELECT COUNT(*) FROM actor_show_appearances WHERE actor_id = a.id
+          ) AS appearance_count
         FROM actors a
         LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
         WHERE a.deathday IS NOT NULL
@@ -271,9 +276,25 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               )
             )
           )`
-      }
 
-      query += ` ORDER BY a.popularity DESC NULLS LAST`
+        // When filtering for US actors, sort by US/English appearances instead of total
+        query += `
+          ORDER BY
+            a.popularity DESC NULLS LAST,
+            EXTRACT(YEAR FROM a.birthday) DESC NULLS LAST,
+            (
+              SELECT COUNT(*) FROM actor_show_appearances asa
+              JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
+              WHERE asa.actor_id = a.id AND s.origin_country @> ARRAY['US']::text[]
+            ) + (
+              SELECT COUNT(*) FROM actor_movie_appearances ama
+              JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+              WHERE ama.actor_id = a.id
+              AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
+            ) DESC`
+      } else {
+        query += ` ORDER BY a.popularity DESC NULLS LAST, EXTRACT(YEAR FROM a.birthday) DESC NULLS LAST, appearance_count DESC`
+      }
 
       if (limit) {
         params.push(limit)
