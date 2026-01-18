@@ -243,8 +243,6 @@ export class DeathEnrichmentOrchestrator {
       }
     }
 
-    // Register browser cleanup handler for graceful shutdown
-    registerBrowserCleanup()
   }
 
   /**
@@ -771,10 +769,10 @@ export class DeathEnrichmentOrchestrator {
 
   /**
    * Cleanup resources used by the orchestrator.
-   * Call this when done processing to close browser instances.
+   * Call this when done processing.
    */
   async cleanup(): Promise<void> {
-    await shutdownBrowser()
+    // No-op - browser cleanup not currently needed for this script
   }
 
   /**
