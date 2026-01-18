@@ -12,6 +12,7 @@ export interface MovieCacheInput {
     release_date: string | null
     poster_path: string | null
     genres?: Array<{ id: number; name: string }>
+    production_countries?: Array<{ iso_3166_1: string; name: string }>
   }
   deceasedCount: number
   livingCount: number
@@ -43,6 +44,7 @@ export function buildMovieRecord(input: MovieCacheInput): MovieRecord {
     poster_path: movie.poster_path,
     genres: movie.genres?.map((g) => g.name) || [],
     original_language: null, // Not available from movie details endpoint
+    production_countries: movie.production_countries?.map((c) => c.iso_3166_1) ?? null,
     popularity: null,
     vote_average: null,
     cast_count: deceasedCount + livingCount,

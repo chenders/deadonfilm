@@ -103,6 +103,7 @@ export interface MovieRecord {
   poster_path: string | null
   genres: string[]
   original_language: string | null
+  production_countries: string[] | null
   popularity: number | null
   vote_average: number | null
   cast_count: number | null

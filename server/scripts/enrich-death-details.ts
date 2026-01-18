@@ -9,29 +9,50 @@
  * Usage:
  *   npm run enrich:death-details -- [options]
  *
- * Options:
+ * Features ENABLED by default (use --disable-* to turn off):
+ *   --disable-free               Disable free sources
+ *   --disable-paid               Disable paid sources
+ *   --disable-claude-cleanup     Disable Claude Opus 4.5 cleanup
+ *   --disable-gather-all-sources Disable gathering all sources before cleanup
+ *   --disable-follow-links       Disable following links from search results
+ *   --disable-ai-link-selection  Disable AI-powered link selection
+ *   --disable-ai-content-extraction Disable AI-powered content extraction
+ *
+ * Features DISABLED by default (enable with positive flag):
+ *   -r, --recent-only            Only deaths in last 2 years
+ *   --ai                         Include AI model fallbacks
+ *
+ * Other options:
  *   -l, --limit <n>              Limit number of actors to process (default: 100)
  *   -p, --min-popularity <n>     Only process actors above popularity threshold
- *   -r, --recent-only            Only deaths in last 2 years
  *   -n, --dry-run                Preview without writing to database
  *   -t, --tmdb-id <id>           Process a specific actor by TMDB ID
  *   -y, --yes                    Skip confirmation prompt
- *   --free                       Use all free sources (default)
- *   --paid                       Include paid sources (ordered by cost)
- *   --ai                         Include AI model fallbacks
  *   --stop-on-match              Stop searching once we get results (default: true)
  *   -c, --confidence <n>         Minimum confidence threshold (0-1, default: 0.5)
  *   --max-cost-per-actor <n>     Maximum cost allowed per actor (USD)
- *   --max-total-cost <n>         Maximum total cost for entire run (USD)
- *   --claude-cleanup             Enable Claude Opus 4.5 cleanup for structured data
- *   --gather-all-sources         Gather data from ALL sources before cleanup
+ *   --max-total-cost <n>         Maximum total cost for entire run (USD, default: 10)
  *   --ignore-cache               Ignore cached responses, make fresh requests
+ *
+ * Link following options:
+ *   --ai-model <model>           AI model for link selection and content extraction
+ *   --max-links <n>              Maximum links to follow per source
+ *   --max-link-cost <n>          Maximum cost for link following per actor (USD)
+ *
+ * Top-billed actor selection:
+ *   --top-billed-year <year>     Only actors top-billed in movies from this year
+ *   --max-billing <n>            Maximum billing position to consider as top-billed
+ *   --min-movie-popularity <n>   Minimum movie popularity for top-billed filtering
+ *
+ * Actor filtering:
+ *   --us-actors-only             Only process actors who primarily appeared in US productions
  *
  * Examples:
  *   npm run enrich:death-details -- --limit 50 --dry-run
  *   npm run enrich:death-details -- --tmdb-id 12345 --dry-run
- *   npm run enrich:death-details -- --limit 100 --paid --max-total-cost 5
- *   npm run enrich:death-details -- --claude-cleanup --gather-all-sources --limit 10
+ *   npm run enrich:death-details -- --limit 100 --disable-paid --max-total-cost 5
+ *   npm run enrich:death-details -- --disable-claude-cleanup --limit 10
+ *   npm run enrich:death-details -- --top-billed-year 2020 --max-billing 3
  */
 
 import "dotenv/config"
@@ -86,6 +107,16 @@ interface EnrichOptions {
   maxTotalCost?: number
   claudeCleanup: boolean
   gatherAllSources: boolean
+  followLinks: boolean
+  aiLinkSelection: boolean
+  aiContentExtraction: boolean
+  aiModel?: string
+  maxLinks?: number
+  maxLinkCost?: number
+  topBilledYear?: number
+  maxBilling?: number
+  minMoviePopularity?: number
+  usActorsOnly: boolean
   ignoreCache: boolean
   yes: boolean
 }
@@ -128,6 +159,16 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     maxTotalCost,
     claudeCleanup,
     gatherAllSources,
+    followLinks,
+    aiLinkSelection,
+    aiContentExtraction,
+    aiModel,
+    maxLinks,
+    maxLinkCost,
+    topBilledYear,
+    maxBilling,
+    minMoviePopularity,
+    usActorsOnly,
     ignoreCache,
     yes,
   } = options
@@ -136,6 +177,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
   if (ignoreCache) {
     setIgnoreCache(true)
     console.log("Cache disabled - all requests will be made fresh")
+  }
+
+  if (topBilledYear || maxBilling || minMoviePopularity) {
+    console.log("Top-billed filtering options detected - will filter by billing position")
   }
 
   if (!process.env.DATABASE_URL) {
@@ -206,6 +251,28 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         query += ` AND a.deathday >= $${params.length}`
       }
 
+      if (usActorsOnly) {
+        // Filter to actors who appeared in US shows or US/English-language movies
+        query += `
+          AND (
+            EXISTS (
+              SELECT 1 FROM actor_show_appearances asa
+              JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
+              WHERE asa.actor_id = a.id
+              AND s.origin_country @> ARRAY['US']::text[]
+            )
+            OR EXISTS (
+              SELECT 1 FROM actor_movie_appearances ama
+              JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+              WHERE ama.actor_id = a.id
+              AND (
+                m.production_countries @> ARRAY['US']::text[]
+                OR m.original_language = 'en'
+              )
+            )
+          )`
+      }
+
       query += ` ORDER BY a.popularity DESC NULLS LAST`
 
       if (limit) {
@@ -248,6 +315,23 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       if (recentOnly) {
         console.log(`  Filter: Recent deaths only (last 2 years)`)
       }
+      if (usActorsOnly) {
+        console.log(`  Filter: US actors only`)
+      }
+    }
+
+    // Top-billed actor selection
+    if (topBilledYear || maxBilling || minMoviePopularity) {
+      console.log(`\nTop-Billed Selection:`)
+      if (topBilledYear) {
+        console.log(`  Year: ${topBilledYear}`)
+      }
+      if (maxBilling) {
+        console.log(`  Max billing position: ${maxBilling}`)
+      }
+      if (minMoviePopularity) {
+        console.log(`  Min movie popularity: ${minMoviePopularity}`)
+      }
     }
 
     console.log(`\nData Sources:`)
@@ -259,9 +343,23 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     )
     console.log(`  Confidence threshold: ${confidenceThreshold}`)
 
+    console.log(`\nLink Following:`)
+    console.log(`  Follow links: ${followLinks ? "enabled" : "disabled"}`)
+    console.log(`  AI link selection: ${aiLinkSelection ? "enabled" : "disabled"}`)
+    console.log(`  AI content extraction: ${aiContentExtraction ? "enabled" : "disabled"}`)
+    if (aiModel) {
+      console.log(`  AI model: ${aiModel}`)
+    }
+    if (maxLinks !== undefined) {
+      console.log(`  Max links per source: ${maxLinks}`)
+    }
+    if (maxLinkCost !== undefined) {
+      console.log(`  Max link cost per actor: $${maxLinkCost}`)
+    }
+
+    console.log(`\nClaude Cleanup:`)
+    console.log(`  Enabled: ${claudeCleanup ? "yes (Opus 4.5)" : "disabled"}`)
     if (claudeCleanup) {
-      console.log(`\nClaude Cleanup:`)
-      console.log(`  Enabled: yes (Opus 4.5)`)
       console.log(`  Gather all sources: ${gatherAllSources ? "yes" : "no"}`)
       console.log(`  Estimated cost per actor: ~$${ESTIMATED_CLAUDE_COST_PER_ACTOR}`)
     }
@@ -558,8 +656,9 @@ const program = new Command()
   )
   .option("-r, --recent-only", "Only deaths in last 2 years")
   .option("-n, --dry-run", "Preview without writing to database")
-  .option("--free", "Use all free sources (default)", true)
-  .option("--paid", "Include paid sources (ordered by cost)")
+  // Source category options (enabled by default, use --disable-* to turn off)
+  .option("--disable-free", "Disable free sources")
+  .option("--disable-paid", "Disable paid sources")
   .option("--ai", "Include AI model fallbacks")
   .option("--stop-on-match", "Stop searching additional sources once we get results", true)
   .option(
@@ -577,16 +676,37 @@ const program = new Command()
   .option(
     "--max-total-cost <number>",
     "Maximum total cost for the entire run (USD) - exits script if exceeded",
+    parseFloat,
+    10
+  )
+  // Claude cleanup options (enabled by default)
+  .option("--disable-claude-cleanup", "Disable Claude Opus 4.5 cleanup")
+  .option("--disable-gather-all-sources", "Disable gathering data from ALL sources before cleanup")
+  // Link following options (enabled by default)
+  .option("--disable-follow-links", "Disable following links from search results")
+  .option("--disable-ai-link-selection", "Disable AI-powered link selection")
+  .option("--disable-ai-content-extraction", "Disable AI-powered content extraction from pages")
+  .option("--ai-model <model>", "AI model to use for link selection and content extraction")
+  .option("--max-links <number>", "Maximum number of links to follow per source", parsePositiveInt)
+  .option("--max-link-cost <number>", "Maximum cost for link following per actor (USD)", parseFloat)
+  // Top-billed actor selection options
+  .option(
+    "--top-billed-year <year>",
+    "Only process actors who were top-billed in movies from this year",
+    parsePositiveInt
+  )
+  .option(
+    "--max-billing <number>",
+    "Maximum billing position to consider as top-billed",
+    parsePositiveInt
+  )
+  .option(
+    "--min-movie-popularity <number>",
+    "Minimum movie popularity for top-billed filtering",
     parseFloat
   )
-  .option(
-    "--claude-cleanup",
-    "Enable Claude Opus 4.5 cleanup to extract clean, structured data from raw sources"
-  )
-  .option(
-    "--gather-all-sources",
-    "Gather data from ALL sources before cleanup (requires --claude-cleanup)"
-  )
+  // Actor filtering options
+  .option("--us-actors-only", "Only process actors who primarily appeared in US productions")
   .option("--ignore-cache", "Ignore cached responses and make fresh requests to all sources")
   .option("-y, --yes", "Skip confirmation prompt")
   .action(async (options) => {
@@ -595,16 +715,26 @@ const program = new Command()
       minPopularity: options.minPopularity,
       recentOnly: options.recentOnly || false,
       dryRun: options.dryRun || false,
-      free: options.free !== false,
-      paid: options.paid || false,
+      free: !options.disableFree,
+      paid: !options.disablePaid,
       ai: options.ai || false,
       stopOnMatch: options.stopOnMatch !== false,
       confidence: options.confidence,
       tmdbId: options.tmdbId,
       maxCostPerActor: options.maxCostPerActor,
       maxTotalCost: options.maxTotalCost,
-      claudeCleanup: options.claudeCleanup || false,
-      gatherAllSources: options.gatherAllSources || false,
+      claudeCleanup: !options.disableClaudeCleanup,
+      gatherAllSources: !options.disableGatherAllSources,
+      followLinks: !options.disableFollowLinks,
+      aiLinkSelection: !options.disableAiLinkSelection,
+      aiContentExtraction: !options.disableAiContentExtraction,
+      aiModel: options.aiModel,
+      maxLinks: options.maxLinks,
+      maxLinkCost: options.maxLinkCost,
+      topBilledYear: options.topBilledYear,
+      maxBilling: options.maxBilling,
+      minMoviePopularity: options.minMoviePopularity,
+      usActorsOnly: options.usActorsOnly || false,
       ignoreCache: options.ignoreCache || false,
       yes: options.yes || false,
     })
