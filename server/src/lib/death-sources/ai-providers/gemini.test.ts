@@ -16,9 +16,15 @@ vi.mock("../logger.js", () => ({
   })),
 }))
 
+// Mock url-resolver before importing source
+vi.mock("../url-resolver.js", () => ({
+  resolveGeminiUrls: vi.fn().mockResolvedValue([]),
+}))
+
 import { GeminiFlashSource, GeminiProSource } from "./gemini.js"
 import type { ActorForEnrichment } from "../types.js"
 import { DataSourceType } from "../types.js"
+import { resolveGeminiUrls } from "../url-resolver.js"
 
 // Mock fetch globally
 const mockFetch = vi.fn()
@@ -249,6 +255,127 @@ describe("GeminiProSource", () => {
         "https://wiki.example.org/actor",
         "https://hospital.example.com/announcement",
       ])
+    })
+
+    it("resolves grounding chunk URLs and stores resolved sources", async () => {
+      const mockResolvedSources = [
+        {
+          originalUrl: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/ABC123",
+          finalUrl: "https://people.com/obituary/test-actor",
+          domain: "people.com",
+          sourceName: "People",
+        },
+        {
+          originalUrl: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/DEF456",
+          finalUrl: "https://variety.com/news/test-actor-dies",
+          domain: "variety.com",
+          sourceName: "Variety",
+        },
+      ]
+      vi.mocked(resolveGeminiUrls).mockResolvedValueOnce(mockResolvedSources)
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      circumstances: "Died peacefully at home",
+                      notable_factors: [],
+                      rumored_circumstances: null,
+                      location_of_death: "New York",
+                      confidence: "high",
+                      sources: [],
+                    }),
+                  },
+                ],
+              },
+              groundingMetadata: {
+                webSearchQueries: ["Test Actor death"],
+                groundingChunks: [
+                  {
+                    web: {
+                      uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/ABC123",
+                      title: "People Article",
+                    },
+                  },
+                  {
+                    web: {
+                      uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/DEF456",
+                      title: "Variety Article",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+
+      const result = await source.lookup(testActor)
+
+      expect(result.success).toBe(true)
+      expect(resolveGeminiUrls).toHaveBeenCalledWith([
+        "https://vertexaisearch.cloud.google.com/grounding-api-redirect/ABC123",
+        "https://vertexaisearch.cloud.google.com/grounding-api-redirect/DEF456",
+      ])
+
+      // First resolved URL should be used as the source URL
+      expect(result.source.url).toBe("https://people.com/obituary/test-actor")
+
+      // Resolved sources should be stored in rawData
+      const rawData = result.source.rawData as { resolvedSources: typeof mockResolvedSources }
+      expect(rawData.resolvedSources).toEqual(mockResolvedSources)
+    })
+
+    it("handles grounding URL resolution failure gracefully", async () => {
+      vi.mocked(resolveGeminiUrls).mockRejectedValueOnce(new Error("Resolution failed"))
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      circumstances: "Died of natural causes",
+                      notable_factors: [],
+                      rumored_circumstances: null,
+                      location_of_death: "Chicago",
+                      confidence: "medium",
+                      sources: ["https://fallback.example.com"],
+                    }),
+                  },
+                ],
+              },
+              groundingMetadata: {
+                groundingChunks: [
+                  {
+                    web: {
+                      uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/FAIL",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+
+      const result = await source.lookup(testActor)
+
+      // Should still succeed, falling back to parsed sources
+      expect(result.success).toBe(true)
+      expect(result.source.url).toBe("https://fallback.example.com")
+
+      // resolvedSources should be empty due to failure
+      const rawData = result.source.rawData as { resolvedSources: unknown[] }
+      expect(rawData.resolvedSources).toEqual([])
     })
   })
 })
