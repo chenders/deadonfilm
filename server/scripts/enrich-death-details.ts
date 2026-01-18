@@ -299,6 +299,21 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
     // Prompt for confirmation (unless --yes or --dry-run)
     if (!dryRun) {
+      // Show summary before prompt
+      const sources = [free ? "free" : null, paid ? "paid" : null, ai ? "AI" : null]
+        .filter(Boolean)
+        .join(", ")
+      const costStr = maxTotalCost !== undefined ? `$${maxTotalCost}` : "unlimited"
+
+      console.log(`\n${"─".repeat(SEPARATOR_WIDTH)}`)
+      console.log(`Ready to enrich ${actors.length} actors`)
+      console.log(`  Sources: ${sources || "none"}`)
+      if (claudeCleanup) {
+        console.log(`  Claude cleanup: enabled${gatherAllSources ? " (gather all)" : ""}`)
+      }
+      console.log(`  Max cost: ${costStr}`)
+      console.log(`${"─".repeat(SEPARATOR_WIDTH)}`)
+
       const confirmed = await waitForConfirmation(yes)
       if (!confirmed) {
         console.log("\nCancelled.")
