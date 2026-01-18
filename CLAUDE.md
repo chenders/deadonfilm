@@ -37,6 +37,18 @@ git checkout main && git pull
 git checkout -b feat/feature-name   # or fix/, chore/
 ```
 
+### 5. NEVER Manually Set Migration Timestamps
+
+Always use `npm run migrate:create` to generate unique timestamps. Duplicate timestamps cause production deployment failures.
+
+```bash
+# CORRECT - generates unique timestamp
+cd server && npm run migrate:create -- add-new-table
+
+# WRONG - never manually create files like:
+# 1767900000000_my-migration.cjs  (hardcoded timestamp may conflict)
+```
+
 </critical_constraints>
 
 ## Project Overview
