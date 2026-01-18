@@ -768,10 +768,10 @@ export class DeathEnrichmentOrchestrator {
 
   /**
    * Cleanup resources used by the orchestrator.
-   * Call this when done processing.
+   * Currently a no-op, but available for future resource cleanup.
    */
   async cleanup(): Promise<void> {
-    // No-op - browser cleanup not currently needed for this script
+    // No-op - browser cleanup not currently needed
   }
 
   /**
