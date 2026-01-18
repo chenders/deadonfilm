@@ -70,3 +70,52 @@ export function getBrowserTimingHeader(): string {
   }
   return ""
 }
+
+/**
+ * Start a background transaction for non-web operations.
+ * Useful for CLI scripts and background jobs.
+ */
+export function startBackgroundTransaction<T>(
+  name: string,
+  group: string,
+  handler: () => Promise<T>
+): Promise<T> {
+  if (newrelicAgent) {
+    return newrelicAgent.startBackgroundTransaction(name, group, handler)
+  }
+  return handler()
+}
+
+/**
+ * Start a segment within a transaction for measuring specific operations.
+ */
+export function startSegment<T>(
+  name: string,
+  record: boolean,
+  handler: () => Promise<T>
+): Promise<T> {
+  if (newrelicAgent) {
+    return newrelicAgent.startSegment(name, record, handler)
+  }
+  return handler()
+}
+
+/**
+ * Notice an error in New Relic.
+ */
+export function noticeError(error: Error, customAttributes?: Record<string, unknown>): void {
+  if (newrelicAgent) {
+    newrelicAgent.noticeError(error, customAttributes as Record<string, string | number | boolean>)
+  }
+}
+
+/**
+ * Add multiple custom attributes to the current transaction.
+ */
+export function addCustomAttributes(attributes: Record<string, string | number | boolean>): void {
+  if (newrelicAgent) {
+    for (const [key, value] of Object.entries(attributes)) {
+      newrelicAgent.addCustomAttribute(key, value)
+    }
+  }
+}
