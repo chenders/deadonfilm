@@ -109,9 +109,12 @@ export class PerplexitySource extends BaseDataSource {
       const confidence =
         parsed.confidence === "high" ? 0.85 : parsed.confidence === "medium" ? 0.65 : 0.45
 
+      // Use the first source URL from Perplexity's web search results
+      const sourceUrl = parsed.sources?.[0] || undefined
+
       return {
         success: true,
-        source: this.createSourceEntry(startTime, confidence, undefined, prompt, {
+        source: this.createSourceEntry(startTime, confidence, sourceUrl, prompt, {
           response: responseText,
           parsed,
         }),

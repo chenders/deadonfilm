@@ -103,6 +103,7 @@ describe("GeminiFlashSource", () => {
                       rumored_circumstances: null,
                       location_of_death: "New York City",
                       confidence: "high",
+                      sources: ["https://example.com/article1", "https://example.com/article2"],
                     }),
                   },
                 ],
@@ -117,6 +118,14 @@ describe("GeminiFlashSource", () => {
       expect(result.success).toBe(true)
       expect(result.data?.circumstances).toBe("Died of heart failure")
       expect(result.data?.locationOfDeath).toBe("New York City")
+      // First source URL is stored at top level for backward compatibility
+      expect(result.source.url).toBe("https://example.com/article1")
+      // All sources are stored in rawData.parsed.sources
+      const rawData = result.source.rawData as { parsed: { sources: string[] } }
+      expect(rawData.parsed.sources).toEqual([
+        "https://example.com/article1",
+        "https://example.com/article2",
+      ])
     })
 
     it("handles API errors gracefully", async () => {
@@ -203,6 +212,11 @@ describe("GeminiProSource", () => {
                       rumored_circumstances: null,
                       location_of_death: "Los Angeles",
                       confidence: "high",
+                      sources: [
+                        "https://news.example.com/obituary",
+                        "https://wiki.example.org/actor",
+                        "https://hospital.example.com/announcement",
+                      ],
                     }),
                   },
                 ],
@@ -226,6 +240,15 @@ describe("GeminiProSource", () => {
       expect(result.success).toBe(true)
       expect(result.data?.circumstances).toBe("Died of cancer after a long battle")
       expect(result.source.rawData).toHaveProperty("groundingMetadata")
+      // First source URL is stored at top level
+      expect(result.source.url).toBe("https://news.example.com/obituary")
+      // All sources are stored in rawData.parsed.sources
+      const rawData = result.source.rawData as { parsed: { sources: string[] } }
+      expect(rawData.parsed.sources).toEqual([
+        "https://news.example.com/obituary",
+        "https://wiki.example.org/actor",
+        "https://hospital.example.com/announcement",
+      ])
     })
   })
 })
