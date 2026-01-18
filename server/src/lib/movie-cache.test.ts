@@ -110,6 +110,63 @@ describe("movie-cache", () => {
 
       expect(result.release_year).toBe(1985)
     })
+
+    it("extracts production_countries ISO codes from TMDB format", () => {
+      const result = buildMovieRecord({
+        movie: {
+          id: 12345,
+          title: "International Film",
+          release_date: "2020-01-01",
+          poster_path: null,
+          production_countries: [
+            { iso_3166_1: "US", name: "United States of America" },
+            { iso_3166_1: "GB", name: "United Kingdom" },
+            { iso_3166_1: "CA", name: "Canada" },
+          ],
+        },
+        deceasedCount: 1,
+        livingCount: 9,
+        expectedDeaths: 0.5,
+        mortalitySurpriseScore: 1.0,
+      })
+
+      expect(result.production_countries).toEqual(["US", "GB", "CA"])
+    })
+
+    it("handles undefined production_countries", () => {
+      const result = buildMovieRecord({
+        movie: {
+          id: 12345,
+          title: "Test Movie",
+          release_date: "2020-01-01",
+          poster_path: null,
+        },
+        deceasedCount: 0,
+        livingCount: 5,
+        expectedDeaths: 0,
+        mortalitySurpriseScore: 0,
+      })
+
+      expect(result.production_countries).toBeNull()
+    })
+
+    it("handles empty production_countries array", () => {
+      const result = buildMovieRecord({
+        movie: {
+          id: 12345,
+          title: "Test Movie",
+          release_date: "2020-01-01",
+          poster_path: null,
+          production_countries: [],
+        },
+        deceasedCount: 0,
+        livingCount: 5,
+        expectedDeaths: 0,
+        mortalitySurpriseScore: 0,
+      })
+
+      expect(result.production_countries).toEqual([])
+    })
   })
 
   describe("calculateAgeAtFilming", () => {
