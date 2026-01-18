@@ -73,7 +73,7 @@ export class PerplexitySource extends BaseDataSource {
 
       const response = await client.chat.completions.create({
         model: this.modelId,
-        max_tokens: 800,
+        max_tokens: 2000,
         messages: [
           {
             role: "system",
