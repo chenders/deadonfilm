@@ -77,8 +77,8 @@ import { createActorSlug } from "../src/lib/slug-utils.js"
 
 // Suppress pino console logging for CLI scripts by setting LOG_LEVEL to silent
 // before any logger imports. New Relic will still capture events via its API.
-if (!process.env.LOG_LEVEL) {
-  process.env.LOG_LEVEL = "silent"
+if (!process.env.NEW_RELIC_LOG_LEVEL) {
+  process.env.NEW_RELIC_LOG_LEVEL = "silent"
 }
 
 // Initialize New Relic for monitoring (silent - no console output)

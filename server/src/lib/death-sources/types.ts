@@ -766,3 +766,93 @@ export class SourceTimeoutError extends Error {
     this.name = "SourceTimeoutError"
   }
 }
+
+// ============================================================================
+// Browser Authentication Error Types
+// ============================================================================
+
+/**
+ * Reason for authentication failure.
+ */
+export type AuthenticationFailureReason =
+  | "invalid_credentials"
+  | "captcha_failed"
+  | "session_expired"
+  | "rate_limited"
+  | "account_locked"
+  | "network_error"
+  | "unknown"
+
+/**
+ * Error thrown when browser authentication fails.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   await browserFetchPage(url)
+ * } catch (error) {
+ *   if (error instanceof AuthenticationError) {
+ *     if (error.reason === "invalid_credentials") {
+ *       console.log(`Check your ${error.site} credentials`)
+ *     } else if (error.reason === "captcha_failed") {
+ *       console.log(`CAPTCHA solving failed, cost: $${error.costIncurred}`)
+ *     }
+ *   }
+ * }
+ * ```
+ */
+export class AuthenticationError extends Error {
+  /**
+   * @param message - Human-readable error message
+   * @param site - Site where authentication failed (e.g., "nytimes.com")
+   * @param reason - Specific reason for the failure
+   * @param costIncurred - Any costs incurred during the attempt (CAPTCHA solving, etc.)
+   */
+  constructor(
+    message: string,
+    public readonly site: string,
+    public readonly reason: AuthenticationFailureReason,
+    public readonly costIncurred: number = 0
+  ) {
+    super(message)
+    this.name = "AuthenticationError"
+  }
+}
+
+/**
+ * Error thrown when CAPTCHA solving fails.
+ *
+ * This error provides details about the CAPTCHA attempt including
+ * the type of CAPTCHA, the provider used, and any costs incurred.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   await solveCaptcha(page, detection, config)
+ * } catch (error) {
+ *   if (error instanceof CaptchaSolveError) {
+ *     console.log(`Failed to solve ${error.captchaType}: ${error.message}`)
+ *     console.log(`Cost incurred: $${error.costIncurred}`)
+ *   }
+ * }
+ * ```
+ */
+export class CaptchaSolveError extends Error {
+  /**
+   * @param message - Human-readable error message
+   * @param captchaType - Type of CAPTCHA that failed (recaptcha_v2, hcaptcha, etc.)
+   * @param provider - CAPTCHA solving service used (2captcha, capsolver)
+   * @param costIncurred - Cost incurred during the attempt in USD
+   * @param timeoutMs - How long the solve attempt took before failing
+   */
+  constructor(
+    message: string,
+    public readonly captchaType: string,
+    public readonly provider: string,
+    public readonly costIncurred: number,
+    public readonly timeoutMs?: number
+  ) {
+    super(message)
+    this.name = "CaptchaSolveError"
+  }
+}
