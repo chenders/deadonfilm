@@ -30,7 +30,7 @@ import {
 import { recordCustomEvent, startSegment, addCustomAttributes, noticeError } from "../newrelic.js"
 import { cleanupWithClaude } from "./claude-cleanup.js"
 import { StatusBar } from "./status-bar.js"
-import { EnrichmentLogger, getEnrichmentLogger } from "./logger.js"
+import { EnrichmentLogger, getEnrichmentLogger, setActiveStatusBar } from "./logger.js"
 import { WikidataSource } from "./sources/wikidata.js"
 import { DuckDuckGoSource } from "./sources/duckduckgo.js"
 import { GoogleSearchSource } from "./sources/google.js"
@@ -127,6 +127,8 @@ export class DeathEnrichmentOrchestrator {
     this.initializeSources()
     this.stats = this.createEmptyStats()
     this.statusBar = new StatusBar(enableStatusBar)
+    // Set the active status bar so other modules can route console logs through it
+    setActiveStatusBar(enableStatusBar ? this.statusBar : null)
   }
 
   /**
@@ -695,6 +697,7 @@ export class DeathEnrichmentOrchestrator {
         if (this.config.costLimits?.maxTotalCost !== undefined) {
           if (this.stats.totalCostUsd >= this.config.costLimits.maxTotalCost) {
             this.statusBar.stop()
+            setActiveStatusBar(null)
             console.log(`\n${"!".repeat(60)}`)
             console.log(
               `TOTAL COST LIMIT REACHED: $${this.stats.totalCostUsd.toFixed(4)} >= $${this.config.costLimits.maxTotalCost}`
@@ -723,8 +726,9 @@ export class DeathEnrichmentOrchestrator {
         }
       }
     } finally {
-      // Always stop the status bar
+      // Always stop the status bar and clear the global reference
       this.statusBar.stop()
+      setActiveStatusBar(null)
     }
 
     console.log(`\n${"=".repeat(60)}`)

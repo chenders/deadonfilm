@@ -13,6 +13,8 @@ import type { CaptchaSolverConfig, LoginHandler, LoginResult, SiteCredential } f
 import { detectCaptcha } from "../captcha/detector.js"
 import { solveCaptcha } from "../captcha/solver.js"
 
+import { consoleLog } from "../../logger.js"
+
 // Timeouts
 const NAVIGATION_TIMEOUT_MS = 30000
 const ELEMENT_TIMEOUT_MS = 10000
@@ -163,7 +165,7 @@ export abstract class BaseLoginHandler implements LoginHandler {
     let captchaCostUsd = 0
 
     try {
-      console.log(`Logging into ${this.siteName}...`)
+      consoleLog(`Logging into ${this.siteName}...`)
 
       // Navigate to login page
       await this.navigateToLogin(page)
@@ -182,7 +184,7 @@ export abstract class BaseLoginHandler implements LoginHandler {
       const captchaResult = await detectCaptcha(page)
       if (captchaResult.detected) {
         captchaEncountered = true
-        console.log(`CAPTCHA detected: ${captchaResult.type}`)
+        consoleLog(`CAPTCHA detected: ${captchaResult.type}`)
 
         if (captchaSolver) {
           const solveResult = await solveCaptcha(page, captchaResult, captchaSolver)
@@ -225,7 +227,7 @@ export abstract class BaseLoginHandler implements LoginHandler {
         }
       }
 
-      console.log(`Successfully logged into ${this.siteName}`)
+      consoleLog(`Successfully logged into ${this.siteName}`)
       return {
         success: true,
         captchaEncountered,

@@ -16,6 +16,8 @@ import { detectCaptcha } from "../captcha/detector.js"
 import { solveCaptcha } from "../captcha/solver.js"
 import { BaseLoginHandler } from "./base-handler.js"
 
+import { consoleLog } from "../../logger.js"
+
 // NYTimes-specific selectors (updated Jan 2026)
 // NYTimes uses a role-based structure with custom components
 const SELECTORS = {
@@ -77,7 +79,7 @@ export class NYTimesLoginHandler extends BaseLoginHandler {
     let captchaCostUsd = 0
 
     try {
-      console.log("Logging into New York Times...")
+      consoleLog("Logging into New York Times...")
 
       // Navigate to login page
       await page.goto(LOGIN_URL, {
@@ -108,7 +110,7 @@ export class NYTimesLoginHandler extends BaseLoginHandler {
       const preSubmitCaptcha = await detectCaptcha(page)
       if (preSubmitCaptcha.detected) {
         captchaEncountered = true
-        console.log(`CAPTCHA detected before password submit: ${preSubmitCaptcha.type}`)
+        consoleLog(`CAPTCHA detected before password submit: ${preSubmitCaptcha.type}`)
 
         if (captchaSolver) {
           const solveResult = await solveCaptcha(page, preSubmitCaptcha, captchaSolver)
@@ -145,7 +147,7 @@ export class NYTimesLoginHandler extends BaseLoginHandler {
       const postSubmitCaptcha = await detectCaptcha(page)
       if (postSubmitCaptcha.detected && !captchaEncountered) {
         captchaEncountered = true
-        console.log(`CAPTCHA detected after submit: ${postSubmitCaptcha.type}`)
+        consoleLog(`CAPTCHA detected after submit: ${postSubmitCaptcha.type}`)
 
         if (captchaSolver) {
           const solveResult = await solveCaptcha(page, postSubmitCaptcha, captchaSolver)
@@ -215,7 +217,7 @@ export class NYTimesLoginHandler extends BaseLoginHandler {
         }
       }
 
-      console.log("Successfully logged into New York Times")
+      consoleLog("Successfully logged into New York Times")
       return {
         success: true,
         captchaEncountered,
