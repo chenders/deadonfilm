@@ -12,8 +12,7 @@ let pool: pg.Pool | null = null
 /**
  * Creates a new database pool with connection recovery settings.
  * Configures idle timeout, connection timeout, and error handling
- * to gracefully recover from connection terminations (common with
- * serverless databases like Neon).
+ * to gracefully recover from connection terminations.
  */
 function createPool(): pg.Pool {
   const connectionString = process.env.DATABASE_URL
@@ -38,7 +37,7 @@ function createPool(): pg.Pool {
   })
 
   // Set SSD-optimized PostgreSQL settings for each new connection
-  // Neon uses SSDs but has conservative default settings for spinning disks
+  // PostgreSQL defaults are conservative; optimize for SSD
   newPool.on("connect", async (client) => {
     try {
       // random_page_cost: Lower for SSDs (1.1 vs default 4.0) - random I/O is nearly as fast as sequential
