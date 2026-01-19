@@ -14,7 +14,6 @@ export function useCauseCategoryIndex() {
   return useQuery({
     queryKey: ["causes-of-death-index"],
     queryFn: getCauseCategoryIndex,
-    staleTime: 60 * 60 * 1000, // 1 hour - categories change rarely
   })
 }
 
@@ -27,7 +26,6 @@ export function useCauseCategoryDetail(categorySlug: string, options: CauseCateg
   return useQuery({
     queryKey: ["causes-of-death-category", categorySlug, page, includeObscure, specificCause],
     queryFn: () => getCauseCategoryDetail(categorySlug, { page, includeObscure, specificCause }),
-    staleTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!categorySlug,
   })
 }
@@ -45,7 +43,6 @@ export function useSpecificCauseDetail(
   return useQuery({
     queryKey: ["specific-cause", categorySlug, causeSlug, page, includeObscure],
     queryFn: () => getSpecificCauseDetail(categorySlug, causeSlug, { page, includeObscure }),
-    staleTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!categorySlug && !!causeSlug,
   })
 }
