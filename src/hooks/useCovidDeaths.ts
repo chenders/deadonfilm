@@ -12,7 +12,6 @@ export function useCovidDeaths(options: CovidDeathsOptions = {}) {
   return useQuery({
     queryKey: ["covid-deaths", page, includeObscure],
     queryFn: () => getCovidDeaths({ page, includeObscure }),
-    staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
   })
 }

@@ -12,7 +12,6 @@ export function useDeathsByCause(causeSlug: string, options: DeathsByCauseOption
   return useQuery({
     queryKey: ["deaths-by-cause", causeSlug, page, includeObscure],
     queryFn: () => getDeathsByCause(causeSlug, { page, includeObscure }),
-    staleTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!causeSlug,
   })
 }
