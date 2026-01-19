@@ -5,7 +5,6 @@ export function usePopularMovies(limit: number = 10) {
   return useQuery({
     queryKey: ["popular-movies", limit],
     queryFn: () => getPopularMovies(limit),
-    staleTime: 30 * 60 * 1000, // 30 minutes
     retry: 1,
   })
 }

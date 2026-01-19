@@ -14,7 +14,6 @@ export function useUnnaturalDeaths(options: UnnaturalDeathsOptions = {}) {
   return useQuery({
     queryKey: ["unnatural-deaths", page, category, showSelfInflicted, includeObscure],
     queryFn: () => getUnnaturalDeaths({ page, category, showSelfInflicted, includeObscure }),
-    staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
   })
 }

@@ -5,7 +5,6 @@ export function useDecadeCategories() {
   return useQuery({
     queryKey: ["decade-categories"],
     queryFn: getDecadeCategories,
-    staleTime: 60 * 60 * 1000, // 1 hour
   })
 }
 
@@ -20,7 +19,6 @@ export function useDeathsByDecade(decade: string, options: DeathsByDecadeOptions
   return useQuery({
     queryKey: ["deaths-by-decade", decade, page, includeObscure],
     queryFn: () => getDeathsByDecade(decade, { page, includeObscure }),
-    staleTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!decade,
   })
 }
