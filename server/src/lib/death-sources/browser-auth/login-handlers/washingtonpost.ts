@@ -16,14 +16,18 @@ import { detectCaptcha } from "../captcha/detector.js"
 import { solveCaptcha } from "../captcha/solver.js"
 import { BaseLoginHandler } from "./base-handler.js"
 
+import { consoleLog } from "../../logger.js"
+
 // Washington Post-specific selectors
 const SELECTORS = {
-  // Login form
+  // Login form - WaPo uses a two-step process
   emailInput: 'input[name="email"], input[type="email"], #email, [data-testid="email-input"]',
+  continueButton:
+    'button[type="submit"]:has-text("Continue"), button:has-text("Next"), button[data-qa="submit-email"]',
   passwordInput:
     'input[name="password"], input[type="password"], #password, [data-testid="password-input"]',
   submitButton:
-    'button[type="submit"], button:has-text("Sign in"), button:has-text("Log in"), [data-testid="sign-in-button"]',
+    'button[type="submit"]:has-text("Sign in"), button:has-text("Log in"), [data-testid="sign-in-button"], button[data-qa="submit-password"]',
 
   // Logged in indicators
   accountMenu: '[data-qa="account-menu"], [aria-label="My account"], .account-menu',
@@ -75,7 +79,7 @@ export class WashingtonPostLoginHandler extends BaseLoginHandler {
     let captchaCostUsd = 0
 
     try {
-      console.log("Logging into Washington Post...")
+      consoleLog("Logging into Washington Post...")
 
       // Navigate to login page
       await page.goto(LOGIN_URL, {
@@ -89,21 +93,37 @@ export class WashingtonPostLoginHandler extends BaseLoginHandler {
         timeout: 10000,
       })
 
+      // Small delay for human-like interaction
+      await page.waitForTimeout(500)
+
       // Fill email
       await page.fill(SELECTORS.emailInput, this.credentials!.email)
+      await page.waitForTimeout(300)
 
-      // Fill password
+      // WaPo uses a two-step login - click continue after email
+      const continueButton = page.locator(SELECTORS.continueButton).first()
+      if ((await continueButton.count()) > 0 && (await continueButton.isVisible())) {
+        consoleLog("Clicking continue button...")
+        await continueButton.click()
+        await page.waitForTimeout(1500)
+      }
+
+      // Wait for password field to become visible
       await page.waitForSelector(SELECTORS.passwordInput, {
         state: "visible",
-        timeout: 5000,
+        timeout: 10000,
       })
+      await page.waitForTimeout(300)
+
+      // Fill password
       await page.fill(SELECTORS.passwordInput, this.credentials!.password)
+      await page.waitForTimeout(300)
 
       // Check for CAPTCHA before submitting
       const preSubmitCaptcha = await detectCaptcha(page)
       if (preSubmitCaptcha.detected) {
         captchaEncountered = true
-        console.log(`CAPTCHA detected before submit: ${preSubmitCaptcha.type}`)
+        consoleLog(`CAPTCHA detected before submit: ${preSubmitCaptcha.type}`)
 
         if (captchaSolver) {
           const solveResult = await solveCaptcha(page, preSubmitCaptcha, captchaSolver)
@@ -139,7 +159,7 @@ export class WashingtonPostLoginHandler extends BaseLoginHandler {
       const postSubmitCaptcha = await detectCaptcha(page)
       if (postSubmitCaptcha.detected && !captchaEncountered) {
         captchaEncountered = true
-        console.log(`CAPTCHA detected after submit: ${postSubmitCaptcha.type}`)
+        consoleLog(`CAPTCHA detected after submit: ${postSubmitCaptcha.type}`)
 
         if (captchaSolver) {
           const solveResult = await solveCaptcha(page, postSubmitCaptcha, captchaSolver)
@@ -209,7 +229,7 @@ export class WashingtonPostLoginHandler extends BaseLoginHandler {
         }
       }
 
-      console.log("Successfully logged into Washington Post")
+      consoleLog("Successfully logged into Washington Post")
       return {
         success: true,
         captchaEncountered,

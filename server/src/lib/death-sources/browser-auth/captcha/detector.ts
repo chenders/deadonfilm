@@ -109,13 +109,14 @@ async function extractSiteKey(page: Page, type: CaptchaType): Promise<string | n
             return element.getAttribute("data-sitekey")
           }
 
-          // Check for reCAPTCHA script render parameter
+          // Check for reCAPTCHA script render parameter (for v3 implicit)
           // @ts-expect-error - document is available in browser context
           const scripts = document.querySelectorAll("script[src*='recaptcha']")
           for (const script of scripts) {
             const src = script.getAttribute("src") || ""
             const match = src.match(/render=([a-zA-Z0-9_-]+)/)
-            if (match) {
+            // Skip if render=explicit (means site key is elsewhere)
+            if (match && match[1] !== "explicit") {
               return match[1]
             }
           }
@@ -127,6 +128,23 @@ async function extractSiteKey(page: Page, type: CaptchaType): Promise<string | n
             const src = (iframe.src as string) || ""
             const match = src.match(/k=([a-zA-Z0-9_-]+)/)
             if (match) {
+              return match[1]
+            }
+          }
+
+          // For explicit rendering, search page source for sitekey in JS
+          // Common patterns: 'sitekey': '...', sitekey: "...", grecaptcha.render(..., {sitekey: '...'})
+          // @ts-expect-error - document is available in browser context
+          const html = document.documentElement.innerHTML
+          const patterns = [
+            /['"]?sitekey['"]?\s*[:=]\s*['"]([a-zA-Z0-9_-]{40})['"]/, // sitekey: 'xxx' or sitekey = "xxx"
+            /grecaptcha\.render\s*\([^,]+,\s*\{[^}]*['"]?sitekey['"]?\s*:\s*['"]([a-zA-Z0-9_-]{40})['"]/, // grecaptcha.render(el, {sitekey: 'xxx'})
+            /data-sitekey=["']([a-zA-Z0-9_-]{40})["']/, // data-sitekey attribute in HTML string
+          ]
+
+          for (const pattern of patterns) {
+            const match = html.match(pattern)
+            if (match && match[1]) {
               return match[1]
             }
           }

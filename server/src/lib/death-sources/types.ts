@@ -517,8 +517,10 @@ export interface FetchedPage {
   contentLength: number
   fetchTimeMs: number
   error?: string
-  /** How the page was fetched: regular HTTP or browser automation */
-  fetchMethod?: "fetch" | "browser"
+  /** How the page was fetched: regular HTTP, browser automation, or archive service */
+  fetchMethod?: "fetch" | "browser" | "archive.is"
+  /** If fetched from archive.is, the archive URL */
+  archiveUrl?: string
 }
 
 /**

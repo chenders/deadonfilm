@@ -22,6 +22,20 @@ import { DEFAULT_BROWSER_FETCH_CONFIG } from "./types.js"
 import { htmlToText } from "./html-utils.js"
 import { DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "./base-source.js"
 import { shouldUseBrowserFetch, isBlockedResponse, browserFetchPage } from "./browser-fetch.js"
+import {
+  shouldUseArchiveFallback,
+  searchArchiveIsWithBrowser,
+} from "./archive-fallback.js"
+import { getBrowserAuthConfig } from "./browser-auth/config.js"
+import { WashingtonPostLoginHandler } from "./browser-auth/login-handlers/washingtonpost.js"
+import {
+  loadSession,
+  saveSession,
+  applySessionToContext,
+} from "./browser-auth/session-manager.js"
+import { chromium } from "playwright-core"
+
+import { consoleLog } from "./logger.js"
 
 // Claude model for link operations (use a cheaper model than cleanup)
 const LINK_MODEL_ID = "claude-sonnet-4-20250514"
@@ -302,12 +316,233 @@ Respond with JSON only:
 }
 
 /**
+ * Check if URL is a Washington Post URL.
+ */
+function isWashingtonPostUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase()
+    return hostname.includes("washingtonpost.com")
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Fetch a Washington Post article using authenticated browser session.
+ * Uses session persistence to avoid logging in every time.
+ * Returns error result (doesn't throw) so caller can fall back to archive.is.
+ */
+async function fetchWithWapoAuth(url: string): Promise<FetchedPage> {
+  const startTime = Date.now()
+  const authConfig = getBrowserAuthConfig()
+  const loginHandler = new WashingtonPostLoginHandler()
+
+  if (!loginHandler.hasCredentials()) {
+    return {
+      url,
+      title: "",
+      content: "",
+      contentLength: 0,
+      fetchTimeMs: Date.now() - startTime,
+      fetchMethod: "browser",
+      error: "No WaPo credentials configured",
+    }
+  }
+
+  let browser
+  try {
+    browser = await chromium.launch({ headless: true })
+  } catch (error) {
+    return {
+      url,
+      title: "",
+      content: "",
+      contentLength: 0,
+      fetchTimeMs: Date.now() - startTime,
+      fetchMethod: "browser",
+      error: `Failed to launch browser: ${error instanceof Error ? error.message : "Unknown error"}`,
+    }
+  }
+
+  try {
+    const context = await browser.newContext({
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      viewport: { width: 1280, height: 900 },
+    })
+
+    const page = await context.newPage()
+
+    // Try to use existing session first
+    const existingSession = await loadSession("washingtonpost.com")
+    let needsLogin = true
+
+    if (existingSession) {
+      consoleLog(`  Using saved WaPo session...`)
+      await applySessionToContext(existingSession, context)
+
+      // Navigate directly to article and check if we're logged in
+      try {
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 })
+        await page.waitForTimeout(2000)
+
+        // Verify session is still valid by checking for paywall/login indicators
+        const pageContent = await page.content()
+        const hasPaywall =
+          pageContent.includes("Already a subscriber?") ||
+          pageContent.includes("Subscribe to continue") ||
+          pageContent.includes("subscription required")
+
+        if (!hasPaywall) {
+          needsLogin = false
+          consoleLog(`  Session valid, no login needed`)
+        } else {
+          consoleLog(`  Session expired, logging in again...`)
+        }
+      } catch (navError) {
+        // Navigation failed (HTTP/2 error, timeout, etc.) - return error to trigger fallback
+        const errorMsg = navError instanceof Error ? navError.message : "Unknown navigation error"
+        consoleLog(`  Navigation failed: ${errorMsg}`)
+        return {
+          url,
+          title: "",
+          content: "",
+          contentLength: 0,
+          fetchTimeMs: Date.now() - startTime,
+          fetchMethod: "browser",
+          error: `Navigation failed: ${errorMsg}`,
+        }
+      }
+    }
+
+    if (needsLogin) {
+      consoleLog(`  Logging into Washington Post...`)
+      const loginResult = await loginHandler.login(page, authConfig.captchaSolver)
+
+      if (!loginResult.success) {
+        return {
+          url,
+          title: "",
+          content: "",
+          contentLength: 0,
+          fetchTimeMs: Date.now() - startTime,
+          fetchMethod: "browser",
+          error: `WaPo login failed: ${loginResult.error}`,
+        }
+      }
+
+      // Save session for future use
+      await saveSession("washingtonpost.com", context)
+
+      // Navigate to the article after login
+      consoleLog(`  Fetching article...`)
+      try {
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 })
+        await page.waitForTimeout(2000)
+      } catch (navError) {
+        const errorMsg = navError instanceof Error ? navError.message : "Unknown navigation error"
+        consoleLog(`  Navigation failed after login: ${errorMsg}`)
+        return {
+          url,
+          title: "",
+          content: "",
+          contentLength: 0,
+          fetchTimeMs: Date.now() - startTime,
+          fetchMethod: "browser",
+          error: `Navigation failed: ${errorMsg}`,
+        }
+      }
+    }
+
+    const title = await page.title()
+
+    // Extract article content
+    const articleHtml = await page.locator("article").first().innerHTML().catch(() => null)
+    let content = ""
+    if (articleHtml) {
+      content = htmlToText(articleHtml)
+    } else {
+      const mainHtml = await page
+        .locator("main, .article-body, [data-feature='article-body']")
+        .first()
+        .innerHTML()
+        .catch(() => "")
+      content = htmlToText(mainHtml)
+    }
+
+    // Truncate if too long
+    if (content.length > MAX_CONTENT_LENGTH) {
+      content = content.substring(0, MAX_CONTENT_LENGTH) + "..."
+    }
+
+    return {
+      url,
+      title,
+      content,
+      contentLength: content.length,
+      fetchTimeMs: Date.now() - startTime,
+      fetchMethod: "browser",
+    }
+  } catch (error) {
+    // Catch-all for any unexpected errors
+    return {
+      url,
+      title: "",
+      content: "",
+      contentLength: 0,
+      fetchTimeMs: Date.now() - startTime,
+      fetchMethod: "browser",
+      error: error instanceof Error ? error.message : "Unknown error",
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+/**
  * Fetch a single page and extract text content.
- * Uses browser fetching for bot-protected domains or when regular fetch is blocked.
+ * Uses authenticated browser for WaPo, archive.is for other paywalled domains,
+ * browser fetching for bot-protected domains, or falls back to regular fetch.
  */
 async function fetchPage(url: string, browserConfig?: BrowserFetchConfig): Promise<FetchedPage> {
   const startTime = Date.now()
   const config = browserConfig || DEFAULT_BROWSER_FETCH_CONFIG
+
+  // For Washington Post, try authenticated browser fetch first
+  if (isWashingtonPostUrl(url)) {
+    consoleLog(`  Trying authenticated fetch for WaPo URL: ${url}`)
+    const wapoResult = await fetchWithWapoAuth(url)
+
+    if (wapoResult.content.length > 500) {
+      consoleLog(`  WaPo auth success: ${wapoResult.contentLength} chars`)
+      return wapoResult
+    } else {
+      consoleLog(`  WaPo auth failed: ${wapoResult.error || "No content"}, trying archive.is...`)
+      // Fall through to archive.is
+    }
+  }
+
+  // For other paywalled domains (like NYTimes), try archive.is
+  if (shouldUseArchiveFallback(url)) {
+    consoleLog(`  Trying archive.is for paywalled URL: ${url}`)
+    const archiveResult = await searchArchiveIsWithBrowser(url)
+
+    if (archiveResult.success && archiveResult.content.length > 500) {
+      consoleLog(`  Archive.is success: ${archiveResult.contentLength} chars`)
+      return {
+        url,
+        title: archiveResult.title,
+        content: archiveResult.content,
+        contentLength: archiveResult.contentLength,
+        fetchTimeMs: Date.now() - startTime,
+        fetchMethod: "archive.is",
+        archiveUrl: archiveResult.archiveUrl || undefined,
+      }
+    } else {
+      consoleLog(`  Archive.is failed: ${archiveResult.error || "No content"}`)
+      // Fall through to other methods
+    }
+  }
 
   // Check if domain should always use browser
   if (config.enabled && shouldUseBrowserFetch(url, config)) {
