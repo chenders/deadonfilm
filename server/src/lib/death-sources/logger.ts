@@ -447,3 +447,50 @@ export function getEnrichmentLogger(): EnrichmentLogger {
 export function setEnrichmentLogger(logger: EnrichmentLogger): void {
   defaultLogger = logger
 }
+
+// ============================================================================
+// StatusBar-Aware Console Logging
+// ============================================================================
+// When a StatusBar is active, console logs must be routed through it to avoid
+// conflicts with ANSI scroll regions. These functions provide that routing.
+
+import type { StatusBar } from "./status-bar.js"
+
+let activeStatusBar: StatusBar | null = null
+
+/**
+ * Set the active status bar for routing console log messages.
+ * Call with null to clear when the status bar is destroyed.
+ */
+export function setActiveStatusBar(bar: StatusBar | null): void {
+  activeStatusBar = bar
+}
+
+/**
+ * Get the active status bar (for testing).
+ */
+export function getActiveStatusBar(): StatusBar | null {
+  return activeStatusBar
+}
+
+/**
+ * Log a message to the console, routing through the status bar if one is active.
+ * This prevents ANSI escape code conflicts when the status bar has set up a scroll region.
+ */
+export function consoleLog(message: string): void {
+  if (activeStatusBar) {
+    activeStatusBar.log(message)
+  } else {
+    console.log(message)
+  }
+}
+
+/**
+ * Log a debug message to the console (only when LINK_FOLLOWER_DEBUG=1).
+ * Routes through status bar if active.
+ */
+export function debugLog(message: string): void {
+  if (process.env.LINK_FOLLOWER_DEBUG === "1") {
+    consoleLog(message)
+  }
+}
