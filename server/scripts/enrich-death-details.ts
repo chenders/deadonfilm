@@ -266,21 +266,35 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         const tmdbIds = actorsNeedingPopularity.map((a) => a.tmdb_id as number)
         const personDetails = await batchGetPersonDetails(tmdbIds)
 
-        // Update actors in memory and persist to database
-        let updatedCount = 0
+        // Update actors in memory and collect updates for batch persist
+        const tmdbIdsToUpdate: number[] = []
+        const popularitiesToUpdate: number[] = []
         for (const actor of actors) {
           if (actor.popularity === null && actor.tmdb_id !== null) {
             const details = personDetails.get(actor.tmdb_id)
             if (details?.popularity !== undefined && details.popularity !== null) {
               actor.popularity = details.popularity
-              // Persist to database
-              await db.query(
-                `UPDATE actors SET popularity = $1, updated_at = CURRENT_TIMESTAMP WHERE tmdb_id = $2`,
-                [details.popularity, actor.tmdb_id]
-              )
-              updatedCount++
+              tmdbIdsToUpdate.push(actor.tmdb_id)
+              popularitiesToUpdate.push(details.popularity)
             }
           }
+        }
+
+        // Batch update to database
+        let updatedCount = 0
+        if (tmdbIdsToUpdate.length > 0) {
+          await db.query(
+            `UPDATE actors AS a
+             SET popularity = v.popularity,
+                 updated_at = CURRENT_TIMESTAMP
+             FROM (
+               SELECT UNNEST($1::int[]) AS tmdb_id,
+                      UNNEST($2::double precision[]) AS popularity
+             ) AS v
+             WHERE a.tmdb_id = v.tmdb_id`,
+            [tmdbIdsToUpdate, popularitiesToUpdate]
+          )
+          updatedCount = tmdbIdsToUpdate.length
         }
         if (updatedCount > 0) {
           console.log(`  Stored ${updatedCount} popularity scores to database`)
