@@ -1816,3 +1816,172 @@ describe("getSiteStats", () => {
     })
   })
 })
+
+describe("getDeceasedActorsFromTopMovies", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.DATABASE_URL = "postgresql://test:test@localhost/test"
+  })
+
+  afterEach(() => {
+    delete process.env.DATABASE_URL
+  })
+
+  it("returns deceased actors from top-billed roles in popular movies", async () => {
+    const mockActors = [
+      {
+        id: 1,
+        tmdb_id: 123,
+        name: "Actor One",
+        birthday: "1940-01-01",
+        deathday: "2020-05-15",
+        cause_of_death: "Natural causes",
+        cause_of_death_details: "Died peacefully",
+        popularity: 25.5,
+        circumstances: "Found at home",
+        notable_factors: ["Oscar winner"],
+        movie_title: "Top Movie",
+      },
+    ]
+    mockQuery.mockResolvedValueOnce({ rows: mockActors })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    const result = await getDeceasedActorsFromTopMovies({ year: 2020 })
+
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("WITH top_movies AS"),
+      [2020, 20, 5, 100] // year, topMoviesCount, maxBilling, limit
+    )
+    expect(result).toHaveLength(1)
+    expect(result[0].name).toBe("Actor One")
+    expect(result[0].movie_title).toBe("Top Movie")
+  })
+
+  it("uses default values for optional parameters", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    await getDeceasedActorsFromTopMovies({ year: 2020 })
+
+    // Default values: maxBilling=5, topMoviesCount=20, limit=100
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2020, 20, 5, 100])
+  })
+
+  it("applies custom maxBilling parameter", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    await getDeceasedActorsFromTopMovies({ year: 2020, maxBilling: 3 })
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2020, 20, 3, 100])
+  })
+
+  it("applies custom topMoviesCount parameter", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    await getDeceasedActorsFromTopMovies({ year: 2020, topMoviesCount: 50 })
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2020, 50, 5, 100])
+  })
+
+  it("applies custom limit parameter", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    await getDeceasedActorsFromTopMovies({ year: 2020, limit: 25 })
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2020, 20, 5, 25])
+  })
+
+  it("returns empty array when no deceased actors found", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    const result = await getDeceasedActorsFromTopMovies({ year: 2020 })
+
+    expect(result).toEqual([])
+    expect(result).toHaveLength(0)
+  })
+
+  it("filters for English or US movies", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    await getDeceasedActorsFromTopMovies({ year: 2020 })
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("original_language = 'en'")
+    expect(query).toContain("'US' = ANY(production_countries)")
+  })
+
+  it("filters actors by billing_order within maxBilling", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    await getDeceasedActorsFromTopMovies({ year: 2020, maxBilling: 10 })
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("billing_order <= $3")
+  })
+
+  it("only includes actors with deathday and cause_of_death", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    await getDeceasedActorsFromTopMovies({ year: 2020 })
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("a.deathday IS NOT NULL")
+    expect(query).toContain("a.cause_of_death IS NOT NULL")
+  })
+
+  it("filters for actors needing enrichment (missing circumstances or notable_factors)", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    await getDeceasedActorsFromTopMovies({ year: 2020 })
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("c.circumstances IS NULL")
+    expect(query).toContain("c.notable_factors IS NULL")
+    expect(query).toContain("array_length(c.notable_factors, 1) IS NULL")
+  })
+
+  it("orders results by actor popularity descending", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    await getDeceasedActorsFromTopMovies({ year: 2020 })
+
+    const query = mockQuery.mock.calls[0][0] as string
+    expect(query).toContain("ORDER BY popularity DESC NULLS LAST")
+  })
+
+  it("handles null values in returned actors", async () => {
+    const mockActors = [
+      {
+        id: 1,
+        tmdb_id: null, // Can be null for non-TMDB actors
+        name: "Actor Without TMDB",
+        birthday: null,
+        deathday: "2020-05-15",
+        cause_of_death: "Unknown",
+        cause_of_death_details: null,
+        popularity: null,
+        circumstances: null,
+        notable_factors: null,
+        movie_title: "Some Movie",
+      },
+    ]
+    mockQuery.mockResolvedValueOnce({ rows: mockActors })
+
+    const { getDeceasedActorsFromTopMovies } = await import("./db.js")
+    const result = await getDeceasedActorsFromTopMovies({ year: 2020 })
+
+    expect(result).toHaveLength(1)
+    expect(result[0].tmdb_id).toBeNull()
+    expect(result[0].birthday).toBeNull()
+    expect(result[0].popularity).toBeNull()
+  })
+})

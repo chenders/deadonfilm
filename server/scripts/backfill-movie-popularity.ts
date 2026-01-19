@@ -23,7 +23,7 @@ import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { getMovieDetails } from "../src/lib/tmdb.js"
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
   if (isNaN(parsed) || parsed <= 0) {
     throw new InvalidArgumentError("Must be a positive integer")
