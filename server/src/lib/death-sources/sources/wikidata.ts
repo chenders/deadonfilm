@@ -15,6 +15,27 @@ import { DataSourceType } from "../types.js"
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
 
+/**
+ * Check if a Wikidata label value is valid (not a URL or blank node identifier).
+ * Wikidata sometimes returns genid URLs instead of actual labels when the value
+ * is a complex statement or blank node.
+ */
+function isValidLabel(value: string | undefined): value is string {
+  if (!value) return false
+  // Filter out URLs, genid references, and Wikidata entity IDs without labels
+  if (value.startsWith("http://") || value.startsWith("https://")) return false
+  if (value.includes("genid")) return false
+  if (/^Q\d+$/.test(value)) return false // Raw entity ID like "Q12345"
+  return true
+}
+
+/**
+ * Get a valid label value or null if invalid.
+ */
+function getValidLabel(value: string | undefined): string | null {
+  return isValidLabel(value) ? value : null
+}
+
 interface WikidataSparqlResponse {
   results: {
     bindings: WikidataDeathBinding[]
@@ -211,11 +232,11 @@ export class WikidataSource extends BaseDataSource {
       const notableFactors = this.extractNotableFactors(binding)
 
       return {
-        causeOfDeath: binding.causeOfDeathLabel?.value || null,
-        mannerOfDeath: binding.mannerOfDeathLabel?.value || null,
-        locationOfDeath: binding.placeOfDeathLabel?.value || null,
-        killedBy: binding.killedByLabel?.value || null,
-        significantEvent: binding.significantEventLabel?.value || null,
+        causeOfDeath: getValidLabel(binding.causeOfDeathLabel?.value),
+        mannerOfDeath: getValidLabel(binding.mannerOfDeathLabel?.value),
+        locationOfDeath: getValidLabel(binding.placeOfDeathLabel?.value),
+        killedBy: getValidLabel(binding.killedByLabel?.value),
+        significantEvent: getValidLabel(binding.significantEventLabel?.value),
         wikipediaUrl: binding.article?.value || null,
         circumstances,
         notableFactors,
@@ -232,10 +253,10 @@ export class WikidataSource extends BaseDataSource {
   private buildCircumstances(binding: WikidataDeathBinding): string | null {
     const parts: string[] = []
 
-    const manner = binding.mannerOfDeathLabel?.value
-    const cause = binding.causeOfDeathLabel?.value
-    const place = binding.placeOfDeathLabel?.value
-    const killedBy = binding.killedByLabel?.value
+    const manner = getValidLabel(binding.mannerOfDeathLabel?.value)
+    const cause = getValidLabel(binding.causeOfDeathLabel?.value)
+    const place = getValidLabel(binding.placeOfDeathLabel?.value)
+    const killedBy = getValidLabel(binding.killedByLabel?.value)
 
     if (manner && manner !== "natural causes") {
       parts.push(`Manner of death: ${manner}`)
@@ -262,7 +283,7 @@ export class WikidataSource extends BaseDataSource {
   private extractNotableFactors(binding: WikidataDeathBinding): string[] {
     const factors: string[] = []
 
-    const manner = binding.mannerOfDeathLabel?.value?.toLowerCase()
+    const manner = getValidLabel(binding.mannerOfDeathLabel?.value)?.toLowerCase()
     if (manner) {
       if (manner.includes("accident") || manner.includes("accidental")) {
         factors.push("accidental death")
@@ -275,12 +296,12 @@ export class WikidataSource extends BaseDataSource {
       }
     }
 
-    const killedBy = binding.killedByLabel?.value
+    const killedBy = getValidLabel(binding.killedByLabel?.value)
     if (killedBy) {
       factors.push("killed by another person/thing")
     }
 
-    const significantEvent = binding.significantEventLabel?.value?.toLowerCase()
+    const significantEvent = getValidLabel(binding.significantEventLabel?.value)?.toLowerCase()
     if (significantEvent) {
       if (significantEvent.includes("crash") || significantEvent.includes("accident")) {
         factors.push("involved in accident")
