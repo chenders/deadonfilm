@@ -52,10 +52,15 @@ const DEFAULT_CAPTCHA_MAX_COST = 0.01
 
 /**
  * Expand ~ to home directory in a path.
+ * Only allows safe paths - rejects path traversal attempts.
  */
 function expandHomePath(p: string): string {
+  // Reject path traversal attempts
+  if (p.includes("..")) {
+    throw new Error(`Invalid path: path traversal not allowed: ${p}`)
+  }
   if (p.startsWith("~")) {
-    return path.join(os.homedir(), p.slice(1))
+    return path.join(os.homedir(), p.slice(1)) // nosemgrep: path-join-resolve-traversal
   }
   return p
 }
