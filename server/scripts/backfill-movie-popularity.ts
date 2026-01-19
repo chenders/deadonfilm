@@ -40,6 +40,11 @@ interface BackfillOptions {
 async function backfillMoviePopularity(options: BackfillOptions): Promise<void> {
   const { limit, year, dryRun } = options
 
+  if (!process.env.DATABASE_URL) {
+    console.error("Error: DATABASE_URL environment variable is not set")
+    process.exit(1)
+  }
+
   const db = getPool()
 
   try {
