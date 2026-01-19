@@ -20,11 +20,16 @@ const DEFAULT_TTL_HOURS = 24
 
 /**
  * Get the session file path for a domain.
+ * Only allows valid domain characters to prevent path traversal.
  */
 function getSessionFilePath(storagePath: string, domain: string): string {
   // Normalize domain (remove www. prefix)
   const normalizedDomain = domain.replace(/^www\./, "").toLowerCase()
-  return path.join(storagePath, `${normalizedDomain}.json`)
+  // Validate domain contains only safe characters (alphanumeric, dots, hyphens)
+  if (!/^[a-z0-9.-]+$/.test(normalizedDomain)) {
+    throw new Error(`Invalid domain for session storage: ${domain}`)
+  }
+  return path.join(storagePath, `${normalizedDomain}.json`) // nosemgrep: path-join-resolve-traversal
 }
 
 /**
