@@ -14,47 +14,24 @@
  */
 
 import { BaseDataSource } from "../base-source.js"
-import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
+import type {
+  ActorForEnrichment,
+  SourceLookupResult,
+  ProjectReference,
+  RelatedCelebrity,
+} from "../types.js"
 import { DataSourceType } from "../types.js"
 import { resolveGeminiUrls, type ResolvedUrl } from "../url-resolver.js"
+import {
+  buildEnrichedDeathPrompt,
+  parseEnrichedResponse,
+  type EnrichedDeathResponse,
+} from "./shared-prompt.js"
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 /**
- * Build a prompt for extracting death circumstances from Gemini.
- */
-function buildDeathPrompt(actor: ActorForEnrichment): string {
-  const deathYear = actor.deathday ? new Date(actor.deathday).getFullYear() : "unknown"
-
-  return `How did ${actor.name} (actor, died ${deathYear}) die?
-
-Respond with JSON only. No career info, awards, or biography.
-
-Fields:
-- circumstances: A narrative sentence describing how they died. Include context like where found, what led to death, medical details. Write as prose, not a list.
-- location_of_death: City, State/Country
-- notable_factors: Short tags only: "sudden", "long illness", "accident", "suicide", "overdose", "found unresponsive", "on life support". NOT medical conditions.
-- rumored_circumstances: ONLY if there are disputed facts, alternative theories, or controversy about the death. null if death is straightforward.
-- sources: URLs where you found the information
-
-{
-  "circumstances": "narrative sentence",
-  "location_of_death": "City, State or null",
-  "notable_factors": ["tag"] or [],
-  "rumored_circumstances": "disputed theory or null",
-  "confidence": "high" | "medium" | "low",
-  "sources": ["url1"]
-}
-
-Good examples:
-{"circumstances": "She was found unresponsive at her home and pronounced dead at the scene. She had a history of seizures.", "location_of_death": "North Hills, California", "notable_factors": ["found unresponsive"], "rumored_circumstances": null, "confidence": "high", "sources": ["tmz.com/..."]}
-{"circumstances": "He had been battling pancreatic cancer for several months, keeping his diagnosis secret from the public.", "location_of_death": "London, England", "notable_factors": ["long illness"], "rumored_circumstances": null, "confidence": "high", "sources": ["bbc.com/..."]}
-
-If unknown: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null, "sources": []}`
-}
-
-/**
- * Parse Gemini API response.
+ * Parse Gemini API response (fallback).
  */
 function parseGeminiResponse(responseText: string): ParsedGeminiResponse | null {
   try {
@@ -151,7 +128,8 @@ abstract class GeminiBaseSource extends BaseDataSource {
       }
     }
 
-    const prompt = buildDeathPrompt(actor)
+    // Use shared enriched prompt for career context
+    const prompt = buildEnrichedDeathPrompt(actor)
 
     try {
       console.log(`${this.name} query for: ${actor.name}`)
@@ -211,7 +189,9 @@ abstract class GeminiBaseSource extends BaseDataSource {
 
       const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || ""
 
-      const parsed = parseGeminiResponse(responseText)
+      // Parse using shared parser first, then fallback
+      const enrichedParsed = parseEnrichedResponse(responseText)
+      const parsed = enrichedParsed || parseGeminiResponse(responseText)
 
       if (!parsed || !parsed.circumstances) {
         return {
@@ -252,6 +232,11 @@ abstract class GeminiBaseSource extends BaseDataSource {
       // Use the first resolved source URL, falling back to parsed sources
       const sourceUrl = resolvedSources[0]?.finalUrl || parsed.sources?.[0] || undefined
 
+      // Convert career context fields if using enriched parser
+      const lastProject = this.convertLastProject(enrichedParsed)
+      const posthumousReleases = this.convertPosthumousReleases(enrichedParsed)
+      const relatedCelebrities = this.convertRelatedCelebrities(enrichedParsed)
+
       return {
         success: true,
         source: this.createSourceEntry(startTime, confidence, sourceUrl, prompt, {
@@ -262,11 +247,24 @@ abstract class GeminiBaseSource extends BaseDataSource {
         }),
         data: {
           circumstances: parsed.circumstances,
-          rumoredCircumstances: parsed.rumoredCircumstances,
-          notableFactors: parsed.notableFactors,
-          relatedCelebrities: [],
-          locationOfDeath: parsed.locationOfDeath,
+          rumoredCircumstances:
+            enrichedParsed?.rumored_circumstances ??
+            (parsed as ParsedGeminiResponse).rumoredCircumstances ??
+            null,
+          notableFactors:
+            enrichedParsed?.notable_factors ??
+            (parsed as ParsedGeminiResponse).notableFactors ??
+            [],
+          relatedCelebrities,
+          locationOfDeath:
+            enrichedParsed?.location_of_death ??
+            (parsed as ParsedGeminiResponse).locationOfDeath ??
+            null,
           additionalContext: null,
+          lastProject,
+          careerStatusAtDeath: enrichedParsed?.career_status_at_death ?? null,
+          posthumousReleases,
+          relatedDeaths: enrichedParsed?.related_deaths ?? null,
         },
       }
     } catch (error) {
@@ -277,6 +275,52 @@ abstract class GeminiBaseSource extends BaseDataSource {
         error: error instanceof Error ? error.message : "Unknown error",
       }
     }
+  }
+
+  /**
+   * Convert last_project from response to ProjectReference.
+   */
+  private convertLastProject(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): ProjectReference | null {
+    if (!parsed?.last_project) return null
+    return {
+      title: parsed.last_project.title,
+      year: parsed.last_project.year ?? null,
+      tmdbId: null,
+      imdbId: null,
+      type: parsed.last_project.type ?? "unknown",
+    }
+  }
+
+  /**
+   * Convert posthumous_releases from response to ProjectReference[].
+   */
+  private convertPosthumousReleases(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): ProjectReference[] | null {
+    if (!parsed?.posthumous_releases || parsed.posthumous_releases.length === 0) return null
+    return parsed.posthumous_releases.map((p) => ({
+      title: p.title,
+      year: p.year ?? null,
+      tmdbId: null,
+      imdbId: null,
+      type: p.type ?? "unknown",
+    }))
+  }
+
+  /**
+   * Convert related_celebrities from response to RelatedCelebrity[].
+   */
+  private convertRelatedCelebrities(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): RelatedCelebrity[] {
+    if (!parsed?.related_celebrities || parsed.related_celebrities.length === 0) return []
+    return parsed.related_celebrities.map((c) => ({
+      name: c.name,
+      tmdbId: null,
+      relationship: c.relationship,
+    }))
   }
 }
 
