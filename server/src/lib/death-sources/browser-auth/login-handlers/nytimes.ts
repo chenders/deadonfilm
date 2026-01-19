@@ -16,15 +16,16 @@ import { detectCaptcha } from "../captcha/detector.js"
 import { solveCaptcha } from "../captcha/solver.js"
 import { BaseLoginHandler } from "./base-handler.js"
 
-// NYTimes-specific selectors
+// NYTimes-specific selectors (updated Jan 2026)
+// NYTimes uses a role-based structure with custom components
 const SELECTORS = {
-  // Email step
-  emailInput: 'input[name="email"], input[type="email"], #email',
-  continueButton: 'button[type="submit"], button:has-text("Continue")',
+  // Email step (enter-email page)
+  emailInput: 'role=textbox[name="Email address"]',
+  continueButton: '[data-testid="submit-email"], button:has-text("Continue")',
 
-  // Password step
-  passwordInput: 'input[name="password"], input[type="password"], #password',
-  submitButton: 'button[type="submit"], button:has-text("Log In"), button:has-text("Sign In")',
+  // Password step (login-password page)
+  passwordInput: 'role=textbox[name="Password"]',
+  submitButton: 'button:has-text("Log in")',
 
   // Logged in indicators
   userMenu: '[data-testid="user-settings-button"], [aria-label="Account"], .user-tools',
@@ -34,7 +35,8 @@ const SELECTORS = {
   errorMessage: '[data-testid="error-message"], .login-error, [role="alert"]',
 }
 
-const LOGIN_URL = "https://myaccount.nytimes.com/auth/login"
+// NYTimes redirects to enter-email page
+const LOGIN_URL = "https://myaccount.nytimes.com/auth/enter-email"
 const STEP_WAIT_MS = 2000
 
 /**
@@ -83,25 +85,24 @@ export class NYTimesLoginHandler extends BaseLoginHandler {
         timeout: 30000,
       })
 
-      // Wait for email field
-      await page.waitForSelector(SELECTORS.emailInput, {
-        state: "visible",
-        timeout: 10000,
-      })
+      // Wait for email field using role-based locator
+      const emailInput = page.getByRole("textbox", { name: "Email address" })
+      await emailInput.waitFor({ state: "visible", timeout: 15000 })
 
       // Step 1: Enter email
-      await page.fill(SELECTORS.emailInput, this.credentials!.email)
-      await page.click(SELECTORS.continueButton)
+      await emailInput.fill(this.credentials!.email)
+
+      // Click continue button (the primary submit button, not OAuth buttons)
+      const continueButton = page.getByTestId("submit-email")
+      await continueButton.click()
 
       // Wait for password field to appear
       await page.waitForTimeout(STEP_WAIT_MS)
-      await page.waitForSelector(SELECTORS.passwordInput, {
-        state: "visible",
-        timeout: 10000,
-      })
+      const passwordInput = page.getByRole("textbox", { name: "Password" })
+      await passwordInput.waitFor({ state: "visible", timeout: 15000 })
 
       // Step 2: Enter password
-      await page.fill(SELECTORS.passwordInput, this.credentials!.password)
+      await passwordInput.fill(this.credentials!.password)
 
       // Check for CAPTCHA before submitting
       const preSubmitCaptcha = await detectCaptcha(page)
@@ -133,8 +134,9 @@ export class NYTimesLoginHandler extends BaseLoginHandler {
         }
       }
 
-      // Click submit
-      await page.click(SELECTORS.submitButton)
+      // Click submit (Log in button)
+      const loginButton = page.getByRole("button", { name: "Log in" })
+      await loginButton.click()
 
       // Wait for navigation or CAPTCHA
       await page.waitForTimeout(STEP_WAIT_MS)
