@@ -13,6 +13,8 @@ import type { BrowserContext, Cookie } from "playwright-core"
 import type { SessionManagerConfig, StoredCookie, StoredSession } from "./types.js"
 import { getBrowserAuthConfig } from "./config.js"
 
+import { consoleLog } from "../logger.js"
+
 // Default TTL in hours
 const DEFAULT_TTL_HOURS = 24
 
@@ -94,7 +96,7 @@ export async function loadSession(
 
     // Check if session is valid
     if (!isSessionValid(session, ttlHours)) {
-      console.log(`Session for ${domain} has expired, removing...`)
+      consoleLog(`Session for ${domain} has expired, removing...`)
       await deleteSession(domain, config)
       return null
     }
@@ -155,7 +157,7 @@ export async function saveSession(
 
   try {
     await fs.writeFile(filePath, JSON.stringify(session, null, 2), "utf-8")
-    console.log(`Saved session for ${domain} (${domainCookies.length} cookies)`)
+    consoleLog(`Saved session for ${domain} (${domainCookies.length} cookies)`)
   } catch (error) {
     console.error(`Failed to save session for ${domain}:`, error)
     throw error
@@ -198,7 +200,7 @@ export async function applySessionToContext(
 
   try {
     await context.addCookies(cookies)
-    console.log(`Applied ${cookies.length} cookies for ${session.domain}`)
+    consoleLog(`Applied ${cookies.length} cookies for ${session.domain}`)
   } catch (error) {
     console.error(`Failed to apply session cookies for ${session.domain}:`, error)
     throw error
@@ -252,7 +254,7 @@ export async function deleteSession(
 
   try {
     await fs.unlink(filePath)
-    console.log(`Deleted session for ${domain}`)
+    consoleLog(`Deleted session for ${domain}`)
   } catch (error) {
     // Ignore if file doesn't exist
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {

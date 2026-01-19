@@ -20,6 +20,8 @@ import type {
   CaptchaType,
 } from "../types.js"
 
+import { consoleLog } from "../../logger.js"
+
 // API endpoints
 const TWOCAPTCHA_API = {
   submit: "https://2captcha.com/in.php",
@@ -361,7 +363,7 @@ export async function solveCaptcha(
   }
 
   try {
-    console.log(`Submitting ${type} CAPTCHA to ${config.provider}...`)
+    consoleLog(`Submitting ${type} CAPTCHA to ${config.provider}...`)
 
     // Wait before polling (CAPTCHAs take time to solve)
     await new Promise((resolve) => setTimeout(resolve, INITIAL_WAIT_MS))
@@ -380,7 +382,7 @@ export async function solveCaptcha(
     await injectCaptchaToken(page, token, type)
 
     const solveTimeMs = Date.now() - startTime
-    console.log(`CAPTCHA solved in ${solveTimeMs}ms`)
+    consoleLog(`CAPTCHA solved in ${solveTimeMs}ms`)
 
     return {
       success: true,
@@ -440,7 +442,7 @@ async function solveDataDome(
   }
 
   try {
-    console.log("Submitting DataDome CAPTCHA to 2captcha...")
+    consoleLog("Submitting DataDome CAPTCHA to 2captcha...")
 
     // Get the user agent from the page
     const userAgent = await page.evaluate(() => navigator.userAgent)
@@ -467,7 +469,7 @@ async function solveDataDome(
     ])
 
     const solveTimeMs = Date.now() - startTime
-    console.log(`DataDome CAPTCHA solved in ${solveTimeMs}ms`)
+    consoleLog(`DataDome CAPTCHA solved in ${solveTimeMs}ms`)
 
     return {
       success: true,
