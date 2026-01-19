@@ -92,7 +92,55 @@ export {
   isBrowserFetchEnabled,
   setBrowserConfig,
   getBrowserConfig,
+  isAuthEnabledForUrl,
+  detectPaywall,
+  getAuthenticatedContext,
+  handleAuthenticationFlow,
 } from "./browser-fetch.js"
+
+// Browser authentication (for paywalled sites)
+export {
+  // Configuration
+  getBrowserAuthConfig,
+  setBrowserAuthConfig,
+  resetBrowserAuthConfig,
+  hasAnyCredentials,
+  hasCredentialsForSite,
+  hasCaptchaSolver,
+  // Session management
+  loadSession,
+  saveSession,
+  isSessionValid,
+  applySessionToContext,
+  touchSession,
+  deleteSession,
+  listSessions,
+  clearExpiredSessions,
+  getSessionInfo,
+  // CAPTCHA
+  detectCaptcha,
+  waitForCaptcha,
+  isChallengePage,
+  solveCaptcha,
+  injectCaptchaToken,
+  getBalance,
+  // Login handlers
+  NYTimesLoginHandler,
+  WashingtonPostLoginHandler,
+  // Types re-exported for convenience
+  type BrowserAuthConfig,
+  type SiteCredentials,
+  type SiteCredential,
+  type SupportedSite,
+  type CaptchaSolverConfig,
+  type CaptchaDetectionResult,
+  type CaptchaSolveResult,
+  type LoginHandler,
+  type LoginResult,
+  type StoredSession,
+  type PaywallDetectionResult,
+  type AuthenticatedContextResult,
+} from "./browser-auth/index.js"
 
 // URL resolution (for Gemini grounding redirects)
 export {
