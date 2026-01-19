@@ -65,8 +65,9 @@ jobs:
       - name: Deploy application
         run: |
           cd /opt/deadonfilm
-          # Copy latest docker-compose config
+          # Copy latest docker-compose and PostgreSQL config
           cp ${{ github.workspace }}/docker-compose.yml docker-compose.yml
+          cp ${{ github.workspace }}/postgresql.conf postgresql.conf
           docker compose pull
 
           # Start containers and wait for all to be healthy

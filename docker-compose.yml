@@ -50,7 +50,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
-    shm_size: '4gb'
+    shm_size: '5gb'  # shared_buffers (4GB) + overhead for locks, connections
     deploy:
       resources:
         limits:
@@ -214,6 +214,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # maxmemory=512mb + ~88MB headroom for Redis overhead within 600M container limit
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     deploy:
       resources:
