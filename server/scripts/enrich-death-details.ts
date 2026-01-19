@@ -40,9 +40,9 @@
  *   --max-link-cost <n>          Maximum cost for link following per actor (USD)
  *
  * Top-billed actor selection:
- *   --top-billed-year <year>     Only actors top-billed in movies from this year
- *   --max-billing <n>            Maximum billing position to consider as top-billed
- *   --min-movie-popularity <n>   Minimum movie popularity for top-billed filtering
+ *   --top-billed-year <year>     Only actors top-billed in top movies from this year
+ *   --max-billing <n>            Maximum billing position (default: 5)
+ *   --top-movies <n>             Number of top movies by popularity (default: 20)
  *
  * Actor filtering:
  *   --us-actors-only             Only process actors who primarily appeared in US productions
@@ -52,13 +52,14 @@
  *   npm run enrich:death-details -- --tmdb-id 12345 --dry-run
  *   npm run enrich:death-details -- --limit 100 --disable-paid --max-total-cost 5
  *   npm run enrich:death-details -- --disable-claude-cleanup --limit 10
- *   npm run enrich:death-details -- --top-billed-year 2020 --max-billing 3
+ *   npm run enrich:death-details -- --top-billed-year 2020 --top-movies 50
  */
 
 import "dotenv/config"
 import * as readline from "readline"
 import { Command, InvalidArgumentError } from "commander"
-import { getPool, resetPool } from "../src/lib/db.js"
+import { getPool, resetPool, getDeceasedActorsFromTopMovies } from "../src/lib/db.js"
+import { batchGetPersonDetails } from "../src/lib/tmdb.js"
 import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { rebuildDeathCaches, invalidateActorCache } from "../src/lib/cache.js"
 import {
@@ -127,7 +128,7 @@ interface EnrichOptions {
   maxLinkCost?: number
   topBilledYear?: number
   maxBilling?: number
-  minMoviePopularity?: number
+  topMovies?: number
   usActorsOnly: boolean
   ignoreCache: boolean
   yes: boolean
@@ -179,7 +180,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     maxLinkCost,
     topBilledYear,
     maxBilling,
-    minMoviePopularity,
+    topMovies,
     usActorsOnly,
     ignoreCache,
     yes,
@@ -191,10 +192,6 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     console.log("Cache disabled - all requests will be made fresh")
   }
 
-  if (topBilledYear || maxBilling || minMoviePopularity) {
-    console.log("Top-billed filtering options detected - will filter by billing position")
-  }
-
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
     process.exit(1)
@@ -203,16 +200,104 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
   const db = getPool()
 
   try {
-    // Build query for actors needing enrichment
-    const params: (number | string)[] = []
-    let query: string
+    // Define the type for actor rows from our queries
+    type ActorRow = {
+      id: number
+      tmdb_id: number | null
+      name: string
+      birthday: Date | string | null
+      deathday: Date | string
+      cause_of_death: string | null
+      cause_of_death_details: string | null
+      popularity: number | null
+      circumstances: string | null
+      notable_factors: string[] | null
+      movie_title?: string // Only populated when using --top-billed-year
+    }
 
-    if (tmdbId) {
+    let actors: ActorRow[]
+
+    // Use specialized query for top-billed year filtering
+    if (topBilledYear) {
+      console.log(`\nQuerying deceased actors from top-billed roles in ${topBilledYear}...`)
+      const effectiveMaxBilling = maxBilling ?? 5
+      const effectiveTopMovies = topMovies ?? 20
+      console.log(`  Top movies to consider: ${effectiveTopMovies}`)
+      console.log(`  Max billing position: ${effectiveMaxBilling}`)
+
+      // First, fetch the top movies for display
+      const topMoviesResult = await db.query<{
+        tmdb_id: number
+        title: string
+        popularity: number | null
+      }>(
+        `SELECT tmdb_id, title, popularity
+         FROM movies
+         WHERE release_year = $1
+           AND (original_language = 'en' OR 'US' = ANY(production_countries))
+         ORDER BY popularity DESC NULLS LAST
+         LIMIT $2`,
+        [topBilledYear, effectiveTopMovies]
+      )
+      const selectedMovies = topMoviesResult.rows
+
+      console.log(`\n  Top ${selectedMovies.length} movies from ${topBilledYear}:`)
+      for (let i = 0; i < selectedMovies.length; i++) {
+        const movie = selectedMovies[i]
+        const pop = movie.popularity !== null ? Number(movie.popularity).toFixed(1) : "N/A"
+        console.log(`    ${(i + 1).toString().padStart(2)}. ${movie.title} (pop: ${pop})`)
+      }
+
+      actors = await getDeceasedActorsFromTopMovies({
+        year: topBilledYear,
+        maxBilling: effectiveMaxBilling,
+        topMoviesCount: effectiveTopMovies,
+        limit,
+      })
+
+      // Fetch missing popularity scores from TMDB for actors that don't have them
+      const actorsNeedingPopularity = actors.filter(
+        (a) => a.popularity === null && a.tmdb_id !== null
+      )
+      if (actorsNeedingPopularity.length > 0) {
+        console.log(
+          `  Fetching popularity for ${actorsNeedingPopularity.length} actors from TMDB...`
+        )
+        const tmdbIds = actorsNeedingPopularity.map((a) => a.tmdb_id as number)
+        const personDetails = await batchGetPersonDetails(tmdbIds)
+
+        // Update actors in memory and persist to database
+        let updatedCount = 0
+        for (const actor of actors) {
+          if (actor.popularity === null && actor.tmdb_id !== null) {
+            const details = personDetails.get(actor.tmdb_id)
+            if (details?.popularity !== undefined && details.popularity !== null) {
+              actor.popularity = details.popularity
+              // Persist to database
+              await db.query(
+                `UPDATE actors SET popularity = $1, updated_at = CURRENT_TIMESTAMP WHERE tmdb_id = $2`,
+                [details.popularity, actor.tmdb_id]
+              )
+              updatedCount++
+            }
+          }
+        }
+        if (updatedCount > 0) {
+          console.log(`  Stored ${updatedCount} popularity scores to database`)
+        }
+
+        // Re-sort by popularity descending
+        actors.sort((a, b) => {
+          const popA = a.popularity ?? 0
+          const popB = b.popularity ?? 0
+          return popB - popA
+        })
+      }
+    } else if (tmdbId) {
       // Target a specific actor
       console.log(`\nQuerying actor with TMDB ID ${tmdbId}...`)
-      params.push(tmdbId)
-      query = `
-        SELECT
+      const result = await db.query<ActorRow>(
+        `SELECT
           a.id,
           a.tmdb_id,
           a.name,
@@ -226,12 +311,15 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         FROM actors a
         LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
         WHERE a.tmdb_id = $1
-          AND a.deathday IS NOT NULL
-      `
+          AND a.deathday IS NOT NULL`,
+        [tmdbId]
+      )
+      actors = result.rows
     } else {
       // Query actors where Claude returned nulls for detailed fields
       console.log(`\nQuerying actors with missing death circumstances...`)
-      query = `
+      const params: (number | string)[] = []
+      let query = `
         SELECT
           a.id,
           a.tmdb_id,
@@ -312,22 +400,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         params.push(limit)
         query += ` LIMIT $${params.length}`
       }
+
+      const result = await db.query<ActorRow>(query, params)
+      actors = result.rows
     }
-
-    const result = await db.query<{
-      id: number
-      tmdb_id: number | null
-      name: string
-      birthday: Date | string | null
-      deathday: Date | string
-      cause_of_death: string | null
-      cause_of_death_details: string | null
-      popularity: number | null
-      circumstances: string | null
-      notable_factors: string[] | null
-    }>(query, params)
-
-    const actors = result.rows
 
     if (actors.length === 0) {
       console.log("\nNo actors to enrich. Done!")
@@ -354,17 +430,11 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     }
 
     // Top-billed actor selection
-    if (topBilledYear || maxBilling || minMoviePopularity) {
+    if (topBilledYear) {
       console.log(`\nTop-Billed Selection:`)
-      if (topBilledYear) {
-        console.log(`  Year: ${topBilledYear}`)
-      }
-      if (maxBilling) {
-        console.log(`  Max billing position: ${maxBilling}`)
-      }
-      if (minMoviePopularity) {
-        console.log(`  Min movie popularity: ${minMoviePopularity}`)
-      }
+      console.log(`  Year: ${topBilledYear}`)
+      console.log(`  Top movies: ${topMovies ?? 20}`)
+      console.log(`  Max billing position: ${maxBilling ?? 5}`)
     }
 
     console.log(`\nData Sources:`)
@@ -443,13 +513,22 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
 
     // Sample actors preview
-    console.log(`\nSample actors (first 5):`)
-    for (const actor of actors.slice(0, 5)) {
-      console.log(`  - ${actor.name} (ID: ${actor.id}, TMDB: ${actor.tmdb_id || "N/A"})`)
-      console.log(`    Death: ${actor.deathday}, Cause: ${actor.cause_of_death || "(none)"}`)
-    }
-    if (actors.length > 5) {
-      console.log(`  ... and ${actors.length - 5} more`)
+    if (topBilledYear) {
+      // When using --top-billed-year, show actor with their movie
+      console.log(`\nActors to enrich:`)
+      for (const actor of actors) {
+        const movieInfo = actor.movie_title ? ` (${actor.movie_title})` : ""
+        console.log(`  - ${actor.name}${movieInfo}`)
+      }
+    } else {
+      console.log(`\nSample actors (first 5):`)
+      for (const actor of actors.slice(0, 5)) {
+        console.log(`  - ${actor.name} (ID: ${actor.id}, TMDB: ${actor.tmdb_id || "N/A"})`)
+        console.log(`    Death: ${actor.deathday}, Cause: ${actor.cause_of_death || "(none)"}`)
+      }
+      if (actors.length > 5) {
+        console.log(`  ... and ${actors.length - 5} more`)
+      }
     }
 
     // Prompt for confirmation (unless --yes or --dry-run)
@@ -770,13 +849,13 @@ const program = new Command()
   )
   .option(
     "--max-billing <number>",
-    "Maximum billing position to consider as top-billed",
+    "Maximum billing position to consider as top-billed (default: 5)",
     parsePositiveInt
   )
   .option(
-    "--min-movie-popularity <number>",
-    "Minimum movie popularity for top-billed filtering",
-    parseFloat
+    "--top-movies <number>",
+    "Number of top movies by popularity to consider (default: 20)",
+    parsePositiveInt
   )
   // Actor filtering options
   .option("--us-actors-only", "Only process actors who primarily appeared in US productions")
@@ -806,7 +885,7 @@ const program = new Command()
       maxLinkCost: options.maxLinkCost,
       topBilledYear: options.topBilledYear,
       maxBilling: options.maxBilling,
-      minMoviePopularity: options.minMoviePopularity,
+      topMovies: options.topMovies,
       usActorsOnly: options.usActorsOnly || false,
       ignoreCache: options.ignoreCache || false,
       yes: options.yes || false,
