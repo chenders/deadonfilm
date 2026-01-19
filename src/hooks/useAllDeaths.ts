@@ -13,7 +13,6 @@ export function useAllDeaths(options: AllDeathsOptions = {}) {
   return useQuery({
     queryKey: ["all-deaths", page, includeObscure, search],
     queryFn: () => getAllDeaths({ page, includeObscure, search }),
-    staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
   })
 }

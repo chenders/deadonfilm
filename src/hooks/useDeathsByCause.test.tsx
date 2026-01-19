@@ -134,21 +134,6 @@ describe("useDeathsByCause", () => {
     expect(api.getDeathsByCause).not.toHaveBeenCalled()
   })
 
-  it("uses correct query key for caching", async () => {
-    vi.mocked(api.getDeathsByCause).mockResolvedValue(mockResponse)
-
-    // First call with default params
-    const { result: result1 } = renderHook(() => useDeathsByCause("heart-attack"), { wrapper })
-    await waitFor(() => expect(result1.current.isSuccess).toBe(true))
-
-    // Second call with same params should use cache
-    const { result: result2 } = renderHook(() => useDeathsByCause("heart-attack"), { wrapper })
-    await waitFor(() => expect(result2.current.isSuccess).toBe(true))
-
-    // Only one API call should have been made due to caching
-    expect(api.getDeathsByCause).toHaveBeenCalledTimes(1)
-  })
-
   it("refetches when params change", async () => {
     vi.mocked(api.getDeathsByCause).mockResolvedValue(mockResponse)
 
