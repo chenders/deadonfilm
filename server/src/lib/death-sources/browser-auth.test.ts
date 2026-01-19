@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import type { Page, BrowserContext, Locator } from "playwright-core"
+import type { Page, BrowserContext } from "playwright-core"
 
 // ============================================================================
 // Configuration Tests
@@ -202,12 +202,6 @@ describe("browser-auth/captcha/detector", () => {
     textContent?: string
     url?: string
   }): Page {
-    const mockLocator = {
-      count: vi.fn().mockResolvedValue(0),
-      isVisible: vi.fn().mockResolvedValue(false),
-      first: vi.fn().mockReturnThis(),
-    } as unknown as Locator
-
     const page = {
       locator: vi.fn((selector: string) => {
         const counts = options.locatorCounts || {}
