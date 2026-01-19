@@ -644,6 +644,12 @@ export class DeathEnrichmentOrchestrator {
       fields.push("relatedCelebrities")
     if (data.locationOfDeath) fields.push("locationOfDeath")
     if (data.additionalContext) fields.push("additionalContext")
+    // Career context fields
+    if (data.lastProject) fields.push("lastProject")
+    if (data.careerStatusAtDeath) fields.push("careerStatusAtDeath")
+    if (data.posthumousReleases && data.posthumousReleases.length > 0)
+      fields.push("posthumousReleases")
+    if (data.relatedDeaths) fields.push("relatedDeaths")
     return fields
   }
 
@@ -820,6 +826,31 @@ export class DeathEnrichmentOrchestrator {
       result.additionalContext = data.additionalContext
       result.additionalContextSource = source
     }
+
+    // Career context fields
+    if (data.lastProject && !result.lastProject) {
+      result.lastProject = data.lastProject
+      result.lastProjectSource = source
+    }
+
+    if (data.careerStatusAtDeath && !result.careerStatusAtDeath) {
+      result.careerStatusAtDeath = data.careerStatusAtDeath
+      result.careerStatusAtDeathSource = source
+    }
+
+    if (
+      data.posthumousReleases &&
+      data.posthumousReleases.length > 0 &&
+      !result.posthumousReleases
+    ) {
+      result.posthumousReleases = data.posthumousReleases
+      result.posthumousReleasesSource = source
+    }
+
+    if (data.relatedDeaths && !result.relatedDeaths) {
+      result.relatedDeaths = data.relatedDeaths
+      result.relatedDeathsSource = source
+    }
   }
 
   /**
@@ -852,6 +883,12 @@ export class DeathEnrichmentOrchestrator {
       fields.push("relatedCelebrities")
     if (result.locationOfDeath) fields.push("locationOfDeath")
     if (result.additionalContext) fields.push("additionalContext")
+    // Career context fields
+    if (result.lastProject) fields.push("lastProject")
+    if (result.careerStatusAtDeath) fields.push("careerStatusAtDeath")
+    if (result.posthumousReleases && result.posthumousReleases.length > 0)
+      fields.push("posthumousReleases")
+    if (result.relatedDeaths) fields.push("relatedDeaths")
     return fields
   }
 
