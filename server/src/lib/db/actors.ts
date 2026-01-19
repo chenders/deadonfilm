@@ -429,6 +429,94 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
   }))
 }
 
+// ============================================================================
+// Enrichment query functions
+// ============================================================================
+
+/**
+ * Return type for actors needing death detail enrichment.
+ * Matches the fields expected by the enrich-death-details script.
+ */
+export interface ActorForEnrichmentQuery {
+  id: number
+  tmdb_id: number | null
+  name: string
+  birthday: Date | string | null
+  deathday: Date | string
+  cause_of_death: string | null
+  cause_of_death_details: string | null
+  popularity: number | null
+  circumstances: string | null
+  notable_factors: string[] | null
+  /** Movie title (only populated when using top-billed-year query) */
+  movie_title?: string
+}
+
+/**
+ * Get deceased actors from top-billed roles in the most popular US movies from a specific year.
+ * Used by the death enrichment script to target high-profile actors.
+ *
+ * @param options.year - The movie release year to filter by
+ * @param options.maxBilling - Maximum billing position (default: 5, top 5 billed)
+ * @param options.topMoviesCount - Number of top movies to consider (default: 20)
+ * @param options.limit - Maximum number of actors to return
+ */
+export async function getDeceasedActorsFromTopMovies(options: {
+  year: number
+  maxBilling?: number
+  topMoviesCount?: number
+  limit?: number
+}): Promise<ActorForEnrichmentQuery[]> {
+  const { year, maxBilling = 5, topMoviesCount = 20, limit = 100 } = options
+  const db = getPool()
+
+  // Use CTEs to:
+  // 1. Identify the top N movies by popularity for the year
+  // 2. Find deceased actors who were top-billed in those movies (deduplicated)
+  // 3. Order final results by actor popularity
+  const result = await db.query<ActorForEnrichmentQuery>(
+    `WITH top_movies AS (
+      SELECT tmdb_id, title, popularity AS movie_popularity
+      FROM movies
+      WHERE release_year = $1
+        AND (original_language = 'en' OR 'US' = ANY(production_countries))
+      ORDER BY popularity DESC NULLS LAST
+      LIMIT $2
+    ),
+    unique_actors AS (
+      SELECT DISTINCT ON (a.id)
+        a.id,
+        a.tmdb_id,
+        a.name,
+        a.birthday,
+        a.deathday,
+        a.cause_of_death,
+        a.cause_of_death_details,
+        a.popularity,
+        c.circumstances,
+        c.notable_factors,
+        tm.title AS movie_title
+      FROM actors a
+      JOIN actor_movie_appearances ama ON ama.actor_id = a.id
+      JOIN top_movies tm ON tm.tmdb_id = ama.movie_tmdb_id
+      LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+      WHERE a.deathday IS NOT NULL
+        AND a.cause_of_death IS NOT NULL
+        AND ama.billing_order <= $3
+        AND (c.circumstances IS NULL
+             OR c.notable_factors IS NULL
+             OR array_length(c.notable_factors, 1) IS NULL)
+      ORDER BY a.id, tm.movie_popularity DESC, ama.billing_order ASC
+    )
+    SELECT * FROM unique_actors
+    ORDER BY popularity DESC NULLS LAST
+    LIMIT $4`,
+    [year, topMoviesCount, maxBilling, limit]
+  )
+
+  return result.rows
+}
+
 export async function getActorShowFilmography(
   actorTmdbId: number
 ): Promise<ActorFilmographyShow[]> {
