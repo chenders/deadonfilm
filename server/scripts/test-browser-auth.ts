@@ -75,7 +75,9 @@ async function testConfiguration(): Promise<void> {
   logResult({
     name: "Browser auth enabled",
     success: config.enabled,
-    message: config.enabled ? "Browser authentication is enabled" : "Browser authentication is DISABLED",
+    message: config.enabled
+      ? "Browser authentication is enabled"
+      : "Browser authentication is DISABLED",
     details: {
       sessionStoragePath: config.sessionStoragePath,
       sessionTtlHours: config.sessionTtlHours,
@@ -206,7 +208,8 @@ async function testNYTimesLogin(): Promise<boolean> {
       })
 
       // Save the session for future use
-      const { saveSession } = await import("../src/lib/death-sources/browser-auth/session-manager.js")
+      const { saveSession } =
+        await import("../src/lib/death-sources/browser-auth/session-manager.js")
       const config = getBrowserAuthConfig()
       await saveSession("nytimes.com", context, config.credentials.nytimes?.email)
       console.log("\n   Session saved for future use")
@@ -369,12 +372,15 @@ async function testNYTimesArticleFetch(articleUrl?: string): Promise<void> {
   if (hasContent) {
     const content = result.content || ""
     const wordCount = content.split(/\s+/).length
-    const hasSubscribeText = content.toLowerCase().includes("subscribe") &&
+    const hasSubscribeText =
+      content.toLowerCase().includes("subscribe") &&
       content.toLowerCase().includes("to continue reading")
 
     console.log(`\n   Article stats:`)
     console.log(`      Word count: ~${wordCount}`)
-    console.log(`      Has paywall text: ${hasSubscribeText ? "YES (may be truncated)" : "No (full article)"}`)
+    console.log(
+      `      Has paywall text: ${hasSubscribeText ? "YES (may be truncated)" : "No (full article)"}`
+    )
   }
 }
 
@@ -435,7 +441,9 @@ const program = new Command()
         await testPageFetch(options.url)
       } else if (options.article) {
         // Test NYTimes article fetch with auth
-        await testNYTimesArticleFetch(typeof options.article === "string" ? options.article : undefined)
+        await testNYTimesArticleFetch(
+          typeof options.article === "string" ? options.article : undefined
+        )
       } else if (options.tmdb) {
         // Test enrichment with a real actor from database
         const tmdbId = parseInt(options.tmdb, 10)

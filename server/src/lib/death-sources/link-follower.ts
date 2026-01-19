@@ -22,17 +22,10 @@ import { DEFAULT_BROWSER_FETCH_CONFIG } from "./types.js"
 import { htmlToText } from "./html-utils.js"
 import { DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "./base-source.js"
 import { shouldUseBrowserFetch, isBlockedResponse, browserFetchPage } from "./browser-fetch.js"
-import {
-  shouldUseArchiveFallback,
-  searchArchiveIsWithBrowser,
-} from "./archive-fallback.js"
+import { shouldUseArchiveFallback, searchArchiveIsWithBrowser } from "./archive-fallback.js"
 import { getBrowserAuthConfig } from "./browser-auth/config.js"
 import { WashingtonPostLoginHandler } from "./browser-auth/login-handlers/washingtonpost.js"
-import {
-  loadSession,
-  saveSession,
-  applySessionToContext,
-} from "./browser-auth/session-manager.js"
+import { loadSession, saveSession, applySessionToContext } from "./browser-auth/session-manager.js"
 import { chromium } from "playwright-core"
 
 import { consoleLog } from "./logger.js"
@@ -457,7 +450,11 @@ async function fetchWithWapoAuth(url: string): Promise<FetchedPage> {
     const title = await page.title()
 
     // Extract article content
-    const articleHtml = await page.locator("article").first().innerHTML().catch(() => null)
+    const articleHtml = await page
+      .locator("article")
+      .first()
+      .innerHTML()
+      .catch(() => null)
     let content = ""
     if (articleHtml) {
       content = htmlToText(articleHtml)
