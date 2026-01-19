@@ -314,7 +314,7 @@ Respond with JSON only:
 function isWashingtonPostUrl(url: string): boolean {
   try {
     const hostname = new URL(url).hostname.toLowerCase()
-    return hostname.includes("washingtonpost.com")
+    return hostname === "washingtonpost.com" || hostname.endsWith(".washingtonpost.com")
   } catch {
     return false
   }

@@ -298,11 +298,15 @@ export class NYTimesLoginHandler extends BaseLoginHandler {
 
       // Check cookies for auth tokens
       const cookies = await page.context().cookies()
-      const authCookies = cookies.filter(
-        (c) =>
-          c.domain.includes("nytimes.com") &&
+      const authCookies = cookies.filter((c) => {
+        // Cookie domains may start with . (e.g., .nytimes.com)
+        const domain = c.domain.replace(/^\./, "").toLowerCase()
+        const isNytDomain = domain === "nytimes.com" || domain.endsWith(".nytimes.com")
+        return (
+          isNytDomain &&
           (c.name.includes("NYT-S") || c.name.includes("nyt-auth") || c.name === "nyt-a")
-      )
+        )
+      })
 
       return authCookies.length > 0
     } catch {

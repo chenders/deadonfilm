@@ -51,7 +51,10 @@ async function detectDataDomeChallenge(page: Page): Promise<{
     const content = await page.content()
 
     // DataDome challenge pages start with "var dd=" containing challenge data
-    if (content.includes("var dd=") && content.includes("captcha-delivery.com")) {
+    // Check for DataDome's specific pattern: 'host':'*.captcha-delivery.com'
+    const hasDataDomeSignature =
+      content.includes("var dd=") && /'host'\s*:\s*'[^']*\.captcha-delivery\.com'/i.test(content)
+    if (hasDataDomeSignature) {
       // Extract the captcha URL from the dd object
       // The structure is: var dd={'host':'geo.captcha-delivery.com',...}
       const hostMatch = content.match(/'host'\s*:\s*'([^']+captcha-delivery\.com[^']*)'/i)

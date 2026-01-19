@@ -311,14 +311,19 @@ export class WashingtonPostLoginHandler extends BaseLoginHandler {
 
       // Check cookies for auth tokens
       const cookies = await page.context().cookies()
-      const authCookies = cookies.filter(
-        (c) =>
-          c.domain.includes("washingtonpost.com") &&
+      const authCookies = cookies.filter((c) => {
+        // Cookie domains may start with . (e.g., .washingtonpost.com)
+        const domain = c.domain.replace(/^\./, "").toLowerCase()
+        const isWapoDomain =
+          domain === "washingtonpost.com" || domain.endsWith(".washingtonpost.com")
+        return (
+          isWapoDomain &&
           (c.name.includes("wapo_") ||
             c.name.includes("wp_") ||
             c.name === "logged_in" ||
             c.name.includes("session"))
-      )
+        )
+      })
 
       return authCookies.length > 0
     } catch {
