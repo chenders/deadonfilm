@@ -41,6 +41,7 @@ const CAPTCHA_COSTS: Record<CaptchaType, number> = {
   recaptcha_v3: 0.003,
   hcaptcha: 0.003,
   perimeterx: 0.005,
+  datadome: 0.003, // DataDome uses reCAPTCHA/hCaptcha internally
   unknown: 0.005,
 }
 
@@ -73,6 +74,35 @@ async function submit2Captcha(
 
   if (data.status !== 1) {
     throw new Error(`2Captcha submission failed: ${data.request}`)
+  }
+
+  return data.request // Task ID
+}
+
+/**
+ * Submit a DataDome CAPTCHA to 2Captcha for solving.
+ * DataDome requires different parameters than standard CAPTCHAs.
+ */
+async function submit2CaptchaDataDome(
+  config: CaptchaSolverConfig,
+  captchaUrl: string,
+  pageUrl: string,
+  userAgent: string
+): Promise<string> {
+  const params = new URLSearchParams({
+    key: config.apiKey,
+    method: "datadome",
+    captcha_url: captchaUrl,
+    pageurl: pageUrl,
+    userAgent: userAgent,
+    json: "1",
+  })
+
+  const response = await fetch(`${TWOCAPTCHA_API.submit}?${params}`)
+  const data = (await response.json()) as { status: number; request: string }
+
+  if (data.status !== 1) {
+    throw new Error(`2Captcha DataDome submission failed: ${data.request}`)
   }
 
   return data.request // Task ID
@@ -311,6 +341,14 @@ export async function solveCaptcha(
     }
   }
 
+  const pageUrl = page.url()
+
+  // DataDome requires different handling - uses captchaUrl instead of siteKey
+  if (type === "datadome") {
+    return solveDataDome(page, detection, config, pageUrl, startTime, estimatedCost)
+  }
+
+  // Standard CAPTCHAs require a siteKey
   if (!detection.siteKey) {
     return {
       success: false,
@@ -321,8 +359,6 @@ export async function solveCaptcha(
       error: "No site key found for CAPTCHA",
     }
   }
-
-  const pageUrl = page.url()
 
   try {
     console.log(`Submitting ${type} CAPTCHA to ${config.provider}...`)
@@ -359,6 +395,93 @@ export async function solveCaptcha(
       token: null,
       type,
       costUsd: 0, // Don't charge for failures
+      solveTimeMs: Date.now() - startTime,
+      error: error instanceof Error ? error.message : "Unknown error",
+    }
+  }
+}
+
+/**
+ * Solve a DataDome CAPTCHA challenge.
+ *
+ * DataDome is different from standard CAPTCHAs:
+ * - Requires the captcha URL and user agent
+ * - Returns a cookie value that must be set on the browser
+ */
+async function solveDataDome(
+  page: Page,
+  detection: CaptchaDetectionResult,
+  config: CaptchaSolverConfig,
+  pageUrl: string,
+  startTime: number,
+  estimatedCost: number
+): Promise<CaptchaSolveResult> {
+  if (!detection.datadomeUrl) {
+    return {
+      success: false,
+      token: null,
+      type: "datadome",
+      costUsd: 0,
+      solveTimeMs: Date.now() - startTime,
+      error: "No DataDome captcha URL found",
+    }
+  }
+
+  // DataDome solving only supported via 2captcha currently
+  if (config.provider !== "2captcha") {
+    return {
+      success: false,
+      token: null,
+      type: "datadome",
+      costUsd: 0,
+      solveTimeMs: Date.now() - startTime,
+      error: "DataDome solving only supported via 2captcha provider",
+    }
+  }
+
+  try {
+    console.log("Submitting DataDome CAPTCHA to 2captcha...")
+
+    // Get the user agent from the page
+    const userAgent = await page.evaluate(() => navigator.userAgent)
+
+    // Wait before polling (CAPTCHAs take time to solve)
+    await new Promise((resolve) => setTimeout(resolve, INITIAL_WAIT_MS))
+
+    const taskId = await submit2CaptchaDataDome(config, detection.datadomeUrl, pageUrl, userAgent)
+    const cookieValue = await poll2Captcha(config, taskId, startTime)
+
+    // DataDome returns a cookie value - set it on the browser context
+    // The cookie is typically named "datadome"
+    const url = new URL(pageUrl)
+    await page.context().addCookies([
+      {
+        name: "datadome",
+        value: cookieValue,
+        domain: url.hostname,
+        path: "/",
+        httpOnly: false,
+        secure: true,
+        sameSite: "Lax",
+      },
+    ])
+
+    const solveTimeMs = Date.now() - startTime
+    console.log(`DataDome CAPTCHA solved in ${solveTimeMs}ms`)
+
+    return {
+      success: true,
+      token: cookieValue,
+      type: "datadome",
+      costUsd: estimatedCost,
+      solveTimeMs,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      token: null,
+      type: "datadome",
+      costUsd: 0,
       solveTimeMs: Date.now() - startTime,
       error: error instanceof Error ? error.message : "Unknown error",
     }

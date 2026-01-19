@@ -45,6 +45,15 @@ export { BaseLoginHandler } from "./login-handlers/base-handler.js"
 export { NYTimesLoginHandler } from "./login-handlers/nytimes.js"
 export { WashingtonPostLoginHandler } from "./login-handlers/washingtonpost.js"
 
+// Stealth techniques
+export {
+  applyStealthToContext,
+  applyStealthToPage,
+  getStealthLaunchArgs,
+  getRealisticUserAgent,
+  getRealisticViewport,
+} from "./stealth.js"
+
 // Re-export key types for convenience
 export type {
   BrowserAuthConfig,

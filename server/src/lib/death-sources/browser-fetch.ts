@@ -33,6 +33,10 @@ import {
   solveCaptcha,
   NYTimesLoginHandler,
   WashingtonPostLoginHandler,
+  applyStealthToContext,
+  getStealthLaunchArgs,
+  getRealisticUserAgent,
+  getRealisticViewport,
 } from "./browser-auth/index.js"
 import type {
   LoginHandler,
@@ -278,7 +282,7 @@ async function getBrowser(): Promise<Browser> {
     // Dynamic import to avoid loading playwright if unused
     const { chromium } = await import("playwright-core")
 
-    console.log("Launching browser for page fetching...")
+    console.log("Launching browser for page fetching (with stealth mode)...")
 
     // Try to find installed browser
     const executablePath = process.env.BROWSER_EXECUTABLE_PATH
@@ -286,16 +290,7 @@ async function getBrowser(): Promise<Browser> {
     browserInstance = await chromium.launch({
       headless: HEADLESS,
       executablePath: executablePath || undefined,
-      args: [
-        "--disable-blink-features=AutomationControlled",
-        "--disable-dev-shm-usage",
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-infobars",
-        "--window-position=0,0",
-        "--ignore-certificate-errors",
-        "--ignore-certificate-errors-spki-list",
-      ],
+      args: getStealthLaunchArgs(),
     })
 
     // Handle browser disconnection
@@ -476,12 +471,16 @@ export async function getAuthenticatedContext(
   const domain = getDomainFromUrl(url)
   const site = getSiteFromUrl(url)
 
-  // Create a new context
+  // Create a new context with realistic browser properties
   const context = await browser.newContext({
-    userAgent:
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    viewport: { width: 1280, height: 800 },
+    userAgent: getRealisticUserAgent(),
+    viewport: getRealisticViewport(),
+    locale: "en-US",
+    timezoneId: "America/New_York",
   })
+
+  // Apply stealth techniques to avoid bot detection
+  await applyStealthToContext(context)
 
   // If auth is not enabled or no credentials, return basic context
   if (!authConfig.enabled || !site || !hasCredentialsForSite(site)) {

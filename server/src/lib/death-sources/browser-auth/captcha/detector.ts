@@ -5,6 +5,7 @@
  * - reCAPTCHA v2/v3
  * - hCaptcha
  * - PerimeterX
+ * - DataDome
  */
 
 import type { Page } from "playwright-core"
@@ -32,7 +33,62 @@ const CAPTCHA_SELECTORS = {
   ],
   // PerimeterX
   perimeterx: [".px-captcha", "#px-captcha", 'iframe[src*="px-captcha"]', "[data-px-captcha]"],
+  // DataDome
+  datadome: ['iframe[src*="captcha-delivery.com"]', 'iframe[src*="geo.captcha-delivery.com"]'],
 } as const
+
+/**
+ * Detect DataDome challenge page from page content.
+ * DataDome challenge pages have a distinctive JavaScript structure.
+ */
+async function detectDataDomeChallenge(page: Page): Promise<{
+  detected: boolean
+  captchaUrl: string | null
+  cookie: string | null
+}> {
+  try {
+    // Check page content for DataDome signature
+    const content = await page.content()
+
+    // DataDome challenge pages start with "var dd=" containing challenge data
+    if (content.includes("var dd=") && content.includes("captcha-delivery.com")) {
+      // Extract the captcha URL from the dd object
+      // The structure is: var dd={'host':'geo.captcha-delivery.com',...}
+      const hostMatch = content.match(/'host'\s*:\s*'([^']+captcha-delivery\.com[^']*)'/i)
+      const captchaHost = hostMatch ? hostMatch[1] : "geo.captcha-delivery.com"
+
+      // Extract the cookie value (used for solving)
+      const cookieMatch = content.match(/'cookie'\s*:\s*'([^']+)'/i)
+      const cookie = cookieMatch ? cookieMatch[1] : null
+
+      // Build the captcha URL - DataDome uses an iframe with specific params
+      // We need the current page URL to construct the captcha URL
+      const pageUrl = page.url()
+      const captchaUrl = `https://${captchaHost}/captcha/?initialCid=${encodeURIComponent(pageUrl)}`
+
+      return {
+        detected: true,
+        captchaUrl,
+        cookie,
+      }
+    }
+
+    // Also check for DataDome iframe directly
+    const datadomeIframe = await page.locator('iframe[src*="captcha-delivery.com"]').first()
+    if ((await datadomeIframe.count()) > 0) {
+      const src = await datadomeIframe.getAttribute("src")
+      return {
+        detected: true,
+        captchaUrl: src,
+        cookie: null,
+      }
+    }
+
+    return { detected: false, captchaUrl: null, cookie: null }
+  } catch {
+    return { detected: false, captchaUrl: null, cookie: null }
+  }
+}
 
 /**
  * Extract the site key from a CAPTCHA element.
@@ -137,7 +193,42 @@ async function extractSiteKey(page: Page, type: CaptchaType): Promise<string | n
  * @returns Detection result with type and site key if found
  */
 export async function detectCaptcha(page: Page): Promise<CaptchaDetectionResult> {
-  // Check for reCAPTCHA v2 first (most common)
+  // Check for DataDome first (used by NYTimes and other major sites)
+  const datadomeResult = await detectDataDomeChallenge(page)
+  if (datadomeResult.detected) {
+    return {
+      detected: true,
+      type: "datadome",
+      siteKey: null,
+      selector: null,
+      context: "DataDome challenge page detected",
+      datadomeUrl: datadomeResult.captchaUrl || undefined,
+      datadomeCookie: datadomeResult.cookie || undefined,
+    }
+  }
+
+  // Check for DataDome iframe
+  for (const selector of CAPTCHA_SELECTORS.datadome) {
+    try {
+      const count = await page.locator(selector).count()
+      if (count > 0) {
+        const iframe = page.locator(selector).first()
+        const src = await iframe.getAttribute("src")
+        return {
+          detected: true,
+          type: "datadome",
+          siteKey: null,
+          selector,
+          context: "DataDome CAPTCHA iframe detected",
+          datadomeUrl: src || undefined,
+        }
+      }
+    } catch {
+      // Continue checking
+    }
+  }
+
+  // Check for reCAPTCHA v2 (most common after DataDome)
   for (const selector of CAPTCHA_SELECTORS.recaptchaV2) {
     try {
       const count = await page.locator(selector).count()

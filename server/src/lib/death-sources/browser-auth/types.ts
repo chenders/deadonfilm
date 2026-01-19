@@ -81,7 +81,13 @@ export interface SessionManagerConfig {
 /**
  * Types of CAPTCHAs we can detect and solve.
  */
-export type CaptchaType = "recaptcha_v2" | "recaptcha_v3" | "hcaptcha" | "perimeterx" | "unknown"
+export type CaptchaType =
+  | "recaptcha_v2"
+  | "recaptcha_v3"
+  | "hcaptcha"
+  | "perimeterx"
+  | "datadome"
+  | "unknown"
 
 /**
  * Result from CAPTCHA detection.
@@ -94,6 +100,10 @@ export interface CaptchaDetectionResult {
   selector: string | null
   /** Additional context about the CAPTCHA */
   context?: string
+  /** DataDome captcha URL (required for DataDome solving) */
+  datadomeUrl?: string
+  /** DataDome cookie for solving */
+  datadomeCookie?: string
 }
 
 /**
