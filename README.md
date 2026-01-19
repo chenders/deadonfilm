@@ -21,6 +21,8 @@ A website to look up movies and TV shows to see which actors have passed away. S
 - **Unnatural Deaths** - Browse by accident, overdose, homicide, or suicide
 - **Death Watch** - Living actors with highest mortality probability
 - **Deaths by Cause/Decade** - Browse deaths by cause of death or decade
+- **Notable Deaths** - Detailed death circumstances with sources
+- **Strange Deaths** - Unusual or mysterious death circumstances
 
 ### Actor Profiles
 - Full filmography for actors in the database
@@ -30,15 +32,21 @@ A website to look up movies and TV shows to see which actors have passed away. S
 ### Other Features
 - "On This Day" - Actors who died on the current date
 - Real-time cause of death lookup with Claude AI
+- Multi-source death information enrichment (Gemini, Perplexity, Wikidata, Wikipedia)
+- Automatic source URL resolution and citation
 - Daily sync with TMDB for new deaths
+- Redis caching for fast responses
+- New Relic APM monitoring
 
 ## Tech Stack
 
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, TanStack Query
 - **Backend**: Node.js, Express.js, TypeScript
-- **Database**: PostgreSQL (Neon serverless)
+- **Database**: PostgreSQL 16 (self-hosted Docker)
+- **Caching**: Redis 7
 - **Deployment**: Bare-metal Docker with Cloudflare Tunnel
-- **Data Sources**: TMDB API, Claude API, Wikidata
+- **Monitoring**: New Relic APM
+- **Data Sources**: TMDB API, Claude API, Gemini API, Perplexity API, Wikidata
 
 ## Quick Start
 
@@ -83,7 +91,11 @@ Create `server/.env`:
 ```
 TMDB_API_TOKEN=your_tmdb_token
 DATABASE_URL=postgresql://user:pass@host/db
-ANTHROPIC_API_KEY=your_anthropic_key  # For cause of death lookup
+REDIS_URL=redis://localhost:6379
+ANTHROPIC_API_KEY=your_anthropic_key    # For cause of death lookup
+GEMINI_API_KEY=your_gemini_key          # For death enrichment
+PERPLEXITY_API_KEY=your_perplexity_key  # For death enrichment
+NEW_RELIC_LICENSE_KEY=your_nr_key       # For monitoring (optional)
 ```
 
 ## API Endpoints
