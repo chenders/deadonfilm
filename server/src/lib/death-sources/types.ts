@@ -179,6 +179,11 @@ export interface EnrichmentData {
   relatedCelebrities: RelatedCelebrity[]
   locationOfDeath: string | null
   additionalContext: string | null
+  // Career context fields
+  lastProject: ProjectReference | null
+  careerStatusAtDeath: CareerStatus | null
+  posthumousReleases: ProjectReference[] | null
+  relatedDeaths: string | null
 }
 
 /**
@@ -197,6 +202,15 @@ export interface EnrichmentResult {
   locationOfDeathSource?: EnrichmentSourceEntry
   additionalContext?: string | null
   additionalContextSource?: EnrichmentSourceEntry
+  // Career context fields
+  lastProject?: ProjectReference | null
+  lastProjectSource?: EnrichmentSourceEntry
+  careerStatusAtDeath?: CareerStatus | null
+  careerStatusAtDeathSource?: EnrichmentSourceEntry
+  posthumousReleases?: ProjectReference[] | null
+  posthumousReleasesSource?: EnrichmentSourceEntry
+  relatedDeaths?: string | null
+  relatedDeathsSource?: EnrichmentSourceEntry
 }
 
 /**
@@ -328,6 +342,22 @@ export interface BatchEnrichmentStats {
 export type ConfidenceLevel = "high" | "medium" | "low" | "disputed"
 
 /**
+ * Career status at time of death.
+ */
+export type CareerStatus = "active" | "semi-retired" | "retired" | "hiatus" | "unknown"
+
+/**
+ * Reference to a film/TV project (for last_project, posthumous_releases).
+ */
+export interface ProjectReference {
+  title: string
+  year: number | null
+  tmdbId: number | null
+  imdbId: string | null
+  type: "movie" | "show" | "documentary" | "unknown"
+}
+
+/**
  * Raw data collected from a single source, before Claude cleanup.
  */
 export interface RawSourceData {
@@ -362,6 +392,10 @@ export interface CleanedDeathInfo {
   details: string | null
   detailsConfidence: ConfidenceLevel | null
 
+  // Date confidence (separate from source-level verification)
+  birthdayConfidence: ConfidenceLevel | null
+  deathdayConfidence: ConfidenceLevel | null
+
   // Extended info for /death page
   circumstances: string | null // Full narrative - the main content
   circumstancesConfidence: ConfidenceLevel | null
@@ -370,7 +404,13 @@ export interface CleanedDeathInfo {
   locationOfDeath: string | null
   notableFactors: string[] // Tags: multiple_deaths, investigation, etc.
   relatedDeaths: string | null // Family/others who died in connection
+  relatedCelebrities: RelatedCelebrity[] | null // Celebrities mentioned in death circumstances
   additionalContext: string | null // Career context relevant to death
+
+  // Career context at time of death
+  lastProject: ProjectReference | null
+  careerStatusAtDeath: CareerStatus | null
+  posthumousReleases: ProjectReference[] | null
 
   // Metadata
   cleanupSource: "claude-opus-4.5"

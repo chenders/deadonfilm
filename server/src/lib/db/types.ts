@@ -540,12 +540,17 @@ export interface ActorDeathCircumstancesRecord {
   posthumous_releases: ProjectInfo[] | null
   related_celebrity_ids: number[] | null
   related_celebrities: RelatedCelebrity[] | null
+  related_deaths: string | null
   notable_factors: string[] | null
   sources: DeathSources | null
   additional_context: string | null
   raw_response: unknown | null
   created_at: string
   updated_at: string
+  // Enrichment tracking
+  enriched_at: string | null
+  enrichment_source: string | null
+  enrichment_version: string | null
 }
 
 export interface NotableDeathActor {
