@@ -5,7 +5,6 @@ export function useSiteStats() {
   return useQuery({
     queryKey: ["site-stats"],
     queryFn: getSiteStats,
-    staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
   })
 }

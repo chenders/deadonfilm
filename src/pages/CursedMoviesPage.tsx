@@ -140,7 +140,6 @@ export default function CursedMoviesPage() {
   const { data: filtersData } = useQuery({
     queryKey: ["cursed-movies-filters"],
     queryFn: getCursedMoviesFilters,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })
 
   // Generate options based on fetched max, default to just "Any" while loading

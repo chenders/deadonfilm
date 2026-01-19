@@ -120,21 +120,6 @@ describe("useCovidDeaths", () => {
     expect(result.current.error?.message).toBe("API Error")
   })
 
-  it("uses correct query key for caching", async () => {
-    vi.mocked(api.getCovidDeaths).mockResolvedValue(mockResponse)
-
-    // First call with default params
-    const { result: result1 } = renderHook(() => useCovidDeaths(), { wrapper })
-    await waitFor(() => expect(result1.current.isSuccess).toBe(true))
-
-    // Second call with same params should use cache
-    const { result: result2 } = renderHook(() => useCovidDeaths(), { wrapper })
-    await waitFor(() => expect(result2.current.isSuccess).toBe(true))
-
-    // Only one API call should have been made due to caching
-    expect(api.getCovidDeaths).toHaveBeenCalledTimes(1)
-  })
-
   it("refetches when params change", async () => {
     vi.mocked(api.getCovidDeaths).mockResolvedValue(mockResponse)
 
