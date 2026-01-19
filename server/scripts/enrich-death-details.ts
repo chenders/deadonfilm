@@ -74,11 +74,13 @@ import {
   MIN_RUMORED_CIRCUMSTANCES_LENGTH,
 } from "../src/lib/claude-batch/index.js"
 import { createActorSlug } from "../src/lib/slug-utils.js"
+import { getBrowserAuthConfig } from "../src/lib/death-sources/browser-auth/config.js"
+import { getSessionInfo } from "../src/lib/death-sources/browser-auth/session-manager.js"
 
 // Suppress pino console logging for CLI scripts by setting LOG_LEVEL to silent
 // before any logger imports. New Relic will still capture events via its API.
-if (!process.env.LOG_LEVEL) {
-  process.env.LOG_LEVEL = "silent"
+if (!process.env.NEW_RELIC_LOG_LEVEL) {
+  process.env.NEW_RELIC_LOG_LEVEL = "silent"
 }
 
 // Initialize New Relic for monitoring (silent - no console output)
@@ -386,6 +388,30 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     }
     if (maxLinkCost !== undefined) {
       console.log(`  Max link cost per actor: $${maxLinkCost}`)
+    }
+
+    // Show paywalled content access configuration
+    console.log(`\nPaywalled Content Access:`)
+    const hasNytApiKey = !!process.env.NYTIMES_API_KEY
+    console.log(`  NYTimes API: ${hasNytApiKey ? "configured" : "not configured"}`)
+    if (hasNytApiKey) {
+      console.log(`    → Articles fetched via archive.is`)
+    }
+
+    const browserAuthConfig = getBrowserAuthConfig()
+    const hasWapoCredentials = !!browserAuthConfig.credentials.washingtonpost
+    console.log(`  Washington Post: ${hasWapoCredentials ? "configured" : "not configured"}`)
+    if (hasWapoCredentials) {
+      const wapoSession = await getSessionInfo("washingtonpost.com")
+      if (wapoSession) {
+        console.log(`    → Saved session (${wapoSession.cookieCount} cookies)`)
+      } else {
+        console.log(`    → Will login on first use`)
+      }
+    }
+
+    if (browserAuthConfig.captchaSolver?.apiKey) {
+      console.log(`  CAPTCHA solver: 2captcha (configured)`)
     }
 
     console.log(`\nClaude Cleanup:`)
