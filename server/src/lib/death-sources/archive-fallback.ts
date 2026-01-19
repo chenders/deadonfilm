@@ -424,7 +424,10 @@ export async function fetchFromArchiveIs(url: string): Promise<ArchiveFetchResul
       content: "",
       contentLength: 0,
       timestamp: null,
-      error: availability.status === 429 ? "Rate limited by archive.is" : "URL not available on archive.is",
+      error:
+        availability.status === 429
+          ? "Rate limited by archive.is"
+          : "URL not available on archive.is",
     }
   }
 
@@ -671,14 +674,21 @@ export async function searchArchiveIsWithBrowser(url: string): Promise<ArchiveFe
     const title = await page.title()
 
     // Extract article content
-    const articleHtml = await page.locator("article").first().innerHTML().catch(() => null)
+    const articleHtml = await page
+      .locator("article")
+      .first()
+      .innerHTML()
+      .catch(() => null)
     let content = ""
 
     if (articleHtml) {
       content = htmlToText(articleHtml)
     } else {
       // Fallback to body content
-      const bodyHtml = await page.locator("body").innerHTML().catch(() => "")
+      const bodyHtml = await page
+        .locator("body")
+        .innerHTML()
+        .catch(() => "")
       content = htmlToText(bodyHtml)
     }
 
