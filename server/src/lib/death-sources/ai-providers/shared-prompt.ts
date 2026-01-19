@@ -129,18 +129,67 @@ If unknown: {"circumstances": null, "location_of_death": null, "notable_factors"
 }
 
 /**
+ * Extract the first complete JSON object from text using brace balancing.
+ * More robust than regex for handling nested structures.
+ */
+function extractFirstJsonObject(responseText: string): string | null {
+  const start = responseText.indexOf("{")
+  if (start === -1) {
+    return null
+  }
+
+  let depth = 0
+  let inString = false
+  let isEscaped = false
+
+  for (let i = start; i < responseText.length; i++) {
+    const char = responseText[i]
+
+    if (isEscaped) {
+      isEscaped = false
+      continue
+    }
+
+    if (char === "\\") {
+      if (inString) {
+        isEscaped = true
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = !inString
+      continue
+    }
+
+    if (!inString) {
+      if (char === "{") {
+        depth++
+      } else if (char === "}") {
+        depth--
+        if (depth === 0) {
+          return responseText.slice(start, i + 1)
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+/**
  * Parse a JSON response from any AI provider.
  * Handles common variations and malformed JSON.
  */
 export function parseEnrichedResponse(responseText: string): Partial<EnrichedDeathResponse> | null {
   try {
-    // Find JSON in the response (may have surrounding text)
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
+    // Find the first complete JSON object using brace balancing
+    const jsonText = extractFirstJsonObject(responseText)
+    if (!jsonText) {
       return null
     }
 
-    const parsed = JSON.parse(jsonMatch[0])
+    const parsed = JSON.parse(jsonText)
 
     // Normalize the response
     return {
