@@ -148,7 +148,7 @@ export class StatusBar {
     if (!this.isEnabled) return
 
     this.detectTerminalSize()
-    this.setupScrollRegion()
+    this.setupScrollRegion(true) // Clear screen on initial setup
     this.listenForResize()
     this.render()
   }
@@ -163,10 +163,20 @@ export class StatusBar {
 
   /**
    * Set up the scroll region to exclude the bottom status line.
+   * @param clearScreen - Whether to clear the screen first (only for initial setup)
    */
-  private setupScrollRegion(): void {
-    // Set scroll region from row 1 to (rows - statusHeight)
+  private setupScrollRegion(clearScreen = false): void {
     const scrollBottom = this.rows - this.statusHeight
+
+    if (clearScreen) {
+      // Clear the screen and move cursor to top-left before setting up scroll region.
+      // This prevents old content from appearing in weird positions after the
+      // scroll region is established.
+      process.stdout.write(`${ESC}2J`) // Clear entire screen
+      process.stdout.write(`${ESC}1;1H`) // Move cursor to top-left
+    }
+
+    // Set scroll region from row 1 to (rows - statusHeight)
     process.stdout.write(`${ESC}1;${scrollBottom}r`)
     // Move cursor to top of scroll region
     process.stdout.write(`${ESC}1;1H`)
