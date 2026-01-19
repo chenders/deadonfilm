@@ -13,6 +13,11 @@ import OpenAI from "openai"
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
+import {
+  buildEnrichedDeathPrompt,
+  parseEnrichedResponse,
+  type EnrichedDeathResponse,
+} from "./shared-prompt.js"
 
 const PERPLEXITY_BASE_URL = "https://api.perplexity.ai"
 
@@ -66,7 +71,8 @@ export class PerplexitySource extends BaseDataSource {
       }
     }
 
-    const prompt = this.buildPrompt(actor)
+    // Use shared enriched prompt for career context
+    const prompt = buildEnrichedDeathPrompt(actor)
 
     try {
       console.log(`Perplexity search for: ${actor.name}`)
@@ -80,6 +86,7 @@ export class PerplexitySource extends BaseDataSource {
             content:
               "You are a research assistant helping to document deaths of actors. " +
               "Search for and provide factual information about how the specified person died. " +
+              "Include career context like their last project and career status at time of death. " +
               "Distinguish between confirmed facts and rumors/speculation.",
           },
           {
@@ -91,8 +98,9 @@ export class PerplexitySource extends BaseDataSource {
 
       const responseText = response.choices[0]?.message?.content || ""
 
-      // Parse the response
-      const parsed = this.parseResponse(responseText)
+      // Parse using shared parser first, then fallback
+      const enrichedParsed = parseEnrichedResponse(responseText)
+      const parsed = enrichedParsed || this.parseResponse(responseText)
 
       if (!parsed || !parsed.circumstances) {
         return {
@@ -110,7 +118,15 @@ export class PerplexitySource extends BaseDataSource {
         parsed.confidence === "high" ? 0.85 : parsed.confidence === "medium" ? 0.65 : 0.45
 
       // Use the first source URL from Perplexity's web search results
-      const sourceUrl = parsed.sources?.[0] || undefined
+      const sourceUrl =
+        enrichedParsed?.sources?.[0] ||
+        (parsed as ParsedPerplexityResponse).sources?.[0] ||
+        undefined
+
+      // Convert career context fields if using enriched parser
+      const lastProject = this.convertLastProject(enrichedParsed)
+      const posthumousReleases = this.convertPosthumousReleases(enrichedParsed)
+      const relatedCelebrities = this.convertRelatedCelebrities(enrichedParsed)
 
       return {
         success: true,
@@ -120,11 +136,24 @@ export class PerplexitySource extends BaseDataSource {
         }),
         data: {
           circumstances: parsed.circumstances,
-          rumoredCircumstances: parsed.rumoredCircumstances,
-          notableFactors: parsed.notableFactors,
-          relatedCelebrities: [],
-          locationOfDeath: parsed.locationOfDeath,
-          additionalContext: parsed.additionalContext,
+          rumoredCircumstances:
+            enrichedParsed?.rumored_circumstances ??
+            (parsed as ParsedPerplexityResponse).rumoredCircumstances ??
+            null,
+          notableFactors:
+            enrichedParsed?.notable_factors ??
+            (parsed as ParsedPerplexityResponse).notableFactors ??
+            [],
+          relatedCelebrities,
+          locationOfDeath:
+            enrichedParsed?.location_of_death ??
+            (parsed as ParsedPerplexityResponse).locationOfDeath ??
+            null,
+          additionalContext: null,
+          lastProject,
+          careerStatusAtDeath: enrichedParsed?.career_status_at_death ?? null,
+          posthumousReleases,
+          relatedDeaths: enrichedParsed?.related_deaths ?? null,
         },
       }
     } catch (error) {
@@ -138,46 +167,53 @@ export class PerplexitySource extends BaseDataSource {
   }
 
   /**
-   * Build a search-focused prompt for Perplexity.
+   * Convert last_project from response to ProjectReference.
    */
-  private buildPrompt(actor: ActorForEnrichment): string {
-    const deathDate = actor.deathday
-      ? new Date(actor.deathday).toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-      : "unknown date"
-
-    return `Search for how ${actor.name} (actor) died on ${deathDate}.
-
-Respond with JSON only. No career info, awards, or biography.
-
-Fields:
-- circumstances: A narrative sentence describing how they died. Include context like where found, what led to death, medical details. Write as prose, not a list.
-- location_of_death: City, State/Country
-- notable_factors: Short tags only: "sudden", "long illness", "accident", "suicide", "overdose", "found unresponsive", "on life support". NOT medical conditions or diagnoses.
-- rumored_circumstances: ONLY if there are disputed facts, alternative theories, or controversy. null if death is straightforward.
-- sources: URLs where you found the information
-
-{
-  "circumstances": "narrative sentence",
-  "location_of_death": "City, State or null",
-  "notable_factors": ["tag"] or [],
-  "rumored_circumstances": "disputed theory or null",
-  "confidence": "high" | "medium" | "low",
-  "sources": ["url1"]
-}
-
-Good examples:
-{"circumstances": "She was found unresponsive at her home and pronounced dead at the scene. She had a history of seizures.", "location_of_death": "North Hills, California", "notable_factors": ["found unresponsive"], "rumored_circumstances": null, "confidence": "high", "sources": ["tmz.com/..."]}
-{"circumstances": "He had been battling pancreatic cancer for several months, keeping his diagnosis secret from the public.", "location_of_death": "London, England", "notable_factors": ["long illness"], "rumored_circumstances": null, "confidence": "high", "sources": ["bbc.com/..."]}
-
-If unknown: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null, "sources": []}`
+  private convertLastProject(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): import("../types.js").ProjectReference | null {
+    if (!parsed?.last_project) return null
+    return {
+      title: parsed.last_project.title,
+      year: parsed.last_project.year ?? null,
+      tmdbId: null,
+      imdbId: null,
+      type: parsed.last_project.type ?? "unknown",
+    }
   }
 
   /**
-   * Parse Perplexity response.
+   * Convert posthumous_releases from response to ProjectReference[].
+   */
+  private convertPosthumousReleases(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): import("../types.js").ProjectReference[] | null {
+    if (!parsed?.posthumous_releases || parsed.posthumous_releases.length === 0) return null
+    return parsed.posthumous_releases.map((p) => ({
+      title: p.title,
+      year: p.year ?? null,
+      tmdbId: null,
+      imdbId: null,
+      type: p.type ?? "unknown",
+    }))
+  }
+
+  /**
+   * Convert related_celebrities from response to RelatedCelebrity[].
+   */
+  private convertRelatedCelebrities(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): import("../types.js").RelatedCelebrity[] {
+    if (!parsed?.related_celebrities || parsed.related_celebrities.length === 0) return []
+    return parsed.related_celebrities.map((c) => ({
+      name: c.name,
+      tmdbId: null,
+      relationship: c.relationship,
+    }))
+  }
+
+  /**
+   * Parse Perplexity response (fallback).
    */
   private parseResponse(responseText: string): ParsedPerplexityResponse | null {
     try {

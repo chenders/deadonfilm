@@ -11,8 +11,18 @@
 
 import OpenAI from "openai"
 import { BaseDataSource } from "../base-source.js"
-import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
+import type {
+  ActorForEnrichment,
+  SourceLookupResult,
+  ProjectReference,
+  RelatedCelebrity,
+} from "../types.js"
 import { DataSourceType } from "../types.js"
+import {
+  buildEnrichedDeathPrompt,
+  parseEnrichedResponse,
+  type EnrichedDeathResponse,
+} from "./shared-prompt.js"
 
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
@@ -65,14 +75,15 @@ export class DeepSeekSource extends BaseDataSource {
       }
     }
 
-    const prompt = this.buildPrompt(actor)
+    // Use shared enriched prompt for career context
+    const prompt = buildEnrichedDeathPrompt(actor)
 
     try {
       console.log(`DeepSeek query for: ${actor.name}`)
 
       const response = await client.chat.completions.create({
         model: this.modelId,
-        max_tokens: 800,
+        max_tokens: 1000,
         temperature: 0.1, // Low temperature for factual responses
         messages: [
           {
@@ -80,6 +91,7 @@ export class DeepSeekSource extends BaseDataSource {
             content:
               "You are a research assistant helping to document deaths of actors. " +
               "Provide factual information about how the specified person died. " +
+              "Include career context like their last project and career status at time of death. " +
               "Distinguish between confirmed facts and rumors/speculation. " +
               "If you don't know or are uncertain, say so clearly.",
           },
@@ -92,8 +104,9 @@ export class DeepSeekSource extends BaseDataSource {
 
       const responseText = response.choices[0]?.message?.content || ""
 
-      // Parse the response
-      const parsed = this.parseResponse(responseText)
+      // Parse using shared parser first, then fallback
+      const enrichedParsed = parseEnrichedResponse(responseText)
+      const parsed = enrichedParsed || this.parseResponse(responseText)
 
       if (!parsed || !parsed.circumstances) {
         return {
@@ -110,6 +123,11 @@ export class DeepSeekSource extends BaseDataSource {
       const confidence =
         parsed.confidence === "high" ? 0.7 : parsed.confidence === "medium" ? 0.5 : 0.3
 
+      // Convert career context fields if using enriched parser
+      const lastProject = this.convertLastProject(enrichedParsed)
+      const posthumousReleases = this.convertPosthumousReleases(enrichedParsed)
+      const relatedCelebrities = this.convertRelatedCelebrities(enrichedParsed)
+
       return {
         success: true,
         source: this.createSourceEntry(startTime, confidence, undefined, prompt, {
@@ -118,11 +136,24 @@ export class DeepSeekSource extends BaseDataSource {
         }),
         data: {
           circumstances: parsed.circumstances,
-          rumoredCircumstances: parsed.rumoredCircumstances,
-          notableFactors: parsed.notableFactors,
-          relatedCelebrities: [],
-          locationOfDeath: parsed.locationOfDeath,
-          additionalContext: parsed.additionalContext,
+          rumoredCircumstances:
+            enrichedParsed?.rumored_circumstances ??
+            (parsed as ParsedDeepSeekResponse).rumoredCircumstances ??
+            null,
+          notableFactors:
+            enrichedParsed?.notable_factors ??
+            (parsed as ParsedDeepSeekResponse).notableFactors ??
+            [],
+          relatedCelebrities,
+          locationOfDeath:
+            enrichedParsed?.location_of_death ??
+            (parsed as ParsedDeepSeekResponse).locationOfDeath ??
+            null,
+          additionalContext: (parsed as ParsedDeepSeekResponse).additionalContext ?? null,
+          lastProject,
+          careerStatusAtDeath: enrichedParsed?.career_status_at_death ?? null,
+          posthumousReleases,
+          relatedDeaths: enrichedParsed?.related_deaths ?? null,
         },
       }
     } catch (error) {
@@ -136,51 +167,53 @@ export class DeepSeekSource extends BaseDataSource {
   }
 
   /**
-   * Build a research prompt for DeepSeek.
+   * Convert last_project from response to ProjectReference.
    */
-  private buildPrompt(actor: ActorForEnrichment): string {
-    const deathDate = actor.deathday
-      ? new Date(actor.deathday).toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-      : "unknown date"
-
-    const birthInfo = actor.birthday
-      ? ` (born ${new Date(actor.birthday).toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })})`
-      : ""
-
-    return `Research the death of ${actor.name}${birthInfo}, the actor who died on ${deathDate}.
-
-I need accurate information about:
-1. How they died (cause and circumstances)
-2. Where they died (location)
-3. Any notable or unusual factors about their death
-4. Any disputed aspects, controversies, or alternative theories about their death
-
-Important: Only provide information you are confident about. If uncertain, indicate that clearly.
-
-Respond with JSON in this format:
-{
-  "circumstances": "How they died - be specific and accurate",
-  "notable_factors": ["list of notable factors about the death"] or [],
-  "rumored_circumstances": "Any disputed info, controversies, or alternative theories, or null if none",
-  "location_of_death": "City, State/Country where they died, or null if unknown",
-  "additional_context": "Any other relevant context about their death, or null",
-  "confidence": "high" | "medium" | "low"
-}
-
-If you don't have reliable information about this person's death:
-{"circumstances": null, "notable_factors": [], "rumored_circumstances": null, "location_of_death": null, "additional_context": null, "confidence": null}`
+  private convertLastProject(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): ProjectReference | null {
+    if (!parsed?.last_project) return null
+    return {
+      title: parsed.last_project.title,
+      year: parsed.last_project.year ?? null,
+      tmdbId: null,
+      imdbId: null,
+      type: parsed.last_project.type ?? "unknown",
+    }
   }
 
   /**
-   * Parse DeepSeek response.
+   * Convert posthumous_releases from response to ProjectReference[].
+   */
+  private convertPosthumousReleases(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): ProjectReference[] | null {
+    if (!parsed?.posthumous_releases || parsed.posthumous_releases.length === 0) return null
+    return parsed.posthumous_releases.map((p) => ({
+      title: p.title,
+      year: p.year ?? null,
+      tmdbId: null,
+      imdbId: null,
+      type: p.type ?? "unknown",
+    }))
+  }
+
+  /**
+   * Convert related_celebrities from response to RelatedCelebrity[].
+   */
+  private convertRelatedCelebrities(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): RelatedCelebrity[] {
+    if (!parsed?.related_celebrities || parsed.related_celebrities.length === 0) return []
+    return parsed.related_celebrities.map((c) => ({
+      name: c.name,
+      tmdbId: null,
+      relationship: c.relationship,
+    }))
+  }
+
+  /**
+   * Parse DeepSeek response (fallback).
    */
   private parseResponse(responseText: string): ParsedDeepSeekResponse | null {
     try {
