@@ -20,7 +20,7 @@ const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
  * Wikidata sometimes returns genid URLs instead of actual labels when the value
  * is a complex statement or blank node.
  */
-function isValidLabel(value: string | undefined): value is string {
+export function isValidLabel(value: string | undefined): value is string {
   if (!value) return false
   // Filter out URLs, genid references, and Wikidata entity IDs without labels
   if (value.startsWith("http://") || value.startsWith("https://")) return false
@@ -32,7 +32,7 @@ function isValidLabel(value: string | undefined): value is string {
 /**
  * Get a valid label value or null if invalid.
  */
-function getValidLabel(value: string | undefined): string | null {
+export function getValidLabel(value: string | undefined): string | null {
   return isValidLabel(value) ? value : null
 }
 
