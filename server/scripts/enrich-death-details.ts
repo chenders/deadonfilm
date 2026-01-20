@@ -657,7 +657,33 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       const locationOfDeath = cleaned?.locationOfDeath || enrichment.locationOfDeath
       const notableFactors = cleaned?.notableFactors || enrichment.notableFactors
       const additionalContext = cleaned?.additionalContext || enrichment.additionalContext
-      const relatedDeaths = cleaned?.relatedDeaths || null
+      const relatedDeaths = cleaned?.relatedDeaths || enrichment.relatedDeaths || null
+
+      // New fields from Claude cleanup
+      const causeConfidence = cleaned?.causeConfidence || null
+      const detailsConfidence = cleaned?.detailsConfidence || null
+      const birthdayConfidence = cleaned?.birthdayConfidence || null
+      const deathdayConfidence = cleaned?.deathdayConfidence || null
+      const lastProject = cleaned?.lastProject || enrichment.lastProject || null
+      const careerStatusAtDeath =
+        cleaned?.careerStatusAtDeath || enrichment.careerStatusAtDeath || null
+      const posthumousReleases =
+        cleaned?.posthumousReleases || enrichment.posthumousReleases || null
+      const relatedCelebrities =
+        cleaned?.relatedCelebrities || enrichment.relatedCelebrities || null
+
+      // Look up related_celebrity_ids from actors table
+      let relatedCelebrityIds: number[] | null = null
+      if (relatedCelebrities && relatedCelebrities.length > 0) {
+        const names = relatedCelebrities.map((c) => c.name)
+        const idResult = await db.query<{ id: number }>(
+          `SELECT id FROM actors WHERE name = ANY($1)`,
+          [names]
+        )
+        if (idResult.rows.length > 0) {
+          relatedCelebrityIds = idResult.rows.map((r) => r.id)
+        }
+      }
 
       // Determine confidence level
       const circumstancesConfidence =
@@ -670,39 +696,76 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               : "low"
           : null)
 
-      // Update actor_death_circumstances table
+      // Update actor_death_circumstances table with all fields
       await db.query(
         `INSERT INTO actor_death_circumstances (
           actor_id,
           circumstances,
           circumstances_confidence,
           rumored_circumstances,
+          cause_confidence,
+          details_confidence,
+          birthday_confidence,
+          deathday_confidence,
           location_of_death,
+          last_project,
+          career_status_at_death,
+          posthumous_releases,
+          related_celebrity_ids,
+          related_celebrities,
           notable_factors,
           additional_context,
           related_deaths,
           sources,
           raw_response,
+          enriched_at,
+          enrichment_source,
+          enrichment_version,
           created_at,
           updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), $20, $21, NOW(), NOW())
         ON CONFLICT (actor_id) DO UPDATE SET
           circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
           circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
           rumored_circumstances = COALESCE(EXCLUDED.rumored_circumstances, actor_death_circumstances.rumored_circumstances),
+          cause_confidence = COALESCE(EXCLUDED.cause_confidence, actor_death_circumstances.cause_confidence),
+          details_confidence = COALESCE(EXCLUDED.details_confidence, actor_death_circumstances.details_confidence),
+          birthday_confidence = COALESCE(EXCLUDED.birthday_confidence, actor_death_circumstances.birthday_confidence),
+          deathday_confidence = COALESCE(EXCLUDED.deathday_confidence, actor_death_circumstances.deathday_confidence),
           location_of_death = COALESCE(EXCLUDED.location_of_death, actor_death_circumstances.location_of_death),
+          last_project = COALESCE(EXCLUDED.last_project, actor_death_circumstances.last_project),
+          career_status_at_death = COALESCE(EXCLUDED.career_status_at_death, actor_death_circumstances.career_status_at_death),
+          posthumous_releases = COALESCE(EXCLUDED.posthumous_releases, actor_death_circumstances.posthumous_releases),
+          related_celebrity_ids = COALESCE(EXCLUDED.related_celebrity_ids, actor_death_circumstances.related_celebrity_ids),
+          related_celebrities = COALESCE(EXCLUDED.related_celebrities, actor_death_circumstances.related_celebrities),
           notable_factors = COALESCE(EXCLUDED.notable_factors, actor_death_circumstances.notable_factors),
           additional_context = COALESCE(EXCLUDED.additional_context, actor_death_circumstances.additional_context),
           related_deaths = COALESCE(EXCLUDED.related_deaths, actor_death_circumstances.related_deaths),
           sources = COALESCE(EXCLUDED.sources, actor_death_circumstances.sources),
           raw_response = COALESCE(EXCLUDED.raw_response, actor_death_circumstances.raw_response),
+          enriched_at = NOW(),
+          enrichment_source = EXCLUDED.enrichment_source,
+          enrichment_version = EXCLUDED.enrichment_version,
           updated_at = NOW()`,
         [
           actorId,
           circumstances,
           circumstancesConfidence,
           rumoredCircumstances,
+          causeConfidence,
+          detailsConfidence,
+          birthdayConfidence,
+          deathdayConfidence,
           locationOfDeath,
+          lastProject ? JSON.stringify(lastProject) : null,
+          careerStatusAtDeath,
+          posthumousReleases && posthumousReleases.length > 0
+            ? JSON.stringify(posthumousReleases)
+            : null,
+          relatedCelebrityIds,
+          relatedCelebrities && relatedCelebrities.length > 0
+            ? JSON.stringify(relatedCelebrities)
+            : null,
           notableFactors && notableFactors.length > 0 ? notableFactors : null,
           additionalContext,
           relatedDeaths,
@@ -711,6 +774,8 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
             rumoredCircumstances: enrichment.rumoredCircumstancesSource,
             notableFactors: enrichment.notableFactorsSource,
             locationOfDeath: enrichment.locationOfDeathSource,
+            lastProject: enrichment.lastProjectSource,
+            careerStatusAtDeath: enrichment.careerStatusAtDeathSource,
             cleanupSource: cleaned ? "claude-opus-4.5" : null,
           }),
           enrichment.rawSources
@@ -719,6 +784,8 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
                 gatheredAt: new Date().toISOString(),
               })
             : null,
+          "multi-source-enrichment",
+          "2.0.0", // Version with career context fields
         ]
       )
 

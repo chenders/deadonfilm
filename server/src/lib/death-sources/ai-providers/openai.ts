@@ -8,44 +8,21 @@
 
 import OpenAI from "openai"
 import { BaseDataSource } from "../base-source.js"
-import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
+import type {
+  ActorForEnrichment,
+  SourceLookupResult,
+  ProjectReference,
+  RelatedCelebrity,
+} from "../types.js"
 import { DataSourceType } from "../types.js"
+import {
+  buildEnrichedDeathPrompt,
+  parseEnrichedResponse,
+  type EnrichedDeathResponse,
+} from "./shared-prompt.js"
 
 /**
- * Build a prompt for extracting death circumstances from an AI model.
- */
-function buildDeathPrompt(actor: ActorForEnrichment): string {
-  const birthYear = actor.birthday ? new Date(actor.birthday).getFullYear() : "unknown"
-  const deathYear = actor.deathday ? new Date(actor.deathday).getFullYear() : "unknown"
-
-  return `You are researching the death of ${actor.name}, an actor who was born in ${birthYear} and died in ${deathYear}.
-
-Please provide information about how ${actor.name} died. Focus on:
-1. The circumstances surrounding their death (how it happened)
-2. Any notable or unusual factors about their death
-3. Any rumors or disputed information about their death (if any)
-4. The location where they died (if known)
-
-Important:
-- Only provide factual information you're confident about
-- Distinguish between confirmed facts and rumors/speculation
-- If you don't have reliable information, say so
-
-Respond ONLY with JSON in this exact format:
-{
-  "circumstances": "Description of how they died, or null if unknown",
-  "notable_factors": ["factor1", "factor2"] or [] if none,
-  "rumored_circumstances": "Any disputed or rumored aspects, or null if none",
-  "location_of_death": "City, State/Country or null if unknown",
-  "confidence": "high" | "medium" | "low"
-}
-
-If you don't have any reliable information about their death:
-{"circumstances": null, "notable_factors": [], "rumored_circumstances": null, "location_of_death": null, "confidence": null}`
-}
-
-/**
- * Parse AI response into enrichment data.
+ * Parse AI response into enrichment data (fallback).
  */
 function parseAIResponse(responseText: string): ParsedAIResponse | null {
   try {
@@ -113,15 +90,23 @@ abstract class OpenAIBaseSource extends BaseDataSource {
       }
     }
 
-    const prompt = buildDeathPrompt(actor)
+    // Use shared enriched prompt for career context
+    const prompt = buildEnrichedDeathPrompt(actor)
 
     try {
       console.log(`${this.name} query for: ${actor.name}`)
 
       const response = await client.chat.completions.create({
         model: this.modelId,
-        max_tokens: 500,
+        max_tokens: 1000,
         messages: [
+          {
+            role: "system",
+            content:
+              "You are a research assistant helping to document deaths of actors. " +
+              "Include career context like their last project and career status at time of death. " +
+              "Distinguish between confirmed facts and rumors/speculation.",
+          },
           {
             role: "user",
             content: prompt,
@@ -131,7 +116,9 @@ abstract class OpenAIBaseSource extends BaseDataSource {
 
       const responseText = response.choices[0]?.message?.content || ""
 
-      const parsed = parseAIResponse(responseText)
+      // Parse using shared parser first, then fallback
+      const enrichedParsed = parseEnrichedResponse(responseText)
+      const parsed = enrichedParsed || parseAIResponse(responseText)
 
       if (!parsed || !parsed.circumstances) {
         return {
@@ -148,6 +135,11 @@ abstract class OpenAIBaseSource extends BaseDataSource {
       const confidenceMap = { high: 0.8, medium: 0.5, low: 0.3 }
       const confidence = parsed.confidence ? confidenceMap[parsed.confidence] : 0.4
 
+      // Convert career context fields if using enriched parser
+      const lastProject = this.convertLastProject(enrichedParsed)
+      const posthumousReleases = this.convertPosthumousReleases(enrichedParsed)
+      const relatedCelebrities = this.convertRelatedCelebrities(enrichedParsed)
+
       return {
         success: true,
         source: this.createSourceEntry(startTime, confidence, undefined, prompt, {
@@ -156,11 +148,22 @@ abstract class OpenAIBaseSource extends BaseDataSource {
         }),
         data: {
           circumstances: parsed.circumstances,
-          rumoredCircumstances: parsed.rumoredCircumstances,
-          notableFactors: parsed.notableFactors,
-          relatedCelebrities: [],
-          locationOfDeath: parsed.locationOfDeath,
+          rumoredCircumstances:
+            enrichedParsed?.rumored_circumstances ??
+            (parsed as ParsedAIResponse).rumoredCircumstances ??
+            null,
+          notableFactors:
+            enrichedParsed?.notable_factors ?? (parsed as ParsedAIResponse).notableFactors ?? [],
+          relatedCelebrities,
+          locationOfDeath:
+            enrichedParsed?.location_of_death ??
+            (parsed as ParsedAIResponse).locationOfDeath ??
+            null,
           additionalContext: null,
+          lastProject,
+          careerStatusAtDeath: enrichedParsed?.career_status_at_death ?? null,
+          posthumousReleases,
+          relatedDeaths: enrichedParsed?.related_deaths ?? null,
         },
       }
     } catch (error) {
@@ -171,6 +174,52 @@ abstract class OpenAIBaseSource extends BaseDataSource {
         error: error instanceof Error ? error.message : "Unknown error",
       }
     }
+  }
+
+  /**
+   * Convert last_project from response to ProjectReference.
+   */
+  private convertLastProject(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): ProjectReference | null {
+    if (!parsed?.last_project) return null
+    return {
+      title: parsed.last_project.title,
+      year: parsed.last_project.year ?? null,
+      tmdbId: null,
+      imdbId: null,
+      type: parsed.last_project.type ?? "unknown",
+    }
+  }
+
+  /**
+   * Convert posthumous_releases from response to ProjectReference[].
+   */
+  private convertPosthumousReleases(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): ProjectReference[] | null {
+    if (!parsed?.posthumous_releases || parsed.posthumous_releases.length === 0) return null
+    return parsed.posthumous_releases.map((p) => ({
+      title: p.title,
+      year: p.year ?? null,
+      tmdbId: null,
+      imdbId: null,
+      type: p.type ?? "unknown",
+    }))
+  }
+
+  /**
+   * Convert related_celebrities from response to RelatedCelebrity[].
+   */
+  private convertRelatedCelebrities(
+    parsed: Partial<EnrichedDeathResponse> | null
+  ): RelatedCelebrity[] {
+    if (!parsed?.related_celebrities || parsed.related_celebrities.length === 0) return []
+    return parsed.related_celebrities.map((c) => ({
+      name: c.name,
+      tmdbId: null,
+      relationship: c.relationship,
+    }))
   }
 }
 
