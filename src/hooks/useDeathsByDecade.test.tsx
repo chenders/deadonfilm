@@ -194,9 +194,42 @@ describe("useDecadeCategories", () => {
 
   const mockCategories = {
     decades: [
-      { decade: 1980, count: 50 },
-      { decade: 1990, count: 100 },
-      { decade: 2000, count: 150 },
+      {
+        decade: 1980,
+        count: 50,
+        featuredActor: {
+          id: 1,
+          tmdbId: 123,
+          name: "John Doe",
+          profilePath: "/test.jpg",
+          causeOfDeath: "Natural causes",
+        },
+        topCauses: [
+          { cause: "Natural causes", count: 20 },
+          { cause: "Heart attack", count: 15 },
+        ],
+      },
+      {
+        decade: 1990,
+        count: 100,
+        featuredActor: {
+          id: 2,
+          tmdbId: 456,
+          name: "Jane Doe",
+          profilePath: "/test2.jpg",
+          causeOfDeath: "Cancer",
+        },
+        topCauses: [
+          { cause: "Cancer", count: 40 },
+          { cause: "Heart attack", count: 30 },
+        ],
+      },
+      {
+        decade: 2000,
+        count: 150,
+        featuredActor: null,
+        topCauses: [],
+      },
     ],
   }
 
