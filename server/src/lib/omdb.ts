@@ -65,9 +65,7 @@ async function waitForRateLimit(): Promise<void> {
   const now = Date.now()
   const timeSinceLastRequest = now - lastRequestTime
   if (timeSinceLastRequest < REQUEST_DELAY_MS) {
-    await new Promise((resolve) =>
-      setTimeout(resolve, REQUEST_DELAY_MS - timeSinceLastRequest),
-    )
+    await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY_MS - timeSinceLastRequest))
   }
   lastRequestTime = Date.now()
 }
@@ -147,10 +145,7 @@ function extractMetacriticScore(ratings: OMDbRating[]): number | null {
  * @param apiKey - OMDb API key (defaults to OMDB_API_KEY env var)
  * @returns OMDbMetrics or null if not found or error
  */
-export async function getOMDbRatings(
-  imdbId: string,
-  apiKey?: string,
-): Promise<OMDbMetrics | null> {
+export async function getOMDbRatings(imdbId: string, apiKey?: string): Promise<OMDbMetrics | null> {
   const key = apiKey || process.env.OMDB_API_KEY
   if (!key) {
     throw new Error("OMDB_API_KEY environment variable not set")
