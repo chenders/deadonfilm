@@ -34,6 +34,9 @@ import {
 // Re-export for convenience
 export { CAUSE_CATEGORIES, type CauseCategoryKey } from "../cause-categories.js"
 
+// Maximum number of top causes to display per decade
+const MAX_CAUSES_PER_DECADE = 3
+
 // ============================================================================
 // Deaths by Cause functions (SEO category pages)
 // ============================================================================
@@ -188,7 +191,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     )
     SELECT decade, cause, count
     FROM ranked_causes
-    WHERE rn <= 6
+    WHERE rn <= ${MAX_CAUSES_PER_DECADE}
     ORDER BY decade DESC, count DESC
   `)
 
@@ -240,6 +243,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     existing.push({
       cause: row.cause,
       count: parseInt(row.count, 10),
+      slug: createCauseSlug(row.cause),
     })
     causesByDecade.set(row.decade, existing)
   }
@@ -264,8 +268,8 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
       }
       return true
     })
-    // Keep only top 3 after filtering
-    causesByDecade.set(decade, filtered.slice(0, 3))
+    // Keep only top causes after filtering
+    causesByDecade.set(decade, filtered.slice(0, MAX_CAUSES_PER_DECADE))
   }
 
   const moviesByDecade = new Map<number, DecadeTopMovie>()

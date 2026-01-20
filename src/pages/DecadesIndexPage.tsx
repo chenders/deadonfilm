@@ -6,6 +6,9 @@ import type { DecadeCategory } from "@/types"
 import { getProfileUrl, getBackdropUrl } from "@/services/api"
 import { createMovieSlug, createActorSlug } from "@/utils/slugify"
 
+// Maximum number of top causes to display per decade
+const MAX_DISPLAYED_CAUSES = 3
+
 interface DecadeCardProps {
   category: DecadeCategory
 }
@@ -100,10 +103,10 @@ function DecadeCard({ category }: DecadeCardProps) {
               Top Causes
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {topCauses.slice(0, 3).map((cause) => (
+              {topCauses.slice(0, MAX_DISPLAYED_CAUSES).map((cause) => (
                 <Link
                   key={cause.cause}
-                  to={`/deaths/${encodeURIComponent(cause.cause.toLowerCase().replace(/\s+/g, "-"))}`}
+                  to={`/deaths/${cause.slug}`}
                   className="rounded-full border border-brown-medium/30 bg-cream px-2.5 py-1 text-xs text-brown-dark transition-colors hover:bg-brown-light/30"
                 >
                   {cause.cause}

@@ -205,8 +205,8 @@ describe("useDecadeCategories", () => {
           causeOfDeath: "Natural causes",
         },
         topCauses: [
-          { cause: "Natural causes", count: 20 },
-          { cause: "Heart attack", count: 15 },
+          { cause: "Natural causes", count: 20, slug: "natural-causes" },
+          { cause: "Heart attack", count: 15, slug: "heart-attack" },
         ],
         topMovie: {
           tmdbId: 100,
@@ -226,8 +226,8 @@ describe("useDecadeCategories", () => {
           causeOfDeath: "Cancer",
         },
         topCauses: [
-          { cause: "Cancer", count: 40 },
-          { cause: "Heart attack", count: 30 },
+          { cause: "Cancer", count: 40, slug: "cancer" },
+          { cause: "Heart attack", count: 30, slug: "heart-attack" },
         ],
         topMovie: {
           tmdbId: 200,
