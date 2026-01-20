@@ -63,6 +63,69 @@ import { MistralSource } from "./ai-providers/mistral.js"
 import { GroqLlamaSource } from "./ai-providers/groq.js"
 
 /**
+ * Merge enrichment data into result using first-wins strategy.
+ * Only merges non-null values that aren't already set in the result.
+ * Exported for testing.
+ */
+export function mergeEnrichmentData(
+  result: EnrichmentResult,
+  data: Partial<EnrichmentData>,
+  source: EnrichmentSourceEntry
+): void {
+  // Core fields
+  if (data.circumstances && !result.circumstances) {
+    result.circumstances = data.circumstances
+    result.circumstancesSource = source
+  }
+
+  if (data.rumoredCircumstances && !result.rumoredCircumstances) {
+    result.rumoredCircumstances = data.rumoredCircumstances
+    result.rumoredCircumstancesSource = source
+  }
+
+  if (data.notableFactors && data.notableFactors.length > 0 && !result.notableFactors) {
+    result.notableFactors = data.notableFactors
+    result.notableFactorsSource = source
+  }
+
+  if (data.relatedCelebrities && data.relatedCelebrities.length > 0 && !result.relatedCelebrities) {
+    result.relatedCelebrities = data.relatedCelebrities
+    result.relatedCelebritiesSource = source
+  }
+
+  if (data.locationOfDeath && !result.locationOfDeath) {
+    result.locationOfDeath = data.locationOfDeath
+    result.locationOfDeathSource = source
+  }
+
+  if (data.additionalContext && !result.additionalContext) {
+    result.additionalContext = data.additionalContext
+    result.additionalContextSource = source
+  }
+
+  // Career context fields
+  if (data.lastProject && !result.lastProject) {
+    result.lastProject = data.lastProject
+    result.lastProjectSource = source
+  }
+
+  if (data.careerStatusAtDeath && !result.careerStatusAtDeath) {
+    result.careerStatusAtDeath = data.careerStatusAtDeath
+    result.careerStatusAtDeathSource = source
+  }
+
+  if (data.posthumousReleases && data.posthumousReleases.length > 0 && !result.posthumousReleases) {
+    result.posthumousReleases = data.posthumousReleases
+    result.posthumousReleasesSource = source
+  }
+
+  if (data.relatedDeaths && !result.relatedDeaths) {
+    result.relatedDeaths = data.relatedDeaths
+    result.relatedDeathsSource = source
+  }
+}
+
+/**
  * Extended enrichment result that includes raw sources and Claude cleanup data.
  * Used when claudeCleanup is enabled.
  */
@@ -792,65 +855,7 @@ export class DeathEnrichmentOrchestrator {
     data: Partial<EnrichmentData>,
     source: EnrichmentSourceEntry
   ): void {
-    // Only merge non-null values that aren't already set
-    if (data.circumstances && !result.circumstances) {
-      result.circumstances = data.circumstances
-      result.circumstancesSource = source
-    }
-
-    if (data.rumoredCircumstances && !result.rumoredCircumstances) {
-      result.rumoredCircumstances = data.rumoredCircumstances
-      result.rumoredCircumstancesSource = source
-    }
-
-    if (data.notableFactors && data.notableFactors.length > 0 && !result.notableFactors) {
-      result.notableFactors = data.notableFactors
-      result.notableFactorsSource = source
-    }
-
-    if (
-      data.relatedCelebrities &&
-      data.relatedCelebrities.length > 0 &&
-      !result.relatedCelebrities
-    ) {
-      result.relatedCelebrities = data.relatedCelebrities
-      result.relatedCelebritiesSource = source
-    }
-
-    if (data.locationOfDeath && !result.locationOfDeath) {
-      result.locationOfDeath = data.locationOfDeath
-      result.locationOfDeathSource = source
-    }
-
-    if (data.additionalContext && !result.additionalContext) {
-      result.additionalContext = data.additionalContext
-      result.additionalContextSource = source
-    }
-
-    // Career context fields
-    if (data.lastProject && !result.lastProject) {
-      result.lastProject = data.lastProject
-      result.lastProjectSource = source
-    }
-
-    if (data.careerStatusAtDeath && !result.careerStatusAtDeath) {
-      result.careerStatusAtDeath = data.careerStatusAtDeath
-      result.careerStatusAtDeathSource = source
-    }
-
-    if (
-      data.posthumousReleases &&
-      data.posthumousReleases.length > 0 &&
-      !result.posthumousReleases
-    ) {
-      result.posthumousReleases = data.posthumousReleases
-      result.posthumousReleasesSource = source
-    }
-
-    if (data.relatedDeaths && !result.relatedDeaths) {
-      result.relatedDeaths = data.relatedDeaths
-      result.relatedDeathsSource = source
-    }
+    mergeEnrichmentData(result, data, source)
   }
 
   /**
