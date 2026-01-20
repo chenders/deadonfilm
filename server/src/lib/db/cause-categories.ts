@@ -188,7 +188,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     )
     SELECT decade, cause, count
     FROM ranked_causes
-    WHERE rn <= 3
+    WHERE rn <= 6
     ORDER BY decade DESC, count DESC
   `)
 
@@ -242,6 +242,30 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
       count: parseInt(row.count, 10),
     })
     causesByDecade.set(row.decade, existing)
+  }
+
+  // Filter out redundant causes (e.g., "Lung cancer" when "Cancer" is already present)
+  // A cause is redundant if it overlaps with another higher-ranked cause
+  for (const [decade, causes] of causesByDecade) {
+    const filtered = causes.filter((cause, index) => {
+      const causeLower = cause.cause.toLowerCase()
+      // Check if any higher-ranked cause overlaps with this cause
+      for (let i = 0; i < index; i++) {
+        const higherCauseLower = causes[i].cause.toLowerCase()
+        // Filter if either:
+        // - This cause contains a higher-ranked cause (e.g., "pancreatic cancer" contains "cancer")
+        // - A higher-ranked cause contains this cause (e.g., "lung cancer" contains "cancer")
+        if (
+          (causeLower.includes(higherCauseLower) || higherCauseLower.includes(causeLower)) &&
+          causeLower !== higherCauseLower
+        ) {
+          return false // Filter out this redundant cause
+        }
+      }
+      return true
+    })
+    // Keep only top 3 after filtering
+    causesByDecade.set(decade, filtered.slice(0, 3))
   }
 
   const moviesByDecade = new Map<number, DecadeTopMovie>()

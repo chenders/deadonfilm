@@ -287,7 +287,12 @@ describe("getDecadeCategoriesHandler", () => {
         causeOfDeath: "Natural causes",
       },
       topCauses: [{ cause: "Natural causes", count: 20 }],
-      topMovie: { tmdbId: 100, title: "Test Movie", releaseYear: 2020, backdropPath: "/backdrop.jpg" },
+      topMovie: {
+        tmdbId: 100,
+        title: "Test Movie",
+        releaseYear: 2020,
+        backdropPath: "/backdrop.jpg",
+      },
     },
     {
       decade: 2010,
