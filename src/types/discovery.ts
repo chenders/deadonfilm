@@ -73,11 +73,19 @@ export interface DecadeTopCause {
   count: number
 }
 
+export interface DecadeTopMovie {
+  tmdbId: number
+  title: string
+  releaseYear: number | null
+  backdropPath: string | null
+}
+
 export interface DecadeCategory {
   decade: number
   count: number
   featuredActor: DecadeFeaturedActor | null
   topCauses: DecadeTopCause[]
+  topMovie: DecadeTopMovie | null
 }
 
 export interface DecadeCategoriesResponse {
