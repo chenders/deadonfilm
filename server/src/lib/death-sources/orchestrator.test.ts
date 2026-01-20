@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
-import { DEFAULT_CONFIG, DeathEnrichmentOrchestrator } from "./orchestrator.js"
+import { DEFAULT_CONFIG, DeathEnrichmentOrchestrator, mergeEnrichmentData } from "./orchestrator.js"
 import { CostLimitExceededError } from "./types.js"
+import type { EnrichmentResult, EnrichmentData, EnrichmentSourceEntry } from "./types.js"
 
 /**
  * Tests for the DeathEnrichmentOrchestrator.
@@ -93,6 +94,265 @@ describe("DeathEnrichmentOrchestrator", () => {
       expect(stats.totalTimeMs).toBe(0)
       expect(stats.costBySource).toEqual({})
       expect(stats.errors).toEqual([])
+    })
+  })
+})
+
+describe("mergeEnrichmentData", () => {
+  const createEmptyResult = (): EnrichmentResult => ({})
+
+  const createSource = (name: string): EnrichmentSourceEntry => ({
+    type: name as EnrichmentSourceEntry["type"],
+    retrievedAt: new Date(),
+    confidence: 0.8,
+  })
+
+  describe("core fields", () => {
+    it("merges circumstances when not already set", () => {
+      const result = createEmptyResult()
+      const source = createSource("wikidata")
+
+      mergeEnrichmentData(result, { circumstances: "Died of natural causes" }, source)
+
+      expect(result.circumstances).toBe("Died of natural causes")
+      expect(result.circumstancesSource).toBe(source)
+    })
+
+    it("does not overwrite existing circumstances (first-wins)", () => {
+      const result = createEmptyResult()
+      result.circumstances = "Original circumstances"
+      const originalSource = createSource("original")
+      result.circumstancesSource = originalSource
+
+      mergeEnrichmentData(result, { circumstances: "New circumstances" }, createSource("new"))
+
+      expect(result.circumstances).toBe("Original circumstances")
+      expect(result.circumstancesSource).toBe(originalSource)
+    })
+
+    it("merges notable factors when array is non-empty", () => {
+      const result = createEmptyResult()
+      const source = createSource("perplexity")
+
+      mergeEnrichmentData(result, { notableFactors: ["sudden", "accident"] }, source)
+
+      expect(result.notableFactors).toEqual(["sudden", "accident"])
+      expect(result.notableFactorsSource).toBe(source)
+    })
+
+    it("does not merge empty notable factors array", () => {
+      const result = createEmptyResult()
+
+      mergeEnrichmentData(result, { notableFactors: [] }, createSource("test"))
+
+      expect(result.notableFactors).toBeUndefined()
+    })
+
+    it("merges location of death", () => {
+      const result = createEmptyResult()
+      const source = createSource("findagrave")
+
+      mergeEnrichmentData(result, { locationOfDeath: "Los Angeles, California" }, source)
+
+      expect(result.locationOfDeath).toBe("Los Angeles, California")
+      expect(result.locationOfDeathSource).toBe(source)
+    })
+  })
+
+  describe("career context fields", () => {
+    it("merges lastProject when not already set", () => {
+      const result = createEmptyResult()
+      const source = createSource("perplexity")
+      const lastProject = {
+        title: "Final Movie",
+        year: 2023,
+        tmdbId: 12345,
+        imdbId: "tt1234567",
+        type: "movie" as const,
+      }
+
+      mergeEnrichmentData(result, { lastProject }, source)
+
+      expect(result.lastProject).toEqual(lastProject)
+      expect(result.lastProjectSource).toBe(source)
+    })
+
+    it("does not overwrite existing lastProject (first-wins)", () => {
+      const result = createEmptyResult()
+      const originalProject = {
+        title: "Original",
+        year: 2020,
+        tmdbId: null,
+        imdbId: null,
+        type: "movie" as const,
+      }
+      result.lastProject = originalProject
+      const originalSource = createSource("original")
+      result.lastProjectSource = originalSource
+
+      const newProject = {
+        title: "New",
+        year: 2023,
+        tmdbId: null,
+        imdbId: null,
+        type: "movie" as const,
+      }
+      mergeEnrichmentData(result, { lastProject: newProject }, createSource("new"))
+
+      expect(result.lastProject).toBe(originalProject)
+      expect(result.lastProjectSource).toBe(originalSource)
+    })
+
+    it("merges careerStatusAtDeath when not already set", () => {
+      const result = createEmptyResult()
+      const source = createSource("gemini")
+
+      mergeEnrichmentData(result, { careerStatusAtDeath: "active" }, source)
+
+      expect(result.careerStatusAtDeath).toBe("active")
+      expect(result.careerStatusAtDeathSource).toBe(source)
+    })
+
+    it("does not overwrite existing careerStatusAtDeath (first-wins)", () => {
+      const result = createEmptyResult()
+      result.careerStatusAtDeath = "retired"
+      const originalSource = createSource("original")
+      result.careerStatusAtDeathSource = originalSource
+
+      mergeEnrichmentData(result, { careerStatusAtDeath: "active" }, createSource("new"))
+
+      expect(result.careerStatusAtDeath).toBe("retired")
+      expect(result.careerStatusAtDeathSource).toBe(originalSource)
+    })
+
+    it("merges posthumousReleases when array is non-empty", () => {
+      const result = createEmptyResult()
+      const source = createSource("openai")
+      const releases = [
+        { title: "After Life", year: 2024, tmdbId: 99999, imdbId: null, type: "movie" as const },
+      ]
+
+      mergeEnrichmentData(result, { posthumousReleases: releases }, source)
+
+      expect(result.posthumousReleases).toEqual(releases)
+      expect(result.posthumousReleasesSource).toBe(source)
+    })
+
+    it("does not merge empty posthumousReleases array", () => {
+      const result = createEmptyResult()
+
+      mergeEnrichmentData(result, { posthumousReleases: [] }, createSource("test"))
+
+      expect(result.posthumousReleases).toBeUndefined()
+    })
+
+    it("does not overwrite existing posthumousReleases (first-wins)", () => {
+      const result = createEmptyResult()
+      const originalReleases = [
+        { title: "Original", year: 2020, tmdbId: null, imdbId: null, type: "movie" as const },
+      ]
+      result.posthumousReleases = originalReleases
+      const originalSource = createSource("original")
+      result.posthumousReleasesSource = originalSource
+
+      const newReleases = [
+        { title: "New", year: 2024, tmdbId: null, imdbId: null, type: "movie" as const },
+      ]
+      mergeEnrichmentData(result, { posthumousReleases: newReleases }, createSource("new"))
+
+      expect(result.posthumousReleases).toBe(originalReleases)
+      expect(result.posthumousReleasesSource).toBe(originalSource)
+    })
+
+    it("merges relatedDeaths when not already set", () => {
+      const result = createEmptyResult()
+      const source = createSource("claude")
+
+      mergeEnrichmentData(result, { relatedDeaths: "Spouse died in same accident" }, source)
+
+      expect(result.relatedDeaths).toBe("Spouse died in same accident")
+      expect(result.relatedDeathsSource).toBe(source)
+    })
+
+    it("does not overwrite existing relatedDeaths (first-wins)", () => {
+      const result = createEmptyResult()
+      result.relatedDeaths = "Original related deaths info"
+      const originalSource = createSource("original")
+      result.relatedDeathsSource = originalSource
+
+      mergeEnrichmentData(result, { relatedDeaths: "New info" }, createSource("new"))
+
+      expect(result.relatedDeaths).toBe("Original related deaths info")
+      expect(result.relatedDeathsSource).toBe(originalSource)
+    })
+  })
+
+  describe("null and undefined handling", () => {
+    it("does not merge null values", () => {
+      const result = createEmptyResult()
+
+      mergeEnrichmentData(
+        result,
+        {
+          circumstances: null as unknown as string,
+          lastProject: null,
+          careerStatusAtDeath: null,
+        },
+        createSource("test")
+      )
+
+      expect(result.circumstances).toBeUndefined()
+      expect(result.lastProject).toBeUndefined()
+      expect(result.careerStatusAtDeath).toBeUndefined()
+    })
+
+    it("does not merge undefined values", () => {
+      const result = createEmptyResult()
+
+      mergeEnrichmentData(result, {}, createSource("test"))
+
+      expect(result.circumstances).toBeUndefined()
+      expect(result.lastProject).toBeUndefined()
+    })
+  })
+
+  describe("multiple merges from different sources", () => {
+    it("combines fields from multiple sources", () => {
+      const result = createEmptyResult()
+      const source1 = createSource("wikidata")
+      const source2 = createSource("perplexity")
+      const source3 = createSource("findagrave")
+
+      // First source provides circumstances
+      mergeEnrichmentData(result, { circumstances: "Heart attack" }, source1)
+
+      // Second source provides career context
+      mergeEnrichmentData(
+        result,
+        {
+          lastProject: {
+            title: "Final Film",
+            year: 2023,
+            tmdbId: null,
+            imdbId: null,
+            type: "movie",
+          },
+          careerStatusAtDeath: "active",
+        },
+        source2
+      )
+
+      // Third source provides location
+      mergeEnrichmentData(result, { locationOfDeath: "New York, NY" }, source3)
+
+      expect(result.circumstances).toBe("Heart attack")
+      expect(result.circumstancesSource).toBe(source1)
+      expect(result.lastProject?.title).toBe("Final Film")
+      expect(result.lastProjectSource).toBe(source2)
+      expect(result.careerStatusAtDeath).toBe("active")
+      expect(result.careerStatusAtDeathSource).toBe(source2)
+      expect(result.locationOfDeath).toBe("New York, NY")
+      expect(result.locationOfDeathSource).toBe(source3)
     })
   })
 })
