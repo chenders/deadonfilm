@@ -241,6 +241,15 @@ describe("cache operations with mocked Redis", () => {
     })
   })
 
+  describe("getActorCacheKeys", () => {
+    it("returns array of all cache keys for an actor", async () => {
+      const { getActorCacheKeys } = await import("./cache.js")
+      const keys = getActorCacheKeys(5576)
+
+      expect(keys).toEqual(["actor:id:5576", "actor:id:5576:type:death"])
+    })
+  })
+
   describe("invalidateActorCache", () => {
     it("invalidates both profile and death cache keys", async () => {
       mockRedisClient.del.mockResolvedValue(2)
@@ -250,6 +259,35 @@ describe("cache operations with mocked Redis", () => {
 
       // Should invalidate both profile and death detail cache keys
       expect(mockRedisClient.del).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
+    })
+  })
+
+  describe("invalidateActorCacheRequired", () => {
+    it("throws error when Redis client is not available", async () => {
+      vi.doMock("./redis.js", () => ({
+        getRedisClient: vi.fn(() => null),
+      }))
+
+      const { invalidateActorCacheRequired } = await import("./cache.js")
+
+      await expect(invalidateActorCacheRequired(5576)).rejects.toThrow(
+        "Redis client not available - cannot invalidate cache"
+      )
+    })
+
+    it("successfully deletes cache keys and logs when Redis is available", async () => {
+      mockRedisClient.del.mockResolvedValue(2)
+
+      const { logger } = await import("./logger.js")
+      const { invalidateActorCacheRequired } = await import("./cache.js")
+
+      await invalidateActorCacheRequired(5576)
+
+      expect(mockRedisClient.del).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
+      expect(logger.info).toHaveBeenCalledWith(
+        { keys: ["actor:id:5576", "actor:id:5576:type:death"], tmdbId: 5576 },
+        "Actor cache invalidated"
+      )
     })
   })
 

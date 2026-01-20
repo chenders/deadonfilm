@@ -22,9 +22,10 @@ import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { invalidateActorCacheRequired } from "../src/lib/cache.js"
+import { getRedisClient } from "../src/lib/redis.js"
 import type { ProjectInfo, RelatedCelebrity } from "../src/lib/db/types.js"
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
   if (isNaN(parsed) || parsed <= 0) {
     throw new InvalidArgumentError("Must be a positive integer")
@@ -58,7 +59,7 @@ interface Stats {
  * Look up a movie or show by title and optional year.
  * Returns the tmdb_id if found, null otherwise.
  */
-async function lookupProject(
+export async function lookupProject(
   db: ReturnType<typeof getPool>,
   title: string,
   year: number | null,
@@ -95,7 +96,10 @@ async function lookupProject(
  * Look up an actor by name.
  * Returns the tmdb_id if found, null otherwise.
  */
-async function lookupActor(db: ReturnType<typeof getPool>, name: string): Promise<number | null> {
+export async function lookupActor(
+  db: ReturnType<typeof getPool>,
+  name: string
+): Promise<number | null> {
   // Exact match first
   const exactResult = await db.query<{ tmdb_id: number }>(
     `SELECT tmdb_id FROM actors WHERE LOWER(name) = LOWER($1) AND tmdb_id IS NOT NULL LIMIT 1`,
@@ -121,12 +125,15 @@ async function lookupActor(db: ReturnType<typeof getPool>, name: string): Promis
 }
 
 // Helper to get tmdb_id from project (handles both snake_case and camelCase)
-function getProjectTmdbId(project: ProjectInfo & { tmdbId?: number | null }): number | null {
+export function getProjectTmdbId(project: ProjectInfo & { tmdbId?: number | null }): number | null {
   return project.tmdb_id ?? project.tmdbId ?? null
 }
 
 // Helper to set tmdb_id on project (sets both for compatibility)
-function setProjectTmdbId(project: ProjectInfo & { tmdbId?: number | null }, tmdbId: number): void {
+export function setProjectTmdbId(
+  project: ProjectInfo & { tmdbId?: number | null },
+  tmdbId: number
+): void {
   project.tmdb_id = tmdbId
   project.tmdbId = tmdbId
 }
@@ -159,14 +166,14 @@ async function processProject(
 }
 
 // Helper to get tmdb_id from celebrity (handles both snake_case and camelCase)
-function getCelebrityTmdbId(
+export function getCelebrityTmdbId(
   celebrity: RelatedCelebrity & { tmdbId?: number | null }
 ): number | null {
   return celebrity.tmdb_id ?? celebrity.tmdbId ?? null
 }
 
 // Helper to set tmdb_id on celebrity (sets both for compatibility)
-function setCelebrityTmdbId(
+export function setCelebrityTmdbId(
   celebrity: RelatedCelebrity & { tmdbId?: number | null },
   tmdbId: number
 ): void {
@@ -207,6 +214,17 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
   if (!process.env.DATABASE_URL) {
     console.error("Error: DATABASE_URL environment variable is not set")
     process.exit(1)
+  }
+
+  // Check Redis availability before starting (required for cache invalidation)
+  if (!dryRun) {
+    const redisClient = getRedisClient()
+    if (!redisClient) {
+      console.error("Error: Redis client not available")
+      console.error("This script requires Redis for cache invalidation.")
+      console.error("Either start Redis or use --dry-run to preview without cache invalidation.")
+      process.exit(1)
+    }
   }
 
   const db = getPool()
@@ -335,16 +353,21 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
   }
 }
 
-const program = new Command()
-  .name("backfill-death-links")
-  .description("Backfill missing TMDB IDs for death page links (projects and related celebrities)")
-  .option("-l, --limit <number>", "Limit number of records to process", parsePositiveInt, 1000)
-  .option("-n, --dry-run", "Preview without writing to database")
-  .action(async (options) => {
-    await backfillDeathLinks({
-      limit: options.limit,
-      dryRun: options.dryRun || false,
+// Only run if executed directly (not imported for tests)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const program = new Command()
+    .name("backfill-death-links")
+    .description(
+      "Backfill missing TMDB IDs for death page links (projects and related celebrities)"
+    )
+    .option("-l, --limit <number>", "Limit number of records to process", parsePositiveInt, 1000)
+    .option("-n, --dry-run", "Preview without writing to database")
+    .action(async (options) => {
+      await backfillDeathLinks({
+        limit: options.limit,
+        dryRun: options.dryRun || false,
+      })
     })
-  })
 
-program.parse()
+  program.parse()
+}
