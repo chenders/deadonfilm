@@ -12,7 +12,7 @@ import {
   getSeasonDetails,
   batchGetPersonDetails,
 } from "../../lib/tmdb.js"
-import { recordCustomEvent } from "../../lib/newrelic.js"
+import { recordCustomEvent, addCustomAttributes } from "../../lib/newrelic.js"
 import {
   upsertShow,
   getDeceasedActorsForShow,
@@ -45,6 +45,12 @@ export async function getShow(req: Request, res: Response) {
 
   try {
     const startTime = Date.now()
+
+    addCustomAttributes({
+      "query.entity": "show",
+      "query.operation": "fetch",
+      "query.showId": showId,
+    })
 
     // Fetch show details and aggregate credits in parallel
     const [show, credits] = await Promise.all([
