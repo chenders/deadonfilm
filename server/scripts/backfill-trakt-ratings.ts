@@ -33,7 +33,7 @@ function parsePositiveInt(value: string): number {
   return n
 }
 
-function parseFloat(value: string): number {
+function parseNonNegativeFloat(value: string): number {
   const n = parseFloat(value)
   if (isNaN(n) || n < 0) {
     throw new InvalidArgumentError("Must be non-negative number")
@@ -65,7 +65,7 @@ const program = new Command()
   .option("--movies-only", "Only backfill movies")
   .option("--shows-only", "Only backfill shows")
   .option("-n, --dry-run", "Preview without writing")
-  .option("--min-popularity <n>", "Skip items below popularity threshold", parseFloat)
+  .option("--min-popularity <n>", "Skip items below popularity threshold", parseNonNegativeFloat)
   .option("--trending-only", "Only fetch trending content")
 
 program.parse()
@@ -135,6 +135,24 @@ async function backfillMovies(
   }
 
   // Regular backfill (non-trending)
+  const conditions: string[] = ["imdb_id IS NOT NULL", "trakt_updated_at IS NULL"]
+
+  const params: number[] = []
+  let paramIndex = 1
+
+  if (minPopularity !== undefined) {
+    conditions.push(`popularity >= $${paramIndex}`)
+    params.push(minPopularity)
+    paramIndex += 1
+  }
+
+  let limitClause = ""
+  if (limit !== undefined) {
+    limitClause = `LIMIT $${paramIndex}`
+    params.push(limit)
+    paramIndex += 1
+  }
+
   const query = `
     SELECT tmdb_id, title, imdb_id, popularity,
            release_date, release_year, poster_path, genres,
@@ -142,16 +160,10 @@ async function backfillMovies(
            cast_count, deceased_count, living_count,
            expected_deaths, mortality_surprise_score
     FROM movies
-    WHERE imdb_id IS NOT NULL
-      AND trakt_updated_at IS NULL
-      ${minPopularity ? `AND popularity >= $2` : ""}
+    WHERE ${conditions.join("\n      AND ")}
     ORDER BY popularity DESC NULLS LAST
-    ${limit ? `LIMIT $1` : ""}
+    ${limitClause}
   `
-
-  const params = []
-  if (limit) params.push(limit)
-  if (minPopularity) params.push(minPopularity)
 
   const result = await db.query<MovieRecord>(query, params)
   const movies = result.rows
@@ -268,6 +280,24 @@ async function backfillShows(
   }
 
   // Regular backfill (non-trending)
+  const conditions: string[] = ["thetvdb_id IS NOT NULL", "trakt_updated_at IS NULL"]
+
+  const params: number[] = []
+  let paramIndex = 1
+
+  if (minPopularity !== undefined) {
+    conditions.push(`popularity >= $${paramIndex}`)
+    params.push(minPopularity)
+    paramIndex += 1
+  }
+
+  let limitClause = ""
+  if (limit !== undefined) {
+    limitClause = `LIMIT $${paramIndex}`
+    params.push(limit)
+    paramIndex += 1
+  }
+
   const query = `
     SELECT tmdb_id, name, thetvdb_id, popularity,
            first_air_date, last_air_date, poster_path, backdrop_path,
@@ -277,16 +307,10 @@ async function backfillShows(
            expected_deaths, mortality_surprise_score,
            tvmaze_id, imdb_id
     FROM shows
-    WHERE thetvdb_id IS NOT NULL
-      AND trakt_updated_at IS NULL
-      ${minPopularity ? `AND popularity >= $2` : ""}
+    WHERE ${conditions.join("\n      AND ")}
     ORDER BY popularity DESC NULLS LAST
-    ${limit ? `LIMIT $1` : ""}
+    ${limitClause}
   `
-
-  const params = []
-  if (limit) params.push(limit)
-  if (minPopularity) params.push(minPopularity)
 
   const result = await db.query<ShowRecord>(query, params)
   const shows = result.rows

@@ -29,7 +29,7 @@ function parsePositiveInt(value: string): number {
   return n
 }
 
-function parseFloat(value: string): number {
+function parseNonNegativeFloat(value: string): number {
   const n = parseFloat(value)
   if (isNaN(n) || n < 0) {
     throw new InvalidArgumentError("Must be non-negative number")
@@ -55,7 +55,7 @@ const program = new Command()
   .description("Backfill TheTVDB community scores for TV shows")
   .option("-l, --limit <n>", "Process only N shows", parsePositiveInt)
   .option("-n, --dry-run", "Preview without writing")
-  .option("--min-popularity <n>", "Skip shows below popularity threshold", parseFloat)
+  .option("--min-popularity <n>", "Skip shows below popularity threshold", parseNonNegativeFloat)
 
 program.parse()
 
@@ -79,6 +79,24 @@ async function run(options: BackfillOptions) {
     console.log(`Min popularity: ${options.minPopularity || "none"}`)
 
     // Query shows that need TheTVDB scores
+    const conditions: string[] = ["thetvdb_id IS NOT NULL", "thetvdb_score IS NULL"]
+
+    const params: number[] = []
+    let paramIndex = 1
+
+    if (options.minPopularity !== undefined) {
+      conditions.push(`popularity >= $${paramIndex}`)
+      params.push(options.minPopularity)
+      paramIndex += 1
+    }
+
+    let limitClause = ""
+    if (options.limit !== undefined) {
+      limitClause = `LIMIT $${paramIndex}`
+      params.push(options.limit)
+      paramIndex += 1
+    }
+
     const query = `
       SELECT tmdb_id, name, thetvdb_id, popularity,
              first_air_date, last_air_date, poster_path, backdrop_path,
@@ -88,16 +106,10 @@ async function run(options: BackfillOptions) {
              expected_deaths, mortality_surprise_score,
              tvmaze_id, imdb_id
       FROM shows
-      WHERE thetvdb_id IS NOT NULL
-        AND thetvdb_score IS NULL
-        ${options.minPopularity ? `AND popularity >= $2` : ""}
+      WHERE ${conditions.join("\n        AND ")}
       ORDER BY popularity DESC NULLS LAST
-      ${options.limit ? `LIMIT $1` : ""}
+      ${limitClause}
     `
-
-    const params = []
-    if (options.limit) params.push(options.limit)
-    if (options.minPopularity) params.push(options.minPopularity)
 
     const result = await pool.query<ShowRecord>(query, params)
     const shows = result.rows
