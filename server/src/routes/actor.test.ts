@@ -23,13 +23,17 @@ vi.mock("../lib/newrelic.js", () => ({
 vi.mock("../lib/cache.js", () => ({
   getCached: vi.fn().mockResolvedValue(null), // Always miss cache in tests
   setCached: vi.fn().mockResolvedValue(undefined),
-  buildCacheKey: vi.fn((prefix, params) => `${prefix}:id:${params?.id}`),
-  CACHE_PREFIX: { ACTOR: "actor" },
+  CACHE_KEYS: {
+    actor: (id: number) => ({
+      profile: `actor:id:${id}`,
+      death: `actor:id:${id}:type:death`,
+    }),
+  },
   CACHE_TTL: { WEEK: 604800 },
 }))
 
 import { recordCustomEvent } from "../lib/newrelic.js"
-import { getCached, setCached, buildCacheKey, CACHE_TTL } from "../lib/cache.js"
+import { getCached, setCached, CACHE_TTL } from "../lib/cache.js"
 
 describe("getActor", () => {
   let mockReq: Partial<Request>
@@ -188,7 +192,7 @@ describe("getActor", () => {
 
     await getActor(mockReq as Request, mockRes as Response)
 
-    expect(buildCacheKey).toHaveBeenCalledWith("actor", { id: 12345 })
+    // Cache key should be constructed via CACHE_KEYS.actor().profile
     expect(setCached).toHaveBeenCalledWith(
       "actor:id:12345",
       expect.objectContaining({

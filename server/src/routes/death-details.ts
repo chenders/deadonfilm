@@ -11,7 +11,14 @@ import {
 import { getPersonDetails } from "../lib/tmdb.js"
 import { createActorSlug } from "../lib/slug-utils.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
-import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
+import {
+  getCached,
+  setCached,
+  CACHE_KEYS,
+  CACHE_TTL,
+  buildCacheKey,
+  CACHE_PREFIX,
+} from "../lib/cache.js"
 import type { ResolvedUrl } from "../lib/death-sources/url-resolver.js"
 
 // Response type for death details endpoint
@@ -199,7 +206,7 @@ export async function getActorDeathDetails(req: Request, res: Response) {
 
   try {
     const startTime = Date.now()
-    const cacheKey = buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId, type: "death" })
+    const cacheKey = CACHE_KEYS.actor(actorId).death
 
     // Check cache first
     const cached = await getCached<DeathDetailsResponse>(cacheKey)
