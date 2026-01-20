@@ -289,6 +289,14 @@ describe("cache operations with mocked Redis", () => {
         "Actor cache invalidated"
       )
     })
+
+    it("propagates Redis deletion errors", async () => {
+      mockRedisClient.del.mockRejectedValue(new Error("Redis connection failed"))
+
+      const { invalidateActorCacheRequired } = await import("./cache.js")
+
+      await expect(invalidateActorCacheRequired(5576)).rejects.toThrow("Redis connection failed")
+    })
   })
 
   describe("invalidateByPattern", () => {

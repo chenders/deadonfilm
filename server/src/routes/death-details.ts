@@ -12,12 +12,12 @@ import { getPersonDetails } from "../lib/tmdb.js"
 import { createActorSlug } from "../lib/slug-utils.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
 import {
-  getCached,
-  setCached,
   CACHE_KEYS,
+  CACHE_PREFIX,
   CACHE_TTL,
   buildCacheKey,
-  CACHE_PREFIX,
+  getCached,
+  setCached,
 } from "../lib/cache.js"
 import type { ResolvedUrl } from "../lib/death-sources/url-resolver.js"
 
