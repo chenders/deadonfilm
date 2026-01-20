@@ -54,6 +54,32 @@ export function buildCacheKey(prefix: string, params?: Record<string, unknown>):
 }
 
 /**
+ * Cache key descriptors for each entity type.
+ * These define ALL cache keys associated with an entity.
+ * When invalidating, ALL keys for that entity should be cleared.
+ */
+export const CACHE_KEYS = {
+  actor: (tmdbId: number) => ({
+    profile: buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId }),
+    death: buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId, type: "death" }),
+  }),
+  movie: (tmdbId: number) => ({
+    details: buildCacheKey(CACHE_PREFIX.MOVIE, { id: tmdbId }),
+  }),
+  show: (tmdbId: number) => ({
+    details: buildCacheKey(CACHE_PREFIX.SHOW, { id: tmdbId }),
+  }),
+} as const
+
+/**
+ * Get all cache keys for an actor. Use this to see exactly what keys exist.
+ */
+export function getActorCacheKeys(tmdbId: number): string[] {
+  const keys = CACHE_KEYS.actor(tmdbId)
+  return Object.values(keys)
+}
+
+/**
  * Get a cached value, returning null if not found or Redis unavailable.
  */
 export async function getCached<T>(key: string): Promise<T | null> {
@@ -158,9 +184,22 @@ export async function flushCache(): Promise<void> {
  * Invalidates both the actor profile cache and death details cache.
  */
 export async function invalidateActorCache(tmdbId: number): Promise<void> {
-  const profileKey = buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId })
-  const deathKey = buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId, type: "death" })
-  await invalidateKeys(profileKey, deathKey)
+  const keys = getActorCacheKeys(tmdbId)
+  await invalidateKeys(...keys)
+}
+
+/**
+ * Invalidate actor cache, throwing if Redis is unavailable.
+ * Use this in scripts where cache invalidation is required.
+ */
+export async function invalidateActorCacheRequired(tmdbId: number): Promise<void> {
+  const client = getRedisClient()
+  if (!client) {
+    throw new Error("Redis client not available - cannot invalidate cache")
+  }
+  const keys = getActorCacheKeys(tmdbId)
+  await client.del(...keys)
+  logger.info({ keys, tmdbId }, "Actor cache invalidated")
 }
 
 /**

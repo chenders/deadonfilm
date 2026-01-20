@@ -23,8 +23,14 @@ vi.mock("../lib/newrelic.js", () => ({
 vi.mock("../lib/cache.js", () => ({
   getCached: vi.fn().mockResolvedValue(null),
   setCached: vi.fn().mockResolvedValue(undefined),
+  CACHE_KEYS: {
+    actor: (id: number) => ({
+      profile: `actor:id:${id}`,
+      death: `actor:id:${id}:type:death`,
+    }),
+  },
   buildCacheKey: vi.fn((prefix, params) => `${prefix}:${JSON.stringify(params)}`),
-  CACHE_PREFIX: { ACTOR: "actor", DEATHS: "deaths" },
+  CACHE_PREFIX: { DEATHS: "deaths" },
   CACHE_TTL: { WEEK: 604800 },
 }))
 
