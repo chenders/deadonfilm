@@ -98,11 +98,11 @@ describe("cache", () => {
 })
 
 describe("cache operations with mocked Redis", () => {
+  let mockInstrumentedGet: ReturnType<typeof vi.fn>
+  let mockInstrumentedSet: ReturnType<typeof vi.fn>
+  let mockInstrumentedDel: ReturnType<typeof vi.fn>
+  let mockInstrumentedScan: ReturnType<typeof vi.fn>
   let mockRedisClient: {
-    get: ReturnType<typeof vi.fn>
-    setex: ReturnType<typeof vi.fn>
-    del: ReturnType<typeof vi.fn>
-    scan: ReturnType<typeof vi.fn>
     flushdb: ReturnType<typeof vi.fn>
   }
 
@@ -110,13 +110,22 @@ describe("cache operations with mocked Redis", () => {
     // Reset modules to get fresh imports
     vi.resetModules()
 
+    mockInstrumentedGet = vi.fn()
+    mockInstrumentedSet = vi.fn()
+    mockInstrumentedDel = vi.fn()
+    mockInstrumentedScan = vi.fn()
+
     mockRedisClient = {
-      get: vi.fn(),
-      setex: vi.fn(),
-      del: vi.fn(),
-      scan: vi.fn(),
       flushdb: vi.fn(),
     }
+
+    // Mock instrumented Redis functions
+    vi.doMock("./redis-instrumentation.js", () => ({
+      instrumentedGet: mockInstrumentedGet,
+      instrumentedSet: mockInstrumentedSet,
+      instrumentedDel: mockInstrumentedDel,
+      instrumentedScan: mockInstrumentedScan,
+    }))
 
     // Re-mock with the mock client
     vi.doMock("./redis.js", () => ({
@@ -153,17 +162,17 @@ describe("cache operations with mocked Redis", () => {
 
     it("returns parsed JSON on cache hit", async () => {
       const testData = { foo: "bar", count: 42 }
-      mockRedisClient.get.mockResolvedValue(JSON.stringify(testData))
+      mockInstrumentedGet.mockResolvedValue(JSON.stringify(testData))
 
       const { getCached } = await import("./cache.js")
       const result = await getCached<typeof testData>("test-key")
 
       expect(result).toEqual(testData)
-      expect(mockRedisClient.get).toHaveBeenCalledWith("test-key")
+      expect(mockInstrumentedGet).toHaveBeenCalledWith("test-key")
     })
 
     it("returns null on cache miss", async () => {
-      mockRedisClient.get.mockResolvedValue(null)
+      mockInstrumentedGet.mockResolvedValue(null)
 
       const { getCached } = await import("./cache.js")
       const result = await getCached("test-key")
@@ -172,7 +181,7 @@ describe("cache operations with mocked Redis", () => {
     })
 
     it("returns null and logs warning on Redis error", async () => {
-      mockRedisClient.get.mockRejectedValue(new Error("Redis error"))
+      mockInstrumentedGet.mockRejectedValue(new Error("Redis error"))
 
       const { getCached } = await import("./cache.js")
       const result = await getCached("test-key")
@@ -190,21 +199,21 @@ describe("cache operations with mocked Redis", () => {
       const { setCached } = await import("./cache.js")
       await setCached("test-key", { data: "test" }, 300)
 
-      expect(mockRedisClient.setex).not.toHaveBeenCalled()
+      expect(mockInstrumentedSet).not.toHaveBeenCalled()
     })
 
     it("sets value with TTL", async () => {
-      mockRedisClient.setex.mockResolvedValue("OK")
+      mockInstrumentedSet.mockResolvedValue("OK")
 
       const { setCached } = await import("./cache.js")
       const testData = { foo: "bar" }
       await setCached("test-key", testData, 300)
 
-      expect(mockRedisClient.setex).toHaveBeenCalledWith("test-key", 300, JSON.stringify(testData))
+      expect(mockInstrumentedSet).toHaveBeenCalledWith("test-key", JSON.stringify(testData), 300)
     })
 
     it("handles Redis errors gracefully", async () => {
-      mockRedisClient.setex.mockRejectedValue(new Error("Redis error"))
+      mockInstrumentedSet.mockRejectedValue(new Error("Redis error"))
 
       const { setCached } = await import("./cache.js")
       // Should not throw
@@ -221,23 +230,23 @@ describe("cache operations with mocked Redis", () => {
       const { invalidateKeys } = await import("./cache.js")
       await invalidateKeys("key1", "key2")
 
-      expect(mockRedisClient.del).not.toHaveBeenCalled()
+      expect(mockInstrumentedDel).not.toHaveBeenCalled()
     })
 
     it("does nothing when no keys provided", async () => {
       const { invalidateKeys } = await import("./cache.js")
       await invalidateKeys()
 
-      expect(mockRedisClient.del).not.toHaveBeenCalled()
+      expect(mockInstrumentedDel).not.toHaveBeenCalled()
     })
 
     it("deletes specified keys", async () => {
-      mockRedisClient.del.mockResolvedValue(2)
+      mockInstrumentedDel.mockResolvedValue(2)
 
       const { invalidateKeys } = await import("./cache.js")
       await invalidateKeys("key1", "key2")
 
-      expect(mockRedisClient.del).toHaveBeenCalledWith("key1", "key2")
+      expect(mockInstrumentedDel).toHaveBeenCalledWith("key1", "key2")
     })
   })
 
@@ -252,13 +261,13 @@ describe("cache operations with mocked Redis", () => {
 
   describe("invalidateActorCache", () => {
     it("invalidates both profile and death cache keys", async () => {
-      mockRedisClient.del.mockResolvedValue(2)
+      mockInstrumentedDel.mockResolvedValue(2)
 
       const { invalidateActorCache } = await import("./cache.js")
       await invalidateActorCache(5576)
 
       // Should invalidate both profile and death detail cache keys
-      expect(mockRedisClient.del).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
+      expect(mockInstrumentedDel).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
     })
   })
 
@@ -276,14 +285,14 @@ describe("cache operations with mocked Redis", () => {
     })
 
     it("successfully deletes cache keys and logs when Redis is available", async () => {
-      mockRedisClient.del.mockResolvedValue(2)
+      mockInstrumentedDel.mockResolvedValue(2)
 
       const { logger } = await import("./logger.js")
       const { invalidateActorCacheRequired } = await import("./cache.js")
 
       await invalidateActorCacheRequired(5576)
 
-      expect(mockRedisClient.del).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
+      expect(mockInstrumentedDel).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
       expect(logger.info).toHaveBeenCalledWith(
         { keys: ["actor:id:5576", "actor:id:5576:type:death"], tmdbId: 5576 },
         "Actor cache invalidated"
@@ -291,7 +300,7 @@ describe("cache operations with mocked Redis", () => {
     })
 
     it("propagates Redis deletion errors", async () => {
-      mockRedisClient.del.mockRejectedValue(new Error("Redis connection failed"))
+      mockInstrumentedDel.mockRejectedValue(new Error("Redis connection failed"))
 
       const { invalidateActorCacheRequired } = await import("./cache.js")
 
@@ -312,16 +321,14 @@ describe("cache operations with mocked Redis", () => {
     })
 
     it("scans and deletes matching keys", async () => {
-      mockRedisClient.scan
-        .mockResolvedValueOnce(["1", ["key1", "key2"]])
-        .mockResolvedValueOnce(["0", ["key3"]])
-      mockRedisClient.del.mockResolvedValue(3)
+      mockInstrumentedScan.mockResolvedValue(["key1", "key2", "key3"])
+      mockInstrumentedDel.mockResolvedValue(3)
 
       const { invalidateByPattern } = await import("./cache.js")
       const result = await invalidateByPattern("test:*")
 
       expect(result).toBe(3)
-      expect(mockRedisClient.scan).toHaveBeenCalledWith("0", "MATCH", "test:*", "COUNT", 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith("test:*", 100)
     })
   })
 
@@ -350,70 +357,22 @@ describe("cache operations with mocked Redis", () => {
   describe("invalidateDeathCaches", () => {
     it("invalidates all death-related cache patterns", async () => {
       // Mock scan to return empty keys (no deletions) for each pattern
-      mockRedisClient.scan.mockResolvedValue(["0", []])
+      mockInstrumentedScan.mockResolvedValue([])
 
       const { invalidateDeathCaches, CACHE_PREFIX } = await import("./cache.js")
       await invalidateDeathCaches()
 
       // Should call scan for each pattern-based cache
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.RECENT_DEATHS}:*`,
-        "COUNT",
-        100
-      )
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.THIS_WEEK}:*`,
-        "COUNT",
-        100
-      )
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.DEATH_WATCH}:*`,
-        "COUNT",
-        100
-      )
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.CURSED_ACTORS}:*`,
-        "COUNT",
-        100
-      )
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.CAUSES}:*`,
-        "COUNT",
-        100
-      )
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.DECADES}:*`,
-        "COUNT",
-        100
-      )
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.COVID_DEATHS}:*`,
-        "COUNT",
-        100
-      )
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.UNNATURAL_DEATHS}:*`,
-        "COUNT",
-        100
-      )
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.RECENT_DEATHS}:*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.THIS_WEEK}:*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.DEATH_WATCH}:*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.CURSED_ACTORS}:*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.CAUSES}:*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.DECADES}:*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.COVID_DEATHS}:*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.UNNATURAL_DEATHS}:*`, 100)
       // Should delete simple key caches directly (no pattern)
-      expect(mockRedisClient.del).toHaveBeenCalledWith(
+      expect(mockInstrumentedDel).toHaveBeenCalledWith(
         CACHE_PREFIX.STATS,
         CACHE_PREFIX.TRIVIA,
         CACHE_PREFIX.FEATURED_MOVIE
@@ -424,28 +383,16 @@ describe("cache operations with mocked Redis", () => {
   describe("invalidateMovieCaches", () => {
     it("invalidates all movie-related cache patterns", async () => {
       // Mock scan to return empty keys (no deletions) for each pattern
-      mockRedisClient.scan.mockResolvedValue(["0", []])
+      mockInstrumentedScan.mockResolvedValue([])
 
       const { invalidateMovieCaches, CACHE_PREFIX } = await import("./cache.js")
       await invalidateMovieCaches()
 
       // Should call scan for each pattern
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.CURSED_MOVIES}:*`,
-        "COUNT",
-        100
-      )
-      expect(mockRedisClient.scan).toHaveBeenCalledWith(
-        "0",
-        "MATCH",
-        `${CACHE_PREFIX.POPULAR_MOVIES}:*`,
-        "COUNT",
-        100
-      )
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.CURSED_MOVIES}:*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.POPULAR_MOVIES}:*`, 100)
       // Should also delete the featured-movie key directly
-      expect(mockRedisClient.del).toHaveBeenCalledWith(CACHE_PREFIX.FEATURED_MOVIE)
+      expect(mockInstrumentedDel).toHaveBeenCalledWith(CACHE_PREFIX.FEATURED_MOVIE)
     })
   })
 
@@ -464,49 +411,49 @@ describe("cache operations with mocked Redis", () => {
     })
 
     it("invalidates death caches first, then rebuilds common caches", async () => {
-      mockRedisClient.scan.mockResolvedValue(["0", []])
-      mockRedisClient.setex.mockResolvedValue("OK")
+      mockInstrumentedScan.mockResolvedValue([])
+      mockInstrumentedSet.mockResolvedValue(undefined)
 
       const { rebuildDeathCaches, CACHE_PREFIX, CACHE_TTL } = await import("./cache.js")
       await rebuildDeathCaches()
 
       // Should invalidate first (via scan calls)
-      expect(mockRedisClient.scan).toHaveBeenCalled()
+      expect(mockInstrumentedScan).toHaveBeenCalled()
 
       // Should rebuild recent deaths for limits 5, 10, 20
-      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+      expect(mockInstrumentedSet).toHaveBeenCalledWith(
         "recent-deaths:limit:5",
-        CACHE_TTL.WEEK,
-        JSON.stringify(mockDeaths)
+        JSON.stringify(mockDeaths),
+        CACHE_TTL.WEEK
       )
-      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+      expect(mockInstrumentedSet).toHaveBeenCalledWith(
         "recent-deaths:limit:10",
-        CACHE_TTL.WEEK,
-        JSON.stringify(mockDeaths)
+        JSON.stringify(mockDeaths),
+        CACHE_TTL.WEEK
       )
-      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+      expect(mockInstrumentedSet).toHaveBeenCalledWith(
         "recent-deaths:limit:20",
-        CACHE_TTL.WEEK,
-        JSON.stringify(mockDeaths)
+        JSON.stringify(mockDeaths),
+        CACHE_TTL.WEEK
       )
 
       // Should rebuild stats
-      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+      expect(mockInstrumentedSet).toHaveBeenCalledWith(
         CACHE_PREFIX.STATS,
-        CACHE_TTL.WEEK,
-        JSON.stringify(mockStats)
+        JSON.stringify(mockStats),
+        CACHE_TTL.WEEK
       )
 
       // Should rebuild this-week deaths (with week key)
-      expect(mockRedisClient.setex).toHaveBeenCalledWith(
+      expect(mockInstrumentedSet).toHaveBeenCalledWith(
         expect.stringMatching(/^this-week:week:\d{4}-\d{2}-\d{2}$/),
-        CACHE_TTL.WEEK,
-        JSON.stringify(mockThisWeekDeaths)
+        JSON.stringify(mockThisWeekDeaths),
+        CACHE_TTL.WEEK
       )
     })
 
     it("handles errors gracefully without throwing", async () => {
-      mockRedisClient.scan.mockResolvedValue(["0", []])
+      mockInstrumentedScan.mockResolvedValue([])
 
       // Mock db function to throw
       vi.doMock("./db.js", () => ({
