@@ -58,7 +58,7 @@ const mockDecadeCategories = {
         profilePath: "/test.jpg",
         causeOfDeath: "Natural causes",
       },
-      topCauses: [{ cause: "Natural causes", count: 20 }],
+      topCauses: [{ cause: "Natural causes", count: 20, slug: "natural-causes" }],
       topMovie: {
         tmdbId: 100,
         title: "The Shining",
@@ -76,7 +76,7 @@ const mockDecadeCategories = {
         profilePath: null,
         causeOfDeath: "Cancer",
       },
-      topCauses: [{ cause: "Cancer", count: 40 }],
+      topCauses: [{ cause: "Cancer", count: 40, slug: "cancer" }],
       topMovie: { tmdbId: 200, title: "Titanic", releaseYear: 1997, backdropPath: "/titanic.jpg" },
     },
     {

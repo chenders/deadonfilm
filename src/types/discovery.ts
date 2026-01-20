@@ -71,6 +71,7 @@ export interface DecadeFeaturedActor {
 export interface DecadeTopCause {
   cause: string
   count: number
+  slug: string
 }
 
 export interface DecadeTopMovie {

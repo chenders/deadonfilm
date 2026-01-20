@@ -286,7 +286,7 @@ describe("getDecadeCategoriesHandler", () => {
         profilePath: "/test.jpg",
         causeOfDeath: "Natural causes",
       },
-      topCauses: [{ cause: "Natural causes", count: 20 }],
+      topCauses: [{ cause: "Natural causes", count: 20, slug: "natural-causes" }],
       topMovie: {
         tmdbId: 100,
         title: "Test Movie",
