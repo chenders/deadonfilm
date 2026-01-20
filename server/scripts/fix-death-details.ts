@@ -10,6 +10,7 @@
  *   npm run fix:death-details -- --dry-run  # Preview without updating
  */
 
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
@@ -95,10 +96,26 @@ const program = new Command()
   .description("Fix clearly wrong/irrelevant death details entries")
   .option("-n, --dry-run", "Preview changes without updating the database")
   .action(async (options) => {
-    await runFix(options.dryRun ?? false)
+    // Don't wrap dry-run mode
+    if (options.dryRun) {
+      await runFix(options.dryRun ?? false)
+    } else {
+      await withNewRelicTransaction("fix-death-details", async (recordMetrics) => {
+        const result = await runFix(options.dryRun ?? false)
+        recordMetrics({
+          recordsProcessed: result.total,
+          recordsUpdated: result.fixed,
+          errorsEncountered: result.skipped,
+        })
+      })
+    }
   })
 
-async function runFix(dryRun: boolean): Promise<void> {
+async function runFix(dryRun: boolean): Promise<{
+  total: number
+  fixed: number
+  skipped: number
+}> {
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
     process.exit(1)
@@ -150,6 +167,8 @@ async function runFix(dryRun: boolean): Promise<void> {
     console.log(
       "Done! " + (dryRun ? "Would fix" : "Fixed") + " " + fixed + " entries, skipped " + skipped
     )
+
+    return { total: BAD_ENTRIES.length, fixed, skipped }
   } finally {
     await db.end()
   }

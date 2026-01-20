@@ -21,6 +21,7 @@
  *   npm run verify:death-info -- --fresh         # Start fresh (ignore checkpoint)
  */
 
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import { Command } from "commander"
 import pg from "pg"
@@ -127,10 +128,28 @@ const program = new Command()
       console.error("Error: --model must be 'sonnet' or 'haiku'")
       process.exit(1)
     }
-    await runVerification({ ...options, model })
+    // Don't wrap dry-run mode
+    if (options.dryRun) {
+      await runVerification({ ...options, model })
+    } else {
+      await withNewRelicTransaction("verify-death-info", async (recordMetrics) => {
+        const stats = await runVerification({ ...options, model })
+        recordMetrics({
+          recordsProcessed: stats.processed,
+          causesUpdated: stats.causesUpdated,
+          detailsUpdated: stats.detailsUpdated,
+          errorsEncountered: stats.errors,
+        })
+      })
+    }
   })
 
-async function runVerification(options: VerifyOptions): Promise<void> {
+async function runVerification(options: VerifyOptions): Promise<{
+  processed: number
+  causesUpdated: number
+  detailsUpdated: number
+  errors: number
+}> {
   const {
     limit,
     dryRun = false,
@@ -247,7 +266,7 @@ async function runVerification(options: VerifyOptions): Promise<void> {
     if (actorsToProcess.length === 0) {
       console.log("All actors already processed. Done!")
       deleteCheckpoint()
-      return
+      return { processed: 0, causesUpdated: 0, detailsUpdated: 0, errors: 0 }
     }
 
     // Stats - use checkpoint stats if resuming
@@ -498,6 +517,8 @@ async function runVerification(options: VerifyOptions): Promise<void> {
     }
 
     console.log("=".repeat(70) + "\n")
+
+    return { processed, causesUpdated, detailsUpdated, errors }
   } finally {
     await pool.end()
   }
