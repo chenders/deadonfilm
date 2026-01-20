@@ -14,6 +14,7 @@ import type {
   DecadeCategory,
   DecadeFeaturedActor,
   DecadeTopCause,
+  DecadeTopMovie,
   CauseCategoryStats,
   CauseCategoryIndexResponse,
   CauseCategoryDetailResponse,
@@ -191,7 +192,37 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     ORDER BY decade DESC, count DESC
   `)
 
-  // Build maps for featured actors and top causes
+  // Get top movie per decade (most popular movie with an image)
+  // Prefer backdrop_path, fall back to poster_path
+  const moviesResult = await db.query<{
+    decade: number
+    tmdb_id: number
+    title: string
+    release_year: number | null
+    backdrop_path: string | null
+  }>(`
+    WITH ranked_movies AS (
+      SELECT
+        (m.release_year / 10 * 10) as decade,
+        m.tmdb_id,
+        m.title,
+        m.release_year,
+        COALESCE(m.backdrop_path, m.poster_path) as backdrop_path,
+        ROW_NUMBER() OVER (
+          PARTITION BY (m.release_year / 10 * 10)
+          ORDER BY m.popularity DESC NULLS LAST
+        ) as rn
+      FROM movies m
+      WHERE m.release_year IS NOT NULL
+        AND (m.backdrop_path IS NOT NULL OR m.poster_path IS NOT NULL)
+        AND m.is_obscure = false
+    )
+    SELECT decade, tmdb_id, title, release_year, backdrop_path
+    FROM ranked_movies
+    WHERE rn = 1
+  `)
+
+  // Build maps for featured actors, top causes, and top movies
   const featuredByDecade = new Map<number, DecadeFeaturedActor>()
   for (const row of featuredResult.rows) {
     featuredByDecade.set(row.decade, {
@@ -213,11 +244,22 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     causesByDecade.set(row.decade, existing)
   }
 
+  const moviesByDecade = new Map<number, DecadeTopMovie>()
+  for (const row of moviesResult.rows) {
+    moviesByDecade.set(row.decade, {
+      tmdbId: row.tmdb_id,
+      title: row.title,
+      releaseYear: row.release_year,
+      backdropPath: row.backdrop_path,
+    })
+  }
+
   return decadesResult.rows.map((row) => ({
     decade: row.decade,
     count: parseInt(row.count, 10),
     featuredActor: featuredByDecade.get(row.decade) || null,
     topCauses: causesByDecade.get(row.decade) || [],
+    topMovie: moviesByDecade.get(row.decade) || null,
   }))
 }
 
