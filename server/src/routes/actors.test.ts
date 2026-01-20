@@ -8,8 +8,28 @@ vi.mock("../lib/db.js", () => ({
   getCursedActors: vi.fn(),
 }))
 
+// Mock the cache module
+vi.mock("../lib/cache.js", () => ({
+  getCached: vi.fn().mockResolvedValue(null), // Always miss cache in tests
+  setCached: vi.fn().mockResolvedValue(undefined),
+  buildCacheKey: vi.fn((prefix, params) => {
+    if (!params || Object.keys(params).length === 0) return prefix
+    const sortedParams = Object.keys(params)
+      .sort()
+      .filter((k) => params[k] !== undefined && params[k] !== null)
+      .map((k) => `${k}:${params[k]}`)
+      .join(":")
+    return sortedParams ? `${prefix}:${sortedParams}` : prefix
+  }),
+  CACHE_PREFIX: {
+    CURSED_ACTORS: "cursed-actors",
+  },
+  CACHE_TTL: { WEEK: 604800, SHORT: 300 },
+}))
+
 vi.mock("../lib/newrelic.js", () => ({
   recordCustomEvent: vi.fn(),
+  addCustomAttributes: vi.fn(),
 }))
 
 import { recordCustomEvent } from "../lib/newrelic.js"
