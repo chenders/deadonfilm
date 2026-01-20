@@ -48,9 +48,44 @@ const mockResponse = {
 
 const mockDecadeCategories = {
   decades: [
-    { decade: 1980, count: 50 },
-    { decade: 1990, count: 100 },
-    { decade: 2000, count: 150 },
+    {
+      decade: 1980,
+      count: 50,
+      featuredActor: {
+        id: 1,
+        tmdbId: 123,
+        name: "John Doe",
+        profilePath: "/test.jpg",
+        causeOfDeath: "Natural causes",
+      },
+      topCauses: [{ cause: "Natural causes", count: 20, slug: "natural-causes" }],
+      topMovie: {
+        tmdbId: 100,
+        title: "The Shining",
+        releaseYear: 1980,
+        backdropPath: "/shining.jpg",
+      },
+    },
+    {
+      decade: 1990,
+      count: 100,
+      featuredActor: {
+        id: 2,
+        tmdbId: 456,
+        name: "Jane Doe",
+        profilePath: null,
+        causeOfDeath: "Cancer",
+      },
+      topCauses: [{ cause: "Cancer", count: 40, slug: "cancer" }],
+      topMovie: { tmdbId: 200, title: "Titanic", releaseYear: 1997, backdropPath: "/titanic.jpg" },
+    },
+    {
+      decade: 2000,
+      count: 150,
+      featuredActor: null,
+      topCauses: [],
+      topMovie: null,
+    },
   ],
 }
 
