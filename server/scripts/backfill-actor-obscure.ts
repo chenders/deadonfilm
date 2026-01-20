@@ -16,6 +16,7 @@
  *   npm run backfill:actor-obscure -- --stats   # Show obscure statistics only
  */
 
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
@@ -54,7 +55,15 @@ const program = new Command()
   .option("-n, --dry-run", "Preview changes without updating the database")
   .option("-s, --stats", "Show obscure statistics only, without backfilling")
   .action(async (options) => {
-    await runBackfill(options)
+    await withNewRelicTransaction("backfill-actor-obscure", async (recordMetrics) => {
+      const result = await runBackfill(options)
+      if (result) {
+        recordMetrics({
+          recordsProcessed: result.totalProcessed,
+          recordsUpdated: result.totalUpdated,
+        })
+      }
+    })
   })
 
 async function showStats(closePool = true): Promise<void> {
@@ -170,11 +179,16 @@ async function showStats(closePool = true): Promise<void> {
   }
 }
 
+interface BackfillResult {
+  totalProcessed: number
+  totalUpdated: number
+}
+
 /**
  * Calculate is_obscure for all actors based on movie and TV appearances.
  * This is done in a single SQL query for efficiency.
  */
-async function runBackfill(options: BackfillOptions): Promise<void> {
+async function runBackfill(options: BackfillOptions): Promise<BackfillResult | null> {
   const { dryRun = false, stats = false } = options
 
   if (!process.env.DATABASE_URL) {
@@ -185,7 +199,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   // Stats-only mode
   if (stats) {
     await showStats()
-    return
+    return null
   }
 
   console.log("\nCalculating obscurity for all actors based on movie/TV appearances...")
@@ -272,7 +286,12 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     if (dryRun) {
       console.log("\n(DRY RUN - no changes made)")
       await showStats(false)
-      return
+      // Calculate total processed from preview
+      const totalProcessed = previewResult.rows.reduce(
+        (sum, row) => sum + parseInt(row.count, 10),
+        0
+      )
+      return { totalProcessed, totalUpdated: 0 }
     }
 
     // Perform the update
@@ -331,10 +350,16 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
       ]
     )
 
-    console.log(`Updated ${updateResult.rowCount} actors.`)
+    const totalUpdated = updateResult.rowCount || 0
+    console.log(`Updated ${totalUpdated} actors.`)
 
     // Show final stats (don't close pool here, we'll close it in finally)
     await showStats(false)
+
+    // Calculate total processed from preview
+    const totalProcessed = previewResult.rows.reduce((sum, row) => sum + parseInt(row.count, 10), 0)
+
+    return { totalProcessed, totalUpdated }
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)

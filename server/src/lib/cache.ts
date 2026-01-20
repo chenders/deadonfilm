@@ -6,6 +6,12 @@ import { getRedisClient } from "./redis.js"
 import { logger } from "./logger.js"
 import { recordCustomEvent } from "./newrelic.js"
 import { getRecentDeaths, getSiteStats, getDeathsThisWeekSimple } from "./db.js"
+import {
+  instrumentedGet,
+  instrumentedSet,
+  instrumentedDel,
+  instrumentedScan,
+} from "./redis-instrumentation.js"
 
 // Cache key prefixes for different data types
 export const CACHE_PREFIX = {
@@ -87,7 +93,7 @@ export async function getCached<T>(key: string): Promise<T | null> {
   if (!client) return null
 
   try {
-    const cached = await client.get(key)
+    const cached = await instrumentedGet(key)
     if (cached) {
       logger.debug({ key }, "Cache hit")
       recordCustomEvent("CacheAccess", { key, hit: true })
@@ -110,7 +116,7 @@ export async function setCached<T>(key: string, value: T, ttlSeconds: number): P
   if (!client) return
 
   try {
-    await client.setex(key, ttlSeconds, JSON.stringify(value))
+    await instrumentedSet(key, JSON.stringify(value), ttlSeconds)
     logger.debug({ key, ttl: ttlSeconds }, "Cache set")
   } catch (err) {
     logger.warn({ err: (err as Error).message, key }, "Cache set error")
@@ -126,17 +132,12 @@ export async function invalidateByPattern(pattern: string): Promise<number> {
   if (!client) return 0
 
   try {
-    let cursor = "0"
+    const keys = await instrumentedScan(pattern, 100)
     let deleted = 0
 
-    do {
-      const [nextCursor, keys] = await client.scan(cursor, "MATCH", pattern, "COUNT", 100)
-      cursor = nextCursor
-      if (keys.length > 0) {
-        await client.del(...keys)
-        deleted += keys.length
-      }
-    } while (cursor !== "0")
+    if (keys.length > 0) {
+      deleted = await instrumentedDel(...keys)
+    }
 
     if (deleted > 0) {
       logger.info({ pattern, deleted }, "Cache invalidated by pattern")
@@ -156,7 +157,7 @@ export async function invalidateKeys(...keys: string[]): Promise<void> {
   if (!client || keys.length === 0) return
 
   try {
-    await client.del(...keys)
+    await instrumentedDel(...keys)
     logger.info({ keys }, "Cache keys invalidated")
   } catch (err) {
     logger.warn({ err: (err as Error).message, keys }, "Cache invalidation error")
@@ -198,7 +199,7 @@ export async function invalidateActorCacheRequired(tmdbId: number): Promise<void
     throw new Error("Redis client not available - cannot invalidate cache")
   }
   const keys = getActorCacheKeys(tmdbId)
-  await client.del(...keys)
+  await instrumentedDel(...keys)
   logger.info({ keys, tmdbId }, "Actor cache invalidated")
 }
 

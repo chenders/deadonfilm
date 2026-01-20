@@ -16,6 +16,7 @@ import {
 import { getActorsIfAvailable } from "../../lib/db-helpers.js"
 import { calculateAge } from "../../lib/date-utils.js"
 import { calculateMovieMortality, type ActorForMortality } from "../../lib/mortality-stats.js"
+import { addCustomAttributes } from "../../lib/newrelic.js"
 import type { DeceasedActor, LivingActor } from "./types.js"
 
 // Get episode details with cast
@@ -35,6 +36,14 @@ export async function getEpisode(req: Request, res: Response) {
   }
 
   try {
+    addCustomAttributes({
+      "query.entity": "episode",
+      "query.operation": "fetch",
+      "query.showId": showId,
+      "query.seasonNumber": seasonNumber,
+      "query.episodeNumber": episodeNumber,
+    })
+
     // Fetch show details, episode details, episode credits, and aggregate credits in parallel
     const [show, episode, credits, aggregateCredits] = await Promise.all([
       getTVShowDetails(showId),
@@ -227,6 +236,13 @@ export async function getSeasonEpisodes(req: Request, res: Response) {
   }
 
   try {
+    addCustomAttributes({
+      "query.entity": "episode",
+      "query.operation": "list",
+      "query.showId": showId,
+      "query.seasonNumber": seasonNumber,
+    })
+
     const season = await getSeasonDetails(showId, seasonNumber)
 
     const episodes = season.episodes.map((ep) => ({

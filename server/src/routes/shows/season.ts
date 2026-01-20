@@ -9,6 +9,7 @@ import { getTVShowDetails, getSeasonDetails, batchGetPersonDetails } from "../..
 import { getSeasons as getSeasonsFromDb } from "../../lib/db.js"
 import { getActorsIfAvailable } from "../../lib/db-helpers.js"
 import { calculateMovieMortality, type ActorForMortality } from "../../lib/mortality-stats.js"
+import { addCustomAttributes } from "../../lib/newrelic.js"
 
 // Get seasons for a show from database (for cached shows)
 export async function getShowSeasons(req: Request, res: Response) {
@@ -19,6 +20,12 @@ export async function getShowSeasons(req: Request, res: Response) {
   }
 
   try {
+    addCustomAttributes({
+      "query.entity": "season",
+      "query.operation": "list",
+      "query.showId": showId,
+    })
+
     const seasons = await getSeasonsFromDb(showId)
     res.json({ seasons })
   } catch (error) {
@@ -40,6 +47,13 @@ export async function getSeason(req: Request, res: Response) {
   }
 
   try {
+    addCustomAttributes({
+      "query.entity": "season",
+      "query.operation": "fetch",
+      "query.showId": showId,
+      "query.seasonNumber": seasonNumber,
+    })
+
     // Fetch show details and season details in parallel
     const [show, season] = await Promise.all([
       getTVShowDetails(showId),
