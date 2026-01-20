@@ -26,9 +26,21 @@ export async function upsertShow(show: ShowRecord): Promise<void> {
        tmdb_id, name, first_air_date, last_air_date, poster_path, backdrop_path,
        genres, status, number_of_seasons, number_of_episodes, popularity, vote_average,
        origin_country, original_language, cast_count, deceased_count, living_count,
-       expected_deaths, mortality_surprise_score, updated_at
+       expected_deaths, mortality_surprise_score,
+       omdb_imdb_rating, omdb_imdb_votes, omdb_rotten_tomatoes_score,
+       omdb_rotten_tomatoes_audience, omdb_metacritic_score, omdb_updated_at,
+       trakt_rating, trakt_votes, trakt_watchers, trakt_plays,
+       trakt_trending_rank, trakt_updated_at,
+       thetvdb_score,
+       updated_at
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, CURRENT_TIMESTAMP)
+     VALUES (
+       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+       $20, $21, $22, $23, $24, $25,
+       $26, $27, $28, $29, $30, $31,
+       $32,
+       CURRENT_TIMESTAMP
+     )
      ON CONFLICT (tmdb_id) DO UPDATE SET
        name = EXCLUDED.name,
        first_air_date = EXCLUDED.first_air_date,
@@ -48,6 +60,19 @@ export async function upsertShow(show: ShowRecord): Promise<void> {
        living_count = EXCLUDED.living_count,
        expected_deaths = EXCLUDED.expected_deaths,
        mortality_surprise_score = EXCLUDED.mortality_surprise_score,
+       omdb_imdb_rating = COALESCE(EXCLUDED.omdb_imdb_rating, shows.omdb_imdb_rating),
+       omdb_imdb_votes = COALESCE(EXCLUDED.omdb_imdb_votes, shows.omdb_imdb_votes),
+       omdb_rotten_tomatoes_score = COALESCE(EXCLUDED.omdb_rotten_tomatoes_score, shows.omdb_rotten_tomatoes_score),
+       omdb_rotten_tomatoes_audience = COALESCE(EXCLUDED.omdb_rotten_tomatoes_audience, shows.omdb_rotten_tomatoes_audience),
+       omdb_metacritic_score = COALESCE(EXCLUDED.omdb_metacritic_score, shows.omdb_metacritic_score),
+       omdb_updated_at = COALESCE(EXCLUDED.omdb_updated_at, shows.omdb_updated_at),
+       trakt_rating = COALESCE(EXCLUDED.trakt_rating, shows.trakt_rating),
+       trakt_votes = COALESCE(EXCLUDED.trakt_votes, shows.trakt_votes),
+       trakt_watchers = COALESCE(EXCLUDED.trakt_watchers, shows.trakt_watchers),
+       trakt_plays = COALESCE(EXCLUDED.trakt_plays, shows.trakt_plays),
+       trakt_trending_rank = COALESCE(EXCLUDED.trakt_trending_rank, shows.trakt_trending_rank),
+       trakt_updated_at = COALESCE(EXCLUDED.trakt_updated_at, shows.trakt_updated_at),
+       thetvdb_score = COALESCE(EXCLUDED.thetvdb_score, shows.thetvdb_score),
        updated_at = CURRENT_TIMESTAMP`,
     [
       show.tmdb_id,
@@ -69,6 +94,19 @@ export async function upsertShow(show: ShowRecord): Promise<void> {
       show.living_count,
       show.expected_deaths,
       show.mortality_surprise_score,
+      show.omdb_imdb_rating || null,
+      show.omdb_imdb_votes || null,
+      show.omdb_rotten_tomatoes_score || null,
+      show.omdb_rotten_tomatoes_audience || null,
+      show.omdb_metacritic_score || null,
+      show.omdb_updated_at || null,
+      show.trakt_rating || null,
+      show.trakt_votes || null,
+      show.trakt_watchers || null,
+      show.trakt_plays || null,
+      show.trakt_trending_rank || null,
+      show.trakt_updated_at || null,
+      show.thetvdb_score || null,
     ]
   )
 }
