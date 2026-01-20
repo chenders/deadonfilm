@@ -30,9 +30,9 @@ const mockDecadeCategories = {
         causeOfDeath: "Cancer",
       },
       topCauses: [
-        { cause: "Cancer", count: 200 },
-        { cause: "Heart Attack", count: 150 },
-        { cause: "Stroke", count: 100 },
+        { cause: "Cancer", count: 200, slug: "cancer" },
+        { cause: "Heart Attack", count: 150, slug: "heart-attack" },
+        { cause: "Stroke", count: 100, slug: "stroke" },
       ],
       topMovie: {
         tmdbId: 694,
@@ -52,8 +52,8 @@ const mockDecadeCategories = {
         causeOfDeath: "Heart Attack",
       },
       topCauses: [
-        { cause: "Natural Causes", count: 300 },
-        { cause: "AIDS", count: 200 },
+        { cause: "Natural Causes", count: 300, slug: "natural-causes" },
+        { cause: "AIDS", count: 200, slug: "aids" },
       ],
       topMovie: {
         tmdbId: 597,
