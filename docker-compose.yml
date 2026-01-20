@@ -16,9 +16,17 @@ services:
       # See: https://docs.newrelic.com/docs/infrastructure/install-infrastructure-agent/configuration/infrastructure-agent-configuration-settings/
       - NRIA_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - NRIA_DISPLAY_NAME=deadonfilm-server
+      # PostgreSQL credentials for monitoring
+      - POSTGRES_USER=${POSTGRES_USER:-deadonfilm}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-deadonfilm}
     volumes:
       - "/:/host:ro"
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./newrelic-postgres-config.yml:/etc/newrelic-infra/integrations.d/postgresql-config.yml:ro"
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/usr/bin/newrelic-infra", "-validate"]
