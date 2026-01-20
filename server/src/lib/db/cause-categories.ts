@@ -37,6 +37,52 @@ export { CAUSE_CATEGORIES, type CauseCategoryKey } from "../cause-categories.js"
 // Maximum number of top causes to display per decade
 const MAX_CAUSES_PER_DECADE = 3
 
+/**
+ * Filter out redundant causes using word-based subset matching.
+ * A cause is redundant if all its words appear in a higher-ranked cause.
+ * This avoids false positives like filtering "Heart attack" when "Heartburn" is present.
+ *
+ * @param causes - Array of causes ordered by rank (highest count first)
+ * @returns Filtered array with redundant causes removed
+ *
+ * @example
+ * // "Lung cancer" is filtered because "Cancer" is a word-subset
+ * filterRedundantCauses([
+ *   { cause: "Cancer", count: 50, slug: "cancer" },
+ *   { cause: "Lung cancer", count: 40, slug: "lung-cancer" }
+ * ])
+ * // Returns: [{ cause: "Cancer", count: 50, slug: "cancer" }]
+ *
+ * @example
+ * // Both kept because neither is a word-subset of the other
+ * filterRedundantCauses([
+ *   { cause: "Heart attack", count: 40, slug: "heart-attack" },
+ *   { cause: "Heart disease", count: 35, slug: "heart-disease" }
+ * ])
+ * // Returns both causes
+ */
+export function filterRedundantCauses(causes: DecadeTopCause[]): DecadeTopCause[] {
+  return causes.filter((cause, index) => {
+    const causeLower = cause.cause.toLowerCase()
+    const causeWords = new Set(causeLower.split(/\s+/))
+
+    // Check if any higher-ranked cause overlaps with this cause
+    for (let i = 0; i < index; i++) {
+      const higherCauseLower = causes[i].cause.toLowerCase()
+      const higherWords = new Set(higherCauseLower.split(/\s+/))
+
+      // Filter if one cause's words are a subset of another's
+      const higherIsSubset = [...higherWords].every((word) => causeWords.has(word))
+      const causeIsSubset = [...causeWords].every((word) => higherWords.has(word))
+
+      if ((higherIsSubset || causeIsSubset) && causeLower !== higherCauseLower) {
+        return false // Filter out this redundant cause
+      }
+    }
+    return true
+  })
+}
+
 // ============================================================================
 // Deaths by Cause functions (SEO category pages)
 // ============================================================================
@@ -248,27 +294,9 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     causesByDecade.set(row.decade, existing)
   }
 
-  // Filter out redundant causes (e.g., "Lung cancer" when "Cancer" is already present)
-  // A cause is redundant if it overlaps with another higher-ranked cause
+  // Filter out redundant causes and keep only top N
   for (const [decade, causes] of causesByDecade) {
-    const filtered = causes.filter((cause, index) => {
-      const causeLower = cause.cause.toLowerCase()
-      // Check if any higher-ranked cause overlaps with this cause
-      for (let i = 0; i < index; i++) {
-        const higherCauseLower = causes[i].cause.toLowerCase()
-        // Filter if either:
-        // - This cause contains a higher-ranked cause (e.g., "pancreatic cancer" contains "cancer")
-        // - A higher-ranked cause contains this cause (e.g., "lung cancer" contains "cancer")
-        if (
-          (causeLower.includes(higherCauseLower) || higherCauseLower.includes(causeLower)) &&
-          causeLower !== higherCauseLower
-        ) {
-          return false // Filter out this redundant cause
-        }
-      }
-      return true
-    })
-    // Keep only top causes after filtering
+    const filtered = filterRedundantCauses(causes)
     causesByDecade.set(decade, filtered.slice(0, MAX_CAUSES_PER_DECADE))
   }
 
