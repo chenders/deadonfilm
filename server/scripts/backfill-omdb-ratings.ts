@@ -277,9 +277,9 @@ async function run(options: BackfillOptions) {
 
     // Print summary
     console.log("\n")
-    console.log("=" .repeat(50))
+    console.log("=".repeat(50))
     console.log("📊 Summary")
-    console.log("=" .repeat(50))
+    console.log("=".repeat(50))
     console.log(`Total processed: ${stats.totalProcessed}`)
     console.log(`Successful: ${stats.successful}`)
     console.log(`Failed: ${stats.failed}`)

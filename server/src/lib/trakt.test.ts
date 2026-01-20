@@ -39,7 +39,7 @@ describe("Trakt.tv API Client", () => {
             "trakt-api-key": "test-api-key",
             "trakt-api-version": "2",
           }),
-        }),
+        })
       )
     })
 
@@ -65,7 +65,7 @@ describe("Trakt.tv API Client", () => {
       expect(result).toEqual(mockStats)
       expect(fetch).toHaveBeenCalledWith(
         "https://api.trakt.tv/shows/121361/stats",
-        expect.any(Object),
+        expect.any(Object)
       )
     })
 
@@ -115,7 +115,7 @@ describe("Trakt.tv API Client", () => {
       delete process.env.TRAKT_API_KEY
 
       await expect(getTraktStats("movie", "tt0111161")).rejects.toThrow(
-        "TRAKT_API_KEY environment variable not set",
+        "TRAKT_API_KEY environment variable not set"
       )
     })
 
@@ -144,7 +144,7 @@ describe("Trakt.tv API Client", () => {
           headers: expect.objectContaining({
             "trakt-api-key": "custom-key",
           }),
-        }),
+        })
       )
     })
   })
@@ -191,7 +191,7 @@ describe("Trakt.tv API Client", () => {
       expect(result).toEqual(mockTrending)
       expect(fetch).toHaveBeenCalledWith(
         "https://api.trakt.tv/movies/trending?limit=100",
-        expect.any(Object),
+        expect.any(Object)
       )
     })
 
@@ -224,7 +224,7 @@ describe("Trakt.tv API Client", () => {
       expect(result).toEqual(mockTrending)
       expect(fetch).toHaveBeenCalledWith(
         "https://api.trakt.tv/shows/trending?limit=50",
-        expect.any(Object),
+        expect.any(Object)
       )
     })
 

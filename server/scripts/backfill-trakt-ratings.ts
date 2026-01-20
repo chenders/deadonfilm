@@ -98,10 +98,9 @@ async function backfillMovies(
 
       try {
         // Find movie in our database by IMDb ID
-        const result = await db.query<MovieRecord>(
-          "SELECT * FROM movies WHERE imdb_id = $1",
-          [movie.ids.imdb]
-        )
+        const result = await db.query<MovieRecord>("SELECT * FROM movies WHERE imdb_id = $1", [
+          movie.ids.imdb,
+        ])
 
         if (result.rows.length === 0) {
           console.log(`  ⚠️  Movie not in database: ${movie.title} (${movie.ids.imdb})`)
@@ -232,10 +231,9 @@ async function backfillShows(
 
       try {
         // Find show in our database by TheTVDB ID
-        const result = await db.query<ShowRecord>(
-          "SELECT * FROM shows WHERE thetvdb_id = $1",
-          [show.ids.tvdb]
-        )
+        const result = await db.query<ShowRecord>("SELECT * FROM shows WHERE thetvdb_id = $1", [
+          show.ids.tvdb,
+        ])
 
         if (result.rows.length === 0) {
           console.log(`  ⚠️  Show not in database: ${show.title} (${show.ids.tvdb})`)

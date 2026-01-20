@@ -127,7 +127,9 @@ async function run(options: BackfillOptions) {
         }
 
         if (options.dryRun) {
-          console.log(`  [DRY RUN] Would update "${show.name}": TheTVDB score ${seriesData.score}/10`)
+          console.log(
+            `  [DRY RUN] Would update "${show.name}": TheTVDB score ${seriesData.score}/10`
+          )
         } else {
           await upsertShow({
             ...show,
