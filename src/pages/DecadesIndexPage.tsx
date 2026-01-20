@@ -56,7 +56,7 @@ function DecadeCard({ category }: DecadeCardProps) {
         )}
 
         {/* Top Causes */}
-        {topCauses.length > 0 && (
+        {topCauses && topCauses.length > 0 && (
           <div className="mt-auto">
             <p className="mb-1 text-xs text-text-muted">Top Causes</p>
             <ul className="space-y-0.5">
