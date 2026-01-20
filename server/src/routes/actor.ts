@@ -7,7 +7,7 @@ import {
   hasDetailedDeathInfo,
 } from "../lib/db.js"
 import { recordCustomEvent } from "../lib/newrelic.js"
-import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
+import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
 import { calculateAge } from "../lib/date-utils.js"
 
 interface ActorProfileResponse {
@@ -59,7 +59,7 @@ export async function getActor(req: Request, res: Response) {
 
   try {
     const startTime = Date.now()
-    const cacheKey = buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId })
+    const cacheKey = CACHE_KEYS.actor(actorId).profile
 
     // Check cache first
     const cached = await getCached<ActorProfileResponse>(cacheKey)
