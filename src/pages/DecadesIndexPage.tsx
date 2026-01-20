@@ -4,6 +4,7 @@ import { useDecadeCategories } from "@/hooks/useDeathsByDecade"
 import { SkullIcon } from "@/components/icons"
 import type { DecadeCategory } from "@/types"
 import { getProfileUrl, getBackdropUrl } from "@/services/api"
+import { createMovieSlug, createActorSlug } from "@/utils/slugify"
 
 interface DecadeCardProps {
   category: DecadeCategory
@@ -14,12 +15,16 @@ function DecadeCard({ category }: DecadeCardProps) {
   const { featuredActor, topCauses, topMovie } = category
 
   return (
-    <Link
-      to={`/deaths/decade/${decadeLabel}`}
-      className="group flex flex-col overflow-hidden rounded-lg bg-beige shadow-md transition-shadow hover:shadow-lg"
-    >
-      {/* Movie Backdrop Image Section */}
-      <div className="relative h-48 bg-brown-medium/30">
+    <div className="group relative flex flex-col overflow-hidden rounded-lg bg-beige shadow-md transition-shadow hover:shadow-lg">
+      {/* Invisible overlay link for decade page - covers entire card */}
+      <Link
+        to={`/deaths/decade/${decadeLabel}`}
+        className="absolute inset-0 z-0"
+        aria-label={`View deaths in the ${decadeLabel}`}
+      />
+
+      {/* Movie Backdrop Image Section (pointer-events-none allows clicks to pass to overlay link) */}
+      <div className="pointer-events-none relative h-48 bg-brown-medium/30">
         {topMovie?.backdropPath ? (
           <img
             src={getBackdropUrl(topMovie.backdropPath, "w500") || ""}
@@ -34,22 +39,28 @@ function DecadeCard({ category }: DecadeCardProps) {
           </div>
         )}
 
-        {/* Dark gradient overlay for readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        {/* Dark gradient overlay for readability (pointer-events-none allows clicks through) */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-        {/* Movie Title Badge - Top Right */}
+        {/* Movie Title Badge - Top Right (links to movie page) */}
         {topMovie && (
-          <div className="absolute right-2 top-2 rounded bg-black/80 px-2 py-1">
+          <Link
+            to={`/movie/${createMovieSlug(topMovie.title, topMovie.releaseYear?.toString() || "", topMovie.tmdbId)}`}
+            className="pointer-events-auto absolute right-2 top-2 z-10 rounded bg-black/80 px-2 py-1 transition-colors hover:bg-black/90"
+          >
             <span className="text-xs text-white/90">
               {topMovie.title}
               {topMovie.releaseYear && ` (${topMovie.releaseYear})`}
             </span>
-          </div>
+          </Link>
         )}
 
-        {/* Featured Actor Badge */}
+        {/* Featured Actor Badge (links to actor page) */}
         {featuredActor && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-black/80 py-1 pl-1 pr-3">
+          <Link
+            to={`/actor/${createActorSlug(featuredActor.name, featuredActor.id)}`}
+            className="pointer-events-auto absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full bg-black/80 py-1 pl-1 pr-3 transition-colors hover:bg-black/90"
+          >
             {featuredActor.profilePath ? (
               <img
                 src={getProfileUrl(featuredActor.profilePath, "w45") || ""}
@@ -63,24 +74,26 @@ function DecadeCard({ category }: DecadeCardProps) {
                 <SkullIcon size={14} className="text-white/70" />
               </div>
             )}
-            <span className="text-xs font-medium uppercase tracking-wide text-white">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-white">
               Top Actor: {featuredActor.name}
             </span>
-          </div>
+          </Link>
         )}
       </div>
 
       {/* Content Section */}
-      <div className="flex flex-1 flex-col p-4">
-        {/* Decade heading */}
-        <h2 className="font-display text-2xl text-brown-dark">{decadeLabel}</h2>
+      <div className="relative z-10 flex flex-1 flex-col p-4">
+        {/* Decade heading (links to decade page) */}
+        <Link to={`/deaths/decade/${decadeLabel}`} className="hover:underline">
+          <h2 className="text-2xl font-semibold text-brown-dark">{decadeLabel}</h2>
+        </Link>
 
         {/* Death count */}
         <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-accent">
           {category.count.toLocaleString()} Deaths
         </p>
 
-        {/* Top Causes as pills */}
+        {/* Top Causes as pills (links to cause pages) */}
         {topCauses && topCauses.length > 0 && (
           <div className="mt-auto">
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-text-muted">
@@ -88,18 +101,19 @@ function DecadeCard({ category }: DecadeCardProps) {
             </p>
             <div className="flex flex-wrap gap-1.5">
               {topCauses.slice(0, 3).map((cause, idx) => (
-                <span
+                <Link
                   key={idx}
-                  className="rounded-full border border-brown-medium/30 bg-cream px-2.5 py-1 text-xs text-brown-dark"
+                  to={`/deaths/${encodeURIComponent(cause.cause.toLowerCase().replace(/\s+/g, "-"))}`}
+                  className="rounded-full border border-brown-medium/30 bg-cream px-2.5 py-1 text-xs text-brown-dark transition-colors hover:bg-brown-light/30"
                 >
                   {cause.cause}
-                </span>
+                </Link>
               ))}
             </div>
           </div>
         )}
       </div>
-    </Link>
+    </div>
   )
 }
 
