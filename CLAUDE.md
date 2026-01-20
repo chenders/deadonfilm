@@ -151,6 +151,45 @@ const actorIds = actors.map(a => a.id)
 const detailsMap = await batchGetActorDetails(actorIds)
 ```
 
+## Caching
+
+Redis caching uses centralized key management in `server/src/lib/cache.ts`.
+
+### Cache Key Registry
+
+All cache keys are defined in `CACHE_KEYS`:
+
+```typescript
+import { CACHE_KEYS, getActorCacheKeys } from "../lib/cache.js"
+
+// Get all keys for an actor
+const keys = CACHE_KEYS.actor(2157)
+// { profile: "actor:id:2157", death: "actor:id:2157:type:death" }
+
+// Or as an array
+const keyList = getActorCacheKeys(2157)
+// ["actor:id:2157", "actor:id:2157:type:death"]
+```
+
+### Invalidation Patterns
+
+**In routes** (Redis optional - graceful degradation):
+```typescript
+await invalidateActorCache(tmdbId)  // Returns silently if Redis unavailable
+```
+
+**In scripts** (Redis required - must succeed):
+```typescript
+await invalidateActorCacheRequired(tmdbId)  // Throws if Redis unavailable
+```
+
+### Rules
+
+1. **Never hardcode cache keys** - always use `CACHE_KEYS` or `buildCacheKey`
+2. **Add new entity keys to `CACHE_KEYS`** when adding cached entities
+3. **Use `*Required` variants in scripts** that must invalidate cache
+4. **Test cache hit/miss paths** - see testing.md
+
 ## Data Source Implementation
 
 When implementing a new death information data source:
