@@ -61,9 +61,7 @@ class TraktRateLimiter {
     const now = Date.now()
     const timeSinceLastRequest = now - this.lastRequestTime
     if (timeSinceLastRequest < REQUEST_DELAY_MS) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, REQUEST_DELAY_MS - timeSinceLastRequest),
-      )
+      await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY_MS - timeSinceLastRequest))
     }
     this.lastRequestTime = Date.now()
   }
@@ -74,10 +72,7 @@ const rateLimiter = new TraktRateLimiter()
 /**
  * Make authenticated request to Trakt API
  */
-async function traktRequest<T>(
-  endpoint: string,
-  apiKey?: string,
-): Promise<T | null> {
+async function traktRequest<T>(endpoint: string, apiKey?: string): Promise<T | null> {
   const key = apiKey || process.env.TRAKT_API_KEY
   if (!key) {
     throw new Error("TRAKT_API_KEY environment variable not set")
@@ -123,7 +118,7 @@ async function traktRequest<T>(
 export async function getTraktStats(
   type: "movie" | "show",
   id: string,
-  apiKey?: string,
+  apiKey?: string
 ): Promise<TraktStats | null> {
   // Validate ID format based on type
   if (type === "movie") {
@@ -153,7 +148,7 @@ export async function getTraktStats(
 export async function getTrending(
   type: "movie" | "show",
   limit = 100,
-  apiKey?: string,
+  apiKey?: string
 ): Promise<TraktTrendingItem[]> {
   const endpoint = `/${type}s/trending?limit=${limit}`
   const result = await traktRequest<TraktTrendingItem[]>(endpoint, apiKey)
@@ -172,7 +167,7 @@ export async function getTrending(
 export async function getTraktRating(
   type: "movie" | "show",
   id: string,
-  apiKey?: string,
+  apiKey?: string
 ): Promise<{ rating: number; votes: number } | null> {
   const stats = await getTraktStats(type, id, apiKey)
   if (!stats) return null

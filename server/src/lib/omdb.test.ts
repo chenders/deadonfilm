@@ -61,9 +61,7 @@ describe("OMDb API Client", () => {
         metacriticScore: 82,
       })
 
-      expect(fetch).toHaveBeenCalledWith(
-        "http://www.omdbapi.com/?apikey=test-api-key&i=tt0111161",
-      )
+      expect(fetch).toHaveBeenCalledWith("http://www.omdbapi.com/?apikey=test-api-key&i=tt0111161")
     })
 
     it("handles comma-formatted vote counts", async () => {
@@ -242,7 +240,7 @@ describe("OMDb API Client", () => {
       delete process.env.OMDB_API_KEY
 
       await expect(getOMDbRatings("tt0111161")).rejects.toThrow(
-        "OMDB_API_KEY environment variable not set",
+        "OMDB_API_KEY environment variable not set"
       )
     })
 
@@ -301,9 +299,7 @@ describe("OMDb API Client", () => {
 
       await getOMDbRatings("tt0000001", "custom-key")
 
-      expect(fetch).toHaveBeenCalledWith(
-        "http://www.omdbapi.com/?apikey=custom-key&i=tt0000001",
-      )
+      expect(fetch).toHaveBeenCalledWith("http://www.omdbapi.com/?apikey=custom-key&i=tt0000001")
     })
   })
 })
