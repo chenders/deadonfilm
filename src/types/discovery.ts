@@ -60,9 +60,24 @@ export interface CauseCategoriesResponse {
 }
 
 // Decade categories
+export interface DecadeFeaturedActor {
+  id: number
+  tmdbId: number | null
+  name: string
+  profilePath: string | null
+  causeOfDeath: string | null
+}
+
+export interface DecadeTopCause {
+  cause: string
+  count: number
+}
+
 export interface DecadeCategory {
   decade: number
   count: number
+  featuredActor: DecadeFeaturedActor | null
+  topCauses: DecadeTopCause[]
 }
 
 export interface DecadeCategoriesResponse {

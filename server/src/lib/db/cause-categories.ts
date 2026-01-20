@@ -12,6 +12,8 @@ import type {
   DeathByCauseRecord,
   DeathsByCauseOptions,
   DecadeCategory,
+  DecadeFeaturedActor,
+  DecadeTopCause,
   CauseCategoryStats,
   CauseCategoryIndexResponse,
   CauseCategoryDetailResponse,
@@ -120,7 +122,8 @@ export async function getCauseFromSlug(slug: string): Promise<string | null> {
 export async function getDecadeCategories(): Promise<DecadeCategory[]> {
   const db = getPool()
 
-  const result = await db.query<{ decade: number; count: string }>(`
+  // Get basic decade counts
+  const decadesResult = await db.query<{ decade: number; count: string }>(`
     SELECT (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
            COUNT(*) as count
     FROM actors
@@ -130,9 +133,91 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     ORDER BY decade DESC
   `)
 
-  return result.rows.map((row) => ({
+  // Get featured actor per decade (most popular non-obscure actor)
+  const featuredResult = await db.query<{
+    decade: number
+    id: number
+    tmdb_id: number | null
+    name: string
+    profile_path: string | null
+    cause_of_death: string | null
+  }>(`
+    WITH ranked_actors AS (
+      SELECT
+        (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
+        id,
+        tmdb_id,
+        name,
+        profile_path,
+        cause_of_death,
+        ROW_NUMBER() OVER (
+          PARTITION BY (EXTRACT(YEAR FROM deathday)::int / 10 * 10)
+          ORDER BY popularity DESC NULLS LAST
+        ) as rn
+      FROM actors
+      WHERE deathday IS NOT NULL
+        AND is_obscure = false
+    )
+    SELECT decade, id, tmdb_id, name, profile_path, cause_of_death
+    FROM ranked_actors
+    WHERE rn = 1
+  `)
+
+  // Get top 3 causes per decade
+  const causesResult = await db.query<{
+    decade: number
+    cause: string
+    count: string
+  }>(`
+    WITH ranked_causes AS (
+      SELECT
+        (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
+        COALESCE(n.normalized_cause, a.cause_of_death) as cause,
+        COUNT(*) as count,
+        ROW_NUMBER() OVER (
+          PARTITION BY (EXTRACT(YEAR FROM deathday)::int / 10 * 10)
+          ORDER BY COUNT(*) DESC
+        ) as rn
+      FROM actors a
+      LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+      WHERE a.deathday IS NOT NULL
+        AND a.cause_of_death IS NOT NULL
+        AND a.is_obscure = false
+      GROUP BY decade, COALESCE(n.normalized_cause, a.cause_of_death)
+    )
+    SELECT decade, cause, count
+    FROM ranked_causes
+    WHERE rn <= 3
+    ORDER BY decade DESC, count DESC
+  `)
+
+  // Build maps for featured actors and top causes
+  const featuredByDecade = new Map<number, DecadeFeaturedActor>()
+  for (const row of featuredResult.rows) {
+    featuredByDecade.set(row.decade, {
+      id: row.id,
+      tmdbId: row.tmdb_id,
+      name: row.name,
+      profilePath: row.profile_path,
+      causeOfDeath: row.cause_of_death,
+    })
+  }
+
+  const causesByDecade = new Map<number, DecadeTopCause[]>()
+  for (const row of causesResult.rows) {
+    const existing = causesByDecade.get(row.decade) || []
+    existing.push({
+      cause: row.cause,
+      count: parseInt(row.count, 10),
+    })
+    causesByDecade.set(row.decade, existing)
+  }
+
+  return decadesResult.rows.map((row) => ({
     decade: row.decade,
     count: parseInt(row.count, 10),
+    featuredActor: featuredByDecade.get(row.decade) || null,
+    topCauses: causesByDecade.get(row.decade) || [],
   }))
 }
 

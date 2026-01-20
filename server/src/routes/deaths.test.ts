@@ -276,8 +276,24 @@ describe("getDecadeCategoriesHandler", () => {
   let statusSpy: ReturnType<typeof vi.fn>
 
   const mockDecades = [
-    { decade: 2020, label: "2020s", count: 50 },
-    { decade: 2010, label: "2010s", count: 120 },
+    {
+      decade: 2020,
+      count: 50,
+      featuredActor: {
+        id: 1,
+        tmdbId: 123,
+        name: "Test Actor",
+        profilePath: "/test.jpg",
+        causeOfDeath: "Natural causes",
+      },
+      topCauses: [{ cause: "Natural causes", count: 20 }],
+    },
+    {
+      decade: 2010,
+      count: 120,
+      featuredActor: null,
+      topCauses: [],
+    },
   ]
 
   beforeEach(() => {
