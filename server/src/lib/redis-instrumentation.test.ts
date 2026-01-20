@@ -1,27 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // Mock dependencies using vi.hoisted to ensure they're available in mock factories
-const { mockGet, mockSetex, mockSet, mockDel, mockScan, mockPing, mockClient } = vi.hoisted(
-  () => {
-    const mockGet = vi.fn()
-    const mockSetex = vi.fn()
-    const mockSet = vi.fn()
-    const mockDel = vi.fn()
-    const mockScan = vi.fn()
-    const mockPing = vi.fn()
+const { mockGet, mockSetex, mockSet, mockDel, mockScan, mockPing, mockClient } = vi.hoisted(() => {
+  const mockGet = vi.fn()
+  const mockSetex = vi.fn()
+  const mockSet = vi.fn()
+  const mockDel = vi.fn()
+  const mockScan = vi.fn()
+  const mockPing = vi.fn()
 
-    const mockClient = {
-      get: mockGet,
-      setex: mockSetex,
-      set: mockSet,
-      del: mockDel,
-      scan: mockScan,
-      ping: mockPing,
-    }
-
-    return { mockGet, mockSetex, mockSet, mockDel, mockScan, mockPing, mockClient }
+  const mockClient = {
+    get: mockGet,
+    setex: mockSetex,
+    set: mockSet,
+    del: mockDel,
+    scan: mockScan,
+    ping: mockPing,
   }
-)
+
+  return { mockGet, mockSetex, mockSet, mockDel, mockScan, mockPing, mockClient }
+})
 
 const { mockRecordCustomEvent, mockStartSegment } = vi.hoisted(() => {
   const mockRecordCustomEvent = vi.fn()
