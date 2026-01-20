@@ -26,6 +26,7 @@
  *   npm run backfill:external-ids -- --fresh            # Start fresh, ignore checkpoint
  */
 
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import path from "path"
 import { Command, InvalidArgumentError } from "commander"
@@ -98,7 +99,19 @@ const program = new Command()
       dryRun?: boolean
       fresh?: boolean
     }) => {
-      await runBackfill(options)
+      // Don't wrap dry-run mode
+      if (options.dryRun) {
+        await runBackfill(options)
+      } else {
+        await withNewRelicTransaction("backfill-external-ids", async (recordMetrics) => {
+          const stats = await runBackfill(options)
+          recordMetrics({
+            recordsProcessed: stats.processed,
+            recordsUpdated: stats.updated,
+            errorsEncountered: stats.errors,
+          })
+        })
+      }
     }
   )
 
@@ -107,7 +120,7 @@ async function runBackfill(options: {
   missingOnly?: boolean
   dryRun?: boolean
   fresh?: boolean
-}) {
+}): Promise<{ processed: number; updated: number; errors: number }> {
   const { limit, missingOnly, dryRun, fresh } = options
 
   if (!process.env.DATABASE_URL && !dryRun) {
@@ -249,6 +262,12 @@ async function runBackfill(options: {
 
   // Close database pool to allow process to exit
   await resetPool()
+
+  return {
+    processed: checkpoint.stats.processed,
+    updated: checkpoint.stats.updated,
+    errors: checkpoint.stats.errors,
+  }
 }
 
 function delay(ms: number): Promise<void> {
