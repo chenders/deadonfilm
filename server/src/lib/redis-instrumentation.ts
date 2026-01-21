@@ -3,7 +3,7 @@
  * Tracks operation latency, success rates, and cache hit/miss metrics.
  */
 import { getRedisClient } from "./redis.js"
-import { recordCustomEvent, startSegment } from "./newrelic.js"
+import newrelic from "newrelic"
 
 interface RedisMetrics {
   operation: string
@@ -47,7 +47,7 @@ export async function instrumentedGet(key: string): Promise<string | null> {
   let error: Error | undefined
 
   try {
-    result = await startSegment("Redis/get", true, async () => {
+    result = await newrelic.startSegment("Redis/get", true, async () => {
       const client = getRedisClient()
       if (!client) return null
       return await client.get(key)
@@ -66,7 +66,7 @@ export async function instrumentedGet(key: string): Promise<string | null> {
     if (error) {
       metrics.error = error.message
     }
-    recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
+    newrelic.recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
   }
 
   return result
@@ -81,7 +81,7 @@ export async function instrumentedSet(key: string, value: string, ttl?: number):
   let error: Error | undefined
 
   try {
-    await startSegment("Redis/set", true, async () => {
+    await newrelic.startSegment("Redis/set", true, async () => {
       const client = getRedisClient()
       if (!client) return
       if (ttl) {
@@ -106,7 +106,7 @@ export async function instrumentedSet(key: string, value: string, ttl?: number):
     if (error) {
       metrics.error = error.message
     }
-    recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
+    newrelic.recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
   }
 }
 
@@ -120,7 +120,7 @@ export async function instrumentedDel(...keys: string[]): Promise<number> {
   let error: Error | undefined
 
   try {
-    result = await startSegment("Redis/del", true, async () => {
+    result = await newrelic.startSegment("Redis/del", true, async () => {
       const client = getRedisClient()
       if (!client || keys.length === 0) return 0
       return await client.del(...keys)
@@ -141,7 +141,7 @@ export async function instrumentedDel(...keys: string[]): Promise<number> {
       if (error) {
         metrics.error = error.message
       }
-      recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
+      newrelic.recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
     }
   }
 
@@ -158,7 +158,7 @@ export async function instrumentedScan(pattern: string, count = 100): Promise<st
   let error: Error | undefined
 
   try {
-    await startSegment("Redis/scan", true, async () => {
+    await newrelic.startSegment("Redis/scan", true, async () => {
       const client = getRedisClient()
       if (!client) return
 
@@ -182,7 +182,7 @@ export async function instrumentedScan(pattern: string, count = 100): Promise<st
     if (error) {
       metrics.error = error.message
     }
-    recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
+    newrelic.recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
   }
 
   return allKeys
@@ -198,7 +198,7 @@ export async function instrumentedPing(): Promise<string> {
   let error: Error | undefined
 
   try {
-    result = await startSegment("Redis/ping", true, async () => {
+    result = await newrelic.startSegment("Redis/ping", true, async () => {
       const client = getRedisClient()
       if (!client) throw new Error("Redis client not available")
       return await client.ping()
@@ -216,7 +216,7 @@ export async function instrumentedPing(): Promise<string> {
     if (error) {
       metrics.error = error.message
     }
-    recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
+    newrelic.recordCustomEvent("RedisOperation", sanitizeMetrics(metrics))
   }
 
   return result

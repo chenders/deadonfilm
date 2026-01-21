@@ -10,7 +10,7 @@ import {
   saveCheckpoint as saveCheckpointGeneric,
   deleteCheckpoint as deleteCheckpointGeneric,
 } from "../checkpoint-utils.js"
-import { recordCustomEvent } from "../newrelic.js"
+import newrelic from "newrelic"
 import { rebuildDeathCaches } from "../cache.js"
 import { MODEL_ID, DEFAULT_CHECKPOINT_FILE } from "./constants.js"
 import { createBatchRequest } from "./prompt-builder.js"
@@ -202,7 +202,7 @@ export async function submitBatch(
     console.log(`Requests: ${batch.request_counts.processing} processing`)
 
     // Record batch submission event
-    recordCustomEvent("CauseOfDeathBatchSubmitted", {
+    newrelic.recordCustomEvent("CauseOfDeathBatchSubmitted", {
       batchId: batch.id,
       actorCount: actorsToProcess.length,
       model: MODEL_ID,
@@ -219,7 +219,7 @@ export async function submitBatch(
 
     return { batchId: batch.id, submitted: actorsToProcess.length }
   } catch (error) {
-    recordCustomEvent("CauseOfDeathBatchError", {
+    newrelic.recordCustomEvent("CauseOfDeathBatchError", {
       operation: "submit",
       error: error instanceof Error ? error.message : "Unknown error",
     })
@@ -421,7 +421,7 @@ export async function processResults(
 
   // Record batch processing completion
   if (!dryRun) {
-    recordCustomEvent("CauseOfDeathBatchProcessed", {
+    newrelic.recordCustomEvent("CauseOfDeathBatchProcessed", {
       batchId,
       processed,
       succeeded: checkpoint.stats.succeeded,

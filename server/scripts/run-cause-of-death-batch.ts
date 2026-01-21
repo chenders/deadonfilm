@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import newrelic from "newrelic"
 /**
  * Continuous runner for cause of death batch processing.
  *
@@ -24,7 +25,6 @@ import Anthropic from "@anthropic-ai/sdk"
 import { Command } from "commander"
 import * as readline from "readline"
 import { getPool, resetPool } from "../src/lib/db.js"
-import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { toSentenceCase } from "../src/lib/text-utils.js"
 import { rebuildDeathCaches } from "../src/lib/cache.js"
 import {
@@ -40,7 +40,6 @@ import {
 } from "./backfill-cause-of-death-batch.js"
 
 // Initialize New Relic for monitoring
-initNewRelic()
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -153,7 +152,7 @@ async function run(options: {
   console.log(`${"=".repeat(60)}\n`)
 
   if (!dryRun) {
-    recordCustomEvent("CauseOfDeathRunnerStarted", {
+    newrelic.recordCustomEvent("CauseOfDeathRunnerStarted", {
       limit,
       pollInterval,
     })
@@ -290,13 +289,13 @@ async function run(options: {
         }
         saveCheckpoint(checkpoint)
 
-        recordCustomEvent("CauseOfDeathBatchSubmitted", {
+        newrelic.recordCustomEvent("CauseOfDeathBatchSubmitted", {
           batchId: batch.id,
           actorCount: result.rows.length,
           batchNumber: batchCount,
         })
       } catch (error) {
-        recordCustomEvent("CauseOfDeathRunnerError", {
+        newrelic.recordCustomEvent("CauseOfDeathRunnerError", {
           operation: "submit",
           batchNumber: batchCount,
           error: error instanceof Error ? error.message : "Unknown error",
@@ -357,7 +356,7 @@ async function run(options: {
       deleteCheckpoint()
       console.log(`\nBatch #${batchCount} complete: ${batchProcessed} actors processed`)
 
-      recordCustomEvent("CauseOfDeathBatchProcessed", {
+      newrelic.recordCustomEvent("CauseOfDeathBatchProcessed", {
         batchId: batchId!,
         batchNumber: batchCount,
         processed: batchProcessed,
@@ -374,7 +373,7 @@ async function run(options: {
         console.log("  Rebuilt death caches")
       }
     } catch (error) {
-      recordCustomEvent("CauseOfDeathRunnerError", {
+      newrelic.recordCustomEvent("CauseOfDeathRunnerError", {
         operation: "process",
         batchId: batchId!,
         batchNumber: batchCount,
@@ -411,7 +410,7 @@ async function run(options: {
   console.log(`${"=".repeat(60)}\n`)
 
   if (!dryRun) {
-    recordCustomEvent("CauseOfDeathRunnerCompleted", {
+    newrelic.recordCustomEvent("CauseOfDeathRunnerCompleted", {
       totalBatches: batchCount,
       totalProcessed,
       durationSeconds: totalElapsed,

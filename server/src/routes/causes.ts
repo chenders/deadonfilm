@@ -10,7 +10,7 @@
 import type { Request, Response } from "express"
 import { getCauseCategoryIndex, getCauseCategory, getSpecificCause } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 import { isValidCategorySlug } from "../lib/cause-categories.js"
 
 /**
@@ -33,7 +33,7 @@ export async function getCauseCategoryIndexHandler(req: Request, res: Response) 
 
     const data = await getCauseCategoryIndex()
 
-    recordCustomEvent("CausesCategoryIndexFetch", {
+    newrelic.recordCustomEvent("CausesCategoryIndexFetch", {
       categoryCount: data.categories.length,
       totalWithKnownCause: data.totalWithKnownCause,
       durationMs: Date.now() - startTime,
@@ -82,7 +82,7 @@ export async function getCauseCategoryHandler(req: Request, res: Response) {
       return res.status(404).json({ error: { message: "Category not found" } })
     }
 
-    recordCustomEvent("CausesCategoryFetch", {
+    newrelic.recordCustomEvent("CausesCategoryFetch", {
       categorySlug,
       page,
       includeObscure,
@@ -132,7 +132,7 @@ export async function getSpecificCauseHandler(req: Request, res: Response) {
       return res.status(404).json({ error: { message: "Cause not found" } })
     }
 
-    recordCustomEvent("SpecificCauseFetch", {
+    newrelic.recordCustomEvent("SpecificCauseFetch", {
       categorySlug,
       causeSlug,
       cause: data.cause,

@@ -23,11 +23,15 @@ vi.mock("../lib/db.js", () => ({
   },
 }))
 
-vi.mock("../lib/newrelic.js", () => ({
-  recordCustomEvent: vi.fn(),
+vi.mock("newrelic", () => ({
+  default: {
+    recordCustomEvent: vi.fn(),
+    addCustomAttribute: vi.fn(),
+    addCustomAttributes: vi.fn(),
+  },
 }))
 
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 describe("getStats", () => {
   let mockReq: Partial<Request>
@@ -470,7 +474,7 @@ describe("getCovidDeathsHandler", () => {
 
     await getCovidDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "CovidDeathsQuery",
       expect.objectContaining({
         page: 2,

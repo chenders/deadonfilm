@@ -24,6 +24,8 @@ services:
       - "/:/host:ro"
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./newrelic-postgres-config.yml:/etc/newrelic-infra/integrations.d/postgresql-config.yml:ro"
+      - "./newrelic-redis-config.yml:/etc/newrelic-infra/integrations.d/redis-config.yml:ro"
+      - "./newrelic-nginx-config.yml:/etc/newrelic-infra/integrations.d/nginx-config.yml:ro"
     depends_on:
       db:
         condition: service_healthy
@@ -113,10 +115,10 @@ services:
         reservations:
           memory: 512M
     logging:
-      driver: json-file
+      driver: journald
       options:
-        max-size: "10m"
-        max-file: "3"
+        tag: "deadonfilm-app"
+        labels: "service"
 
   nginx:
     image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
@@ -204,10 +206,10 @@ services:
         reservations:
           memory: 128M
     logging:
-      driver: json-file
+      driver: journald
       options:
-        max-size: "10m"
-        max-file: "3"
+        tag: "deadonfilm-cron"
+        labels: "service"
 
   redis:
     image: redis:7-alpine
