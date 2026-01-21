@@ -5,6 +5,12 @@
  * This script fetches IMDb ratings, Rotten Tomatoes scores, and Metacritic scores
  * from the OMDb API for all content with IMDb IDs.
  *
+ * Features:
+ * - Exponential backoff retry logic (max 3 attempts)
+ * - Marks permanently failed items after 3 attempts
+ * - Classifies errors as permanent (404, 400, 401) vs transient (500, 503, timeouts)
+ * - Respects rate limits with 200ms delay between requests
+ *
  * Usage:
  *   npm run backfill:omdb -- [options]
  *
@@ -24,6 +30,8 @@ import { getOMDbRatings } from "../src/lib/omdb.js"
 import { upsertMovie } from "../src/lib/db/movies.js"
 import { upsertShow } from "../src/lib/db/shows.js"
 import type { MovieRecord, ShowRecord } from "../src/lib/db/types.js"
+
+const RATE_LIMIT_DELAY_MS = 200
 
 function parsePositiveInt(value: string): number {
   const n = parseInt(value, 10)
@@ -54,10 +62,32 @@ interface BackfillStats {
   totalProcessed: number
   successful: number
   failed: number
+  permanentlyFailed: number
   skipped: number
   moviesUpdated: number
   showsUpdated: number
   episodesUpdated: number
+}
+
+interface MovieInfo extends MovieRecord {
+  omdb_fetch_attempts: number
+}
+
+interface ShowInfo extends ShowRecord {
+  omdb_fetch_attempts: number
+}
+
+/**
+ * Classify an error as permanent (don't retry) or transient (retry with backoff)
+ */
+function isPermanentError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  const msg = error.message.toLowerCase()
+  // Permanent: Not found, bad request, unauthorized
+  if (msg.includes("404") || msg.includes("not found")) return true
+  if (msg.includes("400") || msg.includes("bad request")) return true
+  if (msg.includes("401") || msg.includes("unauthorized")) return true
+  return false
 }
 
 const program = new Command()
@@ -78,10 +108,19 @@ async function backfillMovies(
   limit: number | undefined,
   minPopularity: number | undefined,
   dryRun: boolean
-): Promise<{ processed: number; successful: number; failed: number }> {
+): Promise<{ processed: number; successful: number; failed: number; permanentlyFailed: number }> {
   const db = getPool()
 
-  const conditions: string[] = ["imdb_id IS NOT NULL", "omdb_updated_at IS NULL"]
+  const conditions: string[] = [
+    "imdb_id IS NOT NULL",
+    "omdb_updated_at IS NULL",
+    "omdb_permanently_failed = false",
+    "omdb_fetch_attempts < 3",
+    `(
+      omdb_last_fetch_attempt IS NULL
+      OR omdb_last_fetch_attempt < NOW() - INTERVAL '1 hour' * POWER(2, omdb_fetch_attempts)
+    )`,
+  ]
 
   const params: number[] = []
   let paramIndex = 1
@@ -100,14 +139,14 @@ async function backfillMovies(
   }
 
   const query = `
-    SELECT tmdb_id, title, imdb_id, popularity
+    SELECT tmdb_id, title, imdb_id, popularity, omdb_fetch_attempts
     FROM movies
     WHERE ${conditions.join("\n      AND ")}
     ORDER BY popularity DESC NULLS LAST
     ${limitClause}
   `
 
-  const result = await db.query<MovieRecord>(query, params)
+  const result = await db.query<MovieInfo>(query, params)
   const movies = result.rows
 
   console.log(`\nFound ${movies.length} movies to backfill`)
@@ -115,9 +154,13 @@ async function backfillMovies(
   let processed = 0
   let successful = 0
   let failed = 0
+  let permanentlyFailed = 0
 
   for (const movie of movies) {
     processed++
+
+    const attemptNum = movie.omdb_fetch_attempts + 1
+    const retryLabel = attemptNum > 1 ? ` (retry ${attemptNum})` : ""
 
     if (processed % 10 === 0) {
       console.log(`Progress: ${processed}/${movies.length} movies processed...`)
@@ -127,17 +170,33 @@ async function backfillMovies(
       const ratings = await getOMDbRatings(movie.imdb_id!)
 
       if (!ratings) {
-        console.log(`  ⚠️  No ratings found for "${movie.title}" (${movie.imdb_id})`)
+        console.log(`  ⚠️  No ratings found for "${movie.title}" (${movie.imdb_id})${retryLabel}`)
         failed++
+
+        // No ratings is a permanent condition
+        if (!dryRun) {
+          const willMarkPermanent = attemptNum >= 3
+          await db.query(
+            `UPDATE movies
+             SET omdb_fetch_attempts = $1,
+                 omdb_last_fetch_attempt = NOW(),
+                 omdb_fetch_error = 'No ratings found',
+                 omdb_permanently_failed = $2
+             WHERE tmdb_id = $3`,
+            [attemptNum, willMarkPermanent, movie.tmdb_id]
+          )
+          if (willMarkPermanent) permanentlyFailed++
+        }
         continue
       }
 
       if (dryRun) {
         console.log(
           `  [DRY RUN] Would update "${movie.title}": IMDb ${ratings.imdbRating}/10 ` +
-            `(${ratings.imdbVotes} votes), RT ${ratings.rottenTomatoesScore}%`
+            `(${ratings.imdbVotes} votes), RT ${ratings.rottenTomatoesScore}%${retryLabel}`
         )
       } else {
+        // Success - update ratings and reset retry counters
         await upsertMovie({
           ...movie,
           omdb_imdb_rating: ratings.imdbRating,
@@ -147,26 +206,68 @@ async function backfillMovies(
           omdb_metacritic_score: ratings.metacriticScore,
           omdb_updated_at: new Date(),
         })
+
+        // Reset retry tracking
+        await db.query(
+          `UPDATE movies
+           SET omdb_fetch_attempts = 0,
+               omdb_last_fetch_attempt = NULL,
+               omdb_fetch_error = NULL
+           WHERE tmdb_id = $1`,
+          [movie.tmdb_id]
+        )
       }
 
       successful++
+
+      // Rate limit delay
+      if (processed < movies.length) {
+        await delay(RATE_LIMIT_DELAY_MS)
+      }
     } catch (error) {
-      console.error(`  ❌ Error processing "${movie.title}":`, error)
+      console.error(`  ❌ Error processing "${movie.title}"${retryLabel}:`, error)
       failed++
+
+      if (!dryRun) {
+        const errorMsg = error instanceof Error ? error.message : "unknown error"
+        const permanent = isPermanentError(error)
+        const willMarkPermanent = permanent || attemptNum >= 3
+
+        await db.query(
+          `UPDATE movies
+           SET omdb_fetch_attempts = $1,
+               omdb_last_fetch_attempt = NOW(),
+               omdb_fetch_error = $2,
+               omdb_permanently_failed = $3
+           WHERE tmdb_id = $4`,
+          [attemptNum, errorMsg.substring(0, 500), willMarkPermanent, movie.tmdb_id]
+        )
+
+        if (willMarkPermanent) permanentlyFailed++
+      }
     }
   }
 
-  return { processed, successful, failed }
+  return { processed, successful, failed, permanentlyFailed }
 }
 
 async function backfillShows(
   limit: number | undefined,
   minPopularity: number | undefined,
   dryRun: boolean
-): Promise<{ processed: number; successful: number; failed: number }> {
+): Promise<{ processed: number; successful: number; failed: number; permanentlyFailed: number }> {
   const db = getPool()
 
-  const conditions: string[] = ["imdb_id IS NOT NULL", "omdb_updated_at IS NULL"]
+  const conditions: string[] = [
+    "imdb_id IS NOT NULL",
+    "omdb_updated_at IS NULL",
+    "omdb_permanently_failed = false",
+    "omdb_fetch_attempts < 3",
+    `(
+      omdb_last_fetch_attempt IS NULL
+      OR omdb_last_fetch_attempt < NOW() - INTERVAL '1 hour' * POWER(2, omdb_fetch_attempts)
+    )`,
+  ]
 
   const params: number[] = []
   let paramIndex = 1
@@ -191,14 +292,14 @@ async function backfillShows(
            vote_average, origin_country, original_language,
            cast_count, deceased_count, living_count,
            expected_deaths, mortality_surprise_score,
-           tvmaze_id, thetvdb_id
+           tvmaze_id, thetvdb_id, omdb_fetch_attempts
     FROM shows
     WHERE ${conditions.join("\n      AND ")}
     ORDER BY popularity DESC NULLS LAST
     ${limitClause}
   `
 
-  const result = await db.query<ShowRecord>(query, params)
+  const result = await db.query<ShowInfo>(query, params)
   const shows = result.rows
 
   console.log(`\nFound ${shows.length} shows to backfill`)
@@ -206,9 +307,13 @@ async function backfillShows(
   let processed = 0
   let successful = 0
   let failed = 0
+  let permanentlyFailed = 0
 
   for (const show of shows) {
     processed++
+
+    const attemptNum = show.omdb_fetch_attempts + 1
+    const retryLabel = attemptNum > 1 ? ` (retry ${attemptNum})` : ""
 
     if (processed % 10 === 0) {
       console.log(`Progress: ${processed}/${shows.length} shows processed...`)
@@ -218,17 +323,33 @@ async function backfillShows(
       const ratings = await getOMDbRatings(show.imdb_id!)
 
       if (!ratings) {
-        console.log(`  ⚠️  No ratings found for "${show.name}" (${show.imdb_id})`)
+        console.log(`  ⚠️  No ratings found for "${show.name}" (${show.imdb_id})${retryLabel}`)
         failed++
+
+        // No ratings is a permanent condition
+        if (!dryRun) {
+          const willMarkPermanent = attemptNum >= 3
+          await db.query(
+            `UPDATE shows
+             SET omdb_fetch_attempts = $1,
+                 omdb_last_fetch_attempt = NOW(),
+                 omdb_fetch_error = 'No ratings found',
+                 omdb_permanently_failed = $2
+             WHERE tmdb_id = $3`,
+            [attemptNum, willMarkPermanent, show.tmdb_id]
+          )
+          if (willMarkPermanent) permanentlyFailed++
+        }
         continue
       }
 
       if (dryRun) {
         console.log(
           `  [DRY RUN] Would update "${show.name}": IMDb ${ratings.imdbRating}/10 ` +
-            `(${ratings.imdbVotes} votes), RT ${ratings.rottenTomatoesScore}%`
+            `(${ratings.imdbVotes} votes), RT ${ratings.rottenTomatoesScore}%${retryLabel}`
         )
       } else {
+        // Success - update ratings and reset retry counters
         await upsertShow({
           ...show,
           omdb_imdb_rating: ratings.imdbRating,
@@ -238,16 +359,53 @@ async function backfillShows(
           omdb_metacritic_score: ratings.metacriticScore,
           omdb_updated_at: new Date(),
         })
+
+        // Reset retry tracking
+        await db.query(
+          `UPDATE shows
+           SET omdb_fetch_attempts = 0,
+               omdb_last_fetch_attempt = NULL,
+               omdb_fetch_error = NULL
+           WHERE tmdb_id = $1`,
+          [show.tmdb_id]
+        )
       }
 
       successful++
+
+      // Rate limit delay
+      if (processed < shows.length) {
+        await delay(RATE_LIMIT_DELAY_MS)
+      }
     } catch (error) {
-      console.error(`  ❌ Error processing "${show.name}":`, error)
+      console.error(`  ❌ Error processing "${show.name}"${retryLabel}:`, error)
       failed++
+
+      if (!dryRun) {
+        const errorMsg = error instanceof Error ? error.message : "unknown error"
+        const permanent = isPermanentError(error)
+        const willMarkPermanent = permanent || attemptNum >= 3
+
+        await db.query(
+          `UPDATE shows
+           SET omdb_fetch_attempts = $1,
+               omdb_last_fetch_attempt = NOW(),
+               omdb_fetch_error = $2,
+               omdb_permanently_failed = $3
+           WHERE tmdb_id = $4`,
+          [attemptNum, errorMsg.substring(0, 500), willMarkPermanent, show.tmdb_id]
+        )
+
+        if (willMarkPermanent) permanentlyFailed++
+      }
     }
   }
 
-  return { processed, successful, failed }
+  return { processed, successful, failed, permanentlyFailed }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function run(options: BackfillOptions) {
@@ -255,6 +413,7 @@ async function run(options: BackfillOptions) {
     totalProcessed: 0,
     successful: 0,
     failed: 0,
+    permanentlyFailed: 0,
     skipped: 0,
     moviesUpdated: 0,
     showsUpdated: 0,
@@ -283,6 +442,7 @@ async function run(options: BackfillOptions) {
       stats.totalProcessed += movieResults.processed
       stats.successful += movieResults.successful
       stats.failed += movieResults.failed
+      stats.permanentlyFailed += movieResults.permanentlyFailed
       stats.moviesUpdated = movieResults.successful
     }
 
@@ -296,6 +456,7 @@ async function run(options: BackfillOptions) {
       stats.totalProcessed += showResults.processed
       stats.successful += showResults.successful
       stats.failed += showResults.failed
+      stats.permanentlyFailed += showResults.permanentlyFailed
       stats.showsUpdated = showResults.successful
     }
 
@@ -307,6 +468,9 @@ async function run(options: BackfillOptions) {
     console.log(`Total processed: ${stats.totalProcessed}`)
     console.log(`Successful: ${stats.successful}`)
     console.log(`Failed: ${stats.failed}`)
+    if (stats.permanentlyFailed > 0) {
+      console.log(`Permanently failed: ${stats.permanentlyFailed}`)
+    }
     console.log(`Movies updated: ${stats.moviesUpdated}`)
     console.log(`Shows updated: ${stats.showsUpdated}`)
 
