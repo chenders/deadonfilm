@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { DecadesIcon } from "@/components/icons"
 
 export default function QuickActions() {
   const linkClass =
@@ -60,6 +61,14 @@ export default function QuickActions() {
           Notable Deaths
         </Link>
         <span className={tooltipClass}>Strange, disputed, and controversial celebrity deaths</span>
+      </div>
+
+      <div className="group relative">
+        <Link data-testid="deaths-by-decade-btn" to="/deaths/decades" className={linkClass}>
+          <DecadesIcon size={16} />
+          Deaths by Decade
+        </Link>
+        <span className={tooltipClass}>Browse actors by decade of death</span>
       </div>
     </div>
   )
