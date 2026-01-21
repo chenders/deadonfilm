@@ -65,6 +65,18 @@ const SYNC_TYPE_PEOPLE = "person_changes"
 const SYNC_TYPE_MOVIES = "movie_changes"
 const SYNC_TYPE_SHOWS = "show_episodes"
 
+/**
+ * Draw a progress bar to show completion status
+ */
+function drawProgressBar(current: number, total: number, width: number = 40): string {
+  const percentage = Math.round((current * 100) / total)
+  const filled = Math.floor((width * current) / total)
+  const empty = width - filled
+
+  const bar = "[" + "█".repeat(filled) + "░".repeat(empty) + "]"
+  return `${bar} ${percentage}% (${current}/${total})`
+}
+
 interface SyncResult {
   peopleChecked: number
   newDeathsFound: number
@@ -497,9 +509,12 @@ async function syncPeopleChanges(
   // Process each person
   let newDeaths = 0
   const newlyDeceasedIds: number[] = []
+  const totalPeople = personDetails.size
+  let processedCount = 0
 
   console.log("\nProcessing people...")
   for (const [tmdbId, person] of personDetails) {
+    processedCount++
     const wasAlreadyDeceased = deceasedTmdbIds.has(tmdbId)
 
     if (person.deathday && !wasAlreadyDeceased) {
@@ -526,6 +541,12 @@ async function syncPeopleChanges(
     } else if (wasAlreadyDeceased) {
       // Existing deceased person - no updates needed for now
       // Future: could update profile_path if changed
+    }
+
+    // Show progress every 50 people or at completion
+    if (processedCount % 50 === 0 || processedCount === totalPeople) {
+      const progressBar = drawProgressBar(processedCount, totalPeople)
+      console.log(`  ${progressBar}`)
     }
   }
 
@@ -558,7 +579,11 @@ async function syncPeopleChanges(
     console.log(`  Found ${affectedMovies.length} affected movies`)
 
     const currentYear = new Date().getFullYear()
+    const totalMovies = affectedMovies.length
+    let processedMovies = 0
+
     for (const { movie_tmdb_id: movieId } of affectedMovies) {
+      processedMovies++
       const result = await updateMovieMortalityStats(movieId, currentYear, false)
       if (result.error) {
         console.error(`    ${result.error}`)
@@ -566,6 +591,13 @@ async function syncPeopleChanges(
       } else if (result.updated && result.title) {
         console.log(`    Updated: ${result.title}`)
       }
+
+      // Show progress every 10 movies or at completion
+      if (processedMovies % 10 === 0 || processedMovies === totalMovies) {
+        const progressBar = drawProgressBar(processedMovies, totalMovies)
+        console.log(`    ${progressBar}`)
+      }
+
       await delay(250)
     }
   }
