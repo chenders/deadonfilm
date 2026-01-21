@@ -94,20 +94,49 @@ export async function initRedis(): Promise<boolean> {
     return false
   }
 
-  const client = getRedisClient()
-  if (!client) {
-    return false
+  if (!redisClient) {
+    redisClient = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 1,
+      retryStrategy: (times) => {
+        if (times > 3) {
+          logger.warn("Redis connection failed after 3 retries, giving up")
+          return null
+        }
+        return Math.min(times * 100, 1000)
+      },
+      lazyConnect: true,
+    })
+
+    redisClient.on("connect", () => {
+      isConnected = true
+      logger.info("Redis connected")
+    })
+
+    redisClient.on("ready", () => {
+      isConnected = true
+      logger.info("Redis ready")
+    })
+
+    redisClient.on("error", (err) => {
+      logger.warn({ err: err.message }, "Redis error")
+    })
+
+    redisClient.on("close", () => {
+      isConnected = false
+      logger.info("Redis connection closed")
+    })
+
+    redisClient.on("reconnecting", () => {
+      logger.info("Redis reconnecting...")
+    })
   }
 
   try {
-    // Wait a moment for connection to establish
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    if (isConnected) {
-      await client.ping()
-      logger.info("Redis connection verified")
-      return true
-    }
-    return false
+    // Properly await the connection
+    await redisClient.connect()
+    await redisClient.ping()
+    logger.info("Redis connection verified")
+    return true
   } catch (err) {
     logger.warn({ err: (err as Error).message }, "Redis not available - caching disabled")
     return false

@@ -282,13 +282,13 @@ describe("redis", () => {
       _resetForTesting()
     })
 
-    it("returns false when connection is not established in time", async () => {
+    it("returns false when connection fails", async () => {
       process.env.REDIS_URL = "redis://localhost:6379"
 
       const { initRedis, _resetForTesting } = await import("./redis.js")
 
-      // Connection doesn't emit connect event
-      mockConnect.mockResolvedValue(undefined)
+      // Connection fails
+      mockConnect.mockRejectedValue(new Error("Connection failed"))
 
       const result = await initRedis()
       expect(result).toBe(false)
