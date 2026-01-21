@@ -32,6 +32,17 @@ export default function AdminNav() {
           Dashboard
         </Link>
 
+        <Link
+          to="/admin/enrichment/runs"
+          className={`block rounded-md px-4 py-2 text-sm font-medium ${
+            location.pathname.startsWith("/admin/enrichment")
+              ? "bg-gray-900 text-white"
+              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+          }`}
+        >
+          Enrichment Runs
+        </Link>
+
         {/* Future stages will add more navigation items */}
       </div>
 
