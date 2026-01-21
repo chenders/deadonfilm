@@ -6,6 +6,5 @@ export function useActor(actorId: number) {
     queryKey: ["actors", actorId],
     queryFn: () => getActor(actorId),
     enabled: actorId > 0,
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   })
 }

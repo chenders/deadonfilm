@@ -10,6 +10,7 @@ vi.mock("../lib/tmdb.js", () => ({
 
 vi.mock("../lib/newrelic.js", () => ({
   recordCustomEvent: vi.fn(),
+  addCustomAttributes: vi.fn(),
 }))
 
 import { searchMovies as tmdbSearch } from "../lib/tmdb.js"

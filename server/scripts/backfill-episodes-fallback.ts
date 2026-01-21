@@ -31,6 +31,7 @@
  *   npm run backfill:episodes:fallback -- --fresh            # Start fresh, ignore checkpoint
  */
 
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import path from "path"
 import { Command, InvalidArgumentError } from "commander"
@@ -146,7 +147,23 @@ const program = new Command()
       dryRun?: boolean
       fresh?: boolean
     }) => {
-      await runBackfill(options)
+      // Don't wrap detect-gaps mode (it's just reporting, not processing)
+      if (options.detectGaps || options.dryRun) {
+        await runBackfill(options)
+      } else {
+        await withNewRelicTransaction("backfill-episodes-fallback", async (recordMetrics) => {
+          const checkpoint = await runBackfill(options)
+          if (checkpoint) {
+            recordMetrics({
+              recordsProcessed: checkpoint.stats.showsProcessed,
+              episodesSaved: checkpoint.stats.episodesSaved,
+              actorsSaved: checkpoint.stats.actorsSaved,
+              appearancesSaved: checkpoint.stats.appearancesSaved,
+              errorsEncountered: checkpoint.stats.errors,
+            })
+          }
+        })
+      }
     }
   )
 
@@ -158,7 +175,7 @@ async function runBackfill(options: {
   includeCast?: boolean
   dryRun?: boolean
   fresh?: boolean
-}) {
+}): Promise<Checkpoint | null> {
   const {
     detectGaps,
     show: showId,
@@ -187,7 +204,7 @@ async function runBackfill(options: {
   if (detectGaps) {
     await detectDataGaps(db)
     await resetPool()
-    return
+    return null
   }
 
   // Load or create checkpoint
@@ -253,6 +270,8 @@ async function runBackfill(options: {
 
   // Close database pool to allow process to exit
   await resetPool()
+
+  return checkpoint
 }
 
 async function detectDataGaps(db: ReturnType<typeof getPool>) {

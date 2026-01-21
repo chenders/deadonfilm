@@ -28,6 +28,7 @@ vi.mock("../lib/mortality-stats.js", () => ({
 
 vi.mock("../lib/newrelic.js", () => ({
   recordCustomEvent: vi.fn(),
+  addCustomAttributes: vi.fn(),
 }))
 
 import { getShow, getSeasonEpisodes, getSeason } from "./shows.js"

@@ -18,6 +18,9 @@ import type {
   CleanedDeathInfo,
   RawSourceData,
   ConfidenceLevel,
+  ProjectReference,
+  CareerStatus,
+  RelatedCelebrity,
 } from "./types.js"
 import { getEnrichmentLogger } from "./logger.js"
 import { recordCustomEvent, addCustomAttributes } from "../newrelic.js"
@@ -44,6 +47,18 @@ interface ClaudeCleanupResponse {
   location_of_death: string | null
   related_deaths: string | null
   additional_context: string | null
+  // Date confidence
+  birthday_confidence: ConfidenceLevel | null
+  deathday_confidence: ConfidenceLevel | null
+  // Career context
+  career_status_at_death: CareerStatus | null
+  last_project: ProjectReference | null
+  posthumous_releases: ProjectReference[] | null
+  // Related celebrities
+  related_celebrities: Array<{
+    name: string
+    relationship: string
+  }> | null
 }
 
 /**
@@ -74,6 +89,9 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
   "details": "2-4 sentences of medical context about the cause. Null if no details available.",
   "details_confidence": "high|medium|low|disputed",
 
+  "birthday_confidence": "high|medium|low|disputed - based on source agreement and reliability. Null if not discussed.",
+  "deathday_confidence": "high|medium|low|disputed - based on source agreement and reliability. Null if not discussed.",
+
   "circumstances": "COMPREHENSIVE narrative of the death. This is the main content for the death page. Include:
     - Full timeline of events leading to and surrounding the death
     - How and when the body was discovered, by whom
@@ -99,6 +117,14 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
 
   "related_deaths": "If family members or others died in connection (same incident, discovered together, etc.), describe here with names, relationships, causes, and timeline. Null if none.",
 
+  "related_celebrities": [{"name": "Celebrity Name", "relationship": "spouse/co-star/friend/etc."}] - celebrities mentioned in the death circumstances or related to it. Include the nature of their relationship. Null if none relevant.",
+
+  "career_status_at_death": "active|semi-retired|retired|hiatus|unknown - what was their career status when they died? Were they still actively working, had they retired, or were they on a break?",
+
+  "last_project": {"title": "Project Name", "year": 2023, "tmdb_id": null, "imdb_id": null, "type": "movie|show|documentary|unknown"} - their last known film/TV project before death. Null if unknown.",
+
+  "posthumous_releases": [{"title": "Project Name", "year": 2024, "tmdb_id": null, "imdb_id": null, "type": "movie|show|documentary|unknown"}] - projects released after their death. Null if none.",
+
   "additional_context": "Career context relevant to the death (e.g., 'had retired from acting in 2004', 'was filming at the time', 'won two Academy Awards'). Null if not relevant or no notable context."
 }
 
@@ -106,6 +132,9 @@ CRITICAL INSTRUCTIONS:
 - Be THOROUGH in circumstances - capture the full story, not just the medical cause
 - If the death was a major news story, capture WHY it was newsworthy
 - Include related deaths (spouse, family) if they're part of the story
+- Include related_celebrities if any notable people are mentioned in the death story
+- Fill in career_status_at_death based on any mentions of their work status
+- Fill in last_project and posthumous_releases if mentioned in sources
 - Remove Wikipedia citation markers [1][2], "citation needed" tags
 - Remove formatting artifacts from web scraping
 - Do NOT include career achievements, filmography, or awards unless directly death-related
@@ -227,23 +256,58 @@ export async function cleanupWithClaude(
     )
   }
 
+  // Convert related_celebrities to proper format
+  const relatedCelebrities: RelatedCelebrity[] | null = parsed.related_celebrities
+    ? parsed.related_celebrities.map((rc) => ({
+        name: rc.name,
+        tmdbId: null, // Will be looked up later when persisting
+        relationship: rc.relationship,
+      }))
+    : null
+
   // Convert to CleanedDeathInfo
   const cleaned: CleanedDeathInfo = {
     cause: parsed.cause,
     causeConfidence: parsed.cause_confidence,
     details: parsed.details,
     detailsConfidence: parsed.details_confidence,
+    birthdayConfidence: parsed.birthday_confidence,
+    deathdayConfidence: parsed.deathday_confidence,
     circumstances: parsed.circumstances,
     circumstancesConfidence: parsed.circumstances_confidence,
     rumoredCircumstances: parsed.rumored_circumstances,
     locationOfDeath: parsed.location_of_death,
     notableFactors: parsed.notable_factors || [],
     relatedDeaths: parsed.related_deaths,
+    relatedCelebrities,
     additionalContext: parsed.additional_context,
+    lastProject: parsed.last_project,
+    careerStatusAtDeath: parsed.career_status_at_death,
+    posthumousReleases: parsed.posthumous_releases,
     cleanupSource: "claude-opus-4.5",
     cleanupTimestamp: new Date().toISOString(),
   }
-
+  recordCustomEvent("ClaudeCleanedData", {
+    cause: parsed.cause || "",
+    causeConfidence: parsed.cause_confidence || "",
+    details: parsed.details || "",
+    detailsConfidence: parsed.details_confidence || "",
+    birthdayConfidence: parsed.birthday_confidence || "",
+    deathdayConfidence: parsed.deathday_confidence || "",
+    circumstances: parsed.circumstances || "",
+    circumstancesConfidence: parsed.circumstances_confidence || "",
+    rumoredCircumstances: parsed.rumored_circumstances || "",
+    locationOfDeath: parsed.location_of_death || "",
+    notableFactors: (parsed.notable_factors || []).join(", "),
+    relatedDeaths: parsed.related_deaths || "",
+    relatedCelebrities: (parsed.related_celebrities || []).map((rc) => rc.name).join(", "),
+    additionalContext: parsed.additional_context || "",
+    careerStatusAtDeath: parsed.career_status_at_death || "",
+    lastProject: parsed.last_project?.title || "",
+    posthumousReleasesCount: (parsed.posthumous_releases || []).length,
+    cleanupSource: "claude-opus-4.5",
+    cleanupTimestamp: new Date().toISOString(),
+  })
   return { cleaned, costUsd }
 }
 
