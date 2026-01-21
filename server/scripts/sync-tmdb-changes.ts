@@ -77,7 +77,7 @@ function drawProgressBar(current: number, total: number, width: number = 40): st
   return `${bar} ${percentage}% (${current}/${total})`
 }
 
-interface SyncResult {
+export interface SyncResult {
   peopleChecked: number
   newDeathsFound: number
   moviesChecked: number
@@ -177,10 +177,13 @@ const program = new Command()
           errorsEncountered: result.errors.length,
         })
       })
+
+      // Exit cleanly
+      await exitAfterCompletion()
     }
   )
 
-interface SyncOptions {
+export interface SyncOptions {
   days?: number
   startDate?: string
   endDate?: string
@@ -190,7 +193,7 @@ interface SyncOptions {
   showsOnly: boolean
 }
 
-async function runSync(options: SyncOptions): Promise<SyncResult> {
+export async function runSync(options: SyncOptions): Promise<SyncResult> {
   // Check required environment variables
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -383,6 +386,13 @@ async function runSync(options: SyncOptions): Promise<SyncResult> {
     const pool = getPool()
     await pool.end()
   }
+}
+
+// Exit cleanly after completion
+async function exitAfterCompletion() {
+  // Give time for any pending async operations to complete
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  process.exit(0)
 }
 
 function delay(ms: number): Promise<void> {
