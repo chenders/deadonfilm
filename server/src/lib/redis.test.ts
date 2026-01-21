@@ -311,6 +311,30 @@ describe("redis", () => {
 
       _resetForTesting()
     })
+
+    it("reuses existing client when called multiple times", async () => {
+      process.env.REDIS_URL = "redis://localhost:6379"
+
+      const { initRedis, _resetForTesting } = await import("./redis.js")
+
+      mockConnect.mockImplementation(async () => {
+        emitEvent("connect")
+      })
+
+      // First call - creates client and connects
+      MockRedis.mockClear()
+      const result1 = await initRedis()
+      expect(result1).toBe(true)
+      expect(MockRedis).toHaveBeenCalledTimes(1)
+
+      // Second call - reuses existing client, doesn't create new one
+      MockRedis.mockClear()
+      const result2 = await initRedis()
+      expect(result2).toBe(true)
+      expect(MockRedis).toHaveBeenCalledTimes(0) // No new client created
+
+      _resetForTesting()
+    })
   })
 
   describe("_resetForTesting", () => {
