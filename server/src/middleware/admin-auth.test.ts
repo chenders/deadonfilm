@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { Request, Response, NextFunction } from "express"
 import { adminAuthMiddleware, optionalAdminAuth } from "./admin-auth.js"
-import { generateToken } from "../lib/admin-auth.js"
 
 // Mock verifyToken
 vi.mock("../lib/admin-auth.js", async () => {

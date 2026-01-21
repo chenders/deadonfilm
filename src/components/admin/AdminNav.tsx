@@ -39,6 +39,7 @@ export default function AdminNav() {
         <button
           onClick={handleLogout}
           className="w-full rounded-md px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white"
+          data-testid="admin-logout-button"
         >
           Logout
         </button>

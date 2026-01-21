@@ -28,27 +28,27 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("/admin/api/dashboard/stats", {
+          credentials: "include",
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch dashboard stats")
+        }
+
+        const data = await response.json()
+        setStats(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load dashboard")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
     fetchStats()
   }, [])
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch("/admin/api/dashboard/stats", {
-        credentials: "include",
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch dashboard stats")
-      }
-
-      const data = await response.json()
-      setStats(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load dashboard")
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   if (isLoading) {
     return (
