@@ -38,6 +38,11 @@ const NotableDeathsPage = lazyWithRetry(() => import("./pages/NotableDeathsPage"
 // Admin pages
 const AdminLoginPage = lazyWithRetry(() => import("./pages/admin/LoginPage"))
 const AdminDashboardPage = lazyWithRetry(() => import("./pages/admin/DashboardPage"))
+const AdminEnrichmentRunsPage = lazyWithRetry(() => import("./pages/admin/EnrichmentRunsPage"))
+const AdminEnrichmentRunDetailsPage = lazyWithRetry(
+  () => import("./pages/admin/EnrichmentRunDetailsPage")
+)
+const AdminStartEnrichmentPage = lazyWithRetry(() => import("./pages/admin/StartEnrichmentPage"))
 
 function App() {
   useGoogleAnalytics()
@@ -60,6 +65,30 @@ function App() {
           element={
             <Suspense fallback={<LoadingSpinner />}>
               <AdminDashboardPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/enrichment/runs"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminEnrichmentRunsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/enrichment/runs/:id"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminEnrichmentRunDetailsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/enrichment/start"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminStartEnrichmentPage />
             </Suspense>
           }
         />
