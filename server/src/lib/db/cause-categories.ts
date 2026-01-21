@@ -241,7 +241,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     ORDER BY decade DESC, count DESC
   `)
 
-  // Get top movie per decade (most popular movie with an image)
+  // Get top movie per decade (most popular movie from that decade with an image)
   // Prefer backdrop_path, fall back to poster_path
   const moviesResult = await db.query<{
     decade: number
