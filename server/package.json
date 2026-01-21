@@ -98,7 +98,7 @@
     "//sync:tmdb": "Sync with TMDB Changes API (runs every 2h in prod)",
     "sync:tmdb": "node dist/scripts/sync-tmdb-changes.js || tsx scripts/sync-tmdb-changes.ts",
     "//backfill:tmdb": "Batch backfill TMDB sync in 2-day chunks (resumable)",
-    "backfill:tmdb": "node dist/scripts/backfill-tmdb-batch.js || tsx scripts/backfill-tmdb-batch.ts",
+    "backfill:tmdb": "tsx scripts/backfill-tmdb-batch.ts",
     "//sitemap:generate": "Generate sitemap.xml (runs daily in prod)",
     "sitemap:generate": "node dist/scripts/sitemap-generate.js || tsx scripts/sitemap-generate.ts"
   },
