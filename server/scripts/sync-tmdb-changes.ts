@@ -82,6 +82,7 @@ export interface SyncResult {
   newDeathsFound: number
   moviesChecked: number
   moviesUpdated: number
+  moviesSkipped: number
   showsChecked: number
   newEpisodesFound: number
   errors: string[]
@@ -218,6 +219,7 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
     newDeathsFound: 0,
     moviesChecked: 0,
     moviesUpdated: 0,
+    moviesSkipped: 0,
     showsChecked: 0,
     newEpisodesFound: 0,
     errors: [],
@@ -288,6 +290,7 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
       const movieResult = await syncMovieChanges(movieStartDate, movieEndDate, options.dryRun)
       result.moviesChecked = movieResult.checked
       result.moviesUpdated = movieResult.updated
+      result.moviesSkipped = movieResult.skipped
       result.errors.push(...movieResult.errors)
 
       // Update sync state
@@ -323,20 +326,35 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
 
     // Invalidate caches after successful sync (if not dry run)
     if (!options.dryRun) {
-      console.log("\n=== Invalidating Caches ===")
+      console.log("\n=== Syncing System State ===")
       await initRedis()
 
       if (result.newDeathsFound > 0) {
-        console.log("Invalidating death-related caches...")
+        console.log(
+          `Invalidating death-related caches (${result.newDeathsFound} new deaths found)...`
+        )
         await invalidateDeathCaches()
+        console.log("  ✓ Death list caches cleared")
+        console.log("  ✓ Death statistics caches cleared")
       }
 
       if (result.moviesUpdated > 0) {
-        console.log("Invalidating movie-related caches...")
+        console.log(
+          `Invalidating movie caches (${result.moviesUpdated} movies updated)...`
+        )
         await invalidateMovieCaches()
+        console.log("  ✓ Movie list caches cleared")
+        console.log("  ✓ Movie statistics caches cleared")
+      }
+
+      if (result.moviesSkipped > 0) {
+        console.log(
+          `  → ${result.moviesSkipped} movies skipped (no cache invalidation needed)`
+        )
       }
 
       await closeRedis()
+      console.log("System state synchronized")
     }
 
     // Print summary
@@ -354,6 +372,9 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
       console.log(`\nMovies:`)
       console.log(`  - Checked: ${result.moviesChecked.toLocaleString()}`)
       console.log(`  - Updated: ${result.moviesUpdated.toLocaleString()}${result.moviesUpdated > 0 ? " ✓" : ""}`)
+      if (result.moviesSkipped > 0) {
+        console.log(`  - Skipped: ${result.moviesSkipped.toLocaleString()} (only unimportant fields changed)`)
+      }
     }
 
     if (!options.peopleOnly && !options.moviesOnly) {
@@ -406,8 +427,23 @@ async function updateMovieMortalityStats(
   movieId: number,
   currentYear: number,
   dryRun: boolean
-): Promise<{ updated: boolean; title?: string; error?: string }> {
+): Promise<{
+  updated: boolean
+  skipped: boolean
+  title?: string
+  error?: string
+  changedFields?: string[]
+}> {
   try {
+    const pool = getPool()
+
+    // Fetch existing movie record to compare changes
+    const { rows: existingRows } = await pool.query<MovieRecord>(
+      `SELECT * FROM movies WHERE tmdb_id = $1`,
+      [movieId]
+    )
+    const existingMovie = existingRows[0] || null
+
     const [details, credits] = await Promise.all([
       getMovieDetails(movieId),
       getMovieCredits(movieId),
@@ -420,7 +456,7 @@ async function updateMovieMortalityStats(
     const releaseYear = details.release_date ? parseInt(details.release_date.split("-")[0]) : null
 
     if (!releaseYear) {
-      return { updated: false }
+      return { updated: false, skipped: false }
     }
 
     const actorsForMortality = topCast.map((castMember) => {
@@ -439,31 +475,107 @@ async function updateMovieMortalityStats(
       currentYear
     )
 
-    if (!dryRun) {
-      const movieRecord: MovieRecord = {
-        tmdb_id: movieId,
-        title: details.title,
-        release_date: details.release_date || null,
-        release_year: releaseYear,
-        poster_path: details.poster_path,
-        genres: details.genres?.map((g) => g.name) || [],
-        original_language: details.original_language || null,
-        production_countries: details.production_countries?.map((c) => c.iso_3166_1) ?? null,
-        popularity: details.popularity || null,
-        vote_average: details.vote_average || null,
-        cast_count: topCast.length,
-        deceased_count: mortalityStats.actualDeaths,
-        living_count: topCast.length - mortalityStats.actualDeaths,
-        expected_deaths: mortalityStats.expectedDeaths,
-        mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
-      }
-
-      await upsertMovie(movieRecord)
+    const newRecord: MovieRecord = {
+      tmdb_id: movieId,
+      title: details.title,
+      release_date: details.release_date || null,
+      release_year: releaseYear,
+      poster_path: details.poster_path,
+      genres: details.genres?.map((g) => g.name) || [],
+      original_language: details.original_language || null,
+      production_countries: details.production_countries?.map((c) => c.iso_3166_1) ?? null,
+      popularity: details.popularity || null,
+      vote_average: details.vote_average || null,
+      cast_count: topCast.length,
+      deceased_count: mortalityStats.actualDeaths,
+      living_count: topCast.length - mortalityStats.actualDeaths,
+      expected_deaths: mortalityStats.expectedDeaths,
+      mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
     }
 
-    return { updated: true, title: `${details.title} (${releaseYear})` }
+    // If movie exists, compare to see what changed
+    if (existingMovie) {
+      const changedFields: string[] = []
+
+      // Fields we care about (important changes)
+      const importantFields = [
+        "title",
+        "release_date",
+        "release_year",
+        "poster_path",
+        "cast_count",
+        "deceased_count",
+        "living_count",
+        "expected_deaths",
+        "mortality_surprise_score",
+      ]
+
+      // Check all fields for changes
+      for (const field of Object.keys(newRecord) as Array<keyof MovieRecord>) {
+        if (field === "tmdb_id") continue // Skip ID field
+
+        const oldValue = existingMovie[field]
+        const newValue = newRecord[field]
+
+        // Handle array comparison
+        if (Array.isArray(oldValue) && Array.isArray(newValue)) {
+          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            changedFields.push(field)
+          }
+        }
+        // Handle number comparison (with tolerance for floating point)
+        else if (typeof oldValue === "number" && typeof newValue === "number") {
+          if (Math.abs(oldValue - newValue) > 0.0001) {
+            changedFields.push(field)
+          }
+        }
+        // Handle other comparisons
+        else if (oldValue !== newValue) {
+          changedFields.push(field)
+        }
+      }
+
+      // If nothing changed, skip
+      if (changedFields.length === 0) {
+        return {
+          updated: false,
+          skipped: true,
+          title: `${details.title} (${releaseYear})`,
+          changedFields: [],
+        }
+      }
+
+      // Check if only unimportant fields changed
+      const hasImportantChanges = changedFields.some((field) =>
+        importantFields.includes(field)
+      )
+
+      if (!hasImportantChanges) {
+        return {
+          updated: false,
+          skipped: true,
+          title: `${details.title} (${releaseYear})`,
+          changedFields,
+        }
+      }
+    }
+
+    // Update the movie
+    if (!dryRun) {
+      await upsertMovie(newRecord)
+    }
+
+    return {
+      updated: true,
+      skipped: false,
+      title: `${details.title} (${releaseYear})`,
+    }
   } catch (error) {
-    return { updated: false, error: `Error updating movie ${movieId}: ${error}` }
+    return {
+      updated: false,
+      skipped: false,
+      error: `Error updating movie ${movieId}: ${error}`,
+    }
   }
 }
 
@@ -563,20 +675,27 @@ async function syncPeopleChanges(
   // Post-processing for newly deceased actors
   if (!dryRun && newlyDeceasedIds.length > 0) {
     // Invalidate individual actor caches
-    console.log(`\nInvalidating caches for ${newlyDeceasedIds.length} newly deceased actors...`)
+    console.log(`\n=== Invalidating Actor Caches ===`)
+    console.log(
+      `Clearing individual actor profile caches for ${newlyDeceasedIds.length} newly deceased actors...`
+    )
     await initRedis()
+    let successCount = 0
     for (const tmdbId of newlyDeceasedIds) {
       try {
         await invalidateActorCacheRequired(tmdbId)
+        successCount++
       } catch (error) {
-        console.error(`  Error invalidating cache for actor ${tmdbId}: ${error}`)
+        console.error(`  ✗ Error invalidating cache for actor ${tmdbId}: ${error}`)
       }
     }
     await closeRedis()
+    console.log(`  ✓ Cleared ${successCount} actor profile caches`)
 
     // Recalculate mortality stats for movies
+    console.log(`\n=== Updating Movie Mortality Statistics ===`)
     console.log(
-      `\nRecalculating mortality stats for ${newlyDeceasedIds.length} newly deceased actors...`
+      `Finding movies featuring ${newlyDeceasedIds.length} newly deceased actors...`
     )
     const pool = getPool()
     const { rows: affectedMovies } = await pool.query<{ movie_tmdb_id: number }>(
@@ -586,7 +705,7 @@ async function syncPeopleChanges(
        WHERE a.tmdb_id = ANY($1)`,
       [newlyDeceasedIds]
     )
-    console.log(`  Found ${affectedMovies.length} affected movies`)
+    console.log(`  Found ${affectedMovies.length} movies requiring mortality stats update`)
 
     const currentYear = new Date().getFullYear()
     const totalMovies = affectedMovies.length
@@ -610,6 +729,8 @@ async function syncPeopleChanges(
 
       await delay(250)
     }
+
+    console.log(`  ✓ Updated mortality stats for ${processedMovies} movies`)
   }
 
   return { checked: relevantIds.length, newDeaths, errors }
@@ -675,7 +796,7 @@ async function syncMovieChanges(
   startDate: string,
   endDate: string,
   dryRun: boolean
-): Promise<{ checked: number; updated: number; errors: string[] }> {
+): Promise<{ checked: number; updated: number; skipped: number; errors: string[] }> {
   console.log(`\n=== Syncing Movie Changes (${startDate} to ${endDate}) ===\n`)
 
   const errors: string[] = []
@@ -709,11 +830,12 @@ async function syncMovieChanges(
 
   if (relevantIds.length === 0) {
     console.log("\nNo relevant movie changes found.")
-    return { checked: 0, updated: 0, errors }
+    return { checked: 0, updated: 0, skipped: 0, errors }
   }
 
   // Process each movie
   let updated = 0
+  let skipped = 0
   const totalMovies = relevantIds.length
   let processedCount = 0
 
@@ -725,6 +847,15 @@ async function syncMovieChanges(
     if (result.error) {
       console.error(`    ${result.error}`)
       errors.push(result.error)
+    } else if (result.skipped && result.title) {
+      skipped++
+      if (result.changedFields && result.changedFields.length > 0) {
+        console.log(
+          `    Skipped: ${result.title} (only ${result.changedFields.join(", ")} changed)`
+        )
+      } else {
+        console.log(`    Skipped: ${result.title} (no changes)`)
+      }
     } else if (result.updated && result.title) {
       if (dryRun) {
         console.log(`    Would update: ${result.title}`)
@@ -743,7 +874,7 @@ async function syncMovieChanges(
     await delay(250)
   }
 
-  return { checked: relevantIds.length, updated, errors }
+  return { checked: relevantIds.length, updated, skipped, errors }
 }
 
 interface ActiveShow {

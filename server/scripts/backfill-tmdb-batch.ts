@@ -31,6 +31,7 @@ interface ChunkSummary {
   newDeathsFound: number
   moviesChecked: number
   moviesUpdated: number
+  moviesSkipped: number
   showsChecked: number
   newEpisodesFound: number
   errors: number
@@ -100,8 +101,15 @@ function drawStatusBar(
       }
       break
     case "movies":
-      if (summary.moviesChecked > 0 || summary.moviesUpdated > 0) {
-        statsStr = `${summary.moviesChecked.toLocaleString()} checked, ${summary.moviesUpdated.toLocaleString()} updated`
+      if (summary.moviesChecked > 0 || summary.moviesUpdated > 0 || summary.moviesSkipped > 0) {
+        const parts = [`${summary.moviesChecked.toLocaleString()} checked`]
+        if (summary.moviesUpdated > 0) {
+          parts.push(`${summary.moviesUpdated.toLocaleString()} updated`)
+        }
+        if (summary.moviesSkipped > 0) {
+          parts.push(`${summary.moviesSkipped.toLocaleString()} skipped`)
+        }
+        statsStr = parts.join(", ")
       }
       break
     case "shows":
@@ -219,6 +227,7 @@ async function runModeBackfill(
     newDeathsFound: 0,
     moviesChecked: 0,
     moviesUpdated: 0,
+    moviesSkipped: 0,
     showsChecked: 0,
     newEpisodesFound: 0,
     errors: 0,
@@ -248,6 +257,7 @@ async function runModeBackfill(
     summary.newDeathsFound += result.newDeathsFound
     summary.moviesChecked += result.moviesChecked
     summary.moviesUpdated += result.moviesUpdated
+    summary.moviesSkipped += result.moviesSkipped
     summary.showsChecked += result.showsChecked
     summary.newEpisodesFound += result.newEpisodesFound
     summary.errors += result.errors.length
@@ -349,6 +359,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     newDeathsFound: 0,
     moviesChecked: 0,
     moviesUpdated: 0,
+    moviesSkipped: 0,
     showsChecked: 0,
     newEpisodesFound: 0,
     errors: 0,
@@ -368,6 +379,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     overallSummary.newDeathsFound += summary.newDeathsFound
     overallSummary.moviesChecked += summary.moviesChecked
     overallSummary.moviesUpdated += summary.moviesUpdated
+    overallSummary.moviesSkipped += summary.moviesSkipped
     overallSummary.showsChecked += summary.showsChecked
     overallSummary.newEpisodesFound += summary.newEpisodesFound
     overallSummary.errors += summary.errors
@@ -398,12 +410,17 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     )
   }
 
-  if (overallSummary.moviesChecked > 0 || overallSummary.moviesUpdated > 0) {
+  if (overallSummary.moviesChecked > 0 || overallSummary.moviesUpdated > 0 || overallSummary.moviesSkipped > 0) {
     console.log("\nMovies:")
     console.log(`  - Total checked: ${overallSummary.moviesChecked.toLocaleString()}`)
     console.log(
       `  - Total updated: ${overallSummary.moviesUpdated.toLocaleString()}${overallSummary.moviesUpdated > 0 ? " ✓" : ""}`
     )
+    if (overallSummary.moviesSkipped > 0) {
+      console.log(
+        `  - Total skipped: ${overallSummary.moviesSkipped.toLocaleString()} (only unimportant fields changed)`
+      )
+    }
   }
 
   if (overallSummary.showsChecked > 0 || overallSummary.newEpisodesFound > 0) {
