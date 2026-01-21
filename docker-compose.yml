@@ -47,7 +47,10 @@ services:
         max-file: "3"
 
   db:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    image: deadonfilm-postgres:16
     container_name: deadonfilm-db
     restart: unless-stopped
     ports:
