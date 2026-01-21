@@ -27,9 +27,11 @@ vi.mock("../lib/cache.js", () => ({
   CACHE_TTL: { WEEK: 604800, SHORT: 300 },
 }))
 
-vi.mock("../lib/newrelic.js", () => ({
+vi.mock("newrelic", () => ({
+  default: {
   recordCustomEvent: vi.fn(),
   addCustomAttributes: vi.fn(),
+}
 }))
 
 import newrelic from "newrelic"

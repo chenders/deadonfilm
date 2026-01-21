@@ -30,8 +30,10 @@ vi.mock("../lib/movie-cache.js", () => ({
   buildActorMovieAppearanceRecord: vi.fn(),
 }))
 
-vi.mock("../lib/newrelic.js", () => ({
-  recordCustomEvent: vi.fn(),
+vi.mock("newrelic", () => ({
+  default: {
+    recordCustomEvent: vi.fn(),
+  },
 }))
 
 import { getMovie } from "./movie.js"
