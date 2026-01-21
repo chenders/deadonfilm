@@ -182,6 +182,14 @@ export function getProfileUrl(
   return `${TMDB_IMAGE_BASE}/${size}${profilePath}`
 }
 
+export function getBackdropUrl(
+  backdropPath: string | null,
+  size: "w300" | "w500" | "w780" | "w1280" | "original" = "w780"
+): string | null {
+  if (!backdropPath) return null
+  return `${TMDB_IMAGE_BASE}/${size}${backdropPath}`
+}
+
 export async function getActor(actorId: number): Promise<ActorProfileResponse> {
   return fetchJson(`/actor/${actorId}`)
 }

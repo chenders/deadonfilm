@@ -1,7 +1,7 @@
 import type { Request, Response } from "express"
 import { getCursedActors } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import { recordCustomEvent, addCustomAttributes } from "../lib/newrelic.js"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
 
 // Get list of cursed actors (actors whose co-stars have died at unusually high rates)
@@ -58,6 +58,14 @@ export async function getCursedActorsRoute(req: Request, res: Response) {
     if (cached) {
       return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
+
+    addCustomAttributes({
+      "query.entity": "actor",
+      "query.operation": "list-cursed",
+      "query.page": page,
+      "query.status": actorStatus,
+      "query.minMovies": minMovies,
+    })
 
     const { actors, totalCount } = await getCursedActors({
       limit: pageSize,

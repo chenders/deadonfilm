@@ -21,6 +21,7 @@
  *   npm run verify:shows -- --fix --dry-run
  */
 
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
@@ -442,7 +443,24 @@ const program = new Command()
     }
 
     try {
-      const results = await runVerification(options)
+      let results: VerificationResults
+
+      // Don't wrap dry-run or check-only mode
+      if (options.dryRun || !options.fix) {
+        results = await runVerification(options)
+      } else {
+        results = await withNewRelicTransaction("verify-shows", async (recordMetrics) => {
+          const verificationResults = await runVerification(options)
+          recordMetrics({
+            recordsProcessed: verificationResults.showsChecked,
+            recordsUpdated: verificationResults.issuesFixed,
+            castCountIssues: verificationResults.castCountMismatches.length,
+            deceasedCountIssues: verificationResults.deceasedCountMismatches.length,
+            missingMortalityIssues: verificationResults.missingMortality.length,
+          })
+          return verificationResults
+        })
+      }
 
       // Exit with error code if issues found and not fixing
       const totalIssues =

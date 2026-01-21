@@ -43,6 +43,7 @@ export {
   getDeceasedByMonthDay,
   getActorFilmography,
   getActorShowFilmography,
+  getDeceasedActorsFromTopMovies,
 } from "./db/actors.js"
 
 // Re-export actor types for backward compatibility

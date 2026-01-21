@@ -6,6 +6,5 @@ export function useSeasonEpisodes(showId: number, seasonNumber: number | null) {
     queryKey: ["seasonEpisodes", showId, seasonNumber],
     queryFn: () => getSeasonEpisodes(showId, seasonNumber!),
     enabled: showId > 0 && seasonNumber !== null && seasonNumber > 0,
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   })
 }

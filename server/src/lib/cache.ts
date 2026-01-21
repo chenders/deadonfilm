@@ -6,6 +6,12 @@ import { getRedisClient } from "./redis.js"
 import { logger } from "./logger.js"
 import { recordCustomEvent } from "./newrelic.js"
 import { getRecentDeaths, getSiteStats, getDeathsThisWeekSimple } from "./db.js"
+import {
+  instrumentedGet,
+  instrumentedSet,
+  instrumentedDel,
+  instrumentedScan,
+} from "./redis-instrumentation.js"
 
 // Cache key prefixes for different data types
 export const CACHE_PREFIX = {
@@ -54,6 +60,32 @@ export function buildCacheKey(prefix: string, params?: Record<string, unknown>):
 }
 
 /**
+ * Cache key descriptors for each entity type.
+ * These define ALL cache keys associated with an entity.
+ * When invalidating, ALL keys for that entity should be cleared.
+ */
+export const CACHE_KEYS = {
+  actor: (tmdbId: number) => ({
+    profile: buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId }),
+    death: buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId, type: "death" }),
+  }),
+  movie: (tmdbId: number) => ({
+    details: buildCacheKey(CACHE_PREFIX.MOVIE, { id: tmdbId }),
+  }),
+  show: (tmdbId: number) => ({
+    details: buildCacheKey(CACHE_PREFIX.SHOW, { id: tmdbId }),
+  }),
+} as const
+
+/**
+ * Get all cache keys for an actor. Use this to see exactly what keys exist.
+ */
+export function getActorCacheKeys(tmdbId: number): string[] {
+  const keys = CACHE_KEYS.actor(tmdbId)
+  return Object.values(keys)
+}
+
+/**
  * Get a cached value, returning null if not found or Redis unavailable.
  */
 export async function getCached<T>(key: string): Promise<T | null> {
@@ -61,7 +93,7 @@ export async function getCached<T>(key: string): Promise<T | null> {
   if (!client) return null
 
   try {
-    const cached = await client.get(key)
+    const cached = await instrumentedGet(key)
     if (cached) {
       logger.debug({ key }, "Cache hit")
       recordCustomEvent("CacheAccess", { key, hit: true })
@@ -84,7 +116,7 @@ export async function setCached<T>(key: string, value: T, ttlSeconds: number): P
   if (!client) return
 
   try {
-    await client.setex(key, ttlSeconds, JSON.stringify(value))
+    await instrumentedSet(key, JSON.stringify(value), ttlSeconds)
     logger.debug({ key, ttl: ttlSeconds }, "Cache set")
   } catch (err) {
     logger.warn({ err: (err as Error).message, key }, "Cache set error")
@@ -100,17 +132,12 @@ export async function invalidateByPattern(pattern: string): Promise<number> {
   if (!client) return 0
 
   try {
-    let cursor = "0"
+    const keys = await instrumentedScan(pattern, 100)
     let deleted = 0
 
-    do {
-      const [nextCursor, keys] = await client.scan(cursor, "MATCH", pattern, "COUNT", 100)
-      cursor = nextCursor
-      if (keys.length > 0) {
-        await client.del(...keys)
-        deleted += keys.length
-      }
-    } while (cursor !== "0")
+    if (keys.length > 0) {
+      deleted = await instrumentedDel(...keys)
+    }
 
     if (deleted > 0) {
       logger.info({ pattern, deleted }, "Cache invalidated by pattern")
@@ -130,7 +157,7 @@ export async function invalidateKeys(...keys: string[]): Promise<void> {
   if (!client || keys.length === 0) return
 
   try {
-    await client.del(...keys)
+    await instrumentedDel(...keys)
     logger.info({ keys }, "Cache keys invalidated")
   } catch (err) {
     logger.warn({ err: (err as Error).message, keys }, "Cache invalidation error")
@@ -158,9 +185,22 @@ export async function flushCache(): Promise<void> {
  * Invalidates both the actor profile cache and death details cache.
  */
 export async function invalidateActorCache(tmdbId: number): Promise<void> {
-  const profileKey = buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId })
-  const deathKey = buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId, type: "death" })
-  await invalidateKeys(profileKey, deathKey)
+  const keys = getActorCacheKeys(tmdbId)
+  await invalidateKeys(...keys)
+}
+
+/**
+ * Invalidate actor cache, throwing if Redis is unavailable.
+ * Use this in scripts where cache invalidation is required.
+ */
+export async function invalidateActorCacheRequired(tmdbId: number): Promise<void> {
+  const client = getRedisClient()
+  if (!client) {
+    throw new Error("Redis client not available - cannot invalidate cache")
+  }
+  const keys = getActorCacheKeys(tmdbId)
+  await instrumentedDel(...keys)
+  logger.info({ keys, tmdbId }, "Actor cache invalidated")
 }
 
 /**

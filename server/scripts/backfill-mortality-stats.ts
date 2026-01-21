@@ -12,6 +12,7 @@
  * The --all flag is useful after changing the life expectancy calculation method.
  */
 
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
@@ -22,10 +23,21 @@ const program = new Command()
   .description("Backfill mortality statistics for deceased actors")
   .option("-a, --all", "Update ALL records (recalculate), not just NULL values")
   .action(async (options: { all?: boolean }) => {
-    await runBackfill(options.all ?? false)
+    await withNewRelicTransaction("backfill-mortality-stats", async (recordMetrics) => {
+      const result = await runBackfill(options.all ?? false)
+      recordMetrics({
+        recordsProcessed: result.totalProcessed,
+        recordsUpdated: result.updated,
+        errorsEncountered: result.skipped,
+      })
+    })
   })
 
-async function runBackfill(updateAll: boolean) {
+async function runBackfill(updateAll: boolean): Promise<{
+  totalProcessed: number
+  updated: number
+  skipped: number
+}> {
   // Check required environment variables
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
@@ -58,7 +70,7 @@ async function runBackfill(updateAll: boolean) {
 
     if (result.rows.length === 0) {
       console.log("Nothing to backfill. Done!")
-      return
+      return { totalProcessed: 0, updated: 0, skipped: 0 }
     }
 
     let updated = 0
@@ -112,6 +124,8 @@ async function runBackfill(updateAll: boolean) {
     console.log(`  Updated: ${updated}`)
     console.log(`  Skipped: ${skipped}`)
     console.log("\nDone!")
+
+    return { totalProcessed: result.rows.length, updated, skipped }
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)
