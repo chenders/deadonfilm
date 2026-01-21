@@ -5,10 +5,14 @@
 import { invalidateKeys, CACHE_PREFIX } from "../src/lib/cache.js"
 import { initRedis, closeRedis } from "../src/lib/redis.js"
 
-async function main() {
+export async function main() {
   console.log("Invalidating decades cache...")
 
-  await initRedis()
+  const redisAvailable = await initRedis()
+  if (!redisAvailable) {
+    console.error("Redis is not available. Cannot invalidate decades cache.")
+    process.exit(1)
+  }
 
   await invalidateKeys(CACHE_PREFIX.DECADES)
 
@@ -17,7 +21,12 @@ async function main() {
   await closeRedis()
 }
 
-main().catch((error) => {
-  console.error("Error:", error)
-  process.exit(1)
-})
+// Run if this is the main module
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error("Error:", error)
+    process.exit(1)
+  })
+}
+
+export default main
