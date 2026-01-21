@@ -34,7 +34,7 @@ vi.mock("../lib/cache.js", () => ({
   CACHE_TTL: { WEEK: 604800 },
 }))
 
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 import { getCached, setCached } from "../lib/cache.js"
 
 describe("getActorDeathDetails", () => {
@@ -285,7 +285,7 @@ describe("getActorDeathDetails", () => {
     expect(tmdb.getPersonDetails).not.toHaveBeenCalled()
     expect(setCached).not.toHaveBeenCalled()
     expect(jsonSpy).toHaveBeenCalledWith(cachedResponse)
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "DeathDetailsView",
       expect.objectContaining({ cacheHit: true })
     )
@@ -299,7 +299,7 @@ describe("getActorDeathDetails", () => {
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "DeathDetailsView",
       expect.objectContaining({
         tmdbId: 12345,
@@ -592,7 +592,7 @@ describe("getNotableDeaths", () => {
     expect(db.getNotableDeaths).not.toHaveBeenCalled()
     expect(setCached).not.toHaveBeenCalled()
     expect(jsonSpy).toHaveBeenCalledWith(mockNotableDeathsResponse)
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "NotableDeathsView",
       expect.objectContaining({ cacheHit: true })
     )
@@ -603,7 +603,7 @@ describe("getNotableDeaths", () => {
 
     await getNotableDeaths(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "NotableDeathsView",
       expect.objectContaining({
         filter: "all",

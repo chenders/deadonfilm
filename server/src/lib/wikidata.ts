@@ -1,6 +1,6 @@
 import he from "he"
 import { getCauseOfDeathFromClaude, isVagueCause, type ClaudeModel } from "./claude.js"
-import { recordCustomEvent } from "./newrelic.js"
+import newrelic from "newrelic"
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
 const MAX_DEATH_DETAILS_LENGTH = 200
@@ -67,7 +67,7 @@ export async function getCauseOfDeath(
       wikipediaUrl: wikiUrl,
     }
 
-    recordCustomEvent("CauseOfDeathLookup", {
+    newrelic.recordCustomEvent("CauseOfDeathLookup", {
       personName: name,
       source: result.causeOfDeathSource ?? "none",
       success: result.causeOfDeath !== null,
@@ -80,7 +80,7 @@ export async function getCauseOfDeath(
   // 2. Fall back to Wikidata/Wikipedia if Claude unavailable or returned vague answer
   if (!birthday) {
     const source: DeathInfoSource = claudeResult.causeOfDeath ? "claude" : null
-    recordCustomEvent("CauseOfDeathLookup", {
+    newrelic.recordCustomEvent("CauseOfDeathLookup", {
       personName: name,
       source: source ?? "none",
       success: claudeResult.causeOfDeath !== null,
@@ -111,7 +111,7 @@ export async function getCauseOfDeath(
     if (!response.ok) {
       console.log(`Wikidata error: ${response.status} ${response.statusText}`)
       const source: DeathInfoSource = claudeResult.causeOfDeath ? "claude" : null
-      recordCustomEvent("CauseOfDeathLookup", {
+      newrelic.recordCustomEvent("CauseOfDeathLookup", {
         personName: name,
         source: source ?? "none",
         success: claudeResult.causeOfDeath !== null,
@@ -171,7 +171,7 @@ export async function getCauseOfDeath(
       `Final result for ${name}: cause="${causeOfDeath}" (${causeOfDeathSource}), url="${wikidataResult.wikipediaUrl}"`
     )
 
-    recordCustomEvent("CauseOfDeathLookup", {
+    newrelic.recordCustomEvent("CauseOfDeathLookup", {
       personName: name,
       source: causeOfDeathSource ?? "none",
       success: causeOfDeath !== null,
@@ -188,7 +188,7 @@ export async function getCauseOfDeath(
   } catch (error) {
     console.log(`Wikidata error for ${name}:`, error)
     const source: DeathInfoSource = claudeResult.causeOfDeath ? "claude" : null
-    recordCustomEvent("CauseOfDeathLookup", {
+    newrelic.recordCustomEvent("CauseOfDeathLookup", {
       personName: name,
       source: source ?? "none",
       success: claudeResult.causeOfDeath !== null,
@@ -662,7 +662,7 @@ export async function verifyDeathDate(
     const data = (await response.json()) as WikidataSparqlResponse
     const result = parseDeathDateVerificationResult(data.results.bindings, name, tmdbDeathDateObj)
 
-    recordCustomEvent("DeathDateVerification", {
+    newrelic.recordCustomEvent("DeathDateVerification", {
       personName: name,
       tmdbDeathDate,
       wikidataDeathDate: result.wikidataDeathDate ?? "unknown",

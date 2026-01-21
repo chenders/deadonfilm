@@ -18,7 +18,7 @@ vi.mock("../lib/newrelic.js", () => ({
   recordCustomEvent: vi.fn(),
 }))
 
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 describe("getCauseCategoryIndexHandler", () => {
   let mockReq: Partial<Request>
@@ -111,7 +111,7 @@ describe("getCauseCategoryIndexHandler", () => {
 
     await getCauseCategoryIndexHandler(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "CausesCategoryIndexFetch",
       expect.objectContaining({
         categoryCount: 2,
@@ -320,7 +320,7 @@ describe("getCauseCategoryHandler", () => {
 
     await getCauseCategoryHandler(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "CausesCategoryFetch",
       expect.objectContaining({
         categorySlug: "cancer",
@@ -521,7 +521,7 @@ describe("getSpecificCauseHandler", () => {
 
     await getSpecificCauseHandler(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "SpecificCauseFetch",
       expect.objectContaining({
         categorySlug: "cancer",

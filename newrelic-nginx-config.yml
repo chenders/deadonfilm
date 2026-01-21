@@ -1,0 +1,16 @@
+integrations:
+  - name: nri-nginx
+    env:
+      # Nginx stub_status endpoint
+      # Access from infrastructure agent container to nginx container
+      STATUS_URL: http://nginx:3000/nginx_status
+
+      # Connection settings
+      VALIDATE_CERTS: false  # Internal Docker network, HTTP only
+      TIMEOUT: 10
+
+    interval: 15s
+    labels:
+      env: production
+      role: webserver
+    inventory_source: config/nginx

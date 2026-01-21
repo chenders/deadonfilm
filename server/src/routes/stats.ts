@@ -12,7 +12,7 @@ import {
   type UnnaturalDeathCategory,
 } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
 
 export async function getStats(req: Request, res: Response) {
@@ -138,7 +138,7 @@ export async function getCovidDeathsHandler(req: Request, res: Response) {
       },
     }
 
-    recordCustomEvent("CovidDeathsQuery", {
+    newrelic.recordCustomEvent("CovidDeathsQuery", {
       page,
       includeObscure,
       resultCount: persons.length,

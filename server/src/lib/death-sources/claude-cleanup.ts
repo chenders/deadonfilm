@@ -23,7 +23,7 @@ import type {
   RelatedCelebrity,
 } from "./types.js"
 import { getEnrichmentLogger } from "./logger.js"
-import { recordCustomEvent, addCustomAttributes } from "../newrelic.js"
+import newrelic from "newrelic"
 
 const MODEL_ID = "claude-opus-4-5-20251101"
 const MAX_TOKENS = 2000
@@ -179,11 +179,13 @@ export async function cleanupWithClaude(
   const prompt = buildCleanupPrompt(actor, rawSources)
 
   // Add New Relic attributes for Claude cleanup
-  addCustomAttributes({
+  for (const [key, value] of Object.entries({
     "claude.cleanup.actorId": actor.id,
     "claude.cleanup.actorName": actor.name,
     "claude.cleanup.sourceCount": rawSources.length,
-  })
+  })) {
+    newrelic.addCustomAttribute(key, value)
+  }
 
   console.log(`  Claude cleanup for ${actor.name} (${rawSources.length} sources)...`)
 
@@ -227,7 +229,7 @@ export async function cleanupWithClaude(
   )
 
   // Record Claude API call in New Relic
-  recordCustomEvent("ClaudeAPICall", {
+  newrelic.recordCustomEvent("ClaudeAPICall", {
     actorId: actor.id,
     actorName: actor.name,
     model: MODEL_ID,
@@ -287,7 +289,7 @@ export async function cleanupWithClaude(
     cleanupSource: "claude-opus-4.5",
     cleanupTimestamp: new Date().toISOString(),
   }
-  recordCustomEvent("ClaudeCleanedData", {
+  newrelic.recordCustomEvent("ClaudeCleanedData", {
     cause: parsed.cause || "",
     causeConfidence: parsed.cause_confidence || "",
     details: parsed.details || "",

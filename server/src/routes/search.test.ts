@@ -14,7 +14,7 @@ vi.mock("../lib/newrelic.js", () => ({
 }))
 
 import { searchMovies as tmdbSearch } from "../lib/tmdb.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 describe("searchMovies route", () => {
   let mockReq: Partial<Request>
@@ -403,7 +403,7 @@ describe("searchMovies route", () => {
 
     await searchMovies(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "Search",
       expect.objectContaining({
         query: "test movie",
@@ -419,6 +419,6 @@ describe("searchMovies route", () => {
 
     await searchMovies(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).not.toHaveBeenCalled()
+    expect(newrelic.recordCustomEvent).not.toHaveBeenCalled()
   })
 })

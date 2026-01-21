@@ -6,7 +6,7 @@ import {
   getForeverYoungMoviesPaginated,
 } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 interface DiscoverMovieResponse {
   id: number
@@ -108,7 +108,7 @@ export async function getCursedMovies(req: Request, res: Response) {
       },
     }
 
-    recordCustomEvent("CursedMoviesQuery", {
+    newrelic.recordCustomEvent("CursedMoviesQuery", {
       page,
       fromDecade: fromDecade ?? 0,
       toDecade: toDecade ?? 0,
