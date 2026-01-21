@@ -1,7 +1,7 @@
 import type { Request, Response } from "express"
 import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../lib/tmdb.js"
 import { getCauseOfDeath, type DeathInfoSource } from "../lib/wikidata.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 import {
   batchUpsertActors,
   updateDeathInfo,
@@ -290,7 +290,7 @@ export async function getMovie(req: Request, res: Response) {
       mainCast,
     })
 
-    recordCustomEvent("MovieView", {
+    newrelic.recordCustomEvent("MovieView", {
       tmdbId: movie.id,
       title: movie.title,
       releaseYear: releaseYear ?? 0,

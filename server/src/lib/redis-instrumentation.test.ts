@@ -31,9 +31,13 @@ vi.mock("./redis.js", () => ({
   getRedisClient: vi.fn(() => mockClient),
 }))
 
-vi.mock("./newrelic.js", () => ({
-  recordCustomEvent: mockRecordCustomEvent,
-  startSegment: mockStartSegment,
+vi.mock("newrelic", () => ({
+  default: {
+    recordCustomEvent: mockRecordCustomEvent,
+    addCustomAttribute: vi.fn(),
+    addCustomAttributes: vi.fn(),
+    startSegment: mockStartSegment,
+  },
 }))
 
 import {

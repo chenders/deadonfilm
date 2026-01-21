@@ -8,7 +8,7 @@ import {
   getAllDeaths,
 } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
 
 export async function getCauseCategoriesHandler(req: Request, res: Response) {
@@ -120,7 +120,7 @@ export async function getDeathsByCauseHandler(req: Request, res: Response) {
       },
     }
 
-    recordCustomEvent("DeathsByCauseQuery", {
+    newrelic.recordCustomEvent("DeathsByCauseQuery", {
       cause,
       page,
       includeObscure,
@@ -250,7 +250,7 @@ export async function getDeathsByDecadeHandler(req: Request, res: Response) {
       },
     }
 
-    recordCustomEvent("DeathsByDecadeQuery", {
+    newrelic.recordCustomEvent("DeathsByDecadeQuery", {
       decade,
       page,
       includeObscure,
@@ -341,7 +341,7 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
       },
     }
 
-    recordCustomEvent("AllDeathsQuery", {
+    newrelic.recordCustomEvent("AllDeathsQuery", {
       page,
       includeObscure,
       resultCount: persons.length,

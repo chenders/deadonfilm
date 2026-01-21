@@ -1,0 +1,18 @@
+integrations:
+  - name: nri-redis
+    env:
+      # Redis connection (Docker service name)
+      HOSTNAME: redis
+      PORT: 6379
+      # No password needed (internal Docker network)
+
+      # Collection settings
+      KEYS: '["*"]'  # Collect keyspace metrics for all databases
+      KEYS_LIMIT: 30  # Limit number of keys (cardinality control)
+      TIMEOUT: 10
+
+    interval: 15s
+    labels:
+      env: production
+      role: cache
+    inventory_source: config/redis

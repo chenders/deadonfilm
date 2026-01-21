@@ -27,7 +27,7 @@ import {
   SourceTimeoutError,
   DEFAULT_BROWSER_FETCH_CONFIG,
 } from "./types.js"
-import { recordCustomEvent, startSegment, addCustomAttributes, noticeError } from "../newrelic.js"
+import newrelic from "newrelic"
 import { cleanupWithClaude } from "./claude-cleanup.js"
 import { StatusBar } from "./status-bar.js"
 import { EnrichmentLogger, getEnrichmentLogger, setActiveStatusBar } from "./logger.js"
@@ -336,11 +336,13 @@ export class DeathEnrichmentOrchestrator {
    */
   async enrichActor(actor: ActorForEnrichment): Promise<ExtendedEnrichmentResult> {
     // Add New Relic attributes for this actor
-    addCustomAttributes({
+    for (const [key, value] of Object.entries({
       "enrichment.actor.id": actor.id,
       "enrichment.actor.name": actor.name,
       "enrichment.actor.tmdbId": actor.tmdbId || 0,
-    })
+    })) {
+      newrelic.addCustomAttribute(key, value)
+    }
 
     const startTime = Date.now()
     const costBreakdown = this.createEmptyCostBreakdown()
@@ -389,7 +391,7 @@ export class DeathEnrichmentOrchestrator {
       try {
         this.logger.sourceAttempt(actor.name, source.type, source.name)
         // Wrap source lookup in New Relic segment
-        lookupResult = await startSegment(`Source/${source.name}`, true, async () => {
+        lookupResult = await newrelic.startSegment(`Source/${source.name}`, true, async () => {
           return source.lookup(actor)
         })
       } catch (error) {
@@ -479,7 +481,7 @@ export class DeathEnrichmentOrchestrator {
         this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
 
         // Record source failure in New Relic
-        recordCustomEvent("EnrichmentSourceFailed", {
+        newrelic.recordCustomEvent("EnrichmentSourceFailed", {
           actorId: actor.id,
           actorName: actor.name,
           source: source.name,
@@ -502,7 +504,7 @@ export class DeathEnrichmentOrchestrator {
       this.statusBar.log(`    Success! Confidence: ${lookupResult.source.confidence.toFixed(2)}`)
 
       // Record source success in New Relic
-      recordCustomEvent("EnrichmentSourceSuccess", {
+      newrelic.recordCustomEvent("EnrichmentSourceSuccess", {
         actorId: actor.id,
         actorName: actor.name,
         source: source.name,
@@ -598,9 +600,13 @@ export class DeathEnrichmentOrchestrator {
       this.statusBar.log(`  Running Claude Opus 4.5 cleanup on ${rawSources.length} sources...`)
       try {
         // Wrap Claude cleanup in New Relic segment
-        const { cleaned, costUsd } = await startSegment("ClaudeCleanup", true, async () => {
-          return cleanupWithClaude(actor, rawSources)
-        })
+        const { cleaned, costUsd } = await newrelic.startSegment(
+          "ClaudeCleanup",
+          true,
+          async () => {
+            return cleanupWithClaude(actor, rawSources)
+          }
+        )
 
         // Add cleanup cost to stats
         actorStats.totalCostUsd += costUsd
@@ -632,7 +638,7 @@ export class DeathEnrichmentOrchestrator {
         this.statusBar.log(`    Cleanup complete, cost: $${costUsd.toFixed(4)}`)
 
         // Record Claude cleanup success in New Relic
-        recordCustomEvent("EnrichmentClaudeCleanup", {
+        newrelic.recordCustomEvent("EnrichmentClaudeCleanup", {
           actorId: actor.id,
           actorName: actor.name,
           sourceCount: rawSources.length,
@@ -646,9 +652,9 @@ export class DeathEnrichmentOrchestrator {
 
         // Record cleanup error in New Relic
         if (error instanceof Error) {
-          noticeError(error, { actorId: actor.id, actorName: actor.name })
+          newrelic.noticeError(error, { actorId: actor.id, actorName: actor.name })
         }
-        recordCustomEvent("EnrichmentClaudeCleanupError", {
+        newrelic.recordCustomEvent("EnrichmentClaudeCleanupError", {
           actorId: actor.id,
           actorName: actor.name,
           error: errorMsg,
@@ -682,7 +688,7 @@ export class DeathEnrichmentOrchestrator {
     )
 
     // Record actor enrichment completion in New Relic
-    recordCustomEvent("EnrichmentActorComplete", {
+    newrelic.recordCustomEvent("EnrichmentActorComplete", {
       actorId: actor.id,
       actorName: actor.name,
       sourcesAttempted: actorStats.sourcesAttempted.length,
@@ -724,11 +730,13 @@ export class DeathEnrichmentOrchestrator {
     const results = new Map<number, ExtendedEnrichmentResult>()
 
     // Record batch start in New Relic
-    addCustomAttributes({
+    for (const [key, value] of Object.entries({
       "enrichment.batch.totalActors": actors.length,
       "enrichment.batch.maxTotalCost": this.config.costLimits?.maxTotalCost || 0,
-    })
-    recordCustomEvent("EnrichmentBatchStart", {
+    })) {
+      newrelic.addCustomAttribute(key, value)
+    }
+    newrelic.recordCustomEvent("EnrichmentBatchStart", {
       totalActors: actors.length,
       maxTotalCost: this.config.costLimits?.maxTotalCost || 0,
       maxCostPerActor: this.config.costLimits?.maxCostPerActor || 0,
@@ -814,7 +822,7 @@ export class DeathEnrichmentOrchestrator {
     )
 
     // Record batch completion in New Relic
-    recordCustomEvent("EnrichmentBatchComplete", {
+    newrelic.recordCustomEvent("EnrichmentBatchComplete", {
       actorsProcessed: this.stats.actorsProcessed,
       actorsEnriched: this.stats.actorsEnriched,
       fillRate: this.stats.fillRate,
