@@ -22,7 +22,7 @@ import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { invalidateActorCacheRequired } from "../src/lib/cache.js"
-import { getRedisClient } from "../src/lib/redis.js"
+import { initRedis } from "../src/lib/redis.js"
 import type { ProjectInfo, RelatedCelebrity } from "../src/lib/db/types.js"
 
 export function parsePositiveInt(value: string): number {
@@ -218,8 +218,8 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
 
   // Check Redis availability before starting (required for cache invalidation)
   if (!dryRun) {
-    const redisClient = getRedisClient()
-    if (!redisClient) {
+    const redisAvailable = await initRedis()
+    if (!redisAvailable) {
       console.error("Error: Redis client not available")
       console.error("This script requires Redis for cache invalidation.")
       console.error("Either start Redis or use --dry-run to preview without cache invalidation.")
