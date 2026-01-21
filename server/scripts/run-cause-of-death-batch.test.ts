@@ -18,7 +18,13 @@ vi.mock("./backfill-cause-of-death-batch.js", async (importOriginal) => {
   }
 })
 
-vi.mock("../src/lib/newrelic.js", () => ({}))
+vi.mock("newrelic", () => ({
+  default: {
+    noticeError: vi.fn(),
+    setTransactionName: vi.fn(),
+    addCustomAttributes: vi.fn(),
+  },
+}))
 
 import { processResults, markActorAsChecked, setVerboseMode } from "./run-cause-of-death-batch.js"
 import { getPool, resetPool } from "../src/lib/db.js"
