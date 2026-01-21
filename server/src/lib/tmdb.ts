@@ -335,7 +335,9 @@ export async function getAllChangedPersonIds(
       )
     } else if (page % 50 === 0) {
       const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
-      console.log(`  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`)
+      console.log(
+        `  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`
+      )
     }
 
     page++
@@ -385,7 +387,9 @@ export async function getAllChangedMovieIds(
       )
     } else if (page % 50 === 0) {
       const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
-      console.log(`  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`)
+      console.log(
+        `  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`
+      )
     }
 
     page++

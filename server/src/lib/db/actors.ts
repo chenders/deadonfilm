@@ -159,10 +159,9 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
   // TMDB actor - check if exists first, then UPDATE or INSERT
   // We can't use ON CONFLICT (tmdb_id) because tmdb_id has a partial unique index (WHERE tmdb_id IS NOT NULL)
   // which doesn't work with simple ON CONFLICT syntax
-  const existing = await db.query<{ id: number }>(
-    `SELECT id FROM actors WHERE tmdb_id = $1`,
-    [actor.tmdb_id]
-  )
+  const existing = await db.query<{ id: number }>(`SELECT id FROM actors WHERE tmdb_id = $1`, [
+    actor.tmdb_id,
+  ])
 
   if (existing.rows.length > 0) {
     // Update existing actor
