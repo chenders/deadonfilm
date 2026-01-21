@@ -1,36 +1,35 @@
 # Custom PostgreSQL 16 with New Relic monitoring extensions
-FROM postgres:16-alpine
+# Using Debian-based image for better LLVM/build toolchain compatibility
+FROM postgres:16
 
 # Install build dependencies and PostgreSQL development packages
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     git \
     make \
     gcc \
-    musl-dev \
-    clang \
-    llvm \
-    postgresql-dev
+    postgresql-server-dev-16 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install pg_wait_sampling extension
+# Install pg_wait_sampling extension (pinned to v1.1.9 for reproducible builds)
 RUN cd /tmp && \
-    git clone https://github.com/postgrespro/pg_wait_sampling.git && \
+    git clone --branch v1.1.9 --depth 1 https://github.com/postgrespro/pg_wait_sampling.git && \
     cd pg_wait_sampling && \
-    make USE_PGXS=1 NO_LLVM=1 && \
-    make USE_PGXS=1 NO_LLVM=1 install && \
+    make USE_PGXS=1 && \
+    make USE_PGXS=1 install && \
     cd / && \
     rm -rf /tmp/pg_wait_sampling
 
-# Install pg_stat_monitor extension
+# Install pg_stat_monitor extension (pinned to 2.3.1 for reproducible builds)
 RUN cd /tmp && \
-    git clone https://github.com/percona/pg_stat_monitor.git && \
+    git clone --branch 2.3.1 --depth 1 https://github.com/percona/pg_stat_monitor.git && \
     cd pg_stat_monitor && \
-    make USE_PGXS=1 NO_LLVM=1 && \
-    make USE_PGXS=1 NO_LLVM=1 install && \
+    make USE_PGXS=1 && \
+    make USE_PGXS=1 install && \
     cd / && \
     rm -rf /tmp/pg_stat_monitor
 
 # Clean up build dependencies to reduce image size
-RUN apk del git make gcc musl-dev clang llvm
+RUN apt-get purge -y --auto-remove git make gcc postgresql-server-dev-16
 
 # Copy initialization script to create extensions on first startup
 COPY init-newrelic-extensions.sql /docker-entrypoint-initdb.d/
