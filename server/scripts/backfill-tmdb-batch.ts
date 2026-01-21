@@ -21,6 +21,7 @@ import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { promises as fs } from "fs"
+import * as readline from "readline"
 import { runSync, type SyncResult, parsePositiveInt } from "./sync-tmdb-changes.js"
 import { formatDate, subtractDays } from "../src/lib/date-utils.js"
 
@@ -41,6 +42,23 @@ type SyncMode = "movies" | "shows" | "people"
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Wait for user to press Enter
+ */
+async function waitForEnter(message: string = "Press Enter to continue..."): Promise<void> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+
+  return new Promise((resolve) => {
+    rl.question(message, () => {
+      rl.close()
+      resolve()
+    })
+  })
 }
 
 /**
@@ -301,10 +319,6 @@ interface BackfillOptions {
 }
 
 async function runBackfill(options: BackfillOptions): Promise<void> {
-  console.log("TMDB Batch Backfill")
-  console.log("===================")
-  if (options.dryRun) console.log("DRY RUN MODE - no changes will be written")
-
   // Determine which modes to run
   const modes: SyncMode[] = []
   if (options.moviesOnly) {
@@ -315,41 +329,87 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     modes.push("people")
   } else {
     // Default: run all three in sequence
-    console.log("\nNo mode specified - will run movies, shows, then people in sequence")
     modes.push("movies", "shows", "people")
-  }
-
-  // Handle reset
-  if (options.reset) {
-    await clearCheckpoint()
-    console.log("Checkpoint cleared. Starting from beginning.")
   }
 
   // Generate chunks
   const chunks = generateChunks(options.startDate, options.endDate)
-  console.log(`\nBackfilling from ${options.startDate} to ${options.endDate}`)
-  console.log(`Running in 2-day chunks (${chunks.length} total chunks per mode)`)
-  console.log("")
+  const totalDays = Math.ceil(
+    (new Date(options.endDate).getTime() - new Date(options.startDate).getTime()) /
+      (1000 * 60 * 60 * 24)
+  )
 
-  // Check for checkpoint
-  let checkpointMode: SyncMode | null = null
-  let checkpointChunkIndex = 0
-
+  // Check for existing checkpoint
+  let checkpointInfo = ""
   const checkpoint = await loadCheckpoint()
   if (checkpoint && !options.reset) {
     const [mode, date] = checkpoint.split(":")
     if (mode && date && modes.includes(mode as SyncMode)) {
-      checkpointMode = mode as SyncMode
-      // Find which chunk this date corresponds to
-      checkpointChunkIndex = chunks.findIndex((c) => c.start === date)
-      if (checkpointChunkIndex >= 0) {
-        console.log("========================================")
-        console.log(`RESUMING from checkpoint`)
-        console.log(`Mode: ${getModeName(checkpointMode)}`)
-        console.log(`Starting at chunk ${checkpointChunkIndex + 1} (${date})`)
-        console.log("========================================")
-        console.log("")
+      const chunkIndex = chunks.findIndex((c) => c.start === date)
+      if (chunkIndex >= 0) {
+        checkpointInfo = `\n  Resuming: Yes (from ${getModeName(mode as SyncMode)} at ${date})`
       }
+    }
+  }
+
+  // Display configuration summary
+  console.log("\n" + "=".repeat(70))
+  console.log("TMDB BATCH BACKFILL - CONFIGURATION SUMMARY")
+  console.log("=".repeat(70))
+  console.log("\nDate Range:")
+  console.log(`  Start Date: ${options.startDate}`)
+  console.log(`  End Date:   ${options.endDate}`)
+  console.log(`  Total Days: ${totalDays}`)
+  console.log(`\nExecution Plan:`)
+  console.log(`  Chunk Size: 2 days`)
+  console.log(`  Total Chunks: ${chunks.length}`)
+  console.log(`  Modes: ${modes.map((m) => getModeName(m)).join(" → ")}`)
+  console.log(`  Total Operations: ${chunks.length * modes.length} (${chunks.length} chunks × ${modes.length} modes)`)
+  console.log(`\nOptions:`)
+  console.log(`  Dry Run: ${options.dryRun ? "Yes (no changes will be written)" : "No"}`)
+  if (checkpointInfo) {
+    console.log(checkpointInfo)
+  } else {
+    console.log(`  Resuming: No (starting from beginning)`)
+  }
+  if (options.reset) {
+    console.log(`  Reset: Yes (checkpoint cleared)`)
+  }
+  console.log("\nWhat will be synced:")
+  if (modes.includes("movies")) {
+    console.log("  • Movies: Update mortality statistics for changed movies")
+  }
+  if (modes.includes("shows")) {
+    console.log("  • TV Shows: Check active shows for new episodes")
+  }
+  if (modes.includes("people")) {
+    console.log("  • People: Detect newly deceased actors, fetch cause of death (Claude Opus 4.5)")
+  }
+  console.log("\nSystem Operations:")
+  console.log("  • Cache invalidation for updated entities")
+  console.log("  • Movie mortality stats recalculation when deaths detected")
+  console.log("  • Automatic checkpoint saving (resumable if interrupted)")
+  console.log("\n" + "=".repeat(70))
+
+  // Wait for user confirmation
+  await waitForEnter("\nPress Enter to start the backfill, or Ctrl+C to cancel...")
+  console.log("")
+
+  // Handle reset
+  if (options.reset) {
+    await clearCheckpoint()
+  }
+
+  // Extract checkpoint info (already checked above for summary)
+  let checkpointMode: SyncMode | null = null
+  let checkpointChunkIndex = 0
+
+  const checkpointData = await loadCheckpoint()
+  if (checkpointData && !options.reset) {
+    const [mode, date] = checkpointData.split(":")
+    if (mode && date && modes.includes(mode as SyncMode)) {
+      checkpointMode = mode as SyncMode
+      checkpointChunkIndex = chunks.findIndex((c) => c.start === date)
     }
   }
 
