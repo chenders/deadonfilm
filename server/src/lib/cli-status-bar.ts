@@ -38,7 +38,6 @@ const BOLD = `${ESC}1m`
 const DIM = `${ESC}2m`
 
 // Foreground colors
-const FG_GREEN = `${ESC}32m`
 const FG_YELLOW = `${ESC}33m`
 const FG_CYAN = `${ESC}36m`
 const FG_WHITE = `${ESC}37m`
@@ -359,8 +358,16 @@ export class CLIStatusBar {
     if (metricsDisplay) sections.push(metricsDisplay)
     if (etaDisplay) sections.push(etaDisplay)
 
-    const leftContent = sections.slice(0, -1).join("  ")
-    const rightContent = sections[sections.length - 1] || ""
+    let leftContent: string
+    let rightContent: string
+    if (sections.length === 1) {
+      // When only elapsed time is available, keep it on the left to avoid layout jump
+      leftContent = sections[0]
+      rightContent = ""
+    } else {
+      leftContent = sections.slice(0, -1).join("  ")
+      rightContent = sections[sections.length - 1] || ""
+    }
 
     // Calculate visible lengths
     const leftLen = this.visibleLength(leftContent)

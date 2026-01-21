@@ -499,7 +499,7 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
         )
         if (result.moviesSkipped > 0) {
           console.log(
-            `  - Skipped: ${result.moviesSkipped.toLocaleString()} (only unimportant fields changed)`
+            `  - Skipped: ${result.moviesSkipped.toLocaleString()} (no changes detected)`
           )
         }
       }
@@ -533,14 +533,14 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)
-  } finally {
-    const pool = getPool()
-    await pool.end()
   }
 }
 
 // Exit cleanly after completion
 async function exitAfterCompletion() {
+  // Close database pool before exiting
+  const pool = getPool()
+  await pool.end()
   // Give time for any pending async operations to complete
   await new Promise((resolve) => setTimeout(resolve, 100))
   process.exit(0)
@@ -677,8 +677,8 @@ async function updateMovieMortalityStats(
     }
 
     // Track what fields changed (for logging)
-    let changedFields: string[] = []
-    let fieldChanges: FieldChange[] = []
+    const changedFields: string[] = []
+    const fieldChanges: FieldChange[] = []
 
     // If movie exists, compare to see what changed
     if (existingMovie) {
@@ -1149,7 +1149,6 @@ async function syncActiveShowEpisodes(
       total: totalShows,
       currentItem: show.name,
     })
-    showsChecked++
     try {
       // Get current show details from TMDB
       const showDetails = await getTVShowDetails(show.tmdb_id)
@@ -1163,8 +1162,6 @@ async function syncActiveShowEpisodes(
       const existingSet = new Set(
         existingEpisodes.map((e) => `${e.season_number}-${e.episode_number}`)
       )
-
-      let showNewEpisodes = 0
 
       // Check each season for new episodes
       for (const seasonSummary of showDetails.seasons) {
@@ -1219,7 +1216,6 @@ async function syncActiveShowEpisodes(
                 await upsertEpisode(episodeRecord)
               }
 
-              showNewEpisodes++
               totalNewEpisodes++
             }
           }
@@ -1233,9 +1229,8 @@ async function syncActiveShowEpisodes(
       showsChecked++
 
       // Show progress every 5 shows or at completion
-      if (showsChecked % 5 === 0 || showsChecked === totalShows) {
-        const progressBar = drawProgressBar(showsChecked, totalShows)
-        console.log(`  ${progressBar}`)
+      if (!quiet && (showsChecked % 5 === 0 || showsChecked === totalShows)) {
+        log(drawProgressBar(showsChecked, totalShows), quiet, onLog)
       }
 
       // Delay between shows

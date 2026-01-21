@@ -20,8 +20,8 @@ import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { promises as fs } from "fs"
 import * as readline from "readline"
-import { runSync, type SyncResult, parsePositiveInt } from "./sync-tmdb-changes.js"
-import { formatDate, subtractDays } from "../src/lib/date-utils.js"
+import { runSync } from "./sync-tmdb-changes.js"
+import { formatDate } from "../src/lib/date-utils.js"
 import { createActorSlug } from "../src/lib/slug-utils.js"
 import { CLIStatusBar } from "../src/lib/cli-status-bar.js"
 
@@ -65,25 +65,6 @@ async function waitForEnter(message: string = "Press Enter to continue..."): Pro
 }
 
 /**
- * Format duration in human-readable form
- */
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-
-  if (hours > 0) {
-    const remainingMinutes = minutes % 60
-    return `${hours}h ${remainingMinutes}m`
-  } else if (minutes > 0) {
-    const remainingSeconds = seconds % 60
-    return `${minutes}m ${remainingSeconds}s`
-  } else {
-    return `${seconds}s`
-  }
-}
-
-/**
  * Load checkpoint if it exists
  */
 async function loadCheckpoint(): Promise<string | null> {
@@ -121,7 +102,7 @@ function generateChunks(startDate: string, endDate: string): Array<{ start: stri
   const start = new Date(startDate)
   const end = new Date(endDate)
 
-  let current = new Date(start)
+  const current = new Date(start)
 
   while (current <= end) {
     const chunkStart = formatDate(current)
