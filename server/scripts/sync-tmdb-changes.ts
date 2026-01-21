@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import newrelic from "newrelic"
 /**
  * Sync script to detect newly deceased actors, movie changes, and new show episodes from TMDB.
  *
@@ -19,9 +20,6 @@
  *   npm run sync:tmdb -- --movies-only                  # Only sync movie changes
  *   npm run sync:tmdb -- --shows-only                   # Only sync active TV show episodes
  */
-
-// New Relic must be initialized first for full transaction traces
-import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
@@ -66,6 +64,20 @@ const SYNC_TYPE_MOVIES = "movie_changes"
 const SYNC_TYPE_SHOWS = "show_episodes"
 
 /**
+ * Conditional logging helper - only logs if not in quiet mode
+ * Usage: log("message", quiet) or log("message") or log("msg1", "msg2", quiet)
+ */
+function log(...args: unknown[]): void {
+  const lastArg = args[args.length - 1]
+  const quiet = typeof lastArg === "boolean" ? lastArg : false
+  const messages = typeof lastArg === "boolean" ? args.slice(0, -1) : args
+
+  if (!quiet) {
+    console.log(...messages)
+  }
+}
+
+/**
  * Draw a progress bar to show completion status
  */
 function drawProgressBar(current: number, total: number, width: number = 40): string {
@@ -77,9 +89,16 @@ function drawProgressBar(current: number, total: number, width: number = 40): st
   return `${bar} ${percentage}% (${current}/${total})`
 }
 
+export interface DeceasedActor {
+  tmdbId: number
+  name: string
+  deathday: string
+}
+
 export interface SyncResult {
   peopleChecked: number
   newDeathsFound: number
+  newlyDeceasedActors: DeceasedActor[]
   moviesChecked: number
   moviesUpdated: number
   moviesSkipped: number
@@ -108,6 +127,7 @@ const program = new Command()
   .option("-p, --people-only", "Only sync people changes")
   .option("-m, --movies-only", "Only sync movie changes")
   .option("-s, --shows-only", "Only sync active TV show episodes")
+  .option("-q, --quiet", "Suppress detailed output (only show summary)")
   .action(
     async (options: {
       days?: number
@@ -117,6 +137,7 @@ const program = new Command()
       peopleOnly?: boolean
       moviesOnly?: boolean
       showsOnly?: boolean
+      quiet?: boolean
     }) => {
       // Validate mutually exclusive date options
       if (options.days && options.startDate) {
@@ -151,32 +172,31 @@ const program = new Command()
         process.exit(1)
       }
 
-      // Wrap in New Relic transaction for monitoring
-      await withNewRelicTransaction("sync-tmdb", async (recordMetrics) => {
-        const result = await runSync({
-          days: options.days,
-          startDate: options.startDate,
-          endDate: options.endDate,
-          dryRun: options.dryRun ?? false,
-          peopleOnly: options.peopleOnly ?? false,
-          moviesOnly: options.moviesOnly ?? false,
-          showsOnly: options.showsOnly ?? false,
-        })
+      const result = await runSync({
+        days: options.days,
+        startDate: options.startDate,
+        endDate: options.endDate,
+        dryRun: options.dryRun ?? false,
+        peopleOnly: options.peopleOnly ?? false,
+        moviesOnly: options.moviesOnly ?? false,
+        showsOnly: options.showsOnly ?? false,
+        quiet: options.quiet ?? false,
+      })
 
-        // Record metrics for New Relic
-        recordMetrics({
-          dryRun: options.dryRun ?? false,
-          peopleOnly: options.peopleOnly ?? false,
-          moviesOnly: options.moviesOnly ?? false,
-          showsOnly: options.showsOnly ?? false,
-          peopleChecked: result.peopleChecked,
-          newDeathsFound: result.newDeathsFound,
-          moviesChecked: result.moviesChecked,
-          moviesUpdated: result.moviesUpdated,
-          showsChecked: result.showsChecked,
-          newEpisodesFound: result.newEpisodesFound,
-          errorsEncountered: result.errors.length,
-        })
+      // Record New Relic custom event for sync completion
+      newrelic.recordCustomEvent("TmdbSyncCompleted", {
+        dryRun: options.dryRun ?? false,
+        peopleOnly: options.peopleOnly ?? false,
+        moviesOnly: options.moviesOnly ?? false,
+        showsOnly: options.showsOnly ?? false,
+        peopleChecked: result.peopleChecked,
+        newDeathsFound: result.newDeathsFound,
+        moviesChecked: result.moviesChecked,
+        moviesUpdated: result.moviesUpdated,
+        moviesSkipped: result.moviesSkipped,
+        showsChecked: result.showsChecked,
+        newEpisodesFound: result.newEpisodesFound,
+        errorsEncountered: result.errors.length,
       })
 
       // Exit cleanly
@@ -192,6 +212,7 @@ export interface SyncOptions {
   peopleOnly: boolean
   moviesOnly: boolean
   showsOnly: boolean
+  quiet?: boolean
 }
 
 export async function runSync(options: SyncOptions): Promise<SyncResult> {
@@ -206,17 +227,22 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
     process.exit(1)
   }
 
-  console.log("TMDB Changes Sync")
-  console.log("=================")
-  if (options.dryRun) console.log("DRY RUN MODE - no changes will be written")
-  if (options.peopleOnly) console.log("People only mode")
-  if (options.moviesOnly) console.log("Movies only mode")
-  if (options.showsOnly) console.log("Shows only mode")
+  const quiet = options.quiet ?? false
+
+  if (!quiet) {
+    console.log("TMDB Changes Sync")
+    console.log("=================")
+    if (options.dryRun) console.log("DRY RUN MODE - no changes will be written")
+    if (options.peopleOnly) console.log("People only mode")
+    if (options.moviesOnly) console.log("Movies only mode")
+    if (options.showsOnly) console.log("Shows only mode")
+  }
 
   const today = formatDate(new Date())
   const result: SyncResult = {
     peopleChecked: 0,
     newDeathsFound: 0,
+    newlyDeceasedActors: [],
     moviesChecked: 0,
     moviesUpdated: 0,
     moviesSkipped: 0,
@@ -248,9 +274,10 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
         peopleEndDate = today
       }
 
-      const peopleResult = await syncPeopleChanges(peopleStartDate, peopleEndDate, options.dryRun)
+      const peopleResult = await syncPeopleChanges(peopleStartDate, peopleEndDate, options.dryRun, quiet)
       result.peopleChecked = peopleResult.checked
       result.newDeathsFound = peopleResult.newDeaths
+      result.newlyDeceasedActors.push(...peopleResult.newlyDeceasedActors)
       result.errors.push(...peopleResult.errors)
 
       // Update sync state
@@ -287,7 +314,7 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
         movieEndDate = today
       }
 
-      const movieResult = await syncMovieChanges(movieStartDate, movieEndDate, options.dryRun)
+      const movieResult = await syncMovieChanges(movieStartDate, movieEndDate, options.dryRun, quiet)
       result.moviesChecked = movieResult.checked
       result.moviesUpdated = movieResult.updated
       result.moviesSkipped = movieResult.skipped
@@ -307,7 +334,7 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
 
     // Sync active TV show episodes
     if (!options.peopleOnly && !options.moviesOnly) {
-      const showResult = await syncActiveShowEpisodes(options.dryRun)
+      const showResult = await syncActiveShowEpisodes(options.dryRun, quiet)
       result.showsChecked = showResult.checked
       result.newEpisodesFound = showResult.newEpisodes
       result.errors.push(...showResult.errors)
@@ -326,79 +353,101 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
 
     // Invalidate caches after successful sync (if not dry run)
     if (!options.dryRun) {
-      console.log("\n=== Syncing System State ===")
+      if (!quiet) console.log("\n=== Syncing System State ===")
       await initRedis()
 
       if (result.newDeathsFound > 0) {
-        console.log(
-          `Invalidating death-related caches (${result.newDeathsFound} new deaths found)...`
-        )
+        if (!quiet) {
+          console.log(
+            `Invalidating death-related caches (${result.newDeathsFound} new deaths found)...`
+          )
+        }
         await invalidateDeathCaches()
-        console.log("  ✓ Death list caches cleared")
-        console.log("  ✓ Death statistics caches cleared")
+        if (!quiet) {
+          console.log("  ✓ Death list caches cleared")
+          console.log("  ✓ Death statistics caches cleared")
+        }
+
+        // Record cache invalidation event
+        newrelic.recordCustomEvent("CacheInvalidation", {
+          cacheType: "death-related",
+          count: result.newDeathsFound,
+        })
       }
 
       if (result.moviesUpdated > 0) {
-        console.log(
-          `Invalidating movie caches (${result.moviesUpdated} movies updated)...`
-        )
+        if (!quiet) {
+          console.log(
+            `Invalidating movie caches (${result.moviesUpdated} movies updated)...`
+          )
+        }
         await invalidateMovieCaches()
-        console.log("  ✓ Movie list caches cleared")
-        console.log("  ✓ Movie statistics caches cleared")
+        if (!quiet) {
+          console.log("  ✓ Movie list caches cleared")
+          console.log("  ✓ Movie statistics caches cleared")
+        }
+
+        // Record cache invalidation event
+        newrelic.recordCustomEvent("CacheInvalidation", {
+          cacheType: "movie-related",
+          count: result.moviesUpdated,
+        })
       }
 
-      if (result.moviesSkipped > 0) {
+      if (result.moviesSkipped > 0 && !quiet) {
         console.log(
           `  → ${result.moviesSkipped} movies skipped (no cache invalidation needed)`
         )
       }
 
       await closeRedis()
-      console.log("System state synchronized")
+      if (!quiet) console.log("System state synchronized")
     }
 
-    // Print summary
-    console.log("\n" + "=".repeat(60))
-    console.log("SYNC SUMMARY")
-    console.log("=".repeat(60))
+    // Print summary (skip if quiet mode)
+    if (!quiet) {
+      console.log("\n" + "=".repeat(60))
+      console.log("SYNC SUMMARY")
+      console.log("=".repeat(60))
 
-    if (!options.moviesOnly && !options.showsOnly) {
-      console.log(`\nPeople:`)
-      console.log(`  - Checked: ${result.peopleChecked.toLocaleString()}`)
-      console.log(`  - New deaths found: ${result.newDeathsFound.toLocaleString()}${result.newDeathsFound > 0 ? " ✓" : ""}`)
-    }
+      if (!options.moviesOnly && !options.showsOnly) {
+        console.log(`\nPeople:`)
+        console.log(`  - Checked: ${result.peopleChecked.toLocaleString()}`)
+        console.log(`  - New deaths found: ${result.newDeathsFound.toLocaleString()}${result.newDeathsFound > 0 ? " ✓" : ""}`)
+      }
 
-    if (!options.peopleOnly && !options.showsOnly) {
-      console.log(`\nMovies:`)
-      console.log(`  - Checked: ${result.moviesChecked.toLocaleString()}`)
-      console.log(`  - Updated: ${result.moviesUpdated.toLocaleString()}${result.moviesUpdated > 0 ? " ✓" : ""}`)
-      if (result.moviesSkipped > 0) {
-        console.log(`  - Skipped: ${result.moviesSkipped.toLocaleString()} (only unimportant fields changed)`)
+      if (!options.peopleOnly && !options.showsOnly) {
+        console.log(`\nMovies:`)
+        console.log(`  - Checked: ${result.moviesChecked.toLocaleString()}`)
+        console.log(`  - Updated: ${result.moviesUpdated.toLocaleString()}${result.moviesUpdated > 0 ? " ✓" : ""}`)
+        if (result.moviesSkipped > 0) {
+          console.log(`  - Skipped: ${result.moviesSkipped.toLocaleString()} (only unimportant fields changed)`)
+        }
+      }
+
+      if (!options.peopleOnly && !options.moviesOnly) {
+        console.log(`\nTV Shows:`)
+        console.log(`  - Checked: ${result.showsChecked.toLocaleString()}`)
+        console.log(`  - New episodes found: ${result.newEpisodesFound.toLocaleString()}${result.newEpisodesFound > 0 ? " ✓" : ""}`)
+      }
+
+      if (result.errors.length > 0) {
+        console.log(`\nErrors: ${result.errors.length}`)
+      } else {
+        console.log(`\nErrors: 0`)
+      }
+
+      console.log("=".repeat(60))
+
+      if (result.errors.length > 0) {
+        console.log("\nErrors encountered:")
+        for (const error of result.errors) {
+          console.log(`  - ${error}`)
+        }
       }
     }
 
-    if (!options.peopleOnly && !options.moviesOnly) {
-      console.log(`\nTV Shows:`)
-      console.log(`  - Checked: ${result.showsChecked.toLocaleString()}`)
-      console.log(`  - New episodes found: ${result.newEpisodesFound.toLocaleString()}${result.newEpisodesFound > 0 ? " ✓" : ""}`)
-    }
-
-    if (result.errors.length > 0) {
-      console.log(`\nErrors: ${result.errors.length}`)
-    } else {
-      console.log(`\nErrors: 0`)
-    }
-
-    console.log("=".repeat(60))
-
-    if (result.errors.length > 0) {
-      console.log("\nErrors encountered:")
-      for (const error of result.errors) {
-        console.log(`  - ${error}`)
-      }
-    }
-
-    console.log("\nDone!")
+    if (!quiet) console.log("\nDone!")
     return result
   } catch (error) {
     console.error("Fatal error:", error)
@@ -582,29 +631,30 @@ async function updateMovieMortalityStats(
 async function syncPeopleChanges(
   startDate: string,
   endDate: string,
-  dryRun: boolean
-): Promise<{ checked: number; newDeaths: number; errors: string[] }> {
-  console.log(`\n=== Syncing People Changes (${startDate} to ${endDate}) ===\n`)
+  dryRun: boolean,
+  quiet: boolean = false
+): Promise<{ checked: number; newDeaths: number; newlyDeceasedActors: DeceasedActor[]; errors: string[] }> {
+  log(`\n=== Syncing People Changes (${startDate} to ${endDate}) ===\n`, quiet)
 
   const errors: string[] = []
 
   // Get all actors in our database and all deceased person IDs
-  console.log("Loading actor IDs from database...")
+  log("Loading actor IDs from database...", quiet)
   const [actorTmdbIds, deceasedTmdbIds] = await Promise.all([
     getAllActorTmdbIds(),
     getDeceasedTmdbIds(),
   ])
-  console.log(`  Found ${actorTmdbIds.size} actors in actor_appearances`)
-  console.log(`  Found ${deceasedTmdbIds.size} deceased actors`)
+  log(`  Found ${actorTmdbIds.size} actors in actor_appearances`, quiet)
+  log(`  Found ${deceasedTmdbIds.size} deceased actors`, quiet)
 
   // Split into date ranges if needed (max 14 days per query)
   const dateRanges = getDateRanges(startDate, endDate)
-  console.log(`  Querying ${dateRanges.length} date range(s)`)
+  log(`  Querying ${dateRanges.length} date range(s)`, quiet)
 
   // Fetch all changed person IDs from TMDB
   const allChangedIds: number[] = []
   for (const range of dateRanges) {
-    console.log(`  Fetching changes for ${range.start} to ${range.end}...`)
+    log(`  Fetching changes for ${range.start} to ${range.end}...`, quiet)
     const ids = await getAllChangedPersonIds(range.start, range.end)
     allChangedIds.push(...ids)
     await delay(100)
@@ -612,46 +662,66 @@ async function syncPeopleChanges(
 
   // Deduplicate
   const changedIds = [...new Set(allChangedIds)]
-  console.log(`\nFound ${changedIds.length} unique changed person IDs on TMDB`)
+  log(`\nFound ${changedIds.length} unique changed person IDs on TMDB`, quiet)
 
   // Filter to people we care about (in our database)
   const relevantIds = changedIds.filter((id) => actorTmdbIds.has(id))
-  console.log(`  ${relevantIds.length} are in our actor_appearances table`)
+  log(`  ${relevantIds.length} are in our actor_appearances table`, quiet)
 
   if (relevantIds.length === 0) {
-    console.log("\nNo relevant people changes found.")
-    return { checked: 0, newDeaths: 0, errors }
+    log("\nNo relevant people changes found.", quiet)
+    return { checked: 0, newDeaths: 0, newlyDeceasedActors: [], errors }
   }
 
   // Fetch person details from TMDB
-  console.log("\nFetching person details from TMDB...")
+  log("\nFetching person details from TMDB...", quiet)
   const personDetails = await batchGetPersonDetails(relevantIds, 10, 100)
-  console.log(`  Got details for ${personDetails.size} people`)
+  log(`  Got details for ${personDetails.size} people`, quiet)
 
   // Process each person
   let newDeaths = 0
   const newlyDeceasedIds: number[] = []
+  const newlyDeceasedActors: DeceasedActor[] = []
   const totalPeople = personDetails.size
   let processedCount = 0
 
-  console.log("\nProcessing people...")
+  log("\nProcessing people...", quiet)
   for (const [tmdbId, person] of personDetails) {
     processedCount++
     const wasAlreadyDeceased = deceasedTmdbIds.has(tmdbId)
 
     if (person.deathday && !wasAlreadyDeceased) {
       // NEW DEATH DETECTED!
-      console.log(`  [NEW DEATH] ${person.name} (${person.deathday})`)
+      log(`  [NEW DEATH] ${person.name} (${person.deathday})`, quiet)
       newlyDeceasedIds.push(tmdbId)
+      newlyDeceasedActors.push({
+        tmdbId: tmdbId,
+        name: person.name,
+        deathday: person.deathday,
+      })
 
       if (!dryRun) {
         try {
           await processNewDeath(person)
           newDeaths++
+
+          // Record New Relic event for new death detection
+          newrelic.recordCustomEvent("NewDeathDetected", {
+            actorName: person.name,
+            tmdbId: tmdbId,
+            deathday: person.deathday,
+          })
         } catch (error) {
           const errorMsg = `Error processing ${person.name}: ${error}`
           console.error(`    ${errorMsg}`)
           errors.push(errorMsg)
+
+          // Record error event
+          newrelic.recordCustomEvent("NewDeathProcessingError", {
+            actorName: person.name,
+            tmdbId: tmdbId,
+            error: error instanceof Error ? error.message : String(error),
+          })
         }
       } else {
         newDeaths++
@@ -666,7 +736,7 @@ async function syncPeopleChanges(
     }
 
     // Show progress every 50 people or at completion
-    if (processedCount % 50 === 0 || processedCount === totalPeople) {
+    if (!quiet && (processedCount % 50 === 0 || processedCount === totalPeople)) {
       const progressBar = drawProgressBar(processedCount, totalPeople)
       console.log(`  ${progressBar}`)
     }
@@ -675,9 +745,10 @@ async function syncPeopleChanges(
   // Post-processing for newly deceased actors
   if (!dryRun && newlyDeceasedIds.length > 0) {
     // Invalidate individual actor caches
-    console.log(`\n=== Invalidating Actor Caches ===`)
-    console.log(
-      `Clearing individual actor profile caches for ${newlyDeceasedIds.length} newly deceased actors...`
+    log(`\n=== Invalidating Actor Caches ===`, quiet)
+    log(
+      `Clearing individual actor profile caches for ${newlyDeceasedIds.length} newly deceased actors...`,
+      quiet
     )
     await initRedis()
     let successCount = 0
@@ -690,12 +761,13 @@ async function syncPeopleChanges(
       }
     }
     await closeRedis()
-    console.log(`  ✓ Cleared ${successCount} actor profile caches`)
+    log(`  ✓ Cleared ${successCount} actor profile caches`, quiet)
 
     // Recalculate mortality stats for movies
-    console.log(`\n=== Updating Movie Mortality Statistics ===`)
-    console.log(
-      `Finding movies featuring ${newlyDeceasedIds.length} newly deceased actors...`
+    log(`\n=== Updating Movie Mortality Statistics ===`, quiet)
+    log(
+      `Finding movies featuring ${newlyDeceasedIds.length} newly deceased actors...`,
+      quiet
     )
     const pool = getPool()
     const { rows: affectedMovies } = await pool.query<{ movie_tmdb_id: number }>(
@@ -705,7 +777,7 @@ async function syncPeopleChanges(
        WHERE a.tmdb_id = ANY($1)`,
       [newlyDeceasedIds]
     )
-    console.log(`  Found ${affectedMovies.length} movies requiring mortality stats update`)
+    log(`  Found ${affectedMovies.length} movies requiring mortality stats update`, quiet)
 
     const currentYear = new Date().getFullYear()
     const totalMovies = affectedMovies.length
@@ -718,11 +790,11 @@ async function syncPeopleChanges(
         console.error(`    ${result.error}`)
         errors.push(result.error)
       } else if (result.updated && result.title) {
-        console.log(`    Updated: ${result.title}`)
+        log(`    Updated: ${result.title}`, quiet)
       }
 
       // Show progress every 10 movies or at completion
-      if (processedMovies % 10 === 0 || processedMovies === totalMovies) {
+      if (!quiet && (processedMovies % 10 === 0 || processedMovies === totalMovies)) {
         const progressBar = drawProgressBar(processedMovies, totalMovies)
         console.log(`    ${progressBar}`)
       }
@@ -730,10 +802,10 @@ async function syncPeopleChanges(
       await delay(250)
     }
 
-    console.log(`  ✓ Updated mortality stats for ${processedMovies} movies`)
+    log(`  ✓ Updated mortality stats for ${processedMovies} movies`, quiet)
   }
 
-  return { checked: relevantIds.length, newDeaths, errors }
+  return { checked: relevantIds.length, newDeaths, newlyDeceasedActors, errors }
 }
 
 async function processNewDeath(person: TMDBPerson): Promise<void> {
@@ -795,9 +867,10 @@ async function processNewDeath(person: TMDBPerson): Promise<void> {
 async function syncMovieChanges(
   startDate: string,
   endDate: string,
-  dryRun: boolean
+  dryRun: boolean,
+  quiet: boolean = false
 ): Promise<{ checked: number; updated: number; skipped: number; errors: string[] }> {
-  console.log(`\n=== Syncing Movie Changes (${startDate} to ${endDate}) ===\n`)
+  log(`\n=== Syncing Movie Changes (${startDate} to ${endDate}) ===\n`, quiet)
 
   const errors: string[] = []
   const currentYear = new Date().getFullYear()
@@ -889,9 +962,10 @@ interface ExistingEpisode {
 }
 
 async function syncActiveShowEpisodes(
-  dryRun: boolean
+  dryRun: boolean,
+  quiet: boolean = false
 ): Promise<{ checked: number; newEpisodes: number; errors: string[] }> {
-  console.log("\n=== Syncing Active TV Show Episodes ===\n")
+  log("\n=== Syncing Active TV Show Episodes ===\n", quiet)
 
   const errors: string[] = []
   const pool = getPool()
