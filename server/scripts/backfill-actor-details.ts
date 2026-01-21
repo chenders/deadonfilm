@@ -28,6 +28,12 @@ const program = new Command()
   .option("-a, --all", "Refresh all actors, not just those missing data")
   .option("-n, --dry-run", "Preview changes without updating the database")
   .option("-l, --limit <number>", "Limit number of actors to process", parseInt)
+  .option(
+    "--max-consecutive-failures <number>",
+    "Stop processing after N consecutive failures (circuit breaker)",
+    parseInt,
+    3
+  )
   .action(async (options) => {
     await runBackfill(options)
   })
@@ -36,6 +42,7 @@ interface BackfillOptions {
   all?: boolean
   dryRun?: boolean
   limit?: number
+  maxConsecutiveFailures?: number
 }
 
 interface ActorInfo {
@@ -64,7 +71,7 @@ async function runBackfill(options: BackfillOptions) {
     process.exit(1)
   }
 
-  const { all = false, dryRun = false, limit } = options
+  const { all = false, dryRun = false, limit, maxConsecutiveFailures = 3 } = options
 
   console.log("\nBackfilling actor details from TMDB...")
   if (dryRun) console.log("(DRY RUN - no changes will be made)")
@@ -116,6 +123,7 @@ async function runBackfill(options: BackfillOptions) {
     let updated = 0
     let permanentlyFailed = 0
     let errors = 0
+    let consecutiveFailures = 0
 
     for (let i = 0; i < result.rows.length; i++) {
       const actor = result.rows[i]
@@ -159,6 +167,7 @@ async function runBackfill(options: BackfillOptions) {
             `${progress} ${actor.name}: updated (birthday=${details.birthday || "null"}, pop=${details.popularity?.toFixed(1)})${retryLabel}`
           )
           updated++
+          consecutiveFailures = 0 // Reset circuit breaker on success
         }
 
         // Rate limit
@@ -176,6 +185,23 @@ async function runBackfill(options: BackfillOptions) {
         }
 
         errors++
+        consecutiveFailures++
+
+        // Circuit breaker: stop if too many consecutive failures (API likely down)
+        if (consecutiveFailures >= maxConsecutiveFailures) {
+          console.error(
+            `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+          )
+          console.error(
+            "   The TMDB API may be experiencing an outage. Stopping to prevent futile requests."
+          )
+          console.error(
+            `   Processed ${i + 1}/${result.rows.length} actors before stopping (${updated} updated, ${errors} errors)\n`
+          )
+
+          await db.end()
+          process.exit(2) // Exit code 2 indicates circuit breaker trip
+        }
 
         if (!dryRun) {
           const willMarkPermanent = permanent || attemptNum >= 3

@@ -56,6 +56,7 @@ interface BackfillOptions {
   dryRun?: boolean
   minPopularity?: number
   trendingOnly?: boolean
+  maxConsecutiveFailures?: number
 }
 
 interface BackfillStats {
@@ -93,6 +94,12 @@ const program = new Command()
   .option("-n, --dry-run", "Preview without writing")
   .option("--min-popularity <n>", "Skip items below popularity threshold", parseNonNegativeFloat)
   .option("--trending-only", "Only fetch trending content")
+  .option(
+    "--max-consecutive-failures <number>",
+    "Stop processing after N consecutive failures (circuit breaker)",
+    parsePositiveInt,
+    3
+  )
 
 program.parse()
 
@@ -102,7 +109,8 @@ async function backfillMovies(
   limit: number | undefined,
   minPopularity: number | undefined,
   dryRun: boolean,
-  trendingOnly: boolean
+  trendingOnly: boolean,
+  maxConsecutiveFailures: number
 ): Promise<{ processed: number; successful: number; failed: number; permanentlyFailed: number }> {
   const db = getPool()
 
@@ -209,6 +217,7 @@ async function backfillMovies(
   let successful = 0
   let failed = 0
   let permanentlyFailed = 0
+  let consecutiveFailures = 0
 
   for (const movie of movies) {
     processed++
@@ -271,6 +280,7 @@ async function backfillMovies(
       }
 
       successful++
+      consecutiveFailures = 0 // Reset circuit breaker on success
 
       // Rate limit delay
       if (processed < movies.length) {
@@ -279,6 +289,24 @@ async function backfillMovies(
     } catch (error) {
       console.error(`  ❌ Error processing "${movie.title}"${retryLabel}:`, error)
       failed++
+      consecutiveFailures++
+
+      // Circuit breaker: stop if too many consecutive failures (API likely down)
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        console.error(
+          `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+        )
+        console.error(
+          "   The Trakt API may be experiencing an outage. Stopping to prevent futile requests."
+        )
+        console.error(
+          `   Processed ${processed}/${movies.length} movies before stopping (${successful} successful, ${failed} errors)\n`
+        )
+
+        const db = getPool()
+        await db.end()
+        process.exit(2) // Exit code 2 indicates circuit breaker trip
+      }
 
       if (!dryRun) {
         const errorMsg = error instanceof Error ? error.message : "unknown error"
@@ -307,7 +335,8 @@ async function backfillShows(
   limit: number | undefined,
   minPopularity: number | undefined,
   dryRun: boolean,
-  trendingOnly: boolean
+  trendingOnly: boolean,
+  maxConsecutiveFailures: number
 ): Promise<{ processed: number; successful: number; failed: number; permanentlyFailed: number }> {
   const db = getPool()
 
@@ -415,6 +444,7 @@ async function backfillShows(
   let successful = 0
   let failed = 0
   let permanentlyFailed = 0
+  let consecutiveFailures = 0
 
   for (const show of shows) {
     processed++
@@ -477,6 +507,7 @@ async function backfillShows(
       }
 
       successful++
+      consecutiveFailures = 0 // Reset circuit breaker on success
 
       // Rate limit delay
       if (processed < shows.length) {
@@ -485,6 +516,24 @@ async function backfillShows(
     } catch (error) {
       console.error(`  ❌ Error processing "${show.name}"${retryLabel}:`, error)
       failed++
+      consecutiveFailures++
+
+      // Circuit breaker: stop if too many consecutive failures (API likely down)
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        console.error(
+          `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+        )
+        console.error(
+          "   The Trakt API may be experiencing an outage. Stopping to prevent futile requests."
+        )
+        console.error(
+          `   Processed ${processed}/${shows.length} shows before stopping (${successful} successful, ${failed} errors)\n`
+        )
+
+        const db = getPool()
+        await db.end()
+        process.exit(2) // Exit code 2 indicates circuit breaker trip
+      }
 
       if (!dryRun) {
         const errorMsg = error instanceof Error ? error.message : "unknown error"
@@ -541,7 +590,8 @@ async function run(options: BackfillOptions) {
         options.limit,
         options.minPopularity,
         options.dryRun || false,
-        options.trendingOnly || false
+        options.trendingOnly || false,
+        options.maxConsecutiveFailures || 3
       )
       stats.totalProcessed += movieResults.processed
       stats.successful += movieResults.successful
@@ -556,7 +606,8 @@ async function run(options: BackfillOptions) {
         options.limit,
         options.minPopularity,
         options.dryRun || false,
-        options.trendingOnly || false
+        options.trendingOnly || false,
+        options.maxConsecutiveFailures || 3
       )
       stats.totalProcessed += showResults.processed
       stats.successful += showResults.successful

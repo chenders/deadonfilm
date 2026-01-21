@@ -43,6 +43,7 @@ interface BackfillOptions {
   limit: number
   year?: number
   dryRun: boolean
+  maxConsecutiveFailures: number
 }
 
 interface MovieInfo {
@@ -62,7 +63,7 @@ function isPermanentError(error: unknown): boolean {
 }
 
 async function backfillMoviePopularity(options: BackfillOptions): Promise<void> {
-  const { limit, year, dryRun } = options
+  const { limit, year, dryRun, maxConsecutiveFailures } = options
 
   if (!process.env.DATABASE_URL) {
     console.error("Error: DATABASE_URL environment variable is not set")
@@ -116,6 +117,7 @@ async function backfillMoviePopularity(options: BackfillOptions): Promise<void> 
     let updated = 0
     let permanentlyFailed = 0
     let errors = 0
+    let consecutiveFailures = 0
 
     for (let i = 0; i < movies.length; i++) {
       const movie = movies[i]
@@ -147,6 +149,7 @@ async function backfillMoviePopularity(options: BackfillOptions): Promise<void> 
             )
           }
           updated++
+          consecutiveFailures = 0 // Reset circuit breaker on success
         } else {
           console.log(`${progress} No popularity for: ${movie.title}${retryLabel}`)
 
@@ -174,6 +177,23 @@ async function backfillMoviePopularity(options: BackfillOptions): Promise<void> 
         const message = error instanceof Error ? error.message : "Unknown error"
         console.error(`${progress} Error fetching ${movie.title}${retryLabel}: ${message}`)
         errors++
+        consecutiveFailures++
+
+        // Circuit breaker: stop if too many consecutive failures (API likely down)
+        if (consecutiveFailures >= maxConsecutiveFailures) {
+          console.error(
+            `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+          )
+          console.error(
+            "   The TMDB API may be experiencing an outage. Stopping to prevent futile requests."
+          )
+          console.error(
+            `   Processed ${i + 1}/${movies.length} movies before stopping (${updated} updated, ${errors} errors)\n`
+          )
+
+          await resetPool()
+          process.exit(2) // Exit code 2 indicates circuit breaker trip
+        }
 
         if (!dryRun) {
           const permanent = isPermanentError(error)
@@ -221,11 +241,18 @@ const program = new Command()
   .option("-l, --limit <number>", "Limit number of movies to process", parsePositiveInt, 100)
   .option("-y, --year <year>", "Only process movies from a specific year", parsePositiveInt)
   .option("-n, --dry-run", "Preview without writing to database")
+  .option(
+    "--max-consecutive-failures <number>",
+    "Stop processing after N consecutive failures (circuit breaker)",
+    parsePositiveInt,
+    3
+  )
   .action(async (options) => {
     await backfillMoviePopularity({
       limit: options.limit,
       year: options.year,
       dryRun: options.dryRun || false,
+      maxConsecutiveFailures: options.maxConsecutiveFailures,
     })
   })
 
