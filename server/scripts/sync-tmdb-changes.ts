@@ -704,10 +704,12 @@ async function syncMovieChanges(
 
   // Process each movie
   let updated = 0
+  const totalMovies = relevantIds.length
+  let processedCount = 0
 
   console.log("\nProcessing movies...")
   for (const movieId of relevantIds) {
-    console.log(`  Processing movie ${movieId}...`)
+    processedCount++
 
     const result = await updateMovieMortalityStats(movieId, currentYear, dryRun)
     if (result.error) {
@@ -720,6 +722,12 @@ async function syncMovieChanges(
         console.log(`    Updated: ${result.title}`)
       }
       updated++
+    }
+
+    // Show progress every 10 movies or at completion
+    if (processedCount % 10 === 0 || processedCount === totalMovies) {
+      const progressBar = drawProgressBar(processedCount, totalMovies)
+      console.log(`  ${progressBar}`)
     }
 
     await delay(250)
@@ -761,10 +769,10 @@ async function syncActiveShowEpisodes(
 
   let totalNewEpisodes = 0
   let showsChecked = 0
+  const totalShows = activeShows.length
 
+  console.log("\nProcessing shows...")
   for (const show of activeShows) {
-    console.log(`\n  Checking ${show.name} (${show.tmdb_id})...`)
-
     try {
       // Get current show details from TMDB
       const showDetails = await getTVShowDetails(show.tmdb_id)
@@ -795,7 +803,7 @@ async function syncActiveShowEpisodes(
             const key = `${ep.season_number}-${ep.episode_number}`
             if (!existingSet.has(key)) {
               // New episode found!
-              console.log(`    NEW: S${ep.season_number}E${ep.episode_number} - ${ep.name}`)
+              console.log(`    NEW: ${show.name} - S${ep.season_number}E${ep.episode_number} - ${ep.name}`)
 
               if (!dryRun) {
                 // Upsert season first (in case it's also new)
@@ -841,13 +849,13 @@ async function syncActiveShowEpisodes(
         }
       }
 
-      if (showNewEpisodes === 0) {
-        console.log(`    No new episodes`)
-      } else {
-        console.log(`    Added ${showNewEpisodes} new episode(s)`)
-      }
-
       showsChecked++
+
+      // Show progress every 5 shows or at completion
+      if (showsChecked % 5 === 0 || showsChecked === totalShows) {
+        const progressBar = drawProgressBar(showsChecked, totalShows)
+        console.log(`  ${progressBar}`)
+      }
 
       // Delay between shows
       await delay(100)
