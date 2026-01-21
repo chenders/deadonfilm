@@ -165,8 +165,8 @@ services:
         cat > /tmp/crontab << 'EOF'
         SHELL=/bin/sh
         PATH=/usr/local/bin:/usr/bin:/bin
-        # TMDB sync - every 2 hours
-        0 */2 * * * cd /app/server && node --import newrelic/esm-loader.mjs dist/scripts/sync-tmdb-changes.js
+        # TMDB batch sync - every 4 hours, syncs last 7 days
+        0 */4 * * * cd /app/server && node --import newrelic/esm-loader.mjs dist/scripts/backfill-tmdb-batch.js --start-date $(date -d '7 days ago' +\%Y-\%m-\%d) --end-date $(date +\%Y-\%m-\%d)
         # Sitemap generation - daily at 6 AM UTC
         0 6 * * * cd /app/server && node --import newrelic/esm-loader.mjs dist/scripts/sitemap-generate.js
         # Movie seeding - weekly Sunday 4 AM UTC
