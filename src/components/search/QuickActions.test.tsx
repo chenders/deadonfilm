@@ -157,7 +157,7 @@ describe("QuickActions", () => {
     // Each button's emoji should use the same emojiClass for consistent sizing
     const emojiClasses = ["text-base", "leading-none"]
 
-    const emojis = ["👼", "🦠", "⚠️", "⏳", "📊", "🔍", "📅"]
+    const emojis = ["👼", "🦠", "⚠️", "⏳", "📊", "🔍"]
     emojis.forEach((emoji) => {
       const emojiSpan = screen.getByText(emoji)
       emojiClasses.forEach((cls) => {
@@ -173,9 +173,12 @@ describe("QuickActions", () => {
     expect(link).toHaveAttribute("href", "/deaths/decades")
   })
 
-  it("Deaths by Decade button has calendar emoji", () => {
+  it("Deaths by Decade button has timeline icon", () => {
     renderWithRouter(<QuickActions />)
 
-    expect(screen.getByText("📅")).toBeInTheDocument()
+    const button = screen.getByTestId("deaths-by-decade-btn")
+    // Check that the button contains an SVG element
+    const svg = button.querySelector("svg")
+    expect(svg).toBeInTheDocument()
   })
 })
