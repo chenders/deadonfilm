@@ -156,46 +156,88 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
     return result.rows[0].id
   }
 
-  // TMDB actor - use ON CONFLICT on tmdb_id
-  const result = await db.query<{ id: number }>(
-    `INSERT INTO actors (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, popularity, violent_death, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
-     ON CONFLICT (tmdb_id) DO UPDATE SET
-       name = EXCLUDED.name,
-       birthday = COALESCE(actors.birthday, EXCLUDED.birthday),
-       deathday = COALESCE(actors.deathday, EXCLUDED.deathday),
-       cause_of_death = COALESCE(actors.cause_of_death, EXCLUDED.cause_of_death),
-       cause_of_death_source = COALESCE(actors.cause_of_death_source, EXCLUDED.cause_of_death_source),
-       cause_of_death_details = COALESCE(actors.cause_of_death_details, EXCLUDED.cause_of_death_details),
-       cause_of_death_details_source = COALESCE(actors.cause_of_death_details_source, EXCLUDED.cause_of_death_details_source),
-       wikipedia_url = COALESCE(actors.wikipedia_url, EXCLUDED.wikipedia_url),
-       profile_path = COALESCE(actors.profile_path, EXCLUDED.profile_path),
-       age_at_death = COALESCE(actors.age_at_death, EXCLUDED.age_at_death),
-       expected_lifespan = COALESCE(actors.expected_lifespan, EXCLUDED.expected_lifespan),
-       years_lost = COALESCE(actors.years_lost, EXCLUDED.years_lost),
-       popularity = COALESCE(actors.popularity, EXCLUDED.popularity),
-       violent_death = COALESCE(actors.violent_death, EXCLUDED.violent_death),
-       updated_at = CURRENT_TIMESTAMP
-     RETURNING id`,
-    [
-      actor.tmdb_id,
-      actor.name,
-      actor.birthday ?? null,
-      actor.deathday ?? null,
-      actor.cause_of_death ?? null,
-      actor.cause_of_death_source ?? null,
-      actor.cause_of_death_details ?? null,
-      actor.cause_of_death_details_source ?? null,
-      actor.wikipedia_url ?? null,
-      actor.profile_path ?? null,
-      actor.age_at_death ?? null,
-      actor.expected_lifespan ?? null,
-      actor.years_lost ?? null,
-      actor.popularity ?? null,
-      actor.violent_death ?? null,
-    ]
+  // TMDB actor - check if exists first, then UPDATE or INSERT
+  // We can't use ON CONFLICT (tmdb_id) because tmdb_id has a partial unique index (WHERE tmdb_id IS NOT NULL)
+  // which doesn't work with simple ON CONFLICT syntax
+  const existing = await db.query<{ id: number }>(
+    `SELECT id FROM actors WHERE tmdb_id = $1`,
+    [actor.tmdb_id]
   )
-  return result.rows[0].id
+
+  if (existing.rows.length > 0) {
+    // Update existing actor
+    await db.query(
+      `UPDATE actors SET
+         name = $2,
+         birthday = COALESCE(birthday, $3),
+         deathday = COALESCE(deathday, $4),
+         cause_of_death = COALESCE(cause_of_death, $5),
+         cause_of_death_source = COALESCE(cause_of_death_source, $6),
+         cause_of_death_details = COALESCE(cause_of_death_details, $7),
+         cause_of_death_details_source = COALESCE(cause_of_death_details_source, $8),
+         wikipedia_url = COALESCE(wikipedia_url, $9),
+         profile_path = COALESCE(profile_path, $10),
+         age_at_death = COALESCE(age_at_death, $11),
+         expected_lifespan = COALESCE(expected_lifespan, $12),
+         years_lost = COALESCE(years_lost, $13),
+         popularity = COALESCE(popularity, $14),
+         violent_death = COALESCE(violent_death, $15),
+         deathday_confidence = COALESCE(deathday_confidence, $16),
+         deathday_verification_source = COALESCE(deathday_verification_source, $17),
+         deathday_verified_at = COALESCE(deathday_verified_at, $18),
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [
+        existing.rows[0].id,
+        actor.name,
+        actor.birthday ?? null,
+        actor.deathday ?? null,
+        actor.cause_of_death ?? null,
+        actor.cause_of_death_source ?? null,
+        actor.cause_of_death_details ?? null,
+        actor.cause_of_death_details_source ?? null,
+        actor.wikipedia_url ?? null,
+        actor.profile_path ?? null,
+        actor.age_at_death ?? null,
+        actor.expected_lifespan ?? null,
+        actor.years_lost ?? null,
+        actor.popularity ?? null,
+        actor.violent_death ?? null,
+        actor.deathday_confidence ?? null,
+        actor.deathday_verification_source ?? null,
+        actor.deathday_verified_at ?? null,
+      ]
+    )
+    return existing.rows[0].id
+  } else {
+    // Insert new actor
+    const result = await db.query<{ id: number }>(
+      `INSERT INTO actors (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, popularity, violent_death, deathday_confidence, deathday_verification_source, deathday_verified_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP)
+       RETURNING id`,
+      [
+        actor.tmdb_id,
+        actor.name,
+        actor.birthday ?? null,
+        actor.deathday ?? null,
+        actor.cause_of_death ?? null,
+        actor.cause_of_death_source ?? null,
+        actor.cause_of_death_details ?? null,
+        actor.cause_of_death_details_source ?? null,
+        actor.wikipedia_url ?? null,
+        actor.profile_path ?? null,
+        actor.age_at_death ?? null,
+        actor.expected_lifespan ?? null,
+        actor.years_lost ?? null,
+        actor.popularity ?? null,
+        actor.violent_death ?? null,
+        actor.deathday_confidence ?? null,
+        actor.deathday_verification_source ?? null,
+        actor.deathday_verified_at ?? null,
+      ]
+    )
+    return result.rows[0].id
+  }
 }
 
 // Batch insert/update actors
@@ -218,48 +260,81 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
         continue
       }
 
-      const result = await client.query<{ id: number; tmdb_id: number }>(
-        `INSERT INTO actors (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, popularity, violent_death, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
-         ON CONFLICT (tmdb_id) WHERE tmdb_id IS NOT NULL DO UPDATE SET
-           name = EXCLUDED.name,
-           birthday = COALESCE(actors.birthday, EXCLUDED.birthday),
-           deathday = COALESCE(actors.deathday, EXCLUDED.deathday),
-           cause_of_death = COALESCE(actors.cause_of_death, EXCLUDED.cause_of_death),
-           cause_of_death_source = COALESCE(actors.cause_of_death_source, EXCLUDED.cause_of_death_source),
-           cause_of_death_details = COALESCE(actors.cause_of_death_details, EXCLUDED.cause_of_death_details),
-           cause_of_death_details_source = COALESCE(actors.cause_of_death_details_source, EXCLUDED.cause_of_death_details_source),
-           wikipedia_url = COALESCE(actors.wikipedia_url, EXCLUDED.wikipedia_url),
-           profile_path = COALESCE(actors.profile_path, EXCLUDED.profile_path),
-           age_at_death = COALESCE(actors.age_at_death, EXCLUDED.age_at_death),
-           expected_lifespan = COALESCE(actors.expected_lifespan, EXCLUDED.expected_lifespan),
-           years_lost = COALESCE(actors.years_lost, EXCLUDED.years_lost),
-           popularity = COALESCE(actors.popularity, EXCLUDED.popularity),
-           violent_death = COALESCE(actors.violent_death, EXCLUDED.violent_death),
-           updated_at = CURRENT_TIMESTAMP
-         RETURNING id, tmdb_id`,
-        [
-          actor.tmdb_id,
-          actor.name,
-          actor.birthday ?? null,
-          actor.deathday ?? null,
-          actor.cause_of_death ?? null,
-          actor.cause_of_death_source ?? null,
-          actor.cause_of_death_details ?? null,
-          actor.cause_of_death_details_source ?? null,
-          actor.wikipedia_url ?? null,
-          actor.profile_path ?? null,
-          actor.age_at_death ?? null,
-          actor.expected_lifespan ?? null,
-          actor.years_lost ?? null,
-          actor.popularity ?? null,
-          actor.violent_death ?? null,
-        ]
+      // Check if actor exists
+      const existing = await client.query<{ id: number }>(
+        `SELECT id FROM actors WHERE tmdb_id = $1`,
+        [actor.tmdb_id]
       )
 
-      if (result.rows[0]) {
-        tmdbIdToActorId.set(result.rows[0].tmdb_id, result.rows[0].id)
+      let actorId: number
+
+      if (existing.rows.length > 0) {
+        // Update existing actor
+        await client.query(
+          `UPDATE actors SET
+             name = $2,
+             birthday = COALESCE(birthday, $3),
+             deathday = COALESCE(deathday, $4),
+             cause_of_death = COALESCE(cause_of_death, $5),
+             cause_of_death_source = COALESCE(cause_of_death_source, $6),
+             cause_of_death_details = COALESCE(cause_of_death_details, $7),
+             cause_of_death_details_source = COALESCE(cause_of_death_details_source, $8),
+             wikipedia_url = COALESCE(wikipedia_url, $9),
+             profile_path = COALESCE(profile_path, $10),
+             age_at_death = COALESCE(age_at_death, $11),
+             expected_lifespan = COALESCE(expected_lifespan, $12),
+             years_lost = COALESCE(years_lost, $13),
+             popularity = COALESCE(popularity, $14),
+             violent_death = COALESCE(violent_death, $15),
+             updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [
+            existing.rows[0].id,
+            actor.name,
+            actor.birthday ?? null,
+            actor.deathday ?? null,
+            actor.cause_of_death ?? null,
+            actor.cause_of_death_source ?? null,
+            actor.cause_of_death_details ?? null,
+            actor.cause_of_death_details_source ?? null,
+            actor.wikipedia_url ?? null,
+            actor.profile_path ?? null,
+            actor.age_at_death ?? null,
+            actor.expected_lifespan ?? null,
+            actor.years_lost ?? null,
+            actor.popularity ?? null,
+            actor.violent_death ?? null,
+          ]
+        )
+        actorId = existing.rows[0].id
+      } else {
+        // Insert new actor
+        const result = await client.query<{ id: number }>(
+          `INSERT INTO actors (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, popularity, violent_death, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
+           RETURNING id`,
+          [
+            actor.tmdb_id,
+            actor.name,
+            actor.birthday ?? null,
+            actor.deathday ?? null,
+            actor.cause_of_death ?? null,
+            actor.cause_of_death_source ?? null,
+            actor.cause_of_death_details ?? null,
+            actor.cause_of_death_details_source ?? null,
+            actor.wikipedia_url ?? null,
+            actor.profile_path ?? null,
+            actor.age_at_death ?? null,
+            actor.expected_lifespan ?? null,
+            actor.years_lost ?? null,
+            actor.popularity ?? null,
+            actor.violent_death ?? null,
+          ]
+        )
+        actorId = result.rows[0].id
       }
+
+      tmdbIdToActorId.set(actor.tmdb_id, actorId)
     }
 
     await client.query("COMMIT")

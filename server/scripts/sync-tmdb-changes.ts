@@ -10,12 +10,14 @@
  * 5. Checks active TV shows for new episodes
  *
  * Usage:
- *   npm run sync:tmdb                    # Normal sync (since last run)
- *   npm run sync:tmdb -- --days 7        # Sync specific number of days back
- *   npm run sync:tmdb -- --dry-run       # Preview changes without writing
- *   npm run sync:tmdb -- --people-only   # Only sync people changes
- *   npm run sync:tmdb -- --movies-only   # Only sync movie changes
- *   npm run sync:tmdb -- --shows-only    # Only sync active TV show episodes
+ *   npm run sync:tmdb                                   # Normal sync (since last run)
+ *   npm run sync:tmdb -- --days 7                       # Sync specific number of days back
+ *   npm run sync:tmdb -- --start-date 2026-01-01        # Sync from specific date to today
+ *   npm run sync:tmdb -- --start-date 2026-01-01 --end-date 2026-01-15  # Sync specific date range
+ *   npm run sync:tmdb -- --dry-run                      # Preview changes without writing
+ *   npm run sync:tmdb -- --people-only                  # Only sync people changes
+ *   npm run sync:tmdb -- --movies-only                  # Only sync movie changes
+ *   npm run sync:tmdb -- --shows-only                   # Only sync active TV show episodes
  */
 
 // New Relic must be initialized first for full transaction traces
@@ -52,7 +54,11 @@ import {
 import { getCauseOfDeath, verifyDeathDate } from "../src/lib/wikidata.js"
 import { calculateYearsLost, calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import { formatDate, subtractDays, getDateRanges } from "../src/lib/date-utils.js"
-import { invalidateDeathCaches, invalidateMovieCaches } from "../src/lib/cache.js"
+import {
+  invalidateDeathCaches,
+  invalidateMovieCaches,
+  invalidateActorCacheRequired,
+} from "../src/lib/cache.js"
 import { initRedis, closeRedis } from "../src/lib/redis.js"
 
 const SYNC_TYPE_PEOPLE = "person_changes"
@@ -83,6 +89,8 @@ const program = new Command()
     "Sync with TMDB Changes API to detect newly deceased actors, movie updates, and new episodes"
   )
   .option("-d, --days <number>", "Number of days back to sync", parsePositiveInt)
+  .option("--start-date <date>", "Start date (YYYY-MM-DD) - mutually exclusive with --days")
+  .option("--end-date <date>", "End date (YYYY-MM-DD) - defaults to today")
   .option("-n, --dry-run", "Preview changes without writing to database")
   .option("-p, --people-only", "Only sync people changes")
   .option("-m, --movies-only", "Only sync movie changes")
@@ -90,11 +98,36 @@ const program = new Command()
   .action(
     async (options: {
       days?: number
+      startDate?: string
+      endDate?: string
       dryRun?: boolean
       peopleOnly?: boolean
       moviesOnly?: boolean
       showsOnly?: boolean
     }) => {
+      // Validate mutually exclusive date options
+      if (options.days && options.startDate) {
+        console.error("Error: Cannot specify both --days and --start-date")
+        console.error("Use --days for relative lookback or --start-date/--end-date for absolute range")
+        process.exit(1)
+      }
+
+      if (options.endDate && !options.startDate) {
+        console.error("Error: --end-date requires --start-date")
+        process.exit(1)
+      }
+
+      // Validate date format
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+      if (options.startDate && !dateRegex.test(options.startDate)) {
+        console.error("Error: --start-date must be in YYYY-MM-DD format")
+        process.exit(1)
+      }
+      if (options.endDate && !dateRegex.test(options.endDate)) {
+        console.error("Error: --end-date must be in YYYY-MM-DD format")
+        process.exit(1)
+      }
+
       // Validate mutually exclusive options
       const exclusiveCount = [options.peopleOnly, options.moviesOnly, options.showsOnly].filter(
         Boolean
@@ -109,6 +142,8 @@ const program = new Command()
       await withNewRelicTransaction("sync-tmdb", async (recordMetrics) => {
         const result = await runSync({
           days: options.days,
+          startDate: options.startDate,
+          endDate: options.endDate,
           dryRun: options.dryRun ?? false,
           peopleOnly: options.peopleOnly ?? false,
           moviesOnly: options.moviesOnly ?? false,
@@ -135,6 +170,8 @@ const program = new Command()
 
 interface SyncOptions {
   days?: number
+  startDate?: string
+  endDate?: string
   dryRun: boolean
   peopleOnly: boolean
   moviesOnly: boolean
@@ -175,11 +212,26 @@ async function runSync(options: SyncOptions): Promise<SyncResult> {
     // Sync people changes
     if (!options.moviesOnly && !options.showsOnly) {
       const peopleState = await getSyncState(SYNC_TYPE_PEOPLE)
-      const peopleStartDate = options.days
-        ? subtractDays(today, options.days)
-        : peopleState?.last_sync_date || subtractDays(today, 1)
 
-      const peopleResult = await syncPeopleChanges(peopleStartDate, today, options.dryRun)
+      // Determine date range based on options
+      let peopleStartDate: string
+      let peopleEndDate: string
+
+      if (options.startDate) {
+        // Use explicit date range
+        peopleStartDate = options.startDate
+        peopleEndDate = options.endDate || today
+      } else if (options.days) {
+        // Use relative lookback
+        peopleStartDate = subtractDays(today, options.days)
+        peopleEndDate = today
+      } else {
+        // Use last sync date or default to yesterday
+        peopleStartDate = peopleState?.last_sync_date || subtractDays(today, 1)
+        peopleEndDate = today
+      }
+
+      const peopleResult = await syncPeopleChanges(peopleStartDate, peopleEndDate, options.dryRun)
       result.peopleChecked = peopleResult.checked
       result.newDeathsFound = peopleResult.newDeaths
       result.errors.push(...peopleResult.errors)
@@ -199,11 +251,26 @@ async function runSync(options: SyncOptions): Promise<SyncResult> {
     // Sync movie changes
     if (!options.peopleOnly && !options.showsOnly) {
       const movieState = await getSyncState(SYNC_TYPE_MOVIES)
-      const movieStartDate = options.days
-        ? subtractDays(today, options.days)
-        : movieState?.last_sync_date || subtractDays(today, 1)
 
-      const movieResult = await syncMovieChanges(movieStartDate, today, options.dryRun)
+      // Determine date range based on options
+      let movieStartDate: string
+      let movieEndDate: string
+
+      if (options.startDate) {
+        // Use explicit date range
+        movieStartDate = options.startDate
+        movieEndDate = options.endDate || today
+      } else if (options.days) {
+        // Use relative lookback
+        movieStartDate = subtractDays(today, options.days)
+        movieEndDate = today
+      } else {
+        // Use last sync date or default to yesterday
+        movieStartDate = movieState?.last_sync_date || subtractDays(today, 1)
+        movieEndDate = today
+      }
+
+      const movieResult = await syncMovieChanges(movieStartDate, movieEndDate, options.dryRun)
       result.moviesChecked = movieResult.checked
       result.moviesUpdated = movieResult.updated
       result.errors.push(...movieResult.errors)
@@ -258,14 +325,35 @@ async function runSync(options: SyncOptions): Promise<SyncResult> {
     }
 
     // Print summary
-    console.log("\n=== Sync Summary ===")
-    console.log(`People checked: ${result.peopleChecked}`)
-    console.log(`New deaths found: ${result.newDeathsFound}`)
-    console.log(`Movies checked: ${result.moviesChecked}`)
-    console.log(`Movies updated: ${result.moviesUpdated}`)
-    console.log(`Active shows checked: ${result.showsChecked}`)
-    console.log(`New episodes found: ${result.newEpisodesFound}`)
-    console.log(`Errors: ${result.errors.length}`)
+    console.log("\n" + "=".repeat(60))
+    console.log("SYNC SUMMARY")
+    console.log("=".repeat(60))
+
+    if (!options.moviesOnly && !options.showsOnly) {
+      console.log(`\nPeople:`)
+      console.log(`  - Checked: ${result.peopleChecked.toLocaleString()}`)
+      console.log(`  - New deaths found: ${result.newDeathsFound.toLocaleString()}${result.newDeathsFound > 0 ? " ✓" : ""}`)
+    }
+
+    if (!options.peopleOnly && !options.showsOnly) {
+      console.log(`\nMovies:`)
+      console.log(`  - Checked: ${result.moviesChecked.toLocaleString()}`)
+      console.log(`  - Updated: ${result.moviesUpdated.toLocaleString()}${result.moviesUpdated > 0 ? " ✓" : ""}`)
+    }
+
+    if (!options.peopleOnly && !options.moviesOnly) {
+      console.log(`\nTV Shows:`)
+      console.log(`  - Checked: ${result.showsChecked.toLocaleString()}`)
+      console.log(`  - New episodes found: ${result.newEpisodesFound.toLocaleString()}${result.newEpisodesFound > 0 ? " ✓" : ""}`)
+    }
+
+    if (result.errors.length > 0) {
+      console.log(`\nErrors: ${result.errors.length}`)
+    } else {
+      console.log(`\nErrors: 0`)
+    }
+
+    console.log("=".repeat(60))
 
     if (result.errors.length > 0) {
       console.log("\nErrors encountered:")
@@ -441,14 +529,30 @@ async function syncPeopleChanges(
     }
   }
 
-  // Recalculate mortality stats for movies featuring newly deceased actors
+  // Post-processing for newly deceased actors
   if (!dryRun && newlyDeceasedIds.length > 0) {
+    // Invalidate individual actor caches
+    console.log(`\nInvalidating caches for ${newlyDeceasedIds.length} newly deceased actors...`)
+    await initRedis()
+    for (const tmdbId of newlyDeceasedIds) {
+      try {
+        await invalidateActorCacheRequired(tmdbId)
+      } catch (error) {
+        console.error(`  Error invalidating cache for actor ${tmdbId}: ${error}`)
+      }
+    }
+    await closeRedis()
+
+    // Recalculate mortality stats for movies
     console.log(
       `\nRecalculating mortality stats for ${newlyDeceasedIds.length} newly deceased actors...`
     )
     const pool = getPool()
     const { rows: affectedMovies } = await pool.query<{ movie_tmdb_id: number }>(
-      `SELECT DISTINCT movie_tmdb_id FROM actor_movie_appearances WHERE actor_tmdb_id = ANY($1)`,
+      `SELECT DISTINCT ama.movie_tmdb_id
+       FROM actor_movie_appearances ama
+       JOIN actors a ON ama.actor_id = a.id
+       WHERE a.tmdb_id = ANY($1)`,
       [newlyDeceasedIds]
     )
     console.log(`  Found ${affectedMovies.length} affected movies`)
@@ -483,14 +587,14 @@ async function processNewDeath(person: TMDBPerson): Promise<void> {
     }
   }
 
-  // Look up cause of death
+  // Look up cause of death using Opus 4.5
   const {
     causeOfDeath,
     causeOfDeathSource,
     causeOfDeathDetails,
     causeOfDeathDetailsSource,
     wikipediaUrl,
-  } = await getCauseOfDeath(person.name, person.birthday, person.deathday!)
+  } = await getCauseOfDeath(person.name, person.birthday, person.deathday!, "opus")
 
   // Calculate mortality stats
   const yearsLostResult = await calculateYearsLost(person.birthday, person.deathday!)

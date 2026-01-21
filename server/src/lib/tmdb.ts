@@ -1,4 +1,5 @@
 const TMDB_BASE_URL = "https://api.themoviedb.org/3"
+const MAX_PAGES = 500 // TMDB Changes API maximum page limit
 
 function getToken(): string {
   const token = process.env.TMDB_API_TOKEN
@@ -208,8 +209,10 @@ async function tmdbFetch<T>(path: string): Promise<T> {
 
   if (!response.ok) {
     const body = await response.text()
-    console.log(`TMDB Error Response: ${body}`)
-    throw new Error(`TMDB API error: ${response.status} ${response.statusText}`)
+    console.error(`TMDB Error: ${response.status} ${response.statusText}`)
+    console.error(`  URL: ${url}`)
+    console.error(`  Response: ${body}`)
+    throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${path}`)
   }
 
   return response.json() as Promise<T>
@@ -323,10 +326,30 @@ export async function getAllChangedPersonIds(
     const response = await getPersonChanges(startDate, endDate, page)
     ids.push(...response.results.map((r) => r.id))
     totalPages = response.total_pages
+
+    // Log progress on first page and every 50 pages
+    if (page === 1) {
+      const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
+      console.log(
+        `  Fetching ${effectiveMaxPages.toLocaleString()} page(s) (${response.total_results.toLocaleString()} total results)${totalPages > MAX_PAGES ? ` - capped at ${MAX_PAGES}` : ""}`
+      )
+    } else if (page % 50 === 0) {
+      const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
+      console.log(`  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`)
+    }
+
     page++
 
     if (page <= totalPages && delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+
+    // TMDB has a hard limit of 500 pages
+    if (page > MAX_PAGES) {
+      console.warn(
+        `Warning: Reached TMDB page limit (${MAX_PAGES}). Total pages: ${totalPages}. Some results may be missing.`
+      )
+      break
     }
   } while (page <= totalPages)
 
@@ -353,10 +376,30 @@ export async function getAllChangedMovieIds(
     const response = await getMovieChanges(startDate, endDate, page)
     ids.push(...response.results.map((r) => r.id))
     totalPages = response.total_pages
+
+    // Log progress on first page and every 50 pages
+    if (page === 1) {
+      const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
+      console.log(
+        `  Fetching ${effectiveMaxPages.toLocaleString()} page(s) (${response.total_results.toLocaleString()} total results)${totalPages > MAX_PAGES ? ` - capped at ${MAX_PAGES}` : ""}`
+      )
+    } else if (page % 50 === 0) {
+      const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
+      console.log(`  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`)
+    }
+
     page++
 
     if (page <= totalPages && delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+
+    // TMDB has a hard limit of 500 pages
+    if (page > MAX_PAGES) {
+      console.warn(
+        `Warning: Reached TMDB page limit (${MAX_PAGES}). Total pages: ${totalPages}. Some results may be missing.`
+      )
+      break
     }
   } while (page <= totalPages)
 
@@ -406,6 +449,9 @@ export async function batchGetPersonDetails(
 
       if (result.status === "fulfilled") {
         results.set(personId, result.value)
+      } else {
+        // Log which person ID failed (detailed error already logged by tmdbFetch)
+        console.error(`  Failed to fetch person ID: ${personId}`)
       }
     }
 

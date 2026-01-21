@@ -169,6 +169,32 @@ describe("TMDB Changes API", () => {
 
       expect(result).toEqual([])
     })
+
+    it("stops at page 500 limit when total_pages exceeds 500", async () => {
+      // Mock 3 pages of results, but claim there are 600 total pages
+      const mockPage = (page: number) => ({
+        results: [{ id: page, adult: false }],
+        page,
+        total_pages: 600,
+        total_results: 12000,
+      })
+
+      // Mock pages 1-500
+      for (let i = 1; i <= 500; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPage(i)),
+        })
+      }
+
+      const result = await getAllChangedPersonIds("2024-01-01", "2024-01-14", 0)
+
+      // Should have fetched exactly 500 pages, not 600
+      expect(mockFetch).toHaveBeenCalledTimes(500)
+      expect(result).toHaveLength(500)
+      expect(result[0]).toBe(1)
+      expect(result[499]).toBe(500)
+    })
   })
 
   describe("getAllChangedMovieIds", () => {
@@ -200,6 +226,32 @@ describe("TMDB Changes API", () => {
       const result = await getAllChangedMovieIds("2024-01-01", "2024-01-14", 0)
 
       expect(result).toEqual([100, 200])
+    })
+
+    it("stops at page 500 limit when total_pages exceeds 500", async () => {
+      // Mock pages with total_pages > 500
+      const mockPage = (page: number) => ({
+        results: [{ id: page + 1000, adult: false }],
+        page,
+        total_pages: 700,
+        total_results: 14000,
+      })
+
+      // Mock pages 1-500
+      for (let i = 1; i <= 500; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPage(i)),
+        })
+      }
+
+      const result = await getAllChangedMovieIds("2024-01-01", "2024-01-14", 0)
+
+      // Should have fetched exactly 500 pages, not 700
+      expect(mockFetch).toHaveBeenCalledTimes(500)
+      expect(result).toHaveLength(500)
+      expect(result[0]).toBe(1001)
+      expect(result[499]).toBe(1500)
     })
   })
 })
