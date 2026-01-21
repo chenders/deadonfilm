@@ -565,6 +565,13 @@ export async function getPersonExternalIds(personId: number): Promise<TMDBExtern
 }
 
 /**
+ * Get external IDs for a movie (IMDB, etc.)
+ */
+export async function getMovieExternalIds(movieId: number): Promise<TMDBExternalIds> {
+  return tmdbFetch<TMDBExternalIds>(`/movie/${movieId}/external_ids`)
+}
+
+/**
  * Search for a person by name
  */
 export interface TMDBPersonSearchResult {
