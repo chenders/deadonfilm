@@ -65,6 +65,7 @@ import { initializeDatabase } from "./lib/startup.js"
 import { adminAuthMiddleware, optionalAdminAuth } from "./middleware/admin-auth.js"
 import { loginHandler, logoutHandler, statusHandler } from "./routes/admin/auth.js"
 import { getDashboardStats } from "./routes/admin/dashboard.js"
+import enrichmentRoutes from "./routes/admin/enrichment.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -250,6 +251,7 @@ app.post("/admin/api/auth/login", adminLoginLimiter, loginHandler)
 app.post("/admin/api/auth/logout", adminRoutesLimiter, logoutHandler)
 app.get("/admin/api/auth/status", adminRoutesLimiter, adminAuthMiddleware, statusHandler)
 app.get("/admin/api/dashboard/stats", adminRoutesLimiter, adminAuthMiddleware, getDashboardStats)
+app.use("/admin/api/enrichment", adminRoutesLimiter, adminAuthMiddleware, enrichmentRoutes)
 
 // TV Show routes
 app.get("/api/search/tv", searchShows)
