@@ -15,8 +15,8 @@ RUN apk add --no-cache \
 RUN cd /tmp && \
     git clone https://github.com/postgrespro/pg_wait_sampling.git && \
     cd pg_wait_sampling && \
-    make USE_PGXS=1 && \
-    make USE_PGXS=1 install && \
+    make USE_PGXS=1 NO_LLVM=1 && \
+    make USE_PGXS=1 NO_LLVM=1 install && \
     cd / && \
     rm -rf /tmp/pg_wait_sampling
 
@@ -24,8 +24,8 @@ RUN cd /tmp && \
 RUN cd /tmp && \
     git clone https://github.com/percona/pg_stat_monitor.git && \
     cd pg_stat_monitor && \
-    make USE_PGXS=1 && \
-    make USE_PGXS=1 install && \
+    make USE_PGXS=1 NO_LLVM=1 && \
+    make USE_PGXS=1 NO_LLVM=1 install && \
     cd / && \
     rm -rf /tmp/pg_stat_monitor
 
