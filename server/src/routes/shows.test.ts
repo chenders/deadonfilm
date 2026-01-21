@@ -29,6 +29,7 @@ vi.mock("../lib/mortality-stats.js", () => ({
 vi.mock("newrelic", () => ({
   default: {
     recordCustomEvent: vi.fn(),
+    addCustomAttribute: vi.fn(),
     addCustomAttributes: vi.fn(),
   },
 }))
