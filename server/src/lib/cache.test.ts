@@ -18,8 +18,8 @@ vi.mock("./logger.js", () => ({
 // Mock the newrelic module
 vi.mock("newrelic", () => ({
   default: {
-  recordCustomEvent: vi.fn(),
-}
+    recordCustomEvent: vi.fn(),
+  },
 }))
 
 describe("cache", () => {
