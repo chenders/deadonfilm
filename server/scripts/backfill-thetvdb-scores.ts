@@ -26,6 +26,7 @@ import { getPool } from "../src/lib/db/pool.js"
 import { getSeriesExtended } from "../src/lib/thetvdb.js"
 import { upsertShow } from "../src/lib/db/shows.js"
 import type { ShowRecord } from "../src/lib/db/types.js"
+import { isPermanentError } from "../src/lib/backfill-utils.js"
 
 const RATE_LIMIT_DELAY_MS = 100
 
@@ -62,15 +63,6 @@ interface BackfillStats {
 
 interface ShowInfo extends ShowRecord {
   thetvdb_fetch_attempts: number
-}
-
-function isPermanentError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const msg = error.message.toLowerCase()
-  if (msg.includes("404") || msg.includes("not found")) return true
-  if (msg.includes("400") || msg.includes("bad request")) return true
-  if (msg.includes("401") || msg.includes("unauthorized")) return true
-  return false
 }
 
 const program = new Command()
@@ -191,6 +183,11 @@ async function run(options: BackfillOptions) {
             )
             if (willMarkPermanent) stats.permanentlyFailed++
           }
+
+          // Rate limit - apply after both success and error to respect API limits
+          if (stats.totalProcessed < shows.length) {
+            await delay(RATE_LIMIT_DELAY_MS)
+          }
           continue
         }
 
@@ -210,6 +207,11 @@ async function run(options: BackfillOptions) {
               [attemptNum, willMarkPermanent, show.tmdb_id]
             )
             if (willMarkPermanent) stats.permanentlyFailed++
+          }
+
+          // Rate limit - apply after both success and error to respect API limits
+          if (stats.totalProcessed < shows.length) {
+            await delay(RATE_LIMIT_DELAY_MS)
           }
           continue
         }
@@ -237,11 +239,6 @@ async function run(options: BackfillOptions) {
 
         stats.successful++
         consecutiveFailures = 0 // Reset circuit breaker on success
-
-        // Rate limit delay
-        if (stats.totalProcessed < shows.length) {
-          await delay(RATE_LIMIT_DELAY_MS)
-        }
       } catch (error) {
         console.error(`  ❌ Error processing "${show.name}"${retryLabel}:`, error)
         stats.failed++
@@ -280,6 +277,11 @@ async function run(options: BackfillOptions) {
 
           if (willMarkPermanent) stats.permanentlyFailed++
         }
+      }
+
+      // Rate limit - apply after both success and error to respect API limits
+      if (stats.totalProcessed < shows.length) {
+        await delay(RATE_LIMIT_DELAY_MS)
       }
     }
 
