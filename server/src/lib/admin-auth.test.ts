@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest"
+import { describe, it, expect, beforeEach } from "vitest"
 import { hashPassword, verifyPassword, generateToken, verifyToken } from "./admin-auth.js"
 
 describe("admin-auth", () => {

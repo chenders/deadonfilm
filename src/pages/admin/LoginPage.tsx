@@ -14,15 +14,20 @@ export default function LoginPage() {
     setError("")
     setIsLoading(true)
 
-    const result = await login(password)
+    try {
+      const result = await login(password)
 
-    if (result.success) {
-      navigate("/admin/dashboard")
-    } else {
-      setError(result.error || "Login failed")
+      if (result.success) {
+        navigate("/admin/dashboard")
+      } else {
+        setError(result.error || "Login failed")
+      }
+    } catch (err) {
+      console.error("Admin login failed:", err)
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (
@@ -52,6 +57,7 @@ export default function LoginPage() {
                 className="relative block w-full appearance-none rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="Password"
                 disabled={isLoading}
+                data-testid="admin-login-password"
               />
             </div>
           </div>
@@ -67,6 +73,7 @@ export default function LoginPage() {
               type="submit"
               disabled={isLoading}
               className="group relative flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              data-testid="admin-login-submit"
             >
               {isLoading ? "Logging in..." : "Sign in"}
             </button>
