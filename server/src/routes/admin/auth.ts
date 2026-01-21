@@ -12,7 +12,8 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
   try {
     const { password } = req.body
 
-    if (!password) {
+    // Validate password is provided and is a string
+    if (!password || typeof password !== "string" || password.trim().length === 0) {
       res.status(400).json({ error: { message: "Password required" } })
       return
     }

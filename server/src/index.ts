@@ -104,6 +104,24 @@ const heavyEndpointLimiter = rateLimit({
   skip: (req) => req.isAdmin === true,
 })
 
+// Admin login rate limit: 5 attempts per minute to prevent brute force
+const adminLoginLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { message: "Too many login attempts, please try again later" } },
+})
+
+// General admin routes rate limit: 200 requests per minute (more permissive for authenticated admins)
+const adminRoutesLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { message: "Too many requests, please try again later" } },
+})
+
 // Redirect www to apex domain for SEO
 app.use((req, res, next) => {
   const host = req.get("host") || ""
@@ -227,10 +245,10 @@ app.get("/api/movies/genres", getGenreCategoriesHandler)
 app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
 
 // Admin routes (authentication not required for login, but required for other endpoints)
-app.post("/admin/api/auth/login", loginHandler)
-app.post("/admin/api/auth/logout", logoutHandler)
-app.get("/admin/api/auth/status", adminAuthMiddleware, statusHandler)
-app.get("/admin/api/dashboard/stats", adminAuthMiddleware, getDashboardStats)
+app.post("/admin/api/auth/login", adminLoginLimiter, loginHandler)
+app.post("/admin/api/auth/logout", adminRoutesLimiter, logoutHandler)
+app.get("/admin/api/auth/status", adminRoutesLimiter, adminAuthMiddleware, statusHandler)
+app.get("/admin/api/dashboard/stats", adminRoutesLimiter, adminAuthMiddleware, getDashboardStats)
 
 // TV Show routes
 app.get("/api/search/tv", searchShows)
