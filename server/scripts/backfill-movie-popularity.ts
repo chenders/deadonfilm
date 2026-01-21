@@ -28,6 +28,7 @@ import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { getMovieDetails } from "../src/lib/tmdb.js"
+import { isPermanentError } from "../src/lib/backfill-utils.js"
 
 const RATE_LIMIT_DELAY_MS = 50
 
@@ -51,15 +52,6 @@ interface MovieInfo {
   title: string
   release_year: number | null
   popularity_fetch_attempts: number
-}
-
-function isPermanentError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const msg = error.message.toLowerCase()
-  if (msg.includes("404") || msg.includes("not found")) return true
-  if (msg.includes("400") || msg.includes("bad request")) return true
-  if (msg.includes("401") || msg.includes("unauthorized")) return true
-  return false
 }
 
 async function backfillMoviePopularity(options: BackfillOptions): Promise<void> {
@@ -211,6 +203,11 @@ async function backfillMoviePopularity(options: BackfillOptions): Promise<void> 
 
           if (willMarkPermanent) permanentlyFailed++
         }
+      }
+
+      // Rate limit - apply after both success and error to respect API limits
+      if (i < movies.length - 1) {
+        await delay(RATE_LIMIT_DELAY_MS)
       }
     }
 
