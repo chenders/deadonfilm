@@ -52,7 +52,6 @@ interface ActorInfo {
   details_fetch_attempts: number
 }
 
-
 async function runBackfill(options: BackfillOptions) {
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL environment variable is required")
