@@ -30,15 +30,19 @@ vi.mock("../lib/movie-cache.js", () => ({
   buildActorMovieAppearanceRecord: vi.fn(),
 }))
 
-vi.mock("../lib/newrelic.js", () => ({
-  recordCustomEvent: vi.fn(),
+vi.mock("newrelic", () => ({
+  default: {
+    recordCustomEvent: vi.fn(),
+    addCustomAttribute: vi.fn(),
+    addCustomAttributes: vi.fn(),
+  },
 }))
 
 import { getMovie } from "./movie.js"
 import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../lib/tmdb.js"
 import { getActors, batchUpsertActors } from "../lib/db.js"
 import { calculateMovieMortality } from "../lib/mortality-stats.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 import { getCauseOfDeath } from "../lib/wikidata.js"
 
 describe("getMovie route", () => {
@@ -189,7 +193,7 @@ describe("getMovie route", () => {
 
       await getMovie(mockReq as Request, mockRes as Response)
 
-      expect(recordCustomEvent).toHaveBeenCalledWith(
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
         "MovieView",
         expect.objectContaining({
           tmdbId: 14629,
@@ -210,7 +214,7 @@ describe("getMovie route", () => {
 
       await getMovie(mockReq as Request, mockRes as Response)
 
-      expect(recordCustomEvent).not.toHaveBeenCalled()
+      expect(newrelic.recordCustomEvent).not.toHaveBeenCalled()
       expect(statusSpy).toHaveBeenCalledWith(500)
     })
   })

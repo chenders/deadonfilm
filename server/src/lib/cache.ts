@@ -4,7 +4,7 @@
  */
 import { getRedisClient } from "./redis.js"
 import { logger } from "./logger.js"
-import { recordCustomEvent } from "./newrelic.js"
+import newrelic from "newrelic"
 import { getRecentDeaths, getSiteStats, getDeathsThisWeekSimple } from "./db.js"
 import {
   instrumentedGet,
@@ -96,11 +96,11 @@ export async function getCached<T>(key: string): Promise<T | null> {
     const cached = await instrumentedGet(key)
     if (cached) {
       logger.debug({ key }, "Cache hit")
-      recordCustomEvent("CacheAccess", { key, hit: true })
+      newrelic.recordCustomEvent("CacheAccess", { key, hit: true })
       return JSON.parse(cached) as T
     }
     logger.debug({ key }, "Cache miss")
-    recordCustomEvent("CacheAccess", { key, hit: false })
+    newrelic.recordCustomEvent("CacheAccess", { key, hit: false })
     return null
   } catch (err) {
     logger.warn({ err: (err as Error).message, key }, "Cache get error")

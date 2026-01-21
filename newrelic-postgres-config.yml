@@ -8,17 +8,12 @@ integrations:
       PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE: ${POSTGRES_DB}
 
-      # Collection settings
-      COLLECTION_LIST: '{"postgres":{"query":"SELECT * FROM pg_stat_database WHERE datname = current_database()","columns":[{"name":"db.connections","type":"gauge"},{"name":"db.commitsPerSecond","type":"rate"},{"name":"db.rollbacksPerSecond","type":"rate"}]}}'
+      ENABLE_SSL: false
+      TRUST_SERVER_CERTIFICATE: true  # Internal Docker network
 
-      # SSL mode (disable for local Docker connections)
-      SSLMODE: disable
-
-      # Collect additional metrics
       COLLECT_DB_LOCK_METRICS: true
-      COLLECT_BLOAT_METRICS: false
+      COLLECT_BLOAT_METRICS: true  # Monitors table/index bloat
 
-      # Timeout (in seconds)
       TIMEOUT: 10
     interval: 15s
     labels:

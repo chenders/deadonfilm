@@ -1,20 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { Request, Response } from "express"
-import { searchMovies } from "./search.js"
 
-// Mock the dependencies
+// Mock the dependencies BEFORE importing modules that use them
 vi.mock("../lib/tmdb.js", () => ({
   searchMovies: vi.fn(),
   searchTVShows: vi.fn(),
 }))
 
-vi.mock("../lib/newrelic.js", () => ({
-  recordCustomEvent: vi.fn(),
-  addCustomAttributes: vi.fn(),
+vi.mock("newrelic", () => ({
+  default: {
+    recordCustomEvent: vi.fn(),
+    addCustomAttribute: vi.fn(),
+    addCustomAttributes: vi.fn(),
+  },
 }))
 
+import { searchMovies } from "./search.js"
 import { searchMovies as tmdbSearch } from "../lib/tmdb.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 describe("searchMovies route", () => {
   let mockReq: Partial<Request>
@@ -403,7 +406,7 @@ describe("searchMovies route", () => {
 
     await searchMovies(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "Search",
       expect.objectContaining({
         query: "test movie",
@@ -419,6 +422,6 @@ describe("searchMovies route", () => {
 
     await searchMovies(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).not.toHaveBeenCalled()
+    expect(newrelic.recordCustomEvent).not.toHaveBeenCalled()
   })
 })

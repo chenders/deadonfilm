@@ -27,12 +27,15 @@ vi.mock("../lib/cache.js", () => ({
   CACHE_TTL: { WEEK: 604800, SHORT: 300 },
 }))
 
-vi.mock("../lib/newrelic.js", () => ({
-  recordCustomEvent: vi.fn(),
-  addCustomAttributes: vi.fn(),
+vi.mock("newrelic", () => ({
+  default: {
+    recordCustomEvent: vi.fn(),
+    addCustomAttribute: vi.fn(),
+    addCustomAttributes: vi.fn(),
+  },
 }))
 
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 describe("getCursedActorsRoute", () => {
   let mockReq: Partial<Request>
@@ -378,7 +381,7 @@ describe("getCursedActorsRoute", () => {
 
     await getCursedActorsRoute(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "CursedActorsQuery",
       expect.objectContaining({
         page: 2,

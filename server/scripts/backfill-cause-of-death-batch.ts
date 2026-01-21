@@ -42,7 +42,6 @@
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
-import { initNewRelic } from "../src/lib/newrelic.js"
 import {
   submitBatch,
   checkBatchStatus,
@@ -65,7 +64,6 @@ export {
 } from "../src/lib/claude-batch/index.js"
 
 // Initialize New Relic for monitoring
-initNewRelic()
 
 export function parsePositiveInt(value: string): number {
   if (!/^\d+$/.test(value)) {

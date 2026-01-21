@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import newrelic from "newrelic"
 /**
  * All-in-one TV show backfill script.
  *
@@ -57,10 +58,8 @@ import {
 import { getEpisodeCastWithDetails } from "../src/lib/imdb.js"
 import { getCauseOfDeath } from "../src/lib/wikidata.js"
 import { calculateMovieMortality } from "../src/lib/mortality-stats.js"
-import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 
 // Initialize New Relic for monitoring
-initNewRelic()
 
 // Checkpoint file to track progress
 const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-shows-full-checkpoint.json")
@@ -289,7 +288,7 @@ async function runBackfill(options: {
   )
 
   // Record session start event
-  recordCustomEvent("BackfillSessionStarted", {
+  newrelic.recordCustomEvent("BackfillSessionStarted", {
     showsCount: showsToProcess.length,
     includeCast: includeCast ?? false,
     forcedSource: forcedSource ?? "cascade",
@@ -325,7 +324,7 @@ async function runBackfill(options: {
   console.log(`  Duration: ${Math.round(totalDuration / 1000)}s`)
 
   // Record session complete event
-  recordCustomEvent("BackfillSessionCompleted", {
+  newrelic.recordCustomEvent("BackfillSessionCompleted", {
     showsProcessed: checkpoint.stats.showsProcessed,
     seasonsProcessed: checkpoint.stats.seasonsProcessed,
     totalEpisodesSaved: checkpoint.stats.episodesSaved,
@@ -371,7 +370,7 @@ async function processShow(
   if (showResult.rows.length === 0) {
     console.error(`Show not found in database: ${showTmdbId}`)
     checkpoint.stats.errors++
-    recordCustomEvent("BackfillError", {
+    newrelic.recordCustomEvent("BackfillError", {
       showTmdbId,
       errorType: "ShowNotFound",
       errorMessage: "Show not found in database",
@@ -431,7 +430,7 @@ async function processShow(
   console.log(`  Missing seasons: ${gapResult.missingSeasons.join(", ")}`)
 
   // Record show started event
-  recordCustomEvent("BackfillShowStarted", {
+  newrelic.recordCustomEvent("BackfillShowStarted", {
     showTmdbId,
     showName: show.name,
     imdbId: externalIds.imdbId ?? "none",
@@ -540,7 +539,7 @@ async function processShow(
 
       // Record season completion
       const seasonDuration = Date.now() - seasonStartTime
-      recordCustomEvent("BackfillSeasonCompleted", {
+      newrelic.recordCustomEvent("BackfillSeasonCompleted", {
         showTmdbId,
         seasonNumber,
         episodesSaved: episodes.length,
@@ -554,7 +553,7 @@ async function processShow(
       checkpoint.stats.errors++
       const errorMessage = error instanceof Error ? error.message : "unknown error"
       console.log(`    Error: ${errorMessage}`)
-      recordCustomEvent("BackfillError", {
+      newrelic.recordCustomEvent("BackfillError", {
         showTmdbId,
         seasonNumber,
         errorType: "SeasonProcessingError",

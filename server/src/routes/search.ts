@@ -5,7 +5,7 @@ import {
   type TMDBMovie,
   type TMDBTVShow,
 } from "../lib/tmdb.js"
-import { recordCustomEvent, addCustomAttributes } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 // Unified search result type
 interface SearchResult {
@@ -136,12 +136,14 @@ export async function searchMovies(req: Request, res: Response) {
     const startTime = Date.now()
     const results: SearchResult[] = []
 
-    addCustomAttributes({
+    for (const [key, value] of Object.entries({
       "query.entity": "search",
       "query.operation": "search",
       "query.type": type,
       "query.term": query.substring(0, 100), // Limit to 100 chars for safety
-    })
+    })) {
+      newrelic.addCustomAttribute(key, value)
+    }
 
     // Fetch movies if type is 'movie' or 'all'
     if (type === "movie" || type === "all") {
@@ -200,7 +202,7 @@ export async function searchMovies(req: Request, res: Response) {
       }
     }
 
-    recordCustomEvent("Search", {
+    newrelic.recordCustomEvent("Search", {
       query,
       type,
       resultCount: finalResults.length,
