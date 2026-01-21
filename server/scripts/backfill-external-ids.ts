@@ -69,28 +69,42 @@ const program = new Command()
   .option("-l, --limit <number>", "Limit number of shows to process", parsePositiveInt)
   .option("--missing-only", "Only process shows without external IDs")
   .option("-n, --dry-run", "Preview without writing to database")
-  .action(async (options: { limit?: number; missingOnly?: boolean; dryRun?: boolean }) => {
-    if (options.dryRun) {
-      await runBackfill(options)
-    } else {
-      await withNewRelicTransaction("backfill-external-ids", async (recordMetrics) => {
-        const stats = await runBackfill(options)
-        recordMetrics({
-          recordsProcessed: stats.processed,
-          recordsUpdated: stats.updated,
-          recordsFailed: stats.permanentlyFailed,
-          errorsEncountered: stats.errors,
+  .option(
+    "--max-consecutive-failures <number>",
+    "Stop processing after N consecutive failures (circuit breaker)",
+    parsePositiveInt,
+    3
+  )
+  .action(
+    async (options: {
+      limit?: number
+      missingOnly?: boolean
+      dryRun?: boolean
+      maxConsecutiveFailures?: number
+    }) => {
+      if (options.dryRun) {
+        await runBackfill(options)
+      } else {
+        await withNewRelicTransaction("backfill-external-ids", async (recordMetrics) => {
+          const stats = await runBackfill(options)
+          recordMetrics({
+            recordsProcessed: stats.processed,
+            recordsUpdated: stats.updated,
+            recordsFailed: stats.permanentlyFailed,
+            errorsEncountered: stats.errors,
+          })
         })
-      })
+      }
     }
-  })
+  )
 
 async function runBackfill(options: {
   limit?: number
   missingOnly?: boolean
   dryRun?: boolean
+  maxConsecutiveFailures?: number
 }): Promise<{ processed: number; updated: number; permanentlyFailed: number; errors: number }> {
-  const { limit, missingOnly, dryRun } = options
+  const { limit, missingOnly, dryRun, maxConsecutiveFailures = 3 } = options
 
   if (!process.env.DATABASE_URL && !dryRun) {
     console.error("DATABASE_URL environment variable is required (or use --dry-run)")
@@ -143,6 +157,7 @@ async function runBackfill(options: {
   let updated = 0
   let permanentlyFailed = 0
   let errors = 0
+  let consecutiveFailures = 0
 
   for (const show of shows) {
     processed++
@@ -180,6 +195,7 @@ async function runBackfill(options: {
           )
         }
         updated++
+        consecutiveFailures = 0 // Reset circuit breaker on success
         console.log(
           `${dryRun ? "would update: " : ""}TVmaze=${externalIds.tvmazeId ?? "none"}, TheTVDB=${externalIds.thetvdbId ?? "none"}`
         )
@@ -210,8 +226,25 @@ async function runBackfill(options: {
       }
     } catch (error) {
       errors++
+      consecutiveFailures++
       const errorMsg = error instanceof Error ? error.message : "unknown"
       console.log(`error: ${errorMsg}`)
+
+      // Circuit breaker: stop if too many consecutive failures (API likely down)
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        console.error(
+          `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+        )
+        console.error(
+          "   The TMDB API may be experiencing an outage. Stopping to prevent futile requests."
+        )
+        console.error(
+          `   Processed ${processed}/${shows.length} shows before stopping (${updated} updated, ${errors} errors)\n`
+        )
+
+        await resetPool()
+        process.exit(2) // Exit code 2 indicates circuit breaker trip
+      }
 
       if (!dryRun) {
         const permanent = isPermanentError(error)

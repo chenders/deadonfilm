@@ -68,28 +68,42 @@ const program = new Command()
     parseNonNegativeNumber
   )
   .option("-n, --dry-run", "Preview without writing to database")
-  .action(async (options: { limit?: number; minPopularity?: number; dryRun?: boolean }) => {
-    if (options.dryRun) {
-      await runBackfill(options)
-    } else {
-      await withNewRelicTransaction("backfill-movie-imdb-ids", async (recordMetrics) => {
-        const stats = await runBackfill(options)
-        recordMetrics({
-          recordsProcessed: stats.processed,
-          recordsUpdated: stats.updated,
-          recordsFailed: stats.failed,
-          errorsEncountered: stats.errors,
+  .option(
+    "--max-consecutive-failures <number>",
+    "Stop processing after N consecutive failures (circuit breaker)",
+    parsePositiveInt,
+    3
+  )
+  .action(
+    async (options: {
+      limit?: number
+      minPopularity?: number
+      dryRun?: boolean
+      maxConsecutiveFailures?: number
+    }) => {
+      if (options.dryRun) {
+        await runBackfill(options)
+      } else {
+        await withNewRelicTransaction("backfill-movie-imdb-ids", async (recordMetrics) => {
+          const stats = await runBackfill(options)
+          recordMetrics({
+            recordsProcessed: stats.processed,
+            recordsUpdated: stats.updated,
+            recordsFailed: stats.failed,
+            errorsEncountered: stats.errors,
+          })
         })
-      })
+      }
     }
-  })
+  )
 
 async function runBackfill(options: {
   limit?: number
   minPopularity?: number
   dryRun?: boolean
+  maxConsecutiveFailures?: number
 }): Promise<{ processed: number; updated: number; failed: number; errors: number }> {
-  const { limit, minPopularity, dryRun } = options
+  const { limit, minPopularity, dryRun, maxConsecutiveFailures = 3 } = options
 
   if (!process.env.DATABASE_URL && !dryRun) {
     console.error("DATABASE_URL environment variable is required (or use --dry-run)")
@@ -144,6 +158,7 @@ async function runBackfill(options: {
   let updated = 0
   let failed = 0
   let errors = 0
+  let consecutiveFailures = 0
 
   for (const movie of movies) {
     processed++
@@ -168,6 +183,7 @@ async function runBackfill(options: {
           )
         }
         updated++
+        consecutiveFailures = 0 // Reset circuit breaker on success
         console.log(`${dryRun ? "would set: " : ""}${externalIds.imdb_id}`)
       } else {
         // No IMDb ID found - this is a permanent condition (not an error)
@@ -195,8 +211,27 @@ async function runBackfill(options: {
       }
     } catch (error) {
       errors++
+      consecutiveFailures++
       const errorMsg = error instanceof Error ? error.message : "unknown error"
       console.log(`error: ${errorMsg}`)
+
+      // Circuit breaker: stop if too many consecutive failures (API likely down)
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        console.error(
+          `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+        )
+        console.error(
+          "   The TMDB API may be experiencing an outage. Stopping to prevent futile requests."
+        )
+        console.error(
+          `   Processed ${processed}/${movies.length} movies before stopping (${updated} updated, ${errors} errors)\n`
+        )
+
+        if (!dryRun) {
+          await db.end()
+        }
+        process.exit(2) // Exit code 2 indicates circuit breaker trip
+      }
 
       // Update retry tracking
       if (!dryRun) {

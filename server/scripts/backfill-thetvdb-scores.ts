@@ -49,6 +49,7 @@ interface BackfillOptions {
   limit?: number
   dryRun?: boolean
   minPopularity?: number
+  maxConsecutiveFailures?: number
 }
 
 interface BackfillStats {
@@ -78,6 +79,12 @@ const program = new Command()
   .option("-l, --limit <n>", "Process only N shows", parsePositiveInt)
   .option("-n, --dry-run", "Preview without writing")
   .option("--min-popularity <n>", "Skip shows below popularity threshold", parseNonNegativeFloat)
+  .option(
+    "--max-consecutive-failures <number>",
+    "Stop processing after N consecutive failures (circuit breaker)",
+    parsePositiveInt,
+    3
+  )
 
 program.parse()
 
@@ -91,6 +98,8 @@ async function run(options: BackfillOptions) {
     permanentlyFailed: 0,
     skipped: 0,
   }
+
+  const { maxConsecutiveFailures = 3 } = options
 
   const pool = getPool()
 
@@ -147,6 +156,8 @@ async function run(options: BackfillOptions) {
     const shows = result.rows
 
     console.log(`\nFound ${shows.length} shows to backfill`)
+
+    let consecutiveFailures = 0
 
     for (const show of shows) {
       stats.totalProcessed++
@@ -225,6 +236,7 @@ async function run(options: BackfillOptions) {
         }
 
         stats.successful++
+        consecutiveFailures = 0 // Reset circuit breaker on success
 
         // Rate limit delay
         if (stats.totalProcessed < shows.length) {
@@ -233,6 +245,23 @@ async function run(options: BackfillOptions) {
       } catch (error) {
         console.error(`  ❌ Error processing "${show.name}"${retryLabel}:`, error)
         stats.failed++
+        consecutiveFailures++
+
+        // Circuit breaker: stop if too many consecutive failures (API likely down)
+        if (consecutiveFailures >= maxConsecutiveFailures) {
+          console.error(
+            `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+          )
+          console.error(
+            "   The TheTVDB API may be experiencing an outage. Stopping to prevent futile requests."
+          )
+          console.error(
+            `   Processed ${stats.totalProcessed}/${shows.length} shows before stopping (${stats.successful} successful, ${stats.failed} errors)\n`
+          )
+
+          await pool.end()
+          process.exit(2) // Exit code 2 indicates circuit breaker trip
+        }
 
         if (!options.dryRun) {
           const errorMsg = error instanceof Error ? error.message : "unknown error"
