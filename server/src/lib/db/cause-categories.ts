@@ -242,6 +242,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
   `)
 
   // Get top movie per decade (most popular movie with an image)
+  // Movies are matched by decade of actor deaths, not movie release year
   // Prefer backdrop_path, fall back to poster_path
   const moviesResult = await db.query<{
     decade: number
@@ -250,20 +251,28 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     release_year: number | null
     backdrop_path: string | null
   }>(`
-    WITH ranked_movies AS (
+    WITH actor_death_decades AS (
       SELECT
-        (m.release_year / 10 * 10) as decade,
+        (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
+        id as actor_id
+      FROM actors
+      WHERE deathday IS NOT NULL
+    ),
+    ranked_movies AS (
+      SELECT
+        d.decade,
         m.tmdb_id,
         m.title,
         m.release_year,
         COALESCE(m.backdrop_path, m.poster_path) as backdrop_path,
         ROW_NUMBER() OVER (
-          PARTITION BY (m.release_year / 10 * 10)
+          PARTITION BY d.decade
           ORDER BY m.popularity DESC NULLS LAST
         ) as rn
-      FROM movies m
-      WHERE m.release_year IS NOT NULL
-        AND (m.backdrop_path IS NOT NULL OR m.poster_path IS NOT NULL)
+      FROM actor_death_decades d
+      INNER JOIN actor_movie_appearances ama ON ama.actor_id = d.actor_id
+      INNER JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
+      WHERE (m.backdrop_path IS NOT NULL OR m.poster_path IS NOT NULL)
         AND m.is_obscure = false
     )
     SELECT decade, tmdb_id, title, release_year, backdrop_path
