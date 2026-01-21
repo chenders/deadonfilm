@@ -14,6 +14,7 @@ import newrelic from "newrelic"
  *   npm run backfill:tmdb -- --start-date 2024-06-01 --end-date 2024-12-31 --dry-run
  *   npm run backfill:tmdb -- --start-date 2025-01-01 --end-date 2025-12-31 --people-only
  *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --chunk-size 7
+ *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --checkpoint-frequency 10
  *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --reset
  */
 
@@ -150,7 +151,8 @@ async function runModeBackfill(
   mode: SyncMode,
   chunks: Array<{ start: string; end: string }>,
   dryRun: boolean,
-  resumeFromChunk: number
+  resumeFromChunk: number,
+  checkpointFrequency: number
 ): Promise<ChunkSummary> {
   const modeName = getModeName(mode)
   const totalChunks = chunks.length
@@ -202,6 +204,10 @@ async function runModeBackfill(
     newEpisodesFound: 0,
     errors: 0,
   }
+
+  // Track items processed for checkpointing
+  let itemsSinceLastCheckpoint = 0
+  let nextCheckpointThreshold = checkpointFrequency
 
   // Start the status bar
   statusBar.start()
@@ -290,10 +296,17 @@ async function runModeBackfill(
         errors: result.errors.length,
       })
 
-      // Save checkpoint after successful chunk
-      if (i < totalChunks - 1) {
+      // Track items processed and checkpoint based on frequency
+      const itemsInChunk = result.peopleChecked + result.moviesChecked + result.showsChecked
+      itemsSinceLastCheckpoint += itemsInChunk
+
+      // Save checkpoint if we've processed enough items (at chunk boundaries)
+      const shouldCheckpoint = itemsSinceLastCheckpoint >= nextCheckpointThreshold
+      if (shouldCheckpoint && i < totalChunks - 1) {
         const nextChunk = chunks[i + 1]
         await saveCheckpoint(`${mode}:${nextChunk.start}`)
+        itemsSinceLastCheckpoint = 0
+        nextCheckpointThreshold = checkpointFrequency
       }
 
       // Small delay to be nice to the API
@@ -338,6 +351,7 @@ interface BackfillOptions {
   showsOnly: boolean
   reset: boolean
   chunkSize: number
+  checkpointFrequency: number
 }
 
 async function runBackfill(options: BackfillOptions): Promise<void> {
@@ -457,7 +471,13 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
       checkpointMode === mode && checkpointChunkIndex > 0 && checkpointChunkIndex < chunks.length
     const startChunk = shouldResume ? checkpointChunkIndex : 0
 
-    const summary = await runModeBackfill(mode, chunks, options.dryRun, startChunk)
+    const summary = await runModeBackfill(
+      mode,
+      chunks,
+      options.dryRun,
+      startChunk,
+      options.checkpointFrequency
+    )
 
     // Accumulate into overall summary
     overallSummary.peopleChecked += summary.peopleChecked
@@ -561,6 +581,15 @@ function parseChunkSize(value: string): number {
   return n
 }
 
+// Validate checkpoint frequency
+function parseCheckpointFrequency(value: string): number {
+  const n = parseInt(value, 10)
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
+    throw new InvalidArgumentError("Checkpoint frequency must be a positive integer")
+  }
+  return n
+}
+
 const program = new Command()
   .name("backfill-tmdb-batch")
   .description("Batch backfill TMDB sync in configurable chunks with automatic resumption")
@@ -571,6 +600,12 @@ const program = new Command()
   .option("-m, --movies-only", "Only sync movie changes", false)
   .option("-s, --shows-only", "Only sync active TV show episodes", false)
   .option("-c, --chunk-size <days>", "Number of days per chunk (default: 2)", parseChunkSize, 2)
+  .option(
+    "-f, --checkpoint-frequency <items>",
+    "Save checkpoint after processing N items (default: 100)",
+    parseCheckpointFrequency,
+    100
+  )
   .option("--reset", "Clear checkpoint and start from beginning", false)
   .action(
     async (options: {
@@ -581,6 +616,7 @@ const program = new Command()
       moviesOnly: boolean
       showsOnly: boolean
       chunkSize: number
+      checkpointFrequency: number
       reset: boolean
     }) => {
       // Validate mutually exclusive options
@@ -610,6 +646,7 @@ const program = new Command()
           moviesOnly: options.moviesOnly,
           showsOnly: options.showsOnly,
           chunkSize: options.chunkSize,
+          checkpointFrequency: options.checkpointFrequency,
           reset: options.reset,
         })
 
@@ -622,6 +659,7 @@ const program = new Command()
           moviesOnly: options.moviesOnly,
           showsOnly: options.showsOnly,
           chunkSize: options.chunkSize,
+          checkpointFrequency: options.checkpointFrequency,
         })
       } catch (error) {
         newrelic.recordCustomEvent("TmdbBatchBackfillError", {
