@@ -5,6 +5,12 @@
  * This script fetches user ratings, watch counts, and trending data from Trakt.tv API.
  * Movies use IMDb IDs, shows use TheTVDB IDs.
  *
+ * Features:
+ * - Exponential backoff retry logic (max 3 attempts)
+ * - Marks permanently failed items after 3 attempts
+ * - Classifies errors as permanent (404, 400, 401) vs transient (500, 503, timeouts)
+ * - Respects rate limits with 200ms delay between requests
+ *
  * Usage:
  *   npm run backfill:trakt -- [options]
  *
@@ -24,6 +30,9 @@ import { getTraktStats, getTrending } from "../src/lib/trakt.js"
 import { upsertMovie } from "../src/lib/db/movies.js"
 import { upsertShow } from "../src/lib/db/shows.js"
 import type { MovieRecord, ShowRecord } from "../src/lib/db/types.js"
+import { isPermanentError } from "../src/lib/backfill-utils.js"
+
+const RATE_LIMIT_DELAY_MS = 200
 
 function parsePositiveInt(value: string): number {
   const n = parseInt(value, 10)
@@ -48,14 +57,24 @@ interface BackfillOptions {
   dryRun?: boolean
   minPopularity?: number
   trendingOnly?: boolean
+  maxConsecutiveFailures?: number
 }
 
 interface BackfillStats {
   totalProcessed: number
   successful: number
   failed: number
+  permanentlyFailed: number
   moviesUpdated: number
   showsUpdated: number
+}
+
+interface MovieInfo extends MovieRecord {
+  trakt_fetch_attempts: number
+}
+
+interface ShowInfo extends ShowRecord {
+  trakt_fetch_attempts: number
 }
 
 const program = new Command()
@@ -67,6 +86,12 @@ const program = new Command()
   .option("-n, --dry-run", "Preview without writing")
   .option("--min-popularity <n>", "Skip items below popularity threshold", parseNonNegativeFloat)
   .option("--trending-only", "Only fetch trending content")
+  .option(
+    "--max-consecutive-failures <number>",
+    "Stop processing after N consecutive failures (circuit breaker)",
+    parsePositiveInt,
+    3
+  )
 
 program.parse()
 
@@ -76,8 +101,9 @@ async function backfillMovies(
   limit: number | undefined,
   minPopularity: number | undefined,
   dryRun: boolean,
-  trendingOnly: boolean
-): Promise<{ processed: number; successful: number; failed: number }> {
+  trendingOnly: boolean,
+  maxConsecutiveFailures: number
+): Promise<{ processed: number; successful: number; failed: number; permanentlyFailed: number }> {
   const db = getPool()
 
   if (trendingOnly) {
@@ -97,7 +123,6 @@ async function backfillMovies(
       processed++
 
       try {
-        // Find movie in our database by IMDb ID
         const result = await db.query<MovieRecord>("SELECT * FROM movies WHERE imdb_id = $1", [
           movie.ids.imdb,
         ])
@@ -131,11 +156,20 @@ async function backfillMovies(
       }
     }
 
-    return { processed, successful, failed }
+    return { processed, successful, failed, permanentlyFailed: 0 }
   }
 
-  // Regular backfill (non-trending)
-  const conditions: string[] = ["imdb_id IS NOT NULL", "trakt_updated_at IS NULL"]
+  // Regular backfill (non-trending) with retry logic
+  const conditions: string[] = [
+    "imdb_id IS NOT NULL",
+    "trakt_updated_at IS NULL",
+    "trakt_permanently_failed = false",
+    "trakt_fetch_attempts < 3",
+    `(
+      trakt_last_fetch_attempt IS NULL
+      OR trakt_last_fetch_attempt < NOW() - INTERVAL '1 hour' * POWER(2, trakt_fetch_attempts)
+    )`,
+  ]
 
   const params: number[] = []
   let paramIndex = 1
@@ -158,14 +192,15 @@ async function backfillMovies(
            release_date, release_year, poster_path, genres,
            original_language, production_countries, vote_average,
            cast_count, deceased_count, living_count,
-           expected_deaths, mortality_surprise_score
+           expected_deaths, mortality_surprise_score,
+           trakt_fetch_attempts
     FROM movies
     WHERE ${conditions.join("\n      AND ")}
     ORDER BY popularity DESC NULLS LAST
     ${limitClause}
   `
 
-  const result = await db.query<MovieRecord>(query, params)
+  const result = await db.query<MovieInfo>(query, params)
   const movies = result.rows
 
   console.log(`\nFound ${movies.length} movies to backfill`)
@@ -173,9 +208,14 @@ async function backfillMovies(
   let processed = 0
   let successful = 0
   let failed = 0
+  let permanentlyFailed = 0
+  let consecutiveFailures = 0
 
   for (const movie of movies) {
     processed++
+
+    const attemptNum = movie.trakt_fetch_attempts + 1
+    const retryLabel = attemptNum > 1 ? ` (retry ${attemptNum})` : ""
 
     if (processed % 10 === 0) {
       console.log(`Progress: ${processed}/${movies.length} movies processed...`)
@@ -185,8 +225,27 @@ async function backfillMovies(
       const stats = await getTraktStats("movie", movie.imdb_id!)
 
       if (!stats) {
-        console.log(`  ⚠️  No stats found for "${movie.title}" (${movie.imdb_id})`)
+        console.log(`  ⚠️  No stats found for "${movie.title}" (${movie.imdb_id})${retryLabel}`)
         failed++
+
+        if (!dryRun) {
+          const willMarkPermanent = attemptNum >= 3
+          await db.query(
+            `UPDATE movies
+             SET trakt_fetch_attempts = $1,
+                 trakt_last_fetch_attempt = NOW(),
+                 trakt_fetch_error = 'No stats found',
+                 trakt_permanently_failed = $2
+             WHERE tmdb_id = $3`,
+            [attemptNum, willMarkPermanent, movie.tmdb_id]
+          )
+          if (willMarkPermanent) permanentlyFailed++
+        }
+
+        // Rate limit - apply after both success and error to respect API limits
+        if (processed < movies.length) {
+          await delay(RATE_LIMIT_DELAY_MS)
+        }
         continue
       }
 
@@ -194,7 +253,7 @@ async function backfillMovies(
         console.log(
           `  [DRY RUN] Would update "${movie.title}": ` +
             `rating ${stats.rating}/10 (${stats.votes} votes), ` +
-            `${stats.watchers} watchers, ${stats.plays} plays`
+            `${stats.watchers} watchers, ${stats.plays} plays${retryLabel}`
         )
       } else {
         await upsertMovie({
@@ -205,24 +264,76 @@ async function backfillMovies(
           trakt_plays: stats.plays,
           trakt_updated_at: new Date(),
         })
+
+        // Reset retry tracking on success
+        await db.query(
+          `UPDATE movies
+           SET trakt_fetch_attempts = 0,
+               trakt_last_fetch_attempt = NULL,
+               trakt_fetch_error = NULL
+           WHERE tmdb_id = $1`,
+          [movie.tmdb_id]
+        )
       }
 
       successful++
+      consecutiveFailures = 0 // Reset circuit breaker on success
     } catch (error) {
-      console.error(`  ❌ Error processing "${movie.title}":`, error)
+      console.error(`  ❌ Error processing "${movie.title}"${retryLabel}:`, error)
       failed++
+      consecutiveFailures++
+
+      // Circuit breaker: stop if too many consecutive failures (API likely down)
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        console.error(
+          `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+        )
+        console.error(
+          "   The Trakt API may be experiencing an outage. Stopping to prevent futile requests."
+        )
+        console.error(
+          `   Processed ${processed}/${movies.length} movies before stopping (${successful} successful, ${failed} errors)\n`
+        )
+
+        await db.end()
+        process.exit(2) // Exit code 2 indicates circuit breaker trip
+      }
+
+      if (!dryRun) {
+        const errorMsg = error instanceof Error ? error.message : "unknown error"
+        const permanent = isPermanentError(error)
+        const willMarkPermanent = permanent || attemptNum >= 3
+
+        await db.query(
+          `UPDATE movies
+           SET trakt_fetch_attempts = $1,
+               trakt_last_fetch_attempt = NOW(),
+               trakt_fetch_error = $2,
+               trakt_permanently_failed = $3
+           WHERE tmdb_id = $4`,
+          [attemptNum, errorMsg.substring(0, 500), willMarkPermanent, movie.tmdb_id]
+        )
+
+        if (willMarkPermanent) permanentlyFailed++
+      }
+    }
+
+    // Rate limit - apply after both success and error to respect API limits
+    if (processed < movies.length) {
+      await delay(RATE_LIMIT_DELAY_MS)
     }
   }
 
-  return { processed, successful, failed }
+  return { processed, successful, failed, permanentlyFailed }
 }
 
 async function backfillShows(
   limit: number | undefined,
   minPopularity: number | undefined,
   dryRun: boolean,
-  trendingOnly: boolean
-): Promise<{ processed: number; successful: number; failed: number }> {
+  trendingOnly: boolean,
+  maxConsecutiveFailures: number
+): Promise<{ processed: number; successful: number; failed: number; permanentlyFailed: number }> {
   const db = getPool()
 
   if (trendingOnly) {
@@ -242,7 +353,6 @@ async function backfillShows(
       processed++
 
       try {
-        // Find show in our database by TheTVDB ID
         const result = await db.query<ShowRecord>("SELECT * FROM shows WHERE thetvdb_id = $1", [
           show.ids.tvdb,
         ])
@@ -276,11 +386,20 @@ async function backfillShows(
       }
     }
 
-    return { processed, successful, failed }
+    return { processed, successful, failed, permanentlyFailed: 0 }
   }
 
-  // Regular backfill (non-trending)
-  const conditions: string[] = ["thetvdb_id IS NOT NULL", "trakt_updated_at IS NULL"]
+  // Regular backfill (non-trending) with retry logic
+  const conditions: string[] = [
+    "thetvdb_id IS NOT NULL",
+    "trakt_updated_at IS NULL",
+    "trakt_permanently_failed = false",
+    "trakt_fetch_attempts < 3",
+    `(
+      trakt_last_fetch_attempt IS NULL
+      OR trakt_last_fetch_attempt < NOW() - INTERVAL '1 hour' * POWER(2, trakt_fetch_attempts)
+    )`,
+  ]
 
   const params: number[] = []
   let paramIndex = 1
@@ -305,14 +424,14 @@ async function backfillShows(
            vote_average, origin_country, original_language,
            cast_count, deceased_count, living_count,
            expected_deaths, mortality_surprise_score,
-           tvmaze_id, imdb_id
+           tvmaze_id, imdb_id, trakt_fetch_attempts
     FROM shows
     WHERE ${conditions.join("\n      AND ")}
     ORDER BY popularity DESC NULLS LAST
     ${limitClause}
   `
 
-  const result = await db.query<ShowRecord>(query, params)
+  const result = await db.query<ShowInfo>(query, params)
   const shows = result.rows
 
   console.log(`\nFound ${shows.length} shows to backfill`)
@@ -320,9 +439,14 @@ async function backfillShows(
   let processed = 0
   let successful = 0
   let failed = 0
+  let permanentlyFailed = 0
+  let consecutiveFailures = 0
 
   for (const show of shows) {
     processed++
+
+    const attemptNum = show.trakt_fetch_attempts + 1
+    const retryLabel = attemptNum > 1 ? ` (retry ${attemptNum})` : ""
 
     if (processed % 10 === 0) {
       console.log(`Progress: ${processed}/${shows.length} shows processed...`)
@@ -332,8 +456,27 @@ async function backfillShows(
       const stats = await getTraktStats("show", show.thetvdb_id!.toString())
 
       if (!stats) {
-        console.log(`  ⚠️  No stats found for "${show.name}" (${show.thetvdb_id})`)
+        console.log(`  ⚠️  No stats found for "${show.name}" (${show.thetvdb_id})${retryLabel}`)
         failed++
+
+        if (!dryRun) {
+          const willMarkPermanent = attemptNum >= 3
+          await db.query(
+            `UPDATE shows
+             SET trakt_fetch_attempts = $1,
+                 trakt_last_fetch_attempt = NOW(),
+                 trakt_fetch_error = 'No stats found',
+                 trakt_permanently_failed = $2
+             WHERE tmdb_id = $3`,
+            [attemptNum, willMarkPermanent, show.tmdb_id]
+          )
+          if (willMarkPermanent) permanentlyFailed++
+        }
+
+        // Rate limit - apply after both success and error to respect API limits
+        if (processed < shows.length) {
+          await delay(RATE_LIMIT_DELAY_MS)
+        }
         continue
       }
 
@@ -341,7 +484,7 @@ async function backfillShows(
         console.log(
           `  [DRY RUN] Would update "${show.name}": ` +
             `rating ${stats.rating}/10 (${stats.votes} votes), ` +
-            `${stats.watchers} watchers, ${stats.plays} plays`
+            `${stats.watchers} watchers, ${stats.plays} plays${retryLabel}`
         )
       } else {
         await upsertShow({
@@ -352,16 +495,71 @@ async function backfillShows(
           trakt_plays: stats.plays,
           trakt_updated_at: new Date(),
         })
+
+        // Reset retry tracking on success
+        await db.query(
+          `UPDATE shows
+           SET trakt_fetch_attempts = 0,
+               trakt_last_fetch_attempt = NULL,
+               trakt_fetch_error = NULL
+           WHERE tmdb_id = $1`,
+          [show.tmdb_id]
+        )
       }
 
       successful++
+      consecutiveFailures = 0 // Reset circuit breaker on success
     } catch (error) {
-      console.error(`  ❌ Error processing "${show.name}":`, error)
+      console.error(`  ❌ Error processing "${show.name}"${retryLabel}:`, error)
       failed++
+      consecutiveFailures++
+
+      // Circuit breaker: stop if too many consecutive failures (API likely down)
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        console.error(
+          `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+        )
+        console.error(
+          "   The Trakt API may be experiencing an outage. Stopping to prevent futile requests."
+        )
+        console.error(
+          `   Processed ${processed}/${shows.length} shows before stopping (${successful} successful, ${failed} errors)\n`
+        )
+
+        await db.end()
+        process.exit(2) // Exit code 2 indicates circuit breaker trip
+      }
+
+      if (!dryRun) {
+        const errorMsg = error instanceof Error ? error.message : "unknown error"
+        const permanent = isPermanentError(error)
+        const willMarkPermanent = permanent || attemptNum >= 3
+
+        await db.query(
+          `UPDATE shows
+           SET trakt_fetch_attempts = $1,
+               trakt_last_fetch_attempt = NOW(),
+               trakt_fetch_error = $2,
+               trakt_permanently_failed = $3
+           WHERE tmdb_id = $4`,
+          [attemptNum, errorMsg.substring(0, 500), willMarkPermanent, show.tmdb_id]
+        )
+
+        if (willMarkPermanent) permanentlyFailed++
+      }
+    }
+
+    // Rate limit - apply after both success and error to respect API limits
+    if (processed < shows.length) {
+      await delay(RATE_LIMIT_DELAY_MS)
     }
   }
 
-  return { processed, successful, failed }
+  return { processed, successful, failed, permanentlyFailed }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function run(options: BackfillOptions) {
@@ -369,6 +567,7 @@ async function run(options: BackfillOptions) {
     totalProcessed: 0,
     successful: 0,
     failed: 0,
+    permanentlyFailed: 0,
     moviesUpdated: 0,
     showsUpdated: 0,
   }
@@ -391,11 +590,13 @@ async function run(options: BackfillOptions) {
         options.limit,
         options.minPopularity,
         options.dryRun || false,
-        options.trendingOnly || false
+        options.trendingOnly || false,
+        options.maxConsecutiveFailures || 3
       )
       stats.totalProcessed += movieResults.processed
       stats.successful += movieResults.successful
       stats.failed += movieResults.failed
+      stats.permanentlyFailed += movieResults.permanentlyFailed
       stats.moviesUpdated = movieResults.successful
     }
 
@@ -405,11 +606,13 @@ async function run(options: BackfillOptions) {
         options.limit,
         options.minPopularity,
         options.dryRun || false,
-        options.trendingOnly || false
+        options.trendingOnly || false,
+        options.maxConsecutiveFailures || 3
       )
       stats.totalProcessed += showResults.processed
       stats.successful += showResults.successful
       stats.failed += showResults.failed
+      stats.permanentlyFailed += showResults.permanentlyFailed
       stats.showsUpdated = showResults.successful
     }
 
@@ -421,6 +624,9 @@ async function run(options: BackfillOptions) {
     console.log(`Total processed: ${stats.totalProcessed}`)
     console.log(`Successful: ${stats.successful}`)
     console.log(`Failed: ${stats.failed}`)
+    if (stats.permanentlyFailed > 0) {
+      console.log(`Permanently failed: ${stats.permanentlyFailed}`)
+    }
     console.log(`Movies updated: ${stats.moviesUpdated}`)
     console.log(`Shows updated: ${stats.showsUpdated}`)
 
