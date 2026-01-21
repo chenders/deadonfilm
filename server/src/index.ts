@@ -5,6 +5,7 @@ import express from "express"
 import cors from "cors"
 import compression from "compression"
 import rateLimit from "express-rate-limit"
+import cookieParser from "cookie-parser"
 import { logger } from "./lib/logger.js"
 import { initRedis, isRedisAvailable } from "./lib/redis.js"
 import { searchMovies } from "./routes/search.js"
@@ -61,6 +62,9 @@ import {
   getSeason,
 } from "./routes/shows.js"
 import { initializeDatabase } from "./lib/startup.js"
+import { adminAuthMiddleware, optionalAdminAuth } from "./middleware/admin-auth.js"
+import { loginHandler, logoutHandler, statusHandler } from "./routes/admin/auth.js"
+import { getDashboardStats } from "./routes/admin/dashboard.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -73,24 +77,31 @@ app.set("trust proxy", 1)
 app.use(compression()) // Gzip responses (~70% size reduction)
 app.use(cors())
 app.use(express.json())
+app.use(cookieParser()) // Parse cookies for admin authentication
+
+// Check for admin authentication (optional - doesn't block requests)
+// This sets req.isAdmin flag for rate limit bypass
+app.use(optionalAdminAuth)
 
 // Rate limiting to protect against abuse
-// General API rate limit: 100 requests per minute per IP
+// General API rate limit: 100 requests per minute per IP (skips authenticated admins)
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   limit: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
+  skip: (req) => req.isAdmin === true,
 })
 
-// Stricter rate limit for heavy endpoints (sitemap, etc): 10 requests per minute
+// Stricter rate limit for heavy endpoints (sitemap, etc): 10 requests per minute (skips admins)
 const heavyEndpointLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
+  skip: (req) => req.isAdmin === true,
 })
 
 // Redirect www to apex domain for SEO
@@ -214,6 +225,12 @@ app.get("/api/causes-of-death/:categorySlug/:causeSlug", getSpecificCauseHandler
 
 app.get("/api/movies/genres", getGenreCategoriesHandler)
 app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
+
+// Admin routes (authentication not required for login, but required for other endpoints)
+app.post("/admin/api/auth/login", loginHandler)
+app.post("/admin/api/auth/logout", logoutHandler)
+app.get("/admin/api/auth/status", adminAuthMiddleware, statusHandler)
+app.get("/admin/api/dashboard/stats", adminAuthMiddleware, getDashboardStats)
 
 // TV Show routes
 app.get("/api/search/tv", searchShows)
