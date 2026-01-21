@@ -47,7 +47,7 @@ import {
   batchUpsertActors,
 } from "../lib/db.js"
 import { calculateMovieMortality } from "../lib/mortality-stats.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 describe("getShow route", () => {
   let mockReq: Partial<Request>
@@ -201,7 +201,7 @@ describe("getShow route", () => {
 
       await getShow(mockReq as Request, mockRes as Response)
 
-      expect(recordCustomEvent).toHaveBeenCalledWith(
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
         "ShowView",
         expect.objectContaining({
           tmdbId: 1400,

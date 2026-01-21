@@ -6,7 +6,7 @@
 
 import type { Request, Response } from "express"
 import { searchTVShows as tmdbSearchTVShows, type TMDBTVShow } from "../../lib/tmdb.js"
-import { addCustomAttributes } from "../../lib/newrelic.js"
+import newrelic from "newrelic"
 
 export async function searchShows(req: Request, res: Response) {
   const queryParam = req.query.q
@@ -18,11 +18,13 @@ export async function searchShows(req: Request, res: Response) {
   }
 
   try {
-    addCustomAttributes({
+    for (const [key, value] of Object.entries({
       "query.entity": "show",
       "query.operation": "search",
       "query.term": query.substring(0, 100), // Limit to 100 chars for safety
-    })
+    })) {
+      newrelic.addCustomAttribute(key, value)
+    }
 
     const data = await tmdbSearchTVShows(query)
 
