@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { Request, Response } from "express"
-import { searchMovies } from "./search.js"
 
-// Mock the dependencies
+// Mock the dependencies BEFORE importing modules that use them
 vi.mock("../lib/tmdb.js", () => ({
   searchMovies: vi.fn(),
   searchTVShows: vi.fn(),
@@ -11,10 +10,12 @@ vi.mock("../lib/tmdb.js", () => ({
 vi.mock("newrelic", () => ({
   default: {
     recordCustomEvent: vi.fn(),
+    addCustomAttribute: vi.fn(),
     addCustomAttributes: vi.fn(),
   },
 }))
 
+import { searchMovies } from "./search.js"
 import { searchMovies as tmdbSearch } from "../lib/tmdb.js"
 import newrelic from "newrelic"
 
