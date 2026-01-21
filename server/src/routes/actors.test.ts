@@ -30,6 +30,7 @@ vi.mock("../lib/cache.js", () => ({
 vi.mock("newrelic", () => ({
   default: {
     recordCustomEvent: vi.fn(),
+    addCustomAttribute: vi.fn(),
     addCustomAttributes: vi.fn(),
   },
 }))
