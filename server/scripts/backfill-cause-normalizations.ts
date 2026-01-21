@@ -16,6 +16,7 @@ import { Command, InvalidArgumentError } from "commander"
 import Anthropic from "@anthropic-ai/sdk"
 import { getPool } from "../src/lib/db/pool"
 import { getClaudeRateLimiter } from "../src/lib/claude"
+import { recordCliEvent } from "../src/lib/newrelic-cli.js"
 
 function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
@@ -30,37 +31,38 @@ interface NormalizationResult {
   normalized: string
 }
 
+interface NormalizationBatchResult {
+  normalizations: NormalizationResult[]
+  usage: {
+    inputTokens: number
+    outputTokens: number
+  }
+}
+
 async function normalizeCausesWithClaude(
   client: Anthropic,
   causes: string[]
-): Promise<NormalizationResult[]> {
-  const prompt = `You are helping normalize cause of death strings for a database to enable proper grouping. Given a list of cause of death strings, provide a normalized/canonical version for each.
+): Promise<NormalizationBatchResult> {
+  const prompt = `You are normalizing cause of death strings for database grouping. For each cause, provide a normalized/canonical version.
 
-CRITICAL Rules for normalization:
-1. **Merge case variations**: "lung cancer", "Lung cancer", "LUNG CANCER" → all become "Lung cancer"
-2. **Merge singular/plural**: "gunshot wound", "gunshot wounds" → all become "Gunshot wound"
-3. **Merge British/American spellings**: "tumour" → "tumor", "leukaemia" → "leukemia"
-4. **Standardize capitalization**: Use sentence case (capitalize first word only, except proper nouns/acronyms)
-5. **Keep medical accuracy**: Don't merge genuinely different conditions (e.g., "heart attack" and "heart failure" are different)
-6. **For acronyms**: Keep them uppercase (e.g., "COVID-19", "ALS", "AIDS", "COPD")
-7. **Simplify where possible**: "death from cancer" → "Cancer", "died of heart attack" → "Heart attack"
-8. **Fix typos**: If you're confident about a typo, fix it
-9. **Choose the most common/recognizable form** as the canonical version
-
-Examples:
-- "lung cancer", "Lung cancer", "Lung Cancer" → "Lung cancer"
-- "gunshot wound", "Gunshot wound", "gunshot wounds", "Gunshot Wounds" → "Gunshot wound"
-- "Heart attack", "heart attack", "Myocardial infarction" → "Heart attack" (choose the common term)
-- "Parkinson's disease", "parkinsons disease", "Parkinson disease" → "Parkinson's disease"
-- "suicide", "Suicide", "died by suicide" → "Suicide"
+Rules:
+1. Merge case variations: "lung cancer", "Lung cancer" → "Lung cancer"
+2. Merge singular/plural: "gunshot wound", "gunshot wounds" → "Gunshot wound"
+3. British/American spelling: "tumour" → "tumor"
+4. Sentence case: Capitalize first word only, except proper nouns/acronyms
+5. Preserve medical accuracy: Don't merge different conditions
+6. Acronyms stay uppercase: COVID-19, ALS, AIDS, COPD
+7. Simplify: "death from cancer" → "Cancer"
+8. Fix obvious typos
+9. Choose the most common/recognizable form
 
 Here are the causes to normalize:
 ${causes.map((c, i) => `${i + 1}. "${c}"`).join("\n")}
 
-Respond with a JSON array of objects, each with "original" (exact input) and "normalized" (your normalized version) fields. Only output the JSON array, nothing else.`
+Respond with JSON array: [{"original": "exact input", "normalized": "your normalized version"}]`
 
   const response = await client.messages.create({
-    model: "claude-opus-4-20250514",
+    model: "claude-opus-4-5-20251101",
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   })
@@ -84,7 +86,13 @@ Respond with a JSON array of objects, each with "original" (exact input) and "no
         throw new Error("Invalid response structure")
       }
     }
-    return results
+    return {
+      normalizations: results,
+      usage: {
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+      },
+    }
   } catch (e) {
     console.error("Failed to parse Claude response:", content.text)
     throw e
@@ -146,7 +154,24 @@ async function main(options: { dryRun: boolean; batchSize: number }) {
       // Rate limit
       await rateLimiter.waitForRateLimit("haiku")
 
-      const normalizations = await normalizeCausesWithClaude(client, batch)
+      const result = await normalizeCausesWithClaude(client, batch)
+      const normalizations = result.normalizations
+
+      // Record New Relic custom event
+      const normalizationsOutput = normalizations
+        .map((n) => `${n.original} → ${n.normalized}`)
+        .join(" | ")
+        .substring(0, 4000)
+
+      recordCliEvent("CauseOfDeathNormalization", {
+        batchSize: batch.length,
+        causesInput: batch.join(" | ").substring(0, 4000),
+        normalizationsOutput,
+        model: "claude-opus-4-5-20251101",
+        success: true,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+      })
 
       if (dryRun) {
         console.log("  Would insert:")
@@ -157,7 +182,26 @@ async function main(options: { dryRun: boolean; batchSize: number }) {
         }
       } else {
         // Insert normalizations
+        let insertCount = 0
+        let updateCount = 0
+
         for (const n of normalizations) {
+          // Check if mapping already exists
+          const existingResult = await db.query<{ normalized_cause: string }>(
+            `SELECT normalized_cause FROM cause_of_death_normalizations WHERE original_cause = $1`,
+            [n.original]
+          )
+
+          const isUpdate = existingResult.rows.length > 0
+          if (isUpdate && existingResult.rows[0].normalized_cause !== n.normalized) {
+            console.log(
+              `    Updating: "${n.original}" from "${existingResult.rows[0].normalized_cause}" → "${n.normalized}"`
+            )
+            updateCount++
+          } else if (!isUpdate && n.original !== n.normalized) {
+            insertCount++
+          }
+
           await db.query(
             `INSERT INTO cause_of_death_normalizations (original_cause, normalized_cause)
              VALUES ($1, $2)
@@ -165,12 +209,24 @@ async function main(options: { dryRun: boolean; batchSize: number }) {
             [n.original, n.normalized]
           )
         }
-        console.log(`  Inserted ${normalizations.length} normalizations`)
+
+        console.log(
+          `  Inserted ${insertCount} new mappings, updated ${updateCount} existing mappings`
+        )
       }
 
       totalProcessed += batch.length
     } catch (error) {
       console.error(`  Error processing batch:`, error)
+
+      // Record failed New Relic event
+      recordCliEvent("CauseOfDeathNormalization", {
+        batchSize: batch.length,
+        model: "claude-opus-4-5-20251101",
+        success: false,
+        error: error instanceof Error ? error.message.substring(0, 1000) : "Unknown error",
+      })
+
       totalErrors += batch.length
     }
 
