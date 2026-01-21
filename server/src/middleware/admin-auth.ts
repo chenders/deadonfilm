@@ -22,14 +22,17 @@ export function adminAuthMiddleware(req: Request, res: Response, next: NextFunct
     // Extract JWT token from cookie
     const token = req.cookies?.adminToken
 
-    if (!token) {
+    // Validate token exists and is a string
+    if (!token || typeof token !== "string" || token.trim().length === 0) {
       res.status(401).json({ error: { message: "Authentication required" } })
       return
     }
 
-    // Verify token
+    // Verify token using cryptographic validation
     const decoded = verifyToken(token)
-    if (!decoded || !decoded.isAdmin) {
+
+    // Ensure decoded token is valid and contains admin flag
+    if (!decoded || typeof decoded !== "object" || decoded.isAdmin !== true) {
       res.status(401).json({ error: { message: "Invalid authentication token" } })
       return
     }
@@ -51,9 +54,14 @@ export function adminAuthMiddleware(req: Request, res: Response, next: NextFunct
 export function optionalAdminAuth(req: Request, res: Response, next: NextFunction): void {
   try {
     const token = req.cookies?.adminToken
-    if (token) {
+
+    // Only process if token exists and is a valid string
+    if (token && typeof token === "string" && token.trim().length > 0) {
+      // Verify token using cryptographic validation
       const decoded = verifyToken(token)
-      if (decoded && decoded.isAdmin) {
+
+      // Only set admin flag if token is valid and contains admin claim
+      if (decoded && typeof decoded === "object" && decoded.isAdmin === true) {
         req.isAdmin = true
       }
     }
