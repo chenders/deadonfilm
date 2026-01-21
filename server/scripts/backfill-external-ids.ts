@@ -6,8 +6,11 @@
  * and TVmaze's lookup API. Having these IDs stored speeds up future fallback
  * lookups since we don't need to query for them each time.
  *
- * The script automatically saves progress to a checkpoint file and resumes
- * from where it left off if interrupted. Use --fresh to start over.
+ * Features:
+ * - Exponential backoff retry logic (max 3 attempts)
+ * - Marks permanently failed items after 3 attempts
+ * - Classifies errors as permanent (404, 400, 401) vs transient (500, 503, timeouts)
+ * - Respects rate limits with 200ms delay between requests
  *
  * Usage:
  *   npm run backfill:external-ids -- [options]
@@ -16,58 +19,24 @@
  *   --limit <n>      Limit number of shows to process
  *   --missing-only   Only process shows without external IDs
  *   --dry-run        Preview without writing to database
- *   --fresh          Start fresh (ignore checkpoint)
  *
  * Examples:
- *   npm run backfill:external-ids                       # All shows (resumes if interrupted)
+ *   npm run backfill:external-ids                       # All shows needing IDs
  *   npm run backfill:external-ids -- --missing-only     # Only shows without IDs
  *   npm run backfill:external-ids -- --limit 50         # First 50 shows
  *   npm run backfill:external-ids -- --dry-run          # Preview only
- *   npm run backfill:external-ids -- --fresh            # Start fresh, ignore checkpoint
  */
 
 import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
-import path from "path"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool, updateShowExternalIds } from "../src/lib/db.js"
 import { getExternalIds } from "../src/lib/episode-data-source.js"
-import {
-  loadCheckpoint as loadCheckpointGeneric,
-  saveCheckpoint as saveCheckpointGeneric,
-  deleteCheckpoint as deleteCheckpointGeneric,
-} from "../src/lib/checkpoint-utils.js"
+import { isPermanentError } from "../src/lib/backfill-utils.js"
 
-// Checkpoint file to track progress
-const CHECKPOINT_FILE = path.join(process.cwd(), ".backfill-external-ids-checkpoint.json")
-
-export interface Checkpoint {
-  processedShowIds: number[]
-  startedAt: string
-  lastUpdated: string
-  stats: {
-    processed: number
-    updated: number
-    errors: number
-  }
-}
-
-export function loadCheckpoint(filePath: string = CHECKPOINT_FILE): Checkpoint | null {
-  return loadCheckpointGeneric<Checkpoint>(filePath)
-}
-
-export function saveCheckpoint(checkpoint: Checkpoint, filePath: string = CHECKPOINT_FILE): void {
-  saveCheckpointGeneric(filePath, checkpoint, (cp) => {
-    cp.lastUpdated = new Date().toISOString()
-  })
-}
-
-export function deleteCheckpoint(filePath: string = CHECKPOINT_FILE): void {
-  deleteCheckpointGeneric(filePath)
-}
+const RATE_LIMIT_DELAY_MS = 200
 
 export function parsePositiveInt(value: string): number {
-  // Validate the entire string is a positive integer (no decimals, no trailing chars)
   if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError("Must be a positive integer")
   }
@@ -83,6 +52,7 @@ interface ShowInfo {
   name: string
   tvmaze_id: number | null
   thetvdb_id: number | null
+  external_ids_fetch_attempts: number
 }
 
 const program = new Command()
@@ -91,15 +61,19 @@ const program = new Command()
   .option("-l, --limit <number>", "Limit number of shows to process", parsePositiveInt)
   .option("--missing-only", "Only process shows without external IDs")
   .option("-n, --dry-run", "Preview without writing to database")
-  .option("--fresh", "Start fresh (ignore checkpoint)")
+  .option(
+    "--max-consecutive-failures <number>",
+    "Stop processing after N consecutive failures (circuit breaker)",
+    parsePositiveInt,
+    3
+  )
   .action(
     async (options: {
       limit?: number
       missingOnly?: boolean
       dryRun?: boolean
-      fresh?: boolean
+      maxConsecutiveFailures?: number
     }) => {
-      // Don't wrap dry-run mode
       if (options.dryRun) {
         await runBackfill(options)
       } else {
@@ -108,6 +82,7 @@ const program = new Command()
           recordMetrics({
             recordsProcessed: stats.processed,
             recordsUpdated: stats.updated,
+            recordsFailed: stats.permanentlyFailed,
             errorsEncountered: stats.errors,
           })
         })
@@ -119,9 +94,9 @@ async function runBackfill(options: {
   limit?: number
   missingOnly?: boolean
   dryRun?: boolean
-  fresh?: boolean
-}): Promise<{ processed: number; updated: number; errors: number }> {
-  const { limit, missingOnly, dryRun, fresh } = options
+  maxConsecutiveFailures?: number
+}): Promise<{ processed: number; updated: number; permanentlyFailed: number; errors: number }> {
+  const { limit, missingOnly, dryRun, maxConsecutiveFailures = 3 } = options
 
   if (!process.env.DATABASE_URL && !dryRun) {
     console.error("DATABASE_URL environment variable is required (or use --dry-run)")
@@ -135,39 +110,27 @@ async function runBackfill(options: {
 
   const db = getPool()
 
-  // Load or create checkpoint
-  let checkpoint: Checkpoint | null = null
-  if (!fresh && !dryRun) {
-    checkpoint = loadCheckpoint()
-    if (checkpoint) {
-      console.log(`\nResuming from checkpoint (started ${checkpoint.startedAt})`)
-      console.log(`  Previously processed: ${checkpoint.processedShowIds.length} shows`)
-      console.log(`  Updated: ${checkpoint.stats.updated}, Errors: ${checkpoint.stats.errors}`)
-    }
-  }
-
-  if (!checkpoint) {
-    checkpoint = {
-      processedShowIds: [],
-      startedAt: new Date().toISOString(),
-      lastUpdated: new Date().toISOString(),
-      stats: { processed: 0, updated: 0, errors: 0 },
-    }
-  }
-
-  const processedSet = new Set(checkpoint.processedShowIds)
-
   console.log(`\nBackfilling external IDs${dryRun ? " (DRY RUN)" : ""}`)
   if (missingOnly) console.log("Processing only shows without external IDs")
   if (limit) console.log(`Limit: ${limit} shows`)
   console.log()
 
-  // Build query
-  let query = "SELECT tmdb_id, name, tvmaze_id, thetvdb_id FROM shows"
+  // Build query with retry logic
+  let query = `
+    SELECT tmdb_id, name, tvmaze_id, thetvdb_id, external_ids_fetch_attempts
+    FROM shows
+    WHERE external_ids_permanently_failed = false
+      AND external_ids_fetch_attempts < 3
+      AND (
+        external_ids_last_fetch_attempt IS NULL
+        OR external_ids_last_fetch_attempt < NOW() - INTERVAL '1 hour' * POWER(2, external_ids_fetch_attempts)
+      )
+  `
+
   const params: number[] = []
 
   if (missingOnly) {
-    query += " WHERE tvmaze_id IS NULL AND thetvdb_id IS NULL"
+    query += " AND tvmaze_id IS NULL AND thetvdb_id IS NULL"
   }
 
   query += " ORDER BY popularity DESC NULLS LAST"
@@ -178,30 +141,31 @@ async function runBackfill(options: {
   }
 
   const result = await db.query<ShowInfo>(query, params)
+  const shows = result.rows
 
-  // Filter out already processed shows
-  const showsToProcess = result.rows.filter((show) => !processedSet.has(show.tmdb_id))
-  const skippedCount = result.rows.length - showsToProcess.length
+  console.log(`Found ${shows.length} shows to process\n`)
 
-  if (skippedCount > 0) {
-    console.log(`Skipping ${skippedCount} already processed shows`)
-  }
-  console.log(`Found ${showsToProcess.length} shows to process\n`)
+  let processed = 0
+  let updated = 0
+  let permanentlyFailed = 0
+  let errors = 0
+  let consecutiveFailures = 0
 
-  let sessionProcessed = 0
+  for (const show of shows) {
+    processed++
 
-  for (const show of showsToProcess) {
-    sessionProcessed++
-    const totalProcessed = checkpoint.stats.processed + sessionProcessed
-    process.stdout.write(
-      `[${sessionProcessed}/${showsToProcess.length}] (${totalProcessed} total) ${show.name}... `
-    )
+    const attemptNum = show.external_ids_fetch_attempts + 1
+    const retryLabel = attemptNum > 1 ? ` (retry ${attemptNum})` : ""
 
-    // Skip if already has both IDs (still counts as processed)
+    process.stdout.write(`[${processed}/${shows.length}] ${show.name}${retryLabel}... `)
+
+    // Skip if already has both IDs
     if (show.tvmaze_id && show.thetvdb_id) {
       console.log("already has both IDs")
-      checkpoint.processedShowIds.push(show.tmdb_id)
-      if (!dryRun) saveCheckpoint(checkpoint)
+      // Rate limit - apply after both success and error to respect API limits
+      if (processed < shows.length) {
+        await delay(RATE_LIMIT_DELAY_MS)
+      }
       continue
     }
 
@@ -215,8 +179,19 @@ async function runBackfill(options: {
       if (newTvmaze || newThetvdb) {
         if (!dryRun) {
           await updateShowExternalIds(show.tmdb_id, externalIds.tvmazeId, externalIds.thetvdbId)
+
+          // Reset retry tracking on success
+          await db.query(
+            `UPDATE shows
+             SET external_ids_fetch_attempts = 0,
+                 external_ids_last_fetch_attempt = NULL,
+                 external_ids_fetch_error = NULL
+             WHERE tmdb_id = $1`,
+            [show.tmdb_id]
+          )
         }
-        checkpoint.stats.updated++
+        updated++
+        consecutiveFailures = 0 // Reset circuit breaker on success
         console.log(
           `${dryRun ? "would update: " : ""}TVmaze=${externalIds.tvmazeId ?? "none"}, TheTVDB=${externalIds.thetvdbId ?? "none"}`
         )
@@ -224,49 +199,85 @@ async function runBackfill(options: {
         console.log("no new IDs to add")
       } else {
         console.log("no external IDs found")
+
+        // No IDs found - track retry
+        if (!dryRun) {
+          const willMarkPermanent = attemptNum >= 3
+          await db.query(
+            `UPDATE shows
+             SET external_ids_fetch_attempts = $1,
+                 external_ids_last_fetch_attempt = NOW(),
+                 external_ids_fetch_error = 'No external IDs found',
+                 external_ids_permanently_failed = $2
+             WHERE tmdb_id = $3`,
+            [attemptNum, willMarkPermanent, show.tmdb_id]
+          )
+          if (willMarkPermanent) permanentlyFailed++
+        }
+      }
+    } catch (error) {
+      errors++
+      consecutiveFailures++
+      const errorMsg = error instanceof Error ? error.message : "unknown"
+      console.log(`error: ${errorMsg}`)
+
+      // Circuit breaker: stop if too many consecutive failures (API likely down)
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        console.error(
+          `\n❌ Circuit breaker tripped: ${consecutiveFailures} consecutive failures detected`
+        )
+        console.error(
+          "   The TMDB API may be experiencing an outage. Stopping to prevent futile requests."
+        )
+        console.error(
+          `   Processed ${processed}/${shows.length} shows before stopping (${updated} updated, ${errors} errors)\n`
+        )
+
+        await resetPool()
+        process.exit(2) // Exit code 2 indicates circuit breaker trip
       }
 
-      // Small delay to respect rate limits
-      await delay(200)
-    } catch (error) {
-      checkpoint.stats.errors++
-      console.log(`error: ${error instanceof Error ? error.message : "unknown"}`)
-    } finally {
-      // Update checkpoint after each show (even on error to avoid infinite retry loops)
-      checkpoint.processedShowIds.push(show.tmdb_id)
-      if (!dryRun) saveCheckpoint(checkpoint)
+      if (!dryRun) {
+        const permanent = isPermanentError(error)
+        const willMarkPermanent = permanent || attemptNum >= 3
+
+        await db.query(
+          `UPDATE shows
+           SET external_ids_fetch_attempts = $1,
+               external_ids_last_fetch_attempt = NOW(),
+               external_ids_fetch_error = $2,
+               external_ids_permanently_failed = $3
+           WHERE tmdb_id = $4`,
+          [attemptNum, errorMsg.substring(0, 500), willMarkPermanent, show.tmdb_id]
+        )
+
+        if (willMarkPermanent) permanentlyFailed++
+      }
+    }
+
+    // Rate limit - apply after both success and error to respect API limits
+    if (processed < shows.length) {
+      await delay(RATE_LIMIT_DELAY_MS)
     }
   }
 
-  // Update final stats
-  checkpoint.stats.processed += sessionProcessed
-
   console.log("\n" + "=".repeat(60))
-  console.log(`Session processed: ${sessionProcessed}`)
-  console.log(`Total processed: ${checkpoint.stats.processed}`)
-  console.log(`${dryRun ? "Would update" : "Updated"}: ${checkpoint.stats.updated}`)
-  if (checkpoint.stats.errors > 0) {
-    console.log(`Errors: ${checkpoint.stats.errors}`)
+  console.log(`Processed: ${processed}`)
+  console.log(`${dryRun ? "Would update" : "Updated"}: ${updated}`)
+  if (permanentlyFailed > 0) {
+    console.log(`Permanently failed: ${permanentlyFailed}`)
+  }
+  if (errors > 0) {
+    console.log(`Errors: ${errors}`)
   }
 
-  // Delete checkpoint on successful completion (all shows processed with no errors)
-  if (
-    !dryRun &&
-    showsToProcess.length > 0 &&
-    showsToProcess.length === sessionProcessed &&
-    checkpoint.stats.errors === 0
-  ) {
-    console.log("\nAll shows processed with no errors. Deleting checkpoint.")
-    deleteCheckpoint()
-  }
-
-  // Close database pool to allow process to exit
   await resetPool()
 
   return {
-    processed: checkpoint.stats.processed,
-    updated: checkpoint.stats.updated,
-    errors: checkpoint.stats.errors,
+    processed,
+    updated,
+    permanentlyFailed,
+    errors,
   }
 }
 
@@ -274,7 +285,6 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// Only run when executed directly, not when imported for testing
 const isMainModule = import.meta.url === `file://${process.argv[1]}`
 if (isMainModule) {
   program.parse()
