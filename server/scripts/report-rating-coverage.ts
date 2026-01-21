@@ -219,14 +219,14 @@ async function getActorCoverage() {
 
 function formatStat(stat: CoverageStats): string {
   const lines: string[] = []
-  lines.push(`${stat.withData.toLocaleString()}/${stat.total.toLocaleString()} (${stat.percentage.toFixed(1)}%)`)
+  lines.push(
+    `${stat.withData.toLocaleString()}/${stat.total.toLocaleString()} (${stat.percentage.toFixed(1)}%)`
+  )
   if (stat.permanentlyFailed && stat.permanentlyFailed > 0) {
     lines.push(`  Permanently failed: ${stat.permanentlyFailed.toLocaleString()}`)
   }
   if (stat.needingRetry && stat.needingRetry > 0) {
-    const retryTime = stat.nextRetry
-      ? new Date(stat.nextRetry).toLocaleString()
-      : "unknown"
+    const retryTime = stat.nextRetry ? new Date(stat.nextRetry).toLocaleString() : "unknown"
     lines.push(`  Awaiting retry: ${stat.needingRetry.toLocaleString()} (next: ${retryTime})`)
   }
   return lines.join("\n    ")
