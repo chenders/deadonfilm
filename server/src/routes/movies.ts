@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import { getGenreCategories, getMoviesByGenre, getGenreFromSlug } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
 import { getCached, setCached, buildCacheKey, CACHE_PREFIX, CACHE_TTL } from "../lib/cache.js"
-import { addCustomAttributes } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 export async function getGenreCategoriesHandler(req: Request, res: Response) {
   try {
@@ -15,10 +15,12 @@ export async function getGenreCategoriesHandler(req: Request, res: Response) {
       return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
-    addCustomAttributes({
+    for (const [key, value] of Object.entries({
       "query.entity": "genre",
       "query.operation": "list",
-    })
+    })) {
+      newrelic.addCustomAttribute(key, value)
+    }
 
     const genres = await getGenreCategories()
     const response: GenresResponse = { genres }
@@ -78,12 +80,14 @@ export async function getMoviesByGenreHandler(req: Request, res: Response) {
       return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
-    addCustomAttributes({
+    for (const [key, value] of Object.entries({
       "query.entity": "movie",
       "query.operation": "list-by-genre",
       "query.genre": genreSlug,
       "query.page": page,
-    })
+    })) {
+      newrelic.addCustomAttribute(key, value)
+    }
 
     const { movies, totalCount } = await getMoviesByGenre(genre, { limit, offset })
 

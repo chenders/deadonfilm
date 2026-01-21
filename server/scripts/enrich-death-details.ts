@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import newrelic from "newrelic"
 /**
  * Enrich actors with missing death details using multi-source fallbacks.
  *
@@ -60,7 +61,6 @@ import * as readline from "readline"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool, getDeceasedActorsFromTopMovies } from "../src/lib/db.js"
 import { batchGetPersonDetails } from "../src/lib/tmdb.js"
-import { initNewRelic, recordCustomEvent } from "../src/lib/newrelic.js"
 import { rebuildDeathCaches, invalidateActorCache } from "../src/lib/cache.js"
 import {
   DeathEnrichmentOrchestrator,
@@ -85,7 +85,6 @@ if (!process.env.NEW_RELIC_LOG_LEVEL) {
 }
 
 // Initialize New Relic for monitoring (silent - no console output)
-initNewRelic()
 
 // Base URL for actor death pages
 const SITE_URL = process.env.SITE_URL || "https://deadonfilm.com"
@@ -627,7 +626,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         console.log(`${"!".repeat(SEPARATOR_WIDTH)}`)
         costLimitReached = true
         // Note: partial results were already processed by the orchestrator before throwing
-        recordCustomEvent("DeathEnrichmentCostLimitReached", {
+        newrelic.recordCustomEvent("DeathEnrichmentCostLimitReached", {
           limitType: error.limitType,
           limit: error.limit,
           currentCost: error.currentCost,
@@ -837,7 +836,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     }
 
     // Record completion event
-    recordCustomEvent("DeathEnrichmentCompleted", {
+    newrelic.recordCustomEvent("DeathEnrichmentCompleted", {
       actorsProcessed: stats.actorsProcessed,
       actorsEnriched: stats.actorsEnriched,
       fillRate: stats.fillRate,
@@ -863,7 +862,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       }
     }
   } catch (error) {
-    recordCustomEvent("DeathEnrichmentError", {
+    newrelic.recordCustomEvent("DeathEnrichmentError", {
       error: error instanceof Error ? error.message : "Unknown error",
     })
     console.error("Error during enrichment:", error)

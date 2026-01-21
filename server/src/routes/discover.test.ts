@@ -20,7 +20,7 @@ vi.mock("../lib/newrelic.js", () => ({
   recordCustomEvent: vi.fn(),
 }))
 
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 describe("getCursedMovies", () => {
   let mockReq: Partial<Request>
@@ -335,7 +335,7 @@ describe("getCursedMovies", () => {
 
     await getCursedMovies(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "CursedMoviesQuery",
       expect.objectContaining({
         page: 2,

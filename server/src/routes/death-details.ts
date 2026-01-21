@@ -10,7 +10,7 @@ import {
 } from "../lib/db.js"
 import { getPersonDetails } from "../lib/tmdb.js"
 import { createActorSlug } from "../lib/slug-utils.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 import {
   CACHE_KEYS,
   CACHE_PREFIX,
@@ -211,7 +211,7 @@ export async function getActorDeathDetails(req: Request, res: Response) {
     // Check cache first
     const cached = await getCached<DeathDetailsResponse>(cacheKey)
     if (cached) {
-      recordCustomEvent("DeathDetailsView", {
+      newrelic.recordCustomEvent("DeathDetailsView", {
         tmdbId: actorId,
         name: cached.actor.name,
         hasCircumstances: !!cached.circumstances.official,
@@ -289,7 +289,7 @@ export async function getActorDeathDetails(req: Request, res: Response) {
     // Cache the response
     await setCached(cacheKey, response, CACHE_TTL.WEEK)
 
-    recordCustomEvent("DeathDetailsView", {
+    newrelic.recordCustomEvent("DeathDetailsView", {
       tmdbId: actorId,
       name: actorRecord.name,
       hasCircumstances: !!circumstances?.circumstances,
@@ -360,7 +360,7 @@ export async function getNotableDeaths(req: Request, res: Response) {
     // Check cache first
     const cached = await getCached<NotableDeathsResponse>(cacheKey)
     if (cached) {
-      recordCustomEvent("NotableDeathsView", {
+      newrelic.recordCustomEvent("NotableDeathsView", {
         filter,
         page,
         totalCount: cached.pagination.totalCount,
@@ -383,7 +383,7 @@ export async function getNotableDeaths(req: Request, res: Response) {
     // Cache for 5 minutes
     await setCached(cacheKey, response, CACHE_TTL.WEEK)
 
-    recordCustomEvent("NotableDeathsView", {
+    newrelic.recordCustomEvent("NotableDeathsView", {
       filter,
       page,
       totalCount: result.pagination.totalCount,

@@ -1,7 +1,5 @@
-// New Relic must be initialized FIRST, before any other imports
-import { initNewRelic, getBrowserTimingHeader } from "./lib/newrelic.js"
-initNewRelic()
-
+// New Relic is loaded via --import newrelic/esm-loader.mjs (see package.json start script)
+import newrelic from "newrelic"
 import "dotenv/config"
 import express from "express"
 import cors from "cors"
@@ -147,7 +145,7 @@ app.get("/api/health", (_req, res) => {
 // New Relic browser agent script (served by Express for server-side injection)
 // This enables distributed tracing between browser and server
 app.get("/nr-browser.js", (_req, res) => {
-  const header = getBrowserTimingHeader()
+  const header = newrelic.getBrowserTimingHeader()
   if (!header) {
     // No New Relic configured - return empty script
     res.type("application/javascript").send("// New Relic not configured")

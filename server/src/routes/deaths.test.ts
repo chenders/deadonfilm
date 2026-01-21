@@ -23,7 +23,7 @@ vi.mock("../lib/newrelic.js", () => ({
   recordCustomEvent: vi.fn(),
 }))
 
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 
 describe("getCauseCategoriesHandler", () => {
   let mockReq: Partial<Request>
@@ -785,7 +785,7 @@ describe("getAllDeathsHandler", () => {
 
     await getAllDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "AllDeathsQuery",
       expect.objectContaining({
         page: 2,
@@ -877,7 +877,7 @@ describe("recordCustomEvent tracking", () => {
 
     await getDeathsByCauseHandler(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "DeathsByCauseQuery",
       expect.objectContaining({
         cause: "Cancer",
@@ -903,7 +903,7 @@ describe("recordCustomEvent tracking", () => {
 
     await getDeathsByDecadeHandler(mockReq as Request, mockRes as Response)
 
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "DeathsByDecadeQuery",
       expect.objectContaining({
         decade: 2020,

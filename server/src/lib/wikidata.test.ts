@@ -13,12 +13,14 @@ vi.mock("./claude.js", () => ({
 }))
 
 // Mock the newrelic module
-vi.mock("./newrelic.js", () => ({
-  recordCustomEvent: vi.fn(),
+vi.mock("newrelic", () => ({
+  default: {
+    recordCustomEvent: vi.fn(),
+  },
 }))
 
 import { getCauseOfDeathFromClaude, isVagueCause } from "./claude.js"
-import { recordCustomEvent } from "./newrelic.js"
+import newrelic from "newrelic"
 
 // Mock global fetch
 const mockFetch = vi.fn()
@@ -321,7 +323,7 @@ describe("getCauseOfDeath", () => {
 
       await getCauseOfDeath("Test Actor", "1950-01-01", "2020-01-15")
 
-      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
         personName: "Test Actor",
         source: "claude",
         success: true,
@@ -379,7 +381,7 @@ describe("getCauseOfDeath", () => {
 
       await getCauseOfDeath("Wikidata Actor", "1945-07-22", "2018-03-10")
 
-      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
         personName: "Wikidata Actor",
         source: "wikipedia",
         success: true,
@@ -407,7 +409,7 @@ describe("getCauseOfDeath", () => {
 
       await getCauseOfDeath("Unknown Person", "1930-01-01", "2000-01-01")
 
-      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
         personName: "Unknown Person",
         source: "none",
         success: false,
@@ -423,7 +425,7 @@ describe("getCauseOfDeath", () => {
 
       await getCauseOfDeath("No Birthday Actor", null, "2021-05-01")
 
-      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
         personName: "No Birthday Actor",
         source: "claude",
         success: true,
@@ -442,7 +444,7 @@ describe("getCauseOfDeath", () => {
 
       await getCauseOfDeath("Error Actor", "1960-01-01", "2022-01-01")
 
-      expect(recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith("CauseOfDeathLookup", {
         personName: "Error Actor",
         source: "none",
         success: false,

@@ -32,7 +32,7 @@ vi.mock("../lib/cache.js", () => ({
   CACHE_TTL: { WEEK: 604800 },
 }))
 
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 import { getCached, setCached, CACHE_TTL } from "../lib/cache.js"
 
 describe("getActor", () => {
@@ -238,7 +238,7 @@ describe("getActor", () => {
     expect(jsonSpy).toHaveBeenCalledWith(cachedResponse)
 
     // Should record custom event with cacheHit: true
-    expect(recordCustomEvent).toHaveBeenCalledWith(
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "ActorView",
       expect.objectContaining({
         tmdbId: 12345,
@@ -372,7 +372,7 @@ describe("getActor", () => {
 
       await getActor(mockReq as Request, mockRes as Response)
 
-      expect(recordCustomEvent).toHaveBeenCalledWith(
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
         "ActorView",
         expect.objectContaining({
           tmdbId: 12345,
@@ -395,7 +395,7 @@ describe("getActor", () => {
 
       await getActor(mockReq as Request, mockRes as Response)
 
-      expect(recordCustomEvent).toHaveBeenCalledWith(
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
         "ActorView",
         expect.objectContaining({
           tmdbId: 67890,
@@ -414,7 +414,7 @@ describe("getActor", () => {
 
       await getActor(mockReq as Request, mockRes as Response)
 
-      expect(recordCustomEvent).not.toHaveBeenCalled()
+      expect(newrelic.recordCustomEvent).not.toHaveBeenCalled()
     })
   })
 })

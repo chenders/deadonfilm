@@ -6,7 +6,7 @@ import {
   getActor as getActorRecord,
   hasDetailedDeathInfo,
 } from "../lib/db.js"
-import { recordCustomEvent } from "../lib/newrelic.js"
+import newrelic from "newrelic"
 import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
 import { calculateAge } from "../lib/date-utils.js"
 
@@ -64,7 +64,7 @@ export async function getActor(req: Request, res: Response) {
     // Check cache first
     const cached = await getCached<ActorProfileResponse>(cacheKey)
     if (cached) {
-      recordCustomEvent("ActorView", {
+      newrelic.recordCustomEvent("ActorView", {
         tmdbId: actorId,
         name: cached.actor.name,
         isDeceased: !!cached.actor.deathday,
@@ -131,7 +131,7 @@ export async function getActor(req: Request, res: Response) {
     // Cache the response
     await setCached(cacheKey, response, CACHE_TTL.WEEK)
 
-    recordCustomEvent("ActorView", {
+    newrelic.recordCustomEvent("ActorView", {
       tmdbId: actorId,
       name: person.name,
       isDeceased: !!person.deathday,
