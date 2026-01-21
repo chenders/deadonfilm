@@ -111,6 +111,23 @@ export interface MovieRecord {
   living_count: number | null
   expected_deaths: number | null
   mortality_surprise_score: number | null
+  imdb_id?: string | null
+
+  // OMDb metrics
+  omdb_imdb_rating?: number | null
+  omdb_imdb_votes?: number | null
+  omdb_rotten_tomatoes_score?: number | null
+  omdb_rotten_tomatoes_audience?: number | null
+  omdb_metacritic_score?: number | null
+  omdb_updated_at?: Date | null
+
+  // Trakt metrics
+  trakt_rating?: number | null
+  trakt_votes?: number | null
+  trakt_watchers?: number | null
+  trakt_plays?: number | null
+  trakt_trending_rank?: number | null
+  trakt_updated_at?: Date | null
 }
 
 export interface HighMortalityOptions {
@@ -170,6 +187,25 @@ export interface ShowRecord {
   tvmaze_id: number | null
   thetvdb_id: number | null
   imdb_id: string | null
+
+  // OMDb metrics
+  omdb_imdb_rating?: number | null
+  omdb_imdb_votes?: number | null
+  omdb_rotten_tomatoes_score?: number | null
+  omdb_rotten_tomatoes_audience?: number | null
+  omdb_metacritic_score?: number | null
+  omdb_updated_at?: Date | null
+
+  // Trakt metrics
+  trakt_rating?: number | null
+  trakt_votes?: number | null
+  trakt_watchers?: number | null
+  trakt_plays?: number | null
+  trakt_trending_rank?: number | null
+  trakt_updated_at?: Date | null
+
+  // TheTVDB score
+  thetvdb_score?: number | null
 }
 
 export interface SeasonRecord {
@@ -202,6 +238,14 @@ export interface EpisodeRecord {
   tvmaze_episode_id?: number | null
   thetvdb_episode_id?: number | null
   imdb_episode_id?: string | null
+
+  // OMDb metrics
+  omdb_imdb_rating?: number | null
+  omdb_imdb_votes?: number | null
+  omdb_rotten_tomatoes_score?: number | null
+  omdb_rotten_tomatoes_audience?: number | null
+  omdb_metacritic_score?: number | null
+  omdb_updated_at?: Date | null
 }
 
 export interface ShowActorAppearanceRecord {
@@ -365,9 +409,33 @@ export interface DeathsByCauseOptions {
   includeObscure?: boolean
 }
 
+export interface DecadeFeaturedActor {
+  id: number
+  tmdbId: number | null
+  name: string
+  profilePath: string | null
+  causeOfDeath: string | null
+}
+
+export interface DecadeTopCause {
+  cause: string
+  count: number
+  slug: string
+}
+
+export interface DecadeTopMovie {
+  tmdbId: number
+  title: string
+  releaseYear: number | null
+  backdropPath: string | null
+}
+
 export interface DecadeCategory {
   decade: number
   count: number
+  featuredActor: DecadeFeaturedActor | null
+  topCauses: DecadeTopCause[]
+  topMovie: DecadeTopMovie | null
 }
 
 export interface DeathByDecadeRecord {
@@ -540,12 +608,17 @@ export interface ActorDeathCircumstancesRecord {
   posthumous_releases: ProjectInfo[] | null
   related_celebrity_ids: number[] | null
   related_celebrities: RelatedCelebrity[] | null
+  related_deaths: string | null
   notable_factors: string[] | null
   sources: DeathSources | null
   additional_context: string | null
   raw_response: unknown | null
   created_at: string
   updated_at: string
+  // Enrichment tracking
+  enriched_at: string | null
+  enrichment_source: string | null
+  enrichment_version: string | null
 }
 
 export interface NotableDeathActor {

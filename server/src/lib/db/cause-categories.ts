@@ -12,6 +12,9 @@ import type {
   DeathByCauseRecord,
   DeathsByCauseOptions,
   DecadeCategory,
+  DecadeFeaturedActor,
+  DecadeTopCause,
+  DecadeTopMovie,
   CauseCategoryStats,
   CauseCategoryIndexResponse,
   CauseCategoryDetailResponse,
@@ -30,6 +33,55 @@ import {
 
 // Re-export for convenience
 export { CAUSE_CATEGORIES, type CauseCategoryKey } from "../cause-categories.js"
+
+// Maximum number of top causes to display per decade
+const MAX_CAUSES_PER_DECADE = 3
+
+/**
+ * Filter out redundant causes using word-based subset matching.
+ * A cause is redundant if all its words appear in a higher-ranked cause.
+ * This avoids false positives like filtering "Heart attack" when "Heartburn" is present.
+ *
+ * @param causes - Array of causes ordered by rank (highest count first)
+ * @returns Filtered array with redundant causes removed
+ *
+ * @example
+ * // "Lung cancer" is filtered because "Cancer" is a word-subset
+ * filterRedundantCauses([
+ *   { cause: "Cancer", count: 50, slug: "cancer" },
+ *   { cause: "Lung cancer", count: 40, slug: "lung-cancer" }
+ * ])
+ * // Returns: [{ cause: "Cancer", count: 50, slug: "cancer" }]
+ *
+ * @example
+ * // Both kept because neither is a word-subset of the other
+ * filterRedundantCauses([
+ *   { cause: "Heart attack", count: 40, slug: "heart-attack" },
+ *   { cause: "Heart disease", count: 35, slug: "heart-disease" }
+ * ])
+ * // Returns both causes
+ */
+export function filterRedundantCauses(causes: DecadeTopCause[]): DecadeTopCause[] {
+  return causes.filter((cause, index) => {
+    const causeLower = cause.cause.toLowerCase()
+    const causeWords = new Set(causeLower.split(/\s+/))
+
+    // Check if any higher-ranked cause overlaps with this cause
+    for (let i = 0; i < index; i++) {
+      const higherCauseLower = causes[i].cause.toLowerCase()
+      const higherWords = new Set(higherCauseLower.split(/\s+/))
+
+      // Filter if one cause's words are a subset of another's
+      const higherIsSubset = [...higherWords].every((word) => causeWords.has(word))
+      const causeIsSubset = [...causeWords].every((word) => higherWords.has(word))
+
+      if ((higherIsSubset || causeIsSubset) && causeLower !== higherCauseLower) {
+        return false // Filter out this redundant cause
+      }
+    }
+    return true
+  })
+}
 
 // ============================================================================
 // Deaths by Cause functions (SEO category pages)
@@ -120,7 +172,8 @@ export async function getCauseFromSlug(slug: string): Promise<string | null> {
 export async function getDecadeCategories(): Promise<DecadeCategory[]> {
   const db = getPool()
 
-  const result = await db.query<{ decade: number; count: string }>(`
+  // Get basic decade counts
+  const decadesResult = await db.query<{ decade: number; count: string }>(`
     SELECT (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
            COUNT(*) as count
     FROM actors
@@ -130,9 +183,139 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
     ORDER BY decade DESC
   `)
 
-  return result.rows.map((row) => ({
+  // Get featured actor per decade (most popular non-obscure actor)
+  const featuredResult = await db.query<{
+    decade: number
+    id: number
+    tmdb_id: number | null
+    name: string
+    profile_path: string | null
+    cause_of_death: string | null
+  }>(`
+    WITH ranked_actors AS (
+      SELECT
+        (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
+        id,
+        tmdb_id,
+        name,
+        profile_path,
+        cause_of_death,
+        ROW_NUMBER() OVER (
+          PARTITION BY (EXTRACT(YEAR FROM deathday)::int / 10 * 10)
+          ORDER BY popularity DESC NULLS LAST
+        ) as rn
+      FROM actors
+      WHERE deathday IS NOT NULL
+        AND is_obscure = false
+    )
+    SELECT decade, id, tmdb_id, name, profile_path, cause_of_death
+    FROM ranked_actors
+    WHERE rn = 1
+  `)
+
+  // Get top 3 causes per decade
+  const causesResult = await db.query<{
+    decade: number
+    cause: string
+    count: string
+  }>(`
+    WITH ranked_causes AS (
+      SELECT
+        (EXTRACT(YEAR FROM deathday)::int / 10 * 10) as decade,
+        COALESCE(n.normalized_cause, a.cause_of_death) as cause,
+        COUNT(*) as count,
+        ROW_NUMBER() OVER (
+          PARTITION BY (EXTRACT(YEAR FROM deathday)::int / 10 * 10)
+          ORDER BY COUNT(*) DESC
+        ) as rn
+      FROM actors a
+      LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+      WHERE a.deathday IS NOT NULL
+        AND a.cause_of_death IS NOT NULL
+        AND a.is_obscure = false
+      GROUP BY decade, COALESCE(n.normalized_cause, a.cause_of_death)
+    )
+    SELECT decade, cause, count
+    FROM ranked_causes
+    WHERE rn <= ${MAX_CAUSES_PER_DECADE}
+    ORDER BY decade DESC, count DESC
+  `)
+
+  // Get top movie per decade (most popular movie from that decade with an image)
+  // Prefer backdrop_path, fall back to poster_path
+  const moviesResult = await db.query<{
+    decade: number
+    tmdb_id: number
+    title: string
+    release_year: number | null
+    backdrop_path: string | null
+  }>(`
+    WITH ranked_movies AS (
+      SELECT
+        (m.release_year / 10 * 10) as decade,
+        m.tmdb_id,
+        m.title,
+        m.release_year,
+        COALESCE(m.backdrop_path, m.poster_path) as backdrop_path,
+        ROW_NUMBER() OVER (
+          PARTITION BY (m.release_year / 10 * 10)
+          ORDER BY m.popularity DESC NULLS LAST
+        ) as rn
+      FROM movies m
+      WHERE m.release_year IS NOT NULL
+        AND (m.backdrop_path IS NOT NULL OR m.poster_path IS NOT NULL)
+        AND m.is_obscure = false
+    )
+    SELECT decade, tmdb_id, title, release_year, backdrop_path
+    FROM ranked_movies
+    WHERE rn = 1
+  `)
+
+  // Build maps for featured actors, top causes, and top movies
+  const featuredByDecade = new Map<number, DecadeFeaturedActor>()
+  for (const row of featuredResult.rows) {
+    featuredByDecade.set(row.decade, {
+      id: row.id,
+      tmdbId: row.tmdb_id,
+      name: row.name,
+      profilePath: row.profile_path,
+      causeOfDeath: row.cause_of_death,
+    })
+  }
+
+  const causesByDecade = new Map<number, DecadeTopCause[]>()
+  for (const row of causesResult.rows) {
+    const existing = causesByDecade.get(row.decade) || []
+    existing.push({
+      cause: row.cause,
+      count: parseInt(row.count, 10),
+      slug: createCauseSlug(row.cause),
+    })
+    causesByDecade.set(row.decade, existing)
+  }
+
+  // Filter out redundant causes and keep only top N
+  for (const [decade, causes] of causesByDecade) {
+    const filtered = filterRedundantCauses(causes)
+    causesByDecade.set(decade, filtered.slice(0, MAX_CAUSES_PER_DECADE))
+  }
+
+  const moviesByDecade = new Map<number, DecadeTopMovie>()
+  for (const row of moviesResult.rows) {
+    moviesByDecade.set(row.decade, {
+      tmdbId: row.tmdb_id,
+      title: row.title,
+      releaseYear: row.release_year,
+      backdropPath: row.backdrop_path,
+    })
+  }
+
+  return decadesResult.rows.map((row) => ({
     decade: row.decade,
     count: parseInt(row.count, 10),
+    featuredActor: featuredByDecade.get(row.decade) || null,
+    topCauses: causesByDecade.get(row.decade) || [],
+    topMovie: moviesByDecade.get(row.decade) || null,
   }))
 }
 

@@ -9,7 +9,6 @@ export function useActorDeathDetails(actorId: number) {
     queryKey: ["actor-death-details", actorId],
     queryFn: () => getActorDeathDetails(actorId),
     enabled: actorId > 0,
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   })
 }
 
@@ -22,6 +21,5 @@ export function useNotableDeaths(params: NotableDeathsParams = {}) {
   return useQuery({
     queryKey: ["notable-deaths", page, pageSize, filter, includeObscure],
     queryFn: () => getNotableDeaths({ page, pageSize, filter, includeObscure }),
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   })
 }
