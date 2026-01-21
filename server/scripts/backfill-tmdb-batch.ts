@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import newrelic from "newrelic"
 /**
  * Batch backfill TMDB sync in 2-day chunks with resumption
  *
@@ -15,21 +16,22 @@
  *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --reset
  */
 
-// New Relic must be initialized first for full transaction traces
-import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
-
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { promises as fs } from "fs"
 import * as readline from "readline"
 import { runSync, type SyncResult, parsePositiveInt } from "./sync-tmdb-changes.js"
 import { formatDate, subtractDays } from "../src/lib/date-utils.js"
+import { createActorSlug } from "../src/lib/slug-utils.js"
+
+const SITE_URL = process.env.SITE_URL || "https://deadonfilm.com"
 
 const CHECKPOINT_FILE = "./scripts/.backfill-tmdb-checkpoint"
 
 interface ChunkSummary {
   peopleChecked: number
   newDeathsFound: number
+  newlyDeceasedActors: Array<{ tmdbId: number; name: string; deathday: string }>
   moviesChecked: number
   moviesUpdated: number
   moviesSkipped: number
@@ -243,6 +245,7 @@ async function runModeBackfill(
   const summary: ChunkSummary = {
     peopleChecked: 0,
     newDeathsFound: 0,
+    newlyDeceasedActors: [],
     moviesChecked: 0,
     moviesUpdated: 0,
     moviesSkipped: 0,
@@ -260,7 +263,7 @@ async function runModeBackfill(
     console.log(`Date range: ${chunk.start} to ${chunk.end}`)
     console.log("=".repeat(60))
 
-    // Run sync for this chunk
+    // Run sync for this chunk (quiet mode to avoid flooding console)
     const result = await runSync({
       startDate: chunk.start,
       endDate: chunk.end,
@@ -268,11 +271,13 @@ async function runModeBackfill(
       peopleOnly: mode === "people",
       moviesOnly: mode === "movies",
       showsOnly: mode === "shows",
+      quiet: true, // Suppress verbose output, show live status bar instead
     })
 
     // Accumulate results
     summary.peopleChecked += result.peopleChecked
     summary.newDeathsFound += result.newDeathsFound
+    summary.newlyDeceasedActors.push(...result.newlyDeceasedActors)
     summary.moviesChecked += result.moviesChecked
     summary.moviesUpdated += result.moviesUpdated
     summary.moviesSkipped += result.moviesSkipped
@@ -284,6 +289,21 @@ async function runModeBackfill(
     console.log("\n" + "─".repeat(60))
     console.log(drawStatusBar(chunkNum, totalChunks, startTime, summary, mode))
     console.log("─".repeat(60))
+
+    // Record New Relic event for chunk completion
+    newrelic.recordCustomEvent("BackfillChunkCompleted", {
+      mode: modeName,
+      chunkNumber: chunkNum,
+      totalChunks: totalChunks,
+      dateRange: `${chunk.start} to ${chunk.end}`,
+      peopleChecked: result.peopleChecked,
+      newDeathsFound: result.newDeathsFound,
+      moviesChecked: result.moviesChecked,
+      moviesUpdated: result.moviesUpdated,
+      showsChecked: result.showsChecked,
+      newEpisodesFound: result.newEpisodesFound,
+      errors: result.errors.length,
+    })
 
     // Save checkpoint after successful chunk
     if (i < totalChunks - 1) {
@@ -304,6 +324,22 @@ async function runModeBackfill(
   console.log(`${modeName} backfill complete!`)
   console.log(`Total time: ${formatDuration(totalElapsed)}`)
   console.log("=".repeat(60))
+
+  // Record New Relic event for mode completion
+  newrelic.recordCustomEvent("BackfillModeCompleted", {
+    mode: modeName,
+    durationMs: totalElapsed,
+    totalChunks: totalChunks,
+    peopleChecked: summary.peopleChecked,
+    newDeathsFound: summary.newDeathsFound,
+    newlyDeceasedCount: summary.newlyDeceasedActors.length,
+    moviesChecked: summary.moviesChecked,
+    moviesUpdated: summary.moviesUpdated,
+    moviesSkipped: summary.moviesSkipped,
+    showsChecked: summary.showsChecked,
+    newEpisodesFound: summary.newEpisodesFound,
+    errors: summary.errors,
+  })
 
   return summary
 }
@@ -417,6 +453,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   const overallSummary: ChunkSummary = {
     peopleChecked: 0,
     newDeathsFound: 0,
+    newlyDeceasedActors: [],
     moviesChecked: 0,
     moviesUpdated: 0,
     moviesSkipped: 0,
@@ -437,6 +474,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     // Accumulate into overall summary
     overallSummary.peopleChecked += summary.peopleChecked
     overallSummary.newDeathsFound += summary.newDeathsFound
+    overallSummary.newlyDeceasedActors.push(...summary.newlyDeceasedActors)
     overallSummary.moviesChecked += summary.moviesChecked
     overallSummary.moviesUpdated += summary.moviesUpdated
     overallSummary.moviesSkipped += summary.moviesSkipped
@@ -489,6 +527,18 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     console.log(
       `  - New episodes found: ${overallSummary.newEpisodesFound.toLocaleString()}${overallSummary.newEpisodesFound > 0 ? " ✓" : ""}`
     )
+  }
+
+  // Show newly deceased actors with links
+  if (overallSummary.newlyDeceasedActors.length > 0) {
+    console.log("\n" + "─".repeat(60))
+    console.log("Newly Deceased Actors:")
+    console.log("─".repeat(60))
+    for (const actor of overallSummary.newlyDeceasedActors) {
+      const slug = createActorSlug(actor.name, actor.tmdbId)
+      const url = `${SITE_URL}/actor/${slug}`
+      console.log(`  ${actor.name} (${actor.deathday}): ${url}`)
+    }
   }
 
   console.log("")
@@ -553,33 +603,35 @@ const program = new Command()
         process.exit(1)
       }
 
-      // Wrap in New Relic transaction for monitoring
-      await withNewRelicTransaction("backfill-tmdb-batch", async (recordMetrics) => {
-        try {
-          await runBackfill({
-            startDate: options.startDate,
-            endDate: options.endDate,
-            dryRun: options.dryRun,
-            peopleOnly: options.peopleOnly,
-            moviesOnly: options.moviesOnly,
-            showsOnly: options.showsOnly,
-            reset: options.reset,
-          })
+      try {
+        await runBackfill({
+          startDate: options.startDate,
+          endDate: options.endDate,
+          dryRun: options.dryRun,
+          peopleOnly: options.peopleOnly,
+          moviesOnly: options.moviesOnly,
+          showsOnly: options.showsOnly,
+          reset: options.reset,
+        })
 
-          // Record metrics for New Relic
-          recordMetrics({
-            startDate: options.startDate,
-            endDate: options.endDate,
-            dryRun: options.dryRun,
-            peopleOnly: options.peopleOnly,
-            moviesOnly: options.moviesOnly,
-            showsOnly: options.showsOnly,
-          })
-        } catch (error) {
-          console.error("Fatal error:", error)
-          process.exit(1)
-        }
-      })
+        // Record New Relic custom event for batch completion
+        newrelic.recordCustomEvent("TmdbBatchBackfillCompleted", {
+          startDate: options.startDate,
+          endDate: options.endDate,
+          dryRun: options.dryRun,
+          peopleOnly: options.peopleOnly,
+          moviesOnly: options.moviesOnly,
+          showsOnly: options.showsOnly,
+        })
+      } catch (error) {
+        newrelic.recordCustomEvent("TmdbBatchBackfillError", {
+          startDate: options.startDate,
+          endDate: options.endDate,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        console.error("Fatal error:", error)
+        process.exit(1)
+      }
 
       // Exit cleanly
       await delay(100)
