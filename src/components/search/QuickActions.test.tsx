@@ -106,6 +106,32 @@ describe("QuickActions", () => {
     expect(screen.getByText("⏳")).toBeInTheDocument()
   })
 
+  it("Causes of Death button links to /causes-of-death", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("causes-of-death-btn")
+    expect(link).toHaveAttribute("href", "/causes-of-death")
+  })
+
+  it("Causes of Death button has chart emoji", () => {
+    renderWithRouter(<QuickActions />)
+
+    expect(screen.getByText("📊")).toBeInTheDocument()
+  })
+
+  it("Notable Deaths button links to /deaths/notable", () => {
+    renderWithRouter(<QuickActions />)
+
+    const link = screen.getByTestId("notable-deaths-btn")
+    expect(link).toHaveAttribute("href", "/deaths/notable")
+  })
+
+  it("Notable Deaths button has magnifying glass emoji", () => {
+    renderWithRouter(<QuickActions />)
+
+    expect(screen.getByText("🔍")).toBeInTheDocument()
+  })
+
   it("uses flex-wrap layout with max-width to limit buttons per row", () => {
     renderWithRouter(<QuickActions />)
 
