@@ -19,8 +19,10 @@ vi.mock("../lib/db.js", () => ({
   getAllDeaths: vi.fn(),
 }))
 
-vi.mock("../lib/newrelic.js", () => ({
+vi.mock("newrelic", () => ({
+  default: {
   recordCustomEvent: vi.fn(),
+}
 }))
 
 import newrelic from "newrelic"

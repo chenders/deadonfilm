@@ -16,8 +16,10 @@ vi.mock("../lib/db.js", () => ({
   hasDetailedDeathInfo: vi.fn(),
 }))
 
-vi.mock("../lib/newrelic.js", () => ({
+vi.mock("newrelic", () => ({
+  default: {
   recordCustomEvent: vi.fn(),
+}
 }))
 
 vi.mock("../lib/cache.js", () => ({
