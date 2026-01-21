@@ -8,6 +8,7 @@ export { default as CursedFilmIcon } from "./CursedFilmIcon"
 export { default as CursedActorIcon } from "./CursedActorIcon"
 export { default as ListIcon } from "./ListIcon"
 export { default as TimelineIcon } from "./TimelineIcon"
+export { default as DecadesIcon } from "./DecadesIcon"
 export { default as TVIcon } from "./TVIcon"
 export { default as ExternalLinkIcon } from "./ExternalLinkIcon"
 
