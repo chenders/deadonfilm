@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
 import newrelic from "newrelic"
 /**
- * Batch backfill TMDB sync in 2-day chunks with resumption
+ * Batch backfill TMDB sync in configurable chunks with resumption
  *
- * This script runs the TMDB sync in 2-day intervals across a date range,
+ * This script runs the TMDB sync in intervals across a date range,
  * with automatic checkpoint/resumption if interrupted.
  *
  * Default behavior (no --*-only flags):
@@ -13,6 +13,7 @@ import newrelic from "newrelic"
  *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21
  *   npm run backfill:tmdb -- --start-date 2024-06-01 --end-date 2024-12-31 --dry-run
  *   npm run backfill:tmdb -- --start-date 2025-01-01 --end-date 2025-12-31 --people-only
+ *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --chunk-size 7
  *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --reset
  */
 
@@ -95,9 +96,16 @@ async function clearCheckpoint(): Promise<void> {
 }
 
 /**
- * Generate 2-day chunks from date range
+ * Generate chunks from date range
+ * @param startDate - Start date in YYYY-MM-DD format
+ * @param endDate - End date in YYYY-MM-DD format
+ * @param chunkSize - Number of days per chunk (default: 2)
  */
-function generateChunks(startDate: string, endDate: string): Array<{ start: string; end: string }> {
+function generateChunks(
+  startDate: string,
+  endDate: string,
+  chunkSize: number = 2
+): Array<{ start: string; end: string }> {
   const chunks: Array<{ start: string; end: string }> = []
   const start = new Date(startDate)
   const end = new Date(endDate)
@@ -107,15 +115,15 @@ function generateChunks(startDate: string, endDate: string): Array<{ start: stri
   while (current <= end) {
     const chunkStart = formatDate(current)
     const chunkEndDate = new Date(current)
-    chunkEndDate.setDate(chunkEndDate.getDate() + 1) // +1 day (2-day range)
+    chunkEndDate.setDate(chunkEndDate.getDate() + chunkSize - 1)
 
     // Don't go past the end date
     const chunkEnd = chunkEndDate > end ? formatDate(end) : formatDate(chunkEndDate)
 
     chunks.push({ start: chunkStart, end: chunkEnd })
 
-    // Move to next chunk (+2 days)
-    current.setDate(current.getDate() + 2)
+    // Move to next chunk
+    current.setDate(current.getDate() + chunkSize)
   }
 
   return chunks
@@ -329,6 +337,7 @@ interface BackfillOptions {
   moviesOnly: boolean
   showsOnly: boolean
   reset: boolean
+  chunkSize: number
 }
 
 async function runBackfill(options: BackfillOptions): Promise<void> {
@@ -346,7 +355,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   }
 
   // Generate chunks
-  const chunks = generateChunks(options.startDate, options.endDate)
+  const chunks = generateChunks(options.startDate, options.endDate, options.chunkSize)
   const totalDays = Math.ceil(
     (new Date(options.endDate).getTime() - new Date(options.startDate).getTime()) /
       (1000 * 60 * 60 * 24)
@@ -540,15 +549,28 @@ function validateDate(value: string): string {
   return value
 }
 
+// Validate chunk size
+function parseChunkSize(value: string): number {
+  const n = parseInt(value, 10)
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
+    throw new InvalidArgumentError("Chunk size must be a positive integer")
+  }
+  if (n > 365) {
+    throw new InvalidArgumentError("Chunk size cannot exceed 365 days")
+  }
+  return n
+}
+
 const program = new Command()
   .name("backfill-tmdb-batch")
-  .description("Batch backfill TMDB sync in 2-day chunks with automatic resumption")
+  .description("Batch backfill TMDB sync in configurable chunks with automatic resumption")
   .requiredOption("--start-date <date>", "Start date (YYYY-MM-DD)", validateDate)
   .requiredOption("--end-date <date>", "End date (YYYY-MM-DD)", validateDate)
   .option("-n, --dry-run", "Preview changes without writing to database", false)
   .option("-p, --people-only", "Only sync people changes", false)
   .option("-m, --movies-only", "Only sync movie changes", false)
   .option("-s, --shows-only", "Only sync active TV show episodes", false)
+  .option("-c, --chunk-size <days>", "Number of days per chunk (default: 2)", parseChunkSize, 2)
   .option("--reset", "Clear checkpoint and start from beginning", false)
   .action(
     async (options: {
@@ -558,6 +580,7 @@ const program = new Command()
       peopleOnly: boolean
       moviesOnly: boolean
       showsOnly: boolean
+      chunkSize: number
       reset: boolean
     }) => {
       // Validate mutually exclusive options
@@ -586,6 +609,7 @@ const program = new Command()
           peopleOnly: options.peopleOnly,
           moviesOnly: options.moviesOnly,
           showsOnly: options.showsOnly,
+          chunkSize: options.chunkSize,
           reset: options.reset,
         })
 
@@ -597,6 +621,7 @@ const program = new Command()
           peopleOnly: options.peopleOnly,
           moviesOnly: options.moviesOnly,
           showsOnly: options.showsOnly,
+          chunkSize: options.chunkSize,
         })
       } catch (error) {
         newrelic.recordCustomEvent("TmdbBatchBackfillError", {

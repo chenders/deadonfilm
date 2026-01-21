@@ -498,9 +498,7 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
           `  - Updated: ${result.moviesUpdated.toLocaleString()}${result.moviesUpdated > 0 ? " ✓" : ""}`
         )
         if (result.moviesSkipped > 0) {
-          console.log(
-            `  - Skipped: ${result.moviesSkipped.toLocaleString()} (no changes detected)`
-          )
+          console.log(`  - Skipped: ${result.moviesSkipped.toLocaleString()} (no changes detected)`)
         }
       }
 
