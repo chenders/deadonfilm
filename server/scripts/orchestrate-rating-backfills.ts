@@ -63,6 +63,7 @@ interface ScriptResult {
   success: boolean
   duration: number
   error?: string
+  circuitBreakerTripped?: boolean
 }
 
 interface PhaseResult {
@@ -126,6 +127,7 @@ async function runScript(
     child.on("close", (code) => {
       const duration = Date.now() - startTime
       const success = code === 0
+      const circuitBreakerTripped = code === 2
 
       if (!success && !verbose) {
         console.error(`\n  Error output from ${scriptName}:`)
@@ -137,6 +139,7 @@ async function runScript(
         success,
         duration,
         error: success ? undefined : `Exit code ${code}`,
+        circuitBreakerTripped,
       })
     })
 
@@ -171,7 +174,13 @@ async function runPhase(
     const result = await runScript(script.name, script.args, options.verbose || false)
     results.push(result)
 
-    if (!result.success) {
+    if (result.circuitBreakerTripped) {
+      console.error(
+        `  🚨 ${script.name} circuit breaker tripped - API may be experiencing an outage`
+      )
+      console.error("  Stopping orchestration immediately to prevent cascading failures\n")
+      break
+    } else if (!result.success) {
       console.error(`  ❌ ${script.name} failed: ${result.error}`)
       if (!options.continueOnError) {
         console.error("\n  Stopping due to error (use --continue-on-error to override)")
@@ -225,7 +234,13 @@ async function runOrchestration(options: OrchestrationOptions) {
     )
     phaseResults.push(phase1)
 
-    // Stop if prerequisites failed and not continuing on error
+    // Stop if circuit breaker tripped or if prerequisites failed
+    const circuitBreakerTripped = phase1.scripts.some((s) => s.circuitBreakerTripped)
+    if (circuitBreakerTripped) {
+      printSummary(phaseResults, overallStartTime)
+      process.exit(2)
+    }
+
     const allSuccess = phase1.scripts.every((s) => s.success)
     if (!allSuccess && !options.continueOnError) {
       printSummary(phaseResults, overallStartTime)
@@ -296,10 +311,16 @@ async function runOrchestration(options: OrchestrationOptions) {
 
   printSummary(phaseResults, overallStartTime)
 
-  // Exit with error if any script failed
+  // Exit with appropriate code
+  const circuitBreakerTripped = phaseResults.some((phase) =>
+    phase.scripts.some((s) => s.circuitBreakerTripped)
+  )
   const anyFailed = phaseResults.some((phase) => phase.scripts.some((s) => !s.success))
-  if (anyFailed) {
-    process.exit(1)
+
+  if (circuitBreakerTripped) {
+    process.exit(2) // Exit code 2 indicates circuit breaker trip
+  } else if (anyFailed) {
+    process.exit(1) // Exit code 1 indicates general failure
   }
 }
 
@@ -313,10 +334,12 @@ function printSummary(phases: PhaseResult[], startTime: number) {
   for (const phase of phases) {
     console.log(`\n${phase.name}:`)
     for (const script of phase.scripts) {
-      const status = script.success ? "✅" : "❌"
+      const status = script.circuitBreakerTripped ? "🚨" : script.success ? "✅" : "❌"
       const time = (script.duration / 1000).toFixed(1)
       console.log(`  ${status} ${script.name} (${time}s)`)
-      if (script.error) {
+      if (script.circuitBreakerTripped) {
+        console.log(`     Circuit breaker tripped - API outage detected`)
+      } else if (script.error) {
         console.log(`     Error: ${script.error}`)
       }
     }
