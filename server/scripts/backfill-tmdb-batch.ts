@@ -23,6 +23,7 @@ import * as readline from "readline"
 import { runSync, type SyncResult, parsePositiveInt } from "./sync-tmdb-changes.js"
 import { formatDate, subtractDays } from "../src/lib/date-utils.js"
 import { createActorSlug } from "../src/lib/slug-utils.js"
+import { CLIStatusBar } from "../src/lib/cli-status-bar.js"
 
 const SITE_URL = process.env.SITE_URL || "https://deadonfilm.com"
 
@@ -80,73 +81,6 @@ function formatDuration(ms: number): string {
   } else {
     return `${seconds}s`
   }
-}
-
-/**
- * Draw a comprehensive status bar with progress, time, and stats
- */
-function drawStatusBar(
-  current: number,
-  total: number,
-  startTime: number,
-  summary: ChunkSummary,
-  mode: SyncMode
-): string {
-  const percentage = Math.round((current * 100) / total)
-  const filled = Math.floor((40 * current) / total)
-  const empty = 40 - filled
-
-  // Progress bar
-  const bar = "[" + "█".repeat(filled) + "░".repeat(empty) + "]"
-  const progress = `${bar} ${percentage}% (${current}/${total})`
-
-  // Time calculations
-  const elapsed = Date.now() - startTime
-  const elapsedStr = formatDuration(elapsed)
-
-  let etaStr = "calculating..."
-  if (current > 0) {
-    const avgTimePerChunk = elapsed / current
-    const remainingChunks = total - current
-    const estimatedRemainingMs = avgTimePerChunk * remainingChunks
-    etaStr = formatDuration(estimatedRemainingMs)
-  }
-
-  // Build stats based on mode
-  let statsStr = ""
-  switch (mode) {
-    case "people":
-      if (summary.peopleChecked > 0 || summary.newDeathsFound > 0) {
-        statsStr = `${summary.peopleChecked.toLocaleString()} checked, ${summary.newDeathsFound.toLocaleString()} deaths`
-      }
-      break
-    case "movies":
-      if (summary.moviesChecked > 0 || summary.moviesUpdated > 0 || summary.moviesSkipped > 0) {
-        const parts = [`${summary.moviesChecked.toLocaleString()} checked`]
-        if (summary.moviesUpdated > 0) {
-          parts.push(`${summary.moviesUpdated.toLocaleString()} updated`)
-        }
-        if (summary.moviesSkipped > 0) {
-          parts.push(`${summary.moviesSkipped.toLocaleString()} skipped`)
-        }
-        statsStr = parts.join(", ")
-      }
-      break
-    case "shows":
-      if (summary.showsChecked > 0 || summary.newEpisodesFound > 0) {
-        statsStr = `${summary.showsChecked.toLocaleString()} checked, ${summary.newEpisodesFound.toLocaleString()} episodes`
-      }
-      break
-  }
-
-  // Format output
-  return [
-    progress,
-    `Elapsed: ${elapsedStr} | ETA: ${etaStr}`,
-    statsStr ? `Stats: ${statsStr}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n")
 }
 
 /**
@@ -231,7 +165,33 @@ async function runModeBackfill(
 ): Promise<ChunkSummary> {
   const modeName = getModeName(mode)
   const totalChunks = chunks.length
-  const startTime = Date.now()
+
+  // Setup status bar metrics based on mode
+  let metrics: string[] = []
+  switch (mode) {
+    case "people":
+      metrics = ["checked", "deaths"]
+      break
+    case "movies":
+      metrics = ["checked", "updated", "skipped"]
+      break
+    case "shows":
+      metrics = ["checked", "episodes"]
+      break
+  }
+
+  // Get overall date range for header
+  const overallStart = chunks[0].start
+  const overallEnd = chunks[chunks.length - 1].end
+
+  // Initialize status bar
+  const statusBar = new CLIStatusBar({
+    totalItems: totalChunks,
+    itemLabel: "chunks",
+    metrics,
+    mode: modeName,
+    header: `Backfilling ${modeName}: ${overallStart} to ${overallEnd}`,
+  })
 
   console.log("\n" + "=".repeat(60))
   console.log(`BACKFILLING ${modeName.toUpperCase()}`)
@@ -254,81 +214,117 @@ async function runModeBackfill(
     errors: 0,
   }
 
-  for (let i = resumeFromChunk; i < totalChunks; i++) {
-    const chunk = chunks[i]
-    const chunkNum = i + 1
+  // Start the status bar
+  statusBar.start()
 
-    console.log("=".repeat(60))
-    console.log(`${modeName} - Chunk ${chunkNum} of ${totalChunks}`)
-    console.log(`Date range: ${chunk.start} to ${chunk.end}`)
-    console.log("=".repeat(60))
+  try {
+    for (let i = resumeFromChunk; i < totalChunks; i++) {
+      const chunk = chunks[i]
+      const chunkNum = i + 1
 
-    // Run sync for this chunk (quiet mode to avoid flooding console)
-    const result = await runSync({
-      startDate: chunk.start,
-      endDate: chunk.end,
-      dryRun,
-      peopleOnly: mode === "people",
-      moviesOnly: mode === "movies",
-      showsOnly: mode === "shows",
-      quiet: true, // Suppress verbose output, show live status bar instead
-    })
+      // Update status bar for this chunk
+      statusBar.update({
+        current: chunkNum,
+        currentItem: `${chunk.start} to ${chunk.end}`,
+      })
 
-    // Accumulate results
-    summary.peopleChecked += result.peopleChecked
-    summary.newDeathsFound += result.newDeathsFound
-    summary.newlyDeceasedActors.push(...result.newlyDeceasedActors)
-    summary.moviesChecked += result.moviesChecked
-    summary.moviesUpdated += result.moviesUpdated
-    summary.moviesSkipped += result.moviesSkipped
-    summary.showsChecked += result.showsChecked
-    summary.newEpisodesFound += result.newEpisodesFound
-    summary.errors += result.errors.length
+      // Run sync for this chunk with progress callbacks
+      const result = await runSync({
+        startDate: chunk.start,
+        endDate: chunk.end,
+        dryRun,
+        peopleOnly: mode === "people",
+        moviesOnly: mode === "movies",
+        showsOnly: mode === "shows",
+        quiet: true, // Suppress verbose output
+        onProgress: (progress) => {
+          // Update status bar with current operation
+          statusBar.update({
+            currentOperation: progress.operation,
+          })
+        },
+        onLog: (message) => {
+          // Route log messages through status bar
+          statusBar.log(message)
+        },
+      })
 
-    // Show status bar
-    console.log("\n" + "─".repeat(60))
-    console.log(drawStatusBar(chunkNum, totalChunks, startTime, summary, mode))
-    console.log("─".repeat(60))
+      // Accumulate results
+      summary.peopleChecked += result.peopleChecked
+      summary.newDeathsFound += result.newDeathsFound
+      summary.newlyDeceasedActors.push(...result.newlyDeceasedActors)
+      summary.moviesChecked += result.moviesChecked
+      summary.moviesUpdated += result.moviesUpdated
+      summary.moviesSkipped += result.moviesSkipped
+      summary.showsChecked += result.showsChecked
+      summary.newEpisodesFound += result.newEpisodesFound
+      summary.errors += result.errors.length
 
-    // Record New Relic event for chunk completion
-    newrelic.recordCustomEvent("BackfillChunkCompleted", {
-      mode: modeName,
-      chunkNumber: chunkNum,
-      totalChunks: totalChunks,
-      dateRange: `${chunk.start} to ${chunk.end}`,
-      peopleChecked: result.peopleChecked,
-      newDeathsFound: result.newDeathsFound,
-      moviesChecked: result.moviesChecked,
-      moviesUpdated: result.moviesUpdated,
-      showsChecked: result.showsChecked,
-      newEpisodesFound: result.newEpisodesFound,
-      errors: result.errors.length,
-    })
+      // Update status bar metrics based on mode
+      const metricsUpdate: Record<string, number> = {}
+      switch (mode) {
+        case "people":
+          metricsUpdate.checked = summary.peopleChecked
+          metricsUpdate.deaths = summary.newDeathsFound
+          break
+        case "movies":
+          metricsUpdate.checked = summary.moviesChecked
+          metricsUpdate.updated = summary.moviesUpdated
+          metricsUpdate.skipped = summary.moviesSkipped
+          break
+        case "shows":
+          metricsUpdate.checked = summary.showsChecked
+          metricsUpdate.episodes = summary.newEpisodesFound
+          break
+      }
+      statusBar.update({ metrics: metricsUpdate })
 
-    // Save checkpoint after successful chunk
-    if (i < totalChunks - 1) {
-      const nextChunk = chunks[i + 1]
-      await saveCheckpoint(`${mode}:${nextChunk.start}`)
-      console.log(`\nCheckpoint saved: ${mode}:${nextChunk.start}`)
+      // Log newly deceased actors for this chunk
+      if (result.newlyDeceasedActors.length > 0) {
+        for (const actor of result.newlyDeceasedActors) {
+          statusBar.log(`  ✝️  ${actor.name} (${actor.deathday})`)
+        }
+      }
+
+      // Record New Relic event for chunk completion
+      newrelic.recordCustomEvent("BackfillChunkCompleted", {
+        mode: modeName,
+        chunkNumber: chunkNum,
+        totalChunks: totalChunks,
+        dateRange: `${chunk.start} to ${chunk.end}`,
+        peopleChecked: result.peopleChecked,
+        newDeathsFound: result.newDeathsFound,
+        moviesChecked: result.moviesChecked,
+        moviesUpdated: result.moviesUpdated,
+        showsChecked: result.showsChecked,
+        newEpisodesFound: result.newEpisodesFound,
+        errors: result.errors.length,
+      })
+
+      // Save checkpoint after successful chunk
+      if (i < totalChunks - 1) {
+        const nextChunk = chunks[i + 1]
+        await saveCheckpoint(`${mode}:${nextChunk.start}`)
+      }
+
+      // Small delay to be nice to the API
+      if (i < totalChunks - 1) {
+        await delay(2000)
+      }
     }
-
-    console.log("")
-
-    // Small delay to be nice to the API
-    await delay(2000)
+  } finally {
+    // Always stop the status bar
+    statusBar.stop()
   }
 
   // Show final stats for this mode
-  const totalElapsed = Date.now() - startTime
   console.log("\n" + "=".repeat(60))
   console.log(`${modeName} backfill complete!`)
-  console.log(`Total time: ${formatDuration(totalElapsed)}`)
   console.log("=".repeat(60))
 
   // Record New Relic event for mode completion
   newrelic.recordCustomEvent("BackfillModeCompleted", {
     mode: modeName,
-    durationMs: totalElapsed,
     totalChunks: totalChunks,
     peopleChecked: summary.peopleChecked,
     newDeathsFound: summary.newDeathsFound,
@@ -400,7 +396,9 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   console.log(`  Chunk Size: 2 days`)
   console.log(`  Total Chunks: ${chunks.length}`)
   console.log(`  Modes: ${modes.map((m) => getModeName(m)).join(" → ")}`)
-  console.log(`  Total Operations: ${chunks.length * modes.length} (${chunks.length} chunks × ${modes.length} modes)`)
+  console.log(
+    `  Total Operations: ${chunks.length * modes.length} (${chunks.length} chunks × ${modes.length} modes)`
+  )
   console.log(`\nOptions:`)
   console.log(`  Dry Run: ${options.dryRun ? "Yes (no changes will be written)" : "No"}`)
   if (checkpointInfo) {
@@ -508,7 +506,11 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     )
   }
 
-  if (overallSummary.moviesChecked > 0 || overallSummary.moviesUpdated > 0 || overallSummary.moviesSkipped > 0) {
+  if (
+    overallSummary.moviesChecked > 0 ||
+    overallSummary.moviesUpdated > 0 ||
+    overallSummary.moviesSkipped > 0
+  ) {
     console.log("\nMovies:")
     console.log(`  - Total checked: ${overallSummary.moviesChecked.toLocaleString()}`)
     console.log(
@@ -560,16 +562,8 @@ function validateDate(value: string): string {
 const program = new Command()
   .name("backfill-tmdb-batch")
   .description("Batch backfill TMDB sync in 2-day chunks with automatic resumption")
-  .requiredOption(
-    "--start-date <date>",
-    "Start date (YYYY-MM-DD)",
-    validateDate
-  )
-  .requiredOption(
-    "--end-date <date>",
-    "End date (YYYY-MM-DD)",
-    validateDate
-  )
+  .requiredOption("--start-date <date>", "Start date (YYYY-MM-DD)", validateDate)
+  .requiredOption("--end-date <date>", "End date (YYYY-MM-DD)", validateDate)
   .option("-n, --dry-run", "Preview changes without writing to database", false)
   .option("-p, --people-only", "Only sync people changes", false)
   .option("-m, --movies-only", "Only sync movie changes", false)
