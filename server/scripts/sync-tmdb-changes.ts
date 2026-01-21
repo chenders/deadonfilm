@@ -64,16 +64,53 @@ const SYNC_TYPE_MOVIES = "movie_changes"
 const SYNC_TYPE_SHOWS = "show_episodes"
 
 /**
- * Conditional logging helper - only logs if not in quiet mode
- * Usage: log("message", quiet) or log("message") or log("msg1", "msg2", quiet)
+ * Conditional logging helper - logs via callback if provided, otherwise to console if not quiet
+ * Usage: log("message", quiet, onLog) or log("message", false) or log("message")
  */
 function log(...args: unknown[]): void {
-  const lastArg = args[args.length - 1]
-  const quiet = typeof lastArg === "boolean" ? lastArg : false
-  const messages = typeof lastArg === "boolean" ? args.slice(0, -1) : args
+  let onLog: ((msg: string) => void) | undefined
+  let quiet = false
+  let messages: unknown[] = args
 
-  if (!quiet) {
-    console.log(...messages)
+  // Handle different argument patterns:
+  // log("message") -> messages=["message"], quiet=false, onLog=undefined
+  // log("message", false) -> messages=["message"], quiet=false, onLog=undefined
+  // log("message", true) -> messages=["message"], quiet=true, onLog=undefined
+  // log("message", false, fn) -> messages=["message"], quiet=false, onLog=fn
+  // log("message", true, fn) -> messages=["message"], quiet=true, onLog=fn
+
+  const lastArg = args[args.length - 1]
+  const secondLastArg = args.length >= 2 ? args[args.length - 2] : undefined
+
+  // Check if last arg is a function (onLog callback)
+  if (typeof lastArg === "function") {
+    onLog = lastArg as (msg: string) => void
+    // Check if second-to-last is boolean (quiet flag)
+    if (typeof secondLastArg === "boolean") {
+      quiet = secondLastArg
+      messages = args.slice(0, -2)
+    } else {
+      messages = args.slice(0, -1)
+    }
+  }
+  // Otherwise check if last arg is boolean (quiet flag)
+  else if (typeof lastArg === "boolean") {
+    quiet = lastArg
+    messages = args.slice(0, -1)
+  }
+  // Otherwise all args are message parts
+  else {
+    messages = args
+  }
+
+  const message = messages.join(" ")
+
+  if (onLog) {
+    // If onLog callback provided, always use it (even in quiet mode)
+    onLog(message)
+  } else if (!quiet) {
+    // Otherwise, only log if not quiet
+    console.log(message)
   }
 }
 
@@ -106,6 +143,21 @@ export interface SyncResult {
   newEpisodesFound: number
   errors: string[]
 }
+
+/**
+ * Progress callback for real-time status updates during sync operations.
+ * Called periodically to report current progress.
+ */
+export type ProgressCallback = (progress: {
+  /** Current operation (e.g., "Fetching TMDB changes", "Processing movies") */
+  operation: string
+  /** Current item being processed (index, 0-based) */
+  current: number
+  /** Total items to process */
+  total: number
+  /** Optional details about current item (e.g., movie title, actor name) */
+  currentItem?: string
+}) => void
 
 export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
@@ -142,7 +194,9 @@ const program = new Command()
       // Validate mutually exclusive date options
       if (options.days && options.startDate) {
         console.error("Error: Cannot specify both --days and --start-date")
-        console.error("Use --days for relative lookback or --start-date/--end-date for absolute range")
+        console.error(
+          "Use --days for relative lookback or --start-date/--end-date for absolute range"
+        )
         process.exit(1)
       }
 
@@ -213,6 +267,10 @@ export interface SyncOptions {
   moviesOnly: boolean
   showsOnly: boolean
   quiet?: boolean
+  /** Optional callback for real-time progress updates */
+  onProgress?: ProgressCallback
+  /** Optional callback for log messages (used with status bar) */
+  onLog?: (message: string) => void
 }
 
 export async function runSync(options: SyncOptions): Promise<SyncResult> {
@@ -274,7 +332,14 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
         peopleEndDate = today
       }
 
-      const peopleResult = await syncPeopleChanges(peopleStartDate, peopleEndDate, options.dryRun, quiet)
+      const peopleResult = await syncPeopleChanges(
+        peopleStartDate,
+        peopleEndDate,
+        options.dryRun,
+        quiet,
+        options.onProgress,
+        options.onLog
+      )
       result.peopleChecked = peopleResult.checked
       result.newDeathsFound = peopleResult.newDeaths
       result.newlyDeceasedActors.push(...peopleResult.newlyDeceasedActors)
@@ -314,7 +379,14 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
         movieEndDate = today
       }
 
-      const movieResult = await syncMovieChanges(movieStartDate, movieEndDate, options.dryRun, quiet)
+      const movieResult = await syncMovieChanges(
+        movieStartDate,
+        movieEndDate,
+        options.dryRun,
+        quiet,
+        options.onProgress,
+        options.onLog
+      )
       result.moviesChecked = movieResult.checked
       result.moviesUpdated = movieResult.updated
       result.moviesSkipped = movieResult.skipped
@@ -334,7 +406,12 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
 
     // Sync active TV show episodes
     if (!options.peopleOnly && !options.moviesOnly) {
-      const showResult = await syncActiveShowEpisodes(options.dryRun, quiet)
+      const showResult = await syncActiveShowEpisodes(
+        options.dryRun,
+        quiet,
+        options.onProgress,
+        options.onLog
+      )
       result.showsChecked = showResult.checked
       result.newEpisodesFound = showResult.newEpisodes
       result.errors.push(...showResult.errors)
@@ -377,9 +454,7 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
 
       if (result.moviesUpdated > 0) {
         if (!quiet) {
-          console.log(
-            `Invalidating movie caches (${result.moviesUpdated} movies updated)...`
-          )
+          console.log(`Invalidating movie caches (${result.moviesUpdated} movies updated)...`)
         }
         await invalidateMovieCaches()
         if (!quiet) {
@@ -395,9 +470,7 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
       }
 
       if (result.moviesSkipped > 0 && !quiet) {
-        console.log(
-          `  → ${result.moviesSkipped} movies skipped (no cache invalidation needed)`
-        )
+        console.log(`  → ${result.moviesSkipped} movies skipped (no cache invalidation needed)`)
       }
 
       await closeRedis()
@@ -413,22 +486,30 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
       if (!options.moviesOnly && !options.showsOnly) {
         console.log(`\nPeople:`)
         console.log(`  - Checked: ${result.peopleChecked.toLocaleString()}`)
-        console.log(`  - New deaths found: ${result.newDeathsFound.toLocaleString()}${result.newDeathsFound > 0 ? " ✓" : ""}`)
+        console.log(
+          `  - New deaths found: ${result.newDeathsFound.toLocaleString()}${result.newDeathsFound > 0 ? " ✓" : ""}`
+        )
       }
 
       if (!options.peopleOnly && !options.showsOnly) {
         console.log(`\nMovies:`)
         console.log(`  - Checked: ${result.moviesChecked.toLocaleString()}`)
-        console.log(`  - Updated: ${result.moviesUpdated.toLocaleString()}${result.moviesUpdated > 0 ? " ✓" : ""}`)
+        console.log(
+          `  - Updated: ${result.moviesUpdated.toLocaleString()}${result.moviesUpdated > 0 ? " ✓" : ""}`
+        )
         if (result.moviesSkipped > 0) {
-          console.log(`  - Skipped: ${result.moviesSkipped.toLocaleString()} (only unimportant fields changed)`)
+          console.log(
+            `  - Skipped: ${result.moviesSkipped.toLocaleString()} (only unimportant fields changed)`
+          )
         }
       }
 
       if (!options.peopleOnly && !options.moviesOnly) {
         console.log(`\nTV Shows:`)
         console.log(`  - Checked: ${result.showsChecked.toLocaleString()}`)
-        console.log(`  - New episodes found: ${result.newEpisodesFound.toLocaleString()}${result.newEpisodesFound > 0 ? " ✓" : ""}`)
+        console.log(
+          `  - New episodes found: ${result.newEpisodesFound.toLocaleString()}${result.newEpisodesFound > 0 ? " ✓" : ""}`
+        )
       }
 
       if (result.errors.length > 0) {
@@ -469,7 +550,59 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/**
+ * Normalize a value for comparison and display
+ * Handles dates, string numbers, etc.
+ */
+function normalizeValue(value: unknown): unknown {
+  if (value === null || value === undefined) return value
+
+  // Normalize dates - extract just the date portion (YYYY-MM-DD)
+  if (value instanceof Date || (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/))) {
+    const dateStr = value instanceof Date ? value.toISOString() : value
+    return dateStr.substring(0, 10) // Extract YYYY-MM-DD
+  }
+
+  // Coerce string numbers to actual numbers for comparison
+  if (typeof value === "string") {
+    const num = parseFloat(value)
+    if (!isNaN(num) && value.trim() !== "") {
+      return num
+    }
+  }
+
+  return value
+}
+
+/**
+ * Format a value for display in logs
+ */
+function formatValue(value: unknown): string {
+  const normalized = normalizeValue(value)
+
+  if (normalized === null) return "null"
+  if (normalized === undefined) return "undefined"
+  if (typeof normalized === "string") return `"${normalized}"`
+  if (typeof normalized === "number") {
+    // Format numbers with up to 2 decimal places if they have decimals
+    return Number.isInteger(normalized) ? normalized.toString() : normalized.toFixed(2)
+  }
+  if (typeof normalized === "boolean") return normalized.toString()
+  if (Array.isArray(normalized)) {
+    if (normalized.length === 0) return "[]"
+    if (normalized.length <= 3) return `[${normalized.join(", ")}]`
+    return `[${normalized.slice(0, 3).join(", ")}, ... (${normalized.length} items)]`
+  }
+  return JSON.stringify(normalized)
+}
+
 const CAST_LIMIT = 30
+
+interface FieldChange {
+  field: string
+  oldValue: unknown
+  newValue: unknown
+}
 
 // Helper to update a movie's mortality stats - used by both people and movie sync
 async function updateMovieMortalityStats(
@@ -482,6 +615,7 @@ async function updateMovieMortalityStats(
   title?: string
   error?: string
   changedFields?: string[]
+  fieldChanges?: FieldChange[]
 }> {
   try {
     const pool = getPool()
@@ -542,23 +676,12 @@ async function updateMovieMortalityStats(
       mortality_surprise_score: mortalityStats.mortalitySurpriseScore,
     }
 
+    // Track what fields changed (for logging)
+    let changedFields: string[] = []
+    let fieldChanges: FieldChange[] = []
+
     // If movie exists, compare to see what changed
     if (existingMovie) {
-      const changedFields: string[] = []
-
-      // Fields we care about (important changes)
-      const importantFields = [
-        "title",
-        "release_date",
-        "release_year",
-        "poster_path",
-        "cast_count",
-        "deceased_count",
-        "living_count",
-        "expected_deaths",
-        "mortality_surprise_score",
-      ]
-
       // Check all fields for changes
       for (const field of Object.keys(newRecord) as Array<keyof MovieRecord>) {
         if (field === "tmdb_id") continue // Skip ID field
@@ -566,45 +689,45 @@ async function updateMovieMortalityStats(
         const oldValue = existingMovie[field]
         const newValue = newRecord[field]
 
+        // Normalize both values for comparison
+        const normalizedOld = normalizeValue(oldValue)
+        const normalizedNew = normalizeValue(newValue)
+
+        let hasChanged = false
+
         // Handle array comparison
-        if (Array.isArray(oldValue) && Array.isArray(newValue)) {
-          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-            changedFields.push(field)
+        if (Array.isArray(normalizedOld) && Array.isArray(normalizedNew)) {
+          if (JSON.stringify(normalizedOld) !== JSON.stringify(normalizedNew)) {
+            hasChanged = true
           }
         }
-        // Handle number comparison (with tolerance for floating point)
-        else if (typeof oldValue === "number" && typeof newValue === "number") {
-          if (Math.abs(oldValue - newValue) > 0.0001) {
-            changedFields.push(field)
+        // Handle number comparison (with tolerance matching display precision)
+        else if (typeof normalizedOld === "number" && typeof normalizedNew === "number") {
+          // Use 0.01 tolerance to match 2 decimal place display precision
+          if (Math.abs(normalizedOld - normalizedNew) > 0.01) {
+            hasChanged = true
           }
         }
         // Handle other comparisons
-        else if (oldValue !== newValue) {
+        else if (normalizedOld !== normalizedNew) {
+          hasChanged = true
+        }
+
+        if (hasChanged) {
           changedFields.push(field)
+          // Store normalized values for display
+          fieldChanges.push({ field, oldValue: normalizedOld, newValue: normalizedNew })
         }
       }
 
-      // If nothing changed, skip
+      // If nothing changed, skip the update
       if (changedFields.length === 0) {
         return {
           updated: false,
           skipped: true,
           title: `${details.title} (${releaseYear})`,
           changedFields: [],
-        }
-      }
-
-      // Check if only unimportant fields changed
-      const hasImportantChanges = changedFields.some((field) =>
-        importantFields.includes(field)
-      )
-
-      if (!hasImportantChanges) {
-        return {
-          updated: false,
-          skipped: true,
-          title: `${details.title} (${releaseYear})`,
-          changedFields,
+          fieldChanges: [],
         }
       }
     }
@@ -618,6 +741,8 @@ async function updateMovieMortalityStats(
       updated: true,
       skipped: false,
       title: `${details.title} (${releaseYear})`,
+      changedFields: existingMovie ? changedFields : undefined,
+      fieldChanges: existingMovie ? fieldChanges : undefined,
     }
   } catch (error) {
     return {
@@ -632,29 +757,42 @@ async function syncPeopleChanges(
   startDate: string,
   endDate: string,
   dryRun: boolean,
-  quiet: boolean = false
-): Promise<{ checked: number; newDeaths: number; newlyDeceasedActors: DeceasedActor[]; errors: string[] }> {
-  log(`\n=== Syncing People Changes (${startDate} to ${endDate}) ===\n`, quiet)
+  quiet: boolean = false,
+  onProgress?: ProgressCallback,
+  onLog?: (message: string) => void
+): Promise<{
+  checked: number
+  newDeaths: number
+  newlyDeceasedActors: DeceasedActor[]
+  errors: string[]
+}> {
+  log(`\n=== Syncing People Changes (${startDate} to ${endDate}) ===\n`, quiet, onLog)
 
   const errors: string[] = []
 
   // Get all actors in our database and all deceased person IDs
-  log("Loading actor IDs from database...", quiet)
+  log("Loading actor IDs from database...", quiet, onLog)
   const [actorTmdbIds, deceasedTmdbIds] = await Promise.all([
     getAllActorTmdbIds(),
     getDeceasedTmdbIds(),
   ])
-  log(`  Found ${actorTmdbIds.size} actors in actor_appearances`, quiet)
-  log(`  Found ${deceasedTmdbIds.size} deceased actors`, quiet)
+  log(`  Found ${actorTmdbIds.size} actors in actor_appearances`, quiet, onLog)
+  log(`  Found ${deceasedTmdbIds.size} deceased actors`, quiet, onLog)
 
   // Split into date ranges if needed (max 14 days per query)
   const dateRanges = getDateRanges(startDate, endDate)
-  log(`  Querying ${dateRanges.length} date range(s)`, quiet)
+  log(`  Querying ${dateRanges.length} date range(s)`, quiet, onLog)
 
   // Fetch all changed person IDs from TMDB
   const allChangedIds: number[] = []
-  for (const range of dateRanges) {
-    log(`  Fetching changes for ${range.start} to ${range.end}...`, quiet)
+  for (let i = 0; i < dateRanges.length; i++) {
+    const range = dateRanges[i]
+    onProgress?.({
+      operation: "Fetching people changes",
+      current: i,
+      total: dateRanges.length,
+    })
+    log(`  Fetching changes for ${range.start} to ${range.end}...`, quiet, onLog)
     const ids = await getAllChangedPersonIds(range.start, range.end)
     allChangedIds.push(...ids)
     await delay(100)
@@ -662,21 +800,21 @@ async function syncPeopleChanges(
 
   // Deduplicate
   const changedIds = [...new Set(allChangedIds)]
-  log(`\nFound ${changedIds.length} unique changed person IDs on TMDB`, quiet)
+  log(`\nFound ${changedIds.length} unique changed person IDs on TMDB`, quiet, onLog)
 
   // Filter to people we care about (in our database)
   const relevantIds = changedIds.filter((id) => actorTmdbIds.has(id))
-  log(`  ${relevantIds.length} are in our actor_appearances table`, quiet)
+  log(`  ${relevantIds.length} are in our actor_appearances table`, quiet, onLog)
 
   if (relevantIds.length === 0) {
-    log("\nNo relevant people changes found.", quiet)
+    log("\nNo relevant people changes found.", quiet, onLog)
     return { checked: 0, newDeaths: 0, newlyDeceasedActors: [], errors }
   }
 
   // Fetch person details from TMDB
-  log("\nFetching person details from TMDB...", quiet)
+  log("\nFetching person details from TMDB...", quiet, onLog)
   const personDetails = await batchGetPersonDetails(relevantIds, 10, 100)
-  log(`  Got details for ${personDetails.size} people`, quiet)
+  log(`  Got details for ${personDetails.size} people`, quiet, onLog)
 
   // Process each person
   let newDeaths = 0
@@ -685,14 +823,20 @@ async function syncPeopleChanges(
   const totalPeople = personDetails.size
   let processedCount = 0
 
-  log("\nProcessing people...", quiet)
+  log("\nProcessing people...", quiet, onLog)
   for (const [tmdbId, person] of personDetails) {
+    onProgress?.({
+      operation: "Processing people",
+      current: processedCount,
+      total: totalPeople,
+      currentItem: person.name,
+    })
     processedCount++
     const wasAlreadyDeceased = deceasedTmdbIds.has(tmdbId)
 
     if (person.deathday && !wasAlreadyDeceased) {
       // NEW DEATH DETECTED!
-      log(`  [NEW DEATH] ${person.name} (${person.deathday})`, quiet)
+      log(`  [NEW DEATH] ${person.name} (${person.deathday})`, quiet, onLog)
       newlyDeceasedIds.push(tmdbId)
       newlyDeceasedActors.push({
         tmdbId: tmdbId,
@@ -745,7 +889,7 @@ async function syncPeopleChanges(
   // Post-processing for newly deceased actors
   if (!dryRun && newlyDeceasedIds.length > 0) {
     // Invalidate individual actor caches
-    log(`\n=== Invalidating Actor Caches ===`, quiet)
+    log(`\n=== Invalidating Actor Caches ===`, quiet, onLog)
     log(
       `Clearing individual actor profile caches for ${newlyDeceasedIds.length} newly deceased actors...`,
       quiet
@@ -761,14 +905,11 @@ async function syncPeopleChanges(
       }
     }
     await closeRedis()
-    log(`  ✓ Cleared ${successCount} actor profile caches`, quiet)
+    log(`  ✓ Cleared ${successCount} actor profile caches`, quiet, onLog)
 
     // Recalculate mortality stats for movies
-    log(`\n=== Updating Movie Mortality Statistics ===`, quiet)
-    log(
-      `Finding movies featuring ${newlyDeceasedIds.length} newly deceased actors...`,
-      quiet
-    )
+    log(`\n=== Updating Movie Mortality Statistics ===`, quiet, onLog)
+    log(`Finding movies featuring ${newlyDeceasedIds.length} newly deceased actors...`, quiet)
     const pool = getPool()
     const { rows: affectedMovies } = await pool.query<{ movie_tmdb_id: number }>(
       `SELECT DISTINCT ama.movie_tmdb_id
@@ -868,26 +1009,34 @@ async function syncMovieChanges(
   startDate: string,
   endDate: string,
   dryRun: boolean,
-  quiet: boolean = false
+  quiet: boolean = false,
+  onProgress?: ProgressCallback,
+  onLog?: (message: string) => void
 ): Promise<{ checked: number; updated: number; skipped: number; errors: string[] }> {
-  log(`\n=== Syncing Movie Changes (${startDate} to ${endDate}) ===\n`, quiet)
+  log(`\n=== Syncing Movie Changes (${startDate} to ${endDate}) ===\n`, quiet, onLog)
 
   const errors: string[] = []
   const currentYear = new Date().getFullYear()
 
   // Get all movies in our database
-  console.log("Loading movie IDs from database...")
+  log("Loading movie IDs from database...", quiet, onLog)
   const movieTmdbIds = await getAllMovieTmdbIds()
-  console.log(`  Found ${movieTmdbIds.size} movies in database`)
+  log(`  Found ${movieTmdbIds.size} movies in database`, quiet, onLog)
 
   // Split into date ranges if needed (max 14 days per query)
   const dateRanges = getDateRanges(startDate, endDate)
-  console.log(`  Querying ${dateRanges.length} date range(s)`)
+  log(`  Querying ${dateRanges.length} date range(s)`, quiet, onLog)
 
   // Fetch all changed movie IDs from TMDB
   const allChangedIds: number[] = []
-  for (const range of dateRanges) {
-    console.log(`  Fetching changes for ${range.start} to ${range.end}...`)
+  for (let i = 0; i < dateRanges.length; i++) {
+    const range = dateRanges[i]
+    onProgress?.({
+      operation: "Fetching movie changes",
+      current: i,
+      total: dateRanges.length,
+    })
+    log(`  Fetching changes for ${range.start} to ${range.end}...`, quiet, onLog)
     const ids = await getAllChangedMovieIds(range.start, range.end)
     allChangedIds.push(...ids)
     await delay(100)
@@ -895,14 +1044,14 @@ async function syncMovieChanges(
 
   // Deduplicate
   const changedIds = [...new Set(allChangedIds)]
-  console.log(`\nFound ${changedIds.length} unique changed movie IDs on TMDB`)
+  log(`\nFound ${changedIds.length} unique changed movie IDs on TMDB`, quiet, onLog)
 
   // Filter to movies we care about (in our database)
   const relevantIds = changedIds.filter((id) => movieTmdbIds.has(id))
-  console.log(`  ${relevantIds.length} are in our movies table`)
+  log(`  ${relevantIds.length} are in our movies table`, quiet, onLog)
 
   if (relevantIds.length === 0) {
-    console.log("\nNo relevant movie changes found.")
+    log("\nNo relevant movie changes found.", quiet, onLog)
     return { checked: 0, updated: 0, skipped: 0, errors }
   }
 
@@ -912,36 +1061,40 @@ async function syncMovieChanges(
   const totalMovies = relevantIds.length
   let processedCount = 0
 
-  console.log("\nProcessing movies...")
+  log("\nProcessing movies...", quiet, onLog)
   for (const movieId of relevantIds) {
+    onProgress?.({
+      operation: "Processing movies",
+      current: processedCount,
+      total: totalMovies,
+      currentItem: `Movie ${movieId}`,
+    })
     processedCount++
 
     const result = await updateMovieMortalityStats(movieId, currentYear, dryRun)
     if (result.error) {
-      console.error(`    ${result.error}`)
+      log(`    ${result.error}`, quiet, onLog)
       errors.push(result.error)
     } else if (result.skipped && result.title) {
       skipped++
-      if (result.changedFields && result.changedFields.length > 0) {
-        console.log(
-          `    Skipped: ${result.title} (only ${result.changedFields.join(", ")} changed)`
-        )
-      } else {
-        console.log(`    Skipped: ${result.title} (no changes)`)
-      }
+      // Only skip when there are no changes at all - worth logging since it's unusual
+      log(`    Skipped: ${result.title} (no changes detected)`, quiet, onLog)
     } else if (result.updated && result.title) {
-      if (dryRun) {
-        console.log(`    Would update: ${result.title}`)
-      } else {
-        console.log(`    Updated: ${result.title}`)
-      }
       updated++
-    }
+      const prefix = dryRun ? "Would update" : "Updated"
+      log(`    ${prefix}: ${result.title}`, quiet, onLog)
 
-    // Show progress every 10 movies or at completion
-    if (processedCount % 10 === 0 || processedCount === totalMovies) {
-      const progressBar = drawProgressBar(processedCount, totalMovies)
-      console.log(`  ${progressBar}`)
+      // Show detailed field changes if available (only show if formatted values differ)
+      if (result.fieldChanges && result.fieldChanges.length > 0) {
+        for (const change of result.fieldChanges) {
+          const oldVal = formatValue(change.oldValue)
+          const newVal = formatValue(change.newValue)
+          // Only log if the formatted values actually differ
+          if (oldVal !== newVal) {
+            log(`      - ${change.field} (${oldVal} -> ${newVal})`, quiet, onLog)
+          }
+        }
+      }
     }
 
     await delay(250)
@@ -963,22 +1116,24 @@ interface ExistingEpisode {
 
 async function syncActiveShowEpisodes(
   dryRun: boolean,
-  quiet: boolean = false
+  quiet: boolean = false,
+  onProgress?: ProgressCallback,
+  onLog?: (message: string) => void
 ): Promise<{ checked: number; newEpisodes: number; errors: string[] }> {
-  log("\n=== Syncing Active TV Show Episodes ===\n", quiet)
+  log("\n=== Syncing Active TV Show Episodes ===\n", quiet, onLog)
 
   const errors: string[] = []
   const pool = getPool()
 
   // Get all active (Returning Series) shows from our database
-  console.log("Loading active shows from database...")
+  log("Loading active shows from database...", quiet, onLog)
   const { rows: activeShows } = await pool.query<ActiveShow>(
     `SELECT tmdb_id, name, number_of_seasons FROM shows WHERE status = 'Returning Series' ORDER BY popularity DESC NULLS LAST`
   )
-  console.log(`  Found ${activeShows.length} active shows`)
+  log(`  Found ${activeShows.length} active shows`, quiet, onLog)
 
   if (activeShows.length === 0) {
-    console.log("\nNo active shows to sync.")
+    log("\nNo active shows to sync.", quiet, onLog)
     return { checked: 0, newEpisodes: 0, errors }
   }
 
@@ -986,8 +1141,15 @@ async function syncActiveShowEpisodes(
   let showsChecked = 0
   const totalShows = activeShows.length
 
-  console.log("\nProcessing shows...")
+  log("\nProcessing shows...", quiet, onLog)
   for (const show of activeShows) {
+    onProgress?.({
+      operation: "Processing shows",
+      current: showsChecked,
+      total: totalShows,
+      currentItem: show.name,
+    })
+    showsChecked++
     try {
       // Get current show details from TMDB
       const showDetails = await getTVShowDetails(show.tmdb_id)
@@ -1018,7 +1180,11 @@ async function syncActiveShowEpisodes(
             const key = `${ep.season_number}-${ep.episode_number}`
             if (!existingSet.has(key)) {
               // New episode found!
-              console.log(`    NEW: ${show.name} - S${ep.season_number}E${ep.episode_number} - ${ep.name}`)
+              log(
+                `    NEW: ${show.name} - S${ep.season_number}E${ep.episode_number} - ${ep.name}`,
+                quiet,
+                onLog
+              )
 
               if (!dryRun) {
                 // Upsert season first (in case it's also new)
