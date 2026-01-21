@@ -30,6 +30,7 @@ import { getTraktStats, getTrending } from "../src/lib/trakt.js"
 import { upsertMovie } from "../src/lib/db/movies.js"
 import { upsertShow } from "../src/lib/db/shows.js"
 import type { MovieRecord, ShowRecord } from "../src/lib/db/types.js"
+import { isPermanentError } from "../src/lib/backfill-utils.js"
 
 const RATE_LIMIT_DELAY_MS = 200
 
@@ -74,15 +75,6 @@ interface MovieInfo extends MovieRecord {
 
 interface ShowInfo extends ShowRecord {
   trakt_fetch_attempts: number
-}
-
-function isPermanentError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const msg = error.message.toLowerCase()
-  if (msg.includes("404") || msg.includes("not found")) return true
-  if (msg.includes("400") || msg.includes("bad request")) return true
-  if (msg.includes("401") || msg.includes("unauthorized")) return true
-  return false
 }
 
 const program = new Command()
@@ -249,6 +241,11 @@ async function backfillMovies(
           )
           if (willMarkPermanent) permanentlyFailed++
         }
+
+        // Rate limit - apply after both success and error to respect API limits
+        if (processed < movies.length) {
+          await delay(RATE_LIMIT_DELAY_MS)
+        }
         continue
       }
 
@@ -281,11 +278,6 @@ async function backfillMovies(
 
       successful++
       consecutiveFailures = 0 // Reset circuit breaker on success
-
-      // Rate limit delay
-      if (processed < movies.length) {
-        await delay(RATE_LIMIT_DELAY_MS)
-      }
     } catch (error) {
       console.error(`  ❌ Error processing "${movie.title}"${retryLabel}:`, error)
       failed++
@@ -303,7 +295,6 @@ async function backfillMovies(
           `   Processed ${processed}/${movies.length} movies before stopping (${successful} successful, ${failed} errors)\n`
         )
 
-        const db = getPool()
         await db.end()
         process.exit(2) // Exit code 2 indicates circuit breaker trip
       }
@@ -325,6 +316,11 @@ async function backfillMovies(
 
         if (willMarkPermanent) permanentlyFailed++
       }
+    }
+
+    // Rate limit - apply after both success and error to respect API limits
+    if (processed < movies.length) {
+      await delay(RATE_LIMIT_DELAY_MS)
     }
   }
 
@@ -476,6 +472,11 @@ async function backfillShows(
           )
           if (willMarkPermanent) permanentlyFailed++
         }
+
+        // Rate limit - apply after both success and error to respect API limits
+        if (processed < shows.length) {
+          await delay(RATE_LIMIT_DELAY_MS)
+        }
         continue
       }
 
@@ -508,11 +509,6 @@ async function backfillShows(
 
       successful++
       consecutiveFailures = 0 // Reset circuit breaker on success
-
-      // Rate limit delay
-      if (processed < shows.length) {
-        await delay(RATE_LIMIT_DELAY_MS)
-      }
     } catch (error) {
       console.error(`  ❌ Error processing "${show.name}"${retryLabel}:`, error)
       failed++
@@ -530,7 +526,6 @@ async function backfillShows(
           `   Processed ${processed}/${shows.length} shows before stopping (${successful} successful, ${failed} errors)\n`
         )
 
-        const db = getPool()
         await db.end()
         process.exit(2) // Exit code 2 indicates circuit breaker trip
       }
@@ -552,6 +547,11 @@ async function backfillShows(
 
         if (willMarkPermanent) permanentlyFailed++
       }
+    }
+
+    // Rate limit - apply after both success and error to respect API limits
+    if (processed < shows.length) {
+      await delay(RATE_LIMIT_DELAY_MS)
     }
   }
 

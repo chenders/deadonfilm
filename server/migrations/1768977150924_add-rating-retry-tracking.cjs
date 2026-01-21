@@ -76,7 +76,7 @@ exports.up = (pgm) => {
 
   pgm.createIndex("movies", ["popularity_last_fetch_attempt"], {
     name: "idx_movies_popularity_retry",
-    where: "popularity_permanently_failed = false AND popularity_fetch_attempts < 3",
+    where: "popularity IS NULL AND popularity_permanently_failed = false AND popularity_fetch_attempts < 3",
   })
 
   // ============================================================

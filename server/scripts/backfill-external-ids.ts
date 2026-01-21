@@ -32,6 +32,7 @@ import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool, updateShowExternalIds } from "../src/lib/db.js"
 import { getExternalIds } from "../src/lib/episode-data-source.js"
+import { isPermanentError } from "../src/lib/backfill-utils.js"
 
 const RATE_LIMIT_DELAY_MS = 200
 
@@ -52,15 +53,6 @@ interface ShowInfo {
   tvmaze_id: number | null
   thetvdb_id: number | null
   external_ids_fetch_attempts: number
-}
-
-function isPermanentError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const msg = error.message.toLowerCase()
-  if (msg.includes("404") || msg.includes("not found")) return true
-  if (msg.includes("400") || msg.includes("bad request")) return true
-  if (msg.includes("401") || msg.includes("unauthorized")) return true
-  return false
 }
 
 const program = new Command()
@@ -170,6 +162,10 @@ async function runBackfill(options: {
     // Skip if already has both IDs
     if (show.tvmaze_id && show.thetvdb_id) {
       console.log("already has both IDs")
+      // Rate limit - apply after both success and error to respect API limits
+      if (processed < shows.length) {
+        await delay(RATE_LIMIT_DELAY_MS)
+      }
       continue
     }
 
@@ -219,11 +215,6 @@ async function runBackfill(options: {
           if (willMarkPermanent) permanentlyFailed++
         }
       }
-
-      // Rate limit delay
-      if (processed < shows.length) {
-        await delay(RATE_LIMIT_DELAY_MS)
-      }
     } catch (error) {
       errors++
       consecutiveFailures++
@@ -262,6 +253,11 @@ async function runBackfill(options: {
 
         if (willMarkPermanent) permanentlyFailed++
       }
+    }
+
+    // Rate limit - apply after both success and error to respect API limits
+    if (processed < shows.length) {
+      await delay(RATE_LIMIT_DELAY_MS)
     }
   }
 
