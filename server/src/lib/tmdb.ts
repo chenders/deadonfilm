@@ -209,9 +209,11 @@ async function tmdbFetch<T>(path: string): Promise<T> {
 
   if (!response.ok) {
     const body = await response.text()
+    // Sanitize log values to prevent log injection (remove newlines/control chars)
+    const sanitize = (str: string) => str.replace(/[\r\n\t]/g, " ").slice(0, 200)
     console.error(`TMDB Error: ${response.status} ${response.statusText}`)
-    console.error(`  URL: ${url}`)
-    console.error(`  Response: ${body}`)
+    console.error(`  URL: ${sanitize(url)}`)
+    console.error(`  Response: ${sanitize(body)}`)
     throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${path}`)
   }
 
