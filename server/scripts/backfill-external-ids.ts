@@ -69,23 +69,21 @@ const program = new Command()
   .option("-l, --limit <number>", "Limit number of shows to process", parsePositiveInt)
   .option("--missing-only", "Only process shows without external IDs")
   .option("-n, --dry-run", "Preview without writing to database")
-  .action(
-    async (options: { limit?: number; missingOnly?: boolean; dryRun?: boolean }) => {
-      if (options.dryRun) {
-        await runBackfill(options)
-      } else {
-        await withNewRelicTransaction("backfill-external-ids", async (recordMetrics) => {
-          const stats = await runBackfill(options)
-          recordMetrics({
-            recordsProcessed: stats.processed,
-            recordsUpdated: stats.updated,
-            recordsFailed: stats.permanentlyFailed,
-            errorsEncountered: stats.errors,
-          })
+  .action(async (options: { limit?: number; missingOnly?: boolean; dryRun?: boolean }) => {
+    if (options.dryRun) {
+      await runBackfill(options)
+    } else {
+      await withNewRelicTransaction("backfill-external-ids", async (recordMetrics) => {
+        const stats = await runBackfill(options)
+        recordMetrics({
+          recordsProcessed: stats.processed,
+          recordsUpdated: stats.updated,
+          recordsFailed: stats.permanentlyFailed,
+          errorsEncountered: stats.errors,
         })
-      }
+      })
     }
-  )
+  })
 
 async function runBackfill(options: {
   limit?: number

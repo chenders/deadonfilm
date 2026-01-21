@@ -75,10 +75,7 @@ const program = new Command()
   .name("orchestrate-rating-backfills")
   .description("Master orchestration script for all rating backfills")
   .option("-l, --limit <number>", "Override limit for all scripts", parsePositiveInt)
-  .option(
-    "--skip-phase <name>",
-    "Skip phase: prerequisites|omdb|trakt|thetvdb-tmdb"
-  )
+  .option("--skip-phase <name>", "Skip phase: prerequisites|omdb|trakt|thetvdb-tmdb")
   .option("-n, --dry-run", "Preview without executing")
   .option("-v, --verbose", "Show detailed script output")
   .option("--continue-on-error", "Don't stop if a script fails")
@@ -95,7 +92,16 @@ async function runScript(
   verbose: boolean
 ): Promise<ScriptResult> {
   const startTime = Date.now()
-  const scriptPath = path.join(__dirname, scriptName)
+
+  // scriptName comes from hardcoded values in phase definitions below
+  // (e.g., "backfill-movie-imdb-ids.ts"). Validate it contains no path separators
+  // to satisfy security scanners.
+  if (scriptName.includes("/") || scriptName.includes("\\") || scriptName.includes("..")) {
+    throw new Error(`Invalid script name: ${scriptName}`)
+  }
+
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
+  const scriptPath = path.resolve(__dirname, scriptName)
 
   return new Promise((resolve) => {
     console.log(`  Running: ${scriptName} ${args.join(" ")}`)
@@ -206,8 +212,14 @@ async function runOrchestration(options: OrchestrationOptions) {
     const phase1 = await runPhase(
       "Prerequisites",
       [
-        { name: "backfill-movie-imdb-ids.ts", args: [...baseArgs, ...(!options.limit ? ["--limit", "500"] : [])] },
-        { name: "backfill-external-ids.ts", args: [...baseArgs, ...(!options.limit ? ["--limit", "200"] : [])] },
+        {
+          name: "backfill-movie-imdb-ids.ts",
+          args: [...baseArgs, ...(!options.limit ? ["--limit", "500"] : [])],
+        },
+        {
+          name: "backfill-external-ids.ts",
+          args: [...baseArgs, ...(!options.limit ? ["--limit", "200"] : [])],
+        },
       ],
       options
     )
@@ -226,8 +238,14 @@ async function runOrchestration(options: OrchestrationOptions) {
     const phase2 = await runPhase(
       "OMDb Ratings",
       [
-        { name: "backfill-omdb-ratings.ts", args: [...baseArgs, "--movies-only", ...(!options.limit ? ["--limit", "200"] : [])] },
-        { name: "backfill-omdb-ratings.ts", args: [...baseArgs, "--shows-only", ...(!options.limit ? ["--limit", "100"] : [])] },
+        {
+          name: "backfill-omdb-ratings.ts",
+          args: [...baseArgs, "--movies-only", ...(!options.limit ? ["--limit", "200"] : [])],
+        },
+        {
+          name: "backfill-omdb-ratings.ts",
+          args: [...baseArgs, "--shows-only", ...(!options.limit ? ["--limit", "100"] : [])],
+        },
       ],
       options
     )
@@ -239,8 +257,14 @@ async function runOrchestration(options: OrchestrationOptions) {
     const phase3 = await runPhase(
       "Trakt Stats",
       [
-        { name: "backfill-trakt-ratings.ts", args: [...baseArgs, "--movies-only", ...(!options.limit ? ["--limit", "200"] : [])] },
-        { name: "backfill-trakt-ratings.ts", args: [...baseArgs, "--shows-only", ...(!options.limit ? ["--limit", "100"] : [])] },
+        {
+          name: "backfill-trakt-ratings.ts",
+          args: [...baseArgs, "--movies-only", ...(!options.limit ? ["--limit", "200"] : [])],
+        },
+        {
+          name: "backfill-trakt-ratings.ts",
+          args: [...baseArgs, "--shows-only", ...(!options.limit ? ["--limit", "100"] : [])],
+        },
       ],
       options
     )
@@ -252,9 +276,18 @@ async function runOrchestration(options: OrchestrationOptions) {
     const phase4 = await runPhase(
       "TheTVDB & TMDB",
       [
-        { name: "backfill-thetvdb-scores.ts", args: [...baseArgs, ...(!options.limit ? ["--limit", "200"] : [])] },
-        { name: "backfill-movie-popularity.ts", args: [...baseArgs, ...(!options.limit ? ["--limit", "500"] : [])] },
-        { name: "backfill-actor-details.ts", args: [...baseArgs, ...(!options.limit ? ["--limit", "200"] : [])] },
+        {
+          name: "backfill-thetvdb-scores.ts",
+          args: [...baseArgs, ...(!options.limit ? ["--limit", "200"] : [])],
+        },
+        {
+          name: "backfill-movie-popularity.ts",
+          args: [...baseArgs, ...(!options.limit ? ["--limit", "500"] : [])],
+        },
+        {
+          name: "backfill-actor-details.ts",
+          args: [...baseArgs, ...(!options.limit ? ["--limit", "200"] : [])],
+        },
       ],
       options
     )

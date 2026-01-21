@@ -68,23 +68,21 @@ const program = new Command()
     parseNonNegativeNumber
   )
   .option("-n, --dry-run", "Preview without writing to database")
-  .action(
-    async (options: { limit?: number; minPopularity?: number; dryRun?: boolean }) => {
-      if (options.dryRun) {
-        await runBackfill(options)
-      } else {
-        await withNewRelicTransaction("backfill-movie-imdb-ids", async (recordMetrics) => {
-          const stats = await runBackfill(options)
-          recordMetrics({
-            recordsProcessed: stats.processed,
-            recordsUpdated: stats.updated,
-            recordsFailed: stats.failed,
-            errorsEncountered: stats.errors,
-          })
+  .action(async (options: { limit?: number; minPopularity?: number; dryRun?: boolean }) => {
+    if (options.dryRun) {
+      await runBackfill(options)
+    } else {
+      await withNewRelicTransaction("backfill-movie-imdb-ids", async (recordMetrics) => {
+        const stats = await runBackfill(options)
+        recordMetrics({
+          recordsProcessed: stats.processed,
+          recordsUpdated: stats.updated,
+          recordsFailed: stats.failed,
+          errorsEncountered: stats.errors,
         })
-      }
+      })
     }
-  )
+  })
 
 async function runBackfill(options: {
   limit?: number
@@ -151,9 +149,7 @@ async function runBackfill(options: {
     processed++
     const attemptNum = movie.external_ids_fetch_attempts + 1
     const retryLabel = attemptNum > 1 ? ` (retry ${attemptNum})` : ""
-    process.stdout.write(
-      `[${processed}/${movies.length}] ${movie.title}${retryLabel}... `
-    )
+    process.stdout.write(`[${processed}/${movies.length}] ${movie.title}${retryLabel}... `)
 
     try {
       const externalIds = await getMovieExternalIds(movie.tmdb_id)
@@ -190,9 +186,7 @@ async function runBackfill(options: {
             failed++
           }
         }
-        console.log(
-          `no IMDb ID found${attemptNum >= 3 ? " - marking permanently failed" : ""}`
-        )
+        console.log(`no IMDb ID found${attemptNum >= 3 ? " - marking permanently failed" : ""}`)
       }
 
       // Rate limit delay
