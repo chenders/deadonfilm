@@ -298,29 +298,30 @@ export async function getSourcePerformanceStats(
   let paramIndex = 1
 
   if (startDate) {
-    conditions.push(`era.created_at >= $${paramIndex}`)
+    conditions.push(`er.started_at >= $${paramIndex}`)
     params.push(startDate)
     paramIndex++
   }
 
   if (endDate) {
-    conditions.push(`era.created_at <= $${paramIndex}`)
+    conditions.push(`er.started_at <= $${paramIndex}`)
     params.push(endDate)
     paramIndex++
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
 
-  // This query unnests the sources_attempted array and aggregates statistics
+  // This query extracts sources from jsonb array and aggregates statistics
   const result = await pool.query<SourcePerformanceStats>(
     `
     WITH source_attempts AS (
       SELECT
-        unnest(era.sources_attempted::text[]) AS source,
+        jsonb_array_elements_text(era.sources_attempted) AS source,
         era.winning_source,
         era.cost_usd,
         era.processing_time_ms
       FROM enrichment_run_actors era
+      JOIN enrichment_runs er ON era.run_id = er.id
       ${whereClause}
     )
     SELECT
@@ -356,7 +357,7 @@ export async function getRunSourcePerformanceStats(
     `
     WITH source_attempts AS (
       SELECT
-        unnest(era.sources_attempted::text[]) AS source,
+        jsonb_array_elements_text(era.sources_attempted) AS source,
         era.winning_source,
         era.cost_usd,
         era.processing_time_ms
