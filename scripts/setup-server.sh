@@ -594,24 +594,25 @@ The runner configuration is now version controlled in the repository.
 
 To set up runners:
 
-1. Copy docker-compose.runners.yml from the repo to this directory:
-   cp /path/to/repo/docker-compose.runners.yml docker-compose.yml
+1. Clone or pull the latest version of the repository to the server
+   (e.g., in /home/deploy/deadonfilm or wherever you manage the code)
 
-2. Copy .env.runners.example from the repo:
-   cp /path/to/repo/.env.runners.example .env.example
+2. Copy docker-compose.runners.yml from the repo to this directory:
+   cp /home/deploy/deadonfilm/docker-compose.runners.yml docker-compose.yml
+   (Replace /home/deploy/deadonfilm with your actual repo path)
 
-3. Create .env from the example:
+3. Copy .env.runners.example from the repo:
+   cp /home/deploy/deadonfilm/.env.runners.example .env.example
+
+4. Create .env from the example:
    cp .env.example .env
 
-4. Edit .env and add your GitHub Personal Access Token:
+5. Edit .env and add your GitHub Personal Access Token:
    - Go to GitHub Settings → Developer settings → Personal access tokens
    - Create a fine-grained token with "Administration" permission for the repo
    - Set ACCESS_TOKEN in .env
 
-5. Start the runners (default: 4 runners):
-   docker compose up -d
-
-6. Enable the systemd service:
+6. After completing steps 1–5, enable and start the systemd service so runners start automatically on boot:
    sudo systemctl enable github-runners
    sudo systemctl start github-runners
 
