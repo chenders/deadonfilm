@@ -209,8 +209,10 @@ async function tmdbFetch<T>(path: string): Promise<T> {
 
   if (!response.ok) {
     const body = await response.text()
-    // Sanitize log values to prevent log injection (remove newlines/control chars)
-    const sanitize = (str: string) => str.replace(/[\r\n\t]/g, " ").slice(0, 200)
+    // Sanitize log values to prevent log injection (strip full ASCII control range)
+    // Remove: \x00-\x1F (C0 control chars including CR/LF/TAB/etc) and \x7F (DEL)
+    // eslint-disable-next-line no-control-regex
+    const sanitize = (str: string) => str.replace(/[\x00-\x1F\x7F]/g, " ").slice(0, 200)
     console.error(`TMDB Error: ${response.status} ${response.statusText}`)
     console.error(`  URL: ${sanitize(url)}`)
     console.error(`  Response: ${sanitize(body)}`)
@@ -313,12 +315,14 @@ export async function getMovieChanges(
  * @param startDate - Start date in YYYY-MM-DD format (max 14 days before endDate)
  * @param endDate - End date in YYYY-MM-DD format
  * @param delayMs - Delay between page requests to respect API rate limits (default 50ms)
+ * @param logger - Optional logger callback for progress messages (defaults to console.log)
  * @returns Array of TMDB person IDs that changed in the date range
  */
 export async function getAllChangedPersonIds(
   startDate: string,
   endDate: string,
-  delayMs: number = 50
+  delayMs: number = 50,
+  logger: (message: string) => void = console.log
 ): Promise<number[]> {
   const ids: number[] = []
   let page = 1
@@ -332,12 +336,12 @@ export async function getAllChangedPersonIds(
     // Log progress on first page and every 50 pages
     if (page === 1) {
       const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
-      console.log(
+      logger(
         `  Fetching ${effectiveMaxPages.toLocaleString()} page(s) (${response.total_results.toLocaleString()} total results)${totalPages > MAX_PAGES ? ` - capped at ${MAX_PAGES}` : ""}`
       )
     } else if (page % 50 === 0) {
       const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
-      console.log(
+      logger(
         `  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`
       )
     }
@@ -350,7 +354,7 @@ export async function getAllChangedPersonIds(
 
     // TMDB has a hard limit of 500 pages
     if (page > MAX_PAGES) {
-      console.warn(
+      logger(
         `Warning: Reached TMDB page limit (${MAX_PAGES}). Total pages: ${totalPages}. Some results may be missing.`
       )
       break
@@ -365,12 +369,14 @@ export async function getAllChangedPersonIds(
  * @param startDate - Start date in YYYY-MM-DD format (max 14 days before endDate)
  * @param endDate - End date in YYYY-MM-DD format
  * @param delayMs - Delay between page requests to respect API rate limits (default 50ms)
+ * @param logger - Optional logger callback for progress messages (defaults to console.log)
  * @returns Array of TMDB movie IDs that changed in the date range
  */
 export async function getAllChangedMovieIds(
   startDate: string,
   endDate: string,
-  delayMs: number = 50
+  delayMs: number = 50,
+  logger: (message: string) => void = console.log
 ): Promise<number[]> {
   const ids: number[] = []
   let page = 1
@@ -384,12 +390,12 @@ export async function getAllChangedMovieIds(
     // Log progress on first page and every 50 pages
     if (page === 1) {
       const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
-      console.log(
+      logger(
         `  Fetching ${effectiveMaxPages.toLocaleString()} page(s) (${response.total_results.toLocaleString()} total results)${totalPages > MAX_PAGES ? ` - capped at ${MAX_PAGES}` : ""}`
       )
     } else if (page % 50 === 0) {
       const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
-      console.log(
+      logger(
         `  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`
       )
     }
@@ -402,7 +408,7 @@ export async function getAllChangedMovieIds(
 
     // TMDB has a hard limit of 500 pages
     if (page > MAX_PAGES) {
-      console.warn(
+      logger(
         `Warning: Reached TMDB page limit (${MAX_PAGES}). Total pages: ${totalPages}. Some results may be missing.`
       )
       break

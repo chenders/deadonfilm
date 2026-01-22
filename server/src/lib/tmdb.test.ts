@@ -13,14 +13,22 @@ import {
 } from "./tmdb.js"
 
 describe("TMDB Changes API", () => {
+  let consoleLogSpy: ReturnType<typeof vi.spyOn>
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     vi.clearAllMocks()
     // Set the required environment variable
     process.env.TMDB_API_TOKEN = "test-token"
+    // Mock console to keep test output clean
+    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
   })
 
   afterEach(() => {
     delete process.env.TMDB_API_TOKEN
+    consoleLogSpy.mockRestore()
+    consoleWarnSpy.mockRestore()
   })
 
   describe("getPersonChanges", () => {
@@ -171,7 +179,7 @@ describe("TMDB Changes API", () => {
     })
 
     it("stops at page 500 limit when total_pages exceeds 500", async () => {
-      // Mock 3 pages of results, but claim there are 600 total pages
+      // Mock 500 pages of results, but claim there are 600 total pages
       const mockPage = (page: number) => ({
         results: [{ id: page, adult: false }],
         page,

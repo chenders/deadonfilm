@@ -65,7 +65,7 @@ export interface CLIStatusBarConfig {
 }
 
 export interface CLIStatusBarState {
-  /** Current item being processed (0-based index) */
+  /** Current item number (1-based, represents which item is being processed, not a 0-based index) */
   current: number
   /** Description of current item (e.g., "Processing chunk 5") */
   currentItem: string | null

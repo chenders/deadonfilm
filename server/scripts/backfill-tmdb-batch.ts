@@ -51,8 +51,14 @@ function delay(ms: number): Promise<void> {
 
 /**
  * Wait for user to press Enter
+ * Skips prompt in non-interactive mode (e.g., when running in cron)
  */
 async function waitForEnter(message: string = "Press Enter to continue..."): Promise<void> {
+  // Skip prompt if stdin is not a TTY (non-interactive mode)
+  if (!process.stdin.isTTY) {
+    return
+  }
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
