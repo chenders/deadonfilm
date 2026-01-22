@@ -1,3 +1,5 @@
 .browser-profile-firefox
 .browser-profile-chrome
 .serena
+.backfill-checkpoint
+scripts/.backfill-tmdb-checkpoint
