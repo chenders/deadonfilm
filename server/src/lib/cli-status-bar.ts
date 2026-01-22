@@ -38,7 +38,6 @@ const BOLD = `${ESC}1m`
 const DIM = `${ESC}2m`
 
 // Foreground colors
-const FG_YELLOW = `${ESC}33m`
 const FG_CYAN = `${ESC}36m`
 const FG_WHITE = `${ESC}37m`
 
@@ -401,12 +400,22 @@ export class CLIStatusBar {
       itemVisibleLen = 1 + this.state.currentItem.length
     }
 
-    // Current operation indicator
-    let operationDisplay = ""
-    let operationVisibleLen = 0
-    if (this.state.currentOperation) {
-      operationDisplay = ` ${DIM}${FG_YELLOW}→${RESET} ${FG_YELLOW}${this.state.currentOperation}${RESET}`
-      operationVisibleLen = 3 + this.state.currentOperation.length
+    // By-item metrics (e.g., "[123 checked, 5 deaths]")
+    let metricsDisplay = ""
+    let metricsVisibleLen = 0
+    if (this.config.metrics) {
+      const metricParts: string[] = []
+      for (const metric of this.config.metrics) {
+        const value = this.state.metrics[metric] || 0
+        if (value > 0) {
+          metricParts.push(`${value.toLocaleString()} ${metric}`)
+        }
+      }
+      if (metricParts.length > 0) {
+        const metricsText = metricParts.join(", ")
+        metricsDisplay = ` ${FG_CYAN}[${RESET}${FG_WHITE}${metricsText}${FG_CYAN}]${RESET}`
+        metricsVisibleLen = 3 + metricsText.length // space + [ + text + ]
+      }
     }
 
     // === Build right section ===
@@ -422,7 +431,7 @@ export class CLIStatusBar {
     const rightVisibleLen = percentVisibleLen
 
     // === Calculate available space for item name ===
-    const fixedLen = progressVisibleLen + operationVisibleLen + rightVisibleLen + 4
+    const fixedLen = progressVisibleLen + metricsVisibleLen + rightVisibleLen + 4
     const availableForItem = width - fixedLen
 
     // Truncate item name if needed
@@ -436,8 +445,8 @@ export class CLIStatusBar {
     }
 
     // === Build the full line ===
-    const leftSection = `${progressDisplay}${itemDisplay}${operationDisplay}`
-    const leftVisibleLen = progressVisibleLen + itemVisibleLen + operationVisibleLen
+    const leftSection = `${progressDisplay}${itemDisplay}${metricsDisplay}`
+    const leftVisibleLen = progressVisibleLen + itemVisibleLen + metricsVisibleLen
 
     // Calculate padding between left and right sections
     const paddingLen = Math.max(1, width - leftVisibleLen - rightVisibleLen)
