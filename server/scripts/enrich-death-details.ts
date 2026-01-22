@@ -93,6 +93,9 @@ const SITE_URL = process.env.SITE_URL || "https://deadonfilm.com"
 const SEPARATOR_WIDTH = 60
 const ESTIMATED_CLAUDE_COST_PER_ACTOR = 0.07
 
+// JSONB array index for appending errors (PostgreSQL jsonb_set uses large index to append)
+const ERROR_APPEND_INDEX = 999999
+
 function parsePositiveInt(value: string): number {
   if (!/^\d+$/.test(value)) {
     throw new InvalidArgumentError("Must be a positive integer")
@@ -181,50 +184,50 @@ async function updateRunProgress(
   const db = getPool()
 
   try {
-    const setClauses: string[] = []
-    const values: unknown[] = []
-    let paramIndex = 1
+    // Execute individual UPDATE statements to avoid SQL string interpolation
+    // This fully complies with the "NEVER Use String Interpolation in SQL" guideline
 
     if (updates.currentActorIndex !== undefined) {
-      setClauses.push(`current_actor_index = $${paramIndex++}`)
-      values.push(updates.currentActorIndex)
+      await db.query(`UPDATE enrichment_runs SET current_actor_index = $1 WHERE id = $2`, [
+        updates.currentActorIndex,
+        runId,
+      ])
     }
 
     if (updates.currentActorName !== undefined) {
-      setClauses.push(`current_actor_name = $${paramIndex++}`)
-      values.push(updates.currentActorName)
+      await db.query(`UPDATE enrichment_runs SET current_actor_name = $1 WHERE id = $2`, [
+        updates.currentActorName,
+        runId,
+      ])
     }
 
     if (updates.actorsQueried !== undefined) {
-      setClauses.push(`actors_queried = $${paramIndex++}`)
-      values.push(updates.actorsQueried)
+      await db.query(`UPDATE enrichment_runs SET actors_queried = $1 WHERE id = $2`, [
+        updates.actorsQueried,
+        runId,
+      ])
     }
 
     if (updates.actorsProcessed !== undefined) {
-      setClauses.push(`actors_processed = $${paramIndex++}`)
-      values.push(updates.actorsProcessed)
+      await db.query(`UPDATE enrichment_runs SET actors_processed = $1 WHERE id = $2`, [
+        updates.actorsProcessed,
+        runId,
+      ])
     }
 
     if (updates.actorsEnriched !== undefined) {
-      setClauses.push(`actors_enriched = $${paramIndex++}`)
-      values.push(updates.actorsEnriched)
+      await db.query(`UPDATE enrichment_runs SET actors_enriched = $1 WHERE id = $2`, [
+        updates.actorsEnriched,
+        runId,
+      ])
     }
 
     if (updates.totalCostUsd !== undefined) {
-      setClauses.push(`total_cost_usd = $${paramIndex++}`)
-      values.push(updates.totalCostUsd)
+      await db.query(`UPDATE enrichment_runs SET total_cost_usd = $1 WHERE id = $2`, [
+        updates.totalCostUsd,
+        runId,
+      ])
     }
-
-    if (setClauses.length === 0) return
-
-    values.push(runId)
-
-    await db.query(
-      `UPDATE enrichment_runs
-       SET ${setClauses.join(", ")}
-       WHERE id = $${paramIndex}`,
-      values
-    )
   } catch (error) {
     console.error("Failed to update run progress:", error)
     // Don't throw - we don't want to crash the enrichment if progress tracking fails
@@ -767,12 +770,25 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       process.exit(0)
     }
 
-    // Run enrichment
+    // Run enrichment - process actors one by one to enable progress tracking
     let results = new Map<number, Awaited<ReturnType<typeof orchestrator.enrichActor>>>()
     let costLimitReached = false
 
     try {
-      results = await orchestrator.enrichBatch(actorsToEnrich)
+      // Process actors individually to update progress in real-time
+      for (let i = 0; i < actorsToEnrich.length; i++) {
+        const actor = actorsToEnrich[i]
+
+        // Update progress before processing each actor
+        await updateRunProgress(runId, {
+          currentActorIndex: i + 1,
+          currentActorName: actor.name,
+        })
+
+        // Enrich this actor
+        const enrichment = await orchestrator.enrichActor(actor)
+        results.set(actor.id, enrichment)
+      }
     } catch (error) {
       if (error instanceof CostLimitExceededError) {
         console.log(`\n${"!".repeat(SEPARATOR_WIDTH)}`)
@@ -780,7 +796,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         console.log(`Limit: $${error.limit}, Current: $${error.currentCost.toFixed(4)}`)
         console.log(`${"!".repeat(SEPARATOR_WIDTH)}`)
         costLimitReached = true
-        // Note: partial results were already processed by the orchestrator before throwing
+        // Note: partial results were already collected in the results map
         newrelic.recordCustomEvent("DeathEnrichmentCostLimitReached", {
           limitType: error.limitType,
           limit: error.limit,
@@ -1047,7 +1063,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
                current_actor_name = NULL,
                errors = jsonb_set(
                  COALESCE(errors, '[]'::jsonb),
-                 '{999999}',
+                 '{${ERROR_APPEND_INDEX}}',
                  to_jsonb($2::text)
                )
            WHERE id = $1`,
@@ -1134,7 +1150,11 @@ const program = new Command()
   .option("--ignore-cache", "Ignore cached responses and make fresh requests to all sources")
   .option("-y, --yes", "Skip confirmation prompt")
   // Progress tracking option (used when spawned from admin UI)
-  .option("--run-id <number>", "Enrichment run ID for progress tracking", parsePositiveInt)
+  .option(
+    "--run-id <number>",
+    "Enrichment run ID for progress tracking (primarily for internal/admin UI use; typically not set manually)",
+    parsePositiveInt
+  )
   .action(async (options) => {
     await enrichMissingDetails({
       limit: options.limit,
