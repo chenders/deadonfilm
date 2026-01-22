@@ -46,31 +46,50 @@ services:
     env_file:
       - .env
     volumes:
-      # Mount Docker socket for building images in CI
+      # Mount Docker socket for building images in CI.
+      # SECURITY WARNING:
+      #   - This gives runner containers full control over the host Docker daemon
+      #     (and, transitively, the host itself).
+      #   - NEVER allow untrusted or unreviewed code to run on these runners.
+      #   - Ensure GitHub branch protection and workflow approval settings are
+      #     configured so that:
+      #       * PRs from forks/untrusted contributors require review/approval
+      #         before workflows run on these self-hosted runners.
+      #       * Only trusted branches and workflows can target this runner group.
       - /var/run/docker.sock:/var/run/docker.sock
-      # Each container gets its own anonymous volume for work directory
-      - /tmp/github-runner
-      # Mount app directory (read-only) for accessing scripts
+      # Mount app directory (read-only) for accessing scripts from the repository.
+      # SECURITY NOTE:
+      # - Runners need read-only access to the full repo so CI jobs can run project
+      #   scripts (e.g. npm scripts, tooling, and helper scripts) directly from source.
+      # - Do NOT store secrets or .env files in /opt/deadonfilm; runner secrets are
+      #   provided via the separate /opt/github-runners/.env file configured above.
+      # - Because this mount is read-only, runners cannot modify application code,
+      #   but they can read any files present in this directory.
       - /opt/deadonfilm:/opt/deadonfilm:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Disable SELinux labeling for this container because it mounts the host
+    # Docker socket and needs to start sibling containers/build images. On
+    # SELinux-enforcing hosts, this avoids permission denials when the runner
+    # interacts with Docker on the host. Review before tightening security.
     security_opt:
       - label:disable
-    # Use tmpfs for /tmp to reduce disk I/O during builds
+    # Use RAM-backed /tmp (via tmpfs) for the runner work directory to reduce disk I/O during builds
     tmpfs:
       - /tmp:size=2G
     deploy:
       # Default to 4 runners (override with --scale)
-      # Total resources: ~10GB RAM, ~15 CPU cores (25% more than previous 2-runner setup)
+      # Max potential usage if all runners hit limits: ~18GB RAM (10GB container + 8GB tmpfs), ~15 CPU cores (25% more than previous 2-runner setup)
       replicas: 4
       resources:
         limits:
-          # 2.5GB per runner = 10GB total for 4 runners (vs 8GB for 2 previously)
+          # Limit: up to 2.5GB RAM per runner (up to ~10GB total if 4 runners are all at their limit; previously 8GB for 2)
+          # Note: Plus 2GB tmpfs per runner (~8GB total for tmpfs) allocated separately from container memory
           memory: 2560M
-          # 3.75 cores per runner = 15 cores total (vs 12 for 2 previously)
+          # Limit: up to 3.75 CPU cores per runner (up to ~15 cores total if 4 runners are all at their limit; previously 12 for 2)
           cpus: '3.75'
         reservations:
-          # Reserve minimum resources per runner
+          # Guaranteed minimum resources reserved per runner (scheduler target, not hard cap)
           memory: 640M
           cpus: '1.25'
     logging:
