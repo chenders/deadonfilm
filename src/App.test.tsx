@@ -138,4 +138,24 @@ describe("App", () => {
       })
     })
   })
+
+  describe("admin routes", () => {
+    it("redirects /admin to /admin/dashboard", async () => {
+      // Mock the fetch call for auth status
+      globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ authenticated: false }),
+        } as Response)
+      )
+
+      renderApp("/admin")
+
+      // Should redirect to /admin/dashboard, which then redirects to /admin/login
+      // since the user is not authenticated
+      await waitFor(() => {
+        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+      })
+    })
+  })
 })
