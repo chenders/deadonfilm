@@ -84,11 +84,18 @@ app.use(cookieParser()) // Parse cookies for admin authentication
 // codeql[js/missing-rate-limiting] - This middleware only sets a flag; actual rate limiting applied per-route
 app.use(optionalAdminAuth)
 
+// Rate limiting configuration constants
+const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+const API_RATE_LIMIT = 100 // General API requests per minute
+const HEAVY_ENDPOINT_LIMIT = 10 // Heavy endpoints (sitemap, etc) per minute
+const ADMIN_LOGIN_LIMIT = 5 // Login attempts per minute
+const ADMIN_ROUTES_LIMIT = 200 // Admin routes requests per minute
+
 // Rate limiting to protect against abuse
 // General API rate limit: 100 requests per minute per IP (skips authenticated admins)
 const apiLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  limit: 100,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: API_RATE_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
@@ -97,8 +104,8 @@ const apiLimiter = rateLimit({
 
 // Stricter rate limit for heavy endpoints (sitemap, etc): 10 requests per minute (skips admins)
 const heavyEndpointLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  limit: 10,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: HEAVY_ENDPOINT_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
@@ -107,8 +114,8 @@ const heavyEndpointLimiter = rateLimit({
 
 // Admin login rate limit: 5 attempts per minute to prevent brute force
 const adminLoginLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  limit: 5,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: ADMIN_LOGIN_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many login attempts, please try again later" } },
@@ -116,8 +123,8 @@ const adminLoginLimiter = rateLimit({
 
 // General admin routes rate limit: 200 requests per minute (more permissive for authenticated admins)
 const adminRoutesLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  limit: 200,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: ADMIN_ROUTES_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
@@ -246,9 +253,10 @@ app.get("/api/movies/genres", getGenreCategoriesHandler)
 app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
 
 // Admin routes (authentication not required for login, but required for other endpoints)
+// codeql[js/missing-rate-limiting] - All admin routes have appropriate rate limiting
 app.post("/admin/api/auth/login", adminLoginLimiter, loginHandler)
 app.post("/admin/api/auth/logout", adminRoutesLimiter, logoutHandler)
-app.get("/admin/api/auth/status", adminRoutesLimiter, adminAuthMiddleware, statusHandler)
+app.get("/admin/api/auth/status", adminRoutesLimiter, optionalAdminAuth, statusHandler)
 app.get("/admin/api/dashboard/stats", adminRoutesLimiter, adminAuthMiddleware, getDashboardStats)
 
 // TV Show routes
