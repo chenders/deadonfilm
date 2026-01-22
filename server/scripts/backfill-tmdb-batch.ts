@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import newrelic from "newrelic"
 /**
- * Batch backfill TMDB sync in configurable chunks with resumption
+ * Batch backfill TMDB sync in configurable batches with resumption
  *
  * This script runs the TMDB sync in intervals across a date range,
  * with automatic checkpoint/resumption if interrupted.
@@ -13,7 +13,7 @@ import newrelic from "newrelic"
  *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21
  *   npm run backfill:tmdb -- --start-date 2024-06-01 --end-date 2024-12-31 --dry-run
  *   npm run backfill:tmdb -- --start-date 2025-01-01 --end-date 2025-12-31 --people-only
- *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --chunk-size 7
+ *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --batch-size 7
  *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --checkpoint-frequency 10
  *   npm run backfill:tmdb -- --start-date 2026-01-01 --end-date 2026-01-21 --reset
  */
@@ -31,7 +31,7 @@ const SITE_URL = process.env.SITE_URL || "https://deadonfilm.com"
 
 const CHECKPOINT_FILE = "./scripts/.backfill-tmdb-checkpoint"
 
-interface ChunkSummary {
+interface BatchSummary {
   peopleChecked: number
   newDeathsFound: number
   newlyDeceasedActors: Array<{ tmdbId: number; name: string; deathday: string }>
@@ -97,37 +97,37 @@ async function clearCheckpoint(): Promise<void> {
 }
 
 /**
- * Generate chunks from date range
+ * Generate batches from date range
  * @param startDate - Start date in YYYY-MM-DD format
  * @param endDate - End date in YYYY-MM-DD format
- * @param chunkSize - Number of days per chunk (default: 2)
+ * @param batchSize - Number of days per batch (default: 2)
  */
-function generateChunks(
+function generateBatches(
   startDate: string,
   endDate: string,
-  chunkSize: number = 2
+  batchSize: number = 2
 ): Array<{ start: string; end: string }> {
-  const chunks: Array<{ start: string; end: string }> = []
+  const batches: Array<{ start: string; end: string }> = []
   const start = new Date(startDate)
   const end = new Date(endDate)
 
   const current = new Date(start)
 
   while (current <= end) {
-    const chunkStart = formatDate(current)
-    const chunkEndDate = new Date(current)
-    chunkEndDate.setDate(chunkEndDate.getDate() + chunkSize - 1)
+    const batchStart = formatDate(current)
+    const batchEndDate = new Date(current)
+    batchEndDate.setDate(batchEndDate.getDate() + batchSize - 1)
 
     // Don't go past the end date
-    const chunkEnd = chunkEndDate > end ? formatDate(end) : formatDate(chunkEndDate)
+    const batchEnd = batchEndDate > end ? formatDate(end) : formatDate(batchEndDate)
 
-    chunks.push({ start: chunkStart, end: chunkEnd })
+    batches.push({ start: batchStart, end: batchEnd })
 
-    // Move to next chunk
-    current.setDate(current.getDate() + chunkSize)
+    // Move to next batch
+    current.setDate(current.getDate() + batchSize)
   }
 
-  return chunks
+  return batches
 }
 
 /**
@@ -149,13 +149,13 @@ function getModeName(mode: SyncMode): string {
  */
 async function runModeBackfill(
   mode: SyncMode,
-  chunks: Array<{ start: string; end: string }>,
+  batches: Array<{ start: string; end: string }>,
   dryRun: boolean,
-  resumeFromChunk: number,
+  resumeFromBatch: number,
   checkpointFrequency: number
-): Promise<ChunkSummary> {
+): Promise<BatchSummary> {
   const modeName = getModeName(mode)
-  const totalChunks = chunks.length
+  const totalBatches = batches.length
 
   // Setup status bar metrics based on mode
   let metrics: string[] = []
@@ -172,13 +172,13 @@ async function runModeBackfill(
   }
 
   // Get overall date range for header
-  const overallStart = chunks[0].start
-  const overallEnd = chunks[chunks.length - 1].end
+  const overallStart = batches[0].start
+  const overallEnd = batches[batches.length - 1].end
 
   // Initialize status bar
   const statusBar = new CLIStatusBar({
-    totalItems: totalChunks,
-    itemLabel: "chunks",
+    totalItems: totalBatches,
+    itemLabel: "batches",
     metrics,
     mode: modeName,
     header: `Backfilling ${modeName}: ${overallStart} to ${overallEnd}`,
@@ -187,13 +187,13 @@ async function runModeBackfill(
   console.log("\n" + "=".repeat(60))
   console.log(`BACKFILLING ${modeName.toUpperCase()}`)
   console.log("=".repeat(60))
-  console.log(`Total chunks: ${totalChunks}`)
-  if (resumeFromChunk > 0) {
-    console.log(`Resuming from chunk ${resumeFromChunk + 1}`)
+  console.log(`Total batches: ${totalBatches}`)
+  if (resumeFromBatch > 0) {
+    console.log(`Resuming from batch ${resumeFromBatch + 1}`)
   }
   console.log("")
 
-  const summary: ChunkSummary = {
+  const summary: BatchSummary = {
     peopleChecked: 0,
     newDeathsFound: 0,
     newlyDeceasedActors: [],
@@ -213,20 +213,20 @@ async function runModeBackfill(
   statusBar.start()
 
   try {
-    for (let i = resumeFromChunk; i < totalChunks; i++) {
-      const chunk = chunks[i]
-      const chunkNum = i + 1
+    for (let i = resumeFromBatch; i < totalBatches; i++) {
+      const batch = batches[i]
+      const batchNum = i + 1
 
-      // Update status bar for this chunk
+      // Update status bar for this batch
       statusBar.update({
-        current: chunkNum,
-        currentItem: `${chunk.start} to ${chunk.end}`,
+        current: batchNum,
+        currentItem: `${batch.start} to ${batch.end}`,
       })
 
-      // Run sync for this chunk with progress callbacks
+      // Run sync for this batch with progress callbacks
       const result = await runSync({
-        startDate: chunk.start,
-        endDate: chunk.end,
+        startDate: batch.start,
+        endDate: batch.end,
         dryRun,
         peopleOnly: mode === "people",
         moviesOnly: mode === "movies",
@@ -274,19 +274,19 @@ async function runModeBackfill(
       }
       statusBar.update({ metrics: metricsUpdate })
 
-      // Log newly deceased actors for this chunk
+      // Log newly deceased actors for this batch
       if (result.newlyDeceasedActors.length > 0) {
         for (const actor of result.newlyDeceasedActors) {
           statusBar.log(`  ✝️  ${actor.name} (${actor.deathday})`)
         }
       }
 
-      // Record New Relic event for chunk completion
-      newrelic.recordCustomEvent("BackfillChunkCompleted", {
+      // Record New Relic event for batch completion
+      newrelic.recordCustomEvent("BackfillBatchCompleted", {
         mode: modeName,
-        chunkNumber: chunkNum,
-        totalChunks: totalChunks,
-        dateRange: `${chunk.start} to ${chunk.end}`,
+        batchNumber: batchNum,
+        totalBatches: totalBatches,
+        dateRange: `${batch.start} to ${batch.end}`,
         peopleChecked: result.peopleChecked,
         newDeathsFound: result.newDeathsFound,
         moviesChecked: result.moviesChecked,
@@ -297,20 +297,20 @@ async function runModeBackfill(
       })
 
       // Track items processed and checkpoint based on frequency
-      const itemsInChunk = result.peopleChecked + result.moviesChecked + result.showsChecked
-      itemsSinceLastCheckpoint += itemsInChunk
+      const itemsInBatch = result.peopleChecked + result.moviesChecked + result.showsChecked
+      itemsSinceLastCheckpoint += itemsInBatch
 
-      // Save checkpoint if we've processed enough items (at chunk boundaries)
+      // Save checkpoint if we've processed enough items (at batch boundaries)
       const shouldCheckpoint = itemsSinceLastCheckpoint >= nextCheckpointThreshold
-      if (shouldCheckpoint && i < totalChunks - 1) {
-        const nextChunk = chunks[i + 1]
-        await saveCheckpoint(`${mode}:${nextChunk.start}`)
+      if (shouldCheckpoint && i < totalBatches - 1) {
+        const nextBatch = batches[i + 1]
+        await saveCheckpoint(`${mode}:${nextBatch.start}`)
         itemsSinceLastCheckpoint = 0
         nextCheckpointThreshold = checkpointFrequency
       }
 
       // Small delay to be nice to the API
-      if (i < totalChunks - 1) {
+      if (i < totalBatches - 1) {
         await delay(2000)
       }
     }
@@ -327,7 +327,7 @@ async function runModeBackfill(
   // Record New Relic event for mode completion
   newrelic.recordCustomEvent("BackfillModeCompleted", {
     mode: modeName,
-    totalChunks: totalChunks,
+    totalBatches: totalBatches,
     peopleChecked: summary.peopleChecked,
     newDeathsFound: summary.newDeathsFound,
     newlyDeceasedCount: summary.newlyDeceasedActors.length,
@@ -350,7 +350,7 @@ interface BackfillOptions {
   moviesOnly: boolean
   showsOnly: boolean
   reset: boolean
-  chunkSize: number
+  batchSize: number
   checkpointFrequency: number
 }
 
@@ -368,8 +368,8 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     modes.push("movies", "shows", "people")
   }
 
-  // Generate chunks
-  const chunks = generateChunks(options.startDate, options.endDate, options.chunkSize)
+  // Generate batches
+  const batches = generateBatches(options.startDate, options.endDate, options.batchSize)
   const totalDays = Math.ceil(
     (new Date(options.endDate).getTime() - new Date(options.startDate).getTime()) /
       (1000 * 60 * 60 * 24)
@@ -381,8 +381,8 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   if (checkpoint && !options.reset) {
     const [mode, date] = checkpoint.split(":")
     if (mode && date && modes.includes(mode as SyncMode)) {
-      const chunkIndex = chunks.findIndex((c) => c.start === date)
-      if (chunkIndex >= 0) {
+      const batchIndex = batches.findIndex((c) => c.start === date)
+      if (batchIndex >= 0) {
         checkpointInfo = `\n  Resuming: Yes (from ${getModeName(mode as SyncMode)} at ${date})`
       }
     }
@@ -397,11 +397,11 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   console.log(`  End Date:   ${options.endDate}`)
   console.log(`  Total Days: ${totalDays}`)
   console.log(`\nExecution Plan:`)
-  console.log(`  Chunk Size: 2 days`)
-  console.log(`  Total Chunks: ${chunks.length}`)
+  console.log(`  Batch Size: ${options.batchSize} days`)
+  console.log(`  Total Batches: ${batches.length}`)
   console.log(`  Modes: ${modes.map((m) => getModeName(m)).join(" → ")}`)
   console.log(
-    `  Total Operations: ${chunks.length * modes.length} (${chunks.length} chunks × ${modes.length} modes)`
+    `  Total Operations: ${batches.length * modes.length} (${batches.length} batches × ${modes.length} modes)`
   )
   console.log(`\nOptions:`)
   console.log(`  Dry Run: ${options.dryRun ? "Yes (no changes will be written)" : "No"}`)
@@ -440,19 +440,19 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
   // Extract checkpoint info (already checked above for summary)
   let checkpointMode: SyncMode | null = null
-  let checkpointChunkIndex = 0
+  let checkpointBatchIndex = 0
 
   const checkpointData = await loadCheckpoint()
   if (checkpointData && !options.reset) {
     const [mode, date] = checkpointData.split(":")
     if (mode && date && modes.includes(mode as SyncMode)) {
       checkpointMode = mode as SyncMode
-      checkpointChunkIndex = chunks.findIndex((c) => c.start === date)
+      checkpointBatchIndex = batches.findIndex((c) => c.start === date)
     }
   }
 
   // Overall summary across all modes
-  const overallSummary: ChunkSummary = {
+  const overallSummary: BatchSummary = {
     peopleChecked: 0,
     newDeathsFound: 0,
     newlyDeceasedActors: [],
@@ -468,14 +468,14 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   for (const mode of modes) {
     // Determine if we should resume this mode
     const shouldResume =
-      checkpointMode === mode && checkpointChunkIndex > 0 && checkpointChunkIndex < chunks.length
-    const startChunk = shouldResume ? checkpointChunkIndex : 0
+      checkpointMode === mode && checkpointBatchIndex > 0 && checkpointBatchIndex < batches.length
+    const startBatch = shouldResume ? checkpointBatchIndex : 0
 
     const summary = await runModeBackfill(
       mode,
-      chunks,
+      batches,
       options.dryRun,
-      startChunk,
+      startBatch,
       options.checkpointFrequency
     )
 
@@ -493,7 +493,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     // Clear checkpoint after mode completes
     if (mode === checkpointMode) {
       checkpointMode = null
-      checkpointChunkIndex = 0
+      checkpointBatchIndex = 0
     }
   }
 
@@ -555,7 +555,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
   console.log("")
   console.log(`Total errors: ${overallSummary.errors}`)
-  console.log(`Total chunks processed: ${chunks.length * modes.length}`)
+  console.log(`Total batches processed: ${batches.length * modes.length}`)
   console.log("")
   console.log("=".repeat(60))
 }
@@ -569,14 +569,14 @@ function validateDate(value: string): string {
   return value
 }
 
-// Validate chunk size
-function parseChunkSize(value: string): number {
+// Validate batch size
+function parseBatchSize(value: string): number {
   const n = parseInt(value, 10)
   if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
-    throw new InvalidArgumentError("Chunk size must be a positive integer")
+    throw new InvalidArgumentError("Batch size must be a positive integer")
   }
   if (n > 365) {
-    throw new InvalidArgumentError("Chunk size cannot exceed 365 days")
+    throw new InvalidArgumentError("Batch size cannot exceed 365 days")
   }
   return n
 }
@@ -592,14 +592,14 @@ function parseCheckpointFrequency(value: string): number {
 
 const program = new Command()
   .name("backfill-tmdb-batch")
-  .description("Batch backfill TMDB sync in configurable chunks with automatic resumption")
+  .description("Batch backfill TMDB sync in configurable batches with automatic resumption")
   .requiredOption("--start-date <date>", "Start date (YYYY-MM-DD)", validateDate)
   .requiredOption("--end-date <date>", "End date (YYYY-MM-DD)", validateDate)
   .option("-n, --dry-run", "Preview changes without writing to database", false)
   .option("-p, --people-only", "Only sync people changes", false)
   .option("-m, --movies-only", "Only sync movie changes", false)
   .option("-s, --shows-only", "Only sync active TV show episodes", false)
-  .option("-c, --chunk-size <days>", "Number of days per chunk (default: 2)", parseChunkSize, 2)
+  .option("-b, --batch-size <days>", "Number of days per batch (default: 2)", parseBatchSize, 2)
   .option(
     "-f, --checkpoint-frequency <items>",
     "Save checkpoint after processing N items (default: 100)",
@@ -615,7 +615,7 @@ const program = new Command()
       peopleOnly: boolean
       moviesOnly: boolean
       showsOnly: boolean
-      chunkSize: number
+      batchSize: number
       checkpointFrequency: number
       reset: boolean
     }) => {
@@ -645,7 +645,7 @@ const program = new Command()
           peopleOnly: options.peopleOnly,
           moviesOnly: options.moviesOnly,
           showsOnly: options.showsOnly,
-          chunkSize: options.chunkSize,
+          batchSize: options.batchSize,
           checkpointFrequency: options.checkpointFrequency,
           reset: options.reset,
         })
@@ -658,7 +658,7 @@ const program = new Command()
           peopleOnly: options.peopleOnly,
           moviesOnly: options.moviesOnly,
           showsOnly: options.showsOnly,
-          chunkSize: options.chunkSize,
+          batchSize: options.batchSize,
           checkpointFrequency: options.checkpointFrequency,
         })
       } catch (error) {
