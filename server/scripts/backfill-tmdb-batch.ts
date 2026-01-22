@@ -185,17 +185,13 @@ async function runModeBackfill(
       break
   }
 
-  // Get overall date range for header
-  const overallStart = batches[0].start
-  const overallEnd = batches[batches.length - 1].end
-
   // Initialize status bar
   const statusBar = new CLIStatusBar({
     totalItems: totalBatches,
     itemLabel: "batches",
     metrics,
     mode: modeName,
-    header: `Backfilling ${modeName}: ${overallStart} to ${overallEnd}`,
+    header: `Backfilling ${modeName}`,
   })
 
   console.log("\n" + "=".repeat(60))
