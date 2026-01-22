@@ -80,15 +80,19 @@ async function waitForEnter(message: string = "Press Enter to continue..."): Pro
  * Load checkpoint if it exists
  * Returns checkpoint data with timestamp if available
  */
-async function loadCheckpoint(): Promise<{ mode: string; date: string; timestamp: number } | null> {
+async function loadCheckpoint(): Promise<{
+  batchIndex: number
+  mode: string | null
+  timestamp: number
+} | null> {
   try {
     const data = await fs.readFile(CHECKPOINT_FILE, "utf-8")
     const parts = data.trim().split(":")
     if (parts.length >= 2) {
-      const mode = parts[0]
-      const date = parts[1]
+      const batchIndex = parseInt(parts[0], 10)
+      const mode = parts[1] || null
       const timestamp = parts.length >= 3 ? parseInt(parts[2], 10) : Date.now()
-      return { mode, date, timestamp }
+      return { batchIndex, mode, timestamp }
     }
     return null
   } catch {
@@ -99,15 +103,16 @@ async function loadCheckpoint(): Promise<{ mode: string; date: string; timestamp
 /**
  * Save checkpoint with timestamp
  */
-async function saveCheckpoint(mode: string, date: string): Promise<void> {
+async function saveCheckpoint(batchIndex: number, mode: string | null): Promise<void> {
   const timestamp = Date.now()
-  const checkpointData = `${mode}:${date}:${timestamp}`
+  const checkpointData = `${batchIndex}:${mode || ""}:${timestamp}`
   await fs.writeFile(CHECKPOINT_FILE, checkpointData, "utf-8")
 
   // Log checkpoint creation with bright green color to make it stand out
   const checkpointTime = new Date(timestamp).toISOString()
+  const modeStr = mode ? ` (${getModeName(mode as SyncMode)} complete)` : ""
   console.log(
-    `\n${FG_BRIGHT_GREEN}✓ Checkpoint saved (ID: ${timestamp}): ${mode} at ${date} [${checkpointTime}]${RESET}`
+    `\n${FG_BRIGHT_GREEN}✓ Checkpoint saved (ID: ${timestamp}): batch ${batchIndex + 1}${modeStr} [${checkpointTime}]${RESET}`
   )
 }
 
@@ -171,201 +176,92 @@ function getModeName(mode: SyncMode): string {
 }
 
 /**
- * Run backfill for a single mode
+ * Run sync for a single mode in a single batch
  */
-async function runModeBackfill(
+async function runBatchMode(
   mode: SyncMode,
-  batches: Array<{ start: string; end: string }>,
+  batch: { start: string; end: string },
+  batchNum: number,
+  totalBatches: number,
   dryRun: boolean,
-  resumeFromBatch: number,
-  checkpointFrequency: number,
-  fullDateRange: { start: string; end: string }
-): Promise<BatchSummary> {
+  statusBar: CLIStatusBar
+): Promise<{
+  peopleChecked: number
+  newDeathsFound: number
+  newlyDeceasedActors: Array<{ tmdbId: number; name: string; deathday: string }>
+  moviesChecked: number
+  moviesUpdated: number
+  moviesSkipped: number
+  showsChecked: number
+  newEpisodesFound: number
+  errors: number
+}> {
   const modeName = getModeName(mode)
-  const totalBatches = batches.length
 
-  // Setup status bar metrics based on mode
-  let metrics: string[] = []
-  switch (mode) {
-    case "people":
-      metrics = ["checked", "deaths"]
-      break
-    case "movies":
-      metrics = ["checked", "updated", "skipped"]
-      break
-    case "shows":
-      metrics = ["checked", "episodes"]
-      break
-  }
+  // Run sync for this batch and mode with progress callbacks
+  const result = await runSync({
+    startDate: batch.start,
+    endDate: batch.end,
+    dryRun,
+    peopleOnly: mode === "people",
+    moviesOnly: mode === "movies",
+    showsOnly: mode === "shows",
+    quiet: true, // Suppress verbose output
+    onProgress: (progress) => {
+      // Build per-item progress display
+      let itemProgress = ""
+      if (progress.total !== undefined && progress.current !== undefined) {
+        itemProgress = `${progress.current + 1}/${progress.total}`
+      }
 
-  // Initialize status bar
-  const statusBar = new CLIStatusBar({
-    totalItems: totalBatches,
-    itemLabel: "batches",
-    metrics,
-    mode: modeName,
-    header: `Backfilling ${modeName}: ${fullDateRange.start} to ${fullDateRange.end}`,
-  })
-
-  console.log("\n" + "=".repeat(60))
-  console.log(`BACKFILLING ${modeName.toUpperCase()}`)
-  console.log("=".repeat(60))
-  console.log(`Total batches: ${totalBatches}`)
-  if (resumeFromBatch > 0) {
-    console.log(`Resuming from batch ${resumeFromBatch + 1}`)
-  }
-  console.log("")
-
-  const summary: BatchSummary = {
-    peopleChecked: 0,
-    newDeathsFound: 0,
-    newlyDeceasedActors: [],
-    moviesChecked: 0,
-    moviesUpdated: 0,
-    moviesSkipped: 0,
-    showsChecked: 0,
-    newEpisodesFound: 0,
-    errors: 0,
-  }
-
-  // Track items processed for checkpointing
-  let itemsSinceLastCheckpoint = 0
-  let nextCheckpointThreshold = checkpointFrequency
-
-  // Start the status bar
-  statusBar.start()
-
-  try {
-    for (let i = resumeFromBatch; i < totalBatches; i++) {
-      const batch = batches[i]
-      const batchNum = i + 1
-
-      // Update status bar for this batch
+      // Update status bar with per-item progress and operation
+      const operation = progress.currentItem
+        ? `${progress.operation}: ${progress.currentItem}`
+        : progress.operation
       statusBar.update({
-        current: batchNum,
-        currentItem: batch.start,
+        currentItem: itemProgress,
+        currentOperation: operation,
       })
-
-      // Run sync for this batch with progress callbacks
-      const result = await runSync({
-        startDate: batch.start,
-        endDate: batch.end,
-        dryRun,
-        peopleOnly: mode === "people",
-        moviesOnly: mode === "movies",
-        showsOnly: mode === "shows",
-        quiet: true, // Suppress verbose output
-        onProgress: (progress) => {
-          // Update status bar with current operation and item
-          const operation = progress.currentItem
-            ? `${progress.operation}: ${progress.currentItem}`
-            : progress.operation
-          statusBar.update({
-            currentOperation: operation,
-          })
-        },
-        onLog: (message) => {
-          // Route log messages through status bar
-          statusBar.log(message)
-        },
-      })
-
-      // Accumulate results
-      summary.peopleChecked += result.peopleChecked
-      summary.newDeathsFound += result.newDeathsFound
-      summary.newlyDeceasedActors.push(...result.newlyDeceasedActors)
-      summary.moviesChecked += result.moviesChecked
-      summary.moviesUpdated += result.moviesUpdated
-      summary.moviesSkipped += result.moviesSkipped
-      summary.showsChecked += result.showsChecked
-      summary.newEpisodesFound += result.newEpisodesFound
-      summary.errors += result.errors.length
-
-      // Update status bar metrics based on mode
-      const metricsUpdate: Record<string, number> = {}
-      switch (mode) {
-        case "people":
-          metricsUpdate.checked = summary.peopleChecked
-          metricsUpdate.deaths = summary.newDeathsFound
-          break
-        case "movies":
-          metricsUpdate.checked = summary.moviesChecked
-          metricsUpdate.updated = summary.moviesUpdated
-          metricsUpdate.skipped = summary.moviesSkipped
-          break
-        case "shows":
-          metricsUpdate.checked = summary.showsChecked
-          metricsUpdate.episodes = summary.newEpisodesFound
-          break
-      }
-      statusBar.update({ metrics: metricsUpdate })
-
-      // Log newly deceased actors for this batch
-      if (result.newlyDeceasedActors.length > 0) {
-        for (const actor of result.newlyDeceasedActors) {
-          statusBar.log(`  ✝️  ${actor.name} (${actor.deathday})`)
-        }
-      }
-
-      // Record New Relic event for batch completion
-      newrelic.recordCustomEvent("BackfillBatchCompleted", {
-        mode: modeName,
-        batchNumber: batchNum,
-        totalBatches: totalBatches,
-        dateRange: `${batch.start} to ${batch.end}`,
-        peopleChecked: result.peopleChecked,
-        newDeathsFound: result.newDeathsFound,
-        moviesChecked: result.moviesChecked,
-        moviesUpdated: result.moviesUpdated,
-        showsChecked: result.showsChecked,
-        newEpisodesFound: result.newEpisodesFound,
-        errors: result.errors.length,
-      })
-
-      // Track items processed and checkpoint based on frequency
-      const itemsInBatch = result.peopleChecked + result.moviesChecked + result.showsChecked
-      itemsSinceLastCheckpoint += itemsInBatch
-
-      // Save checkpoint if we've processed enough items (at batch boundaries)
-      const shouldCheckpoint = itemsSinceLastCheckpoint >= nextCheckpointThreshold
-      if (shouldCheckpoint && i < totalBatches - 1) {
-        const nextBatch = batches[i + 1]
-        await saveCheckpoint(mode, nextBatch.start)
-        itemsSinceLastCheckpoint = 0
-        nextCheckpointThreshold = checkpointFrequency
-      }
-
-      // Small delay to be nice to the API
-      if (i < totalBatches - 1) {
-        await delay(2000)
-      }
-    }
-  } finally {
-    // Always stop the status bar
-    statusBar.stop()
-  }
-
-  // Show final stats for this mode
-  console.log("\n" + "=".repeat(60))
-  console.log(`${modeName} backfill complete!`)
-  console.log("=".repeat(60))
-
-  // Record New Relic event for mode completion
-  newrelic.recordCustomEvent("BackfillModeCompleted", {
-    mode: modeName,
-    totalBatches: totalBatches,
-    peopleChecked: summary.peopleChecked,
-    newDeathsFound: summary.newDeathsFound,
-    newlyDeceasedCount: summary.newlyDeceasedActors.length,
-    moviesChecked: summary.moviesChecked,
-    moviesUpdated: summary.moviesUpdated,
-    moviesSkipped: summary.moviesSkipped,
-    showsChecked: summary.showsChecked,
-    newEpisodesFound: summary.newEpisodesFound,
-    errors: summary.errors,
+    },
+    onLog: (message) => {
+      // Route log messages through status bar
+      statusBar.log(message)
+    },
   })
 
-  return summary
+  // Log newly deceased actors for this batch
+  if (result.newlyDeceasedActors.length > 0) {
+    for (const actor of result.newlyDeceasedActors) {
+      statusBar.log(`  ✝️  ${actor.name} (${actor.deathday})`)
+    }
+  }
+
+  // Record New Relic event for batch-mode completion
+  newrelic.recordCustomEvent("BackfillBatchModeCompleted", {
+    mode: modeName,
+    batchNumber: batchNum,
+    totalBatches: totalBatches,
+    dateRange: `${batch.start} to ${batch.end}`,
+    peopleChecked: result.peopleChecked,
+    newDeathsFound: result.newDeathsFound,
+    moviesChecked: result.moviesChecked,
+    moviesUpdated: result.moviesUpdated,
+    showsChecked: result.showsChecked,
+    newEpisodesFound: result.newEpisodesFound,
+    errors: result.errors.length,
+  })
+
+  return {
+    peopleChecked: result.peopleChecked,
+    newDeathsFound: result.newDeathsFound,
+    newlyDeceasedActors: result.newlyDeceasedActors,
+    moviesChecked: result.moviesChecked,
+    moviesUpdated: result.moviesUpdated,
+    moviesSkipped: result.moviesSkipped,
+    showsChecked: result.showsChecked,
+    newEpisodesFound: result.newEpisodesFound,
+    errors: result.errors.length,
+  }
 }
 
 interface BackfillOptions {
@@ -390,7 +286,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   } else if (options.peopleOnly) {
     modes.push("people")
   } else {
-    // Default: run all three in sequence
+    // Default: run all three in sequence within each batch
     modes.push("movies", "shows", "people")
   }
 
@@ -404,13 +300,27 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   // Check for existing checkpoint
   let checkpointInfo = ""
   const checkpoint = await loadCheckpoint()
+  let resumeBatchIndex = 0
+  let resumeModeIndex = 0
+
   if (checkpoint && !options.reset) {
-    const { mode, date, timestamp } = checkpoint
-    if (mode && date && modes.includes(mode as SyncMode)) {
-      const batchIndex = batches.findIndex((c) => c.start === date)
-      if (batchIndex >= 0) {
-        const checkpointTime = new Date(timestamp).toISOString()
-        checkpointInfo = `\n  Resuming: Yes (from checkpoint ID: ${timestamp})\n  Checkpoint: ${getModeName(mode as SyncMode)} at ${date}\n  Created: ${checkpointTime}`
+    const { batchIndex, mode, timestamp } = checkpoint
+    if (batchIndex >= 0 && batchIndex < batches.length) {
+      resumeBatchIndex = batchIndex
+      const checkpointTime = new Date(timestamp).toISOString()
+      const batch = batches[batchIndex]
+
+      // Determine which mode to resume from
+      if (mode && modes.includes(mode as SyncMode)) {
+        resumeModeIndex = modes.indexOf(mode as SyncMode) + 1 // Resume from next mode
+        if (resumeModeIndex >= modes.length) {
+          // All modes in this batch are done, move to next batch
+          resumeBatchIndex++
+          resumeModeIndex = 0
+        }
+        checkpointInfo = `\n  Resuming: Yes (from checkpoint ID: ${timestamp})\n  Checkpoint: Batch ${batchIndex + 1} (${batch.start} to ${batch.end}) after ${getModeName(mode as SyncMode)}\n  Created: ${checkpointTime}`
+      } else {
+        checkpointInfo = `\n  Resuming: Yes (from checkpoint ID: ${timestamp})\n  Checkpoint: Batch ${batchIndex + 1} (${batch.start} to ${batch.end})\n  Created: ${checkpointTime}`
       }
     }
   }
@@ -426,7 +336,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   console.log(`\nExecution Plan:`)
   console.log(`  Batch Size: ${options.batchSize} days`)
   console.log(`  Total Batches: ${batches.length}`)
-  console.log(`  Modes: ${modes.map((m) => getModeName(m)).join(" → ")}`)
+  console.log(`  Modes per batch: ${modes.map((m) => getModeName(m)).join(" → ")}`)
   console.log(
     `  Total Operations: ${batches.length * modes.length} (${batches.length} batches × ${modes.length} modes)`
   )
@@ -440,7 +350,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   if (options.reset) {
     console.log(`  Reset: Yes (checkpoint cleared)`)
   }
-  console.log("\nWhat will be synced:")
+  console.log("\nWhat will be synced (per batch):")
   if (modes.includes("movies")) {
     console.log("  • Movies: Update mortality statistics for changed movies")
   }
@@ -465,20 +375,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     await clearCheckpoint()
   }
 
-  // Extract checkpoint info (already checked above for summary)
-  let checkpointMode: SyncMode | null = null
-  let checkpointBatchIndex = 0
-
-  const checkpointData = await loadCheckpoint()
-  if (checkpointData && !options.reset) {
-    const { mode, date } = checkpointData
-    if (mode && date && modes.includes(mode as SyncMode)) {
-      checkpointMode = mode as SyncMode
-      checkpointBatchIndex = batches.findIndex((c) => c.start === date)
-    }
-  }
-
-  // Overall summary across all modes
+  // Overall summary across all batches and modes
   const overallSummary: BatchSummary = {
     peopleChecked: 0,
     newDeathsFound: 0,
@@ -491,38 +388,130 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     errors: 0,
   }
 
-  // Run each mode
-  for (const mode of modes) {
-    // Determine if we should resume this mode
-    const shouldResume =
-      checkpointMode === mode && checkpointBatchIndex > 0 && checkpointBatchIndex < batches.length
-    const startBatch = shouldResume ? checkpointBatchIndex : 0
+  // Setup combined metrics for status bar (all modes)
+  const metrics = ["checked", "updated", "skipped", "episodes", "deaths"]
 
-    const summary = await runModeBackfill(
-      mode,
-      batches,
-      options.dryRun,
-      startBatch,
-      options.checkpointFrequency,
-      { start: options.startDate, end: options.endDate }
-    )
+  // Initialize status bar
+  const statusBar = new CLIStatusBar({
+    totalItems: batches.length,
+    itemLabel: "batches",
+    metrics,
+    header: `Backfilling TMDB: ${options.startDate} to ${options.endDate}`,
+  })
 
-    // Accumulate into overall summary
-    overallSummary.peopleChecked += summary.peopleChecked
-    overallSummary.newDeathsFound += summary.newDeathsFound
-    overallSummary.newlyDeceasedActors.push(...summary.newlyDeceasedActors)
-    overallSummary.moviesChecked += summary.moviesChecked
-    overallSummary.moviesUpdated += summary.moviesUpdated
-    overallSummary.moviesSkipped += summary.moviesSkipped
-    overallSummary.showsChecked += summary.showsChecked
-    overallSummary.newEpisodesFound += summary.newEpisodesFound
-    overallSummary.errors += summary.errors
+  console.log("\n" + "=".repeat(60))
+  console.log("BACKFILL STARTED")
+  console.log("=".repeat(60))
+  console.log(`Total batches: ${batches.length}`)
+  console.log(`Modes per batch: ${modes.map((m) => getModeName(m)).join(" → ")}`)
+  if (resumeBatchIndex > 0 || resumeModeIndex > 0) {
+    const modeStr =
+      resumeModeIndex > 0 ? ` (starting from ${getModeName(modes[resumeModeIndex])})` : ""
+    console.log(`Resuming from batch ${resumeBatchIndex + 1}${modeStr}`)
+  }
+  console.log("")
 
-    // Clear checkpoint after mode completes
-    if (mode === checkpointMode) {
-      checkpointMode = null
-      checkpointBatchIndex = 0
+  // Track items processed for checkpointing
+  let itemsSinceLastCheckpoint = 0
+
+  // Start the status bar
+  statusBar.start()
+
+  try {
+    // Loop through batches
+    for (let batchIndex = resumeBatchIndex; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex]
+      const batchNum = batchIndex + 1
+
+      // Determine starting mode for this batch
+      const startModeIndex = batchIndex === resumeBatchIndex ? resumeModeIndex : 0
+
+      // Update status bar for this batch
+      statusBar.update({
+        current: batchNum,
+      })
+
+      // Loop through modes for this batch
+      for (let modeIndex = startModeIndex; modeIndex < modes.length; modeIndex++) {
+        const mode = modes[modeIndex]
+        const modeName = getModeName(mode)
+
+        // Update status bar mode
+        statusBar.update({
+          mode: modeName,
+        })
+
+        // Run this mode for this batch
+        const result = await runBatchMode(
+          mode,
+          batch,
+          batchNum,
+          batches.length,
+          options.dryRun,
+          statusBar
+        )
+
+        // Accumulate results
+        overallSummary.peopleChecked += result.peopleChecked
+        overallSummary.newDeathsFound += result.newDeathsFound
+        overallSummary.newlyDeceasedActors.push(...result.newlyDeceasedActors)
+        overallSummary.moviesChecked += result.moviesChecked
+        overallSummary.moviesUpdated += result.moviesUpdated
+        overallSummary.moviesSkipped += result.moviesSkipped
+        overallSummary.showsChecked += result.showsChecked
+        overallSummary.newEpisodesFound += result.newEpisodesFound
+        overallSummary.errors += result.errors
+
+        // Update status bar metrics (cumulative)
+        statusBar.update({
+          metrics: {
+            checked:
+              overallSummary.moviesChecked +
+              overallSummary.showsChecked +
+              overallSummary.peopleChecked,
+            updated: overallSummary.moviesUpdated,
+            skipped: overallSummary.moviesSkipped,
+            episodes: overallSummary.newEpisodesFound,
+            deaths: overallSummary.newDeathsFound,
+          },
+        })
+
+        // Track items processed
+        const itemsInMode = result.peopleChecked + result.moviesChecked + result.showsChecked
+        itemsSinceLastCheckpoint += itemsInMode
+
+        // Save checkpoint after each mode completes (if enough items processed)
+        const shouldCheckpoint = itemsSinceLastCheckpoint >= options.checkpointFrequency
+        const isLastMode = modeIndex === modes.length - 1
+        const isLastBatch = batchIndex === batches.length - 1
+
+        if (shouldCheckpoint && !(isLastMode && isLastBatch)) {
+          await saveCheckpoint(batchIndex, mode)
+          itemsSinceLastCheckpoint = 0
+        }
+
+        // Small delay between modes
+        if (modeIndex < modes.length - 1) {
+          await delay(1000)
+        }
+      }
+
+      // Record New Relic event for batch completion (all modes done)
+      newrelic.recordCustomEvent("BackfillBatchCompleted", {
+        batchNumber: batchNum,
+        totalBatches: batches.length,
+        dateRange: `${batch.start} to ${batch.end}`,
+        modesCompleted: modes.length,
+      })
+
+      // Small delay between batches
+      if (batchIndex < batches.length - 1) {
+        await delay(2000)
+      }
     }
+  } finally {
+    // Always stop the status bar
+    statusBar.stop()
   }
 
   // Clear checkpoint on successful completion
@@ -583,7 +572,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
   console.log("")
   console.log(`Total errors: ${overallSummary.errors}`)
-  console.log(`Total batches processed: ${batches.length * modes.length}`)
+  console.log(`Total batches processed: ${batches.length}`)
   console.log("")
   console.log("=".repeat(60))
 }
