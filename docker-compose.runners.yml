@@ -1,0 +1,87 @@
+# GitHub Actions Self-Hosted Runners (Docker)
+#
+# This runs GitHub Actions runners as Docker containers using the
+# myoung34/github-runner image. Each runner is ephemeral and gets
+# a fresh environment for each job.
+#
+# IMPORTANT: Create a .env file in /opt/github-runners/ with:
+#   ACCESS_TOKEN=your_personal_access_token
+#   REPO_URL=https://github.com/chenders/deadonfilm
+#
+# Usage:
+#   Start (default 4 runners):
+#     docker compose up -d
+#
+#   Scale to specific number of runners:
+#     docker compose up -d --scale runner=2
+#     docker compose up -d --scale runner=6
+#
+#   Stop all runners:
+#     docker compose down
+#
+#   View logs:
+#     docker compose logs -f
+#
+#   Check status:
+#     docker compose ps
+#
+#   Check runner health:
+#     docker compose ps --format json | jq '.[].Health'
+#
+# See: docs/SERVER_SETUP.md for complete instructions
+
+services:
+  runner:
+    image: myoung34/github-runner:latest
+    restart: unless-stopped
+    environment:
+      # Runner name auto-generated from container hostname when scaling
+      - RUNNER_WORKDIR=/tmp/github-runner
+      - RUNNER_SCOPE=repo
+      - LABELS=self-hosted,linux,x64,production
+      - EPHEMERAL=true
+      - DISABLE_AUTO_UPDATE=true
+      # Disable runner update checks for faster startup
+      - DISABLE_RUNNER_UPDATE=true
+    env_file:
+      - .env
+    volumes:
+      # Mount Docker socket for building images in CI
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Each container gets its own anonymous volume for work directory
+      - /tmp/github-runner
+      # Mount app directory (read-only) for accessing scripts
+      - /opt/deadonfilm:/opt/deadonfilm:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    security_opt:
+      - label:disable
+    # Use tmpfs for /tmp to reduce disk I/O during builds
+    tmpfs:
+      - /tmp:size=2G
+    deploy:
+      # Default to 4 runners (override with --scale)
+      # Total resources: ~10GB RAM, ~15 CPU cores (25% more than previous 2-runner setup)
+      replicas: 4
+      resources:
+        limits:
+          # 2.5GB per runner = 10GB total for 4 runners (vs 8GB for 2 previously)
+          memory: 2560M
+          # 3.75 cores per runner = 15 cores total (vs 12 for 2 previously)
+          cpus: '3.75'
+        reservations:
+          # Reserve minimum resources per runner
+          memory: 640M
+          cpus: '1.25'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      # Check that runner process is alive
+      test: ["CMD-SHELL", "pgrep -f Runner.Listener || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

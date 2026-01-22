@@ -583,93 +583,59 @@ if [[ "$SKIP_RUNNER" != true ]]; then
   echo ""
   echo "[12/12] Creating GitHub Actions Runner configuration..."
 
-  # Create docker-compose.yml for runners
-  cat > $RUNNER_DIR/docker-compose.yml << EOF
-# GitHub Actions Self-Hosted Runners (Docker)
-#
-# This runs GitHub Actions runners as Docker containers using the
-# myoung34/github-runner image. Each runner is ephemeral and gets
-# a fresh environment for each job.
-#
-# IMPORTANT: Create a .env file with:
-#   GITHUB_ACCESS_TOKEN=your_personal_access_token
-#   GITHUB_OWNER=your_org_or_username
-#   GITHUB_REPOSITORY=your_repo_name
-#
-# See: docs/SERVER_SETUP.md for complete instructions
+  # Note: The docker-compose.runners.yml file should be copied from the repo
+  # during deployment. For initial setup, we create a note file with instructions.
 
-services:
+  cat > $RUNNER_DIR/README.txt << 'EOF'
+GitHub Actions Runners Setup
+=============================
+
+The runner configuration is now version controlled in the repository.
+
+To set up runners:
+
+1. Copy docker-compose.runners.yml from the repo to this directory:
+   cp /path/to/repo/docker-compose.runners.yml docker-compose.yml
+
+2. Copy .env.runners.example from the repo:
+   cp /path/to/repo/.env.runners.example .env.example
+
+3. Create .env from the example:
+   cp .env.example .env
+
+4. Edit .env and add your GitHub Personal Access Token:
+   - Go to GitHub Settings → Developer settings → Personal access tokens
+   - Create a fine-grained token with "Administration" permission for the repo
+   - Set ACCESS_TOKEN in .env
+
+5. Start the runners (default: 4 runners):
+   docker compose up -d
+
+6. Enable the systemd service:
+   sudo systemctl enable github-runners
+   sudo systemctl start github-runners
+
+To scale runners:
+   # Scale to 2 runners
+   docker compose up -d --scale runner=2
+
+   # Scale to 6 runners
+   docker compose up -d --scale runner=6
+
+   # Scale down to 1 runner
+   docker compose up -d --scale runner=1
+
+To check runner status:
+   docker compose ps
+   docker compose logs -f
+
+For more information, see docs/SERVER_SETUP.md in the repository.
 EOF
-
-  # Generate runner services based on RUNNER_COUNT
-  for i in $(seq 1 $RUNNER_COUNT); do
-    cat >> $RUNNER_DIR/docker-compose.yml << EOF
-  runner-$i:
-    image: myoung34/github-runner:latest
-    restart: unless-stopped
-    environment:
-      - RUNNER_NAME=deadonfilm-runner-$i
-      - RUNNER_WORKDIR=/tmp/github-runner
-      - RUNNER_SCOPE=repo
-      - LABELS=self-hosted,linux,x64,production
-      - EPHEMERAL=true
-      - DISABLE_AUTO_UPDATE=true
-    env_file:
-      - .env
-    # SECURITY NOTE:
-    # This runner mounts the host Docker socket, which grants containers
-    # effectively full control over the host via the Docker daemon. This is
-    # required so CI jobs can build and run Docker images, but it is a
-    # high-privilege configuration.
-    #
-    # When using these runners, ensure that:
-    #   1) The GitHub runner token has only the minimal permissions required.
-    #   2) Branch protection and required reviews are properly configured on
-    #      the repository to prevent unreviewed workflows from running.
-    #   3) Workflows from forks are not automatically trusted or run with the
-    #      same privileges as trusted branches.
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - runner-$i-work:/tmp/github-runner
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-EOF
-  done
-
-  # Add volumes section
-  echo "volumes:" >> $RUNNER_DIR/docker-compose.yml
-  for i in $(seq 1 $RUNNER_COUNT); do
-    echo "  runner-$i-work:" >> $RUNNER_DIR/docker-compose.yml
-  done
-
-  chown $DEPLOY_USER:$DEPLOY_USER $RUNNER_DIR/docker-compose.yml
-  echo "  Created $RUNNER_DIR/docker-compose.yml with $RUNNER_COUNT runners"
-
-  # Create .env.example for runners
-  cat > $RUNNER_DIR/.env.example << 'EOF'
-# GitHub Actions Runner Environment Variables
-# Copy this to .env and fill in your values
-#
-# To create a Personal Access Token:
-#   1. Go to GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens
-#   2. Create a token with "Administration" repository permission (read and write)
-#   3. Copy the token value below
-#
-# For organization runners, use ORG_NAME instead of REPO_URL
-
-# Required - GitHub Authentication (use ACCESS_TOKEN, not GITHUB_ACCESS_TOKEN)
-ACCESS_TOKEN=ghp_your_personal_access_token
-
-# Required for repository runners - Full URL to your repository
-REPO_URL=https://github.com/chenders/deadonfilm
-
-# Alternative: For organization-level runners instead of repo-level
-# ORG_NAME=your-org
-# RUNNER_GROUP=default
-EOF
-  chown $DEPLOY_USER:$DEPLOY_USER $RUNNER_DIR/.env.example
-  echo "  Created $RUNNER_DIR/.env.example"
+  chown $DEPLOY_USER:$DEPLOY_USER $RUNNER_DIR/README.txt
+  echo "  Created $RUNNER_DIR/README.txt with setup instructions"
+  echo ""
+  echo "  NOTE: Runner config is now version controlled."
+  echo "        Copy docker-compose.runners.yml and .env.runners.example from the repo."
 
 else
   echo ""
