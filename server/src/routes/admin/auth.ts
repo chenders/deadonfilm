@@ -13,6 +13,7 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
     const { password } = req.body
 
     // Validate password is provided and is a string
+    // codeql[js/user-controlled-bypass] - False positive: Input validation before cryptographic bcrypt verification
     if (!password || typeof password !== "string" || password.trim().length === 0) {
       res.status(400).json({ error: { message: "Password required" } })
       return
