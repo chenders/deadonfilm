@@ -4,17 +4,20 @@
 # myoung34/github-runner image. Each runner is ephemeral and gets
 # a fresh environment for each job.
 #
+# Each runner is on its own Docker network for isolation, allowing
+# GitHub Actions service containers (like postgres) to run without
+# port conflicts when multiple CI jobs execute in parallel.
+#
 # IMPORTANT: Create a .env file in /opt/github-runners/ with:
 #   ACCESS_TOKEN=your_personal_access_token
 #   REPO_URL=https://github.com/chenders/deadonfilm
 #
 # Usage:
-#   Start (default 4 runners):
+#   Start all runners:
 #     docker compose up -d
 #
-#   Scale to specific number of runners:
-#     docker compose up -d --scale runner=2
-#     docker compose up -d --scale runner=6
+#   Start specific runners:
+#     docker compose up -d runner-1 runner-2
 #
 #   Stop all runners:
 #     docker compose down
@@ -30,78 +33,109 @@
 #
 # See: docs/SERVER_SETUP.md for complete instructions
 
+# Shared configuration for all runners
+x-runner-common: &runner-common
+  image: myoung34/github-runner:latest
+  restart: unless-stopped
+  environment:
+    - RUNNER_WORKDIR=/tmp/github-runner
+    - RUNNER_SCOPE=repo
+    - LABELS=self-hosted,linux,x64,production
+    - EPHEMERAL=true
+    # Disable runner software auto-updates for faster startup and stability
+    - DISABLE_AUTO_UPDATE=true
+  env_file:
+    - .env
+  volumes:
+    # Mount Docker socket for building images in CI.
+    # SECURITY WARNING:
+    #   - This gives runner containers full control over the host Docker daemon
+    #     (and, transitively, the host itself).
+    #   - NEVER allow untrusted or unreviewed code to run on these runners.
+    #   - Ensure GitHub branch protection and workflow approval settings are
+    #     configured so that:
+    #       * PRs from forks/untrusted contributors require review/approval
+    #         before workflows run on these self-hosted runners.
+    #       * Only trusted branches and workflows can target this runner group.
+    - /var/run/docker.sock:/var/run/docker.sock
+    # Mount app directory (read-only) for accessing scripts from the repository.
+    # SECURITY NOTE:
+    # - Runners need read-only access to the full repo so CI jobs can run project
+    #   scripts (e.g. npm scripts, tooling, and helper scripts) directly from source.
+    # - Do NOT store secrets or .env files in /opt/deadonfilm; runner secrets are
+    #   provided via the separate /opt/github-runners/.env file configured above.
+    # - Because this mount is read-only, runners cannot modify application code,
+    #   but they can read any files present in this directory.
+    - /opt/deadonfilm:/opt/deadonfilm:ro
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  # Disable SELinux labeling for this container because it mounts the host
+  # Docker socket and needs to start sibling containers/build images. On
+  # SELinux-enforcing hosts, this avoids permission denials when the runner
+  # interacts with Docker on the host. Review before tightening security.
+  security_opt:
+    - label:disable
+  # Use RAM-backed /tmp (via tmpfs) for the runner work directory to reduce disk I/O during builds
+  tmpfs:
+    - /tmp:size=2G
+  deploy:
+    resources:
+      limits:
+        # Limit: up to 2.5GB RAM per runner
+        # Note: 2GB of this 2.5GB per runner is allocated to /tmp via tmpfs; tmpfs usage counts toward the container memory limit (leaving ~512MB for other processes if /tmp is full)
+        memory: 2560M
+        # Limit: up to 3.75 CPU cores per runner
+        cpus: '3.75'
+      reservations:
+        # Guaranteed minimum resources reserved per runner (scheduler target, not hard cap)
+        memory: 640M
+        cpus: '1.25'
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  healthcheck:
+    # Check that runner process is alive
+    # Note: Ephemeral runners may briefly restart the listener between jobs,
+    # so we use generous retry settings to avoid false positives
+    test: ["CMD-SHELL", "pgrep -f Runner.Listener || exit 1"]
+    interval: 60s
+    timeout: 10s
+    retries: 5
+    start_period: 90s
+
 services:
-  runner:
-    image: myoung34/github-runner:latest
-    restart: unless-stopped
-    environment:
-      # Runner name auto-generated from container hostname when scaling
-      - RUNNER_WORKDIR=/tmp/github-runner
-      - RUNNER_SCOPE=repo
-      - LABELS=self-hosted,linux,x64,production
-      - EPHEMERAL=true
-      # Disable runner software auto-updates for faster startup and stability
-      - DISABLE_AUTO_UPDATE=true
-    env_file:
-      - .env
-    volumes:
-      # Mount Docker socket for building images in CI.
-      # SECURITY WARNING:
-      #   - This gives runner containers full control over the host Docker daemon
-      #     (and, transitively, the host itself).
-      #   - NEVER allow untrusted or unreviewed code to run on these runners.
-      #   - Ensure GitHub branch protection and workflow approval settings are
-      #     configured so that:
-      #       * PRs from forks/untrusted contributors require review/approval
-      #         before workflows run on these self-hosted runners.
-      #       * Only trusted branches and workflows can target this runner group.
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Mount app directory (read-only) for accessing scripts from the repository.
-      # SECURITY NOTE:
-      # - Runners need read-only access to the full repo so CI jobs can run project
-      #   scripts (e.g. npm scripts, tooling, and helper scripts) directly from source.
-      # - Do NOT store secrets or .env files in /opt/deadonfilm; runner secrets are
-      #   provided via the separate /opt/github-runners/.env file configured above.
-      # - Because this mount is read-only, runners cannot modify application code,
-      #   but they can read any files present in this directory.
-      - /opt/deadonfilm:/opt/deadonfilm:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    # Disable SELinux labeling for this container because it mounts the host
-    # Docker socket and needs to start sibling containers/build images. On
-    # SELinux-enforcing hosts, this avoids permission denials when the runner
-    # interacts with Docker on the host. Review before tightening security.
-    security_opt:
-      - label:disable
-    # Use RAM-backed /tmp (via tmpfs) for the runner work directory to reduce disk I/O during builds
-    tmpfs:
-      - /tmp:size=2G
-    deploy:
-      # Default to 4 runners (override with --scale)
-      # Max potential usage if all runners hit limits: ~10GB RAM total (4 runners × 2.5GB each, including tmpfs), ~15 CPU cores (25% more than previous 2-runner setup)
-      replicas: 4
-      resources:
-        limits:
-          # Limit: up to 2.5GB RAM per runner (up to ~10GB total if 4 runners are all at their limit; previously 8GB for 2)
-          # Note: 2GB of this 2.5GB per runner is allocated to /tmp via tmpfs; tmpfs usage counts toward the container memory limit (leaving ~512MB for other processes if /tmp is full)
-          memory: 2560M
-          # Limit: up to 3.75 CPU cores per runner (up to ~15 cores total if 4 runners are all at their limit; previously 12 for 2)
-          cpus: '3.75'
-        reservations:
-          # Guaranteed minimum resources reserved per runner (scheduler target, not hard cap)
-          memory: 640M
-          cpus: '1.25'
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    healthcheck:
-      # Check that runner process is alive
-      # Note: Ephemeral runners may briefly restart the listener between jobs,
-      # so we use generous retry settings to avoid false positives
-      test: ["CMD-SHELL", "pgrep -f Runner.Listener || exit 1"]
-      interval: 60s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
+  runner-1:
+    <<: *runner-common
+    container_name: github-runner-1
+    networks:
+      - runner-1-network
+
+  runner-2:
+    <<: *runner-common
+    container_name: github-runner-2
+    networks:
+      - runner-2-network
+
+  runner-3:
+    <<: *runner-common
+    container_name: github-runner-3
+    networks:
+      - runner-3-network
+
+  runner-4:
+    <<: *runner-common
+    container_name: github-runner-4
+    networks:
+      - runner-4-network
+
+networks:
+  runner-1-network:
+    driver: bridge
+  runner-2-network:
+    driver: bridge
+  runner-3-network:
+    driver: bridge
+  runner-4-network:
+    driver: bridge
