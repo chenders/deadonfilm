@@ -192,7 +192,9 @@ async function fetchRunSourcePerformanceStats(runId: number): Promise<SourcePerf
   return response.json()
 }
 
-async function startEnrichmentRun(config: StartEnrichmentRequest): Promise<{ runId: number }> {
+async function startEnrichmentRun(
+  config: StartEnrichmentRequest
+): Promise<{ id: number; status: string; message: string }> {
   const response = await fetch("/admin/api/enrichment/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -203,6 +205,46 @@ async function startEnrichmentRun(config: StartEnrichmentRequest): Promise<{ run
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.error?.message || "Failed to start enrichment run")
+  }
+
+  return response.json()
+}
+
+async function stopEnrichmentRun(runId: number): Promise<{ stopped: boolean }> {
+  const response = await fetch(`/admin/api/enrichment/runs/${runId}/stop`, {
+    method: "POST",
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error?.message || "Failed to stop enrichment run")
+  }
+
+  return response.json()
+}
+
+export interface EnrichmentRunProgress {
+  status: string
+  currentActorIndex: number | null
+  currentActorName: string | null
+  actorsQueried: number
+  actorsProcessed: number
+  actorsEnriched: number
+  totalCostUsd: number
+  progressPercentage: number
+  elapsedMs: number
+  estimatedTimeRemainingMs: number | null
+}
+
+async function fetchEnrichmentRunProgress(runId: number): Promise<EnrichmentRunProgress> {
+  const response = await fetch(`/admin/api/enrichment/runs/${runId}/progress`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error?.message || "Failed to fetch enrichment run progress")
   }
 
   return response.json()
@@ -295,5 +337,45 @@ export function useStartEnrichmentRun() {
       // Invalidate runs list to show the new run
       queryClient.invalidateQueries({ queryKey: ["admin", "enrichment", "runs"] })
     },
+  })
+}
+
+/**
+ * Mutation hook to stop a running enrichment run.
+ */
+export function useStopEnrichmentRun() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: stopEnrichmentRun,
+    onSuccess: (_, runId) => {
+      // Invalidate the run details and runs list
+      queryClient.invalidateQueries({ queryKey: ["admin", "enrichment", "run", runId] })
+      queryClient.invalidateQueries({ queryKey: ["admin", "enrichment", "runs"] })
+    },
+  })
+}
+
+/**
+ * Hook to fetch real-time progress of a running enrichment run.
+ * Polls every 2 seconds if the run is still running.
+ */
+export function useEnrichmentRunProgress(
+  runId: number | null,
+  enabled: boolean = true
+): UseQueryResult<EnrichmentRunProgress> {
+  return useQuery({
+    queryKey: ["admin", "enrichment", "run", runId, "progress"],
+    queryFn: () => fetchEnrichmentRunProgress(runId!),
+    enabled: enabled && !!runId,
+    refetchInterval: (query) => {
+      // Poll every 2 seconds if status is 'running' or 'pending'
+      const data = query.state.data
+      if (data?.status === "running" || data?.status === "pending") {
+        return 2000
+      }
+      return false // Stop polling when completed/failed/stopped
+    },
+    staleTime: 0, // Always fetch fresh data
   })
 }
