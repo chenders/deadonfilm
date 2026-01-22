@@ -119,7 +119,7 @@ node -e "console.log(require('bcrypt').hashSync('your-secure-password', 10))"
 
 This outputs a hash like:
 ```
-$2b$10$rQZ7VkQ5X3J9Y1mN0K8L4eH1gF2sD3aP4wT5rE6yU7iO8pA9sD0fG
+$2b$10$EXAMPLE_HASH_DO_NOT_USE_THIS_IN_PRODUCTION_REPLACE_WITH_YOUR_OWN
 ```
 
 #### Step 2: Set Environment Variable
@@ -128,7 +128,7 @@ Add the hash to your `.env` file (production) or `.env.production` (server):
 
 ```bash
 # Admin password hash (bcrypt, 10 rounds)
-ADMIN_PASSWORD_HASH=$2b$10$rQZ7VkQ5X3J9Y1mN0K8L4eH1gF2sD3aP4wT5rE6yU7iO8pA9sD0fG
+ADMIN_PASSWORD_HASH=$2b$10$YOUR_ACTUAL_BCRYPT_HASH_HERE
 ```
 
 **IMPORTANT**: Never commit the actual password, only the hash. The hash cannot be reversed to recover the original password.
@@ -146,7 +146,7 @@ Add to `.env`:
 
 ```bash
 # JWT secret for admin session tokens (random string, 64+ characters)
-JWT_SECRET=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2
+JWT_SECRET=your_64_character_hex_string_from_crypto_randomBytes_here
 ```
 
 ### Session Management
