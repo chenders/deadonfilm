@@ -72,7 +72,10 @@ export default function StartEnrichmentPage() {
                   min="1"
                   max="1000"
                   value={limit}
-                  onChange={(e) => setLimit(parseInt(e.target.value, 10))}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10)
+                    setLimit(isNaN(value) ? 1 : value)
+                  }}
                   className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
                 />
@@ -92,7 +95,15 @@ export default function StartEnrichmentPage() {
                   min="0"
                   max="100"
                   value={minPopularity}
-                  onChange={(e) => setMinPopularity(parseInt(e.target.value, 10))}
+                  onChange={(e) => {
+                    const rawValue = e.target.value
+                    if (rawValue === "") {
+                      setMinPopularity(0)
+                      return
+                    }
+                    const parsed = parseInt(rawValue, 10)
+                    setMinPopularity(Number.isNaN(parsed) ? 0 : parsed)
+                  }}
                   className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <p className="mt-1 text-sm text-gray-500">
@@ -129,7 +140,13 @@ export default function StartEnrichmentPage() {
                   min="0.01"
                   step="0.01"
                   value={maxTotalCost}
-                  onChange={(e) => setMaxTotalCost(parseFloat(e.target.value))}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const parsed = parseFloat(value)
+                    setMaxTotalCost((prev) =>
+                      value === "" || Number.isNaN(parsed) ? prev : parsed
+                    )
+                  }}
                   className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   required
                 />
@@ -181,7 +198,18 @@ export default function StartEnrichmentPage() {
                   max="1"
                   step="0.1"
                   value={confidence}
-                  onChange={(e) => setConfidence(parseFloat(e.target.value))}
+                  onChange={(e) => {
+                    const rawValue = e.target.value
+                    const parsed = parseFloat(rawValue)
+                    if (Number.isNaN(parsed)) {
+                      // Fallback to default confidence if input is empty or invalid
+                      setConfidence(0.5)
+                    } else {
+                      // Clamp to allowed range just in case
+                      const clamped = Math.min(1, Math.max(0, parsed))
+                      setConfidence(clamped)
+                    }
+                  }}
                   className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <p className="mt-1 text-sm text-gray-500">
