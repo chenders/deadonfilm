@@ -249,9 +249,7 @@ describe("Admin Enrichment Endpoints", () => {
     it("validates and clamps pagination parameters", async () => {
       vi.mocked(queries.getEnrichmentRunActors).mockResolvedValue(mockActorsResult)
 
-      await request(app)
-        .get("/admin/api/enrichment/runs/1/actors?page=-1&pageSize=200")
-        .expect(200)
+      await request(app).get("/admin/api/enrichment/runs/1/actors?page=-1&pageSize=200").expect(200)
 
       expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith({}, 1, 1, 100)
     })
@@ -355,9 +353,7 @@ describe("Admin Enrichment Endpoints", () => {
     })
 
     it("returns 500 on database error", async () => {
-      vi.mocked(queries.getRunSourcePerformanceStats).mockRejectedValue(
-        new Error("Database error")
-      )
+      vi.mocked(queries.getRunSourcePerformanceStats).mockRejectedValue(new Error("Database error"))
 
       const response = await request(app)
         .get("/admin/api/enrichment/runs/1/sources/stats")
