@@ -68,7 +68,8 @@ jobs:
           # Copy latest docker-compose and PostgreSQL config
           cp ${{ github.workspace }}/docker-compose.yml docker-compose.yml
           cp ${{ github.workspace }}/postgresql.conf postgresql.conf
-          docker compose pull
+          # Pull images, ignoring those with build configs (like db)
+          docker compose pull --ignore-buildable
 
           # Start containers and wait for all to be healthy
           # Using --force-recreate to ensure containers use the new image
