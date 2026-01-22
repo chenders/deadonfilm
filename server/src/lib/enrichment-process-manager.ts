@@ -252,7 +252,7 @@ function setupProcessHandlers(child: ChildProcess, runId: number): void {
 
     // The enrichment script should update the database on completion
     // But if the process crashes, we need to mark it as failed
-    if (code !== 0 && code !== null) {
+    if (code !== 0) {
       try {
         await pool.query(
           `UPDATE enrichment_runs
@@ -377,7 +377,9 @@ export async function stopEnrichmentRun(runId: number): Promise<boolean> {
     await pool.query(
       `UPDATE enrichment_runs
        SET status = 'stopped',
-           exit_reason = 'interrupted'
+           completed_at = NOW(),
+           exit_reason = 'interrupted',
+           process_id = NULL
        WHERE id = $1`,
       [runId]
     )
