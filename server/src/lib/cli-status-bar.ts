@@ -330,18 +330,24 @@ export class CLIStatusBar {
     const elapsedStr = `Elapsed: ${this.formatDuration(elapsed)}`
     const elapsedDisplay = `${FG_WHITE}${elapsedStr}${RESET}`
 
-    // === Middle section: Metrics ===
-    const metricParts: string[] = []
+    // === Middle section: Current date range + Metrics ===
+    const middleParts: string[] = []
+
+    // Add current item (date range) if available
+    if (this.state.currentItem) {
+      middleParts.push(`${FG_BRIGHT_YELLOW}${this.state.currentItem}${RESET}`)
+    }
+
+    // Add metrics
     if (this.config.metrics) {
       for (const metric of this.config.metrics) {
         const value = this.state.metrics[metric] || 0
         if (value > 0) {
-          metricParts.push(`${metric}: ${value.toLocaleString()}`)
+          middleParts.push(`${FG_BRIGHT_CYAN}${metric}: ${value.toLocaleString()}${RESET}`)
         }
       }
     }
-    const metricsDisplay =
-      metricParts.length > 0 ? `${FG_BRIGHT_CYAN}${metricParts.join(", ")}${RESET}` : ""
+    const middleDisplay = middleParts.length > 0 ? middleParts.join(" | ") : ""
 
     // === Right section: ETA ===
     let etaDisplay = ""
@@ -355,7 +361,7 @@ export class CLIStatusBar {
 
     // Build the line
     const sections = [elapsedDisplay]
-    if (metricsDisplay) sections.push(metricsDisplay)
+    if (middleDisplay) sections.push(middleDisplay)
     if (etaDisplay) sections.push(etaDisplay)
 
     let leftContent: string
