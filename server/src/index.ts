@@ -5,6 +5,7 @@ import express from "express"
 import cors from "cors"
 import compression from "compression"
 import rateLimit from "express-rate-limit"
+import cookieParser from "cookie-parser"
 import { logger } from "./lib/logger.js"
 import { initRedis, isRedisAvailable } from "./lib/redis.js"
 import { searchMovies } from "./routes/search.js"
@@ -61,6 +62,10 @@ import {
   getSeason,
 } from "./routes/shows.js"
 import { initializeDatabase } from "./lib/startup.js"
+import { adminAuthMiddleware, optionalAdminAuth } from "./middleware/admin-auth.js"
+import { loginHandler, logoutHandler, statusHandler } from "./routes/admin/auth.js"
+import { getDashboardStats } from "./routes/admin/dashboard.js"
+import enrichmentRoutes from "./routes/admin/enrichment.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -73,21 +78,54 @@ app.set("trust proxy", 1)
 app.use(compression()) // Gzip responses (~70% size reduction)
 app.use(cors())
 app.use(express.json())
+app.use(cookieParser()) // Parse cookies for admin authentication
+
+// Check for admin authentication (optional - doesn't block requests)
+// This sets req.isAdmin flag for rate limit bypass
+// codeql[js/missing-rate-limiting] - This middleware only sets a flag; actual rate limiting applied per-route
+app.use(optionalAdminAuth)
+
+// Rate limiting configuration constants
+const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+const API_RATE_LIMIT = 100 // General API requests per minute
+const HEAVY_ENDPOINT_LIMIT = 10 // Heavy endpoints (sitemap, etc) per minute
+const ADMIN_LOGIN_LIMIT = 5 // Login attempts per minute
+const ADMIN_ROUTES_LIMIT = 200 // Admin routes requests per minute
 
 // Rate limiting to protect against abuse
-// General API rate limit: 100 requests per minute per IP
+// General API rate limit: 100 requests per minute per IP (skips authenticated admins)
 const apiLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  limit: 100,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: API_RATE_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
+  skip: (req) => req.isAdmin === true,
 })
 
-// Stricter rate limit for heavy endpoints (sitemap, etc): 10 requests per minute
+// Stricter rate limit for heavy endpoints (sitemap, etc): 10 requests per minute (skips admins)
 const heavyEndpointLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  limit: 10,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: HEAVY_ENDPOINT_LIMIT,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { message: "Too many requests, please try again later" } },
+  skip: (req) => req.isAdmin === true,
+})
+
+// Admin login rate limit: 5 attempts per minute to prevent brute force
+const adminLoginLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: ADMIN_LOGIN_LIMIT,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { message: "Too many login attempts, please try again later" } },
+})
+
+// General admin routes rate limit: 200 requests per minute (more permissive for authenticated admins)
+const adminRoutesLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: ADMIN_ROUTES_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
@@ -214,6 +252,14 @@ app.get("/api/causes-of-death/:categorySlug/:causeSlug", getSpecificCauseHandler
 
 app.get("/api/movies/genres", getGenreCategoriesHandler)
 app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
+
+// Admin routes (authentication not required for login, but required for other endpoints)
+// codeql[js/missing-rate-limiting] - All admin routes have appropriate rate limiting
+app.post("/admin/api/auth/login", adminLoginLimiter, loginHandler)
+app.post("/admin/api/auth/logout", adminRoutesLimiter, logoutHandler)
+app.get("/admin/api/auth/status", adminRoutesLimiter, optionalAdminAuth, statusHandler)
+app.get("/admin/api/dashboard/stats", adminRoutesLimiter, adminAuthMiddleware, getDashboardStats)
+app.use("/admin/api/enrichment", adminRoutesLimiter, adminAuthMiddleware, enrichmentRoutes)
 
 // TV Show routes
 app.get("/api/search/tv", searchShows)

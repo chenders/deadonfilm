@@ -156,11 +156,35 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
     return result.rows[0].id
   }
 
-  // TMDB actor - use ON CONFLICT on tmdb_id
+  // TMDB actor - upsert using ON CONFLICT on the partial unique index for tmdb_id
   const result = await db.query<{ id: number }>(
-    `INSERT INTO actors (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, popularity, violent_death, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
-     ON CONFLICT (tmdb_id) DO UPDATE SET
+    `INSERT INTO actors (
+       tmdb_id,
+       name,
+       birthday,
+       deathday,
+       cause_of_death,
+       cause_of_death_source,
+       cause_of_death_details,
+       cause_of_death_details_source,
+       wikipedia_url,
+       profile_path,
+       age_at_death,
+       expected_lifespan,
+       years_lost,
+       popularity,
+       violent_death,
+       deathday_confidence,
+       deathday_verification_source,
+       deathday_verified_at,
+       updated_at
+     )
+     VALUES (
+       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+       CURRENT_TIMESTAMP
+     )
+     ON CONFLICT (tmdb_id) WHERE tmdb_id IS NOT NULL
+     DO UPDATE SET
        name = EXCLUDED.name,
        birthday = COALESCE(actors.birthday, EXCLUDED.birthday),
        deathday = COALESCE(actors.deathday, EXCLUDED.deathday),
@@ -175,6 +199,9 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
        years_lost = COALESCE(actors.years_lost, EXCLUDED.years_lost),
        popularity = COALESCE(actors.popularity, EXCLUDED.popularity),
        violent_death = COALESCE(actors.violent_death, EXCLUDED.violent_death),
+       deathday_confidence = COALESCE(actors.deathday_confidence, EXCLUDED.deathday_confidence),
+       deathday_verification_source = COALESCE(actors.deathday_verification_source, EXCLUDED.deathday_verification_source),
+       deathday_verified_at = COALESCE(actors.deathday_verified_at, EXCLUDED.deathday_verified_at),
        updated_at = CURRENT_TIMESTAMP
      RETURNING id`,
     [
@@ -193,6 +220,9 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
       actor.years_lost ?? null,
       actor.popularity ?? null,
       actor.violent_death ?? null,
+      actor.deathday_confidence ?? null,
+      actor.deathday_verification_source ?? null,
+      actor.deathday_verified_at ?? null,
     ]
   )
   return result.rows[0].id
@@ -218,10 +248,35 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
         continue
       }
 
-      const result = await client.query<{ id: number; tmdb_id: number }>(
-        `INSERT INTO actors (tmdb_id, name, birthday, deathday, cause_of_death, cause_of_death_source, cause_of_death_details, cause_of_death_details_source, wikipedia_url, profile_path, age_at_death, expected_lifespan, years_lost, popularity, violent_death, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
-         ON CONFLICT (tmdb_id) WHERE tmdb_id IS NOT NULL DO UPDATE SET
+      // Use ON CONFLICT to handle upsert atomically
+      const result = await client.query<{ id: number }>(
+        `INSERT INTO actors (
+           tmdb_id,
+           name,
+           birthday,
+           deathday,
+           cause_of_death,
+           cause_of_death_source,
+           cause_of_death_details,
+           cause_of_death_details_source,
+           wikipedia_url,
+           profile_path,
+           age_at_death,
+           expected_lifespan,
+           years_lost,
+           popularity,
+           violent_death,
+           deathday_confidence,
+           deathday_verification_source,
+           deathday_verified_at,
+           updated_at
+         )
+         VALUES (
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+           CURRENT_TIMESTAMP
+         )
+         ON CONFLICT (tmdb_id) WHERE tmdb_id IS NOT NULL
+         DO UPDATE SET
            name = EXCLUDED.name,
            birthday = COALESCE(actors.birthday, EXCLUDED.birthday),
            deathday = COALESCE(actors.deathday, EXCLUDED.deathday),
@@ -236,8 +291,11 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
            years_lost = COALESCE(actors.years_lost, EXCLUDED.years_lost),
            popularity = COALESCE(actors.popularity, EXCLUDED.popularity),
            violent_death = COALESCE(actors.violent_death, EXCLUDED.violent_death),
+           deathday_confidence = COALESCE(actors.deathday_confidence, EXCLUDED.deathday_confidence),
+           deathday_verification_source = COALESCE(actors.deathday_verification_source, EXCLUDED.deathday_verification_source),
+           deathday_verified_at = COALESCE(actors.deathday_verified_at, EXCLUDED.deathday_verified_at),
            updated_at = CURRENT_TIMESTAMP
-         RETURNING id, tmdb_id`,
+         RETURNING id`,
         [
           actor.tmdb_id,
           actor.name,
@@ -254,12 +312,13 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
           actor.years_lost ?? null,
           actor.popularity ?? null,
           actor.violent_death ?? null,
+          actor.deathday_confidence ?? null,
+          actor.deathday_verification_source ?? null,
+          actor.deathday_verified_at ?? null,
         ]
       )
 
-      if (result.rows[0]) {
-        tmdbIdToActorId.set(result.rows[0].tmdb_id, result.rows[0].id)
-      }
+      tmdbIdToActorId.set(actor.tmdb_id, result.rows[0].id)
     }
 
     await client.query("COMMIT")

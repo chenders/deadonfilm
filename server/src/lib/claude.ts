@@ -23,11 +23,12 @@ export interface ClaudeCauseVerificationResult {
   reasoning: string | null
 }
 
-export type ClaudeModel = "sonnet" | "haiku"
+export type ClaudeModel = "sonnet" | "haiku" | "opus"
 
 const MODEL_IDS: Record<ClaudeModel, string> = {
   sonnet: "claude-sonnet-4-20250514",
   haiku: "claude-3-haiku-20240307",
+  opus: "claude-opus-4-5-20251101",
 }
 
 // Rate limits per model (requests per minute)
@@ -35,6 +36,7 @@ const MODEL_IDS: Record<ClaudeModel, string> = {
 const MODEL_RATE_LIMITS: Record<ClaudeModel, number> = {
   sonnet: 50, // Sonnet has stricter limits
   haiku: 100, // Haiku allows more throughput
+  opus: 40, // Opus has the strictest limits
 }
 
 /**
@@ -45,6 +47,7 @@ export class ClaudeRateLimiter {
   private lastRequestTime: Record<ClaudeModel, number> = {
     sonnet: 0,
     haiku: 0,
+    opus: 0,
   }
 
   /**

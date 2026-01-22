@@ -15,6 +15,7 @@ server/dist/
 # IDE
 .idea/
 .vscode/
+.serena/
 *.swp
 *.swo
 
