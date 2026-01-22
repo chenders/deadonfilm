@@ -81,6 +81,7 @@ app.use(cookieParser()) // Parse cookies for admin authentication
 
 // Check for admin authentication (optional - doesn't block requests)
 // This sets req.isAdmin flag for rate limit bypass
+// codeql[js/missing-rate-limiting] - This middleware only sets a flag; actual rate limiting applied per-route
 app.use(optionalAdminAuth)
 
 // Rate limiting to protect against abuse

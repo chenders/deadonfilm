@@ -23,6 +23,7 @@ export function adminAuthMiddleware(req: Request, res: Response, next: NextFunct
     const token = req.cookies?.adminToken
 
     // Validate token exists and is a string
+    // codeql[js/user-controlled-bypass] - False positive: Input validation before cryptographic JWT verification
     if (!token || typeof token !== "string" || token.trim().length === 0) {
       res.status(401).json({ error: { message: "Authentication required" } })
       return
@@ -56,6 +57,7 @@ export function optionalAdminAuth(req: Request, res: Response, next: NextFunctio
     const token = req.cookies?.adminToken
 
     // Only process if token exists and is a valid string
+    // codeql[js/user-controlled-bypass] - False positive: Input validation before cryptographic JWT verification
     if (token && typeof token === "string" && token.trim().length > 0) {
       // Verify token using cryptographic validation
       const decoded = verifyToken(token)
