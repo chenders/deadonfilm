@@ -1053,6 +1053,14 @@ async function syncMovieChanges(
     return { checked: 0, updated: 0, skipped: 0, errors }
   }
 
+  // Fetch movie titles from database for progress display
+  const pool = getPool()
+  const { rows } = await pool.query<{ tmdb_id: number; title: string }>(
+    `SELECT tmdb_id, title FROM movies WHERE tmdb_id = ANY($1)`,
+    [relevantIds]
+  )
+  const movieTitles = new Map(rows.map((row) => [row.tmdb_id, row.title]))
+
   // Process each movie
   let updated = 0
   let skipped = 0
@@ -1061,11 +1069,12 @@ async function syncMovieChanges(
 
   log("\nProcessing movies...", quiet, onLog)
   for (const movieId of relevantIds) {
+    const movieTitle = movieTitles.get(movieId) || `Movie ${movieId}`
     onProgress?.({
       operation: "Processing movies",
       current: processedCount,
       total: totalMovies,
-      currentItem: `Movie ${movieId}`,
+      currentItem: movieTitle,
     })
     processedCount++
 

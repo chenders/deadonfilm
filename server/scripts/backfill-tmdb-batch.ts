@@ -243,9 +243,12 @@ async function runModeBackfill(
         showsOnly: mode === "shows",
         quiet: true, // Suppress verbose output
         onProgress: (progress) => {
-          // Update status bar with current operation
+          // Update status bar with current operation and item
+          const operation = progress.currentItem
+            ? `${progress.operation}: ${progress.currentItem}`
+            : progress.operation
           statusBar.update({
-            currentOperation: progress.operation,
+            currentOperation: operation,
           })
         },
         onLog: (message) => {
