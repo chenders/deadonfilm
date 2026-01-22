@@ -31,6 +31,10 @@ const SITE_URL = process.env.SITE_URL || "https://deadonfilm.com"
 
 const CHECKPOINT_FILE = "./scripts/.backfill-tmdb-checkpoint"
 
+// ANSI color codes
+const FG_BRIGHT_GREEN = "\x1b[92m"
+const RESET = "\x1b[0m"
+
 interface BatchSummary {
   peopleChecked: number
   newDeathsFound: number
@@ -100,9 +104,11 @@ async function saveCheckpoint(mode: string, date: string): Promise<void> {
   const checkpointData = `${mode}:${date}:${timestamp}`
   await fs.writeFile(CHECKPOINT_FILE, checkpointData, "utf-8")
 
-  // Log checkpoint creation
+  // Log checkpoint creation with bright green color to make it stand out
   const checkpointTime = new Date(timestamp).toISOString()
-  console.log(`\n✓ Checkpoint saved (ID: ${timestamp}): ${mode} at ${date} [${checkpointTime}]`)
+  console.log(
+    `\n${FG_BRIGHT_GREEN}✓ Checkpoint saved (ID: ${timestamp}): ${mode} at ${date} [${checkpointTime}]${RESET}`
+  )
 }
 
 /**
