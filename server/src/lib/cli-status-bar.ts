@@ -137,6 +137,7 @@ export class CLIStatusBar {
     current?: number
     currentItem?: string
     currentOperation?: string
+    mode?: string
     metrics?: Partial<Record<string, number>>
   }): void {
     if (update.current !== undefined) {
@@ -147,6 +148,9 @@ export class CLIStatusBar {
     }
     if (update.currentOperation !== undefined) {
       this.state.currentOperation = update.currentOperation
+    }
+    if (update.mode !== undefined) {
+      this.config.mode = update.mode
     }
     if (update.metrics) {
       for (const [key, value] of Object.entries(update.metrics)) {
