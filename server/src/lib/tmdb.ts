@@ -1,4 +1,5 @@
 const TMDB_BASE_URL = "https://api.themoviedb.org/3"
+const MAX_PAGES = 500 // TMDB Changes API maximum page limit
 
 function getToken(): string {
   const token = process.env.TMDB_API_TOKEN
@@ -208,8 +209,14 @@ async function tmdbFetch<T>(path: string): Promise<T> {
 
   if (!response.ok) {
     const body = await response.text()
-    console.log(`TMDB Error Response: ${body}`)
-    throw new Error(`TMDB API error: ${response.status} ${response.statusText}`)
+    // Sanitize log values to prevent log injection (strip full ASCII control range)
+    // Remove: \x00-\x1F (C0 control chars including CR/LF/TAB/etc) and \x7F (DEL)
+    // eslint-disable-next-line no-control-regex
+    const sanitize = (str: string) => str.replace(/[\x00-\x1F\x7F]/g, " ").slice(0, 200)
+    console.error(`TMDB Error: ${response.status} ${response.statusText}`)
+    console.error(`  URL: ${sanitize(url)}`)
+    console.error(`  Response: ${sanitize(body)}`)
+    throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${path}`)
   }
 
   return response.json() as Promise<T>
@@ -308,12 +315,14 @@ export async function getMovieChanges(
  * @param startDate - Start date in YYYY-MM-DD format (max 14 days before endDate)
  * @param endDate - End date in YYYY-MM-DD format
  * @param delayMs - Delay between page requests to respect API rate limits (default 50ms)
+ * @param logger - Optional logger callback for progress messages (defaults to console.log)
  * @returns Array of TMDB person IDs that changed in the date range
  */
 export async function getAllChangedPersonIds(
   startDate: string,
   endDate: string,
-  delayMs: number = 50
+  delayMs: number = 50,
+  logger: (message: string) => void = console.log
 ): Promise<number[]> {
   const ids: number[] = []
   let page = 1
@@ -323,10 +332,32 @@ export async function getAllChangedPersonIds(
     const response = await getPersonChanges(startDate, endDate, page)
     ids.push(...response.results.map((r) => r.id))
     totalPages = response.total_pages
+
+    // Log progress on first page and every 50 pages
+    if (page === 1) {
+      const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
+      logger(
+        `  Fetching ${effectiveMaxPages.toLocaleString()} page(s) (${response.total_results.toLocaleString()} total results)${totalPages > MAX_PAGES ? ` - capped at ${MAX_PAGES}` : ""}`
+      )
+    } else if (page % 50 === 0) {
+      const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
+      logger(
+        `  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`
+      )
+    }
+
     page++
 
     if (page <= totalPages && delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+
+    // TMDB has a hard limit of 500 pages
+    if (page > MAX_PAGES) {
+      logger(
+        `Warning: Reached TMDB page limit (${MAX_PAGES}). Total pages: ${totalPages}. Some results may be missing.`
+      )
+      break
     }
   } while (page <= totalPages)
 
@@ -338,12 +369,14 @@ export async function getAllChangedPersonIds(
  * @param startDate - Start date in YYYY-MM-DD format (max 14 days before endDate)
  * @param endDate - End date in YYYY-MM-DD format
  * @param delayMs - Delay between page requests to respect API rate limits (default 50ms)
+ * @param logger - Optional logger callback for progress messages (defaults to console.log)
  * @returns Array of TMDB movie IDs that changed in the date range
  */
 export async function getAllChangedMovieIds(
   startDate: string,
   endDate: string,
-  delayMs: number = 50
+  delayMs: number = 50,
+  logger: (message: string) => void = console.log
 ): Promise<number[]> {
   const ids: number[] = []
   let page = 1
@@ -353,10 +386,32 @@ export async function getAllChangedMovieIds(
     const response = await getMovieChanges(startDate, endDate, page)
     ids.push(...response.results.map((r) => r.id))
     totalPages = response.total_pages
+
+    // Log progress on first page and every 50 pages
+    if (page === 1) {
+      const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
+      logger(
+        `  Fetching ${effectiveMaxPages.toLocaleString()} page(s) (${response.total_results.toLocaleString()} total results)${totalPages > MAX_PAGES ? ` - capped at ${MAX_PAGES}` : ""}`
+      )
+    } else if (page % 50 === 0) {
+      const effectiveMaxPages = Math.min(totalPages, MAX_PAGES)
+      logger(
+        `  Progress: ${page}/${effectiveMaxPages} pages (${ids.length.toLocaleString()} IDs so far)`
+      )
+    }
+
     page++
 
     if (page <= totalPages && delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+
+    // TMDB has a hard limit of 500 pages
+    if (page > MAX_PAGES) {
+      logger(
+        `Warning: Reached TMDB page limit (${MAX_PAGES}). Total pages: ${totalPages}. Some results may be missing.`
+      )
+      break
     }
   } while (page <= totalPages)
 
@@ -406,6 +461,9 @@ export async function batchGetPersonDetails(
 
       if (result.status === "fulfilled") {
         results.set(personId, result.value)
+      } else {
+        // Log which person ID failed (detailed error already logged by tmdbFetch)
+        console.error(`  Failed to fetch person ID: ${personId}`)
       }
     }
 
