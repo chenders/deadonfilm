@@ -29,9 +29,16 @@ router.get("/runs", async (req: Request, res: Response): Promise<void> => {
   try {
     const pool = getPool()
 
-    // Parse pagination params
-    const page = parseInt(req.query.page as string) || 1
-    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 20, 100)
+    // Parse pagination params with clamping to avoid negative or invalid values
+    const rawPage = Number.parseInt(req.query.page as string, 10)
+    const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
+
+    const rawPageSize = Number.parseInt(req.query.pageSize as string, 10)
+    const defaultPageSize = 20
+    const maxPageSize = 100
+    const safePageSize =
+      Number.isFinite(rawPageSize) && rawPageSize > 0 ? rawPageSize : defaultPageSize
+    const pageSize = Math.min(safePageSize, maxPageSize)
 
     // Parse filters
     const filters: EnrichmentRunFilters = {}
@@ -45,11 +52,21 @@ router.get("/runs", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.minCost) {
-      filters.minCost = parseFloat(req.query.minCost as string)
+      const minCost = Number.parseFloat(req.query.minCost as string)
+      if (!Number.isFinite(minCost)) {
+        res.status(400).json({ error: { message: "Invalid minCost: must be a finite number" } })
+        return
+      }
+      filters.minCost = minCost
     }
 
     if (req.query.maxCost) {
-      filters.maxCost = parseFloat(req.query.maxCost as string)
+      const maxCost = Number.parseFloat(req.query.maxCost as string)
+      if (!Number.isFinite(maxCost)) {
+        res.status(400).json({ error: { message: "Invalid maxCost: must be a finite number" } })
+        return
+      }
+      filters.maxCost = maxCost
     }
 
     if (req.query.exitReason) {
@@ -113,9 +130,12 @@ router.get("/runs/:id/actors", async (req: Request, res: Response): Promise<void
       return
     }
 
-    // Parse pagination params
-    const page = parseInt(req.query.page as string) || 1
-    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 50, 200)
+    // Parse pagination params with clamping to avoid negative values
+    const rawPage = parseInt(req.query.page as string, 10)
+    const page = !Number.isNaN(rawPage) && rawPage > 0 ? rawPage : 1
+    const rawPageSize = parseInt(req.query.pageSize as string, 10)
+    const pageSizeBase = !Number.isNaN(rawPageSize) && rawPageSize > 0 ? rawPageSize : 50
+    const pageSize = Math.min(pageSizeBase, 200)
 
     const result = await getEnrichmentRunActors(pool, runId, page, pageSize)
 

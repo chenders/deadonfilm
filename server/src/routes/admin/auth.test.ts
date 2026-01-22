@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { Request, Response } from "express"
 import { loginHandler, logoutHandler, statusHandler } from "./auth.js"
 
@@ -14,8 +14,12 @@ import { verifyPassword, generateToken, logAdminAction } from "../../lib/admin-a
 describe("admin auth routes", () => {
   let mockReq: Partial<Request>
   let mockRes: Partial<Response>
+  let originalNodeEnv: string | undefined
 
   beforeEach(() => {
+    // Save original NODE_ENV
+    originalNodeEnv = process.env.NODE_ENV
+
     mockReq = {
       body: {},
       ip: "127.0.0.1",
@@ -28,6 +32,15 @@ describe("admin auth routes", () => {
       clearCookie: vi.fn(),
     }
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    // Restore original NODE_ENV
+    if (originalNodeEnv !== undefined) {
+      process.env.NODE_ENV = originalNodeEnv
+    } else {
+      delete process.env.NODE_ENV
+    }
   })
 
   describe("loginHandler", () => {
