@@ -49,11 +49,11 @@ export default function EnrichmentRunDetailsPage() {
     )
   }
 
-  const durationSec = run.duration_ms ? Math.round(run.duration_ms / 1000) : null
+  const durationMs = run.duration_ms
+  const hasDuration = durationMs != null
+  const durationSec = hasDuration ? Math.round(durationMs / 1000) : null
   const avgActorTime =
-    run.actors_processed > 0 && run.duration_ms
-      ? Math.round(run.duration_ms / run.actors_processed)
-      : null
+    run.actors_processed > 0 && hasDuration ? Math.round(durationMs / run.actors_processed) : null
 
   return (
     <AdminLayout>
@@ -151,7 +151,7 @@ export default function EnrichmentRunDetailsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-700">
                   {sourceStats.map((stat) => (
-                    <tr key={stat.source} className="hover:bg-gray-750">
+                    <tr key={stat.source} className="hover:bg-gray-700">
                       <td className="px-3 py-2 font-medium text-white">{stat.source}</td>
                       <td className="px-3 py-2 text-right text-gray-300">{stat.total_attempts}</td>
                       <td className="px-3 py-2 text-right text-gray-300">
@@ -194,7 +194,7 @@ export default function EnrichmentRunDetailsPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-700">
                     {actors.items.map((actor) => (
-                      <tr key={actor.actor_id} className="hover:bg-gray-750">
+                      <tr key={actor.actor_id} className="hover:bg-gray-700">
                         <td className="px-3 py-2 text-white">{actor.actor_name}</td>
                         <td className="px-3 py-2 text-center">
                           {actor.was_enriched ? (

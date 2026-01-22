@@ -155,7 +155,7 @@ export default function EnrichmentRunsPage() {
                       </tr>
                     ) : (
                       data.items.map((run) => (
-                        <tr key={run.id} className="hover:bg-gray-750 transition-colors">
+                        <tr key={run.id} className="transition-colors hover:bg-gray-800">
                           <td className="px-4 py-3">
                             <Link
                               to={`/admin/enrichment/runs/${run.id}`}
