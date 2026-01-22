@@ -172,7 +172,8 @@ async function runModeBackfill(
   batches: Array<{ start: string; end: string }>,
   dryRun: boolean,
   resumeFromBatch: number,
-  checkpointFrequency: number
+  checkpointFrequency: number,
+  fullDateRange: { start: string; end: string }
 ): Promise<BatchSummary> {
   const modeName = getModeName(mode)
   const totalBatches = batches.length
@@ -197,7 +198,7 @@ async function runModeBackfill(
     itemLabel: "batches",
     metrics,
     mode: modeName,
-    header: `Backfilling ${modeName}`,
+    header: `Backfilling ${modeName}: ${fullDateRange.start} to ${fullDateRange.end}`,
   })
 
   console.log("\n" + "=".repeat(60))
@@ -236,7 +237,7 @@ async function runModeBackfill(
       // Update status bar for this batch
       statusBar.update({
         current: batchNum,
-        currentItem: `${batch.start} to ${batch.end}`,
+        currentItem: batch.start,
       })
 
       // Run sync for this batch with progress callbacks
@@ -496,7 +497,8 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
       batches,
       options.dryRun,
       startBatch,
-      options.checkpointFrequency
+      options.checkpointFrequency,
+      { start: options.startDate, end: options.endDate }
     )
 
     // Accumulate into overall summary
