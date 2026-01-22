@@ -22,7 +22,7 @@ vi.mock("./db.js", () => ({
 
 // Mock logger
 vi.mock("./logger.js", () => ({
-  default: {
+  logger: {
     info: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
@@ -222,8 +222,8 @@ describe("enrichment-process-manager", () => {
         rows: [{ process_id: null, status: "completed" }],
       })
 
-      await expect(processManager.stopEnrichmentRun(1)).rejects.toThrow(
-        "Enrichment run 1 is not running"
+      await expect(processManager.stopEnrichmentRun(2)).rejects.toThrow(
+        "Enrichment run 2 is not running"
       )
     })
   })
