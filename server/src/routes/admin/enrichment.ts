@@ -17,6 +17,12 @@ import {
   getRunSourcePerformanceStats,
   type EnrichmentRunFilters,
 } from "../../lib/db/admin-enrichment-queries.js"
+import {
+  startEnrichmentRun,
+  stopEnrichmentRun,
+  getEnrichmentRunProgress,
+  type EnrichmentRunConfig,
+} from "../../lib/enrichment-process-manager.js"
 
 const router = Router()
 
@@ -236,14 +242,36 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       userAgent: req.get("user-agent"),
     })
 
-    // TODO: Implement enrichment run execution
-    // This will require spawning the enrichment script as a child process
-    // and tracking its progress in a global state or database table
+    // Convert request config to EnrichmentRunConfig
+    const enrichmentConfig: EnrichmentRunConfig = {
+      limit: config.limit,
+      minPopularity: config.minPopularity,
+      recentOnly: config.recentOnly,
+      maxCostPerActor: config.maxCostPerActor,
+      maxTotalCost: config.maxTotalCost,
+      confidence: config.confidence,
+      // Default source categories (can be customized via config.sources later)
+      free: true,
+      paid: true,
+      ai: false,
+      // Default enrichment settings
+      claudeCleanup: true,
+      gatherAllSources: false,
+      stopOnMatch: false,
+      followLinks: true,
+      aiLinkSelection: true,
+      aiContentExtraction: true,
+    }
 
-    res.status(501).json({
-      error: {
-        message: "Enrichment run triggering not yet implemented. Use CLI script for now.",
-      },
+    // Start the enrichment run
+    const runId = await startEnrichmentRun(enrichmentConfig)
+
+    logger.info({ runId }, "Enrichment run started")
+
+    res.status(201).json({
+      id: runId,
+      status: "running",
+      message: "Enrichment run started successfully",
     })
   } catch (error) {
     logger.error({ error }, "Failed to start enrichment run")
@@ -274,13 +302,15 @@ router.post("/runs/:id/stop", async (req: Request, res: Response): Promise<void>
       userAgent: req.get("user-agent"),
     })
 
-    // TODO: Implement enrichment run stopping
-    // This will require signaling the running process to gracefully stop
+    // Stop the enrichment run
+    const stopped = await stopEnrichmentRun(runId)
 
-    res.status(501).json({
-      error: {
-        message: "Enrichment run stopping not yet implemented",
-      },
+    logger.info({ runId, stopped }, "Enrichment run stop requested")
+
+    res.status(200).json({
+      id: runId,
+      stopped,
+      message: stopped ? "Enrichment run stopped successfully" : "Enrichment run stop signal sent",
     })
   } catch (error) {
     logger.error({ error }, "Failed to stop enrichment run")
@@ -302,15 +332,10 @@ router.get("/runs/:id/progress", async (req: Request, res: Response): Promise<vo
       return
     }
 
-    // TODO: Implement progress tracking
-    // This will require the enrichment script to periodically update
-    // a progress record (could be in-memory, Redis, or database)
+    // Get progress for the enrichment run
+    const progress = await getEnrichmentRunProgress(runId)
 
-    res.status(501).json({
-      error: {
-        message: "Progress tracking not yet implemented",
-      },
-    })
+    res.status(200).json(progress)
   } catch (error) {
     logger.error({ error }, "Failed to fetch enrichment run progress")
     res.status(500).json({ error: { message: "Failed to fetch enrichment run progress" } })
