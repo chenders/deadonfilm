@@ -135,6 +135,7 @@ interface EnrichOptions {
   ignoreCache: boolean
   yes: boolean
   runId?: number // Optional run ID for tracking progress in database
+  staging: boolean // Stage 4: Write to staging tables for review workflow
 }
 
 /**
@@ -866,6 +867,14 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               : "low"
           : null)
 
+      // TODO (Stage 4): Use enrichment-db-writer module to support staging mode
+      // If options.staging is true:
+      //   1. Get enrichment_run_actor_id for this actor
+      //   2. Call writeToStaging() instead of direct db.query
+      //   3. Skip cache invalidation (data not live yet)
+      // If options.staging is false:
+      //   Continue with current behavior (writeToProduction)
+
       // Update actor_death_circumstances table with all fields
       await db.query(
         `INSERT INTO actor_death_circumstances (
@@ -1155,6 +1164,8 @@ const program = new Command()
     "Enrichment run ID for progress tracking (primarily for internal/admin UI use; typically not set manually)",
     parsePositiveInt
   )
+  // Stage 4: Review workflow
+  .option("--staging", "Write to staging tables for review before committing to production")
   .action(async (options) => {
     await enrichMissingDetails({
       limit: options.limit,
@@ -1184,6 +1195,7 @@ const program = new Command()
       ignoreCache: options.ignoreCache || false,
       yes: options.yes || false,
       runId: options.runId,
+      staging: options.staging || false,
     })
   })
 
