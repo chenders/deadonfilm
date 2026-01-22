@@ -109,14 +109,13 @@ sudo /root/setup-server.sh
 |--------|-------------|
 | `--deploy-user NAME` | Username for deployment (default: deploy) |
 | `--app-dir PATH` | Application directory (default: /opt/deadonfilm) |
-| `--runner-count N` | Number of GitHub runner containers (default: 2) |
 | `--skip-runner` | Skip GitHub Actions runner setup |
 | `--skip-newrelic` | Skip New Relic installation |
 
 Example with options:
 
 ```bash
-sudo /root/setup-server.sh --deploy-user deploy --runner-count 4
+sudo /root/setup-server.sh --deploy-user deploy --skip-newrelic
 ```
 
 ### 3. Verify Installation
@@ -360,10 +359,10 @@ For maximum security, you can tunnel SSH through Cloudflare and close port 22:
 
 ## Configure GitHub Actions Runner
 
-The setup script creates Docker-based GitHub Actions runners using the `myoung34/github-runner` image. This provides:
+The setup script creates a directory for Docker-based GitHub Actions runners using the `myoung34/github-runner` image. Runner configuration is version-controlled in the repository and copied to the server during deployment. This provides:
 - Ephemeral runners (fresh environment for each job)
 - No host dependencies to manage
-- Easy scaling (adjust `--runner-count` in setup)
+- Easy scaling via docker-compose.yml
 - Docker-in-Docker support for building containers
 
 ### 1. Create a GitHub Personal Access Token
@@ -378,7 +377,23 @@ The setup script creates Docker-based GitHub Actions runners using the `myoung34
         - Repository permissions → Administration: Read and write
 4. Click "Generate token" and copy the value
 
-### 2. Configure Runner Environment
+### 2. Copy Runner Configuration Files
+
+Clone the repository (or pull latest) and copy the runner configuration:
+
+```bash
+# Clone or pull latest
+cd /home/deploy
+git clone https://github.com/chenders/deadonfilm.git repo
+cd repo
+git pull  # If already cloned
+
+# Copy runner configuration to /opt/github-runners/
+sudo cp docker-compose.runners.yml /opt/github-runners/docker-compose.yml
+sudo cp .env.runners.example /opt/github-runners/.env.example
+```
+
+### 3. Configure Runner Environment
 
 ```bash
 cd /opt/github-runners
@@ -399,14 +414,14 @@ Secure the file:
 chmod 600 .env
 ```
 
-### 3. Start the Runners
+### 4. Start the Runners
 
 ```bash
 sudo systemctl enable github-runners
 sudo systemctl start github-runners
 ```
 
-### 4. Verify Runners
+### 5. Verify Runners
 
 ```bash
 # Check container status
@@ -433,11 +448,18 @@ The runners are configured with these settings:
 
 ### Scaling Runners
 
-To change the number of runners, edit `/opt/github-runners/docker-compose.yml` or re-run setup:
+To change the number of runners, edit the `replicas` setting in `/opt/github-runners/docker-compose.yml`:
 
 ```bash
-# Re-run setup with different count
-sudo /root/setup-server.sh --runner-count 4
+cd /opt/github-runners
+sudo vim docker-compose.yml
+# Change: replicas: 4  (or desired number)
+
+# Apply the change
+sudo systemctl restart github-runners
+
+# Or use docker compose directly
+docker compose up -d --scale runner=6
 ```
 
 ### Token Renewal
