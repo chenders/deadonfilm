@@ -90,9 +90,9 @@ jobs:
   backend:
     name: Backend
     runs-on: self-hosted
-    # Prevent parallel backend jobs to avoid postgres port 5433 conflicts on self-hosted runners
+    # Prevent parallel backend jobs on the same ref to avoid postgres port conflicts on self-hosted runners
     concurrency:
-      group: backend-tests-postgres
+      group: backend-tests-postgres-${{ github.ref }}
       cancel-in-progress: false
 
     services:
@@ -102,8 +102,7 @@ jobs:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
           POSTGRES_DB: deadonfilm_test
-        ports:
-          - 5433:5432
+        # No port publishing - access via Docker network instead
         options: >-
           --health-cmd "pg_isready -U test"
           --health-interval 10s
@@ -115,8 +114,8 @@ jobs:
         working-directory: server
 
     env:
-      # Use host.docker.internal to reach host from runner container (Docker-in-Docker)
-      DATABASE_URL: postgresql://test:test@host.docker.internal:5433/deadonfilm_test
+      # Access postgres via Docker network using service name
+      DATABASE_URL: postgresql://test:test@postgres:5432/deadonfilm_test
 
     steps:
       - uses: actions/checkout@v4
