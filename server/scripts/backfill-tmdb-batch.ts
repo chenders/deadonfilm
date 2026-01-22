@@ -90,8 +90,13 @@ async function loadCheckpoint(): Promise<{
     const parts = data.trim().split(":")
     if (parts.length >= 2) {
       const batchIndex = parseInt(parts[0], 10)
+      if (Number.isNaN(batchIndex) || batchIndex < 0) {
+        // Corrupt or invalid checkpoint; treat as if no checkpoint exists
+        return null
+      }
       const mode = parts[1] || null
-      const timestamp = parts.length >= 3 ? parseInt(parts[2], 10) : Date.now()
+      const rawTimestamp = parts.length >= 3 ? parseInt(parts[2], 10) : Date.now()
+      const timestamp = Number.isNaN(rawTimestamp) ? Date.now() : rawTimestamp
       return { batchIndex, mode, timestamp }
     }
     return null
@@ -308,7 +313,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     if (batchIndex >= 0 && batchIndex < batches.length) {
       resumeBatchIndex = batchIndex
       const checkpointTime = new Date(timestamp).toISOString()
-      const batch = batches[batchIndex]
+      let batch = batches[batchIndex]
 
       // Determine which mode to resume from
       if (mode && modes.includes(mode as SyncMode)) {
@@ -317,6 +322,8 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
           // All modes in this batch are done, move to next batch
           resumeBatchIndex++
           resumeModeIndex = 0
+          // Update batch reference for correct checkpoint info
+          batch = batches[resumeBatchIndex]
         }
         checkpointInfo = `\n  Resuming: Yes (from checkpoint ID: ${timestamp})\n  Checkpoint: Batch ${batchIndex + 1} (${batch.start} to ${batch.end}) after ${getModeName(mode as SyncMode)}\n  Created: ${checkpointTime}`
       } else {
