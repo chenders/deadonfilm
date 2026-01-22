@@ -53,10 +53,9 @@ exports.up = (pgm) => {
   });
 
   // Index for querying recent actions
-  pgm.createIndex('admin_audit_log', 'created_at', {
+  pgm.createIndex('admin_audit_log', [{ name: 'created_at', sort: 'DESC' }], {
     name: 'idx_admin_audit_log_created_at',
     method: 'btree',
-    order: 'DESC',
   });
 
   // Index for querying actions on specific resources
