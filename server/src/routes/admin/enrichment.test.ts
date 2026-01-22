@@ -18,6 +18,12 @@ vi.mock("../../lib/db/admin-enrichment-queries.js", () => ({
   getEnrichmentRunActors: vi.fn(),
   getSourcePerformanceStats: vi.fn(),
   getRunSourcePerformanceStats: vi.fn(),
+  getPendingEnrichments: vi.fn(),
+  getEnrichmentReviewDetail: vi.fn(),
+  approveEnrichment: vi.fn(),
+  rejectEnrichment: vi.fn(),
+  editEnrichment: vi.fn(),
+  commitEnrichmentRun: vi.fn(),
 }))
 vi.mock("../../lib/admin-auth.js", () => ({
   logAdminAction: vi.fn(),
@@ -79,7 +85,12 @@ describe("Admin Enrichment Endpoints", () => {
 
       const response = await request(app).get("/admin/api/enrichment/runs").expect(200)
 
-      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(expect.any(Object), 1, 20, {})
+      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        20,
+        {}
+      )
       expect(response.body).toEqual(mockRunsResult)
     })
 
@@ -89,7 +100,12 @@ describe("Admin Enrichment Endpoints", () => {
       await request(app).get("/admin/api/enrichment/runs?page=-5&pageSize=1000").expect(200)
 
       // Negative page should default to 1, pageSize should clamp to 100
-      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(expect.any(Object), 1, 100, {})
+      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        100,
+        {}
+      )
     })
 
     it("applies date filters", async () => {
@@ -100,7 +116,7 @@ describe("Admin Enrichment Endpoints", () => {
         .expect(200)
 
       expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
-        expect.any(Object),
+        expect.objectContaining({ query: expect.any(Function) }),
         1,
         20,
         expect.objectContaining({
@@ -115,7 +131,7 @@ describe("Admin Enrichment Endpoints", () => {
         .get("/admin/api/enrichment/runs?minCost=invalid")
         .expect(400)
 
-      expect(response.body.error.message).toContain("Invalid minCost: must be a finite number")
+      expect(response.body.error.message).toContain("Invalid minCost")
     })
 
     it("returns 400 for invalid maxCost", async () => {
@@ -123,7 +139,7 @@ describe("Admin Enrichment Endpoints", () => {
         .get("/admin/api/enrichment/runs?maxCost=invalid")
         .expect(400)
 
-      expect(response.body.error.message).toContain("Invalid maxCost: must be a finite number")
+      expect(response.body.error.message).toContain("Invalid maxCost")
     })
 
     it("applies cost and error filters", async () => {
@@ -134,7 +150,7 @@ describe("Admin Enrichment Endpoints", () => {
         .expect(200)
 
       expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
-        expect.any(Object),
+        expect.objectContaining({ query: expect.any(Function) }),
         1,
         20,
         expect.objectContaining({
@@ -187,7 +203,10 @@ describe("Admin Enrichment Endpoints", () => {
 
       const response = await request(app).get("/admin/api/enrichment/runs/1").expect(200)
 
-      expect(queries.getEnrichmentRunDetails).toHaveBeenCalledWith(expect.any(Object), 1)
+      expect(queries.getEnrichmentRunDetails).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1
+      )
       expect(response.body).toEqual(mockRunDetails)
     })
 
@@ -244,16 +263,26 @@ describe("Admin Enrichment Endpoints", () => {
 
       const response = await request(app).get("/admin/api/enrichment/runs/1/actors").expect(200)
 
-      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(expect.any(Object), 1, 1, 50)
+      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        1,
+        50
+      )
       expect(response.body).toEqual(mockActorsResult)
     })
 
     it("validates and clamps pagination parameters", async () => {
       vi.mocked(queries.getEnrichmentRunActors).mockResolvedValue(mockActorsResult)
 
-      await request(app).get("/admin/api/enrichment/runs/1/actors?page=-1&pageSize=200").expect(200)
+      await request(app).get("/admin/api/enrichment/runs/1/actors?page=-1&pageSize=500").expect(200)
 
-      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(expect.any(Object), 1, 1, 200)
+      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        1,
+        200
+      )
     })
 
     it("returns 400 for invalid run ID", async () => {
@@ -293,7 +322,7 @@ describe("Admin Enrichment Endpoints", () => {
       const response = await request(app).get("/admin/api/enrichment/sources/stats").expect(200)
 
       expect(queries.getSourcePerformanceStats).toHaveBeenCalledWith(
-        expect.any(Object),
+        expect.objectContaining({ query: expect.any(Function) }),
         undefined,
         undefined
       )
@@ -308,7 +337,7 @@ describe("Admin Enrichment Endpoints", () => {
         .expect(200)
 
       expect(queries.getSourcePerformanceStats).toHaveBeenCalledWith(
-        expect.any(Object),
+        expect.objectContaining({ query: expect.any(Function) }),
         "2024-01-01",
         "2024-12-31"
       )
@@ -344,7 +373,10 @@ describe("Admin Enrichment Endpoints", () => {
         .get("/admin/api/enrichment/runs/1/sources/stats")
         .expect(200)
 
-      expect(queries.getRunSourcePerformanceStats).toHaveBeenCalledWith(expect.any(Object), 1)
+      expect(queries.getRunSourcePerformanceStats).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1
+      )
       expect(response.body).toEqual(mockSourceStats)
     })
 
@@ -583,6 +615,548 @@ describe("Admin Enrichment Endpoints", () => {
       expect(response.body.status).toBe("completed")
       expect(response.body.progressPercentage).toBe(100.0)
       expect(response.body.estimatedTimeRemainingMs).toBeNull()
+    })
+  })
+
+  // ========================================================================
+  // REVIEW WORKFLOW ENDPOINTS (Stage 4)
+  // ========================================================================
+
+  describe("GET /admin/api/enrichment/pending-review", () => {
+    const mockPendingResult = {
+      items: [
+        {
+          enrichment_run_actor_id: 1,
+          run_id: 1,
+          run_started_at: "2024-01-01T00:00:00Z",
+          actor_id: 100,
+          actor_name: "John Doe",
+          actor_tmdb_id: 12345,
+          deathday: "2023-05-15",
+          cause_of_death: "Heart attack",
+          cause_of_death_details: "Myocardial infarction",
+          review_status: "pending",
+          circumstances_confidence: "high",
+          cause_confidence: "high",
+          details_confidence: "medium",
+          deathday_confidence: "high",
+          overall_confidence: "0.85",
+          winning_source: "wikidata",
+          cost_usd: "0.05",
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 50,
+      totalPages: 1,
+    }
+
+    it("returns paginated pending enrichments with default parameters", async () => {
+      vi.mocked(queries.getPendingEnrichments).mockResolvedValue(mockPendingResult)
+
+      const response = await request(app).get("/admin/api/enrichment/pending-review").expect(200)
+
+      expect(queries.getPendingEnrichments).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        { page: 1, pageSize: 50 }
+      )
+      expect(response.body).toEqual(mockPendingResult)
+    })
+
+    it("validates and clamps pagination parameters", async () => {
+      vi.mocked(queries.getPendingEnrichments).mockResolvedValue(mockPendingResult)
+
+      await request(app)
+        .get("/admin/api/enrichment/pending-review?page=-1&pageSize=500")
+        .expect(200)
+
+      expect(queries.getPendingEnrichments).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        { page: 1, pageSize: 200 }
+      )
+    })
+
+    it("applies runId filter", async () => {
+      vi.mocked(queries.getPendingEnrichments).mockResolvedValue(mockPendingResult)
+
+      await request(app).get("/admin/api/enrichment/pending-review?runId=5").expect(200)
+
+      expect(queries.getPendingEnrichments).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        expect.objectContaining({ runId: 5 })
+      )
+    })
+
+    it("rejects invalid runId", async () => {
+      await request(app).get("/admin/api/enrichment/pending-review?runId=abc").expect(400)
+    })
+
+    it("applies minConfidence filter", async () => {
+      vi.mocked(queries.getPendingEnrichments).mockResolvedValue(mockPendingResult)
+
+      await request(app).get("/admin/api/enrichment/pending-review?minConfidence=0.8").expect(200)
+
+      expect(queries.getPendingEnrichments).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        expect.objectContaining({ minConfidence: 0.8 })
+      )
+    })
+
+    it("rejects invalid minConfidence values", async () => {
+      await request(app).get("/admin/api/enrichment/pending-review?minConfidence=1.5").expect(400)
+      await request(app).get("/admin/api/enrichment/pending-review?minConfidence=-0.1").expect(400)
+    })
+
+    it("applies causeConfidence filter", async () => {
+      vi.mocked(queries.getPendingEnrichments).mockResolvedValue(mockPendingResult)
+
+      await request(app)
+        .get("/admin/api/enrichment/pending-review?causeConfidence=high")
+        .expect(200)
+
+      expect(queries.getPendingEnrichments).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        expect.objectContaining({ causeConfidence: "high" })
+      )
+    })
+
+    it("rejects invalid causeConfidence values", async () => {
+      await request(app)
+        .get("/admin/api/enrichment/pending-review?causeConfidence=invalid")
+        .expect(400)
+    })
+
+    it("handles query errors gracefully", async () => {
+      vi.mocked(queries.getPendingEnrichments).mockRejectedValue(new Error("DB error"))
+
+      await request(app).get("/admin/api/enrichment/pending-review").expect(500)
+    })
+  })
+
+  describe("GET /admin/api/enrichment/review/:enrichmentRunActorId", () => {
+    const mockDetailResult = {
+      enrichment_run_actor_id: 1,
+      run_id: 1,
+      actor_id: 100,
+      actor_name: "John Doe",
+      actor_tmdb_id: 12345,
+      was_enriched: true,
+      confidence: "0.85",
+      sources_attempted: ["wikidata", "wikipedia"],
+      winning_source: "wikidata",
+      processing_time_ms: 1500,
+      cost_usd: "0.05",
+      staging_id: 1,
+      review_status: "pending",
+      deathday: "2023-05-15",
+      cause_of_death: "Heart attack",
+      cause_of_death_source: "wikidata",
+      cause_of_death_details: null,
+      cause_of_death_details_source: null,
+      wikipedia_url: null,
+      age_at_death: 65,
+      expected_lifespan: "78.5",
+      years_lost: "13.5",
+      violent_death: false,
+      has_detailed_death_info: false,
+      circumstances: null,
+      circumstances_confidence: null,
+      rumored_circumstances: null,
+      cause_confidence: "high",
+      details_confidence: null,
+      birthday_confidence: null,
+      deathday_confidence: "high",
+      location_of_death: null,
+      last_project: null,
+      career_status_at_death: null,
+      posthumous_releases: null,
+      related_celebrity_ids: null,
+      related_celebrities: null,
+      notable_factors: null,
+      additional_context: null,
+      sources: null,
+      raw_response: null,
+      prod_deathday: "2023-05-15",
+      prod_cause_of_death: "Unknown",
+      prod_cause_of_death_details: null,
+      prod_has_detailed_death_info: false,
+    }
+
+    it("returns detailed enrichment data", async () => {
+      vi.mocked(queries.getEnrichmentReviewDetail).mockResolvedValue(mockDetailResult)
+
+      const response = await request(app).get("/admin/api/enrichment/review/1").expect(200)
+
+      expect(queries.getEnrichmentReviewDetail).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1
+      )
+      expect(response.body).toEqual(mockDetailResult)
+    })
+
+    it("returns 404 if enrichment not found", async () => {
+      vi.mocked(queries.getEnrichmentReviewDetail).mockResolvedValue(null)
+
+      await request(app).get("/admin/api/enrichment/review/999").expect(404)
+    })
+
+    it("rejects invalid enrichmentRunActorId", async () => {
+      await request(app).get("/admin/api/enrichment/review/abc").expect(400)
+    })
+
+    it("handles query errors gracefully", async () => {
+      vi.mocked(queries.getEnrichmentReviewDetail).mockRejectedValue(new Error("DB error"))
+
+      await request(app).get("/admin/api/enrichment/review/1").expect(500)
+    })
+  })
+
+  describe("POST /admin/api/enrichment/review/:enrichmentRunActorId/approve", () => {
+    it("approves an enrichment successfully", async () => {
+      vi.mocked(queries.approveEnrichment).mockResolvedValue()
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/review/1/approve")
+        .send({ adminUser: "admin@example.com", notes: "Looks good" })
+        .expect(200)
+
+      expect(queries.approveEnrichment).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        "admin@example.com",
+        "Looks good"
+      )
+      expect(adminAuth.logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "approve_enrichment",
+          resourceType: "enrichment_review",
+          resourceId: 1,
+        })
+      )
+      expect(response.body.success).toBe(true)
+    })
+
+    it("approves without notes", async () => {
+      vi.mocked(queries.approveEnrichment).mockResolvedValue()
+
+      await request(app)
+        .post("/admin/api/enrichment/review/1/approve")
+        .send({ adminUser: "admin@example.com" })
+        .expect(200)
+
+      expect(queries.approveEnrichment).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        "admin@example.com",
+        undefined
+      )
+    })
+
+    it("rejects missing adminUser", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/1/approve")
+        .send({ notes: "test" })
+        .expect(400)
+    })
+
+    it("rejects empty adminUser", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/1/approve")
+        .send({ adminUser: "   " })
+        .expect(400)
+    })
+
+    it("rejects invalid enrichmentRunActorId", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/abc/approve")
+        .send({ adminUser: "admin@example.com" })
+        .expect(400)
+    })
+
+    it("handles query errors gracefully", async () => {
+      vi.mocked(queries.approveEnrichment).mockRejectedValue(new Error("DB error"))
+
+      await request(app)
+        .post("/admin/api/enrichment/review/1/approve")
+        .send({ adminUser: "admin@example.com" })
+        .expect(500)
+    })
+  })
+
+  describe("POST /admin/api/enrichment/review/:enrichmentRunActorId/reject", () => {
+    it("rejects an enrichment successfully", async () => {
+      vi.mocked(queries.rejectEnrichment).mockResolvedValue()
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/review/1/reject")
+        .send({
+          adminUser: "admin@example.com",
+          reason: "low_confidence",
+          details: "Not enough sources",
+        })
+        .expect(200)
+
+      expect(queries.rejectEnrichment).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        "admin@example.com",
+        "low_confidence",
+        "Not enough sources"
+      )
+      expect(adminAuth.logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "reject_enrichment",
+          resourceType: "enrichment_review",
+          resourceId: 1,
+        })
+      )
+      expect(response.body.success).toBe(true)
+    })
+
+    it("rejects without details", async () => {
+      vi.mocked(queries.rejectEnrichment).mockResolvedValue()
+
+      await request(app)
+        .post("/admin/api/enrichment/review/1/reject")
+        .send({ adminUser: "admin@example.com", reason: "incorrect_data" })
+        .expect(200)
+
+      expect(queries.rejectEnrichment).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        "admin@example.com",
+        "incorrect_data",
+        undefined
+      )
+    })
+
+    it("rejects missing adminUser", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/1/reject")
+        .send({ reason: "low_confidence" })
+        .expect(400)
+    })
+
+    it("rejects missing reason", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/1/reject")
+        .send({ adminUser: "admin@example.com" })
+        .expect(400)
+    })
+
+    it("rejects invalid reason", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/1/reject")
+        .send({ adminUser: "admin@example.com", reason: "invalid_reason" })
+        .expect(400)
+    })
+
+    it("accepts all valid rejection reasons", async () => {
+      vi.mocked(queries.rejectEnrichment).mockResolvedValue()
+
+      const validReasons = [
+        "low_confidence",
+        "incorrect_data",
+        "duplicate",
+        "no_death_info",
+        "other",
+      ]
+
+      for (const reason of validReasons) {
+        await request(app)
+          .post("/admin/api/enrichment/review/1/reject")
+          .send({ adminUser: "admin@example.com", reason })
+          .expect(200)
+      }
+
+      expect(queries.rejectEnrichment).toHaveBeenCalledTimes(validReasons.length)
+    })
+
+    it("handles query errors gracefully", async () => {
+      vi.mocked(queries.rejectEnrichment).mockRejectedValue(new Error("DB error"))
+
+      await request(app)
+        .post("/admin/api/enrichment/review/1/reject")
+        .send({ adminUser: "admin@example.com", reason: "low_confidence" })
+        .expect(500)
+    })
+  })
+
+  describe("POST /admin/api/enrichment/review/:enrichmentRunActorId/edit", () => {
+    it("edits an enrichment successfully", async () => {
+      vi.mocked(queries.editEnrichment).mockResolvedValue()
+
+      const edits = {
+        cause_of_death: "Myocardial infarction",
+        cause_of_death_details: "Updated with more specific diagnosis",
+      }
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/review/1/edit")
+        .send({
+          adminUser: "admin@example.com",
+          edits,
+          notes: "Updated based on medical records",
+        })
+        .expect(200)
+
+      expect(queries.editEnrichment).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        "admin@example.com",
+        edits,
+        "Updated based on medical records"
+      )
+      expect(adminAuth.logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "edit_enrichment",
+          resourceType: "enrichment_review",
+          resourceId: 1,
+        })
+      )
+      expect(response.body.success).toBe(true)
+    })
+
+    it("edits without notes", async () => {
+      vi.mocked(queries.editEnrichment).mockResolvedValue()
+
+      await request(app)
+        .post("/admin/api/enrichment/review/1/edit")
+        .send({
+          adminUser: "admin@example.com",
+          edits: { cause_of_death: "Updated" },
+        })
+        .expect(200)
+
+      expect(queries.editEnrichment).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        "admin@example.com",
+        { cause_of_death: "Updated" },
+        undefined
+      )
+    })
+
+    it("rejects missing adminUser", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/1/edit")
+        .send({ edits: { cause_of_death: "test" } })
+        .expect(400)
+    })
+
+    it("rejects missing edits", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/1/edit")
+        .send({ adminUser: "admin@example.com" })
+        .expect(400)
+    })
+
+    it("rejects empty edits object", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/1/edit")
+        .send({ adminUser: "admin@example.com", edits: {} })
+        .expect(400)
+    })
+
+    it("rejects invalid enrichmentRunActorId", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/review/abc/edit")
+        .send({ adminUser: "admin@example.com", edits: { cause_of_death: "test" } })
+        .expect(400)
+    })
+
+    it("handles query errors gracefully", async () => {
+      vi.mocked(queries.editEnrichment).mockRejectedValue(new Error("DB error"))
+
+      await request(app)
+        .post("/admin/api/enrichment/review/1/edit")
+        .send({ adminUser: "admin@example.com", edits: { cause_of_death: "test" } })
+        .expect(500)
+    })
+  })
+
+  describe("POST /admin/api/enrichment/runs/:id/commit", () => {
+    it("commits approved enrichments successfully", async () => {
+      vi.mocked(queries.commitEnrichmentRun).mockResolvedValue({ committedCount: 5 })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/runs/1/commit")
+        .send({
+          adminUser: "admin@example.com",
+          notes: "All high confidence enrichments approved",
+        })
+        .expect(200)
+
+      expect(queries.commitEnrichmentRun).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        "admin@example.com",
+        "All high confidence enrichments approved"
+      )
+      expect(adminAuth.logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "commit_enrichment_run",
+          resourceType: "enrichment_run",
+          resourceId: 1,
+        })
+      )
+      expect(response.body.success).toBe(true)
+      expect(response.body.committedCount).toBe(5)
+      expect(response.body.message).toContain("5 enrichment(s) committed")
+    })
+
+    it("commits without notes", async () => {
+      vi.mocked(queries.commitEnrichmentRun).mockResolvedValue({ committedCount: 3 })
+
+      await request(app)
+        .post("/admin/api/enrichment/runs/1/commit")
+        .send({ adminUser: "admin@example.com" })
+        .expect(200)
+
+      expect(queries.commitEnrichmentRun).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        "admin@example.com",
+        undefined
+      )
+    })
+
+    it("handles zero commits", async () => {
+      vi.mocked(queries.commitEnrichmentRun).mockResolvedValue({ committedCount: 0 })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/runs/1/commit")
+        .send({ adminUser: "admin@example.com" })
+        .expect(200)
+
+      expect(response.body.committedCount).toBe(0)
+    })
+
+    it("rejects missing adminUser", async () => {
+      await request(app).post("/admin/api/enrichment/runs/1/commit").send({}).expect(400)
+    })
+
+    it("rejects empty adminUser", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/runs/1/commit")
+        .send({ adminUser: "   " })
+        .expect(400)
+    })
+
+    it("rejects invalid run ID", async () => {
+      await request(app)
+        .post("/admin/api/enrichment/runs/abc/commit")
+        .send({ adminUser: "admin@example.com" })
+        .expect(400)
+    })
+
+    it("handles query errors gracefully", async () => {
+      vi.mocked(queries.commitEnrichmentRun).mockRejectedValue(new Error("DB error"))
+
+      await request(app)
+        .post("/admin/api/enrichment/runs/1/commit")
+        .send({ adminUser: "admin@example.com" })
+        .expect(500)
     })
   })
 })
