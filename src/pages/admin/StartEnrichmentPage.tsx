@@ -1,15 +1,43 @@
 /**
  * Admin page for starting a new enrichment run.
- *
- * Note: This is a placeholder UI. The actual enrichment run triggering
- * functionality is not yet implemented and requires spawning the enrichment
- * script as a child process from the backend.
  */
 
-import { Link } from "react-router-dom"
+import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
+import { useStartEnrichmentRun } from "../../hooks/admin/useEnrichmentRuns"
 
 export default function StartEnrichmentPage() {
+  const navigate = useNavigate()
+  const startEnrichment = useStartEnrichmentRun()
+
+  const [limit, setLimit] = useState<number>(100)
+  const [maxTotalCost, setMaxTotalCost] = useState<number>(10)
+  const [maxCostPerActor, setMaxCostPerActor] = useState<number | undefined>(undefined)
+  const [minPopularity, setMinPopularity] = useState<number>(0)
+  const [confidence, setConfidence] = useState<number>(0.5)
+  const [recentOnly, setRecentOnly] = useState<boolean>(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      const result = await startEnrichment.mutateAsync({
+        limit,
+        maxTotalCost,
+        maxCostPerActor,
+        minPopularity,
+        confidence,
+        recentOnly,
+      })
+
+      // Navigate to the run details page
+      navigate(`/admin/enrichment/runs/${result.id}`)
+    } catch (error) {
+      console.error("Failed to start enrichment:", error)
+    }
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -27,85 +55,182 @@ export default function StartEnrichmentPage() {
           </p>
         </div>
 
-        {/* Not Implemented Notice */}
-        <div className="rounded-lg border border-yellow-700 bg-yellow-900 p-6">
-          <h2 className="mb-2 text-lg font-semibold text-yellow-200">Not Yet Implemented</h2>
-          <p className="mb-4 text-yellow-100">
-            Starting enrichment runs from the admin UI is not yet implemented. This feature requires
-            spawning the enrichment script as a child process and tracking its progress.
-          </p>
-          <p className="mb-4 text-yellow-100">For now, please use the CLI script directly:</p>
-          <div className="overflow-x-auto rounded bg-gray-900 p-4 font-mono text-sm text-gray-300">
-            cd server && npm run enrich:death-details -- --limit 100 --max-total-cost 10
-          </div>
-        </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Actor Limits */}
+          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-lg font-semibold text-white">Actor Selection</h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="limit" className="block text-sm font-medium text-gray-300">
+                  Number of Actors
+                  <span className="ml-1 text-gray-500">(1-1000)</span>
+                </label>
+                <input
+                  id="limit"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={limit}
+                  onChange={(e) => setLimit(parseInt(e.target.value, 10))}
+                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  required
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Maximum number of actors to process in this run
+                </p>
+              </div>
 
-        {/* Planned Features */}
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-          <h2 className="mb-4 text-lg font-semibold text-white">Planned Features</h2>
-          <ul className="space-y-2 text-gray-300">
-            <li className="flex items-start gap-2">
-              <span className="text-gray-500">•</span>
-              <span>Configure actor limits (1-1000)</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-gray-500">•</span>
-              <span>Set max cost per run and per actor</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-gray-500">•</span>
-              <span>Select which death sources to use</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-gray-500">•</span>
-              <span>Filter by actor popularity and date ranges</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-gray-500">•</span>
-              <span>Dry-run mode to preview without writing</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-gray-500">•</span>
-              <span>Real-time progress tracking</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-gray-500">•</span>
-              <span>Ability to stop running enrichments</span>
-            </li>
-          </ul>
-        </div>
+              <div>
+                <label htmlFor="minPopularity" className="block text-sm font-medium text-gray-300">
+                  Minimum Popularity
+                  <span className="ml-1 text-gray-500">(0-100)</span>
+                </label>
+                <input
+                  id="minPopularity"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={minPopularity}
+                  onChange={(e) => setMinPopularity(parseInt(e.target.value, 10))}
+                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Only process actors with popularity score above this threshold
+                </p>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="recentOnly"
+                  checked={recentOnly}
+                  onChange={(e) => setRecentOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="recentOnly" className="ml-2 block text-sm text-gray-300">
+                  Recent deaths only (last 2 years)
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Cost Limits */}
+          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-lg font-semibold text-white">Cost Limits</h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="maxTotalCost" className="block text-sm font-medium text-gray-300">
+                  Max Total Cost (USD)
+                </label>
+                <input
+                  id="maxTotalCost"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={maxTotalCost}
+                  onChange={(e) => setMaxTotalCost(parseFloat(e.target.value))}
+                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  required
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Maximum total cost for the entire enrichment run
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="maxCostPerActor"
+                  className="block text-sm font-medium text-gray-300"
+                >
+                  Max Cost Per Actor (USD)
+                  <span className="ml-1 text-gray-500">(optional)</span>
+                </label>
+                <input
+                  id="maxCostPerActor"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={maxCostPerActor || ""}
+                  onChange={(e) =>
+                    setMaxCostPerActor(e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Unlimited"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Maximum cost per individual actor (leave empty for no limit)
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quality Settings */}
+          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-lg font-semibold text-white">Quality Settings</h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="confidence" className="block text-sm font-medium text-gray-300">
+                  Confidence Threshold
+                  <span className="ml-1 text-gray-500">(0.0-1.0)</span>
+                </label>
+                <input
+                  id="confidence"
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={confidence}
+                  onChange={(e) => setConfidence(parseFloat(e.target.value))}
+                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Minimum confidence score required to accept enrichment results
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-4">
+            <button
+              type="submit"
+              disabled={startEnrichment.isPending}
+              className="rounded-md bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {startEnrichment.isPending ? "Starting..." : "Start Enrichment Run"}
+            </button>
+            <Link
+              to="/admin/enrichment/runs"
+              className="rounded-md border border-gray-600 bg-gray-700 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-600"
+            >
+              Cancel
+            </Link>
+          </div>
+
+          {/* Error Display */}
+          {startEnrichment.isError && (
+            <div className="rounded-md border border-red-700 bg-red-900 p-4">
+              <p className="text-sm text-red-200">
+                {startEnrichment.error instanceof Error
+                  ? startEnrichment.error.message
+                  : "Failed to start enrichment run"}
+              </p>
+            </div>
+          )}
+        </form>
 
         {/* CLI Reference */}
         <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
           <h2 className="mb-4 text-lg font-semibold text-white">CLI Reference</h2>
-          <p className="mb-4 text-gray-300">
-            Until the UI is implemented, use these common CLI commands:
-          </p>
-          <div className="space-y-3">
-            <div>
-              <p className="mb-1 text-sm text-gray-400">Process 50 actors with $5 cost limit:</p>
-              <div className="overflow-x-auto rounded bg-gray-900 p-3 font-mono text-sm text-gray-300">
-                npm run enrich:death-details -- --limit 50 --max-total-cost 5
-              </div>
-            </div>
-            <div>
-              <p className="mb-1 text-sm text-gray-400">Dry run (preview without writing):</p>
-              <div className="overflow-x-auto rounded bg-gray-900 p-3 font-mono text-sm text-gray-300">
-                npm run enrich:death-details -- --limit 10 --dry-run
-              </div>
-            </div>
-            <div>
-              <p className="mb-1 text-sm text-gray-400">Process specific actor by TMDB ID:</p>
-              <div className="overflow-x-auto rounded bg-gray-900 p-3 font-mono text-sm text-gray-300">
-                npm run enrich:death-details -- --tmdb-id 12345 --dry-run
-              </div>
-            </div>
-            <div>
-              <p className="mb-1 text-sm text-gray-400">Recent deaths only (last 2 years):</p>
-              <div className="overflow-x-auto rounded bg-gray-900 p-3 font-mono text-sm text-gray-300">
-                npm run enrich:death-details -- --recent-only --limit 100
-              </div>
-            </div>
+          <p className="mb-4 text-gray-300">Equivalent CLI command for this configuration:</p>
+          <div className="overflow-x-auto rounded bg-gray-900 p-4 font-mono text-sm text-gray-300">
+            cd server && npm run enrich:death-details -- --limit {limit} --max-total-cost{" "}
+            {maxTotalCost}
+            {maxCostPerActor ? ` --max-cost-per-actor ${maxCostPerActor}` : ""}
+            {minPopularity > 0 ? ` --min-popularity ${minPopularity}` : ""}
+            {recentOnly ? " --recent-only" : ""}
+            {confidence !== 0.5 ? ` --confidence ${confidence}` : ""}
           </div>
         </div>
       </div>
