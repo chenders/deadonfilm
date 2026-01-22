@@ -68,21 +68,35 @@ async function waitForEnter(message: string = "Press Enter to continue..."): Pro
 
 /**
  * Load checkpoint if it exists
+ * Returns checkpoint data with timestamp if available
  */
-async function loadCheckpoint(): Promise<string | null> {
+async function loadCheckpoint(): Promise<{ mode: string; date: string; timestamp: number } | null> {
   try {
     const data = await fs.readFile(CHECKPOINT_FILE, "utf-8")
-    return data.trim()
+    const parts = data.trim().split(":")
+    if (parts.length >= 2) {
+      const mode = parts[0]
+      const date = parts[1]
+      const timestamp = parts.length >= 3 ? parseInt(parts[2], 10) : Date.now()
+      return { mode, date, timestamp }
+    }
+    return null
   } catch {
     return null
   }
 }
 
 /**
- * Save checkpoint
+ * Save checkpoint with timestamp
  */
-async function saveCheckpoint(date: string): Promise<void> {
-  await fs.writeFile(CHECKPOINT_FILE, date, "utf-8")
+async function saveCheckpoint(mode: string, date: string): Promise<void> {
+  const timestamp = Date.now()
+  const checkpointData = `${mode}:${date}:${timestamp}`
+  await fs.writeFile(CHECKPOINT_FILE, checkpointData, "utf-8")
+
+  // Log checkpoint creation
+  const checkpointTime = new Date(timestamp).toISOString()
+  console.log(`\n✓ Checkpoint saved (ID: ${timestamp}): ${mode} at ${date} [${checkpointTime}]`)
 }
 
 /**
@@ -304,7 +318,7 @@ async function runModeBackfill(
       const shouldCheckpoint = itemsSinceLastCheckpoint >= nextCheckpointThreshold
       if (shouldCheckpoint && i < totalBatches - 1) {
         const nextBatch = batches[i + 1]
-        await saveCheckpoint(`${mode}:${nextBatch.start}`)
+        await saveCheckpoint(mode, nextBatch.start)
         itemsSinceLastCheckpoint = 0
         nextCheckpointThreshold = checkpointFrequency
       }
@@ -379,11 +393,12 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   let checkpointInfo = ""
   const checkpoint = await loadCheckpoint()
   if (checkpoint && !options.reset) {
-    const [mode, date] = checkpoint.split(":")
+    const { mode, date, timestamp } = checkpoint
     if (mode && date && modes.includes(mode as SyncMode)) {
       const batchIndex = batches.findIndex((c) => c.start === date)
       if (batchIndex >= 0) {
-        checkpointInfo = `\n  Resuming: Yes (from ${getModeName(mode as SyncMode)} at ${date})`
+        const checkpointTime = new Date(timestamp).toISOString()
+        checkpointInfo = `\n  Resuming: Yes (from checkpoint ID: ${timestamp})\n  Checkpoint: ${getModeName(mode as SyncMode)} at ${date}\n  Created: ${checkpointTime}`
       }
     }
   }
@@ -444,7 +459,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
   const checkpointData = await loadCheckpoint()
   if (checkpointData && !options.reset) {
-    const [mode, date] = checkpointData.split(":")
+    const { mode, date } = checkpointData
     if (mode && date && modes.includes(mode as SyncMode)) {
       checkpointMode = mode as SyncMode
       checkpointBatchIndex = batches.findIndex((c) => c.start === date)
