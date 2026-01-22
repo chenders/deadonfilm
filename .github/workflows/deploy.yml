@@ -68,6 +68,18 @@ jobs:
           # Copy latest docker-compose and PostgreSQL config
           cp ${{ github.workspace }}/docker-compose.yml docker-compose.yml
           cp ${{ github.workspace }}/postgresql.conf postgresql.conf
+
+          # Copy runner configuration files to /opt/github-runners/
+          # (Only copies if source files exist and target directory exists)
+          if [ -f "${{ github.workspace }}/docker-compose.runners.yml" ] && [ -d "/opt/github-runners" ]; then
+            cp ${{ github.workspace }}/docker-compose.runners.yml /opt/github-runners/docker-compose.yml
+          fi
+          if [ -f "${{ github.workspace }}/.env.runners.example" ] && [ -d "/opt/github-runners" ]; then
+            # Don't overwrite existing .env if it exists
+            if [ ! -f "/opt/github-runners/.env" ]; then
+              cp ${{ github.workspace }}/.env.runners.example /opt/github-runners/.env.example
+            fi
+          fi
           # Pull images, ignoring those with build configs (like db)
           docker compose pull --ignore-buildable
 
