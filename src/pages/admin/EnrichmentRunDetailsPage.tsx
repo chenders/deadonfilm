@@ -11,6 +11,8 @@ import {
   useEnrichmentRunDetails,
   useEnrichmentRunActors,
   useRunSourcePerformanceStats,
+  useEnrichmentRunProgress,
+  useStopEnrichmentRun,
 } from "../../hooks/admin/useEnrichmentRuns"
 
 export default function EnrichmentRunDetailsPage() {
@@ -30,6 +32,26 @@ export default function EnrichmentRunDetailsPage() {
     isLoading: sourceStatsLoading,
     error: sourceStatsError,
   } = useRunSourcePerformanceStats(runId)
+
+  // Real-time progress tracking for running enrichments
+  const isRunning = run?.exit_reason === null && run?.completed_at === null
+  const { data: progress } = useEnrichmentRunProgress(runId, isRunning)
+
+  // Stop enrichment mutation
+  const stopEnrichment = useStopEnrichmentRun()
+
+  const handleStopEnrichment = async () => {
+    if (!confirm("Are you sure you want to stop this enrichment run?")) {
+      return
+    }
+
+    try {
+      await stopEnrichment.mutateAsync(runId)
+    } catch (error) {
+      console.error("Failed to stop enrichment:", error)
+      alert("Failed to stop enrichment run. Please try again.")
+    }
+  }
 
   if (runLoading) {
     return (
@@ -66,9 +88,80 @@ export default function EnrichmentRunDetailsPage() {
           >
             ← Back to Runs
           </Link>
-          <h1 className="text-2xl font-bold text-white">Enrichment Run #{run.id}</h1>
-          <p className="mt-1 text-gray-400">Started {new Date(run.started_at).toLocaleString()}</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Enrichment Run #{run.id}</h1>
+              <p className="mt-1 text-gray-400">
+                Started {new Date(run.started_at).toLocaleString()}
+              </p>
+            </div>
+            {isRunning && (
+              <button
+                onClick={handleStopEnrichment}
+                disabled={stopEnrichment.isPending}
+                className="rounded-md border border-red-700 bg-red-900 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {stopEnrichment.isPending ? "Stopping..." : "Stop Run"}
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Real-time Progress (for running enrichments) */}
+        {isRunning && progress && (
+          <div className="rounded-lg border border-blue-700 bg-blue-900 p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-blue-100">Running</h2>
+                <p className="text-sm text-blue-200">
+                  {progress.currentActorName || "Processing..."}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-blue-100">
+                  {progress.progressPercentage.toFixed(1)}%
+                </p>
+                <p className="text-sm text-blue-200">
+                  {progress.actorsProcessed} / {progress.actorsQueried} actors
+                </p>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mb-4 h-2 overflow-hidden rounded-full bg-blue-950">
+              <div
+                className="h-full bg-blue-500 transition-all duration-300"
+                style={{ width: `${progress.progressPercentage}%` }}
+              />
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+              <div>
+                <p className="text-blue-300">Enriched</p>
+                <p className="font-semibold text-blue-100">{progress.actorsEnriched}</p>
+              </div>
+              <div>
+                <p className="text-blue-300">Cost</p>
+                <p className="font-semibold text-blue-100">${progress.totalCostUsd.toFixed(4)}</p>
+              </div>
+              <div>
+                <p className="text-blue-300">Elapsed</p>
+                <p className="font-semibold text-blue-100">
+                  {Math.round(progress.elapsedMs / 1000)}s
+                </p>
+              </div>
+              <div>
+                <p className="text-blue-300">Remaining</p>
+                <p className="font-semibold text-blue-100">
+                  {progress.estimatedTimeRemainingMs
+                    ? `~${Math.round(progress.estimatedTimeRemainingMs / 1000)}s`
+                    : "Calculating..."}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Summary Stats */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">

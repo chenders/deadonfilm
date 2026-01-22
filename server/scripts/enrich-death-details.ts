@@ -131,6 +131,7 @@ interface EnrichOptions {
   usActorsOnly: boolean
   ignoreCache: boolean
   yes: boolean
+  runId?: number // Optional run ID for tracking progress in database
 }
 
 /**
@@ -153,6 +154,138 @@ async function waitForConfirmation(skipPrompt: boolean): Promise<boolean> {
       resolve(true)
     })
   })
+}
+
+/**
+ * Global flag for graceful shutdown
+ * Set to true when SIGTERM is received
+ */
+let shouldStop = false
+
+/**
+ * Update progress in the database for a running enrichment run
+ */
+async function updateRunProgress(
+  runId: number | undefined,
+  updates: {
+    currentActorIndex?: number
+    currentActorName?: string
+    actorsQueried?: number
+    actorsProcessed?: number
+    actorsEnriched?: number
+    totalCostUsd?: number
+  }
+): Promise<void> {
+  if (!runId) return // No run ID, skip progress tracking
+
+  const db = getPool()
+
+  try {
+    const setClauses: string[] = []
+    const values: unknown[] = []
+    let paramIndex = 1
+
+    if (updates.currentActorIndex !== undefined) {
+      setClauses.push(`current_actor_index = $${paramIndex++}`)
+      values.push(updates.currentActorIndex)
+    }
+
+    if (updates.currentActorName !== undefined) {
+      setClauses.push(`current_actor_name = $${paramIndex++}`)
+      values.push(updates.currentActorName)
+    }
+
+    if (updates.actorsQueried !== undefined) {
+      setClauses.push(`actors_queried = $${paramIndex++}`)
+      values.push(updates.actorsQueried)
+    }
+
+    if (updates.actorsProcessed !== undefined) {
+      setClauses.push(`actors_processed = $${paramIndex++}`)
+      values.push(updates.actorsProcessed)
+    }
+
+    if (updates.actorsEnriched !== undefined) {
+      setClauses.push(`actors_enriched = $${paramIndex++}`)
+      values.push(updates.actorsEnriched)
+    }
+
+    if (updates.totalCostUsd !== undefined) {
+      setClauses.push(`total_cost_usd = $${paramIndex++}`)
+      values.push(updates.totalCostUsd)
+    }
+
+    if (setClauses.length === 0) return
+
+    values.push(runId)
+
+    await db.query(
+      `UPDATE enrichment_runs
+       SET ${setClauses.join(", ")}
+       WHERE id = $${paramIndex}`,
+      values
+    )
+  } catch (error) {
+    console.error("Failed to update run progress:", error)
+    // Don't throw - we don't want to crash the enrichment if progress tracking fails
+  }
+}
+
+/**
+ * Complete an enrichment run in the database
+ */
+async function completeEnrichmentRun(
+  runId: number | undefined,
+  stats: {
+    actorsProcessed: number
+    actorsEnriched: number
+    fillRate: number
+    totalCostUsd: number
+    totalTimeMs: number
+    costBySource: Record<string, number>
+    exitReason: "completed" | "cost_limit" | "interrupted"
+  }
+): Promise<void> {
+  if (!runId) return
+
+  const db = getPool()
+
+  try {
+    await db.query(
+      `UPDATE enrichment_runs
+       SET status = $1,
+           completed_at = NOW(),
+           duration_ms = $2,
+           actors_processed = $3,
+           actors_enriched = $4,
+           fill_rate = $5,
+           total_cost_usd = $6,
+           cost_by_source = $7,
+           exit_reason = $8,
+           process_id = NULL,
+           current_actor_index = NULL,
+           current_actor_name = NULL
+       WHERE id = $9`,
+      [
+        stats.exitReason === "completed"
+          ? "completed"
+          : stats.exitReason === "cost_limit"
+            ? "completed"
+            : "stopped",
+        stats.totalTimeMs,
+        stats.actorsProcessed,
+        stats.actorsEnriched,
+        stats.fillRate,
+        stats.totalCostUsd,
+        JSON.stringify(stats.costBySource),
+        stats.exitReason,
+        runId,
+      ]
+    )
+  } catch (error) {
+    console.error("Failed to complete enrichment run:", error)
+    // Don't throw - the enrichment itself succeeded
+  }
 }
 
 async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
@@ -183,6 +316,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     usActorsOnly,
     ignoreCache,
     yes,
+    runId,
   } = options
 
   // Configure cache behavior
@@ -418,6 +552,11 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       actors = result.rows
     }
 
+    // Update run progress with initial actor count
+    await updateRunProgress(runId, {
+      actorsQueried: actors.length,
+    })
+
     if (actors.length === 0) {
       console.log("\nNo actors to enrich. Done!")
       await resetPool()
@@ -611,6 +750,22 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       causeOfDeathDetails: a.cause_of_death_details,
       popularity: a.popularity,
     }))
+
+    // Check if we should stop before starting enrichment
+    if (shouldStop) {
+      console.log("\nEnrichment stopped before starting (SIGTERM received)")
+      await completeEnrichmentRun(runId, {
+        actorsProcessed: 0,
+        actorsEnriched: 0,
+        fillRate: 0,
+        totalCostUsd: 0,
+        totalTimeMs: 0,
+        costBySource: {},
+        exitReason: "interrupted",
+      })
+      await resetPool()
+      process.exit(0)
+    }
 
     // Run enrichment
     let results = new Map<number, Awaited<ReturnType<typeof orchestrator.enrichActor>>>()
@@ -845,6 +1000,17 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       totalTimeMs: stats.totalTimeMs,
     })
 
+    // Update enrichment run completion in database
+    await completeEnrichmentRun(runId, {
+      actorsProcessed: stats.actorsProcessed,
+      actorsEnriched: stats.actorsEnriched,
+      fillRate: stats.fillRate,
+      totalCostUsd: stats.totalCostUsd,
+      totalTimeMs: stats.totalTimeMs,
+      costBySource: stats.costBySource,
+      exitReason: costLimitReached ? "cost_limit" : shouldStop ? "interrupted" : "completed",
+    })
+
     // Rebuild caches if we updated anything
     if (updated > 0) {
       await rebuildDeathCaches()
@@ -866,6 +1032,32 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       error: error instanceof Error ? error.message : "Unknown error",
     })
     console.error("Error during enrichment:", error)
+
+    // Mark run as failed in database
+    if (runId) {
+      const db = getPool()
+      try {
+        await db.query(
+          `UPDATE enrichment_runs
+           SET status = 'failed',
+               completed_at = NOW(),
+               exit_reason = 'error',
+               process_id = NULL,
+               current_actor_index = NULL,
+               current_actor_name = NULL,
+               errors = jsonb_set(
+                 COALESCE(errors, '[]'::jsonb),
+                 '{999999}',
+                 to_jsonb($2::text)
+               )
+           WHERE id = $1`,
+          [runId, error instanceof Error ? error.message : "Unknown error"]
+        )
+      } catch (dbError) {
+        console.error("Failed to update enrichment run status on error:", dbError)
+      }
+    }
+
     process.exit(1)
   } finally {
     await resetPool()
@@ -941,6 +1133,8 @@ const program = new Command()
   .option("--us-actors-only", "Only process actors who primarily appeared in US productions")
   .option("--ignore-cache", "Ignore cached responses and make fresh requests to all sources")
   .option("-y, --yes", "Skip confirmation prompt")
+  // Progress tracking option (used when spawned from admin UI)
+  .option("--run-id <number>", "Enrichment run ID for progress tracking", parsePositiveInt)
   .action(async (options) => {
     await enrichMissingDetails({
       limit: options.limit,
@@ -969,10 +1163,17 @@ const program = new Command()
       usActorsOnly: options.usActorsOnly || false,
       ignoreCache: options.ignoreCache || false,
       yes: options.yes || false,
+      runId: options.runId,
     })
   })
 
 // Only run when executed directly
+// Handle SIGTERM for graceful shutdown (when stopped from admin UI)
+process.on("SIGTERM", () => {
+  console.log("\n\nReceived SIGTERM - stopping enrichment gracefully...")
+  shouldStop = true
+})
+
 const isMainModule = import.meta.url === `file://${process.argv[1]}`
 if (isMainModule) {
   program.parse()
