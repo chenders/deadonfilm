@@ -529,8 +529,9 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
     if (!quiet) console.log("\nDone!")
     return result
   } catch (error) {
+    // Let caller handle fatal errors - don't call process.exit(1) here
     console.error("Fatal error:", error)
-    process.exit(1)
+    throw error
   }
 }
 
@@ -791,7 +792,9 @@ async function syncPeopleChanges(
       total: dateRanges.length,
     })
     log(`  Fetching changes for ${range.start} to ${range.end}...`, quiet, onLog)
-    const ids = await getAllChangedPersonIds(range.start, range.end)
+    const ids = await getAllChangedPersonIds(range.start, range.end, 50, (msg: string) =>
+      log(msg, quiet, onLog)
+    )
     allChangedIds.push(...ids)
     await delay(100)
   }
@@ -1035,7 +1038,9 @@ async function syncMovieChanges(
       total: dateRanges.length,
     })
     log(`  Fetching changes for ${range.start} to ${range.end}...`, quiet, onLog)
-    const ids = await getAllChangedMovieIds(range.start, range.end)
+    const ids = await getAllChangedMovieIds(range.start, range.end, 50, (msg: string) =>
+      log(msg, quiet, onLog)
+    )
     allChangedIds.push(...ids)
     await delay(100)
   }
