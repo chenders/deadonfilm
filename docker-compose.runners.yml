@@ -40,9 +40,8 @@ services:
       - RUNNER_SCOPE=repo
       - LABELS=self-hosted,linux,x64,production
       - EPHEMERAL=true
+      # Disable runner software auto-updates for faster startup and stability
       - DISABLE_AUTO_UPDATE=true
-      # Disable runner update checks for faster startup
-      - DISABLE_RUNNER_UPDATE=true
     env_file:
       - .env
     volumes:
@@ -79,12 +78,12 @@ services:
       - /tmp:size=2G
     deploy:
       # Default to 4 runners (override with --scale)
-      # Max potential usage if all runners hit limits: ~18GB RAM (10GB container + 8GB tmpfs), ~15 CPU cores (25% more than previous 2-runner setup)
+      # Max potential usage if all runners hit limits: ~10GB RAM total (4 runners × 2.5GB each, including tmpfs), ~15 CPU cores (25% more than previous 2-runner setup)
       replicas: 4
       resources:
         limits:
           # Limit: up to 2.5GB RAM per runner (up to ~10GB total if 4 runners are all at their limit; previously 8GB for 2)
-          # Note: Plus 2GB tmpfs per runner (~8GB total for tmpfs) allocated separately from container memory
+          # Note: 2GB of this 2.5GB per runner is allocated to /tmp via tmpfs; tmpfs usage counts toward the container memory limit (leaving ~512MB for other processes if /tmp is full)
           memory: 2560M
           # Limit: up to 3.75 CPU cores per runner (up to ~15 cores total if 4 runners are all at their limit; previously 12 for 2)
           cpus: '3.75'
@@ -99,8 +98,10 @@ services:
         max-file: "3"
     healthcheck:
       # Check that runner process is alive
+      # Note: Ephemeral runners may briefly restart the listener between jobs,
+      # so we use generous retry settings to avoid false positives
       test: ["CMD-SHELL", "pgrep -f Runner.Listener || exit 1"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 90s
