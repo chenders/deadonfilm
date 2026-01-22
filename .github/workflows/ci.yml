@@ -90,6 +90,10 @@ jobs:
   backend:
     name: Backend
     runs-on: self-hosted
+    # Prevent parallel backend jobs to avoid postgres port 5433 conflicts on self-hosted runners
+    concurrency:
+      group: backend-tests-postgres
+      cancel-in-progress: false
 
     services:
       postgres:
