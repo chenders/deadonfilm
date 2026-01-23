@@ -68,7 +68,9 @@ export default function CostBySourceSection({ startDate, endDate }: CostBySource
                   borderRadius: "0.5rem",
                   color: "#F9FAFB",
                 }}
-                formatter={(value: number) => [`$${value.toFixed(2)}`, "Cost"]}
+                formatter={(value: number | undefined) =>
+                  value !== undefined ? [`$${value.toFixed(2)}`, "Cost"] : ["$0.00", "Cost"]
+                }
               />
               <Bar dataKey="cost" fill="#EF4444" />
             </BarChart>
