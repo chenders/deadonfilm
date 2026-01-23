@@ -266,7 +266,7 @@ function setupProcessHandlers(child: ChildProcess, runId: number): void {
 
         newrelic.recordCustomEvent("EnrichmentRunFailed", {
           runId,
-          exitCode: code,
+          exitCode: code ?? -1,
           signal: signal ?? "none",
         })
       } catch (error) {
