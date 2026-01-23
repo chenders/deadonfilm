@@ -204,7 +204,7 @@ export default function ActorDeathPage() {
   const { data, isLoading, error } = useActorDeathDetails(actorId)
 
   // Track page view for analytics
-  usePageViewTracking('actor_death', data?.actor?.id ?? null, location.pathname)
+  usePageViewTracking("actor_death", data?.actor?.id ?? null, location.pathname)
 
   // Error states
   if (!actorId) {

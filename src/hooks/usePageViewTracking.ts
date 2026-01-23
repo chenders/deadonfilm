@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react"
 
 interface TrackPageViewOptions {
-  pageType: 'movie' | 'show' | 'episode' | 'actor_death'
+  pageType: "movie" | "show" | "episode" | "actor_death"
   entityId: number
   path: string
 }
@@ -40,7 +40,7 @@ async function trackPageView(options: TrackPageViewOptions): Promise<void> {
  * @param path Current URL path
  */
 export function usePageViewTracking(
-  pageType: 'movie' | 'show' | 'episode' | 'actor_death' | null,
+  pageType: "movie" | "show" | "episode" | "actor_death" | null,
   entityId: number | null,
   path: string
 ): void {

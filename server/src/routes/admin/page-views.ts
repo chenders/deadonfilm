@@ -39,11 +39,9 @@ router.get("/summary", async (req: Request, res: Response): Promise<void> => {
       ? (req.query.startDate as string)
       : startDate.toISOString()
 
-    const endDateStr = req.query.endDate
-      ? (req.query.endDate as string)
-      : endDate.toISOString()
+    const endDateStr = req.query.endDate ? (req.query.endDate as string) : endDate.toISOString()
 
-    const pageType = (req.query.pageType as string) || 'all'
+    const pageType = (req.query.pageType as string) || "all"
 
     const summary = await getPageViewSummary(pool, startDateStr, endDateStr, pageType)
 
@@ -72,11 +70,9 @@ router.get("/top-viewed", async (req: Request, res: Response): Promise<void> => 
       ? (req.query.startDate as string)
       : startDate.toISOString()
 
-    const endDateStr = req.query.endDate
-      ? (req.query.endDate as string)
-      : endDate.toISOString()
+    const endDateStr = req.query.endDate ? (req.query.endDate as string) : endDate.toISOString()
 
-    const pageType = (req.query.pageType as string) || 'all'
+    const pageType = (req.query.pageType as string) || "all"
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20))
 
     const topViewed = await getTopViewedPages(pool, pageType, startDateStr, endDateStr, limit)
@@ -106,13 +102,13 @@ router.get("/trends", async (req: Request, res: Response): Promise<void> => {
       ? (req.query.startDate as string)
       : startDate.toISOString()
 
-    const endDateStr = req.query.endDate
-      ? (req.query.endDate as string)
-      : endDate.toISOString()
+    const endDateStr = req.query.endDate ? (req.query.endDate as string) : endDate.toISOString()
 
-    const granularity = (req.query.granularity as string) || 'daily'
-    if (!['daily', 'weekly', 'monthly'].includes(granularity)) {
-      res.status(400).json({ error: { message: "Invalid granularity. Must be daily, weekly, or monthly." } })
+    const granularity = (req.query.granularity as string) || "daily"
+    if (!["daily", "weekly", "monthly"].includes(granularity)) {
+      res
+        .status(400)
+        .json({ error: { message: "Invalid granularity. Must be daily, weekly, or monthly." } })
       return
     }
 
@@ -120,7 +116,7 @@ router.get("/trends", async (req: Request, res: Response): Promise<void> => {
       pool,
       startDateStr,
       endDateStr,
-      granularity as 'daily' | 'weekly' | 'monthly'
+      granularity as "daily" | "weekly" | "monthly"
     )
 
     res.json(trends)
@@ -139,7 +135,7 @@ router.get("/trends", async (req: Request, res: Response): Promise<void> => {
 export async function trackPageViewHandler(req: Request, res: Response): Promise<void> {
   try {
     // Check for bot user agents
-    const userAgent = req.headers['user-agent'] || ''
+    const userAgent = req.headers["user-agent"] || ""
     if (isbot(userAgent)) {
       // Silently ignore bot requests
       res.status(204).send()
@@ -151,16 +147,16 @@ export async function trackPageViewHandler(req: Request, res: Response): Promise
     // Validate required fields
     if (!pageType || !entityId || !path) {
       res.status(400).json({
-        error: { message: "Missing required fields: pageType, entityId, path" }
+        error: { message: "Missing required fields: pageType, entityId, path" },
       })
       return
     }
 
     // Validate page type
-    const validPageTypes = ['movie', 'show', 'episode', 'actor_death']
+    const validPageTypes = ["movie", "show", "episode", "actor_death"]
     if (!validPageTypes.includes(pageType)) {
       res.status(400).json({
-        error: { message: `Invalid pageType. Must be one of: ${validPageTypes.join(', ')}` }
+        error: { message: `Invalid pageType. Must be one of: ${validPageTypes.join(", ")}` },
       })
       return
     }
@@ -175,7 +171,7 @@ export async function trackPageViewHandler(req: Request, res: Response): Promise
     const pool = getPool()
 
     // Extract referrer header (handle string[] case)
-    const referrerHeader = req.headers['referer'] || req.headers['referrer']
+    const referrerHeader = req.headers["referer"] || req.headers["referrer"]
     const referrer = Array.isArray(referrerHeader) ? referrerHeader[0] : referrerHeader
 
     await trackPageView(pool, {

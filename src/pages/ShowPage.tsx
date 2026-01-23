@@ -24,7 +24,7 @@ export default function ShowPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("list")
 
   // Track page view for analytics
-  usePageViewTracking('show', showId || null, location.pathname)
+  usePageViewTracking("show", showId || null, location.pathname)
 
   // Auto-select the non-zero group when one group is empty
   useEffect(() => {

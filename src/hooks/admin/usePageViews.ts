@@ -18,7 +18,7 @@ export interface PageViewSummary {
 }
 
 export interface TopViewedPage {
-  page_type: 'movie' | 'show' | 'episode' | 'actor_death'
+  page_type: "movie" | "show" | "episode" | "actor_death"
   entity_id: number
   view_count: number
   last_viewed_at: string
@@ -45,7 +45,7 @@ export interface PageViewTrendPoint {
 async function fetchPageViewSummary(
   startDate: string,
   endDate: string,
-  pageType: string = 'all'
+  pageType: string = "all"
 ): Promise<PageViewSummary> {
   const params = new URLSearchParams({
     startDate,
@@ -91,7 +91,7 @@ async function fetchTopViewedPages(
 async function fetchPageViewTrends(
   startDate: string,
   endDate: string,
-  granularity: 'daily' | 'weekly' | 'monthly'
+  granularity: "daily" | "weekly" | "monthly"
 ): Promise<PageViewTrendPoint[]> {
   const params = new URLSearchParams({
     startDate,
@@ -120,7 +120,7 @@ async function fetchPageViewTrends(
 export function usePageViewSummary(
   startDate: string,
   endDate: string,
-  pageType: string = 'all'
+  pageType: string = "all"
 ): UseQueryResult<PageViewSummary> {
   return useQuery({
     queryKey: ["admin", "page-views", "summary", startDate, endDate, pageType],
@@ -151,7 +151,7 @@ export function useTopViewedPages(
 export function usePageViewTrends(
   startDate: string,
   endDate: string,
-  granularity: 'daily' | 'weekly' | 'monthly' = 'daily'
+  granularity: "daily" | "weekly" | "monthly" = "daily"
 ): UseQueryResult<PageViewTrendPoint[]> {
   return useQuery({
     queryKey: ["admin", "page-views", "trends", startDate, endDate, granularity],

@@ -54,8 +54,8 @@ export interface ActorCoverageFilters {
   deathDateStart?: string
   deathDateEnd?: string
   searchName?: string
-  orderBy?: 'death_date' | 'popularity' | 'name' | 'enriched_at'
-  orderDirection?: 'asc' | 'desc'
+  orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
+  orderDirection?: "asc" | "desc"
 }
 
 // ============================================================================
@@ -123,7 +123,7 @@ async function fetchActorsForCoverage(
 async function fetchCoverageTrends(
   startDate: string,
   endDate: string,
-  granularity: 'daily' | 'weekly' | 'monthly'
+  granularity: "daily" | "weekly" | "monthly"
 ): Promise<CoverageTrendPoint[]> {
   const params = new URLSearchParams({
     startDate,
@@ -198,7 +198,7 @@ export function useActorsForCoverage(
 export function useCoverageTrends(
   startDate: string,
   endDate: string,
-  granularity: 'daily' | 'weekly' | 'monthly' = 'daily'
+  granularity: "daily" | "weekly" | "monthly" = "daily"
 ): UseQueryResult<CoverageTrendPoint[]> {
   return useQuery({
     queryKey: ["admin", "coverage", "trends", startDate, endDate, granularity],

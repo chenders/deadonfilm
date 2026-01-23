@@ -32,7 +32,7 @@ describe("Page Views API Routes", () => {
     statusSpy = vi.fn(() => ({ json: jsonSpy, send: sendSpy }))
 
     mockRes = {
-      json: jsonSpy,
+      json: jsonSpy as any,
       status: statusSpy as any,
     }
 
@@ -69,8 +69,7 @@ describe("Page Views API Routes", () => {
       const router = pageViewsModule.default
 
       const summaryRoute = router.stack.find(
-        (layer: any) =>
-          layer.route?.path === "/summary" && layer.route?.methods.get
+        (layer: any) => layer.route?.path === "/summary" && layer.route?.methods.get
       )
 
       expect(summaryRoute).toBeDefined()
@@ -101,8 +100,7 @@ describe("Page Views API Routes", () => {
       const router = pageViewsModule.default
 
       const topViewedRoute = router.stack.find(
-        (layer: any) =>
-          layer.route?.path === "/top-viewed" && layer.route?.methods.get
+        (layer: any) => layer.route?.path === "/top-viewed" && layer.route?.methods.get
       )
 
       expect(topViewedRoute).toBeDefined()
@@ -133,8 +131,7 @@ describe("Page Views API Routes", () => {
       const router = pageViewsModule.default
 
       const trendsRoute = router.stack.find(
-        (layer: any) =>
-          layer.route?.path === "/trends" && layer.route?.methods.get
+        (layer: any) => layer.route?.path === "/trends" && layer.route?.methods.get
       )
 
       expect(trendsRoute).toBeDefined()
@@ -143,8 +140,8 @@ describe("Page Views API Routes", () => {
 
   describe("POST /api/page-views/track", () => {
     it("tracks page view for valid request", async () => {
-      const isbot = (await import("isbot")).default
-      vi.mocked(isbot).mockReturnValue(false)
+      const isbotModule = await import("isbot")
+      ;(isbotModule.default as any).mockReturnValue(false)
 
       vi.mocked(mockPool.query).mockResolvedValueOnce({
         rows: [],
@@ -172,8 +169,8 @@ describe("Page Views API Routes", () => {
     })
 
     it("rejects bot traffic", async () => {
-      const isbot = (await import("isbot")).default
-      vi.mocked(isbot).mockReturnValue(true)
+      const isbotModule = await import("isbot")
+      ;(isbotModule.default as any).mockReturnValue(true)
 
       const { trackPageViewHandler } = await import("./page-views.js")
 
@@ -188,8 +185,8 @@ describe("Page Views API Routes", () => {
     })
 
     it("validates required fields", async () => {
-      const isbot = (await import("isbot")).default
-      vi.mocked(isbot).mockReturnValue(false)
+      const isbotModule = await import("isbot")
+      ;(isbotModule.default as any).mockReturnValue(false)
 
       const { trackPageViewHandler } = await import("./page-views.js")
 
@@ -204,8 +201,8 @@ describe("Page Views API Routes", () => {
     })
 
     it("validates page type enum", async () => {
-      const isbot = (await import("isbot")).default
-      vi.mocked(isbot).mockReturnValue(false)
+      const isbotModule = await import("isbot")
+      ;(isbotModule.default as any).mockReturnValue(false)
 
       const { trackPageViewHandler } = await import("./page-views.js")
 
@@ -222,8 +219,8 @@ describe("Page Views API Routes", () => {
     })
 
     it("validates entityId is positive integer", async () => {
-      const isbot = (await import("isbot")).default
-      vi.mocked(isbot).mockReturnValue(false)
+      const isbotModule = await import("isbot")
+      ;(isbotModule.default as any).mockReturnValue(false)
 
       const { trackPageViewHandler } = await import("./page-views.js")
 
@@ -240,8 +237,8 @@ describe("Page Views API Routes", () => {
     })
 
     it("handles referrer as array", async () => {
-      const isbot = (await import("isbot")).default
-      vi.mocked(isbot).mockReturnValue(false)
+      const isbotModule = await import("isbot")
+      ;(isbotModule.default as any).mockReturnValue(false)
 
       vi.mocked(mockPool.query).mockResolvedValueOnce({
         rows: [],
@@ -258,7 +255,7 @@ describe("Page Views API Routes", () => {
         path: "/movie/test",
       }
       mockReq.headers = {
-        referer: ["https://google.com", "https://bing.com"],
+        referer: ["https://google.com", "https://bing.com"] as any,
       }
 
       await trackPageViewHandler(mockReq as Request, mockRes as Response)

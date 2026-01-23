@@ -24,7 +24,7 @@ export interface PageViewSummary {
 }
 
 export interface TopViewedPage {
-  page_type: 'movie' | 'show' | 'episode' | 'actor_death'
+  page_type: "movie" | "show" | "episode" | "actor_death"
   entity_id: number
   view_count: number
   last_viewed_at: string
@@ -46,7 +46,7 @@ export interface PageViewTrendPoint {
 }
 
 export interface TrackPageViewData {
-  pageType: 'movie' | 'show' | 'episode' | 'actor_death'
+  pageType: "movie" | "show" | "episode" | "actor_death"
   entityId: number
   path: string
   referrer?: string
@@ -67,10 +67,10 @@ export async function getPageViewSummary(
   pageType?: string
 ): Promise<PageViewSummary> {
   const params: unknown[] = [startDate, endDate]
-  let typeFilter = ''
+  let typeFilter = ""
 
-  if (pageType && pageType !== 'all') {
-    typeFilter = 'AND page_type = $3'
+  if (pageType && pageType !== "all") {
+    typeFilter = "AND page_type = $3"
     params.push(pageType)
   }
 
@@ -101,7 +101,7 @@ export async function getTopViewedPages(
   limit: number
 ): Promise<TopViewedPage[]> {
   // Different queries depending on page type to join entity details
-  if (pageType === 'actor_death') {
+  if (pageType === "actor_death") {
     const result = await pool.query<TopViewedPage>(
       `SELECT
          pv.page_type,
@@ -122,7 +122,7 @@ export async function getTopViewedPages(
     return result.rows
   }
 
-  if (pageType === 'movie') {
+  if (pageType === "movie") {
     const result = await pool.query<TopViewedPage>(
       `SELECT
          pv.page_type,
@@ -145,7 +145,7 @@ export async function getTopViewedPages(
     return result.rows
   }
 
-  if (pageType === 'show') {
+  if (pageType === "show") {
     const result = await pool.query<TopViewedPage>(
       `SELECT
          pv.page_type,
@@ -168,7 +168,7 @@ export async function getTopViewedPages(
     return result.rows
   }
 
-  if (pageType === 'episode') {
+  if (pageType === "episode") {
     const result = await pool.query<TopViewedPage>(
       `SELECT
          pv.page_type,
@@ -215,14 +215,10 @@ export async function getPageViewTrends(
   pool: Pool,
   startDate: string,
   endDate: string,
-  granularity: 'daily' | 'weekly' | 'monthly' = 'daily'
+  granularity: "daily" | "weekly" | "monthly" = "daily"
 ): Promise<PageViewTrendPoint[]> {
   const dateFormat =
-    granularity === 'daily'
-      ? 'YYYY-MM-DD'
-      : granularity === 'weekly'
-        ? 'YYYY-IW'
-        : 'YYYY-MM'
+    granularity === "daily" ? "YYYY-MM-DD" : granularity === "weekly" ? "YYYY-IW" : "YYYY-MM"
 
   const result = await pool.query<PageViewTrendPoint>(
     `SELECT
@@ -246,10 +242,7 @@ export async function getPageViewTrends(
  * Track a page view (public endpoint).
  * Called by frontend when users view content.
  */
-export async function trackPageView(
-  pool: Pool,
-  data: TrackPageViewData
-): Promise<void> {
+export async function trackPageView(pool: Pool, data: TrackPageViewData): Promise<void> {
   await pool.query(
     `INSERT INTO page_views (page_type, entity_id, path, referrer, user_agent, viewed_at)
      VALUES ($1, $2, $3, $4, $5, NOW())`,

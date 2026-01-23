@@ -38,7 +38,9 @@ const NotableDeathsPage = lazyWithRetry(() => import("./pages/NotableDeathsPage"
 // Admin pages
 const AdminLoginPage = lazyWithRetry(() => import("./pages/admin/LoginPage"))
 const AdminDashboardPage = lazyWithRetry(() => import("./pages/admin/DashboardPage"))
-const AdminCoverageDashboardPage = lazyWithRetry(() => import("./pages/admin/CoverageDashboardPage"))
+const AdminCoverageDashboardPage = lazyWithRetry(
+  () => import("./pages/admin/CoverageDashboardPage")
+)
 const AdminActorManagementPage = lazyWithRetry(() => import("./pages/admin/ActorManagementPage"))
 const AdminPageViewsPage = lazyWithRetry(() => import("./pages/admin/PageViewsPage"))
 const AdminExternalToolsPage = lazyWithRetry(() => import("./pages/admin/ExternalToolsPage"))
