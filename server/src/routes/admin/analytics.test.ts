@@ -184,8 +184,9 @@ describe("admin analytics routes", () => {
   })
 
   describe("GET /page-visits/navigation-paths", () => {
-    const handler = router.stack.find((layer) => layer.route?.path === "/page-visits/navigation-paths")
-      ?.route?.stack[0].handle
+    const handler = router.stack.find(
+      (layer) => layer.route?.path === "/page-visits/navigation-paths"
+    )?.route?.stack[0].handle
 
     it("returns navigation paths with default limit", async () => {
       const mockData = [{ from: "/", to: "/deaths", count: 100 }]
@@ -252,7 +253,12 @@ describe("admin analytics routes", () => {
 
       await handler!(mockReq as Request, mockRes as Response, mockNext)
 
-      expect(getMostPopularPagesByInternalReferrals).toHaveBeenCalledWith({}, undefined, undefined, 20)
+      expect(getMostPopularPagesByInternalReferrals).toHaveBeenCalledWith(
+        {},
+        undefined,
+        undefined,
+        20
+      )
       expect(jsonSpy).toHaveBeenCalledWith(mockData)
     })
 
@@ -262,7 +268,12 @@ describe("admin analytics routes", () => {
 
       await handler!(mockReq as Request, mockRes as Response, mockNext)
 
-      expect(getMostPopularPagesByInternalReferrals).toHaveBeenCalledWith({}, undefined, undefined, 15)
+      expect(getMostPopularPagesByInternalReferrals).toHaveBeenCalledWith(
+        {},
+        undefined,
+        undefined,
+        15
+      )
     })
 
     it("validates limit parameter", async () => {
@@ -286,8 +297,9 @@ describe("admin analytics routes", () => {
   })
 
   describe("GET /page-visits/hourly-patterns", () => {
-    const handler = router.stack.find((layer) => layer.route?.path === "/page-visits/hourly-patterns")
-      ?.route?.stack[0].handle
+    const handler = router.stack.find(
+      (layer) => layer.route?.path === "/page-visits/hourly-patterns"
+    )?.route?.stack[0].handle
 
     it("returns hourly patterns", async () => {
       const mockData = [{ hour: 12, count: 100 }]
