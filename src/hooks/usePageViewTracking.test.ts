@@ -15,9 +15,7 @@ describe("usePageViewTracking", () => {
       ok: true,
     } as Response)
 
-    renderHook(() =>
-      usePageViewTracking("movie", 123, "/movie/test-movie-2024-123")
-    )
+    renderHook(() => usePageViewTracking("movie", 123, "/movie/test-movie-2024-123"))
 
     // Wait for the 500ms delay + fetch to complete
     await waitFor(
@@ -42,9 +40,7 @@ describe("usePageViewTracking", () => {
   })
 
   it("does not track when pageType is null", async () => {
-    renderHook(() =>
-      usePageViewTracking(null, 123, "/movie/test-movie-2024-123")
-    )
+    renderHook(() => usePageViewTracking(null, 123, "/movie/test-movie-2024-123"))
 
     // Wait a bit to ensure it doesn't track
     await new Promise((resolve) => setTimeout(resolve, 600))
@@ -53,9 +49,7 @@ describe("usePageViewTracking", () => {
   })
 
   it("does not track when entityId is null", async () => {
-    renderHook(() =>
-      usePageViewTracking("movie", null, "/movie/test-movie-2024-123")
-    )
+    renderHook(() => usePageViewTracking("movie", null, "/movie/test-movie-2024-123"))
 
     // Wait a bit to ensure it doesn't track
     await new Promise((resolve) => setTimeout(resolve, 600))
@@ -68,12 +62,9 @@ describe("usePageViewTracking", () => {
       ok: true,
     } as Response)
 
-    const { rerender } = renderHook(
-      ({ path }) => usePageViewTracking("movie", 123, path),
-      {
-        initialProps: { path: "/movie/test-1" },
-      }
-    )
+    const { rerender } = renderHook(({ path }) => usePageViewTracking("movie", 123, path), {
+      initialProps: { path: "/movie/test-1" },
+    })
 
     // Wait for first tracking
     await waitFor(() => expect(fetch).toHaveBeenCalled(), { timeout: 1000 })
@@ -97,9 +88,7 @@ describe("usePageViewTracking", () => {
       return { ok: true } as Response
     })
 
-    renderHook(() =>
-      usePageViewTracking("show", 456, "/show/test-show-2020-456")
-    )
+    renderHook(() => usePageViewTracking("show", 456, "/show/test-show-2020-456"))
 
     await waitFor(() => expect(fetch).toHaveBeenCalled(), { timeout: 1000 })
 
@@ -130,9 +119,7 @@ describe("usePageViewTracking", () => {
     vi.mocked(fetch).mockRejectedValueOnce(new Error("Network error"))
 
     // Should not throw error even when fetch fails
-    renderHook(() =>
-      usePageViewTracking("actor_death", 2157, "/death/john-doe-2157")
-    )
+    renderHook(() => usePageViewTracking("actor_death", 2157, "/death/john-doe-2157"))
 
     // Wait for fetch to be called
     await waitFor(() => expect(fetch).toHaveBeenCalled(), { timeout: 1000 })
@@ -150,14 +137,10 @@ describe("usePageViewTracking", () => {
     } as Response)
 
     // Test each page type with a different entity ID
-    const { unmount: unmount1 } = renderHook(() =>
-      usePageViewTracking("movie", 1, "/test-movie")
-    )
+    const { unmount: unmount1 } = renderHook(() => usePageViewTracking("movie", 1, "/test-movie"))
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1), { timeout: 1000 })
 
-    const { unmount: unmount2 } = renderHook(() =>
-      usePageViewTracking("show", 2, "/test-show")
-    )
+    const { unmount: unmount2 } = renderHook(() => usePageViewTracking("show", 2, "/test-show"))
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 1000 })
 
     const { unmount: unmount3 } = renderHook(() =>
@@ -173,18 +156,10 @@ describe("usePageViewTracking", () => {
     expect(fetch).toHaveBeenCalledTimes(4)
 
     const calls = vi.mocked(fetch).mock.calls
-    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"movie"'))).toBe(
-      true
-    )
-    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"show"'))).toBe(
-      true
-    )
-    expect(
-      calls.some((call) => call[1]?.body?.includes('"pageType":"episode"'))
-    ).toBe(true)
-    expect(
-      calls.some((call) => call[1]?.body?.includes('"pageType":"actor_death"'))
-    ).toBe(true)
+    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"movie"'))).toBe(true)
+    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"show"'))).toBe(true)
+    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"episode"'))).toBe(true)
+    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"actor_death"'))).toBe(true)
 
     unmount1()
     unmount2()

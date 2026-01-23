@@ -29,8 +29,7 @@ export default function ActorManagementPage() {
     deathDateEnd: searchParams.get("deathDateEnd") || undefined,
     searchName: searchParams.get("searchName") || undefined,
     orderBy: (searchParams.get("orderBy") as ActorCoverageFilters["orderBy"]) || "popularity",
-    orderDirection:
-      (searchParams.get("orderDirection") as "asc" | "desc") || "desc",
+    orderDirection: (searchParams.get("orderDirection") as "asc" | "desc") || "desc",
   }
 
   const { data, isLoading, error } = useActorsForCoverage(page, pageSize, filters)
@@ -180,9 +179,7 @@ export default function ActorManagementPage() {
                 id="searchName"
                 type="text"
                 value={filters.searchName || ""}
-                onChange={(e) =>
-                  handleFilterChange({ searchName: e.target.value || undefined })
-                }
+                onChange={(e) => handleFilterChange({ searchName: e.target.value || undefined })}
                 className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
                 placeholder="Actor name..."
               />
@@ -212,9 +209,7 @@ export default function ActorManagementPage() {
                 id="deathDateEnd"
                 type="date"
                 value={filters.deathDateEnd || ""}
-                onChange={(e) =>
-                  handleFilterChange({ deathDateEnd: e.target.value || undefined })
-                }
+                onChange={(e) => handleFilterChange({ deathDateEnd: e.target.value || undefined })}
                 className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
               />
             </div>
@@ -285,9 +280,7 @@ export default function ActorManagementPage() {
           <>
             <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
               <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm text-gray-400">
-                  {data.total.toLocaleString()} actors found
-                </p>
+                <p className="text-sm text-gray-400">{data.total.toLocaleString()} actors found</p>
               </div>
 
               <div className="overflow-x-auto">
@@ -332,7 +325,7 @@ export default function ActorManagementPage() {
                       data.items.map((actor) => (
                         <tr
                           key={actor.id}
-                          className={`transition-colors hover:bg-gray-750 ${
+                          className={`hover:bg-gray-750 transition-colors ${
                             selectedActorIds.has(actor.id) ? "bg-gray-750" : ""
                           }`}
                         >
@@ -376,7 +369,7 @@ export default function ActorManagementPage() {
                   <button
                     onClick={() => setPage(page - 1)}
                     disabled={page === 1}
-                    className="rounded bg-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded bg-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Previous
                   </button>
@@ -386,7 +379,7 @@ export default function ActorManagementPage() {
                   <button
                     onClick={() => setPage(page + 1)}
                     disabled={page === data.totalPages}
-                    className="rounded bg-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded bg-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Next
                   </button>

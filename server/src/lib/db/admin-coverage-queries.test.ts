@@ -35,7 +35,9 @@ describe("Admin Coverage Queries", () => {
       const result = await getCoverageStats(mockPool)
 
       expect(result).toEqual(mockStats)
-      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining("WITH deceased_actors AS"))
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining("WITH deceased_actors AS")
+      )
     })
   })
 
@@ -85,12 +87,7 @@ describe("Admin Coverage Queries", () => {
         .mockResolvedValueOnce({ rows: [{ count: "3" }] } as any)
         .mockResolvedValueOnce({ rows: [] } as any)
 
-      await getActorsForCoverage(
-        mockPool,
-        { minPopularity: 10, maxPopularity: 50 },
-        1,
-        50
-      )
+      await getActorsForCoverage(mockPool, { minPopularity: 10, maxPopularity: 50 }, 1, 50)
 
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("popularity >= $1")
@@ -133,12 +130,7 @@ describe("Admin Coverage Queries", () => {
         .mockResolvedValueOnce({ rows: [{ count: "5" }] } as any)
         .mockResolvedValueOnce({ rows: [] } as any)
 
-      await getActorsForCoverage(
-        mockPool,
-        { orderBy: "death_date", orderDirection: "asc" },
-        1,
-        50
-      )
+      await getActorsForCoverage(mockPool, { orderBy: "death_date", orderDirection: "asc" }, 1, 50)
 
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[1][0]).toContain("ORDER BY deathday asc")
@@ -176,12 +168,7 @@ describe("Admin Coverage Queries", () => {
         rows: mockTrends,
       } as any)
 
-      const result = await getCoverageTrends(
-        mockPool,
-        "2024-01-01",
-        "2024-01-31",
-        "daily"
-      )
+      const result = await getCoverageTrends(mockPool, "2024-01-01", "2024-01-31", "daily")
 
       expect(result).toEqual(mockTrends)
       expect(mockPool.query).toHaveBeenCalledWith(

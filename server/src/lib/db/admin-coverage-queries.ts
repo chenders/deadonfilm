@@ -60,8 +60,8 @@ export interface ActorCoverageFilters {
   deathDateStart?: string
   deathDateEnd?: string
   searchName?: string
-  orderBy?: 'death_date' | 'popularity' | 'name' | 'enriched_at'
-  orderDirection?: 'asc' | 'desc'
+  orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
+  orderDirection?: "asc" | "desc"
 }
 
 // ============================================================================
@@ -123,14 +123,12 @@ export async function getActorsForCoverage(
   const offset = (page - 1) * pageSize
 
   // Build WHERE clauses
-  const whereClauses: string[] = ['deathday IS NOT NULL']
+  const whereClauses: string[] = ["deathday IS NOT NULL"]
   const params: unknown[] = []
   let paramIndex = 1
 
   if (filters.hasDeathPage !== undefined) {
-    whereClauses.push(
-      `has_detailed_death_info = $${paramIndex++}`
-    )
+    whereClauses.push(`has_detailed_death_info = $${paramIndex++}`)
     params.push(filters.hasDeathPage)
   }
 
@@ -159,20 +157,20 @@ export async function getActorsForCoverage(
     params.push(`%${filters.searchName}%`)
   }
 
-  const whereClause = whereClauses.join(' AND ')
+  const whereClause = whereClauses.join(" AND ")
 
   // Build ORDER BY clause
-  const orderBy = filters.orderBy || 'popularity'
-  const orderDirection = filters.orderDirection || 'desc'
+  const orderBy = filters.orderBy || "popularity"
+  const orderDirection = filters.orderDirection || "desc"
 
   const orderByMap: Record<string, string> = {
-    death_date: 'deathday',
-    popularity: 'popularity',
-    name: 'name',
-    enriched_at: 'enriched_at',
+    death_date: "deathday",
+    popularity: "popularity",
+    name: "name",
+    enriched_at: "enriched_at",
   }
 
-  const orderByColumn = orderByMap[orderBy] || 'popularity'
+  const orderByColumn = orderByMap[orderBy] || "popularity"
 
   // Get total count
   const countResult = await pool.query<{ count: string }>(
@@ -219,10 +217,10 @@ export async function getCoverageTrends(
   pool: Pool,
   startDate: string,
   endDate: string,
-  granularity: 'daily' | 'weekly' | 'monthly' = 'daily'
+  granularity: "daily" | "weekly" | "monthly" = "daily"
 ): Promise<CoverageTrendPoint[]> {
   // For daily granularity, return all snapshots in range
-  if (granularity === 'daily') {
+  if (granularity === "daily") {
     const result = await pool.query<CoverageTrendPoint>(
       `SELECT
          captured_at,
@@ -241,7 +239,7 @@ export async function getCoverageTrends(
   }
 
   // For weekly/monthly, aggregate snapshots
-  const dateFormat = granularity === 'weekly' ? 'YYYY-IW' : 'YYYY-MM'
+  const dateFormat = granularity === "weekly" ? "YYYY-IW" : "YYYY-MM"
 
   const result = await pool.query<CoverageTrendPoint>(
     `SELECT

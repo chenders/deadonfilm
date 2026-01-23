@@ -17,11 +17,11 @@ import {
   ResponsiveContainer,
 } from "recharts"
 
-type Granularity = 'daily' | 'weekly' | 'monthly'
+type Granularity = "daily" | "weekly" | "monthly"
 
 export default function PageViewsPage() {
-  const [granularity, setGranularity] = useState<Granularity>('daily')
-  const pageTypeFilter = 'all'
+  const [granularity, setGranularity] = useState<Granularity>("daily")
+  const pageTypeFilter = "all"
 
   // Calculate date range (last 30 days)
   const endDate = new Date()
@@ -44,7 +44,7 @@ export default function PageViewsPage() {
     data: topViewed,
     isLoading: topViewedLoading,
     error: topViewedError,
-  } = useTopViewedPages('actor_death', startDate.toISOString(), endDate.toISOString(), 20)
+  } = useTopViewedPages("actor_death", startDate.toISOString(), endDate.toISOString(), 20)
 
   const isLoading = summaryLoading || trendsLoading || topViewedLoading
   const error = summaryError || trendsError || topViewedError
@@ -75,7 +75,9 @@ export default function PageViewsPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-white">Page View Analytics</h1>
-          <p className="mt-2 text-gray-400">Track content views and user engagement (Last 30 Days)</p>
+          <p className="mt-2 text-gray-400">
+            Track content views and user engagement (Last 30 Days)
+          </p>
         </div>
 
         {/* Summary Stats Cards */}
@@ -123,7 +125,7 @@ export default function PageViewsPage() {
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">Views Over Time</h2>
             <div className="flex space-x-2">
-              {(['daily', 'weekly', 'monthly'] as Granularity[]).map((g) => (
+              {(["daily", "weekly", "monthly"] as Granularity[]).map((g) => (
                 <button
                   key={g}
                   onClick={() => setGranularity(g)}
@@ -221,19 +223,19 @@ export default function PageViewsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-700">
                   {topViewed.map((page, index) => (
-                    <tr key={page.entity_id} className="transition-colors hover:bg-gray-750">
+                    <tr key={page.entity_id} className="hover:bg-gray-750 transition-colors">
                       <td className="px-4 py-3 text-gray-400">#{index + 1}</td>
                       <td className="px-4 py-3">
                         <a
                           href={`/actor/${page.entity_id}/death`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-white hover:text-blue-400 transition-colors"
+                          className="text-white transition-colors hover:text-blue-400"
                         >
                           {page.entity_name}
                         </a>
                       </td>
-                      <td className="px-4 py-3 text-right text-white font-semibold">
+                      <td className="px-4 py-3 text-right font-semibold text-white">
                         {page.view_count.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-gray-400">
@@ -245,9 +247,7 @@ export default function PageViewsPage() {
               </table>
             </div>
           ) : (
-            <div className="py-8 text-center text-gray-400">
-              No death page views recorded yet.
-            </div>
+            <div className="py-8 text-center text-gray-400">No death page views recorded yet.</div>
           )}
         </div>
 

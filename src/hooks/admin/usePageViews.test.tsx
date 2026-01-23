@@ -136,12 +136,9 @@ describe("usePageViewTrends", () => {
       json: async () => mockTrends,
     } as Response)
 
-    const { result } = renderHook(
-      () => usePageViewTrends("2024-01-01", "2024-01-31", "daily"),
-      {
-        wrapper: createWrapper(),
-      }
-    )
+    const { result } = renderHook(() => usePageViewTrends("2024-01-01", "2024-01-31", "daily"), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 

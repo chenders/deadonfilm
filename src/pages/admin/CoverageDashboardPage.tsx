@@ -14,10 +14,10 @@ import {
   ResponsiveContainer,
 } from "recharts"
 
-type Granularity = 'daily' | 'weekly' | 'monthly'
+type Granularity = "daily" | "weekly" | "monthly"
 
 export default function CoverageDashboardPage() {
-  const [granularity, setGranularity] = useState<Granularity>('daily')
+  const [granularity, setGranularity] = useState<Granularity>("daily")
 
   // Calculate date range (last 30 days)
   const endDate = new Date()
@@ -126,7 +126,7 @@ export default function CoverageDashboardPage() {
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">Coverage Trends (Last 30 Days)</h2>
             <div className="flex space-x-2">
-              {(['daily', 'weekly', 'monthly'] as Granularity[]).map((g) => (
+              {(["daily", "weekly", "monthly"] as Granularity[]).map((g) => (
                 <button
                   key={g}
                   onClick={() => setGranularity(g)}
@@ -209,7 +209,9 @@ export default function CoverageDashboardPage() {
             className="block rounded-lg bg-gray-800 p-6 transition-colors hover:bg-gray-700"
           >
             <h3 className="text-lg font-semibold text-white">View All Death Pages</h3>
-            <p className="mt-2 text-sm text-gray-400">Browse actors with detailed death information</p>
+            <p className="mt-2 text-sm text-gray-400">
+              Browse actors with detailed death information
+            </p>
           </Link>
 
           <Link
@@ -217,7 +219,9 @@ export default function CoverageDashboardPage() {
             className="block rounded-lg bg-blue-600 p-6 transition-colors hover:bg-blue-700"
           >
             <h3 className="text-lg font-semibold text-white">Start Enrichment</h3>
-            <p className="mt-2 text-sm text-gray-200">Run death detail enrichment for selected actors</p>
+            <p className="mt-2 text-sm text-gray-200">
+              Run death detail enrichment for selected actors
+            </p>
           </Link>
         </div>
       </div>

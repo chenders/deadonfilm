@@ -69,7 +69,8 @@ export default function ExternalToolsPage() {
           <h2 className="mb-4 text-lg font-semibold text-white">Configuration</h2>
           <div className="space-y-2 text-sm text-gray-400">
             <p>
-              Configure external tool URLs in your <code className="rounded bg-gray-900 px-1 py-0.5">.env</code> file:
+              Configure external tool URLs in your{" "}
+              <code className="rounded bg-gray-900 px-1 py-0.5">.env</code> file:
             </p>
             <div className="mt-4 rounded bg-gray-900 p-4 font-mono text-xs">
               <div>VITE_GOOGLE_ANALYTICS_URL=https://analytics.google.com/analytics/web/...</div>

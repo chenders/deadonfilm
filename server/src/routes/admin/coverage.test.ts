@@ -25,7 +25,7 @@ describe("Coverage API Routes", () => {
     statusSpy = vi.fn(() => ({ json: jsonSpy }))
 
     mockRes = {
-      json: jsonSpy,
+      json: jsonSpy as any,
       status: statusSpy as any,
     }
 
@@ -60,8 +60,8 @@ describe("Coverage API Routes", () => {
       const router = coverageModule.default
 
       // Get the stats route handler
-      const statsRoute = router.stack.find((layer: any) =>
-        layer.route?.path === "/stats" && layer.route?.methods.get
+      const statsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/stats" && layer.route?.methods.get
       )
 
       expect(statsRoute).toBeDefined()
@@ -101,8 +101,8 @@ describe("Coverage API Routes", () => {
       const coverageModule = await import("./coverage.js")
       const router = coverageModule.default
 
-      const actorsRoute = router.stack.find((layer: any) =>
-        layer.route?.path === "/actors" && layer.route?.methods.get
+      const actorsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors" && layer.route?.methods.get
       )
 
       expect(actorsRoute).toBeDefined()
@@ -132,8 +132,8 @@ describe("Coverage API Routes", () => {
       const coverageModule = await import("./coverage.js")
       const router = coverageModule.default
 
-      const trendsRoute = router.stack.find((layer: any) =>
-        layer.route?.path === "/trends" && layer.route?.methods.get
+      const trendsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/trends" && layer.route?.methods.get
       )
 
       expect(trendsRoute).toBeDefined()
@@ -175,8 +175,8 @@ describe("Coverage API Routes", () => {
       const coverageModule = await import("./coverage.js")
       const router = coverageModule.default
 
-      const candidatesRoute = router.stack.find((layer: any) =>
-        layer.route?.path === "/enrichment-candidates" && layer.route?.methods.get
+      const candidatesRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/enrichment-candidates" && layer.route?.methods.get
       )
 
       expect(candidatesRoute).toBeDefined()
