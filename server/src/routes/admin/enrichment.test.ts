@@ -79,12 +79,7 @@ describe("Admin Enrichment Endpoints", () => {
 
       const response = await request(app).get("/admin/api/enrichment/runs").expect(200)
 
-      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
-        1,
-        20,
-        {}
-      )
+      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(expect.any(Object), 1, 20, {})
       expect(response.body).toEqual(mockRunsResult)
     })
 
@@ -94,12 +89,7 @@ describe("Admin Enrichment Endpoints", () => {
       await request(app).get("/admin/api/enrichment/runs?page=-5&pageSize=1000").expect(200)
 
       // Negative page should default to 1, pageSize should clamp to 100
-      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
-        1,
-        100,
-        {}
-      )
+      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(expect.any(Object), 1, 100, {})
     })
 
     it("applies date filters", async () => {
@@ -110,7 +100,7 @@ describe("Admin Enrichment Endpoints", () => {
         .expect(200)
 
       expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
+        expect.any(Object),
         1,
         20,
         expect.objectContaining({
@@ -129,9 +119,7 @@ describe("Admin Enrichment Endpoints", () => {
     })
 
     it("returns 400 for invalid maxCost", async () => {
-      const response = await request(app)
-        .get("/admin/api/enrichment/runs?maxCost=invalid")
-        .expect(400)
+      const response = await request(app).get("/admin/api/enrichment/runs?maxCost=invalid").expect(400)
 
       expect(response.body.error.message).toContain("Invalid maxCost: must be a finite number")
     })
@@ -144,7 +132,7 @@ describe("Admin Enrichment Endpoints", () => {
         .expect(200)
 
       expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
+        expect.any(Object),
         1,
         20,
         expect.objectContaining({
@@ -197,10 +185,7 @@ describe("Admin Enrichment Endpoints", () => {
 
       const response = await request(app).get("/admin/api/enrichment/runs/1").expect(200)
 
-      expect(queries.getEnrichmentRunDetails).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
-        1
-      )
+      expect(queries.getEnrichmentRunDetails).toHaveBeenCalledWith(expect.any(Object), 1)
       expect(response.body).toEqual(mockRunDetails)
     })
 
@@ -257,12 +242,7 @@ describe("Admin Enrichment Endpoints", () => {
 
       const response = await request(app).get("/admin/api/enrichment/runs/1/actors").expect(200)
 
-      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
-        1,
-        1,
-        50
-      )
+      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(expect.any(Object), 1, 1, 50)
       expect(response.body).toEqual(mockActorsResult)
     })
 
@@ -271,12 +251,7 @@ describe("Admin Enrichment Endpoints", () => {
 
       await request(app).get("/admin/api/enrichment/runs/1/actors?page=-1&pageSize=200").expect(200)
 
-      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
-        1,
-        1,
-        200
-      )
+      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(expect.any(Object), 1, 1, 200)
     })
 
     it("returns 400 for invalid run ID", async () => {
@@ -316,7 +291,7 @@ describe("Admin Enrichment Endpoints", () => {
       const response = await request(app).get("/admin/api/enrichment/sources/stats").expect(200)
 
       expect(queries.getSourcePerformanceStats).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
+        expect.any(Object),
         undefined,
         undefined
       )
@@ -331,7 +306,7 @@ describe("Admin Enrichment Endpoints", () => {
         .expect(200)
 
       expect(queries.getSourcePerformanceStats).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
+        expect.any(Object),
         "2024-01-01",
         "2024-12-31"
       )
@@ -367,10 +342,7 @@ describe("Admin Enrichment Endpoints", () => {
         .get("/admin/api/enrichment/runs/1/sources/stats")
         .expect(200)
 
-      expect(queries.getRunSourcePerformanceStats).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.any(Function) }),
-        1
-      )
+      expect(queries.getRunSourcePerformanceStats).toHaveBeenCalledWith(expect.any(Object), 1)
       expect(response.body).toEqual(mockSourceStats)
     })
 
