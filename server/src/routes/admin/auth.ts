@@ -42,7 +42,6 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
     logger.debug(
       {
         hashLength: passwordHash.length,
-        hashPrefix: passwordHash.substring(0, 7), // Bcrypt hashes start with $2b$ or $2a$
         passwordLength: password.length,
         passwordTrimmed: password !== password.trim(),
       },
