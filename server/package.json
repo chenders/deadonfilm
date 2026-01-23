@@ -128,6 +128,7 @@
     "pino": "^10.1.0",
     "playwright-core": "^1.57.0",
     "playwright-extra": "^4.3.6",
+    "recharts": "^3.7.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
