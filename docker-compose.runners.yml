@@ -83,9 +83,10 @@ x-runner-common: &runner-common
   deploy:
     resources:
       limits:
-        # Limit: up to 2.5GB RAM per runner
-        # Note: 2GB of this 2.5GB per runner is allocated to /tmp via tmpfs; tmpfs usage counts toward the container memory limit (leaving ~512MB for other processes if /tmp is full)
-        memory: 2560M
+        # Limit: up to 4.5GB RAM per runner
+        # Note: 2GB of this is allocated to /tmp via tmpfs; tmpfs usage counts toward the container memory limit.
+        # CodeQL security scanning requires minimum 2048MB RAM, leaving ~512MB for runner processes and overhead.
+        memory: 4608M
         # Limit: up to 3.75 CPU cores per runner
         cpus: '3.75'
       reservations:
