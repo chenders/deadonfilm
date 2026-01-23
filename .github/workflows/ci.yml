@@ -264,7 +264,6 @@ jobs:
           TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
           # Note: DATABASE_URL intentionally not set - E2E tests don't need DB
           # and setting it would trigger slow migration checks on server startup
-          HOME: /root
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
