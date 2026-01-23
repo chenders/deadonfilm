@@ -63,6 +63,7 @@ import {
 } from "./routes/shows.js"
 import { initializeDatabase } from "./lib/startup.js"
 import { adminAuthMiddleware, optionalAdminAuth } from "./middleware/admin-auth.js"
+import { pageVisitTracker } from "./middleware/page-visit-tracker.js"
 import { loginHandler, logoutHandler, statusHandler } from "./routes/admin/auth.js"
 import { getDashboardStats } from "./routes/admin/dashboard.js"
 import enrichmentRoutes from "./routes/admin/enrichment.js"
@@ -84,6 +85,9 @@ app.use(cookieParser()) // Parse cookies for admin authentication
 // This sets req.isAdmin flag for rate limit bypass
 // codeql[js/missing-rate-limiting] - This middleware only sets a flag; actual rate limiting applied per-route
 app.use(optionalAdminAuth)
+
+// Page visit tracking for analytics (async, non-blocking)
+app.use(pageVisitTracker)
 
 // Rate limiting configuration constants
 const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
