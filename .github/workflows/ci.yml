@@ -90,35 +90,73 @@ jobs:
   backend:
     name: Backend
     runs-on: self-hosted
-    # Prevent parallel backend jobs on the same ref to avoid postgres port conflicts on self-hosted runners
+    # Prevent parallel backend jobs across all refs to avoid postgres port conflicts on self-hosted runners
+    # Starting postgres in job steps (not service containers) ensures proper concurrency control
     concurrency:
-      group: backend-tests-postgres-${{ github.ref }}
+      group: backend-tests-postgres
       cancel-in-progress: false
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: deadonfilm_test
-        # No port publishing - access via Docker network instead
-        options: >-
-          --health-cmd "pg_isready -U test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     defaults:
       run:
         working-directory: server
 
     env:
-      # Access postgres via Docker network using service name
-      DATABASE_URL: postgresql://test:test@postgres:5432/deadonfilm_test
+      # Access postgres via host port (required for Docker-in-Docker runners)
+      DATABASE_URL: postgresql://test:test@host.docker.internal:5433/deadonfilm_test
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Start postgres container
+        run: |
+          # Clean up any containers using port 5433
+          echo "Checking for containers using port 5433..."
+          CONTAINERS_ON_PORT=$(docker ps -a --filter "publish=5433" --format "{{.ID}} {{.Names}}" || true)
+          if [ -n "$CONTAINERS_ON_PORT" ]; then
+            echo "Found containers using port 5433:"
+            echo "$CONTAINERS_ON_PORT"
+            echo "Removing them..."
+            docker ps -a --filter "publish=5433" --format "{{.ID}}" | xargs -r docker rm -f
+            echo "Waiting 2 seconds for port to be released..."
+            sleep 2
+          fi
+
+          # Also clean up by name if it exists
+          docker rm -f ci-postgres-test 2>/dev/null || true
+
+          # Start postgres container with retry logic
+          echo "Starting postgres container on port 5433..."
+          MAX_RETRIES=3
+          RETRY=0
+          until docker run -d \
+            --name ci-postgres-test \
+            -e POSTGRES_USER=test \
+            -e POSTGRES_PASSWORD=test \
+            -e POSTGRES_DB=deadonfilm_test \
+            -p 5433:5432 \
+            --health-cmd "pg_isready -U test" \
+            --health-interval 10s \
+            --health-timeout 5s \
+            --health-retries 5 \
+            postgres:16; do
+            RETRY=$((RETRY+1))
+            if [ $RETRY -ge $MAX_RETRIES ]; then
+              echo "Failed to start postgres after $MAX_RETRIES attempts"
+              echo "Checking what's using port 5433..."
+              docker ps -a --filter "publish=5433" || true
+              lsof -i :5433 || true
+              exit 1
+            fi
+            echo "Failed to start postgres (attempt $RETRY/$MAX_RETRIES), retrying in 3 seconds..."
+            docker rm -f ci-postgres-test 2>/dev/null || true
+            sleep 3
+          done
+
+          # Wait for postgres to be healthy
+          echo "Waiting for postgres to be healthy..."
+          timeout 60s bash -c 'until docker exec ci-postgres-test pg_isready -U test > /dev/null 2>&1; do sleep 1; done'
+          echo "Postgres is ready!"
+        working-directory: .
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -126,6 +164,11 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json')}}
 
       - name: Install dependencies
         run: npm ci
@@ -164,6 +207,11 @@ jobs:
           name: backend-dist
           path: server/dist/
           retention-days: 1
+
+      - name: Stop postgres container
+        if: always()
+        run: docker rm -f ci-postgres-test 2>/dev/null || true
+        working-directory: .
 
   e2e:
     name: E2E Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
