@@ -91,7 +91,11 @@ export default function InternalReferralsChart({
               borderRadius: "0.5rem",
               color: "#F9FAFB",
             }}
-            formatter={(value: number) => [value.toLocaleString(), "Internal Referrals"]}
+            formatter={(value: number | undefined) =>
+              value !== undefined
+                ? [value.toLocaleString(), "Internal Referrals"]
+                : ["0", "Internal Referrals"]
+            }
           />
           <Area
             type="monotone"
