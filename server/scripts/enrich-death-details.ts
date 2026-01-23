@@ -77,6 +77,12 @@ import {
 import { createActorSlug } from "../src/lib/slug-utils.js"
 import { getBrowserAuthConfig } from "../src/lib/death-sources/browser-auth/config.js"
 import { getSessionInfo } from "../src/lib/death-sources/browser-auth/session-manager.js"
+import {
+  writeToProduction,
+  writeToStaging,
+  type EnrichmentData,
+  type DeathCircumstancesData,
+} from "../src/lib/enrichment-db-writer.js"
 
 // Suppress pino console logging for CLI scripts by setting LOG_LEVEL to silent
 // before any logger imports. New Relic will still capture events via its API.
@@ -248,13 +254,17 @@ async function completeEnrichmentRun(
     totalTimeMs: number
     costBySource: Record<string, number>
     exitReason: "completed" | "cost_limit" | "interrupted"
-  }
+  },
+  staging: boolean = false
 ): Promise<void> {
   if (!runId) return
 
   const db = getPool()
 
   try {
+    // Stage 4: Set review_status for staging runs
+    const reviewStatus = staging ? "pending_review" : "not_applicable"
+
     await db.query(
       `UPDATE enrichment_runs
        SET status = $1,
@@ -266,10 +276,11 @@ async function completeEnrichmentRun(
            total_cost_usd = $6,
            cost_by_source = $7,
            exit_reason = $8,
+           review_status = $9,
            process_id = NULL,
            current_actor_index = NULL,
            current_actor_name = NULL
-       WHERE id = $9`,
+       WHERE id = $10`,
       [
         stats.exitReason === "completed"
           ? "completed"
@@ -283,6 +294,7 @@ async function completeEnrichmentRun(
         stats.totalCostUsd,
         JSON.stringify(stats.costBySource),
         stats.exitReason,
+        reviewStatus,
         runId,
       ]
     )
@@ -321,6 +333,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     ignoreCache,
     yes,
     runId,
+    staging,
   } = options
 
   // Configure cache behavior
@@ -758,15 +771,19 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     // Check if we should stop before starting enrichment
     if (shouldStop) {
       console.log("\nEnrichment stopped before starting (SIGTERM received)")
-      await completeEnrichmentRun(runId, {
-        actorsProcessed: 0,
-        actorsEnriched: 0,
-        fillRate: 0,
-        totalCostUsd: 0,
-        totalTimeMs: 0,
-        costBySource: {},
-        exitReason: "interrupted",
-      })
+      await completeEnrichmentRun(
+        runId,
+        {
+          actorsProcessed: 0,
+          actorsEnriched: 0,
+          fillRate: 0,
+          totalCostUsd: 0,
+          totalTimeMs: 0,
+          costBySource: {},
+          exitReason: "interrupted",
+        },
+        staging
+      )
       await resetPool()
       process.exit(0)
     }
@@ -867,123 +884,104 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               : "low"
           : null)
 
-      // TODO (Stage 4): Use enrichment-db-writer module to support staging mode
-      // If options.staging is true:
-      //   1. Get enrichment_run_actor_id for this actor
-      //   2. Call writeToStaging() instead of direct db.query
-      //   3. Skip cache invalidation (data not live yet)
-      // If options.staging is false:
-      //   Continue with current behavior (writeToProduction)
-
-      // Update actor_death_circumstances table with all fields
-      await db.query(
-        `INSERT INTO actor_death_circumstances (
-          actor_id,
-          circumstances,
-          circumstances_confidence,
-          rumored_circumstances,
-          cause_confidence,
-          details_confidence,
-          birthday_confidence,
-          deathday_confidence,
-          location_of_death,
-          last_project,
-          career_status_at_death,
-          posthumous_releases,
-          related_celebrity_ids,
-          related_celebrities,
-          notable_factors,
-          additional_context,
-          related_deaths,
-          sources,
-          raw_response,
-          enriched_at,
-          enrichment_source,
-          enrichment_version,
-          created_at,
-          updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), $20, $21, NOW(), NOW())
-        ON CONFLICT (actor_id) DO UPDATE SET
-          circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
-          circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
-          rumored_circumstances = COALESCE(EXCLUDED.rumored_circumstances, actor_death_circumstances.rumored_circumstances),
-          cause_confidence = COALESCE(EXCLUDED.cause_confidence, actor_death_circumstances.cause_confidence),
-          details_confidence = COALESCE(EXCLUDED.details_confidence, actor_death_circumstances.details_confidence),
-          birthday_confidence = COALESCE(EXCLUDED.birthday_confidence, actor_death_circumstances.birthday_confidence),
-          deathday_confidence = COALESCE(EXCLUDED.deathday_confidence, actor_death_circumstances.deathday_confidence),
-          location_of_death = COALESCE(EXCLUDED.location_of_death, actor_death_circumstances.location_of_death),
-          last_project = COALESCE(EXCLUDED.last_project, actor_death_circumstances.last_project),
-          career_status_at_death = COALESCE(EXCLUDED.career_status_at_death, actor_death_circumstances.career_status_at_death),
-          posthumous_releases = COALESCE(EXCLUDED.posthumous_releases, actor_death_circumstances.posthumous_releases),
-          related_celebrity_ids = COALESCE(EXCLUDED.related_celebrity_ids, actor_death_circumstances.related_celebrity_ids),
-          related_celebrities = COALESCE(EXCLUDED.related_celebrities, actor_death_circumstances.related_celebrities),
-          notable_factors = COALESCE(EXCLUDED.notable_factors, actor_death_circumstances.notable_factors),
-          additional_context = COALESCE(EXCLUDED.additional_context, actor_death_circumstances.additional_context),
-          related_deaths = COALESCE(EXCLUDED.related_deaths, actor_death_circumstances.related_deaths),
-          sources = COALESCE(EXCLUDED.sources, actor_death_circumstances.sources),
-          raw_response = COALESCE(EXCLUDED.raw_response, actor_death_circumstances.raw_response),
-          enriched_at = NOW(),
-          enrichment_source = EXCLUDED.enrichment_source,
-          enrichment_version = EXCLUDED.enrichment_version,
-          updated_at = NOW()`,
-        [
-          actorId,
-          circumstances,
-          circumstancesConfidence,
-          rumoredCircumstances,
-          causeConfidence,
-          detailsConfidence,
-          birthdayConfidence,
-          deathdayConfidence,
-          locationOfDeath,
-          lastProject ? JSON.stringify(lastProject) : null,
-          careerStatusAtDeath,
-          posthumousReleases && posthumousReleases.length > 0
-            ? JSON.stringify(posthumousReleases)
-            : null,
-          relatedCelebrityIds,
-          relatedCelebrities && relatedCelebrities.length > 0
-            ? JSON.stringify(relatedCelebrities)
-            : null,
-          notableFactors && notableFactors.length > 0 ? notableFactors : null,
-          additionalContext,
-          relatedDeaths,
-          JSON.stringify({
-            circumstances: enrichment.circumstancesSource,
-            rumoredCircumstances: enrichment.rumoredCircumstancesSource,
-            notableFactors: enrichment.notableFactorsSource,
-            locationOfDeath: enrichment.locationOfDeathSource,
-            lastProject: enrichment.lastProjectSource,
-            careerStatusAtDeath: enrichment.careerStatusAtDeathSource,
-            cleanupSource: cleaned ? "claude-opus-4.5" : null,
-          }),
-          enrichment.rawSources
-            ? JSON.stringify({
-                rawSources: enrichment.rawSources,
-                gatheredAt: new Date().toISOString(),
-              })
-            : null,
-          "multi-source-enrichment",
-          "2.0.0", // Version with career context fields
-        ]
-      )
-
-      // Set has_detailed_death_info flag if we found substantive text for death page
+      // Determine if we have substantive death info
       const hasSubstantiveCircumstances =
         circumstances && circumstances.length > MIN_CIRCUMSTANCES_LENGTH
       const hasSubstantiveRumors =
         rumoredCircumstances && rumoredCircumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH
       const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
+      const hasDetailedDeathInfo =
+        hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths
 
-      if (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths) {
-        await db.query(`UPDATE actors SET has_detailed_death_info = true WHERE id = $1`, [actorId])
+      // Get actor record for metadata
+      const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
+
+      // Prepare enrichment data structures
+      const enrichmentData: EnrichmentData = {
+        actorId,
+        hasDetailedDeathInfo: hasDetailedDeathInfo || false,
       }
 
-      // Invalidate the actor's cache so updated death info is reflected immediately
-      const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
-      if (actorRecord?.tmdbId) {
-        await invalidateActorCache(actorRecord.tmdbId)
-        updatedActors.push({ name: actorRecord.name, tmdbId: actorRecord.tmdbId })
+      const circumstancesData: DeathCircumstancesData = {
+        actorId,
+        circumstances,
+        circumstancesConfidence,
+        rumoredCircumstances,
+        causeConfidence,
+        detailsConfidence,
+        birthdayConfidence,
+        deathdayConfidence,
+        locationOfDeath,
+        lastProject,
+        careerStatusAtDeath,
+        posthumousReleases,
+        relatedCelebrityIds,
+        relatedCelebrities,
+        notableFactors,
+        additionalContext,
+        relatedDeaths,
+        sources: {
+          circumstances: enrichment.circumstancesSource,
+          rumoredCircumstances: enrichment.rumoredCircumstancesSource,
+          notableFactors: enrichment.notableFactorsSource,
+          locationOfDeath: enrichment.locationOfDeathSource,
+          lastProject: enrichment.lastProjectSource,
+          careerStatusAtDeath: enrichment.careerStatusAtDeathSource,
+          cleanupSource: cleaned ? "claude-opus-4.5" : null,
+        },
+        rawResponse: enrichment.rawSources
+          ? {
+              rawSources: enrichment.rawSources,
+              gatheredAt: new Date().toISOString(),
+            }
+          : null,
+        enrichmentSource: "multi-source-enrichment",
+        enrichmentVersion: "2.0.0",
+      }
+
+      // Stage 4: Route to staging or production based on --staging flag
+      if (staging && runId) {
+        // Staging mode: Write to review tables
+        // First, insert enrichment_run_actors record to track this enrichment
+        const eraResult = await db.query<{ id: number }>(
+          `INSERT INTO enrichment_run_actors (
+            run_id,
+            actor_id,
+            was_enriched,
+            confidence,
+            sources_attempted,
+            winning_source,
+            processing_time_ms,
+            cost_usd
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING id`,
+          [
+            runId,
+            actorId,
+            true, // was_enriched
+            enrichment.circumstancesSource?.confidence || null,
+            JSON.stringify([enrichment.circumstancesSource?.type].filter(Boolean)),
+            enrichment.circumstancesSource?.type || null,
+            null, // processing_time_ms - not tracked in staging mode
+            enrichment.circumstancesSource?.costUsd || 0,
+          ]
+        )
+
+        const enrichmentRunActorId = eraResult.rows[0].id
+
+        // Write to staging tables for review
+        await writeToStaging(db, enrichmentRunActorId, enrichmentData, circumstancesData)
+
+        console.log(`  ✓ Staged for review: ${actorRecord?.name}`)
+      } else {
+        // Production mode: Write directly to actors/actor_death_circumstances
+        await writeToProduction(db, enrichmentData, circumstancesData)
+
+        // Invalidate cache so updated death info is reflected immediately
+        if (actorRecord?.tmdbId) {
+          await invalidateActorCache(actorRecord.tmdbId)
+          updatedActors.push({ name: actorRecord.name, tmdbId: actorRecord.tmdbId })
+        }
       }
 
       updated++
@@ -1026,20 +1024,28 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     })
 
     // Update enrichment run completion in database
-    await completeEnrichmentRun(runId, {
-      actorsProcessed: stats.actorsProcessed,
-      actorsEnriched: stats.actorsEnriched,
-      fillRate: stats.fillRate,
-      totalCostUsd: stats.totalCostUsd,
-      totalTimeMs: stats.totalTimeMs,
-      costBySource: stats.costBySource,
-      exitReason: costLimitReached ? "cost_limit" : shouldStop ? "interrupted" : "completed",
-    })
+    await completeEnrichmentRun(
+      runId,
+      {
+        actorsProcessed: stats.actorsProcessed,
+        actorsEnriched: stats.actorsEnriched,
+        fillRate: stats.fillRate,
+        totalCostUsd: stats.totalCostUsd,
+        totalTimeMs: stats.totalTimeMs,
+        costBySource: stats.costBySource,
+        exitReason: costLimitReached ? "cost_limit" : shouldStop ? "interrupted" : "completed",
+      },
+      staging
+    )
 
-    // Rebuild caches if we updated anything
-    if (updated > 0) {
+    // Rebuild caches if we updated anything (only in production mode)
+    if (updated > 0 && !staging) {
       await rebuildDeathCaches()
       console.log("\nRebuilt death caches")
+    } else if (updated > 0 && staging) {
+      console.log(
+        `\n${updated} enrichments staged for review - data not live yet, caches not rebuilt`
+      )
     }
 
     // Print death page links for updated actors
