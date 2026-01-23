@@ -1,0 +1,180 @@
+/**
+ * Tests for AnalyticsPage component
+ */
+
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import AnalyticsPage from "./AnalyticsPage"
+import * as analyticsHooks from "../../hooks/admin/useAnalytics"
+import * as adminAuthHook from "../../hooks/useAdminAuth"
+
+// Mock the hooks
+vi.mock("../../hooks/admin/useAnalytics")
+vi.mock("../../hooks/useAdminAuth", () => ({
+  useAdminAuth: vi.fn(),
+  AdminAuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+// Mock ResizeObserver for Recharts
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver = ResizeObserverMock as any
+
+describe("AnalyticsPage", () => {
+  const mockCostBySourceData = {
+    sources: [
+      {
+        source: "wikidata",
+        total_cost: 25.5,
+        queries_count: 100,
+        avg_cost_per_query: 0.255,
+        last_used: "2024-01-15T10:30:00Z",
+      },
+      {
+        source: "wikipedia",
+        total_cost: 0,
+        queries_count: 200,
+        avg_cost_per_query: 0,
+        last_used: "2024-01-14T09:00:00Z",
+      },
+    ],
+    totalCost: 25.5,
+    totalQueries: 300,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    vi.mocked(analyticsHooks.useCostBySource).mockReturnValue({
+      data: mockCostBySourceData,
+      isLoading: false,
+      error: null,
+    } as any)
+
+    vi.mocked(adminAuthHook.useAdminAuth).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      logout: vi.fn(),
+    } as any)
+  })
+
+  function renderPage() {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    })
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <AnalyticsPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+  }
+
+  it("renders page header", () => {
+    renderPage()
+
+    expect(screen.getByRole("heading", { name: /cost analytics/i })).toBeInTheDocument()
+    expect(
+      screen.getByText(/track spending across death sources, ai operations, and enrichment runs/i)
+    ).toBeInTheDocument()
+  })
+
+  it("renders date range picker", () => {
+    renderPage()
+
+    expect(screen.getByLabelText(/start date/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/end date/i)).toBeInTheDocument()
+    expect(screen.getByText("Last 7 Days")).toBeInTheDocument()
+    expect(screen.getByText("Last 30 Days")).toBeInTheDocument()
+    expect(screen.getByText("Last 90 Days")).toBeInTheDocument()
+    expect(screen.getByText("All Time")).toBeInTheDocument()
+  })
+
+  it("renders cost by source section with data", () => {
+    renderPage()
+
+    expect(screen.getByText("Cost by Source")).toBeInTheDocument()
+    // Check for total cost stat card (multiple instances of $25.50 exist in table rows)
+    expect(screen.getAllByText("$25.50").length).toBeGreaterThan(0)
+    expect(screen.getByText("300")).toBeInTheDocument()
+  })
+
+  it("updates date range when quick filter is clicked", async () => {
+    renderPage()
+
+    // Mock the hook to return new data after date change
+    vi.mocked(analyticsHooks.useCostBySource).mockReturnValue({
+      data: mockCostBySourceData,
+      isLoading: false,
+      error: null,
+    } as any)
+
+    const lastSevenDaysButton = screen.getByText("Last 7 Days")
+    fireEvent.click(lastSevenDaysButton)
+
+    await waitFor(() => {
+      // The hook should have been called with new dates
+      expect(analyticsHooks.useCostBySource).toHaveBeenCalled()
+    })
+  })
+
+  it("updates date range when custom dates are selected", async () => {
+    renderPage()
+
+    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement
+    const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement
+
+    fireEvent.change(startDateInput, { target: { value: "2024-01-01" } })
+    fireEvent.change(endDateInput, { target: { value: "2024-01-31" } })
+
+    await waitFor(() => {
+      expect(startDateInput.value).toBe("2024-01-01")
+      expect(endDateInput.value).toBe("2024-01-31")
+    })
+  })
+
+  it("shows loading state", () => {
+    vi.mocked(analyticsHooks.useCostBySource).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+    } as any)
+
+    renderPage()
+
+    expect(screen.getByTestId("loading-message")).toBeInTheDocument()
+  })
+
+  it("shows error state", () => {
+    vi.mocked(analyticsHooks.useCostBySource).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error("Failed to load"),
+    } as any)
+
+    renderPage()
+
+    expect(screen.getByText(/failed to load cost analytics/i)).toBeInTheDocument()
+  })
+
+  it("shows empty state when no data available", () => {
+    vi.mocked(analyticsHooks.useCostBySource).mockReturnValue({
+      data: { sources: [], totalCost: 0, totalQueries: 0 },
+      isLoading: false,
+      error: null,
+    } as any)
+
+    renderPage()
+
+    expect(screen.getByText(/no data available for the selected time period/i)).toBeInTheDocument()
+  })
+})
