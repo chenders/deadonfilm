@@ -9,7 +9,7 @@ on:
 jobs:
   codeql:
     name: CodeQL Security Scan
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
@@ -41,7 +41,7 @@ jobs:
 
   frontend:
     name: Frontend
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -90,20 +90,15 @@ jobs:
 
   backend:
     name: Backend
-    runs-on: self-hosted
-    # Prevent parallel backend jobs across all refs to avoid postgres port conflicts on self-hosted runners
-    # Starting postgres in job steps (not service containers) ensures proper concurrency control
-    concurrency:
-      group: backend-tests-postgres
-      cancel-in-progress: false
+    runs-on: ubuntu-latest
 
     defaults:
       run:
         working-directory: server
 
     env:
-      # Access postgres via host port (required for Docker-in-Docker runners)
-      DATABASE_URL: postgresql://test:test@host.docker.internal:5433/deadonfilm_test
+      # Access postgres via localhost on ephemeral hosted runners
+      DATABASE_URL: postgresql://test:test@localhost:5433/deadonfilm_test
 
     steps:
       - uses: actions/checkout@v4
@@ -166,22 +161,14 @@ jobs:
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
 
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json')}}
-
       - name: Install dependencies
         run: npm ci
 
       - name: Run database migrations
         run: npm run migrate:up
 
-      - name: Seed actuarial data
-        run: npm run seed:actuarial
-
-      - name: Seed cohort life expectancy data
-        run: npm run seed:cohort
+      - name: Seed database (parallel)
+        run: npm run seed:actuarial & npm run seed:cohort & wait
 
       - name: Type check
         run: npm run type-check
@@ -216,7 +203,7 @@ jobs:
 
   e2e:
     name: E2E Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [frontend, backend]
     # Note: No container - run directly on runner to avoid Docker-in-Docker issues
     strategy:
@@ -239,6 +226,14 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
@@ -285,7 +280,7 @@ jobs:
 
   docker:
     name: Docker Build
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [frontend, backend]
 
     steps:
@@ -310,9 +305,8 @@ jobs:
         run: |
           # Clean up any existing container from previous runs
           docker rm -f test-container 2>/dev/null || true
-          # App container only runs Express backend on 8080 (nginx is separate)
-          # Use port 8081 on host to avoid conflict with production on self-hosted runner
-          docker run -d --name test-container -p 8081:8080 \
+          # App container runs Express backend on port 8080 (nginx is separate)
+          docker run -d --name test-container -p 8080:8080 \
             -e TMDB_API_TOKEN=test \
             dead-on-film:test
           sleep 5
