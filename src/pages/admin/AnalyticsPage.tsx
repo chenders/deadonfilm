@@ -16,13 +16,7 @@ import PopularPagesTable from "../../components/admin/analytics/PopularPagesTabl
 import HourlyPatternsChart from "../../components/admin/analytics/HourlyPatternsChart"
 import StatCard from "../../components/admin/analytics/StatCard"
 import { usePageVisitStats } from "../../hooks/admin/useAnalytics"
-
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
-}
+import { formatLocalDate } from "../../utils/formatDate"
 
 // Calculate default date range (last 30 days)
 const getDefaultDateRange = () => {
