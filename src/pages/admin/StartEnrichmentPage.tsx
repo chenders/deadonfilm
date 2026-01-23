@@ -17,6 +17,20 @@ export default function StartEnrichmentPage() {
   const [minPopularity, setMinPopularity] = useState<number>(0)
   const [confidence, setConfidence] = useState<number>(0.5)
   const [recentOnly, setRecentOnly] = useState<boolean>(false)
+  const [usActorsOnly, setUsActorsOnly] = useState<boolean>(false)
+
+  // Source selection flags
+  const [free, setFree] = useState<boolean>(false)
+  const [paid, setPaid] = useState<boolean>(false)
+  const [ai, setAi] = useState<boolean>(false)
+  const [stopOnMatch, setStopOnMatch] = useState<boolean>(false)
+  const [gatherAllSources, setGatherAllSources] = useState<boolean>(false)
+
+  // Advanced options
+  const [claudeCleanup, setClaudeCleanup] = useState<boolean>(false)
+  const [followLinks, setFollowLinks] = useState<boolean>(false)
+  const [aiLinkSelection, setAiLinkSelection] = useState<boolean>(false)
+  const [aiContentExtraction, setAiContentExtraction] = useState<boolean>(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,6 +43,16 @@ export default function StartEnrichmentPage() {
         minPopularity,
         confidence,
         recentOnly,
+        usActorsOnly,
+        free,
+        paid,
+        ai,
+        stopOnMatch,
+        gatherAllSources,
+        claudeCleanup,
+        followLinks,
+        aiLinkSelection,
+        aiContentExtraction,
       })
 
       // Navigate to the run details page
@@ -121,6 +145,148 @@ export default function StartEnrichmentPage() {
                 />
                 <label htmlFor="recentOnly" className="ml-2 block text-sm text-gray-300">
                   Recent deaths only (last 2 years)
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="usActorsOnly"
+                  checked={usActorsOnly}
+                  onChange={(e) => setUsActorsOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="usActorsOnly" className="ml-2 block text-sm text-gray-300">
+                  US actors only
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Source Selection */}
+          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-lg font-semibold text-white">Source Selection</h2>
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="free"
+                  checked={free}
+                  onChange={(e) => setFree(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="free" className="ml-2 block text-sm text-gray-300">
+                  Use free sources only
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="paid"
+                  checked={paid}
+                  onChange={(e) => setPaid(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="paid" className="ml-2 block text-sm text-gray-300">
+                  Use paid sources
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="ai"
+                  checked={ai}
+                  onChange={(e) => setAi(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="ai" className="ml-2 block text-sm text-gray-300">
+                  Use AI sources
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="stopOnMatch"
+                  checked={stopOnMatch}
+                  onChange={(e) => setStopOnMatch(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="stopOnMatch" className="ml-2 block text-sm text-gray-300">
+                  Stop on first match
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="gatherAllSources"
+                  checked={gatherAllSources}
+                  onChange={(e) => setGatherAllSources(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="gatherAllSources" className="ml-2 block text-sm text-gray-300">
+                  Gather data from all sources
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Advanced Options */}
+          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+            <h2 className="mb-4 text-lg font-semibold text-white">Advanced Options</h2>
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="claudeCleanup"
+                  checked={claudeCleanup}
+                  onChange={(e) => setClaudeCleanup(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="claudeCleanup" className="ml-2 block text-sm text-gray-300">
+                  Use Claude for data cleanup
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="followLinks"
+                  checked={followLinks}
+                  onChange={(e) => setFollowLinks(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="followLinks" className="ml-2 block text-sm text-gray-300">
+                  Follow external links
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="aiLinkSelection"
+                  checked={aiLinkSelection}
+                  onChange={(e) => setAiLinkSelection(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="aiLinkSelection" className="ml-2 block text-sm text-gray-300">
+                  Use AI for link selection
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="aiContentExtraction"
+                  checked={aiContentExtraction}
+                  onChange={(e) => setAiContentExtraction(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="aiContentExtraction" className="ml-2 block text-sm text-gray-300">
+                  Use AI for content extraction
                 </label>
               </div>
             </div>
@@ -258,6 +424,16 @@ export default function StartEnrichmentPage() {
             {maxCostPerActor ? ` --max-cost-per-actor ${maxCostPerActor}` : ""}
             {minPopularity > 0 ? ` --min-popularity ${minPopularity}` : ""}
             {recentOnly ? " --recent-only" : ""}
+            {usActorsOnly ? " --us-actors-only" : ""}
+            {free ? " --free" : ""}
+            {paid ? " --paid" : ""}
+            {ai ? " --ai" : ""}
+            {stopOnMatch ? " --stop-on-match" : ""}
+            {gatherAllSources ? " --gather-all-sources" : ""}
+            {claudeCleanup ? " --claude-cleanup" : ""}
+            {followLinks ? " --follow-links" : ""}
+            {aiLinkSelection ? " --ai-link-selection" : ""}
+            {aiContentExtraction ? " --ai-content-extraction" : ""}
             {confidence !== 0.5 ? ` --confidence ${confidence}` : ""}
           </div>
         </div>

@@ -38,6 +38,7 @@ const NotableDeathsPage = lazyWithRetry(() => import("./pages/NotableDeathsPage"
 // Admin pages
 const AdminLoginPage = lazyWithRetry(() => import("./pages/admin/LoginPage"))
 const AdminDashboardPage = lazyWithRetry(() => import("./pages/admin/DashboardPage"))
+const AdminAnalyticsPage = lazyWithRetry(() => import("./pages/admin/AnalyticsPage"))
 const AdminEnrichmentRunsPage = lazyWithRetry(() => import("./pages/admin/EnrichmentRunsPage"))
 const AdminEnrichmentRunDetailsPage = lazyWithRetry(
   () => import("./pages/admin/EnrichmentRunDetailsPage")
@@ -67,6 +68,14 @@ function App() {
           element={
             <Suspense fallback={<LoadingSpinner />}>
               <AdminDashboardPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminAnalyticsPage />
             </Suspense>
           }
         />
