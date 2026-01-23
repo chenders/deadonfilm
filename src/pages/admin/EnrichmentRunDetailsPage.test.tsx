@@ -122,6 +122,18 @@ describe("EnrichmentRunDetailsPage", () => {
       error: null,
     } as any)
 
+    vi.mocked(enrichmentHooks.useEnrichmentRunProgress).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as any)
+
+    vi.mocked(enrichmentHooks.useStopEnrichmentRun).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isLoading: false,
+      error: null,
+    } as any)
+
     vi.mocked(adminAuthHook.useAdminAuth).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
