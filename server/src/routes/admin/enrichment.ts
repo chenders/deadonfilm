@@ -15,7 +15,14 @@ import {
   getEnrichmentRunActors,
   getSourcePerformanceStats,
   getRunSourcePerformanceStats,
+  getPendingEnrichments,
+  getEnrichmentReviewDetail,
+  approveEnrichment,
+  rejectEnrichment,
+  editEnrichment,
+  commitEnrichmentRun,
   type EnrichmentRunFilters,
+  type PendingReviewFilters,
 } from "../../lib/db/admin-enrichment-queries.js"
 import {
   startEnrichmentRun,
@@ -25,6 +32,10 @@ import {
 } from "../../lib/enrichment-process-manager.js"
 
 const router = Router()
+
+// Pagination constants
+const DEFAULT_PENDING_REVIEW_PAGE_SIZE = 50
+const MAX_PENDING_REVIEW_PAGE_SIZE = 200
 
 // ============================================================================
 // GET /admin/api/enrichment/runs
@@ -339,6 +350,358 @@ router.get("/runs/:id/progress", async (req: Request, res: Response): Promise<vo
   } catch (error) {
     logger.error({ error }, "Failed to fetch enrichment run progress")
     res.status(500).json({ error: { message: "Failed to fetch enrichment run progress" } })
+  }
+})
+
+// ============================================================================
+// STAGE 4: REVIEW WORKFLOW ENDPOINTS
+// ============================================================================
+
+// ============================================================================
+// GET /admin/api/enrichment/pending-review
+// List all enrichments pending review with confidence filtering
+// ============================================================================
+
+router.get("/pending-review", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+
+    // Parse pagination params with clamping
+    const rawPage = Number.parseInt(req.query.page as string, 10)
+    const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
+
+    const rawPageSize = Number.parseInt(req.query.pageSize as string, 10)
+    const safePageSize =
+      Number.isFinite(rawPageSize) && rawPageSize > 0
+        ? rawPageSize
+        : DEFAULT_PENDING_REVIEW_PAGE_SIZE
+    const pageSize = Math.min(safePageSize, MAX_PENDING_REVIEW_PAGE_SIZE)
+
+    // Parse filters
+    const filters: PendingReviewFilters = { page, pageSize }
+
+    if (req.query.runId) {
+      const runId = Number.parseInt(req.query.runId as string, 10)
+      if (!Number.isFinite(runId) || runId <= 0) {
+        res.status(400).json({ error: { message: "Invalid runId: must be a positive integer" } })
+        return
+      }
+      filters.runId = runId
+    }
+
+    if (req.query.minConfidence) {
+      const minConfidence = Number.parseFloat(req.query.minConfidence as string)
+      if (!Number.isFinite(minConfidence) || minConfidence < 0 || minConfidence > 1) {
+        res
+          .status(400)
+          .json({ error: { message: "Invalid minConfidence: must be between 0 and 1" } })
+        return
+      }
+      filters.minConfidence = minConfidence
+    }
+
+    if (req.query.causeConfidence) {
+      const causeConfidence = req.query.causeConfidence as string
+      if (!["high", "medium", "low", "disputed"].includes(causeConfidence)) {
+        res.status(400).json({
+          error: {
+            message: "Invalid causeConfidence: must be high, medium, low, or disputed",
+          },
+        })
+        return
+      }
+      filters.causeConfidence = causeConfidence as "high" | "medium" | "low" | "disputed"
+    }
+
+    const result = await getPendingEnrichments(pool, filters)
+
+    res.json(result)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch pending enrichments")
+    res.status(500).json({ error: { message: "Failed to fetch pending enrichments" } })
+  }
+})
+
+// ============================================================================
+// GET /admin/api/enrichment/review/:enrichmentRunActorId
+// Get detailed data for a single enrichment for review
+// ============================================================================
+
+router.get("/review/:enrichmentRunActorId", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const enrichmentRunActorId = parseInt(req.params.enrichmentRunActorId, 10)
+
+    if (isNaN(enrichmentRunActorId)) {
+      res.status(400).json({ error: { message: "Invalid enrichmentRunActorId" } })
+      return
+    }
+
+    const detail = await getEnrichmentReviewDetail(pool, enrichmentRunActorId)
+
+    if (!detail) {
+      res.status(404).json({ error: { message: "Enrichment not found" } })
+      return
+    }
+
+    res.json(detail)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch enrichment review detail")
+    res.status(500).json({ error: { message: "Failed to fetch enrichment review detail" } })
+  }
+})
+
+// ============================================================================
+// POST /admin/api/enrichment/review/:enrichmentRunActorId/approve
+// Approve a single enrichment for commit
+// ============================================================================
+
+interface ApproveEnrichmentRequest {
+  adminUser: string
+  notes?: string
+}
+
+router.post(
+  "/review/:enrichmentRunActorId/approve",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const pool = getPool()
+      const enrichmentRunActorId = parseInt(req.params.enrichmentRunActorId, 10)
+
+      if (isNaN(enrichmentRunActorId)) {
+        res.status(400).json({ error: { message: "Invalid enrichmentRunActorId" } })
+        return
+      }
+
+      const { adminUser, notes } = req.body as ApproveEnrichmentRequest
+
+      if (!adminUser || typeof adminUser !== "string" || adminUser.trim() === "") {
+        res.status(400).json({ error: { message: "adminUser is required" } })
+        return
+      }
+
+      // Log admin action
+      await logAdminAction({
+        action: "approve_enrichment",
+        resourceType: "enrichment_review",
+        resourceId: enrichmentRunActorId,
+        details: { notes },
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      })
+
+      await approveEnrichment(pool, enrichmentRunActorId, adminUser, notes)
+
+      logger.info({ enrichmentRunActorId, adminUser }, "Enrichment approved")
+
+      res.status(200).json({
+        success: true,
+        message: "Enrichment approved successfully",
+      })
+    } catch (error) {
+      logger.error({ error }, "Failed to approve enrichment")
+      res.status(500).json({ error: { message: "Failed to approve enrichment" } })
+    }
+  }
+)
+
+// ============================================================================
+// POST /admin/api/enrichment/review/:enrichmentRunActorId/reject
+// Reject a single enrichment
+// ============================================================================
+
+interface RejectEnrichmentRequest {
+  adminUser: string
+  reason:
+    | "low_confidence"
+    | "incorrect_data"
+    | "duplicate"
+    | "no_death_info"
+    | "conflicting_sources"
+    | "other"
+  details?: string
+}
+
+router.post(
+  "/review/:enrichmentRunActorId/reject",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const pool = getPool()
+      const enrichmentRunActorId = parseInt(req.params.enrichmentRunActorId, 10)
+
+      if (isNaN(enrichmentRunActorId)) {
+        res.status(400).json({ error: { message: "Invalid enrichmentRunActorId" } })
+        return
+      }
+
+      const { adminUser, reason, details } = req.body as RejectEnrichmentRequest
+
+      if (!adminUser || typeof adminUser !== "string" || adminUser.trim() === "") {
+        res.status(400).json({ error: { message: "adminUser is required" } })
+        return
+      }
+
+      if (!reason) {
+        res.status(400).json({ error: { message: "reason is required" } })
+        return
+      }
+
+      const validReasons = [
+        "low_confidence",
+        "incorrect_data",
+        "duplicate",
+        "no_death_info",
+        "conflicting_sources",
+        "other",
+      ]
+      if (!validReasons.includes(reason)) {
+        res.status(400).json({
+          error: {
+            message: `Invalid reason: must be one of ${validReasons.join(", ")}`,
+          },
+        })
+        return
+      }
+
+      // Log admin action
+      await logAdminAction({
+        action: "reject_enrichment",
+        resourceType: "enrichment_review",
+        resourceId: enrichmentRunActorId,
+        details: { reason, details },
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      })
+
+      await rejectEnrichment(pool, enrichmentRunActorId, adminUser, reason, details)
+
+      logger.info({ enrichmentRunActorId, adminUser, reason }, "Enrichment rejected")
+
+      res.status(200).json({
+        success: true,
+        message: "Enrichment rejected successfully",
+      })
+    } catch (error) {
+      logger.error({ error }, "Failed to reject enrichment")
+      res.status(500).json({ error: { message: "Failed to reject enrichment" } })
+    }
+  }
+)
+
+// ============================================================================
+// POST /admin/api/enrichment/review/:enrichmentRunActorId/edit
+// Manually edit enrichment data before approval
+// ============================================================================
+
+interface EditEnrichmentRequest {
+  adminUser: string
+  edits: Record<string, unknown>
+  notes?: string
+}
+
+router.post(
+  "/review/:enrichmentRunActorId/edit",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const pool = getPool()
+      const enrichmentRunActorId = parseInt(req.params.enrichmentRunActorId, 10)
+
+      if (isNaN(enrichmentRunActorId)) {
+        res.status(400).json({ error: { message: "Invalid enrichmentRunActorId" } })
+        return
+      }
+
+      const { adminUser, edits, notes } = req.body as EditEnrichmentRequest
+
+      if (!adminUser || typeof adminUser !== "string" || adminUser.trim() === "") {
+        res.status(400).json({ error: { message: "adminUser is required" } })
+        return
+      }
+
+      if (!edits || typeof edits !== "object" || Object.keys(edits).length === 0) {
+        res
+          .status(400)
+          .json({ error: { message: "edits object is required and must not be empty" } })
+        return
+      }
+
+      // Log admin action
+      await logAdminAction({
+        action: "edit_enrichment",
+        resourceType: "enrichment_review",
+        resourceId: enrichmentRunActorId,
+        details: { edits, notes },
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      })
+
+      await editEnrichment(pool, enrichmentRunActorId, adminUser, edits, notes)
+
+      logger.info(
+        { enrichmentRunActorId, adminUser, editCount: Object.keys(edits).length },
+        "Enrichment edited"
+      )
+
+      res.status(200).json({
+        success: true,
+        message: "Enrichment edited successfully",
+      })
+    } catch (error) {
+      logger.error({ error }, "Failed to edit enrichment")
+      res.status(500).json({ error: { message: "Failed to edit enrichment" } })
+    }
+  }
+)
+
+// ============================================================================
+// POST /admin/api/enrichment/runs/:id/commit
+// Commit all approved enrichments for a run to production
+// ============================================================================
+
+interface CommitEnrichmentsRequest {
+  adminUser: string
+  notes?: string
+}
+
+router.post("/runs/:id/commit", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const { adminUser, notes } = req.body as CommitEnrichmentsRequest
+
+    if (!adminUser || typeof adminUser !== "string" || adminUser.trim() === "") {
+      res.status(400).json({ error: { message: "adminUser is required" } })
+      return
+    }
+
+    // Log admin action
+    await logAdminAction({
+      action: "commit_enrichment_run",
+      resourceType: "enrichment_run",
+      resourceId: runId,
+      details: { notes },
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    })
+
+    const { committedCount } = await commitEnrichmentRun(pool, runId, adminUser, notes)
+
+    logger.info({ runId, committedCount, adminUser }, "Enrichment run committed")
+
+    res.status(200).json({
+      success: true,
+      committedCount,
+      message: `${committedCount} enrichment(s) committed successfully`,
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to commit enrichment run")
+    res.status(500).json({ error: { message: "Failed to commit enrichment run" } })
   }
 })
 
