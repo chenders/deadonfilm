@@ -37,8 +37,7 @@
     "docker:logs": "docker compose logs -f app",
     "// === Other ===": "",
     "//analyze": "Visualize bundle size for performance analysis",
-    "analyze": "vite-bundle-visualizer",
-    "prepare": "husky"
+    "analyze": "vite-bundle-visualizer"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.0",
