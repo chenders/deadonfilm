@@ -149,7 +149,7 @@ export default function CoverageDashboardPage() {
                 <XAxis
                   dataKey="captured_at"
                   stroke="#9CA3AF"
-                  tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                  tickFormatter={(value: string) => new Date(value).toLocaleDateString()}
                 />
                 <YAxis stroke="#9CA3AF" />
                 <Tooltip
