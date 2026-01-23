@@ -1,6 +1,7 @@
-import { useParams, Link } from "react-router-dom"
+import { useParams, useLocation, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useActorDeathDetails } from "@/hooks/useDeathDetails"
+import { usePageViewTracking } from "@/hooks/usePageViewTracking"
 import { extractActorId, createActorSlug, createMovieSlug, createShowSlug } from "@/utils/slugify"
 import { formatDate } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
@@ -198,8 +199,12 @@ function RelatedCelebrityCard({ celebrity }: { celebrity: RelatedCelebrity }) {
 
 export default function ActorDeathPage() {
   const { slug } = useParams<{ slug: string }>()
+  const location = useLocation()
   const actorId = slug ? extractActorId(slug) : 0
   const { data, isLoading, error } = useActorDeathDetails(actorId)
+
+  // Track page view for analytics
+  usePageViewTracking("actor_death", data?.actor?.id ?? null, location.pathname)
 
   // Error states
   if (!actorId) {
