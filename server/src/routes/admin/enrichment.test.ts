@@ -119,7 +119,9 @@ describe("Admin Enrichment Endpoints", () => {
     })
 
     it("returns 400 for invalid maxCost", async () => {
-      const response = await request(app).get("/admin/api/enrichment/runs?maxCost=invalid").expect(400)
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs?maxCost=invalid")
+        .expect(400)
 
       expect(response.body.error.message).toContain("Invalid maxCost: must be a finite number")
     })
