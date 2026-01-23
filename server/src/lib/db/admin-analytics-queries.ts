@@ -50,7 +50,8 @@ export async function getCostBySource(
     }
     if (endDate) {
       params.push(endDate)
-      conditions.push(`queried_at <= $${params.length}`)
+      // Treat endDate as an inclusive calendar date by comparing to the start of the next day
+      conditions.push(`queried_at < ($${params.length}::date + interval '1 day')`)
     }
     whereClause = `WHERE ${conditions.join(" AND ")}`
   }
