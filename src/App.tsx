@@ -43,6 +43,7 @@ const AdminEnrichmentRunDetailsPage = lazyWithRetry(
   () => import("./pages/admin/EnrichmentRunDetailsPage")
 )
 const AdminStartEnrichmentPage = lazyWithRetry(() => import("./pages/admin/StartEnrichmentPage"))
+const AdminEnrichmentReviewPage = lazyWithRetry(() => import("./pages/admin/EnrichmentReviewPage"))
 
 function App() {
   useGoogleAnalytics()
@@ -90,6 +91,14 @@ function App() {
           element={
             <Suspense fallback={<LoadingSpinner />}>
               <AdminStartEnrichmentPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/enrichment/review"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminEnrichmentReviewPage />
             </Suspense>
           }
         />
