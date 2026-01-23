@@ -26,9 +26,8 @@ async function trackPageView(options: TrackPageViewOptions): Promise<void> {
       body: JSON.stringify(options),
     })
     // Intentionally ignore response - tracking should be fire-and-forget
-  } catch (error) {
+  } catch {
     // Silently fail - don't interrupt user experience with tracking errors
-    console.debug("Page view tracking failed:", error)
   }
 }
 
