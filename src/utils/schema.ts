@@ -96,14 +96,6 @@ export function buildWebsiteSchema(): Record<string, unknown> {
     url: BASE_URL,
     description:
       "Movie cast mortality database. Look up any movie and see which actors have passed away.",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${BASE_URL}/?q={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
   }
 }
 
