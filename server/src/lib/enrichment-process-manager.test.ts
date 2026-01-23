@@ -223,7 +223,7 @@ describe("enrichment-process-manager", () => {
       })
 
       await expect(processManager.stopEnrichmentRun(2)).rejects.toThrow(
-        "Enrichment run 2 is not running"
+        "Enrichment run 2 is not running (status: completed)"
       )
     })
   })
