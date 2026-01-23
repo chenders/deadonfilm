@@ -48,7 +48,7 @@ describe("LoginPage", () => {
     })
 
     expect(screen.getByText("Enter your admin password to continue")).toBeInTheDocument()
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+    expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
     expect(screen.getByTestId("admin-login-submit")).toBeInTheDocument()
   })
 
@@ -56,10 +56,10 @@ describe("LoginPage", () => {
     renderLoginPage()
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+      expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
     })
 
-    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement
+    const passwordInput = screen.getByTestId("admin-login-password") as HTMLInputElement
     fireEvent.change(passwordInput, { target: { value: "test-password" } })
 
     expect(passwordInput.value).toBe("test-password")
@@ -69,7 +69,7 @@ describe("LoginPage", () => {
     renderLoginPage()
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+      expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
     })
 
     // Mock successful login
@@ -80,7 +80,7 @@ describe("LoginPage", () => {
       } as Response)
     )
 
-    const passwordInput = screen.getByLabelText(/password/i)
+    const passwordInput = screen.getByTestId("admin-login-password")
     const submitButton = screen.getByTestId("admin-login-submit")
 
     fireEvent.change(passwordInput, { target: { value: "correct-password" } })
@@ -95,7 +95,7 @@ describe("LoginPage", () => {
     renderLoginPage()
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+      expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
     })
 
     // Mock failed login
@@ -106,7 +106,7 @@ describe("LoginPage", () => {
       } as Response)
     )
 
-    const passwordInput = screen.getByLabelText(/password/i)
+    const passwordInput = screen.getByTestId("admin-login-password")
     const submitButton = screen.getByTestId("admin-login-submit")
 
     fireEvent.change(passwordInput, { target: { value: "wrong-password" } })
@@ -121,7 +121,7 @@ describe("LoginPage", () => {
     renderLoginPage()
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+      expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
     })
 
     // Mock login that takes time
@@ -133,7 +133,7 @@ describe("LoginPage", () => {
         })
     )
 
-    const passwordInput = screen.getByLabelText(/password/i)
+    const passwordInput = screen.getByTestId("admin-login-password")
     const submitButton = screen.getByTestId("admin-login-submit")
 
     fireEvent.change(passwordInput, { target: { value: "password" } })
@@ -157,7 +157,7 @@ describe("LoginPage", () => {
     renderLoginPage()
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+      expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
     })
 
     // First attempt - failed
@@ -168,7 +168,7 @@ describe("LoginPage", () => {
       } as Response)
     )
 
-    const passwordInput = screen.getByLabelText(/password/i)
+    const passwordInput = screen.getByTestId("admin-login-password")
     const submitButton = screen.getByTestId("admin-login-submit")
 
     fireEvent.change(passwordInput, { target: { value: "wrong" } })
@@ -200,13 +200,13 @@ describe("LoginPage", () => {
     renderLoginPage()
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+      expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
     })
 
     // Mock network error
     mockFetch.mockImplementationOnce(() => Promise.reject(new Error("Network error")))
 
-    const passwordInput = screen.getByLabelText(/password/i)
+    const passwordInput = screen.getByTestId("admin-login-password")
     const submitButton = screen.getByTestId("admin-login-submit")
 
     fireEvent.change(passwordInput, { target: { value: "password" } })
@@ -223,7 +223,7 @@ describe("LoginPage", () => {
     renderLoginPage()
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+      expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
     })
 
     // Mock successful login
@@ -234,7 +234,7 @@ describe("LoginPage", () => {
       } as Response)
     )
 
-    const passwordInput = screen.getByLabelText(/password/i)
+    const passwordInput = screen.getByTestId("admin-login-password")
     const submitButton = screen.getByTestId("admin-login-submit")
 
     fireEvent.change(passwordInput, { target: { value: "password" } })
@@ -253,7 +253,46 @@ describe("LoginPage", () => {
   it("requires password to be filled", () => {
     renderLoginPage()
 
-    const passwordInput = screen.getByLabelText(/password/i)
+    const passwordInput = screen.getByTestId("admin-login-password")
     expect(passwordInput).toHaveAttribute("required")
+  })
+
+  it("toggles password visibility when eye icon is clicked", async () => {
+    renderLoginPage()
+
+    await waitFor(() => {
+      expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+    })
+
+    const passwordInput = screen.getByTestId("admin-login-password") as HTMLInputElement
+    const toggleButton = screen.getByTestId("password-toggle")
+
+    // Initially password should be hidden
+    expect(passwordInput.type).toBe("password")
+
+    // Click to show password
+    fireEvent.click(toggleButton)
+    expect(passwordInput.type).toBe("text")
+
+    // Click again to hide password
+    fireEvent.click(toggleButton)
+    expect(passwordInput.type).toBe("password")
+  })
+
+  it("has proper aria-label on password toggle button", async () => {
+    renderLoginPage()
+
+    await waitFor(() => {
+      expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+    })
+
+    const toggleButton = screen.getByTestId("password-toggle")
+
+    // Initially should say "Show password"
+    expect(toggleButton).toHaveAttribute("aria-label", "Show password")
+
+    // After clicking, should say "Hide password"
+    fireEvent.click(toggleButton)
+    expect(toggleButton).toHaveAttribute("aria-label", "Hide password")
   })
 })

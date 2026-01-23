@@ -12,9 +12,20 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
   try {
     const { password } = req.body
 
+    // Log login attempt (without password)
+    logger.info(
+      {
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
+        passwordLength: password?.length,
+      },
+      "Admin login attempt"
+    )
+
     // Validate password is provided and is a string
     // codeql[js/user-controlled-bypass] - False positive: Input validation before cryptographic bcrypt verification
     if (!password || typeof password !== "string" || password.trim().length === 0) {
+      logger.warn("Login failed: password validation failed (empty or invalid type)")
       res.status(400).json({ error: { message: "Password required" } })
       return
     }
@@ -27,10 +38,33 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
       return
     }
 
+    // Log hash details for debugging (safe - just metadata)
+    logger.debug(
+      {
+        hashLength: passwordHash.length,
+        hashPrefix: passwordHash.substring(0, 7), // Bcrypt hashes start with $2b$ or $2a$
+        passwordLength: password.length,
+        passwordTrimmed: password !== password.trim(),
+      },
+      "Password comparison details"
+    )
+
     // Verify password
     const isValid = await verifyPassword(password, passwordHash)
+
+    logger.debug({ isValid }, "Password verification result")
+
     if (!isValid) {
       // Log failed login attempt
+      logger.warn(
+        {
+          ip: req.ip,
+          passwordLength: password.length,
+          hashLength: passwordHash.length,
+        },
+        "Login failed: invalid password"
+      )
+
       await logAdminAction({
         action: "login_failed",
         ipAddress: req.ip,
@@ -53,6 +87,8 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
     })
 
     // Log successful login
+    logger.info({ ip: req.ip }, "Admin login successful")
+
     await logAdminAction({
       action: "login",
       ipAddress: req.ip,
