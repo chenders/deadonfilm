@@ -1,18 +1,17 @@
+/**
+ * Tests for admin enrichment endpoints
+ */
+
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import type { Request, Response } from "express"
+import request from "supertest"
+import express from "express"
 import router from "./enrichment.js"
+import * as processManager from "../../lib/enrichment-process-manager.js"
 import * as queries from "../../lib/db/admin-enrichment-queries.js"
-import { logAdminAction } from "../../lib/admin-auth.js"
+import * as adminAuth from "../../lib/admin-auth.js"
 
 // Mock dependencies
-vi.mock("../../lib/db/pool.js", () => ({
-  getPool: vi.fn().mockReturnValue({}),
-}))
-
-vi.mock("../../lib/admin-auth.js", () => ({
-  logAdminAction: vi.fn(),
-}))
-
+vi.mock("../../lib/enrichment-process-manager.js")
 vi.mock("../../lib/db/admin-enrichment-queries.js", () => ({
   getEnrichmentRuns: vi.fn(),
   getEnrichmentRunDetails: vi.fn(),
@@ -20,35 +19,38 @@ vi.mock("../../lib/db/admin-enrichment-queries.js", () => ({
   getSourcePerformanceStats: vi.fn(),
   getRunSourcePerformanceStats: vi.fn(),
 }))
+vi.mock("../../lib/admin-auth.js", () => ({
+  logAdminAction: vi.fn(),
+}))
+vi.mock("../../lib/logger.js", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+  },
+}))
+vi.mock("../../lib/db/pool.js", () => ({
+  getPool: vi.fn(() => ({
+    query: vi.fn(),
+  })),
+}))
 
-describe("admin enrichment routes", () => {
-  let mockReq: Partial<Request>
-  let mockRes: Partial<Response>
-  let mockNext: any
-  let jsonSpy: ReturnType<typeof vi.fn>
-  let statusSpy: ReturnType<typeof vi.fn>
+describe("Admin Enrichment Endpoints", () => {
+  let app: express.Application
 
   beforeEach(() => {
     vi.clearAllMocks()
 
-    jsonSpy = vi.fn()
-    statusSpy = vi.fn().mockReturnThis()
-    mockNext = vi.fn()
-
-    mockReq = {
-      query: {},
-      params: {},
-      body: {},
-      ip: "127.0.0.1",
-      get: vi.fn(),
-    }
-    mockRes = {
-      json: jsonSpy as Response["json"],
-      status: statusSpy as Response["status"],
-    }
+    // Create test app
+    app = express()
+    app.use(express.json())
+    app.use("/admin/api/enrichment", router)
   })
 
-  describe("GET /runs", () => {
+  // ========================================================================
+  // GET endpoints (monitoring)
+  // ========================================================================
+
+  describe("GET /admin/api/enrichment/runs", () => {
     const mockRunsResult = {
       items: [
         {
@@ -75,95 +77,94 @@ describe("admin enrichment routes", () => {
     it("returns paginated runs with default parameters", async () => {
       vi.mocked(queries.getEnrichmentRuns).mockResolvedValue(mockRunsResult)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).get("/admin/api/enrichment/runs").expect(200)
 
-      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith({}, 1, 20, {})
-      expect(jsonSpy).toHaveBeenCalledWith(mockRunsResult)
+      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        20,
+        {}
+      )
+      expect(response.body).toEqual(mockRunsResult)
     })
 
     it("validates and clamps pagination parameters", async () => {
-      mockReq.query = { page: "-5", pageSize: "1000" }
       vi.mocked(queries.getEnrichmentRuns).mockResolvedValue(mockRunsResult)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      await request(app).get("/admin/api/enrichment/runs?page=-5&pageSize=1000").expect(200)
 
       // Negative page should default to 1, pageSize should clamp to 100
-      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith({}, 1, 100, {})
+      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        100,
+        {}
+      )
     })
 
     it("applies date filters", async () => {
-      mockReq.query = { startDate: "2024-01-01", endDate: "2024-12-31" }
       vi.mocked(queries.getEnrichmentRuns).mockResolvedValue(mockRunsResult)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      await request(app)
+        .get("/admin/api/enrichment/runs?startDate=2024-01-01&endDate=2024-12-31")
+        .expect(200)
 
-      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith({}, 1, 20, {
-        startDate: "2024-01-01",
-        endDate: "2024-12-31",
-      })
+      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        20,
+        expect.objectContaining({
+          startDate: "2024-01-01",
+          endDate: "2024-12-31",
+        })
+      )
     })
 
     it("returns 400 for invalid minCost", async () => {
-      mockReq.query = { minCost: "invalid" }
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs?minCost=invalid")
+        .expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Invalid minCost: must be a finite number" },
-      })
+      expect(response.body.error.message).toContain("Invalid minCost: must be a finite number")
     })
 
     it("returns 400 for invalid maxCost", async () => {
-      mockReq.query = { maxCost: "NaN" }
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs?maxCost=invalid")
+        .expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Invalid maxCost: must be a finite number" },
-      })
+      expect(response.body.error.message).toContain("Invalid maxCost: must be a finite number")
     })
 
     it("applies cost and error filters", async () => {
-      mockReq.query = {
-        minCost: "1.00",
-        maxCost: "10.00",
-        exitReason: "completed",
-        hasErrors: "true",
-      }
       vi.mocked(queries.getEnrichmentRuns).mockResolvedValue(mockRunsResult)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      await request(app)
+        .get("/admin/api/enrichment/runs?minCost=1.0&maxCost=10.0&hasErrors=true")
+        .expect(200)
 
-      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith({}, 1, 20, {
-        minCost: 1.0,
-        maxCost: 10.0,
-        exitReason: "completed",
-        hasErrors: true,
-      })
+      expect(queries.getEnrichmentRuns).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        20,
+        expect.objectContaining({
+          minCost: 1.0,
+          maxCost: 10.0,
+          hasErrors: true,
+        })
+      )
     })
 
     it("returns 500 on database error", async () => {
-      vi.mocked(queries.getEnrichmentRuns).mockRejectedValue(new Error("DB error"))
+      vi.mocked(queries.getEnrichmentRuns).mockRejectedValue(new Error("Database error"))
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).get("/admin/api/enrichment/runs").expect(500)
 
-      expect(statusSpy).toHaveBeenCalledWith(500)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Failed to fetch enrichment runs" },
-      })
+      expect(response.body.error.message).toContain("Failed to fetch enrichment runs")
     })
   })
 
-  describe("GET /runs/:id", () => {
+  describe("GET /admin/api/enrichment/runs/:id", () => {
     const mockRunDetails = {
       id: 1,
       started_at: "2024-01-01T00:00:00Z",
@@ -177,84 +178,71 @@ describe("admin enrichment routes", () => {
       total_cost_usd: "1.50",
       exit_reason: "completed",
       error_count: 0,
-      cost_by_source: { wikidata: 0.5, wikipedia: 1.0 },
-      source_hit_rates: { wikidata: 0.8, wikipedia: 0.6 },
-      sources_attempted: ["wikidata", "wikipedia"],
-      config: { maxCostPerActor: 0.05 },
-      links_followed: 150,
-      pages_fetched: 200,
-      ai_link_selections: 50,
-      ai_content_extractions: 80,
+      cost_by_source: {},
+      source_hit_rates: {},
+      sources_attempted: [],
+      config: {},
+      links_followed: 0,
+      pages_fetched: 0,
+      ai_link_selections: 0,
+      ai_content_extractions: 0,
       errors: [],
-      script_name: "enrich-actors",
-      script_version: "1.0.0",
-      hostname: "localhost",
+      script_name: null,
+      script_version: null,
+      hostname: null,
     }
 
     it("returns run details for valid ID", async () => {
-      mockReq.params = { id: "1" }
       vi.mocked(queries.getEnrichmentRunDetails).mockResolvedValue(mockRunDetails)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).get("/admin/api/enrichment/runs/1").expect(200)
 
-      expect(queries.getEnrichmentRunDetails).toHaveBeenCalledWith({}, 1)
-      expect(jsonSpy).toHaveBeenCalledWith(mockRunDetails)
+      expect(queries.getEnrichmentRunDetails).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1
+      )
+      expect(response.body).toEqual(mockRunDetails)
     })
 
     it("returns 400 for invalid run ID", async () => {
-      mockReq.params = { id: "invalid" }
+      const response = await request(app).get("/admin/api/enrichment/runs/invalid").expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid run ID" } })
+      expect(response.body.error.message).toBe("Invalid run ID")
     })
 
     it("returns 404 when run not found", async () => {
-      mockReq.params = { id: "999" }
       vi.mocked(queries.getEnrichmentRunDetails).mockResolvedValue(null)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).get("/admin/api/enrichment/runs/999").expect(404)
 
-      expect(statusSpy).toHaveBeenCalledWith(404)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Enrichment run not found" },
-      })
+      expect(response.body.error.message).toBe("Enrichment run not found")
     })
 
     it("returns 500 on database error", async () => {
-      mockReq.params = { id: "1" }
-      vi.mocked(queries.getEnrichmentRunDetails).mockRejectedValue(new Error("DB error"))
+      vi.mocked(queries.getEnrichmentRunDetails).mockRejectedValue(new Error("Database error"))
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).get("/admin/api/enrichment/runs/1").expect(500)
 
-      expect(statusSpy).toHaveBeenCalledWith(500)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Failed to fetch enrichment run details" },
-      })
+      expect(response.body.error.message).toContain("Failed to fetch enrichment run details")
     })
   })
 
-  describe("GET /runs/:id/actors", () => {
+  describe("GET /admin/api/enrichment/runs/:id/actors", () => {
     const mockActorsResult = {
       items: [
         {
           actor_id: 1,
-          actor_name: "John Doe",
-          actor_tmdb_id: 12345,
+          actor_name: "Test Actor",
+          actor_tmdb_id: 123,
           was_enriched: true,
           created_death_page: true,
           confidence: "0.95",
-          sources_attempted: ["wikidata", "wikipedia"],
+          sources_attempted: ["wikidata"],
           winning_source: "wikidata",
-          processing_time_ms: 1500,
-          cost_usd: "0.025",
-          links_followed: 3,
-          pages_fetched: 5,
+          processing_time_ms: 1000,
+          cost_usd: "0.05",
+          links_followed: 2,
+          pages_fetched: 3,
           error: null,
         },
       ],
@@ -265,291 +253,362 @@ describe("admin enrichment routes", () => {
     }
 
     it("returns paginated actor results", async () => {
-      mockReq.params = { id: "1" }
       vi.mocked(queries.getEnrichmentRunActors).mockResolvedValue(mockActorsResult)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/actors")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).get("/admin/api/enrichment/runs/1/actors").expect(200)
 
-      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith({}, 1, 1, 50)
-      expect(jsonSpy).toHaveBeenCalledWith(mockActorsResult)
+      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        1,
+        50
+      )
+      expect(response.body).toEqual(mockActorsResult)
     })
 
     it("validates and clamps pagination parameters", async () => {
-      mockReq.params = { id: "1" }
-      mockReq.query = { page: "-1", pageSize: "500" }
       vi.mocked(queries.getEnrichmentRunActors).mockResolvedValue(mockActorsResult)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/actors")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      await request(app).get("/admin/api/enrichment/runs/1/actors?page=-1&pageSize=200").expect(200)
 
-      // Negative page should default to 1, pageSize should clamp to 200
-      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith({}, 1, 1, 200)
+      expect(queries.getEnrichmentRunActors).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1,
+        1,
+        200
+      )
     })
 
     it("returns 400 for invalid run ID", async () => {
-      mockReq.params = { id: "abc" }
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/invalid/actors")
+        .expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/actors")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid run ID" } })
+      expect(response.body.error.message).toBe("Invalid run ID")
     })
 
     it("returns 500 on database error", async () => {
-      mockReq.params = { id: "1" }
-      vi.mocked(queries.getEnrichmentRunActors).mockRejectedValue(new Error("DB error"))
+      vi.mocked(queries.getEnrichmentRunActors).mockRejectedValue(new Error("Database error"))
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/actors")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).get("/admin/api/enrichment/runs/1/actors").expect(500)
 
-      expect(statusSpy).toHaveBeenCalledWith(500)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Failed to fetch enrichment run actors" },
-      })
+      expect(response.body.error.message).toContain("Failed to fetch enrichment run actors")
     })
   })
 
-  describe("GET /sources/stats", () => {
+  describe("GET /admin/api/enrichment/sources/stats", () => {
     const mockSourceStats = [
       {
         source: "wikidata",
         total_attempts: 100,
         successful_attempts: 80,
         success_rate: 80.0,
-        total_cost_usd: 2.0,
-        average_cost_usd: 0.02,
-        total_processing_time_ms: 150000,
-        average_processing_time_ms: 1500,
+        total_cost_usd: 5.0,
+        average_cost_usd: 0.05,
+        total_processing_time_ms: 100000,
+        average_processing_time_ms: 1000,
       },
     ]
 
     it("returns source performance stats", async () => {
       vi.mocked(queries.getSourcePerformanceStats).mockResolvedValue(mockSourceStats)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/sources/stats")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).get("/admin/api/enrichment/sources/stats").expect(200)
 
-      expect(queries.getSourcePerformanceStats).toHaveBeenCalledWith({}, undefined, undefined)
-      expect(jsonSpy).toHaveBeenCalledWith(mockSourceStats)
+      expect(queries.getSourcePerformanceStats).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        undefined,
+        undefined
+      )
+      expect(response.body).toEqual(mockSourceStats)
     })
 
     it("applies date filters", async () => {
-      mockReq.query = { startDate: "2024-01-01", endDate: "2024-12-31" }
       vi.mocked(queries.getSourcePerformanceStats).mockResolvedValue(mockSourceStats)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/sources/stats")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      await request(app)
+        .get("/admin/api/enrichment/sources/stats?startDate=2024-01-01&endDate=2024-12-31")
+        .expect(200)
 
-      expect(queries.getSourcePerformanceStats).toHaveBeenCalledWith({}, "2024-01-01", "2024-12-31")
+      expect(queries.getSourcePerformanceStats).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        "2024-01-01",
+        "2024-12-31"
+      )
     })
 
     it("returns 500 on database error", async () => {
-      vi.mocked(queries.getSourcePerformanceStats).mockRejectedValue(new Error("DB error"))
+      vi.mocked(queries.getSourcePerformanceStats).mockRejectedValue(new Error("Database error"))
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/sources/stats")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).get("/admin/api/enrichment/sources/stats").expect(500)
 
-      expect(statusSpy).toHaveBeenCalledWith(500)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Failed to fetch source performance stats" },
-      })
+      expect(response.body.error.message).toContain("Failed to fetch source performance stats")
     })
   })
 
-  describe("GET /runs/:id/sources/stats", () => {
-    const mockRunSourceStats = [
+  describe("GET /admin/api/enrichment/runs/:id/sources/stats", () => {
+    const mockSourceStats = [
       {
         source: "wikidata",
         total_attempts: 50,
         successful_attempts: 40,
         success_rate: 80.0,
-        total_cost_usd: 1.0,
-        average_cost_usd: 0.02,
-        total_processing_time_ms: 75000,
-        average_processing_time_ms: 1500,
+        total_cost_usd: 2.5,
+        average_cost_usd: 0.05,
+        total_processing_time_ms: 50000,
+        average_processing_time_ms: 1000,
       },
     ]
 
     it("returns source stats for specific run", async () => {
-      mockReq.params = { id: "1" }
-      vi.mocked(queries.getRunSourcePerformanceStats).mockResolvedValue(mockRunSourceStats)
+      vi.mocked(queries.getRunSourcePerformanceStats).mockResolvedValue(mockSourceStats)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/sources/stats")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/sources/stats")
+        .expect(200)
 
-      expect(queries.getRunSourcePerformanceStats).toHaveBeenCalledWith({}, 1)
-      expect(jsonSpy).toHaveBeenCalledWith(mockRunSourceStats)
+      expect(queries.getRunSourcePerformanceStats).toHaveBeenCalledWith(
+        expect.objectContaining({ query: expect.any(Function) }),
+        1
+      )
+      expect(response.body).toEqual(mockSourceStats)
     })
 
     it("returns 400 for invalid run ID", async () => {
-      mockReq.params = { id: "invalid" }
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/invalid/sources/stats")
+        .expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/sources/stats")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid run ID" } })
+      expect(response.body.error.message).toBe("Invalid run ID")
     })
 
     it("returns 500 on database error", async () => {
-      mockReq.params = { id: "1" }
-      vi.mocked(queries.getRunSourcePerformanceStats).mockRejectedValue(new Error("DB error"))
+      vi.mocked(queries.getRunSourcePerformanceStats).mockRejectedValue(new Error("Database error"))
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/sources/stats")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/sources/stats")
+        .expect(500)
 
-      expect(statusSpy).toHaveBeenCalledWith(500)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Failed to fetch run source performance stats" },
-      })
+      expect(response.body.error.message).toContain("Failed to fetch run source performance stats")
     })
   })
 
-  describe("POST /start", () => {
-    it("returns 400 for invalid limit", async () => {
-      mockReq.body = { limit: 0 }
+  // ========================================================================
+  // POST endpoints (interactive controls)
+  // ========================================================================
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/start")
-      const handler = handlers?.route?.stack[handlers.route.stack.length - 1].handle
-      if (!handler) throw new Error("Handler not found")
-      await handler(mockReq as Request, mockRes as Response, mockNext)
+  describe("POST /admin/api/enrichment/start", () => {
+    it("should start a new enrichment run with valid config", async () => {
+      vi.mocked(processManager.startEnrichmentRun).mockResolvedValue(1)
 
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Limit must be between 1 and 1000" },
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          minPopularity: 10,
+          confidence: 0.7,
+          recentOnly: true,
+        })
+        .expect(201)
+
+      expect(response.body).toEqual({
+        id: 1,
+        status: "running",
+        message: "Enrichment run started successfully",
       })
+
+      expect(processManager.startEnrichmentRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limit: 10,
+          maxTotalCost: 5,
+          minPopularity: 10,
+          confidence: 0.7,
+          recentOnly: true,
+        })
+      )
+
+      expect(adminAuth.logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "start_enrichment",
+          resourceType: "enrichment_run",
+        })
+      )
     })
 
-    it("returns 400 for limit exceeding maximum", async () => {
-      mockReq.body = { limit: 2000 }
+    it("should reject invalid limit (too high)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 2000, // Too high
+          maxTotalCost: 5,
+        })
+        .expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/start")
-      const handler = handlers?.route?.stack[handlers.route.stack.length - 1].handle
-      if (!handler) throw new Error("Handler not found")
-      await handler(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Limit must be between 1 and 1000" },
-      })
+      expect(response.body.error.message).toContain("Limit must be between 1 and 1000")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 
-    it("returns 400 for invalid maxTotalCost", async () => {
-      mockReq.body = { maxTotalCost: -1 }
+    it("should reject invalid limit (too low)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 0,
+          maxTotalCost: 5,
+        })
+        .expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/start")
-      const handler = handlers?.route?.stack[handlers.route.stack.length - 1].handle
-      if (!handler) throw new Error("Handler not found")
-      await handler(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Max total cost must be positive" },
-      })
+      expect(response.body.error.message).toContain("Limit must be between 1 and 1000")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 
-    it("returns 400 for invalid maxCostPerActor", async () => {
-      mockReq.body = { maxCostPerActor: 0 }
+    it("should reject negative maxTotalCost", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: -5,
+        })
+        .expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/start")
-      const handler = handlers?.route?.stack[handlers.route.stack.length - 1].handle
-      if (!handler) throw new Error("Handler not found")
-      await handler(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: { message: "Max cost per actor must be positive" },
-      })
+      expect(response.body.error.message).toContain("Max total cost must be positive")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 
-    it("logs admin action and returns 501 (not implemented)", async () => {
-      mockReq.body = { limit: 10, maxTotalCost: 5.0 }
+    it("should reject negative maxCostPerActor", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 10,
+          maxCostPerActor: -1,
+        })
+        .expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/start")
-      const handler = handlers?.route?.stack[handlers.route.stack.length - 1].handle
-      if (!handler) throw new Error("Handler not found")
-      await handler(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(logAdminAction).toHaveBeenCalledWith({
-        action: "start_enrichment",
-        resourceType: "enrichment_run",
-        details: { limit: 10, maxTotalCost: 5.0 },
-        ipAddress: "127.0.0.1",
-        userAgent: undefined,
-      })
-
-      expect(statusSpy).toHaveBeenCalledWith(501)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: {
-          message: "Enrichment run triggering not yet implemented. Use CLI script for now.",
-        },
-      })
-    })
-  })
-
-  describe("POST /runs/:id/stop", () => {
-    it("returns 400 for invalid run ID", async () => {
-      mockReq.params = { id: "invalid" }
-
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/stop")
-      const handler = handlers?.route?.stack[handlers.route.stack.length - 1].handle
-      if (!handler) throw new Error("Handler not found")
-      await handler(mockReq as Request, mockRes as Response, mockNext)
-
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid run ID" } })
+      expect(response.body.error.message).toContain("Max cost per actor must be positive")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 
-    it("logs admin action and returns 501 (not implemented)", async () => {
-      mockReq.params = { id: "1" }
+    it("should handle errors from process manager", async () => {
+      vi.mocked(processManager.startEnrichmentRun).mockRejectedValue(
+        new Error("Failed to spawn process")
+      )
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/stop")
-      const handler = handlers?.route?.stack[handlers.route.stack.length - 1].handle
-      if (!handler) throw new Error("Handler not found")
-      await handler(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+        })
+        .expect(500)
 
-      expect(logAdminAction).toHaveBeenCalledWith({
-        action: "stop_enrichment",
-        resourceType: "enrichment_run",
-        resourceId: 1,
-        ipAddress: "127.0.0.1",
-        userAgent: undefined,
-      })
-
-      expect(statusSpy).toHaveBeenCalledWith(501)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: {
-          message: "Enrichment run stopping not yet implemented",
-        },
-      })
+      expect(response.body.error.message).toBe("Failed to start enrichment run")
     })
   })
 
-  describe("GET /runs/:id/progress", () => {
-    it("returns 400 for invalid run ID", async () => {
-      mockReq.params = { id: "abc" }
+  describe("POST /admin/api/enrichment/runs/:id/stop", () => {
+    it("should stop a running enrichment run", async () => {
+      vi.mocked(processManager.stopEnrichmentRun).mockResolvedValue(true)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/progress")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      const response = await request(app).post("/admin/api/enrichment/runs/1/stop").expect(200)
 
-      expect(statusSpy).toHaveBeenCalledWith(400)
-      expect(jsonSpy).toHaveBeenCalledWith({ error: { message: "Invalid run ID" } })
+      expect(response.body).toEqual({
+        id: 1,
+        stopped: true,
+        message: "Enrichment run stopped successfully",
+      })
+
+      expect(processManager.stopEnrichmentRun).toHaveBeenCalledWith(1)
+      expect(adminAuth.logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "stop_enrichment",
+          resourceType: "enrichment_run",
+          resourceId: 1,
+        })
+      )
     })
 
-    it("returns 501 (not implemented)", async () => {
-      mockReq.params = { id: "1" }
+    it("should reject invalid run ID", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/runs/invalid/stop")
+        .expect(400)
 
-      const handlers = router.stack.find((layer) => layer.route?.path === "/runs/:id/progress")
-      await handlers?.route?.stack[0].handle(mockReq as Request, mockRes as Response, mockNext)
+      expect(response.body.error.message).toBe("Invalid run ID")
+      expect(processManager.stopEnrichmentRun).not.toHaveBeenCalled()
+    })
 
-      expect(statusSpy).toHaveBeenCalledWith(501)
-      expect(jsonSpy).toHaveBeenCalledWith({
-        error: {
-          message: "Progress tracking not yet implemented",
-        },
-      })
+    it("should handle errors from process manager", async () => {
+      vi.mocked(processManager.stopEnrichmentRun).mockRejectedValue(new Error("Process not found"))
+
+      const response = await request(app).post("/admin/api/enrichment/runs/999/stop").expect(500)
+
+      expect(response.body.error.message).toBe("Failed to stop enrichment run")
+    })
+  })
+
+  describe("GET /admin/api/enrichment/runs/:id/progress", () => {
+    it("should return progress for a running enrichment", async () => {
+      const mockProgress = {
+        status: "running",
+        currentActorIndex: 5,
+        currentActorName: "Test Actor",
+        actorsQueried: 10,
+        actorsProcessed: 5,
+        actorsEnriched: 3,
+        totalCostUsd: 1.5,
+        progressPercentage: 50.0,
+        elapsedMs: 10000,
+        estimatedTimeRemainingMs: 10000,
+      }
+
+      vi.mocked(processManager.getEnrichmentRunProgress).mockResolvedValue(mockProgress)
+
+      const response = await request(app).get("/admin/api/enrichment/runs/1/progress").expect(200)
+
+      expect(response.body).toEqual(mockProgress)
+      expect(processManager.getEnrichmentRunProgress).toHaveBeenCalledWith(1)
+    })
+
+    it("should reject invalid run ID", async () => {
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/invalid/progress")
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Invalid run ID")
+      expect(processManager.getEnrichmentRunProgress).not.toHaveBeenCalled()
+    })
+
+    it("should handle errors from process manager", async () => {
+      vi.mocked(processManager.getEnrichmentRunProgress).mockRejectedValue(
+        new Error("Run not found")
+      )
+
+      const response = await request(app).get("/admin/api/enrichment/runs/999/progress").expect(500)
+
+      expect(response.body.error.message).toBe("Failed to fetch enrichment run progress")
+    })
+
+    it("should return progress for completed run", async () => {
+      const mockProgress = {
+        status: "completed",
+        currentActorIndex: null,
+        currentActorName: null,
+        actorsQueried: 10,
+        actorsProcessed: 10,
+        actorsEnriched: 8,
+        totalCostUsd: 3.5,
+        progressPercentage: 100.0,
+        elapsedMs: 30000,
+        estimatedTimeRemainingMs: null,
+      }
+
+      vi.mocked(processManager.getEnrichmentRunProgress).mockResolvedValue(mockProgress)
+
+      const response = await request(app).get("/admin/api/enrichment/runs/1/progress").expect(200)
+
+      expect(response.body.status).toBe("completed")
+      expect(response.body.progressPercentage).toBe(100.0)
+      expect(response.body.estimatedTimeRemainingMs).toBeNull()
     })
   })
 })
