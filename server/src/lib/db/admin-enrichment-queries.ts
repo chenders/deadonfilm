@@ -387,7 +387,7 @@ export async function getRunSourcePerformanceStats(
 }
 
 // ============================================================================
-// Stage 5: Review Workflow Queries
+// Stage 4: Review Workflow Queries
 // ============================================================================
 
 /**
@@ -699,7 +699,13 @@ export async function rejectEnrichment(
   pool: Pool,
   enrichmentRunActorId: number,
   adminUser: string,
-  reason: "low_confidence" | "incorrect_data" | "duplicate" | "no_death_info" | "other",
+  reason:
+    | "low_confidence"
+    | "incorrect_data"
+    | "duplicate"
+    | "no_death_info"
+    | "conflicting_sources"
+    | "other",
   details?: string
 ): Promise<void> {
   const client = await pool.connect()
