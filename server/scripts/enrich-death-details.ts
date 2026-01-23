@@ -771,7 +771,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     }
 
     // Run enrichment - process actors one by one to enable progress tracking
-    let results = new Map<number, Awaited<ReturnType<typeof orchestrator.enrichActor>>>()
+    const results = new Map<number, Awaited<ReturnType<typeof orchestrator.enrichActor>>>()
     let costLimitReached = false
 
     try {
