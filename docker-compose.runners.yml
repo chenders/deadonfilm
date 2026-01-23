@@ -4,9 +4,8 @@
 # myoung34/github-runner image. Each runner is ephemeral and gets
 # a fresh environment for each job.
 #
-# Each runner is on its own Docker network for isolation, allowing
-# GitHub Actions service containers (like postgres) to run without
-# port conflicts when multiple CI jobs execute in parallel.
+# Each runner is on its own Docker network for isolation. Multiple
+# runners can execute different job types in parallel without conflicts.
 #
 # IMPORTANT: Create a .env file in /opt/github-runners/ with:
 #   ACCESS_TOKEN=your_personal_access_token
@@ -76,8 +75,9 @@ x-runner-common: &runner-common
   security_opt:
     - label:disable
   # Use RAM-backed /tmp (via tmpfs) for the runner work directory to reduce disk I/O during builds
+  # exec option allows running binaries (needed for npm packages like esbuild, bcrypt)
   tmpfs:
-    - /tmp:size=2G
+    - /tmp:size=2G,exec
   deploy:
     resources:
       limits:
