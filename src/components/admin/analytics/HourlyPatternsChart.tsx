@@ -68,7 +68,11 @@ export default function HourlyPatternsChart({ startDate, endDate }: HourlyPatter
               borderRadius: "0.5rem",
               color: "#F9FAFB",
             }}
-            formatter={(value: number) => [value.toLocaleString(), "Navigation Events"]}
+            formatter={(value: number | undefined) =>
+              value !== undefined
+                ? [value.toLocaleString(), "Navigation Events"]
+                : ["0", "Navigation Events"]
+            }
           />
           <Bar dataKey="count" fill="#10B981" />
         </BarChart>
