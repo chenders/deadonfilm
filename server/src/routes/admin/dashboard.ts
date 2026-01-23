@@ -45,8 +45,8 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
     }>(`
       SELECT
         COUNT(*)::text AS total_actors,
-        COUNT(*) FILTER (WHERE death_date IS NOT NULL)::text AS deceased_actors,
-        COUNT(*) FILTER (WHERE death_circumstances IS NOT NULL)::text AS enriched_actors
+        COUNT(*) FILTER (WHERE deathday IS NOT NULL)::text AS deceased_actors,
+        COUNT(*) FILTER (WHERE cause_of_death IS NOT NULL)::text AS enriched_actors
       FROM actors
     `)
 
