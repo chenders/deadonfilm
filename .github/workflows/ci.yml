@@ -172,7 +172,7 @@ jobs:
         run: npm run migrate:up
 
       - name: Seed database (parallel)
-        run: npm run seed:actuarial & npm run seed:cohort & wait
+        run: npm run seed:actuarial & npm run seed:cohort & wait || exit 1
 
       - name: Type check
         run: npm run type-check
@@ -235,7 +235,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-playwright-
 
