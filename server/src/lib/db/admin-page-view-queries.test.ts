@@ -31,11 +31,7 @@ describe("Admin Page View Queries", () => {
         rows: [mockSummary],
       } as any)
 
-      const result = await getPageViewSummary(
-        mockPool,
-        "2024-01-01",
-        "2024-01-31"
-      )
+      const result = await getPageViewSummary(mockPool, "2024-01-01", "2024-01-31")
 
       expect(result).toEqual(mockSummary)
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -58,17 +54,13 @@ describe("Admin Page View Queries", () => {
         rows: [mockSummary],
       } as any)
 
-      await getPageViewSummary(
-        mockPool,
+      await getPageViewSummary(mockPool, "2024-01-01", "2024-01-31", "actor_death")
+
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining("AND page_type = $3"), [
         "2024-01-01",
         "2024-01-31",
-        "actor_death"
-      )
-
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining("AND page_type = $3"),
-        ["2024-01-01", "2024-01-31", "actor_death"]
-      )
+        "actor_death",
+      ])
     })
 
     it("does not filter when pageType is 'all'", async () => {
@@ -121,13 +113,7 @@ describe("Admin Page View Queries", () => {
         rows: [],
       } as any)
 
-      await getTopViewedPages(
-        mockPool,
-        "movie",
-        "2024-01-01",
-        "2024-01-31",
-        20
-      )
+      await getTopViewedPages(mockPool, "movie", "2024-01-01", "2024-01-31", 20)
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining("JOIN movies m ON m.id = pv.entity_id"),
@@ -140,13 +126,7 @@ describe("Admin Page View Queries", () => {
         rows: [],
       } as any)
 
-      await getTopViewedPages(
-        mockPool,
-        "show",
-        "2024-01-01",
-        "2024-01-31",
-        20
-      )
+      await getTopViewedPages(mockPool, "show", "2024-01-01", "2024-01-31", 20)
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining("JOIN shows s ON s.id = pv.entity_id"),
@@ -159,13 +139,7 @@ describe("Admin Page View Queries", () => {
         rows: [],
       } as any)
 
-      await getTopViewedPages(
-        mockPool,
-        "episode",
-        "2024-01-01",
-        "2024-01-31",
-        20
-      )
+      await getTopViewedPages(mockPool, "episode", "2024-01-01", "2024-01-31", 20)
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining("JOIN episodes e ON e.id = pv.entity_id"),
@@ -178,13 +152,7 @@ describe("Admin Page View Queries", () => {
         rows: [],
       } as any)
 
-      await getTopViewedPages(
-        mockPool,
-        "all",
-        "2024-01-01",
-        "2024-01-31",
-        20
-      )
+      await getTopViewedPages(mockPool, "all", "2024-01-01", "2024-01-31", 20)
 
       const call = vi.mocked(mockPool.query).mock.calls[0]
       expect(call[0]).not.toContain("JOIN")
@@ -209,12 +177,7 @@ describe("Admin Page View Queries", () => {
         rows: mockTrends,
       } as any)
 
-      const result = await getPageViewTrends(
-        mockPool,
-        "2024-01-01",
-        "2024-01-31",
-        "daily"
-      )
+      const result = await getPageViewTrends(mockPool, "2024-01-01", "2024-01-31", "daily")
 
       expect(result).toEqual(mockTrends)
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -228,17 +191,13 @@ describe("Admin Page View Queries", () => {
         rows: [],
       } as any)
 
-      await getPageViewTrends(
-        mockPool,
+      await getPageViewTrends(mockPool, "2024-01-01", "2024-01-31", "weekly")
+
+      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [
         "2024-01-01",
         "2024-01-31",
-        "weekly"
-      )
-
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.any(String),
-        ["2024-01-01", "2024-01-31", "YYYY-IW"]
-      )
+        "YYYY-IW",
+      ])
     })
 
     it("returns monthly trends", async () => {
@@ -246,17 +205,13 @@ describe("Admin Page View Queries", () => {
         rows: [],
       } as any)
 
-      await getPageViewTrends(
-        mockPool,
+      await getPageViewTrends(mockPool, "2024-01-01", "2024-12-31", "monthly")
+
+      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [
         "2024-01-01",
         "2024-12-31",
-        "monthly"
-      )
-
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.any(String),
-        ["2024-01-01", "2024-12-31", "YYYY-MM"]
-      )
+        "YYYY-MM",
+      ])
     })
   })
 
@@ -276,13 +231,7 @@ describe("Admin Page View Queries", () => {
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining("INSERT INTO page_views"),
-        [
-          "movie",
-          123,
-          "/movie/test-movie-2024-123",
-          "https://google.com",
-          "Mozilla/5.0",
-        ]
+        ["movie", 123, "/movie/test-movie-2024-123", "https://google.com", "Mozilla/5.0"]
       )
     })
 
@@ -298,13 +247,7 @@ describe("Admin Page View Queries", () => {
       })
 
       const call = vi.mocked(mockPool.query).mock.calls[0]
-      expect(call[1]).toEqual([
-        "actor_death",
-        456,
-        "/death/john-doe-2157",
-        null,
-        null,
-      ])
+      expect(call[1]).toEqual(["actor_death", 456, "/death/john-doe-2157", null, null])
     })
   })
 })

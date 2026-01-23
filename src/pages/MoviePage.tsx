@@ -35,7 +35,7 @@ export default function MoviePage() {
   })
 
   // Track page view for analytics
-  usePageViewTracking('movie', movieId || null, location.pathname)
+  usePageViewTracking("movie", movieId || null, location.pathname)
 
   // Auto-select the non-zero group when one group is empty
   // Must be before conditional returns to follow Rules of Hooks

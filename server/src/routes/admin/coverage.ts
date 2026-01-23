@@ -55,7 +55,7 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     const filters: ActorCoverageFilters = {}
 
     if (req.query.hasDeathPage !== undefined) {
-      filters.hasDeathPage = req.query.hasDeathPage === 'true'
+      filters.hasDeathPage = req.query.hasDeathPage === "true"
     }
 
     if (req.query.minPopularity) {
@@ -79,16 +79,16 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.orderBy) {
-      const validOrderBy = ['death_date', 'popularity', 'name', 'enriched_at']
+      const validOrderBy = ["death_date", "popularity", "name", "enriched_at"]
       const orderBy = req.query.orderBy as string
       if (validOrderBy.includes(orderBy)) {
-        filters.orderBy = orderBy as 'death_date' | 'popularity' | 'name' | 'enriched_at'
+        filters.orderBy = orderBy as "death_date" | "popularity" | "name" | "enriched_at"
       }
     }
 
     if (req.query.orderDirection) {
       const orderDirection = req.query.orderDirection as string
-      if (orderDirection === 'asc' || orderDirection === 'desc') {
+      if (orderDirection === "asc" || orderDirection === "desc") {
         filters.orderDirection = orderDirection
       }
     }
@@ -120,13 +120,13 @@ router.get("/trends", async (req: Request, res: Response): Promise<void> => {
       ? (req.query.startDate as string)
       : startDate.toISOString()
 
-    const endDateStr = req.query.endDate
-      ? (req.query.endDate as string)
-      : endDate.toISOString()
+    const endDateStr = req.query.endDate ? (req.query.endDate as string) : endDate.toISOString()
 
-    const granularity = (req.query.granularity as string) || 'daily'
-    if (!['daily', 'weekly', 'monthly'].includes(granularity)) {
-      res.status(400).json({ error: { message: "Invalid granularity. Must be daily, weekly, or monthly." } })
+    const granularity = (req.query.granularity as string) || "daily"
+    if (!["daily", "weekly", "monthly"].includes(granularity)) {
+      res
+        .status(400)
+        .json({ error: { message: "Invalid granularity. Must be daily, weekly, or monthly." } })
       return
     }
 
@@ -134,7 +134,7 @@ router.get("/trends", async (req: Request, res: Response): Promise<void> => {
       pool,
       startDateStr,
       endDateStr,
-      granularity as 'daily' | 'weekly' | 'monthly'
+      granularity as "daily" | "weekly" | "monthly"
     )
 
     res.json(trends)
@@ -153,7 +153,7 @@ router.get("/enrichment-candidates", async (req: Request, res: Response): Promis
   try {
     const pool = getPool()
 
-    const minPopularity = parseFloat((req.query.minPopularity as string) || '5')
+    const minPopularity = parseFloat((req.query.minPopularity as string) || "5")
     const limit = Math.min(500, Math.max(1, parseInt(req.query.limit as string, 10) || 100))
 
     const candidates = await getEnrichmentCandidates(pool, minPopularity, limit)

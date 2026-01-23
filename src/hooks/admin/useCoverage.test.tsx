@@ -118,7 +118,10 @@ describe("useActorsForCoverage", () => {
       expect.stringContaining("hasDeathPage=false"),
       expect.any(Object)
     )
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("minPopularity=10"), expect.any(Object))
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("minPopularity=10"),
+      expect.any(Object)
+    )
   })
 })
 

@@ -26,7 +26,7 @@ export default function EpisodePage() {
   const [viewMode, setViewMode] = useState<ViewMode>("list")
 
   // Track page view for analytics
-  usePageViewTracking('episode', data?.episode?.id ?? null, location.pathname)
+  usePageViewTracking("episode", data?.episode?.id ?? null, location.pathname)
 
   // Auto-select the non-zero group when one group is empty
   useEffect(() => {
