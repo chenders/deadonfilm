@@ -14,6 +14,7 @@ import {
   useEditEnrichment,
   type EditEnrichmentRequest,
 } from "../../hooks/admin/useEnrichmentReview"
+import { formatDate } from "../../utils/formatDate"
 
 interface EnrichmentReviewModalProps {
   enrichmentRunActorId: number
@@ -369,7 +370,9 @@ function DataFields({ data, isEditable, onChange, hasChanges }: DataFieldsProps)
                       [key]:
                         type === "number"
                           ? e.target.value
-                            ? parseInt(e.target.value, 10)
+                            ? key === "years_lost"
+                              ? parseFloat(e.target.value)
+                              : parseInt(e.target.value, 10)
                             : null
                           : e.target.value || null,
                     })
@@ -386,7 +389,7 @@ function DataFields({ data, isEditable, onChange, hasChanges }: DataFieldsProps)
                       ? "Yes"
                       : "No"
                   : type === "date" && value
-                    ? new Date(String(value)).toLocaleDateString()
+                    ? formatDate(String(value))
                     : String(value || "-")}
               </p>
             )}
