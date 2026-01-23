@@ -109,11 +109,26 @@ jobs:
 
       - name: Start postgres container
         run: |
-          # Clean up any existing test postgres container
+          # Clean up any containers using port 5433
+          echo "Checking for containers using port 5433..."
+          CONTAINERS_ON_PORT=$(docker ps -a --filter "publish=5433" --format "{{.ID}} {{.Names}}" || true)
+          if [ -n "$CONTAINERS_ON_PORT" ]; then
+            echo "Found containers using port 5433:"
+            echo "$CONTAINERS_ON_PORT"
+            echo "Removing them..."
+            docker ps -a --filter "publish=5433" --format "{{.ID}}" | xargs -r docker rm -f
+            echo "Waiting 2 seconds for port to be released..."
+            sleep 2
+          fi
+
+          # Also clean up by name if it exists
           docker rm -f ci-postgres-test 2>/dev/null || true
 
-          # Start postgres container
-          docker run -d \
+          # Start postgres container with retry logic
+          echo "Starting postgres container on port 5433..."
+          MAX_RETRIES=3
+          RETRY=0
+          until docker run -d \
             --name ci-postgres-test \
             -e POSTGRES_USER=test \
             -e POSTGRES_PASSWORD=test \
@@ -123,7 +138,19 @@ jobs:
             --health-interval 10s \
             --health-timeout 5s \
             --health-retries 5 \
-            postgres:16
+            postgres:16; do
+            RETRY=$((RETRY+1))
+            if [ $RETRY -ge $MAX_RETRIES ]; then
+              echo "Failed to start postgres after $MAX_RETRIES attempts"
+              echo "Checking what's using port 5433..."
+              docker ps -a --filter "publish=5433" || true
+              lsof -i :5433 || true
+              exit 1
+            fi
+            echo "Failed to start postgres (attempt $RETRY/$MAX_RETRIES), retrying in 3 seconds..."
+            docker rm -f ci-postgres-test 2>/dev/null || true
+            sleep 3
+          done
 
           # Wait for postgres to be healthy
           echo "Waiting for postgres to be healthy..."
