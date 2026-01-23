@@ -33,6 +33,10 @@ import {
 
 const router = Router()
 
+// Pagination constants
+const DEFAULT_PENDING_REVIEW_PAGE_SIZE = 50
+const MAX_PENDING_REVIEW_PAGE_SIZE = 200
+
 // ============================================================================
 // GET /admin/api/enrichment/runs
 // Get paginated list of enrichment runs with optional filters
@@ -367,11 +371,11 @@ router.get("/pending-review", async (req: Request, res: Response): Promise<void>
     const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
 
     const rawPageSize = Number.parseInt(req.query.pageSize as string, 10)
-    const defaultPageSize = 50
-    const maxPageSize = 200
     const safePageSize =
-      Number.isFinite(rawPageSize) && rawPageSize > 0 ? rawPageSize : defaultPageSize
-    const pageSize = Math.min(safePageSize, maxPageSize)
+      Number.isFinite(rawPageSize) && rawPageSize > 0
+        ? rawPageSize
+        : DEFAULT_PENDING_REVIEW_PAGE_SIZE
+    const pageSize = Math.min(safePageSize, MAX_PENDING_REVIEW_PAGE_SIZE)
 
     // Parse filters
     const filters: PendingReviewFilters = { page, pageSize }
@@ -508,7 +512,13 @@ router.post(
 
 interface RejectEnrichmentRequest {
   adminUser: string
-  reason: "low_confidence" | "incorrect_data" | "duplicate" | "no_death_info" | "other"
+  reason:
+    | "low_confidence"
+    | "incorrect_data"
+    | "duplicate"
+    | "no_death_info"
+    | "conflicting_sources"
+    | "other"
   details?: string
 }
 
@@ -541,6 +551,7 @@ router.post(
         "incorrect_data",
         "duplicate",
         "no_death_info",
+        "conflicting_sources",
         "other",
       ]
       if (!validReasons.includes(reason)) {
