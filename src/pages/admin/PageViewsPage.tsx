@@ -21,7 +21,7 @@ type Granularity = 'daily' | 'weekly' | 'monthly'
 
 export default function PageViewsPage() {
   const [granularity, setGranularity] = useState<Granularity>('daily')
-  const [pageTypeFilter, setPageTypeFilter] = useState<string>('all')
+  const pageTypeFilter = 'all'
 
   // Calculate date range (last 30 days)
   const endDate = new Date()
