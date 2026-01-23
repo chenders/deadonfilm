@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useParams, useLocation, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useEpisode } from "@/hooks/useEpisode"
+import { usePageViewTracking } from "@/hooks/usePageViewTracking"
 import { extractEpisodeInfo, createShowSlug } from "@/utils/slugify"
 import { formatDate } from "@/utils/formatDate"
 import ShowDeceasedList from "@/components/show/ShowDeceasedList"
@@ -23,6 +24,9 @@ export default function EpisodePage() {
   const { data, isLoading, error } = useEpisode(showId, seasonNumber, episodeNumber)
   const [showLiving, setShowLiving] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
+
+  // Track page view for analytics
+  usePageViewTracking("episode", data?.episode?.id ?? null, location.pathname)
 
   // Auto-select the non-zero group when one group is empty
   useEffect(() => {
