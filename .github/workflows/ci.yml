@@ -91,25 +91,10 @@ jobs:
     name: Backend
     runs-on: self-hosted
     # Prevent parallel backend jobs across all refs to avoid postgres port conflicts on self-hosted runners
-    # This ensures only one backend job uses port 5433 at a time, allowing multiple runners to work on other job types
+    # Starting postgres in job steps (not service containers) ensures proper concurrency control
     concurrency:
       group: backend-tests-postgres
       cancel-in-progress: false
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: deadonfilm_test
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     defaults:
       run:
@@ -122,12 +107,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Start postgres container
+        run: |
+          # Clean up any existing test postgres container
+          docker rm -f ci-postgres-test 2>/dev/null || true
+
+          # Start postgres container
+          docker run -d \
+            --name ci-postgres-test \
+            -e POSTGRES_USER=test \
+            -e POSTGRES_PASSWORD=test \
+            -e POSTGRES_DB=deadonfilm_test \
+            -p 5433:5432 \
+            --health-cmd "pg_isready -U test" \
+            --health-interval 10s \
+            --health-timeout 5s \
+            --health-retries 5 \
+            postgres:16
+
+          # Wait for postgres to be healthy
+          echo "Waiting for postgres to be healthy..."
+          timeout 60s bash -c 'until docker exec ci-postgres-test pg_isready -U test > /dev/null 2>&1; do sleep 1; done'
+          echo "Postgres is ready!"
+        working-directory: .
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json')}}
 
       - name: Install dependencies
         run: npm ci
@@ -166,6 +180,11 @@ jobs:
           name: backend-dist
           path: server/dist/
           retention-days: 1
+
+      - name: Stop postgres container
+        if: always()
+        run: docker rm -f ci-postgres-test 2>/dev/null || true
+        working-directory: .
 
   e2e:
     name: E2E Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
