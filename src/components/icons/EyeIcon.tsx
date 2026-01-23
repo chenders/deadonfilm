@@ -1,22 +1,25 @@
-interface EyeIconProps {
-  className?: string
+interface EyeIconProps extends React.SVGProps<SVGSVGElement> {
+  size?: number
   visible?: boolean
 }
 
 /**
  * Eye icon for password visibility toggle
- * @param visible - If true, shows eye-slash (password hidden), if false shows open eye (password visible)
+ * @param visible - If true, shows open eye (password visible), if false shows eye-slash (password hidden)
  */
-export default function EyeIcon({ className = "h-5 w-5", visible = false }: EyeIconProps) {
+export default function EyeIcon({ size = 24, visible = false, className, ...props }: EyeIconProps) {
   if (visible) {
     // Open eye - password is visible
     return (
       <svg
-        className={className}
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
         fill="none"
         stroke="currentColor"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
+        className={className}
+        aria-hidden="true"
+        {...props}
       >
         <path
           strokeLinecap="round"
@@ -37,11 +40,14 @@ export default function EyeIcon({ className = "h-5 w-5", visible = false }: EyeI
   // Eye with slash - password is hidden
   return (
     <svg
-      className={className}
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
       fill="none"
       stroke="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+      {...props}
     >
       <path
         strokeLinecap="round"
