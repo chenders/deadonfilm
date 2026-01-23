@@ -68,6 +68,9 @@ import { loginHandler, logoutHandler, statusHandler } from "./routes/admin/auth.
 import { getDashboardStats } from "./routes/admin/dashboard.js"
 import enrichmentRoutes from "./routes/admin/enrichment.js"
 import analyticsRoutes from "./routes/admin/analytics.js"
+import coverageRoutes from "./routes/admin/coverage.js"
+import pageViewsRoutes, { trackPageViewHandler } from "./routes/admin/page-views.js"
+import cronjobsRoutes from "./routes/admin/cronjobs.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -96,6 +99,7 @@ const API_RATE_LIMIT = 100 // General API requests per minute
 const HEAVY_ENDPOINT_LIMIT = 10 // Heavy endpoints (sitemap, etc) per minute
 const ADMIN_LOGIN_LIMIT = 5 // Login attempts per minute
 const ADMIN_ROUTES_LIMIT = 200 // Admin routes requests per minute
+const PAGE_VIEW_TRACKING_LIMIT = 20 // Page view tracking per minute per IP
 
 // Rate limiting to protect against abuse
 // General API rate limit: 100 requests per minute per IP (skips authenticated admins)
@@ -131,6 +135,15 @@ const adminLoginLimiter = rateLimit({
 const adminRoutesLimiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
   limit: ADMIN_ROUTES_LIMIT,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { message: "Too many requests, please try again later" } },
+})
+
+// Page view tracking rate limit: 20 requests per minute per IP (public endpoint)
+const pageViewTrackingLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: PAGE_VIEW_TRACKING_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
@@ -266,6 +279,12 @@ app.get("/admin/api/auth/status", adminRoutesLimiter, optionalAdminAuth, statusH
 app.get("/admin/api/dashboard/stats", adminRoutesLimiter, adminAuthMiddleware, getDashboardStats)
 app.use("/admin/api/enrichment", adminRoutesLimiter, adminAuthMiddleware, enrichmentRoutes)
 app.use("/admin/api/analytics", adminRoutesLimiter, adminAuthMiddleware, analyticsRoutes)
+app.use("/admin/api/coverage", adminRoutesLimiter, adminAuthMiddleware, coverageRoutes)
+app.use("/admin/api/page-views", adminRoutesLimiter, adminAuthMiddleware, pageViewsRoutes)
+app.use("/admin/api/cronjobs", adminRoutesLimiter, adminAuthMiddleware, cronjobsRoutes)
+
+// Public page view tracking endpoint (rate limited, bot-filtered)
+app.post("/api/page-views/track", pageViewTrackingLimiter, trackPageViewHandler)
 
 // TV Show routes
 app.get("/api/search/tv", searchShows)
