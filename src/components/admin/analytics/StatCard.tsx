@@ -13,7 +13,12 @@ export default function StatCard({ label, value, change, icon }: StatCardProps) 
   const formattedChange =
     change !== undefined ? `${change > 0 ? "+" : ""}${change.toFixed(1)}%` : null
 
-  const changeColor = change && change > 0 ? "text-green-400" : "text-red-400"
+  const changeColor =
+    change === undefined || change === 0
+      ? "text-gray-400"
+      : change > 0
+        ? "text-green-400"
+        : "text-red-400"
 
   return (
     <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">

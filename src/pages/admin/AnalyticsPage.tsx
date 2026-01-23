@@ -12,6 +12,13 @@ import AdminLayout from "../../components/admin/AdminLayout"
 import DateRangePicker from "../../components/admin/analytics/DateRangePicker"
 import CostBySourceSection from "../../components/admin/analytics/CostBySourceSection"
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 // Calculate default date range (last 30 days)
 const getDefaultDateRange = () => {
   const end = new Date()
@@ -19,8 +26,8 @@ const getDefaultDateRange = () => {
   start.setDate(start.getDate() - 30)
 
   return {
-    startDate: start.toISOString().split("T")[0],
-    endDate: end.toISOString().split("T")[0],
+    startDate: formatLocalDate(start),
+    endDate: formatLocalDate(end),
   }
 }
 
