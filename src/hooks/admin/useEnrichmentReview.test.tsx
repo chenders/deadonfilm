@@ -194,7 +194,9 @@ describe("useEnrichmentReview hooks", () => {
 
       expect(fetch).toHaveBeenCalledWith("/admin/api/enrichment/review/1/approve", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ adminUser: "admin" }),
       })
     })
 
@@ -236,7 +238,7 @@ describe("useEnrichmentReview hooks", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ reason: "incorrect_data" }),
+        body: JSON.stringify({ adminUser: "admin", reason: "incorrect_data" }),
       })
     })
   })
@@ -267,7 +269,7 @@ describe("useEnrichmentReview hooks", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(editData),
+        body: JSON.stringify({ adminUser: "admin", edits: editData, notes: undefined }),
       })
     })
   })
@@ -275,13 +277,9 @@ describe("useEnrichmentReview hooks", () => {
   describe("useCommitEnrichmentRun", () => {
     it("commits approved enrichments", async () => {
       const mockResponse = {
-        approvedCount: 5,
-        actorCount: 5,
-        totalCost: 0.5,
-        actors: [
-          { actor_id: 1, actor_name: "Actor 1" },
-          { actor_id: 2, actor_name: "Actor 2" },
-        ],
+        success: true,
+        committedCount: 5,
+        message: "Successfully committed 5 enrichments",
       }
 
       vi.mocked(fetch).mockResolvedValue({
@@ -299,7 +297,9 @@ describe("useEnrichmentReview hooks", () => {
 
       expect(fetch).toHaveBeenCalledWith("/admin/api/enrichment/runs/1/commit", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ adminUser: "admin" }),
       })
       expect(result.current.data).toEqual(mockResponse)
     })

@@ -181,19 +181,7 @@ describe("EnrichmentReviewPage", () => {
     expect(reviewButtons).toHaveLength(2)
   })
 
-  it("commit button is disabled when no data", () => {
-    vi.mocked(enrichmentReviewHooks.usePendingEnrichments).mockReturnValue({
-      data: {
-        items: [],
-        total: 0,
-        page: 1,
-        pageSize: 20,
-        totalPages: 0,
-      },
-      isLoading: false,
-      error: null,
-    } as any)
-
+  it("commit button is disabled when no runId filter is set", () => {
     renderPage()
 
     const commitButton = screen.getByText("Commit Approved")

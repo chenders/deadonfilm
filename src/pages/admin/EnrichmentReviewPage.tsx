@@ -14,6 +14,7 @@ import {
   usePendingEnrichments,
   type PendingReviewFilters,
 } from "../../hooks/admin/useEnrichmentReview"
+import { formatDate } from "../../utils/formatDate"
 
 export default function EnrichmentReviewPage() {
   const [page, setPage] = useState(1)
@@ -55,7 +56,7 @@ export default function EnrichmentReviewPage() {
           </div>
           <button
             onClick={() => setShowCommitModal(true)}
-            disabled={!data || data.total === 0}
+            disabled={!filters.runId}
             className="rounded bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Commit Approved
@@ -212,7 +213,7 @@ export default function EnrichmentReviewPage() {
                         >
                           <td className="px-4 py-3 text-sm text-white">{item.actor_name}</td>
                           <td className="px-4 py-3 text-sm text-gray-300">
-                            {item.deathday ? new Date(item.deathday).toLocaleDateString() : "-"}
+                            {item.deathday ? formatDate(item.deathday) : "-"}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-300">
                             {item.cause_of_death || "-"}
