@@ -92,13 +92,13 @@ export interface EditEnrichmentRequest {
 
 export interface RejectEnrichmentRequest {
   reason: string
+  details?: string
 }
 
-export interface CommitEnrichmentStats {
-  approvedCount: number
-  actorCount: number
-  totalCost: number
-  actors: Array<{ actor_id: number; actor_name: string }>
+export interface CommitEnrichmentResponse {
+  success: boolean
+  committedCount: number
+  message: string
 }
 
 // ============================================================================
@@ -145,10 +145,15 @@ async function fetchEnrichmentReviewDetail(
   return response.json()
 }
 
-async function approveEnrichment(enrichmentRunActorId: number): Promise<{ success: boolean }> {
+async function approveEnrichment(
+  enrichmentRunActorId: number,
+  notes?: string
+): Promise<{ success: boolean }> {
   const response = await fetch(`/admin/api/enrichment/review/${enrichmentRunActorId}/approve`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
+    body: JSON.stringify({ adminUser: "admin", notes }),
   })
 
   if (!response.ok) {
@@ -167,7 +172,7 @@ async function rejectEnrichment(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify(data),
+    body: JSON.stringify({ adminUser: "admin", ...data }),
   })
 
   if (!response.ok) {
@@ -180,13 +185,14 @@ async function rejectEnrichment(
 
 async function editEnrichment(
   enrichmentRunActorId: number,
-  data: EditEnrichmentRequest
+  data: EditEnrichmentRequest,
+  notes?: string
 ): Promise<{ success: boolean }> {
   const response = await fetch(`/admin/api/enrichment/review/${enrichmentRunActorId}/edit`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify(data),
+    body: JSON.stringify({ adminUser: "admin", edits: data, notes }),
   })
 
   if (!response.ok) {
@@ -197,10 +203,15 @@ async function editEnrichment(
   return response.json()
 }
 
-async function commitEnrichmentRun(runId: number): Promise<CommitEnrichmentStats> {
+async function commitEnrichmentRun(
+  runId: number,
+  notes?: string
+): Promise<CommitEnrichmentResponse> {
   const response = await fetch(`/admin/api/enrichment/runs/${runId}/commit`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
+    body: JSON.stringify({ adminUser: "admin", notes }),
   })
 
   if (!response.ok) {
@@ -260,7 +271,7 @@ export function useApproveEnrichment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: approveEnrichment,
+    mutationFn: (enrichmentRunActorId: number) => approveEnrichment(enrichmentRunActorId),
     onSuccess: () => {
       // Invalidate pending list to refresh counts
       queryClient.invalidateQueries({ queryKey: ["admin", "enrichment", "review", "pending"] })
@@ -309,7 +320,7 @@ export function useCommitEnrichmentRun() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: commitEnrichmentRun,
+    mutationFn: (runId: number) => commitEnrichmentRun(runId),
     onSuccess: () => {
       // Invalidate all review queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ["admin", "enrichment", "review"] })
