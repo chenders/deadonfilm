@@ -57,15 +57,17 @@ x-runner-common: &runner-common
     #         before workflows run on these self-hosted runners.
     #       * Only trusted branches and workflows can target this runner group.
     - /var/run/docker.sock:/var/run/docker.sock
-    # Mount app directory (read-only) for accessing scripts from the repository.
+    # Mount app directory for accessing scripts and deployment updates.
     # SECURITY NOTE:
-    # - Runners need read-only access to the full repo so CI jobs can run project
-    #   scripts (e.g. npm scripts, tooling, and helper scripts) directly from source.
+    # - Runners need access to the repo so CI jobs can run project scripts
+    #   (e.g. npm scripts, tooling, and helper scripts) directly from source.
+    # - The deployment workflow also needs write access to update docker-compose.yml
+    #   and postgresql.conf files during deployments.
     # - Do NOT store secrets or .env files in /opt/deadonfilm; runner secrets are
     #   provided via the separate /opt/github-runners/.env file configured above.
-    # - Because this mount is read-only, runners cannot modify application code,
-    #   but they can read any files present in this directory.
-    - /opt/deadonfilm:/opt/deadonfilm:ro
+    # - Since runners already have Docker socket access (which provides host control),
+    #   write access to this directory does not significantly increase risk.
+    - /opt/deadonfilm:/opt/deadonfilm
   extra_hosts:
     - "host.docker.internal:host-gateway"
   # Disable SELinux labeling for this container because it mounts the host
