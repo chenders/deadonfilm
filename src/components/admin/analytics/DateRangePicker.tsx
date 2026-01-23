@@ -2,17 +2,12 @@
  * Date range picker component for analytics filtering.
  */
 
+import { formatLocalDate } from "../../../utils/formatDate"
+
 interface DateRangePickerProps {
   startDate: string
   endDate: string
   onChange: (startDate: string, endDate: string) => void
-}
-
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
 }
 
 export default function DateRangePicker({ startDate, endDate, onChange }: DateRangePickerProps) {
