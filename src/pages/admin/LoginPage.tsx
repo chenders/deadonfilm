@@ -1,11 +1,13 @@
 import { useState, FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAdminAuth } from "../../hooks/useAdminAuth"
+import EyeIcon from "../../components/icons/EyeIcon"
 
 export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const { login } = useAdminAuth()
   const navigate = useNavigate()
 
@@ -42,23 +44,32 @@ export default function LoginPage() {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm">
-            <div>
+            <div className="relative">
               <label htmlFor="password" className="sr-only">
                 Password
               </label>
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="relative block w-full appearance-none rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-white placeholder-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="relative block w-full appearance-none rounded-md border border-gray-700 bg-gray-800 px-3 py-2 pr-10 text-white placeholder-gray-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="Password"
                 disabled={isLoading}
                 data-testid="admin-login-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-300"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                data-testid="password-toggle"
+              >
+                <EyeIcon visible={showPassword} />
+              </button>
             </div>
           </div>
 
