@@ -138,7 +138,7 @@ async function clearCheckpoint(): Promise<void> {
  * @param endDate - End date in YYYY-MM-DD format
  * @param batchSize - Number of days per batch (default: 2)
  */
-function generateBatches(
+export function generateBatches(
   startDate: string,
   endDate: string,
   batchSize: number = 2
@@ -189,7 +189,8 @@ async function runBatchMode(
   batchNum: number,
   totalBatches: number,
   dryRun: boolean,
-  statusBar: CLIStatusBar
+  statusBar: CLIStatusBar,
+  onItemProcessed?: () => Promise<void>
 ): Promise<{
   peopleChecked: number
   newDeathsFound: number
@@ -212,7 +213,7 @@ async function runBatchMode(
     moviesOnly: mode === "movies",
     showsOnly: mode === "shows",
     quiet: true, // Suppress verbose output
-    onProgress: (progress) => {
+    onProgress: async (progress) => {
       // Build per-item progress display
       let itemProgress = ""
       if (progress.total !== undefined && progress.current !== undefined) {
@@ -227,6 +228,15 @@ async function runBatchMode(
         currentItem: itemProgress,
         currentOperation: operation,
       })
+
+      // Call checkpoint callback only when processing actual items
+      if (
+        onItemProcessed &&
+        typeof progress.operation === "string" &&
+        progress.operation.startsWith("Processing")
+      ) {
+        await onItemProcessed()
+      }
     },
     onLog: (message) => {
       // Route log messages through status bar
@@ -279,6 +289,7 @@ interface BackfillOptions {
   reset: boolean
   batchSize: number
   checkpointFrequency: number
+  yes: boolean
 }
 
 async function runBackfill(options: BackfillOptions): Promise<void> {
@@ -373,9 +384,11 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
   console.log("  • Automatic checkpoint saving (resumable if interrupted)")
   console.log("\n" + "=".repeat(70))
 
-  // Wait for user confirmation
-  await waitForEnter("\nPress Enter to start the backfill, or Ctrl+C to cancel...")
-  console.log("")
+  // Wait for user confirmation (unless --yes flag is set)
+  if (!options.yes) {
+    await waitForEnter("\nPress Enter to start the backfill, or Ctrl+C to cancel...")
+    console.log("")
+  }
 
   // Handle reset
   if (options.reset) {
@@ -448,14 +461,29 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
           mode: modeName,
         })
 
-        // Run this mode for this batch
+        // Run this mode for this batch with checkpoint callback
         const result = await runBatchMode(
           mode,
           batch,
           batchNum,
           batches.length,
           options.dryRun,
-          statusBar
+          statusBar,
+          async () => {
+            // Increment counter after each item
+            itemsSinceLastCheckpoint++
+
+            // Save checkpoint if we've hit the frequency threshold
+            const isLastMode = modeIndex === modes.length - 1
+            const isLastBatch = batchIndex === batches.length - 1
+            if (
+              itemsSinceLastCheckpoint >= options.checkpointFrequency &&
+              !(isLastMode && isLastBatch)
+            ) {
+              await saveCheckpoint(batchIndex, mode)
+              itemsSinceLastCheckpoint = 0
+            }
+          }
         )
 
         // Accumulate results
@@ -482,20 +510,6 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
             deaths: overallSummary.newDeathsFound,
           },
         })
-
-        // Track items processed
-        const itemsInMode = result.peopleChecked + result.moviesChecked + result.showsChecked
-        itemsSinceLastCheckpoint += itemsInMode
-
-        // Save checkpoint after each mode completes (if enough items processed)
-        const shouldCheckpoint = itemsSinceLastCheckpoint >= options.checkpointFrequency
-        const isLastMode = modeIndex === modes.length - 1
-        const isLastBatch = batchIndex === batches.length - 1
-
-        if (shouldCheckpoint && !(isLastMode && isLastBatch)) {
-          await saveCheckpoint(batchIndex, mode)
-          itemsSinceLastCheckpoint = 0
-        }
 
         // Small delay between modes
         if (modeIndex < modes.length - 1) {
@@ -585,7 +599,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 }
 
 // Validate date format
-function validateDate(value: string): string {
+export function validateDate(value: string): string {
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/
   if (!dateRegex.test(value)) {
     throw new InvalidArgumentError("Date must be in YYYY-MM-DD format")
@@ -594,9 +608,9 @@ function validateDate(value: string): string {
 }
 
 // Validate batch size
-function parseBatchSize(value: string): number {
+export function parseBatchSize(value: string): number {
   const n = parseInt(value, 10)
-  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0 || value.includes(".")) {
     throw new InvalidArgumentError("Batch size must be a positive integer")
   }
   if (n > 365) {
@@ -606,9 +620,9 @@ function parseBatchSize(value: string): number {
 }
 
 // Validate checkpoint frequency
-function parseCheckpointFrequency(value: string): number {
+export function parseCheckpointFrequency(value: string): number {
   const n = parseInt(value, 10)
-  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0 || value.includes(".")) {
     throw new InvalidArgumentError("Checkpoint frequency must be a positive integer")
   }
   return n
@@ -631,6 +645,7 @@ const program = new Command()
     100
   )
   .option("--reset", "Clear checkpoint and start from beginning", false)
+  .option("-y, --yes", "Skip confirmation prompt", false)
   .action(
     async (options: {
       startDate: string
@@ -642,6 +657,7 @@ const program = new Command()
       batchSize: number
       checkpointFrequency: number
       reset: boolean
+      yes: boolean
     }) => {
       // Validate mutually exclusive options
       const exclusiveCount = [options.peopleOnly, options.moviesOnly, options.showsOnly].filter(
@@ -672,6 +688,7 @@ const program = new Command()
           batchSize: options.batchSize,
           checkpointFrequency: options.checkpointFrequency,
           reset: options.reset,
+          yes: options.yes,
         })
 
         // Record New Relic custom event for batch completion
