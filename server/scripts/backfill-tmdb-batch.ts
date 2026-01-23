@@ -138,7 +138,7 @@ async function clearCheckpoint(): Promise<void> {
  * @param endDate - End date in YYYY-MM-DD format
  * @param batchSize - Number of days per batch (default: 2)
  */
-function generateBatches(
+export function generateBatches(
   startDate: string,
   endDate: string,
   batchSize: number = 2
@@ -229,8 +229,12 @@ async function runBatchMode(
         currentOperation: operation,
       })
 
-      // Call checkpoint callback after each item is processed
-      if (onItemProcessed) {
+      // Call checkpoint callback only when processing actual items
+      if (
+        onItemProcessed &&
+        typeof progress.operation === "string" &&
+        progress.operation.startsWith("Processing")
+      ) {
         await onItemProcessed()
       }
     },
@@ -595,7 +599,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 }
 
 // Validate date format
-function validateDate(value: string): string {
+export function validateDate(value: string): string {
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/
   if (!dateRegex.test(value)) {
     throw new InvalidArgumentError("Date must be in YYYY-MM-DD format")
@@ -604,9 +608,9 @@ function validateDate(value: string): string {
 }
 
 // Validate batch size
-function parseBatchSize(value: string): number {
+export function parseBatchSize(value: string): number {
   const n = parseInt(value, 10)
-  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0 || value.includes(".")) {
     throw new InvalidArgumentError("Batch size must be a positive integer")
   }
   if (n > 365) {
@@ -616,9 +620,9 @@ function parseBatchSize(value: string): number {
 }
 
 // Validate checkpoint frequency
-function parseCheckpointFrequency(value: string): number {
+export function parseCheckpointFrequency(value: string): number {
   const n = parseInt(value, 10)
-  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0 || value.includes(".")) {
     throw new InvalidArgumentError("Checkpoint frequency must be a positive integer")
   }
   return n
