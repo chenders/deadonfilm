@@ -84,13 +84,30 @@ export interface EnrichmentRunFilters {
 
 export interface StartEnrichmentRequest {
   limit?: number
-  maxTotalCost?: number
+  minPopularity?: number
+  recentOnly?: boolean
+  free?: boolean
+  paid?: boolean
+  ai?: boolean
+  stopOnMatch?: boolean
+  confidence?: number
   maxCostPerActor?: number
+  maxTotalCost?: number
+  claudeCleanup?: boolean
+  gatherAllSources?: boolean
+  followLinks?: boolean
+  aiLinkSelection?: boolean
+  aiContentExtraction?: boolean
+  aiModel?: string
+  maxLinks?: number
+  maxLinkCost?: number
+  topBilledYear?: number
+  maxBilling?: number
+  topMovies?: number
+  usActorsOnly?: boolean
+  // Legacy fields
   sources?: string[]
   dryRun?: boolean
-  recentOnly?: boolean
-  minPopularity?: number
-  confidence?: number
 }
 
 // ============================================================================
