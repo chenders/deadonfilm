@@ -17,6 +17,7 @@ export default function StartEnrichmentPage() {
   const [minPopularity, setMinPopularity] = useState<number>(0)
   const [confidence, setConfidence] = useState<number>(0.5)
   const [recentOnly, setRecentOnly] = useState<boolean>(false)
+  const [usActorsOnly, setUsActorsOnly] = useState<boolean>(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,6 +30,7 @@ export default function StartEnrichmentPage() {
         minPopularity,
         confidence,
         recentOnly,
+        usActorsOnly,
       })
 
       // Navigate to the run details page
@@ -121,6 +123,19 @@ export default function StartEnrichmentPage() {
                 />
                 <label htmlFor="recentOnly" className="ml-2 block text-sm text-gray-300">
                   Recent deaths only (last 2 years)
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="usActorsOnly"
+                  checked={usActorsOnly}
+                  onChange={(e) => setUsActorsOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <label htmlFor="usActorsOnly" className="ml-2 block text-sm text-gray-300">
+                  US actors only (primarily appeared in US productions)
                 </label>
               </div>
             </div>
@@ -258,6 +273,7 @@ export default function StartEnrichmentPage() {
             {maxCostPerActor ? ` --max-cost-per-actor ${maxCostPerActor}` : ""}
             {minPopularity > 0 ? ` --min-popularity ${minPopularity}` : ""}
             {recentOnly ? " --recent-only" : ""}
+            {usActorsOnly ? " --us-actors-only" : ""}
             {confidence !== 0.5 ? ` --confidence ${confidence}` : ""}
           </div>
         </div>

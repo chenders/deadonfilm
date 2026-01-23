@@ -91,6 +91,7 @@ export interface StartEnrichmentRequest {
   recentOnly?: boolean
   minPopularity?: number
   confidence?: number
+  usActorsOnly?: boolean
 }
 
 // ============================================================================

@@ -211,6 +211,7 @@ interface StartEnrichmentRequest {
   recentOnly?: boolean
   minPopularity?: number
   confidence?: number
+  usActorsOnly?: boolean
 }
 
 router.post("/start", async (req: Request, res: Response): Promise<void> => {
@@ -250,6 +251,7 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       maxCostPerActor: config.maxCostPerActor,
       maxTotalCost: config.maxTotalCost,
       confidence: config.confidence,
+      usActorsOnly: config.usActorsOnly,
       // Default source categories (can be customized via config.sources later)
       free: true,
       paid: true,
