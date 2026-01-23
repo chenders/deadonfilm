@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useCoverageStats, useActorsForCoverage, useCoverageTrends } from "./useCoverage"
 
 // Mock fetch globally
-global.fetch = vi.fn()
+globalThis.fetch = vi.fn()
 
 function createWrapper() {
   const queryClient = new QueryClient({

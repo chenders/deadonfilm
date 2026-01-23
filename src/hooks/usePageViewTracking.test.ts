@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import { usePageViewTracking } from "./usePageViewTracking"
 
 // Mock fetch globally
-global.fetch = vi.fn()
+globalThis.fetch = vi.fn()
 
 describe("usePageViewTracking", () => {
   beforeEach(() => {
@@ -156,10 +156,12 @@ describe("usePageViewTracking", () => {
     expect(fetch).toHaveBeenCalledTimes(4)
 
     const calls = vi.mocked(fetch).mock.calls
-    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"movie"'))).toBe(true)
-    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"show"'))).toBe(true)
-    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"episode"'))).toBe(true)
-    expect(calls.some((call) => call[1]?.body?.includes('"pageType":"actor_death"'))).toBe(true)
+    expect(calls.some((call) => String(call[1]?.body).includes('"pageType":"movie"'))).toBe(true)
+    expect(calls.some((call) => String(call[1]?.body).includes('"pageType":"show"'))).toBe(true)
+    expect(calls.some((call) => String(call[1]?.body).includes('"pageType":"episode"'))).toBe(true)
+    expect(calls.some((call) => String(call[1]?.body).includes('"pageType":"actor_death"'))).toBe(
+      true
+    )
 
     unmount1()
     unmount2()

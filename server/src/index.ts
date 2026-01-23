@@ -68,6 +68,7 @@ import { getDashboardStats } from "./routes/admin/dashboard.js"
 import enrichmentRoutes from "./routes/admin/enrichment.js"
 import coverageRoutes from "./routes/admin/coverage.js"
 import pageViewsRoutes, { trackPageViewHandler } from "./routes/admin/page-views.js"
+import cronjobsRoutes from "./routes/admin/cronjobs.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -274,6 +275,7 @@ app.get("/admin/api/dashboard/stats", adminRoutesLimiter, adminAuthMiddleware, g
 app.use("/admin/api/enrichment", adminRoutesLimiter, adminAuthMiddleware, enrichmentRoutes)
 app.use("/admin/api/coverage", adminRoutesLimiter, adminAuthMiddleware, coverageRoutes)
 app.use("/admin/api/page-views", adminRoutesLimiter, adminAuthMiddleware, pageViewsRoutes)
+app.use("/admin/api/cronjobs", adminRoutesLimiter, adminAuthMiddleware, cronjobsRoutes)
 
 // Public page view tracking endpoint (rate limited, bot-filtered)
 app.post("/api/page-views/track", pageViewTrackingLimiter, trackPageViewHandler)

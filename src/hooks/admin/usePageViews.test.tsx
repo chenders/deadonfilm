@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { usePageViewSummary, useTopViewedPages, usePageViewTrends } from "./usePageViews"
 
 // Mock fetch globally
-global.fetch = vi.fn()
+globalThis.fetch = vi.fn()
 
 function createWrapper() {
   const queryClient = new QueryClient({
