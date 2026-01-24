@@ -89,31 +89,31 @@ describe("CauseActorRow", () => {
 
   it("links to actor profile page using tmdbId", () => {
     renderWithRouter(mockActor)
-    const link = screen.getByTestId("actor-row-456")
-    expect(link).toHaveAttribute("href", "/actor/jane-doe-456")
+    const link = screen.getByTestId("actor-row-123")
+    expect(link).toHaveAttribute("href", "/actor/jane-doe-123")
   })
 
   it("shows cause badge when showCauseBadge is true (default)", () => {
     renderWithRouter(mockActor, { showCauseBadge: true })
-    expect(screen.getByTestId("actor-cause-456")).toBeInTheDocument()
+    expect(screen.getByTestId("actor-cause-123")).toBeInTheDocument()
   })
 
   it("shows cause details when showCauseBadge is false", () => {
     renderWithRouter(mockActor, { showCauseBadge: false })
     // When showCauseBadge is false, it should use causeOfDeathDetails instead
     // The badge shows the details when showCauseBadge is false and details exist
-    expect(screen.getByTestId("actor-cause-456")).toBeInTheDocument()
+    expect(screen.getByTestId("actor-cause-123")).toBeInTheDocument()
   })
 
   it("does not show badge when no cause and showCauseBadge is true", () => {
     const actorNoCause = { ...mockActor, causeOfDeath: undefined, causeOfDeathDetails: null }
     renderWithRouter(actorNoCause, { showCauseBadge: true })
-    expect(screen.queryByTestId("actor-cause-456")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("actor-cause-123")).not.toBeInTheDocument()
   })
 
   it("has correct test ID using tmdbId", () => {
     renderWithRouter(mockActor)
-    expect(screen.getByTestId("actor-row-456")).toBeInTheDocument()
+    expect(screen.getByTestId("actor-row-123")).toBeInTheDocument()
   })
 
   it("falls back to id when tmdbId is null", () => {
