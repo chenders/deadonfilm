@@ -84,7 +84,7 @@ export async function getActor(req: Request, res: Response) {
 
     // If matched by tmdb_id, redirect to canonical URL with actor.id
     if (matchedBy === "tmdb_id") {
-      // Log redirect for monitoring (NewRelic custom event)
+      // Track redirect event for migration monitoring
       const userAgent = req.headers["user-agent"]
       const referer = req.headers["referer"] || req.headers["referrer"]
       newrelic.recordCustomEvent("ActorUrlRedirect", {
