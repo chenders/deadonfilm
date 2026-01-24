@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { Request } from "express"
-import { skipRateLimitForAdmin } from "./rate-limit-bypass.js"
+import { skipRateLimitForAdmin } from "./rate-limit-utils.js"
 
 describe("skipRateLimitForAdmin", () => {
   let mockReq: Partial<Request>
