@@ -33,6 +33,17 @@ export default function AdminNav() {
         </Link>
 
         <Link
+          to="/admin/analytics"
+          className={`block rounded-md px-4 py-2 text-sm font-medium ${
+            location.pathname.startsWith("/admin/analytics")
+              ? "bg-gray-900 text-white"
+              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+          }`}
+        >
+          Analytics
+        </Link>
+
+        <Link
           to="/admin/coverage"
           className={`block rounded-md px-4 py-2 text-sm font-medium ${
             location.pathname.startsWith("/admin/coverage")
