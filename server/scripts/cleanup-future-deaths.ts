@@ -18,15 +18,15 @@ async function run() {
 
     // Find actors with future or very recent death dates
     const result = await pool.query(
-      `SELECT id, name, death_date, birthday
+      `SELECT id, name, deathday, birthday
        FROM actors
-       WHERE death_date IS NOT NULL
+       WHERE deathday IS NOT NULL
          AND (
-           death_date > CURRENT_DATE
-           OR death_date > $1
-           OR (birthday IS NOT NULL AND death_date < birthday)
+           deathday > CURRENT_DATE
+           OR deathday > $1
+           OR (birthday IS NOT NULL AND deathday < birthday)
          )
-       ORDER BY death_date DESC`,
+       ORDER BY deathday DESC`,
       [thirtyDaysAgo.toISOString().split("T")[0]]
     )
 
@@ -39,12 +39,12 @@ async function run() {
 
     for (const row of result.rows) {
       const reason =
-        new Date(row.death_date) > now
+        new Date(row.deathday) > now
           ? "Future date"
-          : new Date(row.death_date) > thirtyDaysAgo
+          : new Date(row.deathday) > thirtyDaysAgo
             ? "Too recent"
             : "Death before birth"
-      console.log(`  ❌ ${row.name} (ID: ${row.id}): ${row.death_date} - ${reason}`)
+      console.log(`  ❌ ${row.name} (ID: ${row.id}): ${row.deathday} - ${reason}`)
     }
 
     console.log(`\nRemoving death data for these ${result.rows.length} actors...\n`)
@@ -53,18 +53,18 @@ async function run() {
     const updateResult = await pool.query(
       `UPDATE actors
        SET
-         death_date = NULL,
+         deathday = NULL,
          cause_of_death = NULL,
          cause_of_death_details = NULL,
          cause_of_death_source = NULL,
          years_lost = NULL,
          age_at_death = NULL,
          updated_at = NOW()
-       WHERE death_date IS NOT NULL
+       WHERE deathday IS NOT NULL
          AND (
-           death_date > CURRENT_DATE
-           OR death_date > $1
-           OR (birthday IS NOT NULL AND death_date < birthday)
+           deathday > CURRENT_DATE
+           OR deathday > $1
+           OR (birthday IS NOT NULL AND deathday < birthday)
          )
        RETURNING id, name`,
       [thirtyDaysAgo.toISOString().split("T")[0]]

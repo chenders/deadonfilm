@@ -43,23 +43,22 @@ describe("Admin Coverage Queries", () => {
 
   describe("getActorsForCoverage", () => {
     it("returns paginated actors with no filters", async () => {
-      vi.mocked(mockPool.query)
-        .mockResolvedValueOnce({ rows: [{ count: "10" }] } as any)
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              id: 1,
-              name: "Test Actor",
-              tmdb_id: 123,
-              deathday: "2020-01-01",
-              popularity: 50.5,
-              has_detailed_death_info: false,
-              enriched_at: null,
-              age_at_death: 75,
-              cause_of_death: null,
-            },
-          ],
-        } as any)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            name: "Test Actor",
+            tmdb_id: 123,
+            deathday: "2020-01-01",
+            popularity: 50.5,
+            has_detailed_death_info: false,
+            enriched_at: null,
+            age_at_death: 75,
+            cause_of_death: null,
+            total_count: "10",
+          },
+        ],
+      } as any)
 
       const result = await getActorsForCoverage(mockPool, {}, 1, 50)
 
@@ -71,34 +70,28 @@ describe("Admin Coverage Queries", () => {
     })
 
     it("applies hasDeathPage filter", async () => {
-      vi.mocked(mockPool.query)
-        .mockResolvedValueOnce({ rows: [{ count: "5" }] } as any)
-        .mockResolvedValueOnce({ rows: [] } as any)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
 
       await getActorsForCoverage(mockPool, { hasDeathPage: false }, 1, 50)
 
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("has_detailed_death_info = $1")
-      expect(calls[0][1]).toEqual([false])
+      expect(calls[0][1]).toEqual([false, 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
     })
 
     it("applies popularity range filters", async () => {
-      vi.mocked(mockPool.query)
-        .mockResolvedValueOnce({ rows: [{ count: "3" }] } as any)
-        .mockResolvedValueOnce({ rows: [] } as any)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
 
       await getActorsForCoverage(mockPool, { minPopularity: 10, maxPopularity: 50 }, 1, 50)
 
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("popularity >= $1")
       expect(calls[0][0]).toContain("popularity <= $2")
-      expect(calls[0][1]).toEqual([10, 50])
+      expect(calls[0][1]).toEqual([10, 50, 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
     })
 
     it("applies death date range filters", async () => {
-      vi.mocked(mockPool.query)
-        .mockResolvedValueOnce({ rows: [{ count: "2" }] } as any)
-        .mockResolvedValueOnce({ rows: [] } as any)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
 
       await getActorsForCoverage(
         mockPool,
@@ -110,43 +103,53 @@ describe("Admin Coverage Queries", () => {
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("deathday >= $1")
       expect(calls[0][0]).toContain("deathday <= $2")
-      expect(calls[0][1]).toEqual(["2020-01-01", "2020-12-31"])
+      expect(calls[0][1]).toEqual(["2020-01-01", "2020-12-31", 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
     })
 
     it("applies name search filter", async () => {
-      vi.mocked(mockPool.query)
-        .mockResolvedValueOnce({ rows: [{ count: "1" }] } as any)
-        .mockResolvedValueOnce({ rows: [] } as any)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
 
       await getActorsForCoverage(mockPool, { searchName: "John" }, 1, 50)
 
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("name ILIKE $1")
-      expect(calls[0][1]).toEqual(["%John%"])
+      expect(calls[0][1]).toEqual(["%John%", 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
     })
 
     it("applies custom ordering", async () => {
-      vi.mocked(mockPool.query)
-        .mockResolvedValueOnce({ rows: [{ count: "5" }] } as any)
-        .mockResolvedValueOnce({ rows: [] } as any)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
 
       await getActorsForCoverage(mockPool, { orderBy: "death_date", orderDirection: "asc" }, 1, 50)
 
       const calls = vi.mocked(mockPool.query).mock.calls
-      expect(calls[1][0]).toContain("ORDER BY deathday asc")
+      expect(calls[0][0]).toContain("CASE WHEN")
+      expect(calls[0][0]).toContain("deathday")
+      expect(calls[0][1]).toEqual([1, 0, 50, 0]) // isAsc=1, isDesc=0, LIMIT, OFFSET
     })
 
     it("calculates correct pagination", async () => {
-      vi.mocked(mockPool.query)
-        .mockResolvedValueOnce({ rows: [{ count: "125" }] } as any)
-        .mockResolvedValueOnce({ rows: [] } as any)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({
+        rows: [{ total_count: "125" }],
+      } as any)
 
       const result = await getActorsForCoverage(mockPool, {}, 2, 50)
 
       expect(result.totalPages).toBe(3)
       const calls = vi.mocked(mockPool.query).mock.calls
-      expect(calls[1][1]).toContain(50) // LIMIT
-      expect(calls[1][1]).toContain(50) // OFFSET (page 2 = skip 50)
+      expect(calls[0][1]).toContain(50) // LIMIT
+      expect(calls[0][1]).toContain(50) // OFFSET (page 2 = skip 50)
+    })
+
+    it("handles empty results correctly", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const result = await getActorsForCoverage(mockPool, {}, 1, 50)
+
+      expect(result.items).toEqual([])
+      expect(result.total).toBe(0)
+      expect(result.page).toBe(1)
+      expect(result.pageSize).toBe(50)
+      expect(result.totalPages).toBe(0)
     })
   })
 
