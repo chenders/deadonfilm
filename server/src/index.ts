@@ -132,13 +132,14 @@ const adminLoginLimiter = rateLimit({
   message: { error: { message: "Too many login attempts, please try again later" } },
 })
 
-// General admin routes rate limit: 200 requests per minute (more permissive for authenticated admins)
+// General admin routes rate limit: 200 requests per minute for unauthenticated, bypass for authenticated admins
 const adminRoutesLimiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
   limit: ADMIN_ROUTES_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
+  skip: (req) => req.isAdmin === true,
 })
 
 // Page view tracking rate limit: 20 requests per minute per IP (public endpoint)
