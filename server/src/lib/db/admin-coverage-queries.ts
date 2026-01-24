@@ -159,31 +159,40 @@ export async function getActorsForCoverage(
 
   const whereClause = whereClauses.join(" AND ")
 
-  // Build ORDER BY clause
+  // Build ORDER BY clause without string interpolation
   const orderBy = filters.orderBy || "popularity"
   const orderDirection = filters.orderDirection || "desc"
 
-  const orderByMap: Record<string, string> = {
-    death_date: "deathday",
-    popularity: "popularity",
-    name: "name",
-    enriched_at: "enriched_at",
+  // Map order direction to numeric values for CASE expression
+  const isAsc = orderDirection === "asc" ? 1 : 0
+  const isDesc = orderDirection === "desc" ? 1 : 0
+
+  // Add order direction as parameters
+  params.push(isAsc, isDesc)
+  const ascParam = `$${paramIndex++}`
+  const descParam = `$${paramIndex++}`
+
+  // Build ORDER BY using CASE expressions instead of string interpolation
+  let orderByClause: string
+  switch (orderBy) {
+    case "death_date":
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN deathday END ASC, CASE WHEN ${descParam} = 1 THEN deathday END DESC`
+      break
+    case "name":
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN name END ASC, CASE WHEN ${descParam} = 1 THEN name END DESC`
+      break
+    case "enriched_at":
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN enriched_at END ASC, CASE WHEN ${descParam} = 1 THEN enriched_at END DESC`
+      break
+    case "popularity":
+    default:
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN popularity END ASC, CASE WHEN ${descParam} = 1 THEN popularity END DESC`
+      break
   }
 
-  const orderByColumn = orderByMap[orderBy] || "popularity"
-
-  // Get total count
-  const countResult = await pool.query<{ count: string }>(
-    `SELECT COUNT(*) as count
-     FROM actors
-     WHERE ${whereClause}`,
-    params
-  )
-
-  const total = parseInt(countResult.rows[0].count, 10)
-
-  // Get paginated data
-  const dataResult = await pool.query<ActorCoverageInfo>(
+  // Use window function to get total count in same query (performance optimization)
+  // Eliminates separate COUNT query - significant speedup for large tables
+  const dataResult = await pool.query<ActorCoverageInfo & { total_count: string }>(
     `SELECT
        id,
        name,
@@ -193,16 +202,22 @@ export async function getActorsForCoverage(
        has_detailed_death_info,
        enriched_at,
        age_at_death,
-       cause_of_death
+       cause_of_death,
+       COUNT(*) OVER() as total_count
      FROM actors
      WHERE ${whereClause}
-     ORDER BY ${orderByColumn} ${orderDirection}, id ASC
+     ORDER BY ${orderByClause}, id ASC
      LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
     [...params, pageSize, offset]
   )
 
+  const total = dataResult.rows.length > 0 ? parseInt(dataResult.rows[0].total_count, 10) : 0
+
+  // Remove total_count from items
+  const items = dataResult.rows.map(({ total_count: _total_count, ...item }) => item)
+
   return {
-    items: dataResult.rows,
+    items,
     total,
     page,
     pageSize,
