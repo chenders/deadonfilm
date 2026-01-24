@@ -109,14 +109,58 @@ async function runSeeding(startYear: number, endYear: number) {
     const personDetails = await batchGetPersonDetails(personIds, 10, 100)
     console.log(`Got details for ${personDetails.size} actors\n`)
 
-    // Step 4: Filter to deceased only
+    // Step 4: Filter to deceased only with validation
     const deceasedActors: TMDBPerson[] = []
+    const rejectedActors: Array<{ name: string; reason: string }> = []
+    const now = new Date()
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+
     for (const person of personDetails.values()) {
       if (person.deathday) {
+        const deathDate = new Date(person.deathday)
+        const birthDate = person.birthday ? new Date(person.birthday) : null
+
+        // Validation checks
+        if (deathDate > now) {
+          rejectedActors.push({
+            name: person.name,
+            reason: `Future death date: ${person.deathday}`,
+          })
+          continue
+        }
+
+        if (deathDate > thirtyDaysAgo) {
+          rejectedActors.push({
+            name: person.name,
+            reason: `Too recent (within 30 days): ${person.deathday}`,
+          })
+          continue
+        }
+
+        if (birthDate && deathDate < birthDate) {
+          rejectedActors.push({
+            name: person.name,
+            reason: `Death before birth: ${person.deathday} < ${person.birthday}`,
+          })
+          continue
+        }
+
         deceasedActors.push(person)
       }
     }
+
     console.log(`Found ${deceasedActors.length} deceased actors\n`)
+
+    if (rejectedActors.length > 0) {
+      console.log(`\nRejected ${rejectedActors.length} suspicious death records:`)
+      for (const { name, reason } of rejectedActors.slice(0, 20)) {
+        console.log(`  ❌ ${name}: ${reason}`)
+      }
+      if (rejectedActors.length > 20) {
+        console.log(`  ... and ${rejectedActors.length - 20} more`)
+      }
+      console.log()
+    }
 
     if (deceasedActors.length === 0) {
       console.log("No deceased actors found. Done!")
