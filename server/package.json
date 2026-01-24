@@ -109,7 +109,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.1",
     "@extra/recaptcha": "^4.2.1-next.587",
-    "@sindresorhus/slugify": "^3.0.0",
     "bcrypt": "^6.0.0",
     "commander": "^14.0.2",
     "compression": "^1.8.1",
