@@ -202,4 +202,63 @@ router.get("/page-visits/entry-exit", async (req: Request, res: Response): Promi
   }
 })
 
+// ============================================================================
+// GET /admin/api/analytics/actor-url-redirects
+// Get actor URL migration redirect statistics (tmdb_id → actor.id)
+// Cached for 1 hour since this is historical data
+// ============================================================================
+
+router.get("/actor-url-redirects", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+
+    const days = req.query.days ? parseInt(req.query.days as string, 10) : 30
+
+    // Validate days
+    if (isNaN(days) || days < 1 || days > 365) {
+      res.status(400).json({ error: { message: "Invalid days. Must be between 1 and 365" } })
+      return
+    }
+
+    // Query for daily redirect counts
+    const result = await pool.query<{ date: string; redirect_count: number }>(
+      `
+      SELECT
+        DATE(visited_at)::text as date,
+        COUNT(*)::int as redirect_count
+      FROM page_visits
+      WHERE visited_path ~ '/actor/[a-z0-9-]+-\\d+/?$'
+        AND is_internal_referral = true
+        AND referrer_path ~ '/actor/[a-z0-9-]+-\\d+/?$'
+        AND referrer_path != visited_path
+        -- Exclude same actor (e.g., /actor/X vs /actor/X/death)
+        AND split_part(referrer_path, '-', -1) != split_part(visited_path, '-', -1)
+        AND visited_at >= NOW() - INTERVAL '1 day' * $1
+      GROUP BY DATE(visited_at)
+      ORDER BY date ASC
+    `,
+      [days]
+    )
+
+    // Calculate summary stats
+    const totalRedirects = result.rows.reduce((sum, row) => sum + row.redirect_count, 0)
+    const avgPerDay = result.rows.length > 0 ? totalRedirects / result.rows.length : 0
+
+    res
+      .set("Cache-Control", "public, max-age=3600") // Cache for 1 hour
+      .json({
+        dailyData: result.rows,
+        summary: {
+          totalRedirects,
+          avgPerDay: Math.round(avgPerDay * 10) / 10,
+          daysTracked: result.rows.length,
+          periodDays: days,
+        },
+      })
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch actor URL redirect analytics")
+    res.status(500).json({ error: { message: "Failed to fetch actor URL redirect analytics" } })
+  }
+})
+
 export default router

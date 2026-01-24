@@ -38,7 +38,7 @@ const RESET = "\x1b[0m"
 interface BatchSummary {
   peopleChecked: number
   newDeathsFound: number
-  newlyDeceasedActors: Array<{ tmdbId: number; name: string; deathday: string }>
+  newlyDeceasedActors: Array<{ id: number; tmdbId: number; name: string; deathday: string }>
   moviesChecked: number
   moviesUpdated: number
   moviesSkipped: number
@@ -194,7 +194,7 @@ async function runBatchMode(
 ): Promise<{
   peopleChecked: number
   newDeathsFound: number
-  newlyDeceasedActors: Array<{ tmdbId: number; name: string; deathday: string }>
+  newlyDeceasedActors: Array<{ id: number; tmdbId: number; name: string; deathday: string }>
   moviesChecked: number
   moviesUpdated: number
   moviesSkipped: number
@@ -585,7 +585,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
     console.log("Newly Deceased Actors:")
     console.log("─".repeat(60))
     for (const actor of overallSummary.newlyDeceasedActors) {
-      const slug = createActorSlug(actor.name, actor.tmdbId)
+      const slug = createActorSlug(actor.name, actor.id)
       const url = `${SITE_URL}/actor/${slug}`
       console.log(`  ${actor.name} (${actor.deathday}): ${url}`)
     }

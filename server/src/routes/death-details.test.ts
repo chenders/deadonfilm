@@ -9,11 +9,17 @@ vi.mock("../lib/tmdb.js", () => ({
   getPersonDetails: vi.fn(),
 }))
 
+// Create a mock query function that can be configured per test
+const mockQuery = vi.fn().mockResolvedValue({ rows: [] })
+
 vi.mock("../lib/db.js", () => ({
-  getActor: vi.fn(),
-  getActorDeathCircumstancesByTmdbId: vi.fn(),
+  getActorByEitherIdWithSlug: vi.fn(),
+  getActorDeathCircumstancesByActorId: vi.fn(),
   getNotableDeaths: vi.fn(),
-  hasDetailedDeathInfo: vi.fn(),
+  getPool: vi.fn(() => ({
+    query: mockQuery,
+  })),
+  hasDetailedDeathInfo: vi.fn().mockResolvedValue(true),
 }))
 
 vi.mock("newrelic", () => ({
@@ -56,10 +62,24 @@ describe("getActorDeathDetails", () => {
     birthday: "1940-01-15",
     deathday: "2020-05-20",
     cause_of_death: "Heart attack",
+    cause_of_death_source: "claude" as const,
     cause_of_death_details: "Died of a heart attack at home.",
+    cause_of_death_details_source: "claude" as const,
+    wikipedia_url: null,
     profile_path: "/profile.jpg",
+    popularity: 50.0,
     age_at_death: 80,
+    expected_lifespan: 85,
     years_lost: 5,
+    violent_death: false,
+    tvmaze_person_id: null,
+    thetvdb_person_id: null,
+    imdb_person_id: null,
+    is_obscure: false,
+    deathday_confidence: null,
+    deathday_verification_source: null,
+    deathday_verified_at: null,
+    has_detailed_death_info: true,
     // Fields accessed via `as unknown as` casts in the route handler
     death_manner: "natural",
     death_categories: ["cardiovascular"],
@@ -104,21 +124,33 @@ describe("getActorDeathDetails", () => {
     vi.clearAllMocks()
 
     jsonSpy = vi.fn()
-    statusSpy = vi.fn().mockReturnThis()
-    setSpy = vi.fn().mockReturnThis()
+    setSpy = vi.fn()
+    statusSpy = vi.fn()
 
-    mockReq = {
-      params: { id: "12345" },
-    }
+    // Set up mock response object
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
       set: setSpy as Response["set"],
     }
+
+    // Configure spies to return mockRes for chaining
+    statusSpy.mockReturnValue(mockRes)
+    setSpy.mockReturnValue(mockRes)
+
+    mockReq = {
+      params: { slug: "actor-name-12345" },
+    }
+
+    // Default mock for getActorByEitherIdWithSlug
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValue({
+      actor: mockActorRecord,
+      matchedBy: "id",
+    })
   })
 
   it("returns 400 for invalid actor ID", async () => {
-    mockReq.params = { id: "invalid" }
+    mockReq.params = { slug: "invalid-slug" }
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -129,7 +161,7 @@ describe("getActorDeathDetails", () => {
   })
 
   it("returns 400 for missing actor ID", async () => {
-    mockReq.params = {}
+    mockReq.params = { slug: "" }
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -152,23 +184,25 @@ describe("getActorDeathDetails", () => {
 
   it("returns 404 when actor not found in database", async () => {
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
-    vi.mocked(db.getActor).mockResolvedValueOnce(null)
-    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
-    vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(null)
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce(null)
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
     expect(statusSpy).toHaveBeenCalledWith(404)
     expect(jsonSpy).toHaveBeenCalledWith({
-      error: { message: "Actor not found or not deceased" },
+      error: { message: "Actor not found" },
     })
   })
 
   it("returns death details for actor with full circumstances", async () => {
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
-    vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
-    vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(mockCircumstances as any)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      mockCircumstances as any
+    )
+
+    // Mock database query for related celebrity lookup (tmdb_id: 54321 -> id: 54321)
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -228,9 +262,13 @@ describe("getActorDeathDetails", () => {
 
   it("caches the response on cache miss", async () => {
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
-    vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
-    vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(mockCircumstances as any)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      mockCircumstances as any
+    )
+
+    // Mock database query for related celebrity lookup
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -285,7 +323,6 @@ describe("getActorDeathDetails", () => {
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
     expect(db.hasDetailedDeathInfo).not.toHaveBeenCalled()
-    expect(db.getActor).not.toHaveBeenCalled()
     expect(tmdb.getPersonDetails).not.toHaveBeenCalled()
     expect(setCached).not.toHaveBeenCalled()
     expect(jsonSpy).toHaveBeenCalledWith(cachedResponse)
@@ -297,9 +334,13 @@ describe("getActorDeathDetails", () => {
 
   it("records custom event on successful response", async () => {
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
-    vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
-    vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(mockCircumstances as any)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      mockCircumstances as any
+    )
+
+    // Mock database query for related celebrity lookup
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -317,14 +358,15 @@ describe("getActorDeathDetails", () => {
   })
 
   it("returns 500 on database error", async () => {
-    vi.mocked(db.hasDetailedDeathInfo).mockRejectedValueOnce(new Error("Database error"))
+    // Reset and mock hasDetailedDeathInfo to return a rejected promise
+    vi.mocked(db.hasDetailedDeathInfo).mockReset().mockRejectedValue(new Error("Database error"))
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
-    expect(statusSpy).toHaveBeenCalledWith(500)
     expect(jsonSpy).toHaveBeenCalledWith({
       error: { message: "Failed to fetch death details" },
     })
+    expect(statusSpy).toHaveBeenCalledWith(500)
   })
 
   it("uses resolved sources with human-readable names when available", async () => {
@@ -366,11 +408,13 @@ describe("getActorDeathDetails", () => {
     }
 
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
-    vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
-    vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
       circumstancesWithResolvedSources as any
     )
+
+    // Mock database query for related celebrity lookup
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -413,11 +457,13 @@ describe("getActorDeathDetails", () => {
     }
 
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
-    vi.mocked(db.getActor).mockResolvedValueOnce(mockActorRecord as any)
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
-    vi.mocked(db.getActorDeathCircumstancesByTmdbId).mockResolvedValueOnce(
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
       circumstancesWithParsedSources as any
     )
+
+    // Mock database query for related celebrity lookup
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 

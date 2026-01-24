@@ -22,14 +22,14 @@ export function createMovieSlug(title: string, releaseYear: number | null, tmdbI
  * Creates a URL-safe slug from an actor name and ID
  * Example: "Audrey Hepburn", 10560 → "audrey-hepburn-10560"
  */
-export function createActorSlug(name: string, tmdbId: number): string {
+export function createActorSlug(name: string, id: number): string {
   const slug = name
     .toLowerCase()
     .replace(/['\u02BC\u2019]/g, "") // Remove apostrophes (straight, modifier, curly)
     .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
     .replace(/(^-|-$)/g, "") // Remove leading/trailing hyphens
 
-  return `${slug}-${tmdbId}`
+  return `${slug}-${id}`
 }
 
 /**

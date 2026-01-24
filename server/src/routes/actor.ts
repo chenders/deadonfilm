@@ -3,12 +3,13 @@ import { getPersonDetails } from "../lib/tmdb.js"
 import {
   getActorFilmography,
   getActorShowFilmography,
-  getActor as getActorRecord,
   hasDetailedDeathInfo,
+  getActorByEitherIdWithSlug,
 } from "../lib/db.js"
 import newrelic from "newrelic"
 import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
 import { calculateAge } from "../lib/date-utils.js"
+import { createActorSlug } from "../lib/slug-utils.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -50,22 +51,52 @@ interface ActorProfileResponse {
   } | null
 }
 
-export async function getActor(req: Request, res: Response) {
-  const actorId = parseInt(req.params.id, 10)
+/**
+ * Extract numeric actor ID from URL slug.
+ * Slug format: "actor-name-12345" -> 12345
+ */
+function extractActorId(slug: string): number | null {
+  const parts = slug.split("-")
+  const lastPart = parts[parts.length - 1]
+  const id = parseInt(lastPart, 10)
+  return isNaN(id) ? null : id
+}
 
-  if (!actorId || isNaN(actorId)) {
+export async function getActor(req: Request, res: Response) {
+  const slug = req.params.slug // Full slug like "john-wayne-4165"
+  const numericId = extractActorId(slug)
+
+  if (!numericId || isNaN(numericId)) {
     return res.status(400).json({ error: { message: "Invalid actor ID" } })
   }
 
   try {
     const startTime = Date.now()
-    const cacheKey = CACHE_KEYS.actor(actorId).profile
+
+    // Look up actor by EITHER id or tmdb_id, WITH SLUG VALIDATION
+    const actorLookup = await getActorByEitherIdWithSlug(numericId, slug)
+
+    if (!actorLookup) {
+      return res.status(404).json({ error: { message: "Actor not found" } })
+    }
+
+    const { actor: actorRecord, matchedBy } = actorLookup
+
+    // If matched by tmdb_id, redirect to canonical URL with actor.id
+    if (matchedBy === "tmdb_id") {
+      const canonicalSlug = createActorSlug(actorRecord.name, actorRecord.id)
+      return res.redirect(301, `/actor/${canonicalSlug}`)
+    }
+
+    // Use actor.id for cache key (not tmdb_id)
+    const cacheKey = CACHE_KEYS.actor(actorRecord.id).profile
 
     // Check cache first
     const cached = await getCached<ActorProfileResponse>(cacheKey)
     if (cached) {
       newrelic.recordCustomEvent("ActorView", {
-        tmdbId: actorId,
+        actorId: actorRecord.id,
+        ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
         name: cached.actor.name,
         isDeceased: !!cached.actor.deathday,
         filmographyCount: cached.analyzedFilmography.length,
@@ -77,39 +108,28 @@ export async function getActor(req: Request, res: Response) {
       return res.set("Cache-Control", "public, max-age=600").json(cached)
     }
 
-    // Fetch actor details from TMDB and filmographies in parallel
+    // Fetch actor details from TMDB using tmdb_id (if available, otherwise use actor.id)
+    const tmdbIdForFetch = actorRecord.tmdb_id ?? actorRecord.id
     const [person, filmography, tvFilmography] = await Promise.all([
-      getPersonDetails(actorId),
-      getActorFilmography(actorId),
-      getActorShowFilmography(actorId),
+      getPersonDetails(tmdbIdForFetch),
+      getActorFilmography(tmdbIdForFetch),
+      getActorShowFilmography(tmdbIdForFetch),
     ])
 
     // Get death info if deceased
     let deathInfo: ActorProfileResponse["deathInfo"] = null
     if (person.deathday) {
-      const [deceasedRecord, hasDetailedInfo] = await Promise.all([
-        getActorRecord(actorId),
-        hasDetailedDeathInfo(actorId),
-      ])
-      if (deceasedRecord) {
-        deathInfo = {
-          causeOfDeath: deceasedRecord.cause_of_death,
-          causeOfDeathDetails: deceasedRecord.cause_of_death_details,
-          wikipediaUrl: deceasedRecord.wikipedia_url,
-          ageAtDeath: deceasedRecord.age_at_death,
-          yearsLost: deceasedRecord.years_lost,
-          hasDetailedDeathInfo: hasDetailedInfo,
-        }
-      } else {
-        // Basic death info from TMDB only
-        deathInfo = {
-          causeOfDeath: null,
-          causeOfDeathDetails: null,
-          wikipediaUrl: null,
-          ageAtDeath: calculateAge(person.birthday, person.deathday),
-          yearsLost: null,
-          hasDetailedDeathInfo: hasDetailedInfo,
-        }
+      // We already have the actor record from the lookup, no need to fetch again
+      // Just need to check if detailed death info exists
+      const hasDetailedInfo = await hasDetailedDeathInfo(tmdbIdForFetch)
+
+      deathInfo = {
+        causeOfDeath: actorRecord.cause_of_death,
+        causeOfDeathDetails: actorRecord.cause_of_death_details,
+        wikipediaUrl: actorRecord.wikipedia_url,
+        ageAtDeath: actorRecord.age_at_death ?? calculateAge(person.birthday, person.deathday),
+        yearsLost: actorRecord.years_lost,
+        hasDetailedDeathInfo: hasDetailedInfo,
       }
     }
 
@@ -132,7 +152,8 @@ export async function getActor(req: Request, res: Response) {
     await setCached(cacheKey, response, CACHE_TTL.WEEK)
 
     newrelic.recordCustomEvent("ActorView", {
-      tmdbId: actorId,
+      actorId: actorRecord.id,
+      ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
       name: person.name,
       isDeceased: !!person.deathday,
       filmographyCount: filmography.length,

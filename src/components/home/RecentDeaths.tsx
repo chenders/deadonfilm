@@ -47,8 +47,8 @@ export default function RecentDeaths() {
       <div data-testid="recent-deaths-list" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {data.deaths.map((death, index) => (
           <Link
-            key={death.tmdb_id}
-            to={`/actor/${createActorSlug(death.name, death.tmdb_id)}`}
+            key={death.id}
+            to={`/actor/${createActorSlug(death.name, death.id)}`}
             className="animate-fade-slide-in flex flex-col items-center rounded-lg bg-beige p-3 text-center transition-colors hover:bg-cream"
             style={{ animationDelay: `${index * 50}ms` }}
           >
