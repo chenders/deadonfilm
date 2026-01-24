@@ -461,3 +461,14 @@ export async function getNotableDeaths(
   }
   return fetchJson(`/deaths/notable?${searchParams.toString()}`)
 }
+
+/**
+ * Helper function to construct admin API paths
+ * @param path The path relative to /admin/api
+ * @returns The full admin API path
+ */
+export function adminApi(path: string): string {
+  // Remove leading slash if present
+  const cleanPath = path.startsWith("/") ? path.slice(1) : path
+  return `/admin/api/${cleanPath}`
+}
