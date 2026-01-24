@@ -159,18 +159,36 @@ export async function getActorsForCoverage(
 
   const whereClause = whereClauses.join(" AND ")
 
-  // Build ORDER BY clause
+  // Build ORDER BY clause without string interpolation
   const orderBy = filters.orderBy || "popularity"
   const orderDirection = filters.orderDirection || "desc"
 
-  const orderByMap: Record<string, string> = {
-    death_date: "deathday",
-    popularity: "popularity",
-    name: "name",
-    enriched_at: "enriched_at",
-  }
+  // Map order direction to numeric values for CASE expression
+  const isAsc = orderDirection === "asc" ? 1 : 0
+  const isDesc = orderDirection === "desc" ? 1 : 0
 
-  const orderByColumn = orderByMap[orderBy] || "popularity"
+  // Add order direction as parameters
+  params.push(isAsc, isDesc)
+  const ascParam = `$${paramIndex++}`
+  const descParam = `$${paramIndex++}`
+
+  // Build ORDER BY using CASE expressions instead of string interpolation
+  let orderByClause: string
+  switch (orderBy) {
+    case "death_date":
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN deathday END ASC, CASE WHEN ${descParam} = 1 THEN deathday END DESC`
+      break
+    case "name":
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN name END ASC, CASE WHEN ${descParam} = 1 THEN name END DESC`
+      break
+    case "enriched_at":
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN enriched_at END ASC, CASE WHEN ${descParam} = 1 THEN enriched_at END DESC`
+      break
+    case "popularity":
+    default:
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN popularity END ASC, CASE WHEN ${descParam} = 1 THEN popularity END DESC`
+      break
+  }
 
   // Use window function to get total count in same query (performance optimization)
   // Eliminates separate COUNT query - significant speedup for large tables
@@ -188,7 +206,7 @@ export async function getActorsForCoverage(
        COUNT(*) OVER() as total_count
      FROM actors
      WHERE ${whereClause}
-     ORDER BY ${orderByColumn} ${orderDirection}, id ASC
+     ORDER BY ${orderByClause}, id ASC
      LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
     [...params, pageSize, offset]
   )
