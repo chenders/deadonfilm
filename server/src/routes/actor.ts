@@ -84,6 +84,19 @@ export async function getActor(req: Request, res: Response) {
 
     // If matched by tmdb_id, redirect to canonical URL with actor.id
     if (matchedBy === "tmdb_id") {
+      // Log redirect for monitoring (NewRelic custom event)
+      const userAgent = req.headers["user-agent"]
+      const referer = req.headers["referer"] || req.headers["referrer"]
+      newrelic.recordCustomEvent("ActorUrlRedirect", {
+        actorId: actorRecord.id,
+        ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
+        actorName: actorRecord.name,
+        slug: slug,
+        matchType: "tmdb_id",
+        ...(userAgent && { userAgent }),
+        ...(referer && { referer: Array.isArray(referer) ? referer[0] : referer }),
+      })
+
       const canonicalSlug = createActorSlug(actorRecord.name, actorRecord.id)
       return res.redirect(301, `/actor/${canonicalSlug}`)
     }

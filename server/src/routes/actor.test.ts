@@ -159,6 +159,7 @@ describe("getActor", () => {
 
     mockReq = {
       params: { slug: "living-actor-12345" },
+      headers: {},
     }
 
     // Default mock for getActorByEitherIdWithSlug - returns actor matched by id
@@ -457,6 +458,120 @@ describe("getActor", () => {
       await getActor(mockReq as Request, mockRes as Response)
 
       expect(newrelic.recordCustomEvent).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("URL redirect handling (legacy tmdb_id URLs)", () => {
+    let redirectSpy: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      redirectSpy = vi.fn()
+      mockRes.redirect = redirectSpy as Response["redirect"]
+    })
+
+    it("redirects with 301 when matched by tmdb_id", async () => {
+      const actorWithTmdbId = {
+        ...mockActorRecord,
+        id: 4165,
+        tmdb_id: 190,
+        name: "Clint Eastwood",
+      }
+
+      // Simulate legacy URL using tmdb_id=190 in slug
+      mockReq.params = { slug: "clint-eastwood-190" }
+      vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+        actor: actorWithTmdbId,
+        matchedBy: "tmdb_id",
+      })
+
+      await getActor(mockReq as Request, mockRes as Response)
+
+      // Should redirect to canonical URL with actor.id
+      expect(redirectSpy).toHaveBeenCalledWith(301, "/actor/clint-eastwood-4165")
+
+      // Should NOT fetch TMDB data or set cache
+      expect(tmdb.getPersonDetails).not.toHaveBeenCalled()
+      expect(setCached).not.toHaveBeenCalled()
+      expect(jsonSpy).not.toHaveBeenCalled()
+    })
+
+    it("records ActorUrlRedirect custom event on redirect", async () => {
+      const actorWithTmdbId = {
+        ...mockActorRecord,
+        id: 100,
+        tmdb_id: 5000,
+        name: "John Wayne",
+      }
+
+      mockReq.params = { slug: "john-wayne-5000" }
+      mockReq.headers = {
+        "user-agent": "Mozilla/5.0 Test Browser",
+        referer: "https://example.com/previous-page",
+      }
+
+      vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+        actor: actorWithTmdbId,
+        matchedBy: "tmdb_id",
+      })
+
+      await getActor(mockReq as Request, mockRes as Response)
+
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith("ActorUrlRedirect", {
+        actorId: 100,
+        tmdbId: 5000,
+        actorName: "John Wayne",
+        slug: "john-wayne-5000",
+        matchType: "tmdb_id",
+        userAgent: "Mozilla/5.0 Test Browser",
+        referer: "https://example.com/previous-page",
+      })
+    })
+
+    it("does not redirect when matched by id (canonical URL)", async () => {
+      vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+        actor: mockActorRecord,
+        matchedBy: "id",
+      })
+      vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
+      vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+      vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce(mockTVFilmography)
+
+      await getActor(mockReq as Request, mockRes as Response)
+
+      // Should NOT redirect
+      expect(redirectSpy).not.toHaveBeenCalled()
+
+      // Should proceed normally
+      expect(tmdb.getPersonDetails).toHaveBeenCalled()
+      expect(jsonSpy).toHaveBeenCalled()
+    })
+
+    it("handles redirect with null tmdb_id gracefully", async () => {
+      const actorWithoutTmdbId = {
+        ...mockActorRecord,
+        id: 100,
+        tmdb_id: null,
+        name: "IMDb Only Actor",
+      }
+
+      mockReq.params = { slug: "imdb-only-actor-999" }
+      vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+        actor: actorWithoutTmdbId,
+        matchedBy: "tmdb_id",
+      })
+
+      await getActor(mockReq as Request, mockRes as Response)
+
+      // Should still redirect
+      expect(redirectSpy).toHaveBeenCalledWith(301, "/actor/imdb-only-actor-100")
+
+      // NewRelic event should omit tmdbId field (conditional spreading)
+      expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
+        "ActorUrlRedirect",
+        expect.not.objectContaining({
+          tmdbId: expect.anything(),
+        })
+      )
     })
   })
 })

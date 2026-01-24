@@ -499,9 +499,14 @@ export async function getActorByEitherIdWithSlug(
  * Allows for minor differences due to special character handling.
  */
 function slugMatches(urlSlug: string, expectedSlug: string): boolean {
-  // Extract name portion (everything before last hyphen)
-  const urlName = urlSlug.substring(0, urlSlug.lastIndexOf("-"))
-  const expectedName = expectedSlug.substring(0, expectedSlug.lastIndexOf("-"))
+  // Extract name portion (everything before last hyphen). If there is no hyphen,
+  // treat the entire slug as the name portion to avoid empty-string matches.
+  const urlHyphenIndex = urlSlug.lastIndexOf("-")
+  const expectedHyphenIndex = expectedSlug.lastIndexOf("-")
+
+  const urlName = urlHyphenIndex === -1 ? urlSlug : urlSlug.substring(0, urlHyphenIndex)
+  const expectedName =
+    expectedHyphenIndex === -1 ? expectedSlug : expectedSlug.substring(0, expectedHyphenIndex)
 
   // Normalize and compare (case-insensitive, handle apostrophes, etc.)
   return urlName.toLowerCase() === expectedName.toLowerCase()
