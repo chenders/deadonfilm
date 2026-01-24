@@ -93,6 +93,7 @@ export async function getActor(req: Request, res: Response) {
         actorName: actorRecord.name,
         slug: slug,
         matchType: "tmdb_id",
+        endpoint: "profile",
         ...(userAgent && { userAgent }),
         ...(referer && { referer: Array.isArray(referer) ? referer[0] : referer }),
       })
