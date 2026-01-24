@@ -97,6 +97,10 @@ services:
       # DATABASE_URL is set here to use the db container; this overrides any value from .env file
       - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
       - REDIS_URL=redis://redis:6379
+      # New Relic APM configuration
+      - NEW_RELIC_NO_CONFIG_FILE=true
+      - NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true
+      - NEW_RELIC_LOG=stdout
     depends_on:
       db:
         condition: service_healthy
@@ -190,6 +194,10 @@ services:
       - REDIS_URL=redis://redis:6379
       # PATH needed so supercronic can find itself when forking for process reaping
       - PATH=/usr/local/bin:/usr/bin:/bin
+      # New Relic APM configuration
+      - NEW_RELIC_NO_CONFIG_FILE=true
+      - NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true
+      - NEW_RELIC_LOG=stdout
     healthcheck:
       # Use pidof instead of pgrep -x since busybox pgrep may not support -x flag
       test: ["CMD-SHELL", "pidof supercronic > /dev/null"]
