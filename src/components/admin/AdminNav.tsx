@@ -108,6 +108,44 @@ export default function AdminNav() {
         >
           External Tools
         </Link>
+
+        {/* Operations Section */}
+        <div className="mb-2 mt-6 px-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          Operations
+        </div>
+
+        <Link
+          to="/admin/actor-diagnostic"
+          className={`block rounded-md px-4 py-2 text-sm font-medium ${
+            location.pathname.startsWith("/admin/actor-diagnostic")
+              ? "bg-gray-900 text-white"
+              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+          }`}
+        >
+          Actor Diagnostic
+        </Link>
+
+        <Link
+          to="/admin/cache"
+          className={`block rounded-md px-4 py-2 text-sm font-medium ${
+            location.pathname.startsWith("/admin/cache")
+              ? "bg-gray-900 text-white"
+              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+          }`}
+        >
+          Cache Management
+        </Link>
+
+        <Link
+          to="/admin/sitemap"
+          className={`block rounded-md px-4 py-2 text-sm font-medium ${
+            location.pathname.startsWith("/admin/sitemap")
+              ? "bg-gray-900 text-white"
+              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+          }`}
+        >
+          Sitemap Management
+        </Link>
       </div>
 
       <div className="mt-auto pt-8">

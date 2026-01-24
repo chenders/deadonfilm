@@ -46,7 +46,7 @@ describe("slug-utils", () => {
     })
 
     it("handles non-ASCII characters", () => {
-      expect(createMovieSlug("Amélie", 2001, 194)).toBe("am-lie-2001-194")
+      expect(createMovieSlug("Amélie", 2001, 194)).toBe("amelie-2001-194")
     })
   })
 
@@ -56,11 +56,11 @@ describe("slug-utils", () => {
     })
 
     it("handles apostrophes in names", () => {
-      expect(createActorSlug("Sinéad O'Connor", 12345)).toBe("sin-ad-oconnor-12345")
+      expect(createActorSlug("Sinéad O'Connor", 12345)).toBe("sinead-oconnor-12345")
     })
 
     it("handles curly apostrophes (U+2019)", () => {
-      expect(createActorSlug("Sinéad O\u2019Connor", 12345)).toBe("sin-ad-oconnor-12345")
+      expect(createActorSlug("Sinéad O\u2019Connor", 12345)).toBe("sinead-oconnor-12345")
     })
 
     it("handles special characters in names", () => {

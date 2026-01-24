@@ -51,6 +51,11 @@ const AdminEnrichmentRunDetailsPage = lazyWithRetry(
 )
 const AdminStartEnrichmentPage = lazyWithRetry(() => import("./pages/admin/StartEnrichmentPage"))
 const AdminEnrichmentReviewPage = lazyWithRetry(() => import("./pages/admin/EnrichmentReviewPage"))
+const AdminActorDiagnosticPage = lazyWithRetry(() => import("./pages/admin/ActorDiagnosticPage"))
+const AdminCacheManagementPage = lazyWithRetry(() => import("./pages/admin/CacheManagementPage"))
+const AdminSitemapManagementPage = lazyWithRetry(
+  () => import("./pages/admin/SitemapManagementPage")
+)
 
 function App() {
   useGoogleAnalytics()
@@ -146,6 +151,30 @@ function App() {
           element={
             <Suspense fallback={<LoadingSpinner />}>
               <AdminExternalToolsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/actor-diagnostic"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminActorDiagnosticPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/cache"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminCacheManagementPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/sitemap"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminSitemapManagementPage />
             </Suspense>
           }
         />

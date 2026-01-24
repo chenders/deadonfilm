@@ -68,9 +68,12 @@ import { loginHandler, logoutHandler, statusHandler } from "./routes/admin/auth.
 import { getDashboardStats } from "./routes/admin/dashboard.js"
 import enrichmentRoutes from "./routes/admin/enrichment.js"
 import analyticsRoutes from "./routes/admin/analytics.js"
+import actorsRoutes from "./routes/admin/actors.js"
 import coverageRoutes from "./routes/admin/coverage.js"
 import pageViewsRoutes, { trackPageViewHandler } from "./routes/admin/page-views.js"
 import cronjobsRoutes from "./routes/admin/cronjobs.js"
+import sitemapRoutes from "./routes/admin/sitemap.js"
+import cacheRoutes from "./routes/admin/cache.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -280,9 +283,12 @@ app.get("/admin/api/auth/status", adminRoutesLimiter, optionalAdminAuth, statusH
 app.get("/admin/api/dashboard/stats", adminRoutesLimiter, adminAuthMiddleware, getDashboardStats)
 app.use("/admin/api/enrichment", adminRoutesLimiter, adminAuthMiddleware, enrichmentRoutes)
 app.use("/admin/api/analytics", adminRoutesLimiter, adminAuthMiddleware, analyticsRoutes)
+app.use("/admin/api/actors", adminRoutesLimiter, adminAuthMiddleware, actorsRoutes)
 app.use("/admin/api/coverage", adminRoutesLimiter, adminAuthMiddleware, coverageRoutes)
 app.use("/admin/api/page-views", adminRoutesLimiter, adminAuthMiddleware, pageViewsRoutes)
 app.use("/admin/api/cronjobs", adminRoutesLimiter, adminAuthMiddleware, cronjobsRoutes)
+app.use("/admin/api/sitemap", adminRoutesLimiter, adminAuthMiddleware, sitemapRoutes)
+app.use("/admin/api/cache", adminRoutesLimiter, adminAuthMiddleware, cacheRoutes)
 
 // Public page view tracking endpoint (rate limited, bot-filtered)
 app.post("/api/page-views/track", pageViewTrackingLimiter, trackPageViewHandler)
