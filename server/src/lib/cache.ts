@@ -65,9 +65,9 @@ export function buildCacheKey(prefix: string, params?: Record<string, unknown>):
  * When invalidating, ALL keys for that entity should be cleared.
  */
 export const CACHE_KEYS = {
-  actor: (tmdbId: number) => ({
-    profile: buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId }),
-    death: buildCacheKey(CACHE_PREFIX.ACTOR, { id: tmdbId, type: "death" }),
+  actor: (actorId: number) => ({
+    profile: buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId }),
+    death: buildCacheKey(CACHE_PREFIX.ACTOR, { id: actorId, type: "death" }),
   }),
   movie: (tmdbId: number) => ({
     details: buildCacheKey(CACHE_PREFIX.MOVIE, { id: tmdbId }),
@@ -80,8 +80,8 @@ export const CACHE_KEYS = {
 /**
  * Get all cache keys for an actor. Use this to see exactly what keys exist.
  */
-export function getActorCacheKeys(tmdbId: number): string[] {
-  const keys = CACHE_KEYS.actor(tmdbId)
+export function getActorCacheKeys(actorId: number): string[] {
+  const keys = CACHE_KEYS.actor(actorId)
   return Object.values(keys)
 }
 
@@ -180,12 +180,12 @@ export async function flushCache(): Promise<void> {
 }
 
 /**
- * Invalidate cache for a specific actor by TMDB ID.
+ * Invalidate cache for a specific actor by internal actor ID.
  * Call this after updating an actor's death information.
  * Invalidates both the actor profile cache and death details cache.
  */
-export async function invalidateActorCache(tmdbId: number): Promise<void> {
-  const keys = getActorCacheKeys(tmdbId)
+export async function invalidateActorCache(actorId: number): Promise<void> {
+  const keys = getActorCacheKeys(actorId)
   await invalidateKeys(...keys)
 }
 
@@ -193,14 +193,14 @@ export async function invalidateActorCache(tmdbId: number): Promise<void> {
  * Invalidate actor cache, throwing if Redis is unavailable.
  * Use this in scripts where cache invalidation is required.
  */
-export async function invalidateActorCacheRequired(tmdbId: number): Promise<void> {
+export async function invalidateActorCacheRequired(actorId: number): Promise<void> {
   const client = getRedisClient()
   if (!client) {
     throw new Error("Redis client not available - cannot invalidate cache")
   }
-  const keys = getActorCacheKeys(tmdbId)
+  const keys = getActorCacheKeys(actorId)
   await instrumentedDel(...keys)
-  logger.info({ keys, tmdbId }, "Actor cache invalidated")
+  logger.info({ keys, actorId }, "Actor cache invalidated")
 }
 
 /**

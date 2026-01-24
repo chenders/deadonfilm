@@ -298,11 +298,13 @@ describe("generateActorsSitemap", () => {
 
   const mockActors = [
     {
+      id: 1,
       tmdb_id: 12345,
       name: "John Doe",
       updated_at: new Date("2024-01-15"),
     },
     {
+      id: 2,
       tmdb_id: 67890,
       name: "Jane Smith",
       updated_at: new Date("2024-01-10"),
@@ -322,8 +324,8 @@ describe("generateActorsSitemap", () => {
 
     expect(result.notFound).toBe(false)
     expect(result.xml).toContain("<urlset")
-    expect(result.xml).toContain("/actor/john-doe-12345")
-    expect(result.xml).toContain("/actor/jane-smith-67890")
+    expect(result.xml).toContain("/actor/john-doe-1")
+    expect(result.xml).toContain("/actor/jane-smith-2")
     expect(result.xml).toContain("<priority>0.5</priority>")
   })
 

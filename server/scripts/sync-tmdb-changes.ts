@@ -127,6 +127,7 @@ function drawProgressBar(current: number, total: number, width: number = 40): st
 }
 
 export interface DeceasedActor {
+  id: number
   tmdbId: number
   name: string
   deathday: string
@@ -839,16 +840,28 @@ async function syncPeopleChanges(
       // NEW DEATH DETECTED!
       log(`  [NEW DEATH] ${person.name} (${person.deathday})`, quiet, onLog)
       newlyDeceasedIds.push(tmdbId)
-      newlyDeceasedActors.push({
-        tmdbId: tmdbId,
-        name: person.name,
-        deathday: person.deathday,
-      })
 
       if (!dryRun) {
         try {
           await processNewDeath(person)
           newDeaths++
+
+          // Get internal actor ID for URL generation (to avoid redirects)
+          const pool = getPool()
+          const actorIdResult = await pool.query<{ id: number }>(
+            "SELECT id FROM actors WHERE tmdb_id = $1",
+            [tmdbId]
+          )
+          const actorId = actorIdResult.rows[0]?.id
+
+          if (actorId) {
+            newlyDeceasedActors.push({
+              id: actorId,
+              tmdbId: tmdbId,
+              name: person.name,
+              deathday: person.deathday,
+            })
+          }
 
           // Record New Relic event for new death detection
           newrelic.recordCustomEvent("NewDeathDetected", {
@@ -895,14 +908,24 @@ async function syncPeopleChanges(
       `Clearing individual actor profile caches for ${newlyDeceasedIds.length} newly deceased actors...`,
       quiet
     )
+
+    // Map tmdb_id to actor.id for cache invalidation
+    const pool = getPool()
+    const { rows: actorMappings } = await pool.query<{ id: number; tmdb_id: number }>(
+      `SELECT id, tmdb_id FROM actors WHERE tmdb_id = ANY($1)`,
+      [newlyDeceasedIds]
+    )
+
     await initRedis()
     let successCount = 0
-    for (const tmdbId of newlyDeceasedIds) {
+    for (const actor of actorMappings) {
       try {
-        await invalidateActorCacheRequired(tmdbId)
+        await invalidateActorCacheRequired(actor.id)
         successCount++
       } catch (error) {
-        console.error(`  ✗ Error invalidating cache for actor ${tmdbId}: ${error}`)
+        console.error(
+          `  ✗ Error invalidating cache for actor ${actor.id} (tmdb_id: ${actor.tmdb_id}): ${error}`
+        )
       }
     }
     await closeRedis()
@@ -911,7 +934,6 @@ async function syncPeopleChanges(
     // Recalculate mortality stats for movies
     log(`\n=== Updating Movie Mortality Statistics ===`, quiet, onLog)
     log(`Finding movies featuring ${newlyDeceasedIds.length} newly deceased actors...`, quiet)
-    const pool = getPool()
     const { rows: affectedMovies } = await pool.query<{ movie_tmdb_id: number }>(
       `SELECT DISTINCT ama.movie_tmdb_id
        FROM actor_movie_appearances ama
