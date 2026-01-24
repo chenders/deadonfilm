@@ -327,9 +327,7 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
           )
 
           // Invalidate cache for this actor
-          if (record.actor_tmdb_id) {
-            await invalidateActorCacheRequired(record.actor_tmdb_id)
-          }
+          await invalidateActorCacheRequired(record.actor_id)
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error"

@@ -225,7 +225,7 @@ export default function ActorDeathPage() {
 
   const { actor, circumstances, career, relatedCelebrities, sources } = data
   const profileUrl = getProfileUrl(actor.profilePath, "w185")
-  const actorSlug = createActorSlug(actor.name, actor.tmdbId)
+  const actorSlug = createActorSlug(actor.name, actor.id)
 
   // Format career status for display
   const formatCareerStatus = (status: string | null) => {

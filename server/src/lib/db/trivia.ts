@@ -47,15 +47,18 @@ const TRIVIA_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 // Combined query result types
 interface PersonsStatsRow {
   oldest_name: string | null
+  oldest_id: number | null
   oldest_tmdb_id: number | null
   oldest_age: number | null
   youngest_name: string | null
+  youngest_id: number | null
   youngest_tmdb_id: number | null
   youngest_age: number | null
   total_years_lost: string | null
   deadliest_decade: number | null
   decade_count: string | null
   most_lost_name: string | null
+  most_lost_id: number | null
   most_lost_tmdb_id: number | null
   most_lost_years: number | null
   most_lost_age: number | null
@@ -87,14 +90,14 @@ export async function getTrivia(): Promise<TriviaFact[]> {
   // Uses CTEs to compute each stat in a single pass
   const personsStatsResult = await db.query<PersonsStatsRow>(`
     WITH oldest AS (
-      SELECT name, tmdb_id, age_at_death
+      SELECT id, name, tmdb_id, age_at_death
       FROM actors
       WHERE age_at_death IS NOT NULL
       ORDER BY age_at_death DESC
       LIMIT 1
     ),
     youngest AS (
-      SELECT name, tmdb_id, age_at_death
+      SELECT id, name, tmdb_id, age_at_death
       FROM actors
       WHERE age_at_death IS NOT NULL AND age_at_death > 15
       ORDER BY age_at_death ASC
@@ -114,18 +117,18 @@ export async function getTrivia(): Promise<TriviaFact[]> {
       LIMIT 1
     ),
     most_years_lost AS (
-      SELECT name, tmdb_id, ROUND(years_lost) as years_lost, age_at_death
+      SELECT id, name, tmdb_id, ROUND(years_lost) as years_lost, age_at_death
       FROM actors
       WHERE years_lost > 0
       ORDER BY years_lost DESC
       LIMIT 1
     )
     SELECT
-      o.name as oldest_name, o.tmdb_id as oldest_tmdb_id, o.age_at_death as oldest_age,
-      y.name as youngest_name, y.tmdb_id as youngest_tmdb_id, y.age_at_death as youngest_age,
+      o.id as oldest_id, o.name as oldest_name, o.tmdb_id as oldest_tmdb_id, o.age_at_death as oldest_age,
+      y.id as youngest_id, y.name as youngest_name, y.tmdb_id as youngest_tmdb_id, y.age_at_death as youngest_age,
       yl.total as total_years_lost,
       dd.decade as deadliest_decade, dd.count as decade_count,
-      ml.name as most_lost_name, ml.tmdb_id as most_lost_tmdb_id,
+      ml.id as most_lost_id, ml.name as most_lost_name, ml.tmdb_id as most_lost_tmdb_id,
       ml.years_lost as most_lost_years, ml.age_at_death as most_lost_age
     FROM oldest o
     FULL OUTER JOIN youngest y ON true
@@ -137,21 +140,21 @@ export async function getTrivia(): Promise<TriviaFact[]> {
   // Process actors stats
   const ps = personsStatsResult.rows[0]
   if (ps) {
-    if (ps.oldest_name && ps.oldest_tmdb_id && ps.oldest_age) {
+    if (ps.oldest_name && ps.oldest_id && ps.oldest_age) {
       facts.push({
         type: "oldest",
         title: "Oldest at Death",
         value: `${ps.oldest_name} lived to ${ps.oldest_age} years old`,
-        link: `/actor/${createActorSlug(ps.oldest_name, ps.oldest_tmdb_id)}`,
+        link: `/actor/${createActorSlug(ps.oldest_name, ps.oldest_id)}`,
       })
     }
 
-    if (ps.youngest_name && ps.youngest_tmdb_id && ps.youngest_age) {
+    if (ps.youngest_name && ps.youngest_id && ps.youngest_age) {
       facts.push({
         type: "youngest",
         title: "Youngest at Death",
         value: `${ps.youngest_name} died at just ${ps.youngest_age} years old`,
-        link: `/actor/${createActorSlug(ps.youngest_name, ps.youngest_tmdb_id)}`,
+        link: `/actor/${createActorSlug(ps.youngest_name, ps.youngest_id)}`,
       })
     }
 
@@ -173,12 +176,12 @@ export async function getTrivia(): Promise<TriviaFact[]> {
       })
     }
 
-    if (ps.most_lost_name && ps.most_lost_tmdb_id && ps.most_lost_years && ps.most_lost_age) {
+    if (ps.most_lost_name && ps.most_lost_id && ps.most_lost_years && ps.most_lost_age) {
       facts.push({
         type: "most_years_lost",
         title: "Most Potential Lost",
         value: `${ps.most_lost_name} died at ${ps.most_lost_age}, losing ${ps.most_lost_years} expected years`,
-        link: `/actor/${createActorSlug(ps.most_lost_name, ps.most_lost_tmdb_id)}`,
+        link: `/actor/${createActorSlug(ps.most_lost_name, ps.most_lost_id)}`,
       })
     }
   }

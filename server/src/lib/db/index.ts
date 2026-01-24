@@ -48,6 +48,7 @@ export {
   updateDeathInfo,
   updateDeathInfoByActorId,
   getActorById,
+  getActorByEitherIdWithSlug,
   getDeceasedByMonthDay,
   getActorFilmography,
   getActorShowFilmography,
