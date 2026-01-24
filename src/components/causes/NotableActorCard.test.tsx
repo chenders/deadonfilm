@@ -59,8 +59,8 @@ describe("NotableActorCard", () => {
 
   it("links to actor profile page using tmdbId", () => {
     renderWithRouter(mockActor)
-    const link = screen.getByTestId("notable-actor-456")
-    expect(link).toHaveAttribute("href", "/actor/john-smith-456")
+    const link = screen.getByTestId("notable-actor-123")
+    expect(link).toHaveAttribute("href", "/actor/john-smith-123")
   })
 
   it("shows question mark when age is null", () => {
@@ -71,7 +71,7 @@ describe("NotableActorCard", () => {
 
   it("has correct test ID using tmdbId", () => {
     renderWithRouter(mockActor)
-    expect(screen.getByTestId("notable-actor-456")).toBeInTheDocument()
+    expect(screen.getByTestId("notable-actor-123")).toBeInTheDocument()
   })
 
   it("falls back to id when tmdbId is null", () => {

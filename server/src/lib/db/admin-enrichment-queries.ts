@@ -944,7 +944,7 @@ export async function commitEnrichmentRun(
     }
 
     const approvedStagingIds = approvedResult.rows.map((r) => r.id)
-    const actorTmdbIds: number[] = []
+    const actorIds: number[] = []
 
     // For each approved enrichment, copy to production
     for (const staging of approvedResult.rows) {
@@ -1031,10 +1031,8 @@ export async function commitEnrichmentRun(
         ])
       }
 
-      // Track TMDB IDs for cache invalidation
-      if (staging.actor_tmdb_id) {
-        actorTmdbIds.push(staging.actor_tmdb_id)
-      }
+      // Track actor IDs for cache invalidation
+      actorIds.push(staging.actor_id)
     }
 
     // Mark all approved staging records as committed
@@ -1072,8 +1070,8 @@ export async function commitEnrichmentRun(
     // After commit, invalidate caches for all updated actors
     // Import cache invalidation dynamically to avoid circular dependency
     const { invalidateActorCache } = await import("../cache.js")
-    for (const tmdbId of actorTmdbIds) {
-      await invalidateActorCache(tmdbId)
+    for (const actorId of actorIds) {
+      await invalidateActorCache(actorId)
     }
 
     return { committedCount: approvedResult.rows.length }

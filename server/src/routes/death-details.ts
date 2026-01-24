@@ -1,8 +1,9 @@
 import type { Request, Response } from "express"
 import {
-  getActor as getActorRecord,
-  getActorDeathCircumstancesByTmdbId,
+  getActorDeathCircumstancesByActorId,
+  getActorByEitherIdWithSlug,
   getNotableDeaths as getNotableDeathsFromDb,
+  getPool,
   hasDetailedDeathInfo,
   type ProjectInfo,
   type RelatedCelebrity,
@@ -25,7 +26,7 @@ import type { ResolvedUrl } from "../lib/death-sources/url-resolver.js"
 interface DeathDetailsResponse {
   actor: {
     id: number
-    tmdbId: number
+    tmdbId: number | null
     name: string
     birthday: string | null
     deathday: string
@@ -194,25 +195,69 @@ function buildSourcesResponse(
 }
 
 /**
- * GET /api/actor/:id/death
+ * Extract numeric actor ID from URL slug.
+ * Slug format: "actor-name-12345" -> 12345
+ */
+function extractActorId(slug: string): number | null {
+  const parts = slug.split("-")
+  const lastPart = parts[parts.length - 1]
+  const id = parseInt(lastPart, 10)
+  return isNaN(id) ? null : id
+}
+
+/**
+ * GET /api/actor/:slug/death
  * Get detailed death circumstances for an actor
  */
 export async function getActorDeathDetails(req: Request, res: Response) {
-  const actorId = parseInt(req.params.id, 10)
+  const slug = req.params.slug // Full slug like "john-wayne-4165"
+  const numericId = extractActorId(slug)
 
-  if (!actorId || isNaN(actorId)) {
+  if (!numericId || isNaN(numericId)) {
     return res.status(400).json({ error: { message: "Invalid actor ID" } })
   }
 
   try {
     const startTime = Date.now()
-    const cacheKey = CACHE_KEYS.actor(actorId).death
+
+    // Look up actor by EITHER id or tmdb_id, WITH SLUG VALIDATION
+    const actorLookup = await getActorByEitherIdWithSlug(numericId, slug)
+
+    if (!actorLookup) {
+      return res.status(404).json({ error: { message: "Actor not found" } })
+    }
+
+    const { actor: actorRecord, matchedBy } = actorLookup
+
+    // If matched by tmdb_id, redirect to canonical URL with actor.id
+    if (matchedBy === "tmdb_id") {
+      // Log redirect for monitoring (NewRelic custom event)
+      const userAgent = req.headers["user-agent"]
+      const referer = req.headers["referer"] || req.headers["referrer"]
+      newrelic.recordCustomEvent("ActorUrlRedirect", {
+        actorId: actorRecord.id,
+        ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
+        actorName: actorRecord.name,
+        slug: slug,
+        matchType: "tmdb_id",
+        endpoint: "death",
+        ...(userAgent && { userAgent }),
+        ...(referer && { referer: Array.isArray(referer) ? referer[0] : referer }),
+      })
+
+      const canonicalSlug = createActorSlug(actorRecord.name, actorRecord.id)
+      return res.redirect(301, `/actor/${canonicalSlug}/death`)
+    }
+
+    // Use actor.id for cache key
+    const cacheKey = CACHE_KEYS.actor(actorRecord.id).death
 
     // Check cache first
     const cached = await getCached<DeathDetailsResponse>(cacheKey)
     if (cached) {
       newrelic.recordCustomEvent("DeathDetailsView", {
-        tmdbId: actorId,
+        actorId: actorRecord.id,
+        ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
         name: cached.actor.name,
         hasCircumstances: !!cached.circumstances.official,
         hasRumored: !!cached.circumstances.rumored,
@@ -223,38 +268,93 @@ export async function getActorDeathDetails(req: Request, res: Response) {
     }
 
     // First check if actor has detailed death info
-    const hasDetailed = await hasDetailedDeathInfo(actorId)
+    const tmdbIdForFetch = actorRecord.tmdb_id ?? actorRecord.id
+    const hasDetailed = await hasDetailedDeathInfo(tmdbIdForFetch)
     if (!hasDetailed) {
       return res.status(404).json({
         error: { message: "No detailed death information available for this actor" },
       })
     }
 
-    // Fetch actor data and circumstances in parallel
-    const [actorRecord, person, circumstances] = await Promise.all([
-      getActorRecord(actorId),
-      getPersonDetails(actorId),
-      getActorDeathCircumstancesByTmdbId(actorId),
+    // Fetch person and circumstances in parallel (we already have actorRecord)
+    const [person, circumstances] = await Promise.all([
+      getPersonDetails(tmdbIdForFetch),
+      getActorDeathCircumstancesByActorId(actorRecord.id),
     ])
 
     if (!actorRecord || !actorRecord.deathday) {
       return res.status(404).json({ error: { message: "Actor not found or not deceased" } })
     }
 
-    // Generate slugs for related celebrities
-    const relatedCelebrities = (circumstances?.related_celebrities || []).map(
-      (celeb: RelatedCelebrity) => ({
+    // Look up internal IDs for related celebrities to generate slugs
+    // Batch lookup to avoid N+1 queries
+    const relatedCelebrityData = circumstances?.related_celebrities || []
+
+    const tmdbIds = relatedCelebrityData
+      .map((celeb) => celeb.tmdb_id)
+      .filter((id): id is number => id != null)
+    const names = relatedCelebrityData
+      .map((celeb) => celeb.name)
+      .filter((name): name is string => Boolean(name))
+
+    const pool = getPool()
+
+    const tmdbIdToActorId = new Map<number, number>()
+    if (tmdbIds.length > 0) {
+      const tmdbResult = await pool.query<{ tmdb_id: number | null; id: number }>(
+        "SELECT tmdb_id, id FROM actors WHERE tmdb_id = ANY($1)",
+        [tmdbIds]
+      )
+      for (const row of tmdbResult.rows) {
+        if (row.tmdb_id != null && !tmdbIdToActorId.has(row.tmdb_id)) {
+          tmdbIdToActorId.set(row.tmdb_id, row.id)
+        }
+      }
+    }
+
+    const nameToActorId = new Map<string, number>()
+    if (names.length > 0) {
+      const nameResult = await pool.query<{ name: string; id: number }>(
+        "SELECT name, id FROM actors WHERE name = ANY($1)",
+        [names]
+      )
+      for (const row of nameResult.rows) {
+        if (row.name && !nameToActorId.has(row.name)) {
+          nameToActorId.set(row.name, row.id)
+        }
+      }
+    }
+
+    const relatedCelebrities = relatedCelebrityData.map((celeb: RelatedCelebrity) => {
+      let actorId: number | null = null
+
+      // Preserve precedence: first try tmdb_id, then exact name match
+      if (celeb.tmdb_id != null) {
+        const byTmdb = tmdbIdToActorId.get(celeb.tmdb_id)
+        if (byTmdb != null) {
+          actorId = byTmdb
+        }
+      }
+
+      if (actorId == null) {
+        const byName = nameToActorId.get(celeb.name)
+        if (byName != null) {
+          actorId = byName
+        }
+      }
+
+      return {
         name: celeb.name,
         tmdbId: celeb.tmdb_id,
         relationship: celeb.relationship,
-        slug: celeb.tmdb_id ? createActorSlug(celeb.name, celeb.tmdb_id) : null,
-      })
-    )
+        slug: actorId ? createActorSlug(celeb.name, actorId) : null,
+      }
+    })
 
     const response: DeathDetailsResponse = {
       actor: {
         id: actorRecord.id,
-        tmdbId: actorRecord.tmdb_id!,
+        tmdbId: actorRecord.tmdb_id ?? null,
         name: actorRecord.name,
         birthday: actorRecord.birthday,
         deathday: actorRecord.deathday,
@@ -290,7 +390,8 @@ export async function getActorDeathDetails(req: Request, res: Response) {
     await setCached(cacheKey, response, CACHE_TTL.WEEK)
 
     newrelic.recordCustomEvent("DeathDetailsView", {
-      tmdbId: actorId,
+      actorId: actorRecord.id,
+      ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
       name: actorRecord.name,
       hasCircumstances: !!circumstances?.circumstances,
       hasRumored: !!circumstances?.rumored_circumstances,

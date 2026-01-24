@@ -329,11 +329,13 @@ describe("getActorsSitemap", () => {
 
   const mockActors = [
     {
+      id: 1,
       tmdb_id: 12345,
       name: "John Doe",
       updated_at: new Date("2024-01-15"),
     },
     {
+      id: 2,
       tmdb_id: 67890,
       name: "Jane Smith",
       updated_at: new Date("2024-01-10"),
@@ -370,8 +372,8 @@ describe("getActorsSitemap", () => {
 
     const xml = sendSpy.mock.calls[0][0] as string
     expect(xml).toContain("<urlset")
-    expect(xml).toContain("/actor/john-doe-12345")
-    expect(xml).toContain("/actor/jane-smith-67890")
+    expect(xml).toContain("/actor/john-doe-1")
+    expect(xml).toContain("/actor/jane-smith-2")
     expect(xml).toContain("<priority>0.5</priority>") // Actor priority is 0.5
   })
 
