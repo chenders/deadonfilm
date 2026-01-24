@@ -22,6 +22,11 @@ RUN npm run build
 # Build stage for backend
 FROM node:22-alpine AS backend-builder
 WORKDIR /app/server
+
+# Install build tools for native modules (node-gyp dependencies)
+# python3, make, g++ needed to compile @newrelic/native-metrics
+RUN apk add --no-cache python3 make g++
+
 COPY server/package*.json ./
 RUN npm ci
 COPY server/src/ ./src/
