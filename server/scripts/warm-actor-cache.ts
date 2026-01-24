@@ -31,17 +31,15 @@ const program = new Command()
   .option("-l, --limit <number>", "Number of actors to warm", parsePositiveInt, 1000)
   .option("-d, --deceased-only", "Only warm deceased actors", false)
   .option("-n, --dry-run", "Preview without caching", false)
-  .action(
-    async (options: { limit: number; deceasedOnly: boolean; dryRun: boolean }) => {
-      try {
-        await warmActorCache(options)
-        process.exit(0)
-      } catch (error) {
-        console.error("Fatal error:", error)
-        process.exit(1)
-      }
+  .action(async (options: { limit: number; deceasedOnly: boolean; dryRun: boolean }) => {
+    try {
+      await warmActorCache(options)
+      process.exit(0)
+    } catch (error) {
+      console.error("Fatal error:", error)
+      process.exit(1)
     }
-  )
+  })
 
 interface ActorRow {
   id: number
@@ -66,17 +64,11 @@ interface ActorRow {
   deathday_verification_source: string | null
 }
 
-async function warmActorCache(options: {
-  limit: number
-  deceasedOnly: boolean
-  dryRun: boolean
-}) {
+async function warmActorCache(options: { limit: number; deceasedOnly: boolean; dryRun: boolean }) {
   console.log("\n🔥 Actor Cache Warming")
   console.log("=".repeat(60))
   if (options.dryRun) console.log("DRY RUN MODE - no cache writes")
-  console.log(
-    `Warming: ${options.deceasedOnly ? "Deceased actors only" : "All actors"}`
-  )
+  console.log(`Warming: ${options.deceasedOnly ? "Deceased actors only" : "All actors"}`)
   console.log(`Limit: ${options.limit}`)
   console.log()
 
@@ -124,9 +116,7 @@ async function warmActorCache(options: {
         if (existing) {
           skipped++
           if (i % 100 === 0) {
-            console.log(
-              `  [${progress}%] Skipped ${actor.name} (already cached)`
-            )
+            console.log(`  [${progress}%] Skipped ${actor.name} (already cached)`)
           }
           continue
         }
@@ -170,9 +160,7 @@ async function warmActorCache(options: {
     console.log("CACHE WARMING SUMMARY")
     console.log("=".repeat(60))
     console.log(`Total actors: ${actors.length.toLocaleString()}`)
-    console.log(
-      `Cached: ${cached.toLocaleString()}${options.dryRun ? " (dry run)" : ""}`
-    )
+    console.log(`Cached: ${cached.toLocaleString()}${options.dryRun ? " (dry run)" : ""}`)
     console.log(`Already cached (skipped): ${skipped.toLocaleString()}`)
     if (errors > 0) {
       console.log(`Errors: ${errors}`)
