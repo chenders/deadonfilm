@@ -137,6 +137,18 @@ describe("Admin Coverage Queries", () => {
       expect(calls[0][1]).toContain(50) // LIMIT
       expect(calls[0][1]).toContain(50) // OFFSET (page 2 = skip 50)
     })
+
+    it("handles empty results correctly", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const result = await getActorsForCoverage(mockPool, {}, 1, 50)
+
+      expect(result.items).toEqual([])
+      expect(result.total).toBe(0)
+      expect(result.page).toBe(1)
+      expect(result.pageSize).toBe(50)
+      expect(result.totalPages).toBe(0)
+    })
   })
 
   describe("getCoverageTrends", () => {
