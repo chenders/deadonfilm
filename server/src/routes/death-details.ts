@@ -231,6 +231,20 @@ export async function getActorDeathDetails(req: Request, res: Response) {
 
     // If matched by tmdb_id, redirect to canonical URL with actor.id
     if (matchedBy === "tmdb_id") {
+      // Log redirect for monitoring (NewRelic custom event)
+      const userAgent = req.headers["user-agent"]
+      const referer = req.headers["referer"] || req.headers["referrer"]
+      newrelic.recordCustomEvent("ActorUrlRedirect", {
+        actorId: actorRecord.id,
+        ...(actorRecord.tmdb_id !== null && { tmdbId: actorRecord.tmdb_id }),
+        actorName: actorRecord.name,
+        slug: slug,
+        matchType: "tmdb_id",
+        endpoint: "death",
+        ...(userAgent && { userAgent }),
+        ...(referer && { referer: Array.isArray(referer) ? referer[0] : referer }),
+      })
+
       const canonicalSlug = createActorSlug(actorRecord.name, actorRecord.id)
       return res.redirect(301, `/actor/${canonicalSlug}/death`)
     }
@@ -273,37 +287,69 @@ export async function getActorDeathDetails(req: Request, res: Response) {
     }
 
     // Look up internal IDs for related celebrities to generate slugs
+    // Batch lookup to avoid N+1 queries
     const relatedCelebrityData = circumstances?.related_celebrities || []
-    const relatedCelebrities = await Promise.all(
-      relatedCelebrityData.map(async (celeb: RelatedCelebrity) => {
-        let actorId: number | null = null
 
-        // Try to find the actor in our database by tmdb_id or name
-        if (celeb.tmdb_id) {
-          const result = await getPool().query<{ id: number }>(
-            "SELECT id FROM actors WHERE tmdb_id = $1 LIMIT 1",
-            [celeb.tmdb_id]
-          )
-          actorId = result.rows[0]?.id || null
-        }
+    const tmdbIds = relatedCelebrityData
+      .map((celeb) => celeb.tmdb_id)
+      .filter((id): id is number => id != null)
+    const names = relatedCelebrityData
+      .map((celeb) => celeb.name)
+      .filter((name): name is string => Boolean(name))
 
-        // If not found by tmdb_id, try by name (exact match)
-        if (!actorId) {
-          const result = await getPool().query<{ id: number }>(
-            "SELECT id FROM actors WHERE name = $1 LIMIT 1",
-            [celeb.name]
-          )
-          actorId = result.rows[0]?.id || null
-        }
+    const pool = getPool()
 
-        return {
-          name: celeb.name,
-          tmdbId: celeb.tmdb_id,
-          relationship: celeb.relationship,
-          slug: actorId ? createActorSlug(celeb.name, actorId) : null,
+    const tmdbIdToActorId = new Map<number, number>()
+    if (tmdbIds.length > 0) {
+      const tmdbResult = await pool.query<{ tmdb_id: number | null; id: number }>(
+        "SELECT tmdb_id, id FROM actors WHERE tmdb_id = ANY($1)",
+        [tmdbIds]
+      )
+      for (const row of tmdbResult.rows) {
+        if (row.tmdb_id != null && !tmdbIdToActorId.has(row.tmdb_id)) {
+          tmdbIdToActorId.set(row.tmdb_id, row.id)
         }
-      })
-    )
+      }
+    }
+
+    const nameToActorId = new Map<string, number>()
+    if (names.length > 0) {
+      const nameResult = await pool.query<{ name: string; id: number }>(
+        "SELECT name, id FROM actors WHERE name = ANY($1)",
+        [names]
+      )
+      for (const row of nameResult.rows) {
+        if (row.name && !nameToActorId.has(row.name)) {
+          nameToActorId.set(row.name, row.id)
+        }
+      }
+    }
+
+    const relatedCelebrities = relatedCelebrityData.map((celeb: RelatedCelebrity) => {
+      let actorId: number | null = null
+
+      // Preserve precedence: first try tmdb_id, then exact name match
+      if (celeb.tmdb_id != null) {
+        const byTmdb = tmdbIdToActorId.get(celeb.tmdb_id)
+        if (byTmdb != null) {
+          actorId = byTmdb
+        }
+      }
+
+      if (actorId == null) {
+        const byName = nameToActorId.get(celeb.name)
+        if (byName != null) {
+          actorId = byName
+        }
+      }
+
+      return {
+        name: celeb.name,
+        tmdbId: celeb.tmdb_id,
+        relationship: celeb.relationship,
+        slug: actorId ? createActorSlug(celeb.name, actorId) : null,
+      }
+    })
 
     const response: DeathDetailsResponse = {
       actor: {

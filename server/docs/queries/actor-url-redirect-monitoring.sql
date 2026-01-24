@@ -1,6 +1,14 @@
 -- Actor URL Migration Redirect Monitoring Queries
 -- Migration Date: January 24, 2026
 -- Purpose: Track legacy tmdb_id → actor.id URL redirects
+--
+-- NOTE: These queries are for historical reference only. Actual redirect tracking
+-- is done via NewRelic custom events (ActorUrlRedirect), not page_visits.
+-- Browser follows 301 redirects automatically, so page_visits only sees final destination.
+--
+-- To query actual redirect data, use NewRelic NRQL:
+--   SELECT count(*) FROM ActorUrlRedirect WHERE matchType = 'tmdb_id' SINCE 7 days ago
+--   SELECT actorId, actorName, count(*) FROM ActorUrlRedirect FACET actorId, actorName SINCE 30 days ago LIMIT 20
 
 -- ============================================================================
 -- Quick Stats: Last 7 Days
@@ -83,8 +91,8 @@ WITH redirects AS (
 SELECT
   visited_path,
   redirect_count,
-  -- Extract actor ID from URL
-  CAST(split_part(visited_path, '-', -1) as INTEGER) as actor_id
+  -- Extract actor ID from URL (strip trailing slash first)
+  CAST(split_part(RTRIM(visited_path, '/'), '-', -1) as INTEGER) as actor_id
 FROM redirects
 ORDER BY redirect_count DESC;
 
