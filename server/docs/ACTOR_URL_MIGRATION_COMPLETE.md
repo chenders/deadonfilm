@@ -42,6 +42,10 @@
   # In production
   redis-cli FLUSHDB
   ```
+- [ ] **Warm cache for popular actors** (optional but recommended)
+  ```bash
+  cd server && npm run cache:warm
+  ```
 - [ ] Deploy frontend
 - [ ] Verify sitemap regeneration (automatic via cron)
 
@@ -70,6 +74,31 @@
 4. **Check New Relic**:
    - Look for `ActorUrlRedirect` events to confirm redirect traffic is declining over time.
    - Also verify `ActorView` events with `actorId` field and ensure there are no unusual error rates.
+
+   **New Relic Query for Redirects**:
+   ```sql
+   -- Top actors being accessed via old URLs
+   SELECT actorName, count(*) as redirect_count
+   FROM ActorUrlRedirect
+   SINCE 7 days ago
+   GROUP BY actorName
+   ORDER BY redirect_count DESC
+   LIMIT 20
+
+   -- Redirect trend over time
+   SELECT count(*)
+   FROM ActorUrlRedirect
+   TIMESERIES AUTO
+   SINCE 30 days ago
+
+   -- Referer analysis (where are redirects coming from?)
+   SELECT referer, count(*) as redirect_count
+   FROM ActorUrlRedirect
+   WHERE referer IS NOT NULL
+   SINCE 7 days ago
+   GROUP BY referer
+   ORDER BY redirect_count DESC
+   ```
 
 ### Week 2-12
 
