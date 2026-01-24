@@ -45,7 +45,7 @@
     "react-dom": "^18.3.1",
     "react-helmet-async": "^2.0.5",
     "react-router-dom": "^6.28.0",
-    "recharts": "^2.14.1"
+    "recharts": "^3.7.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.0",

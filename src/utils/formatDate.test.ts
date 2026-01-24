@@ -5,6 +5,7 @@ import {
   calculateAge,
   calculateCurrentAge,
   getDecadeOptions,
+  formatLocalDate,
 } from "./formatDate"
 
 describe("formatDate", () => {
@@ -181,5 +182,36 @@ describe("getDecadeOptions", () => {
       { value: "2010", label: "2010s" },
       { value: "2000", label: "2000s" },
     ])
+  })
+})
+
+describe("formatLocalDate", () => {
+  it("formats a date to YYYY-MM-DD for input elements", () => {
+    const date = new Date("2024-01-15T10:30:00Z")
+    expect(formatLocalDate(date)).toBe("2024-01-15")
+  })
+
+  it("pads single-digit months and days with zeros", () => {
+    // Use local time, not UTC
+    const date = new Date(2024, 2, 5) // March 5, 2024 (month is 0-indexed)
+    expect(formatLocalDate(date)).toBe("2024-03-05")
+  })
+
+  it("handles dates at year boundaries", () => {
+    // Use local time, not UTC
+    const date = new Date(2023, 11, 31) // December 31, 2023
+    expect(formatLocalDate(date)).toBe("2023-12-31")
+  })
+
+  it("handles dates at start of year", () => {
+    // Use local time, not UTC
+    const date = new Date(2024, 0, 1) // January 1, 2024
+    expect(formatLocalDate(date)).toBe("2024-01-01")
+  })
+
+  it("uses local timezone, not UTC", () => {
+    // Create a date in local time (not UTC)
+    const date = new Date(2024, 0, 15) // January 15, 2024 in local time
+    expect(formatLocalDate(date)).toBe("2024-01-15")
   })
 })
