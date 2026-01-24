@@ -120,3 +120,14 @@ export function getDecadeOptions(minDecade: number = 1930): { value: string; lab
 
   return options
 }
+
+/**
+ * Formats a Date object to YYYY-MM-DD format for input[type="date"] elements
+ * Example: new Date('2024-01-15') → "2024-01-15"
+ */
+export function formatLocalDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
