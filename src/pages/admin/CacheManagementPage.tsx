@@ -53,13 +53,16 @@ export default function CacheManagementPage() {
     },
   })
 
+  const [validationError, setValidationError] = useState<string | null>(null)
+
   const handleWarmCache = (preview: boolean = false) => {
     const limit = parseInt(warmLimit, 10)
     if (isNaN(limit) || limit < 1) {
-      alert("Please enter a valid number of actors")
+      setValidationError("Please enter a valid number of actors")
       return
     }
 
+    setValidationError(null)
     warmMutation.mutate({
       limit,
       deceasedOnly,
@@ -222,6 +225,13 @@ export default function CacheManagementPage() {
                 Dry run (preview without caching)
               </label>
             </div>
+
+            {/* Validation error */}
+            {validationError && (
+              <div className="rounded-md border border-red-700 bg-red-900/20 p-3 text-red-400">
+                {validationError}
+              </div>
+            )}
 
             {/* Action buttons */}
             <div className="flex gap-3 pt-2">
