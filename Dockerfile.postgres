@@ -2,10 +2,6 @@
 # Using Debian-based image for better LLVM/build toolchain compatibility
 FROM postgres:16
 
-ENV NEW_RELIC_NO_CONFIG_FILE=true
-ENV NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true
-ENV NEW_RELIC_LOG=stdout
-
 # Install build dependencies and PostgreSQL development packages
 RUN apt-get update && apt-get install -y \
     git \

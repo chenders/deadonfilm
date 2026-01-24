@@ -1,6 +1,4 @@
 FROM newrelic/infrastructure:1.71.3
-ENV NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true
-ENV NEW_RELIC_LOG=stdout
 
 # Install curl (if not already present)
 RUN apk add --no-cache curl
