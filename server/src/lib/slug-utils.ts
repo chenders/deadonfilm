@@ -5,7 +5,16 @@
  * Uses the slugify library for proper transliteration and edge case handling.
  */
 
-import slugify from "slugify"
+import slugify from "@sindresorhus/slugify"
+
+/**
+ * Removes diacritics from a string (é → e, ñ → n, etc.)
+ */
+function removeDiacritics(str: string): string {
+  return str
+    .normalize("NFD") // Decompose characters (é → e + combining acute)
+    .replace(/[\u0300-\u036f]/g, "") // Remove combining diacritical marks
+}
 
 /**
  * Creates a URL-safe slug from a movie title, year, and ID
@@ -14,11 +23,13 @@ import slugify from "slugify"
  */
 export function createMovieSlug(title: string, releaseYear: number | null, tmdbId: number): string {
   const year = releaseYear?.toString() || "unknown"
-  const slug = slugify(title, {
-    lower: true,
-    strict: true, // Strip special characters
-    remove: /[*+~.()'"!:@]/g, // Remove specific characters completely
-  })
+  // Remove diacritics first to avoid Germanic transliteration (ö→oe, ü→ue)
+  const normalized = removeDiacritics(title)
+  // Remove apostrophes (O'Connor → OConnor)
+  const withoutApostrophes = normalized.replace(/['\u02BC\u2019]/g, "")
+  // Lowercase to prevent slugify from splitting camelCase
+  const lowercased = withoutApostrophes.toLowerCase()
+  const slug = slugify(lowercased)
 
   return `${slug}-${year}-${tmdbId}`
 }
@@ -30,11 +41,13 @@ export function createMovieSlug(title: string, releaseYear: number | null, tmdbI
  * Example: "François Truffaut", 456 → "francois-truffaut-456"
  */
 export function createActorSlug(name: string, id: number): string {
-  const slug = slugify(name, {
-    lower: true,
-    strict: true, // Strip special characters
-    remove: /[*+~.()'"!:@]/g, // Remove specific characters completely
-  })
+  // Remove diacritics first to avoid Germanic transliteration (ö→oe, ü→ue)
+  const normalized = removeDiacritics(name)
+  // Remove apostrophes (O'Connor → OConnor)
+  const withoutApostrophes = normalized.replace(/['\u02BC\u2019]/g, "")
+  // Lowercase to prevent slugify from splitting camelCase (OConnor → oconnor, not o-connor)
+  const lowercased = withoutApostrophes.toLowerCase()
+  const slug = slugify(lowercased)
 
   return `${slug}-${id}`
 }
@@ -46,11 +59,13 @@ export function createActorSlug(name: string, id: number): string {
  */
 export function createShowSlug(name: string, firstAirYear: number | null, tmdbId: number): string {
   const year = firstAirYear?.toString() || "unknown"
-  const slug = slugify(name, {
-    lower: true,
-    strict: true, // Strip special characters
-    remove: /[*+~.()'"!:@]/g, // Remove specific characters completely
-  })
+  // Remove diacritics first to avoid Germanic transliteration (ö→oe, ü→ue)
+  const normalized = removeDiacritics(name)
+  // Remove apostrophes (O'Connor → OConnor)
+  const withoutApostrophes = normalized.replace(/['\u02BC\u2019]/g, "")
+  // Lowercase to prevent slugify from splitting camelCase
+  const lowercased = withoutApostrophes.toLowerCase()
+  const slug = slugify(lowercased)
 
   return `${slug}-${year}-${tmdbId}`
 }

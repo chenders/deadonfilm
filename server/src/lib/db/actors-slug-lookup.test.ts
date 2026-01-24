@@ -82,7 +82,7 @@ describe("getActorByEitherIdWithSlug", () => {
       const actor = createMockActor(100, null, "Sinéad O'Connor")
       mockQuery.mockResolvedValue({ rows: [actor] })
 
-      // slugify properly transliterates é → e and removes apostrophe
+      // createActorSlug normalizes é → e and removes apostrophe
       // So "Sinéad O'Connor" becomes "sinead-oconnor-100"
       const result = await getActorByEitherIdWithSlug(100, "sinead-oconnor-100")
 
