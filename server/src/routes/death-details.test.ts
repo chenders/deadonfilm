@@ -126,12 +126,14 @@ describe("getActorDeathDetails", () => {
     jsonSpy = vi.fn()
     setSpy = vi.fn()
     statusSpy = vi.fn()
+    const redirectSpy = vi.fn()
 
     // Set up mock response object
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
       set: setSpy as Response["set"],
+      redirect: redirectSpy as Response["redirect"],
     }
 
     // Configure spies to return mockRes for chaining
@@ -201,8 +203,11 @@ describe("getActorDeathDetails", () => {
       mockCircumstances as any
     )
 
-    // Mock database query for related celebrity lookup (tmdb_id: 54321 -> id: 54321)
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
+    // Mock database queries for related celebrity lookup
+    // First query: SELECT tmdb_id, id FROM actors WHERE tmdb_id = ANY($1)
+    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
+    // Second query: SELECT name, id FROM actors WHERE name = ANY($1)
+    mockQuery.mockResolvedValueOnce({ rows: [] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -267,8 +272,9 @@ describe("getActorDeathDetails", () => {
       mockCircumstances as any
     )
 
-    // Mock database query for related celebrity lookup
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
+    // Mock database queries for related celebrity lookup
+    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
+    mockQuery.mockResolvedValueOnce({ rows: [] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -339,8 +345,9 @@ describe("getActorDeathDetails", () => {
       mockCircumstances as any
     )
 
-    // Mock database query for related celebrity lookup
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
+    // Mock database queries for related celebrity lookup
+    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
+    mockQuery.mockResolvedValueOnce({ rows: [] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -413,8 +420,9 @@ describe("getActorDeathDetails", () => {
       circumstancesWithResolvedSources as any
     )
 
-    // Mock database query for related celebrity lookup
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
+    // Mock database queries for related celebrity lookup
+    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
+    mockQuery.mockResolvedValueOnce({ rows: [] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -462,8 +470,9 @@ describe("getActorDeathDetails", () => {
       circumstancesWithParsedSources as any
     )
 
-    // Mock database query for related celebrity lookup
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 54321 }] })
+    // Mock database queries for related celebrity lookup
+    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
+    mockQuery.mockResolvedValueOnce({ rows: [] })
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -673,5 +682,151 @@ describe("getNotableDeaths", () => {
     expect(jsonSpy).toHaveBeenCalledWith({
       error: { message: "Failed to fetch notable deaths" },
     })
+  })
+})
+
+describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", () => {
+  let mockReq: Partial<Request>
+  let mockRes: Partial<Response>
+  let jsonSpy: ReturnType<typeof vi.fn>
+  let statusSpy: ReturnType<typeof vi.fn>
+  let setSpy: ReturnType<typeof vi.fn>
+  let redirectSpy: ReturnType<typeof vi.fn>
+
+  const mockActorWithTmdbId = {
+    id: 4165,
+    tmdb_id: 190,
+    name: "Clint Eastwood",
+    birthday: "1940-01-15",
+    deathday: "2020-05-20",
+    cause_of_death: "Heart attack",
+    cause_of_death_source: "claude" as const,
+    cause_of_death_details: "Died of a heart attack.",
+    cause_of_death_details_source: "claude" as const,
+    wikipedia_url: null,
+    profile_path: "/profile.jpg",
+    popularity: 50.0,
+    age_at_death: 80,
+    expected_lifespan: 85,
+    years_lost: 5,
+    violent_death: false,
+    tvmaze_person_id: null,
+    thetvdb_person_id: null,
+    imdb_person_id: null,
+    is_obscure: false,
+    deathday_confidence: null,
+    deathday_verification_source: null,
+    deathday_verified_at: null,
+    has_detailed_death_info: true,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    jsonSpy = vi.fn()
+    setSpy = vi.fn()
+    statusSpy = vi.fn()
+    redirectSpy = vi.fn()
+
+    mockRes = {
+      json: jsonSpy as Response["json"],
+      status: statusSpy as Response["status"],
+      set: setSpy as Response["set"],
+      redirect: redirectSpy as Response["redirect"],
+    }
+
+    statusSpy.mockReturnValue(mockRes)
+    setSpy.mockReturnValue(mockRes)
+
+    mockReq = {
+      params: { slug: "clint-eastwood-190" },
+      headers: {},
+    }
+  })
+
+  it("redirects with 301 when matched by tmdb_id", async () => {
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      actor: mockActorWithTmdbId,
+      matchedBy: "tmdb_id",
+    })
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    expect(redirectSpy).toHaveBeenCalledWith(301, "/actor/clint-eastwood-4165/death")
+    expect(db.getActorDeathCircumstancesByActorId).not.toHaveBeenCalled()
+    expect(setCached).not.toHaveBeenCalled()
+    expect(jsonSpy).not.toHaveBeenCalled()
+  })
+
+  it("records ActorUrlRedirect custom event on redirect with endpoint=death", async () => {
+    mockReq.headers = {
+      "user-agent": "Mozilla/5.0",
+      referer: "https://example.com/search",
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      actor: mockActorWithTmdbId,
+      matchedBy: "tmdb_id",
+    })
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith("ActorUrlRedirect", {
+      actorId: 4165,
+      tmdbId: 190,
+      actorName: "Clint Eastwood",
+      slug: "clint-eastwood-190",
+      matchType: "tmdb_id",
+      endpoint: "death",
+      userAgent: "Mozilla/5.0",
+      referer: "https://example.com/search",
+    })
+  })
+
+  it("does not redirect when matched by id (canonical URL)", async () => {
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      actor: mockActorWithTmdbId,
+      matchedBy: "id",
+    })
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(null)
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    expect(redirectSpy).not.toHaveBeenCalled()
+    expect(db.getActorDeathCircumstancesByActorId).toHaveBeenCalledWith(4165)
+    expect(jsonSpy).toHaveBeenCalled()
+  })
+
+  it("handles redirect with null tmdb_id gracefully", async () => {
+    const actorWithoutTmdbId = { ...mockActorWithTmdbId, tmdb_id: null }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      actor: actorWithoutTmdbId,
+      matchedBy: "tmdb_id",
+    })
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    expect(redirectSpy).toHaveBeenCalledWith(301, "/actor/clint-eastwood-4165/death")
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
+      "ActorUrlRedirect",
+      expect.objectContaining({
+        actorId: 4165,
+        actorName: "Clint Eastwood",
+        matchType: "tmdb_id",
+        endpoint: "death",
+      })
+    )
+    // Should not have tmdbId in the event
+    expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
+      "ActorUrlRedirect",
+      expect.not.objectContaining({
+        tmdbId: expect.anything(),
+      })
+    )
   })
 })
