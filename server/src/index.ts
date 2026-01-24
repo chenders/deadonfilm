@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit"
 import cookieParser from "cookie-parser"
 import { logger } from "./lib/logger.js"
 import { initRedis, isRedisAvailable } from "./lib/redis.js"
+import { skipRateLimitForAdmin } from "./middleware/rate-limit-bypass.js"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
 import { getOnThisDay } from "./routes/on-this-day.js"
@@ -110,7 +111,7 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
-  skip: (req) => req.isAdmin === true,
+  skip: skipRateLimitForAdmin,
 })
 
 // Stricter rate limit for heavy endpoints (sitemap, etc): 10 requests per minute (skips admins)
@@ -120,7 +121,7 @@ const heavyEndpointLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
-  skip: (req) => req.isAdmin === true,
+  skip: skipRateLimitForAdmin,
 })
 
 // Admin login rate limit: 5 attempts per minute to prevent brute force
@@ -139,7 +140,7 @@ const adminRoutesLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many requests, please try again later" } },
-  skip: (req) => req.isAdmin === true,
+  skip: skipRateLimitForAdmin,
 })
 
 // Page view tracking rate limit: 20 requests per minute per IP (public endpoint)
