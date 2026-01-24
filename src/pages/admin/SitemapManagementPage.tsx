@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import AdminLayout from "../../components/admin/AdminLayout"
 import { adminApi } from "@/services/api"
@@ -17,8 +16,6 @@ interface SitemapStatus {
 }
 
 export default function SitemapManagementPage() {
-  const [submitting, setSubmitting] = useState(false)
-
   // Fetch sitemap status
   const {
     data: status,
@@ -50,7 +47,6 @@ export default function SitemapManagementPage() {
   // Submit to search engines mutation
   const submitMutation = useMutation({
     mutationFn: async () => {
-      setSubmitting(true)
       const response = await fetch(adminApi("/sitemap/submit"), {
         method: "POST",
       })
@@ -59,10 +55,6 @@ export default function SitemapManagementPage() {
     },
     onSuccess: () => {
       refetch()
-      setSubmitting(false)
-    },
-    onError: () => {
-      setSubmitting(false)
     },
   })
 
@@ -230,12 +222,10 @@ export default function SitemapManagementPage() {
               <div className="mt-6">
                 <button
                   onClick={() => submitMutation.mutate()}
-                  disabled={submitting || submitMutation.isPending}
+                  disabled={submitMutation.isPending}
                   className="rounded-md bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {submitting || submitMutation.isPending
-                    ? "Submitting..."
-                    : "Submit to Search Engines"}
+                  {submitMutation.isPending ? "Submitting..." : "Submit to Search Engines"}
                 </button>
                 <p className="mt-2 text-sm text-gray-400">
                   Notifies Google and Bing to re-crawl the sitemap
