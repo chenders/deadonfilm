@@ -218,12 +218,12 @@ export async function generateActorsSitemap(page: number): Promise<SitemapResult
   const db = getPool()
 
   const actorsResult = await db.query<{
-    tmdb_id: number
+    id: number
     name: string
     updated_at: Date
   }>(
     `
-    SELECT tmdb_id, name, updated_at
+    SELECT id, name, updated_at
     FROM actors
     WHERE deathday IS NOT NULL
     ORDER BY updated_at DESC
@@ -241,7 +241,7 @@ export async function generateActorsSitemap(page: number): Promise<SitemapResult
 `
 
   for (const actor of actorsResult.rows) {
-    const slug = createActorSlug(actor.name, actor.tmdb_id)
+    const slug = createActorSlug(actor.name, actor.id)
     const lastmod = actor.updated_at.toISOString().split("T")[0]
     xml += `  <url>
     <loc>${BASE_URL}/actor/${escapeXml(slug)}</loc>
@@ -322,12 +322,12 @@ export async function generateDeathDetailsSitemap(page: number): Promise<Sitemap
   const db = getPool()
 
   const actorsResult = await db.query<{
-    tmdb_id: number
+    id: number
     name: string
     updated_at: Date
   }>(
     `
-    SELECT tmdb_id, name, updated_at
+    SELECT id, name, updated_at
     FROM actors
     WHERE has_detailed_death_info = true AND deathday IS NOT NULL
     ORDER BY updated_at DESC
@@ -345,7 +345,7 @@ export async function generateDeathDetailsSitemap(page: number): Promise<Sitemap
 `
 
   for (const actor of actorsResult.rows) {
-    const slug = createActorSlug(actor.name, actor.tmdb_id)
+    const slug = createActorSlug(actor.name, actor.id)
     const lastmod = actor.updated_at.toISOString().split("T")[0]
     xml += `  <url>
     <loc>${BASE_URL}/actor/${escapeXml(slug)}/death</loc>

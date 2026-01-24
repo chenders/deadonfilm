@@ -26,7 +26,8 @@ export interface OnThisDayResponse {
 // Recent Deaths
 export interface RecentDeathsResponse {
   deaths: Array<{
-    tmdb_id: number
+    id: number
+    tmdb_id: number | null
     name: string
     deathday: string
     cause_of_death: string | null
@@ -178,7 +179,7 @@ export interface SourceEntry {
 export interface DeathDetailsResponse {
   actor: {
     id: number
-    tmdbId: number
+    tmdbId: number | null
     name: string
     birthday: string | null
     deathday: string

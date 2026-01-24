@@ -224,7 +224,7 @@ describe("ActorDeathPage", () => {
     })
 
     const backLink = screen.getByTestId("back-to-actor")
-    expect(backLink).toHaveAttribute("href", "/actor/famous-actor-12345")
+    expect(backLink).toHaveAttribute("href", "/actor/famous-actor-1")
     expect(backLink).toHaveTextContent("Back to Famous Actor")
   })
 

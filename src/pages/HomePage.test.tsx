@@ -31,6 +31,7 @@ const mockStats = {
 const mockDeaths = {
   deaths: [
     {
+      id: 1,
       tmdb_id: 1,
       name: "Actor One",
       deathday: "2024-12-01",

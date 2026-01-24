@@ -134,6 +134,7 @@ describe("getRecentDeathsHandler", () => {
 
   const mockDeaths = [
     {
+      id: 1,
       tmdb_id: 1,
       name: "Actor One",
       deathday: "2024-01-15",
@@ -142,6 +143,7 @@ describe("getRecentDeathsHandler", () => {
       profile_path: "/path1.jpg",
     },
     {
+      id: 2,
       tmdb_id: 2,
       name: "Actor Two",
       deathday: "2024-01-10",

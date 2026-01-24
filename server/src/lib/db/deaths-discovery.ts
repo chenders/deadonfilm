@@ -66,7 +66,8 @@ export async function getDeathsByDecade(
 // Get recently deceased actors for homepage display (ordered by death date)
 export async function getRecentDeaths(limit: number = 5): Promise<
   Array<{
-    tmdb_id: number
+    id: number
+    tmdb_id: number | null
     name: string
     deathday: string
     cause_of_death: string | null
@@ -90,7 +91,7 @@ export async function getRecentDeaths(limit: number = 5): Promise<
        HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
           OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
      )
-     SELECT a.tmdb_id, a.name, a.deathday, a.cause_of_death, a.cause_of_death_details, a.profile_path
+     SELECT a.id, a.tmdb_id, a.name, a.deathday, a.cause_of_death, a.cause_of_death_details, a.profile_path
      FROM actors a
      JOIN actor_appearances aa ON aa.id = a.id
      WHERE a.is_obscure = false

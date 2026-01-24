@@ -14,7 +14,7 @@ interface CauseActorRowProps {
 }
 
 export default function CauseActorRow({ actor, rank, showCauseBadge = true }: CauseActorRowProps) {
-  const actorId = actor.tmdbId ?? actor.id
+  const actorId = actor.id
   const slug = createActorSlug(actor.name, actorId)
   const profileUrl = getProfileUrl(actor.profilePath, "w185")
 
