@@ -3,6 +3,7 @@ import { useParams, useLocation } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useMovie } from "@/hooks/useMovie"
 import { useDeathInfoPolling } from "@/hooks/useDeathInfoPolling"
+import { usePageViewTracking } from "@/hooks/usePageViewTracking"
 import { extractMovieId } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
 import MovieHeader, { MoviePoster } from "@/components/movie/MovieHeader"
@@ -32,6 +33,9 @@ export default function MoviePage() {
     deceased: data?.deceased ?? [],
     enrichmentPending: data?.enrichmentPending,
   })
+
+  // Track page view for analytics
+  usePageViewTracking("movie", movieId || null, location.pathname)
 
   // Auto-select the non-zero group when one group is empty
   // Must be before conditional returns to follow Rules of Hooks

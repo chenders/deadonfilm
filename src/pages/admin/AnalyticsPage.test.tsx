@@ -56,6 +56,43 @@ describe("AnalyticsPage", () => {
       error: null,
     } as any)
 
+    vi.mocked(analyticsHooks.usePageVisitStats).mockReturnValue({
+      data: {
+        total_visits: 1000,
+        internal_referrals: 600,
+        external_referrals: 250,
+        direct_visits: 150,
+        unique_sessions: 400,
+        avg_pages_per_session: 2.5,
+      },
+      isLoading: false,
+      error: null,
+    } as any)
+
+    vi.mocked(analyticsHooks.useInternalReferralsOverTime).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    } as any)
+
+    vi.mocked(analyticsHooks.useNavigationPaths).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    } as any)
+
+    vi.mocked(analyticsHooks.usePopularPages).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    } as any)
+
+    vi.mocked(analyticsHooks.useHourlyPatterns).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    } as any)
+
     vi.mocked(adminAuthHook.useAdminAuth).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
@@ -82,9 +119,9 @@ describe("AnalyticsPage", () => {
   it("renders page header", () => {
     renderPage()
 
-    expect(screen.getByRole("heading", { name: /cost analytics/i })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /analytics dashboard/i })).toBeInTheDocument()
     expect(
-      screen.getByText(/track spending across death sources, ai operations, and enrichment runs/i)
+      screen.getByText(/track costs, page visits, and user navigation patterns/i)
     ).toBeInTheDocument()
   })
 
@@ -175,6 +212,10 @@ describe("AnalyticsPage", () => {
 
     renderPage()
 
-    expect(screen.getByText(/no data available for the selected time period/i)).toBeInTheDocument()
+    // Should show "no data available" for multiple sections (cost analytics + page visit analytics)
+    const emptyStateMessages = screen.getAllByText(
+      /no data available for the selected time period/i
+    )
+    expect(emptyStateMessages.length).toBeGreaterThan(0)
   })
 })

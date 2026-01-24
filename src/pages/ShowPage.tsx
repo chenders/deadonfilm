@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useParams, useLocation } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useShow } from "@/hooks/useShow"
+import { usePageViewTracking } from "@/hooks/usePageViewTracking"
 import { extractShowId } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
 import ShowHeader, { ShowPoster } from "@/components/show/ShowHeader"
@@ -21,6 +22,9 @@ export default function ShowPage() {
   const { data, isLoading, error } = useShow(showId)
   const [showLiving, setShowLiving] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
+
+  // Track page view for analytics
+  usePageViewTracking("show", showId || null, location.pathname)
 
   // Auto-select the non-zero group when one group is empty
   useEffect(() => {
