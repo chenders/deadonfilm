@@ -76,7 +76,7 @@ describe("Admin Coverage Queries", () => {
 
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("has_detailed_death_info = $1")
-      expect(calls[0][1]).toEqual([false, 50, 0])
+      expect(calls[0][1]).toEqual([false, 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
     })
 
     it("applies popularity range filters", async () => {
@@ -87,7 +87,7 @@ describe("Admin Coverage Queries", () => {
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("popularity >= $1")
       expect(calls[0][0]).toContain("popularity <= $2")
-      expect(calls[0][1]).toEqual([10, 50, 50, 0])
+      expect(calls[0][1]).toEqual([10, 50, 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
     })
 
     it("applies death date range filters", async () => {
@@ -103,7 +103,7 @@ describe("Admin Coverage Queries", () => {
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("deathday >= $1")
       expect(calls[0][0]).toContain("deathday <= $2")
-      expect(calls[0][1]).toEqual(["2020-01-01", "2020-12-31", 50, 0])
+      expect(calls[0][1]).toEqual(["2020-01-01", "2020-12-31", 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
     })
 
     it("applies name search filter", async () => {
@@ -113,7 +113,7 @@ describe("Admin Coverage Queries", () => {
 
       const calls = vi.mocked(mockPool.query).mock.calls
       expect(calls[0][0]).toContain("name ILIKE $1")
-      expect(calls[0][1]).toEqual(["%John%", 50, 0])
+      expect(calls[0][1]).toEqual(["%John%", 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
     })
 
     it("applies custom ordering", async () => {
@@ -122,7 +122,9 @@ describe("Admin Coverage Queries", () => {
       await getActorsForCoverage(mockPool, { orderBy: "death_date", orderDirection: "asc" }, 1, 50)
 
       const calls = vi.mocked(mockPool.query).mock.calls
-      expect(calls[0][0]).toContain("ORDER BY deathday asc")
+      expect(calls[0][0]).toContain("CASE WHEN")
+      expect(calls[0][0]).toContain("deathday")
+      expect(calls[0][1]).toEqual([1, 0, 50, 0]) // isAsc=1, isDesc=0, LIMIT, OFFSET
     })
 
     it("calculates correct pagination", async () => {
