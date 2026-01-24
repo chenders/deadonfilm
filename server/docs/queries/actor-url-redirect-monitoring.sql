@@ -25,7 +25,7 @@ WHERE visited_path ~ '/actor/[a-z0-9-]+-\d+/?$'
   AND referrer_path ~ '/actor/[a-z0-9-]+-\d+/?$'
   AND referrer_path != visited_path
   -- Exclude same actor (e.g., /actor/X vs /actor/X/death)
-  AND split_part(referrer_path, '-', -1) != split_part(visited_path, '-', -1)
+  AND split_part(RTRIM(referrer_path, '/'), '-', -1) != split_part(RTRIM(visited_path, '/'), '-', -1)
   AND visited_at >= NOW() - INTERVAL '7 days';
 
 
@@ -43,7 +43,7 @@ WHERE visited_path ~ '/actor/[a-z0-9-]+-\d+/?$'
   AND is_internal_referral = true
   AND referrer_path ~ '/actor/[a-z0-9-]+-\d+/?$'
   AND referrer_path != visited_path
-  AND split_part(referrer_path, '-', -1) != split_part(visited_path, '-', -1)
+  AND split_part(RTRIM(referrer_path, '/'), '-', -1) != split_part(RTRIM(visited_path, '/'), '-', -1)
   AND visited_at >= NOW() - INTERVAL '30 days'
 GROUP BY DATE(visited_at), TO_CHAR(visited_at, 'Dy')
 ORDER BY date DESC;
@@ -62,7 +62,7 @@ WHERE visited_path ~ '/actor/[a-z0-9-]+-\d+/?$'
   AND is_internal_referral = true
   AND referrer_path ~ '/actor/[a-z0-9-]+-\d+/?$'
   AND referrer_path != visited_path
-  AND split_part(referrer_path, '-', -1) != split_part(visited_path, '-', -1)
+  AND split_part(RTRIM(referrer_path, '/'), '-', -1) != split_part(RTRIM(visited_path, '/'), '-', -1)
   AND visited_at >= NOW() - INTERVAL '12 weeks'
 GROUP BY DATE_TRUNC('week', visited_at)
 ORDER BY week_start DESC;
@@ -82,7 +82,7 @@ WITH redirects AS (
     AND is_internal_referral = true
     AND referrer_path ~ '/actor/[a-z0-9-]+-\d+/?$'
     AND referrer_path != visited_path
-    AND split_part(referrer_path, '-', -1) != split_part(visited_path, '-', -1)
+    AND split_part(RTRIM(referrer_path, '/'), '-', -1) != split_part(RTRIM(visited_path, '/'), '-', -1)
     AND visited_at >= NOW() - INTERVAL '30 days'
   GROUP BY visited_path
   ORDER BY redirect_count DESC
@@ -91,7 +91,7 @@ WITH redirects AS (
 SELECT
   visited_path,
   redirect_count,
-  -- Extract actor ID from URL (strip trailing slash first)
+  -- Extract actor ID from URL (strip trailing slash first to handle optional slash in regex)
   CAST(split_part(RTRIM(visited_path, '/'), '-', -1) as INTEGER) as actor_id
 FROM redirects
 ORDER BY redirect_count DESC;
@@ -112,7 +112,7 @@ WITH daily_counts AS (
     AND is_internal_referral = true
     AND referrer_path ~ '/actor/[a-z0-9-]+-\d+/?$'
     AND referrer_path != visited_path
-    AND split_part(referrer_path, '-', -1) != split_part(visited_path, '-', -1)
+    AND split_part(RTRIM(referrer_path, '/'), '-', -1) != split_part(RTRIM(visited_path, '/'), '-', -1)
     AND visited_at >= NOW() - INTERVAL '14 days'
   GROUP BY DATE(visited_at)
 )
@@ -142,5 +142,5 @@ WHERE visited_path ~ '/actor/[a-z0-9-]+-\d+/?$'
   AND is_internal_referral = true
   AND referrer_path ~ '/actor/[a-z0-9-]+-\d+/?$'
   AND referrer_path != visited_path
-  AND split_part(referrer_path, '-', -1) != split_part(visited_path, '-', -1)
+  AND split_part(RTRIM(referrer_path, '/'), '-', -1) != split_part(RTRIM(visited_path, '/'), '-', -1)
   AND visited_at >= '2026-01-24'::date;

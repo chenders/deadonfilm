@@ -68,14 +68,12 @@
 ### Week 1
 
 3. **Monitor redirect volume**:
-   - Visit: `https://deadonfilm.com/admin/analytics`
-   - Check "Actor URL Migration" section
-   - OR run SQL: `server/docs/queries/actor-url-redirect-monitoring.sql`
+   - Use New Relic custom events: look for `ActorUrlRedirect` events (emitted by the actor route handlers) to track legacy → canonical redirects.
+   - Note: The admin analytics page and the SQL query in `server/docs/queries/actor-url-redirect-monitoring.sql` currently query `page_visits` and **do not reflect 301 redirect volume**; they are placeholders until New Relic data export is implemented.
 
 4. **Check New Relic**:
-   - Look for `ActorView` events with `actorId` field
-   - Check for `ActorUrlRedirect` events to track migration usage
-   - Verify no unusual error rates
+   - Look for `ActorUrlRedirect` events to confirm redirect traffic is declining over time.
+   - Also verify `ActorView` events with `actorId` field and ensure there are no unusual error rates.
 
    **New Relic Query for Redirects**:
    ```sql
