@@ -522,6 +522,7 @@ describe("getActor", () => {
         actorName: "John Wayne",
         slug: "john-wayne-5000",
         matchType: "tmdb_id",
+        endpoint: "profile",
         userAgent: "Mozilla/5.0 Test Browser",
         referer: "https://example.com/previous-page",
       })
