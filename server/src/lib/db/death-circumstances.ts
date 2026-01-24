@@ -125,7 +125,7 @@ export async function getNotableDeaths(
         strangeDeath: row.strange_death ?? false,
         notableFactors: row.notable_factors,
         circumstancesConfidence: row.circumstances_confidence,
-        slug: row.tmdb_id ? createActorSlug(row.name, row.tmdb_id) : "",
+        slug: createActorSlug(row.name, row.id),
       })
     ),
     pagination: {

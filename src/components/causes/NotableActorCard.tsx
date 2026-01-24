@@ -10,13 +10,13 @@ interface NotableActorCardProps {
 }
 
 export default function NotableActorCard({ actor }: NotableActorCardProps) {
-  const slug = createActorSlug(actor.name, actor.tmdbId ?? actor.id)
+  const slug = createActorSlug(actor.name, actor.id)
   const profileUrl = getProfileUrl(actor.profilePath, "w185")
 
   return (
     <Link
       to={`/actor/${slug}`}
-      data-testid={`notable-actor-${actor.tmdbId ?? actor.id}`}
+      data-testid={`notable-actor-${actor.id}`}
       className="flex flex-col items-center rounded-lg bg-white p-3 text-center transition-colors hover:bg-cream"
     >
       {profileUrl ? (

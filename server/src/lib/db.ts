@@ -40,6 +40,7 @@ export {
   updateDeathInfo,
   updateDeathInfoByActorId,
   getActorById,
+  getActorByEitherIdWithSlug,
   getDeceasedByMonthDay,
   getActorFilmography,
   getActorShowFilmography,
@@ -150,6 +151,7 @@ export type {
 // Re-export death-circumstances functions for backward compatibility
 export {
   getActorDeathCircumstances,
+  getActorDeathCircumstances as getActorDeathCircumstancesByActorId,
   getActorDeathCircumstancesByTmdbId,
   getNotableDeaths,
   hasDetailedDeathInfo,

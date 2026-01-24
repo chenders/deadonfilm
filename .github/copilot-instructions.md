@@ -56,9 +56,12 @@ git checkout -b feat/feature-name   # or fix/, chore/
 
 | Type | Pattern |
 |------|---------|
+| Actor | `/actor/{slug}-{actorId}` (uses internal `actor.id`) |
 | Movie | `/movie/{slug}-{year}-{tmdbId}` |
 | Show | `/show/{slug}-{firstAirYear}-{tmdbId}` |
 | Episode | `/episode/{showSlug}-s{season}e{episode}-{episodeSlug}-{showTmdbId}` |
+
+**Note**: Actor URLs use the internal `actor.id` (not `tmdb_id`) to avoid ID overlap issues. Legacy URLs with `tmdb_id` are automatically redirected via 301.
 
 ---
 

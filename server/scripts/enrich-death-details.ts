@@ -827,7 +827,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
     // Apply results to database
     let updated = 0
-    const updatedActors: Array<{ name: string; tmdbId: number }> = []
+    const updatedActors: Array<{ name: string; id: number }> = []
 
     for (const [actorId, enrichment] of results) {
       if (
@@ -978,9 +978,12 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         await writeToProduction(db, enrichmentData, circumstancesData)
 
         // Invalidate cache so updated death info is reflected immediately
-        if (actorRecord?.tmdbId) {
-          await invalidateActorCache(actorRecord.tmdbId)
-          updatedActors.push({ name: actorRecord.name, tmdbId: actorRecord.tmdbId })
+        await invalidateActorCache(actorId)
+        if (actorRecord) {
+          updatedActors.push({
+            name: actorRecord.name,
+            id: actorId,
+          })
         }
       }
 
@@ -1054,7 +1057,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       console.log(`Death Page Links:`)
       console.log(`${"─".repeat(SEPARATOR_WIDTH)}`)
       for (const actor of updatedActors) {
-        const slug = createActorSlug(actor.name, actor.tmdbId)
+        const slug = createActorSlug(actor.name, actor.id)
         console.log(`  ${actor.name}: ${SITE_URL}/actor/${slug}/death`)
       }
     }

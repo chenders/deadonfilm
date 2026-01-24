@@ -298,7 +298,7 @@ describe("cache operations with mocked Redis", () => {
 
       expect(mockInstrumentedDel).toHaveBeenCalledWith("actor:id:5576", "actor:id:5576:type:death")
       expect(logger.info).toHaveBeenCalledWith(
-        { keys: ["actor:id:5576", "actor:id:5576:type:death"], tmdbId: 5576 },
+        { keys: ["actor:id:5576", "actor:id:5576:type:death"], actorId: 5576 },
         "Actor cache invalidated"
       )
     })

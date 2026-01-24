@@ -13,6 +13,7 @@ import type {
   ActorFilmographyShow,
   DeathInfoSource,
 } from "./types.js"
+import { createActorSlug } from "../slug-utils.js"
 
 // ============================================================================
 // Actor CRUD functions
@@ -407,6 +408,103 @@ export async function getActorById(id: number): Promise<ActorRecord | null> {
   const db = getPool()
   const result = await db.query<ActorRecord>("SELECT * FROM actors WHERE id = $1", [id])
   return result.rows[0] || null
+}
+
+/**
+ * Look up actor by either internal id or tmdb_id with slug validation.
+ *
+ * CRITICAL: With 99,003 overlapping IDs (18% of database), slug validation is MANDATORY.
+ * Simply preferring id over tmdb_id would return the wrong actor 18% of the time.
+ *
+ * @param id - Numeric ID from URL (could be actor.id OR actor.tmdb_id)
+ * @param slugFromUrl - Full slug from URL (e.g., "john-wayne-4165")
+ * @returns Actor record and which field matched, or null if not found
+ */
+export async function getActorByEitherIdWithSlug(
+  id: number,
+  slugFromUrl: string
+): Promise<{ actor: ActorRecord; matchedBy: "id" | "tmdb_id" } | null> {
+  const db = getPool()
+
+  // Query for actors where EITHER id or tmdb_id matches
+  const result = await db.query<ActorRecord>(
+    `SELECT * FROM actors WHERE id = $1 OR tmdb_id = $1 LIMIT 2`,
+    [id]
+  )
+
+  if (result.rows.length === 0) {
+    return null
+  }
+
+  if (result.rows.length === 1) {
+    // Unambiguous match - only one actor has this ID
+    const actor = result.rows[0]
+    const matchedBy = actor.id === id ? "id" : "tmdb_id"
+
+    // Still validate slug to catch name changes or bad URLs
+    const expectedSlug = createActorSlug(actor.name, id)
+    if (!slugMatches(slugFromUrl, expectedSlug)) {
+      console.warn("[SLUG MISMATCH] Single match but slug invalid", {
+        id,
+        slugFromUrl,
+        expectedSlug,
+        actorName: actor.name,
+      })
+      return null // Treat as not found
+    }
+
+    return { actor, matchedBy }
+  }
+
+  // OVERLAP CASE: Two actors matched (99,003 cases like this exist!)
+  // One matched by actor.id, one by actor.tmdb_id
+  // MUST validate slug to determine which actor was intended
+
+  const actorByInternalId = result.rows.find((a) => a.id === id)
+  const actorByTmdbId = result.rows.find((a) => a.tmdb_id === id)
+
+  // Validate slug against both actors
+  const slugMatchesInternalId =
+    actorByInternalId && slugMatches(slugFromUrl, createActorSlug(actorByInternalId.name, id))
+
+  const slugMatchesTmdbId =
+    actorByTmdbId && slugMatches(slugFromUrl, createActorSlug(actorByTmdbId.name, id))
+
+  if (slugMatchesInternalId && !slugMatchesTmdbId) {
+    // Slug matches the actor.id actor
+    return { actor: actorByInternalId!, matchedBy: "id" }
+  }
+
+  if (slugMatchesTmdbId && !slugMatchesInternalId) {
+    // Slug matches the actor.tmdb_id actor (legacy URL)
+    return { actor: actorByTmdbId!, matchedBy: "tmdb_id" }
+  }
+
+  // AMBIGUOUS: Either both match or neither match
+  // Log for investigation and return null
+  console.error("[OVERLAP AMBIGUOUS] Cannot determine correct actor from slug", {
+    id,
+    slugFromUrl,
+    actorByIdName: actorByInternalId?.name,
+    actorByTmdbIdName: actorByTmdbId?.name,
+    slugMatchesInternalId,
+    slugMatchesTmdbId,
+  })
+
+  return null
+}
+
+/**
+ * Check if URL slug matches expected slug (fuzzy match on name portion).
+ * Allows for minor differences due to special character handling.
+ */
+function slugMatches(urlSlug: string, expectedSlug: string): boolean {
+  // Extract name portion (everything before last hyphen)
+  const urlName = urlSlug.substring(0, urlSlug.lastIndexOf("-"))
+  const expectedName = expectedSlug.substring(0, expectedSlug.lastIndexOf("-"))
+
+  // Normalize and compare (case-insensitive, handle apostrophes, etc.)
+  return urlName.toLowerCase() === expectedName.toLowerCase()
 }
 
 // Get deceased actors who died on a specific month/day (for "On This Day" feature)

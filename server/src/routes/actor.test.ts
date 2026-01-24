@@ -12,7 +12,7 @@ vi.mock("../lib/tmdb.js", () => ({
 vi.mock("../lib/db.js", () => ({
   getActorFilmography: vi.fn(),
   getActorShowFilmography: vi.fn(),
-  getActor: vi.fn(),
+  getActorByEitherIdWithSlug: vi.fn(),
   hasDetailedDeathInfo: vi.fn().mockResolvedValue(false),
 }))
 
@@ -96,6 +96,33 @@ describe("getActor", () => {
     },
   ]
 
+  const mockActorRecord = {
+    id: 1,
+    tmdb_id: 12345,
+    name: "Living Actor",
+    birthday: "1980-05-15",
+    deathday: null,
+    cause_of_death: null,
+    cause_of_death_source: null,
+    cause_of_death_details: null,
+    cause_of_death_details_source: null,
+    wikipedia_url: null,
+    profile_path: "/profile.jpg",
+    age_at_death: null,
+    expected_lifespan: null,
+    years_lost: null,
+    popularity: 5.5,
+    violent_death: false,
+    tvmaze_person_id: null,
+    thetvdb_person_id: null,
+    imdb_person_id: null,
+    is_obscure: false,
+    deathday_confidence: null,
+    deathday_verification_source: null,
+    deathday_verified_at: null,
+    has_detailed_death_info: false,
+  }
+
   const mockDeceasedRecord = {
     id: 1,
     tmdb_id: 67890,
@@ -120,6 +147,7 @@ describe("getActor", () => {
     deathday_confidence: null,
     deathday_verification_source: null,
     deathday_verified_at: null,
+    has_detailed_death_info: false,
   }
 
   beforeEach(() => {
@@ -130,8 +158,14 @@ describe("getActor", () => {
     setSpy = vi.fn().mockReturnThis()
 
     mockReq = {
-      params: { id: "12345" },
+      params: { slug: "living-actor-12345" },
     }
+
+    // Default mock for getActorByEitherIdWithSlug - returns actor matched by id
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValue({
+      actor: mockActorRecord,
+      matchedBy: "id",
+    })
     mockRes = {
       json: jsonSpy as Response["json"],
       status: statusSpy as Response["status"],
@@ -140,7 +174,7 @@ describe("getActor", () => {
   })
 
   it("returns 400 for invalid actor ID", async () => {
-    mockReq.params = { id: "invalid" }
+    mockReq.params = { slug: "invalid-slug" }
 
     await getActor(mockReq as Request, mockRes as Response)
 
@@ -151,7 +185,7 @@ describe("getActor", () => {
   })
 
   it("returns 400 for missing actor ID", async () => {
-    mockReq.params = {}
+    mockReq.params = { slug: "" }
 
     await getActor(mockReq as Request, mockRes as Response)
 
@@ -171,7 +205,6 @@ describe("getActor", () => {
     expect(tmdb.getPersonDetails).toHaveBeenCalledWith(12345)
     expect(db.getActorFilmography).toHaveBeenCalledWith(12345)
     expect(db.getActorShowFilmography).toHaveBeenCalledWith(12345)
-    expect(db.getActor).not.toHaveBeenCalled()
     expect(setSpy).toHaveBeenCalledWith("Cache-Control", "public, max-age=600")
     expect(jsonSpy).toHaveBeenCalledWith({
       actor: {
@@ -196,9 +229,9 @@ describe("getActor", () => {
 
     await getActor(mockReq as Request, mockRes as Response)
 
-    // Cache key should be constructed via CACHE_KEYS.actor().profile
+    // Cache key should be constructed via CACHE_KEYS.actor().profile using internal actor.id
     expect(setCached).toHaveBeenCalledWith(
-      "actor:id:12345",
+      "actor:id:1",
       expect.objectContaining({
         actor: expect.objectContaining({ id: 12345, name: "Living Actor" }),
         analyzedFilmography: mockFilmography,
@@ -232,7 +265,6 @@ describe("getActor", () => {
     expect(tmdb.getPersonDetails).not.toHaveBeenCalled()
     expect(db.getActorFilmography).not.toHaveBeenCalled()
     expect(db.getActorShowFilmography).not.toHaveBeenCalled()
-    expect(db.getActor).not.toHaveBeenCalled()
 
     // Should not call setCached (already cached)
     expect(setCached).not.toHaveBeenCalled()
@@ -253,18 +285,20 @@ describe("getActor", () => {
   })
 
   it("returns actor profile for deceased actor with death info from database", async () => {
-    mockReq.params = { id: "67890" }
+    mockReq.params = { slug: "deceased-actor-2" }
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      actor: mockDeceasedRecord,
+      matchedBy: "id",
+    })
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
     vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
-    vi.mocked(db.getActor).mockResolvedValueOnce(mockDeceasedRecord)
 
     await getActor(mockReq as Request, mockRes as Response)
 
     expect(tmdb.getPersonDetails).toHaveBeenCalledWith(67890)
     expect(db.getActorFilmography).toHaveBeenCalledWith(67890)
     expect(db.getActorShowFilmography).toHaveBeenCalledWith(67890)
-    expect(db.getActor).toHaveBeenCalledWith(67890)
     expect(jsonSpy).toHaveBeenCalledWith({
       actor: {
         id: 67890,
@@ -289,15 +323,16 @@ describe("getActor", () => {
   })
 
   it("calculates age at death when deceased record not in database", async () => {
-    mockReq.params = { id: "67890" }
+    mockReq.params = { slug: "deceased-actor-3" }
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      actor: { ...mockActorRecord, id: 3, tmdb_id: 67890 },
+      matchedBy: "id",
+    })
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce([])
     vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
-    vi.mocked(db.getActor).mockResolvedValueOnce(null)
 
     await getActor(mockReq as Request, mockRes as Response)
-
-    expect(db.getActor).toHaveBeenCalledWith(67890)
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         deathInfo: {
@@ -391,11 +426,14 @@ describe("getActor", () => {
     })
 
     it("records ActorView custom event for deceased actor with cause of death", async () => {
-      mockReq.params = { id: "67890" }
+      mockReq.params = { slug: "deceased-actor-5" }
+      vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+        actor: mockDeceasedRecord,
+        matchedBy: "id",
+      })
       vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
       vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
       vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
-      vi.mocked(db.getActor).mockResolvedValueOnce(mockDeceasedRecord)
 
       await getActor(mockReq as Request, mockRes as Response)
 

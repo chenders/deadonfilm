@@ -14,6 +14,7 @@ vi.mock("@/services/api", () => ({
 const mockDeaths = {
   deaths: [
     {
+      id: 1,
       tmdb_id: 1,
       name: "Actor One",
       deathday: "2024-12-01",
@@ -22,6 +23,7 @@ const mockDeaths = {
       profile_path: "/path1.jpg",
     },
     {
+      id: 2,
       tmdb_id: 2,
       name: "Actor Two",
       deathday: "2024-11-15",
@@ -30,6 +32,7 @@ const mockDeaths = {
       profile_path: null,
     },
     {
+      id: 3,
       tmdb_id: 3,
       name: "Actor Three",
       deathday: "2024-10-20",
