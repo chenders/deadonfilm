@@ -82,9 +82,9 @@ describe("getActorByEitherIdWithSlug", () => {
       const actor = createMockActor(100, null, "Sinéad O'Connor")
       mockQuery.mockResolvedValue({ rows: [actor] })
 
-      // createActorSlug removes apostrophe but doesn't normalize é → e
-      // So "Sinéad O'Connor" becomes "sin-ad-oconnor-100"
-      const result = await getActorByEitherIdWithSlug(100, "sin-ad-oconnor-100")
+      // slugify properly transliterates é → e and removes apostrophe
+      // So "Sinéad O'Connor" becomes "sinead-oconnor-100"
+      const result = await getActorByEitherIdWithSlug(100, "sinead-oconnor-100")
 
       expect(result).toEqual({ actor, matchedBy: "id" })
     })
