@@ -1,15 +1,5 @@
-import { Request } from "express"
 import rateLimit from "express-rate-limit"
-
-/**
- * Skip rate limiting for authenticated admin users
- * This function is used as the `skip` callback for express-rate-limit
- * @param req - Express request object
- * @returns True if rate limiting should be skipped (admin user)
- */
-export function skipRateLimitForAdmin(req: Request): boolean {
-  return req.isAdmin === true
-}
+import { skipRateLimitForAdmin } from "./rate-limit-utils.js"
 
 /**
  * Admin-friendly rate limiter

@@ -7,6 +7,7 @@ services:
     build:
       context: .
       dockerfile: newrelic-infra.dockerfile
+    init: true
     cap_add:
       - SYS_PTRACE
     pid: host
