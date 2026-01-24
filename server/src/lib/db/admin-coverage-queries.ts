@@ -172,18 +172,9 @@ export async function getActorsForCoverage(
 
   const orderByColumn = orderByMap[orderBy] || "popularity"
 
-  // Get total count
-  const countResult = await pool.query<{ count: string }>(
-    `SELECT COUNT(*) as count
-     FROM actors
-     WHERE ${whereClause}`,
-    params
-  )
-
-  const total = parseInt(countResult.rows[0].count, 10)
-
-  // Get paginated data
-  const dataResult = await pool.query<ActorCoverageInfo>(
+  // Use window function to get total count in same query (performance optimization)
+  // Eliminates separate COUNT query - significant speedup for large tables
+  const dataResult = await pool.query<ActorCoverageInfo & { total_count: string }>(
     `SELECT
        id,
        name,
@@ -193,7 +184,8 @@ export async function getActorsForCoverage(
        has_detailed_death_info,
        enriched_at,
        age_at_death,
-       cause_of_death
+       cause_of_death,
+       COUNT(*) OVER() as total_count
      FROM actors
      WHERE ${whereClause}
      ORDER BY ${orderByColumn} ${orderDirection}, id ASC
@@ -201,8 +193,13 @@ export async function getActorsForCoverage(
     [...params, pageSize, offset]
   )
 
+  const total = dataResult.rows.length > 0 ? parseInt(dataResult.rows[0].total_count, 10) : 0
+
+  // Remove total_count from items
+  const items = dataResult.rows.map(({ total_count: _total_count, ...item }) => item)
+
   return {
-    items: dataResult.rows,
+    items,
     total,
     page,
     pageSize,
