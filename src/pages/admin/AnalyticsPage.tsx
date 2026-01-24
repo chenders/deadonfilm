@@ -14,6 +14,7 @@ import InternalReferralsChart from "../../components/admin/analytics/InternalRef
 import TopNavigationPathsTable from "../../components/admin/analytics/TopNavigationPathsTable"
 import PopularPagesTable from "../../components/admin/analytics/PopularPagesTable"
 import HourlyPatternsChart from "../../components/admin/analytics/HourlyPatternsChart"
+import ActorUrlMigrationSection from "../../components/admin/analytics/ActorUrlMigrationSection"
 import StatCard from "../../components/admin/analytics/StatCard"
 import { usePageVisitStats } from "../../hooks/admin/useAnalytics"
 import { formatLocalDate } from "../../utils/formatDate"
@@ -104,6 +105,12 @@ export default function AnalyticsPage() {
 
           {/* Popular Pages */}
           <PopularPagesTable startDate={startDate} endDate={endDate} />
+        </div>
+
+        {/* Actor URL Migration Section */}
+        <div>
+          <h2 className="mb-4 text-2xl font-semibold text-white">Actor URL Migration</h2>
+          <ActorUrlMigrationSection startDate={startDate} endDate={endDate} />
         </div>
       </div>
     </AdminLayout>
