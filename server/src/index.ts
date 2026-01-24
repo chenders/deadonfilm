@@ -91,6 +91,7 @@ app.use(cookieParser()) // Parse cookies for admin authentication
 app.use(optionalAdminAuth)
 
 // Page visit tracking for analytics (async, non-blocking)
+// codeql[js/missing-rate-limiting] - Analytics tracking with async DB writes; non-blocking, path-filtered, not security-critical
 app.use(pageVisitTracker)
 
 // Rate limiting configuration constants
