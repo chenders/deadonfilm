@@ -14,6 +14,7 @@ import type {
   DeathInfoSource,
 } from "./types.js"
 import { createActorSlug } from "../slug-utils.js"
+import { logger } from "../logger.js"
 
 // ============================================================================
 // Actor CRUD functions
@@ -444,12 +445,15 @@ export async function getActorByEitherIdWithSlug(
     // Still validate slug to catch name changes or bad URLs
     const expectedSlug = createActorSlug(actor.name, id)
     if (!slugMatches(slugFromUrl, expectedSlug)) {
-      console.warn("[SLUG MISMATCH] Single match but slug invalid", {
-        id,
-        slugFromUrl,
-        expectedSlug,
-        actorName: actor.name,
-      })
+      logger.warn(
+        {
+          id,
+          slugFromUrl,
+          expectedSlug,
+          actorName: actor.name,
+        },
+        "[SLUG MISMATCH] Single match but slug invalid"
+      )
       return null // Treat as not found
     }
 
@@ -482,33 +486,66 @@ export async function getActorByEitherIdWithSlug(
 
   // AMBIGUOUS: Either both match or neither match
   // Log for investigation and return null
-  console.error("[OVERLAP AMBIGUOUS] Cannot determine correct actor from slug", {
-    id,
-    slugFromUrl,
-    actorByIdName: actorByInternalId?.name,
-    actorByTmdbIdName: actorByTmdbId?.name,
-    slugMatchesInternalId,
-    slugMatchesTmdbId,
-  })
+  logger.error(
+    {
+      id,
+      slugFromUrl,
+      actorByIdName: actorByInternalId?.name,
+      actorByTmdbIdName: actorByTmdbId?.name,
+      slugMatchesInternalId,
+      slugMatchesTmdbId,
+    },
+    "[OVERLAP AMBIGUOUS] Cannot determine correct actor from slug"
+  )
 
   return null
 }
 
 /**
- * Check if URL slug matches expected slug (fuzzy match on name portion).
- * Allows for minor differences due to special character handling.
+ * Check if URL slug matches expected slug.
+ *
+ * Slugs are expected to be in the format: {name-part}-{numeric-id}
+ * This function validates that:
+ *   - both slugs contain an ID portion after the last hyphen
+ *   - both IDs are numeric
+ *   - the IDs are equal
+ *   - and the name portions match case-insensitively
+ *
+ * The name comparison remains fuzzy (case-insensitive) to allow for
+ * minor differences due to special character handling.
  */
 function slugMatches(urlSlug: string, expectedSlug: string): boolean {
-  // Extract name portion (everything before last hyphen). If there is no hyphen,
-  // treat the entire slug as the name portion to avoid empty-string matches.
-  const urlHyphenIndex = urlSlug.lastIndexOf("-")
-  const expectedHyphenIndex = expectedSlug.lastIndexOf("-")
+  const urlLastHyphen = urlSlug.lastIndexOf("-")
+  const expectedLastHyphen = expectedSlug.lastIndexOf("-")
 
-  const urlName = urlHyphenIndex === -1 ? urlSlug : urlSlug.substring(0, urlHyphenIndex)
-  const expectedName =
-    expectedHyphenIndex === -1 ? expectedSlug : expectedSlug.substring(0, expectedHyphenIndex)
+  // Both slugs must contain a hyphen separating name and ID
+  if (urlLastHyphen === -1 || expectedLastHyphen === -1) {
+    return false
+  }
 
-  // Normalize and compare (case-insensitive, handle apostrophes, etc.)
+  const urlName = urlSlug.substring(0, urlLastHyphen)
+  const expectedName = expectedSlug.substring(0, expectedLastHyphen)
+
+  const urlId = urlSlug.substring(urlLastHyphen + 1)
+  const expectedId = expectedSlug.substring(expectedLastHyphen + 1)
+
+  // Both IDs must be non-empty
+  if (!urlId || !expectedId) {
+    return false
+  }
+
+  // Enforce numeric ID format for safety/consistency
+  const numericIdRegex = /^[0-9]+$/
+  if (!numericIdRegex.test(urlId) || !numericIdRegex.test(expectedId)) {
+    return false
+  }
+
+  // IDs must match exactly
+  if (urlId !== expectedId) {
+    return false
+  }
+
+  // Finally, compare normalized name portions (case-insensitive)
   return urlName.toLowerCase() === expectedName.toLowerCase()
 }
 
