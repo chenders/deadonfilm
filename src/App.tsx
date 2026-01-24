@@ -39,6 +39,12 @@ const NotableDeathsPage = lazyWithRetry(() => import("./pages/NotableDeathsPage"
 const AdminLoginPage = lazyWithRetry(() => import("./pages/admin/LoginPage"))
 const AdminDashboardPage = lazyWithRetry(() => import("./pages/admin/DashboardPage"))
 const AdminAnalyticsPage = lazyWithRetry(() => import("./pages/admin/AnalyticsPage"))
+const AdminCoverageDashboardPage = lazyWithRetry(
+  () => import("./pages/admin/CoverageDashboardPage")
+)
+const AdminActorManagementPage = lazyWithRetry(() => import("./pages/admin/ActorManagementPage"))
+const AdminPageViewsPage = lazyWithRetry(() => import("./pages/admin/PageViewsPage"))
+const AdminExternalToolsPage = lazyWithRetry(() => import("./pages/admin/ExternalToolsPage"))
 const AdminEnrichmentRunsPage = lazyWithRetry(() => import("./pages/admin/EnrichmentRunsPage"))
 const AdminEnrichmentRunDetailsPage = lazyWithRetry(
   () => import("./pages/admin/EnrichmentRunDetailsPage")
@@ -108,6 +114,38 @@ function App() {
           element={
             <Suspense fallback={<LoadingSpinner />}>
               <AdminEnrichmentReviewPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/coverage"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminCoverageDashboardPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/actors"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminActorManagementPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/page-views"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminPageViewsPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/tools"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminExternalToolsPage />
             </Suspense>
           }
         />

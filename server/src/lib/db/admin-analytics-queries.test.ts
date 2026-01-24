@@ -92,7 +92,7 @@ describe("Admin Analytics Queries", () => {
       await getCostBySource(mockPool, undefined, "2024-01-31")
 
       expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining("WHERE queried_at <= $1"),
+        expect.stringContaining("WHERE queried_at < ($1::date + interval '1 day')"),
         ["2024-01-31"]
       )
     })
@@ -103,7 +103,9 @@ describe("Admin Analytics Queries", () => {
       await getCostBySource(mockPool, "2024-01-01", "2024-01-31")
 
       expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining("WHERE queried_at >= $1 AND queried_at <= $2"),
+        expect.stringContaining(
+          "WHERE queried_at >= $1 AND queried_at < ($2::date + interval '1 day')"
+        ),
         ["2024-01-01", "2024-01-31"]
       )
     })

@@ -35,12 +35,45 @@ export default function AdminNav() {
         <Link
           to="/admin/analytics"
           className={`block rounded-md px-4 py-2 text-sm font-medium ${
-            isActive("/admin/analytics")
+            location.pathname.startsWith("/admin/analytics")
               ? "bg-gray-900 text-white"
               : "text-gray-300 hover:bg-gray-700 hover:text-white"
           }`}
         >
-          Cost Analytics
+          Analytics
+        </Link>
+
+        <Link
+          to="/admin/coverage"
+          className={`block rounded-md px-4 py-2 text-sm font-medium ${
+            location.pathname.startsWith("/admin/coverage")
+              ? "bg-gray-900 text-white"
+              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+          }`}
+        >
+          Death Coverage
+        </Link>
+
+        <Link
+          to="/admin/actors"
+          className={`block rounded-md px-4 py-2 text-sm font-medium ${
+            location.pathname.startsWith("/admin/actors")
+              ? "bg-gray-900 text-white"
+              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+          }`}
+        >
+          Actor Management
+        </Link>
+
+        <Link
+          to="/admin/page-views"
+          className={`block rounded-md px-4 py-2 text-sm font-medium ${
+            location.pathname.startsWith("/admin/page-views")
+              ? "bg-gray-900 text-white"
+              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+          }`}
+        >
+          Page Views
         </Link>
 
         <Link
@@ -63,6 +96,17 @@ export default function AdminNav() {
           }`}
         >
           Review Enrichments
+        </Link>
+
+        <Link
+          to="/admin/tools"
+          className={`block rounded-md px-4 py-2 text-sm font-medium ${
+            location.pathname.startsWith("/admin/tools")
+              ? "bg-gray-900 text-white"
+              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+          }`}
+        >
+          External Tools
         </Link>
       </div>
 
