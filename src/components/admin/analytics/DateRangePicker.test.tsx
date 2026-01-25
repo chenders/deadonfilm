@@ -38,13 +38,13 @@ describe("DateRangePicker", () => {
     it("renders start and end date inputs", () => {
       render(<DateRangePicker {...defaultProps} />)
 
-      const startInput = screen.getByLabelText(/Start Date/i)
-      const endInput = screen.getByLabelText(/End Date/i)
+      const startInput = screen.getByDisplayValue("2024-01-01")
+      const endInput = screen.getByDisplayValue("2024-01-31")
 
       expect(startInput).toBeInTheDocument()
       expect(endInput).toBeInTheDocument()
-      expect(startInput).toHaveValue("2024-01-01")
-      expect(endInput).toHaveValue("2024-01-31")
+      expect(startInput).toHaveAttribute("type", "date")
+      expect(endInput).toHaveAttribute("type", "date")
     })
   })
 
@@ -86,7 +86,7 @@ describe("DateRangePicker", () => {
     it("handles start date change", () => {
       render(<DateRangePicker {...defaultProps} />)
 
-      const startInput = screen.getByLabelText(/Start Date/i)
+      const startInput = screen.getByDisplayValue("2024-01-01")
       fireEvent.change(startInput, { target: { value: "2024-01-15" } })
 
       expect(mockOnChange).toHaveBeenCalledWith("2024-01-15", "2024-01-31")
@@ -95,7 +95,7 @@ describe("DateRangePicker", () => {
     it("handles end date change", () => {
       render(<DateRangePicker {...defaultProps} />)
 
-      const endInput = screen.getByLabelText(/End Date/i)
+      const endInput = screen.getByDisplayValue("2024-01-31")
       fireEvent.change(endInput, { target: { value: "2024-02-15" } })
 
       expect(mockOnChange).toHaveBeenCalledWith("2024-01-01", "2024-02-15")
@@ -104,8 +104,8 @@ describe("DateRangePicker", () => {
     it("handles both dates changing", () => {
       render(<DateRangePicker {...defaultProps} />)
 
-      const startInput = screen.getByLabelText(/Start Date/i)
-      const endInput = screen.getByLabelText(/End Date/i)
+      const startInput = screen.getByDisplayValue("2024-01-01")
+      const endInput = screen.getByDisplayValue("2024-01-31")
 
       fireEvent.change(startInput, { target: { value: "2024-02-01" } })
       fireEvent.change(endInput, { target: { value: "2024-02-29" } })
@@ -120,7 +120,7 @@ describe("DateRangePicker", () => {
     it("handles empty start date", () => {
       render(<DateRangePicker {...defaultProps} />)
 
-      const startInput = screen.getByLabelText(/Start Date/i)
+      const startInput = screen.getByDisplayValue("2024-01-01")
       fireEvent.change(startInput, { target: { value: "" } })
 
       expect(mockOnChange).toHaveBeenCalledWith("", "2024-01-31")
@@ -162,6 +162,144 @@ describe("DateRangePicker", () => {
 
       // Should go back to previous year
       expect(mockOnChange).toHaveBeenCalledWith("2023-12-06", "2024-01-05")
+    })
+  })
+
+  describe("showQuickFilters prop", () => {
+    it("shows quick filters by default", () => {
+      render(<DateRangePicker {...defaultProps} />)
+
+      expect(screen.getByRole("button", { name: /Last 7 Days/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /Last 30 Days/i })).toBeInTheDocument()
+    })
+
+    it("hides quick filters when showQuickFilters is false", () => {
+      render(<DateRangePicker {...defaultProps} showQuickFilters={false} />)
+
+      expect(screen.queryByRole("button", { name: /Last 7 Days/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: /Last 30 Days/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: /Last 90 Days/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: /All Time/i })).not.toBeInTheDocument()
+    })
+
+    it("still shows date inputs when quick filters are hidden", () => {
+      render(<DateRangePicker {...defaultProps} showQuickFilters={false} />)
+
+      expect(screen.getByDisplayValue("2024-01-01")).toBeInTheDocument()
+      expect(screen.getByDisplayValue("2024-01-31")).toBeInTheDocument()
+    })
+  })
+
+  describe("custom labels", () => {
+    it("uses custom start and end labels", () => {
+      render(
+        <DateRangePicker {...defaultProps} startLabel="Death Date From" endLabel="Death Date To" />
+      )
+
+      expect(screen.getByLabelText("Death Date From")).toBeInTheDocument()
+      expect(screen.getByLabelText("Death Date To")).toBeInTheDocument()
+      expect(screen.queryByLabelText("Start Date")).not.toBeInTheDocument()
+      expect(screen.queryByLabelText("End Date")).not.toBeInTheDocument()
+    })
+
+    it("uses default labels when not provided", () => {
+      render(<DateRangePicker {...defaultProps} />)
+
+      expect(screen.getByLabelText("Start Date")).toBeInTheDocument()
+      expect(screen.getByLabelText("End Date")).toBeInTheDocument()
+    })
+  })
+
+  describe("validation", () => {
+    it("shows error when start date is after end date", () => {
+      render(
+        <DateRangePicker startDate="2024-02-01" endDate="2024-01-01" onChange={mockOnChange} />
+      )
+
+      expect(screen.getByText("Start date cannot be after end date")).toBeInTheDocument()
+    })
+
+    it("does not show error when start date is before end date", () => {
+      render(<DateRangePicker {...defaultProps} />)
+
+      expect(screen.queryByText("Start date cannot be after end date")).not.toBeInTheDocument()
+    })
+
+    it("does not show error when start date equals end date", () => {
+      render(
+        <DateRangePicker startDate="2024-01-15" endDate="2024-01-15" onChange={mockOnChange} />
+      )
+
+      expect(screen.queryByText("Start date cannot be after end date")).not.toBeInTheDocument()
+    })
+
+    it("does not show error when dates are empty", () => {
+      render(<DateRangePicker startDate="" endDate="" onChange={mockOnChange} />)
+
+      expect(screen.queryByText("Start date cannot be after end date")).not.toBeInTheDocument()
+    })
+
+    it("does not show error when only one date is set", () => {
+      render(<DateRangePicker startDate="2024-01-01" endDate="" onChange={mockOnChange} />)
+
+      expect(screen.queryByText("Start date cannot be after end date")).not.toBeInTheDocument()
+    })
+  })
+
+  describe("clear functionality", () => {
+    it("shows clear dates button when at least one date is set", () => {
+      render(<DateRangePicker {...defaultProps} />)
+
+      expect(screen.getByRole("button", { name: /Clear Dates/i })).toBeInTheDocument()
+    })
+
+    it("hides clear dates button when both dates are empty", () => {
+      render(<DateRangePicker startDate="" endDate="" onChange={mockOnChange} />)
+
+      expect(screen.queryByRole("button", { name: /Clear Dates/i })).not.toBeInTheDocument()
+    })
+
+    it("shows clear dates button when only start date is set", () => {
+      render(<DateRangePicker startDate="2024-01-01" endDate="" onChange={mockOnChange} />)
+
+      expect(screen.getByRole("button", { name: /Clear Dates/i })).toBeInTheDocument()
+    })
+
+    it("shows clear dates button when only end date is set", () => {
+      render(<DateRangePicker startDate="" endDate="2024-01-31" onChange={mockOnChange} />)
+
+      expect(screen.getByRole("button", { name: /Clear Dates/i })).toBeInTheDocument()
+    })
+
+    it("clears both dates when clear dates button is clicked", () => {
+      render(<DateRangePicker {...defaultProps} />)
+
+      fireEvent.click(screen.getByRole("button", { name: /Clear Dates/i }))
+
+      expect(mockOnChange).toHaveBeenCalledWith("", "")
+    })
+
+    it("shows clear button for individual date inputs", () => {
+      render(<DateRangePicker {...defaultProps} />)
+
+      expect(screen.getByLabelText("Clear Start Date")).toBeInTheDocument()
+      expect(screen.getByLabelText("Clear End Date")).toBeInTheDocument()
+    })
+
+    it("clears start date when individual clear button is clicked", () => {
+      render(<DateRangePicker {...defaultProps} />)
+
+      fireEvent.click(screen.getByLabelText("Clear Start Date"))
+
+      expect(mockOnChange).toHaveBeenCalledWith("", "2024-01-31")
+    })
+
+    it("clears end date when individual clear button is clicked", () => {
+      render(<DateRangePicker {...defaultProps} />)
+
+      fireEvent.click(screen.getByLabelText("Clear End Date"))
+
+      expect(mockOnChange).toHaveBeenCalledWith("2024-01-01", "")
     })
   })
 })
