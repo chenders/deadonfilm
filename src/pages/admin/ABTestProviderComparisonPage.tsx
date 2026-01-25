@@ -223,7 +223,12 @@ export default function ABTestProviderComparisonPage() {
                         )}
 
                       {/* Side-by-side comparison for all providers */}
-                      <div className={`grid gap-6 grid-cols-${Math.min(providerKeys.length, 3)}`}>
+                      <div
+                        className="grid gap-6"
+                        style={{
+                          gridTemplateColumns: `repeat(${Math.min(providerKeys.length, 3)}, minmax(0, 1fr))`,
+                        }}
+                      >
                         {providerKeys.map((provider) => {
                           const providerData = comparison.providers[provider]
                           const colors = [

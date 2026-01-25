@@ -130,7 +130,11 @@ Related people fields (if applicable):
   "sources": ["https://variety.com/...", "https://people.com/..."]
 }
 
-If death info unknown OR no sources found: return all null values with empty notable_factors and sources arrays.`
+${
+  requireSources
+    ? "If death info unknown OR no sources found: return all null values with empty notable_factors and sources arrays."
+    : "If death info unknown: return all null values with empty notable_factors and sources arrays."
+}`
 }
 
 /**
