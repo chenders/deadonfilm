@@ -753,7 +753,7 @@ describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", (
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
-    expect(redirectSpy).toHaveBeenCalledWith(301, "/actor/clint-eastwood-4165/death")
+    expect(redirectSpy).toHaveBeenCalledWith(301, "/api/actor/clint-eastwood-4165/death")
     expect(db.getActorDeathCircumstancesByActorId).not.toHaveBeenCalled()
     expect(setCached).not.toHaveBeenCalled()
     expect(jsonSpy).not.toHaveBeenCalled()
@@ -811,7 +811,7 @@ describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", (
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
-    expect(redirectSpy).toHaveBeenCalledWith(301, "/actor/clint-eastwood-4165/death")
+    expect(redirectSpy).toHaveBeenCalledWith(301, "/api/actor/clint-eastwood-4165/death")
     expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(
       "ActorUrlRedirect",
       expect.objectContaining({
