@@ -36,6 +36,7 @@ export class PerplexitySource extends BaseDataSource {
   // Perplexity Sonar Pro - handles multi-step reasoning with real-time web search
   // See: https://docs.perplexity.ai/getting-started/models
   private readonly modelId = "sonar-pro"
+  protected maxTokens: number = 2000
 
   // Rate limit - be conservative
   protected minDelayMs = 1000
@@ -79,7 +80,7 @@ export class PerplexitySource extends BaseDataSource {
 
       const response = await client.chat.completions.create({
         model: this.modelId,
-        max_tokens: 8192,
+        max_tokens: this.maxTokens,
         messages: [
           {
             role: "system",

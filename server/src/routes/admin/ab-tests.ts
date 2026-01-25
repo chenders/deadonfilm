@@ -584,7 +584,7 @@ router.get("/comprehensive/:runId", async (req: Request, res: Response): Promise
       }
 
       const actor = actorResults.get(row.actor_id)!
-      const variantKey = `${row.provider}_${row.strategy}`
+      const variantKey = `${row.provider}::${row.strategy}`
 
       actor.variants[variantKey] = {
         provider: row.provider,
