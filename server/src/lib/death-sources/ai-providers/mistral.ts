@@ -80,7 +80,7 @@ export class MistralSource extends BaseDataSource {
     }
 
     // Use shared enriched prompt for career context
-    const prompt = buildEnrichedDeathPrompt(actor)
+    const prompt = buildEnrichedDeathPrompt(actor, this.requireSources)
 
     try {
       console.log(`Mistral query for: ${actor.name}`)
