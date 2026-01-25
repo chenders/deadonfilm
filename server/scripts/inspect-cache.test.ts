@@ -17,7 +17,7 @@ vi.mock("../src/lib/cache.js", () => ({
 }))
 
 import { initRedis, closeRedis, getRedisClient } from "../src/lib/redis.js"
-import { CACHE_PREFIX, buildCacheKey } from "../src/lib/cache.js"
+import { CACHE_PREFIX } from "../src/lib/cache.js"
 
 describe("inspect-cache script", () => {
   beforeEach(() => {
