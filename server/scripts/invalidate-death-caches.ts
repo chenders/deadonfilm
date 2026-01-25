@@ -15,7 +15,13 @@ const program = new Command()
   .option("--no-rebuild", "Only invalidate caches without rebuilding")
   .action(async (options) => {
     try {
-      await initRedis()
+      const redisAvailable = await initRedis()
+      if (!redisAvailable) {
+        console.error("Error: Redis client not available")
+        console.error("This script requires Redis for cache invalidation.")
+        await closeRedis()
+        process.exit(1)
+      }
 
       if (options.rebuild) {
         console.log("Invalidating and rebuilding death caches...")
