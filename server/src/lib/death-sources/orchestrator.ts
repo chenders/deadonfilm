@@ -31,6 +31,7 @@ import newrelic from "newrelic"
 import { cleanupWithClaude } from "./claude-cleanup.js"
 import { StatusBar } from "./status-bar.js"
 import { EnrichmentLogger, getEnrichmentLogger, setActiveStatusBar } from "./logger.js"
+import { resolveRedirectUrls, type ResolvedUrl } from "./url-resolver.js"
 import { WikidataSource } from "./sources/wikidata.js"
 import { DuckDuckGoSource } from "./sources/duckduckgo.js"
 import { GoogleSearchSource } from "./sources/google.js"
@@ -517,12 +518,55 @@ export class DeathEnrichmentOrchestrator {
 
       // In cleanup mode, collect raw data for later processing
       if (isCleanupMode && lookupResult.data.circumstances) {
+        const rawData = lookupResult.source.rawData as
+          | {
+              resolvedSources?: ResolvedUrl[]
+              parsed?: { sources?: string[] }
+            }
+          | undefined
+
+        // Check if source already resolved URLs (e.g., Gemini does this)
+        let resolvedSources = rawData?.resolvedSources
+        let sourceName = source.name // Default to AI provider name
+
+        // If already resolved, use those
+        if (resolvedSources && resolvedSources.length > 0 && !resolvedSources[0].error) {
+          sourceName = resolvedSources[0].sourceName
+          this.statusBar.log(
+            `    Using pre-resolved source: ${sourceName} (${resolvedSources.length} URLs)`
+          )
+        } else {
+          // Otherwise, try to resolve URLs from parsed sources
+          const sourceUrls: string[] = []
+          if (rawData?.parsed?.sources && Array.isArray(rawData.parsed.sources)) {
+            sourceUrls.push(
+              ...rawData.parsed.sources.filter((url): url is string => typeof url === "string")
+            )
+          }
+
+          if (sourceUrls.length > 0) {
+            try {
+              resolvedSources = await resolveRedirectUrls(sourceUrls)
+              // Use the first resolved source name if available
+              if (resolvedSources.length > 0 && !resolvedSources[0].error) {
+                sourceName = resolvedSources[0].sourceName
+                this.statusBar.log(`    Resolved ${resolvedSources.length} URLs (${sourceName})`)
+              }
+            } catch (error) {
+              // On error, log warning and continue with AI provider name
+              const errorMsg = error instanceof Error ? error.message : "Unknown error"
+              this.statusBar.log(`    URL resolution failed: ${errorMsg} - using ${source.name}`)
+            }
+          }
+        }
+
         rawSources.push({
-          sourceName: source.name,
+          sourceName,
           sourceType: source.type,
           text: lookupResult.data.circumstances,
           url: lookupResult.source.url || undefined,
           confidence: lookupResult.source.confidence,
+          resolvedSources,
         })
         this.statusBar.log(
           `    Collected ${lookupResult.data.circumstances.length} chars for cleanup`
@@ -540,12 +584,60 @@ export class DeathEnrichmentOrchestrator {
           if (additional.data) {
             // In cleanup mode, collect raw data for later processing
             if (isCleanupMode && additional.data.circumstances) {
+              const additionalRawData = additional.source.rawData as
+                | {
+                    resolvedSources?: ResolvedUrl[]
+                    parsed?: { sources?: string[] }
+                  }
+                | undefined
+
+              // Check if source already resolved URLs (e.g., Gemini does this)
+              let additionalResolvedSources = additionalRawData?.resolvedSources
+              let additionalSourceName = `${source.name} (additional)`
+
+              // If already resolved, use those
+              if (
+                additionalResolvedSources &&
+                additionalResolvedSources.length > 0 &&
+                !additionalResolvedSources[0].error
+              ) {
+                additionalSourceName = `${additionalResolvedSources[0].sourceName} (additional)`
+              } else {
+                // Otherwise, try to resolve URLs from parsed sources
+                const additionalUrls: string[] = []
+                if (
+                  additionalRawData?.parsed?.sources &&
+                  Array.isArray(additionalRawData.parsed.sources)
+                ) {
+                  additionalUrls.push(
+                    ...additionalRawData.parsed.sources.filter(
+                      (url): url is string => typeof url === "string"
+                    )
+                  )
+                }
+
+                if (additionalUrls.length > 0) {
+                  try {
+                    additionalResolvedSources = await resolveRedirectUrls(additionalUrls)
+                    if (
+                      additionalResolvedSources.length > 0 &&
+                      !additionalResolvedSources[0].error
+                    ) {
+                      additionalSourceName = `${additionalResolvedSources[0].sourceName} (additional)`
+                    }
+                  } catch {
+                    // Silently continue with AI provider name on error
+                  }
+                }
+              }
+
               rawSources.push({
-                sourceName: `${source.name} (additional)`,
+                sourceName: additionalSourceName,
                 sourceType: source.type,
                 text: additional.data.circumstances,
                 url: additional.source.url || undefined,
                 confidence: additional.source.confidence,
+                resolvedSources: additionalResolvedSources,
               })
             }
 
