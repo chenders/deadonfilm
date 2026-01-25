@@ -18,6 +18,7 @@ const LIMIT = 500
 export default function HighPriorityActorsPage() {
   const navigate = useNavigate()
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
+  const [enrichmentError, setEnrichmentError] = useState<string | null>(null)
 
   // Fetch high-priority actors
   const { data: actors, isLoading, error } = useEnrichmentCandidates(MIN_POPULARITY, LIMIT)
@@ -54,6 +55,7 @@ export default function HighPriorityActorsPage() {
     if (selectedActorIds.size === 0) return
 
     try {
+      setEnrichmentError(null) // Clear any previous errors
       const result = await startEnrichment.mutateAsync({
         actorIds: Array.from(selectedActorIds),
       })
@@ -61,6 +63,9 @@ export default function HighPriorityActorsPage() {
       navigate(`/admin/enrichment/runs/${result.id}`)
     } catch (err) {
       console.error("Failed to start enrichment:", err)
+      setEnrichmentError(
+        err instanceof Error ? err.message : "Failed to start enrichment. Please try again."
+      )
     }
   }
 
@@ -96,31 +101,60 @@ export default function HighPriorityActorsPage() {
             </div>
           )}
 
+          {/* Enrichment Error State */}
+          {enrichmentError && (
+            <div className="rounded-lg bg-red-900/50 p-4 text-red-200">{enrichmentError}</div>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && !error && actors && actors.length === 0 && (
+            <div className="rounded-lg bg-gray-800 p-8 text-center">
+              <p className="text-gray-400">No high-priority actors found needing enrichment.</p>
+              <p className="mt-2 text-sm text-gray-500">
+                All actors with popularity ≥ {MIN_POPULARITY} have been enriched.
+              </p>
+            </div>
+          )}
+
           {/* Actors Table */}
-          {!isLoading && !error && actors && (
+          {!isLoading && !error && actors && actors.length > 0 && (
             <>
               <div className="overflow-hidden rounded-lg bg-gray-800 shadow">
                 <table className="min-w-full divide-y divide-gray-700">
                   <thead className="bg-gray-750">
                     <tr>
-                      <th className="px-6 py-3 text-left">
+                      <th scope="col" className="px-6 py-3 text-left">
                         <input
                           type="checkbox"
                           checked={actors.length > 0 && selectedActorIds.size === actors.length}
                           onChange={handleSelectAll}
+                          aria-label="Select all actors"
+                          data-testid="select-all-checkbox"
                           className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
                         />
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300"
+                      >
                         Name
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300"
+                      >
                         Death Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300"
+                      >
                         Popularity
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300"
+                      >
                         Last Enriched
                       </th>
                     </tr>
@@ -138,6 +172,8 @@ export default function HighPriorityActorsPage() {
                             type="checkbox"
                             checked={selectedActorIds.has(actor.id)}
                             onChange={() => handleSelectActor(actor.id)}
+                            aria-label={`Select ${actor.name}`}
+                            data-testid="actor-checkbox"
                             className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
                           />
                         </td>
@@ -146,7 +182,7 @@ export default function HighPriorityActorsPage() {
                           {formatDate(actor.deathday)}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-300">
-                          {actor.popularity.toFixed(1)}
+                          {actor.popularity?.toFixed(1) ?? "N/A"}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-300">
                           {formatDate(actor.enriched_at)}
@@ -174,6 +210,7 @@ export default function HighPriorityActorsPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedActorIds(new Set())}
+                    data-testid="clear-selection-button"
                     className="rounded bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
                   >
                     Clear Selection
@@ -181,6 +218,7 @@ export default function HighPriorityActorsPage() {
                   <button
                     onClick={handleEnrichSelected}
                     disabled={startEnrichment.isPending}
+                    data-testid="enrich-selected-button"
                     className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {startEnrichment.isPending ? "Starting..." : "Enrich Selected"}
