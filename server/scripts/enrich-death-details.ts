@@ -27,6 +27,7 @@ import newrelic from "newrelic"
  *   -l, --limit <n>              Limit number of actors to process (default: 100)
  *   -p, --min-popularity <n>     Only process actors above popularity threshold
  *   -n, --dry-run                Preview without writing to database
+ *   -a, --actor-id <id>          Process a specific actor by internal ID
  *   -t, --tmdb-id <id>           Process a specific actor by TMDB ID
  *   -y, --yes                    Skip confirmation prompt
  *   --stop-on-match              Stop searching once we get results (default: true)
@@ -50,6 +51,7 @@ import newrelic from "newrelic"
  *
  * Examples:
  *   npm run enrich:death-details -- --limit 50 --dry-run
+ *   npm run enrich:death-details -- --actor-id 2157 --dry-run
  *   npm run enrich:death-details -- --tmdb-id 12345 --dry-run
  *   npm run enrich:death-details -- --limit 100 --disable-paid --max-total-cost 5
  *   npm run enrich:death-details -- --disable-claude-cleanup --limit 10
@@ -123,6 +125,7 @@ interface EnrichOptions {
   ai: boolean
   stopOnMatch: boolean
   confidence: number
+  actorId?: number
   tmdbId?: number
   maxCostPerActor?: number
   maxTotalCost?: number
@@ -315,6 +318,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     ai,
     stopOnMatch,
     confidence: confidenceThreshold,
+    actorId,
     tmdbId,
     maxCostPerActor,
     maxTotalCost,
@@ -457,8 +461,30 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           return popB - popA
         })
       }
+    } else if (actorId) {
+      // Target a specific actor by internal ID
+      console.log(`\nQuerying actor with internal ID ${actorId}...`)
+      const result = await db.query<ActorRow>(
+        `SELECT
+          a.id,
+          a.tmdb_id,
+          a.name,
+          a.birthday,
+          a.deathday,
+          a.cause_of_death,
+          a.cause_of_death_details,
+          a.popularity,
+          c.circumstances,
+          c.notable_factors
+        FROM actors a
+        LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+        WHERE a.id = $1
+          AND a.deathday IS NOT NULL`,
+        [actorId]
+      )
+      actors = result.rows
     } else if (tmdbId) {
-      // Target a specific actor
+      // Target a specific actor by TMDB ID
       console.log(`\nQuerying actor with TMDB ID ${tmdbId}...`)
       const result = await db.query<ActorRow>(
         `SELECT
@@ -586,7 +612,9 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
     console.log(`\nTarget:`)
     console.log(`  Actors to process: ${actors.length}`)
-    if (tmdbId) {
+    if (actorId) {
+      console.log(`  Specific actor: Internal ID ${actorId}`)
+    } else if (tmdbId) {
       console.log(`  Specific actor: TMDB ID ${tmdbId}`)
     } else {
       console.log(`  Min popularity: ${minPopularity}`)
@@ -1125,6 +1153,7 @@ const program = new Command()
     parseFloat,
     0.5
   )
+  .option("-a, --actor-id <number>", "Process a specific actor by internal ID", parsePositiveInt)
   .option("-t, --tmdb-id <number>", "Process a specific actor by TMDB ID", parsePositiveInt)
   .option(
     "--max-cost-per-actor <number>",
@@ -1186,6 +1215,7 @@ const program = new Command()
       ai: options.ai || false,
       stopOnMatch: options.stopOnMatch !== false,
       confidence: options.confidence,
+      actorId: options.actorId,
       tmdbId: options.tmdbId,
       maxCostPerActor: options.maxCostPerActor,
       maxTotalCost: options.maxTotalCost,
