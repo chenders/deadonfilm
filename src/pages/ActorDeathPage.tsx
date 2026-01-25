@@ -173,6 +173,31 @@ function SourceList({ sources, title }: { sources: SourceEntry[] | null; title: 
   )
 }
 
+// Source icon component for compact fields
+function SourceIcon({ sources, label }: { sources: SourceEntry[] | null; label: string }) {
+  if (!sources || sources.length === 0) return null
+
+  const firstSource = sources[0]
+  if (!firstSource.url && !firstSource.archiveUrl) return null
+
+  return (
+    <a
+      href={firstSource.archiveUrl || firstSource.url || undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="ml-1 inline-flex items-center text-blue-600 hover:text-blue-800"
+      title={`Source: ${firstSource.description}`}
+      aria-label={`Source for ${label}`}
+      data-testid={`source-icon-${label.toLowerCase().replace(/\s+/g, "-")}`}
+    >
+      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+      </svg>
+    </a>
+  )
+}
+
 // Related celebrity component
 function RelatedCelebrityCard({ celebrity }: { celebrity: RelatedCelebrity }) {
   const content = (
@@ -301,6 +326,7 @@ export default function ActorDeathPage() {
                 {circumstances.locationOfDeath && (
                   <p>
                     <span className="font-medium">Location:</span> {circumstances.locationOfDeath}
+                    <SourceIcon sources={sources.locationOfDeath} label="location of death" />
                   </p>
                 )}
                 {actor.causeOfDeath && (
@@ -353,6 +379,7 @@ export default function ActorDeathPage() {
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="context-section">
             <h2 className="mb-3 font-display text-lg text-brown-dark">Additional Context</h2>
             <p className="leading-relaxed text-text-muted">{circumstances.additionalContext}</p>
+            <SourceList sources={sources.additionalContext} title="Sources" />
           </section>
         )}
 
@@ -362,15 +389,19 @@ export default function ActorDeathPage() {
             <h2 className="mb-3 font-display text-lg text-brown-dark">Career Context</h2>
             <div className="space-y-2 text-sm text-text-muted">
               {career.statusAtDeath && (
-                <p>
-                  <span className="font-medium">Status at Death:</span>{" "}
-                  {formatCareerStatus(career.statusAtDeath)}
-                </p>
+                <>
+                  <p>
+                    <span className="font-medium">Status at Death:</span>{" "}
+                    {formatCareerStatus(career.statusAtDeath)}
+                  </p>
+                  <SourceList sources={sources.careerStatus} title="Career Status Sources" />
+                </>
               )}
               {career.lastProject && (
                 <p>
                   <span className="font-medium">Last Project:</span>{" "}
                   <ProjectLink project={career.lastProject} />
+                  <SourceIcon sources={sources.lastProject} label="last project" />
                 </p>
               )}
               {career.posthumousReleases && career.posthumousReleases.length > 0 && (
@@ -380,6 +411,10 @@ export default function ActorDeathPage() {
                     {career.posthumousReleases.map((project, idx) => (
                       <li key={idx}>
                         <ProjectLink project={project} />
+                        <SourceIcon
+                          sources={sources.posthumousReleases}
+                          label="posthumous releases"
+                        />
                       </li>
                     ))}
                   </ul>

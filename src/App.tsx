@@ -56,6 +56,19 @@ const AdminCacheManagementPage = lazyWithRetry(() => import("./pages/admin/Cache
 const AdminSitemapManagementPage = lazyWithRetry(
   () => import("./pages/admin/SitemapManagementPage")
 )
+const AdminABTestsIndexPage = lazyWithRetry(() => import("./pages/admin/ABTestsIndexPage"))
+const AdminABTestSourceRequirementPage = lazyWithRetry(
+  () => import("./pages/admin/ABTestSourceRequirementPage")
+)
+const AdminABTestProviderComparisonPage = lazyWithRetry(
+  () => import("./pages/admin/ABTestProviderComparisonPage")
+)
+const AdminABTestComprehensiveIndexPage = lazyWithRetry(
+  () => import("./pages/admin/ABTestComprehensiveIndexPage")
+)
+const AdminABTestComprehensiveDetailPage = lazyWithRetry(
+  () => import("./pages/admin/ABTestComprehensiveDetailPage")
+)
 
 function App() {
   useGoogleAnalytics()
@@ -175,6 +188,46 @@ function App() {
           element={
             <Suspense fallback={<LoadingSpinner />}>
               <AdminSitemapManagementPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/ab-tests"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminABTestsIndexPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/ab-tests/source-requirement"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminABTestSourceRequirementPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/ab-tests/provider-comparison"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminABTestProviderComparisonPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/ab-tests/comprehensive"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminABTestComprehensiveIndexPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/ab-tests/comprehensive/:runId"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminABTestComprehensiveDetailPage />
             </Suspense>
           }
         />

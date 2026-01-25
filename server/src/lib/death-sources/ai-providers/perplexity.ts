@@ -72,14 +72,14 @@ export class PerplexitySource extends BaseDataSource {
     }
 
     // Use shared enriched prompt for career context
-    const prompt = buildEnrichedDeathPrompt(actor)
+    const prompt = buildEnrichedDeathPrompt(actor, this.requireSources, this.requireReliableSources)
 
     try {
       console.log(`Perplexity search for: ${actor.name}`)
 
       const response = await client.chat.completions.create({
         model: this.modelId,
-        max_tokens: 2000,
+        max_tokens: 8192,
         messages: [
           {
             role: "system",
