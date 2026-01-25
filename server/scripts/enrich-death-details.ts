@@ -142,7 +142,9 @@ function parseCommaSeparatedIds(value: string): number[] {
     try {
       ids.push(parsePositiveInt(trimmed))
     } catch (error) {
-      throw new InvalidArgumentError(`Invalid ID '${trimmed}': ${error instanceof Error ? error.message : String(error)}`)
+      throw new InvalidArgumentError(
+        `Invalid ID '${trimmed}': ${error instanceof Error ? error.message : String(error)}`
+      )
     }
   }
 
