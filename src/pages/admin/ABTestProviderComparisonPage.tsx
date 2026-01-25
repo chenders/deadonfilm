@@ -36,8 +36,8 @@ export default function ABTestProviderComparisonPage() {
             <h1 className="text-3xl font-bold text-white">A/B Test: Provider Comparison</h1>
             <p className="mt-2 text-gray-400">
               No A/B tests have been run yet. Run{" "}
-              <code className="rounded bg-gray-800 px-2 py-1">npm run ab-test:providers</code> from
-              the server directory to start testing.
+              <code className="rounded bg-gray-800 px-2 py-1">npm run ab-test:comprehensive</code>{" "}
+              from the server directory to start testing.
             </p>
           </div>
         </div>
@@ -96,15 +96,15 @@ export default function ABTestProviderComparisonPage() {
           <div className="space-y-4">
             {providers.map((provider) => {
               const stats = summary.providerStats[provider]
-              const successRate = ((stats.foundData / summary.totalTests) * 100).toFixed(0)
-              const avgCost = (stats.totalCost / summary.totalTests).toFixed(4)
+              const successRate = ((stats.foundData / stats.totalTests) * 100).toFixed(0)
+              const avgCost = (stats.totalCost / stats.totalTests).toFixed(4)
 
               return (
                 <div key={provider} className="flex items-center justify-between">
                   <div>
                     <div className="font-medium text-white">{provider}</div>
                     <div className="text-sm text-gray-400">
-                      {stats.foundData}/{summary.totalTests} successful ({successRate}%)
+                      {stats.foundData}/{stats.totalTests} successful ({successRate}%)
                     </div>
                   </div>
                   <div className="text-right">

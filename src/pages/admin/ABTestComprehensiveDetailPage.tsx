@@ -6,12 +6,14 @@ import { useComprehensiveTestRunDetail } from "../../hooks/admin/useComprehensiv
 export default function ABTestComprehensiveDetailPage() {
   const { runId } = useParams<{ runId: string }>()
 
-  // Validate runId parameter - but call hook first (rules of hooks)
-  const parsedRunId = runId ? parseInt(runId, 10) : NaN
-  const isValidRunId = !isNaN(parsedRunId) && runId !== undefined
+  // Validate runId parameter
+  const parsedRunId = runId ? parseInt(runId, 10) : 0
+  const isValidRunId = !isNaN(parsedRunId) && parsedRunId > 0
 
-  // Always call hook (rules of hooks), but pass 0 for invalid IDs
-  const { data, isLoading, error } = useComprehensiveTestRunDetail(isValidRunId ? parsedRunId : 0)
+  // Use enabled option to avoid unnecessary API requests for invalid IDs
+  const { data, isLoading, error } = useComprehensiveTestRunDetail(parsedRunId, {
+    enabled: isValidRunId,
+  })
 
   // Now handle invalid runId after hooks are called
   if (!isValidRunId) {
@@ -159,8 +161,7 @@ export default function ABTestComprehensiveDetailPage() {
                 return bRate - aRate
               })
               .map(([variant, stats]) => {
-                const [provider, ...strategyParts] = variant.split("_")
-                const strategy = strategyParts.join("_")
+                const [provider, strategy] = variant.split("::")
                 const successRate = stats.total > 0 ? (stats.found / stats.total) * 100 : 0
 
                 return (
@@ -235,8 +236,7 @@ export default function ABTestComprehensiveDetailPage() {
                     <div className="grid gap-3 lg:grid-cols-3">
                       {variantKeys.map((key) => {
                         const variant = actor.variants[key]
-                        const [provider, ...strategyParts] = key.split("_")
-                        const strategy = strategyParts.join("_")
+                        const [provider, strategy] = key.split("::")
                         const hasData =
                           variant.whatWeKnow ||
                           variant.alternativeAccounts ||
