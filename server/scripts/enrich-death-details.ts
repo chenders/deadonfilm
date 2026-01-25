@@ -27,7 +27,8 @@ import newrelic from "newrelic"
  *   -l, --limit <n>              Limit number of actors to process (default: 100)
  *   -p, --min-popularity <n>     Only process actors above popularity threshold
  *   -n, --dry-run                Preview without writing to database
- *   -t, --tmdb-id <id>           Process a specific actor by TMDB ID
+ *   -a, --actor-id <ids>         Process specific actor(s) by internal ID (comma-separated)
+ *   -t, --tmdb-id <ids>          Process specific actor(s) by TMDB ID (comma-separated)
  *   -y, --yes                    Skip confirmation prompt
  *   --stop-on-match              Stop searching once we get results (default: true)
  *   -c, --confidence <n>         Minimum confidence threshold (0-1, default: 0.5)
@@ -50,7 +51,10 @@ import newrelic from "newrelic"
  *
  * Examples:
  *   npm run enrich:death-details -- --limit 50 --dry-run
+ *   npm run enrich:death-details -- --actor-id 2157 --dry-run
+ *   npm run enrich:death-details -- --actor-id 2157,2158,2159 --dry-run
  *   npm run enrich:death-details -- --tmdb-id 12345 --dry-run
+ *   npm run enrich:death-details -- --tmdb-id 12345,67890 --dry-run
  *   npm run enrich:death-details -- --limit 100 --disable-paid --max-total-cost 5
  *   npm run enrich:death-details -- --disable-claude-cleanup --limit 10
  *   npm run enrich:death-details -- --top-billed-year 2020 --top-movies 50
@@ -113,6 +117,40 @@ function parsePositiveInt(value: string): number {
   return parsed
 }
 
+/**
+ * Parse comma-separated positive integers for --actor-id and --tmdb-id options.
+ * Validates each ID and rejects empty segments (e.g., "1," or ",2").
+ * Used by Commander option parsing for clean error messages.
+ */
+function parseCommaSeparatedIds(value: string): number[] {
+  if (!value || value.trim() === "") {
+    throw new InvalidArgumentError("ID list cannot be empty")
+  }
+
+  const segments = value.split(",")
+  const ids: number[] = []
+
+  for (const segment of segments) {
+    const trimmed = segment.trim()
+
+    // Reject empty segments (e.g., "1," or ",2")
+    if (trimmed === "") {
+      throw new InvalidArgumentError("ID list cannot contain empty values (e.g., '1,' or ',2')")
+    }
+
+    // Validate and parse each ID
+    try {
+      ids.push(parsePositiveInt(trimmed))
+    } catch (error) {
+      throw new InvalidArgumentError(
+        `Invalid ID '${trimmed}': ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+  }
+
+  return ids
+}
+
 interface EnrichOptions {
   limit: number
   minPopularity: number
@@ -123,7 +161,8 @@ interface EnrichOptions {
   ai: boolean
   stopOnMatch: boolean
   confidence: number
-  tmdbId?: number
+  actorId?: number[]
+  tmdbId?: number[]
   maxCostPerActor?: number
   maxTotalCost?: number
   claudeCleanup: boolean
@@ -315,6 +354,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     ai,
     stopOnMatch,
     confidence: confidenceThreshold,
+    actorId,
     tmdbId,
     maxCostPerActor,
     maxTotalCost,
@@ -457,9 +497,9 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           return popB - popA
         })
       }
-    } else if (tmdbId) {
-      // Target a specific actor
-      console.log(`\nQuerying actor with TMDB ID ${tmdbId}...`)
+    } else if (actorId) {
+      // Target specific actors by internal ID(s)
+      console.log(`\nQuerying ${actorId.length} actor(s) by internal ID...`)
       const result = await db.query<ActorRow>(
         `SELECT
           a.id,
@@ -474,8 +514,32 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           c.notable_factors
         FROM actors a
         LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
-        WHERE a.tmdb_id = $1
-          AND a.deathday IS NOT NULL`,
+        WHERE a.id = ANY($1::int[])
+          AND a.deathday IS NOT NULL
+        ORDER BY a.popularity DESC NULLS LAST`,
+        [actorId]
+      )
+      actors = result.rows
+    } else if (tmdbId) {
+      // Target specific actors by TMDB ID(s)
+      console.log(`\nQuerying ${tmdbId.length} actor(s) by TMDB ID...`)
+      const result = await db.query<ActorRow>(
+        `SELECT
+          a.id,
+          a.tmdb_id,
+          a.name,
+          a.birthday,
+          a.deathday,
+          a.cause_of_death,
+          a.cause_of_death_details,
+          a.popularity,
+          c.circumstances,
+          c.notable_factors
+        FROM actors a
+        LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+        WHERE a.tmdb_id = ANY($1::int[])
+          AND a.deathday IS NOT NULL
+        ORDER BY a.popularity DESC NULLS LAST`,
         [tmdbId]
       )
       actors = result.rows
@@ -586,8 +650,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     console.log(`${"=".repeat(SEPARATOR_WIDTH)}`)
     console.log(`\nTarget:`)
     console.log(`  Actors to process: ${actors.length}`)
-    if (tmdbId) {
-      console.log(`  Specific actor: TMDB ID ${tmdbId}`)
+    if (actorId) {
+      console.log(`  Specific actor(s): Internal ID(s) ${actorId.join(", ")}`)
+    } else if (tmdbId) {
+      console.log(`  Specific actor(s): TMDB ID(s) ${tmdbId.join(", ")}`)
     } else {
       console.log(`  Min popularity: ${minPopularity}`)
       if (recentOnly) {
@@ -1125,7 +1191,16 @@ const program = new Command()
     parseFloat,
     0.5
   )
-  .option("-t, --tmdb-id <number>", "Process a specific actor by TMDB ID", parsePositiveInt)
+  .option(
+    "-a, --actor-id <ids>",
+    "Process specific actor(s) by internal ID (comma-separated, e.g., '1,2,3')",
+    parseCommaSeparatedIds
+  )
+  .option(
+    "-t, --tmdb-id <ids>",
+    "Process specific actor(s) by TMDB ID (comma-separated, e.g., '12345,67890')",
+    parseCommaSeparatedIds
+  )
   .option(
     "--max-cost-per-actor <number>",
     "Maximum cost allowed per actor (USD) - stops trying sources for that actor if exceeded",
@@ -1176,6 +1251,21 @@ const program = new Command()
   // Stage 4: Review workflow
   .option("--staging", "Write to staging tables for review before committing to production")
   .action(async (options) => {
+    // Validate that only one targeting mode is used at a time
+    const targetingModes = [
+      options.actorId ? "actor-id" : null,
+      options.tmdbId ? "tmdb-id" : null,
+      options.topBilledYear ? "top-billed-year" : null,
+    ].filter(Boolean)
+
+    if (targetingModes.length > 1) {
+      console.error(
+        `Error: Cannot use multiple targeting modes simultaneously: ${targetingModes.join(", ")}`
+      )
+      console.error("Please specify only one of: --actor-id, --tmdb-id, or --top-billed-year")
+      process.exit(1)
+    }
+
     await enrichMissingDetails({
       limit: options.limit,
       minPopularity: options.minPopularity,
@@ -1186,6 +1276,7 @@ const program = new Command()
       ai: options.ai || false,
       stopOnMatch: options.stopOnMatch !== false,
       confidence: options.confidence,
+      actorId: options.actorId,
       tmdbId: options.tmdbId,
       maxCostPerActor: options.maxCostPerActor,
       maxTotalCost: options.maxTotalCost,
