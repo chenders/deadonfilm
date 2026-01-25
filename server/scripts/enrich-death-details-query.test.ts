@@ -314,7 +314,7 @@ describe("enrich-death-details --actor-id query", () => {
     await closeTestDb()
   })
 
-  it("selects actor by internal ID (a.id)", async () => {
+  it("selects actor by internal ID using ANY (a.id)", async () => {
     // Get the internal ID for tmdb_id 5001
     const actorRow = await db.query<{ id: number }>(
       "SELECT id FROM actors WHERE tmdb_id = $1",
@@ -322,16 +322,27 @@ describe("enrich-death-details --actor-id query", () => {
     )
     const actorId = actorRow.rows[0].id
 
-    // This is the --actor-id query path from enrich-death-details.ts
-    // Note: simplified to not require actor_death_circumstances table
-    const result = await db.query<{ id: number; name: string; tmdb_id: number }>(
+    // This matches the production --actor-id query path from enrich-death-details.ts
+    // Uses ANY($1::int[]) and LEFT JOIN actor_death_circumstances
+    const result = await db.query<{
+      id: number
+      name: string
+      tmdb_id: number
+      popularity: number | null
+    }>(
       `
-      SELECT a.id, a.name, a.tmdb_id
+      SELECT
+        a.id,
+        a.tmdb_id,
+        a.name,
+        a.popularity
       FROM actors a
-      WHERE a.id = $1
+      LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+      WHERE a.id = ANY($1::int[])
         AND a.deathday IS NOT NULL
+      ORDER BY a.popularity DESC NULLS LAST
     `,
-      [actorId]
+      [[actorId]]
     )
 
     expect(result.rows.length).toBe(1)
@@ -352,10 +363,12 @@ describe("enrich-death-details --actor-id query", () => {
       `
       SELECT a.id
       FROM actors a
-      WHERE a.id = $1
+      LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+      WHERE a.id = ANY($1::int[])
         AND a.deathday IS NOT NULL
+      ORDER BY a.popularity DESC NULLS LAST
     `,
-      [actorId]
+      [[actorId]]
     )
 
     expect(result.rows.length).toBe(0)
@@ -373,14 +386,44 @@ describe("enrich-death-details --actor-id query", () => {
       `
       SELECT a.id, a.name
       FROM actors a
-      WHERE a.id = $1
+      LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+      WHERE a.id = ANY($1::int[])
         AND a.deathday IS NOT NULL
+      ORDER BY a.popularity DESC NULLS LAST
     `,
-      [actorId]
+      [[actorId]]
     )
 
     // Should return exactly one row
     expect(result.rows.length).toBe(1)
     expect(result.rows[0].name).toBe("Another Deceased Actor")
+  })
+
+  it("supports multiple IDs with ANY array parameter", async () => {
+    // Get all actor IDs
+    const actorRows = await db.query<{ id: number; tmdb_id: number }>(
+      "SELECT id, tmdb_id FROM actors WHERE tmdb_id IN ($1, $2) ORDER BY tmdb_id",
+      [5001, 5003]
+    )
+    const actorIds = actorRows.rows.map((r) => r.id)
+
+    // Query multiple actors at once using ANY
+    const result = await db.query<{ id: number; name: string }>(
+      `
+      SELECT a.id, a.name
+      FROM actors a
+      LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+      WHERE a.id = ANY($1::int[])
+        AND a.deathday IS NOT NULL
+      ORDER BY a.popularity DESC NULLS LAST
+    `,
+      [actorIds]
+    )
+
+    // Should return two actors (both deceased)
+    expect(result.rows.length).toBe(2)
+    const names = result.rows.map((r) => r.name)
+    expect(names).toContain("Target Actor")
+    expect(names).toContain("Another Deceased Actor")
   })
 })
