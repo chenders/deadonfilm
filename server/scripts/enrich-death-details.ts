@@ -124,6 +124,7 @@ interface EnrichOptions {
   stopOnMatch: boolean
   confidence: number
   tmdbId?: number
+  actorIds?: number[] // Filter to specific actor IDs
   maxCostPerActor?: number
   maxTotalCost?: number
   claudeCleanup: boolean
@@ -316,6 +317,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     stopOnMatch,
     confidence: confidenceThreshold,
     tmdbId,
+    actorIds,
     maxCostPerActor,
     maxTotalCost,
     claudeCleanup,
@@ -457,6 +459,29 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           return popB - popA
         })
       }
+    } else if (actorIds && actorIds.length > 0) {
+      // Target specific actor IDs - skip all other filters
+      console.log(`\nQuerying ${actorIds.length} specific actors by ID...`)
+      const result = await db.query<ActorRow>(
+        `SELECT
+          a.id,
+          a.tmdb_id,
+          a.name,
+          a.birthday,
+          a.deathday,
+          a.cause_of_death,
+          a.cause_of_death_details,
+          a.popularity,
+          c.circumstances,
+          c.notable_factors
+        FROM actors a
+        LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
+        WHERE a.id = ANY($1::int[])
+          AND a.deathday IS NOT NULL
+        ORDER BY a.popularity DESC NULLS LAST`,
+        [actorIds]
+      )
+      actors = result.rows
     } else if (tmdbId) {
       // Target a specific actor
       console.log(`\nQuerying actor with TMDB ID ${tmdbId}...`)
@@ -1127,6 +1152,10 @@ const program = new Command()
   )
   .option("-t, --tmdb-id <number>", "Process a specific actor by TMDB ID", parsePositiveInt)
   .option(
+    "--actor-ids <ids>",
+    "Process specific actors by internal actor ID (comma-separated, e.g., '1,2,3')"
+  )
+  .option(
     "--max-cost-per-actor <number>",
     "Maximum cost allowed per actor (USD) - stops trying sources for that actor if exceeded",
     parseFloat
@@ -1176,6 +1205,15 @@ const program = new Command()
   // Stage 4: Review workflow
   .option("--staging", "Write to staging tables for review before committing to production")
   .action(async (options) => {
+    // Parse actor IDs if provided
+    let actorIds: number[] | undefined
+    if (options.actorIds) {
+      actorIds = options.actorIds.split(",").map((id: string) => {
+        const parsed = parsePositiveInt(id.trim())
+        return parsed
+      })
+    }
+
     await enrichMissingDetails({
       limit: options.limit,
       minPopularity: options.minPopularity,
@@ -1187,6 +1225,7 @@ const program = new Command()
       stopOnMatch: options.stopOnMatch !== false,
       confidence: options.confidence,
       tmdbId: options.tmdbId,
+      actorIds,
       maxCostPerActor: options.maxCostPerActor,
       maxTotalCost: options.maxTotalCost,
       claudeCleanup: !options.disableClaudeCleanup,

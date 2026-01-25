@@ -217,6 +217,7 @@ interface StartEnrichmentRequest {
   limit?: number
   maxTotalCost?: number
   maxCostPerActor?: number
+  actorIds?: number[]
   sources?: string[]
   dryRun?: boolean
   recentOnly?: boolean
@@ -244,6 +245,17 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       return
     }
 
+    if (config.actorIds !== undefined) {
+      if (!Array.isArray(config.actorIds) || config.actorIds.length === 0) {
+        res.status(400).json({ error: { message: "actorIds must be a non-empty array" } })
+        return
+      }
+      if (!config.actorIds.every((id) => Number.isInteger(id) && id > 0)) {
+        res.status(400).json({ error: { message: "All actor IDs must be positive integers" } })
+        return
+      }
+    }
+
     // Log admin action
     await logAdminAction({
       action: "start_enrichment",
@@ -258,6 +270,7 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       limit: config.limit,
       minPopularity: config.minPopularity,
       recentOnly: config.recentOnly,
+      actorIds: config.actorIds,
       maxCostPerActor: config.maxCostPerActor,
       maxTotalCost: config.maxTotalCost,
       confidence: config.confidence,
