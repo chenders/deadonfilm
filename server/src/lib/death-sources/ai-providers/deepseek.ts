@@ -76,7 +76,7 @@ export class DeepSeekSource extends BaseDataSource {
     }
 
     // Use shared enriched prompt for career context
-    const prompt = buildEnrichedDeathPrompt(actor)
+    const prompt = buildEnrichedDeathPrompt(actor, this.requireSources)
 
     try {
       console.log(`DeepSeek query for: ${actor.name}`)

@@ -39,7 +39,6 @@ interface ActorRow {
 }
 
 const STRATEGIES = ["require_sources", "require_reliable_sources", "no_sources"] as const
-type Strategy = typeof STRATEGIES[number]
 
 interface TestRun {
   id: number
@@ -55,7 +54,8 @@ interface TestRun {
  * - Max 2-3 actors per movie/show (ranked by actor popularity)
  */
 async function findEligibleActors(pool: Pool, count: number): Promise<ActorRow[]> {
-  const result = await pool.query<ActorRow>(`
+  const result = await pool.query<ActorRow>(
+    `
     WITH actor_popularity_percentile AS (
       SELECT
         PERCENTILE_CONT(0.6) WITHIN GROUP (ORDER BY popularity) as p40_threshold
@@ -118,7 +118,9 @@ async function findEligibleActors(pool: Pool, count: number): Promise<ActorRow[]
     WHERE actor_rank_in_content <= 3
     ORDER BY popularity DESC
     LIMIT $1
-  `, [count])
+  `,
+    [count]
+  )
 
   return result.rows
 }
@@ -132,7 +134,8 @@ async function createTestRun(
   providers: string[],
   strategies: string[]
 ): Promise<TestRun> {
-  const result = await pool.query<{ id: number }>(`
+  const result = await pool.query<{ id: number }>(
+    `
     INSERT INTO ab_test_runs (
       test_name,
       total_actors,
@@ -142,43 +145,48 @@ async function createTestRun(
       actor_criteria
     ) VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING id
-  `, [
-    `Comprehensive Test - ${new Date().toISOString().split('T')[0]}`,
-    actors.length,
-    actors.length * providers.length * strategies.length,
-    providers,
-    strategies,
-    {
-      popularity: "top 40%",
-      content_popularity: "top 25%",
-      max_actors_per_content: 3
-    }
-  ])
+  `,
+    [
+      `Comprehensive Test - ${new Date().toISOString().split("T")[0]}`,
+      actors.length,
+      actors.length * providers.length * strategies.length,
+      providers,
+      strategies,
+      {
+        popularity: "top 40%",
+        content_popularity: "top 25%",
+        max_actors_per_content: 3,
+      },
+    ]
+  )
 
   return {
     id: result.rows[0].id,
     testName: `Comprehensive Test`,
     totalActors: actors.length,
-    totalVariants: actors.length * providers.length * strategies.length
+    totalVariants: actors.length * providers.length * strategies.length,
   }
 }
 
 /**
  * Add inference to test run
  */
-async function addInference(pool: Pool, runId: number, message: string, data?: any) {
-  await pool.query(`
+async function addInference(pool: Pool, runId: number, message: string, data?: unknown) {
+  await pool.query(
+    `
     UPDATE ab_test_runs
     SET inferences = inferences || $1::jsonb
     WHERE id = $2
-  `, [
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      message,
-      data
-    }),
-    runId
-  ])
+  `,
+    [
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        message,
+        data,
+      }),
+      runId,
+    ]
+  )
   console.log(`\n[INFERENCE] ${message}`)
   if (data) {
     console.log(JSON.stringify(data, null, 2))
@@ -195,14 +203,17 @@ async function updateProgress(
   completedVariants: number,
   totalCost: number
 ) {
-  await pool.query(`
+  await pool.query(
+    `
     UPDATE ab_test_runs
     SET
       completed_actors = $1,
       completed_variants = $2,
       total_cost_usd = $3
     WHERE id = $4
-  `, [completedActors, completedVariants, totalCost, runId])
+  `,
+    [completedActors, completedVariants, totalCost, runId]
+  )
 }
 
 /**
@@ -233,7 +244,9 @@ async function runComprehensiveTest(count: number) {
     // Create test run
     const testRun = await createTestRun(pool, actors, ["gemini_pro", "perplexity"], STRATEGIES)
     console.log(`\nCreated test run ID: ${testRun.id}`)
-    console.log(`Track progress at: http://localhost:5173/admin/ab-tests/comprehensive/${testRun.id}\n`)
+    console.log(
+      `Track progress at: http://localhost:5173/admin/ab-tests/comprehensive/${testRun.id}\n`
+    )
 
     // Initialize providers with max_tokens=8192
     const gemini = new GeminiProSource()
@@ -298,7 +311,8 @@ async function runComprehensiveTest(count: number) {
           const cost = result.costUsd || 0
 
           // Store result
-          await pool.query(`
+          await pool.query(
+            `
             INSERT INTO ab_test_comprehensive_results (
               run_id,
               actor_id,
@@ -314,21 +328,23 @@ async function runComprehensiveTest(count: number) {
               cost_usd,
               response_time_ms
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-          `, [
-            testRun.id,
-            actor.id,
-            actor.name,
-            provider,
-            strategy,
-            whatWeKnow,
-            alternativeAccounts,
-            additionalContext,
-            JSON.stringify(sources),
-            JSON.stringify(resolvedSources),
-            JSON.stringify(result.rawData),
-            cost,
-            responseTime
-          ])
+          `,
+            [
+              testRun.id,
+              actor.id,
+              actor.name,
+              provider,
+              strategy,
+              whatWeKnow,
+              alternativeAccounts,
+              additionalContext,
+              JSON.stringify(sources),
+              JSON.stringify(resolvedSources),
+              JSON.stringify(result.rawData),
+              cost,
+              responseTime,
+            ]
+          )
 
           const key = `${provider}_${strategy}`
           variantResults[key].total++
@@ -341,7 +357,9 @@ async function runComprehensiveTest(count: number) {
           completedVariants++
 
           const hasData = whatWeKnow || alternativeAccounts || additionalContext
-          console.log(`    ${hasData ? "✓" : "✗"} Data: ${hasData ? "Found" : "None"} | Sources: ${sources.length} | Cost: $${cost.toFixed(4)} | Time: ${responseTime}ms`)
+          console.log(
+            `    ${hasData ? "✓" : "✗"} Data: ${hasData ? "Found" : "None"} | Sources: ${sources.length} | Cost: $${cost.toFixed(4)} | Time: ${responseTime}ms`
+          )
         }
       }
 
@@ -364,14 +382,19 @@ async function runComprehensiveTest(count: number) {
     await addInference(pool, testRun.id, finalAnalysis.message, finalAnalysis.data)
 
     // Mark test as completed
-    await pool.query(`
+    await pool.query(
+      `
       UPDATE ab_test_runs
       SET status = 'completed', completed_at = NOW()
       WHERE id = $1
-    `, [testRun.id])
+    `,
+      [testRun.id]
+    )
 
     console.log(`\nTotal cost: $${totalCost.toFixed(4)}`)
-    console.log(`\nView full results at: http://localhost:5173/admin/ab-tests/comprehensive/${testRun.id}`)
+    console.log(
+      `\nView full results at: http://localhost:5173/admin/ab-tests/comprehensive/${testRun.id}`
+    )
 
     await pool.end()
   } catch (error) {
@@ -403,8 +426,8 @@ function analyzeProgress(
     message: `Progress update after ${completed}/${total} actors`,
     data: {
       topPerformers: successRates.slice(0, 3),
-      lowestPerformers: successRates.slice(-3)
-    }
+      lowestPerformers: successRates.slice(-3),
+    },
   }
 }
 
@@ -421,7 +444,7 @@ function analyzeFinalResults(
     successRate: (data.found / data.total) * 100,
     avgCost: data.cost / data.total,
     totalFound: data.found,
-    totalTests: data.total
+    totalTests: data.total,
   }))
 
   rankings.sort((a, b) => {
@@ -443,9 +466,9 @@ function analyzeFinalResults(
         primary: rankings[0].variant,
         secondary: rankings[1].variant,
         fallback: rankings[2].variant,
-        reasoning: `${rankings[0].variant} had ${rankings[0].successRate.toFixed(1)}% success rate at $${rankings[0].avgCost.toFixed(4)} per test`
-      }
-    }
+        reasoning: `${rankings[0].variant} had ${rankings[0].successRate.toFixed(1)}% success rate at $${rankings[0].avgCost.toFixed(4)} per test`,
+      },
+    },
   }
 }
 
