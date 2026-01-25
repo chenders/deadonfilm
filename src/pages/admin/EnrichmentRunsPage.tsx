@@ -9,6 +9,7 @@ import { Link } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
+import DateRangePicker from "../../components/admin/analytics/DateRangePicker"
 import { useEnrichmentRuns, type EnrichmentRunFilters } from "../../hooks/admin/useEnrichmentRuns"
 
 export default function EnrichmentRunsPage() {
@@ -41,63 +42,49 @@ export default function EnrichmentRunsPage() {
         </div>
 
         {/* Filters */}
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-          <h2 className="mb-4 text-lg font-semibold text-white">Filters</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div>
-              <label htmlFor="startDate" className="mb-1 block text-sm text-gray-400">
-                Start Date
-              </label>
-              <input
-                id="startDate"
-                type="date"
-                value={filters.startDate || ""}
-                onChange={(e) =>
-                  handleFilterChange({ ...filters, startDate: e.target.value || undefined })
-                }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-              />
+        <div className="space-y-4">
+          <DateRangePicker
+            startDate={filters.startDate || ""}
+            endDate={filters.endDate || ""}
+            onChange={(startDate, endDate) =>
+              handleFilterChange({
+                ...filters,
+                startDate: startDate || undefined,
+                endDate: endDate || undefined,
+              })
+            }
+            showQuickFilters={false}
+          />
+
+          <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <label htmlFor="exitReason" className="mb-1 block text-sm text-gray-400">
+                  Exit Reason
+                </label>
+                <select
+                  id="exitReason"
+                  value={filters.exitReason || ""}
+                  onChange={(e) =>
+                    handleFilterChange({ ...filters, exitReason: e.target.value || undefined })
+                  }
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                >
+                  <option value="">All</option>
+                  <option value="completed">Completed</option>
+                  <option value="cost_limit">Cost Limit</option>
+                  <option value="error">Error</option>
+                  <option value="interrupted">Interrupted</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label htmlFor="endDate" className="mb-1 block text-sm text-gray-400">
-                End Date
-              </label>
-              <input
-                id="endDate"
-                type="date"
-                value={filters.endDate || ""}
-                onChange={(e) =>
-                  handleFilterChange({ ...filters, endDate: e.target.value || undefined })
-                }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-              />
-            </div>
-            <div>
-              <label htmlFor="exitReason" className="mb-1 block text-sm text-gray-400">
-                Exit Reason
-              </label>
-              <select
-                id="exitReason"
-                value={filters.exitReason || ""}
-                onChange={(e) =>
-                  handleFilterChange({ ...filters, exitReason: e.target.value || undefined })
-                }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-              >
-                <option value="">All</option>
-                <option value="completed">Completed</option>
-                <option value="cost_limit">Cost Limit</option>
-                <option value="error">Error</option>
-                <option value="interrupted">Interrupted</option>
-              </select>
-            </div>
+            <button
+              onClick={() => handleFilterChange({})}
+              className="mt-4 text-sm text-gray-400 transition-colors hover:text-white"
+            >
+              Clear Filters
+            </button>
           </div>
-          <button
-            onClick={() => handleFilterChange({})}
-            className="mt-4 text-sm text-gray-400 transition-colors hover:text-white"
-          >
-            Clear Filters
-          </button>
         </div>
 
         {/* Loading State */}
