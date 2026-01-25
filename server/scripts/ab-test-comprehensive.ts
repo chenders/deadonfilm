@@ -62,23 +62,22 @@ async function findEligibleActors(pool: Pool, count: number): Promise<ActorRow[]
       FROM actors
       WHERE deathday IS NOT NULL
     ),
-    content_popularity_percentile AS (
-      SELECT
-        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY popularity) as p25_threshold_movies
+    movie_popularity_percentile AS (
+      SELECT PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY popularity) as p25_threshold
       FROM movies
-      UNION ALL
-      SELECT
-        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY popularity) as p25_threshold_shows
+    ),
+    show_popularity_percentile AS (
+      SELECT PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY popularity) as p25_threshold
       FROM shows
     ),
     popular_content AS (
       SELECT DISTINCT m.id as content_id, 'movie' as content_type, m.popularity
-      FROM movies m, content_popularity_percentile cpp
-      WHERE m.popularity >= cpp.p25_threshold_movies
+      FROM movies m, movie_popularity_percentile mpp
+      WHERE m.popularity >= mpp.p25_threshold
       UNION ALL
       SELECT DISTINCT s.id as content_id, 'show' as content_type, s.popularity
-      FROM shows s, content_popularity_percentile cpp
-      WHERE s.popularity >= cpp.p25_threshold_shows
+      FROM shows s, show_popularity_percentile spp
+      WHERE s.popularity >= spp.p25_threshold
     ),
     actor_content_appearances AS (
       SELECT

@@ -160,10 +160,11 @@ async function backfillSourceResolution(options: {
           continue
         }
 
-        console.log(`  Found ${allUrls.length} URLs to resolve`)
+        const uniqueUrls = Array.from(new Set(allUrls))
+        console.log(`  Found ${allUrls.length} URLs (${uniqueUrls.length} unique) to resolve`)
 
         // Resolve URLs
-        const resolvedSources: ResolvedUrl[] = await resolveRedirectUrls(allUrls)
+        const resolvedSources: ResolvedUrl[] = await resolveRedirectUrls(uniqueUrls)
 
         // Count successful resolutions
         const successCount = resolvedSources.filter((r) => !r.error).length

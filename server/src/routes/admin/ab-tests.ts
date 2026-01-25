@@ -94,12 +94,26 @@ router.get("/source-requirement", async (req: Request, res: Response): Promise<v
       const testData = {
         circumstances: row.circumstances,
         rumoredCircumstances: row.rumored_circumstances,
-        sources: typeof row.sources === "string" ? JSON.parse(row.sources) : row.sources,
-        resolvedSources: row.resolved_sources
-          ? typeof row.resolved_sources === "string"
-            ? JSON.parse(row.resolved_sources)
-            : row.resolved_sources
-          : null,
+        sources: (() => {
+          try {
+            const parsed = typeof row.sources === "string" ? JSON.parse(row.sources) : row.sources
+            return Array.isArray(parsed) ? parsed : []
+          } catch {
+            return []
+          }
+        })(),
+        resolvedSources: (() => {
+          if (!row.resolved_sources) return null
+          try {
+            const parsed =
+              typeof row.resolved_sources === "string"
+                ? JSON.parse(row.resolved_sources)
+                : row.resolved_sources
+            return Array.isArray(parsed) ? parsed : null
+          } catch {
+            return null
+          }
+        })(),
         costUsd: parseFloat(row.cost_usd),
       }
 
@@ -185,6 +199,7 @@ router.get("/source-requirement/:actorId", async (req: Request, res: Response): 
         created_at
       FROM enrichment_ab_tests
       WHERE actor_id = $1
+        AND test_type = 'source_requirement'
       ORDER BY version
     `
 
@@ -221,12 +236,26 @@ router.get("/source-requirement/:actorId", async (req: Request, res: Response): 
       const testData = {
         circumstances: row.circumstances,
         rumoredCircumstances: row.rumored_circumstances,
-        sources: typeof row.sources === "string" ? JSON.parse(row.sources) : row.sources,
-        resolvedSources: row.resolved_sources
-          ? typeof row.resolved_sources === "string"
-            ? JSON.parse(row.resolved_sources)
-            : row.resolved_sources
-          : null,
+        sources: (() => {
+          try {
+            const parsed = typeof row.sources === "string" ? JSON.parse(row.sources) : row.sources
+            return Array.isArray(parsed) ? parsed : []
+          } catch {
+            return []
+          }
+        })(),
+        resolvedSources: (() => {
+          if (!row.resolved_sources) return null
+          try {
+            const parsed =
+              typeof row.resolved_sources === "string"
+                ? JSON.parse(row.resolved_sources)
+                : row.resolved_sources
+            return Array.isArray(parsed) ? parsed : null
+          } catch {
+            return null
+          }
+        })(),
         costUsd: parseFloat(row.cost_usd),
       }
 
@@ -314,12 +343,26 @@ router.get("/provider-comparison", async (req: Request, res: Response): Promise<
       const testData = {
         circumstances: row.circumstances,
         rumoredCircumstances: row.rumored_circumstances,
-        sources: typeof row.sources === "string" ? JSON.parse(row.sources) : row.sources,
-        resolvedSources: row.resolved_sources
-          ? typeof row.resolved_sources === "string"
-            ? JSON.parse(row.resolved_sources)
-            : row.resolved_sources
-          : null,
+        sources: (() => {
+          try {
+            const parsed = typeof row.sources === "string" ? JSON.parse(row.sources) : row.sources
+            return Array.isArray(parsed) ? parsed : []
+          } catch {
+            return []
+          }
+        })(),
+        resolvedSources: (() => {
+          if (!row.resolved_sources) return null
+          try {
+            const parsed =
+              typeof row.resolved_sources === "string"
+                ? JSON.parse(row.resolved_sources)
+                : row.resolved_sources
+            return Array.isArray(parsed) ? parsed : null
+          } catch {
+            return null
+          }
+        })(),
         costUsd: parseFloat(row.cost_usd),
       }
 
