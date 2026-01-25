@@ -334,7 +334,7 @@ export default function ActorManagementPage() {
                               : "Unknown"}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-400">
-                            {actor.popularity.toFixed(1)}
+                            {actor.popularity?.toFixed(1) ?? "—"}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {actor.has_detailed_death_info ? (
