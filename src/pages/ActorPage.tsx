@@ -3,7 +3,7 @@ import { useParams, useLocation, Link } from "react-router-dom"
 import { createPortal } from "react-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
-import { extractActorId, createMovieSlug, createShowSlug } from "@/utils/slugify"
+import { createMovieSlug, createShowSlug } from "@/utils/slugify"
 import { formatDate, calculateCurrentAge } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import { getProfileUrl, getPosterUrl } from "@/services/api"
@@ -219,8 +219,7 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
 export default function ActorPage() {
   const { slug } = useParams<{ slug: string }>()
   const location = useLocation()
-  const actorId = slug ? extractActorId(slug) : 0
-  const { data, isLoading, error } = useActor(actorId)
+  const { data, isLoading, error } = useActor(slug || "")
 
   // Tooltip state for cause of death details
   const [showTooltip, setShowTooltip] = useState(false)
@@ -259,7 +258,7 @@ export default function ActorPage() {
     return [...movies, ...shows].sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
   }, [data])
 
-  if (!actorId) {
+  if (!slug) {
     return <ErrorMessage message="Invalid actor URL" />
   }
 

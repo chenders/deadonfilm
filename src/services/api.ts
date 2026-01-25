@@ -190,8 +190,8 @@ export function getBackdropUrl(
   return `${TMDB_IMAGE_BASE}/${size}${backdropPath}`
 }
 
-export async function getActor(actorId: number): Promise<ActorProfileResponse> {
-  return fetchJson(`/actor/${actorId}`)
+export async function getActor(slug: string): Promise<ActorProfileResponse> {
+  return fetchJson(`/actor/${slug}`)
 }
 
 export interface CovidDeathsParams {
@@ -432,8 +432,8 @@ export async function getSpecificCauseDetail(
 /**
  * Get detailed death circumstances for an actor
  */
-export async function getActorDeathDetails(actorId: number): Promise<DeathDetailsResponse> {
-  return fetchJson(`/actor/${actorId}/death`)
+export async function getActorDeathDetails(slug: string): Promise<DeathDetailsResponse> {
+  return fetchJson(`/actor/${slug}/death`)
 }
 
 export interface NotableDeathsParams {
