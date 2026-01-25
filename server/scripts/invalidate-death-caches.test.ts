@@ -19,7 +19,6 @@ vi.mock("../src/lib/logger.js", () => ({
 
 import { invalidateDeathCaches, rebuildDeathCaches } from "../src/lib/cache.js"
 import { initRedis, closeRedis } from "../src/lib/redis.js"
-import { logger } from "../src/lib/logger.js"
 
 describe("invalidate-death-caches script", () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>

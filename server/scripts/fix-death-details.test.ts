@@ -171,7 +171,8 @@ describe("fix-death-details script", () => {
       const dryRun = false
       const fixed = 0
 
-      if (!dryRun && fixed > 0) {
+      // When fixed = 0, caches should not be rebuilt
+      if (fixed > 0 && !dryRun) {
         await initRedis()
         await rebuildDeathCaches()
         await closeRedis()
