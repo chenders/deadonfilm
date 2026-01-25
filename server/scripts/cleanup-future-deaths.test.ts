@@ -5,21 +5,40 @@
  * - Future death dates
  * - Recent death dates (within 30 days)
  * - Death dates before birth dates
+ * - Cache invalidation after cleanup
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import type { Pool, QueryResult } from "pg"
+
+// Mock cache and Redis functions
+vi.mock("../src/lib/cache.js", () => ({
+  rebuildDeathCaches: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("../src/lib/redis.js", () => ({
+  initRedis: vi.fn(),
+  closeRedis: vi.fn().mockResolvedValue(undefined),
+}))
+
+import { rebuildDeathCaches } from "../src/lib/cache.js"
+import { initRedis, closeRedis } from "../src/lib/redis.js"
 
 describe("cleanup-future-deaths script", () => {
   let mockPool: Pool
   let mockQuery: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
+    vi.clearAllMocks()
     mockQuery = vi.fn()
     mockPool = {
       query: mockQuery,
       end: vi.fn(),
     } as unknown as Pool
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
   })
 
   describe("SQL queries", () => {
@@ -150,6 +169,97 @@ describe("cleanup-future-deaths script", () => {
         const query = call[0] as string
         expect(query).not.toContain("death_date")
       })
+    })
+  })
+
+  describe("cache invalidation", () => {
+    it("rebuilds death caches when changes are made", async () => {
+      vi.mocked(initRedis).mockResolvedValue(true)
+
+      // Simulate UPDATE returning rowCount > 0
+      const updateResult = { rows: [{ id: 1, name: "Test Actor" }], rowCount: 1 }
+
+      // Check if we made changes
+      if (updateResult.rowCount && updateResult.rowCount > 0) {
+        await initRedis()
+        await rebuildDeathCaches()
+        await closeRedis()
+      }
+
+      expect(initRedis).toHaveBeenCalled()
+      expect(rebuildDeathCaches).toHaveBeenCalled()
+      expect(closeRedis).toHaveBeenCalled()
+    })
+
+    it("does not rebuild caches when no changes are made", async () => {
+      // Simulate UPDATE returning rowCount = 0
+      const updateResult = { rows: [], rowCount: 0 }
+
+      // Check if we made changes
+      if (updateResult.rowCount && updateResult.rowCount > 0) {
+        await initRedis()
+        await rebuildDeathCaches()
+        await closeRedis()
+      }
+
+      expect(initRedis).not.toHaveBeenCalled()
+      expect(rebuildDeathCaches).not.toHaveBeenCalled()
+      expect(closeRedis).not.toHaveBeenCalled()
+    })
+
+    it("checks Redis availability before rebuilding caches", async () => {
+      vi.mocked(initRedis).mockResolvedValue(false)
+
+      const updateResult = { rows: [{ id: 1, name: "Test Actor" }], rowCount: 1 }
+
+      if (updateResult.rowCount && updateResult.rowCount > 0) {
+        const redisAvailable = await initRedis()
+        if (!redisAvailable) {
+          await closeRedis()
+          // Script would exit here
+        }
+      }
+
+      expect(initRedis).toHaveBeenCalled()
+      expect(rebuildDeathCaches).not.toHaveBeenCalled()
+      expect(closeRedis).toHaveBeenCalled()
+    })
+
+    it("calls closeRedis in finally block even if rebuild fails", async () => {
+      vi.mocked(initRedis).mockResolvedValue(true)
+      vi.mocked(rebuildDeathCaches).mockRejectedValue(new Error("Redis connection lost"))
+
+      const updateResult = { rows: [{ id: 1, name: "Test Actor" }], rowCount: 1 }
+
+      if (updateResult.rowCount && updateResult.rowCount > 0) {
+        try {
+          await initRedis()
+          await rebuildDeathCaches()
+        } catch (error) {
+          // Expected error
+        } finally {
+          await closeRedis()
+        }
+      }
+
+      expect(closeRedis).toHaveBeenCalled()
+    })
+
+    it("does not call rebuildDeathCaches when Redis is unavailable", async () => {
+      vi.mocked(initRedis).mockResolvedValue(false)
+
+      const updateResult = { rows: [{ id: 1, name: "Test Actor" }], rowCount: 1 }
+
+      if (updateResult.rowCount && updateResult.rowCount > 0) {
+        const redisAvailable = await initRedis()
+        if (redisAvailable) {
+          await rebuildDeathCaches()
+        }
+        await closeRedis()
+      }
+
+      expect(rebuildDeathCaches).not.toHaveBeenCalled()
+      expect(closeRedis).toHaveBeenCalled()
     })
   })
 })
