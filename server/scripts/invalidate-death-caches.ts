@@ -3,6 +3,7 @@
  * Invalidate and rebuild death-related caches.
  * Use this after adding new death records to ensure they appear on the site.
  */
+import "dotenv/config"
 import { Command } from "commander"
 import { rebuildDeathCaches, invalidateDeathCaches } from "../src/lib/cache.js"
 import { logger } from "../src/lib/logger.js"
