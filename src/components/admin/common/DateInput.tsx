@@ -28,6 +28,12 @@ export default function DateInput({
 
   return (
     <div className={className}>
+      <style>{`
+        input[type="date"]::-webkit-calendar-picker-indicator {
+          filter: invert(0.8) brightness(1.2);
+          cursor: pointer;
+        }
+      `}</style>
       <label htmlFor={id} className="mb-1 block text-sm text-gray-400">
         {label}
       </label>
@@ -37,11 +43,14 @@ export default function DateInput({
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full rounded border bg-gray-900 px-3 py-2 text-white focus:outline-none focus:ring-1 ${
+          className={`w-full rounded border bg-gray-900 px-3 py-2 text-white [color-scheme:dark] focus:outline-none focus:ring-1 ${
             error
               ? "border-red-500 focus:border-red-500 focus:ring-red-500"
               : "border-gray-700 focus:border-blue-500 focus:ring-blue-500"
           }`}
+          style={{
+            colorScheme: "dark",
+          }}
           aria-label={label}
           aria-describedby={[describedById, errorId].filter(Boolean).join(" ") || undefined}
           aria-invalid={error ? "true" : undefined}
