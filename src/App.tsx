@@ -51,6 +51,9 @@ const AdminEnrichmentRunDetailsPage = lazyWithRetry(
 )
 const AdminStartEnrichmentPage = lazyWithRetry(() => import("./pages/admin/StartEnrichmentPage"))
 const AdminEnrichmentReviewPage = lazyWithRetry(() => import("./pages/admin/EnrichmentReviewPage"))
+const AdminHighPriorityActorsPage = lazyWithRetry(
+  () => import("./pages/admin/HighPriorityActorsPage")
+)
 const AdminActorDiagnosticPage = lazyWithRetry(() => import("./pages/admin/ActorDiagnosticPage"))
 const AdminCacheManagementPage = lazyWithRetry(() => import("./pages/admin/CacheManagementPage"))
 const AdminSitemapManagementPage = lazyWithRetry(
@@ -132,6 +135,14 @@ function App() {
           element={
             <Suspense fallback={<LoadingSpinner />}>
               <AdminEnrichmentReviewPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/enrichment/high-priority"
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminHighPriorityActorsPage />
             </Suspense>
           }
         />
