@@ -24,13 +24,12 @@ const program = new Command()
           a.name,
           a.deathday,
           a.popularity,
-          dd.enriched_at
+          a.enriched_at
         FROM actors a
-        LEFT JOIN actor_death_circumstances dd ON dd.actor_id = a.id
         WHERE a.deathday IS NOT NULL
           AND a.popularity >= $2
           AND (a.has_detailed_death_info = false OR a.has_detailed_death_info IS NULL)
-          AND (dd.enriched_at IS NULL OR dd.enriched_at < NOW() - INTERVAL '30 days')
+          AND (a.enriched_at IS NULL OR a.enriched_at < NOW() - INTERVAL '30 days')
         ORDER BY a.popularity DESC NULLS LAST
         LIMIT $1`,
         [limit, MIN_POPULARITY_THRESHOLD]
@@ -54,7 +53,7 @@ const program = new Command()
       if (result.rows.length > 0) {
         const actorIds = result.rows.map((a) => a.id).join(",")
         console.log(`\nTo enrich these actors, run:`)
-        console.log(`  npx tsx scripts/enrich-death-details.ts --actor-ids ${actorIds} --dry-run\n`)
+        console.log(`  npx tsx scripts/enrich-death-details.ts --actor-id ${actorIds} --dry-run\n`)
       }
     } catch (error) {
       console.error("Error:", error)
