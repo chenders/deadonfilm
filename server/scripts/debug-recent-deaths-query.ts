@@ -5,7 +5,7 @@
 import { getPool } from "../src/lib/db.js"
 import { getRecentDeaths } from "../src/lib/db/deaths-discovery.js"
 
-async function main() {
+export async function main() {
   const db = getPool()
 
   try {
@@ -54,7 +54,12 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error("Error:", error)
-  process.exit(1)
-})
+// Run if this is the main module
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error("Error:", error)
+    process.exit(1)
+  })
+}
+
+export default main
