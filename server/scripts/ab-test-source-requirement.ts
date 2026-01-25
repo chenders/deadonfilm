@@ -133,7 +133,8 @@ async function runABTest(options: {
     if (options.actorIds) {
       // Test specific actors by IDs
       actorQuery = `
-        SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday
+        SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday,
+               a.cause_of_death, a.cause_of_death_details, a.popularity
         FROM actors a
         WHERE a.id = ANY($1) AND a.deathday IS NOT NULL
       `
@@ -141,7 +142,8 @@ async function runABTest(options: {
     } else {
       // Find random actors without detailed death info
       actorQuery = `
-        SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday
+        SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday,
+               a.cause_of_death, a.cause_of_death_details, a.popularity
         FROM actors a
         WHERE a.deathday IS NOT NULL
           AND a.has_detailed_death_info = false
@@ -157,8 +159,18 @@ async function runABTest(options: {
       queryParams = [options.count]
     }
 
-    const actorResult = await pool.query<ActorForEnrichment>(actorQuery, queryParams)
-    const actors = actorResult.rows
+    const actorResult = await pool.query(actorQuery, queryParams)
+    // Map snake_case fields to camelCase for ActorForEnrichment
+    const actors: ActorForEnrichment[] = actorResult.rows.map((row: any) => ({
+      id: row.id,
+      tmdbId: row.tmdb_id,
+      name: row.name,
+      birthday: row.birthday,
+      deathday: row.deathday,
+      causeOfDeath: row.cause_of_death,
+      causeOfDeathDetails: row.cause_of_death_details,
+      popularity: row.popularity,
+    }))
 
     if (actors.length === 0) {
       if (options.actorIds) {
