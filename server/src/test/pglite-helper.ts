@@ -99,6 +99,17 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
       updated_at TIMESTAMP DEFAULT NOW()
     );
 
+    -- Actor death circumstances table
+    CREATE TABLE IF NOT EXISTS actor_death_circumstances (
+      id SERIAL PRIMARY KEY,
+      actor_id INTEGER NOT NULL UNIQUE,
+      circumstances TEXT,
+      notable_factors TEXT,
+      enriched_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
     -- Actor show appearances table (junction table only)
     CREATE TABLE IF NOT EXISTS actor_show_appearances (
       id SERIAL PRIMARY KEY,
