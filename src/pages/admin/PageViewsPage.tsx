@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import {
@@ -23,28 +23,34 @@ export default function PageViewsPage() {
   const [granularity, setGranularity] = useState<Granularity>("daily")
   const pageTypeFilter = "all"
 
-  // Calculate date range (last 30 days)
-  const endDate = new Date()
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - 30)
+  // Calculate date range (last 30 days) - memoized to prevent infinite re-renders
+  const { startDate, endDate } = useMemo(() => {
+    const end = new Date()
+    const start = new Date()
+    start.setDate(start.getDate() - 30)
+    return {
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+    }
+  }, [])
 
   const {
     data: summary,
     isLoading: summaryLoading,
     error: summaryError,
-  } = usePageViewSummary(startDate.toISOString(), endDate.toISOString(), pageTypeFilter)
+  } = usePageViewSummary(startDate, endDate, pageTypeFilter)
 
   const {
     data: trends,
     isLoading: trendsLoading,
     error: trendsError,
-  } = usePageViewTrends(startDate.toISOString(), endDate.toISOString(), granularity)
+  } = usePageViewTrends(startDate, endDate, granularity)
 
   const {
     data: topViewed,
     isLoading: topViewedLoading,
     error: topViewedError,
-  } = useTopViewedPages("actor_death", startDate.toISOString(), endDate.toISOString(), 20)
+  } = useTopViewedPages("actor_death", startDate, endDate, 20)
 
   const isLoading = summaryLoading || trendsLoading || topViewedLoading
   const error = summaryError || trendsError || topViewedError
