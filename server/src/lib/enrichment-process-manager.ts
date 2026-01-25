@@ -150,7 +150,7 @@ function buildScriptArgs(config: EnrichmentRunConfig): string[] {
   }
 
   if (config.actorIds && config.actorIds.length > 0) {
-    args.push("--actor-ids", config.actorIds.join(","))
+    args.push("--actor-id", config.actorIds.join(","))
   }
 
   if (config.free) {
