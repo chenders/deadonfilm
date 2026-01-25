@@ -81,10 +81,19 @@ async function run() {
     // Rebuild death caches if we made changes
     if (updateResult.rowCount && updateResult.rowCount > 0) {
       console.log("\nRebuilding death caches...")
-      await initRedis()
-      await rebuildDeathCaches()
-      await closeRedis()
-      console.log("✓ Death caches rebuilt")
+      try {
+        const redisAvailable = await initRedis()
+        if (!redisAvailable) {
+          console.error("Error: Redis client not available")
+          console.error("This script requires Redis for cache invalidation.")
+          await closeRedis()
+          process.exit(1)
+        }
+        await rebuildDeathCaches()
+        console.log("✓ Death caches rebuilt")
+      } finally {
+        await closeRedis()
+      }
     }
   } catch (error) {
     console.error("Error cleaning up death data:", error)
