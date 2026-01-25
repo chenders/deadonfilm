@@ -5,7 +5,7 @@
 import { initRedis, closeRedis } from "../src/lib/redis.js"
 import { rebuildDeathCaches } from "../src/lib/cache.js"
 
-async function main() {
+export async function main() {
   console.log("Initializing Redis connection...\n")
 
   const redisAvailable = await initRedis()
@@ -20,15 +20,17 @@ async function main() {
   try {
     await rebuildDeathCaches()
     console.log("✅ Death caches rebuilt successfully\n")
-  } catch (error) {
-    console.error("❌ Error rebuilding caches:", error)
-    process.exit(1)
   } finally {
     await closeRedis()
   }
 }
 
-main().catch((error) => {
-  console.error("Fatal error:", error)
-  process.exit(1)
-})
+// Run if this is the main module
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error("Fatal error:", error)
+    process.exit(1)
+  })
+}
+
+export default main
