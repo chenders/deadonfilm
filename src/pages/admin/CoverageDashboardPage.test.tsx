@@ -300,4 +300,24 @@ describe("CoverageDashboardPage", () => {
     expect(screen.getByText("View All Death Pages")).toBeInTheDocument()
     expect(screen.getByText("Start Enrichment")).toBeInTheDocument()
   })
+
+  it("renders clickable high priority count link", () => {
+    vi.mocked(useCoverageStats).mockReturnValue({
+      data: mockStats,
+      isLoading: false,
+      error: null,
+    } as never)
+    vi.mocked(useCoverageTrends).mockReturnValue({
+      data: mockTrends,
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderComponent()
+
+    const highPriorityLink = screen.getByText("50").closest("a")
+    expect(highPriorityLink).toHaveAttribute("href", "/admin/enrichment/high-priority")
+    expect(screen.getByText("High Priority")).toBeInTheDocument()
+    expect(screen.getByText(/Popular actors \(popularity ≥ 10\)/)).toBeInTheDocument()
+  })
 })

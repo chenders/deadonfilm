@@ -86,6 +86,7 @@ export interface StartEnrichmentRequest {
   limit?: number
   minPopularity?: number
   recentOnly?: boolean
+  actorIds?: number[]
   free?: boolean
   paid?: boolean
   ai?: boolean
