@@ -107,6 +107,7 @@ interface GeminiApiResponse {
 abstract class GeminiBaseSource extends BaseDataSource {
   abstract readonly modelId: string
   abstract readonly useSearchGrounding: boolean
+  protected maxOutputTokens: number = 2000
 
   private get apiKey(): string | undefined {
     return process.env.GOOGLE_AI_API_KEY
@@ -129,7 +130,7 @@ abstract class GeminiBaseSource extends BaseDataSource {
     }
 
     // Use shared enriched prompt for career context
-    const prompt = buildEnrichedDeathPrompt(actor)
+    const prompt = buildEnrichedDeathPrompt(actor, this.requireSources, this.requireReliableSources)
 
     try {
       console.log(`${this.name} query for: ${actor.name}`)
@@ -143,7 +144,7 @@ abstract class GeminiBaseSource extends BaseDataSource {
         ],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 2000,
+          maxOutputTokens: this.maxOutputTokens,
         },
       }
 
