@@ -173,10 +173,19 @@ async function runFix(dryRun: boolean): Promise<{
     // Invalidate and rebuild death caches if we made changes
     if (!dryRun && fixed > 0) {
       console.log("\nRebuilding death caches...")
-      await initRedis()
-      await rebuildDeathCaches()
-      await closeRedis()
-      console.log("✓ Death caches rebuilt")
+      try {
+        const redisAvailable = await initRedis()
+        if (!redisAvailable) {
+          console.error("Error: Redis client not available")
+          console.error("This script requires Redis for cache invalidation.")
+          await closeRedis()
+          process.exit(1)
+        }
+        await rebuildDeathCaches()
+        console.log("✓ Death caches rebuilt")
+      } finally {
+        await closeRedis()
+      }
     }
 
     return { total: BAD_ENTRIES.length, fixed, skipped }
