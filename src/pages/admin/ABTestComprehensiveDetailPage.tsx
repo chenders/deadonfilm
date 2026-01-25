@@ -5,7 +5,30 @@ import { useComprehensiveTestRunDetail } from "../../hooks/admin/useComprehensiv
 
 export default function ABTestComprehensiveDetailPage() {
   const { runId } = useParams<{ runId: string }>()
-  const { data, isLoading, error } = useComprehensiveTestRunDetail(parseInt(runId!, 10))
+
+  // Validate runId parameter - but call hook first (rules of hooks)
+  const parsedRunId = runId ? parseInt(runId, 10) : NaN
+  const isValidRunId = !isNaN(parsedRunId) && runId !== undefined
+
+  // Always call hook (rules of hooks), but pass 0 for invalid IDs
+  const { data, isLoading, error } = useComprehensiveTestRunDetail(isValidRunId ? parsedRunId : 0)
+
+  // Now handle invalid runId after hooks are called
+  if (!isValidRunId) {
+    return (
+      <AdminLayout>
+        <div className="p-8">
+          <h1 className="mb-4 text-2xl font-bold text-red-400">Invalid Run ID</h1>
+          <p className="mb-4 text-gray-300">
+            The run ID parameter is missing or invalid. Please provide a valid numeric run ID.
+          </p>
+          <Link to="/admin/ab-tests/comprehensive" className="text-blue-400 hover:text-blue-300">
+            ← Back to Comprehensive Tests
+          </Link>
+        </div>
+      </AdminLayout>
+    )
+  }
 
   if (isLoading) {
     return (

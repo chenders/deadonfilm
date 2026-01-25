@@ -265,9 +265,9 @@ async function runABTest(options: {
           try {
             await pool.query(
               `INSERT INTO enrichment_ab_tests
-               (actor_id, actor_name, version, circumstances, rumored_circumstances, sources, resolved_sources, cost_usd)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-               ON CONFLICT (actor_id, version) DO UPDATE SET
+               (test_type, actor_id, actor_name, version, circumstances, rumored_circumstances, sources, resolved_sources, cost_usd)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               ON CONFLICT (test_type, actor_id, version) DO UPDATE SET
                  circumstances = EXCLUDED.circumstances,
                  rumored_circumstances = EXCLUDED.rumored_circumstances,
                  sources = EXCLUDED.sources,
@@ -275,6 +275,7 @@ async function runABTest(options: {
                  cost_usd = EXCLUDED.cost_usd,
                  created_at = CURRENT_TIMESTAMP`,
               [
+                "source_requirement",
                 result.actorId,
                 result.actorName,
                 result.version,
@@ -306,7 +307,7 @@ async function runABTest(options: {
     console.log("=".repeat(60))
     console.log(`Actors tested: ${testsRun}`)
     console.log(`Total cost: $${totalCost.toFixed(4)} / $${options.budget.toFixed(2)}`)
-    console.log("\nView results at: http://localhost:5173/admin/ab-test-sources")
+    console.log("\nView results at: http://localhost:5173/admin/ab-tests/source-requirement")
     console.log("=".repeat(60))
   } catch (error) {
     console.error("Fatal error:", error)

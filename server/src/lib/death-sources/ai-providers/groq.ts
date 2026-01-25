@@ -80,7 +80,7 @@ export class GroqLlamaSource extends BaseDataSource {
     }
 
     // Use shared enriched prompt for career context
-    const prompt = buildEnrichedDeathPrompt(actor, this.requireSources)
+    const prompt = buildEnrichedDeathPrompt(actor, this.requireSources, this.requireReliableSources)
 
     try {
       console.log(`Groq (Llama) query for: ${actor.name}`)
