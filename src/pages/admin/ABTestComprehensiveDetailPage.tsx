@@ -68,6 +68,10 @@ export default function ABTestComprehensiveDetailPage() {
 
   results.forEach((actor) => {
     Object.entries(actor.variants).forEach(([key, variant]) => {
+      // Initialize missing keys (handles partial runs or strategy changes)
+      if (!variantStats[key]) {
+        variantStats[key] = { found: 0, total: 0 }
+      }
       variantStats[key].total++
       if (variant.whatWeKnow || variant.alternativeAccounts || variant.additionalContext) {
         variantStats[key].found++
