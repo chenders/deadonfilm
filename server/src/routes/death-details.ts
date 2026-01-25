@@ -246,7 +246,7 @@ export async function getActorDeathDetails(req: Request, res: Response) {
       })
 
       const canonicalSlug = createActorSlug(actorRecord.name, actorRecord.id)
-      return res.redirect(301, `/actor/${canonicalSlug}/death`)
+      return res.redirect(301, `/api/actor/${canonicalSlug}/death`)
     }
 
     // Use actor.id for cache key
