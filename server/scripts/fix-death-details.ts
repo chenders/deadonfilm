@@ -14,6 +14,8 @@ import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
+import { rebuildDeathCaches } from "../src/lib/cache.js"
+import { initRedis, closeRedis } from "../src/lib/redis.js"
 
 interface BadEntry {
   tmdb_id: number
@@ -167,6 +169,26 @@ async function runFix(dryRun: boolean): Promise<{
     console.log(
       "Done! " + (dryRun ? "Would fix" : "Fixed") + " " + fixed + " entries, skipped " + skipped
     )
+
+    // Invalidate and rebuild death caches if we made changes
+    if (!dryRun && fixed > 0) {
+      console.log("\nRebuilding death caches...")
+      try {
+        const redisAvailable = await initRedis()
+        if (!redisAvailable) {
+          console.error("Error: Redis client not available")
+          console.error("This script requires Redis for cache invalidation.")
+          throw new Error("Redis unavailable")
+        }
+        await rebuildDeathCaches()
+        console.log("✓ Death caches rebuilt")
+      } catch (error) {
+        console.error("Failed to rebuild caches:", error)
+        throw error
+      } finally {
+        await closeRedis()
+      }
+    }
 
     return { total: BAD_ENTRIES.length, fixed, skipped }
   } finally {
