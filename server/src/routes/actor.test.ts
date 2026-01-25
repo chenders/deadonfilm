@@ -487,7 +487,7 @@ describe("getActor", () => {
       await getActor(mockReq as Request, mockRes as Response)
 
       // Should redirect to canonical URL with actor.id
-      expect(redirectSpy).toHaveBeenCalledWith(301, "/actor/clint-eastwood-4165")
+      expect(redirectSpy).toHaveBeenCalledWith(301, "/api/actor/clint-eastwood-4165")
 
       // Should NOT fetch TMDB data or set cache
       expect(tmdb.getPersonDetails).not.toHaveBeenCalled()
@@ -564,7 +564,7 @@ describe("getActor", () => {
       await getActor(mockReq as Request, mockRes as Response)
 
       // Should still redirect
-      expect(redirectSpy).toHaveBeenCalledWith(301, "/actor/imdb-only-actor-100")
+      expect(redirectSpy).toHaveBeenCalledWith(301, "/api/actor/imdb-only-actor-100")
 
       // NewRelic event should omit tmdbId field (conditional spreading)
       expect(newrelic.recordCustomEvent).toHaveBeenCalledWith(

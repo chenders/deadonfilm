@@ -99,7 +99,7 @@ export async function getActor(req: Request, res: Response) {
       })
 
       const canonicalSlug = createActorSlug(actorRecord.name, actorRecord.id)
-      return res.redirect(301, `/actor/${canonicalSlug}`)
+      return res.redirect(301, `/api/actor/${canonicalSlug}`)
     }
 
     // Use actor.id for cache key (not tmdb_id)
