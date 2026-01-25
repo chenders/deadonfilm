@@ -173,6 +173,30 @@ describe("enrichment-process-manager", () => {
       expect(args).toContain("1")
       expect(args).toContain("--yes")
     })
+
+    it("should include --actor-ids in script args when actorIds provided", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+
+      await processManager.startEnrichmentRun({
+        actorIds: [123, 456, 789],
+        free: true,
+        paid: true,
+        ai: false,
+        claudeCleanup: false,
+        gatherAllSources: false,
+        stopOnMatch: true,
+        followLinks: false,
+        aiLinkSelection: false,
+        aiContentExtraction: false,
+      })
+
+      const spawnCall = vi.mocked(spawn).mock.calls[0]
+      const args = spawnCall[1]
+      expect(args).toContain("--actor-id")
+      expect(args).toContain("123,456,789")
+    })
   })
 
   describe("stopEnrichmentRun", () => {

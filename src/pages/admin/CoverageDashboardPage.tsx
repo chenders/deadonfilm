@@ -123,13 +123,16 @@ export default function CoverageDashboardPage() {
             </p>
           </div>
 
-          <div className="rounded-lg bg-gray-800 p-6">
-            <div className="text-3xl font-bold text-orange-500">
+          <Link
+            to="/admin/enrichment/high-priority"
+            className="hover:bg-gray-750 block rounded-lg bg-gray-800 p-6 transition-colors"
+          >
+            <div className="text-3xl font-bold text-orange-500 transition-colors hover:text-orange-400">
               {stats.high_priority_count.toLocaleString()}
             </div>
             <div className="text-sm text-gray-400">High Priority</div>
             <p className="mt-2 text-xs text-gray-500">Popular actors (popularity ≥ 10)</p>
-          </div>
+          </Link>
         </div>
 
         {/* Coverage Trends Chart */}
