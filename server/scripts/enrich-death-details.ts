@@ -991,8 +991,11 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           rumoredCircumstances: enrichment.rumoredCircumstancesSource,
           notableFactors: enrichment.notableFactorsSource,
           locationOfDeath: enrichment.locationOfDeathSource,
+          additionalContext: enrichment.additionalContextSource,
           lastProject: enrichment.lastProjectSource,
           careerStatusAtDeath: enrichment.careerStatusAtDeathSource,
+          posthumousReleases: enrichment.posthumousReleasesSource,
+          relatedCelebrities: enrichment.relatedCelebritiesSource,
           cleanupSource: cleaned ? "claude-opus-4.5" : null,
         },
         rawResponse: enrichment.rawSources

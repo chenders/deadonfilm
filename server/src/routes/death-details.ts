@@ -62,6 +62,12 @@ interface DeathDetailsResponse {
     cause: SourceEntry[] | null
     circumstances: SourceEntry[] | null
     rumored: SourceEntry[] | null
+    additionalContext: SourceEntry[] | null
+    careerStatus: SourceEntry[] | null
+    lastProject: SourceEntry[] | null
+    posthumousReleases: SourceEntry[] | null
+    locationOfDeath: SourceEntry[] | null
+    relatedCelebrities: SourceEntry[] | null
   }
 }
 
@@ -92,6 +98,12 @@ interface RawSources {
   circumstances?: RawSourceEntry
   rumoredCircumstances?: RawSourceEntry
   cause?: RawSourceEntry
+  additionalContext?: RawSourceEntry
+  careerStatusAtDeath?: RawSourceEntry
+  lastProject?: RawSourceEntry
+  posthumousReleases?: RawSourceEntry
+  locationOfDeath?: RawSourceEntry
+  relatedCelebrities?: RawSourceEntry
   cleanupSource?: string
 }
 
@@ -103,7 +115,87 @@ function buildSourcesResponse(
   rawSources: RawSources | SourceEntry[] | null | undefined
 ): DeathDetailsResponse["sources"] {
   if (!rawSources) {
-    return { cause: null, circumstances: null, rumored: null }
+    return {
+      cause: null,
+      circumstances: null,
+      rumored: null,
+      additionalContext: null,
+      careerStatus: null,
+      lastProject: null,
+      posthumousReleases: null,
+      locationOfDeath: null,
+      relatedCelebrities: null,
+    }
+  }
+
+  /**
+   * Select the best single source from an array based on reputation.
+   * Used for fields like career status where multiple sources are redundant.
+   */
+  const selectBestSource = (sources: SourceEntry[] | null): SourceEntry[] | null => {
+    if (!sources || sources.length === 0) return null
+    if (sources.length === 1) return sources
+
+    // Reputation tiers (higher = more reputable)
+    const reputationScore = (description: string): number => {
+      const desc = description.toLowerCase()
+
+      // Tier 1: Major entertainment trades (highest reputation for film/TV)
+      if (
+        desc.includes("variety") ||
+        desc.includes("hollywood reporter") ||
+        desc.includes("deadline")
+      ) {
+        return 100
+      }
+
+      // Tier 2: Major news outlets
+      if (
+        desc.includes("bbc") ||
+        desc.includes("new york times") ||
+        desc.includes("washington post") ||
+        desc.includes("reuters") ||
+        desc.includes("ap news")
+      ) {
+        return 90
+      }
+
+      // Tier 3: Entertainment news
+      if (
+        desc.includes("people") ||
+        desc.includes("entertainment weekly") ||
+        desc.includes("tmz")
+      ) {
+        return 80
+      }
+
+      // Tier 4: General news
+      if (
+        desc.includes("cnn") ||
+        desc.includes("nbc") ||
+        desc.includes("abc") ||
+        desc.includes("cbs")
+      ) {
+        return 70
+      }
+
+      // Tier 5: Reference sites
+      if (desc.includes("wikipedia") || desc.includes("wikidata") || desc.includes("britannica")) {
+        return 60
+      }
+
+      // Default: Unknown source
+      return 50
+    }
+
+    // Find source with highest reputation
+    const bestSource = sources.reduce((best, current) => {
+      const currentScore = reputationScore(current.description)
+      const bestScore = reputationScore(best.description)
+      return currentScore > bestScore ? current : best
+    })
+
+    return [bestSource]
   }
 
   // Convert a raw source entry object to SourceEntry array format
@@ -191,6 +283,12 @@ function buildSourcesResponse(
     rumored: isSourceEntryArray(rumoredVal)
       ? rumoredVal
       : rawToSourceEntry(rumoredVal as RawSourceEntry),
+    additionalContext: rawToSourceEntry(sources.additionalContext as RawSourceEntry),
+    careerStatus: selectBestSource(rawToSourceEntry(sources.careerStatusAtDeath as RawSourceEntry)),
+    lastProject: rawToSourceEntry(sources.lastProject as RawSourceEntry),
+    posthumousReleases: rawToSourceEntry(sources.posthumousReleases as RawSourceEntry),
+    locationOfDeath: rawToSourceEntry(sources.locationOfDeath as RawSourceEntry),
+    relatedCelebrities: rawToSourceEntry(sources.relatedCelebrities as RawSourceEntry),
   }
 }
 

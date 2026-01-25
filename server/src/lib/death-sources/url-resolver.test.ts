@@ -222,6 +222,7 @@ describe("url-resolver", () => {
 
     it("includes reference sites", () => {
       expect(SOURCE_NAMES["wikipedia.org"]).toBe("Wikipedia")
+      expect(SOURCE_NAMES["wikidata.org"]).toBe("Wikidata")
       expect(SOURCE_NAMES["britannica.com"]).toBe("Britannica")
     })
   })
