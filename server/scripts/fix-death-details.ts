@@ -184,7 +184,7 @@ async function runFix(dryRun: boolean): Promise<{
         console.log("✓ Death caches rebuilt")
       } catch (error) {
         console.error("Failed to rebuild caches:", error)
-        process.exit(1)
+        throw error
       } finally {
         await closeRedis()
       }
