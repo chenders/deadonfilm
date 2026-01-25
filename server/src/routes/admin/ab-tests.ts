@@ -379,7 +379,10 @@ router.get("/provider-comparison", async (req: Request, res: Response): Promise<
 
     // Calculate summary statistics
     const totalTests = comparisonsArray.length
-    const providerStats: Record<string, { foundData: number; totalCost: number }> = {}
+    const providerStats: Record<
+      string,
+      { foundData: number; totalTests: number; totalCost: number }
+    > = {}
 
     // Get all unique providers
     const allProviders = new Set<string>()
@@ -389,13 +392,14 @@ router.get("/provider-comparison", async (req: Request, res: Response): Promise<
 
     // Initialize stats for each provider
     allProviders.forEach((provider) => {
-      providerStats[provider] = { foundData: 0, totalCost: 0 }
+      providerStats[provider] = { foundData: 0, totalTests: 0, totalCost: 0 }
     })
 
     // Calculate stats
     comparisonsArray.forEach((c) => {
       Object.entries(c.providers).forEach(([provider, data]) => {
         const providerData = data as { circumstances?: string; costUsd: number }
+        providerStats[provider].totalTests++
         if (providerData.circumstances) {
           providerStats[provider].foundData++
         }

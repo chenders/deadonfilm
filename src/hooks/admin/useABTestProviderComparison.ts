@@ -19,7 +19,7 @@ interface ProviderComparisonResponse {
   summary: {
     totalTests: number
     totalCost: string
-    providerStats: Record<string, { foundData: number; totalCost: number }>
+    providerStats: Record<string, { foundData: number; totalTests: number; totalCost: number }>
   }
   comparisons: ProviderComparison[]
 }

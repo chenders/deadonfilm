@@ -73,7 +73,7 @@ interface ComprehensiveTestRunDetailResponse {
   results: ActorResult[]
 }
 
-export function useComprehensiveTestRunDetail(runId: number) {
+export function useComprehensiveTestRunDetail(runId: number, options?: { enabled?: boolean }) {
   return useQuery<ComprehensiveTestRunDetailResponse>({
     queryKey: ["ab-tests", "comprehensive", runId],
     queryFn: async () => {
@@ -91,5 +91,6 @@ export function useComprehensiveTestRunDetail(runId: number) {
       // Auto-refresh every 3 seconds if run is still running
       return query.state.data?.run.status === "running" ? 3000 : false
     },
+    enabled: options?.enabled ?? true,
   })
 }

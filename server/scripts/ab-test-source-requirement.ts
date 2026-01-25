@@ -41,6 +41,14 @@ function parsePositiveNumber(value: string): number {
   return n
 }
 
+function parsePositiveInt(value: string): number {
+  const n = parseInt(value, 10)
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
+    throw new InvalidArgumentError("Must be positive integer")
+  }
+  return n
+}
+
 function parseActorIds(value: string): number[] {
   const ids = value.split(",").map((id) => {
     const n = parseInt(id.trim(), 10)
@@ -138,7 +146,10 @@ async function runABTest(options: {
         WHERE a.deathday IS NOT NULL
           AND a.has_detailed_death_info = false
           AND NOT EXISTS (
-            SELECT 1 FROM enrichment_ab_tests WHERE actor_id = a.id
+            SELECT 1
+            FROM enrichment_ab_tests
+            WHERE actor_id = a.id
+              AND test_type = 'source_requirement'
           )
         ORDER BY RANDOM()
         LIMIT $1
@@ -322,7 +333,7 @@ async function runABTest(options: {
 const program = new Command()
   .name("ab-test-source-requirement")
   .description("A/B test AI enrichment with/without source requirement")
-  .option("-c, --count <n>", "Number of actors to test", parsePositiveNumber, 10)
+  .option("-c, --count <n>", "Number of actors to test", parsePositiveInt, 10)
   .option("-b, --budget <usd>", "Budget limit in USD", parsePositiveNumber, 10)
   .option("-y, --yes", "Skip confirmation prompt", false)
   .option("--actor-ids <ids>", "Test specific actors by ID (comma-separated)", parseActorIds)
