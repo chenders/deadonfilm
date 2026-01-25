@@ -4,11 +4,11 @@ import { getActorDeathDetails, getNotableDeaths, type NotableDeathsParams } from
 /**
  * Hook to fetch detailed death circumstances for an actor
  */
-export function useActorDeathDetails(actorId: number) {
+export function useActorDeathDetails(slug: string) {
   return useQuery({
-    queryKey: ["actor-death-details", actorId],
-    queryFn: () => getActorDeathDetails(actorId),
-    enabled: actorId > 0,
+    queryKey: ["actor-death-details", slug],
+    queryFn: () => getActorDeathDetails(slug),
+    enabled: !!slug,
   })
 }
 
