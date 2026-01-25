@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
@@ -16,19 +16,24 @@ import {
 
 type Granularity = "daily" | "weekly" | "monthly"
 
+// Calculate default date range (last 30 days)
+const getDefaultDateRange = () => {
+  const end = new Date()
+  const start = new Date()
+  start.setDate(start.getDate() - 30)
+  return {
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+  }
+}
+
 export default function CoverageDashboardPage() {
   const [granularity, setGranularity] = useState<Granularity>("daily")
 
-  // Calculate date range (last 30 days) - memoized to prevent infinite re-renders
-  const { startDate, endDate } = useMemo(() => {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(start.getDate() - 30)
-    return {
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-    }
-  }, [])
+  // Use state to manage date range - stable across renders but allows future enhancements
+  const defaultRange = getDefaultDateRange()
+  const [startDate] = useState(defaultRange.startDate)
+  const [endDate] = useState(defaultRange.endDate)
 
   const { data: stats, isLoading: statsLoading, error: statsError } = useCoverageStats()
   const {
