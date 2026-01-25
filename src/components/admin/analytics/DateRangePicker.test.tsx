@@ -43,8 +43,9 @@ describe("DateRangePicker", () => {
 
       expect(startInput).toBeInTheDocument()
       expect(endInput).toBeInTheDocument()
-      expect(startInput).toHaveAttribute("type", "date")
-      expect(endInput).toHaveAttribute("type", "date")
+      // react-datepicker uses text inputs, not date inputs
+      expect(startInput).toHaveAttribute("type", "text")
+      expect(endInput).toHaveAttribute("type", "text")
     })
   })
 
@@ -282,14 +283,17 @@ describe("DateRangePicker", () => {
     it("shows clear button for individual date inputs", () => {
       render(<DateRangePicker {...defaultProps} />)
 
-      expect(screen.getByLabelText("Clear Start Date")).toBeInTheDocument()
-      expect(screen.getByLabelText("Clear End Date")).toBeInTheDocument()
+      // react-datepicker uses aria-label="Close" for clear buttons
+      const clearButtons = screen.getAllByLabelText("Close")
+      expect(clearButtons).toHaveLength(2)
     })
 
     it("clears start date when individual clear button is clicked", () => {
       render(<DateRangePicker {...defaultProps} />)
 
-      fireEvent.click(screen.getByLabelText("Clear Start Date"))
+      // react-datepicker uses aria-label="Close" - first one is for start date
+      const clearButtons = screen.getAllByLabelText("Close")
+      fireEvent.click(clearButtons[0])
 
       expect(mockOnChange).toHaveBeenCalledWith("", "2024-01-31")
     })
@@ -297,7 +301,9 @@ describe("DateRangePicker", () => {
     it("clears end date when individual clear button is clicked", () => {
       render(<DateRangePicker {...defaultProps} />)
 
-      fireEvent.click(screen.getByLabelText("Clear End Date"))
+      // react-datepicker uses aria-label="Close" - second one is for end date
+      const clearButtons = screen.getAllByLabelText("Close")
+      fireEvent.click(clearButtons[1])
 
       expect(mockOnChange).toHaveBeenCalledWith("2024-01-01", "")
     })
