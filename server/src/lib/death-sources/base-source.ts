@@ -62,6 +62,10 @@ export abstract class BaseDataSource implements DataSource {
   // Link following configuration (set by orchestrator)
   protected linkFollowConfig?: LinkFollowConfig
 
+  // AI prompt configuration - whether to require source URLs
+  protected requireSources = true
+  protected requireReliableSources = false
+
   /**
    * User agent for HTTP requests
    */
@@ -103,6 +107,22 @@ export abstract class BaseDataSource implements DataSource {
    */
   setLinkFollowConfig(config: LinkFollowConfig): void {
     this.linkFollowConfig = config
+  }
+
+  /**
+   * Set whether to require source URLs in AI prompts.
+   * Used for A/B testing source requirement impact.
+   */
+  setRequireSources(require: boolean): void {
+    this.requireSources = require
+  }
+
+  /**
+   * Set whether to require "reliable" sources specifically.
+   * Used for A/B testing the impact of the "reliable" qualifier.
+   */
+  setRequireReliableSources(require: boolean): void {
+    this.requireReliableSources = require
   }
 
   /**
