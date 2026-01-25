@@ -310,8 +310,12 @@ async function runComprehensiveTest(count: number) {
           const alternativeAccounts = result.data?.rumoredCircumstances || null
           const additionalContext = result.data?.additionalContext || null
 
-          const sources = (result.source.rawData as any)?.parsed?.sources || []
-          const resolvedSources = (result.source.rawData as any)?.resolvedSources || []
+          const sources =
+            ((result.source.rawData as unknown as { parsed?: { sources?: string[] } })?.parsed
+              ?.sources as string[]) || []
+          const resolvedSources =
+            ((result.source.rawData as unknown as { resolvedSources?: unknown[] })
+              ?.resolvedSources as unknown[]) || []
           const cost = result.source.costUsd || 0
 
           // Store result
