@@ -242,7 +242,7 @@ async function runComprehensiveTest(count: number) {
     console.log(`Testing 6 variants per actor = ${actors.length * 6} total tests`)
 
     // Create test run
-    const testRun = await createTestRun(pool, actors, ["gemini_pro", "perplexity"], STRATEGIES)
+    const testRun = await createTestRun(pool, actors, ["gemini_pro", "perplexity"], [...STRATEGIES])
     console.log(`\nCreated test run ID: ${testRun.id}`)
     console.log(
       `Track progress at: http://localhost:5173/admin/ab-tests/comprehensive/${testRun.id}\n`
@@ -272,10 +272,14 @@ async function runComprehensiveTest(count: number) {
       console.log("=".repeat(80))
 
       const actorData: ActorForEnrichment = {
-        tmdb_id: actor.tmdb_id,
+        id: actor.id,
+        tmdbId: actor.tmdb_id,
         name: actor.name,
         birthday: actor.birthday,
         deathday: actor.deathday,
+        causeOfDeath: null,
+        causeOfDeathDetails: null,
+        popularity: actor.popularity,
       }
 
       // Test all strategies for both providers
@@ -302,13 +306,13 @@ async function runComprehensiveTest(count: number) {
           const result = await source.lookup(actorData)
           const responseTime = Date.now() - startTime
 
-          const whatWeKnow = result.circumstances || null
-          const alternativeAccounts = result.rumoredCircumstances || null
-          const additionalContext = result.additionalContext || null
+          const whatWeKnow = result.data?.circumstances || null
+          const alternativeAccounts = result.data?.rumoredCircumstances || null
+          const additionalContext = result.data?.additionalContext || null
 
-          const sources = result.rawData?.parsed?.sources || []
-          const resolvedSources = result.rawData?.resolvedSources || []
-          const cost = result.costUsd || 0
+          const sources = (result.source.rawData as any)?.parsed?.sources || []
+          const resolvedSources = (result.source.rawData as any)?.resolvedSources || []
+          const cost = result.source.costUsd || 0
 
           // Store result
           await pool.query(
@@ -340,7 +344,7 @@ async function runComprehensiveTest(count: number) {
               additionalContext,
               JSON.stringify(sources),
               JSON.stringify(resolvedSources),
-              JSON.stringify(result.rawData),
+              JSON.stringify(result.source.rawData),
               cost,
               responseTime,
             ]
