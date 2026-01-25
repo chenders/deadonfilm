@@ -82,19 +82,19 @@ CRITICAL: All information MUST be sourced from ${publicationsQualifier}. Include
 - Empty sources arrays are NOT acceptable - either provide URLs or return null
 - "circumstances" and "rumored_circumstances" REQUIRE source URLs - never provide these fields without ${sourcesQualifier}
 `
-    : ''
+    : ""
 
   const circumstancesDesc = requireSources
-    ? '- circumstances: Narrative describing how they died. Include where found, what led to death, medical details. MUST have sources.'
-    : '- circumstances: Narrative describing how they died. Include where found, what led to death, medical details.'
+    ? "- circumstances: Narrative describing how they died. Include where found, what led to death, medical details. MUST have sources."
+    : "- circumstances: Narrative describing how they died. Include where found, what led to death, medical details."
 
   const rumoredDesc = requireSources
-    ? '- rumored_circumstances: ONLY if disputed facts or controversy. null if straightforward. MUST have sources if provided.'
-    : '- rumored_circumstances: ONLY if disputed facts or controversy. null if straightforward.'
+    ? "- rumored_circumstances: ONLY if disputed facts or controversy. null if straightforward. MUST have sources if provided."
+    : "- rumored_circumstances: ONLY if disputed facts or controversy. null if straightforward."
 
   const sourcesDesc = requireSources
-    ? '- sources: REQUIRED array of source URLs. Never empty if circumstances are provided.'
-    : '- sources: Array of source URLs if available.'
+    ? "- sources: REQUIRED array of source URLs. Never empty if circumstances are provided."
+    : "- sources: Array of source URLs if available."
 
   return `Search for how ${actor.name} (actor)${ageInfo} died on ${deathDate}.
 
@@ -140,7 +140,10 @@ If death info unknown OR no sources found: return all null values with empty not
  * @param actor - Actor to enrich
  * @param requireSources - If true, require source URLs for all claims (default: true)
  */
-export function buildBasicDeathPrompt(actor: ActorForEnrichment, requireSources: boolean = true): string {
+export function buildBasicDeathPrompt(
+  actor: ActorForEnrichment,
+  requireSources: boolean = true
+): string {
   const deathDate = actor.deathday
     ? new Date(actor.deathday).toLocaleDateString("en-US", {
         month: "long",
@@ -150,8 +153,8 @@ export function buildBasicDeathPrompt(actor: ActorForEnrichment, requireSources:
     : "unknown date"
 
   const sourceNote = requireSources
-    ? '\n\nCRITICAL: Provide source URLs for all claims. If no sources found, return null for that field.'
-    : ''
+    ? "\n\nCRITICAL: Provide source URLs for all claims. If no sources found, return null for that field."
+    : ""
 
   const ifUnknown = requireSources
     ? 'If unknown OR no sources: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null, "sources": []}'

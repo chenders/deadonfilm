@@ -23,12 +23,14 @@
  *   -c, --count <n>         Number of actors to test (default: 10)
  *   -b, --budget <usd>      Budget limit in USD (default: 10)
  *   -y, --yes               Skip confirmation prompt
+ *   --actor-ids <ids>       Test specific actors by ID (comma-separated)
  */
 
 import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { Pool } from "pg"
 import { GeminiProSource } from "../src/lib/death-sources/ai-providers/gemini.js"
+import { setIgnoreCache } from "../src/lib/death-sources/base-source.js"
 import type { ActorForEnrichment } from "../src/lib/death-sources/types.js"
 
 function parsePositiveNumber(value: string): number {
@@ -37,6 +39,20 @@ function parsePositiveNumber(value: string): number {
     throw new InvalidArgumentError("Must be positive number")
   }
   return n
+}
+
+function parseActorIds(value: string): number[] {
+  const ids = value.split(",").map((id) => {
+    const n = parseInt(id.trim(), 10)
+    if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
+      throw new InvalidArgumentError(`Invalid actor ID: ${id.trim()}`)
+    }
+    return n
+  })
+  if (ids.length === 0) {
+    throw new InvalidArgumentError("Must provide at least one actor ID")
+  }
+  return ids
 }
 
 async function waitForConfirmation(skip: boolean): Promise<boolean> {
@@ -72,7 +88,7 @@ async function runABTest(options: {
   count: number
   budget: number
   yes: boolean
-  actorId?: number
+  actorIds?: number[]
 }) {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -81,30 +97,39 @@ async function runABTest(options: {
   try {
     console.log("A/B Test: Source Requirement")
     console.log("=".repeat(60))
-    console.log(`Actors to test: ${options.count}`)
+    if (options.actorIds) {
+      console.log(`Testing specific actors: IDs ${options.actorIds.join(", ")}`)
+    } else {
+      console.log(`Actors to test: ${options.count}`)
+    }
     console.log(`Budget limit: $${options.budget.toFixed(2)}`)
     console.log(`Using: Gemini Pro with search grounding`)
     console.log("=".repeat(60))
 
+    // Bypass cache for A/B testing to get fresh results
+    setIgnoreCache(true)
+
     // Check if Gemini is available
     const gemini = new GeminiProSource()
     if (!gemini.isAvailable()) {
-      console.error("\n❌ Gemini Pro is not available. Please set GOOGLE_AI_API_KEY environment variable.")
+      console.error(
+        "\n❌ Gemini Pro is not available. Please set GOOGLE_AI_API_KEY environment variable."
+      )
       process.exit(1)
     }
 
     // Find actors without detailed death info to test
     let actorQuery: string
-    let queryParams: (number | undefined)[]
+    let queryParams: (number | number[] | undefined)[]
 
-    if (options.actorId) {
-      // Test specific actor by ID
+    if (options.actorIds) {
+      // Test specific actors by IDs
       actorQuery = `
         SELECT a.id, a.tmdb_id, a.name, a.birthday, a.deathday
         FROM actors a
-        WHERE a.id = $1 AND a.deathday IS NOT NULL
+        WHERE a.id = ANY($1) AND a.deathday IS NOT NULL
       `
-      queryParams = [options.actorId]
+      queryParams = [options.actorIds]
     } else {
       // Find random actors without detailed death info
       actorQuery = `
@@ -125,11 +150,15 @@ async function runABTest(options: {
     const actors = actorResult.rows
 
     if (actors.length === 0) {
-      console.log("\nNo actors found for testing. All actors may already be tested.")
+      if (options.actorIds) {
+        console.log(`\nNo actors found with IDs: ${options.actorIds.join(", ")}`)
+      } else {
+        console.log("\nNo actors found for testing. All actors may already be tested.")
+      }
       return
     }
 
-    console.log(`\nFound ${actors.length} actors for testing\n`)
+    console.log(`\nFound ${actors.length} actor${actors.length > 1 ? "s" : ""} for testing\n`)
 
     if (!options.yes) {
       console.log("Sample actors:")
@@ -283,6 +312,8 @@ async function runABTest(options: {
     console.error("Fatal error:", error)
     process.exit(1)
   } finally {
+    // Re-enable cache
+    setIgnoreCache(false)
     await pool.end()
   }
 }
@@ -293,7 +324,7 @@ const program = new Command()
   .option("-c, --count <n>", "Number of actors to test", parsePositiveNumber, 10)
   .option("-b, --budget <usd>", "Budget limit in USD", parsePositiveNumber, 10)
   .option("-y, --yes", "Skip confirmation prompt", false)
-  .option("--actor-id <id>", "Test a specific actor by ID", parsePositiveNumber)
+  .option("--actor-ids <ids>", "Test specific actors by ID (comma-separated)", parseActorIds)
   .action(async (options) => {
     await runABTest(options)
   })
