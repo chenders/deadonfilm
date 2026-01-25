@@ -29,7 +29,8 @@ const program = new Command()
         LEFT JOIN actor_death_circumstances dd ON dd.actor_id = a.id
         WHERE a.deathday IS NOT NULL
           AND a.popularity >= $2
-          AND dd.actor_id IS NULL
+          AND (a.has_detailed_death_info = false OR a.has_detailed_death_info IS NULL)
+          AND (dd.enriched_at IS NULL OR dd.enriched_at < NOW() - INTERVAL '30 days')
         ORDER BY a.popularity DESC NULLS LAST
         LIMIT $1`,
         [limit, MIN_POPULARITY_THRESHOLD]
