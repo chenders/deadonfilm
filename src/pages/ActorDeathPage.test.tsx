@@ -275,12 +275,16 @@ describe("ActorDeathPage", () => {
     expect(screen.getByText("He had been working on a new project.")).toBeInTheDocument()
   })
 
-  it("renders invalid actor URL error for invalid slug", async () => {
+  it("renders error when actor not found", async () => {
+    vi.mocked(api.getActorDeathDetails).mockRejectedValue(new Error("Actor not found"))
+
     renderWithProviders(<ActorDeathPage />, {
-      initialEntries: ["/actor/invalid/death"],
+      initialEntries: ["/actor/invalid-12345/death"],
     })
 
-    expect(screen.getByText("Invalid actor URL")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText("Actor not found")).toBeInTheDocument()
+    })
   })
 
   describe("Low Confidence Warning Banner", () => {
