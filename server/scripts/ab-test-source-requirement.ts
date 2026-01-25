@@ -32,6 +32,7 @@ import { Pool } from "pg"
 import { GeminiProSource } from "../src/lib/death-sources/ai-providers/gemini.js"
 import { setIgnoreCache } from "../src/lib/death-sources/base-source.js"
 import type { ActorForEnrichment } from "../src/lib/death-sources/types.js"
+import type { ActorForEnrichmentQuery } from "../src/lib/db/actors.js"
 
 function parsePositiveNumber(value: string): number {
   const n = parseFloat(value)
@@ -157,8 +158,18 @@ async function runABTest(options: {
       queryParams = [options.count]
     }
 
-    const actorResult = await pool.query<ActorForEnrichment>(actorQuery, queryParams)
-    const actors = actorResult.rows
+    const actorResult = await pool.query<ActorForEnrichmentQuery>(actorQuery, queryParams)
+    // Map snake_case DB fields to camelCase ActorForEnrichment
+    const actors: ActorForEnrichment[] = actorResult.rows.map((row) => ({
+      id: row.id,
+      tmdbId: row.tmdb_id,
+      name: row.name,
+      birthday: row.birthday ? new Date(row.birthday).toISOString().split("T")[0] : null,
+      deathday: row.deathday ? new Date(row.deathday).toISOString().split("T")[0] : null,
+      causeOfDeath: null,
+      causeOfDeathDetails: null,
+      popularity: null,
+    }))
 
     if (actors.length === 0) {
       if (options.actorIds) {
