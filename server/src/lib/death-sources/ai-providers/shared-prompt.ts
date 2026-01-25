@@ -79,7 +79,7 @@ export function buildEnrichedDeathPrompt(
     ? `
 CRITICAL: All information MUST be sourced from ${publicationsQualifier}. Include URLs in the "sources" array.
 - If you cannot find ${sourcesQualifier} for a field, return null for that field
-- Empty sources arrays are NOT acceptable - either provide URLs or return null
+- Return empty sources array ONLY when all death fields are null (no information found)
 - "circumstances" and "rumored_circumstances" REQUIRE source URLs - never provide these fields without ${sourcesQualifier}
 `
     : ""
@@ -170,7 +170,7 @@ Respond with JSON only:
 {
   "circumstances": "narrative of how they died",
   "location_of_death": "City, State or null",
-  "notable_factors": ["tag1"] or [],
+  "notable_factors": ["tag1"],
   "rumored_circumstances": "disputed info or null",
   "confidence": "high" | "medium" | "low",
   "sources": ["https://source1.com", "https://source2.com"]
