@@ -14,6 +14,7 @@ interface DateRangePickerProps {
   startLabel?: string
   endLabel?: string
   className?: string
+  idPrefix?: string
 }
 
 export default function DateRangePicker({
@@ -24,6 +25,7 @@ export default function DateRangePicker({
   startLabel = "Start Date",
   endLabel = "End Date",
   className = "",
+  idPrefix = "date-range",
 }: DateRangePickerProps) {
   const handleQuickFilter = (days: number | "all") => {
     const endDateObj = new Date()
@@ -86,7 +88,7 @@ export default function DateRangePicker({
 
       <div className="flex flex-col gap-4 sm:flex-row">
         <DateInput
-          id="date-range-start"
+          id={`${idPrefix}-start`}
           label={startLabel}
           value={startDate}
           onChange={(value) => onChange(value, endDate)}
@@ -95,7 +97,7 @@ export default function DateRangePicker({
         />
 
         <DateInput
-          id="date-range-end"
+          id={`${idPrefix}-end`}
           label={endLabel}
           value={endDate}
           onChange={(value) => onChange(startDate, value)}
