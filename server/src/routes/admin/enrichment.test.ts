@@ -495,6 +495,87 @@ describe("Admin Enrichment Endpoints", () => {
       expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
     })
 
+    it("should accept valid actorIds array", async () => {
+      vi.mocked(processManager.startEnrichmentRun).mockResolvedValue(1)
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          actorIds: [1, 2, 3],
+        })
+        .expect(201)
+
+      expect(response.body).toEqual({
+        id: 1,
+        status: "running",
+        message: "Enrichment run started successfully",
+      })
+
+      expect(processManager.startEnrichmentRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorIds: [1, 2, 3],
+        })
+      )
+    })
+
+    it("should reject empty actorIds array", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          actorIds: [],
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("actorIds must be a non-empty array")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
+    it("should reject non-array actorIds", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          actorIds: "not-an-array",
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("actorIds must be a non-empty array")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
+    it("should reject actorIds with non-integer values", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          actorIds: [1, 2.5, 3],
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("All actor IDs must be positive integers")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
+    it("should reject actorIds with zero or negative values", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/start")
+        .send({
+          limit: 10,
+          maxTotalCost: 5,
+          actorIds: [1, 0, -1],
+        })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("All actor IDs must be positive integers")
+      expect(processManager.startEnrichmentRun).not.toHaveBeenCalled()
+    })
+
     it("should handle errors from process manager", async () => {
       vi.mocked(processManager.startEnrichmentRun).mockRejectedValue(
         new Error("Failed to spawn process")
