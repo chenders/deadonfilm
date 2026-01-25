@@ -129,7 +129,7 @@ abstract class GeminiBaseSource extends BaseDataSource {
     }
 
     // Use shared enriched prompt for career context
-    const prompt = buildEnrichedDeathPrompt(actor)
+    const prompt = buildEnrichedDeathPrompt(actor, this.requireSources, this.requireReliableSources)
 
     try {
       console.log(`${this.name} query for: ${actor.name}`)
@@ -143,7 +143,7 @@ abstract class GeminiBaseSource extends BaseDataSource {
         ],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 2000,
+          maxOutputTokens: 8192,
         },
       }
 
