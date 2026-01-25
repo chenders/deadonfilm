@@ -210,6 +210,12 @@ export interface DeathDetailsResponse {
     cause: SourceEntry[] | null
     circumstances: SourceEntry[] | null
     rumored: SourceEntry[] | null
+    additionalContext: SourceEntry[] | null
+    careerStatus: SourceEntry[] | null
+    lastProject: SourceEntry[] | null
+    posthumousReleases: SourceEntry[] | null
+    locationOfDeath: SourceEntry[] | null
+    relatedCelebrities: SourceEntry[] | null
   }
 }
 
