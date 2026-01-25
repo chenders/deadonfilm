@@ -6,6 +6,8 @@
 
 import "dotenv/config"
 import { Pool } from "pg"
+import { rebuildDeathCaches } from "../src/lib/cache.js"
+import { initRedis, closeRedis } from "../src/lib/redis.js"
 
 async function run() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
@@ -74,6 +76,15 @@ async function run() {
 
     for (const row of updateResult.rows) {
       console.log(`  ✓ ${row.name} (ID: ${row.id})`)
+    }
+
+    // Rebuild death caches if we made changes
+    if (updateResult.rowCount && updateResult.rowCount > 0) {
+      console.log("\nRebuilding death caches...")
+      await initRedis()
+      await rebuildDeathCaches()
+      await closeRedis()
+      console.log("✓ Death caches rebuilt")
     }
   } catch (error) {
     console.error("Error cleaning up death data:", error)
