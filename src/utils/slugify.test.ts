@@ -127,6 +127,14 @@ describe("createActorSlug", () => {
   it("handles names with periods and numbers", () => {
     expect(createActorSlug("Robert Downey Jr.", 3223)).toBe("robert-downey-jr-3223")
   })
+
+  it("normalizes various accent types", () => {
+    expect(createActorSlug("François Truffaut", 1)).toBe("francois-truffaut-1")
+    expect(createActorSlug("Björk Guðmundsdóttir", 2)).toBe("bjork-gudmundsdottir-2")
+    expect(createActorSlug("José García", 3)).toBe("jose-garcia-3")
+    expect(createActorSlug("Penélope Cruz", 4)).toBe("penelope-cruz-4")
+    expect(createActorSlug("Māris Liepa", 5)).toBe("maris-liepa-5")
+  })
 })
 
 describe("extractActorId", () => {
