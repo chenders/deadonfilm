@@ -61,7 +61,7 @@ export default function ABTestComprehensiveDetailPage() {
 
   run.providers.forEach((provider) => {
     run.strategies.forEach((strategy) => {
-      const key = `${provider}_${strategy}`
+      const key = `${provider}::${strategy}`
       variantStats[key] = { found: 0, total: 0 }
     })
   })
@@ -169,7 +169,9 @@ export default function ABTestComprehensiveDetailPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-medium text-white">{provider}</div>
-                        <div className="text-sm text-gray-400">{strategy.replace(/_/g, " ")}</div>
+                        <div className="text-sm text-gray-400">
+                          {strategy?.replace(/_/g, " ") ?? "unknown"}
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-xl font-bold text-white">
@@ -249,7 +251,7 @@ export default function ABTestComprehensiveDetailPage() {
                           >
                             <div className="mb-2 flex items-center justify-between">
                               <div className="text-xs font-medium text-gray-400">
-                                {provider} / {strategy.replace(/_/g, " ")}
+                                {provider} / {strategy?.replace(/_/g, " ") ?? "unknown"}
                               </div>
                               <div
                                 className={`text-xs font-bold ${hasData ? "text-green-400" : "text-red-400"}`}
