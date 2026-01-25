@@ -38,7 +38,8 @@ describe("DateInput", () => {
       />
     )
 
-    expect(screen.getByLabelText("Clear Test Date")).toBeInTheDocument()
+    // react-datepicker uses aria-label="Close" for its clear button
+    expect(screen.getByLabelText("Close")).toBeInTheDocument()
   })
 
   it("hides clear button when value is empty", () => {
@@ -52,7 +53,8 @@ describe("DateInput", () => {
       />
     )
 
-    expect(screen.queryByLabelText("Clear Test Date")).not.toBeInTheDocument()
+    // react-datepicker uses aria-label="Close" for its clear button
+    expect(screen.queryByLabelText("Close")).not.toBeInTheDocument()
   })
 
   it("hides clear button when showClearButton is false", () => {
@@ -66,7 +68,8 @@ describe("DateInput", () => {
       />
     )
 
-    expect(screen.queryByLabelText("Clear Test Date")).not.toBeInTheDocument()
+    // react-datepicker uses aria-label="Close" for its clear button
+    expect(screen.queryByLabelText("Close")).not.toBeInTheDocument()
   })
 
   it("clears value when clear button is clicked", () => {
@@ -81,7 +84,8 @@ describe("DateInput", () => {
       />
     )
 
-    const clearButton = screen.getByLabelText("Clear Test Date")
+    // react-datepicker uses aria-label="Close" for its clear button
+    const clearButton = screen.getByLabelText("Close")
     fireEvent.click(clearButton)
 
     expect(handleChange).toHaveBeenCalledWith("")
