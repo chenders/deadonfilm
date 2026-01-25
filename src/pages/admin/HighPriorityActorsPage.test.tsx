@@ -172,8 +172,9 @@ describe("HighPriorityActorsPage", () => {
 
     renderComponent()
 
-    // Should display "N/A" for null popularity
-    expect(screen.getByText("N/A")).toBeInTheDocument()
+    // Should display "N/A" for null popularity (getAllByText since dates can also be N/A)
+    const naElements = screen.getAllByText("N/A")
+    expect(naElements.length).toBeGreaterThan(0)
   })
 
   it("handles individual checkbox selection", () => {
