@@ -220,6 +220,7 @@ async function updateProgress(
  */
 async function runComprehensiveTest(count: number) {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  let runId: number | null = null
 
   try {
     setIgnoreCache(true)
@@ -242,10 +243,14 @@ async function runComprehensiveTest(count: number) {
 
     // Create test run
     const testRun = await createTestRun(pool, actors, ["gemini_pro", "perplexity"], [...STRATEGIES])
-    console.log(`\nCreated test run ID: ${testRun.id}`)
+    runId = testRun.id
+    console.log(`\nCreated test run ID: ${runId}`)
     console.log(
-      `Track progress at: http://localhost:5173/admin/ab-tests/comprehensive/${testRun.id}\n`
+      `Track progress at: http://localhost:5173/admin/ab-tests/comprehensive/${runId}\n`
     )
+
+    // At this point runId is guaranteed non-null
+    const currentRunId: number = runId
 
     // Initialize providers with increased token limits for A/B testing
     // This avoids truncation bias but is not used in production
@@ -340,7 +345,7 @@ async function runComprehensiveTest(count: number) {
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
           `,
             [
-              testRun.id,
+              currentRunId,
               actor.id,
               actor.name,
               provider,
@@ -374,12 +379,12 @@ async function runComprehensiveTest(count: number) {
       }
 
       completedActors++
-      await updateProgress(pool, testRun.id, completedActors, completedVariants, totalCost)
+      await updateProgress(pool, currentRunId, completedActors, completedVariants, totalCost)
 
       // Add inferences every 10 actors
       if (completedActors % 10 === 0) {
         const inference = analyzeProgress(variantResults, completedActors, actors.length)
-        await addInference(pool, testRun.id, inference.message, inference.data)
+        await addInference(pool, currentRunId, inference.message, inference.data)
       }
     }
 
@@ -389,7 +394,7 @@ async function runComprehensiveTest(count: number) {
     console.log("=".repeat(80))
 
     const finalAnalysis = analyzeFinalResults(variantResults, totalCost, actors.length)
-    await addInference(pool, testRun.id, finalAnalysis.message, finalAnalysis.data)
+    await addInference(pool, currentRunId, finalAnalysis.message, finalAnalysis.data)
 
     // Mark test as completed
     await pool.query(
@@ -398,17 +403,31 @@ async function runComprehensiveTest(count: number) {
       SET status = 'completed', completed_at = NOW()
       WHERE id = $1
     `,
-      [testRun.id]
+      [currentRunId]
     )
 
     console.log(`\nTotal cost: $${totalCost.toFixed(4)}`)
     console.log(
-      `\nView full results at: http://localhost:5173/admin/ab-tests/comprehensive/${testRun.id}`
+      `\nView full results at: http://localhost:5173/admin/ab-tests/comprehensive/${currentRunId}`
     )
 
     await pool.end()
   } catch (error) {
     console.error("\nError:", error)
+
+    // Mark run as failed if it was created
+    if (runId !== null) {
+      try {
+        await pool.query(
+          `UPDATE ab_test_runs SET status = 'failed', completed_at = NOW() WHERE id = $1`,
+          [runId]
+        )
+        console.log(`Marked test run ${runId} as failed`)
+      } catch (updateError) {
+        console.error("Failed to update run status:", updateError)
+      }
+    }
+
     await pool.end()
     process.exit(1)
   } finally {
