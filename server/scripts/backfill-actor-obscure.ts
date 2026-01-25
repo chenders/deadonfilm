@@ -85,24 +85,24 @@ async function showStats(closePool = true): Promise<void> {
         FROM actors a
         LEFT JOIN (
           SELECT
-            ama.actor_tmdb_id,
+            ama.actor_id,
             COUNT(*)::int as movie_count,
             MAX(m.popularity) as max_movie_pop,
             COUNT(*) FILTER (WHERE m.original_language = 'en' AND m.popularity >= $1)::int as en_movies_pop5
           FROM actor_movie_appearances ama
           JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-          GROUP BY ama.actor_tmdb_id
-        ) ma ON ma.actor_tmdb_id = a.tmdb_id
+          GROUP BY ama.actor_id
+        ) ma ON ma.actor_id = a.id
         LEFT JOIN (
           SELECT
-            asa.actor_tmdb_id,
+            asa.actor_id,
             COUNT(*)::int as episode_count,
             MAX(s.popularity) as max_show_pop,
             COUNT(DISTINCT asa.show_tmdb_id) FILTER (WHERE s.original_language = 'en' AND s.popularity >= $1)::int as en_shows_pop5
           FROM actor_show_appearances asa
           JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
-          GROUP BY asa.actor_tmdb_id
-        ) ta ON ta.actor_tmdb_id = a.tmdb_id
+          GROUP BY asa.actor_id
+        ) ta ON ta.actor_id = a.id
         WHERE a.deathday IS NOT NULL
       )
       SELECT
@@ -232,24 +232,24 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
         FROM actors a
         LEFT JOIN (
           SELECT
-            ama.actor_tmdb_id,
+            ama.actor_id,
             COUNT(*)::int as movie_count,
             MAX(m.popularity) as max_movie_pop,
             COUNT(*) FILTER (WHERE m.original_language = 'en' AND m.popularity >= $7)::int as en_movies_pop5
           FROM actor_movie_appearances ama
           JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-          GROUP BY ama.actor_tmdb_id
-        ) ma ON ma.actor_tmdb_id = a.tmdb_id
+          GROUP BY ama.actor_id
+        ) ma ON ma.actor_id = a.id
         LEFT JOIN (
           SELECT
-            asa.actor_tmdb_id,
+            asa.actor_id,
             COUNT(*)::int as episode_count,
             MAX(s.popularity) as max_show_pop,
             COUNT(DISTINCT asa.show_tmdb_id) FILTER (WHERE s.original_language = 'en' AND s.popularity >= $7)::int as en_shows_pop5
           FROM actor_show_appearances asa
           JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
-          GROUP BY asa.actor_tmdb_id
-        ) ta ON ta.actor_tmdb_id = a.tmdb_id
+          GROUP BY asa.actor_id
+        ) ta ON ta.actor_id = a.id
         WHERE a.deathday IS NOT NULL
       )
       SELECT
@@ -313,24 +313,24 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
         FROM actors a
         LEFT JOIN (
           SELECT
-            ama.actor_tmdb_id,
+            ama.actor_id,
             COUNT(*)::int as movie_count,
             MAX(m.popularity) as max_movie_pop,
             COUNT(*) FILTER (WHERE m.original_language = 'en' AND m.popularity >= $7)::int as en_movies_pop5
           FROM actor_movie_appearances ama
           JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-          GROUP BY ama.actor_tmdb_id
-        ) ma ON ma.actor_tmdb_id = a.tmdb_id
+          GROUP BY ama.actor_id
+        ) ma ON ma.actor_id = a.id
         LEFT JOIN (
           SELECT
-            asa.actor_tmdb_id,
+            asa.actor_id,
             COUNT(*)::int as episode_count,
             MAX(s.popularity) as max_show_pop,
             COUNT(DISTINCT asa.show_tmdb_id) FILTER (WHERE s.original_language = 'en' AND s.popularity >= $7)::int as en_shows_pop5
           FROM actor_show_appearances asa
           JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
-          GROUP BY asa.actor_tmdb_id
-        ) ta ON ta.actor_tmdb_id = a.tmdb_id
+          GROUP BY asa.actor_id
+        ) ta ON ta.actor_id = a.id
         WHERE a.deathday IS NOT NULL
       )
       UPDATE actors a
