@@ -259,7 +259,7 @@ async function runComprehensiveTest(count: number) {
     // Initialize stats
     for (const provider of ["gemini_pro", "perplexity"]) {
       for (const strategy of STRATEGIES) {
-        const key = `${provider}_${strategy}`
+        const key = `${provider}::${strategy}`
         variantResults[key] = { found: 0, total: 0, cost: 0 }
       }
     }
@@ -353,7 +353,7 @@ async function runComprehensiveTest(count: number) {
             ]
           )
 
-          const key = `${provider}_${strategy}`
+          const key = `${provider}::${strategy}`
           variantResults[key].total++
           variantResults[key].cost += cost
           if (whatWeKnow || alternativeAccounts || additionalContext) {
