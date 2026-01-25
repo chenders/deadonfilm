@@ -117,6 +117,38 @@ function parsePositiveInt(value: string): number {
   return parsed
 }
 
+/**
+ * Parse comma-separated positive integers for --actor-id and --tmdb-id options.
+ * Validates each ID and rejects empty segments (e.g., "1," or ",2").
+ * Used by Commander option parsing for clean error messages.
+ */
+function parseCommaSeparatedIds(value: string): number[] {
+  if (!value || value.trim() === "") {
+    throw new InvalidArgumentError("ID list cannot be empty")
+  }
+
+  const segments = value.split(",")
+  const ids: number[] = []
+
+  for (const segment of segments) {
+    const trimmed = segment.trim()
+
+    // Reject empty segments (e.g., "1," or ",2")
+    if (trimmed === "") {
+      throw new InvalidArgumentError("ID list cannot contain empty values (e.g., '1,' or ',2')")
+    }
+
+    // Validate and parse each ID
+    try {
+      ids.push(parsePositiveInt(trimmed))
+    } catch (error) {
+      throw new InvalidArgumentError(`Invalid ID '${trimmed}': ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  return ids
+}
+
 interface EnrichOptions {
   limit: number
   minPopularity: number
@@ -127,8 +159,8 @@ interface EnrichOptions {
   ai: boolean
   stopOnMatch: boolean
   confidence: number
-  actorId?: number | number[]
-  tmdbId?: number | number[]
+  actorId?: number[]
+  tmdbId?: number[]
   maxCostPerActor?: number
   maxTotalCost?: number
   claudeCleanup: boolean
@@ -465,8 +497,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       }
     } else if (actorId) {
       // Target specific actors by internal ID(s)
-      const actorIds = Array.isArray(actorId) ? actorId : [actorId]
-      console.log(`\nQuerying ${actorIds.length} actor(s) by internal ID...`)
+      console.log(`\nQuerying ${actorId.length} actor(s) by internal ID...`)
       const result = await db.query<ActorRow>(
         `SELECT
           a.id,
@@ -484,13 +515,12 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         WHERE a.id = ANY($1::int[])
           AND a.deathday IS NOT NULL
         ORDER BY a.popularity DESC NULLS LAST`,
-        [actorIds]
+        [actorId]
       )
       actors = result.rows
     } else if (tmdbId) {
       // Target specific actors by TMDB ID(s)
-      const tmdbIds = Array.isArray(tmdbId) ? tmdbId : [tmdbId]
-      console.log(`\nQuerying ${tmdbIds.length} actor(s) by TMDB ID...`)
+      console.log(`\nQuerying ${tmdbId.length} actor(s) by TMDB ID...`)
       const result = await db.query<ActorRow>(
         `SELECT
           a.id,
@@ -508,7 +538,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         WHERE a.tmdb_id = ANY($1::int[])
           AND a.deathday IS NOT NULL
         ORDER BY a.popularity DESC NULLS LAST`,
-        [tmdbIds]
+        [tmdbId]
       )
       actors = result.rows
     } else {
@@ -619,11 +649,9 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     console.log(`\nTarget:`)
     console.log(`  Actors to process: ${actors.length}`)
     if (actorId) {
-      const ids = Array.isArray(actorId) ? actorId : [actorId]
-      console.log(`  Specific actor(s): Internal ID(s) ${ids.join(", ")}`)
+      console.log(`  Specific actor(s): Internal ID(s) ${actorId.join(", ")}`)
     } else if (tmdbId) {
-      const ids = Array.isArray(tmdbId) ? tmdbId : [tmdbId]
-      console.log(`  Specific actor(s): TMDB ID(s) ${ids.join(", ")}`)
+      console.log(`  Specific actor(s): TMDB ID(s) ${tmdbId.join(", ")}`)
     } else {
       console.log(`  Min popularity: ${minPopularity}`)
       if (recentOnly) {
@@ -1163,11 +1191,13 @@ const program = new Command()
   )
   .option(
     "-a, --actor-id <ids>",
-    "Process specific actor(s) by internal ID (comma-separated, e.g., '1,2,3')"
+    "Process specific actor(s) by internal ID (comma-separated, e.g., '1,2,3')",
+    parseCommaSeparatedIds
   )
   .option(
     "-t, --tmdb-id <ids>",
-    "Process specific actor(s) by TMDB ID (comma-separated, e.g., '12345,67890')"
+    "Process specific actor(s) by TMDB ID (comma-separated, e.g., '12345,67890')",
+    parseCommaSeparatedIds
   )
   .option(
     "--max-cost-per-actor <number>",
@@ -1219,26 +1249,6 @@ const program = new Command()
   // Stage 4: Review workflow
   .option("--staging", "Write to staging tables for review before committing to production")
   .action(async (options) => {
-    // Parse comma-separated IDs if provided
-    let actorIds: number[] | number | undefined
-    let tmdbIds: number[] | number | undefined
-
-    if (options.actorId) {
-      const ids = options.actorId.split(",").map((id: string) => {
-        const parsed = parsePositiveInt(id.trim())
-        return parsed
-      })
-      actorIds = ids.length === 1 ? ids[0] : ids
-    }
-
-    if (options.tmdbId) {
-      const ids = options.tmdbId.split(",").map((id: string) => {
-        const parsed = parsePositiveInt(id.trim())
-        return parsed
-      })
-      tmdbIds = ids.length === 1 ? ids[0] : ids
-    }
-
     // Validate that only one targeting mode is used at a time
     const targetingModes = [
       options.actorId ? "actor-id" : null,
@@ -1264,8 +1274,8 @@ const program = new Command()
       ai: options.ai || false,
       stopOnMatch: options.stopOnMatch !== false,
       confidence: options.confidence,
-      actorId: actorIds,
-      tmdbId: tmdbIds,
+      actorId: options.actorId,
+      tmdbId: options.tmdbId,
       maxCostPerActor: options.maxCostPerActor,
       maxTotalCost: options.maxTotalCost,
       claudeCleanup: !options.disableClaudeCleanup,
