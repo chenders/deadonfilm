@@ -74,7 +74,7 @@ async function showStats(closePool = true): Promise<void> {
       `
       WITH actor_metrics AS (
         SELECT
-          a.tmdb_id,
+          a.id,
           COALESCE(ma.max_movie_pop, 0) as max_movie_pop,
           COALESCE(ta.max_show_pop, 0) as max_show_pop,
           COALESCE(ma.en_movies_pop5, 0) as en_movies_pop5,
@@ -218,7 +218,7 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
       `
       WITH actor_metrics AS (
         SELECT
-          a.tmdb_id,
+          a.id,
           a.is_obscure as current_obscure,
           CASE
             WHEN COALESCE(ma.max_movie_pop, 0) >= $1 THEN false
@@ -300,7 +300,7 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
       `
       WITH actor_metrics AS (
         SELECT
-          a.tmdb_id,
+          a.id,
           CASE
             WHEN COALESCE(ma.max_movie_pop, 0) >= $1 THEN false
             WHEN COALESCE(ta.max_show_pop, 0) >= $2 THEN false
@@ -336,8 +336,8 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
       UPDATE actors a
       SET is_obscure = am.is_obscure
       FROM actor_metrics am
-      WHERE a.tmdb_id = am.tmdb_id
-      RETURNING a.tmdb_id
+      WHERE a.id = am.id
+      RETURNING a.id
     `,
       [
         THRESHOLDS.HIT_MOVIE_POPULARITY,
