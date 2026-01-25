@@ -1,6 +1,11 @@
 /**
  * Reusable date input component with accessibility and clear functionality.
+ * Uses react-datepicker for consistent cross-browser experience.
  */
+
+import ReactDatePicker from "react-datepicker"
+import "react-datepicker/dist/react-datepicker.css"
+import "./DateInput.css"
 
 interface DateInputProps {
   id: string
@@ -27,45 +32,46 @@ export default function DateInput({
   const describedById = helpText && !error ? `${id}-help` : undefined
   const errorId = error ? `${id}-error` : undefined
 
+  // Convert ISO date string to Date object
+  const selectedDate = value ? new Date(value + "T00:00:00") : null
+
+  // Handle date change from react-datepicker
+  const handleDateChange = (date: Date | null) => {
+    if (date) {
+      // Format as YYYY-MM-DD
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, "0")
+      const day = String(date.getDate()).padStart(2, "0")
+      onChange(`${year}-${month}-${day}`)
+    } else {
+      onChange("")
+    }
+  }
+
   return (
     <div className={className}>
-      <style>{`
-        input[type="date"]::-webkit-calendar-picker-indicator {
-          filter: invert(0.8) brightness(1.2);
-          cursor: pointer;
-        }
-      `}</style>
       <label htmlFor={id} className="mb-1 block text-sm text-gray-400">
         {label}
       </label>
       <div className="relative">
-        <input
-          type="date"
+        <ReactDatePicker
           id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={`w-full rounded border bg-gray-900 px-3 py-2 text-white [color-scheme:dark] focus:outline-none focus:ring-1 ${
+          selected={selectedDate}
+          onChange={handleDateChange}
+          dateFormat="yyyy-MM-dd"
+          placeholderText="YYYY-MM-DD"
+          isClearable={showClearButton}
+          className={`w-full rounded border bg-gray-900 px-3 py-2 text-white focus:outline-none focus:ring-1 ${
             error
               ? "border-red-500 focus:border-red-500 focus:ring-red-500"
               : "border-gray-700 focus:border-blue-500 focus:ring-blue-500"
           }`}
-          style={{
-            colorScheme: "dark",
-          }}
+          calendarClassName="dark-datepicker"
+          wrapperClassName="w-full"
           aria-label={label}
           aria-describedby={[describedById, errorId].filter(Boolean).join(" ") || undefined}
           aria-invalid={error ? "true" : undefined}
         />
-        {showClearButton && value && (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-white"
-            aria-label={`Clear ${label}`}
-          >
-            ✕
-          </button>
-        )}
       </div>
       {helpText && !error && (
         <p id={describedById} className="mt-1 text-xs text-gray-500">
