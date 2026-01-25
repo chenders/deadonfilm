@@ -1,17 +1,25 @@
 import slugify from "slugify"
 
 /**
+ * Shared slugify configuration for consistent slug generation across all entity types.
+ * - lower: Convert to lowercase
+ * - strict: Remove special characters not replaced by separator
+ * - remove: Explicitly remove punctuation that should not appear in slugs
+ */
+const SLUGIFY_OPTIONS = {
+  lower: true,
+  strict: true,
+  remove: /[*+~.()'"!:@]/g,
+} as const
+
+/**
  * Creates a URL-safe slug from a movie title, year, and ID
  * Example: "Breakfast at Tiffany's" (1961), ID 14629 → "breakfast-at-tiffanys-1961-14629"
  * Example: "Amélie" (2001), ID 194 → "amelie-2001-194"
  */
 export function createMovieSlug(title: string, releaseDate: string, id: number): string {
   const year = releaseDate ? releaseDate.slice(0, 4) : "unknown"
-  const slug = slugify(title, {
-    lower: true,
-    strict: true, // Strip special characters
-    remove: /[*+~.()'"!:@]/g, // Remove specific characters completely
-  })
+  const slug = slugify(title, SLUGIFY_OPTIONS)
 
   return `${slug}-${year}-${id}`
 }
@@ -41,11 +49,7 @@ export function extractYearFromSlug(slug: string): string | null {
  * Example: "José García", ID 123 → "jose-garcia-123"
  */
 export function createActorSlug(name: string, id: number): string {
-  const slug = slugify(name, {
-    lower: true,
-    strict: true, // Strip special characters
-    remove: /[*+~.()'"!:@]/g, // Remove specific characters completely
-  })
+  const slug = slugify(name, SLUGIFY_OPTIONS)
 
   return `${slug}-${id}`
 }
@@ -66,11 +70,7 @@ export function extractActorId(slug: string): number {
  */
 export function createShowSlug(name: string, firstAirDate: string | null, id: number): string {
   const year = firstAirDate ? firstAirDate.slice(0, 4) : "unknown"
-  const slug = slugify(name, {
-    lower: true,
-    strict: true, // Strip special characters
-    remove: /[*+~.()'"!:@]/g, // Remove specific characters completely
-  })
+  const slug = slugify(name, SLUGIFY_OPTIONS)
 
   return `${slug}-${year}-${id}`
 }
@@ -109,17 +109,8 @@ export function createEpisodeSlug(
   episodeNumber: number,
   showId: number
 ): string {
-  const showSlug = slugify(showName, {
-    lower: true,
-    strict: true,
-    remove: /[*+~.()'"!:@]/g,
-  })
-
-  const episodeSlug = slugify(episodeName, {
-    lower: true,
-    strict: true,
-    remove: /[*+~.()'"!:@]/g,
-  })
+  const showSlug = slugify(showName, SLUGIFY_OPTIONS)
+  const episodeSlug = slugify(episodeName, SLUGIFY_OPTIONS)
 
   return `${showSlug}-s${seasonNumber}e${episodeNumber}-${episodeSlug}-${showId}`
 }
