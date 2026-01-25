@@ -194,7 +194,7 @@ describe("enrichment-process-manager", () => {
 
       const spawnCall = vi.mocked(spawn).mock.calls[0]
       const args = spawnCall[1]
-      expect(args).toContain("--actor-ids")
+      expect(args).toContain("--actor-id")
       expect(args).toContain("123,456,789")
     })
   })
