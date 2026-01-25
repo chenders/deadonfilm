@@ -2,12 +2,13 @@
 # Using Debian-based image for better LLVM/build toolchain compatibility
 FROM postgres:16
 
-# Install build dependencies and PostgreSQL development packages
+# Install build dependencies, PostgreSQL development packages, and Go for New Relic
 RUN apt-get update && apt-get install -y \
     git \
     make \
     gcc \
     postgresql-server-dev-16 \
+    golang-go \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pg_wait_sampling extension (pinned to v1.1.9 for reproducible builds)
@@ -28,7 +29,7 @@ RUN cd /tmp && \
     cd / && \
     rm -rf /tmp/pg_stat_monitor
 
-# Clean up build dependencies to reduce image size
+# Clean up build dependencies to reduce image size (keep golang-go for New Relic)
 RUN apt-get purge -y --auto-remove git make gcc postgresql-server-dev-16
 
 # Copy initialization script to create extensions on first startup
