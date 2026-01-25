@@ -26,6 +26,7 @@ export interface EnrichmentRunConfig {
   limit?: number
   minPopularity?: number
   recentOnly?: boolean
+  actorIds?: number[]
   free?: boolean
   paid?: boolean
   ai?: boolean
@@ -146,6 +147,10 @@ function buildScriptArgs(config: EnrichmentRunConfig): string[] {
 
   if (config.recentOnly) {
     args.push("--recent-only")
+  }
+
+  if (config.actorIds && config.actorIds.length > 0) {
+    args.push("--actor-ids", config.actorIds.join(","))
   }
 
   if (config.free) {
