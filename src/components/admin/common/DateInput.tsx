@@ -23,7 +23,8 @@ export default function DateInput({
   showClearButton = true,
   className = "",
 }: DateInputProps) {
-  const describedById = helpText ? `${id}-help` : undefined
+  // Only include help text ID in aria-describedby when it's actually rendered (not when error is present)
+  const describedById = helpText && !error ? `${id}-help` : undefined
   const errorId = error ? `${id}-error` : undefined
 
   return (
