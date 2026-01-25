@@ -7,6 +7,8 @@
 import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
 
+const MIN_POPULARITY_THRESHOLD = 10
+
 const program = new Command()
   .name("list-high-priority-actors")
   .description("List high-priority actors needing enrichment")
@@ -26,14 +28,16 @@ const program = new Command()
         FROM actors a
         LEFT JOIN actor_death_circumstances dd ON dd.actor_id = a.id
         WHERE a.deathday IS NOT NULL
-          AND a.popularity >= 10
+          AND a.popularity >= $2
           AND dd.actor_id IS NULL
         ORDER BY a.popularity DESC NULLS LAST
         LIMIT $1`,
-        [limit]
+        [limit, MIN_POPULARITY_THRESHOLD]
       )
 
-      console.log(`\nHigh-Priority Actors (popularity >= 10) without death pages:\n`)
+      console.log(
+        `\nHigh-Priority Actors (popularity >= ${MIN_POPULARITY_THRESHOLD}) without death pages:\n`
+      )
       console.log(`Found ${result.rows.length} actors:\n`)
 
       for (const actor of result.rows) {

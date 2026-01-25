@@ -1208,10 +1208,16 @@ const program = new Command()
     // Parse actor IDs if provided
     let actorIds: number[] | undefined
     if (options.actorIds) {
-      actorIds = options.actorIds.split(",").map((id: string) => {
-        const parsed = parsePositiveInt(id.trim())
-        return parsed
-      })
+      try {
+        actorIds = options.actorIds.split(",").map((id: string) => {
+          const parsed = parsePositiveInt(id.trim())
+          return parsed
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "One or more actor IDs are invalid"
+        console.error(`Invalid actor IDs: ${message}`)
+        process.exit(1)
+      }
     }
 
     await enrichMissingDetails({
