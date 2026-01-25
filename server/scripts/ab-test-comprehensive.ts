@@ -247,9 +247,12 @@ async function runComprehensiveTest(count: number) {
       `Track progress at: http://localhost:5173/admin/ab-tests/comprehensive/${testRun.id}\n`
     )
 
-    // Initialize providers with max_tokens=8192
+    // Initialize providers with increased token limits for A/B testing
+    // This avoids truncation bias but is not used in production
     const gemini = new GeminiProSource()
+    gemini["maxOutputTokens"] = 8192
     const perplexity = new PerplexitySource()
+    perplexity["maxTokens"] = 8192
 
     let totalCost = 0
     let completedActors = 0
