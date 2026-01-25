@@ -178,11 +178,13 @@ async function runFix(dryRun: boolean): Promise<{
         if (!redisAvailable) {
           console.error("Error: Redis client not available")
           console.error("This script requires Redis for cache invalidation.")
-          await closeRedis()
-          process.exit(1)
+          throw new Error("Redis unavailable")
         }
         await rebuildDeathCaches()
         console.log("✓ Death caches rebuilt")
+      } catch (error) {
+        console.error("Failed to rebuild caches:", error)
+        process.exit(1)
       } finally {
         await closeRedis()
       }
