@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
+import DateRangePicker from "../../components/admin/analytics/DateRangePicker"
 import { useActorsForCoverage, type ActorCoverageFilters } from "../../hooks/admin/useCoverage"
 
 export default function ActorManagementPage() {
@@ -105,164 +106,153 @@ export default function ActorManagementPage() {
         </div>
 
         {/* Filters */}
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-          <h2 className="mb-4 text-lg font-semibold text-white">Filters</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/* Death Page Status */}
-            <div>
-              <label htmlFor="hasDeathPage" className="mb-1 block text-sm text-gray-400">
-                Death Page Status
-              </label>
-              <select
-                id="hasDeathPage"
-                value={filters.hasDeathPage === undefined ? "" : filters.hasDeathPage.toString()}
-                onChange={(e) =>
-                  handleFilterChange({
-                    hasDeathPage: e.target.value === "" ? undefined : e.target.value === "true",
-                  })
-                }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-              >
-                <option value="">All</option>
-                <option value="true">With Death Pages</option>
-                <option value="false">Without Death Pages</option>
-              </select>
+        <div className="space-y-4">
+          <DateRangePicker
+            startDate={filters.deathDateStart || ""}
+            endDate={filters.deathDateEnd || ""}
+            onChange={(startDate, endDate) =>
+              handleFilterChange({
+                deathDateStart: startDate || undefined,
+                deathDateEnd: endDate || undefined,
+              })
+            }
+            showQuickFilters={false}
+            startLabel="Death Date From"
+            endLabel="Death Date To"
+          />
+
+          <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+            <h2 className="mb-4 text-lg font-semibold text-white">Filters</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Death Page Status */}
+              <div>
+                <label htmlFor="hasDeathPage" className="mb-1 block text-sm text-gray-400">
+                  Death Page Status
+                </label>
+                <select
+                  id="hasDeathPage"
+                  value={filters.hasDeathPage === undefined ? "" : filters.hasDeathPage.toString()}
+                  onChange={(e) =>
+                    handleFilterChange({
+                      hasDeathPage: e.target.value === "" ? undefined : e.target.value === "true",
+                    })
+                  }
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                >
+                  <option value="">All</option>
+                  <option value="true">With Death Pages</option>
+                  <option value="false">Without Death Pages</option>
+                </select>
+              </div>
+
+              {/* Popularity Range */}
+              <div>
+                <label htmlFor="minPopularity" className="mb-1 block text-sm text-gray-400">
+                  Min Popularity
+                </label>
+                <input
+                  id="minPopularity"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={filters.minPopularity || ""}
+                  onChange={(e) =>
+                    handleFilterChange({
+                      minPopularity: e.target.value ? parseFloat(e.target.value) : undefined,
+                    })
+                  }
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="maxPopularity" className="mb-1 block text-sm text-gray-400">
+                  Max Popularity
+                </label>
+                <input
+                  id="maxPopularity"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={filters.maxPopularity || ""}
+                  onChange={(e) =>
+                    handleFilterChange({
+                      maxPopularity: e.target.value ? parseFloat(e.target.value) : undefined,
+                    })
+                  }
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  placeholder="100"
+                />
+              </div>
+
+              {/* Name Search */}
+              <div>
+                <label htmlFor="searchName" className="mb-1 block text-sm text-gray-400">
+                  Name Search
+                </label>
+                <input
+                  id="searchName"
+                  type="text"
+                  value={filters.searchName || ""}
+                  onChange={(e) => handleFilterChange({ searchName: e.target.value || undefined })}
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  placeholder="Actor name..."
+                />
+              </div>
+
+              {/* Sort By */}
+              <div>
+                <label htmlFor="orderBy" className="mb-1 block text-sm text-gray-400">
+                  Sort By
+                </label>
+                <select
+                  id="orderBy"
+                  value={filters.orderBy || "popularity"}
+                  onChange={(e) =>
+                    handleFilterChange({
+                      orderBy: e.target.value as ActorCoverageFilters["orderBy"],
+                    })
+                  }
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                >
+                  <option value="popularity">Popularity</option>
+                  <option value="death_date">Death Date</option>
+                  <option value="name">Name</option>
+                  <option value="enriched_at">Last Enriched</option>
+                </select>
+              </div>
+
+              {/* Sort Direction */}
+              <div>
+                <label htmlFor="orderDirection" className="mb-1 block text-sm text-gray-400">
+                  Direction
+                </label>
+                <select
+                  id="orderDirection"
+                  value={filters.orderDirection || "desc"}
+                  onChange={(e) =>
+                    handleFilterChange({ orderDirection: e.target.value as "asc" | "desc" })
+                  }
+                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                >
+                  <option value="desc">Descending</option>
+                  <option value="asc">Ascending</option>
+                </select>
+              </div>
             </div>
 
-            {/* Popularity Range */}
-            <div>
-              <label htmlFor="minPopularity" className="mb-1 block text-sm text-gray-400">
-                Min Popularity
-              </label>
-              <input
-                id="minPopularity"
-                type="number"
-                min="0"
-                max="100"
-                value={filters.minPopularity || ""}
-                onChange={(e) =>
-                  handleFilterChange({
-                    minPopularity: e.target.value ? parseFloat(e.target.value) : undefined,
-                  })
-                }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-                placeholder="0"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="maxPopularity" className="mb-1 block text-sm text-gray-400">
-                Max Popularity
-              </label>
-              <input
-                id="maxPopularity"
-                type="number"
-                min="0"
-                max="100"
-                value={filters.maxPopularity || ""}
-                onChange={(e) =>
-                  handleFilterChange({
-                    maxPopularity: e.target.value ? parseFloat(e.target.value) : undefined,
-                  })
-                }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-                placeholder="100"
-              />
-            </div>
-
-            {/* Name Search */}
-            <div>
-              <label htmlFor="searchName" className="mb-1 block text-sm text-gray-400">
-                Name Search
-              </label>
-              <input
-                id="searchName"
-                type="text"
-                value={filters.searchName || ""}
-                onChange={(e) => handleFilterChange({ searchName: e.target.value || undefined })}
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-                placeholder="Actor name..."
-              />
-            </div>
-
-            {/* Death Date Range */}
-            <div>
-              <label htmlFor="deathDateStart" className="mb-1 block text-sm text-gray-400">
-                Death Date From
-              </label>
-              <input
-                id="deathDateStart"
-                type="date"
-                value={filters.deathDateStart || ""}
-                onChange={(e) =>
-                  handleFilterChange({ deathDateStart: e.target.value || undefined })
-                }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="deathDateEnd" className="mb-1 block text-sm text-gray-400">
-                Death Date To
-              </label>
-              <input
-                id="deathDateEnd"
-                type="date"
-                value={filters.deathDateEnd || ""}
-                onChange={(e) => handleFilterChange({ deathDateEnd: e.target.value || undefined })}
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-              />
-            </div>
-
-            {/* Sort By */}
-            <div>
-              <label htmlFor="orderBy" className="mb-1 block text-sm text-gray-400">
-                Sort By
-              </label>
-              <select
-                id="orderBy"
-                value={filters.orderBy || "popularity"}
-                onChange={(e) =>
-                  handleFilterChange({ orderBy: e.target.value as ActorCoverageFilters["orderBy"] })
-                }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-              >
-                <option value="popularity">Popularity</option>
-                <option value="death_date">Death Date</option>
-                <option value="name">Name</option>
-                <option value="enriched_at">Last Enriched</option>
-              </select>
-            </div>
-
-            {/* Sort Direction */}
-            <div>
-              <label htmlFor="orderDirection" className="mb-1 block text-sm text-gray-400">
-                Direction
-              </label>
-              <select
-                id="orderDirection"
-                value={filters.orderDirection || "desc"}
-                onChange={(e) =>
-                  handleFilterChange({ orderDirection: e.target.value as "asc" | "desc" })
-                }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
-              >
-                <option value="desc">Descending</option>
-                <option value="asc">Ascending</option>
-              </select>
-            </div>
+            <button
+              onClick={() => {
+                setSearchParams(new URLSearchParams())
+                setPage(1)
+                setSelectedActorIds(new Set())
+              }}
+              className="mt-4 text-sm text-gray-400 transition-colors hover:text-white"
+            >
+              Clear Filters
+            </button>
           </div>
-
-          <button
-            onClick={() => {
-              setSearchParams(new URLSearchParams())
-              setPage(1)
-              setSelectedActorIds(new Set())
-            }}
-            className="mt-4 text-sm text-gray-400 transition-colors hover:text-white"
-          >
-            Clear Filters
-          </button>
         </div>
 
         {/* Loading State */}
@@ -344,7 +334,7 @@ export default function ActorManagementPage() {
                               : "Unknown"}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-400">
-                            {actor.popularity.toFixed(1)}
+                            {actor.popularity?.toFixed(1) ?? "—"}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {actor.has_detailed_death_info ? (
