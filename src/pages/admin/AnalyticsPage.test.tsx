@@ -128,8 +128,8 @@ describe("AnalyticsPage", () => {
   it("renders date range picker", () => {
     renderPage()
 
-    expect(document.getElementById("date-range-start")).toBeInTheDocument()
-    expect(document.getElementById("date-range-end")).toBeInTheDocument()
+    expect(screen.getByLabelText(/start date/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/end date/i)).toBeInTheDocument()
     expect(screen.getByText("Last 7 Days")).toBeInTheDocument()
     expect(screen.getByText("Last 30 Days")).toBeInTheDocument()
     expect(screen.getByText("Last 90 Days")).toBeInTheDocument()
@@ -167,8 +167,8 @@ describe("AnalyticsPage", () => {
   it("updates date range when custom dates are selected", async () => {
     renderPage()
 
-    const startDateInput = document.getElementById("date-range-start") as HTMLInputElement
-    const endDateInput = document.getElementById("date-range-end") as HTMLInputElement
+    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement
+    const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement
 
     fireEvent.change(startDateInput, { target: { value: "2024-01-01" } })
     fireEvent.change(endDateInput, { target: { value: "2024-01-31" } })
