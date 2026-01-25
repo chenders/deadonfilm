@@ -280,3 +280,107 @@ describe("enrich-death-details --us-actors-only query", () => {
     expect(result.rows.length).toBe(0)
   })
 })
+
+describe("enrich-death-details --actor-id query", () => {
+  let db: PGlite
+
+  beforeAll(async () => {
+    db = await getTestDb()
+
+    // Insert test actors
+    await insertActor(db, {
+      tmdb_id: 5001,
+      name: "Target Actor",
+      deathday: "2023-06-15",
+      cause_of_death: "Natural causes",
+    })
+
+    await insertActor(db, {
+      tmdb_id: 5002,
+      name: "Living Actor",
+      deathday: null, // Still alive
+      cause_of_death: null,
+    })
+
+    await insertActor(db, {
+      tmdb_id: 5003,
+      name: "Another Deceased Actor",
+      deathday: "2023-07-20",
+      cause_of_death: "Heart disease",
+    })
+  })
+
+  afterAll(async () => {
+    await closeTestDb()
+  })
+
+  it("selects actor by internal ID (a.id)", async () => {
+    // Get the internal ID for tmdb_id 5001
+    const actorRow = await db.query<{ id: number }>(
+      "SELECT id FROM actors WHERE tmdb_id = $1",
+      [5001]
+    )
+    const actorId = actorRow.rows[0].id
+
+    // This is the --actor-id query path from enrich-death-details.ts
+    // Note: simplified to not require actor_death_circumstances table
+    const result = await db.query<{ id: number; name: string; tmdb_id: number }>(
+      `
+      SELECT a.id, a.name, a.tmdb_id
+      FROM actors a
+      WHERE a.id = $1
+        AND a.deathday IS NOT NULL
+    `,
+      [actorId]
+    )
+
+    expect(result.rows.length).toBe(1)
+    expect(result.rows[0].name).toBe("Target Actor")
+    expect(result.rows[0].tmdb_id).toBe(5001)
+  })
+
+  it("excludes actors with deathday IS NULL", async () => {
+    // Get the internal ID for the living actor (tmdb_id 5002)
+    const actorRow = await db.query<{ id: number }>(
+      "SELECT id FROM actors WHERE tmdb_id = $1",
+      [5002]
+    )
+    const actorId = actorRow.rows[0].id
+
+    // Query should return empty result for living actor
+    const result = await db.query<{ id: number }>(
+      `
+      SELECT a.id
+      FROM actors a
+      WHERE a.id = $1
+        AND a.deathday IS NOT NULL
+    `,
+      [actorId]
+    )
+
+    expect(result.rows.length).toBe(0)
+  })
+
+  it("returns exactly one actor when queried by ID", async () => {
+    // Get the internal ID for tmdb_id 5003
+    const actorRow = await db.query<{ id: number }>(
+      "SELECT id FROM actors WHERE tmdb_id = $1",
+      [5003]
+    )
+    const actorId = actorRow.rows[0].id
+
+    const result = await db.query<{ id: number; name: string }>(
+      `
+      SELECT a.id, a.name
+      FROM actors a
+      WHERE a.id = $1
+        AND a.deathday IS NOT NULL
+    `,
+      [actorId]
+    )
+
+    // Should return exactly one row
+    expect(result.rows.length).toBe(1)
+    expect(result.rows[0].name).toBe("Another Deceased Actor")
+  })
+})
