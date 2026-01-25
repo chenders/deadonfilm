@@ -1,14 +1,17 @@
+import slugify from "slugify"
+
 /**
  * Creates a URL-safe slug from a movie title, year, and ID
  * Example: "Breakfast at Tiffany's" (1961), ID 14629 → "breakfast-at-tiffanys-1961-14629"
+ * Example: "Amélie" (2001), ID 194 → "amelie-2001-194"
  */
 export function createMovieSlug(title: string, releaseDate: string, id: number): string {
   const year = releaseDate ? releaseDate.slice(0, 4) : "unknown"
-  const slug = title
-    .toLowerCase()
-    .replace(/['\u02BC\u2019]/g, "") // Remove straight ('), modifier (ʼ), and curly (') apostrophes
-    .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
-    .replace(/(^-|-$)/g, "") // Remove leading/trailing hyphens
+  const slug = slugify(title, {
+    lower: true,
+    strict: true, // Strip special characters
+    remove: /[*+~.()'"!:@]/g, // Remove specific characters completely
+  })
 
   return `${slug}-${year}-${id}`
 }
@@ -34,13 +37,15 @@ export function extractYearFromSlug(slug: string): string | null {
 /**
  * Creates a URL-safe slug from an actor name and ID
  * Example: "John Wayne", ID 4165 → "john-wayne-4165"
+ * Example: "Björk", ID 47 → "bjork-47"
+ * Example: "José García", ID 123 → "jose-garcia-123"
  */
 export function createActorSlug(name: string, id: number): string {
-  const slug = name
-    .toLowerCase()
-    .replace(/['\u02BC\u2019]/g, "") // Remove straight ('), modifier (ʼ), and curly (') apostrophes
-    .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
-    .replace(/(^-|-$)/g, "") // Remove leading/trailing hyphens
+  const slug = slugify(name, {
+    lower: true,
+    strict: true, // Strip special characters
+    remove: /[*+~.()'"!:@]/g, // Remove specific characters completely
+  })
 
   return `${slug}-${id}`
 }
@@ -57,14 +62,15 @@ export function extractActorId(slug: string): number {
 /**
  * Creates a URL-safe slug from a show name, first air date, and ID
  * Example: "Breaking Bad" (2008), ID 1396 → "breaking-bad-2008-1396"
+ * Example: "Élite" (2018), ID 76479 → "elite-2018-76479"
  */
 export function createShowSlug(name: string, firstAirDate: string | null, id: number): string {
   const year = firstAirDate ? firstAirDate.slice(0, 4) : "unknown"
-  const slug = name
-    .toLowerCase()
-    .replace(/['\u02BC\u2019]/g, "") // Remove straight ('), modifier (ʼ), and curly (') apostrophes
-    .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
-    .replace(/(^-|-$)/g, "") // Remove leading/trailing hyphens
+  const slug = slugify(name, {
+    lower: true,
+    strict: true, // Strip special characters
+    remove: /[*+~.()'"!:@]/g, // Remove specific characters completely
+  })
 
   return `${slug}-${year}-${id}`
 }
@@ -103,17 +109,17 @@ export function createEpisodeSlug(
   episodeNumber: number,
   showId: number
 ): string {
-  const showSlug = showName
-    .toLowerCase()
-    .replace(/['\u02BC\u2019]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
+  const showSlug = slugify(showName, {
+    lower: true,
+    strict: true,
+    remove: /[*+~.()'"!:@]/g,
+  })
 
-  const episodeSlug = episodeName
-    .toLowerCase()
-    .replace(/['\u02BC\u2019]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
+  const episodeSlug = slugify(episodeName, {
+    lower: true,
+    strict: true,
+    remove: /[*+~.()'"!:@]/g,
+  })
 
   return `${showSlug}-s${seasonNumber}e${episodeNumber}-${episodeSlug}-${showId}`
 }

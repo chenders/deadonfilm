@@ -51,7 +51,7 @@ describe("createMovieSlug", () => {
   })
 
   it("handles non-ASCII characters", () => {
-    expect(createMovieSlug("Amélie", "2001-04-25", 194)).toBe("am-lie-2001-194")
+    expect(createMovieSlug("Amélie", "2001-04-25", 194)).toBe("amelie-2001-194")
   })
 })
 
