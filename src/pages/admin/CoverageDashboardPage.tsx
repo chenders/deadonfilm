@@ -16,20 +16,31 @@ import {
 
 type Granularity = "daily" | "weekly" | "monthly"
 
+// Calculate default date range (last 30 days)
+const getDefaultDateRange = () => {
+  const end = new Date()
+  const start = new Date()
+  start.setDate(start.getDate() - 30)
+  return {
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+  }
+}
+
 export default function CoverageDashboardPage() {
   const [granularity, setGranularity] = useState<Granularity>("daily")
 
-  // Calculate date range (last 30 days)
-  const endDate = new Date()
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - 30)
+  // Use state to manage date range - stable across renders but allows future enhancements
+  const defaultRange = getDefaultDateRange()
+  const [startDate] = useState(defaultRange.startDate)
+  const [endDate] = useState(defaultRange.endDate)
 
   const { data: stats, isLoading: statsLoading, error: statsError } = useCoverageStats()
   const {
     data: trends,
     isLoading: trendsLoading,
     error: trendsError,
-  } = useCoverageTrends(startDate.toISOString(), endDate.toISOString(), granularity)
+  } = useCoverageTrends(startDate, endDate, granularity)
 
   const isLoading = statsLoading || trendsLoading
   const error = statsError || trendsError

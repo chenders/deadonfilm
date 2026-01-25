@@ -19,32 +19,43 @@ import {
 
 type Granularity = "daily" | "weekly" | "monthly"
 
+// Calculate default date range (last 30 days)
+const getDefaultDateRange = () => {
+  const end = new Date()
+  const start = new Date()
+  start.setDate(start.getDate() - 30)
+  return {
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+  }
+}
+
 export default function PageViewsPage() {
   const [granularity, setGranularity] = useState<Granularity>("daily")
   const pageTypeFilter = "all"
 
-  // Calculate date range (last 30 days)
-  const endDate = new Date()
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - 30)
+  // Use state to manage date range - stable across renders but allows future enhancements
+  const defaultRange = getDefaultDateRange()
+  const [startDate] = useState(defaultRange.startDate)
+  const [endDate] = useState(defaultRange.endDate)
 
   const {
     data: summary,
     isLoading: summaryLoading,
     error: summaryError,
-  } = usePageViewSummary(startDate.toISOString(), endDate.toISOString(), pageTypeFilter)
+  } = usePageViewSummary(startDate, endDate, pageTypeFilter)
 
   const {
     data: trends,
     isLoading: trendsLoading,
     error: trendsError,
-  } = usePageViewTrends(startDate.toISOString(), endDate.toISOString(), granularity)
+  } = usePageViewTrends(startDate, endDate, granularity)
 
   const {
     data: topViewed,
     isLoading: topViewedLoading,
     error: topViewedError,
-  } = useTopViewedPages("actor_death", startDate.toISOString(), endDate.toISOString(), 20)
+  } = useTopViewedPages("actor_death", startDate, endDate, 20)
 
   const isLoading = summaryLoading || trendsLoading || topViewedLoading
   const error = summaryError || trendsError || topViewedError
