@@ -65,7 +65,7 @@ export abstract class BaseJobHandler<TPayload = unknown, TResult = unknown> {
    * Hook called after successful job completion
    * Override to add custom post-processing
    */
-  async onCompleted(job: Job<TPayload>, _result: JobResult<TResult>): Promise<void> {
+  async onCompleted(job: Job<TPayload>, result: JobResult<TResult>): Promise<void> {
     logger.info(
       {
         jobId: job.id,
