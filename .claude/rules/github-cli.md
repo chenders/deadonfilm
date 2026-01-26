@@ -13,9 +13,7 @@ Complete reference for GitHub CLI operations, commit/PR formatting, screenshot w
 - [Commit Message Formatting](#commit-message-formatting)
 - [PR Description Formatting](#pr-description-formatting)
 - [Screenshot Workflow](#screenshot-workflow)
-- [Inline Comment Examples](#inline-comment-examples)
-- [Copilot Review Response Templates](#copilot-review-response-templates)
-- [Troubleshooting](#troubleshooting)
+- [Complete Workflow Examples](#complete-workflow-examples)
 - [Quick Reference](#quick-reference)
 
 ## Branch Workflow
