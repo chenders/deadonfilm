@@ -14,7 +14,7 @@
 import { Worker, Job } from "bullmq"
 import newrelic from "newrelic"
 import { logger } from "../logger.js"
-import { redisJobsClient } from "./redis.js"
+import { getRedisJobsClient } from "./redis.js"
 import { QueueName, queueConfigs, type JobType } from "./types.js"
 import { getHandler } from "./handlers/index.js"
 
@@ -49,7 +49,7 @@ export class JobWorker {
           return this.processJob(job)
         },
         {
-          connection: redisJobsClient,
+          connection: getRedisJobsClient(),
           concurrency: config.concurrency,
           limiter: config.rateLimit
             ? {
