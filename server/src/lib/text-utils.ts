@@ -29,7 +29,7 @@ const MEDICAL_ACRONYMS = [
 /**
  * Escapes special regex characters in a string.
  */
-function escapeRegex(str: string): string {
+export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")
 }
 
