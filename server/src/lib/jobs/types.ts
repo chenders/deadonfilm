@@ -237,19 +237,9 @@ export type SyncTMDBChangesPayload = z.infer<typeof syncTMDBChangesPayloadSchema
 
 /**
  * Union type of all possible payloads
+ * Derived from JobPayloadMap to ensure type safety
  */
-export type JobPayload =
-  | FetchOMDbRatingsPayload
-  | FetchTraktRatingsPayload
-  | FetchTheTVDBScoresPayload
-  | EnrichDeathDetailsPayload
-  | EnrichCauseOfDeathPayload
-  | WarmActorCachePayload
-  | WarmContentCachePayload
-  | ProcessImagePayload
-  | GenerateSitemapPayload
-  | CleanupOldJobsPayload
-  | SyncTMDBChangesPayload
+export type JobPayload = JobPayloadMap[keyof JobPayloadMap]
 
 /**
  * Type-safe payload lookup by job type
@@ -284,8 +274,8 @@ export interface JobOptions {
     type: "exponential" | "fixed"
     delay: number // Base delay in milliseconds
   }
-  removeOnComplete?: boolean | number // Remove job after completion (true/false or max age in milliseconds)
-  removeOnFail?: boolean | number // Remove job after failure
+  removeOnComplete?: boolean | number // Remove job after completion (true/false or max number of completed jobs to keep)
+  removeOnFail?: boolean | number // Remove job after failure (true/false or max number of failed jobs to keep)
   timeout?: number // Job timeout in milliseconds
   createdBy?: string // Who/what created this job (script name, route, etc.)
 }
