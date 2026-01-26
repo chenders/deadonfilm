@@ -145,7 +145,7 @@ export const enrichDeathDetailsPayloadSchema = z.object({
 export const enrichCauseOfDeathPayloadSchema = z.object({
   actorId: z.number().int().positive(),
   actorName: z.string().min(1),
-  deathDate: z.string().optional(), // ISO date string
+  deathDate: z.string().optional(), // Date string (e.g., "YYYY-MM-DD")
 })
 
 // Actor cache warming payload
@@ -192,8 +192,8 @@ export const cleanupOldJobsPayloadSchema = z.object({
 
 // TMDB sync payload
 export const syncTMDBChangesPayloadSchema = z.object({
-  startDate: z.string().optional(), // ISO date string
-  endDate: z.string().optional(),
+  startDate: z.string().optional(), // Date string (e.g., "YYYY-MM-DD")
+  endDate: z.string().optional(), // Date string (e.g., "YYYY-MM-DD")
 })
 
 /**

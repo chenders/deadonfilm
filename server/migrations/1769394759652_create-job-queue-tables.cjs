@@ -19,8 +19,7 @@ exports.up = (pgm) => {
     job_id: {
       type: "varchar(100)",
       notNull: true,
-      unique: true,
-      comment: "BullMQ job ID",
+      comment: "BullMQ job ID (unique per queue)",
     },
     job_type: {
       type: "varchar(50)",
@@ -115,7 +114,12 @@ exports.up = (pgm) => {
       "status IN ('pending', 'active', 'completed', 'failed', 'delayed', 'cancelled')",
   })
 
-  // Create indexes for job_runs (job_id index is redundant - unique constraint already creates one)
+  // Add unique constraint on (queue_name, job_id) since BullMQ job IDs are unique per queue
+  pgm.addConstraint("job_runs", "job_runs_queue_job_unique", {
+    unique: ["queue_name", "job_id"],
+  })
+
+  // Create indexes for job_runs
   pgm.createIndex("job_runs", ["job_type", "status"], {
     name: "idx_job_runs_type_status",
   })
