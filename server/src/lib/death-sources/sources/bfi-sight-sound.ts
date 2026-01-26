@@ -18,6 +18,7 @@ import {
   DEATH_KEYWORDS,
   NOTABLE_FACTOR_KEYWORDS,
 } from "../base-source.js"
+import { escapeRegex } from "../../text-utils.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
@@ -239,24 +240,24 @@ export class BFISightSoundSource extends BaseDataSource {
       // BFI actual format: <strong>Name (dates)</strong>: description
       // Example: <strong>Gene Hackman (30 Jan 1930 – c.18 Feb 2025)</strong>: description
       new RegExp(
-        `<strong>\\s*(${this.escapeRegex(actor.name)})\\s*\\(([^)]+)\\)\\s*</strong>\\s*:?\\s*([^<]{10,500})`,
+        `<strong>\\s*(${escapeRegex(actor.name)})\\s*\\(([^)]+)\\)\\s*</strong>\\s*:?\\s*([^<]{10,500})`,
         "i"
       ),
       // Full name with dates inside any tag
       new RegExp(
-        `<[^>]*>\\s*(${this.escapeRegex(actor.name)})\\s*\\(([^)]+)\\)\\s*</[^>]*>\\s*:?\\s*([^<]{10,500})`,
+        `<[^>]*>\\s*(${escapeRegex(actor.name)})\\s*\\(([^)]+)\\)\\s*</[^>]*>\\s*:?\\s*([^<]{10,500})`,
         "i"
       ),
       // Full name with dates pattern (dates outside tag)
       new RegExp(
-        `<[^>]*>([^<]*${this.escapeRegex(actor.name)}[^<]*)<[^>]*>\\s*\\(([^)]+)\\)\\s*:?\\s*([^<]{10,500})`,
+        `<[^>]*>([^<]*${escapeRegex(actor.name)}[^<]*)<[^>]*>\\s*\\(([^)]+)\\)\\s*:?\\s*([^<]{10,500})`,
         "i"
       ),
       // Link with name
-      new RegExp(`<a[^>]*href="([^"]*)"[^>]*>([^<]*${this.escapeRegex(actor.name)}[^<]*)</a>`, "i"),
+      new RegExp(`<a[^>]*href="([^"]*)"[^>]*>([^<]*${escapeRegex(actor.name)}[^<]*)</a>`, "i"),
       // Just the name in text with dates
       new RegExp(
-        `(${this.escapeRegex(actor.name)})\\s*\\(([^)]{10,50})\\)\\s*:?\\s*([^<]{10,500})`,
+        `(${escapeRegex(actor.name)})\\s*\\(([^)]{10,50})\\)\\s*:?\\s*([^<]{10,500})`,
         "i"
       ),
     ]
@@ -270,7 +271,7 @@ export class BFISightSoundSource extends BaseDataSource {
 
     // Try searching by last name only for partial matches
     const lastNamePattern = new RegExp(
-      `<[^>]*>([^<]*\\b${this.escapeRegex(lastName)}\\b[^<]*)<[^>]*>\\s*\\(([^)]+)\\)`,
+      `<[^>]*>([^<]*\\b${escapeRegex(lastName)}\\b[^<]*)<[^>]*>\\s*\\(([^)]+)\\)`,
       "gi"
     )
 
@@ -532,13 +533,6 @@ export class BFISightSoundSource extends BaseDataSource {
     }
 
     return false
-  }
-
-  /**
-   * Escape special regex characters.
-   */
-  private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
   }
 
   /**

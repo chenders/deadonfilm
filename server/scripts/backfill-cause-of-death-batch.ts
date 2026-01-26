@@ -58,7 +58,6 @@ export {
   getYearFromDate,
   getMonthDayFromDate,
   stripMarkdownCodeFences,
-  repairJson,
   storeFailure,
   type Checkpoint,
 } from "../src/lib/claude-batch/index.js"

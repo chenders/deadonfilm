@@ -11,6 +11,7 @@
 import Anthropic from "@anthropic-ai/sdk"
 import type { ActorForEnrichment, EnrichmentData } from "./types.js"
 import { getEnrichmentLogger } from "./logger.js"
+import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
 
 // Default AI model for helpers (Sonnet is cost-effective for these tasks)
 export const DEFAULT_AI_HELPER_MODEL = "claude-sonnet-4-20250514"
@@ -58,22 +59,6 @@ function calculateCost(inputTokens: number, outputTokens: number): number {
     (inputTokens * SONNET_INPUT_COST_PER_MILLION) / 1_000_000 +
     (outputTokens * SONNET_OUTPUT_COST_PER_MILLION) / 1_000_000
   )
-}
-
-/**
- * Strip markdown code fences from JSON text.
- */
-function stripMarkdownCodeFences(text: string): string {
-  let jsonText = text.trim()
-  if (jsonText.startsWith("```")) {
-    const match = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-    if (match) {
-      jsonText = match[1].trim()
-    } else {
-      jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").trim()
-    }
-  }
-  return jsonText
 }
 
 /**
