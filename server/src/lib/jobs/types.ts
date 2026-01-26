@@ -348,6 +348,20 @@ export const queueConfigs: Record<QueueName, QueueConfig> = {
 }
 
 // ============================================================
+// ADMIN API CONSTANTS
+// ============================================================
+
+/**
+ * Maximum number of recent jobs to return in admin API
+ */
+export const MAX_RECENT_JOBS = 10
+
+/**
+ * Maximum number of jobs to clean in a single operation
+ */
+export const MAX_JOBS_TO_CLEAN = 1000
+
+// ============================================================
 // JOB TYPE TO QUEUE MAPPING
 // ============================================================
 
