@@ -33,10 +33,7 @@ const PERMANENT_ERROR_CODES = new Set([400, 401, 403, 404, 422])
 /**
  * Handler for fetching TheTVDB scores
  */
-export class FetchTheTVDBScoresHandler extends BaseJobHandler<
-  FetchTheTVDBScoresPayload,
-  unknown
-> {
+export class FetchTheTVDBScoresHandler extends BaseJobHandler<FetchTheTVDBScoresPayload, unknown> {
   readonly jobType = JobType.FETCH_THETVDB_SCORES
   readonly queueName = QueueName.RATINGS
 
