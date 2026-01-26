@@ -19,8 +19,7 @@ exports.up = (pgm) => {
     job_id: {
       type: "varchar(100)",
       notNull: true,
-      unique: true,
-      comment: "BullMQ job ID",
+      comment: "BullMQ job ID (unique per queue)",
     },
     job_type: {
       type: "varchar(50)",
@@ -41,8 +40,8 @@ exports.up = (pgm) => {
     },
     priority: {
       type: "integer",
-      default: 0,
-      comment: "Job priority (higher = processed first)",
+      default: 5,
+      comment: "Job priority (higher = processed first, 5 = NORMAL)",
     },
 
     // Timing
@@ -68,11 +67,13 @@ exports.up = (pgm) => {
     // Retry tracking
     attempts: {
       type: "integer",
+      notNull: true,
       default: 0,
       comment: "Number of attempts so far",
     },
     max_attempts: {
       type: "integer",
+      notNull: true,
       default: 3,
       comment: "Maximum retry attempts before permanent failure",
     },
@@ -113,8 +114,12 @@ exports.up = (pgm) => {
       "status IN ('pending', 'active', 'completed', 'failed', 'delayed', 'cancelled')",
   })
 
+  // Add unique constraint on (queue_name, job_id) since BullMQ job IDs are unique per queue
+  pgm.addConstraint("job_runs", "job_runs_queue_job_unique", {
+    unique: ["queue_name", "job_id"],
+  })
+
   // Create indexes for job_runs
-  pgm.createIndex("job_runs", "job_id", { name: "idx_job_runs_job_id" })
   pgm.createIndex("job_runs", ["job_type", "status"], {
     name: "idx_job_runs_type_status",
   })
@@ -181,6 +186,7 @@ exports.up = (pgm) => {
     // Triage
     reviewed: {
       type: "boolean",
+      notNull: true,
       default: false,
       comment: "Has this failure been reviewed by admin?",
     },

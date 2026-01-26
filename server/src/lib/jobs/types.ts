@@ -145,7 +145,7 @@ export const enrichDeathDetailsPayloadSchema = z.object({
 export const enrichCauseOfDeathPayloadSchema = z.object({
   actorId: z.number().int().positive(),
   actorName: z.string().min(1),
-  deathDate: z.string().optional(), // ISO date string
+  deathDate: z.string().optional(), // Date string (e.g., "YYYY-MM-DD")
 })
 
 // Actor cache warming payload
@@ -159,7 +159,22 @@ export const warmContentCachePayloadSchema = z.object({
   entityId: z.number().int().positive(),
 })
 
-// Image processing payload
+// Image processing payloads - type-safe per job type
+export const processActorImagePayloadSchema = z.object({
+  imageUrl: z.string().url(),
+  entityType: z.literal("actor"),
+  entityId: z.number().int().positive(),
+  imageType: z.literal("profile"),
+})
+
+export const processPosterImagePayloadSchema = z.object({
+  imageUrl: z.string().url(),
+  entityType: z.enum(["movie", "show"]),
+  entityId: z.number().int().positive(),
+  imageType: z.enum(["poster", "backdrop"]),
+})
+
+// Legacy schema for backward compatibility
 export const processImagePayloadSchema = z.object({
   imageUrl: z.string().url(),
   entityType: z.enum(["actor", "movie", "show"]),
@@ -177,8 +192,8 @@ export const cleanupOldJobsPayloadSchema = z.object({
 
 // TMDB sync payload
 export const syncTMDBChangesPayloadSchema = z.object({
-  startDate: z.string().optional(), // ISO date string
-  endDate: z.string().optional(),
+  startDate: z.string().optional(), // Date string (e.g., "YYYY-MM-DD")
+  endDate: z.string().optional(), // Date string (e.g., "YYYY-MM-DD")
 })
 
 /**
@@ -192,8 +207,8 @@ export const jobPayloadSchemas = {
   [JobType.ENRICH_CAUSE_OF_DEATH]: enrichCauseOfDeathPayloadSchema,
   [JobType.WARM_ACTOR_CACHE]: warmActorCachePayloadSchema,
   [JobType.WARM_CONTENT_CACHE]: warmContentCachePayloadSchema,
-  [JobType.PROCESS_ACTOR_IMAGE]: processImagePayloadSchema,
-  [JobType.PROCESS_POSTER_IMAGE]: processImagePayloadSchema,
+  [JobType.PROCESS_ACTOR_IMAGE]: processActorImagePayloadSchema,
+  [JobType.PROCESS_POSTER_IMAGE]: processPosterImagePayloadSchema,
   [JobType.GENERATE_SITEMAP]: generateSitemapPayloadSchema,
   [JobType.CLEANUP_OLD_JOBS]: cleanupOldJobsPayloadSchema,
   [JobType.SYNC_TMDB_CHANGES]: syncTMDBChangesPayloadSchema,
@@ -213,6 +228,8 @@ export type EnrichDeathDetailsPayload = z.infer<typeof enrichDeathDetailsPayload
 export type EnrichCauseOfDeathPayload = z.infer<typeof enrichCauseOfDeathPayloadSchema>
 export type WarmActorCachePayload = z.infer<typeof warmActorCachePayloadSchema>
 export type WarmContentCachePayload = z.infer<typeof warmContentCachePayloadSchema>
+export type ProcessActorImagePayload = z.infer<typeof processActorImagePayloadSchema>
+export type ProcessPosterImagePayload = z.infer<typeof processPosterImagePayloadSchema>
 export type ProcessImagePayload = z.infer<typeof processImagePayloadSchema>
 export type GenerateSitemapPayload = z.infer<typeof generateSitemapPayloadSchema>
 export type CleanupOldJobsPayload = z.infer<typeof cleanupOldJobsPayloadSchema>
@@ -220,19 +237,9 @@ export type SyncTMDBChangesPayload = z.infer<typeof syncTMDBChangesPayloadSchema
 
 /**
  * Union type of all possible payloads
+ * Derived from JobPayloadMap to ensure type safety
  */
-export type JobPayload =
-  | FetchOMDbRatingsPayload
-  | FetchTraktRatingsPayload
-  | FetchTheTVDBScoresPayload
-  | EnrichDeathDetailsPayload
-  | EnrichCauseOfDeathPayload
-  | WarmActorCachePayload
-  | WarmContentCachePayload
-  | ProcessImagePayload
-  | GenerateSitemapPayload
-  | CleanupOldJobsPayload
-  | SyncTMDBChangesPayload
+export type JobPayload = JobPayloadMap[keyof JobPayloadMap]
 
 /**
  * Type-safe payload lookup by job type
@@ -245,8 +252,8 @@ export type JobPayloadMap = {
   [JobType.ENRICH_CAUSE_OF_DEATH]: EnrichCauseOfDeathPayload
   [JobType.WARM_ACTOR_CACHE]: WarmActorCachePayload
   [JobType.WARM_CONTENT_CACHE]: WarmContentCachePayload
-  [JobType.PROCESS_ACTOR_IMAGE]: ProcessImagePayload
-  [JobType.PROCESS_POSTER_IMAGE]: ProcessImagePayload
+  [JobType.PROCESS_ACTOR_IMAGE]: ProcessActorImagePayload
+  [JobType.PROCESS_POSTER_IMAGE]: ProcessPosterImagePayload
   [JobType.GENERATE_SITEMAP]: GenerateSitemapPayload
   [JobType.CLEANUP_OLD_JOBS]: CleanupOldJobsPayload
   [JobType.SYNC_TMDB_CHANGES]: SyncTMDBChangesPayload
@@ -267,8 +274,8 @@ export interface JobOptions {
     type: "exponential" | "fixed"
     delay: number // Base delay in milliseconds
   }
-  removeOnComplete?: boolean | number // Remove job after completion (true/false or max age in milliseconds)
-  removeOnFail?: boolean | number // Remove job after failure
+  removeOnComplete?: boolean | number // Remove job after completion (true/false or max number of completed jobs to keep)
+  removeOnFail?: boolean | number // Remove job after failure (true/false or max number of failed jobs to keep)
   timeout?: number // Job timeout in milliseconds
   createdBy?: string // Who/what created this job (script name, route, etc.)
 }
