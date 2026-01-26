@@ -79,7 +79,10 @@ export async function closeRedisJobsClient(): Promise<void> {
       logger.info("Closing Redis jobs connection...")
       await redisJobsClient.quit()
     } catch (error) {
-      logger.error({ error }, "Error gracefully closing Redis jobs connection, forcing disconnect...")
+      logger.error(
+        { error },
+        "Error gracefully closing Redis jobs connection, forcing disconnect..."
+      )
       // Fallback to disconnect() if quit() fails (non-graceful but ensures cleanup)
       try {
         redisJobsClient.disconnect()
