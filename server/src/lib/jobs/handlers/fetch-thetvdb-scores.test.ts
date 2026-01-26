@@ -241,9 +241,7 @@ describe("FetchTheTVDBScoresHandler", () => {
     })
 
     it("classifies 500 errors as transient", async () => {
-      vi.mocked(thetvdb.getSeriesExtended).mockRejectedValue(
-        new Error("500 Internal Server Error")
-      )
+      vi.mocked(thetvdb.getSeriesExtended).mockRejectedValue(new Error("500 Internal Server Error"))
 
       await expect(handler.process(mockJob)).rejects.toThrow("500 Internal Server Error")
     })
@@ -445,9 +443,7 @@ describe("FetchTheTVDBScoresHandler", () => {
         },
       } as Job
 
-      vi.mocked(thetvdb.getSeriesExtended).mockRejectedValue(
-        new Error("429 Too Many Requests")
-      )
+      vi.mocked(thetvdb.getSeriesExtended).mockRejectedValue(new Error("429 Too Many Requests"))
 
       const newrelic = await import("newrelic")
 
