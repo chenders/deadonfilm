@@ -26,9 +26,10 @@ import {
   type JobPayloadMap,
 } from "./types.js"
 
+// Configuration constants
 const COMPLETED_JOB_RETENTION_SECONDS = 7 * 24 * 60 * 60 // 7 days
-const MAX_COMPLETED_JOBS_TO_KEEP = 10_000
-const DEFAULT_BACKOFF_DELAY_MS = 60_000 // 1 minute
+const MAX_COMPLETED_JOBS_TO_KEEP = 10000
+const DEFAULT_BACKOFF_DELAY_MS = 60000 // 1 minute
 
 /**
  * Centralized queue manager singleton
@@ -62,7 +63,7 @@ class QueueManager {
           attempts: 3, // Default retry attempts
           backoff: {
             type: "exponential",
-            delay: DEFAULT_BACKOFF_DELAY_MS,
+            delay: DEFAULT_BACKOFF_DELAY_MS, // Start with 1 minute, then 2min, 4min
           },
         },
       })
@@ -102,9 +103,18 @@ class QueueManager {
     queueEvents.on("active", async ({ jobId }) => {
       logger.debug({ queue: queueName, jobId }, "Job started")
 
-      await this.updateJobStatus(jobId, JobStatus.ACTIVE, {
-        started_at: new Date(),
-      })
+      try {
+        // Only update to active if not already completed (race condition: failed event may fire before active event)
+        const pool = getPool()
+        await pool.query(
+          `UPDATE job_runs
+           SET status = $1, started_at = $2
+           WHERE job_id = $3 AND completed_at IS NULL`,
+          [JobStatus.ACTIVE, new Date(), jobId]
+        )
+      } catch (error) {
+        logger.error({ queue: queueName, jobId, error }, "Failed to update active job in database")
+      }
     })
 
     // Job completed successfully
@@ -113,74 +123,106 @@ class QueueManager {
 
       const completedAt = new Date()
 
-      await this.updateJobStatus(jobId, JobStatus.COMPLETED, {
-        completed_at: completedAt,
-        result: returnvalue,
-      })
+      try {
+        // Update status, result, completed_at, and duration_ms in a single atomic query
+        const pool = getPool()
+        const result = await pool.query(
+          `
+          UPDATE job_runs
+          SET status = $1,
+              completed_at = $2,
+              result = $3,
+              duration_ms = CASE
+                WHEN started_at IS NOT NULL
+                  THEN EXTRACT(EPOCH FROM ($2::timestamptz - started_at)) * 1000
+                ELSE NULL
+              END
+          WHERE job_id = $4
+            AND completed_at IS NULL
+          RETURNING duration_ms
+        `,
+          [JobStatus.COMPLETED, completedAt, returnvalue, jobId]
+        )
 
-      // Calculate duration
-      const pool = getPool()
-      const result = await pool.query(
-        `
-        UPDATE job_runs
-        SET duration_ms = EXTRACT(EPOCH FROM ($1::timestamptz - started_at)) * 1000
-        WHERE job_id = $2
-        RETURNING duration_ms
-      `,
-        [completedAt, jobId]
-      )
+        const durationMs = result.rows[0]?.duration_ms
 
-      const durationMs = result.rows[0]?.duration_ms
-
-      // Record New Relic metrics
-      newrelic.recordMetric(`Custom/JobQueue/${queueName}/Completed`, 1)
-      if (durationMs) {
-        newrelic.recordMetric(`Custom/JobQueue/${queueName}/ProcessingTime`, durationMs)
+        // Record New Relic metrics
+        newrelic.recordMetric(`Custom/JobQueue/${queueName}/Completed`, 1)
+        if (durationMs) {
+          newrelic.recordMetric(`Custom/JobQueue/${queueName}/ProcessingTime`, durationMs)
+        }
+      } catch (error) {
+        logger.error(
+          { queue: queueName, jobId, error },
+          "Failed to update completed job in database"
+        )
       }
     })
 
     // Job failed
     queueEvents.on("failed", async ({ jobId, failedReason }) => {
       logger.error({ queue: queueName, jobId, error: failedReason }, "Job failed")
-
-      await this.updateJobStatus(jobId, JobStatus.FAILED, {
-        completed_at: new Date(),
-        error_message: failedReason,
-      })
-
-      // Increment attempt count
-      const pool = getPool()
-      const result = await pool.query(
-        `
-        UPDATE job_runs
-        SET attempts = attempts + 1
-        WHERE job_id = $1
-        RETURNING attempts, max_attempts, job_type, payload
-      `,
-        [jobId]
+      logger.debug(
+        { queue: queueName, jobId },
+        "Job failed event handler: starting database update"
       )
 
-      const row = result.rows[0]
+      const completedAt = new Date()
 
-      // If max attempts reached, move to dead letter queue
-      if (row && row.attempts >= row.max_attempts) {
-        await pool.query(
+      try {
+        // Update status, completed_at, error_message, duration_ms, and increment attempts in a single atomic query
+        const pool = getPool()
+        logger.debug(
+          { queue: queueName, jobId },
+          "Job failed event handler: executing UPDATE query"
+        )
+        const result = await pool.query(
           `
-          INSERT INTO job_dead_letter (job_id, job_type, queue_name, attempts, final_error, payload)
-          VALUES ($1, $2, $3, $4, $5, $6)
+          UPDATE job_runs
+          SET status = $1,
+              completed_at = $2,
+              error_message = $3,
+              duration_ms = CASE
+                WHEN started_at IS NOT NULL
+                  THEN EXTRACT(EPOCH FROM ($2::timestamptz - started_at)) * 1000
+                ELSE NULL
+              END,
+              attempts = attempts + 1
+          WHERE job_id = $4
+            AND completed_at IS NULL
+          RETURNING attempts, max_attempts, job_type, payload
         `,
-          [jobId, row.job_type, queueName, row.attempts, failedReason, row.payload]
+          [JobStatus.FAILED, completedAt, failedReason, jobId]
+        )
+        logger.debug(
+          { queue: queueName, jobId, rowsAffected: result.rowCount },
+          "Job failed event handler: UPDATE query completed"
         )
 
-        logger.warn(
-          { queue: queueName, jobId, attempts: row.attempts },
-          "Job moved to dead letter queue"
-        )
+        const row = result.rows[0]
 
-        newrelic.recordMetric(`Custom/JobQueue/${queueName}/DeadLetter`, 1)
+        // If max attempts reached, move to dead letter queue
+        if (row && row.attempts >= row.max_attempts) {
+          await pool.query(
+            `
+            INSERT INTO job_dead_letter (job_id, job_type, queue_name, attempts, final_error, payload)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `,
+            [jobId, row.job_type, queueName, row.attempts, failedReason, row.payload]
+          )
+
+          logger.warn(
+            { queue: queueName, jobId, attempts: row.attempts },
+            "Job moved to dead letter queue"
+          )
+
+          newrelic.recordMetric(`Custom/JobQueue/${queueName}/DeadLetter`, 1)
+        }
+
+        newrelic.recordMetric(`Custom/JobQueue/${queueName}/Failed`, 1)
+      } catch (error) {
+        logger.error({ queue: queueName, jobId, error }, "Failed to update failed job in database")
       }
-
-      newrelic.recordMetric(`Custom/JobQueue/${queueName}/Failed`, 1)
     })
 
     // Job delayed (scheduled for future)
@@ -234,7 +276,7 @@ class QueueManager {
       attempts: options.attempts ?? 3,
       backoff: options.backoff ?? {
         type: "exponential",
-        delay: DEFAULT_BACKOFF_DELAY_MS,
+        delay: 60000,
       },
       removeOnComplete: options.removeOnComplete,
       removeOnFail: options.removeOnFail,
@@ -299,23 +341,11 @@ class QueueManager {
   ): Promise<void> {
     const pool = getPool()
 
-    // Whitelist of allowed column names to prevent SQL injection
-    const ALLOWED_FIELDS = new Set([
-      "started_at",
-      "completed_at",
-      "result",
-      "error_message",
-      "duration_ms",
-    ])
-
     const fields: string[] = ["status = $2"]
     const values: unknown[] = [jobId, status]
     let paramIndex = 3
 
     for (const [key, value] of Object.entries(additionalFields)) {
-      if (!ALLOWED_FIELDS.has(key)) {
-        throw new Error(`Invalid field name: ${key}`)
-      }
       fields.push(`${key} = $${paramIndex}`)
       values.push(value)
       paramIndex++
@@ -335,6 +365,13 @@ class QueueManager {
    */
   getQueue(queueName: QueueName): Queue | undefined {
     return this.queues.get(queueName)
+  }
+
+  /**
+   * Get queue events by name
+   */
+  getQueueEvents(queueName: QueueName): QueueEvents | undefined {
+    return this.queueEvents.get(queueName)
   }
 
   /**

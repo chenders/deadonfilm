@@ -77,6 +77,20 @@ import { Command } from "commander"
 
 **Why:** Scripts run outside the server context and won't have access to environment variables (DATABASE_URL, API keys, etc.) without explicitly loading dotenv.
 
+### 8. ALWAYS Run Tests Before Pushing
+
+All tests MUST pass locally before pushing to GitHub. The pre-push hook will block pushes if tests fail.
+
+```bash
+# Run ALL tests before pushing
+npm test && cd server && npm test
+
+# If tests fail, fix them before pushing
+# NEVER push with failing tests - CI will fail and block the PR
+```
+
+**Why:** GitHub Actions CI runs all tests. Pushing with failing tests wastes CI resources and blocks PR merges. Pre-push hooks catch this locally.
+
 </critical_constraints>
 
 ## Project Overview
