@@ -367,11 +367,13 @@ export class EuropeanaSource extends BaseDataSource {
     }
 
     // Try to extract from text (European cities)
+    /* eslint-disable security/detect-unsafe-regex -- Acceptable for controlled text scraping */
     const patterns = [
       /died\s+(?:at|in)\s+([A-Z][a-zA-Z\s,]+)/i,
       /(?:in\s+)?(Paris|London|Berlin|Rome|Vienna|Madrid|Amsterdam|Brussels|Munich|Milan)/i,
       /(?:à|in|en)\s+([A-Z][a-zA-Zéèêëàâäôùûü\s-]+)/,
     ]
+    /* eslint-enable security/detect-unsafe-regex */
 
     for (const pattern of patterns) {
       const match = text.match(pattern)

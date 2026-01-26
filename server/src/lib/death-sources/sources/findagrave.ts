@@ -252,8 +252,8 @@ export class FindAGraveSource extends BaseDataSource {
     }
 
     // Extract location from the page (bounded quantifiers to prevent ReDoS)
-
     const locationMatch = html.match(
+      // eslint-disable-next-line security/detect-unsafe-regex -- Bounded quantifiers prevent catastrophic backtracking
       /(?:died|death|passed away)[^.]{0,50}(?:in|at)\s+([A-Z][a-zA-Z\s,]{1,50}(?:,\s*[A-Z]{2})?)/i
     )
     if (locationMatch) {

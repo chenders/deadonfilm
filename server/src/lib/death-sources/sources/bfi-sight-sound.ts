@@ -239,23 +239,28 @@ export class BFISightSoundSource extends BaseDataSource {
     const patterns = [
       // BFI actual format: <strong>Name (dates)</strong>: description
       // Example: <strong>Gene Hackman (30 Jan 1930 – c.18 Feb 2025)</strong>: description
+      // eslint-disable-next-line security/detect-non-literal-regexp -- Using escapeRegex for safe regex construction
       new RegExp(
         `<strong>\\s*(${escapeRegex(actor.name)})\\s*\\(([^)]+)\\)\\s*</strong>\\s*:?\\s*([^<]{10,500})`,
         "i"
       ),
       // Full name with dates inside any tag
+      // eslint-disable-next-line security/detect-non-literal-regexp -- Using escapeRegex for safe regex construction
       new RegExp(
         `<[^>]*>\\s*(${escapeRegex(actor.name)})\\s*\\(([^)]+)\\)\\s*</[^>]*>\\s*:?\\s*([^<]{10,500})`,
         "i"
       ),
       // Full name with dates pattern (dates outside tag)
+      // eslint-disable-next-line security/detect-non-literal-regexp -- Using escapeRegex for safe regex construction
       new RegExp(
         `<[^>]*>([^<]*${escapeRegex(actor.name)}[^<]*)<[^>]*>\\s*\\(([^)]+)\\)\\s*:?\\s*([^<]{10,500})`,
         "i"
       ),
       // Link with name
+      // eslint-disable-next-line security/detect-non-literal-regexp -- Using escapeRegex for safe regex construction
       new RegExp(`<a[^>]*href="([^"]*)"[^>]*>([^<]*${escapeRegex(actor.name)}[^<]*)</a>`, "i"),
       // Just the name in text with dates
+      // eslint-disable-next-line security/detect-non-literal-regexp -- Using escapeRegex for safe regex construction
       new RegExp(
         `(${escapeRegex(actor.name)})\\s*\\(([^)]{10,50})\\)\\s*:?\\s*([^<]{10,500})`,
         "i"
@@ -270,6 +275,7 @@ export class BFISightSoundSource extends BaseDataSource {
     }
 
     // Try searching by last name only for partial matches
+    // eslint-disable-next-line security/detect-non-literal-regexp -- Using escapeRegex for safe regex construction
     const lastNamePattern = new RegExp(
       `<[^>]*>([^<]*\\b${escapeRegex(lastName)}\\b[^<]*)<[^>]*>\\s*\\(([^)]+)\\)`,
       "gi"

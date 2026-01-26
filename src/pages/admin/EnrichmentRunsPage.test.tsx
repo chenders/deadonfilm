@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
+import { TestMemoryRouter } from "../../test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import EnrichmentRunsPage from "./EnrichmentRunsPage"
 import * as enrichmentHooks from "../../hooks/admin/useEnrichmentRuns"
@@ -74,9 +74,9 @@ describe("EnrichmentRunsPage", () => {
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
+        <TestMemoryRouter>
           <EnrichmentRunsPage />
-        </MemoryRouter>
+        </TestMemoryRouter>
       </QueryClientProvider>
     )
   }
