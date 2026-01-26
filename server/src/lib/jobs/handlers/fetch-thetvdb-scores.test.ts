@@ -284,65 +284,9 @@ describe("FetchTheTVDBScoresHandler", () => {
     })
   })
 
-  describe("rate limiting", () => {
-    it("enforces 100ms delay before API call", async () => {
-      const mockJob = {
-        id: "test-job-rate-limit",
-        data: {
-          entityType: "show" as const,
-          entityId: 1396,
-          thetvdbId: 81189,
-        },
-        attemptsMade: 0,
-        opts: {
-          priority: 10,
-          attempts: 3,
-        },
-      } as Job
-
-      const mockShow: Partial<ShowRecord> = {
-        tmdb_id: 1396,
-        name: "Breaking Bad",
-      }
-
-      const mockSeries = {
-        id: 81189,
-        name: "Breaking Bad",
-        slug: "breaking-bad",
-        image: null,
-        firstAired: "2008-01-20",
-        lastAired: "2013-09-29",
-        nextAired: null,
-        score: 9.5,
-        status: {
-          id: 2,
-          name: "Ended",
-          recordType: "series",
-          keepUpdated: false,
-        },
-        originalCountry: "usa",
-        originalLanguage: "eng",
-        defaultSeasonType: 1,
-        isOrderRandomized: false,
-        lastUpdated: "2024-01-01T00:00:00Z",
-        averageRuntime: 47,
-        episodes: null,
-        overview: "A high school chemistry teacher...",
-        year: "2008",
-      }
-
-      vi.mocked(thetvdb.getSeriesExtended).mockResolvedValue(mockSeries)
-      vi.mocked(shows.getShow).mockResolvedValue(mockShow as ShowRecord)
-      vi.mocked(shows.upsertShow).mockResolvedValue()
-
-      const startTime = Date.now()
-      await handler.process(mockJob)
-      const elapsed = Date.now() - startTime
-
-      // Should have delayed at least 100ms
-      expect(elapsed).toBeGreaterThanOrEqual(100)
-    })
-  })
+  // Note: Rate limiting is handled by the TheTVDB API client (getSeriesExtended),
+  // not by this handler. The rateLimit property on the handler is for documentation
+  // and informs the worker's queue-level rate limiting strategy.
 
   describe("New Relic integration", () => {
     it("records success metric on successful fetch", async () => {

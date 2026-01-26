@@ -5,7 +5,7 @@
  * TheTVDB is TV shows only.
  *
  * Features:
- * - Rate limiting (100ms delay between requests)
+ * - Rate limiting (handled by API client)
  * - New Relic transaction tracking with segments
  * - Custom metrics for success/error/rate limit violations
  * - Distinguishes permanent vs transient errors
@@ -39,8 +39,9 @@ export class FetchTheTVDBScoresHandler extends BaseJobHandler<FetchTheTVDBScores
   readonly queueName = QueueName.RATINGS
 
   /**
-   * Rate limit configuration for TheTVDB API
-   * Enforces minimum 100ms delay between requests
+   * Rate limit configuration for TheTVDB API (documentation only)
+   * Actual rate limiting is handled by getSeriesExtended() internally.
+   * This property informs the worker's queue-level rate limiting strategy.
    */
   readonly rateLimit = {
     max: 1,
@@ -68,8 +69,7 @@ export class FetchTheTVDBScoresHandler extends BaseJobHandler<FetchTheTVDBScores
     )
 
     try {
-      // Enforce rate limiting (delay before making API call)
-      await this.delay(RATE_LIMIT_DELAY_MS)
+      // Note: Rate limiting is handled by getSeriesExtended() internally, no need to delay here
 
       // Fetch series data from TheTVDB API (with New Relic segment)
       const series = await newrelic.startSegment("TheTVDB API Call", true, async () => {
