@@ -109,6 +109,58 @@ npm run start:dev    # Hybrid mode (Docker infra + native code)
 
 ---
 
+## Git Workflow
+
+**NEVER commit directly to `main`** - always use feature branches.
+
+### Branch Workflow
+
+Before starting ANY new work:
+
+```bash
+git checkout main && git pull
+git checkout -b feat/feature-name   # or fix/, chore/, docs/
+```
+
+**When substantial new work is about to begin while already on a feature branch**: Ask if a new branch should be created for the new work (recommended if unrelated) or continue on the current branch (if closely related).
+
+### Commit Format
+
+**ALWAYS use heredoc for multiline commit messages** to prevent bash escaping issues:
+
+```bash
+git commit -m "$(cat <<'EOF'
+Short summary
+
+Longer description here.
+
+Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
+```
+
+**Why heredoc**: Prevents issues with quotes, newlines, and special characters. Always use quoted delimiter (`<<'EOF'`) to prevent variable expansion.
+
+### GitHub CLI Operations
+
+Critical rules for PR comments, screenshots, and reviews:
+
+1. **NEVER commit directly to main** - always use feature branches, ask about new branches for substantial new work
+2. **ALWAYS use heredoc for multiline commit/PR messages** - prevents bash escaping issues
+3. **ALWAYS verify screenshots before committing** - prevents login screen/wrong page uploads
+4. **ALWAYS use explicit viewport sizes in Playwright** - ensures consistency across CI/local
+5. **ALWAYS use GitHub raw URLs with commit SHA** - prevents broken image links in PRs
+6. **ALWAYS use `gh api` for PR inline comments** - native CLI lacks inline comment support
+7. **ALWAYS quote heredoc delimiter** (`<<'EOF'` not `<<EOF`) - prevents variable expansion
+8. **ALWAYS resolve threads only after implementing fixes** - never resolve declined suggestions
+9. **ALWAYS request Copilot re-review after fixes** - use `gh pr edit --add-reviewer Copilot`
+
+For detailed examples, see `.claude/rules/github-cli.md` and `.claude/rules/pr-screenshots.md`.
+
+---
+
 ## Testing Requirements
 
 Every PR must include tests covering:
