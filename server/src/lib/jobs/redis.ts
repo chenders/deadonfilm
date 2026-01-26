@@ -11,7 +11,6 @@ import Redis from "ioredis"
 import { logger } from "../logger.js"
 
 let redisJobsClient: Redis | null = null
-let shutdownRegistered = false
 
 /**
  * Get or create the Redis jobs client
@@ -67,22 +66,24 @@ export function getRedisJobsClient(): Redis {
     logger.info("Redis jobs client reconnecting...")
   })
 
-  // Graceful shutdown (register once)
-  if (!shutdownRegistered) {
-    shutdownRegistered = true
-    process.once("SIGTERM", async () => {
-      if (redisJobsClient) {
-        try {
-          logger.info("Closing Redis jobs connection...")
-          await redisJobsClient.quit()
-        } catch (error) {
-          logger.error({ error }, "Error closing Redis jobs connection")
-        }
-      }
-    })
-  }
-
   return redisJobsClient
+}
+
+/**
+ * Close the Redis jobs client connection
+ * Should be called during application shutdown
+ */
+export async function closeRedisJobsClient(): Promise<void> {
+  if (redisJobsClient) {
+    try {
+      logger.info("Closing Redis jobs connection...")
+      await redisJobsClient.quit()
+      redisJobsClient = null
+    } catch (error) {
+      logger.error({ error }, "Error closing Redis jobs connection")
+      throw error
+    }
+  }
 }
 
 /**
@@ -93,4 +94,12 @@ export const redisJobsClientLazy = {
   get client() {
     return getRedisJobsClient()
   },
+}
+
+/**
+ * Reset client for testing purposes
+ * @internal
+ */
+export function _resetForTesting(): void {
+  redisJobsClient = null
 }
