@@ -7,6 +7,7 @@ import { useGoogleAnalytics } from "./hooks/useGoogleAnalytics"
 import { useNewRelicBrowser } from "./hooks/useNewRelicBrowser"
 import { lazyWithRetry } from "./utils/lazyWithRetry"
 import { AdminAuthProvider } from "./hooks/useAdminAuth"
+import { AdminThemeProvider } from "./contexts/AdminThemeContext"
 
 // Lazy load pages that aren't the landing page
 // Using lazyWithRetry to handle chunk loading failures after deployments
@@ -80,166 +81,206 @@ function App() {
   return (
     <AdminAuthProvider>
       <Routes>
-        {/* Admin routes (no Layout wrapper) */}
+        {/* Admin routes (no Layout wrapper, wrapped with AdminThemeProvider) */}
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
         <Route
           path="/admin/login"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminLoginPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminLoginPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/dashboard"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminDashboardPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminDashboardPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/analytics"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminAnalyticsPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminAnalyticsPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/enrichment/runs"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminEnrichmentRunsPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminEnrichmentRunsPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/enrichment/runs/:id"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminEnrichmentRunDetailsPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminEnrichmentRunDetailsPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/enrichment/start"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminStartEnrichmentPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminStartEnrichmentPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/enrichment/review"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminEnrichmentReviewPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminEnrichmentReviewPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/enrichment/high-priority"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminHighPriorityActorsPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminHighPriorityActorsPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/coverage"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminCoverageDashboardPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminCoverageDashboardPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/actors"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminActorManagementPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminActorManagementPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/page-views"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminPageViewsPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminPageViewsPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/tools"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminExternalToolsPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminExternalToolsPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/actor-diagnostic"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminActorDiagnosticPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminActorDiagnosticPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/cache"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminCacheManagementPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminCacheManagementPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/sitemap"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminSitemapManagementPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminSitemapManagementPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/ab-tests"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestsIndexPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminABTestsIndexPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/ab-tests/source-requirement"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestSourceRequirementPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminABTestSourceRequirementPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/ab-tests/provider-comparison"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestProviderComparisonPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminABTestProviderComparisonPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/ab-tests/comprehensive"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestComprehensiveIndexPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminABTestComprehensiveIndexPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
         <Route
           path="/admin/ab-tests/comprehensive/:runId"
           element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestComprehensiveDetailPage />
-            </Suspense>
+            <AdminThemeProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminABTestComprehensiveDetailPage />
+              </Suspense>
+            </AdminThemeProvider>
           }
         />
 
