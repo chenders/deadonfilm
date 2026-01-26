@@ -34,19 +34,22 @@ function getStoredTheme(): Theme {
 
 interface AdminThemeProviderProps {
   children: ReactNode
-  /** Default theme if no preference stored. Defaults to "system" */
+  /** Default theme if no preference stored. Defaults to "dark" */
   defaultTheme?: Theme
 }
 
-export function AdminThemeProvider({ children, defaultTheme = "system" }: AdminThemeProviderProps) {
+export function AdminThemeProvider({ children, defaultTheme = "dark" }: AdminThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = getStoredTheme()
+    // If no stored preference, use default (dark)
     return stored === "system" ? defaultTheme : stored
   })
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
     const stored = getStoredTheme()
     if (stored === "dark" || stored === "light") return stored
+    // Default to dark instead of system preference
+    if (defaultTheme === "dark" || defaultTheme === "light") return defaultTheme
     return getSystemTheme()
   })
 
