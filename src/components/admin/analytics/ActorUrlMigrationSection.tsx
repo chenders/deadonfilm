@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { adminApi } from "@/services/api"
+import { useChartTheme, useChartTooltipStyle } from "../../../hooks/admin/useChartTheme"
 import StatCard from "./StatCard"
 
 interface ActorUrlRedirectData {
@@ -59,6 +60,9 @@ export default function ActorUrlMigrationSection({
   startDate,
   endDate,
 }: ActorUrlMigrationSectionProps) {
+  const chartTheme = useChartTheme()
+  const tooltipStyle = useChartTooltipStyle()
+
   const { data, isLoading, error } = useQuery<ActorUrlRedirectData>({
     queryKey: ["actor-url-redirects", startDate, endDate],
     queryFn: async () => {
@@ -75,10 +79,12 @@ export default function ActorUrlMigrationSection({
 
   if (isLoading) {
     return (
-      <div className="rounded-lg bg-gray-800 p-6">
-        <h3 className="mb-4 text-xl font-semibold text-white">Actor URL Migration Status</h3>
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+        <h3 className="mb-4 text-xl font-semibold text-admin-text-primary">
+          Actor URL Migration Status
+        </h3>
         <div className="flex items-center justify-center py-12">
-          <div className="text-gray-400">Loading migration data...</div>
+          <div className="text-admin-text-muted">Loading migration data...</div>
         </div>
       </div>
     )
@@ -86,10 +92,12 @@ export default function ActorUrlMigrationSection({
 
   if (error) {
     return (
-      <div className="rounded-lg bg-gray-800 p-6">
-        <h3 className="mb-4 text-xl font-semibold text-white">Actor URL Migration Status</h3>
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+        <h3 className="mb-4 text-xl font-semibold text-admin-text-primary">
+          Actor URL Migration Status
+        </h3>
         <div className="flex items-center justify-center py-12">
-          <div className="text-red-400">Error loading migration data</div>
+          <div className="text-admin-accent-error">Error loading migration data</div>
         </div>
       </div>
     )
@@ -107,8 +115,10 @@ export default function ActorUrlMigrationSection({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="mb-2 text-xl font-semibold text-white">Actor URL Migration Status</h3>
-        <p className="text-sm text-gray-400">
+        <h3 className="mb-2 text-xl font-semibold text-admin-text-primary">
+          Actor URL Migration Status
+        </h3>
+        <p className="text-sm text-admin-text-muted">
           Tracking legacy tmdb_id URL redirects to new actor.id URLs
         </p>
       </div>
@@ -136,30 +146,25 @@ export default function ActorUrlMigrationSection({
       </div>
 
       {/* Redirect Trend Chart */}
-      <div className="rounded-lg bg-gray-800 p-6">
-        <h4 className="mb-4 text-lg font-semibold text-white">Redirect Trend</h4>
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+        <h4 className="mb-4 text-lg font-semibold text-admin-text-primary">Redirect Trend</h4>
         {data.dailyData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data.dailyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
               <XAxis
                 dataKey="date"
-                stroke="#9CA3AF"
-                tick={{ fill: "#9CA3AF" }}
+                stroke={chartTheme.axis}
+                tick={{ fill: chartTheme.axis }}
                 tickFormatter={(date) => {
                   const d = new Date(date)
                   return `${d.getMonth() + 1}/${d.getDate()}`
                 }}
               />
-              <YAxis stroke="#9CA3AF" tick={{ fill: "#9CA3AF" }} />
+              <YAxis stroke={chartTheme.axis} tick={{ fill: chartTheme.axis }} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1F2937",
-                  border: "1px solid #374151",
-                  borderRadius: "0.5rem",
-                  color: "#F3F4F6",
-                }}
-                labelStyle={{ color: "#9CA3AF" }}
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: chartTheme.axis }}
                 formatter={(value: number | undefined) => [value ?? 0, "Redirects"]}
                 labelFormatter={(date) => {
                   const d = new Date(date)
@@ -169,34 +174,34 @@ export default function ActorUrlMigrationSection({
               <Line
                 type="monotone"
                 dataKey="redirect_count"
-                stroke="#3B82F6"
+                stroke={chartTheme.series[0]}
                 strokeWidth={2}
-                dot={{ fill: "#3B82F6", r: 4 }}
+                dot={{ fill: chartTheme.series[0], r: 4 }}
                 activeDot={{ r: 6 }}
               />
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center py-12 text-gray-400">
+          <div className="flex items-center justify-center py-12 text-admin-text-muted">
             No redirect data available for this period
           </div>
         )}
       </div>
 
       {/* Interpretation Guide */}
-      <div className="rounded-lg bg-gray-800 p-4 text-sm">
-        <h5 className="mb-2 font-semibold text-white">What This Means</h5>
-        <ul className="space-y-1 text-gray-400">
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 text-sm shadow-admin-sm">
+        <h5 className="mb-2 font-semibold text-admin-text-primary">What This Means</h5>
+        <ul className="space-y-1 text-admin-text-muted">
           <li>
-            • <span className="text-green-400">Low redirects (&lt;50/day)</span>: Migration
+            - <span className="text-green-400">Low redirects (&lt;50/day)</span>: Migration
             successful, most users on new URLs
           </li>
           <li>
-            • <span className="text-yellow-400">Medium redirects (50-500/day)</span>: Active
+            - <span className="text-yellow-400">Medium redirects (50-500/day)</span>: Active
             transition period, monitor weekly
           </li>
           <li>
-            • <span className="text-red-400">High redirects (&gt;500/day)</span>: Consider
+            - <span className="text-red-400">High redirects (&gt;500/day)</span>: Consider
             resubmitting sitemap to search engines
           </li>
         </ul>

@@ -101,8 +101,12 @@ export default function ActorManagementPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-white">Actor Management</h1>
-          <p className="mt-1 text-gray-400">Filter, search, and manage actor death page coverage</p>
+          <h1 className="text-2xl font-bold text-admin-text-primary md:text-3xl">
+            Actor Management
+          </h1>
+          <p className="mt-1 text-admin-text-muted">
+            Filter, search, and manage actor death page coverage
+          </p>
         </div>
 
         {/* Filters */}
@@ -121,12 +125,12 @@ export default function ActorManagementPage() {
             endLabel="Death Date To"
           />
 
-          <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-            <h2 className="mb-4 text-lg font-semibold text-white">Filters</h2>
+          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Filters</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               {/* Death Page Status */}
               <div>
-                <label htmlFor="hasDeathPage" className="mb-1 block text-sm text-gray-400">
+                <label htmlFor="hasDeathPage" className="mb-1 block text-sm text-admin-text-muted">
                   Death Page Status
                 </label>
                 <select
@@ -137,7 +141,7 @@ export default function ActorManagementPage() {
                       hasDeathPage: e.target.value === "" ? undefined : e.target.value === "true",
                     })
                   }
-                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
                 >
                   <option value="">All</option>
                   <option value="true">With Death Pages</option>
@@ -147,7 +151,7 @@ export default function ActorManagementPage() {
 
               {/* Popularity Range */}
               <div>
-                <label htmlFor="minPopularity" className="mb-1 block text-sm text-gray-400">
+                <label htmlFor="minPopularity" className="mb-1 block text-sm text-admin-text-muted">
                   Min Popularity
                 </label>
                 <input
@@ -161,13 +165,13 @@ export default function ActorManagementPage() {
                       minPopularity: e.target.value ? parseFloat(e.target.value) : undefined,
                     })
                   }
-                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
                   placeholder="0"
                 />
               </div>
 
               <div>
-                <label htmlFor="maxPopularity" className="mb-1 block text-sm text-gray-400">
+                <label htmlFor="maxPopularity" className="mb-1 block text-sm text-admin-text-muted">
                   Max Popularity
                 </label>
                 <input
@@ -181,14 +185,14 @@ export default function ActorManagementPage() {
                       maxPopularity: e.target.value ? parseFloat(e.target.value) : undefined,
                     })
                   }
-                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
                   placeholder="100"
                 />
               </div>
 
               {/* Name Search */}
               <div>
-                <label htmlFor="searchName" className="mb-1 block text-sm text-gray-400">
+                <label htmlFor="searchName" className="mb-1 block text-sm text-admin-text-muted">
                   Name Search
                 </label>
                 <input
@@ -196,14 +200,14 @@ export default function ActorManagementPage() {
                   type="text"
                   value={filters.searchName || ""}
                   onChange={(e) => handleFilterChange({ searchName: e.target.value || undefined })}
-                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
                   placeholder="Actor name..."
                 />
               </div>
 
               {/* Sort By */}
               <div>
-                <label htmlFor="orderBy" className="mb-1 block text-sm text-gray-400">
+                <label htmlFor="orderBy" className="mb-1 block text-sm text-admin-text-muted">
                   Sort By
                 </label>
                 <select
@@ -214,7 +218,7 @@ export default function ActorManagementPage() {
                       orderBy: e.target.value as ActorCoverageFilters["orderBy"],
                     })
                   }
-                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
                 >
                   <option value="popularity">Popularity</option>
                   <option value="death_date">Death Date</option>
@@ -225,7 +229,10 @@ export default function ActorManagementPage() {
 
               {/* Sort Direction */}
               <div>
-                <label htmlFor="orderDirection" className="mb-1 block text-sm text-gray-400">
+                <label
+                  htmlFor="orderDirection"
+                  className="mb-1 block text-sm text-admin-text-muted"
+                >
                   Direction
                 </label>
                 <select
@@ -234,7 +241,7 @@ export default function ActorManagementPage() {
                   onChange={(e) =>
                     handleFilterChange({ orderDirection: e.target.value as "asc" | "desc" })
                   }
-                  className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
                 >
                   <option value="desc">Descending</option>
                   <option value="asc">Ascending</option>
@@ -248,7 +255,7 @@ export default function ActorManagementPage() {
                 setPage(1)
                 setSelectedActorIds(new Set())
               }}
-              className="mt-4 text-sm text-gray-400 transition-colors hover:text-white"
+              className="mt-4 text-sm text-admin-text-muted transition-colors hover:text-admin-text-primary"
             >
               Clear Filters
             </button>
@@ -268,14 +275,16 @@ export default function ActorManagementPage() {
         {/* Data Table */}
         {data && (
           <>
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+            <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
               <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm text-gray-400">{data.total.toLocaleString()} actors found</p>
+                <p className="text-sm text-admin-text-muted">
+                  {data.total.toLocaleString()} actors found
+                </p>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-gray-700 bg-gray-900">
+              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+                <table className="min-w-[600px] md:min-w-full">
+                  <thead className="border-b border-admin-border bg-admin-surface-base">
                     <tr>
                       <th className="px-4 py-3 text-left">
                         <input
@@ -284,30 +293,30 @@ export default function ActorManagementPage() {
                             data.items.length > 0 && selectedActorIds.size === data.items.length
                           }
                           onChange={handleSelectAll}
-                          className="h-4 w-4 rounded border-gray-700 bg-gray-800 text-blue-600"
+                          className="h-4 w-4 rounded border-admin-border bg-admin-surface-elevated text-admin-interactive"
                         />
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                         Name
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                         Death Date
                       </th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-admin-text-secondary">
                         Popularity
                       </th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
                         Death Page
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                         Cause of Death
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className="divide-y divide-admin-border">
                     {data.items.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                        <td colSpan={6} className="px-4 py-8 text-center text-admin-text-muted">
                           No actors match the current filters
                         </td>
                       </tr>
@@ -315,8 +324,8 @@ export default function ActorManagementPage() {
                       data.items.map((actor) => (
                         <tr
                           key={actor.id}
-                          className={`hover:bg-gray-750 transition-colors ${
-                            selectedActorIds.has(actor.id) ? "bg-gray-750" : ""
+                          className={`transition-colors hover:bg-admin-interactive-secondary ${
+                            selectedActorIds.has(actor.id) ? "bg-admin-interactive-secondary" : ""
                           }`}
                         >
                           <td className="px-4 py-3">
@@ -324,26 +333,26 @@ export default function ActorManagementPage() {
                               type="checkbox"
                               checked={selectedActorIds.has(actor.id)}
                               onChange={() => handleSelectActor(actor.id)}
-                              className="h-4 w-4 rounded border-gray-700 bg-gray-800 text-blue-600"
+                              className="h-4 w-4 rounded border-admin-border bg-admin-surface-elevated text-admin-interactive"
                             />
                           </td>
-                          <td className="px-4 py-3 text-white">{actor.name}</td>
-                          <td className="px-4 py-3 text-gray-400">
+                          <td className="px-4 py-3 text-admin-text-primary">{actor.name}</td>
+                          <td className="px-4 py-3 text-admin-text-muted">
                             {actor.deathday
                               ? new Date(actor.deathday).toLocaleDateString()
                               : "Unknown"}
                           </td>
-                          <td className="px-4 py-3 text-right text-gray-400">
+                          <td className="px-4 py-3 text-right text-admin-text-muted">
                             {actor.popularity?.toFixed(1) ?? "—"}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {actor.has_detailed_death_info ? (
-                              <span className="text-green-500">✓</span>
+                              <span className="text-admin-success">✓</span>
                             ) : (
-                              <span className="text-gray-600">✗</span>
+                              <span className="text-admin-text-muted">✗</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-400">
+                          <td className="px-4 py-3 text-sm text-admin-text-muted">
                             {actor.cause_of_death || "—"}
                           </td>
                         </tr>
@@ -359,17 +368,17 @@ export default function ActorManagementPage() {
                   <button
                     onClick={() => setPage(page - 1)}
                     disabled={page === 1}
-                    className="rounded bg-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded bg-admin-interactive-secondary px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-surface-overlay disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Previous
                   </button>
-                  <span className="text-gray-400">
+                  <span className="text-admin-text-muted">
                     Page {page} of {data.totalPages}
                   </span>
                   <button
                     onClick={() => setPage(page + 1)}
                     disabled={page === data.totalPages}
-                    className="rounded bg-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded bg-admin-interactive-secondary px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-surface-overlay disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Next
                   </button>
@@ -381,21 +390,21 @@ export default function ActorManagementPage() {
 
         {/* Bulk Actions Bar (Fixed Bottom) */}
         {selectedActorIds.size > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-700 bg-gray-900 p-4 shadow-lg">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-admin-border bg-admin-surface-base p-4 shadow-lg">
             <div className="mx-auto flex max-w-7xl items-center justify-between">
-              <div className="text-white">
+              <div className="text-admin-text-primary">
                 {selectedActorIds.size} actor{selectedActorIds.size !== 1 ? "s" : ""} selected
               </div>
               <div className="flex space-x-4">
                 <button
                   onClick={() => setSelectedActorIds(new Set())}
-                  className="rounded bg-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-600"
+                  className="rounded bg-admin-interactive-secondary px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-surface-overlay"
                 >
                   Clear Selection
                 </button>
                 <button
                   onClick={handleEnrichSelected}
-                  className="rounded bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+                  className="rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
                 >
                   Enrich Selected
                 </button>

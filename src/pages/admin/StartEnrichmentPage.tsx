@@ -69,12 +69,14 @@ export default function StartEnrichmentPage() {
         <div>
           <Link
             to="/admin/enrichment/runs"
-            className="mb-2 inline-block text-sm text-gray-400 hover:text-white"
+            className="mb-2 inline-block text-sm text-admin-text-muted hover:text-admin-text-primary"
           >
-            ← Back to Runs
+            &larr; Back to Runs
           </Link>
-          <h1 className="text-2xl font-bold text-white">Start Enrichment Run</h1>
-          <p className="mt-1 text-gray-400">
+          <h1 className="text-xl font-bold text-admin-text-primary md:text-2xl">
+            Start Enrichment Run
+          </h1>
+          <p className="mt-1 text-admin-text-muted">
             Configure and start a new death information enrichment run
           </p>
         </div>
@@ -82,13 +84,16 @@ export default function StartEnrichmentPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Actor Limits */}
-          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-            <h2 className="mb-4 text-lg font-semibold text-white">Actor Selection</h2>
+          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Actor Selection</h2>
             <div className="space-y-4">
               <div>
-                <label htmlFor="limit" className="block text-sm font-medium text-gray-300">
+                <label
+                  htmlFor="limit"
+                  className="block text-sm font-medium text-admin-text-secondary"
+                >
                   Number of Actors
-                  <span className="ml-1 text-gray-500">(1-1000)</span>
+                  <span className="ml-1 text-admin-text-muted">(1-1000)</span>
                 </label>
                 <input
                   id="limit"
@@ -100,18 +105,21 @@ export default function StartEnrichmentPage() {
                     const value = parseInt(e.target.value, 10)
                     setLimit(isNaN(value) ? 1 : value)
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   required
                 />
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-admin-text-muted">
                   Maximum number of actors to process in this run
                 </p>
               </div>
 
               <div>
-                <label htmlFor="minPopularity" className="block text-sm font-medium text-gray-300">
+                <label
+                  htmlFor="minPopularity"
+                  className="block text-sm font-medium text-admin-text-secondary"
+                >
                   Minimum Popularity
-                  <span className="ml-1 text-gray-500">(0-100)</span>
+                  <span className="ml-1 text-admin-text-muted">(0-100)</span>
                 </label>
                 <input
                   id="minPopularity"
@@ -128,9 +136,9 @@ export default function StartEnrichmentPage() {
                     const parsed = parseInt(rawValue, 10)
                     setMinPopularity(Number.isNaN(parsed) ? 0 : parsed)
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                 />
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-admin-text-muted">
                   Only process actors with popularity score above this threshold
                 </p>
               </div>
@@ -141,9 +149,12 @@ export default function StartEnrichmentPage() {
                   id="recentOnly"
                   checked={recentOnly}
                   onChange={(e) => setRecentOnly(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="recentOnly" className="ml-2 block text-sm text-gray-300">
+                <label
+                  htmlFor="recentOnly"
+                  className="ml-2 block text-sm text-admin-text-secondary"
+                >
                   Recent deaths only (last 2 years)
                 </label>
               </div>
@@ -154,9 +165,12 @@ export default function StartEnrichmentPage() {
                   id="usActorsOnly"
                   checked={usActorsOnly}
                   onChange={(e) => setUsActorsOnly(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="usActorsOnly" className="ml-2 block text-sm text-gray-300">
+                <label
+                  htmlFor="usActorsOnly"
+                  className="ml-2 block text-sm text-admin-text-secondary"
+                >
                   US actors only
                 </label>
               </div>
@@ -164,8 +178,8 @@ export default function StartEnrichmentPage() {
           </div>
 
           {/* Source Selection */}
-          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-            <h2 className="mb-4 text-lg font-semibold text-white">Source Selection</h2>
+          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Source Selection</h2>
             <div className="space-y-3">
               <div className="flex items-center">
                 <input
@@ -173,9 +187,9 @@ export default function StartEnrichmentPage() {
                   id="free"
                   checked={free}
                   onChange={(e) => setFree(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="free" className="ml-2 block text-sm text-gray-300">
+                <label htmlFor="free" className="ml-2 block text-sm text-admin-text-secondary">
                   Use free sources only
                 </label>
               </div>
@@ -186,9 +200,9 @@ export default function StartEnrichmentPage() {
                   id="paid"
                   checked={paid}
                   onChange={(e) => setPaid(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="paid" className="ml-2 block text-sm text-gray-300">
+                <label htmlFor="paid" className="ml-2 block text-sm text-admin-text-secondary">
                   Use paid sources
                 </label>
               </div>
@@ -199,9 +213,9 @@ export default function StartEnrichmentPage() {
                   id="ai"
                   checked={ai}
                   onChange={(e) => setAi(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="ai" className="ml-2 block text-sm text-gray-300">
+                <label htmlFor="ai" className="ml-2 block text-sm text-admin-text-secondary">
                   Use AI sources
                 </label>
               </div>
@@ -212,9 +226,12 @@ export default function StartEnrichmentPage() {
                   id="stopOnMatch"
                   checked={stopOnMatch}
                   onChange={(e) => setStopOnMatch(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="stopOnMatch" className="ml-2 block text-sm text-gray-300">
+                <label
+                  htmlFor="stopOnMatch"
+                  className="ml-2 block text-sm text-admin-text-secondary"
+                >
                   Stop on first match
                 </label>
               </div>
@@ -225,9 +242,12 @@ export default function StartEnrichmentPage() {
                   id="gatherAllSources"
                   checked={gatherAllSources}
                   onChange={(e) => setGatherAllSources(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="gatherAllSources" className="ml-2 block text-sm text-gray-300">
+                <label
+                  htmlFor="gatherAllSources"
+                  className="ml-2 block text-sm text-admin-text-secondary"
+                >
                   Gather data from all sources
                 </label>
               </div>
@@ -235,8 +255,8 @@ export default function StartEnrichmentPage() {
           </div>
 
           {/* Advanced Options */}
-          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-            <h2 className="mb-4 text-lg font-semibold text-white">Advanced Options</h2>
+          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Advanced Options</h2>
             <div className="space-y-3">
               <div className="flex items-center">
                 <input
@@ -244,9 +264,12 @@ export default function StartEnrichmentPage() {
                   id="claudeCleanup"
                   checked={claudeCleanup}
                   onChange={(e) => setClaudeCleanup(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="claudeCleanup" className="ml-2 block text-sm text-gray-300">
+                <label
+                  htmlFor="claudeCleanup"
+                  className="ml-2 block text-sm text-admin-text-secondary"
+                >
                   Use Claude for data cleanup
                 </label>
               </div>
@@ -257,9 +280,12 @@ export default function StartEnrichmentPage() {
                   id="followLinks"
                   checked={followLinks}
                   onChange={(e) => setFollowLinks(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="followLinks" className="ml-2 block text-sm text-gray-300">
+                <label
+                  htmlFor="followLinks"
+                  className="ml-2 block text-sm text-admin-text-secondary"
+                >
                   Follow external links
                 </label>
               </div>
@@ -270,9 +296,12 @@ export default function StartEnrichmentPage() {
                   id="aiLinkSelection"
                   checked={aiLinkSelection}
                   onChange={(e) => setAiLinkSelection(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="aiLinkSelection" className="ml-2 block text-sm text-gray-300">
+                <label
+                  htmlFor="aiLinkSelection"
+                  className="ml-2 block text-sm text-admin-text-secondary"
+                >
                   Use AI for link selection
                 </label>
               </div>
@@ -283,9 +312,12 @@ export default function StartEnrichmentPage() {
                   id="aiContentExtraction"
                   checked={aiContentExtraction}
                   onChange={(e) => setAiContentExtraction(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                 />
-                <label htmlFor="aiContentExtraction" className="ml-2 block text-sm text-gray-300">
+                <label
+                  htmlFor="aiContentExtraction"
+                  className="ml-2 block text-sm text-admin-text-secondary"
+                >
                   Use AI for content extraction
                 </label>
               </div>
@@ -293,11 +325,14 @@ export default function StartEnrichmentPage() {
           </div>
 
           {/* Cost Limits */}
-          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-            <h2 className="mb-4 text-lg font-semibold text-white">Cost Limits</h2>
+          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Cost Limits</h2>
             <div className="space-y-4">
               <div>
-                <label htmlFor="maxTotalCost" className="block text-sm font-medium text-gray-300">
+                <label
+                  htmlFor="maxTotalCost"
+                  className="block text-sm font-medium text-admin-text-secondary"
+                >
                   Max Total Cost (USD)
                 </label>
                 <input
@@ -313,10 +348,10 @@ export default function StartEnrichmentPage() {
                       value === "" || Number.isNaN(parsed) ? prev : parsed
                     )
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   required
                 />
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-admin-text-muted">
                   Maximum total cost for the entire enrichment run
                 </p>
               </div>
@@ -324,10 +359,10 @@ export default function StartEnrichmentPage() {
               <div>
                 <label
                   htmlFor="maxCostPerActor"
-                  className="block text-sm font-medium text-gray-300"
+                  className="block text-sm font-medium text-admin-text-secondary"
                 >
                   Max Cost Per Actor (USD)
-                  <span className="ml-1 text-gray-500">(optional)</span>
+                  <span className="ml-1 text-admin-text-muted">(optional)</span>
                 </label>
                 <input
                   id="maxCostPerActor"
@@ -338,10 +373,10 @@ export default function StartEnrichmentPage() {
                   onChange={(e) =>
                     setMaxCostPerActor(e.target.value ? parseFloat(e.target.value) : undefined)
                   }
-                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   placeholder="Unlimited"
                 />
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-admin-text-muted">
                   Maximum cost per individual actor (leave empty for no limit)
                 </p>
               </div>
@@ -349,13 +384,16 @@ export default function StartEnrichmentPage() {
           </div>
 
           {/* Quality Settings */}
-          <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-            <h2 className="mb-4 text-lg font-semibold text-white">Quality Settings</h2>
+          <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Quality Settings</h2>
             <div className="space-y-4">
               <div>
-                <label htmlFor="confidence" className="block text-sm font-medium text-gray-300">
+                <label
+                  htmlFor="confidence"
+                  className="block text-sm font-medium text-admin-text-secondary"
+                >
                   Confidence Threshold
-                  <span className="ml-1 text-gray-500">(0.0-1.0)</span>
+                  <span className="ml-1 text-admin-text-muted">(0.0-1.0)</span>
                 </label>
                 <input
                   id="confidence"
@@ -376,9 +414,9 @@ export default function StartEnrichmentPage() {
                       setConfidence(clamped)
                     }
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-600 bg-gray-700 px-3 py-2 text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                 />
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-admin-text-muted">
                   Minimum confidence score required to accept enrichment results
                 </p>
               </div>
@@ -390,13 +428,13 @@ export default function StartEnrichmentPage() {
             <button
               type="submit"
               disabled={startEnrichment.isPending}
-              className="rounded-md bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md bg-admin-interactive px-6 py-2 text-sm font-semibold text-admin-text-primary shadow-sm hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {startEnrichment.isPending ? "Starting..." : "Start Enrichment Run"}
             </button>
             <Link
               to="/admin/enrichment/runs"
-              className="rounded-md border border-gray-600 bg-gray-700 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-600"
+              className="rounded-md border border-admin-border bg-admin-surface-overlay px-6 py-2 text-sm font-semibold text-admin-text-primary shadow-sm hover:bg-admin-interactive-secondary"
             >
               Cancel
             </Link>
@@ -404,7 +442,7 @@ export default function StartEnrichmentPage() {
 
           {/* Error Display */}
           {startEnrichment.isError && (
-            <div className="rounded-md border border-red-700 bg-red-900 p-4">
+            <div className="rounded-md border border-red-700 bg-red-900 p-4 shadow-admin-sm">
               <p className="text-sm text-red-200">
                 {startEnrichment.error instanceof Error
                   ? startEnrichment.error.message
@@ -415,10 +453,12 @@ export default function StartEnrichmentPage() {
         </form>
 
         {/* CLI Reference */}
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-          <h2 className="mb-4 text-lg font-semibold text-white">CLI Reference</h2>
-          <p className="mb-4 text-gray-300">Equivalent CLI command for this configuration:</p>
-          <div className="overflow-x-auto rounded bg-gray-900 p-4 font-mono text-sm text-gray-300">
+        <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+          <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">CLI Reference</h2>
+          <p className="mb-4 text-admin-text-secondary">
+            Equivalent CLI command for this configuration:
+          </p>
+          <div className="overflow-x-auto rounded bg-admin-surface-base p-4 font-mono text-sm text-admin-text-secondary">
             cd server && npm run enrich:death-details -- --limit {limit} --max-total-cost{" "}
             {maxTotalCost}
             {maxCostPerActor ? ` --max-cost-per-actor ${maxCostPerActor}` : ""}

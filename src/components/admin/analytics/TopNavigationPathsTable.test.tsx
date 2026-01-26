@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { TestMemoryRouter } from "@/test/test-utils"
+import { AdminTestWrapper } from "@/test/test-utils"
 import TopNavigationPathsTable from "./TopNavigationPathsTable"
 import * as analyticsHooks from "../../../hooks/admin/useAnalytics"
 
@@ -18,7 +18,7 @@ describe("TopNavigationPathsTable", () => {
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <TestMemoryRouter>{children}</TestMemoryRouter>
+      <AdminTestWrapper>{children}</AdminTestWrapper>
     </QueryClientProvider>
   )
 
@@ -202,8 +202,8 @@ describe("TopNavigationPathsTable", () => {
 
       const { container } = render(<TopNavigationPathsTable />, { wrapper })
 
-      // Should have 3 volume bars (one per row)
-      const volumeBars = container.querySelectorAll(".bg-blue-500")
+      // Should have 3 volume bars (one per row) - selected by h-4 rounded-full with inline style
+      const volumeBars = container.querySelectorAll(".h-4.rounded-full[style*='background-color']")
       expect(volumeBars).toHaveLength(3)
     })
 
@@ -216,7 +216,7 @@ describe("TopNavigationPathsTable", () => {
 
       const { container } = render(<TopNavigationPathsTable />, { wrapper })
 
-      const volumeBars = container.querySelectorAll(".bg-blue-500")
+      const volumeBars = container.querySelectorAll(".h-4.rounded-full[style*='background-color']")
 
       // Verify bars have width styles set (exact values calculated by component)
       const firstBarWidth = (volumeBars[0] as HTMLElement).style.width

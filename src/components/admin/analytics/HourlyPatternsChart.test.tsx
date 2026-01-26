@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { TestMemoryRouter } from "@/test/test-utils"
+import { AdminTestWrapper } from "@/test/test-utils"
 import HourlyPatternsChart from "./HourlyPatternsChart"
 import * as analyticsHooks from "../../../hooks/admin/useAnalytics"
 
@@ -26,7 +26,7 @@ describe("HourlyPatternsChart", () => {
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <TestMemoryRouter>{children}</TestMemoryRouter>
+      <AdminTestWrapper>{children}</AdminTestWrapper>
     </QueryClientProvider>
   )
 

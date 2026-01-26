@@ -49,26 +49,28 @@ export default function EnrichmentReviewPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Review Enrichments</h1>
-            <p className="mt-1 text-gray-400">
+            <h1 className="text-xl font-bold text-admin-text-primary md:text-2xl">
+              Review Enrichments
+            </h1>
+            <p className="mt-1 text-admin-text-muted">
               Review and approve enrichment results before committing to production
             </p>
           </div>
           <button
             onClick={() => setShowCommitModal(true)}
             disabled={!filters.runId}
-            className="rounded bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded bg-admin-danger px-4 py-2 text-admin-text-primary transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Commit Approved
           </button>
         </div>
 
         {/* Filters */}
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-          <h2 className="mb-4 text-lg font-semibold text-white">Filters</h2>
+        <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm">
+          <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Filters</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-              <label htmlFor="runId" className="mb-1 block text-sm text-gray-400">
+              <label htmlFor="runId" className="mb-1 block text-sm text-admin-text-muted">
                 Run ID
               </label>
               <input
@@ -82,11 +84,11 @@ export default function EnrichmentReviewPage() {
                   })
                 }
                 placeholder="All runs"
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
               />
             </div>
             <div>
-              <label htmlFor="minConfidence" className="mb-1 block text-sm text-gray-400">
+              <label htmlFor="minConfidence" className="mb-1 block text-sm text-admin-text-muted">
                 Min Overall Confidence: {filters.minConfidence?.toFixed(1) || "0.0"}
               </label>
               <input
@@ -106,7 +108,7 @@ export default function EnrichmentReviewPage() {
               />
             </div>
             <div>
-              <label htmlFor="causeConfidence" className="mb-1 block text-sm text-gray-400">
+              <label htmlFor="causeConfidence" className="mb-1 block text-sm text-admin-text-muted">
                 Cause Confidence
               </label>
               <select
@@ -120,7 +122,7 @@ export default function EnrichmentReviewPage() {
                       : undefined,
                   })
                 }
-                className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
               >
                 <option value="">All</option>
                 <option value="high">High</option>
@@ -132,7 +134,7 @@ export default function EnrichmentReviewPage() {
           </div>
           <button
             onClick={() => handleFilterChange({})}
-            className="mt-4 text-sm text-gray-400 transition-colors hover:text-white"
+            className="mt-4 text-sm text-admin-text-muted transition-colors hover:text-admin-text-primary"
           >
             Clear Filters
           </button>
@@ -140,14 +142,16 @@ export default function EnrichmentReviewPage() {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-              <p className="text-sm text-gray-400">Total Pending</p>
-              <p className="mt-1 text-2xl font-bold text-white">{stats.total}</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm">
+              <p className="text-sm text-admin-text-muted">Total Pending</p>
+              <p className="mt-1 text-2xl font-bold text-admin-text-primary">{stats.total}</p>
             </div>
-            <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-              <p className="text-sm text-gray-400">Avg Confidence</p>
-              <p className="mt-1 text-2xl font-bold text-white">{stats.avgConfidence}</p>
+            <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm">
+              <p className="text-sm text-admin-text-muted">Avg Confidence</p>
+              <p className="mt-1 text-2xl font-bold text-admin-text-primary">
+                {stats.avgConfidence}
+              </p>
             </div>
           </div>
         )}
@@ -167,41 +171,41 @@ export default function EnrichmentReviewPage() {
         {/* Data Table */}
         {data && (
           <>
-            <div className="overflow-hidden rounded-lg border border-gray-700 bg-gray-800">
+            <div className="overflow-hidden rounded-lg border border-admin-border bg-admin-surface-elevated shadow-admin-sm">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="border-b border-gray-700 bg-gray-900">
+                  <thead className="border-b border-admin-border bg-admin-surface-base">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                         Actor Name
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                         Deathday
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                         Cause of Death
                       </th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
                         Overall Conf.
                       </th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
                         Cause Conf.
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                         Source
                       </th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-admin-text-secondary">
                         Cost
                       </th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-300">
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className="divide-y divide-admin-border">
                     {data.items.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                        <td colSpan={8} className="px-4 py-8 text-center text-admin-text-muted">
                           No pending enrichments found
                         </td>
                       </tr>
@@ -209,13 +213,15 @@ export default function EnrichmentReviewPage() {
                       data.items.map((item) => (
                         <tr
                           key={item.enrichment_run_actor_id}
-                          className="transition-colors hover:bg-gray-800"
+                          className="transition-colors hover:bg-admin-interactive-secondary"
                         >
-                          <td className="px-4 py-3 text-sm text-white">{item.actor_name}</td>
-                          <td className="px-4 py-3 text-sm text-gray-300">
+                          <td className="px-4 py-3 text-sm text-admin-text-primary">
+                            {item.actor_name}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-admin-text-secondary">
                             {item.deathday ? formatDate(item.deathday) : "-"}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-300">
+                          <td className="px-4 py-3 text-sm text-admin-text-secondary">
                             {item.cause_of_death || "-"}
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -224,16 +230,16 @@ export default function EnrichmentReviewPage() {
                           <td className="px-4 py-3 text-center">
                             <CauseConfidenceBadge confidence={item.cause_confidence} />
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-300">
+                          <td className="px-4 py-3 text-sm text-admin-text-secondary">
                             {item.winning_source || "-"}
                           </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-300">
+                          <td className="px-4 py-3 text-right text-sm text-admin-text-secondary">
                             ${parseFloat(item.cost_usd).toFixed(2)}
                           </td>
                           <td className="px-4 py-3 text-center">
                             <button
                               onClick={() => setReviewModalId(item.enrichment_run_actor_id)}
-                              className="rounded bg-blue-600 px-3 py-1 text-sm text-white transition-colors hover:bg-blue-700"
+                              className="rounded bg-admin-interactive px-3 py-1 text-sm text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
                             >
                               Review
                             </button>
@@ -249,7 +255,7 @@ export default function EnrichmentReviewPage() {
             {/* Pagination */}
             {data.totalPages > 1 && (
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-admin-text-muted">
                   Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, data.total)} of{" "}
                   {data.total} enrichments
                 </p>
@@ -257,17 +263,17 @@ export default function EnrichmentReviewPage() {
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="rounded border border-gray-700 bg-gray-800 px-3 py-1 text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded border border-admin-border bg-admin-surface-elevated px-3 py-1 text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Previous
                   </button>
-                  <span className="px-3 py-1 text-gray-300">
+                  <span className="px-3 py-1 text-admin-text-secondary">
                     Page {page} of {data.totalPages}
                   </span>
                   <button
                     onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
                     disabled={page === data.totalPages}
-                    className="rounded border border-gray-700 bg-gray-800 px-3 py-1 text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded border border-admin-border bg-admin-surface-elevated px-3 py-1 text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Next
                   </button>
@@ -329,7 +335,7 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
 function CauseConfidenceBadge({ confidence }: { confidence: string | null }) {
   if (!confidence) {
     return (
-      <span className="inline-flex items-center rounded bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-300">
+      <span className="inline-flex items-center rounded bg-admin-surface-overlay px-2.5 py-0.5 text-xs font-medium text-admin-text-secondary">
         -
       </span>
     )
