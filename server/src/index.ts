@@ -67,7 +67,7 @@ import { adminAuthMiddleware, optionalAdminAuth } from "./middleware/admin-auth.
 import { pageVisitTracker } from "./middleware/page-visit-tracker.js"
 import { queueManager } from "./lib/jobs/queue-manager.js"
 import { startPeriodicMetricsCollection } from "./lib/jobs/monitoring.js"
-import { setupBullBoard } from "./lib/jobs/bull-board.js"
+import { setupBullBoard, BULL_BOARD_BASE_PATH } from "./lib/jobs/bull-board.js"
 import { loginHandler, logoutHandler, statusHandler } from "./routes/admin/auth.js"
 import { getDashboardStats } from "./routes/admin/dashboard.js"
 import enrichmentRoutes from "./routes/admin/enrichment.js"
@@ -327,8 +327,8 @@ async function startServer() {
 
       // Mount Bull Board for queue monitoring
       const bullBoardRouter = setupBullBoard(queueManager.getAllQueues())
-      app.use("/admin/bull-board", adminRoutesLimiter, adminAuthMiddleware, bullBoardRouter)
-      logger.info("Bull Board mounted at /admin/bull-board")
+      app.use(BULL_BOARD_BASE_PATH, adminRoutesLimiter, adminAuthMiddleware, bullBoardRouter)
+      logger.info(`Bull Board mounted at ${BULL_BOARD_BASE_PATH}`)
     } catch (error) {
       logger.error({ error }, "Failed to initialize job queue - continuing without it")
     }

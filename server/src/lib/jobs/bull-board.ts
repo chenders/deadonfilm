@@ -18,13 +18,19 @@ import { ExpressAdapter } from "@bull-board/express"
 import type { Queue } from "bullmq"
 
 /**
+ * Base path for Bull Board UI
+ * Must match the path used when mounting the router in server/src/index.ts
+ */
+export const BULL_BOARD_BASE_PATH = "/admin/bull-board"
+
+/**
  * Setup Bull Board with all queues
  * @param queues Array of BullMQ queues to monitor
  * @returns Express router for Bull Board UI
  */
 export function setupBullBoard(queues: Queue[]): ReturnType<ExpressAdapter["getRouter"]> {
   const serverAdapter = new ExpressAdapter()
-  serverAdapter.setBasePath("/admin/bull-board")
+  serverAdapter.setBasePath(BULL_BOARD_BASE_PATH)
 
   createBullBoard({
     queues: queues.map((queue) => new BullMQAdapter(queue)),
