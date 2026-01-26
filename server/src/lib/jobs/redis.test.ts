@@ -21,10 +21,13 @@ vi.mock("../logger.js", () => ({
 describe("Redis jobs client", () => {
   let originalEnv: string | undefined
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     originalEnv = process.env.REDIS_JOBS_URL
-    vi.resetModules()
+
+    // Reset client state without resetting modules to avoid SIGTERM listener accumulation
+    const { _resetForTesting } = await import("./redis.js")
+    _resetForTesting()
   })
 
   afterEach(() => {
@@ -131,22 +134,37 @@ describe("Redis jobs client", () => {
     })
   })
 
-  describe("SIGTERM handling", () => {
-    it("gracefully closes connection on SIGTERM", async () => {
+  describe("closeRedisJobsClient", () => {
+    it("gracefully closes connection", async () => {
       process.env.REDIS_JOBS_URL = "redis://localhost:6380"
 
-      const { getRedisJobsClient } = await import("./redis.js")
+      const { getRedisJobsClient, closeRedisJobsClient } = await import("./redis.js")
       const client = getRedisJobsClient()
 
       const quitSpy = vi.spyOn(client, "quit")
 
-      // Simulate SIGTERM
-      process.emit("SIGTERM", "SIGTERM")
-
-      // Wait for async handler
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      await closeRedisJobsClient()
 
       expect(quitSpy).toHaveBeenCalled()
+    })
+
+    it("handles errors during close", async () => {
+      process.env.REDIS_JOBS_URL = "redis://localhost:6380"
+
+      const { getRedisJobsClient, closeRedisJobsClient } = await import("./redis.js")
+      const client = getRedisJobsClient()
+
+      const error = new Error("Connection error")
+      vi.spyOn(client, "quit").mockRejectedValue(error)
+
+      await expect(closeRedisJobsClient()).rejects.toThrow("Connection error")
+    })
+
+    it("does nothing if client not initialized", async () => {
+      const { closeRedisJobsClient } = await import("./redis.js")
+
+      // Should not throw
+      await closeRedisJobsClient()
     })
   })
 })

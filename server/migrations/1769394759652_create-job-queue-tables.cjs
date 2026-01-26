@@ -68,11 +68,13 @@ exports.up = (pgm) => {
     // Retry tracking
     attempts: {
       type: "integer",
+      notNull: true,
       default: 0,
       comment: "Number of attempts so far",
     },
     max_attempts: {
       type: "integer",
+      notNull: true,
       default: 3,
       comment: "Maximum retry attempts before permanent failure",
     },
