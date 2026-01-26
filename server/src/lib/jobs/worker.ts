@@ -173,7 +173,7 @@ export class JobWorker {
     })
 
     // Worker completed job
-    worker.on("completed", (job: Job, result: unknown) => {
+    worker.on("completed", (job: Job, _result: unknown) => {
       const completedAt = Date.now()
       const duration = job.processedOn ? completedAt - job.processedOn : 0
 
