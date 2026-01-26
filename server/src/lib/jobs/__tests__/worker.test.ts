@@ -217,18 +217,14 @@ async function waitForJobCompletion(jobId: string, timeoutMs: number = 20000): P
   // for the event handler (queue-manager.ts:107-178) to update the database
   const startTime = Date.now()
   while (Date.now() - startTime < 10000) {
-    const result = await pool.query(
-      `SELECT status, completed_at FROM job_runs WHERE job_id = $1`,
-      [jobId]
-    )
+    const result = await pool.query(`SELECT status, completed_at FROM job_runs WHERE job_id = $1`, [
+      jobId,
+    ])
 
     if (result.rows.length > 0) {
       const row = result.rows[0]
       // Event handler sets both status AND completed_at when job finishes
-      if (
-        row.completed_at !== null &&
-        (row.status === "completed" || row.status === "failed")
-      ) {
+      if (row.completed_at !== null && (row.status === "completed" || row.status === "failed")) {
         return // Database fully updated!
       }
     }
@@ -289,10 +285,9 @@ async function waitForJobStatus(
   let lastStatus = "unknown"
   let lastCompletedAt = null
   while (Date.now() - startTime < 10000) {
-    const result = await pool.query(
-      `SELECT status, completed_at FROM job_runs WHERE job_id = $1`,
-      [jobId]
-    )
+    const result = await pool.query(`SELECT status, completed_at FROM job_runs WHERE job_id = $1`, [
+      jobId,
+    ])
 
     if (result.rows.length > 0) {
       const row = result.rows[0]
