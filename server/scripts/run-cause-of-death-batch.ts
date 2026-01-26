@@ -553,6 +553,13 @@ export async function processResults(
             }
           }
 
+          // Validate that parsed is an object (not a string, array, null, etc.)
+          if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+            throw new Error(
+              `Invalid response format: expected object, got ${Array.isArray(parsed) ? "array" : typeof parsed}`
+            )
+          }
+
           // Log the response (in verbose mode)
           if (verboseMode) {
             logParsedResponse(actorName, parsed)
