@@ -1,3 +1,6 @@
+---
+description: "Complete reference for GitHub CLI operations, branch workflow, PR comments, screenshots, and Copilot reviews"
+---
 # GitHub CLI Operations
 
 Complete reference for GitHub CLI operations, commit/PR formatting, screenshot workflows, and Copilot review handling.
