@@ -9,10 +9,8 @@ integrations:
       VALIDATE_CERTS: false  # Internal Docker network, HTTP only
       TIMEOUT: 10
 
-      # Disable config file collection - nginx runs in custom container location
-      CONFIG_PATH: ""
-
     interval: 15s
     labels:
       env: production
       role: webserver
+    inventory_source: config/nginx
