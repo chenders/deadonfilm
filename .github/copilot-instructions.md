@@ -38,6 +38,21 @@ git checkout main && git pull
 git checkout -b feat/feature-name   # or fix/, chore/
 ```
 
+### 5. ALWAYS Use dotenv in Scripts
+
+All scripts in `server/scripts/` MUST import `dotenv/config` at the top to load environment variables from `.env` files.
+
+```typescript
+#!/usr/bin/env tsx
+import "dotenv/config"  // MUST be first import
+import { Command } from "commander"
+// ... rest of imports
+
+// Script can now access process.env.DATABASE_URL, etc.
+```
+
+**Why:** Scripts run outside the server context and won't have access to environment variables (DATABASE_URL, API keys, etc.) without explicitly loading dotenv.
+
 ---
 
 ## Project Overview

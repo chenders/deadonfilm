@@ -36,6 +36,7 @@ export class PerplexitySource extends BaseDataSource {
   // Perplexity Sonar Pro - handles multi-step reasoning with real-time web search
   // See: https://docs.perplexity.ai/getting-started/models
   private readonly modelId = "sonar-pro"
+  protected maxTokens: number = 2000
 
   // Rate limit - be conservative
   protected minDelayMs = 1000
@@ -72,14 +73,14 @@ export class PerplexitySource extends BaseDataSource {
     }
 
     // Use shared enriched prompt for career context
-    const prompt = buildEnrichedDeathPrompt(actor)
+    const prompt = buildEnrichedDeathPrompt(actor, this.requireSources, this.requireReliableSources)
 
     try {
       console.log(`Perplexity search for: ${actor.name}`)
 
       const response = await client.chat.completions.create({
         model: this.modelId,
-        max_tokens: 2000,
+        max_tokens: this.maxTokens,
         messages: [
           {
             role: "system",
