@@ -552,6 +552,14 @@ export class DeathEnrichmentOrchestrator {
                 sourceName = resolvedSources[0].sourceName
                 this.statusBar.log(`    Resolved ${resolvedSources.length} URLs (${sourceName})`)
               }
+
+              // Write resolved sources back to rawData so they persist
+              if (resolvedSources && resolvedSources.length > 0) {
+                lookupResult.source.rawData = {
+                  ...(lookupResult.source.rawData || {}),
+                  resolvedSources,
+                }
+              }
             } catch (error) {
               // On error, log warning and continue with AI provider name
               const errorMsg = error instanceof Error ? error.message : "Unknown error"
@@ -624,6 +632,14 @@ export class DeathEnrichmentOrchestrator {
                       !additionalResolvedSources[0].error
                     ) {
                       additionalSourceName = `${additionalResolvedSources[0].sourceName} (additional)`
+                    }
+
+                    // Write resolved sources back to rawData so they persist
+                    if (additionalResolvedSources && additionalResolvedSources.length > 0) {
+                      additional.source.rawData = {
+                        ...(additional.source.rawData || {}),
+                        resolvedSources: additionalResolvedSources,
+                      }
                     }
                   } catch {
                     // Silently continue with AI provider name on error
