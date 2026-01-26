@@ -8,7 +8,7 @@
  * - Statistics tracking
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest"
 import type { Job } from "bullmq"
 import { JobWorker } from "../worker.js"
 import { queueManager } from "../queue-manager.js"
@@ -66,6 +66,20 @@ describe("JobWorker", () => {
     await new Promise((resolve) => setTimeout(resolve, 1000))
   })
 
+  beforeEach(async () => {
+    // Clean up job_runs and job_dead_letter tables before each test
+    await pool.query("DELETE FROM job_dead_letter")
+    await pool.query("DELETE FROM job_runs")
+
+    // Drain the queue to remove any pending jobs
+    const queue = queueManager.getQueue(QueueName.CACHE)
+    if (queue) {
+      await queue.drain()
+      // Give Redis time to process the drain operation
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+  })
+
   afterAll(async () => {
     // Shutdown worker
     await worker.shutdown()
@@ -115,7 +129,7 @@ describe("JobWorker", () => {
       expect(result.rows[0].result).toBeDefined()
       expect(result.rows[0].result.success).toBe(true)
       expect(result.rows[0].duration_ms).toBeGreaterThan(0)
-    })
+    }, 15000)
 
     it("should update worker statistics after processing", async () => {
       const statsBefore = worker.getStats()
@@ -133,7 +147,7 @@ describe("JobWorker", () => {
       const statsAfter = worker.getStats()
 
       expect(statsAfter.processedCount).toBeGreaterThan(statsBefore.processedCount)
-    })
+    }, 15000)
   })
 
   describe("Error Handling", () => {
@@ -154,7 +168,7 @@ describe("JobWorker", () => {
       expect(result.rows.length).toBe(1)
       expect(result.rows[0].status).toBe("failed")
       expect(result.rows[0].error_message).toContain("Mock failure")
-    })
+    }, 15000)
   })
 })
 
@@ -166,11 +180,16 @@ async function waitForJobCompletion(jobId: string, timeoutMs: number = 10000): P
   const startTime = Date.now()
 
   while (Date.now() - startTime < timeoutMs) {
-    const result = await pool.query("SELECT status FROM job_runs WHERE job_id = $1", [jobId])
+    const result = await pool.query("SELECT status, duration_ms FROM job_runs WHERE job_id = $1", [
+      jobId,
+    ])
 
     if (result.rows.length > 0) {
       const status = result.rows[0].status
-      if (status === "completed" || status === "failed") {
+      const durationMs = result.rows[0].duration_ms
+
+      // Wait for both status to be final AND duration_ms to be set
+      if ((status === "completed" || status === "failed") && durationMs !== null) {
         return
       }
     }
