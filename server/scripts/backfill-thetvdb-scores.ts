@@ -30,15 +30,18 @@ import { isPermanentError } from "../src/lib/backfill-utils.js"
 
 const RATE_LIMIT_DELAY_MS = 100
 
-function parsePositiveInt(value: string): number {
-  const n = parseInt(value, 10)
-  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
-    throw new InvalidArgumentError("Must be positive integer")
+export function parsePositiveInt(value: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new InvalidArgumentError("Must be a positive integer")
   }
-  return n
+  const parsed = parseInt(value, 10)
+  if (parsed <= 0) {
+    throw new InvalidArgumentError("Must be a positive integer")
+  }
+  return parsed
 }
 
-function parseNonNegativeFloat(value: string): number {
+export function parseNonNegativeFloat(value: string): number {
   const n = parseFloat(value)
   if (isNaN(n) || n < 0) {
     throw new InvalidArgumentError("Must be non-negative number")
