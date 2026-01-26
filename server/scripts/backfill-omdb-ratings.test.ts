@@ -19,7 +19,7 @@ describe("backfill-omdb-ratings argument parsing", () => {
 
     it("rejects zero", () => {
       expect(() => parsePositiveInt("0")).toThrow(InvalidArgumentError)
-      expect(() => parsePositiveInt("0")).toThrow("Must be positive integer")
+      expect(() => parsePositiveInt("0")).toThrow("Must be a positive integer")
     })
 
     it("rejects negative numbers", () => {
