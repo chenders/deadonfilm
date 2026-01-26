@@ -79,6 +79,7 @@ import cronjobsRoutes from "./routes/admin/cronjobs.js"
 import sitemapRoutes from "./routes/admin/sitemap.js"
 import cacheRoutes from "./routes/admin/cache.js"
 import abTestsRoutes from "./routes/admin/ab-tests.js"
+import jobsRoutes from "./routes/admin/jobs.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -296,6 +297,7 @@ app.use("/admin/api/cronjobs", adminRoutesLimiter, adminAuthMiddleware, cronjobs
 app.use("/admin/api/sitemap", adminRoutesLimiter, adminAuthMiddleware, sitemapRoutes)
 app.use("/admin/api/cache", adminRoutesLimiter, adminAuthMiddleware, cacheRoutes)
 app.use("/admin/api/ab-tests", adminRoutesLimiter, adminAuthMiddleware, abTestsRoutes)
+app.use("/admin/api/jobs", adminRoutesLimiter, adminAuthMiddleware, jobsRoutes)
 
 // Public page view tracking endpoint (rate limited, bot-filtered)
 app.post("/api/page-views/track", pageViewTrackingLimiter, trackPageViewHandler)
