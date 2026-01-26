@@ -103,77 +103,65 @@ describe("JobWorker", () => {
   })
 
   describe("Job Processing", () => {
-    it(
-      "should process job successfully",
-      async () => {
-        // Queue a job
-        const jobId = await queueManager.addJob(
-          JobType.WARM_ACTOR_CACHE,
-          { actorId: 2157 },
-          { createdBy: "worker-test" }
-        )
+    it("should process job successfully", async () => {
+      // Queue a job
+      const jobId = await queueManager.addJob(
+        JobType.WARM_ACTOR_CACHE,
+        { actorId: 2157 },
+        { createdBy: "worker-test" }
+      )
 
-        // Wait for job to be processed
-        await waitForJobCompletion(jobId, 10000)
+      // Wait for job to be processed
+      await waitForJobCompletion(jobId, 10000)
 
-        // Verify job completed
-        const result = await pool.query("SELECT * FROM job_runs WHERE job_id = $1", [jobId])
+      // Verify job completed
+      const result = await pool.query("SELECT * FROM job_runs WHERE job_id = $1", [jobId])
 
-        expect(result.rows.length).toBe(1)
-        expect(result.rows[0].status).toBe("completed")
-        expect(result.rows[0].result).toBeDefined()
-        expect(result.rows[0].result.success).toBe(true)
-        expect(result.rows[0].duration_ms).toBeGreaterThan(0)
-      },
-      15000
-    )
+      expect(result.rows.length).toBe(1)
+      expect(result.rows[0].status).toBe("completed")
+      expect(result.rows[0].result).toBeDefined()
+      expect(result.rows[0].result.success).toBe(true)
+      expect(result.rows[0].duration_ms).toBeGreaterThan(0)
+    }, 15000)
 
-    it(
-      "should update worker statistics after processing",
-      async () => {
-        const statsBefore = worker.getStats()
+    it("should update worker statistics after processing", async () => {
+      const statsBefore = worker.getStats()
 
-        // Queue a job
-        const jobId = await queueManager.addJob(
-          JobType.WARM_ACTOR_CACHE,
-          { actorId: 2158 },
-          { createdBy: "worker-test" }
-        )
+      // Queue a job
+      const jobId = await queueManager.addJob(
+        JobType.WARM_ACTOR_CACHE,
+        { actorId: 2158 },
+        { createdBy: "worker-test" }
+      )
 
-        // Wait for job to be processed
-        await waitForJobCompletion(jobId, 10000)
+      // Wait for job to be processed
+      await waitForJobCompletion(jobId, 10000)
 
-        const statsAfter = worker.getStats()
+      const statsAfter = worker.getStats()
 
-        expect(statsAfter.processedCount).toBeGreaterThan(statsBefore.processedCount)
-      },
-      15000
-    )
+      expect(statsAfter.processedCount).toBeGreaterThan(statsBefore.processedCount)
+    }, 15000)
   })
 
   describe("Error Handling", () => {
-    it(
-      "should handle job failures",
-      async () => {
-        // Queue a job that will fail
-        const jobId = await queueManager.addJob(
-          JobType.WARM_CONTENT_CACHE,
-          { entityType: "movie" as const, entityId: 550 },
-          { createdBy: "worker-test", attempts: 1 } // Only 1 attempt
-        )
+    it("should handle job failures", async () => {
+      // Queue a job that will fail
+      const jobId = await queueManager.addJob(
+        JobType.WARM_CONTENT_CACHE,
+        { entityType: "movie" as const, entityId: 550 },
+        { createdBy: "worker-test", attempts: 1 } // Only 1 attempt
+      )
 
-        // Wait for job to fail
-        await waitForJobStatus(jobId, "failed", 10000)
+      // Wait for job to fail
+      await waitForJobStatus(jobId, "failed", 10000)
 
-        // Verify job failed
-        const result = await pool.query("SELECT * FROM job_runs WHERE job_id = $1", [jobId])
+      // Verify job failed
+      const result = await pool.query("SELECT * FROM job_runs WHERE job_id = $1", [jobId])
 
-        expect(result.rows.length).toBe(1)
-        expect(result.rows[0].status).toBe("failed")
-        expect(result.rows[0].error_message).toContain("Mock failure")
-      },
-      15000
-    )
+      expect(result.rows.length).toBe(1)
+      expect(result.rows[0].status).toBe("failed")
+      expect(result.rows[0].error_message).toContain("Mock failure")
+    }, 15000)
   })
 })
 
