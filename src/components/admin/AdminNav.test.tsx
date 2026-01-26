@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import AdminNav from "./AdminNav"
 import { AdminAuthProvider } from "../../hooks/useAdminAuth"
+import { AdminThemeProvider } from "../../contexts/AdminThemeContext"
 
 describe("AdminNav", () => {
   let mockFetch: ReturnType<typeof vi.spyOn>
@@ -30,7 +31,9 @@ describe("AdminNav", () => {
     return render(
       <MemoryRouter initialEntries={[initialPath]}>
         <AdminAuthProvider>
-          <AdminNav />
+          <AdminThemeProvider>
+            <AdminNav />
+          </AdminThemeProvider>
         </AdminAuthProvider>
       </MemoryRouter>
     )
@@ -65,7 +68,7 @@ describe("AdminNav", () => {
     })
 
     const dashboardLink = screen.getByRole("link", { name: /dashboard/i })
-    expect(dashboardLink).toHaveClass("bg-gray-900", "text-white")
+    expect(dashboardLink).toHaveClass("bg-admin-surface-base", "text-admin-text-primary")
   })
 
   it("does not highlight inactive route", async () => {
@@ -76,8 +79,8 @@ describe("AdminNav", () => {
     })
 
     const dashboardLink = screen.getByRole("link", { name: /dashboard/i })
-    expect(dashboardLink).toHaveClass("text-gray-300", "hover:bg-gray-700", "hover:text-white")
-    expect(dashboardLink).not.toHaveClass("bg-gray-900")
+    expect(dashboardLink).toHaveClass("text-admin-text-secondary")
+    expect(dashboardLink).not.toHaveClass("bg-admin-surface-base")
   })
 
   it("renders logout button", async () => {
@@ -128,9 +131,8 @@ describe("AdminNav", () => {
       "min-h-screen",
       "w-64",
       "border-r",
-      "border-gray-700",
-      "bg-gray-800",
-      "p-4"
+      "border-admin-border",
+      "bg-admin-surface-elevated"
     )
   })
 })

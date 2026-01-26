@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router-dom"
+import { AdminThemeProvider } from "../../../contexts/AdminThemeContext"
 import CostBySourceSection from "./CostBySourceSection"
 import * as analyticsHooks from "../../../hooks/admin/useAnalytics"
 
@@ -62,7 +63,9 @@ describe("CostBySourceSection", () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
-          <CostBySourceSection startDate={startDate} endDate={endDate} />
+          <AdminThemeProvider>
+            <CostBySourceSection startDate={startDate} endDate={endDate} />
+          </AdminThemeProvider>
         </MemoryRouter>
       </QueryClientProvider>
     )
