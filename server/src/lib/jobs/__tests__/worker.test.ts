@@ -8,7 +8,7 @@
  * - Statistics tracking
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest"
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest"
 import type { Job } from "bullmq"
 import { JobWorker } from "../worker.js"
 import { queueManager } from "../queue-manager.js"

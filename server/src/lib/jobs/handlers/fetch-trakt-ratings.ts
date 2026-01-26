@@ -48,126 +48,120 @@ export class FetchTraktRatingsHandler extends BaseJobHandler<FetchTraktRatingsPa
 
   /**
    * Process the job: fetch ratings from Trakt and save to database
+   * Note: Base class already wraps this in a New Relic transaction, so we don't nest another one
    */
   async process(job: Job<FetchTraktRatingsPayload>): Promise<JobResult> {
-    return newrelic.startBackgroundTransaction(`JobHandler/${this.jobType}`, async () => {
-      const jobLogger = this.createLogger(job)
+    const jobLogger = this.createLogger(job)
 
-      // Add custom attributes to New Relic transaction
-      newrelic.addCustomAttribute("jobId", job.id ?? "unknown")
-      newrelic.addCustomAttribute("jobType", this.jobType)
-      newrelic.addCustomAttribute("entityType", job.data.entityType)
-      newrelic.addCustomAttribute("entityId", job.data.entityId)
-      newrelic.addCustomAttribute("imdbId", job.data.imdbId)
-      newrelic.addCustomAttribute("attemptNumber", job.attemptsMade + 1)
-      newrelic.addCustomAttribute("priority", job.opts.priority ?? 0)
+    // Add custom attributes to New Relic transaction (managed by base class)
+    newrelic.addCustomAttribute("entityType", job.data.entityType)
+    newrelic.addCustomAttribute("entityId", job.data.entityId)
+    newrelic.addCustomAttribute("imdbId", job.data.imdbId)
 
-      jobLogger.info(
-        {
-          entityType: job.data.entityType,
-          entityId: job.data.entityId,
-          imdbId: job.data.imdbId,
-        },
-        "Fetching Trakt ratings"
-      )
+    jobLogger.info(
+      {
+        entityType: job.data.entityType,
+        entityId: job.data.entityId,
+        imdbId: job.data.imdbId,
+      },
+      "Fetching Trakt ratings"
+    )
 
-      try {
-        // Enforce rate limiting (delay before making API call)
-        await this.delay(RATE_LIMIT_DELAY_MS)
+    try {
+      // Note: Rate limiting is handled by BullMQ (rateLimit config), no need to delay here
 
-        // Fetch ratings from Trakt API (with New Relic segment)
-        const stats = await newrelic.startSegment("Trakt API Call", true, async () => {
-          return await getTraktStats(job.data.entityType, job.data.imdbId)
-        })
+      // Fetch ratings from Trakt API (with New Relic segment)
+      const stats = await newrelic.startSegment("Trakt API Call", true, async () => {
+        return await getTraktStats(job.data.entityType, job.data.imdbId)
+      })
 
-        // Check if stats were found
-        if (!stats) {
-          jobLogger.warn({ imdbId: job.data.imdbId }, "No stats found for IMDb ID")
+      // Check if stats were found
+      if (!stats) {
+        jobLogger.warn({ imdbId: job.data.imdbId }, "No stats found for IMDb ID")
 
-          newrelic.recordMetric("Custom/JobHandler/Trakt/NoStatsFound", 1)
+        newrelic.recordMetric("Custom/JobHandler/Trakt/NoStatsFound", 1)
 
-          // This is a permanent failure - ID doesn't exist or has no stats
-          return {
-            success: false,
-            error: "No stats found",
-            metadata: {
-              imdbId: job.data.imdbId,
-              entityType: job.data.entityType,
-              entityId: job.data.entityId,
-            },
-          }
-        }
-
-        // Update database with stats (with New Relic segment)
-        await newrelic.startSegment("Database Update", true, async () => {
-          return await this.saveStatsToDatabase(job.data, stats)
-        })
-
-        jobLogger.info(
-          {
-            entityType: job.data.entityType,
-            entityId: job.data.entityId,
-            stats,
-          },
-          "Successfully saved Trakt stats"
-        )
-
-        // Record success metric
-        newrelic.recordMetric("Custom/JobHandler/Trakt/Success", 1)
-
+        // This is a permanent failure - ID doesn't exist or has no stats
         return {
-          success: true,
-          data: stats,
+          success: false,
+          error: "No stats found",
           metadata: {
             imdbId: job.data.imdbId,
             entityType: job.data.entityType,
             entityId: job.data.entityId,
           },
         }
-      } catch (error) {
-        // Record error metric
-        newrelic.recordMetric("Custom/JobHandler/Trakt/Error", 1)
+      }
 
-        // Check if error is from rate limiting
-        const errorMessage = (error as Error).message || String(error)
-        if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("rate limit")) {
-          newrelic.recordMetric("Custom/JobHandler/Trakt/RateLimitExceeded", 1)
-          jobLogger.error({ error: errorMessage }, "Trakt API rate limit exceeded")
-        }
+      // Update database with stats (with New Relic segment)
+      await newrelic.startSegment("Database Update", true, async () => {
+        return await this.saveStatsToDatabase(job.data, stats)
+      })
 
-        // Check if this is a permanent error
-        const isPermanent = this.isPermanentError(error)
-        if (isPermanent) {
-          jobLogger.error(
-            { error: errorMessage, isPermanent: true },
-            "Permanent error - will not retry"
-          )
+      jobLogger.info(
+        {
+          entityType: job.data.entityType,
+          entityId: job.data.entityId,
+          stats,
+        },
+        "Successfully saved Trakt stats"
+      )
 
-          return {
-            success: false,
-            error: errorMessage,
-            metadata: {
-              isPermanent: true,
-              imdbId: job.data.imdbId,
-              entityType: job.data.entityType,
-              entityId: job.data.entityId,
-            },
-          }
-        }
+      // Record success metric
+      newrelic.recordMetric("Custom/JobHandler/Trakt/Success", 1)
 
-        // Transient error - let BullMQ retry
-        jobLogger.warn(
-          {
-            error: errorMessage,
-            attemptNumber: job.attemptsMade + 1,
-            maxAttempts: job.opts.attempts ?? 3,
-          },
-          "Transient error - will retry"
+      return {
+        success: true,
+        data: stats,
+        metadata: {
+          imdbId: job.data.imdbId,
+          entityType: job.data.entityType,
+          entityId: job.data.entityId,
+        },
+      }
+    } catch (error) {
+      // Record error metric
+      newrelic.recordMetric("Custom/JobHandler/Trakt/Error", 1)
+
+      // Check if error is from rate limiting
+      const errorMessage = (error as Error).message || String(error)
+      if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("rate limit")) {
+        newrelic.recordMetric("Custom/JobHandler/Trakt/RateLimitExceeded", 1)
+        jobLogger.error({ error: errorMessage }, "Trakt API rate limit exceeded")
+      }
+
+      // Check if this is a permanent error
+      const isPermanent = this.isPermanentError(error)
+      if (isPermanent) {
+        jobLogger.error(
+          { error: errorMessage, isPermanent: true },
+          "Permanent error - will not retry"
         )
 
-        throw error
+        return {
+          success: false,
+          error: errorMessage,
+          metadata: {
+            isPermanent: true,
+            imdbId: job.data.imdbId,
+            entityType: job.data.entityType,
+            entityId: job.data.entityId,
+          },
+        }
       }
-    })
+
+      // Transient error - let BullMQ retry
+      jobLogger.warn(
+        {
+          error: errorMessage,
+          attemptNumber: job.attemptsMade + 1,
+          maxAttempts: job.opts.attempts ?? 3,
+        },
+        "Transient error - will retry"
+      )
+
+      throw error
+    }
   }
 
   /**
