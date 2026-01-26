@@ -29,7 +29,7 @@ import { getPool } from "../src/lib/db/pool.js"
 import { queueManager } from "../src/lib/jobs/queue-manager.js"
 import { JobType, JobPriority } from "../src/lib/jobs/types.js"
 
-function parsePositiveInt(value: string): number {
+export function parsePositiveInt(value: string): number {
   const n = parseInt(value, 10)
   if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
     throw new InvalidArgumentError("Must be positive integer")
@@ -37,7 +37,7 @@ function parsePositiveInt(value: string): number {
   return n
 }
 
-function parseNonNegativeFloat(value: string): number {
+export function parseNonNegativeFloat(value: string): number {
   const n = parseFloat(value)
   if (isNaN(n) || n < 0) {
     throw new InvalidArgumentError("Must be non-negative number")
