@@ -41,6 +41,7 @@ import { Command, InvalidArgumentError } from "commander"
 import { spawn } from "child_process"
 import path from "path"
 import { fileURLToPath } from "url"
+import * as readline from "readline"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -350,15 +351,22 @@ async function runOrchestration(options: OrchestrationOptions) {
 
   // Confirmation prompt (skip in dry-run mode)
   if (!options.dryRun) {
-    console.log("\n⚠️  This will modify the database.")
-    console.log("Press Ctrl+C to cancel, or press Enter to continue...")
-
-    // Wait for user input
-    await new Promise<void>((resolve) => {
-      process.stdin.once("data", () => {
-        resolve()
+    // Skip prompt if stdin is not a TTY (non-interactive mode)
+    if (!process.stdin.isTTY) {
+      console.log("\n⚠️  Non-interactive mode detected, skipping confirmation...")
+    } else {
+      console.log("\n⚠️  This will modify the database.")
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
       })
-    })
+      await new Promise<void>((resolve) => {
+        rl.question("Press Enter to continue, or Ctrl+C to cancel... ", () => {
+          rl.close()
+          resolve()
+        })
+      })
+    }
   }
 
   const baseArgs: string[] = []
