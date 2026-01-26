@@ -33,11 +33,11 @@ import {
   deleteCheckpoint,
   parsePositiveInt,
   stripMarkdownCodeFences,
-  repairJson,
   getYearFromDate,
   storeFailure,
   type Checkpoint,
 } from "./backfill-cause-of-death-batch.js"
+import { jsonrepair } from "jsonrepair"
 
 // Initialize New Relic for monitoring
 
@@ -542,9 +542,9 @@ export async function processResults(
           try {
             parsed = JSON.parse(jsonText)
           } catch (jsonError) {
-            // Try to repair common JSON issues and retry
-            const repairedJson = repairJson(jsonText)
+            // Try to repair common JSON issues with jsonrepair package
             try {
+              const repairedJson = jsonrepair(jsonText)
               parsed = JSON.parse(repairedJson)
               console.log(`  [Repaired JSON for ${actorName}]`)
             } catch {
