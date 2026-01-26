@@ -48,7 +48,9 @@ export function clearHandlers(): void {
 // Import and register all handlers here
 import { FetchOMDbRatingsHandler } from "./fetch-omdb-ratings.js"
 import { FetchTraktRatingsHandler } from "./fetch-trakt-ratings.js"
+import { FetchTheTVDBScoresHandler } from "./fetch-thetvdb-scores.js"
 
 // Register handlers
 registerHandler(new FetchOMDbRatingsHandler())
 registerHandler(new FetchTraktRatingsHandler())
+registerHandler(new FetchTheTVDBScoresHandler())
