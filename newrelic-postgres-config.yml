@@ -26,7 +26,7 @@ integrations:
 # PostgreSQL log forwarding to New Relic Logs
 logs:
   - name: postgresql-logs
-    file: /host/var/lib/docker/volumes/deadonfilm_postgres-logs/_data/postgresql-*.log
+    file: /host/var/log/postgresql-docker/postgresql-*.log
     attributes:
       service: postgresql
       env: production
