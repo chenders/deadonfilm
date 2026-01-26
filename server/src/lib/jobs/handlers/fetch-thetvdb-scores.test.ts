@@ -151,6 +151,38 @@ describe("FetchTheTVDBScoresHandler", () => {
       expect(shows.upsertShow).not.toHaveBeenCalled()
     })
 
+    it("handles series with null score (returns success=false)", async () => {
+      const seriesWithNullScore = { ...mockSeries, score: null as unknown as number }
+      vi.mocked(thetvdb.getSeriesExtended).mockResolvedValue(seriesWithNullScore)
+
+      const result = await handler.process(mockJob)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("No score available")
+      expect(result.metadata).toEqual({
+        thetvdbId: 81189,
+        entityType: "show",
+        entityId: 1396,
+      })
+      expect(shows.upsertShow).not.toHaveBeenCalled()
+    })
+
+    it("handles series with undefined score (returns success=false)", async () => {
+      const seriesWithUndefinedScore = { ...mockSeries, score: undefined as unknown as number }
+      vi.mocked(thetvdb.getSeriesExtended).mockResolvedValue(seriesWithUndefinedScore)
+
+      const result = await handler.process(mockJob)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("No score available")
+      expect(result.metadata).toEqual({
+        thetvdbId: 81189,
+        entityType: "show",
+        entityId: 1396,
+      })
+      expect(shows.upsertShow).not.toHaveBeenCalled()
+    })
+
     it("handles show not found in database as permanent error", async () => {
       vi.mocked(thetvdb.getSeriesExtended).mockResolvedValue(mockSeries)
       vi.mocked(shows.getShow).mockResolvedValue(null)

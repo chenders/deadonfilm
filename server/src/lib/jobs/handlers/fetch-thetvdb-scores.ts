@@ -19,8 +19,9 @@ import { getSeriesExtended } from "../../thetvdb.js"
 import { getShow, upsertShow } from "../../db/shows.js"
 
 /**
- * TheTVDB API rate limit: ~100 requests per minute = ~600ms between requests
- * Being conservative with 100ms delay
+ * TheTVDB API guideline (example): ~100 requests per minute ≈ 600ms between requests.
+ * This handler is configured with a 100ms delay (≈600 requests per minute), which is
+ * more aggressive than that example guideline.
  */
 const RATE_LIMIT_DELAY_MS = 100
 
@@ -50,124 +51,136 @@ export class FetchTheTVDBScoresHandler extends BaseJobHandler<FetchTheTVDBScores
    * Process the job: fetch scores from TheTVDB and save to database
    */
   async process(job: Job<FetchTheTVDBScoresPayload>): Promise<JobResult> {
-    return newrelic.startBackgroundTransaction(`JobHandler/${this.jobType}`, async () => {
-      const jobLogger = this.createLogger(job)
+    const jobLogger = this.createLogger(job)
 
-      // Add custom attributes to New Relic transaction
-      newrelic.addCustomAttribute("jobId", job.id ?? "unknown")
-      newrelic.addCustomAttribute("jobType", this.jobType)
-      newrelic.addCustomAttribute("entityType", job.data.entityType)
-      newrelic.addCustomAttribute("entityId", job.data.entityId)
-      newrelic.addCustomAttribute("thetvdbId", job.data.thetvdbId)
-      newrelic.addCustomAttribute("attemptNumber", job.attemptsMade + 1)
-      newrelic.addCustomAttribute("priority", job.opts.priority ?? 0)
+    // Add custom attributes to New Relic transaction
+    newrelic.addCustomAttribute("entityType", job.data.entityType)
+    newrelic.addCustomAttribute("entityId", job.data.entityId)
+    newrelic.addCustomAttribute("thetvdbId", job.data.thetvdbId)
 
-      jobLogger.info(
-        {
-          entityType: job.data.entityType,
-          entityId: job.data.entityId,
-          thetvdbId: job.data.thetvdbId,
-        },
-        "Fetching TheTVDB scores"
-      )
+    jobLogger.info(
+      {
+        entityType: job.data.entityType,
+        entityId: job.data.entityId,
+        thetvdbId: job.data.thetvdbId,
+      },
+      "Fetching TheTVDB scores"
+    )
 
-      try {
-        // Enforce rate limiting (delay before making API call)
-        await this.delay(RATE_LIMIT_DELAY_MS)
+    try {
+      // Enforce rate limiting (delay before making API call)
+      await this.delay(RATE_LIMIT_DELAY_MS)
 
-        // Fetch series data from TheTVDB API (with New Relic segment)
-        const series = await newrelic.startSegment("TheTVDB API Call", true, async () => {
-          return await getSeriesExtended(job.data.thetvdbId)
-        })
+      // Fetch series data from TheTVDB API (with New Relic segment)
+      const series = await newrelic.startSegment("TheTVDB API Call", true, async () => {
+        return await getSeriesExtended(job.data.thetvdbId)
+      })
 
-        // Check if series was found
-        if (!series) {
-          jobLogger.warn({ thetvdbId: job.data.thetvdbId }, "No series found for TheTVDB ID")
+      // Check if series was found
+      if (!series) {
+        jobLogger.warn({ thetvdbId: job.data.thetvdbId }, "No series found for TheTVDB ID")
 
-          newrelic.recordMetric("Custom/JobHandler/TheTVDB/NoSeriesFound", 1)
+        newrelic.recordMetric("Custom/JobHandler/TheTVDB/NoSeriesFound", 1)
 
-          // This is a permanent failure - ID doesn't exist
-          return {
-            success: false,
-            error: "No series found",
-            metadata: {
-              thetvdbId: job.data.thetvdbId,
-              entityType: job.data.entityType,
-              entityId: job.data.entityId,
-            },
-          }
-        }
-
-        // Update database with score (with New Relic segment)
-        await newrelic.startSegment("Database Update", true, async () => {
-          return await this.saveScoreToDatabase(job.data, series.score)
-        })
-
-        jobLogger.info(
-          {
-            entityType: job.data.entityType,
-            entityId: job.data.entityId,
-            score: series.score,
-          },
-          "Successfully saved TheTVDB score"
-        )
-
-        // Record success metric
-        newrelic.recordMetric("Custom/JobHandler/TheTVDB/Success", 1)
-
+        // This is a permanent failure - ID doesn't exist
         return {
-          success: true,
-          data: { score: series.score },
+          success: false,
+          error: "No series found",
           metadata: {
             thetvdbId: job.data.thetvdbId,
             entityType: job.data.entityType,
             entityId: job.data.entityId,
           },
         }
-      } catch (error) {
-        // Record error metric
-        newrelic.recordMetric("Custom/JobHandler/TheTVDB/Error", 1)
+      }
 
-        // Check if error is from rate limiting
-        const errorMessage = (error as Error).message || String(error)
-        if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("rate limit")) {
-          newrelic.recordMetric("Custom/JobHandler/TheTVDB/RateLimitExceeded", 1)
-          jobLogger.error({ error: errorMessage }, "TheTVDB API rate limit exceeded")
-        }
+      // Check if series has a valid score
+      if (series.score === null || series.score === undefined) {
+        jobLogger.warn({ thetvdbId: job.data.thetvdbId }, "Series has no score available")
 
-        // Check if this is a permanent error
-        const isPermanent = this.isPermanentError(error)
-        if (isPermanent) {
-          jobLogger.error(
-            { error: errorMessage, isPermanent: true },
-            "Permanent error - will not retry"
-          )
+        newrelic.recordMetric("Custom/JobHandler/TheTVDB/NoScoreAvailable", 1)
 
-          return {
-            success: false,
-            error: errorMessage,
-            metadata: {
-              isPermanent: true,
-              thetvdbId: job.data.thetvdbId,
-              entityType: job.data.entityType,
-              entityId: job.data.entityId,
-            },
-          }
-        }
-
-        // Transient error - let BullMQ retry
-        jobLogger.warn(
-          {
-            error: errorMessage,
-            attemptNumber: job.attemptsMade + 1,
-            maxAttempts: job.opts.attempts ?? 3,
+        // This is a permanent failure - no score to save
+        return {
+          success: false,
+          error: "No score available",
+          metadata: {
+            thetvdbId: job.data.thetvdbId,
+            entityType: job.data.entityType,
+            entityId: job.data.entityId,
           },
-          "Transient error - will retry"
+        }
+      }
+
+      // Update database with score (with New Relic segment)
+      await newrelic.startSegment("Database Update", true, async () => {
+        return await this.saveScoreToDatabase(job.data, series.score)
+      })
+
+      jobLogger.info(
+        {
+          entityType: job.data.entityType,
+          entityId: job.data.entityId,
+          score: series.score,
+        },
+        "Successfully saved TheTVDB score"
+      )
+
+      // Record success metric
+      newrelic.recordMetric("Custom/JobHandler/TheTVDB/Success", 1)
+
+      return {
+        success: true,
+        data: { score: series.score },
+        metadata: {
+          thetvdbId: job.data.thetvdbId,
+          entityType: job.data.entityType,
+          entityId: job.data.entityId,
+        },
+      }
+    } catch (error) {
+      // Record error metric
+      newrelic.recordMetric("Custom/JobHandler/TheTVDB/Error", 1)
+
+      // Check if error is from rate limiting
+      const errorMessage = (error as Error).message || String(error)
+      if (errorMessage.includes("429") || errorMessage.toLowerCase().includes("rate limit")) {
+        newrelic.recordMetric("Custom/JobHandler/TheTVDB/RateLimitExceeded", 1)
+        jobLogger.error({ error: errorMessage }, "TheTVDB API rate limit exceeded")
+      }
+
+      // Check if this is a permanent error
+      const isPermanent = this.isPermanentError(error)
+      if (isPermanent) {
+        jobLogger.error(
+          { error: errorMessage, isPermanent: true },
+          "Permanent error - will not retry"
         )
 
-        throw error
+        return {
+          success: false,
+          error: errorMessage,
+          metadata: {
+            isPermanent: true,
+            thetvdbId: job.data.thetvdbId,
+            entityType: job.data.entityType,
+            entityId: job.data.entityId,
+          },
+        }
       }
-    })
+
+      // Transient error - let BullMQ retry
+      jobLogger.warn(
+        {
+          error: errorMessage,
+          attemptNumber: job.attemptsMade + 1,
+          maxAttempts: job.opts.attempts ?? 3,
+        },
+        "Transient error - will retry"
+      )
+
+      throw error
+    }
   }
 
   /**
@@ -196,20 +209,21 @@ export class FetchTheTVDBScoresHandler extends BaseJobHandler<FetchTheTVDBScores
    */
   private isPermanentError(error: unknown): boolean {
     const errorMessage = (error as Error).message || String(error)
+    const lowerMessage = errorMessage.toLowerCase()
 
     // Check for permanent HTTP status codes
     for (const code of PERMANENT_ERROR_CODES) {
-      if (errorMessage.includes(String(code))) {
+      if (lowerMessage.includes(String(code))) {
         return true
       }
     }
 
     // Check for specific permanent error messages
     if (
-      errorMessage.includes("invalid api key") ||
-      errorMessage.includes("unauthorized") ||
-      errorMessage.includes("not found") ||
-      errorMessage.includes("invalid id")
+      lowerMessage.includes("invalid api key") ||
+      lowerMessage.includes("unauthorized") ||
+      lowerMessage.includes("not found") ||
+      lowerMessage.includes("invalid id")
     ) {
       return true
     }
