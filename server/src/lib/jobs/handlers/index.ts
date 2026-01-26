@@ -46,7 +46,8 @@ export function clearHandlers(): void {
 }
 
 // Import and register all handlers here
-import { FetchOMDbRatingsHandler } from "./fetch-omdb-ratings.js"
-
-// Register handlers
-registerHandler(new FetchOMDbRatingsHandler())
+// Example:
+// import { FetchOMDbRatingsHandler } from './fetch-omdb-ratings.js'
+// registerHandler(new FetchOMDbRatingsHandler())
+//
+// This will be populated in PR #3 when we implement specific handlers

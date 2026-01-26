@@ -14,11 +14,9 @@
 import { Worker, Job } from "bullmq"
 import newrelic from "newrelic"
 import { logger } from "../logger.js"
-import { getRedisJobsClient } from "./redis.js"
+import { redisJobsClient } from "./redis.js"
 import { QueueName, queueConfigs, type JobType } from "./types.js"
 import { getHandler } from "./handlers/index.js"
-
-const HEARTBEAT_INTERVAL_MS = 60_000 // 60 seconds
 
 /**
  * Job Worker class
@@ -51,7 +49,7 @@ export class JobWorker {
           return this.processJob(job)
         },
         {
-          connection: getRedisJobsClient(),
+          connection: redisJobsClient,
           concurrency: config.concurrency,
           limiter: config.rateLimit
             ? {
@@ -175,7 +173,7 @@ export class JobWorker {
     })
 
     // Worker completed job
-    worker.on("completed", (job: Job, _result: unknown) => {
+    worker.on("completed", (job: Job, result: unknown) => {
       const completedAt = Date.now()
       const duration = job.processedOn ? completedAt - job.processedOn : 0
 
@@ -189,7 +187,20 @@ export class JobWorker {
         "Worker completed job"
       )
 
-      // Metrics already recorded in BaseJobHandler and QueueManager
+      // Record New Relic custom event (already done in handler, but add worker context)
+      newrelic.recordCustomEvent("JobCompleted", {
+        jobId: job.id ?? "unknown",
+        jobType: job.name,
+        queueName,
+        durationMs: duration,
+        attemptNumber: job.attemptsMade,
+        success: true,
+        timestamp: Date.now(),
+      })
+
+      // Record processing time metric
+      newrelic.recordMetric(`Custom/JobQueue/${queueName}/ProcessingTime`, duration)
+      newrelic.recordMetric(`Custom/JobQueue/${queueName}/Completed`, 1)
     })
 
     // Worker failed to process job
@@ -250,12 +261,14 @@ export class JobWorker {
         "Worker detected stalled job"
       )
 
-      // Metrics already recorded in QueueManager
+      // Record New Relic custom event
       newrelic.recordCustomEvent("JobStalled", {
         jobId,
         queueName,
         timestamp: Date.now(),
       })
+
+      newrelic.recordMetric(`Custom/JobQueue/${queueName}/Stalled`, 1)
     })
 
     // Worker error
@@ -297,8 +310,10 @@ export class JobWorker {
       newrelic.recordMetric("Custom/Worker/FailedCount", this.failedCount)
 
       // Calculate success rate
-      const total = this.processedCount + this.failedCount
-      const successRate = total > 0 ? (this.processedCount / total) * 100 : 100
+      const successRate =
+        this.processedCount > 0
+          ? ((this.processedCount - this.failedCount) / this.processedCount) * 100
+          : 100
 
       newrelic.recordMetric("Custom/Worker/SuccessRate", successRate)
 
@@ -310,7 +325,7 @@ export class JobWorker {
         },
         "Worker heartbeat"
       )
-    }, HEARTBEAT_INTERVAL_MS)
+    }, 60000) // Every 60 seconds
   }
 
   /**
@@ -322,8 +337,10 @@ export class JobWorker {
     successRate: number
     workerCount: number
   } {
-    const total = this.processedCount + this.failedCount
-    const successRate = total > 0 ? (this.processedCount / total) * 100 : 100
+    const successRate =
+      this.processedCount > 0
+        ? ((this.processedCount - this.failedCount) / this.processedCount) * 100
+        : 100
 
     return {
       processedCount: this.processedCount,

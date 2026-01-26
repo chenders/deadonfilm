@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest"
 import { getPool } from "../../db.js"
 import { queueManager } from "../queue-manager.js"
-import { JobType, QueueName, JobPriority } from "../types.js"
+import { JobType, QueueName, JobPriority, JobStatus } from "../types.js"
 
 describe("QueueManager", () => {
   let pool: ReturnType<typeof getPool>
@@ -24,21 +24,11 @@ describe("QueueManager", () => {
 
   afterAll(async () => {
     await queueManager.shutdown()
-    // Note: Don't end pool - it's a singleton shared with other tests
+    await pool.end()
   })
 
   beforeEach(async () => {
-    // Wait for all active jobs to complete before cleanup
-    for (const queue of queueManager.getAllQueues()) {
-      await queue.drain(true) // Wait for active jobs to finish
-    }
-
-    // Clean up all queues in Redis
-    for (const queue of queueManager.getAllQueues()) {
-      await queue.obliterate({ force: true })
-    }
-
-    // Clean up database
+    // Clean up job_runs table before each test
     await pool.query("DELETE FROM job_runs")
     await pool.query("DELETE FROM job_dead_letter")
   })
@@ -77,7 +67,7 @@ describe("QueueManager", () => {
 
       expect(result.rows.length).toBe(1)
       expect(result.rows[0].job_type).toBe(JobType.WARM_ACTOR_CACHE)
-      // Don't assert on status - it might be pending, active, or completed depending on worker state
+      expect(result.rows[0].status).toBe(JobStatus.PENDING)
       expect(result.rows[0].queue_name).toBe(QueueName.CACHE)
       expect(result.rows[0].priority).toBe(JobPriority.NORMAL)
       expect(result.rows[0].created_by).toBe("test")
