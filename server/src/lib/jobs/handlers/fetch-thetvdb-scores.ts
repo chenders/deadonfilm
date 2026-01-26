@@ -188,7 +188,6 @@ export class FetchTheTVDBScoresHandler extends BaseJobHandler<FetchTheTVDBScores
     await upsertShow({
       ...show,
       thetvdb_score: score,
-      thetvdb_updated_at: new Date(),
     })
   }
 
