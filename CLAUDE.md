@@ -128,6 +128,19 @@ npm test && cd server && npm test
 
 **NEVER commit directly to `main`** - always use feature branches (see Critical Rule #4).
 
+#### Branch Workflow
+
+Before starting ANY new work:
+
+```bash
+git checkout main && git pull
+git checkout -b feat/feature-name   # or fix/, chore/, docs/
+```
+
+**When substantial new work is about to begin while already on a feature branch**: Ask the user if they want to create a new branch for the new work (recommended if unrelated) or continue on the current branch (if closely related).
+
+See `.claude/rules/github-cli.md` for complete branch workflow guidance.
+
 #### Commit Format
 
 **ALWAYS use heredoc for multiline commit messages** to prevent bash escaping issues:
@@ -151,14 +164,15 @@ EOF
 
 Critical rules for PR comments, screenshots, and Copilot reviews:
 
-1. **ALWAYS use heredoc for multiline commit/PR messages** - prevents bash escaping issues
-2. **ALWAYS verify screenshots before committing** - prevents login screen/wrong page uploads
-3. **ALWAYS use explicit viewport sizes in Playwright** - ensures consistency across CI/local
-4. **ALWAYS use GitHub raw URLs with commit SHA** - prevents broken image links in PRs
-5. **ALWAYS use `gh api` for PR inline comments** - native CLI lacks inline comment support
-6. **ALWAYS quote heredoc delimiter** (`<<'EOF'` not `<<EOF`) - prevents variable expansion
-7. **ALWAYS resolve threads only after implementing fixes** - never resolve declined suggestions
-8. **ALWAYS request Copilot re-review after fixes** - use `gh pr edit --add-reviewer Copilot`
+1. **NEVER commit directly to main** - always use feature branches, ask about new branches for substantial new work
+2. **ALWAYS use heredoc for multiline commit/PR messages** - prevents bash escaping issues
+3. **ALWAYS verify screenshots before committing** - prevents login screen/wrong page uploads
+4. **ALWAYS use explicit viewport sizes in Playwright** - ensures consistency across CI/local
+5. **ALWAYS use GitHub raw URLs with commit SHA** - prevents broken image links in PRs
+6. **ALWAYS use `gh api` for PR inline comments** - native CLI lacks inline comment support
+7. **ALWAYS quote heredoc delimiter** (`<<'EOF'` not `<<EOF`) - prevents variable expansion
+8. **ALWAYS resolve threads only after implementing fixes** - never resolve declined suggestions
+9. **ALWAYS request Copilot re-review after fixes** - use `gh pr edit --add-reviewer Copilot`
 
 See `.claude/rules/github-cli.md` for complete examples and workflows.
 
