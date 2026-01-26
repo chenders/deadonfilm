@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
+import { TestMemoryRouter } from "../../test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import HighPriorityActorsPage from "./HighPriorityActorsPage"
 
@@ -69,9 +69,9 @@ describe("HighPriorityActorsPage", () => {
   const renderComponent = () => {
     return render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
+        <TestMemoryRouter>
           <HighPriorityActorsPage />
-        </MemoryRouter>
+        </TestMemoryRouter>
       </QueryClientProvider>
     )
   }

@@ -41,7 +41,7 @@ describe("HoverTooltip", () => {
 
     await act(async () => {
       fireEvent.mouseEnter(screen.getByText("Trigger text"))
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
 
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
@@ -58,7 +58,7 @@ describe("HoverTooltip", () => {
     // Show tooltip
     await act(async () => {
       fireEvent.mouseEnter(screen.getByText("Trigger text"))
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
@@ -97,7 +97,7 @@ describe("HoverTooltip", () => {
     // Show tooltip
     await act(async () => {
       fireEvent.mouseEnter(screen.getByText("Trigger text"))
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
@@ -137,7 +137,7 @@ describe("HoverTooltip", () => {
 
     await act(async () => {
       fireEvent.click(screen.getByText("Trigger text"))
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
 
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
@@ -155,14 +155,14 @@ describe("HoverTooltip", () => {
     // Click to show
     await act(async () => {
       fireEvent.click(trigger)
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
     // Click again to hide
     await act(async () => {
       fireEvent.click(trigger)
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
   })
@@ -176,7 +176,7 @@ describe("HoverTooltip", () => {
 
     await act(async () => {
       fireEvent.click(screen.getByText("Trigger text"))
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
 
     expect(screen.getByTestId("custom-tooltip")).toBeInTheDocument()
@@ -193,7 +193,7 @@ describe("HoverTooltip", () => {
 
     await act(async () => {
       fireEvent.keyDown(trigger, { key: "Enter" })
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
 
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
@@ -211,14 +211,14 @@ describe("HoverTooltip", () => {
     // Open with click
     await act(async () => {
       fireEvent.click(trigger)
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
     // Close with Escape
     await act(async () => {
       fireEvent.keyDown(trigger, { key: "Escape" })
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
   })
@@ -245,7 +245,7 @@ describe("HoverTooltip", () => {
 
     await act(async () => {
       fireEvent.mouseEnter(screen.getByText("Trigger text"))
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
 
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
@@ -262,7 +262,7 @@ describe("HoverTooltip", () => {
 
     await act(async () => {
       fireEvent.click(screen.getByText("Trigger text"))
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
 
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
@@ -282,7 +282,7 @@ describe("HoverTooltip", () => {
     // Open via hover
     await act(async () => {
       fireEvent.mouseEnter(trigger)
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
 
@@ -293,14 +293,12 @@ describe("HoverTooltip", () => {
       fireEvent.mouseLeave(trigger)
       vi.advanceTimersByTime(50)
       fireEvent.mouseEnter(tooltip)
-      vi.advanceTimersByTime(0)
     })
 
     await act(async () => {
       fireEvent.mouseLeave(tooltip)
       vi.advanceTimersByTime(50)
       fireEvent.mouseEnter(trigger)
-      vi.advanceTimersByTime(0)
     })
 
     // Should still only be called once
@@ -319,7 +317,7 @@ describe("HoverTooltip", () => {
 
     await act(async () => {
       fireEvent.keyDown(trigger, { key: "Enter" })
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
 
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
@@ -338,7 +336,7 @@ describe("HoverTooltip", () => {
 
     await act(async () => {
       fireEvent.keyDown(trigger, { key: " " })
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
 
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
@@ -358,7 +356,7 @@ describe("HoverTooltip", () => {
     // Open with Enter
     await act(async () => {
       fireEvent.keyDown(trigger, { key: "Enter" })
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
     expect(onOpen).toHaveBeenCalledTimes(1)
@@ -366,14 +364,14 @@ describe("HoverTooltip", () => {
     // Close with Escape
     await act(async () => {
       fireEvent.keyDown(trigger, { key: "Escape" })
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.queryByTestId("hover-tooltip")).not.toBeInTheDocument()
 
     // Open again with Enter - onOpen should be called again
     await act(async () => {
       fireEvent.keyDown(trigger, { key: "Enter" })
-      vi.advanceTimersByTime(0)
+      await vi.runAllTimersAsync()
     })
     expect(screen.getByTestId("hover-tooltip")).toBeInTheDocument()
     expect(onOpen).toHaveBeenCalledTimes(2)

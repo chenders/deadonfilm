@@ -38,6 +38,7 @@ export function escapeRegex(str: string): string {
  * Created at module load time for better performance during batch processing.
  */
 const ACRONYM_PATTERNS = MEDICAL_ACRONYMS.map((acronym) => ({
+  // eslint-disable-next-line security/detect-non-literal-regexp -- Using escapeRegex for safe regex construction
   pattern: new RegExp(`\\b${escapeRegex(acronym.toLowerCase())}\\b`, "gi"),
   replacement: acronym,
 }))

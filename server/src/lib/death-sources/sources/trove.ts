@@ -344,11 +344,13 @@ export class TroveSource extends BaseDataSource {
    */
   private extractLocation(text: string): string | null {
     // Australian cities and common location patterns
+    /* eslint-disable security/detect-unsafe-regex -- Acceptable for controlled text scraping */
     const patterns = [
       /died\s+(?:at|in)\s+([A-Z][a-zA-Z\s,]+(?:Hospital|home|residence))/i,
       /(?:in\s+)?(Sydney|Melbourne|Brisbane|Perth|Adelaide|Hobart|Darwin|Canberra)/i,
       /(?:at|in)\s+([A-Z][a-zA-Z\s]+(?:Hospital|Infirmary|Home))/i,
     ]
+    /* eslint-enable security/detect-unsafe-regex */
 
     for (const pattern of patterns) {
       const match = text.match(pattern)

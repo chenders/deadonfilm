@@ -1,3 +1,4 @@
+/* eslint-disable security/detect-non-literal-fs-filename -- All filesystem paths are constructed from controlled config values */
 /**
  * Text-based logger for death enrichment with Apache-style rotation and gzip compression.
  *

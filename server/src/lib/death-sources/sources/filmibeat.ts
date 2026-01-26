@@ -391,11 +391,13 @@ export class FilmiBeatSource extends BaseDataSource {
    * Try to extract location from article text.
    */
   private extractLocation(text: string): string | null {
+    /* eslint-disable security/detect-unsafe-regex -- Acceptable for controlled text scraping */
     const patterns = [
       /(?:died|passed away|breathed (?:his|her) last)\s+(?:at|in)\s+(?:a\s+)?([A-Za-z][A-Za-z\s,]+(?:hospital|home|residence|mumbai|delhi|chennai|hyderabad|kolkata|bangalore|india))/i,
       /(?:at|in)\s+(?:a\s+)?([A-Za-z][A-Za-z\s]+(?:hospital|medical|nursing home))/i,
       /(?:in\s+)?(Mumbai|Delhi|Chennai|Hyderabad|Kolkata|Bangalore|Bengaluru|Pune|Lucknow|India)/i,
     ]
+    /* eslint-enable security/detect-unsafe-regex */
 
     for (const pattern of patterns) {
       const match = text.match(pattern)

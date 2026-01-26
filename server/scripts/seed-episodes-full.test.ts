@@ -1,4 +1,3 @@
-/* eslint-disable security/detect-non-literal-fs-filename -- Test file uses controlled temp directories */
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { InvalidArgumentError } from "commander"
 import fs from "fs"
