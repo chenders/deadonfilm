@@ -159,24 +159,36 @@ async function queueMovieJobs(
   }
 
   let queued = 0
+  let failed = 0
   for (const movie of movies) {
-    await queueManager.addJob(
-      JobType.FETCH_TRAKT_RATINGS,
-      {
-        entityType: "movie",
-        entityId: movie.tmdb_id,
-        imdbId: movie.imdb_id,
-      },
-      {
-        priority,
-        createdBy: "backfill-trakt-ratings",
-      }
-    )
-    queued++
+    try {
+      await queueManager.addJob(
+        JobType.FETCH_TRAKT_RATINGS,
+        {
+          entityType: "movie",
+          entityId: movie.tmdb_id,
+          imdbId: movie.imdb_id,
+        },
+        {
+          priority,
+          createdBy: "backfill-trakt-ratings",
+        }
+      )
+      queued++
 
-    if (queued % 100 === 0) {
-      console.log(`  Queued ${queued}/${movies.length} movies...`)
+      if (queued % 100 === 0) {
+        console.log(`  Queued ${queued}/${movies.length} movies...`)
+      }
+    } catch (error) {
+      failed++
+      console.error(
+        `  Failed to queue movie ${movie.tmdb_id} (${movie.imdb_id}): ${(error as Error).message}`
+      )
     }
+  }
+
+  if (failed > 0) {
+    console.log(`  ⚠️  Failed to queue ${failed} movies`)
   }
 
   return queued
@@ -235,24 +247,36 @@ async function queueShowJobs(
   }
 
   let queued = 0
+  let failed = 0
   for (const show of shows) {
-    await queueManager.addJob(
-      JobType.FETCH_TRAKT_RATINGS,
-      {
-        entityType: "show",
-        entityId: show.tmdb_id,
-        imdbId: show.imdb_id,
-      },
-      {
-        priority,
-        createdBy: "backfill-trakt-ratings",
-      }
-    )
-    queued++
+    try {
+      await queueManager.addJob(
+        JobType.FETCH_TRAKT_RATINGS,
+        {
+          entityType: "show",
+          entityId: show.tmdb_id,
+          imdbId: show.imdb_id,
+        },
+        {
+          priority,
+          createdBy: "backfill-trakt-ratings",
+        }
+      )
+      queued++
 
-    if (queued % 100 === 0) {
-      console.log(`  Queued ${queued}/${shows.length} shows...`)
+      if (queued % 100 === 0) {
+        console.log(`  Queued ${queued}/${shows.length} shows...`)
+      }
+    } catch (error) {
+      failed++
+      console.error(
+        `  Failed to queue show ${show.tmdb_id} (${show.imdb_id}): ${(error as Error).message}`
+      )
     }
+  }
+
+  if (failed > 0) {
+    console.log(`  ⚠️  Failed to queue ${failed} shows`)
   }
 
   return queued
