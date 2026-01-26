@@ -9,10 +9,13 @@
  * 4. TheTVDB scores + TMDB popularity + actor details
  *
  * Features:
- * - Runs prerequisite scripts serially (dependencies must complete first)
- * - Handles errors gracefully with continue-on-error option
- * - Provides detailed progress tracking and summary reporting
- * - Respects all rate limits with safe buffer
+ * - ✅ API key verification with helpful error messages
+ * - ✅ Execution plan preview before running
+ * - ✅ Confirmation prompt before database modifications
+ * - ✅ Progress indicators for each script
+ * - ✅ Circuit breaker support for API outages
+ * - ✅ Comprehensive summary reporting
+ * - ✅ Graceful error handling
  *
  * Usage:
  *   npm run backfill:ratings -- [options]
@@ -20,7 +23,7 @@
  * Options:
  *   --limit <n>              Override limit for all scripts
  *   --skip-phase <name>      Skip specific phase (prerequisites|omdb|trakt|thetvdb-tmdb)
- *   --dry-run                Preview without executing
+ *   --dry-run                Preview without executing (no confirmation needed)
  *   --verbose                Show detailed script output
  *   --continue-on-error      Don't stop if a script fails
  *
@@ -28,6 +31,9 @@
  *   npm run backfill:ratings -- --limit 100 --dry-run
  *   npm run backfill:ratings -- --skip-phase omdb
  *   npm run backfill:ratings -- --verbose --continue-on-error
+ *
+ * Check coverage after running:
+ *   npm run report:rating-coverage
  */
 
 import "dotenv/config"
@@ -105,8 +111,6 @@ async function runScript(
   const scriptPath = path.resolve(__dirname, scriptName)
 
   return new Promise((resolve) => {
-    console.log(`  Running: ${scriptName} ${args.join(" ")}`)
-
     const child = spawn("tsx", [scriptPath, ...args], {
       stdio: verbose ? "inherit" : "pipe",
       env: process.env,
@@ -170,7 +174,11 @@ async function runPhase(
   const startTime = Date.now()
   const results: ScriptResult[] = []
 
-  for (const script of scripts) {
+  for (let i = 0; i < scripts.length; i++) {
+    const script = scripts[i]
+    const progress = `[${i + 1}/${scripts.length}]`
+    console.log(`\n${progress} Starting: ${script.name}`)
+
     const result = await runScript(script.name, script.args, options.verbose || false)
     results.push(result)
 
@@ -200,6 +208,113 @@ async function runPhase(
   }
 }
 
+/**
+ * Verify required API keys and configuration
+ */
+function verifyConfiguration(skipPhase?: string): { valid: boolean; warnings: string[] } {
+  const warnings: string[] = []
+
+  // Check database
+  if (!process.env.DATABASE_URL) {
+    warnings.push("❌ DATABASE_URL is not set (required for all phases)")
+    return { valid: false, warnings }
+  }
+
+  // Check TMDB (required for prerequisites)
+  if (skipPhase !== "prerequisites" && !process.env.TMDB_API_TOKEN) {
+    warnings.push("⚠️  TMDB_API_TOKEN is not set (needed for prerequisites phase)")
+  }
+
+  // Check OMDb
+  if (skipPhase !== "omdb") {
+    if (!process.env.OMDB_API_KEY) {
+      warnings.push("⚠️  OMDB_API_KEY is not set (needed for OMDb phase)")
+      warnings.push("   Get yours at: https://www.omdbapi.com/apikey.aspx ($1/month)")
+    }
+  }
+
+  // Check Trakt
+  if (skipPhase !== "trakt") {
+    if (!process.env.TRAKT_CLIENT_ID) {
+      warnings.push("⚠️  TRAKT_CLIENT_ID is not set (needed for Trakt phase)")
+      warnings.push("   Get yours at: https://trakt.tv/oauth/applications (free)")
+    }
+  }
+
+  // Check TheTVDB
+  if (skipPhase !== "thetvdb-tmdb") {
+    if (!process.env.THETVDB_API_KEY) {
+      warnings.push("⚠️  THETVDB_API_KEY is not set (needed for TheTVDB phase)")
+      warnings.push("   Get yours at: https://thetvdb.com/api-information (free)")
+    }
+  }
+
+  return { valid: true, warnings }
+}
+
+/**
+ * Print execution plan
+ */
+function printExecutionPlan(options: OrchestrationOptions) {
+  console.log("\n📋 Execution Plan:")
+  console.log("=".repeat(60))
+
+  const phases: Array<{ name: string; scripts: string[] }> = []
+
+  if (options.skipPhase !== "prerequisites") {
+    phases.push({
+      name: "Phase 1: Prerequisites",
+      scripts: [
+        "backfill-movie-imdb-ids.ts (limit: " + (options.limit || 500) + ")",
+        "backfill-external-ids.ts (limit: " + (options.limit || 200) + ")",
+      ],
+    })
+  }
+
+  if (options.skipPhase !== "omdb") {
+    phases.push({
+      name: "Phase 2: OMDb Ratings",
+      scripts: [
+        "backfill-omdb-ratings.ts --movies-only (limit: " + (options.limit || 200) + ")",
+        "backfill-omdb-ratings.ts --shows-only (limit: " + (options.limit || 100) + ")",
+      ],
+    })
+  }
+
+  if (options.skipPhase !== "trakt") {
+    phases.push({
+      name: "Phase 3: Trakt Stats",
+      scripts: [
+        "backfill-trakt-ratings.ts --movies-only (limit: " + (options.limit || 200) + ")",
+        "backfill-trakt-ratings.ts --shows-only (limit: " + (options.limit || 100) + ")",
+      ],
+    })
+  }
+
+  if (options.skipPhase !== "thetvdb-tmdb") {
+    phases.push({
+      name: "Phase 4: TheTVDB & TMDB",
+      scripts: [
+        "backfill-thetvdb-scores.ts (limit: " + (options.limit || 200) + ")",
+        "backfill-movie-popularity.ts (limit: " + (options.limit || 500) + ")",
+        "backfill-actor-details.ts (limit: " + (options.limit || 200) + ")",
+      ],
+    })
+  }
+
+  for (const phase of phases) {
+    console.log(`\n${phase.name}`)
+    for (const script of phase.scripts) {
+      console.log(`  • ${script}`)
+    }
+  }
+
+  const totalScripts = phases.reduce((sum, p) => sum + p.scripts.length, 0)
+  console.log(`\nTotal scripts to run: ${totalScripts}`)
+  console.log(`Estimated time: ${Math.ceil(totalScripts * 0.5)}-${totalScripts} minutes`)
+  console.log("=".repeat(60))
+}
+
 async function runOrchestration(options: OrchestrationOptions) {
   console.log("🎬 Rating Backfill Orchestration")
   console.log("=".repeat(60))
@@ -208,6 +323,43 @@ async function runOrchestration(options: OrchestrationOptions) {
   console.log(`Skip phase: ${options.skipPhase || "none"}`)
   console.log(`Continue on error: ${options.continueOnError ? "YES" : "NO"}`)
   console.log(`Verbose: ${options.verbose ? "YES" : "NO"}`)
+
+  // Verify configuration
+  console.log("\n🔍 Checking Configuration...")
+  console.log("=".repeat(60))
+  const { valid, warnings } = verifyConfiguration(options.skipPhase)
+
+  if (!valid) {
+    console.error("\n❌ Configuration check failed:")
+    warnings.forEach((w) => console.error(w))
+    console.error("\nPlease set the required environment variables and try again.")
+    process.exit(1)
+  }
+
+  if (warnings.length > 0) {
+    console.warn("\n⚠️  Configuration warnings:")
+    warnings.forEach((w) => console.warn(w))
+    console.warn("\nSome phases may fail without the required API keys.")
+    console.warn("You can skip phases with --skip-phase <name>")
+  } else {
+    console.log("✅ All required API keys found")
+  }
+
+  // Print execution plan
+  printExecutionPlan(options)
+
+  // Confirmation prompt (skip in dry-run mode)
+  if (!options.dryRun) {
+    console.log("\n⚠️  This will modify the database.")
+    console.log("Press Ctrl+C to cancel, or press Enter to continue...")
+
+    // Wait for user input
+    await new Promise<void>((resolve) => {
+      process.stdin.once("data", () => {
+        resolve()
+      })
+    })
+  }
 
   const baseArgs: string[] = []
   if (options.limit) baseArgs.push("--limit", options.limit.toString())
@@ -360,6 +512,13 @@ function printSummary(phases: PhaseResult[], startTime: number) {
     console.log(`Failed: ${failedScripts}`)
   }
   console.log("=".repeat(60))
+
+  if (successfulScripts > 0) {
+    console.log("\n💡 Next steps:")
+    console.log("  • Check coverage: npm run report:rating-coverage")
+    console.log("  • Run again with higher --limit to backfill more data")
+    console.log("  • Review any failed scripts and check API key configuration")
+  }
 }
 
 const isMainModule = import.meta.url === `file://${process.argv[1]}`
