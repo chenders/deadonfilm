@@ -30,14 +30,12 @@ import { queueManager } from "../src/lib/jobs/queue-manager.js"
 import { JobType, JobPriority } from "../src/lib/jobs/types.js"
 
 export function parsePositiveInt(value: string): number {
-  if (!/^\d+$/.test(value)) {
+  const n = parseInt(value, 10)
+  // Check if the value is a valid integer (no decimals) and positive
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0 || value !== String(n)) {
     throw new InvalidArgumentError("Must be a positive integer")
   }
-  const parsed = parseInt(value, 10)
-  if (parsed <= 0) {
-    throw new InvalidArgumentError("Must be a positive integer")
-  }
-  return parsed
+  return n
 }
 
 export function parseNonNegativeFloat(value: string): number {
