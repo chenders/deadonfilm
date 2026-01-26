@@ -128,17 +128,39 @@ npm test && cd server && npm test
 
 **NEVER commit directly to `main`** - always use feature branches (see Critical Rule #4).
 
-Commit format:
+#### Commit Format
+
+**ALWAYS use heredoc for multiline commit messages** to prevent bash escaping issues:
 
 ```bash
-git commit -m "Short summary
+git commit -m "$(cat <<'EOF'
+Short summary
 
 Longer description here.
 
 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
 ```
+
+**Why heredoc**: Prevents issues with quotes, newlines, and special characters. Always use quoted delimiter (`<<'EOF'`) to prevent variable expansion.
+
+#### GitHub CLI Operations
+
+Critical rules for PR comments, screenshots, and Copilot reviews:
+
+1. **ALWAYS use heredoc for multiline commit/PR messages** - prevents bash escaping issues
+2. **ALWAYS verify screenshots before committing** - prevents login screen/wrong page uploads
+3. **ALWAYS use explicit viewport sizes in Playwright** - ensures consistency across CI/local
+4. **ALWAYS use GitHub raw URLs with commit SHA** - prevents broken image links in PRs
+5. **ALWAYS use `gh api` for PR inline comments** - native CLI lacks inline comment support
+6. **ALWAYS quote heredoc delimiter** (`<<'EOF'` not `<<EOF`) - prevents variable expansion
+7. **ALWAYS resolve threads only after implementing fixes** - never resolve declined suggestions
+8. **ALWAYS request Copilot re-review after fixes** - use `gh pr edit --add-reviewer Copilot`
+
+See `.claude/rules/github-cli.md` for complete examples and workflows.
 
 ## Code Quality
 
