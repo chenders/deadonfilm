@@ -61,7 +61,6 @@ import newrelic from "newrelic"
  *   npm run enrich:death-details -- --top-billed-year 2020 --top-movies 50
  */
 
-import "dotenv/config"
 import * as readline from "readline"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool, getDeceasedActorsFromTopMovies } from "../src/lib/db.js"
