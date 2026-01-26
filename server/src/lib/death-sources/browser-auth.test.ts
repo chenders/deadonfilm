@@ -17,14 +17,18 @@ import type { Page, BrowserContext } from "playwright-core"
 
 describe("browser-auth/config", () => {
   beforeEach(() => {
-    // Clear environment variables
+    // Clear environment variables (including alternate names)
     delete process.env.BROWSER_AUTH_ENABLED
     delete process.env.BROWSER_AUTH_SESSION_PATH
     delete process.env.BROWSER_AUTH_SESSION_TTL_HOURS
     delete process.env.NYTIMES_EMAIL
     delete process.env.NYTIMES_PASSWORD
+    delete process.env.NYTIMES_AUTH_EMAIL
+    delete process.env.NYTIMES_AUTH_PASSWORD
     delete process.env.WAPO_EMAIL
     delete process.env.WAPO_PASSWORD
+    delete process.env.WASHPOST_AUTH_EMAIL
+    delete process.env.WASHPOST_AUTH_PASSWORD
     delete process.env.CAPTCHA_SOLVER_PROVIDER
     delete process.env.TWOCAPTCHA_API_KEY
     delete process.env.CAPSOLVER_API_KEY
@@ -351,11 +355,15 @@ describe("browser-auth/captcha/solver", () => {
 describe("browser-auth/login-handlers", () => {
   beforeEach(() => {
     vi.resetModules()
-    // Clear credentials
+    // Clear credentials (including alternate names)
     delete process.env.NYTIMES_EMAIL
     delete process.env.NYTIMES_PASSWORD
+    delete process.env.NYTIMES_AUTH_EMAIL
+    delete process.env.NYTIMES_AUTH_PASSWORD
     delete process.env.WAPO_EMAIL
     delete process.env.WAPO_PASSWORD
+    delete process.env.WASHPOST_AUTH_EMAIL
+    delete process.env.WASHPOST_AUTH_PASSWORD
     process.env.BROWSER_AUTH_ENABLED = "true"
   })
 
