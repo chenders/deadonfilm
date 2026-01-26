@@ -58,9 +58,7 @@ function parsePriority(value: string): JobPriority {
 
   const normalized = value.toLowerCase()
   if (!(normalized in priorityMap)) {
-    throw new InvalidArgumentError(
-      "Must be one of: low, normal, high, critical"
-    )
+    throw new InvalidArgumentError("Must be one of: low, normal, high, critical")
   }
 
   return priorityMap[normalized]
@@ -96,11 +94,7 @@ const program = new Command()
   .option("--movies-only", "Only backfill movies")
   .option("--shows-only", "Only backfill shows")
   .option("-n, --dry-run", "Preview without queueing jobs")
-  .option(
-    "--min-popularity <n>",
-    "Skip items below popularity threshold",
-    parseNonNegativeFloat
-  )
+  .option("--min-popularity <n>", "Skip items below popularity threshold", parseNonNegativeFloat)
   .option(
     "--priority <level>",
     "Job priority: low, normal, high, critical (default: low)",
@@ -269,7 +263,7 @@ async function run(options: BackfillOptions) {
 
   try {
     console.log("🎬 OMDb Ratings Backfill - Job Queue Version")
-    console.log("=" .repeat(50))
+    console.log("=".repeat(50))
     console.log(`Dry run: ${options.dryRun ? "YES" : "NO"}`)
     console.log(`Limit: ${options.limit || "unlimited"}`)
     console.log(`Min popularity: ${options.minPopularity || "none"}`)
