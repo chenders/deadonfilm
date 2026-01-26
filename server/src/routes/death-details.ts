@@ -140,22 +140,22 @@ function buildSourcesResponse(
     const reputationScore = (description: string): number => {
       const desc = description.toLowerCase()
 
-      // Tier 1: Major entertainment trades (highest reputation for film/TV)
-      if (
-        desc.includes("variety") ||
-        desc.includes("hollywood reporter") ||
-        desc.includes("deadline")
-      ) {
-        return 100
-      }
-
-      // Tier 2: Major news outlets
+      // Tier 1: Major news outlets (highest reputation)
       if (
         desc.includes("bbc") ||
         desc.includes("new york times") ||
         desc.includes("washington post") ||
         desc.includes("reuters") ||
         desc.includes("ap news")
+      ) {
+        return 100
+      }
+
+      // Tier 2: Major entertainment trades
+      if (
+        desc.includes("variety") ||
+        desc.includes("hollywood reporter") ||
+        desc.includes("deadline")
       ) {
         return 90
       }
