@@ -547,9 +547,10 @@ export class DeathEnrichmentOrchestrator {
           if (sourceUrls.length > 0) {
             try {
               resolvedSources = await resolveRedirectUrls(sourceUrls)
-              // Use the first resolved source name if available
-              if (resolvedSources.length > 0 && !resolvedSources[0].error) {
-                sourceName = resolvedSources[0].sourceName
+              // Use the first successful resolved source name
+              const firstSuccess = resolvedSources.find((r) => !r.error)
+              if (firstSuccess) {
+                sourceName = firstSuccess.sourceName
                 this.statusBar.log(`    Resolved ${resolvedSources.length} URLs (${sourceName})`)
               }
 
@@ -627,11 +628,10 @@ export class DeathEnrichmentOrchestrator {
                 if (additionalUrls.length > 0) {
                   try {
                     additionalResolvedSources = await resolveRedirectUrls(additionalUrls)
-                    if (
-                      additionalResolvedSources.length > 0 &&
-                      !additionalResolvedSources[0].error
-                    ) {
-                      additionalSourceName = `${additionalResolvedSources[0].sourceName} (additional)`
+                    // Use the first successful resolved source name
+                    const firstSuccess = additionalResolvedSources.find((r) => !r.error)
+                    if (firstSuccess) {
+                      additionalSourceName = `${firstSuccess.sourceName} (additional)`
                     }
 
                     // Write resolved sources back to rawData so they persist

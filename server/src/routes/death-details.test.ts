@@ -554,15 +554,15 @@ describe("getActorDeathDetails", () => {
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
-    // Should only return Variety (highest reputation tier 1) from the 3 sources
+    // Should only return BBC News (highest reputation tier 1) from the 3 sources
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         sources: expect.objectContaining({
           careerStatus: [
             {
-              url: "https://variety.com/actor-career",
+              url: "https://bbc.com/actor-career",
               archive_url: null,
-              description: "Variety",
+              description: "BBC News",
             },
           ],
         }),
