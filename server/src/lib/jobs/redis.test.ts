@@ -31,7 +31,11 @@ describe("Redis jobs client", () => {
   })
 
   afterEach(() => {
-    process.env.REDIS_JOBS_URL = originalEnv
+    if (originalEnv === undefined) {
+      delete process.env.REDIS_JOBS_URL
+    } else {
+      process.env.REDIS_JOBS_URL = originalEnv
+    }
   })
 
   describe("getRedisJobsClient", () => {
@@ -148,16 +152,21 @@ describe("Redis jobs client", () => {
       expect(quitSpy).toHaveBeenCalled()
     })
 
-    it("handles errors during close", async () => {
+    it("handles errors during close gracefully", async () => {
       process.env.REDIS_JOBS_URL = "redis://localhost:6380"
 
       const { getRedisJobsClient, closeRedisJobsClient } = await import("./redis.js")
       const client = getRedisJobsClient()
 
       const error = new Error("Connection error")
-      vi.spyOn(client, "quit").mockRejectedValue(error)
+      const quitSpy = vi.spyOn(client, "quit").mockRejectedValue(error)
+      const disconnectSpy = vi.spyOn(client, "disconnect")
 
-      await expect(closeRedisJobsClient()).rejects.toThrow("Connection error")
+      // Should not throw - fallback to disconnect()
+      await closeRedisJobsClient()
+
+      expect(quitSpy).toHaveBeenCalled()
+      expect(disconnectSpy).toHaveBeenCalled()
     })
 
     it("does nothing if client not initialized", async () => {

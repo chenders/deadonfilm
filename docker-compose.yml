@@ -251,7 +251,7 @@ services:
     container_name: deadonfilm-redis-jobs
     restart: unless-stopped
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"  # Bind to localhost only for security
     volumes:
       - redis-jobs-data:/data
       - ./server/config/redis-jobs.conf:/usr/local/etc/redis/redis.conf:ro
