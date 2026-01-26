@@ -41,8 +41,8 @@ exports.up = (pgm) => {
     },
     priority: {
       type: "integer",
-      default: 0,
-      comment: "Job priority (higher = processed first)",
+      default: 5,
+      comment: "Job priority (higher = processed first, 5 = NORMAL)",
     },
 
     // Timing
@@ -113,8 +113,7 @@ exports.up = (pgm) => {
       "status IN ('pending', 'active', 'completed', 'failed', 'delayed', 'cancelled')",
   })
 
-  // Create indexes for job_runs
-  pgm.createIndex("job_runs", "job_id", { name: "idx_job_runs_job_id" })
+  // Create indexes for job_runs (job_id index is redundant - unique constraint already creates one)
   pgm.createIndex("job_runs", ["job_type", "status"], {
     name: "idx_job_runs_type_status",
   })
@@ -181,6 +180,7 @@ exports.up = (pgm) => {
     // Triage
     reviewed: {
       type: "boolean",
+      notNull: true,
       default: false,
       comment: "Has this failure been reviewed by admin?",
     },
