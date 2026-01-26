@@ -73,7 +73,7 @@ describe("PerplexitySource", () => {
     })
 
     it("is not available without API key", () => {
-      vi.unstubAllEnvs()
+      vi.stubEnv("PERPLEXITY_API_KEY", undefined)
       const sourceWithoutKey = new PerplexitySource()
       expect(sourceWithoutKey.isAvailable()).toBe(false)
     })
@@ -92,7 +92,7 @@ describe("PerplexitySource", () => {
     }
 
     it("returns error when API key is missing", async () => {
-      vi.unstubAllEnvs()
+      vi.stubEnv("PERPLEXITY_API_KEY", undefined)
       const sourceWithoutKey = new PerplexitySource()
       const result = await sourceWithoutKey.lookup(testActor)
 
