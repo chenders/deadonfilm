@@ -245,9 +245,7 @@ async function runComprehensiveTest(count: number) {
     const testRun = await createTestRun(pool, actors, ["gemini_pro", "perplexity"], [...STRATEGIES])
     runId = testRun.id
     console.log(`\nCreated test run ID: ${runId}`)
-    console.log(
-      `Track progress at: http://localhost:5173/admin/ab-tests/comprehensive/${runId}\n`
-    )
+    console.log(`Track progress at: http://localhost:5173/admin/ab-tests/comprehensive/${runId}\n`)
 
     // At this point runId is guaranteed non-null
     const currentRunId: number = runId

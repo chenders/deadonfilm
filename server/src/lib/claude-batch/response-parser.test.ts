@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
   stripMarkdownCodeFences,
-  repairJson,
   parseClaudeResponse,
   safeParseClaudeResponse,
 } from "./response-parser.js"
@@ -48,77 +47,6 @@ describe("stripMarkdownCodeFences", () => {
     expect(stripMarkdownCodeFences(wrapped)).toBe(
       '{\n  "cause": "cancer",\n  "details": "lung cancer"\n}'
     )
-  })
-})
-
-describe("repairJson", () => {
-  it("returns valid JSON unchanged", () => {
-    const json = '{"cause": "cancer", "tmdb_id": 12345}'
-    expect(repairJson(json)).toBe(json)
-  })
-
-  it("fixes number+garbage values like 97aborr", () => {
-    const broken = '{"tmdb_id": 97aborr, "name": "test"}'
-    const repaired = repairJson(broken)
-    expect(repaired).toBe('{"tmdb_id": null, "name": "test"}')
-    expect(() => JSON.parse(repaired)).not.toThrow()
-  })
-
-  it("fixes various number+letter combinations", () => {
-    expect(repairJson('{"id": 123abc}')).toBe('{"id": null}')
-    expect(repairJson('{"id": 1x}')).toBe('{"id": null}')
-    expect(repairJson('{"id": 99error}')).toBe('{"id": null}')
-  })
-
-  it("fixes NaN values", () => {
-    const broken = '{"value": NaN}'
-    expect(repairJson(broken)).toBe('{"value": null}')
-  })
-
-  it("fixes undefined values", () => {
-    const broken = '{"value": undefined}'
-    expect(repairJson(broken)).toBe('{"value": null}')
-  })
-
-  it("fixes Infinity values", () => {
-    const broken = '{"value": Infinity}'
-    expect(repairJson(broken)).toBe('{"value": null}')
-  })
-
-  it("removes trailing commas before }", () => {
-    const broken = '{"cause": "cancer",}'
-    const repaired = repairJson(broken)
-    expect(repaired).toBe('{"cause": "cancer"}')
-    expect(() => JSON.parse(repaired)).not.toThrow()
-  })
-
-  it("removes trailing commas before ]", () => {
-    const broken = '{"items": ["a", "b",]}'
-    const repaired = repairJson(broken)
-    expect(repaired).toBe('{"items": ["a", "b"]}')
-    expect(() => JSON.parse(repaired)).not.toThrow()
-  })
-
-  it("preserves true/false/null literals", () => {
-    const json = '{"active": true, "deleted": false, "value": null}'
-    expect(repairJson(json)).toBe(json)
-  })
-
-  it("handles the real-world Cicely Tyson case", () => {
-    const broken = `{
-  "last_project": {
-    "title": "Cherish the Day",
-    "year": 2020,
-    "tmdb_id": 97aborr,
-    "imdb_id": "tt10883226"
-  }
-}`
-    const repaired = repairJson(broken)
-    expect(() => JSON.parse(repaired)).not.toThrow()
-    const parsed = JSON.parse(repaired)
-    expect(parsed.last_project.tmdb_id).toBe(null)
-    expect(parsed.last_project.year).toBe(2020)
-    expect(parsed.last_project.imdb_id).toBe("tt10883226")
   })
 })
 
