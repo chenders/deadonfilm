@@ -65,6 +65,8 @@ import {
 import { initializeDatabase } from "./lib/startup.js"
 import { adminAuthMiddleware, optionalAdminAuth } from "./middleware/admin-auth.js"
 import { pageVisitTracker } from "./middleware/page-visit-tracker.js"
+import { queueManager } from "./lib/jobs/queue-manager.js"
+import { startPeriodicMetricsCollection } from "./lib/jobs/monitoring.js"
 import { loginHandler, logoutHandler, statusHandler } from "./routes/admin/auth.js"
 import { getDashboardStats } from "./routes/admin/dashboard.js"
 import enrichmentRoutes from "./routes/admin/enrichment.js"
@@ -313,6 +315,17 @@ async function startServer() {
 
     // Initialize Redis (optional - caching disabled if not available)
     const redisAvailable = await initRedis()
+
+    // Initialize job queue manager
+    try {
+      await queueManager.initialize()
+      logger.info("Job queue manager initialized")
+
+      // Start periodic metrics collection (every 30 seconds)
+      startPeriodicMetricsCollection()
+    } catch (error) {
+      logger.error({ error }, "Failed to initialize job queue - continuing without it")
+    }
 
     // Start accepting requests
     app.listen(PORT, () => {
