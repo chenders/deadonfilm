@@ -149,7 +149,7 @@ describe("DateInput", () => {
     )
 
     const input = screen.getByLabelText("Test Date")
-    expect(input).toHaveClass("border-red-500")
+    expect(input).toHaveClass("border-admin-danger")
     expect(input).toHaveAttribute("aria-invalid", "true")
   })
 

@@ -1,4 +1,5 @@
 import { BrowserRouter, MemoryRouter, MemoryRouterProps } from "react-router-dom"
+import { AdminThemeProvider } from "../contexts/AdminThemeContext"
 
 const futureFlags = { v7_startTransition: true, v7_relativeSplatPath: true }
 
@@ -22,6 +23,21 @@ export function TestMemoryRouter({
   return (
     <MemoryRouter future={futureFlags} {...routerProps}>
       {children}
+    </MemoryRouter>
+  )
+}
+
+/**
+ * Test wrapper for admin pages that includes MemoryRouter with future flags
+ * and AdminThemeProvider. Use this for all admin component tests.
+ */
+export function AdminTestWrapper({
+  children,
+  ...routerProps
+}: MemoryRouterProps & { children: React.ReactNode }) {
+  return (
+    <MemoryRouter future={futureFlags} {...routerProps}>
+      <AdminThemeProvider>{children}</AdminThemeProvider>
     </MemoryRouter>
   )
 }

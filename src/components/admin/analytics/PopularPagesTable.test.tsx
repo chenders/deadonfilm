@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { TestMemoryRouter } from "@/test/test-utils"
+import { AdminTestWrapper } from "@/test/test-utils"
 import PopularPagesTable from "./PopularPagesTable"
 import * as analyticsHooks from "../../../hooks/admin/useAnalytics"
 
@@ -18,7 +18,7 @@ describe("PopularPagesTable", () => {
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <TestMemoryRouter>{children}</TestMemoryRouter>
+      <AdminTestWrapper>{children}</AdminTestWrapper>
     </QueryClientProvider>
   )
 
@@ -192,14 +192,15 @@ describe("PopularPagesTable", () => {
 
       const { container } = render(<PopularPagesTable />, { wrapper })
 
-      const blueBars = container.querySelectorAll(".bg-blue-500")
-      const greenBars = container.querySelectorAll(".bg-green-500")
+      // Bars now use inline styles for internal and external, and bg-gray-500 class for direct
+      const internalBars = container.querySelectorAll("[style*='background-color'][style*='width']")
       const grayBars = container.querySelectorAll(".bg-gray-500")
 
-      // Should have internal (blue), external (green), and direct (gray) bars for each row
-      // Plus 3 legend indicators
-      expect(blueBars.length).toBeGreaterThanOrEqual(3) // 3 rows + 1 legend
-      expect(greenBars.length).toBeGreaterThanOrEqual(3) // 3 rows + 1 legend
+      // Should have distribution bars with inline styles for each row (internal + external)
+      // Each row has internal and external bars with inline styles
+      expect(internalBars.length).toBeGreaterThanOrEqual(3) // at least 3 rows
+
+      // Plus legend dots and direct bars
       expect(grayBars.length).toBeGreaterThanOrEqual(3) // 3 rows + 1 legend
     })
 

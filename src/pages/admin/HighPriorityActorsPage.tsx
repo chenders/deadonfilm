@@ -1,7 +1,7 @@
 /**
  * High Priority Actors Page
  *
- * Displays high-priority actors (popularity ≥ 10) without death pages.
+ * Displays high-priority actors (popularity >= 10) without death pages.
  * Allows batch selection and enrichment via clickable interface.
  */
 
@@ -77,13 +77,13 @@ export default function HighPriorityActorsPage() {
 
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-gray-900 text-white">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-admin-surface-base text-admin-text-primary">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 md:py-8 lg:px-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold">High Priority Actors</h1>
-            <p className="mt-2 text-gray-400">
-              Deceased actors with popularity ≥ {MIN_POPULARITY} needing enrichment
+            <h1 className="text-2xl font-bold md:text-3xl">High Priority Actors</h1>
+            <p className="mt-2 text-admin-text-muted">
+              Deceased actors with popularity {">="} {MIN_POPULARITY} needing enrichment
             </p>
           </div>
 
@@ -96,22 +96,26 @@ export default function HighPriorityActorsPage() {
 
           {/* Error State */}
           {error && (
-            <div className="rounded-lg bg-red-900/50 p-4 text-red-200">
+            <div className="rounded-lg bg-red-900/50 p-4 text-red-200 shadow-admin-sm">
               Failed to load high-priority actors. Please try again.
             </div>
           )}
 
           {/* Enrichment Error State */}
           {enrichmentError && (
-            <div className="rounded-lg bg-red-900/50 p-4 text-red-200">{enrichmentError}</div>
+            <div className="rounded-lg bg-red-900/50 p-4 text-red-200 shadow-admin-sm">
+              {enrichmentError}
+            </div>
           )}
 
           {/* Empty State */}
           {!isLoading && !error && actors && actors.length === 0 && (
-            <div className="rounded-lg bg-gray-800 p-8 text-center">
-              <p className="text-gray-400">No high-priority actors found needing enrichment.</p>
-              <p className="mt-2 text-sm text-gray-500">
-                All actors with popularity ≥ {MIN_POPULARITY} have been enriched.
+            <div className="rounded-lg bg-admin-surface-elevated p-8 text-center shadow-admin-sm">
+              <p className="text-admin-text-muted">
+                No high-priority actors found needing enrichment.
+              </p>
+              <p className="mt-2 text-sm text-admin-text-muted">
+                All actors with popularity {">="} {MIN_POPULARITY} have been enriched.
               </p>
             </div>
           )}
@@ -119,9 +123,9 @@ export default function HighPriorityActorsPage() {
           {/* Actors Table */}
           {!isLoading && !error && actors && actors.length > 0 && (
             <>
-              <div className="overflow-hidden rounded-lg bg-gray-800 shadow">
-                <table className="min-w-full divide-y divide-gray-700">
-                  <thead className="bg-gray-750">
+              <div className="overflow-hidden rounded-lg bg-admin-surface-elevated shadow-admin-sm">
+                <table className="min-w-full divide-y divide-admin-border">
+                  <thead className="bg-admin-surface-overlay">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left">
                         <input
@@ -130,41 +134,41 @@ export default function HighPriorityActorsPage() {
                           onChange={handleSelectAll}
                           aria-label="Select all actors"
                           data-testid="select-all-checkbox"
-                          className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                          className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                         />
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300"
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
                       >
                         Name
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300"
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
                       >
                         Death Date
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300"
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
                       >
                         Popularity
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300"
+                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
                       >
                         Last Enriched
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700 bg-gray-800">
+                  <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
                     {actors.map((actor) => (
                       <tr
                         key={actor.id}
-                        className={`hover:bg-gray-750 transition-colors ${
-                          selectedActorIds.has(actor.id) ? "bg-gray-750" : ""
+                        className={`transition-colors hover:bg-admin-interactive-secondary ${
+                          selectedActorIds.has(actor.id) ? "bg-admin-interactive-secondary" : ""
                         }`}
                       >
                         <td className="px-6 py-4">
@@ -174,17 +178,19 @@ export default function HighPriorityActorsPage() {
                             onChange={() => handleSelectActor(actor.id)}
                             aria-label={`Select ${actor.name}`}
                             data-testid="actor-checkbox"
-                            className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                            className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
                           />
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-white">{actor.name}</td>
-                        <td className="px-6 py-4 text-sm text-gray-300">
+                        <td className="px-6 py-4 text-sm font-medium text-admin-text-primary">
+                          {actor.name}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-admin-text-secondary">
                           {formatDate(actor.deathday)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-300">
+                        <td className="px-6 py-4 text-sm text-admin-text-secondary">
                           {actor.popularity?.toFixed(1) ?? "N/A"}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-300">
+                        <td className="px-6 py-4 text-sm text-admin-text-secondary">
                           {formatDate(actor.enriched_at)}
                         </td>
                       </tr>
@@ -194,7 +200,7 @@ export default function HighPriorityActorsPage() {
               </div>
 
               {/* Results Summary */}
-              <div className="mt-4 text-sm text-gray-400">
+              <div className="mt-4 text-sm text-admin-text-muted">
                 Showing {actors.length} high-priority actors
               </div>
             </>
@@ -202,16 +208,16 @@ export default function HighPriorityActorsPage() {
 
           {/* Fixed Action Bar */}
           {selectedActorIds.size > 0 && (
-            <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-700 bg-gray-800 p-4 shadow-lg">
+            <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-admin-border bg-admin-surface-elevated p-4 shadow-lg">
               <div className="mx-auto flex max-w-7xl items-center justify-between">
-                <span className="text-sm font-medium text-white">
+                <span className="text-sm font-medium text-admin-text-primary">
                   {selectedActorIds.size} actor{selectedActorIds.size !== 1 ? "s" : ""} selected
                 </span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedActorIds(new Set())}
                     data-testid="clear-selection-button"
-                    className="rounded bg-gray-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-600"
+                    className="rounded bg-admin-surface-overlay px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary"
                   >
                     Clear Selection
                   </button>
@@ -219,7 +225,7 @@ export default function HighPriorityActorsPage() {
                     onClick={handleEnrichSelected}
                     disabled={startEnrichment.isPending}
                     data-testid="enrich-selected-button"
-                    className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded bg-admin-interactive px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {startEnrichment.isPending ? "Starting..." : "Enrich Selected"}
                   </button>

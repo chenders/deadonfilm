@@ -70,16 +70,16 @@ export default function SitemapManagementPage() {
     label: string
   } => {
     if (!lastSubmitted) {
-      return { color: "text-gray-400", label: "Not submitted" }
+      return { color: "text-admin-text-muted", label: "Not submitted" }
     }
 
     const hoursSince = (Date.now() - new Date(lastSubmitted).getTime()) / (1000 * 60 * 60)
 
     if (hoursSince < 24) {
-      return { color: "text-green-400", label: "✓ Submitted recently" }
+      return { color: "text-admin-success", label: "✓ Submitted recently" }
     } else if (hoursSince < 168) {
       // 7 days
-      return { color: "text-yellow-400", label: "⚠ Submitted this week" }
+      return { color: "text-admin-warning", label: "⚠ Submitted this week" }
     } else {
       return { color: "text-orange-400", label: "⚠ Submitted over a week ago" }
     }
@@ -90,16 +90,18 @@ export default function SitemapManagementPage() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-white">Sitemap Management</h1>
-          <p className="mt-2 text-gray-400">
+          <h1 className="text-2xl font-bold text-admin-text-primary md:text-3xl">
+            Sitemap Management
+          </h1>
+          <p className="mt-2 text-admin-text-muted">
             Monitor and manage sitemap generation and search engine submissions
           </p>
         </div>
 
         {/* Loading State */}
         {isLoading && (
-          <div className="rounded-lg bg-gray-800 p-12 text-center">
-            <div className="text-gray-400">Loading sitemap status...</div>
+          <div className="rounded-lg bg-admin-surface-elevated p-12 text-center shadow-admin-sm">
+            <div className="text-admin-text-muted">Loading sitemap status...</div>
           </div>
         )}
 
@@ -107,36 +109,44 @@ export default function SitemapManagementPage() {
         {status && !isLoading && (
           <div className="space-y-6">
             {/* Sitemap Overview */}
-            <div className="rounded-lg bg-gray-800 p-6">
-              <h3 className="mb-4 text-xl font-semibold text-white">Sitemap Status</h3>
+            <div className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+              <h3 className="mb-4 text-xl font-semibold text-admin-text-primary">Sitemap Status</h3>
               <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
-                  <dt className="text-sm font-medium text-gray-400">Last Generated</dt>
-                  <dd className="mt-1 text-lg text-white">{formatDate(status.lastGenerated)}</dd>
+                  <dt className="text-sm font-medium text-admin-text-muted">Last Generated</dt>
+                  <dd className="mt-1 text-lg text-admin-text-primary">
+                    {formatDate(status.lastGenerated)}
+                  </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-400">Total URLs</dt>
-                  <dd className="mt-1 text-lg font-bold text-white">
+                  <dt className="text-sm font-medium text-admin-text-muted">Total URLs</dt>
+                  <dd className="mt-1 text-lg font-bold text-admin-text-primary">
                     {status.totalUrls.toLocaleString()}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-400">Changed URLs</dt>
-                  <dd className="mt-1 text-lg font-bold text-blue-400">
+                  <dt className="text-sm font-medium text-admin-text-muted">Changed URLs</dt>
+                  <dd className="mt-1 text-lg font-bold text-admin-interactive">
                     {status.changedSinceLastGeneration.toLocaleString()}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-400">Actor URLs</dt>
-                  <dd className="mt-1 text-lg text-white">{status.actorUrls.toLocaleString()}</dd>
+                  <dt className="text-sm font-medium text-admin-text-muted">Actor URLs</dt>
+                  <dd className="mt-1 text-lg text-admin-text-primary">
+                    {status.actorUrls.toLocaleString()}
+                  </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-400">Movie URLs</dt>
-                  <dd className="mt-1 text-lg text-white">{status.movieUrls.toLocaleString()}</dd>
+                  <dt className="text-sm font-medium text-admin-text-muted">Movie URLs</dt>
+                  <dd className="mt-1 text-lg text-admin-text-primary">
+                    {status.movieUrls.toLocaleString()}
+                  </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-400">Show URLs</dt>
-                  <dd className="mt-1 text-lg text-white">{status.showUrls.toLocaleString()}</dd>
+                  <dt className="text-sm font-medium text-admin-text-muted">Show URLs</dt>
+                  <dd className="mt-1 text-lg text-admin-text-primary">
+                    {status.showUrls.toLocaleString()}
+                  </dd>
                 </div>
               </dl>
 
@@ -145,36 +155,38 @@ export default function SitemapManagementPage() {
                 <button
                   onClick={() => regenerateMutation.mutate()}
                   disabled={regenerateMutation.isPending}
-                  className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md bg-admin-interactive px-4 py-2 font-semibold text-admin-text-primary hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {regenerateMutation.isPending ? "Regenerating..." : "Regenerate Sitemap"}
                 </button>
               </div>
 
               {regenerateMutation.isError && (
-                <div className="mt-4 rounded-md border border-red-700 bg-red-900/20 p-3 text-red-400">
+                <div className="border-admin-danger/50 bg-admin-danger/20 mt-4 rounded-md border p-3 text-admin-danger">
                   Error regenerating sitemap. Please try again.
                 </div>
               )}
 
               {regenerateMutation.isSuccess && (
-                <div className="mt-4 rounded-md border border-green-700 bg-green-900/20 p-3 text-green-400">
+                <div className="border-admin-success/50 bg-admin-success/20 mt-4 rounded-md border p-3 text-admin-success">
                   ✓ Sitemap regenerated successfully!
                 </div>
               )}
             </div>
 
             {/* Search Engine Submissions */}
-            <div className="rounded-lg bg-gray-800 p-6">
-              <h3 className="mb-4 text-xl font-semibold text-white">Search Engine Submissions</h3>
+            <div className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+              <h3 className="mb-4 text-xl font-semibold text-admin-text-primary">
+                Search Engine Submissions
+              </h3>
 
               <div className="space-y-4">
                 {/* Google */}
-                <div className="rounded-lg bg-gray-700 p-4">
+                <div className="rounded-lg bg-admin-surface-overlay p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="text-lg font-semibold text-white">Google</h4>
-                      <p className="mt-1 text-sm text-gray-400">
+                      <h4 className="text-lg font-semibold text-admin-text-primary">Google</h4>
+                      <p className="mt-1 text-sm text-admin-text-muted">
                         Last submitted:{" "}
                         {formatDate(status.searchEngineSubmissions.google.lastSubmitted)}
                       </p>
@@ -194,11 +206,11 @@ export default function SitemapManagementPage() {
                 </div>
 
                 {/* Bing */}
-                <div className="rounded-lg bg-gray-700 p-4">
+                <div className="rounded-lg bg-admin-surface-overlay p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="text-lg font-semibold text-white">Bing</h4>
-                      <p className="mt-1 text-sm text-gray-400">
+                      <h4 className="text-lg font-semibold text-admin-text-primary">Bing</h4>
+                      <p className="mt-1 text-sm text-admin-text-muted">
                         Last submitted:{" "}
                         {formatDate(status.searchEngineSubmissions.bing.lastSubmitted)}
                       </p>
@@ -223,23 +235,23 @@ export default function SitemapManagementPage() {
                 <button
                   onClick={() => submitMutation.mutate()}
                   disabled={submitMutation.isPending}
-                  className="rounded-md bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="hover:bg-admin-success/80 rounded-md bg-admin-success px-4 py-2 font-semibold text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {submitMutation.isPending ? "Submitting..." : "Submit to Search Engines"}
                 </button>
-                <p className="mt-2 text-sm text-gray-400">
+                <p className="mt-2 text-sm text-admin-text-muted">
                   Notifies Google and Bing to re-crawl the sitemap
                 </p>
               </div>
 
               {submitMutation.isError && (
-                <div className="mt-4 rounded-md border border-red-700 bg-red-900/20 p-3 text-red-400">
+                <div className="border-admin-danger/50 bg-admin-danger/20 mt-4 rounded-md border p-3 text-admin-danger">
                   Error submitting sitemap. Please try again.
                 </div>
               )}
 
               {submitMutation.isSuccess && (
-                <div className="mt-4 rounded-md border border-green-700 bg-green-900/20 p-3 text-green-400">
+                <div className="border-admin-success/50 bg-admin-success/20 mt-4 rounded-md border p-3 text-admin-success">
                   ✓ Sitemap submitted to search engines successfully!
                 </div>
               )}
@@ -247,14 +259,14 @@ export default function SitemapManagementPage() {
 
             {/* Migration Impact */}
             {status.changedSinceLastGeneration > 0 && (
-              <div className="rounded-lg border border-yellow-700 bg-yellow-900/20 p-4">
-                <h4 className="font-semibold text-yellow-400">Migration Impact</h4>
-                <p className="mt-2 text-sm text-yellow-300">
+              <div className="border-admin-warning/50 bg-admin-warning/20 rounded-lg border p-4">
+                <h4 className="font-semibold text-admin-warning">Migration Impact</h4>
+                <p className="text-admin-warning/90 mt-2 text-sm">
                   {status.changedSinceLastGeneration.toLocaleString()} URLs have changed since the
                   last sitemap generation (likely due to actor URL migration from tmdb_id to
                   actor.id).
                 </p>
-                <p className="mt-2 text-sm text-yellow-300">
+                <p className="text-admin-warning/90 mt-2 text-sm">
                   Consider submitting the sitemap to search engines to help them discover the new
                   URLs faster.
                 </p>
