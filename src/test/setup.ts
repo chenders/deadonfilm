@@ -18,7 +18,7 @@ vi.stubGlobal("cancelAnimationFrame", () => {})
 // Suppress known warnings from third-party libraries
 const originalConsoleError = console.error
 beforeAll(() => {
-  console.error = (...args: any[]) => {
+  console.error = (...args: unknown[]) => {
     const message = args[0]?.toString() || ""
     // Suppress Radix UI Tooltip warnings - these are internal state updates
     // that don't affect test correctness
