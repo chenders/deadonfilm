@@ -220,10 +220,7 @@ describe("Admin Jobs API", () => {
     it("marks job as reviewed", async () => {
       mockPool.query.mockResolvedValue({ rows: [], rowCount: 1 })
 
-      await mockPool.query(
-        "UPDATE job_dead_letter SET reviewed = true WHERE id = $1",
-        [1]
-      )
+      await mockPool.query("UPDATE job_dead_letter SET reviewed = true WHERE id = $1", [1])
 
       expect(mockPool.query).toHaveBeenCalled()
     })
