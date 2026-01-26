@@ -61,6 +61,12 @@ const mockDeathDetails = {
     cause: [{ url: "https://example.com", archiveUrl: null, description: "News article" }],
     circumstances: null,
     rumored: null,
+    additionalContext: null,
+    careerStatus: null,
+    lastProject: null,
+    posthumousReleases: null,
+    locationOfDeath: null,
+    relatedCelebrities: null,
   },
 }
 
