@@ -69,6 +69,17 @@ exports.config = {
     timers: { enabled: true }
   },
 
+  // Database instance reporting - required for "instrumented database" status
+  // Extracts database name, host, and port from connection strings
+  datastore_tracer: {
+    instance_reporting: {
+      enabled: true
+    },
+    database_name_reporting: {
+      enabled: true
+    }
+  },
+
   // Span events for distributed tracing details
   span_events: {
     enabled: true,
