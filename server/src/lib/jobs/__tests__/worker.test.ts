@@ -9,14 +9,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest"
-import RedisMock from "ioredis-mock"
 import type { Job } from "bullmq"
-import { vi } from "vitest"
-
-// Mock ioredis to return ioredis-mock
-vi.mock("ioredis", () => ({
-  default: RedisMock,
-}))
 import { JobWorker } from "../worker.js"
 import { queueManager } from "../queue-manager.js"
 import { registerHandler, clearHandlers } from "../handlers/index.js"
@@ -73,6 +66,20 @@ describe("JobWorker", () => {
     await new Promise((resolve) => setTimeout(resolve, 1000))
   })
 
+  beforeEach(async () => {
+    // Clean up all queues in Redis first
+    for (const queue of queueManager.getAllQueues()) {
+      await queue.obliterate({ force: true })
+    }
+
+    // Wait for any in-flight jobs to complete
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    // Clean up database
+    await pool.query("DELETE FROM job_runs")
+    await pool.query("DELETE FROM job_dead_letter")
+  })
+
   afterAll(async () => {
     // Shutdown worker
     await worker.shutdown()
@@ -83,8 +90,7 @@ describe("JobWorker", () => {
     // Clear handlers
     clearHandlers()
 
-    // Close database connection
-    await pool.end()
+    // Note: Don't end pool - it's a singleton shared with other tests
   })
 
   describe("Worker Initialization", () => {
