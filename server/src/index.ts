@@ -67,6 +67,7 @@ import { adminAuthMiddleware, optionalAdminAuth } from "./middleware/admin-auth.
 import { pageVisitTracker } from "./middleware/page-visit-tracker.js"
 import { queueManager } from "./lib/jobs/queue-manager.js"
 import { startPeriodicMetricsCollection } from "./lib/jobs/monitoring.js"
+import { setupBullBoard, BULL_BOARD_BASE_PATH } from "./lib/jobs/bull-board.js"
 import { loginHandler, logoutHandler, statusHandler } from "./routes/admin/auth.js"
 import { getDashboardStats } from "./routes/admin/dashboard.js"
 import enrichmentRoutes from "./routes/admin/enrichment.js"
@@ -78,6 +79,7 @@ import cronjobsRoutes from "./routes/admin/cronjobs.js"
 import sitemapRoutes from "./routes/admin/sitemap.js"
 import cacheRoutes from "./routes/admin/cache.js"
 import abTestsRoutes from "./routes/admin/ab-tests.js"
+import jobsRoutes from "./routes/admin/jobs.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -295,6 +297,7 @@ app.use("/admin/api/cronjobs", adminRoutesLimiter, adminAuthMiddleware, cronjobs
 app.use("/admin/api/sitemap", adminRoutesLimiter, adminAuthMiddleware, sitemapRoutes)
 app.use("/admin/api/cache", adminRoutesLimiter, adminAuthMiddleware, cacheRoutes)
 app.use("/admin/api/ab-tests", adminRoutesLimiter, adminAuthMiddleware, abTestsRoutes)
+app.use("/admin/api/jobs", adminRoutesLimiter, adminAuthMiddleware, jobsRoutes)
 
 // Public page view tracking endpoint (rate limited, bot-filtered)
 app.post("/api/page-views/track", pageViewTrackingLimiter, trackPageViewHandler)
@@ -323,6 +326,11 @@ async function startServer() {
 
       // Start periodic metrics collection (every 30 seconds)
       startPeriodicMetricsCollection()
+
+      // Mount Bull Board for queue monitoring
+      const bullBoardRouter = setupBullBoard(queueManager.getAllQueues())
+      app.use(BULL_BOARD_BASE_PATH, adminRoutesLimiter, adminAuthMiddleware, bullBoardRouter)
+      logger.info(`Bull Board mounted at ${BULL_BOARD_BASE_PATH}`)
     } catch (error) {
       logger.error({ error }, "Failed to initialize job queue - continuing without it")
     }
