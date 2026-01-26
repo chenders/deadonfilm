@@ -5,6 +5,19 @@ description: "Complete reference for GitHub CLI operations, branch workflow, PR 
 
 Complete reference for GitHub CLI operations, commit/PR formatting, screenshot workflows, and Copilot review handling.
 
+## Table of Contents
+
+- [Branch Workflow](#branch-workflow)
+- [PR Comment Operations](#pr-comment-operations)
+- [Copilot Review Workflow](#copilot-review-workflow)
+- [Commit Message Formatting](#commit-message-formatting)
+- [PR Description Formatting](#pr-description-formatting)
+- [Screenshot Workflow](#screenshot-workflow)
+- [Inline Comment Examples](#inline-comment-examples)
+- [Copilot Review Response Templates](#copilot-review-response-templates)
+- [Troubleshooting](#troubleshooting)
+- [Quick Reference](#quick-reference)
+
 ## Branch Workflow
 
 **CRITICAL: NEVER commit directly to `main`**. Always use feature branches.
