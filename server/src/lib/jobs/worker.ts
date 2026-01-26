@@ -18,6 +18,8 @@ import { getRedisJobsClient } from "./redis.js"
 import { QueueName, queueConfigs, type JobType } from "./types.js"
 import { getHandler } from "./handlers/index.js"
 
+const HEARTBEAT_INTERVAL_MS = 60_000 // 60 seconds
+
 /**
  * Job Worker class
  */
@@ -187,20 +189,7 @@ export class JobWorker {
         "Worker completed job"
       )
 
-      // Record New Relic custom event (already done in handler, but add worker context)
-      newrelic.recordCustomEvent("JobCompleted", {
-        jobId: job.id ?? "unknown",
-        jobType: job.name,
-        queueName,
-        durationMs: duration,
-        attemptNumber: job.attemptsMade,
-        success: true,
-        timestamp: Date.now(),
-      })
-
-      // Record processing time metric
-      newrelic.recordMetric(`Custom/JobQueue/${queueName}/ProcessingTime`, duration)
-      newrelic.recordMetric(`Custom/JobQueue/${queueName}/Completed`, 1)
+      // Metrics already recorded in BaseJobHandler and QueueManager
     })
 
     // Worker failed to process job
@@ -261,14 +250,12 @@ export class JobWorker {
         "Worker detected stalled job"
       )
 
-      // Record New Relic custom event
+      // Metrics already recorded in QueueManager
       newrelic.recordCustomEvent("JobStalled", {
         jobId,
         queueName,
         timestamp: Date.now(),
       })
-
-      newrelic.recordMetric(`Custom/JobQueue/${queueName}/Stalled`, 1)
     })
 
     // Worker error
@@ -310,10 +297,8 @@ export class JobWorker {
       newrelic.recordMetric("Custom/Worker/FailedCount", this.failedCount)
 
       // Calculate success rate
-      const successRate =
-        this.processedCount > 0
-          ? ((this.processedCount - this.failedCount) / this.processedCount) * 100
-          : 100
+      const total = this.processedCount + this.failedCount
+      const successRate = total > 0 ? (this.processedCount / total) * 100 : 100
 
       newrelic.recordMetric("Custom/Worker/SuccessRate", successRate)
 
@@ -325,7 +310,7 @@ export class JobWorker {
         },
         "Worker heartbeat"
       )
-    }, 60000) // Every 60 seconds
+    }, HEARTBEAT_INTERVAL_MS)
   }
 
   /**
@@ -337,10 +322,8 @@ export class JobWorker {
     successRate: number
     workerCount: number
   } {
-    const successRate =
-      this.processedCount > 0
-        ? ((this.processedCount - this.failedCount) / this.processedCount) * 100
-        : 100
+    const total = this.processedCount + this.failedCount
+    const successRate = total > 0 ? (this.processedCount / total) * 100 : 100
 
     return {
       processedCount: this.processedCount,

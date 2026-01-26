@@ -13,6 +13,8 @@ import { logger } from "../logger.js"
 import { QueueName } from "./types.js"
 import { queueManager } from "./queue-manager.js"
 
+const METRICS_COLLECTION_INTERVAL_MS = 30_000 // 30 seconds
+
 /**
  * Job run statistics from database
  */
@@ -148,10 +150,11 @@ export async function getQueueDepthOverTime(hoursBack: number = 24): Promise<Que
       COUNT(*) FILTER (WHERE status = 'pending') as waiting,
       COUNT(*) FILTER (WHERE status = 'active') as active
     FROM job_runs
-    WHERE queued_at > NOW() - INTERVAL '${hoursBack} hours'
+    WHERE queued_at > NOW() - INTERVAL '$1 hours'
     GROUP BY hour, queue_name
     ORDER BY hour DESC
-  `
+  `,
+    [hoursBack]
   )
 
   return result.rows
@@ -260,19 +263,21 @@ export async function recordQueueMetrics(): Promise<void> {
  * Collects metrics every 30 seconds
  */
 export function startPeriodicMetricsCollection(): NodeJS.Timeout {
-  logger.info("Starting periodic queue metrics collection (every 30 seconds)")
+  logger.info(
+    `Starting periodic queue metrics collection (every ${METRICS_COLLECTION_INTERVAL_MS / 1000} seconds)`
+  )
 
   // Record metrics immediately
   recordQueueMetrics().catch((error) => {
     logger.error({ error }, "Failed to record initial queue metrics")
   })
 
-  // Then every 30 seconds
+  // Then periodically
   const interval = setInterval(() => {
     recordQueueMetrics().catch((error) => {
       logger.error({ error }, "Failed to record queue metrics")
     })
-  }, 30000)
+  }, METRICS_COLLECTION_INTERVAL_MS)
 
   return interval
 }

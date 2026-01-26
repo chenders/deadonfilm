@@ -26,6 +26,10 @@ import {
   type JobPayloadMap,
 } from "./types.js"
 
+const COMPLETED_JOB_RETENTION_SECONDS = 7 * 24 * 60 * 60 // 7 days
+const MAX_COMPLETED_JOBS_TO_KEEP = 10_000
+const DEFAULT_BACKOFF_DELAY_MS = 60_000 // 1 minute
+
 /**
  * Centralized queue manager singleton
  */
@@ -51,14 +55,14 @@ class QueueManager {
         connection: getRedisJobsClient(),
         defaultJobOptions: {
           removeOnComplete: {
-            age: 7 * 24 * 60 * 60, // Keep completed jobs for 7 days
-            count: 10000, // Keep at most 10000 completed jobs
+            age: COMPLETED_JOB_RETENTION_SECONDS,
+            count: MAX_COMPLETED_JOBS_TO_KEEP,
           },
           removeOnFail: false, // Never auto-remove failed jobs
           attempts: 3, // Default retry attempts
           backoff: {
             type: "exponential",
-            delay: 60000, // Start with 1 minute, then 2min, 4min
+            delay: DEFAULT_BACKOFF_DELAY_MS,
           },
         },
       })
@@ -230,7 +234,7 @@ class QueueManager {
       attempts: options.attempts ?? 3,
       backoff: options.backoff ?? {
         type: "exponential",
-        delay: 60000,
+        delay: DEFAULT_BACKOFF_DELAY_MS,
       },
       removeOnComplete: options.removeOnComplete,
       removeOnFail: options.removeOnFail,

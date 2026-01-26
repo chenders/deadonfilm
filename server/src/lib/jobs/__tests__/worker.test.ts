@@ -8,9 +8,10 @@
  * - Statistics tracking
  */
 
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
+import { describe, it, expect, beforeAll, afterAll } from "vitest"
 import RedisMock from "ioredis-mock"
 import type { Job } from "bullmq"
+import { vi } from "vitest"
 
 // Mock ioredis to return ioredis-mock
 vi.mock("ioredis", () => ({
