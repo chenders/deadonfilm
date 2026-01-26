@@ -8,15 +8,11 @@
 import { Router } from "express"
 import type { Request, Response } from "express"
 import { queueManager } from "../../lib/jobs/queue-manager.js"
-import { QueueName } from "../../lib/jobs/types.js"
+import { QueueName, MAX_RECENT_JOBS, MAX_JOBS_TO_CLEAN } from "../../lib/jobs/types.js"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
 
 const router = Router()
-
-// Constants
-const MAX_RECENT_JOBS = 10
-const MAX_JOBS_TO_CLEAN = 1000
 
 /**
  * GET /admin/api/jobs/queues
@@ -51,7 +47,7 @@ router.get("/queues", async (_req: Request, res: Response) => {
     res.json({ queues: queueStats })
   } catch (error) {
     logger.error({ error }, "Failed to fetch queue stats")
-    res.status(500).json({ error: "Failed to fetch queue stats" })
+    res.status(500).json({ error: { message: "Failed to fetch queue stats" } })
   }
 })
 
@@ -64,13 +60,13 @@ router.get("/queue/:name", async (req: Request, res: Response) => {
     const { name } = req.params
 
     if (!Object.values(QueueName).includes(name as QueueName)) {
-      return res.status(400).json({ error: "Invalid queue name" })
+      return res.status(400).json({ error: { message: "Invalid queue name" } })
     }
 
     const queue = queueManager.getQueue(name as QueueName)
 
     if (!queue) {
-      return res.status(404).json({ error: "Queue not found" })
+      return res.status(404).json({ error: { message: "Queue not found" } })
     }
 
     const [waiting, active, completed, failed, delayed, paused, jobs] = await Promise.all([
@@ -107,7 +103,7 @@ router.get("/queue/:name", async (req: Request, res: Response) => {
     })
   } catch (error) {
     logger.error({ error, queueName: req.params.name }, "Failed to fetch queue details")
-    res.status(500).json({ error: "Failed to fetch queue details" })
+    res.status(500).json({ error: { message: "Failed to fetch queue details" } })
   }
 })
 
@@ -117,8 +113,31 @@ router.get("/queue/:name", async (req: Request, res: Response) => {
  */
 router.get("/runs", async (req: Request, res: Response) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page as string) || 1)
-    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20))
+    // Validate and parse pagination parameters
+    let page = 1
+    if (req.query.page !== undefined) {
+      const parsedPage = Number.parseInt(req.query.page as string, 10)
+      if (Number.isNaN(parsedPage) || parsedPage < 1) {
+        return res.status(400).json({
+          error: { message: "Invalid 'page' query parameter; must be a positive integer." },
+        })
+      }
+      page = parsedPage
+    }
+
+    let pageSize = 20
+    if (req.query.pageSize !== undefined) {
+      const parsedPageSize = Number.parseInt(req.query.pageSize as string, 10)
+      if (Number.isNaN(parsedPageSize) || parsedPageSize < 1 || parsedPageSize > 100) {
+        return res.status(400).json({
+          error: {
+            message: "Invalid 'pageSize' query parameter; must be an integer between 1 and 100.",
+          },
+        })
+      }
+      pageSize = parsedPageSize
+    }
+
     const status = req.query.status as string | undefined
     const jobType = req.query.jobType as string | undefined
     const queueName = req.query.queueName as string | undefined
@@ -179,7 +198,7 @@ router.get("/runs", async (req: Request, res: Response) => {
     })
   } catch (error) {
     logger.error({ error }, "Failed to fetch job runs")
-    res.status(500).json({ error: "Failed to fetch job runs" })
+    res.status(500).json({ error: { message: "Failed to fetch job runs" } })
   }
 })
 
@@ -195,13 +214,13 @@ router.get("/runs/:id", async (req: Request, res: Response) => {
     const result = await pool.query("SELECT * FROM job_runs WHERE id = $1", [id])
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Job run not found" })
+      return res.status(404).json({ error: { message: "Job run not found" } })
     }
 
     res.json(result.rows[0])
   } catch (error) {
     logger.error({ error, jobId: req.params.id }, "Failed to fetch job run details")
-    res.status(500).json({ error: "Failed to fetch job run details" })
+    res.status(500).json({ error: { message: "Failed to fetch job run details" } })
   }
 })
 
@@ -221,14 +240,14 @@ router.post("/runs/:id/retry", async (req: Request, res: Response) => {
     )
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Job run not found" })
+      return res.status(404).json({ error: { message: "Job run not found" } })
     }
 
     const row = result.rows[0]
     const queue = queueManager.getQueue(row.queue_name as QueueName)
 
     if (!queue) {
-      return res.status(404).json({ error: "Queue not found" })
+      return res.status(404).json({ error: { message: "Queue not found" } })
     }
 
     // Create a new job with the original payload instead of retrying the old one
@@ -243,7 +262,7 @@ router.post("/runs/:id/retry", async (req: Request, res: Response) => {
     res.json({ success: true, message: "Job retry initiated", jobId: newJob.id })
   } catch (error) {
     logger.error({ error, jobId: req.params.id }, "Failed to retry job")
-    res.status(500).json({ error: "Failed to retry job" })
+    res.status(500).json({ error: { message: "Failed to retry job" } })
   }
 })
 
@@ -257,14 +276,14 @@ router.post("/queue/:name/pause", async (req: Request, res: Response) => {
 
     // Validate that the provided queue name is one of the known QueueName values
     if (!Object.values(QueueName).includes(name as QueueName)) {
-      return res.status(400).json({ error: "Invalid queue name" })
+      return res.status(400).json({ error: { message: "Invalid queue name" } })
     }
 
     const queueName = name as QueueName
     const queue = queueManager.getQueue(queueName)
 
     if (!queue) {
-      return res.status(404).json({ error: "Queue not found" })
+      return res.status(404).json({ error: { message: "Queue not found" } })
     }
 
     await queue.pause()
@@ -274,7 +293,7 @@ router.post("/queue/:name/pause", async (req: Request, res: Response) => {
     res.json({ success: true, message: "Queue paused" })
   } catch (error) {
     logger.error({ error, queueName: req.params.name }, "Failed to pause queue")
-    res.status(500).json({ error: "Failed to pause queue" })
+    res.status(500).json({ error: { message: "Failed to pause queue" } })
   }
 })
 
@@ -287,13 +306,13 @@ router.post("/queue/:name/resume", async (req: Request, res: Response) => {
     const { name } = req.params
 
     if (!Object.values(QueueName).includes(name as QueueName)) {
-      return res.status(400).json({ error: "Invalid queue name" })
+      return res.status(400).json({ error: { message: "Invalid queue name" } })
     }
 
     const queue = queueManager.getQueue(name as QueueName)
 
     if (!queue) {
-      return res.status(404).json({ error: "Queue not found" })
+      return res.status(404).json({ error: { message: "Queue not found" } })
     }
 
     await queue.resume()
@@ -303,7 +322,7 @@ router.post("/queue/:name/resume", async (req: Request, res: Response) => {
     res.json({ success: true, message: "Queue resumed" })
   } catch (error) {
     logger.error({ error, queueName: req.params.name }, "Failed to resume queue")
-    res.status(500).json({ error: "Failed to resume queue" })
+    res.status(500).json({ error: { message: "Failed to resume queue" } })
   }
 })
 
@@ -328,7 +347,7 @@ router.post("/cleanup", async (req: Request, res: Response) => {
     res.json({ success: true, cleaned: totalCleaned })
   } catch (error) {
     logger.error({ error }, "Failed to cleanup jobs")
-    res.status(500).json({ error: "Failed to cleanup jobs" })
+    res.status(500).json({ error: { message: "Failed to cleanup jobs" } })
   }
 })
 
@@ -338,8 +357,25 @@ router.post("/cleanup", async (req: Request, res: Response) => {
  */
 router.get("/dead-letter", async (req: Request, res: Response) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page as string) || 1)
-    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20))
+    // Validate and parse pagination parameters
+    let page = 1
+    if (req.query.page !== undefined) {
+      const parsedPage = Number.parseInt(req.query.page as string, 10)
+      if (Number.isNaN(parsedPage) || parsedPage < 1) {
+        return res.status(400).json({ error: { message: "Invalid page parameter" } })
+      }
+      page = parsedPage
+    }
+
+    let pageSize = 20
+    if (req.query.pageSize !== undefined) {
+      const parsedPageSize = Number.parseInt(req.query.pageSize as string, 10)
+      if (Number.isNaN(parsedPageSize) || parsedPageSize < 1) {
+        return res.status(400).json({ error: { message: "Invalid pageSize parameter" } })
+      }
+      pageSize = Math.min(100, parsedPageSize)
+    }
+
     const reviewed = req.query.reviewed === "true"
 
     const offset = (page - 1) * pageSize
@@ -372,7 +408,7 @@ router.get("/dead-letter", async (req: Request, res: Response) => {
     })
   } catch (error) {
     logger.error({ error }, "Failed to fetch dead letter queue")
-    res.status(500).json({ error: "Failed to fetch dead letter queue" })
+    res.status(500).json({ error: { message: "Failed to fetch dead letter queue" } })
   }
 })
 
@@ -397,7 +433,7 @@ router.post("/dead-letter/:id/review", async (req: Request, res: Response) => {
     )
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Dead letter job not found" })
+      return res.status(404).json({ error: { message: "Dead letter job not found" } })
     }
 
     logger.info({ deadLetterId: id }, "Dead letter job marked as reviewed")
@@ -405,7 +441,7 @@ router.post("/dead-letter/:id/review", async (req: Request, res: Response) => {
     res.json({ success: true, message: "Job marked as reviewed" })
   } catch (error) {
     logger.error({ error, deadLetterId: req.params.id }, "Failed to review dead letter job")
-    res.status(500).json({ error: "Failed to review dead letter job" })
+    res.status(500).json({ error: { message: "Failed to review dead letter job" } })
   }
 })
 
@@ -464,7 +500,7 @@ router.get("/stats", async (req: Request, res: Response) => {
     })
   } catch (error) {
     logger.error({ error }, "Failed to fetch job stats")
-    res.status(500).json({ error: "Failed to fetch job stats" })
+    res.status(500).json({ error: { message: "Failed to fetch job stats" } })
   }
 })
 
