@@ -98,7 +98,7 @@ async function queueShowJobs(
 ): Promise<number> {
   const db = getPool()
 
-  const conditions: string[] = ["thetvdb_id IS NOT NULL", "thetvdb_updated_at IS NULL"]
+  const conditions: string[] = ["thetvdb_id IS NOT NULL", "thetvdb_score IS NULL"]
 
   const params: number[] = []
   let paramIndex = 1

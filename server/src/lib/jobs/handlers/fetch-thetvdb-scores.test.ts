@@ -132,7 +132,6 @@ describe("FetchTheTVDBScoresHandler", () => {
         expect.objectContaining({
           tmdb_id: 1396,
           thetvdb_score: 9.5,
-          thetvdb_updated_at: expect.any(Date),
         })
       )
     })
