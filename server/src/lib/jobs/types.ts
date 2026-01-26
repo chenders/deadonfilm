@@ -159,7 +159,22 @@ export const warmContentCachePayloadSchema = z.object({
   entityId: z.number().int().positive(),
 })
 
-// Image processing payload
+// Image processing payloads - type-safe per job type
+export const processActorImagePayloadSchema = z.object({
+  imageUrl: z.string().url(),
+  entityType: z.literal("actor"),
+  entityId: z.number().int().positive(),
+  imageType: z.literal("profile"),
+})
+
+export const processPosterImagePayloadSchema = z.object({
+  imageUrl: z.string().url(),
+  entityType: z.enum(["movie", "show"]),
+  entityId: z.number().int().positive(),
+  imageType: z.enum(["poster", "backdrop"]),
+})
+
+// Legacy schema for backward compatibility
 export const processImagePayloadSchema = z.object({
   imageUrl: z.string().url(),
   entityType: z.enum(["actor", "movie", "show"]),
@@ -192,8 +207,8 @@ export const jobPayloadSchemas = {
   [JobType.ENRICH_CAUSE_OF_DEATH]: enrichCauseOfDeathPayloadSchema,
   [JobType.WARM_ACTOR_CACHE]: warmActorCachePayloadSchema,
   [JobType.WARM_CONTENT_CACHE]: warmContentCachePayloadSchema,
-  [JobType.PROCESS_ACTOR_IMAGE]: processImagePayloadSchema,
-  [JobType.PROCESS_POSTER_IMAGE]: processImagePayloadSchema,
+  [JobType.PROCESS_ACTOR_IMAGE]: processActorImagePayloadSchema,
+  [JobType.PROCESS_POSTER_IMAGE]: processPosterImagePayloadSchema,
   [JobType.GENERATE_SITEMAP]: generateSitemapPayloadSchema,
   [JobType.CLEANUP_OLD_JOBS]: cleanupOldJobsPayloadSchema,
   [JobType.SYNC_TMDB_CHANGES]: syncTMDBChangesPayloadSchema,
@@ -213,6 +228,8 @@ export type EnrichDeathDetailsPayload = z.infer<typeof enrichDeathDetailsPayload
 export type EnrichCauseOfDeathPayload = z.infer<typeof enrichCauseOfDeathPayloadSchema>
 export type WarmActorCachePayload = z.infer<typeof warmActorCachePayloadSchema>
 export type WarmContentCachePayload = z.infer<typeof warmContentCachePayloadSchema>
+export type ProcessActorImagePayload = z.infer<typeof processActorImagePayloadSchema>
+export type ProcessPosterImagePayload = z.infer<typeof processPosterImagePayloadSchema>
 export type ProcessImagePayload = z.infer<typeof processImagePayloadSchema>
 export type GenerateSitemapPayload = z.infer<typeof generateSitemapPayloadSchema>
 export type CleanupOldJobsPayload = z.infer<typeof cleanupOldJobsPayloadSchema>
@@ -245,8 +262,8 @@ export type JobPayloadMap = {
   [JobType.ENRICH_CAUSE_OF_DEATH]: EnrichCauseOfDeathPayload
   [JobType.WARM_ACTOR_CACHE]: WarmActorCachePayload
   [JobType.WARM_CONTENT_CACHE]: WarmContentCachePayload
-  [JobType.PROCESS_ACTOR_IMAGE]: ProcessImagePayload
-  [JobType.PROCESS_POSTER_IMAGE]: ProcessImagePayload
+  [JobType.PROCESS_ACTOR_IMAGE]: ProcessActorImagePayload
+  [JobType.PROCESS_POSTER_IMAGE]: ProcessPosterImagePayload
   [JobType.GENERATE_SITEMAP]: GenerateSitemapPayload
   [JobType.CLEANUP_OLD_JOBS]: CleanupOldJobsPayload
   [JobType.SYNC_TMDB_CHANGES]: SyncTMDBChangesPayload
