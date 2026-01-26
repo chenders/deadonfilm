@@ -33,11 +33,11 @@ import {
   deleteCheckpoint,
   parsePositiveInt,
   stripMarkdownCodeFences,
-  repairJson,
   getYearFromDate,
   storeFailure,
   type Checkpoint,
 } from "./backfill-cause-of-death-batch.js"
+import { jsonrepair } from "jsonrepair"
 
 // Initialize New Relic for monitoring
 
@@ -542,15 +542,22 @@ export async function processResults(
           try {
             parsed = JSON.parse(jsonText)
           } catch (jsonError) {
-            // Try to repair common JSON issues and retry
-            const repairedJson = repairJson(jsonText)
+            // Try to repair common JSON issues with jsonrepair package
             try {
+              const repairedJson = jsonrepair(jsonText)
               parsed = JSON.parse(repairedJson)
               console.log(`  [Repaired JSON for ${actorName}]`)
             } catch {
               // Re-throw original error if repair also fails
               throw jsonError
             }
+          }
+
+          // Validate that parsed is an object (not a string, array, null, etc.)
+          if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+            throw new Error(
+              `Invalid response format: expected object, got ${Array.isArray(parsed) ? "array" : typeof parsed}`
+            )
           }
 
           // Log the response (in verbose mode)

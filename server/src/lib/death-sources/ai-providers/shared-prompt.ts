@@ -48,8 +48,16 @@ export interface EnrichedDeathResponse {
 /**
  * Build an enriched death prompt that asks for career context.
  * Use this for AI providers with good knowledge bases (Perplexity, GPT-4, etc.)
+ *
+ * @param actor - Actor to enrich
+ * @param requireSources - If true, require source URLs for all claims (default: true)
+ * @param requireReliableSources - If true, specifically ask for "reliable" sources (default: false)
  */
-export function buildEnrichedDeathPrompt(actor: ActorForEnrichment): string {
+export function buildEnrichedDeathPrompt(
+  actor: ActorForEnrichment,
+  requireSources: boolean = true,
+  requireReliableSources: boolean = false
+): string {
   const deathDate = actor.deathday
     ? new Date(actor.deathday).toLocaleDateString("en-US", {
         month: "long",
@@ -64,16 +72,40 @@ export function buildEnrichedDeathPrompt(actor: ActorForEnrichment): string {
 
   const ageInfo = age ? ` (age ${age})` : ""
 
+  const publicationsQualifier = requireReliableSources ? "reliable publications" : "publications"
+  const sourcesQualifier = requireReliableSources ? "reliable sources" : "sources"
+
+  const sourceRequirement = requireSources
+    ? `
+CRITICAL: All information MUST be sourced from ${publicationsQualifier}. Include URLs in the "sources" array.
+- If you cannot find ${sourcesQualifier} for any death-related information, return all fields as null
+- The "sources" array may only be empty when ALL death-related fields (circumstances, location_of_death, etc.) are null
+- "circumstances" and "rumored_circumstances" REQUIRE source URLs - never provide these fields without ${sourcesQualifier}
+`
+    : ""
+
+  const circumstancesDesc = requireSources
+    ? "- circumstances: Narrative describing how they died. Include where found, what led to death, medical details. MUST have sources."
+    : "- circumstances: Narrative describing how they died. Include where found, what led to death, medical details."
+
+  const rumoredDesc = requireSources
+    ? "- rumored_circumstances: ONLY if disputed facts or controversy. null if straightforward. MUST have sources if provided."
+    : "- rumored_circumstances: ONLY if disputed facts or controversy. null if straightforward."
+
+  const sourcesDesc = requireSources
+    ? "- sources: REQUIRED array of source URLs. Never empty if circumstances are provided."
+    : "- sources: Array of source URLs if available."
+
   return `Search for how ${actor.name} (actor)${ageInfo} died on ${deathDate}.
 
-Respond with JSON only. No biography or career achievements unless death-related.
-
+Respond with JSON only. No biography or career achievements unless death-related.${sourceRequirement}
 Required fields:
-- circumstances: Narrative describing how they died. Include where found, what led to death, medical details.
+${circumstancesDesc}
 - location_of_death: City, State/Country where they died
 - notable_factors: Tags only: "sudden", "long illness", "accident", "suicide", "overdose", "found unresponsive", "on_set", "vehicle_crash", "fire", "drowning", "homicide", "suspicious_circumstances", "multiple_deaths", "family_tragedy"
-- rumored_circumstances: ONLY if disputed facts or controversy. null if straightforward.
+${rumoredDesc}
 - confidence: "high" | "medium" | "low"
+${sourcesDesc}
 
 Career context fields (if known):
 - career_status_at_death: "active" | "semi-retired" | "retired" | "hiatus" | "unknown"
@@ -95,17 +127,27 @@ Related people fields (if applicable):
   "posthumous_releases": null,
   "related_celebrities": null,
   "related_deaths": null,
-  "sources": ["url1"]
+  "sources": ["https://variety.com/...", "https://people.com/..."]
 }
 
-If death info unknown: return all null values with empty notable_factors array.`
+${
+  requireSources
+    ? "If death info unknown OR no sources found: return all null values with empty notable_factors and sources arrays."
+    : "If death info unknown: return all null values with empty notable_factors and sources arrays."
+}`
 }
 
 /**
  * Build a simpler prompt for providers with limited capabilities.
  * Focuses on core death info without career context.
+ *
+ * @param actor - Actor to enrich
+ * @param requireSources - If true, require source URLs for all claims (default: true)
  */
-export function buildBasicDeathPrompt(actor: ActorForEnrichment): string {
+export function buildBasicDeathPrompt(
+  actor: ActorForEnrichment,
+  requireSources: boolean = true
+): string {
   const deathDate = actor.deathday
     ? new Date(actor.deathday).toLocaleDateString("en-US", {
         month: "long",
@@ -114,18 +156,32 @@ export function buildBasicDeathPrompt(actor: ActorForEnrichment): string {
       })
     : "unknown date"
 
-  return `How did ${actor.name} (actor) die on ${deathDate}?
+  const sourceNote = requireSources
+    ? "\n\nCRITICAL: Provide source URLs for all claims. If no sources found, return null for that field."
+    : ""
+
+  const ifUnknown = requireSources
+    ? 'If unknown OR no sources: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null, "sources": []}'
+    : 'If unknown: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null, "sources": []}'
+
+  return `How did ${actor.name} (actor) die on ${deathDate}?${sourceNote}
 
 Respond with JSON only:
 {
   "circumstances": "narrative of how they died",
-  "location_of_death": "City, State or null",
-  "notable_factors": ["tag1"] or [],
-  "rumored_circumstances": "disputed info or null",
-  "confidence": "high" | "medium" | "low"
+  "location_of_death": "City, State",
+  "notable_factors": ["tag1", "tag2"],
+  "rumored_circumstances": "disputed info",
+  "confidence": "high",
+  "sources": ["https://source1.com", "https://source2.com"]
 }
 
-If unknown: {"circumstances": null, "location_of_death": null, "notable_factors": [], "rumored_circumstances": null, "confidence": null}`
+Notes:
+- Use null for missing values (e.g., "location_of_death": null)
+- notable_factors can be an empty array []
+- confidence must be "high", "medium", or "low"
+
+${ifUnknown}`
 }
 
 /**

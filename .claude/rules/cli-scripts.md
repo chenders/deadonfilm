@@ -5,8 +5,11 @@ globs: ["server/scripts/**"]
 
 All scripts MUST use [Commander.js](https://github.com/tj/commander.js).
 
+**CRITICAL:** All scripts MUST import `dotenv/config` as the first import to load environment variables.
+
 ```typescript
 #!/usr/bin/env tsx
+import "dotenv/config"  // MUST be first import
 import { Command, InvalidArgumentError } from "commander"
 
 function parsePositiveInt(value: string): number {

@@ -13,6 +13,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk"
+import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
 import type {
   ActorForEnrichment,
   CleanedDeathInfo,
@@ -141,22 +142,6 @@ CRITICAL INSTRUCTIONS:
 - Write clean, factual prose suitable for publication
 - Use null for any field where information is not available
 - Return ONLY valid JSON, no markdown code fences`
-}
-
-/**
- * Strip markdown code fences from JSON text.
- */
-function stripMarkdownCodeFences(text: string): string {
-  let jsonText = text.trim()
-  if (jsonText.startsWith("```")) {
-    const match = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-    if (match) {
-      jsonText = match[1].trim()
-    } else {
-      jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").trim()
-    }
-  }
-  return jsonText
 }
 
 /**
