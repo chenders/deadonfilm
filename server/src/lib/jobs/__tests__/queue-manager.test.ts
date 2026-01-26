@@ -28,13 +28,15 @@ describe("QueueManager", () => {
   })
 
   beforeEach(async () => {
-    // Clean up all queues in Redis first
+    // Wait for all active jobs to complete before cleanup
+    for (const queue of queueManager.getAllQueues()) {
+      await queue.drain(true) // Wait for active jobs to finish
+    }
+
+    // Clean up all queues in Redis
     for (const queue of queueManager.getAllQueues()) {
       await queue.obliterate({ force: true })
     }
-
-    // Wait for any in-flight jobs to complete
-    await new Promise((resolve) => setTimeout(resolve, 100))
 
     // Clean up database
     await pool.query("DELETE FROM job_runs")
