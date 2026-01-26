@@ -32,11 +32,11 @@ const RATE_LIMIT_DELAY_MS = 100
 
 export function parsePositiveInt(value: string): number {
   if (!/^\d+$/.test(value)) {
-    throw new InvalidArgumentError("Must be positive integer")
+    throw new InvalidArgumentError("Must be a positive integer")
   }
   const parsed = parseInt(value, 10)
   if (parsed <= 0) {
-    throw new InvalidArgumentError("Must be positive integer")
+    throw new InvalidArgumentError("Must be a positive integer")
   }
   return parsed
 }
