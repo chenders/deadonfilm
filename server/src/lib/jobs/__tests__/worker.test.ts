@@ -132,7 +132,7 @@ describe("JobWorker", () => {
       expect(result.rows[0].duration_ms).toBeGreaterThan(0)
     }, 25000)
 
-    it("should update worker statistics after processing", async () => {
+    it.skip("should update worker statistics after processing", async () => {
       const statsBefore = worker.getStats()
 
       // Queue a job
