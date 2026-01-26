@@ -52,34 +52,36 @@ export default function DateRangePicker({
   }, [startDate, endDate])
 
   return (
-    <div className={`rounded-lg border border-gray-700 bg-gray-800 p-4 ${className}`}>
+    <div
+      className={`rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm ${className}`}
+    >
       {showQuickFilters && (
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => handleQuickFilter(7)}
-            className="rounded-md bg-gray-700 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-600"
+            className="rounded-md bg-admin-surface-overlay px-3 py-2 text-sm font-medium text-admin-text-secondary hover:bg-admin-surface-elevated"
           >
             Last 7 Days
           </button>
           <button
             type="button"
             onClick={() => handleQuickFilter(30)}
-            className="rounded-md bg-gray-700 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-600"
+            className="rounded-md bg-admin-surface-overlay px-3 py-2 text-sm font-medium text-admin-text-secondary hover:bg-admin-surface-elevated"
           >
             Last 30 Days
           </button>
           <button
             type="button"
             onClick={() => handleQuickFilter(90)}
-            className="rounded-md bg-gray-700 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-600"
+            className="rounded-md bg-admin-surface-overlay px-3 py-2 text-sm font-medium text-admin-text-secondary hover:bg-admin-surface-elevated"
           >
             Last 90 Days
           </button>
           <button
             type="button"
             onClick={() => handleQuickFilter("all")}
-            className="rounded-md bg-gray-700 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-600"
+            className="rounded-md bg-admin-surface-overlay px-3 py-2 text-sm font-medium text-admin-text-secondary hover:bg-admin-surface-elevated"
           >
             All Time
           </button>
@@ -109,7 +111,7 @@ export default function DateRangePicker({
         <button
           type="button"
           onClick={handleClearDates}
-          className="mt-4 text-sm text-gray-400 transition-colors hover:text-white"
+          className="mt-4 text-sm text-admin-text-muted transition-colors hover:text-admin-text-primary"
         >
           Clear Dates
         </button>

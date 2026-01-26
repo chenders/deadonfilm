@@ -34,9 +34,9 @@ describe("StatCard", () => {
     it("renders without icon when not provided", () => {
       const { container } = render(<StatCard label="Total Views" value="1,234" />)
 
-      // Icon container should not be in document - check that there's only one .text-gray-400 (the label)
-      const grayElements = container.querySelectorAll(".text-gray-400")
-      expect(grayElements).toHaveLength(1) // Only the label should have this class
+      // Icon container should not be in document - check that there's only one .text-admin-text-muted (the label)
+      const mutedElements = container.querySelectorAll(".text-admin-text-muted")
+      expect(mutedElements).toHaveLength(1) // Only the label should have this class
     })
   })
 
@@ -46,7 +46,7 @@ describe("StatCard", () => {
 
       const changeElement = screen.getByText("+15.5%")
       expect(changeElement).toBeInTheDocument()
-      expect(changeElement).toHaveClass("text-green-400")
+      expect(changeElement).toHaveClass("text-admin-success")
     })
 
     it("renders negative change without + sign and red color", () => {
@@ -54,15 +54,15 @@ describe("StatCard", () => {
 
       const changeElement = screen.getByText("-8.3%")
       expect(changeElement).toBeInTheDocument()
-      expect(changeElement).toHaveClass("text-red-400")
+      expect(changeElement).toHaveClass("text-admin-danger")
     })
 
-    it("renders zero change with gray color", () => {
+    it("renders zero change with muted color", () => {
       render(<StatCard label="Total Views" value="1,234" change={0} />)
 
       const changeElement = screen.getByText("0.0%")
       expect(changeElement).toBeInTheDocument()
-      expect(changeElement).toHaveClass("text-gray-400")
+      expect(changeElement).toHaveClass("text-admin-text-muted")
     })
 
     it("formats change percentage to 1 decimal place", () => {
@@ -105,7 +105,9 @@ describe("StatCard", () => {
         <StatCard label="Total Views" value="1,234" icon={<TestIcon />} />
       )
 
-      const iconContainer = container.querySelector(".text-gray-400:has([data-testid='test-icon'])")
+      const iconContainer = container.querySelector(
+        ".text-admin-text-muted:has([data-testid='test-icon'])"
+      )
       expect(iconContainer).toBeInTheDocument()
     })
   })
@@ -115,28 +117,28 @@ describe("StatCard", () => {
       render(<StatCard label="Views" value="100" change={10} />)
 
       const changeElement = screen.getByText("+10.0%")
-      expect(changeElement.className).toContain("text-green-400")
+      expect(changeElement.className).toContain("text-admin-success")
     })
 
     it("applies correct color class for negative change", () => {
       render(<StatCard label="Views" value="100" change={-10} />)
 
       const changeElement = screen.getByText("-10.0%")
-      expect(changeElement.className).toContain("text-red-400")
+      expect(changeElement.className).toContain("text-admin-danger")
     })
 
     it("applies correct color class for zero change", () => {
       render(<StatCard label="Views" value="100" change={0} />)
 
       const changeElement = screen.getByText("0.0%")
-      expect(changeElement.className).toContain("text-gray-400")
+      expect(changeElement.className).toContain("text-admin-text-muted")
     })
 
     it("applies standard label styling", () => {
       render(<StatCard label="Total Views" value="100" />)
 
       const label = screen.getByText("Total Views")
-      expect(label.className).toContain("text-gray-400")
+      expect(label.className).toContain("text-admin-text-muted")
       expect(label.className).toContain("font-medium")
     })
 
@@ -144,7 +146,7 @@ describe("StatCard", () => {
       render(<StatCard label="Views" value="1,234" />)
 
       const value = screen.getByText("1,234")
-      expect(value.className).toContain("text-white")
+      expect(value.className).toContain("text-admin-text-primary")
       expect(value.className).toContain("font-semibold")
     })
   })

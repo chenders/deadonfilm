@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { AdminThemeProvider } from "../../contexts/AdminThemeContext"
 import PageViewsPage from "./PageViewsPage"
 
 // Mock the hooks
@@ -86,7 +87,9 @@ describe("PageViewsPage", () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
-          <PageViewsPage />
+          <AdminThemeProvider>
+            <PageViewsPage />
+          </AdminThemeProvider>
         </MemoryRouter>
       </QueryClientProvider>
     )

@@ -50,7 +50,7 @@ export default function DateInput({
 
   return (
     <div className={className}>
-      <label htmlFor={id} className="mb-1 block text-sm text-gray-400">
+      <label htmlFor={id} className="mb-1 block text-sm text-admin-text-muted">
         {label}
       </label>
       <div className="relative">
@@ -61,12 +61,12 @@ export default function DateInput({
           dateFormat="yyyy-MM-dd"
           placeholderText="YYYY-MM-DD"
           isClearable={showClearButton}
-          className={`w-full rounded border bg-gray-900 px-3 py-2 text-white focus:outline-none focus:ring-1 ${
+          className={`w-full rounded border bg-admin-surface-inset px-3 py-2 text-admin-text-primary focus:outline-none focus:ring-1 ${
             error
-              ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-              : "border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+              ? "border-admin-danger focus:border-admin-danger focus:ring-admin-danger"
+              : "border-admin-border focus:border-admin-interactive focus:ring-admin-interactive"
           }`}
-          calendarClassName="dark-datepicker"
+          calendarClassName="admin-datepicker"
           wrapperClassName="w-full"
           aria-label={label}
           aria-describedby={[describedById, errorId].filter(Boolean).join(" ") || undefined}
@@ -74,12 +74,12 @@ export default function DateInput({
         />
       </div>
       {helpText && !error && (
-        <p id={describedById} className="mt-1 text-xs text-gray-500">
+        <p id={describedById} className="mt-1 text-xs text-admin-text-muted">
           {helpText}
         </p>
       )}
       {error && (
-        <p id={errorId} className="mt-1 text-xs text-red-400" role="alert">
+        <p id={errorId} className="mt-1 text-xs text-admin-danger" role="alert">
           {error}
         </p>
       )}

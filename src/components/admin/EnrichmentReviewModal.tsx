@@ -95,16 +95,16 @@ export default function EnrichmentReviewModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
-      <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-lg bg-gray-900 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--admin-overlay-bg)] p-2 md:p-4">
+      <div className="max-h-[95vh] w-full max-w-6xl overflow-y-auto rounded-lg bg-admin-surface-base shadow-xl md:max-h-[90vh]">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-700 bg-gray-900 px-6 py-4">
-          <h2 className="text-xl font-bold text-white">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-admin-border bg-admin-surface-base px-4 py-3 md:px-6 md:py-4">
+          <h2 className="text-lg font-bold text-admin-text-primary md:text-xl">
             Review Enrichment: {data?.actor_name || "Loading..."}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 transition-colors hover:text-white"
+            className="text-admin-text-muted transition-colors hover:text-admin-text-primary"
             aria-label="Close modal"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -118,7 +118,7 @@ export default function EnrichmentReviewModal({
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {/* Loading State */}
           {isLoading && (
             <div className="flex justify-center py-12">
@@ -135,33 +135,39 @@ export default function EnrichmentReviewModal({
               {/* Metadata */}
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <div>
-                  <p className="text-sm text-gray-400">Source</p>
-                  <p className="mt-1 text-white">{data.winning_source || "-"}</p>
+                  <p className="text-sm text-admin-text-muted">Source</p>
+                  <p className="mt-1 text-admin-text-primary">{data.winning_source || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Cost</p>
-                  <p className="mt-1 text-white">${parseFloat(data.cost_usd).toFixed(2)}</p>
+                  <p className="text-sm text-admin-text-muted">Cost</p>
+                  <p className="mt-1 text-admin-text-primary">
+                    ${parseFloat(data.cost_usd).toFixed(2)}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Overall Confidence</p>
-                  <p className="mt-1 text-white">{data.overall_confidence.toFixed(2)}</p>
+                  <p className="text-sm text-admin-text-muted">Overall Confidence</p>
+                  <p className="mt-1 text-admin-text-primary">
+                    {data.overall_confidence.toFixed(2)}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Run ID</p>
-                  <p className="mt-1 text-white">#{data.run_id}</p>
+                  <p className="text-sm text-admin-text-muted">Run ID</p>
+                  <p className="mt-1 text-admin-text-primary">#{data.run_id}</p>
                 </div>
               </div>
 
               {/* Side-by-Side Comparison */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* Staging Panel */}
-                <div className="rounded-lg border-2 border-blue-600 bg-gray-800 p-4">
+                <div className="rounded-lg border-2 border-admin-interactive bg-admin-surface-elevated p-4">
                   <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-blue-400">New Data (Staging)</h3>
+                    <h3 className="text-lg font-semibold text-admin-interactive">
+                      New Data (Staging)
+                    </h3>
                     {!isEditMode && (
                       <button
                         onClick={handleEdit}
-                        className="rounded bg-blue-600 px-3 py-1 text-sm text-white transition-colors hover:bg-blue-700"
+                        className="rounded bg-admin-interactive px-3 py-1 text-sm text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
                       >
                         Edit
                       </button>
@@ -176,8 +182,8 @@ export default function EnrichmentReviewModal({
                 </div>
 
                 {/* Production Panel */}
-                <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-                  <h3 className="mb-4 text-lg font-semibold text-gray-400">
+                <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
+                  <h3 className="mb-4 text-lg font-semibold text-admin-text-muted">
                     Current Data (Production)
                   </h3>
                   <DataFields data={data.production} isEditable={false} />
@@ -185,8 +191,10 @@ export default function EnrichmentReviewModal({
               </div>
 
               {/* Confidence Breakdown */}
-              <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-                <h3 className="mb-4 text-lg font-semibold text-white">Confidence Breakdown</h3>
+              <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
+                <h3 className="mb-4 text-lg font-semibold text-admin-text-primary">
+                  Confidence Breakdown
+                </h3>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
                   <ConfidenceItem
                     label="Cause"
@@ -213,11 +221,11 @@ export default function EnrichmentReviewModal({
 
               {/* Death Circumstances (Collapsible) */}
               {data.staging.circumstances && (
-                <details className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-                  <summary className="cursor-pointer text-lg font-semibold text-white">
+                <details className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
+                  <summary className="cursor-pointer text-lg font-semibold text-admin-text-primary">
                     Death Circumstances
                   </summary>
-                  <p className="mt-4 whitespace-pre-wrap text-gray-300">
+                  <p className="mt-4 whitespace-pre-wrap text-admin-text-secondary">
                     {data.staging.circumstances}
                   </p>
                 </details>
@@ -225,29 +233,29 @@ export default function EnrichmentReviewModal({
 
               {/* Raw Response (Collapsible) */}
               {data.raw_response && (
-                <details className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-                  <summary className="cursor-pointer text-lg font-semibold text-white">
+                <details className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
+                  <summary className="cursor-pointer text-lg font-semibold text-admin-text-primary">
                     Raw Response
                   </summary>
-                  <pre className="mt-4 overflow-x-auto whitespace-pre-wrap text-sm text-gray-300">
+                  <pre className="mt-4 overflow-x-auto whitespace-pre-wrap text-sm text-admin-text-secondary">
                     {data.raw_response}
                   </pre>
                 </details>
               )}
 
               {/* Footer Actions */}
-              <div className="flex items-center justify-between border-t border-gray-700 pt-4">
+              <div className="flex flex-col gap-3 border-t border-admin-border pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   onClick={() => setShowRejectDialog(true)}
                   disabled={approveMutation.isPending || rejectMutation.isPending}
-                  className="rounded bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded bg-red-600 px-4 py-2 text-admin-text-primary transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Reject
                 </button>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   <button
                     onClick={onClose}
-                    className="rounded border border-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-800"
+                    className="rounded border border-admin-border px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary"
                   >
                     Cancel
                   </button>
@@ -255,7 +263,7 @@ export default function EnrichmentReviewModal({
                     <button
                       onClick={handleSaveEdits}
                       disabled={editMutation.isPending}
-                      className="rounded bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {editMutation.isPending ? "Saving..." : "Save Edits"}
                     </button>
@@ -263,7 +271,7 @@ export default function EnrichmentReviewModal({
                   <button
                     onClick={handleApprove}
                     disabled={isEditMode || approveMutation.isPending || rejectMutation.isPending}
-                    className="rounded bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded bg-green-600 px-4 py-2 text-admin-text-primary transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {approveMutation.isPending ? "Approving..." : "Approve"}
                   </button>
@@ -276,17 +284,17 @@ export default function EnrichmentReviewModal({
 
       {/* Reject Dialog */}
       {showRejectDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
-          <div className="w-full max-w-md rounded-lg bg-gray-900 p-6">
-            <h3 className="mb-4 text-lg font-bold text-white">Reject Enrichment</h3>
-            <label htmlFor="rejectReason" className="mb-2 block text-sm text-gray-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--admin-overlay-bg)] p-4">
+          <div className="w-full max-w-md rounded-lg bg-admin-surface-base p-4 md:p-6">
+            <h3 className="mb-4 text-lg font-bold text-admin-text-primary">Reject Enrichment</h3>
+            <label htmlFor="rejectReason" className="mb-2 block text-sm text-admin-text-muted">
               Reason for rejection
             </label>
             <select
               id="rejectReason"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="mb-4 w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-white"
+              className="mb-4 w-full rounded border border-admin-border bg-admin-surface-elevated px-3 py-2 text-admin-text-primary focus:ring-2 focus:ring-admin-interactive"
             >
               <option value="">Select a reason</option>
               <option value="incorrect_data">Incorrect Data</option>
@@ -297,14 +305,14 @@ export default function EnrichmentReviewModal({
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowRejectDialog(false)}
-                className="rounded border border-gray-700 px-4 py-2 text-white transition-colors hover:bg-gray-800"
+                className="rounded border border-admin-border px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={handleReject}
                 disabled={rejectMutation.isPending}
-                className="rounded bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded bg-red-600 px-4 py-2 text-admin-text-primary transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {rejectMutation.isPending ? "Rejecting..." : "Confirm Reject"}
               </button>
@@ -343,7 +351,7 @@ function DataFields({ data, isEditable, onChange, hasChanges }: DataFieldsProps)
 
         return (
           <div key={key} className={isChanged ? "rounded bg-yellow-900 bg-opacity-20 p-2" : ""}>
-            <label className="block text-sm text-gray-400">{label}</label>
+            <label className="block text-sm text-admin-text-muted">{label}</label>
             {isEditable && onChange ? (
               type === "boolean" ? (
                 <select
@@ -354,7 +362,7 @@ function DataFields({ data, isEditable, onChange, hasChanges }: DataFieldsProps)
                       [key]: e.target.value === "" ? null : e.target.value === "true",
                     })
                   }
-                  className="mt-1 w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                  className="mt-1 w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-2 focus:ring-admin-interactive"
                 >
                   <option value="">-</option>
                   <option value="true">Yes</option>
@@ -377,11 +385,11 @@ function DataFields({ data, isEditable, onChange, hasChanges }: DataFieldsProps)
                           : e.target.value || null,
                     })
                   }
-                  className="mt-1 w-full rounded border-2 border-blue-600 bg-gray-900 px-3 py-2 text-white"
+                  className="mt-1 w-full rounded border-2 border-admin-interactive bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-2 focus:ring-admin-interactive"
                 />
               )
             ) : (
-              <p className="mt-1 text-white">
+              <p className="mt-1 text-admin-text-primary">
                 {type === "boolean"
                   ? value === null
                     ? "-"
@@ -403,8 +411,10 @@ function DataFields({ data, isEditable, onChange, hasChanges }: DataFieldsProps)
 function ConfidenceItem({ label, value }: { label: string; value: number | null }) {
   return (
     <div>
-      <p className="text-sm text-gray-400">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-white">{value?.toFixed(2) || "-"}</p>
+      <p className="text-sm text-admin-text-muted">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-admin-text-primary">
+        {value?.toFixed(2) || "-"}
+      </p>
     </div>
   )
 }

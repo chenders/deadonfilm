@@ -4,6 +4,7 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useCostBySource } from "../../../hooks/admin/useAnalytics"
+import { useChartTheme, useChartTooltipStyle } from "../../../hooks/admin/useChartTheme"
 import LoadingSpinner from "../../common/LoadingSpinner"
 import ErrorMessage from "../../common/ErrorMessage"
 import StatCard from "./StatCard"
@@ -15,11 +16,13 @@ interface CostBySourceSectionProps {
 
 export default function CostBySourceSection({ startDate, endDate }: CostBySourceSectionProps) {
   const { data, isLoading, error } = useCostBySource(startDate, endDate)
+  const chartTheme = useChartTheme()
+  const tooltipStyle = useChartTooltipStyle()
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-        <h2 className="mb-6 text-xl font-semibold text-white">Cost by Source</h2>
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+        <h2 className="mb-6 text-xl font-semibold text-admin-text-primary">Cost by Source</h2>
         <LoadingSpinner />
       </div>
     )
@@ -27,8 +30,8 @@ export default function CostBySourceSection({ startDate, endDate }: CostBySource
 
   if (error) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-        <h2 className="mb-6 text-xl font-semibold text-white">Cost by Source</h2>
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+        <h2 className="mb-6 text-xl font-semibold text-admin-text-primary">Cost by Source</h2>
         <ErrorMessage message="Failed to load cost analytics" />
       </div>
     )
@@ -36,9 +39,9 @@ export default function CostBySourceSection({ startDate, endDate }: CostBySource
 
   if (!data || data.sources.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-        <h2 className="mb-6 text-xl font-semibold text-white">Cost by Source</h2>
-        <p className="text-gray-400">No data available for the selected time period</p>
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+        <h2 className="mb-6 text-xl font-semibold text-admin-text-primary">Cost by Source</h2>
+        <p className="text-admin-text-muted">No data available for the selected time period</p>
       </div>
     )
   }
@@ -50,29 +53,24 @@ export default function CostBySourceSection({ startDate, endDate }: CostBySource
   }))
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-      <h2 className="mb-6 text-xl font-semibold text-white">Cost by Source</h2>
+    <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+      <h2 className="mb-6 text-xl font-semibold text-admin-text-primary">Cost by Source</h2>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {/* Chart */}
         <div className="lg:col-span-3">
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="source" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+              <XAxis dataKey="source" stroke={chartTheme.axis} />
+              <YAxis stroke={chartTheme.axis} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1F2937",
-                  border: "1px solid #374151",
-                  borderRadius: "0.5rem",
-                  color: "#F9FAFB",
-                }}
+                contentStyle={tooltipStyle}
                 formatter={(value: number | undefined) =>
                   value !== undefined ? [`$${value.toFixed(2)}`, "Cost"] : ["$0.00", "Cost"]
                 }
               />
-              <Bar dataKey="cost" fill="#EF4444" />
+              <Bar dataKey="cost" fill={chartTheme.series[2]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -92,30 +90,38 @@ export default function CostBySourceSection({ startDate, endDate }: CostBySource
       <div className="mt-6 overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-700">
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Source</th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-400">Total Cost</th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-400">Queries</th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-400">
+            <tr className="border-b border-admin-border">
+              <th className="px-4 py-3 text-left text-sm font-medium text-admin-text-muted">
+                Source
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
+                Total Cost
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
+                Queries
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
                 Avg Cost/Query
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-400">Last Used</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
+                Last Used
+              </th>
             </tr>
           </thead>
           <tbody>
             {data.sources.map((source) => (
-              <tr key={source.source} className="border-b border-gray-700">
-                <td className="px-4 py-3 text-sm text-white">{source.source}</td>
-                <td className="px-4 py-3 text-right text-sm text-white">
+              <tr key={source.source} className="border-b border-admin-border">
+                <td className="px-4 py-3 text-sm text-admin-text-primary">{source.source}</td>
+                <td className="px-4 py-3 text-right text-sm text-admin-text-primary">
                   ${source.total_cost.toFixed(2)}
                 </td>
-                <td className="px-4 py-3 text-right text-sm text-white">
+                <td className="px-4 py-3 text-right text-sm text-admin-text-primary">
                   {source.queries_count.toLocaleString()}
                 </td>
-                <td className="px-4 py-3 text-right text-sm text-white">
+                <td className="px-4 py-3 text-right text-sm text-admin-text-primary">
                   ${source.avg_cost_per_query.toFixed(4)}
                 </td>
-                <td className="px-4 py-3 text-right text-sm text-gray-400">
+                <td className="px-4 py-3 text-right text-sm text-admin-text-muted">
                   {source.last_used ? new Date(source.last_used).toLocaleDateString() : "Never"}
                 </td>
               </tr>
