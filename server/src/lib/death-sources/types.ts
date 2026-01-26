@@ -366,6 +366,7 @@ export interface RawSourceData {
   text: string
   url?: string
   confidence: number
+  resolvedSources?: import("./url-resolver.js").ResolvedUrl[]
 }
 
 /**
