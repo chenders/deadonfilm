@@ -14,7 +14,7 @@ import { Queue, QueueEvents } from "bullmq"
 import newrelic from "newrelic"
 import { getPool } from "../db.js"
 import { logger } from "../logger.js"
-import { redisJobsClient } from "./redis.js"
+import { getRedisJobsClient } from "./redis.js"
 import {
   JobType,
   QueueName,
@@ -48,7 +48,7 @@ class QueueManager {
     // Create a queue for each queue name
     for (const queueName of Object.values(QueueName)) {
       const queue = new Queue(queueName, {
-        connection: redisJobsClient,
+        connection: getRedisJobsClient(),
         defaultJobOptions: {
           removeOnComplete: {
             age: 7 * 24 * 60 * 60, // Keep completed jobs for 7 days
@@ -67,7 +67,7 @@ class QueueManager {
 
       // Set up queue events
       const queueEvents = new QueueEvents(queueName, {
-        connection: redisJobsClient,
+        connection: getRedisJobsClient(),
       })
 
       this.queueEvents.set(queueName, queueEvents)
