@@ -22,3 +22,12 @@ integrations:
       env: production
       role: database
     inventory_source: config/postgresql
+
+# PostgreSQL log forwarding to New Relic Logs
+logs:
+  - name: postgresql-logs
+    file: /host/var/lib/docker/volumes/deadonfilm_postgres-logs/_data/postgresql-*.log
+    attributes:
+      service: postgresql
+      env: production
+      logtype: postgresql
