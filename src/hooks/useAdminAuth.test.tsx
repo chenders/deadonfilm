@@ -111,7 +111,7 @@ describe("useAdminAuth", () => {
         } as Response)
       )
 
-      let loginResult
+      let loginResult: { success: boolean; error?: string }
       await act(async () => {
         loginResult = await result.current.login("correct-password")
       })
@@ -128,7 +128,7 @@ describe("useAdminAuth", () => {
         credentials: "include",
         body: JSON.stringify({ password: "correct-password" }),
       })
-      expect(loginResult.success).toBe(true)
+      expect(loginResult!.success).toBe(true)
     })
 
     it("fails login with incorrect password", async () => {
