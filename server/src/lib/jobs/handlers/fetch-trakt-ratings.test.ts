@@ -310,46 +310,13 @@ describe("FetchTraktRatingsHandler", () => {
   })
 
   describe("rate limiting", () => {
-    it.skip("enforces 200ms delay before API call", async () => {
-      const mockJob = {
-        id: "test-job-rate-limit",
-        data: {
-          entityType: "movie" as const,
-          entityId: 550,
-          imdbId: "tt0137523",
-        },
-        attemptsMade: 0,
-        opts: {
-          priority: 10,
-          attempts: 3,
-        },
-      } as Job
-
-      const mockMovie: Partial<MovieRecord> = {
-        tmdb_id: 550,
-        title: "Fight Club",
-      }
-
-      const mockStats = {
-        watchers: 50000,
-        plays: 120000,
-        collectors: 30000,
-        votes: 25000,
-        comments: 500,
-        lists: 800,
-        rating: 8.5,
-      }
-
-      vi.mocked(trakt.getTraktStats).mockResolvedValue(mockStats)
-      vi.mocked(movies.getMovie).mockResolvedValue(mockMovie as MovieRecord)
-      vi.mocked(movies.upsertMovie).mockResolvedValue()
-
-      const startTime = Date.now()
-      await handler.process(mockJob)
-      const elapsed = Date.now() - startTime
-
-      // Should have delayed at least 200ms
-      expect(elapsed).toBeGreaterThanOrEqual(200)
+    it("has correct rate limit configuration for BullMQ", () => {
+      // Rate limiting is handled by BullMQ using the rateLimit config
+      // (see handler.ts:44-47). BullMQ enforces the delay between jobs,
+      // not within the handler's process() method.
+      expect(handler.rateLimit).toBeDefined()
+      expect(handler.rateLimit?.max).toBe(1)
+      expect(handler.rateLimit?.duration).toBe(200)
     })
   })
 
