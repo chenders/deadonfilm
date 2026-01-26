@@ -14,15 +14,10 @@ import newrelic from "newrelic"
 import { rebuildDeathCaches } from "../cache.js"
 import { MODEL_ID, DEFAULT_CHECKPOINT_FILE } from "./constants.js"
 import { createBatchRequest } from "./prompt-builder.js"
-import { parseClaudeResponse, repairJson } from "./response-parser.js"
+import { parseClaudeResponse } from "./response-parser.js"
 import { applyUpdate } from "./actor-updater.js"
 import { storeFailure } from "./failure-recovery.js"
-import {
-  createEmptyCheckpoint,
-  type Checkpoint,
-  type ActorToProcess,
-  type ClaudeResponse,
-} from "./schemas.js"
+import { createEmptyCheckpoint, type Checkpoint, type ActorToProcess } from "./schemas.js"
 
 // Re-export checkpoint utilities with default file path
 export function loadCheckpoint(filePath: string = DEFAULT_CHECKPOINT_FILE): Checkpoint | null {
@@ -317,33 +312,7 @@ export async function processResults(
 
       try {
         // parseClaudeResponse handles markdown stripping, JSON repair, and validation
-        let parsed: ClaudeResponse
-        try {
-          parsed = parseClaudeResponse(responseText)
-        } catch (parseError) {
-          // Try to repair common JSON issues and retry
-          const repairedJson = repairJson(responseText)
-          try {
-            parsed = JSON.parse(repairedJson) as ClaudeResponse
-            console.log(`  [Repaired JSON for actor ${actorId}]`)
-          } catch {
-            const errorMsg = parseError instanceof Error ? parseError.message : "JSON parse error"
-            console.error(`JSON parse error for actor ${actorId}: ${errorMsg}`)
-            if (db) {
-              await storeFailure(
-                db,
-                batchId,
-                actorId,
-                customId,
-                responseText,
-                errorMsg,
-                "json_parse"
-              )
-            }
-            checkpoint.stats.errored++
-            continue
-          }
-        }
+        const parsed = parseClaudeResponse(responseText)
 
         if (dryRun) {
           console.log(`\n[${processed}] Actor ${actorId}:`)
