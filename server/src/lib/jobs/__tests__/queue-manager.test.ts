@@ -24,7 +24,7 @@ describe("QueueManager", () => {
 
   afterAll(async () => {
     await queueManager.shutdown()
-    await pool.end()
+    // Don't end the pool - it's a singleton shared across tests
   })
 
   beforeEach(async () => {
@@ -48,6 +48,9 @@ describe("QueueManager", () => {
 
   describe("Job Creation", () => {
     it("should create a job with valid payload", async () => {
+      // Pause queue to prevent immediate processing
+      await queueManager.pauseQueue(QueueName.CACHE)
+
       const jobId = await queueManager.addJob(
         JobType.WARM_ACTOR_CACHE,
         {
@@ -72,6 +75,9 @@ describe("QueueManager", () => {
       expect(result.rows[0].priority).toBe(JobPriority.NORMAL)
       expect(result.rows[0].created_by).toBe("test")
       expect(result.rows[0].payload).toEqual({ actorId: 2157 })
+
+      // Resume queue
+      await queueManager.resumeQueue(QueueName.CACHE)
     })
 
     it("should reject job with invalid payload", async () => {

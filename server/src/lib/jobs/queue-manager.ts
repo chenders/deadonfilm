@@ -109,21 +109,19 @@ class QueueManager {
 
       const completedAt = new Date()
 
-      await this.updateJobStatus(jobId, JobStatus.COMPLETED, {
-        completed_at: completedAt,
-        result: returnvalue,
-      })
-
-      // Calculate duration
+      // Update status, result, completed_at, and duration_ms in a single atomic query
       const pool = getPool()
       const result = await pool.query(
         `
         UPDATE job_runs
-        SET duration_ms = EXTRACT(EPOCH FROM ($1::timestamptz - started_at)) * 1000
-        WHERE job_id = $2
+        SET status = $1,
+            completed_at = $2,
+            result = $3,
+            duration_ms = EXTRACT(EPOCH FROM ($2::timestamptz - started_at)) * 1000
+        WHERE job_id = $4
         RETURNING duration_ms
       `,
-        [completedAt, jobId]
+        [JobStatus.COMPLETED, completedAt, returnvalue, jobId]
       )
 
       const durationMs = result.rows[0]?.duration_ms
@@ -139,21 +137,22 @@ class QueueManager {
     queueEvents.on("failed", async ({ jobId, failedReason }) => {
       logger.error({ queue: queueName, jobId, error: failedReason }, "Job failed")
 
-      await this.updateJobStatus(jobId, JobStatus.FAILED, {
-        completed_at: new Date(),
-        error_message: failedReason,
-      })
+      const completedAt = new Date()
 
-      // Increment attempt count
+      // Update status, completed_at, error_message, duration_ms, and increment attempts in a single atomic query
       const pool = getPool()
       const result = await pool.query(
         `
         UPDATE job_runs
-        SET attempts = attempts + 1
-        WHERE job_id = $1
+        SET status = $1,
+            completed_at = $2,
+            error_message = $3,
+            duration_ms = EXTRACT(EPOCH FROM ($2::timestamptz - started_at)) * 1000,
+            attempts = attempts + 1
+        WHERE job_id = $4
         RETURNING attempts, max_attempts, job_type, payload
       `,
-        [jobId]
+        [JobStatus.FAILED, completedAt, failedReason, jobId]
       )
 
       const row = result.rows[0]
