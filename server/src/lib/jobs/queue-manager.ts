@@ -142,21 +142,30 @@ class QueueManager {
           newrelic.recordMetric(`Custom/JobQueue/${queueName}/ProcessingTime`, durationMs)
         }
       } catch (error) {
-        logger.error({ queue: queueName, jobId, error }, "Failed to update completed job in database")
+        logger.error(
+          { queue: queueName, jobId, error },
+          "Failed to update completed job in database"
+        )
       }
     })
 
     // Job failed
     queueEvents.on("failed", async ({ jobId, failedReason }) => {
       logger.error({ queue: queueName, jobId, error: failedReason }, "Job failed")
-      logger.debug({ queue: queueName, jobId }, "Job failed event handler: starting database update")
+      logger.debug(
+        { queue: queueName, jobId },
+        "Job failed event handler: starting database update"
+      )
 
       const completedAt = new Date()
 
       try {
         // Update status, completed_at, error_message, duration_ms, and increment attempts in a single atomic query
         const pool = getPool()
-        logger.debug({ queue: queueName, jobId }, "Job failed event handler: executing UPDATE query")
+        logger.debug(
+          { queue: queueName, jobId },
+          "Job failed event handler: executing UPDATE query"
+        )
         const result = await pool.query(
           `
           UPDATE job_runs
