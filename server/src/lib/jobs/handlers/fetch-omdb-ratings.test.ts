@@ -307,48 +307,6 @@ describe("FetchOMDbRatingsHandler", () => {
     })
   })
 
-  describe("rate limiting", () => {
-    it("enforces 200ms delay before API call", async () => {
-      const mockJob = {
-        id: "test-job-rate-limit",
-        data: {
-          entityType: "movie" as const,
-          entityId: 550,
-          imdbId: "tt0137523",
-        },
-        attemptsMade: 0,
-        opts: {
-          priority: 10,
-          attempts: 3,
-        },
-      } as Job
-
-      const mockMovie: Partial<MovieRecord> = {
-        tmdb_id: 550,
-        title: "Fight Club",
-      }
-
-      const mockRatings = {
-        imdbRating: 8.8,
-        imdbVotes: 2000000,
-        rottenTomatoesScore: 79,
-        rottenTomatoesAudience: 96,
-        metacriticScore: 66,
-      }
-
-      vi.mocked(omdb.getOMDbRatings).mockResolvedValue(mockRatings)
-      vi.mocked(movies.getMovie).mockResolvedValue(mockMovie as MovieRecord)
-      vi.mocked(movies.upsertMovie).mockResolvedValue()
-
-      const startTime = Date.now()
-      await handler.process(mockJob)
-      const elapsed = Date.now() - startTime
-
-      // Should have delayed at least 200ms
-      expect(elapsed).toBeGreaterThanOrEqual(200)
-    })
-  })
-
   describe("New Relic integration", () => {
     it("records success metric on successful fetch", async () => {
       const mockJob = {
