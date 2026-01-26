@@ -31,8 +31,9 @@ import { JobType, JobPriority } from "../src/lib/jobs/types.js"
 
 export function parsePositiveInt(value: string): number {
   const n = parseInt(value, 10)
-  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
-    throw new InvalidArgumentError("Must be positive integer")
+  // Check if the value is a valid integer (no decimals) and positive
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0 || value !== String(n)) {
+    throw new InvalidArgumentError("Must be a positive integer")
   }
   return n
 }
