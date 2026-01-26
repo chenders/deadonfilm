@@ -14,6 +14,10 @@ import { logger } from "../../lib/logger.js"
 
 const router = Router()
 
+// Constants
+const MAX_RECENT_JOBS = 10
+const MAX_JOBS_TO_CLEAN = 1000
+
 /**
  * GET /admin/api/jobs/queues
  * List all queues with current stats
@@ -58,6 +62,11 @@ router.get("/queues", async (_req: Request, res: Response) => {
 router.get("/queue/:name", async (req: Request, res: Response) => {
   try {
     const { name } = req.params
+
+    if (!Object.values(QueueName).includes(name as QueueName)) {
+      return res.status(400).json({ error: "Invalid queue name" })
+    }
+
     const queue = queueManager.getQueue(name as QueueName)
 
     if (!queue) {
@@ -71,7 +80,7 @@ router.get("/queue/:name", async (req: Request, res: Response) => {
       queue.getFailedCount(),
       queue.getDelayedCount(),
       queue.isPaused(),
-      queue.getJobs(["waiting", "active", "completed", "failed"], 0, 10),
+      queue.getJobs(["waiting", "active", "completed", "failed"], 0, MAX_RECENT_JOBS),
     ])
 
     res.json({
@@ -108,8 +117,8 @@ router.get("/queue/:name", async (req: Request, res: Response) => {
  */
 router.get("/runs", async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1
-    const pageSize = parseInt(req.query.pageSize as string) || 20
+    const page = Math.max(1, parseInt(req.query.page as string) || 1)
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20))
     const status = req.query.status as string | undefined
     const jobType = req.query.jobType as string | undefined
     const queueName = req.query.queueName as string | undefined
@@ -222,19 +231,16 @@ router.post("/runs/:id/retry", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Queue not found" })
     }
 
-    // Get the original job from BullMQ
-    const job = await queue.getJob(row.job_id)
+    // Create a new job with the original payload instead of retrying the old one
+    // This allows retrying jobs even after they've been cleaned up from BullMQ
+    const newJob = await queue.add(row.job_type, row.payload)
 
-    if (!job) {
-      return res.status(404).json({ error: "Job not found in queue" })
-    }
+    logger.info(
+      { originalJobId: row.job_id, newJobId: newJob.id, jobType: row.job_type },
+      "Job retried via admin API by creating a new job"
+    )
 
-    // Retry the job
-    await job.retry()
-
-    logger.info({ jobId: row.job_id, jobType: row.job_type }, "Job retried via admin API")
-
-    res.json({ success: true, message: "Job retry initiated" })
+    res.json({ success: true, message: "Job retry initiated", jobId: newJob.id })
   } catch (error) {
     logger.error({ error, jobId: req.params.id }, "Failed to retry job")
     res.status(500).json({ error: "Failed to retry job" })
@@ -248,7 +254,14 @@ router.post("/runs/:id/retry", async (req: Request, res: Response) => {
 router.post("/queue/:name/pause", async (req: Request, res: Response) => {
   try {
     const { name } = req.params
-    const queue = queueManager.getQueue(name as QueueName)
+
+    // Validate that the provided queue name is one of the known QueueName values
+    if (!Object.values(QueueName).includes(name as QueueName)) {
+      return res.status(400).json({ error: "Invalid queue name" })
+    }
+
+    const queueName = name as QueueName
+    const queue = queueManager.getQueue(queueName)
 
     if (!queue) {
       return res.status(404).json({ error: "Queue not found" })
@@ -272,6 +285,11 @@ router.post("/queue/:name/pause", async (req: Request, res: Response) => {
 router.post("/queue/:name/resume", async (req: Request, res: Response) => {
   try {
     const { name } = req.params
+
+    if (!Object.values(QueueName).includes(name as QueueName)) {
+      return res.status(400).json({ error: "Invalid queue name" })
+    }
+
     const queue = queueManager.getQueue(name as QueueName)
 
     if (!queue) {
@@ -295,16 +313,15 @@ router.post("/queue/:name/resume", async (req: Request, res: Response) => {
  */
 router.post("/cleanup", async (req: Request, res: Response) => {
   try {
-    const gracePeriod = parseInt(req.body.gracePeriod as string) || 24 // hours
+    const gracePeriod = Math.min(168, Math.max(1, parseInt(req.body.gracePeriod as string) || 24)) // hours
+    const gracePeriodMs = gracePeriod * 60 * 60 * 1000
     const queues = queueManager.getAllQueues()
 
-    let totalCleaned = 0
+    const cleanupResults = await Promise.all(
+      queues.map((queue) => queue.clean(gracePeriodMs, MAX_JOBS_TO_CLEAN, "completed"))
+    )
 
-    for (const queue of queues) {
-      // Clean completed jobs older than grace period
-      const cleaned = await queue.clean(gracePeriod * 60 * 60 * 1000, 1000, "completed")
-      totalCleaned += cleaned.length
-    }
+    const totalCleaned = cleanupResults.reduce((sum, cleaned) => sum + cleaned.length, 0)
 
     logger.info({ totalCleaned, gracePeriod }, "Cleaned old completed jobs via admin API")
 
@@ -321,8 +338,8 @@ router.post("/cleanup", async (req: Request, res: Response) => {
  */
 router.get("/dead-letter", async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1
-    const pageSize = parseInt(req.query.pageSize as string) || 20
+    const page = Math.max(1, parseInt(req.query.page as string) || 1)
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20))
     const reviewed = req.query.reviewed === "true"
 
     const offset = (page - 1) * pageSize
@@ -369,7 +386,7 @@ router.post("/dead-letter/:id/review", async (req: Request, res: Response) => {
     const { notes } = req.body
     const pool = getPool()
 
-    await pool.query(
+    const result = await pool.query(
       `UPDATE job_dead_letter
        SET reviewed = true,
            review_notes = $2,
@@ -378,6 +395,10 @@ router.post("/dead-letter/:id/review", async (req: Request, res: Response) => {
        WHERE id = $1`,
       [id, notes || null, "admin"] // TODO: Get actual admin username from session
     )
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Dead letter job not found" })
+    }
 
     logger.info({ deadLetterId: id }, "Dead letter job marked as reviewed")
 
