@@ -4,8 +4,8 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { TestMemoryRouter } from "../../test/test-utils"
 import EnrichmentReviewPage from "./EnrichmentReviewPage"
 import * as enrichmentReviewHooks from "../../hooks/admin/useEnrichmentReview"
 import * as adminAuthHook from "../../hooks/useAdminAuth"
@@ -78,9 +78,9 @@ describe("EnrichmentReviewPage", () => {
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
+        <TestMemoryRouter>
           <EnrichmentReviewPage />
-        </MemoryRouter>
+        </TestMemoryRouter>
       </QueryClientProvider>
     )
   }

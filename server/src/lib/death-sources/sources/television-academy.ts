@@ -308,6 +308,7 @@ export class TelevisionAcademySource extends BaseDataSource {
     }
 
     // Extract birth location
+    // eslint-disable-next-line security/detect-unsafe-regex -- Acceptable for controlled text scraping
     const locationMatch = html.match(/(?:Born|in)\s+([A-Z][a-zA-Z\s,]+(?:,\s*[A-Z][a-zA-Z\s]+)?)/i)
     if (locationMatch) {
       const location = locationMatch[1].trim()

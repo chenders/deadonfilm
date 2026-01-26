@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
+import { TestMemoryRouter } from "@/test/test-utils"
 import AdminNav from "./AdminNav"
 import { AdminAuthProvider } from "../../hooks/useAdminAuth"
 
@@ -28,11 +28,11 @@ describe("AdminNav", () => {
     )
 
     return render(
-      <MemoryRouter initialEntries={[initialPath]}>
+      <TestMemoryRouter initialEntries={[initialPath]}>
         <AdminAuthProvider>
           <AdminNav />
         </AdminAuthProvider>
-      </MemoryRouter>
+      </TestMemoryRouter>
     )
   }
 
