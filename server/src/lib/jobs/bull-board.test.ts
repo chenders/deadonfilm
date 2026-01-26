@@ -36,17 +36,19 @@ describe("setupBullBoard", () => {
     expect(typeof router).toBe("function")
   })
 
-  it("handles multiple queues", () => {
+  it("handles multiple queues", async () => {
     const queue2 = new Queue("test-queue-2", {
       connection: getRedisJobsClient(),
     })
 
-    const router = setupBullBoard([testQueue, queue2])
+    try {
+      const router = setupBullBoard([testQueue, queue2])
 
-    expect(router).toBeDefined()
-    expect(typeof router).toBe("function")
-
-    // Clean up second queue
-    queue2.close()
+      expect(router).toBeDefined()
+      expect(typeof router).toBe("function")
+    } finally {
+      // Clean up second queue
+      await queue2.close()
+    }
   })
 })

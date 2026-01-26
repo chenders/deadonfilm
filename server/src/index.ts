@@ -327,7 +327,7 @@ async function startServer() {
 
       // Mount Bull Board for queue monitoring
       const bullBoardRouter = setupBullBoard(queueManager.getAllQueues())
-      app.use("/admin/bull-board", adminAuthMiddleware, bullBoardRouter)
+      app.use("/admin/bull-board", adminRoutesLimiter, adminAuthMiddleware, bullBoardRouter)
       logger.info("Bull Board mounted at /admin/bull-board")
     } catch (error) {
       logger.error({ error }, "Failed to initialize job queue - continuing without it")
