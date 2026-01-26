@@ -440,10 +440,7 @@ describe("FetchOMDbRatingsHandler", () => {
 
       await expect(handler.process(mockJob)).rejects.toThrow("API Error")
 
-      expect(newrelic.default.recordMetric).toHaveBeenCalledWith(
-        "Custom/JobHandler/OMDb/Error",
-        1
-      )
+      expect(newrelic.default.recordMetric).toHaveBeenCalledWith("Custom/JobHandler/OMDb/Error", 1)
     })
 
     it("records RateLimitExceeded metric on 429 errors", async () => {
@@ -461,9 +458,7 @@ describe("FetchOMDbRatingsHandler", () => {
         },
       } as Job
 
-      vi.mocked(omdb.getOMDbRatings).mockRejectedValue(
-        new Error("429 Too Many Requests")
-      )
+      vi.mocked(omdb.getOMDbRatings).mockRejectedValue(new Error("429 Too Many Requests"))
 
       const newrelic = await import("newrelic")
 
