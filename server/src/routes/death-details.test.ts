@@ -261,6 +261,12 @@ describe("getActorDeathDetails", () => {
         cause: [{ url: "https://example.com", archive_url: null, description: "News article" }],
         circumstances: null,
         rumored: null,
+        additionalContext: null,
+        careerStatus: null,
+        lastProject: null,
+        posthumousReleases: null,
+        locationOfDeath: null,
+        relatedCelebrities: null,
       },
     })
   })
@@ -322,6 +328,12 @@ describe("getActorDeathDetails", () => {
         cause: null,
         circumstances: null,
         rumored: null,
+        additionalContext: null,
+        careerStatus: null,
+        lastProject: null,
+        posthumousReleases: null,
+        locationOfDeath: null,
+        relatedCelebrities: null,
       },
     }
     vi.mocked(getCached).mockResolvedValueOnce(cachedResponse)
@@ -489,6 +501,68 @@ describe("getActorDeathDetails", () => {
               url: "https://wiki.example.org/actor",
               archive_url: null,
               description: "Source: gemini_pro",
+            },
+          ],
+        }),
+      })
+    )
+  })
+
+  it("selects only the best source for career status", async () => {
+    const circumstancesWithMultipleCareerStatusSources = {
+      ...mockCircumstances,
+      sources: {
+        careerStatusAtDeath: {
+          type: "gemini_pro",
+          url: "https://example.com/article",
+          confidence: 0.85,
+          rawData: {
+            resolvedSources: [
+              {
+                originalUrl: "https://example1.com",
+                finalUrl: "https://people.com/actor-career",
+                domain: "people.com",
+                sourceName: "People",
+              },
+              {
+                originalUrl: "https://example2.com",
+                finalUrl: "https://variety.com/actor-career",
+                domain: "variety.com",
+                sourceName: "Variety",
+              },
+              {
+                originalUrl: "https://example3.com",
+                finalUrl: "https://bbc.com/actor-career",
+                domain: "bbc.com",
+                sourceName: "BBC News",
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      circumstancesWithMultipleCareerStatusSources as any
+    )
+
+    // Mock database queries for related celebrity lookup
+    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    // Should only return BBC News (highest reputation tier 1) from the 3 sources
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          careerStatus: [
+            {
+              url: "https://bbc.com/actor-career",
+              archive_url: null,
+              description: "BBC News",
             },
           ],
         }),
