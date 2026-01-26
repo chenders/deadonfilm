@@ -137,10 +137,10 @@ SHA=$(git rev-parse HEAD)
 ## Screenshots
 
 ### Before Fix
-![Before](https://raw.githubusercontent.com/chenders/deadonfilm/{sha}/e2e/screenshots/bug-before.png)
+![Before](https://raw.githubusercontent.com/chenders/deadonfilm/$SHA/e2e/screenshots/bug-before.png)
 
 ### After Fix
-![After](https://raw.githubusercontent.com/chenders/deadonfilm/{sha}/e2e/screenshots/bug-after.png)
+![After](https://raw.githubusercontent.com/chenders/deadonfilm/$SHA/e2e/screenshots/bug-after.png)
 ```
 
 ### Desktop/Mobile Pattern
@@ -149,10 +149,10 @@ SHA=$(git rev-parse HEAD)
 ## Screenshots
 
 ### Desktop
-![Desktop](https://raw.githubusercontent.com/chenders/deadonfilm/{sha}/e2e/screenshots/feature-desktop.png)
+![Desktop](https://raw.githubusercontent.com/chenders/deadonfilm/$SHA/e2e/screenshots/feature-desktop.png)
 
 ### Mobile
-![Mobile](https://raw.githubusercontent.com/chenders/deadonfilm/{sha}/e2e/screenshots/feature-mobile.png)
+![Mobile](https://raw.githubusercontent.com/chenders/deadonfilm/$SHA/e2e/screenshots/feature-mobile.png)
 ```
 
 ## Complete Workflow
