@@ -299,11 +299,23 @@ class QueueManager {
   ): Promise<void> {
     const pool = getPool()
 
+    // Whitelist of allowed column names to prevent SQL injection
+    const ALLOWED_FIELDS = new Set([
+      "started_at",
+      "completed_at",
+      "result",
+      "error_message",
+      "duration_ms",
+    ])
+
     const fields: string[] = ["status = $2"]
     const values: unknown[] = [jobId, status]
     let paramIndex = 3
 
     for (const [key, value] of Object.entries(additionalFields)) {
+      if (!ALLOWED_FIELDS.has(key)) {
+        throw new Error(`Invalid field name: ${key}`)
+      }
       fields.push(`${key} = $${paramIndex}`)
       values.push(value)
       paramIndex++

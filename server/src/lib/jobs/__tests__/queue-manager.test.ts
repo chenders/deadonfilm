@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest"
 import { getPool } from "../../db.js"
 import { queueManager } from "../queue-manager.js"
-import { JobType, QueueName, JobPriority, JobStatus } from "../types.js"
+import { JobType, QueueName, JobPriority } from "../types.js"
 
 describe("QueueManager", () => {
   let pool: ReturnType<typeof getPool>
