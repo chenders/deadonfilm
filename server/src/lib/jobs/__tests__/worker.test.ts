@@ -35,11 +35,16 @@ class MockCacheHandler extends BaseJobHandler<{ actorId: number }, { cached: boo
 }
 
 // Mock handler that always fails
-class MockFailingHandler extends BaseJobHandler<{ actorId: number }, never> {
+class MockFailingHandler extends BaseJobHandler<
+  { entityType: "movie" | "show"; entityId: number },
+  never
+> {
   readonly jobType = JobType.WARM_CONTENT_CACHE
   readonly queueName = QueueName.CACHE
 
-  async process(job: Job<{ actorId: number }>): Promise<JobResult<never>> {
+  async process(
+    job: Job<{ entityType: "movie" | "show"; entityId: number }>
+  ): Promise<JobResult<never>> {
     throw new Error("Mock failure")
   }
 }
@@ -111,11 +116,7 @@ describe("JobWorker", () => {
   })
 
   describe("Job Processing", () => {
-    // TODO: This test is flaky in CI due to timing issues with BullMQ worker lifecycle.
-    // The worker may not pick up the job quickly enough, or event handlers may fire
-    // out of order, causing intermittent failures. Need to investigate more reliable
-    // synchronization approach for testing worker job processing.
-    it.skip("should process job successfully", async () => {
+    it("should process job successfully", async () => {
       // Queue a job
       const jobId = await queueManager.addJob(
         JobType.WARM_ACTOR_CACHE,
@@ -136,7 +137,7 @@ describe("JobWorker", () => {
       expect(result.rows[0].duration_ms).toBeGreaterThan(0)
     }, 25000)
 
-    it.skip("should update worker statistics after processing", async () => {
+    it("should update worker statistics after processing", async () => {
       const statsBefore = worker.getStats()
 
       // Queue a job
