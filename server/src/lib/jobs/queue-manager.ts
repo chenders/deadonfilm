@@ -269,11 +269,41 @@ class QueueManager {
       throw new Error(`Queue not found for job type: ${jobType}`)
     }
 
-    // Create job
+    // Pre-generate job ID for database consistency
+    // BullMQ auto-generates IDs, but we can specify a custom one
+    const jobId = options.jobId ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+    const priority = options.priority ?? JobPriority.NORMAL
+    const attempts = options.attempts ?? 3
+
+    // CRITICAL: Insert into database BEFORE adding to BullMQ queue
+    // This prevents race condition where worker picks up job before row exists
+    const pool = getPool()
+    await pool.query(
+      `
+      INSERT INTO job_runs (
+        job_id, job_type, queue_name, status, priority,
+        payload, max_attempts, created_by
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `,
+      [
+        jobId,
+        jobType,
+        queueName,
+        JobStatus.PENDING,
+        priority,
+        payload,
+        attempts,
+        options.createdBy ?? "unknown",
+      ]
+    )
+
+    // Now add job to BullMQ queue (worker can safely process it now)
     const job = await queue.add(jobType, payload, {
-      priority: options.priority ?? JobPriority.NORMAL,
+      jobId, // Use the same ID we inserted into database
+      priority,
       delay: options.delay,
-      attempts: options.attempts ?? 3,
+      attempts,
       backoff: options.backoff ?? {
         type: "exponential",
         delay: 60000,
@@ -290,28 +320,6 @@ class QueueManager {
         priority: job.opts.priority,
       },
       "Job added to queue"
-    )
-
-    // Record job in database
-    const pool = getPool()
-    await pool.query(
-      `
-      INSERT INTO job_runs (
-        job_id, job_type, queue_name, status, priority,
-        payload, max_attempts, created_by
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    `,
-      [
-        job.id,
-        jobType,
-        queueName,
-        JobStatus.PENDING,
-        job.opts.priority ?? 0,
-        payload,
-        job.opts.attempts ?? 3,
-        options.createdBy ?? "unknown",
-      ]
     )
 
     // Record New Relic events

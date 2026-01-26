@@ -267,6 +267,7 @@ export type JobPayloadMap = {
  * Options when creating a job
  */
 export interface JobOptions {
+  jobId?: string // Override the job ID (default: auto-generated). Must be unique.
   priority?: JobPriority
   delay?: number // Delay in milliseconds before job is processed
   attempts?: number // Maximum number of retry attempts (default: 3)

@@ -358,11 +358,13 @@ export class SoompiSource extends BaseDataSource {
    * Try to extract location from article text.
    */
   private extractLocation(text: string): string | null {
+    /* eslint-disable security/detect-unsafe-regex -- Acceptable for controlled text scraping */
     const patterns = [
       /(?:died|passed away|found dead)\s+(?:at|in)\s+(?:a\s+)?([A-Za-z][A-Za-z\s,]+(?:hospital|home|residence|apartment|seoul|busan|korea))/i,
       /(?:at|in)\s+(?:a\s+)?([A-Za-z][A-Za-z\s]+(?:hospital|medical center))/i,
       /(?:in\s+)?(Seoul|Busan|Incheon|Daegu|Daejeon|Gwangju|Ulsan|Korea)/i,
     ]
+    /* eslint-enable security/detect-unsafe-regex */
 
     for (const pattern of patterns) {
       const match = text.match(pattern)

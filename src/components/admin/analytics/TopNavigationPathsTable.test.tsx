@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { MemoryRouter } from "react-router-dom"
+import { TestMemoryRouter } from "@/test/test-utils"
 import TopNavigationPathsTable from "./TopNavigationPathsTable"
 import * as analyticsHooks from "../../../hooks/admin/useAnalytics"
 
@@ -18,7 +18,7 @@ describe("TopNavigationPathsTable", () => {
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>{children}</MemoryRouter>
+      <TestMemoryRouter>{children}</TestMemoryRouter>
     </QueryClientProvider>
   )
 

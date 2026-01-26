@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { renderHook, waitFor } from "@testing-library/react"
+import { renderHook, waitFor, act } from "@testing-library/react"
 import { AdminAuthProvider, useAdminAuth } from "./useAdminAuth"
 import { ReactNode } from "react"
 
@@ -111,7 +111,10 @@ describe("useAdminAuth", () => {
         } as Response)
       )
 
-      const loginResult = await result.current.login("correct-password")
+      let loginResult: { success: boolean; error?: string }
+      await act(async () => {
+        loginResult = await result.current.login("correct-password")
+      })
 
       await waitFor(() => {
         expect(result.current.isAuthenticated).toBe(true)
@@ -125,7 +128,7 @@ describe("useAdminAuth", () => {
         credentials: "include",
         body: JSON.stringify({ password: "correct-password" }),
       })
-      expect(loginResult.success).toBe(true)
+      expect(loginResult!.success).toBe(true)
     })
 
     it("fails login with incorrect password", async () => {
@@ -310,7 +313,9 @@ describe("useAdminAuth", () => {
         } as Response)
       )
 
-      await result.current.checkAuth()
+      await act(async () => {
+        await result.current.checkAuth()
+      })
 
       await waitFor(() => {
         expect(result.current.isAuthenticated).toBe(true)

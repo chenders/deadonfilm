@@ -347,11 +347,13 @@ export class AlloCineSource extends BaseDataSource {
    */
   private extractLocation(text: string): string | null {
     // Look for common French location patterns
+    /* eslint-disable security/detect-unsafe-regex -- Acceptable for controlled text scraping */
     const patterns = [
       /(?:décédé|mort|décès)\s+(?:à|au|en)\s+([A-Z][a-zA-Zéèêëàâäôùûü\s-]+)/,
       /(?:à|au)\s+l'hôpital\s+(?:de\s+)?([A-Z][a-zA-Zéèêëàâäôùûü\s-]+)/,
       /(?:à|en)\s+([A-Z][a-zA-Zéèêëàâäôùûü\s-]+)(?:\s*,\s*[A-Z][a-zA-Z]+)?/,
     ]
+    /* eslint-enable security/detect-unsafe-regex */
 
     for (const pattern of patterns) {
       const match = text.match(pattern)
