@@ -25,7 +25,7 @@ describe("Redis jobs client", () => {
     vi.clearAllMocks()
     originalEnv = process.env.REDIS_JOBS_URL
 
-    // Reset client state without resetting modules to avoid SIGTERM listener accumulation
+    // Reset cached Redis client state between tests
     const { _resetForTesting } = await import("./redis.js")
     _resetForTesting()
   })
