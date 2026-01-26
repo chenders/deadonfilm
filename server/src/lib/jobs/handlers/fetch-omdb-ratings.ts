@@ -226,6 +226,7 @@ export class FetchOMDbRatingsHandler extends BaseJobHandler<FetchOMDbRatingsPayl
    */
   private isPermanentError(error: unknown): boolean {
     const errorMessage = (error as Error).message || String(error)
+    const lowerMessage = errorMessage.toLowerCase()
 
     // Check for permanent HTTP status codes
     for (const code of PERMANENT_ERROR_CODES) {
@@ -234,12 +235,12 @@ export class FetchOMDbRatingsHandler extends BaseJobHandler<FetchOMDbRatingsPayl
       }
     }
 
-    // Check for specific permanent error messages
+    // Check for specific permanent error messages (case-insensitive)
     if (
-      errorMessage.includes("invalid api key") ||
-      errorMessage.includes("unauthorized") ||
-      errorMessage.includes("not found") ||
-      errorMessage.includes("invalid imdb id")
+      lowerMessage.includes("invalid api key") ||
+      lowerMessage.includes("unauthorized") ||
+      lowerMessage.includes("not found") ||
+      lowerMessage.includes("invalid imdb id")
     ) {
       return true
     }
