@@ -2,6 +2,101 @@
 
 Complete reference for GitHub CLI operations, commit/PR formatting, screenshot workflows, and Copilot review handling.
 
+## Branch Workflow
+
+**CRITICAL: NEVER commit directly to `main`**. Always use feature branches.
+
+### Before Starting ANY New Work
+
+```bash
+# 1. Ensure you're on main and it's up to date
+git checkout main
+git pull
+
+# 2. Create a new feature branch
+git checkout -b feat/descriptive-name  # or fix/, chore/, docs/
+```
+
+### Branch Naming Conventions
+
+| Prefix | Use Case | Example |
+|--------|----------|---------|
+| `feat/` | New features | `feat/github-cli-docs` |
+| `fix/` | Bug fixes | `fix/null-pointer-in-actor-api` |
+| `chore/` | Maintenance tasks | `chore/update-dependencies` |
+| `docs/` | Documentation only | `docs/update-readme` |
+
+### During Work: Creating Sub-branches
+
+**When substantial new work is about to begin while already on a feature branch**, ask the user if they want to create a new branch for the new work:
+
+```bash
+# Example: You're on feat/github-cli-docs and user asks to implement a new feature
+# ASK: "We're currently on feat/github-cli-docs. Would you like to:
+#       1. Create a new branch for this work (recommended if unrelated)
+#       2. Continue on the current branch (if closely related)"
+```
+
+**When to create a new branch**:
+- New work is logically separate from current branch
+- Current branch already has commits ready for PR
+- New work might take longer than current work
+- User wants to keep changes isolated
+
+**When to continue on current branch**:
+- New work is directly related to current changes
+- User wants all changes in one PR
+- Current branch has no commits yet
+
+### Committing on Feature Branches
+
+```bash
+# Standard workflow
+git add .
+git commit -m "$(cat <<'EOF'
+Short summary
+
+Details here
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
+```
+
+### Pushing Feature Branches
+
+```bash
+# First push (creates remote branch)
+git push -u origin feat/branch-name
+
+# Subsequent pushes
+git push
+```
+
+### Creating Pull Requests
+
+```bash
+# Create PR after pushing branch
+gh pr create --title "Brief description" --body "$(cat <<'EOF'
+## Summary
+
+What this PR does
+
+## Changes
+
+- List of changes
+- Another change
+
+## Test Plan
+
+- [x] Tests pass
+- [x] Manual testing completed
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
 ## PR Comment Operations
 
 ### Understanding GitHub IDs
