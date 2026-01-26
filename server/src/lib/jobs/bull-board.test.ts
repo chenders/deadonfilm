@@ -18,7 +18,8 @@ describe("setupBullBoard", () => {
   })
 
   afterEach(async () => {
-    // Clean up
+    // Clean up Redis keys and close queue to ensure test isolation
+    await testQueue.obliterate({ force: true })
     await testQueue.close()
   })
 
@@ -47,7 +48,8 @@ describe("setupBullBoard", () => {
       expect(router).toBeDefined()
       expect(typeof router).toBe("function")
     } finally {
-      // Clean up second queue
+      // Clean up second queue - obliterate to remove Redis keys
+      await queue2.obliterate({ force: true })
       await queue2.close()
     }
   })
