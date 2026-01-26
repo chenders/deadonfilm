@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import "dotenv/config" // MUST be first import to load environment variables
 import newrelic from "newrelic"
 /**
  * Enrich actors with missing death details using multi-source fallbacks.
