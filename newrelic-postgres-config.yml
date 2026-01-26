@@ -2,11 +2,13 @@ integrations:
   - name: nri-postgresql
     env:
       # PostgreSQL connection details
+      # Environment variables are read from the container's environment
+      # Set in docker-compose.yml agent service environment section
       HOSTNAME: db
       PORT: 5432
-      USERNAME: ${POSTGRES_USER}
-      PASSWORD: ${POSTGRES_PASSWORD}
-      DATABASE: ${POSTGRES_DB}
+      USERNAME: {{POSTGRES_USER}}
+      PASSWORD: {{POSTGRES_PASSWORD}}
+      DATABASE: {{POSTGRES_DB}}
 
       ENABLE_SSL: false
       TRUST_SERVER_CERTIFICATE: true  # Internal Docker network
