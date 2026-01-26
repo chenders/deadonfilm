@@ -101,5 +101,8 @@ export const redisJobsClientLazy = {
  * @internal
  */
 export function _resetForTesting(): void {
+  if (redisJobsClient) {
+    redisJobsClient.disconnect()
+  }
   redisJobsClient = null
 }
