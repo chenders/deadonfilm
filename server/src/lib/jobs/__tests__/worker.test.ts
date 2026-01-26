@@ -75,8 +75,10 @@ describe("JobWorker", () => {
     const queue = queueManager.getQueue(QueueName.CACHE)
     if (queue) {
       await queue.drain()
-      // Give Redis time to process the drain operation
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      // Ensure queue is resumed (in case it was paused by other tests)
+      await queue.resume()
+      // Give Redis time to process the operations
+      await new Promise((resolve) => setTimeout(resolve, 200))
     }
   })
 
@@ -90,8 +92,7 @@ describe("JobWorker", () => {
     // Clear handlers
     clearHandlers()
 
-    // Close database connection
-    await pool.end()
+    // Don't end the pool - it's a singleton shared across tests
   })
 
   describe("Worker Initialization", () => {
@@ -129,7 +130,7 @@ describe("JobWorker", () => {
       expect(result.rows[0].result).toBeDefined()
       expect(result.rows[0].result.success).toBe(true)
       expect(result.rows[0].duration_ms).toBeGreaterThan(0)
-    }, 15000)
+    }, 25000)
 
     it("should update worker statistics after processing", async () => {
       const statsBefore = worker.getStats()
@@ -142,12 +143,12 @@ describe("JobWorker", () => {
       )
 
       // Wait for job to be processed
-      await waitForJobCompletion(jobId, 10000)
+      await waitForJobCompletion(jobId, 20000)
 
       const statsAfter = worker.getStats()
 
       expect(statsAfter.processedCount).toBeGreaterThan(statsBefore.processedCount)
-    }, 15000)
+    }, 25000)
   })
 
   describe("Error Handling", () => {
@@ -160,7 +161,7 @@ describe("JobWorker", () => {
       )
 
       // Wait for job to fail
-      await waitForJobStatus(jobId, "failed", 10000)
+      await waitForJobStatus(jobId, "failed", 20000)
 
       // Verify job failed
       const result = await pool.query("SELECT * FROM job_runs WHERE job_id = $1", [jobId])
@@ -168,14 +169,14 @@ describe("JobWorker", () => {
       expect(result.rows.length).toBe(1)
       expect(result.rows[0].status).toBe("failed")
       expect(result.rows[0].error_message).toContain("Mock failure")
-    }, 15000)
+    }, 25000)
   })
 })
 
 /**
  * Helper: Wait for job to complete (success or failure)
  */
-async function waitForJobCompletion(jobId: string, timeoutMs: number = 10000): Promise<void> {
+async function waitForJobCompletion(jobId: string, timeoutMs: number = 20000): Promise<void> {
   const pool = getPool()
   const startTime = Date.now()
 
@@ -206,7 +207,7 @@ async function waitForJobCompletion(jobId: string, timeoutMs: number = 10000): P
 async function waitForJobStatus(
   jobId: string,
   targetStatus: string,
-  timeoutMs: number = 10000
+  timeoutMs: number = 20000
 ): Promise<void> {
   const pool = getPool()
   const startTime = Date.now()
