@@ -67,7 +67,7 @@ describe("GeminiFlashSource", () => {
     })
 
     it("is not available without API key", () => {
-      vi.unstubAllEnvs()
+      vi.stubEnv("GOOGLE_AI_API_KEY", undefined)
       const sourceWithoutKey = new GeminiFlashSource()
       expect(sourceWithoutKey.isAvailable()).toBe(false)
     })
@@ -86,7 +86,7 @@ describe("GeminiFlashSource", () => {
     }
 
     it("returns error when API key is missing", async () => {
-      vi.unstubAllEnvs()
+      vi.stubEnv("GOOGLE_AI_API_KEY", undefined)
       const sourceWithoutKey = new GeminiFlashSource()
       const result = await sourceWithoutKey.lookup(testActor)
 

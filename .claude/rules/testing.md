@@ -15,6 +15,31 @@ Every PR must test: happy path, error handling, edge cases, all branching logic.
 - Query order: `getByRole` > `getByLabelText` > `getByText` > `getByTestId`
 - **NEVER use CSS class selectors**
 
+## Mock Redis in Tests
+
+**CRITICAL: All tests that use Redis MUST mock ioredis with ioredis-mock.**
+
+```typescript
+import { describe, it, expect, vi } from "vitest"
+import RedisMock from "ioredis-mock"
+
+// Mock ioredis BEFORE any imports that use Redis
+vi.mock("ioredis", () => ({
+  default: RedisMock,
+}))
+
+// Now import code that uses Redis
+import { myRedisClient } from "./redis.js"
+```
+
+**Why:** Tests must not connect to real Redis servers. Without mocking, tests will:
+- Fail with `ECONNREFUSED` errors
+- Timeout waiting for connections
+- Leak resources
+- Require external infrastructure
+
+**Applies to:** Any test file importing code that uses `ioredis`, `BullMQ`, or the job queue system.
+
 ## Test Conditional UI States
 
 ```typescript
