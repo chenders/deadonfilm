@@ -27,6 +27,7 @@ services:
       - "./newrelic-postgres-config.yml:/etc/newrelic-infra/integrations.d/postgresql-config.yml:ro"
       - "./newrelic-redis-config.yml:/etc/newrelic-infra/integrations.d/redis-config.yml:ro"
       - "./newrelic-nginx-config.yml:/etc/newrelic-infra/integrations.d/nginx-config.yml:ro"
+      - "./nginx.conf:/etc/nginx/nginx.conf:ro"
     depends_on:
       db:
         condition: service_healthy
