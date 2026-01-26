@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { TestMemoryRouter } from "../../test/test-utils"
+import { TestMemoryRouter } from "@/test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import HighPriorityActorsPage from "./HighPriorityActorsPage"
 

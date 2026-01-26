@@ -19,7 +19,7 @@ vi.stubGlobal("cancelAnimationFrame", () => {})
 const originalConsoleError = console.error
 beforeAll(() => {
   console.error = (...args: unknown[]) => {
-    const message = args[0]?.toString() || ""
+    const message = typeof args[0] === "string" ? args[0] : args[0]?.toString() || ""
     // Suppress Radix UI Tooltip warnings - these are internal state updates
     // that don't affect test correctness
     if (message.includes("Warning: An update to TooltipContent inside a test")) {

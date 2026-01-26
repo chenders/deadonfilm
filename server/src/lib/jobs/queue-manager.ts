@@ -299,18 +299,29 @@ class QueueManager {
     )
 
     // Now add job to BullMQ queue (worker can safely process it now)
-    const job = await queue.add(jobType, payload, {
-      jobId, // Use the same ID we inserted into database
-      priority,
-      delay: options.delay,
-      attempts,
-      backoff: options.backoff ?? {
-        type: "exponential",
-        delay: 60000,
-      },
-      removeOnComplete: options.removeOnComplete,
-      removeOnFail: options.removeOnFail,
-    })
+    let job
+    try {
+      job = await queue.add(jobType, payload, {
+        jobId, // Use the same ID we inserted into database
+        priority,
+        delay: options.delay,
+        attempts,
+        backoff: options.backoff ?? {
+          type: "exponential",
+          delay: 60000,
+        },
+        removeOnComplete: options.removeOnComplete,
+        removeOnFail: options.removeOnFail,
+      })
+    } catch (error) {
+      // If queue.add fails, mark the database row as failed to avoid orphaned jobs
+      logger.error({ error, jobId, jobType }, "Failed to add job to queue, marking as failed")
+      await pool.query(
+        `UPDATE job_runs SET status = $1, error = $2, finished_at = NOW() WHERE job_id = $3`,
+        [JobStatus.FAILED, error instanceof Error ? error.message : "Unknown error", jobId]
+      )
+      throw error
+    }
 
     logger.info(
       {

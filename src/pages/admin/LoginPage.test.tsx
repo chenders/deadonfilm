@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { Routes, Route } from "react-router-dom"
-import { TestMemoryRouter } from "../../test/test-utils"
+import { TestMemoryRouter } from "@/test/test-utils"
 import LoginPage from "./LoginPage"
 import { AdminAuthProvider } from "../../hooks/useAdminAuth"
 

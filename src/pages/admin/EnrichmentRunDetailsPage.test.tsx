@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
 import { Route, Routes } from "react-router-dom"
-import { TestMemoryRouter } from "../../test/test-utils"
+import { TestMemoryRouter } from "@/test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import EnrichmentRunDetailsPage from "./EnrichmentRunDetailsPage"
 import * as enrichmentHooks from "../../hooks/admin/useEnrichmentRuns"
