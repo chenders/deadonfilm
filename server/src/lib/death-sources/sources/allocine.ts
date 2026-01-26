@@ -351,6 +351,7 @@ export class AlloCineSource extends BaseDataSource {
     const patterns = [
       /(?:décédé|mort|décès)\s+(?:à|au|en)\s+([A-Z][a-zA-Zéèêëàâäôùûü\s-]+)/,
       /(?:à|au)\s+l'hôpital\s+(?:de\s+)?([A-Z][a-zA-Zéèêëàâäôùûü\s-]+)/,
+      /(?:à|en)\s+([A-Z][a-zA-Zéèêëàâäôùûü\s-]+)(?:\s*,\s*[A-Z][a-zA-Z]+)?/,
     ]
     /* eslint-enable security/detect-unsafe-regex */
 
