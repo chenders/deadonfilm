@@ -22,7 +22,6 @@ import {
   JobStatus,
   JobOptions,
   jobTypeToQueue,
-  queueConfigs,
   jobPayloadSchemas,
   type JobPayloadMap,
 } from "./types.js"
