@@ -446,10 +446,7 @@ describe("FetchTraktRatingsHandler", () => {
 
       await expect(handler.process(mockJob)).rejects.toThrow("API Error")
 
-      expect(newrelic.default.recordMetric).toHaveBeenCalledWith(
-        "Custom/JobHandler/Trakt/Error",
-        1
-      )
+      expect(newrelic.default.recordMetric).toHaveBeenCalledWith("Custom/JobHandler/Trakt/Error", 1)
     })
 
     it("records RateLimitExceeded metric on 429 errors", async () => {
