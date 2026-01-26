@@ -53,6 +53,7 @@ export const SOURCE_NAMES: Record<string, string> = {
   "obituaries.com": "Obituaries.com",
   "wikipedia.org": "Wikipedia",
   "en.wikipedia.org": "Wikipedia",
+  "wikidata.org": "Wikidata",
   "britannica.com": "Britannica",
   "biography.com": "Biography.com",
 
