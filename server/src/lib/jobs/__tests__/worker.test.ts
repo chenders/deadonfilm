@@ -111,6 +111,10 @@ describe("JobWorker", () => {
   })
 
   describe("Job Processing", () => {
+    // TODO: This test is flaky in CI due to timing issues with BullMQ worker lifecycle.
+    // The worker may not pick up the job quickly enough, or event handlers may fire
+    // out of order, causing intermittent failures. Need to investigate more reliable
+    // synchronization approach for testing worker job processing.
     it.skip("should process job successfully", async () => {
       // Queue a job
       const jobId = await queueManager.addJob(
