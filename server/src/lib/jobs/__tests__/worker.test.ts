@@ -181,11 +181,16 @@ async function waitForJobCompletion(jobId: string, timeoutMs: number = 10000): P
   const startTime = Date.now()
 
   while (Date.now() - startTime < timeoutMs) {
-    const result = await pool.query("SELECT status FROM job_runs WHERE job_id = $1", [jobId])
+    const result = await pool.query("SELECT status, duration_ms FROM job_runs WHERE job_id = $1", [
+      jobId,
+    ])
 
     if (result.rows.length > 0) {
       const status = result.rows[0].status
-      if (status === "completed" || status === "failed") {
+      const durationMs = result.rows[0].duration_ms
+
+      // Wait for both status to be final AND duration_ms to be set
+      if ((status === "completed" || status === "failed") && durationMs !== null) {
         return
       }
     }
