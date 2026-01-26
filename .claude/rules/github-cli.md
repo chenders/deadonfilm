@@ -474,7 +474,8 @@ git push
 SHA=$(git rev-parse HEAD)
 
 # 5. Create PR with screenshot URLs
-gh pr create --title "Fix null pointer bug" --body "$(cat <<'EOF'
+# Note: Use unquoted heredoc delimiter to allow $SHA variable expansion
+gh pr create --title "Fix null pointer bug" --body "$(cat <<EOF
 ## Summary
 
 Fixed null pointer error in actor API.
@@ -485,10 +486,10 @@ Fixed null pointer error in actor API.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
-)" | sed "s/\$SHA/$SHA/g"  # Replace $SHA placeholder with actual SHA
+)"
 ```
 
-**Alternative**: Manually construct URL after creating PR:
+**Alternative**: Manually construct URL after creating PR (simpler for complex cases):
 
 ```bash
 # 1. Get current commit SHA
@@ -519,7 +520,7 @@ git rev-parse HEAD
 // Mobile - iPhone SE
 { width: 375, height: 667 }
 
-// Mobile - iPhone 12/13/14
+// Mobile - iPhone 14
 { width: 390, height: 844 }
 
 // Tablet - iPad
@@ -865,11 +866,11 @@ EOF
 git push
 
 # 9. Get SHA for screenshots
-git rev-parse HEAD
-# abc123def456...
+SHA=$(git rev-parse HEAD)
 
 # 10. Create PR with screenshots
-gh pr create --title "Add mortality stats component to actor pages" --body "$(cat <<'EOF'
+# Note: Use unquoted heredoc delimiter to allow $SHA variable expansion
+gh pr create --title "Add mortality stats component to actor pages" --body "$(cat <<EOF
 ## Summary
 
 New component showing mortality statistics on actor pages:
@@ -880,10 +881,10 @@ New component showing mortality statistics on actor pages:
 ## Screenshots
 
 ### Desktop
-![Desktop view](https://raw.githubusercontent.com/chenders/deadonfilm/SHA_PLACEHOLDER/e2e/screenshots/mortality-stats-desktop.png)
+![Desktop view](https://raw.githubusercontent.com/chenders/deadonfilm/$SHA/e2e/screenshots/mortality-stats-desktop.png)
 
 ### Mobile
-![Mobile view](https://raw.githubusercontent.com/chenders/deadonfilm/SHA_PLACEHOLDER/e2e/screenshots/mortality-stats-mobile.png)
+![Mobile view](https://raw.githubusercontent.com/chenders/deadonfilm/$SHA/e2e/screenshots/mortality-stats-mobile.png)
 
 ## Test Plan
 
@@ -894,7 +895,7 @@ New component showing mortality statistics on actor pages:
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
-)" | sed "s/SHA_PLACEHOLDER/abc123def456/g"  # Replace with actual SHA
+)"
 ```
 
 ### Example 3: Multi-Round Review Cycle
