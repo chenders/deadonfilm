@@ -78,10 +78,17 @@ export async function closeRedisJobsClient(): Promise<void> {
     try {
       logger.info("Closing Redis jobs connection...")
       await redisJobsClient.quit()
-      redisJobsClient = null
     } catch (error) {
-      logger.error({ error }, "Error closing Redis jobs connection")
-      throw error
+      logger.error({ error }, "Error gracefully closing Redis jobs connection, forcing disconnect...")
+      // Fallback to disconnect() if quit() fails (non-graceful but ensures cleanup)
+      try {
+        redisJobsClient.disconnect()
+      } catch (disconnectError) {
+        logger.error({ error: disconnectError }, "Error disconnecting Redis jobs client")
+      }
+    } finally {
+      // Always clear cached client, even if quit/disconnect failed
+      redisJobsClient = null
     }
   }
 }
