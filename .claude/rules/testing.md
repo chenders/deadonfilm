@@ -15,6 +15,69 @@ Every PR must test: happy path, error handling, edge cases, all branching logic.
 - Query order: `getByRole` > `getByLabelText` > `getByText` > `getByTestId`
 - **NEVER use CSS class selectors**
 
+## Redis in Tests: When to Mock vs Real
+
+### Use ioredis-mock for:
+- **Unit tests** of code that uses basic Redis commands (get, set, del, expire, etc.)
+- **Testing Redis client configuration** (connection, retry logic)
+- **Simple cache operations** that don't involve complex Redis features
+
+```typescript
+import { describe, it, expect, vi } from "vitest"
+import RedisMock from "ioredis-mock"
+
+// Mock ioredis BEFORE any imports that use Redis
+vi.mock("ioredis", () => ({
+  default: RedisMock,
+}))
+
+// Now import code that uses Redis
+import { getCached, setCached } from "./cache.js"
+
+it("caches data", async () => {
+  await setCached("key", "value", 60)
+  const result = await getCached("key")
+  expect(result).toBe("value")
+})
+```
+
+**Example:** `server/src/lib/jobs/redis.test.ts` uses ioredis-mock to test Redis client configuration.
+
+### Use real Redis (Docker) for:
+- **BullMQ integration tests** (queue-manager, worker tests)
+- **Tests that use advanced Redis features** not supported by ioredis-mock
+- **End-to-end tests** that need full Redis functionality
+
+**Why:** BullMQ uses advanced Redis commands (like `client`) that ioredis-mock doesn't support. Integration tests MUST use real Redis.
+
+**Setup:**
+1. **Locally:** Start Redis container: `docker run -d -p 6380:6379 redis:7-alpine`
+2. **CI:** Redis container starts automatically (see `.github/workflows/ci.yml`)
+3. **Environment:** Set `REDIS_JOBS_URL=redis://localhost:6380` in test environment
+
+```typescript
+// No ioredis mock - uses real Redis
+import { queueManager } from "./queue-manager.js"
+import { JobWorker } from "./worker.js"
+
+beforeAll(async () => {
+  await queueManager.initialize() // Connects to real Redis
+  // ...
+})
+```
+
+**Examples:** `server/src/lib/jobs/__tests__/queue-manager.test.ts` and `worker.test.ts` use real Redis.
+
+### Decision Tree
+
+```
+Does the code use BullMQ?
+├─ YES → Use real Redis (Docker)
+└─ NO → Does it use complex Redis features?
+    ├─ YES → Use real Redis
+    └─ NO → Use ioredis-mock
+```
+
 ## Test Conditional UI States
 
 ```typescript

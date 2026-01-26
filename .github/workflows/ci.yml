@@ -103,9 +103,33 @@ jobs:
     env:
       # Access postgres via localhost on ephemeral hosted runners
       DATABASE_URL: postgresql://test:test@localhost:5433/deadonfilm_test
+      # Redis for job queue tests
+      REDIS_JOBS_URL: redis://localhost:6380
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Start redis container
+        run: |
+          # Clean up any existing redis container
+          docker rm -f ci-redis-test 2>/dev/null || true
+
+          # Start redis container
+          echo "Starting redis container on port 6380..."
+          docker run -d \
+            --name ci-redis-test \
+            -p 6380:6379 \
+            --health-cmd "redis-cli ping" \
+            --health-interval 10s \
+            --health-timeout 5s \
+            --health-retries 5 \
+            redis:7-alpine
+
+          # Wait for redis to be healthy
+          echo "Waiting for redis to be healthy..."
+          timeout 30s bash -c 'until docker exec ci-redis-test redis-cli ping > /dev/null 2>&1; do sleep 1; done'
+          echo "Redis is ready!"
+        working-directory: .
 
       - name: Start postgres container
         run: |
@@ -200,9 +224,11 @@ jobs:
           path: server/dist/
           retention-days: 1
 
-      - name: Stop postgres container
+      - name: Stop containers
         if: always()
-        run: docker rm -f ci-postgres-test 2>/dev/null || true
+        run: |
+          docker rm -f ci-postgres-test 2>/dev/null || true
+          docker rm -f ci-redis-test 2>/dev/null || true
         working-directory: .
 
   e2e:
