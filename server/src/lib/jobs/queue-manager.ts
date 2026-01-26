@@ -132,8 +132,13 @@ class QueueManager {
           SET status = $1,
               completed_at = $2,
               result = $3,
-              duration_ms = EXTRACT(EPOCH FROM ($2::timestamptz - COALESCE(started_at, queued_at))) * 1000
+              duration_ms = CASE
+                WHEN started_at IS NOT NULL
+                  THEN EXTRACT(EPOCH FROM ($2::timestamptz - started_at)) * 1000
+                ELSE NULL
+              END
           WHERE job_id = $4
+            AND completed_at IS NULL
           RETURNING duration_ms
         `,
           [JobStatus.COMPLETED, completedAt, returnvalue, jobId]
@@ -177,9 +182,14 @@ class QueueManager {
           SET status = $1,
               completed_at = $2,
               error_message = $3,
-              duration_ms = EXTRACT(EPOCH FROM ($2::timestamptz - COALESCE(started_at, queued_at))) * 1000,
+              duration_ms = CASE
+                WHEN started_at IS NOT NULL
+                  THEN EXTRACT(EPOCH FROM ($2::timestamptz - started_at)) * 1000
+                ELSE NULL
+              END,
               attempts = attempts + 1
           WHERE job_id = $4
+            AND completed_at IS NULL
           RETURNING attempts, max_attempts, job_type, payload
         `,
           [JobStatus.FAILED, completedAt, failedReason, jobId]
