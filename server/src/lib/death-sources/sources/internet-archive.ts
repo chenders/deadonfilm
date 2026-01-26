@@ -343,11 +343,13 @@ export class InternetArchiveSource extends BaseDataSource {
    * Extract location from text.
    */
   private extractLocation(text: string): string | null {
+    /* eslint-disable security/detect-unsafe-regex -- Acceptable for controlled text scraping */
     const patterns = [
       /died\s+(?:at|in)\s+([A-Z][a-zA-Z\s,]+(?:Hospital|home|residence|California|New York))/i,
       /(?:in\s+)?(Hollywood|Los Angeles|New York|London|Paris|Beverly Hills)/i,
       /(?:at|in)\s+([A-Z][a-zA-Z\s]+(?:Hospital|Sanitarium|Home))/i,
     ]
+    /* eslint-enable security/detect-unsafe-regex */
 
     for (const pattern of patterns) {
       const match = text.match(pattern)

@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { MemoryRouter } from "react-router-dom"
+import { TestMemoryRouter } from "../../test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import AnalyticsPage from "./AnalyticsPage"
 import * as analyticsHooks from "../../hooks/admin/useAnalytics"
@@ -109,9 +109,9 @@ describe("AnalyticsPage", () => {
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
+        <TestMemoryRouter>
           <AnalyticsPage />
-        </MemoryRouter>
+        </TestMemoryRouter>
       </QueryClientProvider>
     )
   }

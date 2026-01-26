@@ -273,6 +273,7 @@ export class WikipediaSource extends BaseDataSource {
     text = text.replace(/\[citation needed\]/gi, "")
 
     // Remove edit section links
+    // eslint-disable-next-line security/detect-unsafe-regex -- Acceptable for controlled text scraping
     text = text.replace(/<span class="mw-editsection">[^<]*(?:(?!<\/span>)<[^<]*)*<\/span>/gi, "")
 
     // Remove HTML tags but keep content
@@ -325,6 +326,7 @@ export class WikipediaSource extends BaseDataSource {
     let locationOfDeath: string | null = null
     const locationPatterns = [
       /died (?:at|in) ([^,.]+(?:hospital|medical center|home|residence)[^,.]*)/i,
+      // eslint-disable-next-line security/detect-unsafe-regex -- Acceptable for controlled text scraping
       /died (?:at|in) ([A-Z][a-z]+(?:,\s*[A-Z][a-z]+)*)/,
       /passed away (?:at|in) ([^,.]+)/i,
     ]

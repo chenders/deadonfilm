@@ -341,11 +341,13 @@ export class ChroniclingAmericaSource extends BaseDataSource {
     }
 
     // Try to extract from text
+    /* eslint-disable security/detect-unsafe-regex -- Acceptable for controlled text scraping */
     const patterns = [
       /died\s+(?:at|in)\s+([A-Z][a-zA-Z\s,]+(?:Hospital|home|residence|city))/i,
       /(?:at|in)\s+([A-Z][a-zA-Z\s]+(?:Hospital|Sanitarium|Home))/i,
       /(?:in\s+)?(New York|Los Angeles|Chicago|Hollywood|London|Paris)/i,
     ]
+    /* eslint-enable security/detect-unsafe-regex */
 
     for (const pattern of patterns) {
       const match = text.match(pattern)
