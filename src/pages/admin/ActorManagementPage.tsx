@@ -43,9 +43,11 @@ export default function ActorManagementPage() {
 
   const { data, isLoading, error } = useActorsForCoverage(page, pageSize, filters)
 
-  // Reset page to 1 when search changes (the debounced hook updates URL, this syncs local state)
+  // Reset page and clear selection when search changes
+  // The debounced hook updates the URL directly, so we mirror the behavior of handleFilterChange here.
   useEffect(() => {
     setPage(1)
+    setSelectedActorIds(new Set())
   }, [filters.searchName])
 
   const handleFilterChange = (newFilters: Partial<ActorCoverageFilters>) => {
