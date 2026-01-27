@@ -11,7 +11,7 @@ const mockCoverageStats = {
   total_deceased_actors: 1234,
   actors_with_death_pages: 1000,
   actors_without_death_pages: 234,
-  coverage_percentage: "81.0",
+  coverage_percentage: 81.0,
   enrichment_candidates_count: 200,
   high_priority_count: 50,
 }
@@ -22,18 +22,27 @@ const mockCoverageTrends = [
     coverage_percentage: 79.5,
     actors_with_death_pages: 980,
     actors_without_death_pages: 254,
+    total_deceased_actors: 1234,
+    enrichment_candidates_count: 190,
+    high_priority_count: 45,
   },
   {
     captured_at: "2026-01-21",
     coverage_percentage: 80.0,
     actors_with_death_pages: 990,
     actors_without_death_pages: 244,
+    total_deceased_actors: 1234,
+    enrichment_candidates_count: 195,
+    high_priority_count: 48,
   },
   {
     captured_at: "2026-01-22",
     coverage_percentage: 81.0,
     actors_with_death_pages: 1000,
     actors_without_death_pages: 234,
+    total_deceased_actors: 1234,
+    enrichment_candidates_count: 200,
+    high_priority_count: 50,
   },
 ]
 
