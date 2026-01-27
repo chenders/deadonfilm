@@ -7,15 +7,15 @@
 import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
+import { acquireLock, releaseLock, getLockHolder } from "../../lib/redis.js"
 import { runSync, type SyncOptions, type SyncResult } from "../../../scripts/sync-tmdb-changes.js"
 
 const router = Router()
 
-// Track running sync to prevent concurrent syncs within this instance.
-// Note: This is an in-memory guard that works for single-instance deployments.
-// For multi-instance deployments, the database status='running' check in POST /tmdb
-// provides additional protection, though brief race conditions are still possible.
-let runningSyncId: number | null = null
+// Redis lock name for TMDB sync operations
+const SYNC_LOCK_NAME = "sync:tmdb"
+// Lock TTL: 30 minutes (sync operations can take a while, but not forever)
+const SYNC_LOCK_TTL_MS = 30 * 60 * 1000
 
 // ============================================================================
 // GET /admin/api/sync/status
@@ -149,14 +149,18 @@ interface TriggerSyncRequest {
 }
 
 router.post("/tmdb", async (req: Request, res: Response): Promise<void> => {
+  let syncId: number | null = null
+  let lockAcquired = false
+
   try {
     const { days = 1, types, dryRun = false } = req.body as TriggerSyncRequest
 
-    // Check if there's already a running sync
-    if (runningSyncId !== null) {
+    // Check if there's already a running sync using Redis distributed lock
+    const currentLockHolder = await getLockHolder(SYNC_LOCK_NAME)
+    if (currentLockHolder !== null) {
       res.status(409).json({
         error: { message: "A sync operation is already running" },
-        currentSyncId: runningSyncId,
+        currentSyncId: parseInt(currentLockHolder, 10) || null,
       })
       return
     }
@@ -184,8 +188,26 @@ router.post("/tmdb", async (req: Request, res: Response): Promise<void> => {
       [syncType, JSON.stringify({ days, types, dryRun })]
     )
 
-    const syncId = insertResult.rows[0].id
-    runningSyncId = syncId
+    syncId = insertResult.rows[0].id
+
+    // Acquire distributed lock with sync ID as the value
+    lockAcquired = await acquireLock(SYNC_LOCK_NAME, String(syncId), SYNC_LOCK_TTL_MS)
+    if (!lockAcquired) {
+      // Another process acquired the lock between our check and acquire
+      // Mark this sync as failed since we can't run it
+      await pool.query(
+        `UPDATE sync_history SET status = 'failed', completed_at = NOW(),
+         error_message = 'Lock acquisition failed - another sync started concurrently'
+         WHERE id = $1`,
+        [syncId]
+      )
+      res.status(409).json({
+        error: {
+          message: "A sync operation is already running (lock acquired by another process)",
+        },
+      })
+      return
+    }
 
     logger.info({ syncId, syncType, days, dryRun }, "TMDB sync triggered via admin")
 
@@ -208,6 +230,9 @@ router.post("/tmdb", async (req: Request, res: Response): Promise<void> => {
       quiet: true, // Suppress console output since we're running in background
     }
 
+    // Capture syncId for the async closure
+    const currentSyncId = syncId
+
     runSync(syncOptions)
       .then(async (result: SyncResult) => {
         // Update sync history with results
@@ -225,10 +250,10 @@ router.post("/tmdb", async (req: Request, res: Response): Promise<void> => {
             result.peopleChecked + result.moviesChecked + result.showsChecked,
             result.moviesUpdated + result.newEpisodesFound,
             result.newDeathsFound,
-            syncId,
+            currentSyncId,
           ]
         )
-        logger.info({ syncId, result }, "TMDB sync completed")
+        logger.info({ syncId: currentSyncId, result }, "TMDB sync completed")
       })
       .catch(async (error) => {
         // Update sync history with error
@@ -240,16 +265,19 @@ router.post("/tmdb", async (req: Request, res: Response): Promise<void> => {
             error_message = $1
           WHERE id = $2
         `,
-          [error instanceof Error ? error.message : String(error), syncId]
+          [error instanceof Error ? error.message : String(error), currentSyncId]
         )
-        logger.error({ syncId, error }, "TMDB sync failed")
+        logger.error({ syncId: currentSyncId, error }, "TMDB sync failed")
       })
-      .finally(() => {
-        runningSyncId = null
+      .finally(async () => {
+        // Release the distributed lock
+        await releaseLock(SYNC_LOCK_NAME, String(currentSyncId))
       })
   } catch (error) {
-    // Ensure we clear the in-memory running sync flag on error
-    runningSyncId = null
+    // Release lock if we acquired it and encountered an error before starting sync
+    if (lockAcquired && syncId !== null) {
+      await releaseLock(SYNC_LOCK_NAME, String(syncId))
+    }
     logger.error({ error }, "Failed to trigger TMDB sync")
     res.status(500).json({ error: { message: "Failed to trigger TMDB sync" } })
   }

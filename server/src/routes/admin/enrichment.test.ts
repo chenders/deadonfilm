@@ -34,10 +34,12 @@ vi.mock("../../lib/logger.js", () => ({
     error: vi.fn(),
   },
 }))
+// Create a single mock pool object that persists across all getPool calls
+const mockPoolQuery = vi.fn()
+const mockPool = { query: mockPoolQuery }
+
 vi.mock("../../lib/db/pool.js", () => ({
-  getPool: vi.fn(() => ({
-    query: vi.fn(),
-  })),
+  getPool: vi.fn(() => mockPool),
 }))
 
 describe("Admin Enrichment Endpoints", () => {
@@ -1238,6 +1240,388 @@ describe("Admin Enrichment Endpoints", () => {
         .post("/admin/api/enrichment/runs/1/commit")
         .send({ adminUser: "admin@example.com" })
         .expect(500)
+    })
+  })
+
+  // ========================================================================
+  // BATCH API ENDPOINTS
+  // ========================================================================
+
+  describe("GET /admin/api/enrichment/batch/status", () => {
+    it("returns active batch status when batch is running", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 1,
+              batch_id: "batch_123",
+              job_type: "cause-of-death",
+              status: "processing",
+              created_at: "2024-01-01T00:00:00Z",
+              total_items: 100,
+              processed_items: 50,
+              successful_items: 45,
+              failed_items: 5,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rows: [{ count: "1" }] })
+
+      const response = await request(app).get("/admin/api/enrichment/batch/status").expect(200)
+
+      expect(response.body.activeBatch).not.toBeNull()
+      expect(response.body.activeBatch.batchId).toBe("batch_123")
+      expect(response.body.activeBatch.progress).toBe(50)
+      expect(response.body.queueDepth).toBe(1)
+    })
+
+    it("returns null when no active batch", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: "0" }] })
+
+      const response = await request(app).get("/admin/api/enrichment/batch/status").expect(200)
+
+      expect(response.body.activeBatch).toBeNull()
+      expect(response.body.queueDepth).toBe(0)
+    })
+
+    it("returns 500 on database error", async () => {
+      mockPoolQuery.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app).get("/admin/api/enrichment/batch/status").expect(500)
+
+      expect(response.body.error.message).toBe("Failed to fetch batch status")
+    })
+  })
+
+  describe("GET /admin/api/enrichment/batch/history", () => {
+    const mockBatchHistory = {
+      id: 1,
+      batch_id: "batch_123",
+      job_type: "cause-of-death",
+      status: "completed",
+      created_at: "2024-01-01T00:00:00Z",
+      completed_at: "2024-01-01T01:00:00Z",
+      total_items: 100,
+      processed_items: 100,
+      successful_items: 95,
+      failed_items: 5,
+      parameters: { limit: 100 },
+      error_message: null,
+      cost_usd: "5.50",
+    }
+
+    it("returns batch history with default limit", async () => {
+      mockPoolQuery.mockResolvedValue({ rows: [mockBatchHistory] })
+
+      const response = await request(app).get("/admin/api/enrichment/batch/history").expect(200)
+
+      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [10])
+      expect(response.body.history).toHaveLength(1)
+      expect(response.body.history[0].batchId).toBe("batch_123")
+      expect(response.body.history[0].costUsd).toBe(5.5)
+    })
+
+    it("accepts custom limit parameter", async () => {
+      mockPoolQuery.mockResolvedValue({ rows: [] })
+
+      await request(app).get("/admin/api/enrichment/batch/history?limit=50").expect(200)
+
+      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [50])
+    })
+
+    it("clamps limit to maximum of 100", async () => {
+      mockPoolQuery.mockResolvedValue({ rows: [] })
+
+      await request(app).get("/admin/api/enrichment/batch/history?limit=500").expect(200)
+
+      expect(mockPool.query).toHaveBeenCalledWith(expect.any(String), [100])
+    })
+
+    it("returns 500 on database error", async () => {
+      mockPoolQuery.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app).get("/admin/api/enrichment/batch/history").expect(500)
+
+      expect(response.body.error.message).toBe("Failed to fetch batch history")
+    })
+  })
+
+  describe("POST /admin/api/enrichment/batch/submit", () => {
+    it("returns 400 for invalid limit (too high)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 2000 })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Limit must be between 1 and 1000")
+    })
+
+    it("returns 400 for invalid limit (too low)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 0 })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Limit must be between 1 and 1000")
+    })
+
+    it("returns 409 when batch already in progress", async () => {
+      mockPoolQuery.mockResolvedValue({ rows: [{ count: "1" }] })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 100 })
+        .expect(409)
+
+      expect(response.body.error.message).toContain("already in progress")
+    })
+
+    it("returns empty response when no actors need enrichment", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [{ count: "0" }] }) // No active batch
+        .mockResolvedValueOnce({ rows: [] }) // No actors
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 100 })
+        .expect(200)
+
+      expect(response.body.batchId).toBeNull()
+      expect(response.body.actorsSubmitted).toBe(0)
+    })
+
+    it("creates batch job successfully", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [{ count: "0" }] }) // No active batch
+        .mockResolvedValueOnce({
+          rows: [
+            { id: 1, name: "Actor 1", tmdb_id: 123, deathday: "2020-01-01" },
+            { id: 2, name: "Actor 2", tmdb_id: 456, deathday: "2021-01-01" },
+          ],
+        }) // Actors needing enrichment
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert batch job
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 100, jobType: "cause-of-death" })
+        .expect(201)
+
+      expect(response.body.actorsSubmitted).toBe(2)
+      expect(response.body.jobType).toBe("cause-of-death")
+      expect(response.body.batchId).toMatch(/^batch_/)
+    })
+
+    it("returns 500 on database error", async () => {
+      mockPoolQuery.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 100 })
+        .expect(500)
+
+      expect(response.body.error.message).toBe("Failed to submit batch job")
+    })
+  })
+
+  describe("POST /admin/api/enrichment/batch/:batchId/check", () => {
+    it("returns batch status for valid batch ID", async () => {
+      mockPoolQuery.mockResolvedValue({
+        rows: [
+          {
+            id: 1,
+            batch_id: "batch_123",
+            job_type: "cause-of-death",
+            status: "processing",
+            total_items: 100,
+            processed_items: 50,
+            successful_items: 45,
+            failed_items: 5,
+          },
+        ],
+      })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/batch_123/check")
+        .expect(200)
+
+      expect(response.body.batchId).toBe("batch_123")
+      expect(response.body.status).toBe("processing")
+      expect(response.body.progress).toBe(50)
+    })
+
+    it("returns 404 for non-existent batch", async () => {
+      mockPoolQuery.mockResolvedValue({ rows: [] })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/nonexistent/check")
+        .expect(404)
+
+      expect(response.body.error.message).toBe("Batch job not found")
+    })
+
+    it("returns 500 on database error", async () => {
+      mockPoolQuery.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/batch_123/check")
+        .expect(500)
+
+      expect(response.body.error.message).toBe("Failed to check batch status")
+    })
+  })
+
+  describe("POST /admin/api/enrichment/batch/:batchId/process", () => {
+    it("returns 404 for non-existent batch", async () => {
+      mockPoolQuery.mockResolvedValue({ rows: [] })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/nonexistent/process")
+        .expect(404)
+
+      expect(response.body.error.message).toBe("Batch job not found")
+    })
+
+    it("returns 400 for batch with invalid status", async () => {
+      mockPoolQuery.mockResolvedValue({
+        rows: [{ id: 1, status: "processing", job_type: "cause-of-death", parameters: {} }],
+      })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/batch_123/process")
+        .expect(400)
+
+      expect(response.body.error.message).toContain("Cannot process batch with status")
+    })
+
+    it("performs dry run successfully", async () => {
+      mockPoolQuery.mockResolvedValue({
+        rows: [
+          {
+            id: 1,
+            status: "completed",
+            job_type: "cause-of-death",
+            parameters: { actorIds: [1, 2, 3] },
+          },
+        ],
+      })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/batch_123/process")
+        .send({ dryRun: true })
+        .expect(200)
+
+      expect(response.body.dryRun).toBe(true)
+      expect(response.body.wouldProcess).toBe(3)
+    })
+
+    it("processes batch successfully", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 1,
+              status: "pending",
+              job_type: "cause-of-death",
+              parameters: { actorIds: [1, 2] },
+            },
+          ],
+        })
+        .mockResolvedValueOnce({}) // UPDATE processing
+        .mockResolvedValueOnce({}) // UPDATE completed
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/batch_123/process")
+        .send({ dryRun: false })
+        .expect(200)
+
+      expect(response.body.processed).toBe(2)
+      expect(response.body.successful).toBe(2)
+    })
+
+    it("returns 500 on database error", async () => {
+      mockPoolQuery.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/batch_123/process")
+        .expect(500)
+
+      expect(response.body.error.message).toBe("Failed to process batch")
+    })
+  })
+
+  describe("POST /admin/api/enrichment/refetch-details", () => {
+    it("returns 400 for invalid limit (too high)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/refetch-details")
+        .send({ limit: 1000 })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Limit must be between 1 and 500")
+    })
+
+    it("returns 400 for invalid limit (too low)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/refetch-details")
+        .send({ limit: 0 })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Limit must be between 1 and 500")
+    })
+
+    it("returns empty response when no actors need refetch", async () => {
+      mockPoolQuery.mockResolvedValue({ rows: [] })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/refetch-details")
+        .send({ limit: 50 })
+        .expect(200)
+
+      expect(response.body.actorsQueued).toBe(0)
+    })
+
+    it("performs dry run successfully", async () => {
+      mockPoolQuery.mockResolvedValue({
+        rows: [
+          { id: 1, name: "Actor 1", popularity: 50 },
+          { id: 2, name: "Actor 2", popularity: 40 },
+        ],
+      })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/refetch-details")
+        .send({ limit: 50, dryRun: true })
+        .expect(200)
+
+      expect(response.body.dryRun).toBe(true)
+      expect(response.body.wouldQueue).toBe(2)
+      expect(response.body.actors).toHaveLength(2)
+    })
+
+    it("queues actors for refetch successfully", async () => {
+      mockPoolQuery.mockResolvedValue({
+        rows: [{ id: 1, name: "Actor 1", popularity: 50 }],
+      })
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/refetch-details")
+        .send({ limit: 50, dryRun: false })
+        .expect(200)
+
+      expect(response.body.actorsQueued).toBe(1)
+      expect(response.body.dryRun).toBe(false)
+    })
+
+    it("returns 500 on database error", async () => {
+      mockPoolQuery.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app)
+        .post("/admin/api/enrichment/refetch-details")
+        .send({ limit: 50 })
+        .expect(500)
+
+      expect(response.body.error.message).toBe("Failed to queue refetch details")
     })
   })
 })
