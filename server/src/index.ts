@@ -80,6 +80,8 @@ import sitemapRoutes from "./routes/admin/sitemap.js"
 import cacheRoutes from "./routes/admin/cache.js"
 import abTestsRoutes from "./routes/admin/ab-tests.js"
 import jobsRoutes from "./routes/admin/jobs.js"
+import dataQualityRoutes from "./routes/admin/data-quality.js"
+import syncRoutes from "./routes/admin/sync.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -298,6 +300,8 @@ app.use("/admin/api/sitemap", adminRoutesLimiter, adminAuthMiddleware, sitemapRo
 app.use("/admin/api/cache", adminRoutesLimiter, adminAuthMiddleware, cacheRoutes)
 app.use("/admin/api/ab-tests", adminRoutesLimiter, adminAuthMiddleware, abTestsRoutes)
 app.use("/admin/api/jobs", adminRoutesLimiter, adminAuthMiddleware, jobsRoutes)
+app.use("/admin/api/data-quality", adminRoutesLimiter, adminAuthMiddleware, dataQualityRoutes)
+app.use("/admin/api/sync", adminRoutesLimiter, adminAuthMiddleware, syncRoutes)
 
 // Public page view tracking endpoint (rate limited, bot-filtered)
 app.post("/api/page-views/track", pageViewTrackingLimiter, trackPageViewHandler)

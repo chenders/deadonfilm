@@ -18,10 +18,26 @@ interface CacheWarmResult {
   duration: number
 }
 
+interface InvalidateDeathResult {
+  invalidated: number
+  rebuilt: boolean
+  duration: number
+}
+
+interface RebuildDeathResult {
+  success: boolean
+  duration: number
+}
+
 export default function CacheManagementPage() {
   const [warmLimit, setWarmLimit] = useState("1000")
   const [deceasedOnly, setDeceasedOnly] = useState(false)
   const [dryRun, setDryRun] = useState(false)
+
+  // Invalidate death caches state
+  const [invalidateActorIds, setInvalidateActorIds] = useState("")
+  const [invalidateAll, setInvalidateAll] = useState(false)
+  const [alsoRebuild, setAlsoRebuild] = useState(true)
 
   // Fetch cache stats
   const {
@@ -53,6 +69,37 @@ export default function CacheManagementPage() {
     },
   })
 
+  // Invalidate death caches mutation
+  const invalidateMutation = useMutation({
+    mutationFn: async (params: { actorIds?: number[]; all?: boolean; rebuild?: boolean }) => {
+      const response = await fetch(adminApi("/cache/invalidate-death"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      })
+      if (!response.ok) throw new Error("Failed to invalidate death caches")
+      return response.json() as Promise<InvalidateDeathResult>
+    },
+    onSuccess: () => {
+      refetch()
+    },
+  })
+
+  // Rebuild death caches mutation
+  const rebuildMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(adminApi("/cache/rebuild-death"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      if (!response.ok) throw new Error("Failed to rebuild death caches")
+      return response.json() as Promise<RebuildDeathResult>
+    },
+    onSuccess: () => {
+      refetch()
+    },
+  })
+
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const handleWarmCache = (preview: boolean = false) => {
@@ -68,6 +115,32 @@ export default function CacheManagementPage() {
       deceasedOnly,
       dryRun: preview || dryRun,
     })
+  }
+
+  const handleInvalidateDeathCaches = () => {
+    let actorIds: number[] | undefined
+    if (!invalidateAll && invalidateActorIds.trim()) {
+      actorIds = invalidateActorIds
+        .split(",")
+        .map((id) => parseInt(id.trim(), 10))
+        .filter((id) => !isNaN(id) && id > 0)
+
+      if (actorIds.length === 0) {
+        setValidationError("Please enter valid actor IDs (comma-separated numbers)")
+        return
+      }
+    }
+
+    setValidationError(null)
+    invalidateMutation.mutate({
+      actorIds,
+      all: invalidateAll || !actorIds || actorIds.length === 0,
+      rebuild: alsoRebuild,
+    })
+  }
+
+  const handleRebuildDeathCaches = () => {
+    rebuildMutation.mutate()
   }
 
   const formatDate = (date: string | null) => {
@@ -97,13 +170,16 @@ export default function CacheManagementPage() {
             Cache Management
           </h1>
           <p className="mt-2 text-admin-text-muted">
-            Pre-warm Redis cache for popular actors to improve performance
+            Manage Redis cache: warm with popular actors, invalidate stale data, rebuild caches
           </p>
         </div>
 
         {/* Cache Stats */}
         {!isLoading && stats && (
-          <div className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+          <div
+            className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6"
+            data-testid="cache-stats-card"
+          >
             <h3 className="mb-4 text-xl font-semibold text-admin-text-primary">Cache Statistics</h3>
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
@@ -298,6 +374,164 @@ export default function CacheManagementPage() {
                   ⚠ {(warmMutation.data as CacheWarmResult).errors} errors occurred
                 </div>
               )}
+            </div>
+          )}
+        </div>
+
+        {/* Invalidate Death Caches */}
+        <div
+          className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6"
+          data-testid="invalidate-death-form"
+        >
+          <h3 className="mb-4 text-xl font-semibold text-admin-text-primary">
+            Invalidate Death Caches
+          </h3>
+          <p className="mb-4 text-sm text-admin-text-muted">
+            Invalidate cached death data. Use this when death information has been updated.
+          </p>
+
+          <div className="space-y-4">
+            {/* Actor IDs input */}
+            <div>
+              <label
+                htmlFor="invalidateActorIds"
+                className="block text-sm font-medium text-admin-text-secondary"
+              >
+                Actor IDs (comma-separated, optional)
+              </label>
+              <input
+                type="text"
+                id="invalidateActorIds"
+                value={invalidateActorIds}
+                onChange={(e) => setInvalidateActorIds(e.target.value)}
+                disabled={invalidateAll}
+                placeholder="e.g., 123, 456, 789"
+                className="mt-2 w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary placeholder:text-admin-text-muted focus:border-admin-interactive focus:outline-none focus:ring-2 focus:ring-admin-interactive disabled:cursor-not-allowed disabled:opacity-50"
+                data-testid="invalidate-actor-ids-input"
+              />
+            </div>
+
+            {/* All checkbox */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="invalidateAll"
+                checked={invalidateAll}
+                onChange={(e) => setInvalidateAll(e.target.checked)}
+                className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
+                data-testid="invalidate-all-checkbox"
+              />
+              <label htmlFor="invalidateAll" className="ml-2 text-sm text-admin-text-secondary">
+                Invalidate all death caches (ignores actor IDs)
+              </label>
+            </div>
+
+            {/* Also rebuild checkbox */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="alsoRebuild"
+                checked={alsoRebuild}
+                onChange={(e) => setAlsoRebuild(e.target.checked)}
+                className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
+                data-testid="invalidate-rebuild-checkbox"
+              />
+              <label htmlFor="alsoRebuild" className="ml-2 text-sm text-admin-text-secondary">
+                Also rebuild caches after invalidation (recommended)
+              </label>
+            </div>
+
+            {/* Action button */}
+            <div className="pt-2">
+              <button
+                onClick={handleInvalidateDeathCaches}
+                disabled={invalidateMutation.isPending}
+                className="hover:bg-admin-warning/90 rounded-md bg-admin-warning px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                data-testid="invalidate-submit-button"
+              >
+                {invalidateMutation.isPending ? "Invalidating..." : "Invalidate Death Caches"}
+              </button>
+            </div>
+          </div>
+
+          {/* Results */}
+          {invalidateMutation.isError && (
+            <div className="border-admin-danger/50 bg-admin-danger/20 mt-4 rounded-md border p-3 text-admin-danger">
+              Error invalidating caches. Please try again.
+            </div>
+          )}
+
+          {invalidateMutation.isSuccess && invalidateMutation.data && (
+            <div
+              className="border-admin-success/50 bg-admin-success/20 mt-4 rounded-md border p-4"
+              data-testid="cache-action-result"
+            >
+              <h4 className="font-semibold text-admin-success">Caches Invalidated</h4>
+              <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <dt className="text-admin-success/80 text-sm">Actors Invalidated</dt>
+                  <dd className="mt-1 text-2xl font-bold text-admin-text-primary">
+                    {invalidateMutation.data.invalidated === -1
+                      ? "All"
+                      : invalidateMutation.data.invalidated}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-admin-success/80 text-sm">Rebuilt</dt>
+                  <dd className="mt-1 text-2xl font-bold text-admin-text-primary">
+                    {invalidateMutation.data.rebuilt ? "Yes" : "No"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-admin-success/80 text-sm">Duration</dt>
+                  <dd className="mt-1 text-2xl font-bold text-admin-text-primary">
+                    {(invalidateMutation.data.duration / 1000).toFixed(1)}s
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
+        </div>
+
+        {/* Rebuild Death Caches */}
+        <div className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+          <h3 className="mb-4 text-xl font-semibold text-admin-text-primary">
+            Rebuild Death Caches
+          </h3>
+          <p className="mb-4 text-sm text-admin-text-muted">
+            Fully rebuild all death-related caches. Use after batch processing or major data
+            changes.
+          </p>
+
+          <div className="pt-2">
+            <button
+              onClick={handleRebuildDeathCaches}
+              disabled={rebuildMutation.isPending}
+              className="rounded-md bg-admin-interactive px-4 py-2 font-semibold text-admin-text-primary hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
+              data-testid="rebuild-death-button"
+            >
+              {rebuildMutation.isPending ? "Rebuilding..." : "Rebuild Death Caches"}
+            </button>
+          </div>
+
+          {/* Results */}
+          {rebuildMutation.isError && (
+            <div className="border-admin-danger/50 bg-admin-danger/20 mt-4 rounded-md border p-3 text-admin-danger">
+              Error rebuilding caches. Please try again.
+            </div>
+          )}
+
+          {rebuildMutation.isSuccess && rebuildMutation.data && (
+            <div className="border-admin-success/50 bg-admin-success/20 mt-4 rounded-md border p-4">
+              <h4 className="font-semibold text-admin-success">Caches Rebuilt Successfully</h4>
+              <dl className="mt-3">
+                <div>
+                  <dt className="text-admin-success/80 text-sm">Duration</dt>
+                  <dd className="mt-1 text-2xl font-bold text-admin-text-primary">
+                    {(rebuildMutation.data.duration / 1000).toFixed(1)}s
+                  </dd>
+                </div>
+              </dl>
             </div>
           )}
         </div>

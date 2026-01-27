@@ -120,6 +120,18 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
           Cache Management
         </NavLink>
 
+        <NavLink
+          to="/admin/data-quality"
+          isActive={isActive("/admin/data-quality")}
+          onClick={onNavigate}
+        >
+          Data Quality
+        </NavLink>
+
+        <NavLink to="/admin/sync" isActive={isActive("/admin/sync")} onClick={onNavigate}>
+          TMDB Sync
+        </NavLink>
+
         <NavLink to="/admin/sitemap" isActive={isActive("/admin/sitemap")} onClick={onNavigate}>
           Sitemap Management
         </NavLink>

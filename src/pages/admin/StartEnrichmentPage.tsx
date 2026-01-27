@@ -19,18 +19,18 @@ export default function StartEnrichmentPage() {
   const [recentOnly, setRecentOnly] = useState<boolean>(false)
   const [usActorsOnly, setUsActorsOnly] = useState<boolean>(false)
 
-  // Source selection flags
-  const [free, setFree] = useState<boolean>(false)
-  const [paid, setPaid] = useState<boolean>(false)
-  const [ai, setAi] = useState<boolean>(false)
-  const [stopOnMatch, setStopOnMatch] = useState<boolean>(false)
-  const [gatherAllSources, setGatherAllSources] = useState<boolean>(false)
+  // Source selection flags - defaults match CLI script (enabled by default)
+  const [free, setFree] = useState<boolean>(true)
+  const [paid, setPaid] = useState<boolean>(true)
+  const [ai, setAi] = useState<boolean>(false) // AI disabled by default
+  const [stopOnMatch, setStopOnMatch] = useState<boolean>(true)
+  const [gatherAllSources, setGatherAllSources] = useState<boolean>(true)
 
-  // Advanced options
-  const [claudeCleanup, setClaudeCleanup] = useState<boolean>(false)
-  const [followLinks, setFollowLinks] = useState<boolean>(false)
-  const [aiLinkSelection, setAiLinkSelection] = useState<boolean>(false)
-  const [aiContentExtraction, setAiContentExtraction] = useState<boolean>(false)
+  // Advanced options - defaults match CLI script (enabled by default)
+  const [claudeCleanup, setClaudeCleanup] = useState<boolean>(true)
+  const [followLinks, setFollowLinks] = useState<boolean>(true)
+  const [aiLinkSelection, setAiLinkSelection] = useState<boolean>(true)
+  const [aiContentExtraction, setAiContentExtraction] = useState<boolean>(true)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
