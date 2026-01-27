@@ -48,8 +48,10 @@ export default function AnalyticsPage() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-white">Analytics Dashboard</h1>
-          <p className="mt-2 text-gray-400">
+          <h1 className="text-2xl font-bold text-admin-text-primary md:text-3xl">
+            Analytics Dashboard
+          </h1>
+          <p className="mt-2 text-admin-text-muted">
             Track costs, page visits, and user navigation patterns
           </p>
         </div>
@@ -59,13 +61,17 @@ export default function AnalyticsPage() {
 
         {/* Cost Analytics Section */}
         <div>
-          <h2 className="mb-4 text-2xl font-semibold text-white">Cost Analytics</h2>
+          <h2 className="mb-4 text-xl font-semibold text-admin-text-primary md:text-2xl">
+            Cost Analytics
+          </h2>
           <CostBySourceSection startDate={startDate} endDate={endDate} />
         </div>
 
         {/* Page Visit Analytics Section */}
         <div className="space-y-6">
-          <h2 className="text-2xl font-semibold text-white">Page Visit Analytics</h2>
+          <h2 className="text-xl font-semibold text-admin-text-primary md:text-2xl">
+            Page Visit Analytics
+          </h2>
 
           {/* Page Visit Summary Stats */}
           {pageVisitStats && (
@@ -109,7 +115,9 @@ export default function AnalyticsPage() {
 
         {/* Actor URL Migration Section */}
         <div>
-          <h2 className="mb-4 text-2xl font-semibold text-white">Actor URL Migration</h2>
+          <h2 className="mb-4 text-xl font-semibold text-admin-text-primary md:text-2xl">
+            Actor URL Migration
+          </h2>
           <ActorUrlMigrationSection startDate={startDate} endDate={endDate} />
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
-import { TestMemoryRouter } from "../../test/test-utils"
+import { AdminTestWrapper } from "../../test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import PageViewsPage from "./PageViewsPage"
 
@@ -85,9 +85,9 @@ describe("PageViewsPage", () => {
   const renderComponent = () => {
     return render(
       <QueryClientProvider client={queryClient}>
-        <TestMemoryRouter>
+        <AdminTestWrapper>
           <PageViewsPage />
-        </TestMemoryRouter>
+        </AdminTestWrapper>
       </QueryClientProvider>
     )
   }

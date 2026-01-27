@@ -132,7 +132,7 @@ describe("AdminLayout", () => {
     // Check for layout structure
     const main = container.querySelector("main")
     expect(main).toBeInTheDocument()
-    expect(main).toHaveClass("flex-1", "p-8")
+    expect(main).toHaveClass("flex-1")
 
     const contentWrapper = main?.querySelector("div")
     expect(contentWrapper).toHaveClass("mx-auto", "max-w-7xl")

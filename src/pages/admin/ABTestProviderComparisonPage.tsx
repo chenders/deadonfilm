@@ -21,7 +21,7 @@ export default function ABTestProviderComparisonPage() {
   if (error) {
     return (
       <AdminLayout>
-        <div className="py-12 text-center text-red-500">
+        <div className="py-12 text-center text-admin-danger">
           {error instanceof Error ? error.message : "Failed to load A/B test results"}
         </div>
       </AdminLayout>
@@ -33,10 +33,14 @@ export default function ABTestProviderComparisonPage() {
       <AdminLayout>
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-white">A/B Test: Provider Comparison</h1>
-            <p className="mt-2 text-gray-400">
+            <h1 className="text-2xl font-bold text-admin-text-primary md:text-3xl">
+              A/B Test: Provider Comparison
+            </h1>
+            <p className="mt-2 text-admin-text-muted">
               No A/B tests have been run yet. Run{" "}
-              <code className="rounded bg-gray-800 px-2 py-1">npm run ab-test:comprehensive</code>{" "}
+              <code className="rounded bg-admin-surface-elevated px-2 py-1">
+                npm run ab-test:comprehensive
+              </code>{" "}
               from the server directory to start testing.
             </p>
           </div>
@@ -57,42 +61,60 @@ export default function ABTestProviderComparisonPage() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-white">A/B Test: Provider Comparison</h1>
-          <p className="mt-2 text-gray-400">
+          <h1 className="text-2xl font-bold text-admin-text-primary md:text-3xl">
+            A/B Test: Provider Comparison
+          </h1>
+          <p className="mt-2 text-admin-text-muted">
             Comparing death enrichment quality across different AI providers
           </p>
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
-          <div className="rounded-lg bg-gray-800 p-6">
-            <div className="text-3xl font-bold text-white">{summary.totalTests}</div>
-            <div className="text-sm text-gray-400">Total Tests</div>
+        <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
+          <div className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+            <div className="text-2xl font-bold text-admin-text-primary md:text-3xl">
+              {summary.totalTests}
+            </div>
+            <div className="text-sm text-admin-text-muted">Total Tests</div>
           </div>
 
-          <div className="rounded-lg bg-gray-800 p-6">
-            <div className="text-3xl font-bold text-blue-500">${summary.totalCost}</div>
-            <div className="text-sm text-gray-400">Total Cost</div>
+          <div className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+            <div className="text-2xl font-bold text-admin-interactive md:text-3xl">
+              ${summary.totalCost}
+            </div>
+            <div className="text-sm text-admin-text-muted">Total Cost</div>
           </div>
 
           {providers.map((provider, idx) => {
             const stats = summary.providerStats[provider]
-            const colors = ["text-green-500", "text-orange-500", "text-purple-500", "text-pink-500"]
+            const colors = [
+              "text-admin-success",
+              "text-orange-500",
+              "text-purple-500",
+              "text-pink-500",
+            ]
             const color = colors[idx % colors.length]
 
             return (
-              <div key={provider} className="rounded-lg bg-gray-800 p-6">
-                <div className={`text-3xl font-bold ${color}`}>{stats.foundData}</div>
-                <div className="text-sm text-gray-400">{provider}</div>
-                <div className="mt-1 text-xs text-gray-500">${stats.totalCost.toFixed(4)}</div>
+              <div
+                key={provider}
+                className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6"
+              >
+                <div className={`text-2xl font-bold md:text-3xl ${color}`}>{stats.foundData}</div>
+                <div className="text-sm text-admin-text-muted">{provider}</div>
+                <div className="mt-1 text-xs text-admin-text-muted">
+                  ${stats.totalCost.toFixed(4)}
+                </div>
               </div>
             )
           })}
         </div>
 
         {/* Provider Comparison Summary */}
-        <div className="rounded-lg bg-gray-800 p-6">
-          <h2 className="mb-4 text-xl font-semibold text-white">Provider Performance</h2>
+        <div className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+          <h2 className="mb-4 text-xl font-semibold text-admin-text-primary">
+            Provider Performance
+          </h2>
           <div className="space-y-4">
             {providers.map((provider) => {
               const stats = summary.providerStats[provider]
@@ -102,14 +124,16 @@ export default function ABTestProviderComparisonPage() {
               return (
                 <div key={provider} className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-white">{provider}</div>
-                    <div className="text-sm text-gray-400">
+                    <div className="font-medium text-admin-text-primary">{provider}</div>
+                    <div className="text-sm text-admin-text-muted">
                       {stats.foundData}/{stats.totalTests} successful ({successRate}%)
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-medium text-gray-300">${avgCost} per test</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-sm font-medium text-admin-text-secondary">
+                      ${avgCost} per test
+                    </div>
+                    <div className="text-xs text-admin-text-muted">
                       Total: ${stats.totalCost.toFixed(4)}
                     </div>
                   </div>
@@ -120,19 +144,19 @@ export default function ABTestProviderComparisonPage() {
         </div>
 
         {/* Comparison Table */}
-        <div className="rounded-lg bg-gray-800">
-          <div className="border-b border-gray-700 px-6 py-4">
-            <h2 className="text-xl font-semibold text-white">Test Results</h2>
+        <div className="rounded-lg bg-admin-surface-elevated shadow-admin-sm">
+          <div className="border-b border-admin-border px-4 py-4 md:px-6">
+            <h2 className="text-xl font-semibold text-admin-text-primary">Test Results</h2>
           </div>
-          <div className="divide-y divide-gray-700">
+          <div className="divide-y divide-admin-border">
             {comparisons.map((comparison) => {
               const isExpanded = expandedActorId === comparison.actorId
               const providerKeys = Object.keys(comparison.providers)
 
               return (
-                <div key={comparison.actorId} className="px-6 py-4">
+                <div key={comparison.actorId} className="px-4 py-4 md:px-6">
                   <div
-                    className="hover:bg-gray-750 flex cursor-pointer items-center justify-between"
+                    className="flex cursor-pointer items-center justify-between hover:bg-admin-interactive-secondary"
                     onClick={() => toggleExpand(comparison.actorId)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -144,8 +168,10 @@ export default function ABTestProviderComparisonPage() {
                     tabIndex={0}
                   >
                     <div>
-                      <h3 className="text-lg font-medium text-white">{comparison.actorName}</h3>
-                      <p className="text-sm text-gray-400">
+                      <h3 className="text-lg font-medium text-admin-text-primary">
+                        {comparison.actorName}
+                      </h3>
+                      <p className="text-sm text-admin-text-muted">
                         Actor ID: {comparison.actorId} • Tested:{" "}
                         {new Date(comparison.createdAt).toLocaleDateString()}
                       </p>
@@ -155,9 +181,9 @@ export default function ABTestProviderComparisonPage() {
                         const hasData = !!comparison.providers[provider].circumstances
                         return (
                           <div key={provider} className="text-right">
-                            <div className="text-sm text-gray-400">{provider}</div>
+                            <div className="text-sm text-admin-text-muted">{provider}</div>
                             <div
-                              className={`font-medium ${hasData ? "text-green-500" : "text-red-500"}`}
+                              className={`font-medium ${hasData ? "text-admin-success" : "text-admin-danger"}`}
                             >
                               {hasData ? "✓ Found" : "✗ No Data"}
                             </div>
@@ -165,7 +191,7 @@ export default function ABTestProviderComparisonPage() {
                         )
                       })}
                       <svg
-                        className={`h-5 w-5 flex-shrink-0 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        className={`h-5 w-5 flex-shrink-0 text-admin-text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -186,8 +212,8 @@ export default function ABTestProviderComparisonPage() {
                       {providerKeys.length === 2 &&
                         comparison.providers[providerKeys[0]].circumstances &&
                         comparison.providers[providerKeys[1]].circumstances && (
-                          <div className="rounded-lg bg-gray-900 p-4">
-                            <h4 className="mb-3 font-semibold text-white">
+                          <div className="rounded-lg bg-admin-surface-base p-4">
+                            <h4 className="mb-3 font-semibold text-admin-text-primary">
                               Circumstances Comparison
                             </h4>
                             <ReactDiffViewer
@@ -224,7 +250,7 @@ export default function ABTestProviderComparisonPage() {
 
                       {/* Side-by-side comparison for all providers */}
                       <div
-                        className="grid gap-6"
+                        className="grid gap-4 md:gap-6"
                         style={{
                           gridTemplateColumns: `repeat(${Math.min(providerKeys.length, 3)}, minmax(0, 1fr))`,
                         }}
@@ -232,7 +258,7 @@ export default function ABTestProviderComparisonPage() {
                         {providerKeys.map((provider) => {
                           const providerData = comparison.providers[provider]
                           const colors = [
-                            "text-green-400",
+                            "text-admin-success",
                             "text-orange-400",
                             "text-purple-400",
                             "text-pink-400",
@@ -240,35 +266,38 @@ export default function ABTestProviderComparisonPage() {
                           const color = colors[providerKeys.indexOf(provider) % colors.length]
 
                           return (
-                            <div key={provider} className="rounded-lg bg-gray-900 p-4">
+                            <div key={provider} className="rounded-lg bg-admin-surface-base p-4">
                               <h4 className={`mb-3 font-semibold ${color}`}>{provider}</h4>
                               {providerData.circumstances ? (
                                 <>
                                   <div className="mb-4">
-                                    <div className="text-sm font-medium text-gray-300">
+                                    <div className="text-sm font-medium text-admin-text-secondary">
                                       Circumstances:
                                     </div>
-                                    <div className="mt-1 text-sm text-gray-400">
+                                    <div className="mt-1 text-sm text-admin-text-muted">
                                       {providerData.circumstances}
                                     </div>
                                   </div>
                                   {providerData.rumoredCircumstances && (
                                     <div className="mb-4">
-                                      <div className="text-sm font-medium text-gray-300">
+                                      <div className="text-sm font-medium text-admin-text-secondary">
                                         Rumored Circumstances:
                                       </div>
-                                      <div className="mt-1 text-sm text-gray-400">
+                                      <div className="mt-1 text-sm text-admin-text-muted">
                                         {providerData.rumoredCircumstances}
                                       </div>
                                     </div>
                                   )}
                                   <div className="mb-4">
-                                    <div className="text-sm font-medium text-gray-300">
+                                    <div className="text-sm font-medium text-admin-text-secondary">
                                       Sources ({providerData.sources.length}):
                                     </div>
                                     <div className="mt-1 space-y-1">
                                       {providerData.sources.map((source, idx) => (
-                                        <div key={idx} className="break-all text-xs text-blue-400">
+                                        <div
+                                          key={idx}
+                                          className="break-all text-xs text-admin-interactive"
+                                        >
                                           {source}
                                         </div>
                                       ))}
@@ -277,24 +306,27 @@ export default function ABTestProviderComparisonPage() {
                                   {providerData.resolvedSources &&
                                     providerData.resolvedSources.length > 0 && (
                                       <div className="mb-4">
-                                        <div className="text-sm font-medium text-gray-300">
+                                        <div className="text-sm font-medium text-admin-text-secondary">
                                           Resolved Sources:
                                         </div>
                                         <div className="mt-1 space-y-1">
                                           {providerData.resolvedSources.map((resolved, idx) => (
-                                            <div key={idx} className="text-xs text-gray-400">
+                                            <div
+                                              key={idx}
+                                              className="text-xs text-admin-text-muted"
+                                            >
                                               {resolved.sourceName}
                                             </div>
                                           ))}
                                         </div>
                                       </div>
                                     )}
-                                  <div className="text-xs text-gray-500">
+                                  <div className="text-xs text-admin-text-muted">
                                     Cost: ${providerData.costUsd.toFixed(4)}
                                   </div>
                                 </>
                               ) : (
-                                <div className="text-sm text-red-400">
+                                <div className="text-sm text-admin-danger">
                                   No death information found
                                 </div>
                               )}

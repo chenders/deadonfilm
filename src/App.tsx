@@ -7,6 +7,9 @@ import { useGoogleAnalytics } from "./hooks/useGoogleAnalytics"
 import { useNewRelicBrowser } from "./hooks/useNewRelicBrowser"
 import { lazyWithRetry } from "./utils/lazyWithRetry"
 import { AdminAuthProvider } from "./hooks/useAdminAuth"
+import { AdminThemeProvider } from "./contexts/AdminThemeContext"
+import { ToastProvider } from "./contexts/ToastContext"
+import ToastContainer from "./components/common/ToastContainer"
 
 // Lazy load pages that aren't the landing page
 // Using lazyWithRetry to handle chunk loading failures after deployments
@@ -78,214 +81,257 @@ function App() {
   useNewRelicBrowser()
 
   return (
-    <AdminAuthProvider>
-      <Routes>
-        {/* Admin routes (no Layout wrapper) */}
-        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-        <Route
-          path="/admin/login"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminLoginPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/dashboard"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminDashboardPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/analytics"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminAnalyticsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/enrichment/runs"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminEnrichmentRunsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/enrichment/runs/:id"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminEnrichmentRunDetailsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/enrichment/start"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminStartEnrichmentPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/enrichment/review"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminEnrichmentReviewPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/enrichment/high-priority"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminHighPriorityActorsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/coverage"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminCoverageDashboardPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/actors"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminActorManagementPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/page-views"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminPageViewsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/tools"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminExternalToolsPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/actor-diagnostic"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminActorDiagnosticPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/cache"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminCacheManagementPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/sitemap"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminSitemapManagementPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/ab-tests"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestsIndexPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/ab-tests/source-requirement"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestSourceRequirementPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/ab-tests/provider-comparison"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestProviderComparisonPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/ab-tests/comprehensive"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestComprehensiveIndexPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/admin/ab-tests/comprehensive/:runId"
-          element={
-            <Suspense fallback={<LoadingSpinner />}>
-              <AdminABTestComprehensiveDetailPage />
-            </Suspense>
-          }
-        />
+    <ToastProvider>
+      <ToastContainer />
+      <AdminAuthProvider>
+        <Routes>
+          {/* Admin routes (no Layout wrapper, wrapped with AdminThemeProvider) */}
+          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route
+            path="/admin/login"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminLoginPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminDashboardPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/analytics"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminAnalyticsPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/enrichment/runs"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminEnrichmentRunsPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/enrichment/runs/:id"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminEnrichmentRunDetailsPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/enrichment/start"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminStartEnrichmentPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/enrichment/review"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminEnrichmentReviewPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/enrichment/high-priority"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminHighPriorityActorsPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/coverage"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminCoverageDashboardPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/actors"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminActorManagementPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/page-views"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminPageViewsPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/tools"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminExternalToolsPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/actor-diagnostic"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminActorDiagnosticPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/cache"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminCacheManagementPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/sitemap"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminSitemapManagementPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/ab-tests"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminABTestsIndexPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/ab-tests/source-requirement"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminABTestSourceRequirementPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/ab-tests/provider-comparison"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminABTestProviderComparisonPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/ab-tests/comprehensive"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminABTestComprehensiveIndexPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/ab-tests/comprehensive/:runId"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminABTestComprehensiveDetailPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
 
-        {/* Public routes (with Layout) */}
-        <Route
-          path="*"
-          element={
-            <Layout>
-              <Suspense fallback={<LoadingSpinner />}>
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/movie/:slug" element={<MoviePage />} />
-                  <Route path="/show/:slug" element={<ShowPage />} />
-                  <Route path="/show/:slug/season/:seasonNumber" element={<SeasonPage />} />
-                  <Route path="/episode/:slug" element={<EpisodePage />} />
-                  <Route path="/actor/:slug" element={<ActorPage />} />
-                  <Route path="/actor/:slug/death" element={<ActorDeathPage />} />
-                  {/* Temporarily hidden - see plan in kind-brewing-moore.md */}
-                  {/* <Route path="/cursed-movies" element={<CursedMoviesPage />} /> */}
-                  {/* <Route path="/cursed-actors" element={<CursedActorsPage />} /> */}
-                  <Route path="/forever-young" element={<ForeverYoungPage />} />
-                  <Route path="/covid-deaths" element={<CovidDeathsPage />} />
-                  <Route path="/unnatural-deaths" element={<UnnaturalDeathsPage />} />
-                  <Route path="/death-watch" element={<DeathWatchPage />} />
-                  <Route path="/deaths" element={<CausesIndexPage />} />
-                  <Route path="/deaths/all" element={<AllDeathsPage />} />
-                  <Route path="/deaths/notable" element={<NotableDeathsPage />} />
-                  <Route path="/deaths/decades" element={<DecadesIndexPage />} />
-                  <Route path="/deaths/decade/:decade" element={<DeathsByDecadePage />} />
-                  <Route path="/deaths/:cause" element={<DeathsByCausePage />} />
-                  <Route path="/movies/genres" element={<GenresIndexPage />} />
-                  <Route path="/movies/genre/:genre" element={<GenreMoviesPage />} />
-                  {/* New 3-level causes of death hierarchy */}
-                  <Route path="/causes-of-death" element={<CausesOfDeathPage />} />
-                  <Route path="/causes-of-death/:categorySlug" element={<CauseCategoryPage />} />
-                  <Route
-                    path="/causes-of-death/:categorySlug/:causeSlug"
-                    element={<SpecificCausePage />}
-                  />
-                </Routes>
-              </Suspense>
-            </Layout>
-          }
-        />
-      </Routes>
-    </AdminAuthProvider>
+          {/* Public routes (with Layout) */}
+          <Route
+            path="*"
+            element={
+              <Layout>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/movie/:slug" element={<MoviePage />} />
+                    <Route path="/show/:slug" element={<ShowPage />} />
+                    <Route path="/show/:slug/season/:seasonNumber" element={<SeasonPage />} />
+                    <Route path="/episode/:slug" element={<EpisodePage />} />
+                    <Route path="/actor/:slug" element={<ActorPage />} />
+                    <Route path="/actor/:slug/death" element={<ActorDeathPage />} />
+                    {/* Temporarily hidden - see plan in kind-brewing-moore.md */}
+                    {/* <Route path="/cursed-movies" element={<CursedMoviesPage />} /> */}
+                    {/* <Route path="/cursed-actors" element={<CursedActorsPage />} /> */}
+                    <Route path="/forever-young" element={<ForeverYoungPage />} />
+                    <Route path="/covid-deaths" element={<CovidDeathsPage />} />
+                    <Route path="/unnatural-deaths" element={<UnnaturalDeathsPage />} />
+                    <Route path="/death-watch" element={<DeathWatchPage />} />
+                    <Route path="/deaths" element={<CausesIndexPage />} />
+                    <Route path="/deaths/all" element={<AllDeathsPage />} />
+                    <Route path="/deaths/notable" element={<NotableDeathsPage />} />
+                    <Route path="/deaths/decades" element={<DecadesIndexPage />} />
+                    <Route path="/deaths/decade/:decade" element={<DeathsByDecadePage />} />
+                    <Route path="/deaths/:cause" element={<DeathsByCausePage />} />
+                    <Route path="/movies/genres" element={<GenresIndexPage />} />
+                    <Route path="/movies/genre/:genre" element={<GenreMoviesPage />} />
+                    {/* New 3-level causes of death hierarchy */}
+                    <Route path="/causes-of-death" element={<CausesOfDeathPage />} />
+                    <Route path="/causes-of-death/:categorySlug" element={<CauseCategoryPage />} />
+                    <Route
+                      path="/causes-of-death/:categorySlug/:causeSlug"
+                      element={<SpecificCausePage />}
+                    />
+                  </Routes>
+                </Suspense>
+              </Layout>
+            }
+          />
+        </Routes>
+      </AdminAuthProvider>
+    </ToastProvider>
   )
 }
 

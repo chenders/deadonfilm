@@ -1,67 +1,79 @@
 /**
- * Dark theme styles for react-datepicker
+ * Theme-aware styles for react-datepicker
+ * Uses CSS variables from admin-theme.css
  */
 
 /* Calendar container */
-.dark-datepicker {
-  background-color: #1f2937 !important;
-  border: 1px solid #374151 !important;
+.admin-datepicker {
+  background-color: var(--admin-surface-elevated) !important;
+  border: 1px solid var(--admin-surface-border) !important;
   font-family: inherit !important;
+  box-shadow: var(--admin-shadow-lg) !important;
+  border-radius: 0.5rem !important;
 }
 
 /* Header */
-.dark-datepicker .react-datepicker__header {
-  background-color: #111827 !important;
-  border-bottom: 1px solid #374151 !important;
+.admin-datepicker .react-datepicker__header {
+  background-color: var(--admin-surface-overlay) !important;
+  border-bottom: 1px solid var(--admin-surface-border) !important;
+  border-radius: 0.5rem 0.5rem 0 0 !important;
+  padding-top: 0.75rem !important;
 }
 
-.dark-datepicker .react-datepicker__current-month,
-.dark-datepicker .react-datepicker__day-name {
-  color: #d1d5db !important;
+.admin-datepicker .react-datepicker__current-month,
+.admin-datepicker .react-datepicker__day-name {
+  color: var(--admin-text-secondary) !important;
 }
 
 /* Navigation arrows */
-.dark-datepicker .react-datepicker__navigation {
+.admin-datepicker .react-datepicker__navigation {
   top: 10px !important;
 }
 
-.dark-datepicker .react-datepicker__navigation-icon::before {
-  border-color: #9ca3af !important;
+.admin-datepicker .react-datepicker__navigation-icon::before {
+  border-color: var(--admin-text-muted) !important;
 }
 
-.dark-datepicker .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
-  border-color: #ffffff !important;
+.admin-datepicker .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+  border-color: var(--admin-text-primary) !important;
 }
 
 /* Days */
-.dark-datepicker .react-datepicker__day {
-  color: #d1d5db !important;
+.admin-datepicker .react-datepicker__day {
+  color: var(--admin-text-secondary) !important;
+  border-radius: 0.375rem !important;
 }
 
-.dark-datepicker .react-datepicker__day:hover {
-  background-color: #374151 !important;
-  color: #ffffff !important;
+.admin-datepicker .react-datepicker__day:hover {
+  background-color: var(--admin-interactive-secondary) !important;
+  color: var(--admin-text-primary) !important;
 }
 
-.dark-datepicker .react-datepicker__day--selected,
-.dark-datepicker .react-datepicker__day--keyboard-selected {
-  background-color: #3b82f6 !important;
-  color: #ffffff !important;
+.admin-datepicker .react-datepicker__day--selected,
+.admin-datepicker .react-datepicker__day--keyboard-selected {
+  background-color: var(--admin-interactive-primary) !important;
+  color: var(--admin-text-inverse) !important;
 }
 
-.dark-datepicker .react-datepicker__day--disabled {
-  color: #6b7280 !important;
+.admin-datepicker .react-datepicker__day--selected:hover {
+  background-color: var(--admin-interactive-primary-hover) !important;
+}
+
+.admin-datepicker .react-datepicker__day--disabled {
+  color: var(--admin-text-muted) !important;
   cursor: not-allowed !important;
+  opacity: 0.5;
 }
 
-.dark-datepicker .react-datepicker__day--outside-month {
-  color: #6b7280 !important;
+.admin-datepicker .react-datepicker__day--outside-month {
+  color: var(--admin-text-muted) !important;
+  opacity: 0.5;
 }
 
 /* Today highlight */
-.dark-datepicker .react-datepicker__day--today {
-  background-color: #374151 !important;
-  color: #ffffff !important;
+.admin-datepicker .react-datepicker__day--today {
+  background-color: var(--admin-interactive-secondary) !important;
+  color: var(--admin-text-primary) !important;
   font-weight: bold !important;
 }
 
@@ -71,7 +83,16 @@
 }
 
 /* Accessibility - focus states */
-.dark-datepicker .react-datepicker__day:focus {
-  outline: 2px solid #3b82f6 !important;
+.admin-datepicker .react-datepicker__day:focus {
+  outline: 2px solid var(--admin-focus-ring) !important;
   outline-offset: -2px !important;
+}
+
+/* Clear button styling */
+.react-datepicker__close-icon::after {
+  background-color: var(--admin-text-muted) !important;
+}
+
+.react-datepicker__close-icon:hover::after {
+  background-color: var(--admin-danger) !important;
 }
