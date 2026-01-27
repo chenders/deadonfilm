@@ -61,3 +61,4 @@ docs/potentially-wrong-language-data.md
 .imdb-cache/
 
 .claude/local-plans
+deadonfilm_pre_imports.sql

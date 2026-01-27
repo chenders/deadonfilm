@@ -75,6 +75,8 @@ const AdminABTestComprehensiveIndexPage = lazyWithRetry(
 const AdminABTestComprehensiveDetailPage = lazyWithRetry(
   () => import("./pages/admin/ABTestComprehensiveDetailPage")
 )
+const AdminDataQualityPage = lazyWithRetry(() => import("./pages/admin/DataQualityPage"))
+const AdminSyncPage = lazyWithRetry(() => import("./pages/admin/SyncPage"))
 const AdminJobQueuesPage = lazyWithRetry(() => import("./pages/admin/JobQueuesPage"))
 const AdminJobRunsPage = lazyWithRetry(() => import("./pages/admin/JobRunsPage"))
 const AdminJobDetailsPage = lazyWithRetry(() => import("./pages/admin/JobDetailsPage"))
@@ -237,6 +239,26 @@ function App() {
               <AdminThemeProvider>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminSitemapManagementPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/data-quality"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminDataQualityPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/sync"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminSyncPage />
                 </Suspense>
               </AdminThemeProvider>
             }

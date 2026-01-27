@@ -71,6 +71,28 @@ describe("AdminNav", () => {
     expect(jobsLink).toHaveAttribute("href", "/admin/jobs")
   })
 
+  it("renders data quality navigation link", async () => {
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: /data quality/i })).toBeInTheDocument()
+    })
+
+    const dataQualityLink = screen.getByRole("link", { name: /data quality/i })
+    expect(dataQualityLink).toHaveAttribute("href", "/admin/data-quality")
+  })
+
+  it("renders TMDB sync navigation link", async () => {
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: /tmdb sync/i })).toBeInTheDocument()
+    })
+
+    const syncLink = screen.getByRole("link", { name: /tmdb sync/i })
+    expect(syncLink).toHaveAttribute("href", "/admin/sync")
+  })
+
   it("highlights active route", async () => {
     renderWithRouter("/admin/dashboard")
 
