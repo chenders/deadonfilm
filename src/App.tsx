@@ -75,6 +75,10 @@ const AdminABTestComprehensiveIndexPage = lazyWithRetry(
 const AdminABTestComprehensiveDetailPage = lazyWithRetry(
   () => import("./pages/admin/ABTestComprehensiveDetailPage")
 )
+const AdminJobQueuesPage = lazyWithRetry(() => import("./pages/admin/JobQueuesPage"))
+const AdminJobRunsPage = lazyWithRetry(() => import("./pages/admin/JobRunsPage"))
+const AdminJobDetailsPage = lazyWithRetry(() => import("./pages/admin/JobDetailsPage"))
+const AdminDeadLetterQueuePage = lazyWithRetry(() => import("./pages/admin/DeadLetterQueuePage"))
 
 function App() {
   useGoogleAnalytics()
@@ -283,6 +287,46 @@ function App() {
               <AdminThemeProvider>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminABTestComprehensiveDetailPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/jobs"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminJobQueuesPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/jobs/runs"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminJobRunsPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/jobs/runs/:id"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminJobDetailsPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/jobs/dead-letter"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminDeadLetterQueuePage />
                 </Suspense>
               </AdminThemeProvider>
             }
