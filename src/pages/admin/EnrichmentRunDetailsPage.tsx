@@ -5,6 +5,7 @@
 import { useState } from "react"
 import { useParams, Link } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
+import { useToast } from "../../contexts/ToastContext"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
 import {
@@ -20,6 +21,7 @@ export default function EnrichmentRunDetailsPage() {
   const runId = parseInt(id || "0", 10)
   const [actorsPage, setActorsPage] = useState(1)
   const actorsPageSize = 50
+  const { toast } = useToast()
 
   const { data: run, isLoading: runLoading, error: runError } = useEnrichmentRunDetails(runId)
   const {
@@ -49,7 +51,7 @@ export default function EnrichmentRunDetailsPage() {
       await stopEnrichment.mutateAsync(runId)
     } catch (error) {
       console.error("Failed to stop enrichment:", error)
-      alert("Failed to stop enrichment run. Please try again.")
+      toast.error("Failed to stop enrichment run. Please try again.")
     }
   }
 
