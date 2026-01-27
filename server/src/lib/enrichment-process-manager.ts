@@ -10,9 +10,51 @@
 
 import { spawn, type ChildProcess } from "child_process"
 import { getPool } from "./db.js"
-import path from "path"
+import { fileURLToPath } from "url"
+import { dirname, join } from "path"
 import newrelic from "newrelic"
 import { logger } from "./logger.js"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+/**
+ * Determine if we're running from compiled code (production) or source (development).
+ * In production, this file is at dist/lib/enrichment-process-manager.js
+ * In development, this file is at src/lib/enrichment-process-manager.ts
+ */
+function isProduction(): boolean {
+  return __dirname.includes("/dist/")
+}
+
+/**
+ * Get the script path and command for running the enrichment script.
+ * In development: use tsx to run .ts files from scripts/
+ * In production: use node to run compiled .js files from dist/scripts/
+ */
+function getScriptCommand(): { command: string; args: string[]; scriptPath: string; cwd: string } {
+  const serverRoot = join(__dirname, "..", "..")
+
+  if (isProduction()) {
+    // Production: run compiled JS with node and New Relic instrumentation
+    const scriptPath = join(serverRoot, "dist/scripts/enrich-death-details.js")
+    return {
+      command: "node",
+      args: ["--import", "newrelic/esm-loader.mjs", scriptPath],
+      scriptPath,
+      cwd: serverRoot,
+    }
+  } else {
+    // Development: run TypeScript source with tsx
+    const scriptPath = join(serverRoot, "scripts/enrich-death-details.ts")
+    return {
+      command: "npx",
+      args: ["tsx", scriptPath],
+      scriptPath,
+      cwd: serverRoot,
+    }
+  }
+}
 
 /**
  * Configuration for starting an enrichment run
@@ -83,21 +125,22 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
     })
 
     // Build command line arguments for the enrichment script
-    const args = buildScriptArgs(config)
-    args.push("--run-id", runId.toString())
-    args.push("--yes") // Skip confirmation prompt
+    const scriptArgs = buildScriptArgs(config)
+    scriptArgs.push("--run-id", runId.toString())
+    scriptArgs.push("--yes") // Skip confirmation prompt
 
-    // Path to the enrichment script
-    // Use process.cwd() instead of __dirname because in production __dirname
-    // points to dist/lib/ but scripts are in the source scripts/ directory
-    const serverRoot = process.cwd()
-    const scriptPath = path.join(serverRoot, "scripts/enrich-death-details.ts")
+    // Get the appropriate command and path for dev vs production
+    const { command, args: baseArgs, scriptPath, cwd } = getScriptCommand()
+    const fullArgs = [...baseArgs, ...scriptArgs]
 
     // Spawn the enrichment process
-    logger.info({ runId, scriptPath, args, serverRoot }, "Spawning enrichment process")
+    logger.info(
+      { runId, command, args: fullArgs, scriptPath, cwd, isProduction: isProduction() },
+      "Spawning enrichment process"
+    )
 
-    const child = spawn("npx", ["tsx", scriptPath, ...args], {
-      cwd: serverRoot,
+    const child = spawn(command, fullArgs, {
+      cwd,
       env: {
         ...process.env,
         // Ensure the script has access to environment variables
