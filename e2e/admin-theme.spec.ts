@@ -71,7 +71,10 @@ const mockDashboardStats = {
 // Register catch-all FIRST so specific routes take priority
 async function setupMockRoutes(page: Page) {
   // Catch-all for any unhandled admin API endpoints (lowest priority - registered first)
+  // NOTE: Any unmocked endpoint will receive an empty object - add explicit mocks for
+  // endpoints that need specific data structures
   await page.route("**/admin/api/**", async (route) => {
+    console.warn(`[e2e] Unmocked admin API request: ${route.request().url()} - returning empty object`)
     await route.fulfill({
       status: 200,
       contentType: "application/json",
