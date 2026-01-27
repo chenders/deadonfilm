@@ -162,10 +162,10 @@ test.describe("Admin TMDB Sync Page", () => {
     const submitButton = page.locator('[data-testid="sync-submit-button"]')
     await submitButton.click()
 
-    // Wait for success message
+    // Wait for success message (use heading role for specific match)
     await page.waitForTimeout(1000)
-    await expect(page.getByText("Sync Started")).toBeVisible()
-    await expect(page.getByText("ID: 43")).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Sync Started" })).toBeVisible()
+    await expect(page.getByText("Sync started (ID: 43)")).toBeVisible()
 
     // Take screenshot
     await page.screenshot({
@@ -189,13 +189,13 @@ test.describe("Admin TMDB Sync Page", () => {
     await expect(historyTable.getByText("tmdb-all")).toBeVisible()
     await expect(historyTable.getByText("tmdb-movies")).toBeVisible()
 
-    // Verify status badges
-    await expect(page.getByText("completed").first()).toBeVisible()
-    await expect(page.getByText("failed")).toBeVisible()
+    // Verify status badges (scope to history table)
+    await expect(historyTable.getByText("completed").first()).toBeVisible()
+    await expect(historyTable.getByText("failed")).toBeVisible()
 
-    // Verify triggered by column
-    await expect(page.getByText("admin").first()).toBeVisible()
-    await expect(page.getByText("cron")).toBeVisible()
+    // Verify triggered by column (scope to history table)
+    await expect(historyTable.getByText("admin").first()).toBeVisible()
+    await expect(historyTable.getByText("cron")).toBeVisible()
 
     // Take screenshot
     await page.screenshot({
