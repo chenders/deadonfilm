@@ -103,6 +103,12 @@ export interface NormalizedImdbEpisode {
   imdbEpisodeId: string
 }
 
+// Appearance type for TV show episodes
+export type TvAppearanceType = "regular" | "guest"
+
+// Appearance type for movies (matches database schema)
+export type MovieAppearanceType = "regular" | "self" | "archive"
+
 export interface NormalizedImdbCastMember {
   name: string
   characterName: string | null
@@ -112,7 +118,23 @@ export interface NormalizedImdbCastMember {
   deathdayPrecision: DatePrecision | null
   profilePath: string | null
   billingOrder: number
-  appearanceType: "regular" | "guest"
+  appearanceType: TvAppearanceType
+  imdbPersonId: string
+  birthYear: number | null
+  deathYear: number | null
+}
+
+// Movie-specific cast member with movie appearance types
+export interface NormalizedImdbMovieCastMember {
+  name: string
+  characterName: string | null
+  birthday: string | null
+  birthdayPrecision: DatePrecision | null
+  deathday: string | null
+  deathdayPrecision: DatePrecision | null
+  profilePath: string | null
+  billingOrder: number
+  appearanceType: MovieAppearanceType
   imdbPersonId: string
   birthYear: number | null
   deathYear: number | null
@@ -715,6 +737,132 @@ export async function getEpisodeCastWithDetails(
       profilePath: null, // IMDb datasets don't include images
       billingOrder: index,
       appearanceType: "guest", // Can't distinguish regular vs guest from IMDb data
+      imdbPersonId: c.nconst,
+      birthYear,
+      deathYear,
+    }
+  })
+}
+
+// ============================================================
+// Movie Cast (for documentaries and films not in TMDB)
+// ============================================================
+
+/**
+ * Detect appearance type from IMDb character field.
+ *
+ * IMDb stores character information that can indicate:
+ * - "Self" appearances (documentaries, talk shows, etc.)
+ * - Archive footage (interviews from past, news clips, etc.)
+ * - Regular acting roles
+ *
+ * @param characterName - The character field from IMDb (may be null)
+ * @returns The detected appearance type
+ */
+export function detectAppearanceType(characterName: string | null): MovieAppearanceType {
+  if (!characterName) return "regular"
+
+  const lowered = characterName.toLowerCase().trim()
+
+  // Archive footage patterns
+  const archivePatterns = [
+    "archive footage",
+    "archive film",
+    "archive material",
+    "(archive)",
+    "archival",
+    "stock footage",
+    "newsreel",
+    "footage from",
+    "file footage",
+    "scenes from",
+  ]
+
+  for (const pattern of archivePatterns) {
+    if (lowered.includes(pattern)) {
+      return "archive"
+    }
+  }
+
+  // Self/Himself/Herself patterns - playing themselves in documentaries
+  const selfPatterns = [
+    "self",
+    "himself",
+    "herself",
+    "themselves",
+    "themself",
+    "as himself",
+    "as herself",
+    "as themselves",
+    "(self)",
+    "(himself)",
+    "(herself)",
+  ]
+
+  for (const pattern of selfPatterns) {
+    // Check for exact match or pattern at word boundaries
+    if (
+      lowered === pattern ||
+      lowered.startsWith(pattern + " ") ||
+      lowered.endsWith(" " + pattern)
+    ) {
+      return "self"
+    }
+  }
+
+  // Also check if the character name is just "Self" with any casing
+  if (/^self$/i.test(characterName.trim())) {
+    return "self"
+  }
+
+  return "regular"
+}
+
+/**
+ * Get cast (principals) for one or more IMDb movie IDs.
+ * Similar to getEpisodeCast but explicitly for movies.
+ * Parses title.principals.tsv.gz on-demand.
+ * Only returns actors/actresses.
+ */
+export async function getMovieCast(tconsts: string[]): Promise<Map<string, ImdbPrincipal[]>> {
+  // Reuse the same underlying function - it works for both episodes and movies
+  return getEpisodeCast(tconsts)
+}
+
+/**
+ * Get cast for a movie with person details (birth/death year) and detected appearance type.
+ * Returns normalized cast members for movie appearances.
+ *
+ * @param imdbMovieId - The IMDb ID of the movie (e.g., "tt0111161")
+ * @returns Array of normalized cast members with appearance types
+ */
+export async function getMovieCastWithDetails(
+  imdbMovieId: string
+): Promise<NormalizedImdbMovieCastMember[]> {
+  const castMap = await getMovieCast([imdbMovieId])
+  const cast = castMap.get(imdbMovieId) || []
+  if (cast.length === 0) return []
+
+  // Get person details for all cast members
+  const nconsts = cast.map((c) => c.nconst)
+  const persons = await getPersons(nconsts)
+
+  return cast.map((c, index): NormalizedImdbMovieCastMember => {
+    const person = persons.get(c.nconst)
+    const birthYear = person?.birthYear || null
+    const deathYear = person?.deathYear || null
+    const characterName = c.characters?.[0] || null
+
+    return {
+      name: person?.primaryName || "Unknown",
+      characterName,
+      birthday: birthYear ? `${birthYear}-01-01` : null,
+      birthdayPrecision: birthYear ? "year" : null,
+      deathday: deathYear ? `${deathYear}-01-01` : null,
+      deathdayPrecision: deathYear ? "year" : null,
+      profilePath: null, // IMDb datasets don't include images
+      billingOrder: index,
+      appearanceType: detectAppearanceType(characterName),
       imdbPersonId: c.nconst,
       birthYear,
       deathYear,

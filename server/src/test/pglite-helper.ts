@@ -340,18 +340,20 @@ export async function insertMovieActorAppearance(
     movie_tmdb_id: number
     character_name?: string | null
     billing_order?: number | null
+    appearance_type?: "regular" | "self" | "archive"
   }
 ): Promise<void> {
   await testDb.query(
     `
-    INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order, appearance_type)
+    VALUES ($1, $2, $3, $4, $5)
   `,
     [
       appearance.actor_id,
       appearance.movie_tmdb_id,
       appearance.character_name ?? null,
       appearance.billing_order ?? null,
+      appearance.appearance_type ?? "regular",
     ]
   )
 }

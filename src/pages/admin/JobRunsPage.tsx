@@ -192,7 +192,12 @@ export default function JobRunsPage() {
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
           )}
@@ -271,7 +276,12 @@ export default function JobRunsPage() {
                 className="text-admin-text-muted hover:text-admin-text-primary"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </Link>
               <h1 className="text-2xl font-bold text-admin-text-primary">Job History</h1>
@@ -285,7 +295,12 @@ export default function JobRunsPage() {
         {/* Filters */}
         <div className="flex flex-wrap gap-3 rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
           <div>
-            <label htmlFor="filter-status" className="mb-1 block text-xs font-medium text-admin-text-muted">Status</label>
+            <label
+              htmlFor="filter-status"
+              className="mb-1 block text-xs font-medium text-admin-text-muted"
+            >
+              Status
+            </label>
             <select
               id="filter-status"
               value={filters.status || ""}
@@ -302,7 +317,12 @@ export default function JobRunsPage() {
           </div>
 
           <div>
-            <label htmlFor="filter-job-type" className="mb-1 block text-xs font-medium text-admin-text-muted">Job Type</label>
+            <label
+              htmlFor="filter-job-type"
+              className="mb-1 block text-xs font-medium text-admin-text-muted"
+            >
+              Job Type
+            </label>
             <select
               id="filter-job-type"
               value={filters.jobType || ""}
@@ -319,7 +339,12 @@ export default function JobRunsPage() {
           </div>
 
           <div>
-            <label htmlFor="filter-queue" className="mb-1 block text-xs font-medium text-admin-text-muted">Queue</label>
+            <label
+              htmlFor="filter-queue"
+              className="mb-1 block text-xs font-medium text-admin-text-muted"
+            >
+              Queue
+            </label>
             <select
               id="filter-queue"
               value={filters.queueName || ""}
@@ -339,7 +364,12 @@ export default function JobRunsPage() {
             <div className="flex items-end">
               <button
                 onClick={() =>
-                  updateFilters({ status: undefined, jobType: undefined, queueName: undefined, page: 1 })
+                  updateFilters({
+                    status: undefined,
+                    jobType: undefined,
+                    queueName: undefined,
+                    page: 1,
+                  })
                 }
                 className="rounded-md px-3 py-1.5 text-sm text-admin-text-muted hover:bg-admin-surface-overlay hover:text-admin-text-primary"
               >
@@ -428,9 +458,13 @@ export default function JobRunsPage() {
               <div className="flex items-center gap-2 text-sm text-admin-text-muted">
                 <span>
                   Showing{" "}
-                  {Math.min((data.pagination.page - 1) * data.pagination.pageSize + 1, data.pagination.total)}{" "}
-                  to {Math.min(data.pagination.page * data.pagination.pageSize, data.pagination.total)} of{" "}
-                  {data.pagination.total}
+                  {Math.min(
+                    (data.pagination.page - 1) * data.pagination.pageSize + 1,
+                    data.pagination.total
+                  )}{" "}
+                  to{" "}
+                  {Math.min(data.pagination.page * data.pagination.pageSize, data.pagination.total)}{" "}
+                  of {data.pagination.total}
                 </span>
                 <select
                   value={filters.pageSize || 20}
@@ -451,7 +485,12 @@ export default function JobRunsPage() {
                   className="rounded p-1.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
                   </svg>
                 </button>
                 <span className="px-3 text-sm text-admin-text-secondary">
@@ -463,7 +502,12 @@ export default function JobRunsPage() {
                   className="rounded p-1.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </button>
               </div>
@@ -490,7 +534,12 @@ export default function JobRunsPage() {
               {(filters.status || filters.jobType || filters.queueName) && (
                 <button
                   onClick={() =>
-                    updateFilters({ status: undefined, jobType: undefined, queueName: undefined, page: 1 })
+                    updateFilters({
+                      status: undefined,
+                      jobType: undefined,
+                      queueName: undefined,
+                      page: 1,
+                    })
                   }
                   className="mt-2 text-sm text-admin-interactive hover:underline"
                 >

@@ -277,10 +277,7 @@ async function cleanupJobs(gracePeriod: number): Promise<{ success: boolean; cle
   return response.json()
 }
 
-async function reviewDeadLetterJob(
-  id: number,
-  notes?: string
-): Promise<{ success: boolean }> {
+async function reviewDeadLetterJob(id: number, notes?: string): Promise<{ success: boolean }> {
   const response = await fetch(`/admin/api/jobs/dead-letter/${id}/review`, {
     method: "POST",
     credentials: "include",
@@ -427,8 +424,7 @@ export function useReviewDeadLetterJob() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, notes }: { id: number; notes?: string }) =>
-      reviewDeadLetterJob(id, notes),
+    mutationFn: ({ id, notes }: { id: number; notes?: string }) => reviewDeadLetterJob(id, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: jobQueueKeys.all })
     },

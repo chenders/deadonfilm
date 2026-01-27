@@ -213,6 +213,7 @@ async function processMovie(
       character_name: castMember.character || null,
       billing_order: index,
       age_at_filming: calculateAgeAtFilming(person?.birthday ?? null, releaseYear),
+      appearance_type: "regular",
     })
   }
 

@@ -275,6 +275,7 @@ async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions): P
               character_name: castMember.character || null,
               billing_order: index,
               age_at_filming: ageAtFilming,
+              appearance_type: "regular",
             })
           }
 

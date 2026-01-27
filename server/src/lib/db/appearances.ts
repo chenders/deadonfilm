@@ -17,57 +17,64 @@ export async function upsertActorMovieAppearance(
 ): Promise<void> {
   const db = getPool()
   await db.query(
-    `INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming, appearance_type)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (actor_id, movie_tmdb_id) DO UPDATE SET
        character_name = EXCLUDED.character_name,
        billing_order = EXCLUDED.billing_order,
-       age_at_filming = EXCLUDED.age_at_filming`,
+       age_at_filming = EXCLUDED.age_at_filming,
+       appearance_type = EXCLUDED.appearance_type`,
     [
       appearance.actor_id,
       appearance.movie_tmdb_id,
       appearance.character_name,
       appearance.billing_order,
       appearance.age_at_filming,
+      appearance.appearance_type,
     ]
   )
 }
 
-// Batch insert actor movie appearances
+// Batch insert actor movie appearances using bulk VALUES for efficiency
 export async function batchUpsertActorMovieAppearances(
   appearances: ActorMovieAppearanceRecord[]
 ): Promise<void> {
   if (appearances.length === 0) return
 
   const db = getPool()
-  const client = await db.connect()
-  try {
-    await client.query("BEGIN")
 
-    for (const appearance of appearances) {
-      await client.query(
-        `INSERT INTO actor_movie_appearances (actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (actor_id, movie_tmdb_id) DO UPDATE SET
-           character_name = EXCLUDED.character_name,
-           billing_order = EXCLUDED.billing_order,
-           age_at_filming = EXCLUDED.age_at_filming`,
-        [
-          appearance.actor_id,
-          appearance.movie_tmdb_id,
-          appearance.character_name,
-          appearance.billing_order,
-          appearance.age_at_filming,
-        ]
+  // Process in chunks of 100 to avoid query size limits
+  const CHUNK_SIZE = 100
+  for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
+    const chunk = appearances.slice(i, i + CHUNK_SIZE)
+
+    // Build VALUES clause with numbered parameters (6 columns)
+    const values: unknown[] = []
+    const placeholders = chunk.map((appearance, index) => {
+      const offset = index * 6
+      values.push(
+        appearance.actor_id,
+        appearance.movie_tmdb_id,
+        appearance.character_name,
+        appearance.billing_order,
+        appearance.age_at_filming,
+        appearance.appearance_type
       )
-    }
+      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`
+    })
 
-    await client.query("COMMIT")
-  } catch (error) {
-    await client.query("ROLLBACK")
-    throw error
-  } finally {
-    client.release()
+    await db.query(
+      `INSERT INTO actor_movie_appearances (
+         actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming, appearance_type
+       )
+       VALUES ${placeholders.join(", ")}
+       ON CONFLICT (actor_id, movie_tmdb_id) DO UPDATE SET
+         character_name = EXCLUDED.character_name,
+         billing_order = EXCLUDED.billing_order,
+         age_at_filming = EXCLUDED.age_at_filming,
+         appearance_type = EXCLUDED.appearance_type`,
+      values
+    )
   }
 }
 

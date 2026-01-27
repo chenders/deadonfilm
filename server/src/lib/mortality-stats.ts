@@ -188,6 +188,11 @@ export async function calculateCumulativeDeathProbability(
 }
 
 /**
+ * Appearance type for filtering mortality calculations
+ */
+export type MortalityAppearanceType = "regular" | "self" | "archive"
+
+/**
  * Actor data needed for mortality calculation
  */
 export interface ActorForMortality {
@@ -195,6 +200,7 @@ export interface ActorForMortality {
   name: string
   birthday: string | null // YYYY-MM-DD format
   deathday: string | null // YYYY-MM-DD format
+  appearanceType?: MortalityAppearanceType // Optional - defaults to "regular"
 }
 
 /**
@@ -247,9 +253,14 @@ export async function calculateMovieMortality(
     const currentAge = birthYear && !isDeceased ? currentYear - birthYear : null
     const ageAtDeath = birthYear && deathYear ? deathYear - birthYear : null
 
-    // Check if actor died more than 3 years before movie release (archived footage)
-    // These actors should be excluded from mortality calculations
-    const isArchivedFootage = deathYear !== null && deathYear < releaseYear - 3
+    // Check if actor should be excluded from mortality calculations:
+    // 1. appearance_type is 'archive' or 'self' (documentary subjects, archive footage)
+    // 2. Actor died more than 3 years before movie release (implicit archived footage)
+    const appearanceType = actor.appearanceType ?? "regular"
+    const isArchivedFootage =
+      appearanceType === "archive" ||
+      appearanceType === "self" ||
+      (deathYear !== null && deathYear < releaseYear - 3)
 
     // Calculate death probability (expected chance they would have died by now)
     let deathProbability = 0

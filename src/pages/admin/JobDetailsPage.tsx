@@ -51,7 +51,7 @@ function JsonViewer({ data, title }: { data: unknown; title: string }) {
     return (
       <div className="rounded-lg border border-admin-border bg-admin-surface-inset p-4">
         <div className="mb-2 text-sm font-medium text-admin-text-muted">{title}</div>
-        <div className="text-sm text-admin-text-muted italic">No data</div>
+        <div className="text-sm italic text-admin-text-muted">No data</div>
       </div>
     )
   }
@@ -162,9 +162,17 @@ export default function JobDetailsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <Link to="/admin/jobs/runs" className="text-admin-text-muted hover:text-admin-text-primary">
+              <Link
+                to="/admin/jobs/runs"
+                className="text-admin-text-muted hover:text-admin-text-primary"
+              >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </Link>
               <h1 className="text-2xl font-bold text-admin-text-primary">Job Details</h1>
@@ -187,7 +195,7 @@ export default function JobDetailsPage() {
 
         {/* Retry success message */}
         {retryJob.isSuccess && (
-          <div className="rounded-lg bg-admin-success/10 p-4 text-sm text-admin-success">
+          <div className="bg-admin-success/10 rounded-lg p-4 text-sm text-admin-success">
             Job retry initiated. New job ID: {retryJob.data.jobId}
           </div>
         )}
@@ -209,7 +217,9 @@ export default function JobDetailsPage() {
                   <dt className="text-xs font-medium uppercase tracking-wider text-admin-text-muted">
                     Queue
                   </dt>
-                  <dd className="mt-1 text-sm text-admin-text-primary capitalize">{job.queue_name}</dd>
+                  <dd className="mt-1 text-sm capitalize text-admin-text-primary">
+                    {job.queue_name}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs font-medium uppercase tracking-wider text-admin-text-muted">
@@ -238,7 +248,9 @@ export default function JobDetailsPage() {
                     <dt className="text-xs font-medium uppercase tracking-wider text-admin-text-muted">
                       Worker ID
                     </dt>
-                    <dd className="mt-1 font-mono text-sm text-admin-text-primary">{job.worker_id}</dd>
+                    <dd className="mt-1 font-mono text-sm text-admin-text-primary">
+                      {job.worker_id}
+                    </dd>
                   </div>
                 )}
                 {job.created_by && (
@@ -268,13 +280,15 @@ export default function JobDetailsPage() {
             {job.error_message && (
               <Card title="Error Details">
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-admin-danger/30 bg-admin-danger/10 p-4">
+                  <div className="border-admin-danger/30 bg-admin-danger/10 rounded-lg border p-4">
                     <div className="text-sm font-medium text-admin-danger">Error Message</div>
                     <div className="mt-1 text-sm text-admin-text-primary">{job.error_message}</div>
                   </div>
                   {job.error_stack && (
                     <div>
-                      <div className="mb-2 text-sm font-medium text-admin-text-muted">Stack Trace</div>
+                      <div className="mb-2 text-sm font-medium text-admin-text-muted">
+                        Stack Trace
+                      </div>
                       <pre className="max-h-64 overflow-auto rounded-lg bg-admin-surface-inset p-4 font-mono text-xs text-admin-text-secondary">
                         {job.error_stack}
                       </pre>
@@ -289,11 +303,7 @@ export default function JobDetailsPage() {
           <div>
             <Card title="Timeline">
               <div className="space-y-1">
-                <TimelineStep
-                  label="Queued"
-                  time={job.queued_at}
-                  isCompleted={true}
-                />
+                <TimelineStep label="Queued" time={job.queued_at} isCompleted={true} />
                 <TimelineStep
                   label="Started"
                   time={job.started_at}

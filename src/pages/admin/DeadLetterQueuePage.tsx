@@ -88,7 +88,7 @@ function DeadLetterJobCard({
       </div>
 
       {/* Error message */}
-      <div className="mt-3 rounded-md bg-admin-danger/10 p-3">
+      <div className="bg-admin-danger/10 mt-3 rounded-md p-3">
         <div className="text-sm text-admin-danger">{job.final_error}</div>
       </div>
 
@@ -252,9 +252,17 @@ export default function DeadLetterQueuePage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <Link to="/admin/jobs" className="text-admin-text-muted hover:text-admin-text-primary">
+              <Link
+                to="/admin/jobs"
+                className="text-admin-text-muted hover:text-admin-text-primary"
+              >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </Link>
               <h1 className="text-2xl font-bold text-admin-text-primary">Dead Letter Queue</h1>
@@ -352,7 +360,12 @@ export default function DeadLetterQueuePage() {
                 className="rounded p-1.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </button>
               <button
@@ -361,7 +374,12 @@ export default function DeadLetterQueuePage() {
                 className="rounded p-1.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </button>
             </div>

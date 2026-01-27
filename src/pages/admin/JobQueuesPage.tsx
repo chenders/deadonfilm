@@ -59,8 +59,10 @@ function QueueCard({
             <QueueIcon />
           </div>
           <div>
-            <h3 className="font-semibold text-admin-text-primary capitalize">{queue.name}</h3>
-            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>
+            <h3 className="font-semibold capitalize text-admin-text-primary">{queue.name}</h3>
+            <span
+              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}
+            >
               {queue.isPaused ? "Paused" : "Running"}
             </span>
           </div>
@@ -70,8 +72,8 @@ function QueueCard({
           disabled={isPending}
           className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             queue.isPaused
-              ? "bg-admin-success/20 text-admin-success hover:bg-admin-success/30"
-              : "bg-admin-warning/20 text-admin-warning hover:bg-admin-warning/30"
+              ? "bg-admin-success/20 hover:bg-admin-success/30 text-admin-success"
+              : "bg-admin-warning/20 hover:bg-admin-warning/30 text-admin-warning"
           } disabled:cursor-not-allowed disabled:opacity-50`}
         >
           {isPending ? "..." : queue.isPaused ? "Resume" : "Pause"}
@@ -98,9 +100,7 @@ function QueueCard({
       </div>
 
       {queue.delayed > 0 && (
-        <div className="mt-3 text-sm text-admin-text-muted">
-          {queue.delayed} delayed jobs
-        </div>
+        <div className="mt-3 text-sm text-admin-text-muted">{queue.delayed} delayed jobs</div>
       )}
 
       {totalInQueue > 0 && (
@@ -151,8 +151,7 @@ export default function JobQueuesPage() {
   ) ?? { waiting: 0, active: 0, completed: 0, failed: 0 }
 
   // Dead letter count
-  const deadLetterCount =
-    statsData?.deadLetterQueue.reduce((sum, d) => sum + d.count, 0) ?? 0
+  const deadLetterCount = statsData?.deadLetterQueue.reduce((sum, d) => sum + d.count, 0) ?? 0
 
   if (queuesLoading) {
     return (
@@ -215,9 +214,7 @@ export default function JobQueuesPage() {
             <h1 className="text-2xl font-bold text-admin-text-primary md:text-3xl">
               Background Jobs
             </h1>
-            <p className="mt-1 text-admin-text-muted">
-              Monitor and manage background job queues
-            </p>
+            <p className="mt-1 text-admin-text-muted">Monitor and manage background job queues</p>
           </div>
           <a
             href="/admin/bull-board"
@@ -346,7 +343,7 @@ export default function JobQueuesPage() {
             </svg>
             Dead Letter Queue
             {deadLetterCount > 0 && (
-              <span className="rounded-full bg-admin-warning/20 px-2 py-0.5 text-xs font-medium text-admin-warning">
+              <span className="bg-admin-warning/20 rounded-full px-2 py-0.5 text-xs font-medium text-admin-warning">
                 {deadLetterCount}
               </span>
             )}
@@ -373,7 +370,9 @@ export default function JobQueuesPage() {
         {!statsLoading && statsData && (
           <Card title="Job Performance (Last 24h)">
             {statsData.successRates.length === 0 ? (
-              <p className="text-sm text-admin-text-muted">No jobs processed in the last 24 hours</p>
+              <p className="text-sm text-admin-text-muted">
+                No jobs processed in the last 24 hours
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -388,9 +387,7 @@ export default function JobQueuesPage() {
                   </thead>
                   <tbody className="divide-y divide-admin-border-subtle">
                     {statsData.successRates.map((stat) => {
-                      const duration = statsData.durations.find(
-                        (d) => d.job_type === stat.job_type
-                      )
+                      const duration = statsData.durations.find((d) => d.job_type === stat.job_type)
                       return (
                         <tr key={stat.job_type}>
                           <td className="py-2 font-mono text-sm text-admin-text-primary">
@@ -432,7 +429,10 @@ export default function JobQueuesPage() {
         <Card title="Maintenance">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <label htmlFor="cleanup-period" className="mb-1 block text-sm font-medium text-admin-text-primary">
+              <label
+                htmlFor="cleanup-period"
+                className="mb-1 block text-sm font-medium text-admin-text-primary"
+              >
                 Cleanup completed jobs older than
               </label>
               <select

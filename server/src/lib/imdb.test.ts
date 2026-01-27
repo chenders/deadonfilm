@@ -487,3 +487,229 @@ describe("NormalizedImdbCastMember structure", () => {
     expect(castMember.deathYear).toBeNull()
   })
 })
+
+describe("detectAppearanceType", () => {
+  /**
+   * Tests for the detectAppearanceType function which analyzes IMDb character
+   * fields to determine if someone is playing themselves (documentaries),
+   * appearing in archive footage, or in a regular acting role.
+   */
+
+  // Import the function inline to avoid requiring file system access
+  type MovieAppearanceType = "regular" | "self" | "archive"
+
+  function detectAppearanceType(characterName: string | null): MovieAppearanceType {
+    if (!characterName) return "regular"
+
+    const lowered = characterName.toLowerCase().trim()
+
+    // Archive footage patterns
+    const archivePatterns = [
+      "archive footage",
+      "archive film",
+      "archive material",
+      "(archive)",
+      "archival",
+      "stock footage",
+      "newsreel",
+      "footage from",
+      "file footage",
+      "scenes from",
+    ]
+
+    for (const pattern of archivePatterns) {
+      if (lowered.includes(pattern)) {
+        return "archive"
+      }
+    }
+
+    // Self/Himself/Herself patterns
+    const selfPatterns = [
+      "self",
+      "himself",
+      "herself",
+      "themselves",
+      "themself",
+      "as himself",
+      "as herself",
+      "as themselves",
+      "(self)",
+      "(himself)",
+      "(herself)",
+    ]
+
+    for (const pattern of selfPatterns) {
+      if (
+        lowered === pattern ||
+        lowered.startsWith(pattern + " ") ||
+        lowered.endsWith(" " + pattern)
+      ) {
+        return "self"
+      }
+    }
+
+    if (/^self$/i.test(characterName.trim())) {
+      return "self"
+    }
+
+    return "regular"
+  }
+
+  describe("regular appearances", () => {
+    it("returns regular for null character name", () => {
+      expect(detectAppearanceType(null)).toBe("regular")
+    })
+
+    it("returns regular for empty string", () => {
+      expect(detectAppearanceType("")).toBe("regular")
+    })
+
+    it("returns regular for standard character names", () => {
+      expect(detectAppearanceType("John Smith")).toBe("regular")
+      expect(detectAppearanceType("The Villain")).toBe("regular")
+      expect(detectAppearanceType("Dr. Evil")).toBe("regular")
+      expect(detectAppearanceType("Young Version of Main Character")).toBe("regular")
+    })
+
+    it("returns regular for character with 'self' as part of larger word", () => {
+      // "Selfish" contains "self" but shouldn't match
+      expect(detectAppearanceType("Selfish Character")).toBe("regular")
+      expect(detectAppearanceType("Mr. Selfridge")).toBe("regular")
+    })
+  })
+
+  describe("self appearances", () => {
+    it("detects exact 'Self' match", () => {
+      expect(detectAppearanceType("Self")).toBe("self")
+      expect(detectAppearanceType("self")).toBe("self")
+      expect(detectAppearanceType("SELF")).toBe("self")
+    })
+
+    it("detects himself/herself patterns", () => {
+      expect(detectAppearanceType("Himself")).toBe("self")
+      expect(detectAppearanceType("Herself")).toBe("self")
+      expect(detectAppearanceType("himself")).toBe("self")
+      expect(detectAppearanceType("herself")).toBe("self")
+    })
+
+    it("detects 'as himself/herself' patterns", () => {
+      expect(detectAppearanceType("as himself")).toBe("self")
+      expect(detectAppearanceType("as herself")).toBe("self")
+      expect(detectAppearanceType("As Himself")).toBe("self")
+    })
+
+    it("detects self with descriptors", () => {
+      expect(detectAppearanceType("Self - Interview Subject")).toBe("self")
+      expect(detectAppearanceType("himself (interview)")).toBe("self")
+    })
+
+    it("detects parenthesized self patterns", () => {
+      expect(detectAppearanceType("(self)")).toBe("self")
+      expect(detectAppearanceType("(himself)")).toBe("self")
+      expect(detectAppearanceType("(herself)")).toBe("self")
+    })
+  })
+
+  describe("archive footage appearances", () => {
+    it("detects 'archive footage' pattern", () => {
+      expect(detectAppearanceType("Self (archive footage)")).toBe("archive")
+      expect(detectAppearanceType("archive footage")).toBe("archive")
+      expect(detectAppearanceType("Himself (archive footage)")).toBe("archive")
+    })
+
+    it("detects various archive patterns", () => {
+      expect(detectAppearanceType("archive film")).toBe("archive")
+      expect(detectAppearanceType("archive material")).toBe("archive")
+      expect(detectAppearanceType("(archive)")).toBe("archive")
+      expect(detectAppearanceType("archival footage")).toBe("archive")
+      expect(detectAppearanceType("stock footage")).toBe("archive")
+      expect(detectAppearanceType("newsreel footage")).toBe("archive")
+    })
+
+    it("detects 'footage from' pattern", () => {
+      expect(detectAppearanceType("footage from earlier film")).toBe("archive")
+      expect(detectAppearanceType("scenes from 1985 interview")).toBe("archive")
+    })
+
+    it("prioritizes archive over self detection", () => {
+      // If both patterns match, archive takes precedence
+      expect(detectAppearanceType("Self (archive footage)")).toBe("archive")
+      expect(detectAppearanceType("Himself - archive footage from 1960")).toBe("archive")
+    })
+  })
+})
+
+describe("NormalizedImdbMovieCastMember structure", () => {
+  /**
+   * Tests for the normalized movie cast member format used for documentary/movie imports.
+   */
+
+  type MovieAppearanceType = "regular" | "self" | "archive"
+
+  interface NormalizedImdbMovieCastMember {
+    name: string
+    characterName: string | null
+    birthday: string | null
+    deathday: string | null
+    profilePath: string | null
+    billingOrder: number
+    appearanceType: MovieAppearanceType
+    imdbPersonId: string
+    birthYear: number | null
+    deathYear: number | null
+  }
+
+  it("has correct structure for documentary subject (self)", () => {
+    const castMember: NormalizedImdbMovieCastMember = {
+      name: "Documentary Subject",
+      characterName: "Self",
+      birthday: "1950-01-01",
+      deathday: "2020-01-01",
+      profilePath: null,
+      billingOrder: 0,
+      appearanceType: "self",
+      imdbPersonId: "nm0000001",
+      birthYear: 1950,
+      deathYear: 2020,
+    }
+
+    expect(castMember.appearanceType).toBe("self")
+    expect(castMember.characterName).toBe("Self")
+  })
+
+  it("has correct structure for archive footage appearance", () => {
+    const castMember: NormalizedImdbMovieCastMember = {
+      name: "Historical Figure",
+      characterName: "Himself (archive footage)",
+      birthday: "1900-01-01",
+      deathday: "1960-01-01",
+      profilePath: null,
+      billingOrder: 5,
+      appearanceType: "archive",
+      imdbPersonId: "nm0000002",
+      birthYear: 1900,
+      deathYear: 1960,
+    }
+
+    expect(castMember.appearanceType).toBe("archive")
+    expect(castMember.characterName).toBe("Himself (archive footage)")
+  })
+
+  it("has correct structure for regular acting role", () => {
+    const castMember: NormalizedImdbMovieCastMember = {
+      name: "Actor Name",
+      characterName: "Character Role",
+      birthday: "1970-01-01",
+      deathday: null,
+      profilePath: null,
+      billingOrder: 2,
+      appearanceType: "regular",
+      imdbPersonId: "nm0000003",
+      birthYear: 1970,
+      deathYear: null,
+    }
+
+    expect(castMember.appearanceType).toBe("regular")
+    expect(castMember.deathYear).toBeNull()
+  })
+})

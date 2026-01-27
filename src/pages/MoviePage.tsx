@@ -121,28 +121,38 @@ export default function MoviePage() {
           <MortalityGauge stats={stats} />
         </div>
 
-        {lastSurvivor && stats.mortalityPercentage >= 50 && !showLiving && (
-          <LastSurvivor actor={lastSurvivor} totalLiving={stats.livingCount} />
-        )}
-
-        <CastToggle
-          showLiving={showLiving}
-          onToggle={setShowLiving}
-          deceasedCount={stats.deceasedCount}
-          livingCount={stats.livingCount}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-        />
-
-        {showLiving ? (
-          <LivingList actors={living} />
-        ) : viewMode === "timeline" ? (
-          <MiniTimeline
-            releaseYear={new Date(movie.release_date).getFullYear()}
-            deceased={enrichedDeceased}
-          />
+        {stats.totalCast === 0 ? (
+          <div className="bg-surface-secondary mt-8 rounded-lg p-6 text-center">
+            <p className="text-text-secondary">
+              Cast information is not yet available for this movie.
+            </p>
+          </div>
         ) : (
-          <DeceasedList actors={enrichedDeceased} isPolling={isPolling} />
+          <>
+            {lastSurvivor && stats.mortalityPercentage >= 50 && !showLiving && (
+              <LastSurvivor actor={lastSurvivor} totalLiving={stats.livingCount} />
+            )}
+
+            <CastToggle
+              showLiving={showLiving}
+              onToggle={setShowLiving}
+              deceasedCount={stats.deceasedCount}
+              livingCount={stats.livingCount}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
+
+            {showLiving ? (
+              <LivingList actors={living} />
+            ) : viewMode === "timeline" ? (
+              <MiniTimeline
+                releaseYear={new Date(movie.release_date).getFullYear()}
+                deceased={enrichedDeceased}
+              />
+            ) : (
+              <DeceasedList actors={enrichedDeceased} isPolling={isPolling} />
+            )}
+          </>
         )}
       </div>
     </>
