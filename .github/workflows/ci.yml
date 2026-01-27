@@ -288,6 +288,8 @@ jobs:
         env:
           CI: true
           TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
+          ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
           # Note: DATABASE_URL intentionally not set - E2E tests don't need DB
           # and setting it would trigger slow migration checks on server startup
 
