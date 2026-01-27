@@ -1,5 +1,8 @@
 import { test, expect, Page } from "@playwright/test"
 
+// Set shorter timeouts for faster failure detection
+test.setTimeout(15000) // 15 seconds max per test
+
 // Admin credentials from environment
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ""
 
@@ -122,8 +125,8 @@ async function loginToAdmin(page: Page) {
   const loginButton = page.locator('button[type="submit"]')
   await loginButton.click()
 
-  // Wait for redirect to dashboard
-  await page.waitForURL(/\/admin\/dashboard/)
+  // Wait for redirect to dashboard (5s timeout for faster failure)
+  await page.waitForURL(/\/admin\/dashboard/, { timeout: 5000 })
   await page.waitForLoadState("networkidle")
 }
 
@@ -151,7 +154,7 @@ test.describe("Admin Theme - Dark Mode (Default)", () => {
     await loginToAdmin(page)
 
     // Wait for dashboard content to load
-    await page.waitForSelector("text=Dashboard", { timeout: 10000 })
+    await page.waitForSelector("text=Dashboard", { timeout: 5000 })
 
     // Take screenshot of dashboard
     await page.screenshot({
@@ -180,7 +183,7 @@ test.describe("Admin Theme - Dark Mode (Default)", () => {
     await page.waitForLoadState("networkidle")
 
     // Wait for page content
-    await page.waitForSelector("text=Death Detail Coverage", { timeout: 10000 })
+    await page.waitForSelector("text=Death Detail Coverage", { timeout: 5000 })
 
     // Take screenshot
     await page.screenshot({
