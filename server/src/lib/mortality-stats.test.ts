@@ -184,6 +184,78 @@ describe("mortality-stats", () => {
     })
   })
 
+  describe("appearanceType exclusion", () => {
+    it("excludes actors with appearanceType 'self' from mortality calculations", async () => {
+      const actors: ActorForMortality[] = [
+        {
+          tmdbId: 1,
+          name: "Documentary Subject",
+          birthday: "1950-01-01",
+          deathday: "2020-01-01",
+          appearanceType: "self",
+        },
+        { tmdbId: 2, name: "Regular Actor", birthday: "1960-01-01", deathday: "2020-01-01" },
+      ]
+
+      const result = await calculateMovieMortality(2015, actors, 2024)
+
+      // Only the regular actor should be counted
+      expect(result.actualDeaths).toBe(1)
+      // Documentary subject should have 0 probability
+      const selfActor = result.actorResults.find((a) => a.name === "Documentary Subject")
+      expect(selfActor?.deathProbability).toBe(0)
+    })
+
+    it("excludes actors with appearanceType 'archive' from mortality calculations", async () => {
+      const actors: ActorForMortality[] = [
+        {
+          tmdbId: 1,
+          name: "Archive Footage Actor",
+          birthday: "1930-01-01",
+          deathday: "1980-01-01",
+          appearanceType: "archive",
+        },
+        { tmdbId: 2, name: "Regular Actor", birthday: "1960-01-01", deathday: null },
+      ]
+
+      const result = await calculateMovieMortality(2020, actors, 2024)
+
+      // Archive actor should be excluded from actual deaths
+      expect(result.actualDeaths).toBe(0)
+      // Archive actor should have 0 probability
+      const archiveActor = result.actorResults.find((a) => a.name === "Archive Footage Actor")
+      expect(archiveActor?.deathProbability).toBe(0)
+    })
+
+    it("includes actors with appearanceType 'regular' in mortality calculations", async () => {
+      const actors: ActorForMortality[] = [
+        {
+          tmdbId: 1,
+          name: "Regular Actor",
+          birthday: "1950-01-01",
+          deathday: "2020-01-01",
+          appearanceType: "regular",
+        },
+      ]
+
+      const result = await calculateMovieMortality(2010, actors, 2024)
+
+      expect(result.actualDeaths).toBe(1)
+      expect(result.actorResults[0].deathProbability).toBeGreaterThan(0)
+    })
+
+    it("defaults to 'regular' when appearanceType is not specified", async () => {
+      const actors: ActorForMortality[] = [
+        { tmdbId: 1, name: "Actor without type", birthday: "1950-01-01", deathday: "2020-01-01" },
+      ]
+
+      const result = await calculateMovieMortality(2010, actors, 2024)
+
+      expect(result.actualDeaths).toBe(1)
+      expect(result.actorResults[0].deathProbability).toBeGreaterThan(0)
+    })
+  })
+
   describe("edge cases for cursed movie calculations", () => {
     it("excludes actor who died more than 3 years BEFORE movie was released (archived footage)", async () => {
       // Actor died 4 years before movie, so should be excluded as archived footage

@@ -60,6 +60,17 @@ describe("AdminNav", () => {
     expect(dashboardLink).toHaveAttribute("href", "/admin/dashboard")
   })
 
+  it("renders background jobs navigation link", async () => {
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: /background jobs/i })).toBeInTheDocument()
+    })
+
+    const jobsLink = screen.getByRole("link", { name: /background jobs/i })
+    expect(jobsLink).toHaveAttribute("href", "/admin/jobs")
+  })
+
   it("highlights active route", async () => {
     renderWithRouter("/admin/dashboard")
 

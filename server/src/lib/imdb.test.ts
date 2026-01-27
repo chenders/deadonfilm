@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { detectAppearanceType } from "./imdb.js"
 
 /**
  * IMDb Module Tests
@@ -493,67 +494,9 @@ describe("detectAppearanceType", () => {
    * Tests for the detectAppearanceType function which analyzes IMDb character
    * fields to determine if someone is playing themselves (documentaries),
    * appearing in archive footage, or in a regular acting role.
+   *
+   * Uses the production function imported from ./imdb.js
    */
-
-  // Import the function inline to avoid requiring file system access
-  type MovieAppearanceType = "regular" | "self" | "archive"
-
-  function detectAppearanceType(characterName: string | null): MovieAppearanceType {
-    if (!characterName) return "regular"
-
-    const lowered = characterName.toLowerCase().trim()
-
-    // Archive footage patterns
-    const archivePatterns = [
-      "archive footage",
-      "archive film",
-      "archive material",
-      "(archive)",
-      "archival",
-      "stock footage",
-      "newsreel",
-      "footage from",
-      "file footage",
-      "scenes from",
-    ]
-
-    for (const pattern of archivePatterns) {
-      if (lowered.includes(pattern)) {
-        return "archive"
-      }
-    }
-
-    // Self/Himself/Herself patterns
-    const selfPatterns = [
-      "self",
-      "himself",
-      "herself",
-      "themselves",
-      "themself",
-      "as himself",
-      "as herself",
-      "as themselves",
-      "(self)",
-      "(himself)",
-      "(herself)",
-    ]
-
-    for (const pattern of selfPatterns) {
-      if (
-        lowered === pattern ||
-        lowered.startsWith(pattern + " ") ||
-        lowered.endsWith(" " + pattern)
-      ) {
-        return "self"
-      }
-    }
-
-    if (/^self$/i.test(characterName.trim())) {
-      return "self"
-    }
-
-    return "regular"
-  }
 
   describe("regular appearances", () => {
     it("returns regular for null character name", () => {

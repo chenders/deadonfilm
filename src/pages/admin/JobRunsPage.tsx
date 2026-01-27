@@ -77,13 +77,21 @@ function formatRelativeTime(dateStr: string): string {
   return `${diffDay}d ago`
 }
 
+// Validate and constrain pagination parameters
+function parsePositiveInt(value: string | null, defaultValue: number, max: number): number {
+  if (!value) return defaultValue
+  const parsed = parseInt(value, 10)
+  if (isNaN(parsed) || parsed < 1) return defaultValue
+  return Math.min(parsed, max)
+}
+
 export default function JobRunsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Parse filters from URL
+  // Parse filters from URL with validation
   const filters: JobRunFilters = {
-    page: parseInt(searchParams.get("page") || "1"),
-    pageSize: parseInt(searchParams.get("pageSize") || "20"),
+    page: parsePositiveInt(searchParams.get("page"), 1, 10000),
+    pageSize: parsePositiveInt(searchParams.get("pageSize"), 20, 100),
     status: searchParams.get("status") || undefined,
     jobType: searchParams.get("jobType") || undefined,
     queueName: searchParams.get("queueName") || undefined,
