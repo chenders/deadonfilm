@@ -38,10 +38,23 @@ const mockCoverageTrends = [
 ]
 
 const mockDashboardStats = {
-  totalActors: 50000,
-  deceasedActors: 12000,
-  moviesTracked: 8000,
-  showsTracked: 2000,
+  systemHealth: {
+    database: true,
+    redis: true,
+  },
+  actorStats: {
+    totalActors: 567161,
+    deceasedActors: 19799,
+    enrichedActors: 8542,
+  },
+  enrichmentStats: {
+    totalRuns: 0,
+    recentRunsCount: 0,
+  },
+  costStats: {
+    totalCost: 0,
+    lastMonthCost: 0,
+  },
 }
 
 // Setup mock API routes for admin endpoints
