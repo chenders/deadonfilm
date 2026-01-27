@@ -125,7 +125,7 @@ describe("HighPriorityActorsPage", () => {
       screen.getByText("No high-priority actors found needing enrichment.")
     ).toBeInTheDocument()
     expect(
-      screen.getByText(/All actors with popularity ≥ 10 have been enriched/)
+      screen.getByText(/All actors with popularity >= 10 have been enriched/)
     ).toBeInTheDocument()
   })
 

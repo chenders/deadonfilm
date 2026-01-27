@@ -15,22 +15,22 @@ export default function StatCard({ label, value, change, icon }: StatCardProps) 
 
   const changeColor =
     change === undefined || change === 0
-      ? "text-gray-400"
+      ? "text-admin-text-muted"
       : change > 0
-        ? "text-green-400"
-        : "text-red-400"
+        ? "text-admin-success"
+        : "text-admin-danger"
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+    <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-400">{label}</p>
-          <p className="mt-2 text-3xl font-semibold text-white">{value}</p>
+          <p className="text-sm font-medium text-admin-text-muted">{label}</p>
+          <p className="mt-2 text-2xl font-semibold text-admin-text-primary md:text-3xl">{value}</p>
           {formattedChange && (
             <p className={`mt-2 text-sm font-medium ${changeColor}`}>{formattedChange}</p>
           )}
         </div>
-        {icon && <div className="text-gray-400">{icon}</div>}
+        {icon && <div className="text-admin-text-muted">{icon}</div>}
       </div>
     </div>
   )

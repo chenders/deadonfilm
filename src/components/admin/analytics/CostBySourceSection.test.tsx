@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { TestMemoryRouter } from "@/test/test-utils"
+import { AdminTestWrapper } from "@/test/test-utils"
 import CostBySourceSection from "./CostBySourceSection"
 import * as analyticsHooks from "../../../hooks/admin/useAnalytics"
 
@@ -61,9 +61,9 @@ describe("CostBySourceSection", () => {
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <TestMemoryRouter>
+        <AdminTestWrapper>
           <CostBySourceSection startDate={startDate} endDate={endDate} />
-        </TestMemoryRouter>
+        </AdminTestWrapper>
       </QueryClientProvider>
     )
   }

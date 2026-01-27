@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { useInternalReferralsOverTime } from "../../../hooks/admin/useAnalytics"
+import { useChartTheme, useChartTooltipStyle } from "../../../hooks/admin/useChartTheme"
 import LoadingSpinner from "../../common/LoadingSpinner"
 import ErrorMessage from "../../common/ErrorMessage"
 
@@ -28,11 +29,15 @@ export default function InternalReferralsChart({
   granularity = "day",
 }: InternalReferralsChartProps) {
   const { data, isLoading, error } = useInternalReferralsOverTime(startDate, endDate, granularity)
+  const chartTheme = useChartTheme()
+  const tooltipStyle = useChartTooltipStyle()
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-        <h2 className="mb-6 text-xl font-semibold text-white">Internal Referrals Over Time</h2>
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+        <h2 className="mb-6 text-xl font-semibold text-admin-text-primary">
+          Internal Referrals Over Time
+        </h2>
         <LoadingSpinner />
       </div>
     )
@@ -40,8 +45,10 @@ export default function InternalReferralsChart({
 
   if (error) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-        <h2 className="mb-6 text-xl font-semibold text-white">Internal Referrals Over Time</h2>
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+        <h2 className="mb-6 text-xl font-semibold text-admin-text-primary">
+          Internal Referrals Over Time
+        </h2>
         <ErrorMessage message="Failed to load internal referrals data" />
       </div>
     )
@@ -49,9 +56,11 @@ export default function InternalReferralsChart({
 
   if (!data || data.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-        <h2 className="mb-6 text-xl font-semibold text-white">Internal Referrals Over Time</h2>
-        <p className="text-gray-400">No data available for the selected time period</p>
+      <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+        <h2 className="mb-6 text-xl font-semibold text-admin-text-primary">
+          Internal Referrals Over Time
+        </h2>
+        <p className="text-admin-text-muted">No data available for the selected time period</p>
       </div>
     )
   }
@@ -65,11 +74,16 @@ export default function InternalReferralsChart({
   const totalReferrals = data.reduce((sum, item) => sum + item.count, 0)
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+    <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-white">Internal Referrals Over Time</h2>
-        <div className="text-sm text-gray-400">
-          Total: <span className="font-semibold text-white">{totalReferrals.toLocaleString()}</span>
+        <h2 className="text-xl font-semibold text-admin-text-primary">
+          Internal Referrals Over Time
+        </h2>
+        <div className="text-sm text-admin-text-muted">
+          Total:{" "}
+          <span className="font-semibold text-admin-text-primary">
+            {totalReferrals.toLocaleString()}
+          </span>
         </div>
       </div>
 
@@ -77,20 +91,15 @@ export default function InternalReferralsChart({
         <AreaChart data={chartData}>
           <defs>
             <linearGradient id="colorReferrals" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+              <stop offset="5%" stopColor={chartTheme.series[0]} stopOpacity={0.8} />
+              <stop offset="95%" stopColor={chartTheme.series[0]} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-          <XAxis dataKey="date" stroke="#9CA3AF" />
-          <YAxis stroke="#9CA3AF" />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+          <XAxis dataKey="date" stroke={chartTheme.axis} />
+          <YAxis stroke={chartTheme.axis} />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "#1F2937",
-              border: "1px solid #374151",
-              borderRadius: "0.5rem",
-              color: "#F9FAFB",
-            }}
+            contentStyle={tooltipStyle}
             formatter={(value: number | undefined) =>
               value !== undefined
                 ? [value.toLocaleString(), "Internal Referrals"]
@@ -100,7 +109,7 @@ export default function InternalReferralsChart({
           <Area
             type="monotone"
             dataKey="count"
-            stroke="#3B82F6"
+            stroke={chartTheme.series[0]}
             fillOpacity={1}
             fill="url(#colorReferrals)"
           />

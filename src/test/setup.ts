@@ -15,6 +15,21 @@ vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
 
 vi.stubGlobal("cancelAnimationFrame", () => {})
 
+// Mock window.matchMedia for theme detection in AdminThemeProvider
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: query === "(prefers-color-scheme: dark)",
+    media: query,
+    onchange: null,
+    addListener: vi.fn(), // Deprecated
+    removeListener: vi.fn(), // Deprecated
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+})
+
 // Suppress known warnings from third-party libraries
 const originalConsoleError = console.error
 beforeAll(() => {

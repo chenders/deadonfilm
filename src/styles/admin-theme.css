@@ -1,0 +1,202 @@
+/**
+ * Admin Theme CSS Variables
+ *
+ * Mid-level dark theme (default) with high contrast for accessibility.
+ * Light theme available via .admin-light class on <html>.
+ *
+ * All text meets WCAG AA (4.5:1 minimum contrast ratio).
+ */
+
+/* ============================================
+   DARK THEME (Default)
+   Base: Blue-gray (#1e2228) - not pure black
+   ============================================ */
+:root {
+  /* Surfaces */
+  --admin-surface-base: #1e2228;
+  --admin-surface-elevated: #272d35;
+  --admin-surface-overlay: #2f363f;
+  --admin-surface-inset: #161a1f;
+  --admin-surface-border: #3d454f;
+  --admin-surface-border-subtle: #30363d;
+
+  /* Text - all meet WCAG AA contrast on surface-base */
+  --admin-text-primary: #f0f3f6; /* ~15:1 contrast */
+  --admin-text-secondary: #b8c4d0; /* ~8:1 contrast */
+  --admin-text-muted: #7d8a99; /* ~4.6:1 contrast */
+  --admin-text-inverse: #1e2228; /* For use on light backgrounds */
+
+  /* Interactive elements */
+  --admin-interactive-primary: #58a6ff;
+  --admin-interactive-primary-hover: #79b8ff;
+  --admin-interactive-primary-active: #4090e0;
+  --admin-interactive-secondary: #3d454f;
+  --admin-interactive-secondary-hover: #4d5561;
+
+  /* Status colors - calibrated for dark backgrounds */
+  --admin-success: #3fb950;
+  --admin-success-muted: #238636;
+  --admin-success-bg: rgba(63, 185, 80, 0.15);
+
+  --admin-warning: #d29922;
+  --admin-warning-muted: #9e6a03;
+  --admin-warning-bg: rgba(210, 153, 34, 0.15);
+
+  --admin-danger: #f85149;
+  --admin-danger-muted: #da3633;
+  --admin-danger-bg: rgba(248, 81, 73, 0.15);
+
+  --admin-info: #58a6ff;
+  --admin-info-muted: #388bfd;
+  --admin-info-bg: rgba(88, 166, 255, 0.15);
+
+  /* Focus ring */
+  --admin-focus-ring: #58a6ff;
+  --admin-focus-ring-offset: #1e2228;
+
+  /* Shadows */
+  --admin-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --admin-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --admin-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+
+  /* Overlay for modals */
+  --admin-overlay-bg: rgba(0, 0, 0, 0.7);
+
+  /* Chart colors - optimized for dark backgrounds */
+  --admin-chart-1: #58a6ff;
+  --admin-chart-2: #3fb950;
+  --admin-chart-3: #f85149;
+  --admin-chart-4: #d29922;
+  --admin-chart-5: #a371f7;
+  --admin-chart-6: #f778ba;
+  --admin-chart-grid: #3d454f;
+  --admin-chart-axis: #7d8a99;
+}
+
+/* ============================================
+   LIGHT THEME
+   Applied via .admin-light class on <html>
+   ============================================ */
+.admin-light {
+  /* Surfaces */
+  --admin-surface-base: #f6f8fa;
+  --admin-surface-elevated: #ffffff;
+  --admin-surface-overlay: #ffffff;
+  --admin-surface-inset: #eaeef2;
+  --admin-surface-border: #d0d7de;
+  --admin-surface-border-subtle: #e1e4e8;
+
+  /* Text */
+  --admin-text-primary: #1f2328; /* ~14:1 contrast */
+  --admin-text-secondary: #57606a; /* ~7:1 contrast */
+  --admin-text-muted: #6e7781; /* ~5:1 contrast */
+  --admin-text-inverse: #ffffff;
+
+  /* Interactive elements */
+  --admin-interactive-primary: #0969da;
+  --admin-interactive-primary-hover: #0860c7;
+  --admin-interactive-primary-active: #0550ae;
+  --admin-interactive-secondary: #eaeef2;
+  --admin-interactive-secondary-hover: #d0d7de;
+
+  /* Status colors - calibrated for light backgrounds */
+  --admin-success: #1a7f37;
+  --admin-success-muted: #2da44e;
+  --admin-success-bg: rgba(26, 127, 55, 0.1);
+
+  --admin-warning: #9a6700;
+  --admin-warning-muted: #bf8700;
+  --admin-warning-bg: rgba(154, 103, 0, 0.1);
+
+  --admin-danger: #cf222e;
+  --admin-danger-muted: #fa4549;
+  --admin-danger-bg: rgba(207, 34, 46, 0.1);
+
+  --admin-info: #0969da;
+  --admin-info-muted: #218bff;
+  --admin-info-bg: rgba(9, 105, 218, 0.1);
+
+  /* Focus ring */
+  --admin-focus-ring: #0969da;
+  --admin-focus-ring-offset: #ffffff;
+
+  /* Shadows */
+  --admin-shadow-sm: 0 1px 2px 0 rgba(31, 35, 40, 0.08);
+  --admin-shadow-md: 0 4px 6px -1px rgba(31, 35, 40, 0.1), 0 2px 4px -2px rgba(31, 35, 40, 0.06);
+  --admin-shadow-lg: 0 10px 15px -3px rgba(31, 35, 40, 0.1), 0 4px 6px -4px rgba(31, 35, 40, 0.05);
+
+  /* Overlay for modals */
+  --admin-overlay-bg: rgba(31, 35, 40, 0.5);
+
+  /* Chart colors - optimized for light backgrounds */
+  --admin-chart-1: #0969da;
+  --admin-chart-2: #1a7f37;
+  --admin-chart-3: #cf222e;
+  --admin-chart-4: #9a6700;
+  --admin-chart-5: #8250df;
+  --admin-chart-6: #bf3989;
+  --admin-chart-grid: #d0d7de;
+  --admin-chart-axis: #6e7781;
+}
+
+/* ============================================
+   SCROLLBAR STYLING FOR ADMIN
+   Scoped to admin layout
+   ============================================ */
+.admin-layout::-webkit-scrollbar,
+.admin-layout *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.admin-layout::-webkit-scrollbar-track,
+.admin-layout *::-webkit-scrollbar-track {
+  background: var(--admin-surface-inset);
+}
+
+.admin-layout::-webkit-scrollbar-thumb,
+.admin-layout *::-webkit-scrollbar-thumb {
+  background: var(--admin-surface-border);
+  border-radius: 4px;
+}
+
+.admin-layout::-webkit-scrollbar-thumb:hover,
+.admin-layout *::-webkit-scrollbar-thumb:hover {
+  background: var(--admin-text-muted);
+}
+
+/* ============================================
+   TRANSITION FOR THEME SWITCHING
+   Smooth color transitions when toggling theme
+   ============================================ */
+.admin-layout,
+.admin-layout * {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+/* Disable transitions for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .admin-layout,
+  .admin-layout * {
+    transition-duration: 0ms;
+  }
+}
+
+/* ============================================
+   FOCUS STYLES
+   Consistent focus rings across admin
+   ============================================ */
+.admin-layout :focus-visible {
+  outline: 2px solid var(--admin-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   MOBILE MENU OVERLAY
+   ============================================ */
+.admin-mobile-overlay {
+  background-color: var(--admin-overlay-bg);
+  backdrop-filter: blur(4px);
+}
