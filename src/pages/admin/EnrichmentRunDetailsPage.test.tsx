@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import { Route, Routes } from "react-router-dom"
 import { TestMemoryRouter } from "../../test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { ToastProvider } from "../../contexts/ToastContext"
 import EnrichmentRunDetailsPage from "./EnrichmentRunDetailsPage"
 import * as enrichmentHooks from "../../hooks/admin/useEnrichmentRuns"
 import * as adminAuthHook from "../../hooks/useAdminAuth"
@@ -151,11 +152,13 @@ describe("EnrichmentRunDetailsPage", () => {
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <TestMemoryRouter initialEntries={["/admin/enrichment/runs/1"]}>
-          <Routes>
-            <Route path="/admin/enrichment/runs/:id" element={<EnrichmentRunDetailsPage />} />
-          </Routes>
-        </TestMemoryRouter>
+        <ToastProvider>
+          <TestMemoryRouter initialEntries={["/admin/enrichment/runs/1"]}>
+            <Routes>
+              <Route path="/admin/enrichment/runs/:id" element={<EnrichmentRunDetailsPage />} />
+            </Routes>
+          </TestMemoryRouter>
+        </ToastProvider>
       </QueryClientProvider>
     )
   }

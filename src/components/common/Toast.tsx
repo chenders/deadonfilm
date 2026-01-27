@@ -48,13 +48,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
   return (
     <div
       role="alert"
-      className={`
-        flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg
-        transition-all duration-300 ease-out
-        ${styleMap[toast.type]}
-        ${isEntering ? "translate-x-full opacity-0" : "translate-x-0 opacity-100"}
-        ${isExiting ? "translate-x-full opacity-0" : ""}
-      `}
+      className={`flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg transition-all duration-300 ease-out ${styleMap[toast.type]} ${isEntering ? "translate-x-full opacity-0" : "translate-x-0 opacity-100"} ${isExiting ? "translate-x-full opacity-0" : ""} `}
     >
       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white">
         {iconMap[toast.type]}
