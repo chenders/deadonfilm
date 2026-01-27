@@ -36,11 +36,11 @@ export const mockDashboardStats = {
 // ============================================================================
 
 export const mockCacheStats = {
-  connected: true,
+  lastWarmed: "2026-01-26T12:00:00Z",
+  actorsWarmed: 1000,
+  hitRate24h: 0.85,
+  missRate24h: 0.15,
   totalKeys: 1500,
-  memoryUsed: "45MB",
-  hitRate: 0.85,
-  deathCacheKeys: 200,
 }
 
 export const mockInvalidateResult = {
