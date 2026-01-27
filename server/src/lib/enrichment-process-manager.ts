@@ -19,12 +19,11 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 /**
- * Determine if we're running from compiled code (production) or source (development).
- * In production, this file is at dist/lib/enrichment-process-manager.js
- * In development, this file is at src/lib/enrichment-process-manager.ts
+ * Determine if we're running in production mode.
+ * Uses the standard NODE_ENV convention used throughout the codebase.
  */
 function isProduction(): boolean {
-  return __dirname.includes("/dist/")
+  return process.env.NODE_ENV === "production"
 }
 
 /**

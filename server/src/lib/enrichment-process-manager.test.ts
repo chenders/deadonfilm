@@ -63,6 +63,78 @@ describe("enrichment-process-manager", () => {
   })
 
   describe("startEnrichmentRun", () => {
+    it("should spawn process with node in production mode", async () => {
+      // Set NODE_ENV to production
+      const originalNodeEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = "production"
+
+      try {
+        mockPool.query
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+          .mockResolvedValueOnce({ rows: [] })
+
+        await processManager.startEnrichmentRun({
+          limit: 10,
+          free: true,
+          paid: false,
+          ai: false,
+          claudeCleanup: false,
+          gatherAllSources: false,
+          stopOnMatch: true,
+          followLinks: false,
+          aiLinkSelection: false,
+          aiContentExtraction: false,
+        })
+
+        // In production, should use 'node' with newrelic loader and .js file
+        expect(spawn).toHaveBeenCalledWith(
+          "node",
+          expect.arrayContaining([
+            "--import",
+            "newrelic/esm-loader.mjs",
+            expect.stringContaining("enrich-death-details.js"),
+          ]),
+          expect.any(Object)
+        )
+      } finally {
+        process.env.NODE_ENV = originalNodeEnv
+      }
+    })
+
+    it("should spawn process with npx tsx in development mode", async () => {
+      // Ensure we're in development mode
+      const originalNodeEnv = process.env.NODE_ENV
+      delete process.env.NODE_ENV
+
+      try {
+        mockPool.query
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+          .mockResolvedValueOnce({ rows: [] })
+
+        await processManager.startEnrichmentRun({
+          limit: 10,
+          free: true,
+          paid: false,
+          ai: false,
+          claudeCleanup: false,
+          gatherAllSources: false,
+          stopOnMatch: true,
+          followLinks: false,
+          aiLinkSelection: false,
+          aiContentExtraction: false,
+        })
+
+        // In development, should use 'npx tsx' with .ts file
+        expect(spawn).toHaveBeenCalledWith(
+          "npx",
+          expect.arrayContaining(["tsx", expect.stringContaining("enrich-death-details.ts")]),
+          expect.any(Object)
+        )
+      } finally {
+        process.env.NODE_ENV = originalNodeEnv
+      }
+    })
+
     it("should create a new enrichment run and spawn process", async () => {
       // Mock database responses
       mockPool.query
