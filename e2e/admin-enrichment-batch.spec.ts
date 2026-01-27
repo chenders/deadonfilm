@@ -118,9 +118,11 @@ test.describe("Admin Batch Enrichment", () => {
     await setupBatchMocks(page)
     await loginToAdmin(page)
 
-    // Make API call directly to verify mocks work
-    const response = await page.request.get("/admin/api/enrichment/batch/status")
-    const data = await response.json()
+    // Use page.evaluate with fetch to go through route mocking
+    const data = await page.evaluate(async () => {
+      const response = await fetch("/admin/api/enrichment/batch/status")
+      return response.json()
+    })
 
     expect(data.activeBatch).toBeNull()
     expect(data.queueDepth).toBe(0)
@@ -130,9 +132,11 @@ test.describe("Admin Batch Enrichment", () => {
     await setupBatchMocks(page, true) // hasActiveBatch = true
     await loginToAdmin(page)
 
-    // Make API call directly
-    const response = await page.request.get("/admin/api/enrichment/batch/status")
-    const data = await response.json()
+    // Use page.evaluate with fetch to go through route mocking
+    const data = await page.evaluate(async () => {
+      const response = await fetch("/admin/api/enrichment/batch/status")
+      return response.json()
+    })
 
     expect(data.activeBatch).not.toBeNull()
     expect(data.activeBatch.status).toBe("processing")
@@ -143,9 +147,11 @@ test.describe("Admin Batch Enrichment", () => {
     await setupBatchMocks(page)
     await loginToAdmin(page)
 
-    // Make API call directly
-    const response = await page.request.get("/admin/api/enrichment/batch/history")
-    const data = await response.json()
+    // Use page.evaluate with fetch to go through route mocking
+    const data = await page.evaluate(async () => {
+      const response = await fetch("/admin/api/enrichment/batch/history")
+      return response.json()
+    })
 
     expect(data.history).toHaveLength(2)
     expect(data.history[0].jobType).toBe("cause-of-death")
@@ -156,11 +162,15 @@ test.describe("Admin Batch Enrichment", () => {
     await setupBatchMocks(page)
     await loginToAdmin(page)
 
-    // Make API call directly
-    const response = await page.request.post("/admin/api/enrichment/batch/submit", {
-      data: { limit: 100, jobType: "cause-of-death" },
+    // Use page.evaluate with fetch to go through route mocking
+    const data = await page.evaluate(async () => {
+      const response = await fetch("/admin/api/enrichment/batch/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 100, jobType: "cause-of-death" }),
+      })
+      return response.json()
     })
-    const data = await response.json()
 
     expect(data.batchId).toBeTruthy()
     expect(data.actorsSubmitted).toBe(100)
@@ -170,11 +180,15 @@ test.describe("Admin Batch Enrichment", () => {
     await setupBatchMocks(page)
     await loginToAdmin(page)
 
-    // Make API call directly
-    const response = await page.request.post("/admin/api/enrichment/refetch-details", {
-      data: { limit: 50, popularOnly: false, dryRun: false },
+    // Use page.evaluate with fetch to go through route mocking
+    const data = await page.evaluate(async () => {
+      const response = await fetch("/admin/api/enrichment/refetch-details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 50, popularOnly: false, dryRun: false }),
+      })
+      return response.json()
     })
-    const data = await response.json()
 
     expect(data.actorsQueued).toBe(50)
     expect(data.dryRun).toBe(false)
