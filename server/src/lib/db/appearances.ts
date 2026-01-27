@@ -36,45 +36,58 @@ export async function upsertActorMovieAppearance(
 }
 
 // Batch insert actor movie appearances using bulk VALUES for efficiency
+// Wraps all chunks in a single transaction for all-or-nothing behavior
 export async function batchUpsertActorMovieAppearances(
   appearances: ActorMovieAppearanceRecord[]
 ): Promise<void> {
   if (appearances.length === 0) return
 
   const db = getPool()
+  const client = await db.connect()
 
-  // Process in chunks of 100 to avoid query size limits
-  const CHUNK_SIZE = 100
-  for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
-    const chunk = appearances.slice(i, i + CHUNK_SIZE)
+  try {
+    await client.query("BEGIN")
 
-    // Build VALUES clause with numbered parameters (6 columns)
-    const values: unknown[] = []
-    const placeholders = chunk.map((appearance, index) => {
-      const offset = index * 6
-      values.push(
-        appearance.actor_id,
-        appearance.movie_tmdb_id,
-        appearance.character_name,
-        appearance.billing_order,
-        appearance.age_at_filming,
-        appearance.appearance_type
+    // Process in chunks of 100 to avoid query size limits
+    const CHUNK_SIZE = 100
+    for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
+      const chunk = appearances.slice(i, i + CHUNK_SIZE)
+
+      // Build VALUES clause with numbered parameters (6 columns)
+      const values: unknown[] = []
+      const placeholders = chunk.map((appearance, index) => {
+        const offset = index * 6
+        values.push(
+          appearance.actor_id,
+          appearance.movie_tmdb_id,
+          appearance.character_name,
+          appearance.billing_order,
+          appearance.age_at_filming,
+          appearance.appearance_type
+        )
+        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`
+      })
+
+      await client.query(
+        `INSERT INTO actor_movie_appearances (
+           actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming, appearance_type
+         )
+         VALUES ${placeholders.join(", ")}
+         ON CONFLICT (actor_id, movie_tmdb_id) DO UPDATE SET
+           character_name = EXCLUDED.character_name,
+           billing_order = EXCLUDED.billing_order,
+           age_at_filming = EXCLUDED.age_at_filming,
+           appearance_type = EXCLUDED.appearance_type`,
+        values
       )
-      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`
-    })
+    }
 
-    await db.query(
-      `INSERT INTO actor_movie_appearances (
-         actor_id, movie_tmdb_id, character_name, billing_order, age_at_filming, appearance_type
-       )
-       VALUES ${placeholders.join(", ")}
-       ON CONFLICT (actor_id, movie_tmdb_id) DO UPDATE SET
-         character_name = EXCLUDED.character_name,
-         billing_order = EXCLUDED.billing_order,
-         age_at_filming = EXCLUDED.age_at_filming,
-         appearance_type = EXCLUDED.appearance_type`,
-      values
-    )
+    await client.query("COMMIT")
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
   }
 }
 
@@ -129,48 +142,61 @@ export async function upsertShowActorAppearance(
 }
 
 // Batch insert show actor appearances using bulk VALUES for efficiency
+// Wraps all chunks in a single transaction for all-or-nothing behavior
 export async function batchUpsertShowActorAppearances(
   appearances: ShowActorAppearanceRecord[]
 ): Promise<void> {
   if (appearances.length === 0) return
 
   const db = getPool()
+  const client = await db.connect()
 
-  // Process in chunks of 100 to avoid query size limits
-  const CHUNK_SIZE = 100
-  for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
-    const chunk = appearances.slice(i, i + CHUNK_SIZE)
+  try {
+    await client.query("BEGIN")
 
-    // Build VALUES clause with numbered parameters (8 columns now)
-    const values: unknown[] = []
-    const placeholders = chunk.map((appearance, index) => {
-      const offset = index * 8
-      values.push(
-        appearance.actor_id,
-        appearance.show_tmdb_id,
-        appearance.season_number,
-        appearance.episode_number,
-        appearance.character_name,
-        appearance.appearance_type,
-        appearance.billing_order,
-        appearance.age_at_filming
+    // Process in chunks of 100 to avoid query size limits
+    const CHUNK_SIZE = 100
+    for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
+      const chunk = appearances.slice(i, i + CHUNK_SIZE)
+
+      // Build VALUES clause with numbered parameters (8 columns now)
+      const values: unknown[] = []
+      const placeholders = chunk.map((appearance, index) => {
+        const offset = index * 8
+        values.push(
+          appearance.actor_id,
+          appearance.show_tmdb_id,
+          appearance.season_number,
+          appearance.episode_number,
+          appearance.character_name,
+          appearance.appearance_type,
+          appearance.billing_order,
+          appearance.age_at_filming
+        )
+        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8})`
+      })
+
+      await client.query(
+        `INSERT INTO actor_show_appearances (
+           actor_id, show_tmdb_id, season_number, episode_number,
+           character_name, appearance_type, billing_order, age_at_filming
+         )
+         VALUES ${placeholders.join(", ")}
+         ON CONFLICT (actor_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
+           character_name = EXCLUDED.character_name,
+           appearance_type = EXCLUDED.appearance_type,
+           billing_order = EXCLUDED.billing_order,
+           age_at_filming = EXCLUDED.age_at_filming`,
+        values
       )
-      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8})`
-    })
+    }
 
-    await db.query(
-      `INSERT INTO actor_show_appearances (
-         actor_id, show_tmdb_id, season_number, episode_number,
-         character_name, appearance_type, billing_order, age_at_filming
-       )
-       VALUES ${placeholders.join(", ")}
-       ON CONFLICT (actor_id, show_tmdb_id, season_number, episode_number) DO UPDATE SET
-         character_name = EXCLUDED.character_name,
-         appearance_type = EXCLUDED.appearance_type,
-         billing_order = EXCLUDED.billing_order,
-         age_at_filming = EXCLUDED.age_at_filming`,
-      values
-    )
+    await client.query("COMMIT")
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
   }
 }
 
