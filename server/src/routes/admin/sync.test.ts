@@ -350,7 +350,6 @@ describe("Admin Sync Endpoints", () => {
     })
 
     it("releases lock on database error after acquiring lock", async () => {
-      const { releaseLock } = await import("../../lib/redis.js")
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // INSERT succeeds
         .mockRejectedValueOnce(new Error("Database error")) // Subsequent query fails
