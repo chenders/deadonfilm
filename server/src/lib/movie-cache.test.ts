@@ -214,6 +214,7 @@ describe("movie-cache", () => {
       expect(result.character_name).toBe("The Hero")
       expect(result.billing_order).toBe(0)
       expect(result.age_at_filming).toBe(40)
+      expect(result.appearance_type).toBe("regular")
     })
 
     it("handles null character name", () => {

@@ -127,6 +127,10 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
         <NavLink to="/admin/ab-tests" isActive={isActive("/admin/ab-tests")} onClick={onNavigate}>
           A/B Tests
         </NavLink>
+
+        <NavLink to="/admin/jobs" isActive={isActive("/admin/jobs")} onClick={onNavigate}>
+          Background Jobs
+        </NavLink>
       </div>
 
       {/* Footer with theme toggle and logout */}

@@ -60,6 +60,9 @@ export interface ActorRecord {
 export type ActorInput = Pick<ActorRecord, "name"> &
   Partial<Omit<ActorRecord, "name" | "is_obscure">>
 
+// Appearance type for movie appearances
+export type MovieAppearanceType = "regular" | "self" | "archive"
+
 // Simplified movie appearance record (junction table only)
 export interface ActorMovieAppearanceRecord {
   actor_id: number
@@ -67,6 +70,7 @@ export interface ActorMovieAppearanceRecord {
   character_name: string | null
   billing_order: number | null
   age_at_filming: number | null
+  appearance_type: MovieAppearanceType
 }
 
 export interface ActorFilmographyMovie {

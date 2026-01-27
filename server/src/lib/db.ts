@@ -56,6 +56,7 @@ export type {
   ActorFilmographyShow,
   DeathInfoSource,
   DatePrecision,
+  MovieAppearanceType,
 } from "./db/types.js"
 
 // Re-export movie functions for backward compatibility

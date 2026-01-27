@@ -105,19 +105,29 @@ export default function ShowPage() {
           showFirstAirDate={show.firstAirDate}
         />
 
-        <CastToggle
-          showLiving={showLiving}
-          onToggle={setShowLiving}
-          deceasedCount={stats.deceasedCount}
-          livingCount={stats.livingCount}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-        />
-
-        {showLiving ? (
-          <ShowLivingList actors={living} showId={show.id} showName={show.name} />
+        {stats.totalCast === 0 ? (
+          <div className="bg-surface-secondary mt-8 rounded-lg p-6 text-center">
+            <p className="text-text-secondary">
+              Cast information is not yet available for this show.
+            </p>
+          </div>
         ) : (
-          <ShowDeceasedList actors={deceased} showId={show.id} showName={show.name} />
+          <>
+            <CastToggle
+              showLiving={showLiving}
+              onToggle={setShowLiving}
+              deceasedCount={stats.deceasedCount}
+              livingCount={stats.livingCount}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
+
+            {showLiving ? (
+              <ShowLivingList actors={living} showId={show.id} showName={show.name} />
+            ) : (
+              <ShowDeceasedList actors={deceased} showId={show.id} showName={show.name} />
+            )}
+          </>
         )}
       </div>
     </>

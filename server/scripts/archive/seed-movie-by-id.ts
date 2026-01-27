@@ -148,6 +148,7 @@ async function seedMovie(tmdbId: number) {
         character_name: castMember.character || null,
         billing_order: i,
         age_at_filming: ageAtFilming,
+        appearance_type: "regular",
       })
 
       if (person?.deathday) {
