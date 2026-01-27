@@ -4,20 +4,62 @@ import { test, expect } from "@playwright/test"
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ""
 
 async function loginToAdmin(page: ReturnType<typeof test["info"]>["project"]["use"]["page"]) {
+  console.log("[DEBUG] Starting loginToAdmin")
+  console.log("[DEBUG] ADMIN_PASSWORD is set:", !!ADMIN_PASSWORD, "length:", ADMIN_PASSWORD.length)
+
+  // Log network requests for debugging
+  page.on("request", (request) => {
+    if (request.url().includes("/admin/api")) {
+      console.log("[DEBUG] Request:", request.method(), request.url())
+    }
+  })
+  page.on("response", (response) => {
+    if (response.url().includes("/admin/api")) {
+      console.log("[DEBUG] Response:", response.status(), response.url())
+    }
+  })
+
   await page.goto("/admin/login")
+  console.log("[DEBUG] Navigated to /admin/login")
   await page.waitForLoadState("networkidle")
+  console.log("[DEBUG] Page loaded (networkidle)")
+
+  // Take screenshot of login page
+  await page.screenshot({ path: "e2e/screenshots/debug-login-page.png" })
+  console.log("[DEBUG] Screenshot taken: debug-login-page.png")
 
   // Fill in the password
   const passwordInput = page.locator('input[type="password"]')
+  console.log("[DEBUG] Found password input:", await passwordInput.count())
   await passwordInput.fill(ADMIN_PASSWORD)
+  console.log("[DEBUG] Filled password")
 
   // Submit the form
   const loginButton = page.locator('button[type="submit"]')
+  console.log("[DEBUG] Found login button:", await loginButton.count())
   await loginButton.click()
+  console.log("[DEBUG] Clicked login button")
+
+  // Wait a moment for the API response
+  await page.waitForTimeout(2000)
+  console.log("[DEBUG] Current URL after click:", page.url())
+
+  // Take screenshot after login attempt
+  await page.screenshot({ path: "e2e/screenshots/debug-after-login-click.png" })
+  console.log("[DEBUG] Screenshot taken: debug-after-login-click.png")
+
+  // Check for error messages on the page
+  const errorText = await page.locator('[class*="error"], [class*="Error"], [role="alert"]').textContent().catch(() => null)
+  if (errorText) {
+    console.log("[DEBUG] Error message found:", errorText)
+  }
 
   // Wait for redirect to dashboard
-  await page.waitForURL(/\/admin\/dashboard/)
+  console.log("[DEBUG] Waiting for redirect to /admin/dashboard...")
+  await page.waitForURL(/\/admin\/dashboard/, { timeout: 15000 })
+  console.log("[DEBUG] Redirected to dashboard")
   await page.waitForLoadState("networkidle")
+  console.log("[DEBUG] Dashboard loaded (networkidle)")
 }
 
 test.describe("Admin Theme - Dark Mode (Default)", () => {
