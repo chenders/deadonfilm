@@ -62,9 +62,9 @@ test.describe("Admin TMDB Sync Page", () => {
     await expect(statusCard).toBeVisible()
     await expect(page.getByText("Ready")).toBeVisible()
 
-    // Verify last sync info is displayed
-    await expect(page.getByText("Last Completed Sync")).toBeVisible()
-    await expect(page.getByText("tmdb-people")).toBeVisible()
+    // Verify last sync info is displayed (scope to status card to avoid matching history)
+    await expect(statusCard.getByText("Last Completed Sync")).toBeVisible()
+    await expect(statusCard.getByText("tmdb-people")).toBeVisible()
 
     // Take screenshot
     await page.screenshot({
@@ -79,8 +79,9 @@ test.describe("Admin TMDB Sync Page", () => {
     await page.goto("/admin/sync")
     await page.waitForLoadState("networkidle")
 
-    // Verify running indicator
-    await expect(page.getByText("Sync in progress")).toBeVisible()
+    // Verify running indicator (scope to status card to avoid matching button)
+    const statusCard = page.locator('[data-testid="sync-status-card"]')
+    await expect(statusCard.getByText("Sync in progress")).toBeVisible()
 
     // Take screenshot
     await page.screenshot({
@@ -183,10 +184,10 @@ test.describe("Admin TMDB Sync Page", () => {
     const historyTable = page.locator('[data-testid="sync-history-table"]')
     await expect(historyTable).toBeVisible()
 
-    // Verify history entries
-    await expect(page.getByText("tmdb-people")).toBeVisible()
-    await expect(page.getByText("tmdb-all")).toBeVisible()
-    await expect(page.getByText("tmdb-movies")).toBeVisible()
+    // Verify history entries (scope to history table to avoid matching status card)
+    await expect(historyTable.getByText("tmdb-people")).toBeVisible()
+    await expect(historyTable.getByText("tmdb-all")).toBeVisible()
+    await expect(historyTable.getByText("tmdb-movies")).toBeVisible()
 
     // Verify status badges
     await expect(page.getByText("completed").first()).toBeVisible()
