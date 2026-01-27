@@ -11,7 +11,10 @@ import { runSync, type SyncOptions, type SyncResult } from "../../../scripts/syn
 
 const router = Router()
 
-// Track running sync to prevent concurrent syncs
+// Track running sync to prevent concurrent syncs within this instance.
+// Note: This is an in-memory guard that works for single-instance deployments.
+// For multi-instance deployments, the database status='running' check in POST /tmdb
+// provides additional protection, though brief race conditions are still possible.
 let runningSyncId: number | null = null
 
 // ============================================================================
@@ -245,6 +248,8 @@ router.post("/tmdb", async (req: Request, res: Response): Promise<void> => {
         runningSyncId = null
       })
   } catch (error) {
+    // Ensure we clear the in-memory running sync flag on error
+    runningSyncId = null
     logger.error({ error }, "Failed to trigger TMDB sync")
     res.status(500).json({ error: { message: "Failed to trigger TMDB sync" } })
   }

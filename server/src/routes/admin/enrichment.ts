@@ -844,11 +844,11 @@ router.post("/batch/submit", async (req: Request, res: Response): Promise<void> 
     const queryParams: (number | undefined)[] = []
 
     if (jobType === "cause-of-death") {
-      // Actors with death_date but no cause_of_death
+      // Actors with deathday but no cause_of_death
       actorQuery = `
-        SELECT id, name, tmdb_id, death_date
+        SELECT id, name, tmdb_id, deathday
         FROM actors
-        WHERE death_date IS NOT NULL
+        WHERE deathday IS NOT NULL
           AND cause_of_death IS NULL
           AND skip_enrichment IS NOT TRUE
           ${minPopularity !== undefined ? "AND popularity >= $2" : ""}
@@ -862,10 +862,10 @@ router.post("/batch/submit", async (req: Request, res: Response): Promise<void> 
     } else {
       // death-details: Actors with death info but no detailed circumstances
       actorQuery = `
-        SELECT a.id, a.name, a.tmdb_id, a.death_date
+        SELECT a.id, a.name, a.tmdb_id, a.deathday
         FROM actors a
         LEFT JOIN actor_death_circumstances adc ON a.id = adc.actor_id
-        WHERE a.death_date IS NOT NULL
+        WHERE a.deathday IS NOT NULL
           AND a.cause_of_death IS NOT NULL
           AND adc.actor_id IS NULL
           AND a.skip_enrichment IS NOT TRUE
@@ -883,7 +883,7 @@ router.post("/batch/submit", async (req: Request, res: Response): Promise<void> 
       id: number
       name: string
       tmdb_id: number | null
-      death_date: string
+      deathday: string
     }>(
       actorQuery,
       queryParams.filter((p) => p !== undefined)
@@ -1158,7 +1158,7 @@ router.post("/refetch-details", async (req: Request, res: Response): Promise<voi
       SELECT a.id, a.name, a.popularity
       FROM actors a
       LEFT JOIN actor_death_circumstances adc ON a.id = adc.actor_id
-      WHERE a.death_date IS NOT NULL
+      WHERE a.deathday IS NOT NULL
         AND a.cause_of_death IS NOT NULL
         AND (adc.actor_id IS NULL OR adc.updated_at < NOW() - INTERVAL '90 days')
         ${popularityClause}

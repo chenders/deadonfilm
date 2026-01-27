@@ -35,7 +35,9 @@ export default function SyncPage() {
     if (!completedAt) return "In progress"
     const start = new Date(startedAt).getTime()
     const end = new Date(completedAt).getTime()
+    if (Number.isNaN(start) || Number.isNaN(end)) return "Invalid dates"
     const durationMs = end - start
+    if (durationMs < 0) return "Invalid duration"
     const seconds = Math.round(durationMs / 1000)
     if (seconds < 60) return `${seconds}s`
     const minutes = Math.floor(seconds / 60)
@@ -46,6 +48,7 @@ export default function SyncPage() {
   const formatDate = (dateString: string | null): string => {
     if (!dateString) return "N/A"
     const date = new Date(dateString)
+    if (Number.isNaN(date.getTime())) return "Invalid date"
     return date.toLocaleString()
   }
 
