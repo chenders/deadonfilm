@@ -5,7 +5,7 @@
  * Allows retrying failed jobs and viewing detailed job information.
  */
 
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import { Skeleton, type Column } from "../../components/admin/ui"
@@ -416,8 +416,8 @@ export default function JobRunsPage() {
               </thead>
               <tbody className="divide-y divide-admin-border-subtle">
                 {data?.runs.map((row, rowIndex) => (
-                  <>
-                    <tr key={row.id} className="hover:bg-admin-surface-overlay">
+                  <Fragment key={row.id}>
+                    <tr className="hover:bg-admin-surface-overlay">
                       {columns.map((col) => (
                         <td
                           key={col.key}
@@ -437,7 +437,7 @@ export default function JobRunsPage() {
                     </tr>
                     {/* Expanded error row */}
                     {expandedRows.has(row.id) && row.error_message && (
-                      <tr key={`${row.id}-error`} className="bg-admin-danger/5">
+                      <tr className="bg-admin-danger/5">
                         <td colSpan={columns.length} className="px-4 py-3">
                           <div className="text-sm">
                             <div className="font-medium text-admin-danger">Error:</div>
@@ -458,7 +458,7 @@ export default function JobRunsPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
