@@ -80,8 +80,8 @@ test.describe("Admin Cache Management Page", () => {
     await page.goto("/admin/cache")
     await page.waitForLoadState("networkidle")
 
-    // Verify invalidate section exists
-    await expect(page.getByText("Invalidate Death Caches")).toBeVisible()
+    // Verify invalidate section exists (use heading role to be specific)
+    await expect(page.getByRole("heading", { name: "Invalidate Death Caches" })).toBeVisible()
 
     // Verify actor IDs input exists
     const actorIdsInput = page.locator('[data-testid="invalidate-actor-ids-input"]')

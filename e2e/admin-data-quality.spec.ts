@@ -180,8 +180,8 @@ test.describe("Admin Data Quality Page", () => {
     const actorIdInput = page.locator("#resetActorId")
     await actorIdInput.fill("1001")
 
-    // Click reset button
-    const resetButton = page.getByRole("button", { name: "Reset Enrichment" })
+    // Click reset button (within the form, not the tab)
+    const resetButton = page.locator('[data-testid="reset-enrichment-form"]').getByRole("button", { name: "Reset Enrichment" })
     await resetButton.click()
 
     // Wait for success message
