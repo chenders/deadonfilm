@@ -1367,6 +1367,53 @@ describe("Admin Enrichment Endpoints", () => {
       expect(response.body.error.message).toBe("Limit must be between 1 and 1000")
     })
 
+    it("returns 400 for invalid minPopularity (negative)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 100, minPopularity: -5 })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("minPopularity must be a non-negative number")
+    })
+
+    it("returns 400 for invalid minPopularity (NaN)", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 100, minPopularity: "invalid" })
+        .expect(400)
+
+      expect(response.body.error.message).toBe("minPopularity must be a non-negative number")
+    })
+
+    it("returns 400 for invalid jobType", async () => {
+      const response = await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 100, jobType: "invalid-type" })
+        .expect(400)
+
+      expect(response.body.error.message).toContain("Invalid jobType")
+    })
+
+    it("accepts valid jobType values", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [{ count: "0" }] }) // No active batch
+        .mockResolvedValueOnce({ rows: [] }) // No actors
+
+      await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 100, jobType: "cause-of-death" })
+        .expect(200)
+
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [{ count: "0" }] }) // No active batch
+        .mockResolvedValueOnce({ rows: [] }) // No actors
+
+      await request(app)
+        .post("/admin/api/enrichment/batch/submit")
+        .send({ limit: 100, jobType: "death-details" })
+        .expect(200)
+    })
+
     it("returns 409 when batch already in progress", async () => {
       mockPoolQuery.mockResolvedValue({ rows: [{ count: "1" }] })
 

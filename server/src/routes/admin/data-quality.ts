@@ -15,26 +15,28 @@ import { invalidateActorCache, rebuildDeathCaches } from "../../lib/cache.js"
 const router = Router()
 
 // Patterns that indicate uncertainty in death information
+// Using word boundaries (\y in PostgreSQL) to prevent false positives
+// e.g., "alive" won't match "survived" but will match "is alive"
 const UNCERTAINTY_PATTERNS = [
-  "cannot verify",
-  "cannot confirm",
-  "may contain incorrect",
-  "beyond my knowledge",
-  "still alive",
-  "was alive",
-  "have not died",
-  "has not died",
-  "haven't died",
-  "hasn't died",
-  "no confirmed",
-  "not confirmed",
-  "unable to confirm",
-  "unable to verify",
-  "incorrect information",
-  "may be incorrect",
-  "appears to be alive",
-  "is still alive",
-  "reportedly alive",
+  "\\ycannot verify\\y",
+  "\\ycannot confirm\\y",
+  "\\ymay contain incorrect\\y",
+  "\\ybeyond my knowledge\\y",
+  "\\ystill alive\\y",
+  "\\ywas alive\\y",
+  "\\yhave not died\\y",
+  "\\yhas not died\\y",
+  "\\yhaven't died\\y",
+  "\\yhasn't died\\y",
+  "\\yno confirmed\\y",
+  "\\ynot confirmed\\y",
+  "\\yunable to confirm\\y",
+  "\\yunable to verify\\y",
+  "\\yincorrect information\\y",
+  "\\ymay be incorrect\\y",
+  "\\yappears to be alive\\y",
+  "\\yis still alive\\y",
+  "\\yreportedly alive\\y",
 ]
 
 // ============================================================================

@@ -825,6 +825,27 @@ router.post("/batch/submit", async (req: Request, res: Response): Promise<void> 
       return
     }
 
+    // Validate minPopularity if provided
+    if (minPopularity !== undefined) {
+      if (
+        typeof minPopularity !== "number" ||
+        !Number.isFinite(minPopularity) ||
+        minPopularity < 0
+      ) {
+        res.status(400).json({ error: { message: "minPopularity must be a non-negative number" } })
+        return
+      }
+    }
+
+    // Validate jobType
+    const validJobTypes = ["cause-of-death", "death-details"]
+    if (!validJobTypes.includes(jobType)) {
+      res.status(400).json({
+        error: { message: `Invalid jobType: must be one of ${validJobTypes.join(", ")}` },
+      })
+      return
+    }
+
     // Check if there's already an active batch
     const activeCheck = await pool.query<{ count: string }>(`
       SELECT COUNT(*) as count
