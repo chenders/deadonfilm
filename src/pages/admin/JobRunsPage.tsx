@@ -286,8 +286,15 @@ export default function JobRunsPage() {
               <Link
                 to="/admin/jobs"
                 className="text-admin-text-muted hover:text-admin-text-primary"
+                aria-label="Back to job queues"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"

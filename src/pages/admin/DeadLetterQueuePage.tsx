@@ -96,6 +96,7 @@ function DeadLetterJobCard({
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="mt-3 flex w-full items-center justify-between text-sm text-admin-text-muted hover:text-admin-text-primary"
+        aria-expanded={isExpanded}
       >
         <span>Payload & Details</span>
         <svg
@@ -103,6 +104,7 @@ function DeadLetterJobCard({
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
+          aria-hidden="true"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
