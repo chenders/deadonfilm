@@ -193,6 +193,10 @@ export default function JobRunsPage() {
               onClick={() => toggleExpanded(row.id)}
               className="rounded p-1 text-admin-text-muted hover:bg-admin-surface-overlay hover:text-admin-text-primary"
               title="Toggle error details"
+              aria-label={
+                expandedRows.has(row.id) ? "Collapse error details" : "Expand error details"
+              }
+              aria-expanded={expandedRows.has(row.id)}
             >
               <svg
                 className={`h-4 w-4 transition-transform ${expandedRows.has(row.id) ? "rotate-180" : ""}`}
@@ -411,7 +415,7 @@ export default function JobRunsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-admin-border-subtle">
-                {data?.runs.map((row) => (
+                {data?.runs.map((row, rowIndex) => (
                   <>
                     <tr key={row.id} className="hover:bg-admin-surface-overlay">
                       {columns.map((col) => (
@@ -426,7 +430,7 @@ export default function JobRunsPage() {
                           }`}
                         >
                           {col.render
-                            ? col.render(row, 0)
+                            ? col.render(row, rowIndex)
                             : String((row as unknown as Record<string, unknown>)[col.key] ?? "")}
                         </td>
                       ))}
@@ -491,8 +495,15 @@ export default function JobRunsPage() {
                   onClick={() => updateFilters({ page: data.pagination.page - 1 })}
                   disabled={data.pagination.page <= 1}
                   className="rounded p-1.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Previous page"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -508,8 +519,15 @@ export default function JobRunsPage() {
                   onClick={() => updateFilters({ page: data.pagination.page + 1 })}
                   disabled={data.pagination.page >= data.pagination.totalPages}
                   className="rounded p-1.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Next page"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"

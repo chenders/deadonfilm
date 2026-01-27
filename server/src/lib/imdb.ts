@@ -799,14 +799,25 @@ export function detectAppearanceType(characterName: string | null): MovieAppeara
     "(herself)",
   ]
 
+  // Word boundary characters (whitespace and common punctuation)
+  const boundaryChars = /[\s\-(),:']/
+
   for (const pattern of selfPatterns) {
-    // Check for exact match or pattern at word boundaries
-    if (
-      lowered === pattern ||
-      lowered.startsWith(pattern + " ") ||
-      lowered.endsWith(" " + pattern)
-    ) {
+    // Check for exact match
+    if (lowered === pattern) {
       return "self"
+    }
+
+    // Check for pattern at word boundaries (start of string or after boundary char)
+    const patternIndex = lowered.indexOf(pattern)
+    if (patternIndex !== -1) {
+      const beforeOk = patternIndex === 0 || boundaryChars.test(lowered[patternIndex - 1])
+      const afterIndex = patternIndex + pattern.length
+      const afterOk = afterIndex >= lowered.length || boundaryChars.test(lowered[afterIndex])
+
+      if (beforeOk && afterOk) {
+        return "self"
+      }
     }
   }
 
