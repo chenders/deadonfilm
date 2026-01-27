@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
 import DateRangePicker from "../../components/admin/analytics/DateRangePicker"
 import { useActorsForCoverage, type ActorCoverageFilters } from "../../hooks/admin/useCoverage"
+import { useDebouncedSearchParam } from "../../hooks/useDebouncedSearchParam"
 
 export default function ActorManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -13,6 +14,13 @@ export default function ActorManagementPage() {
   const [page, setPage] = useState(1)
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
   const pageSize = 50
+
+  // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
+  const [searchNameInput, setSearchNameInput] = useDebouncedSearchParam({
+    paramName: "searchName",
+    debounceMs: 300,
+    resetPageOnChange: true,
+  })
 
   // Parse filters from URL
   const filters: ActorCoverageFilters = {
@@ -34,6 +42,13 @@ export default function ActorManagementPage() {
   }
 
   const { data, isLoading, error } = useActorsForCoverage(page, pageSize, filters)
+
+  // Reset page and clear selection when search changes
+  // The debounced hook updates the URL directly, so we mirror the behavior of handleFilterChange here.
+  useEffect(() => {
+    setPage(1)
+    setSelectedActorIds(new Set())
+  }, [filters.searchName])
 
   const handleFilterChange = (newFilters: Partial<ActorCoverageFilters>) => {
     const updatedFilters = { ...filters, ...newFilters }
@@ -198,8 +213,8 @@ export default function ActorManagementPage() {
                 <input
                   id="searchName"
                   type="text"
-                  value={filters.searchName || ""}
-                  onChange={(e) => handleFilterChange({ searchName: e.target.value || undefined })}
+                  value={searchNameInput}
+                  onChange={(e) => setSearchNameInput(e.target.value)}
                   className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
                   placeholder="Actor name..."
                 />
