@@ -1,9 +1,146 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, Page } from "@playwright/test"
+
+// Set shorter timeouts for faster failure detection
+test.setTimeout(15000) // 15 seconds max per test
 
 // Admin credentials from environment
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ""
 
-async function loginToAdmin(page: ReturnType<typeof test["info"]>["project"]["use"]["page"]) {
+// Mock data for admin API endpoints
+const mockCoverageStats = {
+  total_deceased_actors: 1234,
+  actors_with_death_pages: 1000,
+  actors_without_death_pages: 234,
+  coverage_percentage: 81.0,
+  enrichment_candidates_count: 200,
+  high_priority_count: 50,
+}
+
+const mockCoverageTrends = [
+  {
+    captured_at: "2026-01-20",
+    coverage_percentage: 79.5,
+    actors_with_death_pages: 980,
+    actors_without_death_pages: 254,
+    total_deceased_actors: 1234,
+    enrichment_candidates_count: 190,
+    high_priority_count: 45,
+  },
+  {
+    captured_at: "2026-01-21",
+    coverage_percentage: 80.0,
+    actors_with_death_pages: 990,
+    actors_without_death_pages: 244,
+    total_deceased_actors: 1234,
+    enrichment_candidates_count: 195,
+    high_priority_count: 48,
+  },
+  {
+    captured_at: "2026-01-22",
+    coverage_percentage: 81.0,
+    actors_with_death_pages: 1000,
+    actors_without_death_pages: 234,
+    total_deceased_actors: 1234,
+    enrichment_candidates_count: 200,
+    high_priority_count: 50,
+  },
+]
+
+const mockDashboardStats = {
+  systemHealth: {
+    database: true,
+    redis: true,
+  },
+  actorStats: {
+    totalActors: 567161,
+    deceasedActors: 19799,
+    enrichedActors: 8542,
+  },
+  enrichmentStats: {
+    totalRuns: 0,
+    recentRunsCount: 0,
+  },
+  costStats: {
+    totalCost: 0,
+    lastMonthCost: 0,
+  },
+}
+
+// Setup mock API routes for admin endpoints
+// NOTE: Playwright route matching is LIFO (last in, first out)
+// Register catch-all FIRST so specific routes take priority
+async function setupMockRoutes(page: Page) {
+  // Catch-all for any unhandled admin API endpoints (lowest priority - registered first)
+  // NOTE: Any unmocked endpoint will receive an empty object - add explicit mocks for
+  // endpoints that need specific data structures
+  await page.route("**/admin/api/**", async (route) => {
+    console.warn(`[e2e] Unmocked admin API request: ${route.request().url()} - returning empty object`)
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({}),
+    })
+  })
+
+  // Mock auth status - return authenticated
+  await page.route("**/admin/api/auth/status", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ authenticated: true }),
+    })
+  })
+
+  // Mock login - return success
+  await page.route("**/admin/api/auth/login", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
+    })
+  })
+
+  // Mock coverage stats
+  await page.route("**/admin/api/coverage/stats", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockCoverageStats),
+    })
+  })
+
+  // Mock coverage trends
+  await page.route("**/admin/api/coverage/trends*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockCoverageTrends),
+    })
+  })
+
+  // Mock analytics endpoints - return empty/minimal data
+  await page.route("**/admin/api/analytics/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([]),
+    })
+  })
+
+  // Mock dashboard stats (highest priority - registered last)
+  await page.route("**/admin/api/dashboard/stats", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockDashboardStats),
+    })
+  })
+}
+
+async function loginToAdmin(page: Page) {
+  // Setup mocks before navigating
+  await setupMockRoutes(page)
+
   await page.goto("/admin/login")
   await page.waitForLoadState("networkidle")
 
@@ -15,16 +152,20 @@ async function loginToAdmin(page: ReturnType<typeof test["info"]>["project"]["us
   const loginButton = page.locator('button[type="submit"]')
   await loginButton.click()
 
-  // Wait for redirect to dashboard
-  await page.waitForURL(/\/admin\/dashboard/)
+  // Wait for redirect to dashboard (5s timeout for faster failure)
+  await page.waitForURL(/\/admin\/dashboard/, { timeout: 5000 })
   await page.waitForLoadState("networkidle")
+
+  // Debug: capture page state after login
+  // eslint-disable-next-line no-console
+  console.log("[DEBUG] Current URL after login:", page.url())
+  await page.screenshot({ path: "e2e/screenshots/debug-after-login.png" })
 }
 
 test.describe("Admin Theme - Dark Mode (Default)", () => {
-  test.beforeEach(async ({ page }) => {
-    // Set viewport for consistent screenshots
-    await page.setViewportSize({ width: 1280, height: 800 })
-  })
+  // Use desktop viewport for all theme tests - theming doesn't vary by viewport
+  // This overrides project-level viewport settings (tablet, mobile)
+  test.use({ viewport: { width: 1280, height: 800 } })
 
   test("login page has dark theme styling", async ({ page }) => {
     await page.goto("/admin/login")
@@ -44,7 +185,7 @@ test.describe("Admin Theme - Dark Mode (Default)", () => {
     await loginToAdmin(page)
 
     // Wait for dashboard content to load
-    await page.waitForSelector("text=Dashboard", { timeout: 10000 })
+    await page.waitForSelector("text=Dashboard", { timeout: 5000 })
 
     // Take screenshot of dashboard
     await page.screenshot({
@@ -73,7 +214,7 @@ test.describe("Admin Theme - Dark Mode (Default)", () => {
     await page.waitForLoadState("networkidle")
 
     // Wait for page content
-    await page.waitForSelector("text=Death Detail Coverage", { timeout: 10000 })
+    await page.waitForSelector("text=Death Detail Coverage", { timeout: 5000 })
 
     // Take screenshot
     await page.screenshot({
@@ -113,9 +254,8 @@ test.describe("Admin Theme - Dark Mode (Default)", () => {
 })
 
 test.describe("Admin Theme - Light Mode", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 })
-  })
+  // Use desktop viewport for all theme tests - theming doesn't vary by viewport
+  test.use({ viewport: { width: 1280, height: 800 } })
 
   test("can toggle to light theme", async ({ page }) => {
     await loginToAdmin(page)
@@ -186,9 +326,10 @@ test.describe("Admin Theme - Light Mode", () => {
 })
 
 test.describe("Admin Theme - Mobile Responsive", () => {
+  // Use mobile viewport for mobile-specific tests
+  test.use({ viewport: { width: 390, height: 844 } })
+
   test("mobile navigation works with theme", async ({ page }) => {
-    // Set mobile viewport
-    await page.setViewportSize({ width: 390, height: 844 })
 
     await loginToAdmin(page)
 
