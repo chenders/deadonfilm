@@ -58,7 +58,18 @@ const mockDashboardStats = {
 }
 
 // Setup mock API routes for admin endpoints
+// NOTE: Playwright route matching is LIFO (last in, first out)
+// Register catch-all FIRST so specific routes take priority
 async function setupMockRoutes(page: Page) {
+  // Catch-all for any unhandled admin API endpoints (lowest priority - registered first)
+  await page.route("**/admin/api/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({}),
+    })
+  })
+
   // Mock auth status - return authenticated
   await page.route("**/admin/api/auth/status", async (route) => {
     await route.fulfill({
@@ -104,21 +115,12 @@ async function setupMockRoutes(page: Page) {
     })
   })
 
-  // Mock dashboard stats - use exact path to ensure matching
+  // Mock dashboard stats (highest priority - registered last)
   await page.route("**/admin/api/dashboard/stats", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockDashboardStats),
-    })
-  })
-
-  // Mock any other admin API endpoints with empty success response
-  await page.route("**/admin/api/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({}),
     })
   })
 }
@@ -149,10 +151,9 @@ async function loginToAdmin(page: Page) {
 }
 
 test.describe("Admin Theme - Dark Mode (Default)", () => {
-  test.beforeEach(async ({ page }) => {
-    // Set viewport for consistent screenshots
-    await page.setViewportSize({ width: 1280, height: 800 })
-  })
+  // Use desktop viewport for all theme tests - theming doesn't vary by viewport
+  // This overrides project-level viewport settings (tablet, mobile)
+  test.use({ viewport: { width: 1280, height: 800 } })
 
   test("login page has dark theme styling", async ({ page }) => {
     await page.goto("/admin/login")
@@ -241,9 +242,8 @@ test.describe("Admin Theme - Dark Mode (Default)", () => {
 })
 
 test.describe("Admin Theme - Light Mode", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 })
-  })
+  // Use desktop viewport for all theme tests - theming doesn't vary by viewport
+  test.use({ viewport: { width: 1280, height: 800 } })
 
   test("can toggle to light theme", async ({ page }) => {
     await loginToAdmin(page)
@@ -314,9 +314,10 @@ test.describe("Admin Theme - Light Mode", () => {
 })
 
 test.describe("Admin Theme - Mobile Responsive", () => {
+  // Use mobile viewport for mobile-specific tests
+  test.use({ viewport: { width: 390, height: 844 } })
+
   test("mobile navigation works with theme", async ({ page }) => {
-    // Set mobile viewport
-    await page.setViewportSize({ width: 390, height: 844 })
 
     await loginToAdmin(page)
 
