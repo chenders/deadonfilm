@@ -397,3 +397,261 @@ export function useEnrichmentRunProgress(
     staleTime: 0, // Always fetch fresh data
   })
 }
+
+// ============================================================================
+// Batch API Types
+// ============================================================================
+
+export interface BatchJobInfo {
+  id: number
+  batchId: string
+  jobType: string
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled"
+  createdAt: string
+  completedAt?: string | null
+  totalItems: number
+  processedItems: number
+  successfulItems: number
+  failedItems: number
+  progress: number
+  parameters?: Record<string, unknown> | null
+  errorMessage?: string | null
+  costUsd?: number | null
+}
+
+export interface BatchStatusResponse {
+  activeBatch: BatchJobInfo | null
+  queueDepth: number
+}
+
+export interface BatchHistoryResponse {
+  history: BatchJobInfo[]
+}
+
+export interface BatchSubmitRequest {
+  limit?: number
+  minPopularity?: number
+  jobType?: "cause-of-death" | "death-details"
+}
+
+export interface BatchSubmitResponse {
+  batchId: string | null
+  jobId?: number
+  jobType?: string
+  actorsSubmitted: number
+  message: string
+}
+
+export interface BatchCheckResponse {
+  batchId: string
+  status: string
+  totalItems: number
+  processedItems: number
+  successfulItems: number
+  failedItems: number
+  progress: number
+}
+
+export interface BatchProcessRequest {
+  dryRun?: boolean
+}
+
+export interface BatchProcessResponse {
+  batchId: string
+  processed?: number
+  successful?: number
+  failed?: number
+  dryRun?: boolean
+  wouldProcess?: number
+  message: string
+}
+
+export interface RefetchDetailsRequest {
+  limit?: number
+  popularOnly?: boolean
+  minPopularity?: number
+  dryRun?: boolean
+}
+
+export interface RefetchDetailsResponse {
+  actorsQueued?: number
+  wouldQueue?: number
+  dryRun: boolean
+  actors?: Array<{ id: number; name: string; popularity: number | null }>
+  message: string
+}
+
+// ============================================================================
+// Batch API Functions
+// ============================================================================
+
+async function fetchBatchStatus(): Promise<BatchStatusResponse> {
+  const response = await fetch("/admin/api/enrichment/batch/status", {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch batch status")
+  }
+
+  return response.json()
+}
+
+async function fetchBatchHistory(limit: number = 10): Promise<BatchHistoryResponse> {
+  const params = new URLSearchParams({ limit: limit.toString() })
+  const response = await fetch(`/admin/api/enrichment/batch/history?${params.toString()}`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch batch history")
+  }
+
+  return response.json()
+}
+
+async function submitBatch(request: BatchSubmitRequest): Promise<BatchSubmitResponse> {
+  const response = await fetch("/admin/api/enrichment/batch/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new Error(error.error?.message || "Failed to submit batch")
+  }
+
+  return response.json()
+}
+
+async function checkBatchStatus(batchId: string): Promise<BatchCheckResponse> {
+  const response = await fetch(`/admin/api/enrichment/batch/${batchId}/check`, {
+    method: "POST",
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to check batch status")
+  }
+
+  return response.json()
+}
+
+async function processBatch(
+  batchId: string,
+  request: BatchProcessRequest
+): Promise<BatchProcessResponse> {
+  const response = await fetch(`/admin/api/enrichment/batch/${batchId}/process`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new Error(error.error?.message || "Failed to process batch")
+  }
+
+  return response.json()
+}
+
+async function refetchDetails(request: RefetchDetailsRequest): Promise<RefetchDetailsResponse> {
+  const response = await fetch("/admin/api/enrichment/refetch-details", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to queue refetch details")
+  }
+
+  return response.json()
+}
+
+// ============================================================================
+// Batch API Hooks
+// ============================================================================
+
+/**
+ * Hook to fetch current batch job status.
+ */
+export function useBatchStatus(): UseQueryResult<BatchStatusResponse> {
+  return useQuery({
+    queryKey: ["admin", "enrichment", "batch", "status"],
+    queryFn: fetchBatchStatus,
+    staleTime: 10000, // 10 seconds
+    refetchInterval: (query) => {
+      // Poll every 5 seconds if there's an active batch
+      const data = query.state.data
+      return data?.activeBatch ? 5000 : false
+    },
+  })
+}
+
+/**
+ * Hook to fetch batch job history.
+ */
+export function useBatchHistory(limit: number = 10): UseQueryResult<BatchHistoryResponse> {
+  return useQuery({
+    queryKey: ["admin", "enrichment", "batch", "history", limit],
+    queryFn: () => fetchBatchHistory(limit),
+    staleTime: 30000, // 30 seconds
+  })
+}
+
+/**
+ * Mutation hook to submit a new batch job.
+ */
+export function useSubmitBatch() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: submitBatch,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "enrichment", "batch"] })
+    },
+  })
+}
+
+/**
+ * Mutation hook to check batch status.
+ */
+export function useCheckBatchStatus() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: checkBatchStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "enrichment", "batch", "status"] })
+    },
+  })
+}
+
+/**
+ * Mutation hook to process batch results.
+ */
+export function useProcessBatch() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ batchId, request }: { batchId: string; request: BatchProcessRequest }) =>
+      processBatch(batchId, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "enrichment", "batch"] })
+    },
+  })
+}
+
+/**
+ * Mutation hook to queue actors for detail refetch.
+ */
+export function useRefetchDetails() {
+  return useMutation({
+    mutationFn: refetchDetails,
+  })
+}

@@ -8,7 +8,14 @@ import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
 import { getRedisClient, isRedisAvailable } from "../../lib/redis.js"
-import { getCached, setCached, CACHE_KEYS } from "../../lib/cache.js"
+import {
+  getCached,
+  setCached,
+  CACHE_KEYS,
+  invalidateDeathCaches,
+  rebuildDeathCaches,
+  invalidateActorCache,
+} from "../../lib/cache.js"
 
 const router = Router()
 
@@ -163,6 +170,101 @@ router.post("/warm", async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     logger.error({ error }, "Failed to warm cache")
     res.status(500).json({ error: { message: "Failed to warm cache" } })
+  }
+})
+
+// ============================================================================
+// POST /admin/api/cache/invalidate-death
+// Invalidate death-related caches, optionally for specific actors
+// ============================================================================
+
+interface InvalidateDeathRequest {
+  actorIds?: number[]
+  all?: boolean
+  rebuild?: boolean
+}
+
+router.post("/invalidate-death", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { actorIds, all, rebuild } = req.body as InvalidateDeathRequest
+    const startTime = Date.now()
+
+    if (!isRedisAvailable()) {
+      res.status(503).json({ error: { message: "Redis not available" } })
+      return
+    }
+
+    let invalidated = 0
+
+    if (all || !actorIds || actorIds.length === 0) {
+      // Invalidate all death-related caches
+      await invalidateDeathCaches()
+      invalidated = -1 // Signal that all caches were invalidated
+      logger.info("All death caches invalidated")
+    } else {
+      // Invalidate specific actor caches
+      for (const actorId of actorIds) {
+        try {
+          await invalidateActorCache(actorId)
+          invalidated++
+        } catch (err) {
+          logger.warn({ err, actorId }, "Failed to invalidate actor cache")
+        }
+      }
+      // Also invalidate global death caches since actor death data changed
+      await invalidateDeathCaches()
+      logger.info({ actorIds, invalidated }, "Actor caches invalidated")
+    }
+
+    // Optionally rebuild caches
+    let rebuilt = false
+    if (rebuild) {
+      await rebuildDeathCaches()
+      rebuilt = true
+      logger.info("Death caches rebuilt after invalidation")
+    }
+
+    const duration = Date.now() - startTime
+
+    res.json({
+      invalidated,
+      rebuilt,
+      duration,
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to invalidate death caches")
+    res.status(500).json({ error: { message: "Failed to invalidate death caches" } })
+  }
+})
+
+// ============================================================================
+// POST /admin/api/cache/rebuild-death
+// Rebuild death-related caches (invalidate first, then repopulate)
+// ============================================================================
+
+router.post("/rebuild-death", async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now()
+
+    if (!isRedisAvailable()) {
+      res.status(503).json({ error: { message: "Redis not available" } })
+      return
+    }
+
+    // rebuildDeathCaches already invalidates and rebuilds
+    await rebuildDeathCaches()
+
+    const duration = Date.now() - startTime
+
+    logger.info({ duration }, "Death caches rebuilt")
+
+    res.json({
+      success: true,
+      duration,
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to rebuild death caches")
+    res.status(500).json({ error: { message: "Failed to rebuild death caches" } })
   }
 })
 
