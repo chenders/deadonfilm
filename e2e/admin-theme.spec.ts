@@ -1,9 +1,116 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, Page } from "@playwright/test"
 
 // Admin credentials from environment
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ""
 
-async function loginToAdmin(page: ReturnType<typeof test["info"]>["project"]["use"]["page"]) {
+// Mock data for admin API endpoints
+const mockCoverageStats = {
+  total_deceased_actors: 1234,
+  actors_with_death_pages: 1000,
+  actors_without_death_pages: 234,
+  coverage_percentage: "81.0",
+  enrichment_candidates_count: 200,
+  high_priority_count: 50,
+}
+
+const mockCoverageTrends = [
+  {
+    captured_at: "2026-01-20",
+    coverage_percentage: 79.5,
+    actors_with_death_pages: 980,
+    actors_without_death_pages: 254,
+  },
+  {
+    captured_at: "2026-01-21",
+    coverage_percentage: 80.0,
+    actors_with_death_pages: 990,
+    actors_without_death_pages: 244,
+  },
+  {
+    captured_at: "2026-01-22",
+    coverage_percentage: 81.0,
+    actors_with_death_pages: 1000,
+    actors_without_death_pages: 234,
+  },
+]
+
+const mockDashboardStats = {
+  totalActors: 50000,
+  deceasedActors: 12000,
+  moviesTracked: 8000,
+  showsTracked: 2000,
+}
+
+// Setup mock API routes for admin endpoints
+async function setupMockRoutes(page: Page) {
+  // Mock auth status - return authenticated
+  await page.route("**/admin/api/auth/status", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ authenticated: true }),
+    })
+  })
+
+  // Mock login - return success
+  await page.route("**/admin/api/auth/login", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ success: true }),
+    })
+  })
+
+  // Mock coverage stats
+  await page.route("**/admin/api/coverage/stats", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockCoverageStats),
+    })
+  })
+
+  // Mock coverage trends
+  await page.route("**/admin/api/coverage/trends*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockCoverageTrends),
+    })
+  })
+
+  // Mock analytics endpoints - return empty/minimal data
+  await page.route("**/admin/api/analytics/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([]),
+    })
+  })
+
+  // Mock dashboard stats
+  await page.route("**/admin/api/dashboard/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockDashboardStats),
+    })
+  })
+
+  // Mock any other admin API endpoints with empty success response
+  await page.route("**/admin/api/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({}),
+    })
+  })
+}
+
+async function loginToAdmin(page: Page) {
+  // Setup mocks before navigating
+  await setupMockRoutes(page)
+
   await page.goto("/admin/login")
   await page.waitForLoadState("networkidle")
 
