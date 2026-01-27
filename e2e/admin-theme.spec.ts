@@ -141,6 +141,11 @@ async function loginToAdmin(page: Page) {
   // Wait for redirect to dashboard (5s timeout for faster failure)
   await page.waitForURL(/\/admin\/dashboard/, { timeout: 5000 })
   await page.waitForLoadState("networkidle")
+
+  // Debug: capture page state after login
+  // eslint-disable-next-line no-console
+  console.log("[DEBUG] Current URL after login:", page.url())
+  await page.screenshot({ path: "e2e/screenshots/debug-after-login.png" })
 }
 
 test.describe("Admin Theme - Dark Mode (Default)", () => {
