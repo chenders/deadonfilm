@@ -21,7 +21,7 @@ import { createGunzip } from "zlib"
 import readline from "readline"
 import { pipeline } from "stream/promises"
 import { Readable } from "stream"
-import type { DatePrecision } from "./db.js"
+import type { DatePrecision, MovieAppearanceType } from "./db.js"
 
 // ============================================================
 // Configuration
@@ -106,8 +106,8 @@ export interface NormalizedImdbEpisode {
 // Appearance type for TV show episodes
 export type TvAppearanceType = "regular" | "guest"
 
-// Appearance type for movies (matches database schema)
-export type MovieAppearanceType = "regular" | "self" | "archive"
+// Re-export MovieAppearanceType from db/types.ts for backwards compatibility
+export type { MovieAppearanceType } from "./db.js"
 
 export interface NormalizedImdbCastMember {
   name: string

@@ -12,7 +12,7 @@
  * - Cohort life expectancy: Expected lifespan based on year of birth
  */
 
-import { getPool } from "./db.js"
+import { getPool, type MovieAppearanceType } from "./db.js"
 
 interface ActuarialEntry {
   age: number
@@ -188,11 +188,6 @@ export async function calculateCumulativeDeathProbability(
 }
 
 /**
- * Appearance type for filtering mortality calculations
- */
-export type MortalityAppearanceType = "regular" | "self" | "archive"
-
-/**
  * Actor data needed for mortality calculation
  */
 export interface ActorForMortality {
@@ -200,7 +195,7 @@ export interface ActorForMortality {
   name: string
   birthday: string | null // YYYY-MM-DD format
   deathday: string | null // YYYY-MM-DD format
-  appearanceType?: MortalityAppearanceType // Optional - defaults to "regular"
+  appearanceType?: MovieAppearanceType // Optional - defaults to "regular"
 }
 
 /**
