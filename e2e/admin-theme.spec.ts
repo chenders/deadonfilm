@@ -104,8 +104,8 @@ async function setupMockRoutes(page: Page) {
     })
   })
 
-  // Mock dashboard stats
-  await page.route("**/admin/api/dashboard/**", async (route) => {
+  // Mock dashboard stats - use exact path to ensure matching
+  await page.route("**/admin/api/dashboard/stats", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
