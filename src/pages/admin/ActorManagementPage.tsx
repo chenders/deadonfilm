@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
@@ -42,6 +42,11 @@ export default function ActorManagementPage() {
   }
 
   const { data, isLoading, error } = useActorsForCoverage(page, pageSize, filters)
+
+  // Reset page to 1 when search changes (the debounced hook updates URL, this syncs local state)
+  useEffect(() => {
+    setPage(1)
+  }, [filters.searchName])
 
   const handleFilterChange = (newFilters: Partial<ActorCoverageFilters>) => {
     const updatedFilters = { ...filters, ...newFilters }
