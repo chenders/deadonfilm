@@ -11,13 +11,8 @@
 import { spawn, type ChildProcess } from "child_process"
 import { getPool } from "./db.js"
 import path from "path"
-import { fileURLToPath } from "url"
-import { dirname } from "path"
 import newrelic from "newrelic"
 import { logger } from "./logger.js"
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 
 /**
  * Configuration for starting an enrichment run
@@ -93,13 +88,16 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
     args.push("--yes") // Skip confirmation prompt
 
     // Path to the enrichment script
-    const scriptPath = path.join(__dirname, "../../scripts/enrich-death-details.ts")
+    // Use process.cwd() instead of __dirname because in production __dirname
+    // points to dist/lib/ but scripts are in the source scripts/ directory
+    const serverRoot = process.cwd()
+    const scriptPath = path.join(serverRoot, "scripts/enrich-death-details.ts")
 
     // Spawn the enrichment process
-    logger.info({ runId, scriptPath, args }, "Spawning enrichment process")
+    logger.info({ runId, scriptPath, args, serverRoot }, "Spawning enrichment process")
 
     const child = spawn("npx", ["tsx", scriptPath, ...args], {
-      cwd: path.join(__dirname, "../.."),
+      cwd: serverRoot,
       env: {
         ...process.env,
         // Ensure the script has access to environment variables
