@@ -3,39 +3,41 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { HelmetProvider } from "react-helmet-async"
-import ShowPage from "./ShowPage"
+import MoviePage from "./MoviePage"
 import * as api from "@/services/api"
 
 // Mock the API
 vi.mock("@/services/api", () => ({
-  getShow: vi.fn(),
+  getMovie: vi.fn(),
   getProfileUrl: vi.fn((path: string | null) => (path ? `https://image.tmdb.org${path}` : null)),
   getPosterUrl: vi.fn((path: string | null) => (path ? `https://image.tmdb.org${path}` : null)),
 }))
 
-const mockShowResponse = {
-  show: {
-    id: 1400,
-    name: "Seinfeld",
-    firstAirDate: "1989-07-05",
-    lastAirDate: "1998-05-14",
-    posterPath: "/poster.jpg",
-    backdropPath: "/backdrop.jpg",
-    overview: "A show about nothing.",
-    status: "Ended",
-    numberOfSeasons: 9,
-    numberOfEpisodes: 180,
-    genres: [{ id: 35, name: "Comedy" }],
+// Mock the polling hook
+vi.mock("@/hooks/useDeathInfoPolling", () => ({
+  useDeathInfoPolling: vi.fn(({ deceased }) => ({
+    enrichedDeceased: deceased,
+    isPolling: false,
+  })),
+}))
+
+const mockMovieResponse = {
+  movie: {
+    id: 550,
+    tmdb_id: 550,
+    title: "Fight Club",
+    release_date: "1999-10-15",
+    poster_path: "/poster.jpg",
+    backdrop_path: "/backdrop.jpg",
+    overview: "An insomniac office worker...",
+    genres: [
+      { id: 18, name: "Drama" },
+      { id: 53, name: "Thriller" },
+    ],
+    vote_average: 8.4,
+    original_language: "en",
+    runtime: 139,
   },
-  seasons: [
-    {
-      seasonNumber: 1,
-      name: "Season 1",
-      airDate: "1989-07-05",
-      episodeCount: 5,
-      posterPath: "/s1.jpg",
-    },
-  ],
   deceased: [
     {
       id: 100,
@@ -50,15 +52,6 @@ const mockShowResponse = {
       causeOfDeathDetails: null,
       wikipediaUrl: "https://en.wikipedia.org/wiki/Actor",
       tmdbUrl: "https://www.themoviedb.org/person/100",
-      totalEpisodes: 5,
-      episodes: [
-        {
-          seasonNumber: 1,
-          episodeNumber: 1,
-          episodeName: "The Pilot",
-          character: "Character A",
-        },
-      ],
     },
   ],
   living: [
@@ -69,15 +62,6 @@ const mockShowResponse = {
       profile_path: "/profile2.jpg",
       birthday: "1960-05-20",
       age: 64,
-      totalEpisodes: 180,
-      episodes: [
-        {
-          seasonNumber: 1,
-          episodeNumber: 1,
-          episodeName: "The Pilot",
-          character: "Character B",
-        },
-      ],
     },
   ],
   stats: {
@@ -88,11 +72,13 @@ const mockShowResponse = {
     expectedDeaths: 25,
     mortalitySurpriseScore: 0.2,
   },
+  lastSurvivor: null,
+  enrichmentPending: false,
 }
 
 function renderWithProviders(
   ui: React.ReactElement,
-  { initialEntries = ["/show/seinfeld-1989-1400"] } = {}
+  { initialEntries = ["/movie/fight-club-1999-550"] } = {}
 ) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -110,9 +96,8 @@ function renderWithProviders(
           future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
         >
           <Routes>
-            <Route path="/show/:slug" element={ui} />
+            <Route path="/movie/:slug" element={ui} />
             <Route path="/actor/:slug" element={<div>Actor Page</div>} />
-            <Route path="/episode/:slug" element={<div>Episode Page</div>} />
           </Routes>
         </MemoryRouter>
       </HelmetProvider>
@@ -120,37 +105,37 @@ function renderWithProviders(
   )
 }
 
-describe("ShowPage", () => {
+describe("MoviePage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it("renders loading state initially", () => {
-    vi.mocked(api.getShow).mockImplementation(
+    vi.mocked(api.getMovie).mockImplementation(
       () => new Promise(() => {}) // Never resolves
     )
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
-    expect(screen.getByText("Loading show data...")).toBeInTheDocument()
+    expect(screen.getByText("Loading movie data...")).toBeInTheDocument()
   })
 
-  it("renders show header with title and year", async () => {
-    vi.mocked(api.getShow).mockResolvedValue(mockShowResponse)
+  it("renders movie header with title and year", async () => {
+    vi.mocked(api.getMovie).mockResolvedValue(mockMovieResponse)
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Seinfeld")).toBeInTheDocument()
+      expect(screen.getByText("Fight Club")).toBeInTheDocument()
     })
 
-    expect(screen.getByText("(1989)")).toBeInTheDocument()
+    expect(screen.getByText("(1999)")).toBeInTheDocument()
   })
 
   it("renders mortality gauge with percentage", async () => {
-    vi.mocked(api.getShow).mockResolvedValue(mockShowResponse)
+    vi.mocked(api.getMovie).mockResolvedValue(mockMovieResponse)
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
     await waitFor(() => {
       expect(screen.getByTestId("mortality-gauge")).toBeInTheDocument()
@@ -160,9 +145,9 @@ describe("ShowPage", () => {
   })
 
   it("renders cast toggle with deceased and living counts", async () => {
-    vi.mocked(api.getShow).mockResolvedValue(mockShowResponse)
+    vi.mocked(api.getMovie).mockResolvedValue(mockMovieResponse)
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
     await waitFor(() => {
       expect(screen.getByTestId("cast-toggle")).toBeInTheDocument()
@@ -173,22 +158,21 @@ describe("ShowPage", () => {
   })
 
   it("shows deceased list by default", async () => {
-    vi.mocked(api.getShow).mockResolvedValue(mockShowResponse)
+    vi.mocked(api.getMovie).mockResolvedValue(mockMovieResponse)
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
     await waitFor(() => {
-      expect(screen.getByTestId("show-deceased-list")).toBeInTheDocument()
+      expect(screen.getByTestId("deceased-list")).toBeInTheDocument()
     })
 
     expect(screen.getByText("Deceased Actor")).toBeInTheDocument()
-    expect(screen.getByText("as Character A")).toBeInTheDocument()
   })
 
   it("toggles to living list when clicked", async () => {
-    vi.mocked(api.getShow).mockResolvedValue(mockShowResponse)
+    vi.mocked(api.getMovie).mockResolvedValue(mockMovieResponse)
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
     await waitFor(() => {
       expect(screen.getByTestId("cast-toggle")).toBeInTheDocument()
@@ -199,17 +183,16 @@ describe("ShowPage", () => {
     fireEvent.click(livingTab)
 
     await waitFor(() => {
-      expect(screen.getByTestId("show-living-list")).toBeInTheDocument()
+      expect(screen.getByTestId("living-list")).toBeInTheDocument()
     })
 
     expect(screen.getByText("Living Actor")).toBeInTheDocument()
-    expect(screen.getByText("as Character B")).toBeInTheDocument()
   })
 
   it("renders error state when API fails", async () => {
-    vi.mocked(api.getShow).mockRejectedValue(new Error("Failed to load show"))
+    vi.mocked(api.getMovie).mockRejectedValue(new Error("Failed to load movie"))
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
     await waitFor(
       () => {
@@ -219,19 +202,19 @@ describe("ShowPage", () => {
     )
   })
 
-  it("renders error for invalid show URL", async () => {
-    renderWithProviders(<ShowPage />, {
-      initialEntries: ["/show/invalid-url-no-id"],
+  it("renders error for invalid movie URL", async () => {
+    renderWithProviders(<MoviePage />, {
+      initialEntries: ["/movie/invalid-url-no-id"],
     })
 
     await waitFor(() => {
-      expect(screen.getByText("Invalid show URL")).toBeInTheDocument()
+      expect(screen.getByText("Invalid movie URL")).toBeInTheDocument()
     })
   })
 
   it("auto-selects living tab when no deceased actors", async () => {
-    vi.mocked(api.getShow).mockResolvedValue({
-      ...mockShowResponse,
+    vi.mocked(api.getMovie).mockResolvedValue({
+      ...mockMovieResponse,
       deceased: [],
       stats: {
         totalCast: 100,
@@ -243,30 +226,79 @@ describe("ShowPage", () => {
       },
     })
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
     await waitFor(() => {
-      expect(screen.getByTestId("show-living-list")).toBeInTheDocument()
+      expect(screen.getByTestId("living-list")).toBeInTheDocument()
     })
   })
 
-  it("displays episode information for deceased actors", async () => {
-    vi.mocked(api.getShow).mockResolvedValue(mockShowResponse)
+  it("shows poster image when available", async () => {
+    vi.mocked(api.getMovie).mockResolvedValue(mockMovieResponse)
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
     await waitFor(() => {
-      expect(screen.getByTestId("show-deceased-list")).toBeInTheDocument()
+      expect(screen.getByTestId("movie-poster")).toBeInTheDocument()
+    })
+  })
+
+  it("shows empty cast message when totalCast is 0", async () => {
+    vi.mocked(api.getMovie).mockResolvedValue({
+      ...mockMovieResponse,
+      deceased: [],
+      living: [],
+      stats: {
+        totalCast: 0,
+        deceasedCount: 0,
+        livingCount: 0,
+        mortalityPercentage: 0,
+        expectedDeaths: 0,
+        mortalitySurpriseScore: 0,
+      },
     })
 
-    // Should show episode info
-    expect(screen.getByTestId("actor-episodes")).toBeInTheDocument()
+    renderWithProviders(<MoviePage />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Cast information is not yet available for this movie.")
+      ).toBeInTheDocument()
+    })
+  })
+
+  it("hides cast toggle when totalCast is 0", async () => {
+    vi.mocked(api.getMovie).mockResolvedValue({
+      ...mockMovieResponse,
+      deceased: [],
+      living: [],
+      stats: {
+        totalCast: 0,
+        deceasedCount: 0,
+        livingCount: 0,
+        mortalityPercentage: 0,
+        expectedDeaths: 0,
+        mortalitySurpriseScore: 0,
+      },
+    })
+
+    renderWithProviders(<MoviePage />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Cast information is not yet available for this movie.")
+      ).toBeInTheDocument()
+    })
+
+    expect(screen.queryByTestId("cast-toggle")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("deceased-list")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("living-list")).not.toBeInTheDocument()
   })
 
   it("links actor names to actor pages", async () => {
-    vi.mocked(api.getShow).mockResolvedValue(mockShowResponse)
+    vi.mocked(api.getMovie).mockResolvedValue(mockMovieResponse)
 
-    renderWithProviders(<ShowPage />)
+    renderWithProviders(<MoviePage />)
 
     await waitFor(() => {
       expect(screen.getByText("Deceased Actor")).toBeInTheDocument()
@@ -274,67 +306,5 @@ describe("ShowPage", () => {
 
     const actorLink = screen.getByText("Deceased Actor").closest("a")
     expect(actorLink).toHaveAttribute("href", "/actor/deceased-actor-100")
-  })
-
-  it("shows poster image when available", async () => {
-    vi.mocked(api.getShow).mockResolvedValue(mockShowResponse)
-
-    renderWithProviders(<ShowPage />)
-
-    await waitFor(() => {
-      expect(screen.getByTestId("show-poster")).toBeInTheDocument()
-    })
-  })
-
-  it("shows empty cast message when totalCast is 0", async () => {
-    vi.mocked(api.getShow).mockResolvedValue({
-      ...mockShowResponse,
-      deceased: [],
-      living: [],
-      stats: {
-        totalCast: 0,
-        deceasedCount: 0,
-        livingCount: 0,
-        mortalityPercentage: 0,
-        expectedDeaths: 0,
-        mortalitySurpriseScore: 0,
-      },
-    })
-
-    renderWithProviders(<ShowPage />)
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Cast information is not yet available for this show.")
-      ).toBeInTheDocument()
-    })
-  })
-
-  it("hides cast toggle when totalCast is 0", async () => {
-    vi.mocked(api.getShow).mockResolvedValue({
-      ...mockShowResponse,
-      deceased: [],
-      living: [],
-      stats: {
-        totalCast: 0,
-        deceasedCount: 0,
-        livingCount: 0,
-        mortalityPercentage: 0,
-        expectedDeaths: 0,
-        mortalitySurpriseScore: 0,
-      },
-    })
-
-    renderWithProviders(<ShowPage />)
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Cast information is not yet available for this show.")
-      ).toBeInTheDocument()
-    })
-
-    expect(screen.queryByTestId("cast-toggle")).not.toBeInTheDocument()
-    expect(screen.queryByTestId("show-deceased-list")).not.toBeInTheDocument()
-    expect(screen.queryByTestId("show-living-list")).not.toBeInTheDocument()
   })
 })

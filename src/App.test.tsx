@@ -157,5 +157,85 @@ describe("App", () => {
         expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
       })
     })
+
+    it("routes to /admin/jobs for job queue management", async () => {
+      globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ authenticated: false }),
+        } as Response)
+      )
+
+      renderApp("/admin/jobs")
+
+      // Should redirect to login since not authenticated
+      await waitFor(() => {
+        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+      })
+    })
+
+    it("routes to /admin/jobs/runs for job history", async () => {
+      globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ authenticated: false }),
+        } as Response)
+      )
+
+      renderApp("/admin/jobs/runs")
+
+      // Should redirect to login since not authenticated
+      await waitFor(() => {
+        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+      })
+    })
+
+    it("routes to /admin/jobs/dead-letter for dead letter queue", async () => {
+      globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ authenticated: false }),
+        } as Response)
+      )
+
+      renderApp("/admin/jobs/dead-letter")
+
+      // Should redirect to login since not authenticated
+      await waitFor(() => {
+        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+      })
+    })
+
+    it("routes to /admin/data-quality for data quality management", async () => {
+      globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ authenticated: false }),
+        } as Response)
+      )
+
+      renderApp("/admin/data-quality")
+
+      // Should redirect to login since not authenticated
+      await waitFor(() => {
+        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+      })
+    })
+
+    it("routes to /admin/sync for TMDB sync management", async () => {
+      globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ authenticated: false }),
+        } as Response)
+      )
+
+      renderApp("/admin/sync")
+
+      // Should redirect to login since not authenticated
+      await waitFor(() => {
+        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+      })
+    })
   })
 })

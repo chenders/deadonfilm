@@ -89,5 +89,6 @@ export function buildActorMovieAppearanceRecord(
     character_name: character || null,
     billing_order: billingOrder,
     age_at_filming: calculateAgeAtFilming(birthday, releaseYear),
+    appearance_type: "regular",
   }
 }
