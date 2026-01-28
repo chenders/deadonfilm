@@ -34,7 +34,7 @@ export default function StartEnrichmentPage() {
   // Source selection flags - defaults match CLI script (enabled by default)
   const [free, setFree] = useState<boolean>(true)
   const [paid, setPaid] = useState<boolean>(true)
-  const [ai, setAi] = useState<boolean>(true) // AI enabled by default (changed from false)
+  const [ai, setAi] = useState<boolean>(true) // Admin enrichment uses all available sources for comprehensive data
   const [gatherAllSources, setGatherAllSources] = useState<boolean>(true)
 
   // Advanced options - defaults match CLI script (enabled by default)
