@@ -1,17 +1,13 @@
 /**
  * Tests for enrichment process manager
+ *
+ * The process manager now uses BullMQ instead of spawning scripts directly.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { spawn } from "child_process"
-import { EventEmitter } from "events"
 import * as processManager from "./enrichment-process-manager.js"
 import * as db from "./db.js"
-
-// Mock child_process
-vi.mock("child_process", () => ({
-  spawn: vi.fn(),
-}))
+import { queueManager } from "./jobs/queue-manager.js"
 
 // Mock database
 vi.mock("./db.js", () => ({
@@ -20,25 +16,35 @@ vi.mock("./db.js", () => ({
   })),
 }))
 
+// Mock queue manager
+vi.mock("./jobs/queue-manager.js", () => ({
+  queueManager: {
+    addJob: vi.fn(),
+    cancelJob: vi.fn(),
+  },
+}))
+
 // Mock logger
 vi.mock("./logger.js", () => ({
   logger: {
     info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
   },
 }))
 
 // Mock newrelic
-vi.mock("./newrelic.js", () => ({
+vi.mock("newrelic", () => ({
   default: {
     recordCustomEvent: vi.fn(),
   },
 }))
 
 describe("enrichment-process-manager", () => {
-  let mockPool: any
-  let mockChildProcess: any
+  let mockPool: {
+    query: ReturnType<typeof vi.fn>
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -47,15 +53,11 @@ describe("enrichment-process-manager", () => {
     mockPool = {
       query: vi.fn(),
     }
-    vi.mocked(db.getPool).mockReturnValue(mockPool)
+    vi.mocked(db.getPool).mockReturnValue(mockPool as unknown as ReturnType<typeof db.getPool>)
 
-    // Setup mock child process
-    mockChildProcess = new EventEmitter()
-    mockChildProcess.pid = 12345
-    mockChildProcess.kill = vi.fn()
-    mockChildProcess.stdout = new EventEmitter()
-    mockChildProcess.stderr = new EventEmitter()
-    vi.mocked(spawn).mockReturnValue(mockChildProcess as any)
+    // Setup default mock for addJob
+    vi.mocked(queueManager.addJob).mockResolvedValue("job-123")
+    vi.mocked(queueManager.cancelJob).mockResolvedValue(true)
   })
 
   afterEach(() => {
@@ -63,11 +65,11 @@ describe("enrichment-process-manager", () => {
   })
 
   describe("startEnrichmentRun", () => {
-    it("should create a new enrichment run and spawn process", async () => {
+    it("should create a new enrichment run and enqueue BullMQ job", async () => {
       // Mock database responses
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // INSERT enrichment_runs
-        .mockResolvedValueOnce({ rows: [] }) // UPDATE with process_id
+        .mockResolvedValueOnce({ rows: [] }) // UPDATE status to running
 
       const config = {
         limit: 10,
@@ -90,117 +92,117 @@ describe("enrichment-process-manager", () => {
         expect.stringContaining("INSERT INTO enrichment_runs"),
         expect.arrayContaining(["pending", JSON.stringify(config)])
       )
-      expect(spawn).toHaveBeenCalledWith(
-        "npx",
-        expect.arrayContaining(["tsx", expect.stringContaining("enrich-death-details.ts")]),
-        expect.any(Object)
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        "enrich-death-details-batch",
+        expect.objectContaining({
+          runId: 1,
+          limit: 10,
+          maxTotalCost: 5,
+          free: true,
+          paid: false,
+          ai: false,
+        }),
+        expect.objectContaining({ createdBy: "admin-enrichment" })
       )
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining("UPDATE enrichment_runs"),
-        expect.arrayContaining([12345, 1])
+        expect.arrayContaining([1])
       )
     })
 
-    it("should include --limit in script args", async () => {
+    it("should include limit in job payload", async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ id: 1 }] })
         .mockResolvedValueOnce({ rows: [] })
 
       await processManager.startEnrichmentRun({
         limit: 50,
-        free: true,
-        paid: true,
-        ai: false,
-        claudeCleanup: false,
-        gatherAllSources: false,
-        stopOnMatch: true,
-        followLinks: false,
-        aiLinkSelection: false,
-        aiContentExtraction: false,
       })
 
-      const spawnCall = vi.mocked(spawn).mock.calls[0]
-      const args = spawnCall[1]
-      expect(args).toContain("--limit")
-      expect(args).toContain("50")
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        "enrich-death-details-batch",
+        expect.objectContaining({ limit: 50 }),
+        expect.any(Object)
+      )
     })
 
-    it("should include --max-total-cost in script args", async () => {
+    it("should include maxTotalCost in job payload", async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ id: 1 }] })
         .mockResolvedValueOnce({ rows: [] })
 
       await processManager.startEnrichmentRun({
         maxTotalCost: 10,
-        free: true,
-        paid: true,
-        ai: false,
-        claudeCleanup: false,
-        gatherAllSources: false,
-        stopOnMatch: true,
-        followLinks: false,
-        aiLinkSelection: false,
-        aiContentExtraction: false,
       })
 
-      const spawnCall = vi.mocked(spawn).mock.calls[0]
-      const args = spawnCall[1]
-      expect(args).toContain("--max-total-cost")
-      expect(args).toContain("10")
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        "enrich-death-details-batch",
+        expect.objectContaining({ maxTotalCost: 10 }),
+        expect.any(Object)
+      )
     })
 
-    it("should include --run-id and --yes in script args", async () => {
+    it("should include runId in job payload", async () => {
       mockPool.query
-        .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+        .mockResolvedValueOnce({ rows: [{ id: 42 }] })
         .mockResolvedValueOnce({ rows: [] })
 
       await processManager.startEnrichmentRun({
         limit: 10,
-        free: true,
-        paid: true,
-        ai: false,
-        claudeCleanup: false,
-        gatherAllSources: false,
-        stopOnMatch: true,
-        followLinks: false,
-        aiLinkSelection: false,
-        aiContentExtraction: false,
       })
 
-      const spawnCall = vi.mocked(spawn).mock.calls[0]
-      const args = spawnCall[1]
-      expect(args).toContain("--run-id")
-      expect(args).toContain("1")
-      expect(args).toContain("--yes")
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        "enrich-death-details-batch",
+        expect.objectContaining({ runId: 42 }),
+        expect.any(Object)
+      )
     })
 
-    it("should include --actor-ids in script args when actorIds provided", async () => {
+    it("should include actorIds in job payload when provided", async () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ id: 1 }] })
         .mockResolvedValueOnce({ rows: [] })
 
       await processManager.startEnrichmentRun({
         actorIds: [123, 456, 789],
-        free: true,
-        paid: true,
-        ai: false,
-        claudeCleanup: false,
-        gatherAllSources: false,
-        stopOnMatch: true,
-        followLinks: false,
-        aiLinkSelection: false,
-        aiContentExtraction: false,
       })
 
-      const spawnCall = vi.mocked(spawn).mock.calls[0]
-      const args = spawnCall[1]
-      expect(args).toContain("--actor-id")
-      expect(args).toContain("123,456,789")
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        "enrich-death-details-batch",
+        expect.objectContaining({ actorIds: [123, 456, 789] }),
+        expect.any(Object)
+      )
+    })
+
+    it("should use default values for boolean flags", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+        .mockResolvedValueOnce({ rows: [] })
+
+      await processManager.startEnrichmentRun({})
+
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        "enrich-death-details-batch",
+        expect.objectContaining({
+          free: true,
+          paid: true,
+          ai: false,
+          stopOnMatch: true,
+          confidence: 0.5,
+          claudeCleanup: true,
+          gatherAllSources: true,
+          followLinks: true,
+          aiLinkSelection: true,
+          aiContentExtraction: true,
+          usActorsOnly: false,
+        }),
+        expect.any(Object)
+      )
     })
   })
 
   describe("stopEnrichmentRun", () => {
-    it("should kill running process and update database", async () => {
+    it("should cancel running job and update database", async () => {
       // Start a run first
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ id: 1 }] })
@@ -208,15 +210,6 @@ describe("enrichment-process-manager", () => {
 
       const runId = await processManager.startEnrichmentRun({
         limit: 10,
-        free: true,
-        paid: true,
-        ai: false,
-        claudeCleanup: false,
-        gatherAllSources: false,
-        stopOnMatch: true,
-        followLinks: false,
-        aiLinkSelection: false,
-        aiContentExtraction: false,
       })
 
       // Mock the update query for stopping
@@ -226,7 +219,7 @@ describe("enrichment-process-manager", () => {
       const stopped = await processManager.stopEnrichmentRun(runId)
 
       expect(stopped).toBe(true)
-      expect(mockChildProcess.kill).toHaveBeenCalledWith("SIGTERM")
+      expect(queueManager.cancelJob).toHaveBeenCalledWith("job-123")
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining("UPDATE enrichment_runs"),
         expect.arrayContaining([runId])
@@ -243,11 +236,27 @@ describe("enrichment-process-manager", () => {
 
     it("should throw error if run is not running", async () => {
       mockPool.query.mockResolvedValueOnce({
-        rows: [{ process_id: null, status: "completed" }],
+        rows: [{ status: "completed" }],
       })
 
       await expect(processManager.stopEnrichmentRun(2)).rejects.toThrow(
         "Enrichment run 2 is not running (status: completed)"
+      )
+    })
+
+    it("should handle job not in memory by updating database directly", async () => {
+      // Don't start a run first - simulate orphaned job scenario
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ status: "running" }] }) // SELECT status
+        .mockResolvedValueOnce({ rows: [] }) // UPDATE
+
+      const stopped = await processManager.stopEnrichmentRun(999)
+
+      expect(stopped).toBe(true)
+      expect(queueManager.cancelJob).not.toHaveBeenCalled()
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE enrichment_runs"),
+        expect.arrayContaining([999])
       )
     })
   })
@@ -310,68 +319,24 @@ describe("enrichment-process-manager", () => {
     })
   })
 
-  describe("process event handlers", () => {
-    it("should update database when process exits with non-zero code", async () => {
+  describe("getRunningEnrichments", () => {
+    it("should track run IDs when jobs are started", async () => {
       mockPool.query
-        .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+        .mockResolvedValueOnce({ rows: [{ id: 101 }] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] }) // For the exit handler
-
-      await processManager.startEnrichmentRun({
-        limit: 10,
-        free: true,
-        paid: true,
-        ai: false,
-        claudeCleanup: false,
-        gatherAllSources: false,
-        stopOnMatch: true,
-        followLinks: false,
-        aiLinkSelection: false,
-        aiContentExtraction: false,
-      })
-
-      // Simulate process exit with error
-      mockChildProcess.emit("exit", 1, null)
-
-      // Wait for async handler
-      await new Promise((resolve) => setTimeout(resolve, 10))
-
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE enrichment_runs"),
-        expect.arrayContaining([1])
-      )
-    })
-
-    it("should update database when process has error", async () => {
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+        .mockResolvedValueOnce({ rows: [{ id: 102 }] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] }) // For the error handler
 
-      await processManager.startEnrichmentRun({
-        limit: 10,
-        free: true,
-        paid: true,
-        ai: false,
-        claudeCleanup: false,
-        gatherAllSources: false,
-        stopOnMatch: true,
-        followLinks: false,
-        aiLinkSelection: false,
-        aiContentExtraction: false,
-      })
+      vi.mocked(queueManager.addJob)
+        .mockResolvedValueOnce("job-101")
+        .mockResolvedValueOnce("job-102")
 
-      // Simulate process error
-      const error = new Error("Process failed")
-      mockChildProcess.emit("error", error)
+      await processManager.startEnrichmentRun({ limit: 10 })
+      await processManager.startEnrichmentRun({ limit: 20 })
 
-      // Wait for async handler
-      await new Promise((resolve) => setTimeout(resolve, 10))
-
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE enrichment_runs"),
-        expect.arrayContaining([1, "Process failed"])
-      )
+      const running = processManager.getRunningEnrichments()
+      expect(running).toContain(101)
+      expect(running).toContain(102)
     })
   })
 })
