@@ -597,7 +597,6 @@ export interface EnrichmentConfig {
   sourceCategories: SourceCategoryFlags
   specificSources: SpecificSourceFlags
   aiModels: AIModelFlags
-  stopOnMatch: boolean
   confidenceThreshold: number
   statsFile?: string
   /** Cost limits to control spending */

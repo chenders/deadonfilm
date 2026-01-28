@@ -256,7 +256,6 @@ export class EnrichmentRunner {
         paid,
         ai,
       },
-      stopOnMatch: false, // Always gather all sources
       confidenceThreshold,
       costLimits: {
         maxCostPerActor,
