@@ -160,7 +160,6 @@ export const enrichDeathDetailsBatchPayloadSchema = z.object({
   free: z.boolean().default(true),
   paid: z.boolean().default(true),
   ai: z.boolean().default(false),
-  stopOnMatch: z.boolean().default(true),
   confidence: z.number().min(0).max(1).default(0.5),
   maxCostPerActor: z.number().optional(),
   maxTotalCost: z.number().optional(),

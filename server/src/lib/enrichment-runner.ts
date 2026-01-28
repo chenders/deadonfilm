@@ -45,7 +45,6 @@ export interface EnrichmentRunnerConfig {
   free?: boolean
   paid?: boolean
   ai?: boolean
-  stopOnMatch?: boolean
   confidence?: number
   maxCostPerActor?: number
   maxTotalCost?: number
@@ -161,7 +160,6 @@ export class EnrichmentRunner {
       free = true,
       paid = true,
       ai = false,
-      stopOnMatch = true,
       confidence: confidenceThreshold = 0.5,
       maxCostPerActor,
       maxTotalCost = 10,
@@ -258,7 +256,7 @@ export class EnrichmentRunner {
         paid,
         ai,
       },
-      stopOnMatch: claudeCleanup && gatherAllSources ? false : stopOnMatch,
+      stopOnMatch: false, // Always gather all sources
       confidenceThreshold,
       costLimits: {
         maxCostPerActor,

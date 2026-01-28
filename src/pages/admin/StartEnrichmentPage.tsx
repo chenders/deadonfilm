@@ -35,7 +35,6 @@ export default function StartEnrichmentPage() {
   const [free, setFree] = useState<boolean>(true)
   const [paid, setPaid] = useState<boolean>(true)
   const [ai, setAi] = useState<boolean>(true) // AI enabled by default (changed from false)
-  const [stopOnMatch, setStopOnMatch] = useState<boolean>(true)
   const [gatherAllSources, setGatherAllSources] = useState<boolean>(true)
 
   // Advanced options - defaults match CLI script (enabled by default)
@@ -149,7 +148,6 @@ export default function StartEnrichmentPage() {
         free,
         paid,
         ai,
-        stopOnMatch,
         gatherAllSources,
         claudeCleanup,
         followLinks,
@@ -513,22 +511,6 @@ export default function StartEnrichmentPage() {
               <div className="flex items-center">
                 <input
                   type="checkbox"
-                  id="stopOnMatch"
-                  checked={stopOnMatch}
-                  onChange={(e) => setStopOnMatch(e.target.checked)}
-                  className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
-                />
-                <label
-                  htmlFor="stopOnMatch"
-                  className="ml-2 block text-sm text-admin-text-secondary"
-                >
-                  Stop on first match
-                </label>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
                   id="gatherAllSources"
                   checked={gatherAllSources}
                   onChange={(e) => setGatherAllSources(e.target.checked)}
@@ -763,7 +745,6 @@ export default function StartEnrichmentPage() {
             {free ? "" : " --disable-free"}
             {paid ? "" : " --disable-paid"}
             {ai ? " --ai" : ""}
-            {stopOnMatch ? "" : " --no-stop-on-match"}
             {gatherAllSources ? "" : " --disable-gather-all-sources"}
             {claudeCleanup ? "" : " --disable-claude-cleanup"}
             {followLinks ? "" : " --disable-follow-links"}

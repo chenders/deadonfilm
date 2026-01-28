@@ -25,7 +25,6 @@ export interface EnrichmentRunConfig {
   free?: boolean
   paid?: boolean
   ai?: boolean
-  stopOnMatch?: boolean
   confidence?: number
   maxCostPerActor?: number
   maxTotalCost?: number
@@ -94,7 +93,6 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
         free: config.free ?? true,
         paid: config.paid ?? true,
         ai: config.ai ?? false,
-        stopOnMatch: config.stopOnMatch ?? true,
         confidence: config.confidence ?? 0.5,
         maxCostPerActor: config.maxCostPerActor,
         maxTotalCost: config.maxTotalCost,

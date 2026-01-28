@@ -98,12 +98,6 @@ describe("StartEnrichmentPage defaults", () => {
       expect(aiCheckbox).toBeChecked()
     })
 
-    it("has stopOnMatch enabled by default (CLI: --stop-on-match defaults to true)", () => {
-      renderPage()
-      const stopOnMatchCheckbox = screen.getByRole("checkbox", { name: /stop on first match/i })
-      expect(stopOnMatchCheckbox).toBeChecked()
-    })
-
     it("has gatherAllSources enabled by default (CLI: enabled, use --disable-gather-all-sources to turn off)", () => {
       renderPage()
       const gatherAllCheckbox = screen.getByRole("checkbox", {

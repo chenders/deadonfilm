@@ -225,7 +225,6 @@ describe("Payload Schemas", () => {
         free: true,
         paid: true,
         ai: true,
-        stopOnMatch: true,
         confidence: 0.7,
         maxCostPerActor: 1.5,
         maxTotalCost: 10,
