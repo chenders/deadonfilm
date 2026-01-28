@@ -68,14 +68,14 @@ export async function getSuccessRateByJobType(): Promise<JobRunStats[]> {
     `
     SELECT
       job_type AS "jobType",
-      COUNT(*) as total,
-      COUNT(*) FILTER (WHERE status = 'completed') as completed,
-      COUNT(*) FILTER (WHERE status = 'failed') as failed,
-      COUNT(*) FILTER (WHERE status = 'pending') as pending,
+      COUNT(*)::integer as total,
+      COUNT(*) FILTER (WHERE status = 'completed')::integer as completed,
+      COUNT(*) FILTER (WHERE status = 'failed')::integer as failed,
+      COUNT(*) FILTER (WHERE status = 'pending')::integer as pending,
       ROUND(
         (COUNT(*) FILTER (WHERE status = 'completed')::numeric / NULLIF(COUNT(*), 0)) * 100,
         2
-      ) as "successRate"
+      )::float as "successRate"
     FROM job_runs
     WHERE queued_at > NOW() - INTERVAL '24 hours'
     GROUP BY job_type
@@ -96,11 +96,11 @@ export async function getJobDurationStats(): Promise<JobDurationStats[]> {
     `
     SELECT
       job_type AS "jobType",
-      ROUND(AVG(duration_ms)) as "avgMs",
-      ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_ms)) as "medianMs",
-      ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)) as "p95Ms",
-      MIN(duration_ms) as "minMs",
-      MAX(duration_ms) as "maxMs"
+      ROUND(AVG(duration_ms))::integer as "avgMs",
+      ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration_ms))::integer as "medianMs",
+      ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms))::integer as "p95Ms",
+      MIN(duration_ms)::integer as "minMs",
+      MAX(duration_ms)::integer as "maxMs"
     FROM job_runs
     WHERE
       status = 'completed'
@@ -124,7 +124,7 @@ export async function getDeadLetterStats(): Promise<DeadLetterStats[]> {
     `
     SELECT
       job_type AS "jobType",
-      COUNT(*) as count,
+      COUNT(*)::integer as count,
       MAX(failed_at) as "mostRecent"
     FROM job_dead_letter
     WHERE reviewed = false
@@ -147,8 +147,8 @@ export async function getQueueDepthOverTime(hoursBack: number = 24): Promise<Que
     SELECT
       DATE_TRUNC('hour', queued_at) as hour,
       queue_name AS "queueName",
-      COUNT(*) FILTER (WHERE status = 'pending') as waiting,
-      COUNT(*) FILTER (WHERE status = 'active') as active
+      COUNT(*) FILTER (WHERE status = 'pending')::integer as waiting,
+      COUNT(*) FILTER (WHERE status = 'active')::integer as active
     FROM job_runs
     WHERE queued_at > NOW() - INTERVAL '$1 hours'
     GROUP BY hour, queue_name
@@ -175,11 +175,11 @@ export async function getTotalJobCounts(): Promise<{
   const result = await pool.query(
     `
     SELECT
-      COUNT(*) as total,
-      COUNT(*) FILTER (WHERE status = 'pending') as pending,
-      COUNT(*) FILTER (WHERE status = 'active') as active,
-      COUNT(*) FILTER (WHERE status = 'completed') as completed,
-      COUNT(*) FILTER (WHERE status = 'failed') as failed
+      COUNT(*)::integer as total,
+      COUNT(*) FILTER (WHERE status = 'pending')::integer as pending,
+      COUNT(*) FILTER (WHERE status = 'active')::integer as active,
+      COUNT(*) FILTER (WHERE status = 'completed')::integer as completed,
+      COUNT(*) FILTER (WHERE status = 'failed')::integer as failed
     FROM job_runs
     WHERE queued_at > NOW() - INTERVAL '24 hours'
   `
