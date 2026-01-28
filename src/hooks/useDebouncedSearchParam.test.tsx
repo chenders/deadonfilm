@@ -250,4 +250,51 @@ describe("useDebouncedSearchParam", () => {
     expect(result.current[2]).toBe("abcd")
     expect(window.location.search).toBe("?search=abcd")
   })
+
+  it("does not overwrite continued typing when URL updates from debounce", () => {
+    // This tests a specific bug where typing "test" slowly would:
+    // 1. Type "t", wait 300ms, URL updates to ?search=t
+    // 2. The sync effect would overwrite inputValue back to "t"
+    // 3. User's continued typing ("est") would be lost
+
+    const { result } = renderHook(() => useDebouncedSearchParam(), { wrapper })
+
+    // Type "t"
+    act(() => {
+      result.current[1]("t")
+    })
+
+    // Input should be "t"
+    expect(result.current[0]).toBe("t")
+    expect(window.location.search).toBe("")
+
+    // Advance time so debounce fires for "t"
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+
+    // URL should now have "t"
+    expect(window.location.search).toBe("?search=t")
+
+    // Simulate user continuing to type AFTER url updated
+    // This is the key scenario - user typed more while debounce was processing
+    act(() => {
+      result.current[1]("test")
+    })
+
+    // CRITICAL: Input should be "test", not reset to "t"
+    expect(result.current[0]).toBe("test")
+
+    // URL still has "t" (new debounce hasn't fired yet)
+    expect(window.location.search).toBe("?search=t")
+
+    // Now let the new debounce fire
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+
+    // URL should now have "test"
+    expect(window.location.search).toBe("?search=test")
+    expect(result.current[0]).toBe("test")
+  })
 })
