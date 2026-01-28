@@ -18,6 +18,7 @@ import {
   fetchTraktRatingsPayloadSchema,
   fetchTheTVDBScoresPayloadSchema,
   enrichDeathDetailsPayloadSchema,
+  enrichDeathDetailsBatchPayloadSchema,
   warmActorCachePayloadSchema,
   jobPayloadSchemas,
   jobTypeToQueue,
@@ -30,6 +31,7 @@ describe("Job Types", () => {
     expect(JobType.FETCH_TRAKT_RATINGS).toBe("fetch-trakt-ratings")
     expect(JobType.FETCH_THETVDB_SCORES).toBe("fetch-thetvdb-scores")
     expect(JobType.ENRICH_DEATH_DETAILS).toBe("enrich-death-details")
+    expect(JobType.ENRICH_DEATH_DETAILS_BATCH).toBe("enrich-death-details-batch")
     expect(JobType.WARM_ACTOR_CACHE).toBe("warm-actor-cache")
   })
 
@@ -211,6 +213,91 @@ describe("Payload Schemas", () => {
       expect(result.success).toBe(true)
     })
   })
+
+  describe("enrichDeathDetailsBatchPayloadSchema", () => {
+    it("should validate correct payload with all options", () => {
+      const payload = {
+        runId: 1,
+        limit: 100,
+        minPopularity: 5,
+        actorIds: [1, 2, 3],
+        recentOnly: true,
+        free: true,
+        paid: true,
+        ai: true,
+        stopOnMatch: true,
+        confidence: 0.7,
+        maxCostPerActor: 1.5,
+        maxTotalCost: 10,
+        claudeCleanup: true,
+        gatherAllSources: true,
+        followLinks: true,
+        aiLinkSelection: true,
+        aiContentExtraction: true,
+        staging: false,
+      }
+
+      const result = enrichDeathDetailsBatchPayloadSchema.safeParse(payload)
+      expect(result.success).toBe(true)
+    })
+
+    it("should validate minimal payload with defaults", () => {
+      const payload = {
+        runId: 1,
+      }
+
+      const result = enrichDeathDetailsBatchPayloadSchema.safeParse(payload)
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.free).toBe(true)
+        expect(result.data.paid).toBe(true)
+        expect(result.data.ai).toBe(false)
+        expect(result.data.confidence).toBe(0.5)
+        expect(result.data.claudeCleanup).toBe(true)
+      }
+    })
+
+    it("should reject missing runId", () => {
+      const payload = {
+        limit: 100,
+      }
+
+      const result = enrichDeathDetailsBatchPayloadSchema.safeParse(payload)
+      expect(result.success).toBe(false)
+    })
+
+    it("should reject invalid runId", () => {
+      const payload = {
+        runId: -1,
+      }
+
+      const result = enrichDeathDetailsBatchPayloadSchema.safeParse(payload)
+      expect(result.success).toBe(false)
+    })
+
+    it("should reject confidence outside 0-1 range", () => {
+      const payload = {
+        runId: 1,
+        confidence: 1.5,
+      }
+
+      const result = enrichDeathDetailsBatchPayloadSchema.safeParse(payload)
+      expect(result.success).toBe(false)
+    })
+
+    it("should validate actorIds array", () => {
+      const payload = {
+        runId: 1,
+        actorIds: [1, 2, 3],
+      }
+
+      const result = enrichDeathDetailsBatchPayloadSchema.safeParse(payload)
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.actorIds).toEqual([1, 2, 3])
+      }
+    })
+  })
 })
 
 describe("Job Payload Schemas Map", () => {
@@ -245,6 +332,7 @@ describe("Job Type to Queue Mapping", () => {
 
   it("should map enrichment job types to enrichment queue", () => {
     expect(jobTypeToQueue[JobType.ENRICH_DEATH_DETAILS]).toBe(QueueName.ENRICHMENT)
+    expect(jobTypeToQueue[JobType.ENRICH_DEATH_DETAILS_BATCH]).toBe(QueueName.ENRICHMENT)
     expect(jobTypeToQueue[JobType.ENRICH_CAUSE_OF_DEATH]).toBe(QueueName.ENRICHMENT)
   })
 

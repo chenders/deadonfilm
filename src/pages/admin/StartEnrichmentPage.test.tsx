@@ -20,6 +20,13 @@ vi.mock("../../hooks/admin/useEnrichmentRuns", () => ({
   }),
 }))
 
+vi.mock("../../hooks/admin/useActorSearch", () => ({
+  useActorSearch: () => ({
+    data: [],
+    isLoading: false,
+  }),
+}))
+
 vi.mock("../../hooks/useAdminAuth", () => ({
   useAdminAuth: () => ({
     isAuthenticated: true,
@@ -85,10 +92,10 @@ describe("StartEnrichmentPage defaults", () => {
       expect(paidCheckbox).toBeChecked()
     })
 
-    it("has AI sources disabled by default (CLI: disabled, use --ai to enable)", () => {
+    it("has AI sources enabled by default (changed for admin UI - enrichment via admin should use all available sources)", () => {
       renderPage()
       const aiCheckbox = screen.getByRole("checkbox", { name: /use ai sources/i })
-      expect(aiCheckbox).not.toBeChecked()
+      expect(aiCheckbox).toBeChecked()
     })
 
     it("has stopOnMatch enabled by default (CLI: --stop-on-match defaults to true)", () => {
@@ -161,21 +168,19 @@ describe("StartEnrichmentPage defaults", () => {
   })
 
   describe("CLI Reference shows correct default command", () => {
-    it("shows the equivalent CLI command with enabled flags", () => {
+    it("shows the equivalent CLI command with proper flags", () => {
       renderPage()
-      // With defaults, the CLI command should include all the enabled-by-default flags
+      // With defaults, the CLI command should show the correct syntax
       const cliReference = screen.getByText(/cd server && npm run enrich:death-details/i)
       expect(cliReference).toBeInTheDocument()
 
-      // Should include these flags that represent enabled defaults
-      expect(cliReference.textContent).toContain("--free")
-      expect(cliReference.textContent).toContain("--paid")
-      expect(cliReference.textContent).toContain("--stop-on-match")
-      expect(cliReference.textContent).toContain("--gather-all-sources")
-      expect(cliReference.textContent).toContain("--claude-cleanup")
-      expect(cliReference.textContent).toContain("--follow-links")
-      expect(cliReference.textContent).toContain("--ai-link-selection")
-      expect(cliReference.textContent).toContain("--ai-content-extraction")
+      // Should include limit and max cost
+      expect(cliReference.textContent).toContain("--limit 100")
+      expect(cliReference.textContent).toContain("--max-total-cost 10")
+      // Should include --ai flag since it's enabled by default in admin UI
+      expect(cliReference.textContent).toContain("--ai")
+      // Enabled-by-default flags should NOT appear (they're the default)
+      // Only --disable-* flags appear when they're disabled
     })
   })
 })

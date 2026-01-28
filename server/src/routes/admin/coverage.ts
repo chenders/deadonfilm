@@ -145,6 +145,58 @@ router.get("/trends", async (req: Request, res: Response): Promise<void> => {
 })
 
 // ============================================================================
+// GET /admin/api/coverage/actors/by-ids
+// Fetch actors by their internal IDs
+// ============================================================================
+
+router.get("/actors/by-ids", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+
+    // Parse IDs from query params (can be multiple)
+    const idsParam = req.query.ids
+    let ids: number[] = []
+
+    if (Array.isArray(idsParam)) {
+      ids = idsParam.map((id) => parseInt(id as string, 10)).filter((id) => !isNaN(id) && id > 0)
+    } else if (typeof idsParam === "string") {
+      ids = idsParam
+        .split(",")
+        .map((id) => parseInt(id.trim(), 10))
+        .filter((id) => !isNaN(id) && id > 0)
+    }
+
+    if (ids.length === 0) {
+      res.json([])
+      return
+    }
+
+    // Limit to 100 IDs at a time
+    if (ids.length > 100) {
+      ids = ids.slice(0, 100)
+    }
+
+    const result = await pool.query<{
+      id: number
+      name: string
+      popularity: number | null
+      tmdb_id: number | null
+    }>(
+      `SELECT id, name, popularity, tmdb_id
+       FROM actors
+       WHERE id = ANY($1::int[])
+       ORDER BY popularity DESC NULLS LAST`,
+      [ids]
+    )
+
+    res.json(result.rows)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch actors by IDs")
+    res.status(500).json({ error: { message: "Failed to fetch actors by IDs" } })
+  }
+})
+
+// ============================================================================
 // GET /admin/api/coverage/enrichment-candidates
 // High-priority actors for enrichment
 // ============================================================================
