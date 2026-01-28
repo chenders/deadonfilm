@@ -5,12 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import {
-  EnrichmentRunner,
-  EnrichmentRunnerConfig,
-  EnrichmentProgress,
-  EnrichmentStats,
-} from "./enrichment-runner.js"
+import { EnrichmentRunner, EnrichmentRunnerConfig } from "./enrichment-runner.js"
 
 // Mock database pool
 const mockQuery = vi.fn()

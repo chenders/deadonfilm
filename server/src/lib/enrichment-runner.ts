@@ -165,8 +165,7 @@ export class EnrichmentRunner {
       maxTotalCost = 10,
       claudeCleanup = true,
       gatherAllSources = true,
-      // Link following options are defined but not yet used in the runner
-      // They are passed to the orchestrator configuration
+      // Top-billed actor selection options used by queryTopBilledActors
       topBilledYear,
       maxBilling,
       topMovies,
