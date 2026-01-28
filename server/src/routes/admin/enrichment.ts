@@ -294,7 +294,7 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       ai: config.ai ?? false,
       // Enrichment settings from UI
       claudeCleanup: config.claudeCleanup ?? true,
-      gatherAllSources: config.gatherAllSources ?? false,
+      gatherAllSources: config.gatherAllSources ?? true,
       followLinks: config.followLinks ?? true,
       aiLinkSelection: config.aiLinkSelection ?? true,
       aiContentExtraction: config.aiContentExtraction ?? true,
