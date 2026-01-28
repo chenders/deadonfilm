@@ -6,11 +6,27 @@ Guidance for Claude Code when working with the Dead on Film repository.
 
 <critical_constraints>
 
-### 1. NEVER Fabricate Identifiers
+### 1. NEVER Commit Directly to Main (MOST IMPORTANT)
+
+**THIS IS THE #1 RULE. ALWAYS create a feature branch BEFORE making any changes, including hotfixes.**
+
+```bash
+# BEFORE doing ANYTHING - even reading files to make changes:
+git checkout main && git pull
+git checkout -b fix/descriptive-name   # or feat/, chore/, docs/
+
+# THEN make changes, commit, push, and create PR
+```
+
+**Common mistake**: Starting to make changes while on main, then trying to commit. STOP. Create a branch FIRST.
+
+**Why this matters**: Direct commits to main bypass CI, skip code review, and can break production. The deployment failure from migration ordering is an example of what happens when branches aren't properly managed.
+
+### 2. NEVER Fabricate Identifiers
 
 Verify before stating any TMDB ID, URL, database value, or API response. If unverified, say "I don't know" or provide general guidance. Do NOT guess IDs.
 
-### 2. NEVER Use String Interpolation in SQL
+### 3. NEVER Use String Interpolation in SQL
 
 ```typescript
 // WRONG - SQL injection vulnerability
@@ -23,19 +39,9 @@ db.query(`SELECT * FROM actors WHERE id = $1`, [userId])
 // AND ($1 = true OR status = 'active')
 ```
 
-### 3. NEVER Skip Tests
+### 4. NEVER Skip Tests
 
 PRs are NOT ready for review without tests. Never defer tests to follow-up PRs.
-
-### 4. NEVER Commit Directly to Main
-
-Always create a feature branch for new work. Push to the branch and create a PR.
-
-```bash
-# Before starting ANY new work:
-git checkout main && git pull
-git checkout -b feat/feature-name   # or fix/, chore/
-```
 
 ### 5. NEVER Manually Set Migration Timestamps
 
@@ -140,7 +146,7 @@ npm test && cd server && npm test
 
 ### Git Workflow
 
-**NEVER commit directly to `main`** - always use feature branches (see Critical Rule #4).
+**NEVER commit directly to `main`** - always use feature branches (see Critical Rule #1).
 
 #### Branch Workflow
 
