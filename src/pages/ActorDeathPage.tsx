@@ -11,6 +11,7 @@ import ErrorMessage from "@/components/common/ErrorMessage"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildBreadcrumbSchema } from "@/utils/schema"
 import { PersonIcon, ExternalLinkIcon } from "@/components/icons"
+import { ParagraphText } from "@/components/ParagraphText"
 import type { ProjectInfo, SourceEntry, RelatedCelebrity } from "@/types"
 
 // Confidence indicator component
@@ -329,7 +330,10 @@ export default function ActorDeathPage() {
         {circumstances.official && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="official-section">
             <h2 className="mb-3 font-display text-lg text-brown-dark">What We Know</h2>
-            <p className="leading-relaxed text-text-muted">{circumstances.official}</p>
+            <ParagraphText
+              text={circumstances.official}
+              className="leading-relaxed text-text-muted"
+            />
             {circumstances.confidence && (
               <div className="mt-3">
                 <ConfidenceIndicator level={circumstances.confidence} />
@@ -343,7 +347,10 @@ export default function ActorDeathPage() {
         {circumstances.rumored && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="rumored-section">
             <h2 className="mb-3 font-display text-lg text-brown-dark">Alternative Accounts</h2>
-            <p className="leading-relaxed text-text-muted">{circumstances.rumored}</p>
+            <ParagraphText
+              text={circumstances.rumored}
+              className="leading-relaxed text-text-muted"
+            />
             <SourceList sources={sources.rumored} title="Sources" />
           </section>
         )}
@@ -352,7 +359,10 @@ export default function ActorDeathPage() {
         {circumstances.additionalContext && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="context-section">
             <h2 className="mb-3 font-display text-lg text-brown-dark">Additional Context</h2>
-            <p className="leading-relaxed text-text-muted">{circumstances.additionalContext}</p>
+            <ParagraphText
+              text={circumstances.additionalContext}
+              className="leading-relaxed text-text-muted"
+            />
           </section>
         )}
 
