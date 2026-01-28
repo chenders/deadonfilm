@@ -281,7 +281,6 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       // Default enrichment settings
       claudeCleanup: true,
       gatherAllSources: false,
-      stopOnMatch: false,
       followLinks: true,
       aiLinkSelection: true,
       aiContentExtraction: true,

@@ -28,10 +28,6 @@ describe("DeathEnrichmentOrchestrator", () => {
       expect(DEFAULT_CONFIG.sourceCategories.ai).toBe(false)
     })
 
-    it("sets stopOnMatch to true", () => {
-      expect(DEFAULT_CONFIG.stopOnMatch).toBe(true)
-    })
-
     it("sets confidenceThreshold to 0.5", () => {
       expect(DEFAULT_CONFIG.confidenceThreshold).toBe(0.5)
     })

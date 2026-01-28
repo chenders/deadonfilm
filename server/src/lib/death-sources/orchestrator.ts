@@ -166,7 +166,6 @@ export const DEFAULT_CONFIG: EnrichmentConfig = {
   },
   specificSources: {},
   aiModels: {},
-  stopOnMatch: true,
   confidenceThreshold: 0.5,
   linkFollow: DEFAULT_LINK_FOLLOW_CONFIG,
 }
@@ -684,22 +683,10 @@ export class DeathEnrichmentOrchestrator {
         continue
       }
 
-      // Standard mode: Check if we have enough data
-      if (this.config.stopOnMatch && this.hasEnoughData(result)) {
-        this.statusBar.log(`    Stopping - sufficient data collected`)
-        actorStats.finalSource = source.type
-        actorStats.confidence = lookupResult.source.confidence
-        break
-      }
-
-      // Check confidence threshold
+      // Update best source if confidence threshold met
       if (lookupResult.source.confidence >= this.config.confidenceThreshold) {
         actorStats.finalSource = source.type
         actorStats.confidence = lookupResult.source.confidence
-        if (this.config.stopOnMatch) {
-          this.statusBar.log(`    Stopping - confidence threshold met`)
-          break
-        }
       }
     }
 

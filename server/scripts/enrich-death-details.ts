@@ -31,7 +31,6 @@ import newrelic from "newrelic"
  *   -a, --actor-id <ids>         Process specific actor(s) by internal ID (comma-separated)
  *   -t, --tmdb-id <ids>          Process specific actor(s) by TMDB ID (comma-separated)
  *   -y, --yes                    Skip confirmation prompt
- *   --stop-on-match              Stop searching once we get results (default: true)
  *   -c, --confidence <n>         Minimum confidence threshold (0-1, default: 0.5)
  *   --max-cost-per-actor <n>     Maximum cost allowed per actor (USD)
  *   --max-total-cost <n>         Maximum total cost for entire run (USD, default: 10)
@@ -159,7 +158,6 @@ interface EnrichOptions {
   free: boolean
   paid: boolean
   ai: boolean
-  stopOnMatch: boolean
   confidence: number
   actorId?: number[]
   tmdbId?: number[]
@@ -352,7 +350,6 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     free,
     paid,
     ai,
-    stopOnMatch,
     confidence: confidenceThreshold,
     actorId,
     tmdbId,
@@ -676,9 +673,6 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     console.log(`  Free sources: ${free ? "enabled" : "disabled"}`)
     console.log(`  Paid sources: ${paid ? "enabled" : "disabled"}`)
     console.log(`  AI sources: ${ai ? "enabled" : "disabled"}`)
-    console.log(
-      `  Stop on match: ${claudeCleanup && gatherAllSources ? "no (gathering all)" : stopOnMatch ? "yes" : "no"}`
-    )
     console.log(`  Confidence threshold: ${confidenceThreshold}`)
 
     console.log(`\nLink Following:`)
@@ -805,7 +799,6 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         paid: paid,
         ai: ai,
       },
-      stopOnMatch: claudeCleanup && gatherAllSources ? false : stopOnMatch, // Don't stop if gathering all
       confidenceThreshold: confidenceThreshold,
       costLimits: {
         maxCostPerActor: maxCostPerActor,
@@ -1187,7 +1180,6 @@ const program = new Command()
   .option("--disable-free", "Disable free sources")
   .option("--disable-paid", "Disable paid sources")
   .option("--ai", "Include AI model fallbacks")
-  .option("--stop-on-match", "Stop searching additional sources once we get results", true)
   .option(
     "-c, --confidence <number>",
     "Minimum confidence threshold to accept results (0-1)",
@@ -1277,7 +1269,6 @@ const program = new Command()
       free: !options.disableFree,
       paid: !options.disablePaid,
       ai: options.ai || false,
-      stopOnMatch: options.stopOnMatch !== false,
       confidence: options.confidence,
       actorId: options.actorId,
       tmdbId: options.tmdbId,

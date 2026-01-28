@@ -1,23 +1,18 @@
 /**
  * Enrichment Process Manager
  *
- * Manages the lifecycle of enrichment script executions:
- * - Spawns enrichment script as a child process
- * - Tracks process status in database
+ * Manages the lifecycle of enrichment runs using BullMQ:
+ * - Creates enrichment runs in database
+ * - Enqueues BullMQ jobs for processing
  * - Provides progress updates
- * - Handles graceful shutdown
+ * - Handles job cancellation
  */
 
-import { spawn, type ChildProcess } from "child_process"
 import { getPool } from "./db.js"
-import path from "path"
-import { fileURLToPath } from "url"
-import { dirname } from "path"
 import newrelic from "newrelic"
 import { logger } from "./logger.js"
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+import { queueManager } from "./jobs/queue-manager.js"
+import { JobType } from "./jobs/types.js"
 
 /**
  * Configuration for starting an enrichment run
@@ -30,7 +25,6 @@ export interface EnrichmentRunConfig {
   free?: boolean
   paid?: boolean
   ai?: boolean
-  stopOnMatch?: boolean
   confidence?: number
   maxCostPerActor?: number
   maxTotalCost?: number
@@ -49,10 +43,10 @@ export interface EnrichmentRunConfig {
 }
 
 /**
- * In-memory store of running enrichment processes
- * Maps run_id -> ChildProcess
+ * In-memory store of running enrichment jobs
+ * Maps run_id -> jobId
  */
-const runningProcesses = new Map<number, ChildProcess>()
+const runningJobs = new Map<number, string>()
 
 /**
  * Start a new enrichment run
@@ -87,42 +81,51 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
       claudeCleanup: config.claudeCleanup || false,
     })
 
-    // Build command line arguments for the enrichment script
-    const args = buildScriptArgs(config)
-    args.push("--run-id", runId.toString())
-    args.push("--yes") // Skip confirmation prompt
-
-    // Path to the enrichment script
-    const scriptPath = path.join(__dirname, "../../scripts/enrich-death-details.ts")
-
-    // Spawn the enrichment process
-    logger.info({ runId, scriptPath, args }, "Spawning enrichment process")
-
-    const child = spawn("npx", ["tsx", scriptPath, ...args], {
-      cwd: path.join(__dirname, "../.."),
-      env: {
-        ...process.env,
-        // Ensure the script has access to environment variables
+    // Enqueue BullMQ job instead of spawning script
+    const jobId = await queueManager.addJob(
+      JobType.ENRICH_DEATH_DETAILS_BATCH,
+      {
+        runId,
+        limit: config.limit,
+        minPopularity: config.minPopularity,
+        actorIds: config.actorIds,
+        recentOnly: config.recentOnly,
+        free: config.free ?? true,
+        paid: config.paid ?? true,
+        ai: config.ai ?? false,
+        confidence: config.confidence ?? 0.5,
+        maxCostPerActor: config.maxCostPerActor,
+        maxTotalCost: config.maxTotalCost,
+        claudeCleanup: config.claudeCleanup ?? true,
+        gatherAllSources: config.gatherAllSources ?? true,
+        followLinks: config.followLinks ?? true,
+        aiLinkSelection: config.aiLinkSelection ?? true,
+        aiContentExtraction: config.aiContentExtraction ?? true,
+        aiModel: config.aiModel,
+        maxLinks: config.maxLinks,
+        maxLinkCost: config.maxLinkCost,
+        topBilledYear: config.topBilledYear,
+        maxBilling: config.maxBilling,
+        topMovies: config.topMovies,
+        usActorsOnly: config.usActorsOnly ?? false,
+        ignoreCache: false,
+        staging: false,
       },
-      stdio: ["ignore", "pipe", "pipe"], // Capture stdout and stderr
-    })
-
-    // Update database with process_id and status 'running'
-    await pool.query(
-      `UPDATE enrichment_runs
-       SET status = 'running',
-           process_id = $1
-       WHERE id = $2`,
-      [child.pid, runId]
+      { createdBy: "admin-enrichment" }
     )
 
-    logger.info({ runId, pid: child.pid }, "Enrichment process started")
+    // Update database with status 'running'
+    await pool.query(
+      `UPDATE enrichment_runs
+       SET status = 'running'
+       WHERE id = $1`,
+      [runId]
+    )
 
-    // Store the child process
-    runningProcesses.set(runId, child)
+    logger.info({ runId, jobId }, "Enrichment job enqueued")
 
-    // Set up event handlers for the child process
-    setupProcessHandlers(child, runId)
+    // Store the job ID
+    runningJobs.set(runId, jobId)
 
     return runId
   } catch (error) {
@@ -132,207 +135,25 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
 }
 
 /**
- * Build command line arguments for the enrichment script
- */
-function buildScriptArgs(config: EnrichmentRunConfig): string[] {
-  const args: string[] = []
-
-  if (config.limit !== undefined) {
-    args.push("--limit", config.limit.toString())
-  }
-
-  if (config.minPopularity !== undefined) {
-    args.push("--min-popularity", config.minPopularity.toString())
-  }
-
-  if (config.recentOnly) {
-    args.push("--recent-only")
-  }
-
-  if (config.actorIds && config.actorIds.length > 0) {
-    args.push("--actor-id", config.actorIds.join(","))
-  }
-
-  if (config.free) {
-    args.push("--free")
-  }
-
-  if (config.paid) {
-    args.push("--paid")
-  }
-
-  if (config.ai) {
-    args.push("--ai")
-  }
-
-  if (config.stopOnMatch) {
-    args.push("--stop-on-match")
-  }
-
-  if (config.confidence !== undefined) {
-    args.push("--confidence", config.confidence.toString())
-  }
-
-  if (config.maxCostPerActor !== undefined) {
-    args.push("--max-cost-per-actor", config.maxCostPerActor.toString())
-  }
-
-  if (config.maxTotalCost !== undefined) {
-    args.push("--max-total-cost", config.maxTotalCost.toString())
-  }
-
-  if (config.claudeCleanup) {
-    args.push("--claude-cleanup")
-  }
-
-  if (config.gatherAllSources) {
-    args.push("--gather-all-sources")
-  }
-
-  if (config.followLinks) {
-    args.push("--follow-links")
-  }
-
-  if (config.aiLinkSelection) {
-    args.push("--ai-link-selection")
-  }
-
-  if (config.aiContentExtraction) {
-    args.push("--ai-content-extraction")
-  }
-
-  if (config.aiModel) {
-    args.push("--ai-model", config.aiModel)
-  }
-
-  if (config.maxLinks !== undefined) {
-    args.push("--max-links", config.maxLinks.toString())
-  }
-
-  if (config.maxLinkCost !== undefined) {
-    args.push("--max-link-cost", config.maxLinkCost.toString())
-  }
-
-  if (config.topBilledYear !== undefined) {
-    args.push("--top-billed-year", config.topBilledYear.toString())
-  }
-
-  if (config.maxBilling !== undefined) {
-    args.push("--max-billing", config.maxBilling.toString())
-  }
-
-  if (config.topMovies !== undefined) {
-    args.push("--top-movies", config.topMovies.toString())
-  }
-
-  if (config.usActorsOnly) {
-    args.push("--us-actors-only")
-  }
-
-  return args
-}
-
-/**
- * Set up event handlers for the child process
- */
-function setupProcessHandlers(child: ChildProcess, runId: number): void {
-  const pool = getPool()
-
-  // Capture stdout for logging (optional - for debugging)
-  child.stdout?.on("data", (data) => {
-    logger.debug({ runId, output: data.toString() }, "Enrichment script output")
-  })
-
-  // Capture stderr for errors
-  child.stderr?.on("data", (data) => {
-    logger.error({ runId, error: data.toString() }, "Enrichment script error output")
-  })
-
-  // Handle process exit
-  child.on("exit", async (code, signal) => {
-    logger.info({ runId, code, signal }, "Enrichment process exited")
-
-    // Remove from running processes map
-    runningProcesses.delete(runId)
-
-    // The enrichment script should update the database on completion
-    // But if the process crashes, we need to mark it as failed
-    if (code !== 0) {
-      try {
-        await pool.query(
-          `UPDATE enrichment_runs
-           SET status = 'failed',
-               completed_at = NOW(),
-               exit_reason = 'error',
-               process_id = NULL
-           WHERE id = $1 AND status = 'running'`,
-          [runId]
-        )
-
-        newrelic.recordCustomEvent("EnrichmentRunFailed", {
-          runId,
-          exitCode: code ?? -1,
-          signal: signal ?? "none",
-        })
-      } catch (error) {
-        logger.error({ error, runId }, "Failed to update enrichment run status on process exit")
-      }
-    }
-  })
-
-  // Handle process errors
-  child.on("error", async (error) => {
-    logger.error({ error, runId }, "Enrichment process error")
-
-    runningProcesses.delete(runId)
-
-    try {
-      await pool.query(
-        `UPDATE enrichment_runs
-         SET status = 'failed',
-             completed_at = NOW(),
-             exit_reason = 'error',
-             process_id = NULL,
-             errors = jsonb_set(
-               COALESCE(errors, '[]'::jsonb),
-               '{999999}',
-               to_jsonb($2::text)
-             )
-         WHERE id = $1`,
-        [runId, error.message]
-      )
-
-      newrelic.recordCustomEvent("EnrichmentRunError", {
-        runId,
-        error: error.message,
-      })
-    } catch (dbError) {
-      logger.error({ error: dbError, runId }, "Failed to update enrichment run status on error")
-    }
-  })
-}
-
-/**
  * Stop a running enrichment run
  *
- * Sends SIGTERM to the process to allow graceful shutdown.
- * The enrichment script should handle SIGTERM and update the database.
+ * Cancels the BullMQ job and updates the database.
  *
  * @param runId - ID of the enrichment run to stop
- * @returns true if the process was found and signaled, false otherwise
+ * @returns true if the job was found and cancelled, false otherwise
  */
 export async function stopEnrichmentRun(runId: number): Promise<boolean> {
   const pool = getPool()
 
   logger.info({ runId }, "Stopping enrichment run")
 
-  // Check if the process is running
-  const child = runningProcesses.get(runId)
+  // Check if the job is in memory
+  const jobId = runningJobs.get(runId)
 
-  if (!child) {
-    // Process not in memory - check database
-    const result = await pool.query<{ process_id: number | null; status: string }>(
-      `SELECT process_id, status FROM enrichment_runs WHERE id = $1`,
+  if (!jobId) {
+    // Job not in memory - check database status
+    const result = await pool.query<{ status: string }>(
+      `SELECT status FROM enrichment_runs WHERE id = $1`,
       [runId]
     )
 
@@ -340,51 +161,46 @@ export async function stopEnrichmentRun(runId: number): Promise<boolean> {
       throw new Error(`Enrichment run ${runId} not found`)
     }
 
-    const { process_id, status } = result.rows[0]
+    const { status } = result.rows[0]
 
-    if (status !== "running") {
+    if (status !== "running" && status !== "pending") {
       throw new Error(`Enrichment run ${runId} is not running (status: ${status})`)
     }
 
-    if (!process_id) {
-      throw new Error(`Enrichment run ${runId} has no process_id`)
-    }
+    // Job may have already completed or been orphaned
+    // Just update the database status
+    await pool.query(
+      `UPDATE enrichment_runs
+       SET status = 'stopped',
+           completed_at = NOW(),
+           exit_reason = 'interrupted'
+       WHERE id = $1`,
+      [runId]
+    )
 
-    // Try to kill the process by PID (may fail if process already exited)
-    try {
-      process.kill(process_id, "SIGTERM")
-      logger.info({ runId, pid: process_id }, "Sent SIGTERM to enrichment process")
-
-      // Update database to mark as stopped
-      await pool.query(
-        `UPDATE enrichment_runs
-         SET status = 'stopped',
-             completed_at = NOW(),
-             exit_reason = 'interrupted',
-             process_id = NULL
-         WHERE id = $1`,
-        [runId]
-      )
-
-      return true
-    } catch (error) {
-      logger.error({ error, runId, pid: process_id }, "Failed to kill enrichment process")
-      throw new Error(`Failed to stop enrichment run ${runId}: process may have already exited`)
-    }
+    logger.warn({ runId }, "Job not found in memory, marked as stopped in database")
+    return true
   }
 
-  // Process is in memory - send SIGTERM
+  // Job is in memory - cancel it via queue manager
   try {
-    child.kill("SIGTERM")
-    logger.info({ runId, pid: child.pid }, "Sent SIGTERM to enrichment process")
+    const cancelled = await queueManager.cancelJob(jobId)
+
+    if (cancelled) {
+      logger.info({ runId, jobId }, "Enrichment job cancelled")
+    } else {
+      logger.warn({ runId, jobId }, "Job not found in queue, may have already completed")
+    }
+
+    // Remove from running jobs map
+    runningJobs.delete(runId)
 
     // Update database to mark as stopped
     await pool.query(
       `UPDATE enrichment_runs
        SET status = 'stopped',
            completed_at = NOW(),
-           exit_reason = 'interrupted',
-           process_id = NULL
+           exit_reason = 'interrupted'
        WHERE id = $1`,
       [runId]
     )
@@ -393,7 +209,7 @@ export async function stopEnrichmentRun(runId: number): Promise<boolean> {
 
     return true
   } catch (error) {
-    logger.error({ error, runId }, "Failed to send SIGTERM to enrichment process")
+    logger.error({ error, runId, jobId }, "Failed to cancel enrichment job")
     throw error
   }
 }
@@ -472,5 +288,5 @@ export async function getEnrichmentRunProgress(runId: number) {
  * @returns Array of running enrichment run IDs
  */
 export function getRunningEnrichments(): number[] {
-  return Array.from(runningProcesses.keys())
+  return Array.from(runningJobs.keys())
 }

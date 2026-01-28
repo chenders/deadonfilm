@@ -33,6 +33,7 @@ export enum JobType {
 
   // Death information enrichment
   ENRICH_DEATH_DETAILS = "enrich-death-details",
+  ENRICH_DEATH_DETAILS_BATCH = "enrich-death-details-batch",
   ENRICH_CAUSE_OF_DEATH = "enrich-cause-of-death",
 
   // Cache operations
@@ -148,6 +149,36 @@ export const enrichCauseOfDeathPayloadSchema = z.object({
   deathDate: z.string().optional(), // Date string (e.g., "YYYY-MM-DD")
 })
 
+// Batch death details enrichment payload (for admin UI)
+export const enrichDeathDetailsBatchPayloadSchema = z.object({
+  runId: z.number().int().positive(),
+  limit: z.number().int().positive().optional(),
+  minPopularity: z.number().optional(),
+  actorIds: z.array(z.number().int().positive()).min(1).optional(),
+  tmdbIds: z.array(z.number().int().positive()).min(1).optional(),
+  recentOnly: z.boolean().optional(),
+  free: z.boolean().default(true),
+  paid: z.boolean().default(true),
+  ai: z.boolean().default(false),
+  confidence: z.number().min(0).max(1).default(0.5),
+  maxCostPerActor: z.number().optional(),
+  maxTotalCost: z.number().optional(),
+  claudeCleanup: z.boolean().default(true),
+  gatherAllSources: z.boolean().default(true),
+  followLinks: z.boolean().default(true),
+  aiLinkSelection: z.boolean().default(true),
+  aiContentExtraction: z.boolean().default(true),
+  aiModel: z.string().optional(),
+  maxLinks: z.number().int().positive().optional(),
+  maxLinkCost: z.number().optional(),
+  topBilledYear: z.number().int().positive().optional(),
+  maxBilling: z.number().int().positive().optional(),
+  topMovies: z.number().int().positive().optional(),
+  usActorsOnly: z.boolean().default(false),
+  ignoreCache: z.boolean().default(false),
+  staging: z.boolean().default(false),
+})
+
 // Actor cache warming payload
 export const warmActorCachePayloadSchema = z.object({
   actorId: z.number().int().positive(),
@@ -204,6 +235,7 @@ export const jobPayloadSchemas = {
   [JobType.FETCH_TRAKT_RATINGS]: fetchTraktRatingsPayloadSchema,
   [JobType.FETCH_THETVDB_SCORES]: fetchTheTVDBScoresPayloadSchema,
   [JobType.ENRICH_DEATH_DETAILS]: enrichDeathDetailsPayloadSchema,
+  [JobType.ENRICH_DEATH_DETAILS_BATCH]: enrichDeathDetailsBatchPayloadSchema,
   [JobType.ENRICH_CAUSE_OF_DEATH]: enrichCauseOfDeathPayloadSchema,
   [JobType.WARM_ACTOR_CACHE]: warmActorCachePayloadSchema,
   [JobType.WARM_CONTENT_CACHE]: warmContentCachePayloadSchema,
@@ -225,6 +257,7 @@ export type FetchOMDbRatingsPayload = z.infer<typeof fetchOMDbRatingsPayloadSche
 export type FetchTraktRatingsPayload = z.infer<typeof fetchTraktRatingsPayloadSchema>
 export type FetchTheTVDBScoresPayload = z.infer<typeof fetchTheTVDBScoresPayloadSchema>
 export type EnrichDeathDetailsPayload = z.infer<typeof enrichDeathDetailsPayloadSchema>
+export type EnrichDeathDetailsBatchPayload = z.infer<typeof enrichDeathDetailsBatchPayloadSchema>
 export type EnrichCauseOfDeathPayload = z.infer<typeof enrichCauseOfDeathPayloadSchema>
 export type WarmActorCachePayload = z.infer<typeof warmActorCachePayloadSchema>
 export type WarmContentCachePayload = z.infer<typeof warmContentCachePayloadSchema>
@@ -249,6 +282,7 @@ export type JobPayloadMap = {
   [JobType.FETCH_TRAKT_RATINGS]: FetchTraktRatingsPayload
   [JobType.FETCH_THETVDB_SCORES]: FetchTheTVDBScoresPayload
   [JobType.ENRICH_DEATH_DETAILS]: EnrichDeathDetailsPayload
+  [JobType.ENRICH_DEATH_DETAILS_BATCH]: EnrichDeathDetailsBatchPayload
   [JobType.ENRICH_CAUSE_OF_DEATH]: EnrichCauseOfDeathPayload
   [JobType.WARM_ACTOR_CACHE]: WarmActorCachePayload
   [JobType.WARM_CONTENT_CACHE]: WarmContentCachePayload
@@ -374,6 +408,7 @@ export const jobTypeToQueue: Record<JobType, QueueName> = {
   [JobType.FETCH_TRAKT_RATINGS]: QueueName.RATINGS,
   [JobType.FETCH_THETVDB_SCORES]: QueueName.RATINGS,
   [JobType.ENRICH_DEATH_DETAILS]: QueueName.ENRICHMENT,
+  [JobType.ENRICH_DEATH_DETAILS_BATCH]: QueueName.ENRICHMENT,
   [JobType.ENRICH_CAUSE_OF_DEATH]: QueueName.ENRICHMENT,
   [JobType.WARM_ACTOR_CACHE]: QueueName.CACHE,
   [JobType.WARM_CONTENT_CACHE]: QueueName.CACHE,

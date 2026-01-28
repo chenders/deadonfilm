@@ -458,6 +458,50 @@ class QueueManager {
   }
 
   /**
+   * Cancel/remove a job by ID
+   *
+   * Searches all queues for the job and removes it.
+   * If the job is currently active, it will be removed after it completes.
+   *
+   * @param jobId - The job ID to cancel
+   * @returns true if the job was found and removed, false otherwise
+   */
+  async cancelJob(jobId: string): Promise<boolean> {
+    if (!this.initialized) {
+      throw new Error("Queue manager not initialized. Call initialize() first.")
+    }
+
+    // Search all queues for the job
+    for (const [queueName, queue] of this.queues.entries()) {
+      const job = await queue.getJob(jobId)
+      if (job) {
+        try {
+          await job.remove()
+          logger.info({ jobId, queue: queueName }, "Job cancelled and removed from queue")
+
+          // Update database
+          const pool = getPool()
+          await pool.query(
+            `UPDATE job_runs
+             SET status = $1, completed_at = $2
+             WHERE job_id = $3 AND completed_at IS NULL`,
+            [JobStatus.CANCELLED, new Date(), jobId]
+          )
+
+          newrelic.recordMetric(`Custom/JobQueue/${queueName}/Cancelled`, 1)
+          return true
+        } catch (error) {
+          logger.error({ jobId, queue: queueName, error }, "Failed to cancel job")
+          throw error
+        }
+      }
+    }
+
+    logger.warn({ jobId }, "Job not found in any queue")
+    return false
+  }
+
+  /**
    * Clean completed jobs older than specified age
    */
   async cleanOldJobs(

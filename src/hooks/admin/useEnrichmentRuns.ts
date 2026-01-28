@@ -90,7 +90,6 @@ export interface StartEnrichmentRequest {
   free?: boolean
   paid?: boolean
   ai?: boolean
-  stopOnMatch?: boolean
   confidence?: number
   maxCostPerActor?: number
   maxTotalCost?: number
