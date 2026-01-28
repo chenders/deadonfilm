@@ -365,4 +365,89 @@ describe("ActorDeathPage", () => {
       expect(screen.queryByTestId("low-confidence-warning")).not.toBeInTheDocument()
     })
   })
+
+  describe("Paragraph Formatting", () => {
+    it("renders multi-paragraph official section as separate paragraphs", async () => {
+      const dataWithParagraphs = {
+        ...mockDeathDetails,
+        circumstances: {
+          ...mockDeathDetails.circumstances,
+          official:
+            "First paragraph of circumstances.\n\nSecond paragraph with more details.\n\nThird paragraph concluding the account.",
+        },
+      }
+      vi.mocked(api.getActorDeathDetails).mockResolvedValue(dataWithParagraphs)
+
+      renderWithProviders(<ActorDeathPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("official-section")).toBeInTheDocument()
+      })
+
+      // Each paragraph should be in its own p element
+      const officialSection = screen.getByTestId("official-section")
+      const paragraphs = officialSection.querySelectorAll("p")
+      expect(paragraphs).toHaveLength(3)
+      expect(paragraphs[0]).toHaveTextContent("First paragraph of circumstances.")
+      expect(paragraphs[1]).toHaveTextContent("Second paragraph with more details.")
+      expect(paragraphs[2]).toHaveTextContent("Third paragraph concluding the account.")
+    })
+
+    it("renders multi-paragraph rumored section as separate paragraphs", async () => {
+      const dataWithParagraphs = {
+        ...mockDeathDetails,
+        circumstances: {
+          ...mockDeathDetails.circumstances,
+          rumored: "First rumored account.\n\nSecond alternative theory.",
+        },
+      }
+      vi.mocked(api.getActorDeathDetails).mockResolvedValue(dataWithParagraphs)
+
+      renderWithProviders(<ActorDeathPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("rumored-section")).toBeInTheDocument()
+      })
+
+      const rumoredSection = screen.getByTestId("rumored-section")
+      const paragraphs = rumoredSection.querySelectorAll("p")
+      expect(paragraphs).toHaveLength(2)
+    })
+
+    it("renders multi-paragraph additional context as separate paragraphs", async () => {
+      const dataWithParagraphs = {
+        ...mockDeathDetails,
+        circumstances: {
+          ...mockDeathDetails.circumstances,
+          additionalContext: "Background information.\n\nMore context about the situation.",
+        },
+      }
+      vi.mocked(api.getActorDeathDetails).mockResolvedValue(dataWithParagraphs)
+
+      renderWithProviders(<ActorDeathPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("context-section")).toBeInTheDocument()
+      })
+
+      const contextSection = screen.getByTestId("context-section")
+      const paragraphs = contextSection.querySelectorAll("p")
+      expect(paragraphs).toHaveLength(2)
+    })
+
+    it("renders single paragraph content as single p element", async () => {
+      vi.mocked(api.getActorDeathDetails).mockResolvedValue(mockDeathDetails)
+
+      renderWithProviders(<ActorDeathPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("official-section")).toBeInTheDocument()
+      })
+
+      const officialSection = screen.getByTestId("official-section")
+      // The section has h2 and ConfidenceIndicator span, so just check p count
+      const paragraphs = officialSection.querySelectorAll("p")
+      expect(paragraphs).toHaveLength(1)
+    })
+  })
 })
