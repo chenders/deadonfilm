@@ -69,6 +69,16 @@ describe("Admin Coverage Queries", () => {
       expect(result.totalPages).toBe(1)
     })
 
+    it("casts popularity to float to ensure numeric type", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(mockPool, {}, 1, 50)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      // Verify the SQL includes popularity::float cast to prevent string type issues
+      expect(calls[0][0]).toContain("popularity::float")
+    })
+
     it("applies hasDeathPage filter", async () => {
       vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
 
@@ -234,6 +244,16 @@ describe("Admin Coverage Queries", () => {
         expect.stringContaining("popularity >= $1"),
         [10, 100]
       )
+    })
+
+    it("casts popularity to float to ensure numeric type", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getEnrichmentCandidates(mockPool)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      // Verify the SQL includes popularity::float cast to prevent string type issues
+      expect(calls[0][0]).toContain("popularity::float")
     })
 
     it("uses default parameters", async () => {
