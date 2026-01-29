@@ -69,6 +69,9 @@ export interface ShowResponse {
     expectedDeaths: number
     mortalitySurpriseScore: number
   }
+  // Aggregate rating score (Dead on Film Score)
+  aggregateScore?: number | null
+  aggregateConfidence?: number | null
 }
 
 // Episode summary for season episode list

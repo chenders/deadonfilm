@@ -13,6 +13,7 @@ import MortalityGauge from "@/components/movie/MortalityGauge"
 import CastToggle from "@/components/movie/CastToggle"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import AggregateScore from "@/components/common/AggregateScore"
 import type { ViewMode } from "@/types"
 
 export default function ShowPage() {
@@ -95,7 +96,16 @@ export default function ShowPage() {
         {/* Poster + Gauge side by side */}
         <div className="mb-4 flex items-center justify-center gap-4">
           <ShowPoster show={show} />
-          <MortalityGauge stats={stats} />
+          <div className="flex flex-col items-center gap-3">
+            <MortalityGauge stats={stats} />
+            {data.aggregateScore !== null && data.aggregateScore !== undefined && (
+              <AggregateScore
+                score={data.aggregateScore}
+                confidence={data.aggregateConfidence ?? null}
+                size="sm"
+              />
+            )}
+          </div>
         </div>
 
         <EpisodeBrowser

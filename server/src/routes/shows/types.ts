@@ -74,6 +74,9 @@ export interface ShowResponse {
     expectedDeaths: number
     mortalitySurpriseScore: number
   }
+  // Aggregate rating score (Dead on Film Score)
+  aggregateScore?: number | null
+  aggregateConfidence?: number | null
 }
 
 // Limit main cast to reduce API calls (movies use 30)

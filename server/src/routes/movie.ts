@@ -7,6 +7,7 @@ import {
   updateDeathInfo,
   upsertMovie,
   batchUpsertActorMovieAppearances,
+  getMovie as getMovieFromDb,
   type ActorInput,
   type ActorMovieAppearanceRecord,
 } from "../lib/db.js"
@@ -69,6 +70,9 @@ interface MovieResponse {
   }
   lastSurvivor: LivingActor | null
   enrichmentPending?: boolean
+  // Aggregate rating score (Dead on Film Score)
+  aggregateScore?: number | null
+  aggregateConfidence?: number | null
 }
 
 const CAST_LIMIT = 30
@@ -83,8 +87,12 @@ export async function getMovie(req: Request, res: Response) {
   try {
     const startTime = Date.now()
 
-    // Fetch movie details and credits in parallel
-    const [movie, credits] = await Promise.all([getMovieDetails(movieId), getMovieCredits(movieId)])
+    // Fetch movie details, credits, and database record in parallel
+    const [movie, credits, dbMovie] = await Promise.all([
+      getMovieDetails(movieId),
+      getMovieCredits(movieId),
+      getMovieFromDb(movieId).catch(() => null), // Gracefully handle if DB unavailable
+    ])
 
     // Limit to top billed cast members
     const mainCast = credits.cast.slice(0, CAST_LIMIT)
@@ -265,6 +273,9 @@ export async function getMovie(req: Request, res: Response) {
         mortalitySurpriseScore,
       },
       lastSurvivor,
+      // Include aggregate score if available from database
+      aggregateScore: dbMovie?.aggregate_score ?? null,
+      aggregateConfidence: dbMovie?.aggregate_confidence ?? null,
     }
 
     // Check if any actors need enrichment
