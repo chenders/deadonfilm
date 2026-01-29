@@ -117,9 +117,10 @@ router.get("/", async (req: Request, res: Response) => {
     const total = parseInt(countResult.rows[0].count)
 
     // Get paginated results
+    // Cast id to int since bigserial returns as string in node-postgres
     const query = `
       SELECT
-        id,
+        id::int as id,
         level,
         source,
         message,
@@ -164,8 +165,9 @@ router.get("/stats", async (_req: Request, res: Response) => {
     const pool = getPool()
 
     // Counts by level (last 24h)
+    // Cast COUNT to int since node-postgres returns bigint as string
     const levelCountsQuery = `
-      SELECT level, COUNT(*) as count
+      SELECT level, COUNT(*)::int as count
       FROM error_logs
       WHERE created_at > NOW() - INTERVAL '24 hours'
       GROUP BY level
@@ -183,7 +185,7 @@ router.get("/stats", async (_req: Request, res: Response) => {
 
     // Counts by source (last 24h)
     const sourceCountsQuery = `
-      SELECT source, COUNT(*) as count
+      SELECT source, COUNT(*)::int as count
       FROM error_logs
       WHERE created_at > NOW() - INTERVAL '24 hours'
       GROUP BY source
@@ -195,7 +197,7 @@ router.get("/stats", async (_req: Request, res: Response) => {
     const timelineQuery = `
       SELECT
         date_trunc('hour', created_at) as hour,
-        COUNT(*) as count
+        COUNT(*)::int as count
       FROM error_logs
       WHERE created_at > NOW() - INTERVAL '24 hours'
       GROUP BY date_trunc('hour', created_at)
@@ -207,7 +209,7 @@ router.get("/stats", async (_req: Request, res: Response) => {
     const topMessagesQuery = `
       SELECT
         left(message, 100) as message_preview,
-        COUNT(*) as count,
+        COUNT(*)::int as count,
         MAX(created_at) as last_occurred
       FROM error_logs
       WHERE created_at > NOW() - INTERVAL '24 hours'
@@ -221,9 +223,9 @@ router.get("/stats", async (_req: Request, res: Response) => {
     // Total counts
     const totalsQuery = `
       SELECT
-        COUNT(*) as total_24h,
-        COUNT(*) FILTER (WHERE level = 'error') as errors_24h,
-        COUNT(*) FILTER (WHERE level = 'fatal') as fatals_24h
+        COUNT(*)::int as total_24h,
+        COUNT(*) FILTER (WHERE level = 'error')::int as errors_24h,
+        COUNT(*) FILTER (WHERE level = 'fatal')::int as fatals_24h
       FROM error_logs
       WHERE created_at > NOW() - INTERVAL '24 hours'
     `
@@ -249,11 +251,19 @@ router.get("/stats", async (_req: Request, res: Response) => {
 router.get("/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params
+    const parsedId = parseInt(id, 10)
+
+    if (isNaN(parsedId) || parsedId < 1) {
+      return res.status(400).json({
+        error: { message: "Invalid 'id' parameter; must be a positive integer." },
+      })
+    }
+
     const pool = getPool()
 
     const result = await pool.query(
       `SELECT
-        id,
+        id::int as id,
         level,
         source,
         message,
@@ -267,7 +277,7 @@ router.get("/:id", async (req: Request, res: Response) => {
         created_at
       FROM error_logs
       WHERE id = $1`,
-      [id]
+      [parsedId]
     )
 
     if (result.rows.length === 0) {
@@ -292,7 +302,8 @@ router.delete("/cleanup", async (req: Request, res: Response) => {
     const pool = getPool()
 
     const result = await pool.query(
-      `DELETE FROM error_logs WHERE created_at < NOW() - INTERVAL '${daysToKeep} days'`
+      `DELETE FROM error_logs WHERE created_at < NOW() - ($1::int * INTERVAL '1 day')`,
+      [daysToKeep]
     )
 
     logger.info(

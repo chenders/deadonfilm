@@ -1,9 +1,25 @@
 import pino from "pino"
 import type { Request } from "express"
+import { mkdirSync, existsSync } from "fs"
+import { dirname } from "path"
 
 const isProduction = process.env.NODE_ENV === "production"
 const logToFile = process.env.LOG_TO_FILE === "true"
 const logFilePath = process.env.LOG_FILE_PATH || "/var/log/deadonfilm/app.log"
+
+// Ensure log directory exists if file logging is enabled
+if (logToFile) {
+  const logDir = dirname(logFilePath)
+  if (!existsSync(logDir)) {
+    try {
+      mkdirSync(logDir, { recursive: true })
+    } catch (error) {
+      // If we can't create the directory, warn and continue without file logging
+      // eslint-disable-next-line no-console
+      console.error(`Failed to create log directory ${logDir}:`, error)
+    }
+  }
+}
 
 /**
  * Build transport configuration based on environment.
