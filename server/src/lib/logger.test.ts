@@ -142,4 +142,95 @@ describe("logger", () => {
       expect(testLogger).toBe(logger)
     })
   })
+
+  describe("createRouteLogger", () => {
+    it("creates child logger with route context", async () => {
+      const { createRouteLogger } = await import("./logger.js")
+      const mockReq = {
+        headers: { "x-request-id": "test-request-123" },
+        path: "/api/test",
+        method: "GET",
+      } as unknown as import("express").Request
+
+      const routeLogger = createRouteLogger(mockReq)
+
+      const bindings = routeLogger.bindings()
+      expect(bindings.source).toBe("route")
+      expect(bindings.requestId).toBe("test-request-123")
+      expect(bindings.path).toBe("/api/test")
+      expect(bindings.method).toBe("GET")
+    })
+
+    it("generates request ID if not provided in headers", async () => {
+      const { createRouteLogger } = await import("./logger.js")
+      const mockReq = {
+        headers: {},
+        path: "/api/actor/123",
+        method: "POST",
+      } as unknown as import("express").Request
+
+      const routeLogger = createRouteLogger(mockReq)
+
+      const bindings = routeLogger.bindings()
+      expect(bindings.requestId).toBeDefined()
+      expect(bindings.requestId).toMatch(/^req_/)
+    })
+  })
+
+  describe("createScriptLogger", () => {
+    it("creates child logger with script context", async () => {
+      const { createScriptLogger } = await import("./logger.js")
+
+      const scriptLogger = createScriptLogger("sync-tmdb-changes")
+
+      // Verify the logger is created with the correct context bindings
+      const bindings = scriptLogger.bindings()
+      expect(bindings.source).toBe("script")
+      expect(bindings.scriptName).toBe("sync-tmdb-changes")
+      // Verify logger has required methods
+      expect(typeof scriptLogger.info).toBe("function")
+      expect(typeof scriptLogger.error).toBe("function")
+    })
+  })
+
+  describe("createJobLogger", () => {
+    it("creates child logger with job context", async () => {
+      const { createJobLogger } = await import("./logger.js")
+
+      const jobLogger = createJobLogger("enrich-death-details")
+
+      const bindings = jobLogger.bindings()
+      expect(bindings.source).toBe("cronjob")
+      expect(bindings.jobName).toBe("enrich-death-details")
+    })
+
+    it("includes run ID when provided", async () => {
+      const { createJobLogger } = await import("./logger.js")
+
+      const jobLogger = createJobLogger("enrich-death-details", "run-456")
+
+      const bindings = jobLogger.bindings()
+      expect(bindings.runId).toBe("run-456")
+    })
+
+    it("omits run ID when not provided", async () => {
+      const { createJobLogger } = await import("./logger.js")
+
+      const jobLogger = createJobLogger("enrich-death-details")
+
+      const bindings = jobLogger.bindings()
+      expect(bindings.runId).toBeUndefined()
+    })
+  })
+
+  describe("createStartupLogger", () => {
+    it("creates child logger with startup context", async () => {
+      const { createStartupLogger } = await import("./logger.js")
+
+      const startupLogger = createStartupLogger()
+
+      const bindings = startupLogger.bindings()
+      expect(bindings.source).toBe("startup")
+    })
+  })
 })
