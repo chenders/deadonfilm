@@ -6,6 +6,7 @@
 
 import { Pool } from "pg"
 import { linkMultipleFields, hasEntityLinks } from "../entity-linker/index.js"
+import { backfillLinksForActors, type BackfillResult } from "../death-link-backfiller.js"
 
 // ============================================================================
 // Types
@@ -880,16 +881,17 @@ export async function editEnrichment(
 /**
  * Commit all approved enrichments for a run to production tables.
  * Copies data from staging to actors and actor_death_circumstances,
- * invalidates caches, and marks run as committed.
+ * backfills TMDB IDs for projects and celebrities, invalidates caches,
+ * and marks run as committed.
  *
- * @returns Object with committedCount indicating how many enrichments were committed
+ * @returns Object with committedCount and backfillResult statistics
  */
 export async function commitEnrichmentRun(
   pool: Pool,
   runId: number,
   adminUser: string,
   notes?: string
-): Promise<{ committedCount: number }> {
+): Promise<{ committedCount: number; backfillResult: BackfillResult }> {
   const client = await pool.connect()
 
   try {
@@ -941,7 +943,10 @@ export async function commitEnrichmentRun(
 
     if (approvedResult.rows.length === 0) {
       await client.query("ROLLBACK")
-      return { committedCount: 0 }
+      return {
+        committedCount: 0,
+        backfillResult: { linksAdded: 0, actorsLinked: 0, projectsLinked: 0, celebritiesLinked: 0 },
+      }
     }
 
     const approvedStagingIds = approvedResult.rows.map((r) => r.id)
@@ -1081,6 +1086,10 @@ export async function commitEnrichmentRun(
       [runId, adminUser, notes || null]
     )
 
+    // Backfill TMDB IDs for projects and related celebrities
+    // This runs within the transaction so if it fails, everything is rolled back
+    const backfillResult = await backfillLinksForActors(client, actorIds)
+
     await client.query("COMMIT")
 
     // After commit, invalidate caches for all updated actors
@@ -1090,7 +1099,7 @@ export async function commitEnrichmentRun(
       await invalidateActorCache(actorId)
     }
 
-    return { committedCount: approvedResult.rows.length }
+    return { committedCount: approvedResult.rows.length, backfillResult }
   } catch (error) {
     await client.query("ROLLBACK")
     throw error

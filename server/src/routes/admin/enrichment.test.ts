@@ -1249,8 +1249,18 @@ describe("Admin Enrichment Endpoints", () => {
   })
 
   describe("POST /admin/api/enrichment/runs/:id/commit", () => {
+    const mockBackfillResult = {
+      linksAdded: 3,
+      actorsLinked: 2,
+      projectsLinked: 1,
+      celebritiesLinked: 2,
+    }
+
     it("commits approved enrichments successfully", async () => {
-      vi.mocked(queries.commitEnrichmentRun).mockResolvedValue({ committedCount: 5 })
+      vi.mocked(queries.commitEnrichmentRun).mockResolvedValue({
+        committedCount: 5,
+        backfillResult: mockBackfillResult,
+      })
 
       const response = await request(app)
         .post("/admin/api/enrichment/runs/1/commit")
@@ -1279,7 +1289,10 @@ describe("Admin Enrichment Endpoints", () => {
     })
 
     it("commits without notes", async () => {
-      vi.mocked(queries.commitEnrichmentRun).mockResolvedValue({ committedCount: 3 })
+      vi.mocked(queries.commitEnrichmentRun).mockResolvedValue({
+        committedCount: 3,
+        backfillResult: mockBackfillResult,
+      })
 
       await request(app)
         .post("/admin/api/enrichment/runs/1/commit")
@@ -1295,7 +1308,10 @@ describe("Admin Enrichment Endpoints", () => {
     })
 
     it("handles zero commits", async () => {
-      vi.mocked(queries.commitEnrichmentRun).mockResolvedValue({ committedCount: 0 })
+      vi.mocked(queries.commitEnrichmentRun).mockResolvedValue({
+        committedCount: 0,
+        backfillResult: { linksAdded: 0, actorsLinked: 0, projectsLinked: 0, celebritiesLinked: 0 },
+      })
 
       const response = await request(app)
         .post("/admin/api/enrichment/runs/1/commit")
