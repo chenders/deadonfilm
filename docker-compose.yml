@@ -259,6 +259,47 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  worker:
+    image: ghcr.io/chenders/deadonfilm:${IMAGE_TAG:-latest}
+    container_name: deadonfilm-worker
+    restart: unless-stopped
+    entrypoint: ["node", "--import", "newrelic/esm-loader.mjs", "dist/src/worker.js"]
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Los_Angeles
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-deadonfilm}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-deadonfilm}
+      - REDIS_URL=redis://redis:6379
+      - REDIS_JOBS_URL=redis://redis-jobs:6379
+      # Optional: limit which queues this worker processes
+      # - WORKER_QUEUES=enrichment,ratings
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redis-jobs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pidof node > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2'
+        reservations:
+          memory: 256M
+    logging:
+      driver: journald
+      options:
+        tag: "deadonfilm-worker"
+        labels: "service"
+
   redis-jobs:
     image: redis:7-alpine
     container_name: deadonfilm-redis-jobs
