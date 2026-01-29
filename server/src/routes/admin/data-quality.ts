@@ -142,7 +142,7 @@ router.get("/future-deaths", async (req: Request, res: Response): Promise<void> 
         tmdb_id,
         deathday,
         birthday,
-        popularity,
+        popularity::float,
         CASE
           WHEN deathday > CURRENT_DATE THEN 'future_date'
           WHEN birthday IS NOT NULL AND deathday < birthday THEN 'before_birth'
@@ -350,7 +350,7 @@ router.get("/uncertain-deaths", async (req: Request, res: Response): Promise<voi
         a.name,
         a.tmdb_id,
         a.deathday,
-        a.popularity,
+        a.popularity::float,
         adc.circumstances
       FROM actors a
       JOIN actor_death_circumstances adc ON a.id = adc.actor_id

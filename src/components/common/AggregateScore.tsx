@@ -2,8 +2,8 @@ import HoverTooltip from "./HoverTooltip"
 import { StarIcon } from "@/components/icons"
 
 interface AggregateScoreProps {
-  score: number | null
-  confidence: number | null
+  score: number | null | undefined
+  confidence: number | null | undefined
   className?: string
   size?: "sm" | "md" | "lg"
 }
@@ -51,8 +51,8 @@ export default function AggregateScore({
   const formattedScore = score.toFixed(1)
 
   // Calculate confidence description
-  const getConfidenceLabel = (conf: number | null): string => {
-    if (conf === null) return "Limited data"
+  const getConfidenceLabel = (conf: number | null | undefined): string => {
+    if (conf === null || conf === undefined) return "Limited data"
     if (conf >= 0.8) return "High confidence"
     if (conf >= 0.5) return "Moderate confidence"
     return "Limited data"

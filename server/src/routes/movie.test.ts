@@ -228,7 +228,7 @@ describe("getMovie route", () => {
         title: "Breakfast at Tiffany's",
         aggregate_score: 8.2,
         aggregate_confidence: 0.85,
-      } as never)
+      } as Awaited<ReturnType<typeof getMovieFromDb>>)
 
       await getMovie(mockReq as Request, mockRes as Response)
 

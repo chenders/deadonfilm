@@ -401,6 +401,96 @@ describe("Admin Enrichment Endpoints", () => {
     })
   })
 
+  describe("GET /admin/api/enrichment/runs/:id/logs", () => {
+    const mockLogs = [
+      {
+        id: 1,
+        level: "error",
+        source: "cronjob",
+        message: "Failed to fetch death details",
+        details: null,
+        request_id: null,
+        path: null,
+        method: null,
+        script_name: null,
+        job_name: "enrichment",
+        error_stack: "Error: timeout",
+        created_at: "2024-01-01T00:00:00.000Z",
+      },
+    ]
+
+    it("returns paginated logs for specific run", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [{ count: "1" }] }) // count query
+        .mockResolvedValueOnce({ rows: mockLogs }) // logs query
+
+      const response = await request(app).get("/admin/api/enrichment/runs/1/logs").expect(200)
+
+      expect(response.body).toEqual({
+        logs: mockLogs,
+        pagination: {
+          page: 1,
+          pageSize: 50,
+          total: 1,
+          totalPages: 1,
+        },
+      })
+    })
+
+    it("accepts page and pageSize parameters", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [{ count: "100" }] })
+        .mockResolvedValueOnce({ rows: [] })
+
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/logs?page=2&pageSize=25")
+        .expect(200)
+
+      expect(response.body.pagination).toEqual({
+        page: 2,
+        pageSize: 25,
+        total: 100,
+        totalPages: 4,
+      })
+    })
+
+    it("accepts level filter parameter", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [{ count: "5" }] })
+        .mockResolvedValueOnce({ rows: [] })
+
+      await request(app).get("/admin/api/enrichment/runs/1/logs?level=error").expect(200)
+
+      // Verify that the query was called with level filter
+      expect(mockPoolQuery).toHaveBeenCalledWith(
+        expect.stringContaining("level = $2"),
+        expect.arrayContaining([1, "error"])
+      )
+    })
+
+    it("rejects invalid level parameter", async () => {
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/logs?level=invalid")
+        .expect(400)
+
+      expect(response.body.error.message).toContain("Invalid level")
+    })
+
+    it("returns 400 for invalid run ID", async () => {
+      const response = await request(app).get("/admin/api/enrichment/runs/invalid/logs").expect(400)
+
+      expect(response.body.error.message).toBe("Invalid run ID")
+    })
+
+    it("returns 500 on database error", async () => {
+      mockPoolQuery.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app).get("/admin/api/enrichment/runs/1/logs").expect(500)
+
+      expect(response.body.error.message).toContain("Failed to fetch enrichment run logs")
+    })
+  })
+
   // ========================================================================
   // POST endpoints (interactive controls)
   // ========================================================================

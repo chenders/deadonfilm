@@ -9,9 +9,7 @@ describe("AggregateScore", () => {
   })
 
   it("renders nothing when score is undefined", () => {
-    const { container } = render(
-      <AggregateScore score={undefined as unknown as null} confidence={null} />
-    )
+    const { container } = render(<AggregateScore score={undefined} confidence={null} />)
     expect(container.firstChild).toBeNull()
   })
 
