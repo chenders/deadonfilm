@@ -31,6 +31,7 @@ import {
   type EnrichmentData,
   type DeathCircumstancesData,
 } from "./enrichment-db-writer.js"
+import { linkMultipleFields, hasEntityLinks } from "./entity-linker/index.js"
 import { logger } from "./logger.js"
 
 /**
@@ -401,6 +402,17 @@ export class EnrichmentRunner {
         hasDetailedDeathInfo: hasDetailedDeathInfo || false,
       }
 
+      // Run entity linking on narrative text fields
+      const entityLinks = await linkMultipleFields(
+        db,
+        {
+          circumstances,
+          rumored_circumstances: rumoredCircumstances,
+          additional_context: additionalContext,
+        },
+        { excludeActorId: actorId }
+      )
+
       const circumstancesData: DeathCircumstancesData = {
         actorId,
         circumstances,
@@ -437,6 +449,7 @@ export class EnrichmentRunner {
               gatheredAt: new Date().toISOString(),
             }
           : null,
+        entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
         enrichmentSource: "multi-source-enrichment",
         enrichmentVersion: "2.0.0",
       }
