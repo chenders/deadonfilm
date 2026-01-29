@@ -20,20 +20,27 @@
  */
 
 import "dotenv/config"
-import { Command } from "commander"
+import { Command, InvalidArgumentError } from "commander"
 import { getPool } from "../src/lib/db.js"
 import {
   buildMovieRatingInputs,
   buildShowRatingInputs,
   calculateAggregateScore,
 } from "../src/lib/aggregate-score.js"
-import { parsePositiveInt } from "../src/lib/import-phases.js"
 
 interface Options {
   dryRun: boolean
   moviesOnly: boolean
   showsOnly: boolean
   limit: number | null
+}
+
+function parsePositiveInt(value: string): number {
+  const n = parseInt(value, 10)
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0) {
+    throw new InvalidArgumentError("Must be a positive integer")
+  }
+  return n
 }
 
 const program = new Command()
@@ -78,7 +85,19 @@ async function run(options: Options): Promise<void> {
     // Process movies
     if (!options.showsOnly) {
       console.log("Processing movies...")
-      const baseMovieQuery = `
+      // Use parameterized query for LIMIT - $1 is null when no limit, handled by COALESCE
+      const moviesResult = await db.query<{
+        tmdb_id: number
+        title: string
+        vote_average: number | null
+        omdb_imdb_rating: number | null
+        omdb_imdb_votes: number | null
+        omdb_rotten_tomatoes_score: number | null
+        omdb_metacritic_score: number | null
+        trakt_rating: number | null
+        trakt_votes: number | null
+      }>(
+        `
         SELECT
           tmdb_id, title, vote_average,
           omdb_imdb_rating, omdb_imdb_votes,
@@ -91,20 +110,10 @@ async function run(options: Options): Promise<void> {
            OR omdb_metacritic_score IS NOT NULL
            OR trakt_rating IS NOT NULL
         ORDER BY popularity DESC NULLS LAST
-      `
-      const movieQuery = options.limit ? `${baseMovieQuery} LIMIT $1` : baseMovieQuery
-      const movieParams = options.limit ? [options.limit] : []
-      const moviesResult = await db.query<{
-        tmdb_id: number
-        title: string
-        vote_average: number | null
-        omdb_imdb_rating: number | null
-        omdb_imdb_votes: number | null
-        omdb_rotten_tomatoes_score: number | null
-        omdb_metacritic_score: number | null
-        trakt_rating: number | null
-        trakt_votes: number | null
-      }>(movieQuery, movieParams)
+        LIMIT COALESCE($1, 2147483647)
+        `,
+        [options.limit]
+      )
 
       totalMovies = moviesResult.rows.length
       console.log(`Found ${totalMovies} movies with rating data\n`)
@@ -146,7 +155,20 @@ async function run(options: Options): Promise<void> {
     // Process shows
     if (!options.moviesOnly) {
       console.log("Processing TV shows...")
-      const baseShowQuery = `
+      // Use parameterized query for LIMIT - $1 is null when no limit, handled by COALESCE
+      const showsResult = await db.query<{
+        tmdb_id: number
+        name: string
+        vote_average: number | null
+        omdb_imdb_rating: number | null
+        omdb_imdb_votes: number | null
+        omdb_rotten_tomatoes_score: number | null
+        omdb_metacritic_score: number | null
+        trakt_rating: number | null
+        trakt_votes: number | null
+        thetvdb_score: number | null
+      }>(
+        `
         SELECT
           tmdb_id, name, vote_average,
           omdb_imdb_rating, omdb_imdb_votes,
@@ -161,21 +183,10 @@ async function run(options: Options): Promise<void> {
            OR trakt_rating IS NOT NULL
            OR thetvdb_score IS NOT NULL
         ORDER BY popularity DESC NULLS LAST
-      `
-      const showQuery = options.limit ? `${baseShowQuery} LIMIT $1` : baseShowQuery
-      const showParams = options.limit ? [options.limit] : []
-      const showsResult = await db.query<{
-        tmdb_id: number
-        name: string
-        vote_average: number | null
-        omdb_imdb_rating: number | null
-        omdb_imdb_votes: number | null
-        omdb_rotten_tomatoes_score: number | null
-        omdb_metacritic_score: number | null
-        trakt_rating: number | null
-        trakt_votes: number | null
-        thetvdb_score: number | null
-      }>(showQuery, showParams)
+        LIMIT COALESCE($1, 2147483647)
+        `,
+        [options.limit]
+      )
 
       totalShows = showsResult.rows.length
       console.log(`Found ${totalShows} shows with rating data\n`)

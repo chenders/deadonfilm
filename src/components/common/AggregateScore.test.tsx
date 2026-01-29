@@ -17,7 +17,7 @@ describe("AggregateScore", () => {
     render(<AggregateScore score={8.45} confidence={0.75} />)
 
     expect(screen.getByTestId("aggregate-score")).toBeInTheDocument()
-    // 8.45 rounds to 8.4 with toFixed(1) (banker's rounding)
+    // 8.45 rounds to 8.4 due to floating-point representation (8.45 is stored as 8.4499999...)
     expect(screen.getByTestId("aggregate-score-value")).toHaveTextContent("8.4")
   })
 

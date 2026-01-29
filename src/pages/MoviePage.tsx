@@ -121,13 +121,11 @@ export default function MoviePage() {
           <MoviePoster movie={movie} />
           <div className="flex flex-col items-center gap-3">
             <MortalityGauge stats={stats} />
-            {data.aggregateScore !== null && data.aggregateScore !== undefined && (
-              <AggregateScore
-                score={data.aggregateScore}
-                confidence={data.aggregateConfidence ?? null}
-                size="sm"
-              />
-            )}
+            <AggregateScore
+              score={data.aggregateScore ?? null}
+              confidence={data.aggregateConfidence ?? null}
+              size="sm"
+            />
           </div>
         </div>
 
