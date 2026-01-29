@@ -14,6 +14,7 @@ vi.mock("../lib/db.js", () => ({
   updateDeathInfo: vi.fn().mockResolvedValue(undefined),
   upsertMovie: vi.fn().mockResolvedValue(undefined),
   batchUpsertActorMovieAppearances: vi.fn().mockResolvedValue(undefined),
+  getMovie: vi.fn().mockResolvedValue(null), // For aggregate score lookup
 }))
 
 vi.mock("../lib/mortality-stats.js", () => ({

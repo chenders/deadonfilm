@@ -19,6 +19,7 @@ vi.mock("../lib/db.js", () => ({
   getSeasons: vi.fn(),
   getDeceasedActorsForShow: vi.fn(),
   getLivingActorsForShow: vi.fn(),
+  getShow: vi.fn().mockResolvedValue(null), // For aggregate score lookup
 }))
 
 vi.mock("../lib/mortality-stats.js", () => ({
