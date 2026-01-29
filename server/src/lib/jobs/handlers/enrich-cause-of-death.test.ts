@@ -163,6 +163,8 @@ describe("EnrichCauseOfDeathHandler", () => {
             cause_of_death: "Stomach cancer",
             cause_of_death_source: "claude",
             cause_of_death_details: "Died from stomach cancer complications",
+            cause_of_death_details_source: "wikipedia",
+            wikipedia_url: "https://en.wikipedia.org/wiki/John_Wayne",
           },
         ],
       })
@@ -172,6 +174,8 @@ describe("EnrichCauseOfDeathHandler", () => {
       expect(result.success).toBe(true)
       expect(result.data?.enriched).toBe(false)
       expect(result.data?.causeOfDeath).toBe("Stomach cancer")
+      expect(result.data?.causeOfDeathDetailsSource).toBe("wikipedia")
+      expect(result.data?.wikipediaUrl).toBe("https://en.wikipedia.org/wiki/John_Wayne")
       expect(result.metadata?.skipped).toBe(true)
       expect(result.metadata?.reason).toBe("already_has_cause_of_death")
       expect(wikidata.getCauseOfDeath).not.toHaveBeenCalled()
@@ -284,6 +288,102 @@ describe("EnrichCauseOfDeathHandler", () => {
         "2004-07-01",
         "sonnet"
       )
+    })
+
+    it("rejects invalid deathDate format in payload", async () => {
+      const jobWithInvalidDate = {
+        ...mockJob,
+        data: {
+          actorId: 3084,
+          actorName: "Marlon Brando",
+          deathDate: "invalid-date",
+        },
+      } as Job
+
+      mockPool.query.mockResolvedValue({
+        rows: [
+          {
+            id: 3084,
+            name: "Marlon Brando",
+            birthday: "1924-04-03",
+            deathday: "2004-07-01",
+            cause_of_death: null,
+            cause_of_death_source: null,
+            cause_of_death_details: null,
+          },
+        ],
+      })
+
+      const result = await handler.process(jobWithInvalidDate)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe(
+        "Invalid deathDate format for actor Marlon Brando (ID: 3084); expected YYYY-MM-DD"
+      )
+      expect(result.metadata?.isPermanent).toBe(true)
+      expect(wikidata.getCauseOfDeath).not.toHaveBeenCalled()
+    })
+
+    it("rejects deathDate with wrong format (MM-DD-YYYY)", async () => {
+      const jobWithWrongFormat = {
+        ...mockJob,
+        data: {
+          actorId: 3084,
+          actorName: "Marlon Brando",
+          deathDate: "07-01-2004",
+        },
+      } as Job
+
+      mockPool.query.mockResolvedValue({
+        rows: [
+          {
+            id: 3084,
+            name: "Marlon Brando",
+            birthday: "1924-04-03",
+            deathday: "2004-07-01",
+            cause_of_death: null,
+            cause_of_death_source: null,
+            cause_of_death_details: null,
+          },
+        ],
+      })
+
+      const result = await handler.process(jobWithWrongFormat)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("Invalid deathDate format")
+      expect(result.metadata?.isPermanent).toBe(true)
+    })
+
+    it("rejects deathDate that parses to invalid Date", async () => {
+      const jobWithInvalidDate = {
+        ...mockJob,
+        data: {
+          actorId: 3084,
+          actorName: "Marlon Brando",
+          deathDate: "2004-13-45", // Invalid month/day
+        },
+      } as Job
+
+      mockPool.query.mockResolvedValue({
+        rows: [
+          {
+            id: 3084,
+            name: "Marlon Brando",
+            birthday: "1924-04-03",
+            deathday: "2004-07-01",
+            cause_of_death: null,
+            cause_of_death_source: null,
+            cause_of_death_details: null,
+          },
+        ],
+      })
+
+      const result = await handler.process(jobWithInvalidDate)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("Invalid deathDate format")
+      expect(result.metadata?.isPermanent).toBe(true)
     })
   })
 

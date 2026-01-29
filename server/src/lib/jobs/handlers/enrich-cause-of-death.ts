@@ -40,6 +40,8 @@ interface ActorRow {
   cause_of_death: string | null
   cause_of_death_source: string | null
   cause_of_death_details: string | null
+  cause_of_death_details_source: string | null
+  wikipedia_url: string | null
 }
 
 /**
@@ -77,8 +79,31 @@ export class EnrichCauseOfDeathHandler extends BaseJobHandler<
       }
     }
 
-    // 2. Verify actor is deceased
-    const actorDeathday = deathDate || this.normalizeDateToString(actor.deathday)
+    // 2. Validate and use death date (payload override or from database)
+    let actorDeathday = this.normalizeDateToString(actor.deathday)
+
+    if (deathDate) {
+      // Validate deathDate format (YYYY-MM-DD) and that it parses to a valid date
+      const deathDateRegex = /^\d{4}-\d{2}-\d{2}$/
+      const isFormatValid = deathDateRegex.test(deathDate)
+      const parsedDeathDate = new Date(deathDate)
+      const isDateValid = !Number.isNaN(parsedDeathDate.getTime())
+
+      if (!isFormatValid || !isDateValid) {
+        log.warn(
+          { actorId, actorName: actor.name, deathDate },
+          "Invalid deathDate provided in job payload"
+        )
+        return {
+          success: false,
+          error: `Invalid deathDate format for actor ${actor.name} (ID: ${actorId}); expected YYYY-MM-DD`,
+          metadata: { isPermanent: true },
+        }
+      }
+
+      actorDeathday = deathDate
+    }
+
     if (!actorDeathday) {
       log.warn({ actorId, actorName: actor.name }, "Actor is not deceased")
       return {
@@ -88,7 +113,7 @@ export class EnrichCauseOfDeathHandler extends BaseJobHandler<
       }
     }
 
-    // 3. Check if actor already has cause of death (skip unless forceRefresh would be added)
+    // 3. Check if actor already has cause of death (always skip existing - no force refresh support)
     if (actor.cause_of_death) {
       log.info(
         { actorId, actorName: actor.name, existingCause: actor.cause_of_death },
@@ -103,6 +128,8 @@ export class EnrichCauseOfDeathHandler extends BaseJobHandler<
           causeOfDeath: actor.cause_of_death,
           causeOfDeathSource: actor.cause_of_death_source ?? undefined,
           causeOfDeathDetails: actor.cause_of_death_details ?? undefined,
+          causeOfDeathDetailsSource: actor.cause_of_death_details_source ?? undefined,
+          wikipediaUrl: actor.wikipedia_url ?? undefined,
         },
         metadata: { skipped: true, reason: "already_has_cause_of_death" },
       }
@@ -180,7 +207,8 @@ export class EnrichCauseOfDeathHandler extends BaseJobHandler<
     const result = await db.query<ActorRow>(
       `SELECT
         id, name, birthday, deathday,
-        cause_of_death, cause_of_death_source, cause_of_death_details
+        cause_of_death, cause_of_death_source, cause_of_death_details,
+        cause_of_death_details_source, wikipedia_url
       FROM actors
       WHERE id = $1`,
       [actorId]
