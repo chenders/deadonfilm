@@ -15,6 +15,7 @@ import LivingList from "@/components/movie/LivingList"
 import LastSurvivor from "@/components/movie/LastSurvivor"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import AggregateScore from "@/components/common/AggregateScore"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildMovieSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import type { ViewMode } from "@/types"
@@ -118,7 +119,16 @@ export default function MoviePage() {
         {/* Poster + Gauge side by side */}
         <div className="mb-4 flex items-center justify-center gap-4">
           <MoviePoster movie={movie} />
-          <MortalityGauge stats={stats} />
+          <div className="flex flex-col items-center gap-3">
+            <MortalityGauge stats={stats} />
+            {data.aggregateScore !== null && data.aggregateScore !== undefined && (
+              <AggregateScore
+                score={data.aggregateScore}
+                confidence={data.aggregateConfidence ?? null}
+                size="sm"
+              />
+            )}
+          </div>
         </div>
 
         {stats.totalCast === 0 ? (

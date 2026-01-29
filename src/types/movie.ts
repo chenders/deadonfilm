@@ -63,6 +63,9 @@ export interface MovieResponse {
   }
   lastSurvivor: LivingActor | null
   enrichmentPending?: boolean
+  // Aggregate rating score (Dead on Film Score)
+  aggregateScore?: number | null
+  aggregateConfidence?: number | null
 }
 
 export interface DeathInfoResponse {

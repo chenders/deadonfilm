@@ -11,6 +11,7 @@ export { default as TimelineIcon } from "./TimelineIcon"
 export { default as DecadesIcon } from "./DecadesIcon"
 export { default as TVIcon } from "./TVIcon"
 export { default as ExternalLinkIcon } from "./ExternalLinkIcon"
+export { default as StarIcon } from "./StarIcon"
 
 // Cause of death category icons
 export { default as HeartIcon } from "./HeartIcon"
