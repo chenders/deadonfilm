@@ -41,7 +41,7 @@ vi.mock("newrelic", () => ({
 
 import { getMovie } from "./movie.js"
 import { getMovieDetails, getMovieCredits, batchGetPersonDetails } from "../lib/tmdb.js"
-import { getActors, batchUpsertActors } from "../lib/db.js"
+import { getActors, batchUpsertActors, getMovie as getMovieFromDb } from "../lib/db.js"
 import { calculateMovieMortality } from "../lib/mortality-stats.js"
 import newrelic from "newrelic"
 import { getCauseOfDeath } from "../lib/wikidata.js"
@@ -217,6 +217,57 @@ describe("getMovie route", () => {
 
       expect(newrelic.recordCustomEvent).not.toHaveBeenCalled()
       expect(statusSpy).toHaveBeenCalledWith(500)
+    })
+  })
+
+  describe("aggregate score handling", () => {
+    it("returns aggregateScore and aggregateConfidence when available in database", async () => {
+      mockReq = { params: { id: "14629" } }
+      vi.mocked(getMovieFromDb).mockResolvedValue({
+        tmdb_id: 14629,
+        title: "Breakfast at Tiffany's",
+        aggregate_score: 8.2,
+        aggregate_confidence: 0.85,
+      } as never)
+
+      await getMovie(mockReq as Request, mockRes as Response)
+
+      expect(jsonSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          aggregateScore: 8.2,
+          aggregateConfidence: 0.85,
+        })
+      )
+    })
+
+    it("returns null for aggregateScore and aggregateConfidence when not in database", async () => {
+      mockReq = { params: { id: "14629" } }
+      vi.mocked(getMovieFromDb).mockResolvedValue(null)
+
+      await getMovie(mockReq as Request, mockRes as Response)
+
+      expect(jsonSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          aggregateScore: null,
+          aggregateConfidence: null,
+        })
+      )
+    })
+
+    it("handles database lookup failure gracefully", async () => {
+      mockReq = { params: { id: "14629" } }
+      vi.mocked(getMovieFromDb).mockRejectedValue(new Error("Database error"))
+
+      await getMovie(mockReq as Request, mockRes as Response)
+
+      // Should still return movie data, aggregate score fields will be null
+      expect(jsonSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          movie: expect.objectContaining({ id: 14629 }),
+          aggregateScore: null,
+          aggregateConfidence: null,
+        })
+      )
     })
   })
 })

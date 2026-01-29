@@ -59,7 +59,7 @@ export default function AggregateScore({
   }
 
   // Tooltip content explaining the score
-  const tooltipContent = `Dead on Film Score: A weighted average of ratings from IMDb, Rotten Tomatoes, Metacritic, Trakt, and TMDB. ${getConfidenceLabel(confidence)} based on available sources and vote counts.`
+  const tooltipContent = `Dead on Film Score: A weighted average of ratings from IMDb, Rotten Tomatoes, Metacritic, Trakt, TMDB, and TheTVDB. ${getConfidenceLabel(confidence)} based on available sources and vote counts.`
 
   return (
     <HoverTooltip content={tooltipContent} testId="aggregate-score-tooltip">

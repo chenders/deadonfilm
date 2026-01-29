@@ -85,7 +85,7 @@ async function run(options: Options): Promise<void> {
     // Process movies
     if (!options.showsOnly) {
       console.log("Processing movies...")
-      const limitClause = options.limit ? `LIMIT ${options.limit}` : ""
+      // Use parameterized query for LIMIT - $1 is null when no limit, handled by COALESCE
       const moviesResult = await db.query<{
         tmdb_id: number
         title: string
@@ -96,7 +96,8 @@ async function run(options: Options): Promise<void> {
         omdb_metacritic_score: number | null
         trakt_rating: number | null
         trakt_votes: number | null
-      }>(`
+      }>(
+        `
         SELECT
           tmdb_id, title, vote_average,
           omdb_imdb_rating, omdb_imdb_votes,
@@ -109,8 +110,10 @@ async function run(options: Options): Promise<void> {
            OR omdb_metacritic_score IS NOT NULL
            OR trakt_rating IS NOT NULL
         ORDER BY popularity DESC NULLS LAST
-        ${limitClause}
-      `)
+        LIMIT COALESCE($1, 2147483647)
+        `,
+        [options.limit]
+      )
 
       totalMovies = moviesResult.rows.length
       console.log(`Found ${totalMovies} movies with rating data\n`)
@@ -152,7 +155,7 @@ async function run(options: Options): Promise<void> {
     // Process shows
     if (!options.moviesOnly) {
       console.log("Processing TV shows...")
-      const limitClause = options.limit ? `LIMIT ${options.limit}` : ""
+      // Use parameterized query for LIMIT - $1 is null when no limit, handled by COALESCE
       const showsResult = await db.query<{
         tmdb_id: number
         name: string
@@ -164,7 +167,8 @@ async function run(options: Options): Promise<void> {
         trakt_rating: number | null
         trakt_votes: number | null
         thetvdb_score: number | null
-      }>(`
+      }>(
+        `
         SELECT
           tmdb_id, name, vote_average,
           omdb_imdb_rating, omdb_imdb_votes,
@@ -179,8 +183,10 @@ async function run(options: Options): Promise<void> {
            OR trakt_rating IS NOT NULL
            OR thetvdb_score IS NOT NULL
         ORDER BY popularity DESC NULLS LAST
-        ${limitClause}
-      `)
+        LIMIT COALESCE($1, 2147483647)
+        `,
+        [options.limit]
+      )
 
       totalShows = showsResult.rows.length
       console.log(`Found ${totalShows} shows with rating data\n`)
