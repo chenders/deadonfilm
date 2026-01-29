@@ -18,6 +18,7 @@ import {
   type LogLevel,
   type LogSource,
 } from "../../hooks/useErrorLogs"
+import { useDebouncedSearchParam } from "../../hooks/useDebouncedSearchParam"
 
 // Level badge styles
 const levelStyles: Record<LogLevel, string> = {
@@ -91,6 +92,13 @@ export default function LogsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [autoRefresh, setAutoRefresh] = useState(false)
   const [cleanupDays, setCleanupDays] = useState(30)
+
+  // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
+  const [searchInput, setSearchInput] = useDebouncedSearchParam({
+    paramName: "search",
+    debounceMs: 300,
+    resetPageOnChange: true,
+  })
 
   // Parse filters from URL with validation
   const filters: ErrorLogFilters = {
@@ -431,24 +439,24 @@ export default function LogsPage() {
             <input
               id="filter-search"
               type="text"
-              value={filters.search || ""}
-              onChange={(e) => updateFilters({ search: e.target.value || undefined, page: 1 })}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search in message..."
               className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-1.5 text-sm text-admin-text-primary placeholder-admin-text-muted focus:border-admin-interactive focus:outline-none"
             />
           </div>
 
-          {(filters.level || filters.source || filters.search) && (
+          {(filters.level || filters.source || searchInput) && (
             <div className="flex items-end">
               <button
-                onClick={() =>
+                onClick={() => {
+                  setSearchInput("")
                   updateFilters({
                     level: undefined,
                     source: undefined,
-                    search: undefined,
                     page: 1,
                   })
-                }
+                }}
                 className="rounded-md px-3 py-1.5 text-sm text-admin-text-muted hover:bg-admin-surface-overlay hover:text-admin-text-primary"
               >
                 Clear Filters
