@@ -102,22 +102,21 @@ router.post("/warm", async (req: Request, res: Response): Promise<void> => {
     const pool = getPool()
     const startTime = Date.now()
 
-    // Build query to get popular actors
-    const deceasedFilter = deceasedOnly ? "WHERE a.deathday IS NOT NULL" : ""
-    const query = `
-      SELECT a.id, a.name, a.deathday, a.popularity
-      FROM actors a
-      ${deceasedFilter}
-      ORDER BY a.popularity DESC NULLS LAST
-      LIMIT $1
-    `
-
+    // Query popular actors, optionally filtering to deceased only
+    // Use boolean parameter to avoid string interpolation in SQL
     const actorsResult = await pool.query<{
       id: number
       name: string
       deathday: string | null
       popularity: number | null
-    }>(query, [limit])
+    }>(
+      `SELECT a.id, a.name, a.deathday, a.popularity::float
+       FROM actors a
+       WHERE ($1 = false OR a.deathday IS NOT NULL)
+       ORDER BY a.popularity DESC NULLS LAST
+       LIMIT $2`,
+      [deceasedOnly, limit]
+    )
 
     let cached = 0
     let skipped = 0

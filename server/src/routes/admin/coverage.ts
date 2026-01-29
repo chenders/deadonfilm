@@ -182,7 +182,7 @@ router.get("/actors/by-ids", async (req: Request, res: Response): Promise<void> 
       popularity: number | null
       tmdb_id: number | null
     }>(
-      `SELECT id, name, popularity, tmdb_id
+      `SELECT id, name, popularity::float, tmdb_id
        FROM actors
        WHERE id = ANY($1::int[])
        ORDER BY popularity DESC NULLS LAST`,
