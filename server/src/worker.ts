@@ -19,6 +19,7 @@ import { QueueName } from "./lib/jobs/types.js"
 import "./lib/jobs/handlers/index.js"
 
 const worker = new JobWorker()
+let isShuttingDown = false
 
 async function main() {
   logger.info("Starting job worker process...")
@@ -46,7 +47,8 @@ async function main() {
       process.exit(1)
     }
 
-    queueNames = parsed as QueueName[]
+    // Deduplicate while preserving order
+    queueNames = [...new Set(parsed)] as QueueName[]
   } else {
     queueNames = Object.values(QueueName)
   }
@@ -61,6 +63,11 @@ async function main() {
 
 // Graceful shutdown
 async function shutdown(signal: string) {
+  if (isShuttingDown) {
+    logger.info({ signal }, "Shutdown already in progress, ignoring signal")
+    return
+  }
+  isShuttingDown = true
   logger.info({ signal }, "Received shutdown signal, stopping workers...")
 
   try {
