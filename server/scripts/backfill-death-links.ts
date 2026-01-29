@@ -24,6 +24,14 @@ import { getPool, resetPool } from "../src/lib/db.js"
 import { invalidateActorCacheRequired } from "../src/lib/cache.js"
 import { initRedis } from "../src/lib/redis.js"
 import type { ProjectInfo, RelatedCelebrity } from "../src/lib/db/types.js"
+import {
+  lookupProject,
+  lookupActor,
+  getProjectTmdbId,
+  setProjectTmdbId,
+  getCelebrityTmdbId,
+  setCelebrityTmdbId,
+} from "../src/lib/death-link-backfiller.js"
 
 export function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
@@ -56,93 +64,10 @@ interface Stats {
 }
 
 /**
- * Look up a movie or show by title and optional year.
- * Returns the tmdb_id if found, null otherwise.
- */
-export async function lookupProject(
-  db: ReturnType<typeof getPool>,
-  title: string,
-  year: number | null,
-  type: string
-): Promise<number | null> {
-  // Try movies first (unless type explicitly says show)
-  if (type !== "show") {
-    const movieQuery = year
-      ? `SELECT tmdb_id FROM movies WHERE LOWER(title) = LOWER($1) AND release_year = $2 LIMIT 1`
-      : `SELECT tmdb_id FROM movies WHERE LOWER(title) = LOWER($1) LIMIT 1`
-    const movieParams = year ? [title, year] : [title]
-    const movieResult = await db.query<{ tmdb_id: number }>(movieQuery, movieParams)
-    if (movieResult.rows.length > 0) {
-      return movieResult.rows[0].tmdb_id
-    }
-  }
-
-  // Try shows
-  if (type !== "movie") {
-    const showQuery = year
-      ? `SELECT tmdb_id FROM shows WHERE LOWER(name) = LOWER($1) AND EXTRACT(YEAR FROM first_air_date) = $2 LIMIT 1`
-      : `SELECT tmdb_id FROM shows WHERE LOWER(name) = LOWER($1) LIMIT 1`
-    const showParams = year ? [title, year] : [title]
-    const showResult = await db.query<{ tmdb_id: number }>(showQuery, showParams)
-    if (showResult.rows.length > 0) {
-      return showResult.rows[0].tmdb_id
-    }
-  }
-
-  return null
-}
-
-/**
- * Look up an actor by name.
- * Returns the tmdb_id if found, null otherwise.
- */
-export async function lookupActor(
-  db: ReturnType<typeof getPool>,
-  name: string
-): Promise<number | null> {
-  // Exact match first
-  const exactResult = await db.query<{ tmdb_id: number }>(
-    `SELECT tmdb_id FROM actors WHERE LOWER(name) = LOWER($1) AND tmdb_id IS NOT NULL LIMIT 1`,
-    [name]
-  )
-  if (exactResult.rows.length > 0) {
-    return exactResult.rows[0].tmdb_id
-  }
-
-  // Try without middle names/initials (e.g., "John Q. Public" -> "John Public")
-  const simplifiedName = name.replace(/\s+[A-Z]\.?\s+/g, " ").trim()
-  if (simplifiedName !== name) {
-    const simplifiedResult = await db.query<{ tmdb_id: number }>(
-      `SELECT tmdb_id FROM actors WHERE LOWER(name) = LOWER($1) AND tmdb_id IS NOT NULL LIMIT 1`,
-      [simplifiedName]
-    )
-    if (simplifiedResult.rows.length > 0) {
-      return simplifiedResult.rows[0].tmdb_id
-    }
-  }
-
-  return null
-}
-
-// Helper to get tmdb_id from project (handles both snake_case and camelCase)
-export function getProjectTmdbId(project: ProjectInfo & { tmdbId?: number | null }): number | null {
-  return project.tmdb_id ?? project.tmdbId ?? null
-}
-
-// Helper to set tmdb_id on project (sets both for compatibility)
-export function setProjectTmdbId(
-  project: ProjectInfo & { tmdbId?: number | null },
-  tmdbId: number
-): void {
-  project.tmdb_id = tmdbId
-  project.tmdbId = tmdbId
-}
-
-/**
  * Process a single project and try to fill in the tmdb_id.
  * Returns true if the project was updated.
  */
-async function processProject(
+async function processProjectWithLogging(
   db: ReturnType<typeof getPool>,
   project: ProjectInfo & { tmdbId?: number | null },
   dryRun: boolean
@@ -165,27 +90,11 @@ async function processProject(
   return false
 }
 
-// Helper to get tmdb_id from celebrity (handles both snake_case and camelCase)
-export function getCelebrityTmdbId(
-  celebrity: RelatedCelebrity & { tmdbId?: number | null }
-): number | null {
-  return celebrity.tmdb_id ?? celebrity.tmdbId ?? null
-}
-
-// Helper to set tmdb_id on celebrity (sets both for compatibility)
-export function setCelebrityTmdbId(
-  celebrity: RelatedCelebrity & { tmdbId?: number | null },
-  tmdbId: number
-): void {
-  celebrity.tmdb_id = tmdbId
-  celebrity.tmdbId = tmdbId
-}
-
 /**
  * Process a single celebrity and try to fill in the tmdb_id.
  * Returns true if the celebrity was updated.
  */
-async function processCelebrity(
+async function processCelebrityWithLogging(
   db: ReturnType<typeof getPool>,
   celebrity: RelatedCelebrity & { tmdbId?: number | null },
   dryRun: boolean
@@ -280,7 +189,7 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
       try {
         // Process last_project
         if (record.last_project) {
-          const linked = await processProject(db, record.last_project, dryRun)
+          const linked = await processProjectWithLogging(db, record.last_project, dryRun)
           if (linked) {
             stats.projectsLinked++
             recordModified = true
@@ -290,7 +199,7 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
         // Process posthumous_releases
         if (record.posthumous_releases) {
           for (const project of record.posthumous_releases) {
-            const linked = await processProject(db, project, dryRun)
+            const linked = await processProjectWithLogging(db, project, dryRun)
             if (linked) {
               stats.projectsLinked++
               recordModified = true
@@ -301,7 +210,7 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
         // Process related_celebrities
         if (record.related_celebrities) {
           for (const celebrity of record.related_celebrities) {
-            const linked = await processCelebrity(db, celebrity, dryRun)
+            const linked = await processCelebrityWithLogging(db, celebrity, dryRun)
             if (linked) {
               stats.celebritiesLinked++
               recordModified = true
