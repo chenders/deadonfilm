@@ -570,6 +570,7 @@ interface BackfillOMDbRequest {
 
 const MIN_LIMIT = 1
 const MAX_LIMIT = 1000
+const JOB_BATCH_SIZE = 50 // Number of jobs to queue in parallel
 
 /**
  * POST /admin/api/jobs/omdb/backfill
@@ -640,9 +641,8 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
       const result = await pool.query<{ tmdb_id: number; imdb_id: string }>(query, params)
 
       // Queue jobs in parallel batches for better performance
-      const BATCH_SIZE = 50
-      for (let i = 0; i < result.rows.length; i += BATCH_SIZE) {
-        const batch = result.rows.slice(i, i + BATCH_SIZE)
+      for (let i = 0; i < result.rows.length; i += JOB_BATCH_SIZE) {
+        const batch = result.rows.slice(i, i + JOB_BATCH_SIZE)
         await Promise.all(
           batch.map((movie) =>
             queueManager.addJob(
@@ -692,9 +692,8 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
       const result = await pool.query<{ tmdb_id: number; imdb_id: string }>(query, params)
 
       // Queue jobs in parallel batches for better performance
-      const BATCH_SIZE = 50
-      for (let i = 0; i < result.rows.length; i += BATCH_SIZE) {
-        const batch = result.rows.slice(i, i + BATCH_SIZE)
+      for (let i = 0; i < result.rows.length; i += JOB_BATCH_SIZE) {
+        const batch = result.rows.slice(i, i + JOB_BATCH_SIZE)
         await Promise.all(
           batch.map((show) =>
             queueManager.addJob(
