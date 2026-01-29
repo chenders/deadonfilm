@@ -149,11 +149,11 @@ export class SyncTMDBPeopleHandler extends BaseJobHandler<
       if (person.deathday && !wasAlreadyDeceased) {
         // NEW DEATH DETECTED!
         log.info({ tmdbId, name: person.name, deathday: person.deathday }, "New death detected")
-        newlyDeceasedIds.push(tmdbId)
 
         try {
           await this.processNewDeath(person)
           newDeaths++
+          newlyDeceasedIds.push(tmdbId)
 
           // Get internal actor ID for result (to avoid redirects in URLs)
           const actorIdResult = await pool.query<{ id: number }>(

@@ -11,7 +11,6 @@ import * as tmdb from "../../tmdb.js"
 import * as mortalityStats from "../../mortality-stats.js"
 import * as dateUtils from "../../date-utils.js"
 import * as cache from "../../cache.js"
-import * as redis from "../../redis.js"
 
 // Mock external dependencies
 vi.mock("../../db.js", () => ({
