@@ -189,7 +189,8 @@ export async function findExactMatches(
         end,
         text: match[0],
         entityType: entity.type,
-        entityId: entity.tmdbId,
+        // For actors, use internal database ID; for movies/shows, use TMDB ID
+        entityId: entity.type === "actor" ? entity.id! : entity.tmdbId,
         entitySlug: entity.slug,
         matchMethod: "exact",
         confidence: 1.0,

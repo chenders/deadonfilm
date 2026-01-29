@@ -593,12 +593,13 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
       high: JobPriority.HIGH,
       critical: JobPriority.CRITICAL,
     }
-    const jobPriority = priority ? priorityMap[priority] : JobPriority.LOW
-    if (priority && !jobPriority) {
+    // Validate priority before using it
+    if (priority && !(priority in priorityMap)) {
       return res.status(400).json({
         error: { message: "Priority must be one of: low, normal, high, critical" },
       })
     }
+    const jobPriority = priority ? priorityMap[priority] : JobPriority.LOW
 
     const pool = getPool()
     let totalQueued = 0

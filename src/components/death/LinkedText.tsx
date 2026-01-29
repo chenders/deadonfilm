@@ -144,26 +144,44 @@ function LinkedParagraph({
 /**
  * Splits links across multiple paragraphs based on text positions.
  * Double newlines indicate paragraph breaks.
+ *
+ * @param originalText - The original unsplit text (needed to find separator lengths)
+ * @param paragraphs - The trimmed paragraph texts
+ * @param links - Entity links with positions relative to original text
  */
 function splitLinksAcrossParagraphs(
+  originalText: string,
   paragraphs: string[],
   links: EntityLink[]
 ): Map<number, EntityLink[]> {
   const result = new Map<number, EntityLink[]>()
-  let currentOffset = 0
 
-  paragraphs.forEach((paragraph, idx) => {
+  // Find the actual positions of each paragraph in the original text
+  // by searching for the trimmed paragraph content
+  const paragraphPositions: Array<{ start: number; end: number }> = []
+  let searchStart = 0
+
+  for (const paragraph of paragraphs) {
+    const trimmed = paragraph.trim()
+    const pos = originalText.indexOf(trimmed, searchStart)
+    if (pos !== -1) {
+      paragraphPositions.push({ start: pos, end: pos + trimmed.length })
+      searchStart = pos + trimmed.length
+    }
+  }
+
+  // Distribute links to paragraphs based on their original positions
+  paragraphPositions.forEach((para, idx) => {
     const paragraphLinks: EntityLink[] = []
-    const paragraphEnd = currentOffset + paragraph.length
 
     for (const link of links) {
-      // Check if link falls within this paragraph
-      if (link.start >= currentOffset && link.start < paragraphEnd) {
+      // Check if link starts within this paragraph
+      if (link.start >= para.start && link.start < para.end) {
         // Adjust link positions relative to paragraph start
         paragraphLinks.push({
           ...link,
-          start: link.start - currentOffset,
-          end: Math.min(link.end, paragraphEnd) - currentOffset,
+          start: link.start - para.start,
+          end: Math.min(link.end, para.end) - para.start,
         })
       }
     }
@@ -171,10 +189,6 @@ function splitLinksAcrossParagraphs(
     if (paragraphLinks.length > 0) {
       result.set(idx, paragraphLinks)
     }
-
-    // Account for paragraph text + the separator that was split on
-    // Original text has "\n\n" (or "\n\s*\n") between paragraphs
-    currentOffset = paragraphEnd + 2 // +2 for the double newline
   })
 
   return result
@@ -202,6 +216,7 @@ export function LinkedText({ text, links, className = "" }: LinkedTextProps) {
 
   // Multiple paragraphs - distribute links across them
   const linksByParagraph = splitLinksAcrossParagraphs(
+    text,
     paragraphs.map((p) => p.trim()),
     links ?? []
   )

@@ -119,7 +119,7 @@ describe("exact-matcher", () => {
         end: 28,
         text: "Marlon Brando",
         entityType: "actor",
-        entityId: 100,
+        entityId: 1, // Internal actor ID, not TMDB ID
         entitySlug: "marlon-brando-1",
         matchMethod: "exact",
         confidence: 1.0,

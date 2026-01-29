@@ -30,7 +30,7 @@ export interface EntityLink {
   text: string
   /** Type of entity (actor, movie, show) */
   entityType: EntityType
-  /** TMDB ID of the entity */
+  /** ID of the entity (internal actor.id for actors, TMDB ID for movies/shows) */
   entityId: number
   /** URL slug for the entity page */
   entitySlug: string

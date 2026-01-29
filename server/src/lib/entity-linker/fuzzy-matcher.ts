@@ -140,13 +140,15 @@ export async function findFuzzyMatches(
       end: candidate.end,
       text: candidate.text,
       entityType: entity.type,
-      entityId: entity.tmdbId,
+      // For actors, use internal database ID; for movies/shows, use TMDB ID
+      entityId: entity.type === "actor" ? entity.id! : entity.tmdbId,
       entitySlug: entity.slug,
       matchMethod: "fuzzy",
       confidence,
       // Store alternate matches for review (top 3)
       alternateMatches: results.slice(1, 4).map((r) => ({
-        entityId: r.item.tmdbId,
+        // For actors, use internal database ID; for movies/shows, use TMDB ID
+        entityId: r.item.type === "actor" ? r.item.id! : r.item.tmdbId,
         entitySlug: r.item.slug,
         confidence: 1 - (r.score || 0),
       })),

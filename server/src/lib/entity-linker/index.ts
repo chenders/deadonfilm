@@ -14,9 +14,11 @@ import { mergeLinks, filterByConfidence, calculateStats } from "./merger.js"
 // Re-export types for consumers
 export * from "./types.js"
 
-// Default options
-const DEFAULT_OPTIONS: Required<LinkingOptions> = {
-  excludeActorId: undefined as unknown as number,
+// Default options (excludeActorId intentionally omitted - it's optional)
+const DEFAULT_OPTIONS: Omit<Required<LinkingOptions>, "excludeActorId"> & {
+  excludeActorId?: number
+} = {
+  excludeActorId: undefined,
   minConfidence: 0.7,
   enableExact: true,
   enableFuzzy: true,
