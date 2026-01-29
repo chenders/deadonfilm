@@ -66,6 +66,12 @@ describe("JobQueuesPage", () => {
   const mockPauseQueue = vi.fn()
   const mockResumeQueue = vi.fn()
   const mockCleanupJobs = vi.fn()
+  const mockBackfillOMDb = vi.fn()
+
+  const mockOMDbCoverage = {
+    movies: { needsData: 500, total: 1000 },
+    shows: { needsData: 200, total: 400 },
+  }
 
   beforeEach(() => {
     vi.mocked(useJobQueueModule.useQueueStats).mockReturnValue({
@@ -96,6 +102,21 @@ describe("JobQueuesPage", () => {
       isSuccess: false,
       data: undefined,
     } as unknown as ReturnType<typeof useJobQueueModule.useCleanupJobs>)
+
+    vi.mocked(useJobQueueModule.useOMDbCoverage).mockReturnValue({
+      data: mockOMDbCoverage,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useJobQueueModule.useOMDbCoverage>)
+
+    vi.mocked(useJobQueueModule.useBackfillOMDb).mockReturnValue({
+      mutate: mockBackfillOMDb,
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+      data: undefined,
+      error: null,
+    } as unknown as ReturnType<typeof useJobQueueModule.useBackfillOMDb>)
 
     vi.mocked(adminAuthHook.useAdminAuth).mockReturnValue({
       isAuthenticated: true,

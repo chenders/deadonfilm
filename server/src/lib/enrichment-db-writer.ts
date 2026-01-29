@@ -6,6 +6,7 @@
  */
 
 import type { Pool } from "pg"
+import type { StoredEntityLinks } from "./entity-linker/index.js"
 
 export interface EnrichmentData {
   actorId: number
@@ -44,6 +45,8 @@ export interface DeathCircumstancesData {
   rawResponse?: object | null
   enrichmentSource?: string
   enrichmentVersion?: string
+  /** Auto-detected entity links in narrative fields */
+  entityLinks?: StoredEntityLinks | null
 }
 
 /**
@@ -76,12 +79,13 @@ export async function writeToProduction(
       related_deaths,
       sources,
       raw_response,
+      entity_links,
       enriched_at,
       enrichment_source,
       enrichment_version,
       created_at,
       updated_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), $20, $21, NOW(), NOW())
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), $21, $22, NOW(), NOW())
     ON CONFLICT (actor_id) DO UPDATE SET
       circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
       circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
@@ -101,6 +105,7 @@ export async function writeToProduction(
       related_deaths = COALESCE(EXCLUDED.related_deaths, actor_death_circumstances.related_deaths),
       sources = COALESCE(EXCLUDED.sources, actor_death_circumstances.sources),
       raw_response = COALESCE(EXCLUDED.raw_response, actor_death_circumstances.raw_response),
+      entity_links = COALESCE(EXCLUDED.entity_links, actor_death_circumstances.entity_links),
       enriched_at = NOW(),
       enrichment_source = EXCLUDED.enrichment_source,
       enrichment_version = EXCLUDED.enrichment_version,
@@ -131,6 +136,7 @@ export async function writeToProduction(
       circumstances.relatedDeaths,
       JSON.stringify(circumstances.sources || {}),
       circumstances.rawResponse ? JSON.stringify(circumstances.rawResponse) : null,
+      circumstances.entityLinks ? JSON.stringify(circumstances.entityLinks) : null,
       circumstances.enrichmentSource || "multi-source-enrichment",
       circumstances.enrichmentVersion || "2.0.0",
     ]

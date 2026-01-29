@@ -11,8 +11,8 @@ import ErrorMessage from "@/components/common/ErrorMessage"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildBreadcrumbSchema } from "@/utils/schema"
 import { PersonIcon, ExternalLinkIcon } from "@/components/icons"
-import { ParagraphText } from "@/components/ParagraphText"
-import type { ProjectInfo, SourceEntry, RelatedCelebrity } from "@/types"
+import { LinkedText } from "@/components/death/LinkedText"
+import type { ProjectInfo, SourceEntry, RelatedCelebrity, EntityLink } from "@/types"
 
 // Confidence indicator component
 function ConfidenceIndicator({ level }: { level: string | null }) {
@@ -223,9 +223,16 @@ export default function ActorDeathPage() {
     return <ErrorMessage message="No detailed death information available for this actor" />
   }
 
-  const { actor, circumstances, career, relatedCelebrities, sources } = data
+  const { actor, circumstances, career, relatedCelebrities, sources, entityLinks } = data
   const profileUrl = getProfileUrl(actor.profilePath, "w185")
   const actorSlug = createActorSlug(actor.name, actor.id)
+
+  // Helper to get entity links for a field
+  const getFieldLinks = (
+    fieldName: keyof NonNullable<typeof entityLinks>
+  ): EntityLink[] | undefined => {
+    return entityLinks?.[fieldName]
+  }
 
   // Format career status for display
   const formatCareerStatus = (status: string | null) => {
@@ -330,8 +337,9 @@ export default function ActorDeathPage() {
         {circumstances.official && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="official-section">
             <h2 className="mb-3 font-display text-lg text-brown-dark">What We Know</h2>
-            <ParagraphText
+            <LinkedText
               text={circumstances.official}
+              links={getFieldLinks("circumstances")}
               className="leading-relaxed text-text-muted"
             />
             {circumstances.confidence && (
@@ -347,8 +355,9 @@ export default function ActorDeathPage() {
         {circumstances.rumored && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="rumored-section">
             <h2 className="mb-3 font-display text-lg text-brown-dark">Alternative Accounts</h2>
-            <ParagraphText
+            <LinkedText
               text={circumstances.rumored}
+              links={getFieldLinks("rumored_circumstances")}
               className="leading-relaxed text-text-muted"
             />
             <SourceList sources={sources.rumored} title="Sources" />
@@ -359,8 +368,9 @@ export default function ActorDeathPage() {
         {circumstances.additionalContext && (
           <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="context-section">
             <h2 className="mb-3 font-display text-lg text-brown-dark">Additional Context</h2>
-            <ParagraphText
+            <LinkedText
               text={circumstances.additionalContext}
+              links={getFieldLinks("additional_context")}
               className="leading-relaxed text-text-muted"
             />
           </section>
