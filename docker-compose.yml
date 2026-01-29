@@ -270,6 +270,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       redis-jobs:
         condition: service_healthy
     healthcheck:

@@ -7,7 +7,7 @@
  *
  * Usage:
  *   npx tsx src/worker.ts
- *   NODE_ENV=production node --import newrelic/esm-loader.mjs dist/worker.js
+ *   NODE_ENV=production node --import newrelic/esm-loader.mjs dist/src/worker.js
  */
 
 import "dotenv/config"
@@ -25,9 +25,31 @@ async function main() {
 
   // Parse queue names from env or use all queues
   const queueEnv = process.env.WORKER_QUEUES
-  const queueNames = queueEnv
-    ? (queueEnv.split(",").map((q) => q.trim()) as QueueName[])
-    : Object.values(QueueName)
+  let queueNames: QueueName[]
+
+  if (queueEnv) {
+    const validQueueNames = new Set(Object.values(QueueName))
+    const parsed = queueEnv
+      .split(",")
+      .map((q) => q.trim())
+      .filter((q) => q.length > 0)
+
+    // Validate all queue names
+    const invalid = parsed.filter((q) => !validQueueNames.has(q as QueueName))
+    if (invalid.length > 0) {
+      logger.fatal({ invalid }, "Invalid queue names in WORKER_QUEUES")
+      process.exit(1)
+    }
+
+    if (parsed.length === 0) {
+      logger.fatal("WORKER_QUEUES is set but contains no valid queue names")
+      process.exit(1)
+    }
+
+    queueNames = parsed as QueueName[]
+  } else {
+    queueNames = Object.values(QueueName)
+  }
 
   logger.info({ queues: queueNames }, "Worker will process queues")
 
