@@ -1383,14 +1383,28 @@ router.post("/runs/:id/commit", async (req: Request, res: Response): Promise<voi
       userAgent: req.get("user-agent"),
     })
 
-    const { committedCount } = await commitEnrichmentRun(pool, runId, adminUser, notes)
+    const { committedCount, backfillResult } = await commitEnrichmentRun(
+      pool,
+      runId,
+      adminUser,
+      notes
+    )
 
-    logger.info({ runId, committedCount, adminUser }, "Enrichment run committed")
+    logger.info(
+      { runId, committedCount, backfillResult, adminUser },
+      "Enrichment run committed with backfill"
+    )
 
     res.status(200).json({
       success: true,
       committedCount,
-      message: `${committedCount} enrichment(s) committed successfully`,
+      backfillStats: {
+        linksAdded: backfillResult.linksAdded,
+        actorsLinked: backfillResult.actorsLinked,
+        projectsLinked: backfillResult.projectsLinked,
+        celebritiesLinked: backfillResult.celebritiesLinked,
+      },
+      message: `${committedCount} enrichment(s) committed successfully${backfillResult.linksAdded > 0 ? `, ${backfillResult.linksAdded} links backfilled` : ""}`,
     })
   } catch (error) {
     logger.error({ error }, "Failed to commit enrichment run")

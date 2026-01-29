@@ -34,7 +34,8 @@ export interface AggregateResult {
   controversy: number | null // Standard deviation indicating disagreement
 }
 
-// Base weights for each source (must sum to ~1.0 for normalization)
+// Base weights for each source - relative importance of each rating source
+// The actual sum doesn't need to be exactly 1.0 since we normalize by total weight
 // IMDb weighted highest due to large user base and reliability
 // TheTVDB weighted lowest as it's primarily for TV metadata, not ratings
 const BASE_WEIGHTS: Record<RatingSource, number> = {

@@ -1,14 +1,14 @@
 import { describe, it, expect, vi } from "vitest"
 import { InvalidArgumentError } from "commander"
+import { parsePositiveInt } from "./backfill-death-links.js"
 import {
-  parsePositiveInt,
   getProjectTmdbId,
   setProjectTmdbId,
   getCelebrityTmdbId,
   setCelebrityTmdbId,
   lookupProject,
   lookupActor,
-} from "./backfill-death-links.js"
+} from "../src/lib/death-link-backfiller.js"
 import type { ProjectInfo, RelatedCelebrity } from "../src/lib/db/types.js"
 
 describe("parsePositiveInt", () => {
