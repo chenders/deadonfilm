@@ -398,6 +398,79 @@ export function useEnrichmentRunProgress(
 }
 
 // ============================================================================
+// Run Logs Types & Hooks
+// ============================================================================
+
+export interface EnrichmentRunLog {
+  id: number
+  level: "fatal" | "error" | "warn" | "info" | "debug" | "trace"
+  source: string
+  message: string
+  details?: Record<string, unknown>
+  request_id?: string
+  path?: string
+  method?: string
+  script_name?: string
+  job_name?: string
+  error_stack?: string
+  created_at: string
+}
+
+export interface EnrichmentRunLogsResponse {
+  logs: EnrichmentRunLog[]
+  pagination: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+  }
+}
+
+async function fetchEnrichmentRunLogs(
+  runId: number,
+  page: number,
+  pageSize: number,
+  level?: string
+): Promise<EnrichmentRunLogsResponse> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    pageSize: pageSize.toString(),
+  })
+
+  if (level) {
+    params.append("level", level)
+  }
+
+  const response = await fetch(`/admin/api/enrichment/runs/${runId}/logs?${params.toString()}`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch enrichment run logs")
+  }
+
+  return response.json()
+}
+
+/**
+ * Hook to fetch logs for a specific enrichment run.
+ * Supports pagination and optional level filtering.
+ */
+export function useEnrichmentRunLogs(
+  runId: number,
+  page: number = 1,
+  pageSize: number = 50,
+  level?: string
+): UseQueryResult<EnrichmentRunLogsResponse> {
+  return useQuery({
+    queryKey: ["admin", "enrichment", "run", runId, "logs", page, pageSize, level],
+    queryFn: () => fetchEnrichmentRunLogs(runId, page, pageSize, level),
+    staleTime: 30000, // 30 seconds
+    enabled: !!runId,
+  })
+}
+
+// ============================================================================
 // Batch API Types
 // ============================================================================
 
