@@ -38,7 +38,10 @@ async function main() {
     // Validate all queue names
     const invalid = parsed.filter((q) => !validQueueNames.has(q as QueueName))
     if (invalid.length > 0) {
-      logger.fatal({ invalid }, "Invalid queue names in WORKER_QUEUES")
+      logger.fatal(
+        { invalid, allowed: Object.values(QueueName) },
+        "Invalid queue names in WORKER_QUEUES"
+      )
       process.exit(1)
     }
 
