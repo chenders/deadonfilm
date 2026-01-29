@@ -14,6 +14,8 @@ import {
   useRunSourcePerformanceStats,
   useEnrichmentRunProgress,
   useStopEnrichmentRun,
+  useEnrichmentRunLogs,
+  type EnrichmentRunLog,
 } from "../../hooks/admin/useEnrichmentRuns"
 
 export default function EnrichmentRunDetailsPage() {
@@ -21,6 +23,9 @@ export default function EnrichmentRunDetailsPage() {
   const runId = parseInt(id || "0", 10)
   const [actorsPage, setActorsPage] = useState(1)
   const actorsPageSize = 50
+  const [logsPage, setLogsPage] = useState(1)
+  const [logLevel, setLogLevel] = useState<string | undefined>(undefined)
+  const logsPageSize = 50
   const { toast } = useToast()
 
   const { data: run, isLoading: runLoading, error: runError } = useEnrichmentRunDetails(runId)
@@ -34,6 +39,11 @@ export default function EnrichmentRunDetailsPage() {
     isLoading: sourceStatsLoading,
     error: sourceStatsError,
   } = useRunSourcePerformanceStats(runId)
+  const {
+    data: logsData,
+    isLoading: logsLoading,
+    error: logsError,
+  } = useEnrichmentRunLogs(runId, logsPage, logsPageSize, logLevel)
 
   // Real-time progress tracking for running enrichments
   const isRunning = run?.exit_reason === null && run?.completed_at === null
@@ -228,6 +238,35 @@ export default function EnrichmentRunDetailsPage() {
           </dl>
         </div>
 
+        {/* Errors Section */}
+        {run.errors && run.errors.length > 0 && (
+          <div className="rounded-lg border border-red-800 bg-red-950 p-4 shadow-admin-sm md:p-6">
+            <h2 className="mb-3 text-lg font-semibold text-red-200">Errors ({run.error_count})</h2>
+            <ul className="space-y-2 text-sm">
+              {run.errors.map((error, i) => (
+                <li key={i} className="flex items-start justify-between gap-4">
+                  <span className="text-red-300">{error.message}</span>
+                  <span className="shrink-0 rounded bg-red-900 px-2 py-0.5 text-xs text-red-200">
+                    ×{error.count}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Run Configuration Details */}
+        {run.config && Object.keys(run.config).length > 0 && (
+          <details className="rounded-lg border border-admin-border bg-admin-surface-elevated shadow-admin-sm">
+            <summary className="cursor-pointer p-4 text-lg font-semibold text-admin-text-primary hover:bg-admin-interactive-secondary md:p-6">
+              Run Configuration (JSON)
+            </summary>
+            <pre className="overflow-x-auto border-t border-admin-border p-4 text-xs text-admin-text-secondary md:p-6">
+              {JSON.stringify(run.config, null, 2)}
+            </pre>
+          </details>
+        )}
+
         {/* Source Performance */}
         {sourceStatsLoading && <LoadingSpinner />}
         {sourceStatsError && <ErrorMessage message="Failed to load source stats" />}
@@ -285,7 +324,7 @@ export default function EnrichmentRunDetailsPage() {
           {actors && (
             <>
               <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-                <table className="min-w-[600px] text-sm md:min-w-full">
+                <table className="min-w-[700px] text-sm md:min-w-full">
                   <thead className="border-b border-admin-border">
                     <tr>
                       <th className="px-3 py-2 text-left text-admin-text-secondary">Actor</th>
@@ -293,6 +332,7 @@ export default function EnrichmentRunDetailsPage() {
                       <th className="px-3 py-2 text-left text-admin-text-secondary">Source</th>
                       <th className="px-3 py-2 text-right text-admin-text-secondary">Cost</th>
                       <th className="px-3 py-2 text-right text-admin-text-secondary">Time</th>
+                      <th className="px-3 py-2 text-left text-admin-text-secondary">Error</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-admin-border">
@@ -314,6 +354,12 @@ export default function EnrichmentRunDetailsPage() {
                         </td>
                         <td className="px-3 py-2 text-right text-admin-text-secondary">
                           {actor.processing_time_ms ? `${actor.processing_time_ms}ms` : "—"}
+                        </td>
+                        <td
+                          className="max-w-xs truncate px-3 py-2 text-xs text-red-400"
+                          title={actor.error || ""}
+                        >
+                          {actor.error || "—"}
                         </td>
                       </tr>
                     ))}
@@ -352,8 +398,139 @@ export default function EnrichmentRunDetailsPage() {
             </>
           )}
         </div>
+
+        {/* Run Logs */}
+        <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-admin-text-primary">Error Logs</h2>
+            <select
+              value={logLevel || ""}
+              onChange={(e) => {
+                setLogLevel(e.target.value || undefined)
+                setLogsPage(1)
+              }}
+              className="rounded border border-admin-border bg-admin-surface-base px-3 py-1 text-sm text-admin-text-primary focus:ring-admin-interactive"
+            >
+              <option value="">All Levels</option>
+              <option value="fatal">Fatal</option>
+              <option value="error">Error</option>
+            </select>
+          </div>
+
+          {logsLoading && <LoadingSpinner />}
+          {logsError && <ErrorMessage message="Failed to load logs" />}
+          {logsData && (
+            <>
+              {logsData.logs.length === 0 ? (
+                <p className="py-8 text-center text-admin-text-muted">
+                  No error logs found for this run
+                </p>
+              ) : (
+                <>
+                  <div className="max-h-96 space-y-1 overflow-y-auto font-mono text-xs">
+                    {logsData.logs.map((log) => (
+                      <LogEntry key={log.id} log={log} />
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {logsData.pagination.totalPages > 1 && (
+                    <div className="mt-4 flex items-center justify-between border-t border-admin-border pt-4">
+                      <p className="text-sm text-admin-text-muted">
+                        Showing {(logsPage - 1) * logsPageSize + 1} to{" "}
+                        {Math.min(logsPage * logsPageSize, logsData.pagination.total)} of{" "}
+                        {logsData.pagination.total} logs
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setLogsPage((p) => Math.max(1, p - 1))}
+                          disabled={logsPage === 1}
+                          className="rounded border border-admin-border bg-admin-surface-base px-3 py-1 text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Previous
+                        </button>
+                        <span className="px-3 py-1 text-admin-text-secondary">
+                          Page {logsPage} of {logsData.pagination.totalPages}
+                        </span>
+                        <button
+                          onClick={() =>
+                            setLogsPage((p) => Math.min(logsData.pagination.totalPages, p + 1))
+                          }
+                          disabled={logsPage === logsData.pagination.totalPages}
+                          className="rounded border border-admin-border bg-admin-surface-base px-3 py-1 text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </AdminLayout>
+  )
+}
+
+/** Static color maps for log entry styling (module-level to avoid re-creation) */
+const LOG_LEVEL_COLORS: Record<string, string> = {
+  fatal: "bg-red-950 text-red-200 border-red-800",
+  error: "bg-red-950/50 text-red-300 border-red-900",
+  warn: "bg-yellow-950/50 text-yellow-300 border-yellow-900",
+  info: "text-admin-text-secondary",
+  debug: "text-admin-text-muted",
+  trace: "text-admin-text-muted opacity-70",
+}
+
+const LOG_LEVEL_BADGE_COLORS: Record<string, string> = {
+  fatal: "bg-red-700 text-red-100",
+  error: "bg-red-800 text-red-200",
+  warn: "bg-yellow-800 text-yellow-200",
+  info: "bg-blue-800 text-blue-200",
+  debug: "bg-gray-700 text-gray-200",
+  trace: "bg-gray-800 text-gray-300",
+}
+
+/**
+ * Log entry component with level-based styling.
+ */
+function LogEntry({ log }: { log: EnrichmentRunLog }) {
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr)
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+  }
+
+  return (
+    <div
+      className={`rounded border px-2 py-1 ${LOG_LEVEL_COLORS[log.level] || "text-admin-text-secondary"}`}
+    >
+      <div className="flex items-start gap-2">
+        <span className="shrink-0 text-admin-text-muted">{formatTime(log.created_at)}</span>
+        <span
+          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${LOG_LEVEL_BADGE_COLORS[log.level] || "bg-gray-700"}`}
+        >
+          {log.level}
+        </span>
+        <span className="break-all">{log.message}</span>
+      </div>
+      {log.error_stack && (
+        <details className="ml-20 mt-1">
+          <summary className="cursor-pointer text-admin-text-muted hover:text-admin-text-secondary">
+            Stack trace
+          </summary>
+          <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-[10px] text-admin-text-muted">
+            {log.error_stack}
+          </pre>
+        </details>
+      )}
+    </div>
   )
 }
 
