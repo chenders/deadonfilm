@@ -52,6 +52,10 @@ import { FetchTheTVDBScoresHandler } from "./fetch-thetvdb-scores.js"
 import { EnrichDeathDetailsHandler } from "./enrich-death-details.js"
 import { EnrichDeathDetailsBatchHandler } from "./enrich-death-details-batch.js"
 import { EnrichCauseOfDeathHandler } from "./enrich-cause-of-death.js"
+import { SyncTMDBChangesHandler } from "./sync-tmdb-changes.js"
+import { SyncTMDBPeopleHandler } from "./sync-tmdb-people.js"
+import { SyncTMDBMoviesHandler } from "./sync-tmdb-movies.js"
+import { SyncTMDBShowsHandler } from "./sync-tmdb-shows.js"
 
 // Register handlers
 registerHandler(new FetchOMDbRatingsHandler())
@@ -60,3 +64,7 @@ registerHandler(new FetchTheTVDBScoresHandler())
 registerHandler(new EnrichDeathDetailsHandler())
 registerHandler(new EnrichDeathDetailsBatchHandler())
 registerHandler(new EnrichCauseOfDeathHandler())
+registerHandler(new SyncTMDBChangesHandler())
+registerHandler(new SyncTMDBPeopleHandler())
+registerHandler(new SyncTMDBMoviesHandler())
+registerHandler(new SyncTMDBShowsHandler())
