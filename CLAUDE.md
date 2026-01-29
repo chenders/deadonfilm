@@ -264,6 +264,59 @@ await invalidateActorCacheRequired(tmdbId)  // Throws if Redis unavailable
 3. **Use `*Required` variants in scripts** that must invalidate cache
 4. **Test cache hit/miss paths** - see testing.md
 
+## Logging
+
+Use structured logging with Pino for all server-side code. Logs are sent to stdout (New Relic) and optionally to file (`/var/log/deadonfilm/app.log`).
+
+### Rules
+
+1. **NEVER use `console.log/error/warn`** in routes or libs - use structured logger
+2. **Scripts may use `console.log`** for user-facing CLI output (progress, summaries)
+3. **Always add context** - include relevant IDs and state in log objects
+
+### Context Helpers
+
+```typescript
+import { createRouteLogger, createScriptLogger, createJobLogger, createStartupLogger } from "../lib/logger.js"
+
+// In routes - includes requestId, path, method
+const log = createRouteLogger(req)
+log.error({ actorId, error }, "Failed to fetch actor")
+
+// In scripts
+const log = createScriptLogger("sync-tmdb-changes")
+log.info({ processed: 100, failed: 2 }, "Sync complete")
+
+// In background jobs
+const log = createJobLogger("enrich-death-details", runId)
+log.warn({ actorId }, "No death info found")
+
+// In server startup
+const log = createStartupLogger()
+log.info({ port: 8080 }, "Server started")
+```
+
+### Log Levels
+
+| Level | Use Case |
+|-------|----------|
+| `fatal` | System is unusable, process should exit |
+| `error` | Error conditions (persisted to database) |
+| `warn` | Warning conditions, potential issues |
+| `info` | Normal informational messages |
+| `debug` | Debug-level details (dev only) |
+| `trace` | Most detailed tracing |
+
+### Error Logging Pattern
+
+```typescript
+// GOOD - structured error with context
+log.error({ error, actorId, path: req.path }, "Actor lookup failed")
+
+// BAD - unstructured string interpolation
+console.error(`Actor lookup failed for ${actorId}: ${error}`)
+```
+
 ## Data Source Implementation
 
 When implementing a new death information data source:

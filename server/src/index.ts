@@ -82,6 +82,7 @@ import abTestsRoutes from "./routes/admin/ab-tests.js"
 import jobsRoutes from "./routes/admin/jobs.js"
 import dataQualityRoutes from "./routes/admin/data-quality.js"
 import syncRoutes from "./routes/admin/sync.js"
+import logsRoutes from "./routes/admin/logs.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -302,6 +303,7 @@ app.use("/admin/api/ab-tests", adminRoutesLimiter, adminAuthMiddleware, abTestsR
 app.use("/admin/api/jobs", adminRoutesLimiter, adminAuthMiddleware, jobsRoutes)
 app.use("/admin/api/data-quality", adminRoutesLimiter, adminAuthMiddleware, dataQualityRoutes)
 app.use("/admin/api/sync", adminRoutesLimiter, adminAuthMiddleware, syncRoutes)
+app.use("/admin/api/logs", adminRoutesLimiter, adminAuthMiddleware, logsRoutes)
 
 // Public page view tracking endpoint (rate limited, bot-filtered)
 app.post("/api/page-views/track", pageViewTrackingLimiter, trackPageViewHandler)

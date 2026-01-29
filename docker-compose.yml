@@ -120,6 +120,7 @@ services:
       start_period: 40s
     volumes:
       - sitemap-data:/app/sitemaps
+      - /var/log/deadonfilm:/var/log/deadonfilm  # Host bind mount for persistent logs
     deploy:
       resources:
         limits:
@@ -210,6 +211,7 @@ services:
       start_period: 10s
     volumes:
       - sitemap-data:/app/sitemaps
+      - /var/log/deadonfilm:/var/log/deadonfilm  # Host bind mount for persistent logs
     depends_on:
       app:
         condition: service_healthy

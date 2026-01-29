@@ -81,6 +81,7 @@ const AdminJobQueuesPage = lazyWithRetry(() => import("./pages/admin/JobQueuesPa
 const AdminJobRunsPage = lazyWithRetry(() => import("./pages/admin/JobRunsPage"))
 const AdminJobDetailsPage = lazyWithRetry(() => import("./pages/admin/JobDetailsPage"))
 const AdminDeadLetterQueuePage = lazyWithRetry(() => import("./pages/admin/DeadLetterQueuePage"))
+const AdminLogsPage = lazyWithRetry(() => import("./pages/admin/LogsPage"))
 
 function App() {
   useGoogleAnalytics()
@@ -349,6 +350,16 @@ function App() {
               <AdminThemeProvider>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminDeadLetterQueuePage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/logs"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminLogsPage />
                 </Suspense>
               </AdminThemeProvider>
             }
