@@ -155,6 +155,7 @@ export default function EnrichmentRunsPage() {
                           <td className="px-4 py-3">
                             <Link
                               to={`/admin/enrichment/runs/${run.id}`}
+                              onClick={(e) => e.stopPropagation()}
                               className="font-medium text-admin-danger hover:text-red-300"
                             >
                               #{run.id}

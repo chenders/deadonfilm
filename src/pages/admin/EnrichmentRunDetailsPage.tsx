@@ -402,7 +402,7 @@ export default function EnrichmentRunDetailsPage() {
         {/* Run Logs */}
         <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-admin-text-primary">Run Logs</h2>
+            <h2 className="text-lg font-semibold text-admin-text-primary">Error Logs</h2>
             <select
               value={logLevel || ""}
               onChange={(e) => {
@@ -414,9 +414,6 @@ export default function EnrichmentRunDetailsPage() {
               <option value="">All Levels</option>
               <option value="fatal">Fatal</option>
               <option value="error">Error</option>
-              <option value="warn">Warning</option>
-              <option value="info">Info</option>
-              <option value="debug">Debug</option>
             </select>
           </div>
 
@@ -425,7 +422,9 @@ export default function EnrichmentRunDetailsPage() {
           {logsData && (
             <>
               {logsData.logs.length === 0 ? (
-                <p className="py-8 text-center text-admin-text-muted">No logs found for this run</p>
+                <p className="py-8 text-center text-admin-text-muted">
+                  No error logs found for this run
+                </p>
               ) : (
                 <>
                   <div className="max-h-96 space-y-1 overflow-y-auto font-mono text-xs">
@@ -475,28 +474,29 @@ export default function EnrichmentRunDetailsPage() {
   )
 }
 
+/** Static color maps for log entry styling (module-level to avoid re-creation) */
+const LOG_LEVEL_COLORS: Record<string, string> = {
+  fatal: "bg-red-950 text-red-200 border-red-800",
+  error: "bg-red-950/50 text-red-300 border-red-900",
+  warn: "bg-yellow-950/50 text-yellow-300 border-yellow-900",
+  info: "text-admin-text-secondary",
+  debug: "text-admin-text-muted",
+  trace: "text-admin-text-muted opacity-70",
+}
+
+const LOG_LEVEL_BADGE_COLORS: Record<string, string> = {
+  fatal: "bg-red-700 text-red-100",
+  error: "bg-red-800 text-red-200",
+  warn: "bg-yellow-800 text-yellow-200",
+  info: "bg-blue-800 text-blue-200",
+  debug: "bg-gray-700 text-gray-200",
+  trace: "bg-gray-800 text-gray-300",
+}
+
 /**
  * Log entry component with level-based styling.
  */
 function LogEntry({ log }: { log: EnrichmentRunLog }) {
-  const levelColors: Record<string, string> = {
-    fatal: "bg-red-950 text-red-200 border-red-800",
-    error: "bg-red-950/50 text-red-300 border-red-900",
-    warn: "bg-yellow-950/50 text-yellow-300 border-yellow-900",
-    info: "text-admin-text-secondary",
-    debug: "text-admin-text-muted",
-    trace: "text-admin-text-muted opacity-70",
-  }
-
-  const levelBadgeColors: Record<string, string> = {
-    fatal: "bg-red-700 text-red-100",
-    error: "bg-red-800 text-red-200",
-    warn: "bg-yellow-800 text-yellow-200",
-    info: "bg-blue-800 text-blue-200",
-    debug: "bg-gray-700 text-gray-200",
-    trace: "bg-gray-800 text-gray-300",
-  }
-
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleTimeString("en-US", {
@@ -509,12 +509,12 @@ function LogEntry({ log }: { log: EnrichmentRunLog }) {
 
   return (
     <div
-      className={`rounded border px-2 py-1 ${levelColors[log.level] || "text-admin-text-secondary"}`}
+      className={`rounded border px-2 py-1 ${LOG_LEVEL_COLORS[log.level] || "text-admin-text-secondary"}`}
     >
       <div className="flex items-start gap-2">
         <span className="shrink-0 text-admin-text-muted">{formatTime(log.created_at)}</span>
         <span
-          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${levelBadgeColors[log.level] || "bg-gray-700"}`}
+          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${LOG_LEVEL_BADGE_COLORS[log.level] || "bg-gray-700"}`}
         >
           {log.level}
         </span>

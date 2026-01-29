@@ -53,13 +53,13 @@ export async function persistLog(pool: Pool, entry: LogEntry): Promise<void> {
         entry.source,
         entry.message,
         entry.details ? JSON.stringify(entry.details) : null,
-        entry.requestId || null,
-        entry.path || null,
-        entry.method || null,
-        entry.scriptName || null,
-        entry.jobName || null,
-        entry.runId || null,
-        entry.errorStack || null,
+        entry.requestId ?? null,
+        entry.path ?? null,
+        entry.method ?? null,
+        entry.scriptName ?? null,
+        entry.jobName ?? null,
+        entry.runId ?? null,
+        entry.errorStack ?? null,
       ]
     )
   } catch (dbError) {
@@ -92,13 +92,13 @@ export async function persistLogRequired(pool: Pool, entry: LogEntry): Promise<v
       entry.source,
       entry.message,
       entry.details ? JSON.stringify(entry.details) : null,
-      entry.requestId || null,
-      entry.path || null,
-      entry.method || null,
-      entry.scriptName || null,
-      entry.jobName || null,
-      entry.runId || null,
-      entry.errorStack || null,
+      entry.requestId ?? null,
+      entry.path ?? null,
+      entry.method ?? null,
+      entry.scriptName ?? null,
+      entry.jobName ?? null,
+      entry.runId ?? null,
+      entry.errorStack ?? null,
     ]
   )
 }
