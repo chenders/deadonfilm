@@ -51,6 +51,7 @@ import { FetchTraktRatingsHandler } from "./fetch-trakt-ratings.js"
 import { FetchTheTVDBScoresHandler } from "./fetch-thetvdb-scores.js"
 import { EnrichDeathDetailsHandler } from "./enrich-death-details.js"
 import { EnrichDeathDetailsBatchHandler } from "./enrich-death-details-batch.js"
+import { EnrichCauseOfDeathHandler } from "./enrich-cause-of-death.js"
 
 // Register handlers
 registerHandler(new FetchOMDbRatingsHandler())
@@ -58,3 +59,4 @@ registerHandler(new FetchTraktRatingsHandler())
 registerHandler(new FetchTheTVDBScoresHandler())
 registerHandler(new EnrichDeathDetailsHandler())
 registerHandler(new EnrichDeathDetailsBatchHandler())
+registerHandler(new EnrichCauseOfDeathHandler())
