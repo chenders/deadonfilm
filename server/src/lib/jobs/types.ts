@@ -48,6 +48,9 @@ export enum JobType {
   GENERATE_SITEMAP = "generate-sitemap",
   CLEANUP_OLD_JOBS = "cleanup-old-jobs",
   SYNC_TMDB_CHANGES = "sync-tmdb-changes",
+  SYNC_TMDB_PEOPLE = "sync-tmdb-people",
+  SYNC_TMDB_MOVIES = "sync-tmdb-movies",
+  SYNC_TMDB_SHOWS = "sync-tmdb-shows",
 }
 
 // ============================================================
@@ -221,10 +224,27 @@ export const cleanupOldJobsPayloadSchema = z.object({
   olderThanDays: z.number().int().positive().default(30),
 })
 
-// TMDB sync payload
+// TMDB sync payload (orchestrator)
 export const syncTMDBChangesPayloadSchema = z.object({
   startDate: z.string().optional(), // Date string (e.g., "YYYY-MM-DD")
   endDate: z.string().optional(), // Date string (e.g., "YYYY-MM-DD")
+})
+
+// TMDB people sync payload
+export const syncTMDBPeoplePayloadSchema = z.object({
+  startDate: z.string(), // Required - passed from orchestrator
+  endDate: z.string(),
+})
+
+// TMDB movies sync payload
+export const syncTMDBMoviesPayloadSchema = z.object({
+  startDate: z.string(), // Required - passed from orchestrator
+  endDate: z.string(),
+})
+
+// TMDB shows sync payload
+export const syncTMDBShowsPayloadSchema = z.object({
+  // No date range needed - queries active shows from database
 })
 
 /**
@@ -244,6 +264,9 @@ export const jobPayloadSchemas = {
   [JobType.GENERATE_SITEMAP]: generateSitemapPayloadSchema,
   [JobType.CLEANUP_OLD_JOBS]: cleanupOldJobsPayloadSchema,
   [JobType.SYNC_TMDB_CHANGES]: syncTMDBChangesPayloadSchema,
+  [JobType.SYNC_TMDB_PEOPLE]: syncTMDBPeoplePayloadSchema,
+  [JobType.SYNC_TMDB_MOVIES]: syncTMDBMoviesPayloadSchema,
+  [JobType.SYNC_TMDB_SHOWS]: syncTMDBShowsPayloadSchema,
 } as const
 
 // ============================================================
@@ -267,6 +290,9 @@ export type ProcessImagePayload = z.infer<typeof processImagePayloadSchema>
 export type GenerateSitemapPayload = z.infer<typeof generateSitemapPayloadSchema>
 export type CleanupOldJobsPayload = z.infer<typeof cleanupOldJobsPayloadSchema>
 export type SyncTMDBChangesPayload = z.infer<typeof syncTMDBChangesPayloadSchema>
+export type SyncTMDBPeoplePayload = z.infer<typeof syncTMDBPeoplePayloadSchema>
+export type SyncTMDBMoviesPayload = z.infer<typeof syncTMDBMoviesPayloadSchema>
+export type SyncTMDBShowsPayload = z.infer<typeof syncTMDBShowsPayloadSchema>
 
 /**
  * Union type of all possible payloads
@@ -291,6 +317,9 @@ export type JobPayloadMap = {
   [JobType.GENERATE_SITEMAP]: GenerateSitemapPayload
   [JobType.CLEANUP_OLD_JOBS]: CleanupOldJobsPayload
   [JobType.SYNC_TMDB_CHANGES]: SyncTMDBChangesPayload
+  [JobType.SYNC_TMDB_PEOPLE]: SyncTMDBPeoplePayload
+  [JobType.SYNC_TMDB_MOVIES]: SyncTMDBMoviesPayload
+  [JobType.SYNC_TMDB_SHOWS]: SyncTMDBShowsPayload
 }
 
 // ============================================================
@@ -417,4 +446,7 @@ export const jobTypeToQueue: Record<JobType, QueueName> = {
   [JobType.GENERATE_SITEMAP]: QueueName.MAINTENANCE,
   [JobType.CLEANUP_OLD_JOBS]: QueueName.MAINTENANCE,
   [JobType.SYNC_TMDB_CHANGES]: QueueName.MAINTENANCE,
+  [JobType.SYNC_TMDB_PEOPLE]: QueueName.MAINTENANCE,
+  [JobType.SYNC_TMDB_MOVIES]: QueueName.MAINTENANCE,
+  [JobType.SYNC_TMDB_SHOWS]: QueueName.MAINTENANCE,
 }
