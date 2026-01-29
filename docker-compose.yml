@@ -120,6 +120,11 @@ services:
       start_period: 40s
     volumes:
       - sitemap-data:/app/sitemaps
+      # Host bind mount for persistent logs
+      # NOTE: Create directory with proper permissions first:
+      #   sudo mkdir -p /var/log/deadonfilm && sudo chown 1000:1000 /var/log/deadonfilm
+      # (UID 1000 matches the 'node' user in the container)
+      - /var/log/deadonfilm:/var/log/deadonfilm
     deploy:
       resources:
         limits:
@@ -210,6 +215,8 @@ services:
       start_period: 10s
     volumes:
       - sitemap-data:/app/sitemaps
+      # Host bind mount for persistent logs (see app service for setup instructions)
+      - /var/log/deadonfilm:/var/log/deadonfilm
     depends_on:
       app:
         condition: service_healthy

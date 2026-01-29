@@ -7,6 +7,9 @@ import { getPool } from "./db.js"
 import { readFileSync, existsSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
+import { createStartupLogger } from "./logger.js"
+
+const log = createStartupLogger()
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -69,10 +72,10 @@ function findDataDir(): string {
  * Run database migrations using node-pg-migrate programmatically.
  */
 async function runMigrations(): Promise<void> {
-  console.log("Running database migrations...")
+  log.info("Running database migrations...")
 
   const migrationsDir = findMigrationsDir()
-  console.log(`  Migrations directory: ${migrationsDir}`)
+  log.info({ migrationsDir }, "Migrations directory")
 
   try {
     await runner({
@@ -80,14 +83,14 @@ async function runMigrations(): Promise<void> {
       dir: migrationsDir,
       direction: "up",
       migrationsTable: "pgmigrations",
-      log: (msg) => console.log(`  ${msg}`),
+      log: (msg) => log.debug({ migration: msg }, "Migration progress"),
     })
-    console.log("Migrations complete")
+    log.info("Migrations complete")
   } catch (error) {
     // Check if it's a "no migrations" scenario
     const errorMsg = String(error)
     if (errorMsg.includes("No migrations to run")) {
-      console.log("No pending migrations")
+      log.info("No pending migrations")
       return
     }
     throw error
@@ -106,16 +109,16 @@ async function seedActuarialDataIfNeeded(): Promise<void> {
   const count = parseInt(result.rows[0].count, 10)
 
   if (count > 0) {
-    console.log(`Actuarial data already seeded (${count} entries)`)
+    log.info({ count }, "Actuarial data already seeded")
     return
   }
 
-  console.log("Seeding actuarial life tables...")
+  log.info("Seeding actuarial life tables...")
 
   // Load actuarial data from JSON file
   const dataDir = findDataDir()
   const dataPath = join(dataDir, "actuarial-life-tables.json")
-  console.log(`  Loading data from: ${dataPath}`)
+  log.info({ dataPath }, "Loading actuarial data")
 
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is constructed from hardcoded values
   const rawData = readFileSync(dataPath, "utf-8")
@@ -173,9 +176,9 @@ async function seedActuarialDataIfNeeded(): Promise<void> {
   `
 
   await db.query(insertQuery, allValues)
-  console.log(`  Inserted ${placeholders.length} entries in single batch`)
+  log.info({ entriesInserted: placeholders.length }, "Inserted actuarial entries in single batch")
 
-  console.log("Actuarial data seeding complete")
+  log.info("Actuarial data seeding complete")
 }
 
 /**
@@ -184,7 +187,7 @@ async function seedActuarialDataIfNeeded(): Promise<void> {
  */
 export async function initializeDatabase(): Promise<void> {
   if (!process.env.DATABASE_URL) {
-    console.log("DATABASE_URL not set - skipping database initialization")
+    log.warn("DATABASE_URL not set - skipping database initialization")
     return
   }
 
@@ -195,9 +198,9 @@ export async function initializeDatabase(): Promise<void> {
     // Seed actuarial data if needed
     await seedActuarialDataIfNeeded()
 
-    console.log("Database initialization complete")
+    log.info("Database initialization complete")
   } catch (error) {
-    console.error("Database initialization failed:", error)
+    log.error({ error }, "Database initialization failed")
     throw error
   }
 }
