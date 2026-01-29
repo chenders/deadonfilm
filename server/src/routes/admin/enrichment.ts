@@ -223,6 +223,18 @@ interface StartEnrichmentRequest {
   recentOnly?: boolean
   minPopularity?: number
   confidence?: number
+  // Source selection flags
+  free?: boolean
+  paid?: boolean
+  ai?: boolean
+  gatherAllSources?: boolean
+  // Advanced options
+  claudeCleanup?: boolean
+  followLinks?: boolean
+  aiLinkSelection?: boolean
+  aiContentExtraction?: boolean
+  // Batch mode filters
+  usActorsOnly?: boolean
 }
 
 router.post("/start", async (req: Request, res: Response): Promise<void> => {
@@ -266,24 +278,26 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
     })
 
     // Convert request config to EnrichmentRunConfig
+    // Use values from UI with sensible defaults
     const enrichmentConfig: EnrichmentRunConfig = {
       limit: config.limit,
       minPopularity: config.minPopularity,
       recentOnly: config.recentOnly,
+      usActorsOnly: config.usActorsOnly,
       actorIds: config.actorIds,
       maxCostPerActor: config.maxCostPerActor,
       maxTotalCost: config.maxTotalCost,
       confidence: config.confidence,
-      // Default source categories (can be customized via config.sources later)
-      free: true,
-      paid: true,
-      ai: false,
-      // Default enrichment settings
-      claudeCleanup: true,
-      gatherAllSources: false,
-      followLinks: true,
-      aiLinkSelection: true,
-      aiContentExtraction: true,
+      // Source selection flags from UI (defaults match CLI script)
+      free: config.free ?? true,
+      paid: config.paid ?? true,
+      ai: config.ai ?? false,
+      // Enrichment settings from UI
+      claudeCleanup: config.claudeCleanup ?? true,
+      gatherAllSources: config.gatherAllSources ?? true,
+      followLinks: config.followLinks ?? true,
+      aiLinkSelection: config.aiLinkSelection ?? true,
+      aiContentExtraction: config.aiContentExtraction ?? true,
     }
 
     // Start the enrichment run

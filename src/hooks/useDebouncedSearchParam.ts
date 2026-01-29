@@ -35,14 +35,37 @@ export function useDebouncedSearchParam(
   const searchParamsRef = useRef(searchParams)
   searchParamsRef.current = searchParams
 
+  // Track input value in a ref so we can check it without adding as dependency
+  const inputValueRef = useRef(inputValue)
+  inputValueRef.current = inputValue
+
+  // Track the value we're pushing to URL to avoid overwriting user input
+  // When our debounce fires and updates URL, we don't want to sync back
+  // because user may have continued typing
+  const pendingUrlValueRef = useRef<string | null>(null)
+
   // Sync local state when URL changes (e.g., browser back/forward)
+  // But skip if this is our own update AND user has typed more characters
   useEffect(() => {
+    // If this URL change matches what we pushed, check if user typed more
+    if (pendingUrlValueRef.current === urlValue) {
+      // Clear the pending value - we've processed this update
+      pendingUrlValueRef.current = null
+      // If user has typed more characters, don't overwrite their input
+      if (inputValueRef.current !== urlValue) {
+        return
+      }
+    }
+    // External navigation (back/forward) or URL matches current input - sync it
     setInputValue(urlValue)
   }, [urlValue])
 
   // Memoized update function to avoid unnecessary effect re-runs
   const updateUrl = useCallback(
     (value: string) => {
+      // Track the value we're pushing so we don't overwrite continued typing
+      pendingUrlValueRef.current = value
+
       const newParams = new URLSearchParams(searchParamsRef.current)
       if (value) {
         newParams.set(paramName, value)
