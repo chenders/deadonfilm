@@ -16,12 +16,7 @@ import { getPool } from "../lib/db/pool.js"
  * - Persists to database (for admin logs UI)
  * - Returns generic error to client
  */
-export function errorHandler(
-  err: Error,
-  req: Request,
-  res: Response,
-  _next: NextFunction
-): void {
+export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
   const routeLogger = createRouteLogger(req)
   const requestId = (req.headers["x-request-id"] as string) || undefined
 
