@@ -49,6 +49,7 @@ import {
   getDeceasedActorsForShow,
   getLivingActorsForShow,
   batchUpsertActors,
+  getShow as getShowFromDb,
 } from "../lib/db.js"
 import { calculateMovieMortality } from "../lib/mortality-stats.js"
 import newrelic from "newrelic"
@@ -360,6 +361,41 @@ describe("getShow route", () => {
 
       // getDeceasedActorsForShow should not be called when no DATABASE_URL
       expect(getDeceasedActorsForShow).not.toHaveBeenCalled()
+    })
+
+    it("includes aggregateScore and aggregateConfidence when available in database", async () => {
+      vi.mocked(getTVShowDetails).mockResolvedValue(createMockShow("Ended"))
+      vi.mocked(getShowFromDb).mockResolvedValue({
+        tmdb_id: 1400,
+        name: "Test Show",
+        aggregate_score: 7.8,
+        aggregate_confidence: 0.92,
+      } as Awaited<ReturnType<typeof getShowFromDb>>)
+      mockReq = { params: { id: "1400" } }
+
+      await getShow(mockReq as Request, mockRes as Response)
+
+      expect(jsonSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          aggregateScore: 7.8,
+          aggregateConfidence: 0.92,
+        })
+      )
+    })
+
+    it("returns null for aggregateScore and aggregateConfidence when not in database", async () => {
+      vi.mocked(getTVShowDetails).mockResolvedValue(createMockShow("Ended"))
+      vi.mocked(getShowFromDb).mockResolvedValue(null)
+      mockReq = { params: { id: "1400" } }
+
+      await getShow(mockReq as Request, mockRes as Response)
+
+      expect(jsonSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          aggregateScore: null,
+          aggregateConfidence: null,
+        })
+      )
     })
 
     it("correctly maps database episode format to API response format", async () => {
