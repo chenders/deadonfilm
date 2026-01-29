@@ -105,7 +105,7 @@ router.post("/warm", async (req: Request, res: Response): Promise<void> => {
     // Build query to get popular actors
     const deceasedFilter = deceasedOnly ? "WHERE a.deathday IS NOT NULL" : ""
     const query = `
-      SELECT a.id, a.name, a.deathday, a.popularity
+      SELECT a.id, a.name, a.deathday, a.popularity::float
       FROM actors a
       ${deceasedFilter}
       ORDER BY a.popularity DESC NULLS LAST
