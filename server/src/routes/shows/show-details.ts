@@ -17,6 +17,7 @@ import {
   upsertShow,
   getDeceasedActorsForShow,
   getLivingActorsForShow,
+  getShow as getShowFromDb,
   type ActorInput,
   type ShowRecord,
 } from "../../lib/db.js"
@@ -54,10 +55,11 @@ export async function getShow(req: Request, res: Response) {
       newrelic.addCustomAttribute(key, value)
     }
 
-    // Fetch show details and aggregate credits in parallel
-    const [show, credits] = await Promise.all([
+    // Fetch show details, aggregate credits, and database record in parallel
+    const [show, credits, dbShow] = await Promise.all([
       getTVShowDetails(showId),
       getTVShowAggregateCredits(showId),
+      getShowFromDb(showId).catch(() => null), // Gracefully handle if DB unavailable
     ])
 
     // Filter to English-language US shows
@@ -374,6 +376,9 @@ export async function getShow(req: Request, res: Response) {
         expectedDeaths,
         mortalitySurpriseScore,
       },
+      // Include aggregate score if available from database
+      aggregateScore: dbShow?.aggregate_score ?? null,
+      aggregateConfidence: dbShow?.aggregate_confidence ?? null,
     }
 
     newrelic.recordCustomEvent("ShowView", {

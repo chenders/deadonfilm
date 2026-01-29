@@ -132,6 +132,11 @@ export interface MovieRecord {
   trakt_plays?: number | null
   trakt_trending_rank?: number | null
   trakt_updated_at?: Date | null
+
+  // Aggregate score (Dead on Film Score)
+  aggregate_score?: number | null
+  aggregate_confidence?: number | null
+  aggregate_updated_at?: Date | null
 }
 
 export interface HighMortalityOptions {
@@ -210,6 +215,11 @@ export interface ShowRecord {
 
   // TheTVDB score
   thetvdb_score?: number | null
+
+  // Aggregate score (Dead on Film Score)
+  aggregate_score?: number | null
+  aggregate_confidence?: number | null
+  aggregate_updated_at?: Date | null
 }
 
 export interface SeasonRecord {
