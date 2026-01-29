@@ -130,12 +130,14 @@ export function createScriptLogger(scriptName: string) {
 /**
  * Create a logger with job context.
  * Includes job name, optional run ID, and queue information.
+ * @param jobName - Name of the job
+ * @param runId - Optional run identifier (numeric for enrichment runs, string for other jobs)
  */
-export function createJobLogger(jobName: string, runId?: string) {
+export function createJobLogger(jobName: string, runId?: number | string) {
   return logger.child({
     source: "cronjob" as LogSource,
     jobName,
-    ...(runId && { runId }),
+    ...(runId !== undefined && { runId }),
   })
 }
 
