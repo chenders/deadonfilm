@@ -49,10 +49,12 @@ export function clearHandlers(): void {
 import { FetchOMDbRatingsHandler } from "./fetch-omdb-ratings.js"
 import { FetchTraktRatingsHandler } from "./fetch-trakt-ratings.js"
 import { FetchTheTVDBScoresHandler } from "./fetch-thetvdb-scores.js"
+import { EnrichDeathDetailsHandler } from "./enrich-death-details.js"
 import { EnrichDeathDetailsBatchHandler } from "./enrich-death-details-batch.js"
 
 // Register handlers
 registerHandler(new FetchOMDbRatingsHandler())
 registerHandler(new FetchTraktRatingsHandler())
 registerHandler(new FetchTheTVDBScoresHandler())
+registerHandler(new EnrichDeathDetailsHandler())
 registerHandler(new EnrichDeathDetailsBatchHandler())
