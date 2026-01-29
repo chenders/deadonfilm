@@ -17,6 +17,7 @@ import {
   useEnrichmentRunLogs,
   type EnrichmentRunLog,
 } from "../../hooks/admin/useEnrichmentRuns"
+import { createActorSlug } from "../../utils/slugify"
 
 export default function EnrichmentRunDetailsPage() {
   const { id } = useParams<{ id: string }>()
@@ -338,7 +339,14 @@ export default function EnrichmentRunDetailsPage() {
                   <tbody className="divide-y divide-admin-border">
                     {actors.items.map((actor) => (
                       <tr key={actor.actor_id} className="hover:bg-admin-interactive-secondary">
-                        <td className="px-3 py-2 text-admin-text-primary">{actor.actor_name}</td>
+                        <td className="px-3 py-2 text-admin-text-primary">
+                          <Link
+                            to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}/death`}
+                            className="text-admin-interactive hover:text-admin-interactive-hover hover:underline"
+                          >
+                            {actor.actor_name}
+                          </Link>
+                        </td>
                         <td className="px-3 py-2 text-center">
                           {actor.was_enriched ? (
                             <span className="text-admin-success">✓</span>

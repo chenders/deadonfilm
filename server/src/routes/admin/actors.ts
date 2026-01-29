@@ -35,7 +35,7 @@ router.get("/:id/diagnostic", async (req: Request, res: Response): Promise<void>
       deathday: string | null
       popularity: number | null
     }>(
-      `SELECT id, tmdb_id, name, deathday, popularity
+      `SELECT id, tmdb_id, name, deathday, popularity::float
        FROM actors
        WHERE id = $1 OR tmdb_id = $1
        LIMIT 2`,

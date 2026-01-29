@@ -92,6 +92,8 @@
     "backfill:movie-popularity": "tsx scripts/backfill-movie-popularity.ts",
     "//backfill:ratings": "Master orchestration script - runs all rating backfills in order",
     "backfill:ratings": "tsx scripts/orchestrate-rating-backfills.ts",
+    "//calculate:aggregate-scores": "Calculate weighted aggregate scores from all rating sources",
+    "calculate:aggregate-scores": "tsx scripts/calculate-aggregate-scores.ts",
     "// === Monitoring & Reporting ===": "",
     "//report:rating-coverage": "Report rating data coverage across all entities",
     "report:rating-coverage": "tsx scripts/report-rating-coverage.ts",

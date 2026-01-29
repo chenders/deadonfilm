@@ -295,4 +295,44 @@ describe("EnrichmentRunner", () => {
       expect(typeof stats.exitReason).toBe("string")
     })
   })
+
+  describe("run with runId (non-staging)", () => {
+    it("should insert into enrichment_run_actors and write to production when runId is provided with staging: false", async () => {
+      // Mock: first call returns actors, subsequent calls return empty or INSERT result
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, popularity: 50 }],
+        })
+        .mockResolvedValue({ rows: [{ id: 123 }] }) // For INSERT RETURNING id
+
+      const runner = new EnrichmentRunner({
+        actorIds: [1],
+        runId: 42,
+        staging: false,
+        free: true,
+        paid: false,
+        ai: false,
+      })
+
+      const stats = await runner.run()
+
+      expect(stats.actorsProcessed).toBe(1)
+      expect(stats.exitReason).toBe("completed")
+
+      // Verify INSERT INTO enrichment_run_actors was called
+      const insertCall = mockQuery.mock.calls.find(
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("INSERT INTO enrichment_run_actors")
+      )
+      expect(insertCall).toBeDefined()
+      expect(insertCall![1]).toContain(42) // runId should be in params
+
+      // Verify production write was called (INSERT INTO actor_death_circumstances)
+      const productionWriteCall = mockQuery.mock.calls.find(
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("INSERT INTO actor_death_circumstances")
+      )
+      expect(productionWriteCall).toBeDefined()
+    })
+  })
 })

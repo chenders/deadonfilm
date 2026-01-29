@@ -454,8 +454,9 @@ export class EnrichmentRunner {
         enrichmentVersion: "2.0.0",
       }
 
-      // Route to staging or production
-      if (staging && runId) {
+      // Record per-actor results for all runs with a runId
+      let enrichmentRunActorId: number | null = null
+      if (runId) {
         const eraResult = await db.query<{ id: number }>(
           `INSERT INTO enrichment_run_actors (
             run_id,
@@ -479,8 +480,11 @@ export class EnrichmentRunner {
             enrichment.circumstancesSource?.costUsd || 0,
           ]
         )
+        enrichmentRunActorId = eraResult.rows[0].id
+      }
 
-        const enrichmentRunActorId = eraResult.rows[0].id
+      // Route to staging or production
+      if (staging && enrichmentRunActorId) {
         await writeToStaging(db, enrichmentRunActorId, enrichmentData, circumstancesData)
         this.log.debug({ actorName: actorRecord?.name }, "Staged for review")
       } else {
