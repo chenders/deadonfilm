@@ -586,6 +586,13 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
         .json({ error: { message: `Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}` } })
     }
 
+    // Validate minPopularity
+    if (minPopularity !== undefined && minPopularity < 0) {
+      return res.status(400).json({
+        error: { message: "minPopularity must be non-negative" },
+      })
+    }
+
     // Validate priority
     const priorityMap: Record<string, JobPriority> = {
       low: JobPriority.LOW,
@@ -632,20 +639,27 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
 
       const result = await pool.query<{ tmdb_id: number; imdb_id: string }>(query, params)
 
-      for (const movie of result.rows) {
-        await queueManager.addJob(
-          JobType.FETCH_OMDB_RATINGS,
-          {
-            entityType: "movie",
-            entityId: movie.tmdb_id,
-            imdbId: movie.imdb_id,
-          },
-          {
-            priority: jobPriority,
-            createdBy: "admin-ui-backfill",
-          }
+      // Queue jobs in parallel batches for better performance
+      const BATCH_SIZE = 50
+      for (let i = 0; i < result.rows.length; i += BATCH_SIZE) {
+        const batch = result.rows.slice(i, i + BATCH_SIZE)
+        await Promise.all(
+          batch.map((movie) =>
+            queueManager.addJob(
+              JobType.FETCH_OMDB_RATINGS,
+              {
+                entityType: "movie",
+                entityId: movie.tmdb_id,
+                imdbId: movie.imdb_id,
+              },
+              {
+                priority: jobPriority,
+                createdBy: "admin-ui-backfill",
+              }
+            )
+          )
         )
-        totalQueued++
+        totalQueued += batch.length
       }
     }
 
@@ -677,20 +691,27 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
 
       const result = await pool.query<{ tmdb_id: number; imdb_id: string }>(query, params)
 
-      for (const show of result.rows) {
-        await queueManager.addJob(
-          JobType.FETCH_OMDB_RATINGS,
-          {
-            entityType: "show",
-            entityId: show.tmdb_id,
-            imdbId: show.imdb_id,
-          },
-          {
-            priority: jobPriority,
-            createdBy: "admin-ui-backfill",
-          }
+      // Queue jobs in parallel batches for better performance
+      const BATCH_SIZE = 50
+      for (let i = 0; i < result.rows.length; i += BATCH_SIZE) {
+        const batch = result.rows.slice(i, i + BATCH_SIZE)
+        await Promise.all(
+          batch.map((show) =>
+            queueManager.addJob(
+              JobType.FETCH_OMDB_RATINGS,
+              {
+                entityType: "show",
+                entityId: show.tmdb_id,
+                imdbId: show.imdb_id,
+              },
+              {
+                priority: jobPriority,
+                createdBy: "admin-ui-backfill",
+              }
+            )
+          )
         )
-        totalQueued++
+        totalQueued += batch.length
       }
     }
 

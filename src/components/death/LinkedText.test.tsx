@@ -252,5 +252,43 @@ describe("LinkedText", () => {
       expect(screen.getByText("Short text.")).toBeInTheDocument()
       expect(screen.queryByTestId("entity-link")).not.toBeInTheDocument()
     })
+
+    it("handles duplicate paragraph text correctly", () => {
+      // When the same text appears in multiple paragraphs, links should be
+      // correctly positioned in each paragraph
+      const text = "John Wayne was great.\n\nJohn Wayne was legendary."
+      // First "John Wayne" is at 0-10
+      // Second "John Wayne" is at 23-33 (after "\n\n")
+      const links: EntityLink[] = [
+        {
+          start: 0,
+          end: 10,
+          text: "John Wayne",
+          entityType: "actor",
+          entityId: 2157,
+          entitySlug: "john-wayne-2157",
+          matchMethod: "exact",
+          confidence: 1.0,
+        },
+        {
+          start: 23,
+          end: 33,
+          text: "John Wayne",
+          entityType: "actor",
+          entityId: 2157,
+          entitySlug: "john-wayne-2157",
+          matchMethod: "exact",
+          confidence: 1.0,
+        },
+      ]
+
+      renderWithRouter(<LinkedText text={text} links={links} />)
+
+      const allLinks = screen.getAllByTestId("entity-link")
+      expect(allLinks).toHaveLength(2)
+      // Both links should have the same text
+      expect(allLinks[0]).toHaveTextContent("John Wayne")
+      expect(allLinks[1]).toHaveTextContent("John Wayne")
+    })
   })
 })
