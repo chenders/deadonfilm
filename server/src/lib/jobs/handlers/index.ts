@@ -51,6 +51,7 @@ import { FetchTraktRatingsHandler } from "./fetch-trakt-ratings.js"
 import { FetchTheTVDBScoresHandler } from "./fetch-thetvdb-scores.js"
 import { EnrichDeathDetailsHandler } from "./enrich-death-details.js"
 import { EnrichDeathDetailsBatchHandler } from "./enrich-death-details-batch.js"
+import { EnrichCauseOfDeathHandler } from "./enrich-cause-of-death.js"
 import { SyncTMDBChangesHandler } from "./sync-tmdb-changes.js"
 import { SyncTMDBPeopleHandler } from "./sync-tmdb-people.js"
 import { SyncTMDBMoviesHandler } from "./sync-tmdb-movies.js"
@@ -62,6 +63,7 @@ registerHandler(new FetchTraktRatingsHandler())
 registerHandler(new FetchTheTVDBScoresHandler())
 registerHandler(new EnrichDeathDetailsHandler())
 registerHandler(new EnrichDeathDetailsBatchHandler())
+registerHandler(new EnrichCauseOfDeathHandler())
 registerHandler(new SyncTMDBChangesHandler())
 registerHandler(new SyncTMDBPeopleHandler())
 registerHandler(new SyncTMDBMoviesHandler())

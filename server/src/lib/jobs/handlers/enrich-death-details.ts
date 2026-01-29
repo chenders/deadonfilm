@@ -255,7 +255,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
           careerStatusAtDeath: enrichment.careerStatusAtDeathSource,
           posthumousReleases: enrichment.posthumousReleasesSource,
           relatedCelebrities: enrichment.relatedCelebritiesSource,
-          cleanupSource: cleaned ? "claude-opus-4-5-20251101" : null,
+          cleanupSource: cleaned ? "claude-opus-4.5" : null,
         },
         rawResponse: enrichment.rawSources
           ? {
