@@ -12,6 +12,7 @@ import { invalidateActorCache } from "../../cache.js"
 import { getCauseOfDeath } from "../../wikidata.js"
 import type { ClaudeModel } from "../../claude.js"
 import { updateDeathInfoByActorId } from "../../db/actors.js"
+import { normalizeDateToString } from "../../claude-batch/date-utils.js"
 import { BaseJobHandler } from "./base.js"
 import { JobType, QueueName, type JobResult, type EnrichCauseOfDeathPayload } from "../types.js"
 
@@ -80,7 +81,7 @@ export class EnrichCauseOfDeathHandler extends BaseJobHandler<
     }
 
     // 2. Validate and use death date (payload override or from database)
-    let actorDeathday = this.normalizeDateToString(actor.deathday)
+    let actorDeathday = normalizeDateToString(actor.deathday)
 
     if (deathDate) {
       // Validate deathDate format (YYYY-MM-DD) and that it parses to a valid date
@@ -136,7 +137,7 @@ export class EnrichCauseOfDeathHandler extends BaseJobHandler<
     }
 
     // 4. Get cause of death from Claude/Wikidata
-    const birthday = this.normalizeDateToString(actor.birthday)
+    const birthday = normalizeDateToString(actor.birthday)
     const model: ClaudeModel = "sonnet" // Use sonnet for good balance of speed/quality
 
     try {
@@ -215,17 +216,5 @@ export class EnrichCauseOfDeathHandler extends BaseJobHandler<
     )
 
     return result.rows[0] ?? null
-  }
-
-  /**
-   * Normalize Date or string to ISO date string
-   */
-  private normalizeDateToString(date: Date | string | null): string | null {
-    if (!date) return null
-    if (date instanceof Date) {
-      return date.toISOString().split("T")[0]
-    }
-    // Already a string - just return the date part
-    return date.split("T")[0]
   }
 }
