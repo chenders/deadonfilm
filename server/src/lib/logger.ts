@@ -4,19 +4,21 @@ import { mkdirSync, existsSync } from "fs"
 import { dirname } from "path"
 
 const isProduction = process.env.NODE_ENV === "production"
-const logToFile = process.env.LOG_TO_FILE === "true"
 const logFilePath = process.env.LOG_FILE_PATH || "/var/log/deadonfilm/app.log"
 
-// Ensure log directory exists if file logging is enabled
-if (logToFile) {
+// Track if file logging is actually available (set to false on directory creation failure)
+let fileLoggingEnabled = process.env.LOG_TO_FILE === "true"
+
+// Ensure log directory exists if file logging is requested
+if (fileLoggingEnabled) {
   const logDir = dirname(logFilePath)
   if (!existsSync(logDir)) {
     try {
       mkdirSync(logDir, { recursive: true })
     } catch (error) {
-      // If we can't create the directory, warn and continue without file logging
-      // eslint-disable-next-line no-console
-      console.error(`Failed to create log directory ${logDir}:`, error)
+      // If we can't create the directory, disable file logging and fall back to stdout only
+      console.error(`Failed to create log directory ${logDir}, disabling file logging:`, error)
+      fileLoggingEnabled = false
     }
   }
 }
@@ -40,7 +42,7 @@ function buildTransport(): pino.TransportSingleOptions | pino.TransportMultiOpti
     }
   }
 
-  if (logToFile) {
+  if (fileLoggingEnabled) {
     // Production with file logging: multi-transport
     return {
       targets: [

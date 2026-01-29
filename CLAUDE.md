@@ -270,7 +270,9 @@ Use structured logging with Pino for all server-side code. Logs are sent to stdo
 
 ### Rules
 
-1. **NEVER use `console.log/error/warn`** in routes or libs - use structured logger
+1. **Prefer the structured logger over `console.log/error/warn` in routes and libs.**
+   - Application routes and libraries should call the shared logger helpers, not `console.*`.
+   - **Exceptions:** logger/bootstrap code (e.g. `server/src/lib/logger.ts`, `log-persistence.ts`) may use `console.*` as a last-resort fallback when the logger cannot be initialized or is failing.
 2. **Scripts may use `console.log`** for user-facing CLI output (progress, summaries)
 3. **Always add context** - include relevant IDs and state in log objects
 

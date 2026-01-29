@@ -88,6 +88,22 @@ function parsePositiveInt(value: string | null, defaultValue: number, max: numbe
   return Math.min(parsed, max)
 }
 
+// Valid values for validation
+const VALID_LEVELS: LogLevel[] = ["fatal", "error", "warn", "info", "debug", "trace"]
+const VALID_SOURCES: LogSource[] = ["route", "script", "cronjob", "middleware", "startup", "other"]
+
+// Validate level from URL - returns undefined if invalid
+function parseLogLevel(value: string | null): LogLevel | undefined {
+  if (!value) return undefined
+  return VALID_LEVELS.includes(value as LogLevel) ? (value as LogLevel) : undefined
+}
+
+// Validate source from URL - returns undefined if invalid
+function parseLogSource(value: string | null): LogSource | undefined {
+  if (!value) return undefined
+  return VALID_SOURCES.includes(value as LogSource) ? (value as LogSource) : undefined
+}
+
 export default function LogsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [autoRefresh, setAutoRefresh] = useState(false)
@@ -104,8 +120,8 @@ export default function LogsPage() {
   const filters: ErrorLogFilters = {
     page: parsePositiveInt(searchParams.get("page"), 1, 10000),
     pageSize: parsePositiveInt(searchParams.get("pageSize"), 50, 100),
-    level: (searchParams.get("level") as LogLevel) || undefined,
-    source: (searchParams.get("source") as LogSource) || undefined,
+    level: parseLogLevel(searchParams.get("level")),
+    source: parseLogSource(searchParams.get("source")),
     search: searchParams.get("search") || undefined,
     startDate: searchParams.get("startDate") || undefined,
     endDate: searchParams.get("endDate") || undefined,
@@ -454,6 +470,7 @@ export default function LogsPage() {
                   updateFilters({
                     level: undefined,
                     source: undefined,
+                    search: undefined,
                     page: 1,
                   })
                 }}
