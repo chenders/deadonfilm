@@ -98,7 +98,9 @@ async function fetchErrorLogs(filters: ErrorLogFilters): Promise<ErrorLogsRespon
   if (filters.startDate) params.set("startDate", filters.startDate)
   if (filters.endDate) params.set("endDate", filters.endDate)
 
-  const response = await fetch(`/admin/api/logs?${params}`, {
+  const queryString = params.toString()
+  const url = queryString ? `/admin/api/logs?${queryString}` : "/admin/api/logs"
+  const response = await fetch(url, {
     credentials: "include",
   })
   if (!response.ok) {

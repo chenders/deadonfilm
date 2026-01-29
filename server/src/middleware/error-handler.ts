@@ -18,7 +18,9 @@ import { getPool } from "../lib/db/pool.js"
  */
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
   const routeLogger = createRouteLogger(req)
-  const requestId = (req.headers["x-request-id"] as string) || undefined
+  // Get requestId from the child logger to ensure consistency with logged requestId
+  // (createRouteLogger generates one if x-request-id header is missing)
+  const requestId = routeLogger.bindings().requestId as string | undefined
 
   // Log to pino (picked up by New Relic)
   routeLogger.error({ err }, err.message)

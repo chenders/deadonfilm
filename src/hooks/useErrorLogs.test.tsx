@@ -99,7 +99,7 @@ describe("useErrorLogs hooks", () => {
       })
 
       expect(result.current.data).toEqual(mockLogsResponse)
-      expect(mockFetch).toHaveBeenCalledWith("/admin/api/logs?", { credentials: "include" })
+      expect(mockFetch).toHaveBeenCalledWith("/admin/api/logs", { credentials: "include" })
     })
 
     it("includes filters in query params", async () => {

@@ -708,16 +708,23 @@ export default function LogsPage() {
                 />
               </svg>
               <p className="mt-4 text-sm text-admin-text-muted">No error logs found</p>
-              {(filters.level || filters.source || filters.search) && (
+              {(filters.level ||
+                filters.source ||
+                filters.search ||
+                filters.startDate ||
+                filters.endDate) && (
                 <button
-                  onClick={() =>
+                  onClick={() => {
+                    setSearchInput("")
                     updateFilters({
                       level: undefined,
                       source: undefined,
                       search: undefined,
+                      startDate: undefined,
+                      endDate: undefined,
                       page: 1,
                     })
-                  }
+                  }}
                   className="mt-2 text-sm text-admin-interactive hover:underline"
                 >
                   Clear filters
