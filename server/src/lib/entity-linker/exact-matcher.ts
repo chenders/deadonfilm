@@ -98,30 +98,36 @@ export async function getLinkableEntities(
     LIMIT 5000
   `)
 
-  // Map to LinkableEntity format
-  const actors: LinkableEntity[] = actorsResult.rows.map((a) => ({
-    type: "actor" as const,
-    id: a.id,
-    name: a.name,
-    tmdbId: a.tmdb_id,
-    slug: createActorSlug(a.name, a.id),
-  }))
+  // Map to LinkableEntity format, filtering out entries with missing names
+  const actors: LinkableEntity[] = actorsResult.rows
+    .filter((a) => a.name && a.id)
+    .map((a) => ({
+      type: "actor" as const,
+      id: a.id,
+      name: a.name,
+      tmdbId: a.tmdb_id,
+      slug: createActorSlug(a.name, a.id),
+    }))
 
-  const movies: LinkableEntity[] = moviesResult.rows.map((m) => ({
-    type: "movie" as const,
-    name: m.title,
-    tmdbId: m.tmdb_id,
-    slug: createMovieSlug(m.title, m.release_year, m.tmdb_id),
-    year: m.release_year,
-  }))
+  const movies: LinkableEntity[] = moviesResult.rows
+    .filter((m) => m.title && m.tmdb_id)
+    .map((m) => ({
+      type: "movie" as const,
+      name: m.title,
+      tmdbId: m.tmdb_id,
+      slug: createMovieSlug(m.title, m.release_year, m.tmdb_id),
+      year: m.release_year,
+    }))
 
-  const shows: LinkableEntity[] = showsResult.rows.map((s) => ({
-    type: "show" as const,
-    name: s.name,
-    tmdbId: s.tmdb_id,
-    slug: createShowSlug(s.name, s.first_air_year, s.tmdb_id),
-    year: s.first_air_year,
-  }))
+  const shows: LinkableEntity[] = showsResult.rows
+    .filter((s) => s.name && s.tmdb_id)
+    .map((s) => ({
+      type: "show" as const,
+      name: s.name,
+      tmdbId: s.tmdb_id,
+      slug: createShowSlug(s.name, s.first_air_year, s.tmdb_id),
+      year: s.first_air_year,
+    }))
 
   return [...actors, ...movies, ...shows]
 }
