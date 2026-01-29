@@ -14,7 +14,10 @@ import {
   useResumeQueue,
   useJobStats,
   useCleanupJobs,
+  useOMDbCoverage,
+  useBackfillOMDb,
   type QueueStats,
+  type BackfillOMDbConfig,
 } from "../../hooks/useJobQueue"
 import { useState } from "react"
 
@@ -128,6 +131,185 @@ function QueueCard({
         </div>
       )}
     </div>
+  )
+}
+
+function OMDbBackfillCard() {
+  const { data: coverage, isLoading: coverageLoading } = useOMDbCoverage()
+  const backfill = useBackfillOMDb()
+
+  const [config, setConfig] = useState<BackfillOMDbConfig>({
+    limit: 100,
+    minPopularity: 0,
+    priority: "low",
+  })
+
+  const handleSubmit = () => {
+    backfill.mutate(config)
+  }
+
+  const totalNeedsData = (coverage?.movies.needsData ?? 0) + (coverage?.shows.needsData ?? 0)
+
+  return (
+    <Card title="OMDB Ratings Backfill">
+      <div className="space-y-4">
+        {/* Coverage Stats */}
+        <div>
+          <h4 className="mb-2 text-sm font-medium text-admin-text-primary">Coverage Stats</h4>
+          {coverageLoading ? (
+            <div className="text-sm text-admin-text-muted">Loading...</div>
+          ) : (
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div>
+                <span className="font-medium text-admin-interactive">
+                  {coverage?.movies.needsData.toLocaleString()}
+                </span>{" "}
+                <span className="text-admin-text-muted">
+                  movies need data (of {coverage?.movies.total.toLocaleString()})
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-admin-interactive">
+                  {coverage?.shows.needsData.toLocaleString()}
+                </span>{" "}
+                <span className="text-admin-text-muted">
+                  shows need data (of {coverage?.shows.total.toLocaleString()})
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Form */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label
+              htmlFor="omdb-content"
+              className="mb-1 block text-sm font-medium text-admin-text-primary"
+            >
+              Content
+            </label>
+            <select
+              id="omdb-content"
+              value={config.moviesOnly ? "movies" : config.showsOnly ? "shows" : "both"}
+              onChange={(e) => {
+                const value = e.target.value
+                setConfig({
+                  ...config,
+                  moviesOnly: value === "movies",
+                  showsOnly: value === "shows",
+                })
+              }}
+              className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
+            >
+              <option value="both">Movies & Shows</option>
+              <option value="movies">Movies Only</option>
+              <option value="shows">Shows Only</option>
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="omdb-limit"
+              className="mb-1 block text-sm font-medium text-admin-text-primary"
+            >
+              Limit
+            </label>
+            <input
+              id="omdb-limit"
+              type="number"
+              min={1}
+              max={1000}
+              value={config.limit}
+              onChange={(e) => setConfig({ ...config, limit: parseInt(e.target.value) || 100 })}
+              className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="omdb-popularity"
+              className="mb-1 block text-sm font-medium text-admin-text-primary"
+            >
+              Min Popularity
+            </label>
+            <input
+              id="omdb-popularity"
+              type="number"
+              min={0}
+              step={0.1}
+              value={config.minPopularity}
+              onChange={(e) =>
+                setConfig({ ...config, minPopularity: parseFloat(e.target.value) || 0 })
+              }
+              className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="omdb-priority"
+              className="mb-1 block text-sm font-medium text-admin-text-primary"
+            >
+              Priority
+            </label>
+            <select
+              id="omdb-priority"
+              value={config.priority}
+              onChange={(e) =>
+                setConfig({
+                  ...config,
+                  priority: e.target.value as BackfillOMDbConfig["priority"],
+                })
+              }
+              className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
+            >
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Submit */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleSubmit}
+            disabled={backfill.isPending || totalNeedsData === 0}
+            className="rounded-md bg-admin-interactive px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {backfill.isPending ? "Queueing..." : "Queue Jobs"}
+          </button>
+
+          {backfill.isSuccess && (
+            <div className="flex items-center gap-2 text-sm text-admin-success">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <span>Queued {backfill.data.queued} jobs</span>
+              <Link
+                to="/admin/jobs/runs?jobType=fetch-omdb-ratings"
+                className="ml-1 underline hover:text-admin-interactive"
+              >
+                View in Job History
+              </Link>
+            </div>
+          )}
+
+          {backfill.isError && (
+            <p className="text-sm text-admin-danger">
+              {backfill.error instanceof Error ? backfill.error.message : "Failed to queue jobs"}
+            </p>
+          )}
+        </div>
+      </div>
+    </Card>
   )
 }
 
@@ -462,6 +644,9 @@ export default function JobQueuesPage() {
             </p>
           )}
         </Card>
+
+        {/* OMDB Backfill Section */}
+        <OMDbBackfillCard />
       </div>
     </AdminLayout>
   )

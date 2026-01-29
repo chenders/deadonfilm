@@ -63,6 +63,24 @@ export interface JobRunFilters {
   pageSize?: number
 }
 
+export interface OMDbCoverage {
+  movies: { needsData: number; total: number }
+  shows: { needsData: number; total: number }
+}
+
+export interface BackfillOMDbConfig {
+  limit?: number
+  moviesOnly?: boolean
+  showsOnly?: boolean
+  minPopularity?: number
+  priority?: "low" | "normal" | "high" | "critical"
+}
+
+export interface BackfillOMDbResponse {
+  queued: number
+  message: string
+}
+
 export interface DeadLetterJob {
   id: number
   job_id: string
@@ -144,6 +162,7 @@ export const jobQueueKeys = {
   deadLetter: (page: number, pageSize: number, reviewed: boolean) =>
     [...jobQueueKeys.all, "dead-letter", { page, pageSize, reviewed }] as const,
   stats: () => [...jobQueueKeys.all, "stats"] as const,
+  omdbCoverage: () => [...jobQueueKeys.all, "omdb", "coverage"] as const,
 }
 
 // ============================================================
@@ -223,6 +242,30 @@ async function fetchJobStats(): Promise<JobStats> {
   })
   if (!response.ok) {
     throw new Error("Failed to fetch job stats")
+  }
+  return response.json()
+}
+
+async function fetchOMDbCoverage(): Promise<OMDbCoverage> {
+  const response = await fetch("/admin/api/jobs/omdb/coverage", {
+    credentials: "include",
+  })
+  if (!response.ok) {
+    throw new Error("Failed to fetch OMDB coverage")
+  }
+  return response.json()
+}
+
+async function backfillOMDb(config: BackfillOMDbConfig): Promise<BackfillOMDbResponse> {
+  const response = await fetch("/admin/api/jobs/omdb/backfill", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error?.message || "Failed to queue OMDB backfill jobs")
   }
   return response.json()
 }
@@ -426,6 +469,36 @@ export function useReviewDeadLetterJob() {
   return useMutation({
     mutationFn: ({ id, notes }: { id: number; notes?: string }) => reviewDeadLetterJob(id, notes),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: jobQueueKeys.all })
+    },
+  })
+}
+
+// ============================================================
+// OMDB BACKFILL HOOKS
+// ============================================================
+
+/**
+ * Fetch OMDB coverage stats
+ */
+export function useOMDbCoverage() {
+  return useQuery({
+    queryKey: jobQueueKeys.omdbCoverage(),
+    queryFn: fetchOMDbCoverage,
+    staleTime: 60000, // 1 minute
+  })
+}
+
+/**
+ * Queue OMDB backfill jobs
+ */
+export function useBackfillOMDb() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: backfillOMDb,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: jobQueueKeys.omdbCoverage() })
       queryClient.invalidateQueries({ queryKey: jobQueueKeys.all })
     },
   })
