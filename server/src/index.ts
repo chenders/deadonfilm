@@ -83,6 +83,7 @@ import jobsRoutes from "./routes/admin/jobs.js"
 import dataQualityRoutes from "./routes/admin/data-quality.js"
 import syncRoutes from "./routes/admin/sync.js"
 import logsRoutes from "./routes/admin/logs.js"
+import { errorHandler } from "./middleware/error-handler.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -315,6 +316,9 @@ app.get("/api/show/:id/seasons", getShowSeasons)
 app.get("/api/show/:id/season/:seasonNumber", getSeason)
 app.get("/api/show/:id/season/:seasonNumber/episodes", getSeasonEpisodes)
 app.get("/api/show/:showId/season/:season/episode/:episode", getEpisode)
+
+// Global error handler - must be registered after all routes
+app.use(errorHandler)
 
 // Initialize database and start server
 async function startServer() {
