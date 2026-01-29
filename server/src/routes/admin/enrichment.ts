@@ -1284,7 +1284,7 @@ router.post("/refetch-details", async (req: Request, res: Response): Promise<voi
       popularity: number | null
     }>(
       `
-      SELECT a.id, a.name, a.popularity
+      SELECT a.id, a.name, a.popularity::float
       FROM actors a
       LEFT JOIN actor_death_circumstances adc ON a.id = adc.actor_id
       WHERE a.deathday IS NOT NULL

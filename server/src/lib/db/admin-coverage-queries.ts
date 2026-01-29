@@ -192,13 +192,14 @@ export async function getActorsForCoverage(
 
   // Use window function to get total count in same query (performance optimization)
   // Eliminates separate COUNT query - significant speedup for large tables
+  // Cast popularity to float to ensure JavaScript number type (pg returns numeric as string)
   const dataResult = await pool.query<ActorCoverageInfo & { total_count: string }>(
     `SELECT
        id,
        name,
        tmdb_id,
        deathday,
-       popularity,
+       popularity::float,
        has_detailed_death_info,
        enriched_at,
        age_at_death,
@@ -283,13 +284,14 @@ export async function getEnrichmentCandidates(
   minPopularity: number = 5,
   limit: number = 100
 ): Promise<ActorCoverageInfo[]> {
+  // Cast popularity to float to ensure JavaScript number type (pg returns numeric as string)
   const result = await pool.query<ActorCoverageInfo>(
     `SELECT
        id,
        name,
        tmdb_id,
        deathday,
-       popularity,
+       popularity::float,
        has_detailed_death_info,
        enriched_at,
        age_at_death,

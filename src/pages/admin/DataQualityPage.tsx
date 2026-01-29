@@ -270,7 +270,7 @@ export default function DataQualityPage() {
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.popularity?.toFixed(1) || "N/A"}
+                          {actor.popularity?.toFixed(1) ?? "N/A"}
                         </td>
                       </tr>
                     ))}
@@ -371,7 +371,7 @@ export default function DataQualityPage() {
                           {actor.deathDate}
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.popularity?.toFixed(1) || "N/A"}
+                          {actor.popularity?.toFixed(1) ?? "N/A"}
                         </td>
                         <td className="max-w-md truncate px-6 py-4 text-sm text-admin-text-secondary">
                           {actor.circumstancesExcerpt || "N/A"}
