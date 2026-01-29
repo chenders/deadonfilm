@@ -2,8 +2,8 @@ import HoverTooltip from "./HoverTooltip"
 import { StarIcon } from "@/components/icons"
 
 interface AggregateScoreProps {
-  score: number | null
-  confidence: number | null
+  score: number | null | undefined
+  confidence: number | null | undefined
   className?: string
   size?: "sm" | "md" | "lg"
 }
@@ -51,15 +51,15 @@ export default function AggregateScore({
   const formattedScore = score.toFixed(1)
 
   // Calculate confidence description
-  const getConfidenceLabel = (conf: number | null): string => {
-    if (conf === null) return "Limited data"
+  const getConfidenceLabel = (conf: number | null | undefined): string => {
+    if (conf === null || conf === undefined) return "Limited data"
     if (conf >= 0.8) return "High confidence"
     if (conf >= 0.5) return "Moderate confidence"
     return "Limited data"
   }
 
   // Tooltip content explaining the score
-  const tooltipContent = `Dead on Film Score: A weighted average of ratings from IMDb, Rotten Tomatoes, Metacritic, Trakt, and TMDB. ${getConfidenceLabel(confidence)} based on available sources and vote counts.`
+  const tooltipContent = `Dead on Film Score: A weighted average of ratings from IMDb, Rotten Tomatoes, Metacritic, Trakt, TMDB, and TheTVDB. ${getConfidenceLabel(confidence)} based on available sources and vote counts.`
 
   return (
     <HoverTooltip content={tooltipContent} testId="aggregate-score-tooltip">
