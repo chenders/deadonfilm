@@ -9,6 +9,7 @@ import { Fragment, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import { Card, StatCard, Skeleton, type Column } from "../../components/admin/ui"
+import DateInput from "../../components/admin/common/DateInput"
 import {
   useErrorLogs,
   useErrorLogStats,
@@ -445,6 +446,26 @@ export default function LogsPage() {
             </select>
           </div>
 
+          <DateInput
+            id="filter-start-date"
+            label="From"
+            value={filters.startDate || ""}
+            onChange={(value) => updateFilters({ startDate: value || undefined, page: 1 })}
+            helpText=""
+            showClearButton={true}
+            className="w-36"
+          />
+
+          <DateInput
+            id="filter-end-date"
+            label="To"
+            value={filters.endDate || ""}
+            onChange={(value) => updateFilters({ endDate: value || undefined, page: 1 })}
+            helpText=""
+            showClearButton={true}
+            className="w-36"
+          />
+
           <div className="flex-1">
             <label
               htmlFor="filter-search"
@@ -462,7 +483,11 @@ export default function LogsPage() {
             />
           </div>
 
-          {(filters.level || filters.source || searchInput) && (
+          {(filters.level ||
+            filters.source ||
+            searchInput ||
+            filters.startDate ||
+            filters.endDate) && (
             <div className="flex items-end">
               <button
                 onClick={() => {
@@ -471,6 +496,8 @@ export default function LogsPage() {
                     level: undefined,
                     source: undefined,
                     search: undefined,
+                    startDate: undefined,
+                    endDate: undefined,
                     page: 1,
                   })
                 }}
