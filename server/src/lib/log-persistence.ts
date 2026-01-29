@@ -19,6 +19,7 @@ export interface LogEntry {
   method?: string
   scriptName?: string
   jobName?: string
+  runId?: number
   errorStack?: string
 }
 
@@ -45,19 +46,20 @@ export async function persistLog(pool: Pool, entry: LogEntry): Promise<void> {
     await pool.query(
       `INSERT INTO error_logs (
         level, source, message, details, request_id, path, method,
-        script_name, job_name, error_stack
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        script_name, job_name, run_id, error_stack
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         entry.level,
         entry.source,
         entry.message,
         entry.details ? JSON.stringify(entry.details) : null,
-        entry.requestId || null,
-        entry.path || null,
-        entry.method || null,
-        entry.scriptName || null,
-        entry.jobName || null,
-        entry.errorStack || null,
+        entry.requestId ?? null,
+        entry.path ?? null,
+        entry.method ?? null,
+        entry.scriptName ?? null,
+        entry.jobName ?? null,
+        entry.runId ?? null,
+        entry.errorStack ?? null,
       ]
     )
   } catch (dbError) {
@@ -83,19 +85,20 @@ export async function persistLogRequired(pool: Pool, entry: LogEntry): Promise<v
   await pool.query(
     `INSERT INTO error_logs (
       level, source, message, details, request_id, path, method,
-      script_name, job_name, error_stack
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      script_name, job_name, run_id, error_stack
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [
       entry.level,
       entry.source,
       entry.message,
       entry.details ? JSON.stringify(entry.details) : null,
-      entry.requestId || null,
-      entry.path || null,
-      entry.method || null,
-      entry.scriptName || null,
-      entry.jobName || null,
-      entry.errorStack || null,
+      entry.requestId ?? null,
+      entry.path ?? null,
+      entry.method ?? null,
+      entry.scriptName ?? null,
+      entry.jobName ?? null,
+      entry.runId ?? null,
+      entry.errorStack ?? null,
     ]
   )
 }
@@ -119,6 +122,15 @@ export function extractLogEntry(
   if (pinoLog.scriptName) entry.scriptName = pinoLog.scriptName as string
   if (pinoLog.jobName) entry.jobName = pinoLog.jobName as string
 
+  // Handle runId (can be number or string, convert to number for database)
+  if (pinoLog.runId !== undefined) {
+    const numericRunId =
+      typeof pinoLog.runId === "number" ? pinoLog.runId : parseInt(pinoLog.runId as string, 10)
+    if (!isNaN(numericRunId)) {
+      entry.runId = numericRunId
+    }
+  }
+
   // Extract error stack from error objects
   if (pinoLog.error && typeof pinoLog.error === "object") {
     const err = pinoLog.error as { stack?: string }
@@ -140,6 +152,7 @@ export function extractLogEntry(
     "method",
     "scriptName",
     "jobName",
+    "runId",
     "error",
   ])
 

@@ -209,6 +209,101 @@ router.get("/runs/:id/sources/stats", async (req: Request, res: Response): Promi
 })
 
 // ============================================================================
+// GET /admin/api/enrichment/runs/:id/logs
+// Get logs associated with a specific enrichment run
+// ============================================================================
+
+router.get("/runs/:id/logs", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    // Parse pagination params
+    const rawPage = Number.parseInt(req.query.page as string, 10)
+    const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
+
+    const rawPageSize = Number.parseInt(req.query.pageSize as string, 10)
+    const defaultPageSize = 50
+    const maxPageSize = 100
+    const safePageSize =
+      Number.isFinite(rawPageSize) && rawPageSize > 0 ? rawPageSize : defaultPageSize
+    const pageSize = Math.min(safePageSize, maxPageSize)
+
+    // Parse optional level filter
+    const level = req.query.level as string | undefined
+    const validLevels = ["fatal", "error", "warn", "info", "debug", "trace"]
+    if (level && !validLevels.includes(level)) {
+      res.status(400).json({
+        error: { message: `Invalid level. Must be one of: ${validLevels.join(", ")}` },
+      })
+      return
+    }
+
+    const offset = (page - 1) * pageSize
+
+    // Build query with filters
+    const conditions: string[] = ["run_id = $1"]
+    const params: unknown[] = [runId]
+    let paramIndex = 2
+
+    if (level) {
+      conditions.push(`level = $${paramIndex}`)
+      params.push(level)
+      paramIndex++
+    }
+
+    const whereClause = `WHERE ${conditions.join(" AND ")}`
+
+    // Get total count
+    const countQuery = `SELECT COUNT(*) FROM error_logs ${whereClause}`
+    const countResult = await pool.query(countQuery, params)
+    const total = parseInt(countResult.rows[0].count)
+
+    // Get paginated results
+    const query = `
+      SELECT
+        id::int as id,
+        level,
+        source,
+        message,
+        details,
+        request_id,
+        path,
+        method,
+        script_name,
+        job_name,
+        error_stack,
+        created_at
+      FROM error_logs
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `
+    params.push(pageSize, offset)
+
+    const result = await pool.query(query, params)
+
+    res.json({
+      logs: result.rows,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch enrichment run logs")
+    res.status(500).json({ error: { message: "Failed to fetch enrichment run logs" } })
+  }
+})
+
+// ============================================================================
 // POST /admin/api/enrichment/start
 // Trigger a new enrichment run
 // ============================================================================

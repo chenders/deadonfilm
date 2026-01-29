@@ -5,7 +5,7 @@
  */
 
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
@@ -16,6 +16,7 @@ export default function EnrichmentRunsPage() {
   const [page, setPage] = useState(1)
   const [filters, setFilters] = useState<EnrichmentRunFilters>({})
   const pageSize = 20
+  const navigate = useNavigate()
 
   const { data, isLoading, error } = useEnrichmentRuns(page, pageSize, filters)
 
@@ -148,11 +149,13 @@ export default function EnrichmentRunsPage() {
                       data.items.map((run) => (
                         <tr
                           key={run.id}
-                          className="transition-colors hover:bg-admin-interactive-secondary"
+                          onClick={() => navigate(`/admin/enrichment/runs/${run.id}`)}
+                          className="cursor-pointer transition-colors hover:bg-admin-interactive-secondary"
                         >
                           <td className="px-4 py-3">
                             <Link
                               to={`/admin/enrichment/runs/${run.id}`}
+                              onClick={(e) => e.stopPropagation()}
                               className="font-medium text-admin-danger hover:text-red-300"
                             >
                               #{run.id}
