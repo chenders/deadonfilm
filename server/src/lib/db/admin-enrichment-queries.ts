@@ -5,6 +5,7 @@
  */
 
 import { Pool } from "pg"
+import { linkMultipleFields, hasEntityLinks } from "../entity-linker/index.js"
 import { backfillLinksForActors, type BackfillResult } from "../death-link-backfiller.js"
 
 // ============================================================================
@@ -962,6 +963,18 @@ export async function commitEnrichmentRun(
 
       const circumstances = circumstancesResult.rows[0]
 
+      // Run entity linking on narrative text fields
+      const entityLinks = await linkMultipleFields(
+        pool, // Use pool, not client, as linkMultipleFields expects Pool
+        {
+          circumstances: circumstances?.circumstances,
+          rumored_circumstances: circumstances?.rumored_circumstances,
+          additional_context: circumstances?.additional_context,
+        },
+        { excludeActorId: staging.actor_id }
+      )
+      const entityLinksJson = hasEntityLinks(entityLinks) ? JSON.stringify(entityLinks) : null
+
       // Insert/update actor_death_circumstances
       await client.query(
         `INSERT INTO actor_death_circumstances (
@@ -983,10 +996,11 @@ export async function commitEnrichmentRun(
           additional_context,
           sources,
           raw_response,
+          entity_links,
           enriched_at,
           created_at,
           updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW(), NOW())
         ON CONFLICT (actor_id) DO UPDATE SET
           circumstances = COALESCE(EXCLUDED.circumstances, actor_death_circumstances.circumstances),
           circumstances_confidence = COALESCE(EXCLUDED.circumstances_confidence, actor_death_circumstances.circumstances_confidence),
@@ -1005,6 +1019,7 @@ export async function commitEnrichmentRun(
           additional_context = COALESCE(EXCLUDED.additional_context, actor_death_circumstances.additional_context),
           sources = COALESCE(EXCLUDED.sources, actor_death_circumstances.sources),
           raw_response = COALESCE(EXCLUDED.raw_response, actor_death_circumstances.raw_response),
+          entity_links = COALESCE(EXCLUDED.entity_links, actor_death_circumstances.entity_links),
           enriched_at = NOW(),
           updated_at = NOW()`,
         [
@@ -1026,6 +1041,7 @@ export async function commitEnrichmentRun(
           circumstances?.additional_context,
           circumstances?.sources,
           circumstances?.raw_response,
+          entityLinksJson,
         ]
       )
 

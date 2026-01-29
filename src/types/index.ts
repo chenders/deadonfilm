@@ -67,6 +67,11 @@ export type {
   NotableDeathActor,
   NotableDeathsResponse,
   NotableDeathsFilter,
+  // Entity linking
+  EntityType,
+  MatchMethod,
+  EntityLink,
+  StoredEntityLinks,
 } from "./death"
 
 // Show types

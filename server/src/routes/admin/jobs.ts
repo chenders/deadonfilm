@@ -8,7 +8,13 @@
 import { Router } from "express"
 import type { Request, Response } from "express"
 import { queueManager } from "../../lib/jobs/queue-manager.js"
-import { QueueName, MAX_RECENT_JOBS, MAX_JOBS_TO_CLEAN } from "../../lib/jobs/types.js"
+import {
+  QueueName,
+  MAX_RECENT_JOBS,
+  MAX_JOBS_TO_CLEAN,
+  JobType,
+  JobPriority,
+} from "../../lib/jobs/types.js"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
 
@@ -501,6 +507,225 @@ router.get("/stats", async (req: Request, res: Response) => {
   } catch (error) {
     logger.error({ error }, "Failed to fetch job stats")
     res.status(500).json({ error: { message: "Failed to fetch job stats" } })
+  }
+})
+
+// ============================================================
+// OMDB BACKFILL ENDPOINTS
+// ============================================================
+
+interface OMDbCoverageResponse {
+  movies: { needsData: number; total: number }
+  shows: { needsData: number; total: number }
+}
+
+/**
+ * GET /admin/api/jobs/omdb/coverage
+ * Get coverage stats for OMDB ratings
+ */
+router.get("/omdb/coverage", async (_req: Request, res: Response) => {
+  try {
+    const pool = getPool()
+
+    const [movieStats, showStats] = await Promise.all([
+      pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE imdb_id IS NOT NULL AND omdb_updated_at IS NULL) as needs_data,
+          COUNT(*) FILTER (WHERE imdb_id IS NOT NULL) as total
+        FROM movies
+      `),
+      pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE imdb_id IS NOT NULL AND omdb_updated_at IS NULL) as needs_data,
+          COUNT(*) FILTER (WHERE imdb_id IS NOT NULL) as total
+        FROM shows
+      `),
+    ])
+
+    const response: OMDbCoverageResponse = {
+      movies: {
+        needsData: parseInt(movieStats.rows[0].needs_data),
+        total: parseInt(movieStats.rows[0].total),
+      },
+      shows: {
+        needsData: parseInt(showStats.rows[0].needs_data),
+        total: parseInt(showStats.rows[0].total),
+      },
+    }
+
+    res.json(response)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch OMDB coverage stats")
+    res.status(500).json({ error: { message: "Failed to fetch OMDB coverage stats" } })
+  }
+})
+
+interface BackfillOMDbRequest {
+  limit?: number
+  moviesOnly?: boolean
+  showsOnly?: boolean
+  minPopularity?: number
+  priority?: "low" | "normal" | "high" | "critical"
+}
+
+const MIN_LIMIT = 1
+const MAX_LIMIT = 1000
+const JOB_BATCH_SIZE = 50 // Number of jobs to queue in parallel
+
+/**
+ * POST /admin/api/jobs/omdb/backfill
+ * Queue OMDB ratings fetch jobs
+ */
+router.post("/omdb/backfill", async (req: Request, res: Response) => {
+  try {
+    const { limit, moviesOnly, showsOnly, minPopularity, priority }: BackfillOMDbRequest = req.body
+
+    // Validate limit
+    if (limit !== undefined && (limit < MIN_LIMIT || limit > MAX_LIMIT)) {
+      return res
+        .status(400)
+        .json({ error: { message: `Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}` } })
+    }
+
+    // Validate minPopularity
+    if (minPopularity !== undefined && minPopularity < 0) {
+      return res.status(400).json({
+        error: { message: "minPopularity must be non-negative" },
+      })
+    }
+
+    // Validate priority
+    const priorityMap: Record<string, JobPriority> = {
+      low: JobPriority.LOW,
+      normal: JobPriority.NORMAL,
+      high: JobPriority.HIGH,
+      critical: JobPriority.CRITICAL,
+    }
+    // Validate priority before using it
+    if (priority && !(priority in priorityMap)) {
+      return res.status(400).json({
+        error: { message: "Priority must be one of: low, normal, high, critical" },
+      })
+    }
+    const jobPriority = priority ? priorityMap[priority] : JobPriority.LOW
+
+    const pool = getPool()
+    let totalQueued = 0
+
+    // Queue movie jobs
+    if (!showsOnly) {
+      const conditions: string[] = ["imdb_id IS NOT NULL", "omdb_updated_at IS NULL"]
+      const params: number[] = []
+      let paramIndex = 1
+
+      if (minPopularity !== undefined && minPopularity > 0) {
+        conditions.push(`popularity >= $${paramIndex}`)
+        params.push(minPopularity)
+        paramIndex++
+      }
+
+      let limitClause = ""
+      if (limit !== undefined) {
+        limitClause = `LIMIT $${paramIndex}`
+        params.push(limit)
+      }
+
+      const query = `
+        SELECT tmdb_id, imdb_id
+        FROM movies
+        WHERE ${conditions.join(" AND ")}
+        ORDER BY popularity DESC NULLS LAST
+        ${limitClause}
+      `
+
+      const result = await pool.query<{ tmdb_id: number; imdb_id: string }>(query, params)
+
+      // Queue jobs in parallel batches for better performance
+      for (let i = 0; i < result.rows.length; i += JOB_BATCH_SIZE) {
+        const batch = result.rows.slice(i, i + JOB_BATCH_SIZE)
+        await Promise.all(
+          batch.map((movie) =>
+            queueManager.addJob(
+              JobType.FETCH_OMDB_RATINGS,
+              {
+                entityType: "movie",
+                entityId: movie.tmdb_id,
+                imdbId: movie.imdb_id,
+              },
+              {
+                priority: jobPriority,
+                createdBy: "admin-ui-backfill",
+              }
+            )
+          )
+        )
+        totalQueued += batch.length
+      }
+    }
+
+    // Queue show jobs
+    if (!moviesOnly) {
+      const conditions: string[] = ["imdb_id IS NOT NULL", "omdb_updated_at IS NULL"]
+      const params: number[] = []
+      let paramIndex = 1
+
+      if (minPopularity !== undefined && minPopularity > 0) {
+        conditions.push(`popularity >= $${paramIndex}`)
+        params.push(minPopularity)
+        paramIndex++
+      }
+
+      let limitClause = ""
+      if (limit !== undefined) {
+        limitClause = `LIMIT $${paramIndex}`
+        params.push(limit)
+      }
+
+      const query = `
+        SELECT tmdb_id, imdb_id
+        FROM shows
+        WHERE ${conditions.join(" AND ")}
+        ORDER BY popularity DESC NULLS LAST
+        ${limitClause}
+      `
+
+      const result = await pool.query<{ tmdb_id: number; imdb_id: string }>(query, params)
+
+      // Queue jobs in parallel batches for better performance
+      for (let i = 0; i < result.rows.length; i += JOB_BATCH_SIZE) {
+        const batch = result.rows.slice(i, i + JOB_BATCH_SIZE)
+        await Promise.all(
+          batch.map((show) =>
+            queueManager.addJob(
+              JobType.FETCH_OMDB_RATINGS,
+              {
+                entityType: "show",
+                entityId: show.tmdb_id,
+                imdbId: show.imdb_id,
+              },
+              {
+                priority: jobPriority,
+                createdBy: "admin-ui-backfill",
+              }
+            )
+          )
+        )
+        totalQueued += batch.length
+      }
+    }
+
+    logger.info(
+      { queued: totalQueued, moviesOnly, showsOnly, limit, minPopularity, priority },
+      "OMDB backfill jobs queued via admin API"
+    )
+
+    res.json({
+      queued: totalQueued,
+      message: `Queued ${totalQueued} OMDB rating fetch jobs`,
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to queue OMDB backfill jobs")
+    res.status(500).json({ error: { message: "Failed to queue OMDB backfill jobs" } })
   }
 })
 

@@ -2,6 +2,43 @@
 
 import type { PaginationInfo } from "./common"
 
+// ============================================================================
+// Entity Linking Types
+// ============================================================================
+
+/** Type of entity that can be linked */
+export type EntityType = "actor" | "movie" | "show"
+
+/** Method used to match the entity */
+export type MatchMethod = "exact" | "fuzzy" | "ai"
+
+/** A detected entity link in text */
+export interface EntityLink {
+  /** Start character position in original text */
+  start: number
+  /** End character position in original text */
+  end: number
+  /** The actual text that was matched */
+  text: string
+  /** Type of entity (actor, movie, show) */
+  entityType: EntityType
+  /** Internal ID of the entity */
+  entityId: number
+  /** URL slug for the entity page */
+  entitySlug: string
+  /** How the match was made */
+  matchMethod: MatchMethod
+  /** Confidence score (0.0 - 1.0) */
+  confidence: number
+}
+
+/** Entity links stored by field name */
+export interface StoredEntityLinks {
+  circumstances?: EntityLink[]
+  rumored_circumstances?: EntityLink[]
+  additional_context?: EntityLink[]
+}
+
 // On This Day
 export interface OnThisDayResponse {
   date: string
@@ -217,6 +254,7 @@ export interface DeathDetailsResponse {
     locationOfDeath: SourceEntry[] | null
     relatedCelebrities: SourceEntry[] | null
   }
+  entityLinks?: StoredEntityLinks
 }
 
 // Notable Deaths types (discovery page)
