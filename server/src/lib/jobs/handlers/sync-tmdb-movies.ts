@@ -306,7 +306,12 @@ export class SyncTMDBMoviesHandler extends BaseJobHandler<
    * Normalize a value for comparison
    */
   private normalizeValue(value: unknown): unknown {
-    if (value === null || value === undefined) return value
+    if (value === null || value === undefined) return null
+
+    // Treat empty strings as null to avoid false-positive changes
+    if (typeof value === "string" && value.trim() === "") {
+      return null
+    }
 
     // Normalize dates - extract just the date portion (YYYY-MM-DD)
     if (value instanceof Date || (typeof value === "string" && value.match(/^\d{4}-\d{2}-\d{2}/))) {
@@ -314,11 +319,13 @@ export class SyncTMDBMoviesHandler extends BaseJobHandler<
       return dateStr.substring(0, 10)
     }
 
-    // Coerce string numbers to actual numbers
+    // Coerce numeric strings to numbers for consistent comparison
+    // This handles cases where DB returns "3.5" but TMDB returns 3.5
     if (typeof value === "string") {
-      const num = parseFloat(value)
-      if (!isNaN(num) && value.trim() !== "") {
-        return num
+      const trimmed = value.trim()
+      // Only coerce if it looks like a pure number (not a date or other string)
+      if (/^-?\d+\.?\d*$/.test(trimmed)) {
+        return parseFloat(trimmed)
       }
     }
 
