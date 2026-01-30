@@ -124,7 +124,9 @@ export interface MovieRecord {
   omdb_rotten_tomatoes_audience?: number | null
   omdb_metacritic_score?: number | null
   omdb_updated_at?: Date | null
-  omdb_box_office_cents?: number | null // bigint stored as number
+  // Note: bigint in Postgres, but box office values (max ~$3B = 300B cents) are well
+  // under Number.MAX_SAFE_INTEGER (9 quadrillion), so number type is safe here
+  omdb_box_office_cents?: number | null
   omdb_awards_wins?: number | null
   omdb_awards_nominations?: number | null
 

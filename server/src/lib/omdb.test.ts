@@ -65,7 +65,7 @@ describe("OMDb API Client", () => {
         totalSeasons: null,
       })
 
-      expect(fetch).toHaveBeenCalledWith("http://www.omdbapi.com/?apikey=test-api-key&i=tt0111161")
+      expect(fetch).toHaveBeenCalledWith("https://www.omdbapi.com/?apikey=test-api-key&i=tt0111161")
     })
 
     it("handles comma-formatted vote counts", async () => {
@@ -307,7 +307,7 @@ describe("OMDb API Client", () => {
 
       await getOMDbRatings("tt0000001", "custom-key")
 
-      expect(fetch).toHaveBeenCalledWith("http://www.omdbapi.com/?apikey=custom-key&i=tt0000001")
+      expect(fetch).toHaveBeenCalledWith("https://www.omdbapi.com/?apikey=custom-key&i=tt0000001")
     })
 
     it("includes extended metrics for movies", async () => {
@@ -425,6 +425,13 @@ describe("parseBoxOffice", () => {
     expect(parseBoxOffice("abc")).toBeNull()
     expect(parseBoxOffice("$-100")).toBeNull()
   })
+
+  it("returns null for partial-parse cases like $100M", () => {
+    // These would previously parse as 100 cents due to parseInt partial parsing
+    expect(parseBoxOffice("$100M")).toBeNull()
+    expect(parseBoxOffice("$50 million")).toBeNull()
+    expect(parseBoxOffice("$1.5B")).toBeNull()
+  })
 })
 
 describe("parseAwards", () => {
@@ -530,7 +537,19 @@ describe("parseTotalSeasons", () => {
     expect(parseTotalSeasons("-1")).toBeNull()
   })
 
+  it("returns null for partial-parse cases", () => {
+    // These would previously parse as numbers due to parseInt partial parsing
+    expect(parseTotalSeasons("8 seasons")).toBeNull()
+    expect(parseTotalSeasons("10+")).toBeNull()
+    expect(parseTotalSeasons("5-6")).toBeNull()
+  })
+
   it("handles zero seasons", () => {
     expect(parseTotalSeasons("0")).toBe(0)
+  })
+
+  it("handles whitespace around valid numbers", () => {
+    expect(parseTotalSeasons(" 8 ")).toBe(8)
+    expect(parseTotalSeasons("  12  ")).toBe(12)
   })
 })

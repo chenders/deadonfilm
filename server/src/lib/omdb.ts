@@ -61,7 +61,7 @@ export interface OMDbExtendedMetrics extends OMDbMetrics {
   totalSeasons: number | null // TV shows only
 }
 
-const OMDB_API_BASE = "http://www.omdbapi.com/"
+const OMDB_API_BASE = "https://www.omdbapi.com/"
 const REQUEST_DELAY_MS = 200
 
 let lastRequestTime = 0
@@ -155,7 +155,11 @@ export function parseBoxOffice(boxOffice: string): number | null {
   if (!boxOffice || boxOffice === "N/A") return null
 
   // Remove $ and commas, then parse
-  const cleaned = boxOffice.replace(/[$,]/g, "")
+  const cleaned = boxOffice.replace(/[$,]/g, "").trim()
+
+  // Validate that the cleaned string contains only digits
+  if (!/^\d+$/.test(cleaned)) return null
+
   const dollars = parseInt(cleaned, 10)
 
   if (isNaN(dollars) || dollars < 0) return null
@@ -203,7 +207,12 @@ export function parseAwards(awards: string): { wins: number | null; nominations:
 export function parseTotalSeasons(seasons: string): number | null {
   if (!seasons || seasons === "N/A") return null
 
-  const parsed = parseInt(seasons, 10)
+  const trimmed = seasons.trim()
+
+  // Validate that the string contains only digits
+  if (!/^\d+$/.test(trimmed)) return null
+
+  const parsed = parseInt(trimmed, 10)
   if (isNaN(parsed) || parsed < 0) return null
 
   return parsed
