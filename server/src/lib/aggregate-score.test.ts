@@ -93,7 +93,7 @@ describe("aggregate-score", () => {
       expect(adjusted).toBe(6.5)
     })
 
-    it("returns raw score for very high confidence (1.0)", () => {
+    it("applies slight regression even at full confidence (1.0)", () => {
       // With confidence 1.0 and minConfidence 0.4:
       // adjusted = (1.0 / 1.4) * 8.0 + (0.4 / 1.4) * 6.5 ≈ 5.71 + 1.86 = 7.57
       const adjusted = applyBayesianAdjustment(8.0, 1.0)
