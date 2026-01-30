@@ -325,7 +325,7 @@ describe("InternetArchiveSource", () => {
       expect(result.data?.circumstances).toContain("Bela Lugosi Obituary")
     })
 
-    it("falls back to keyword matching when AI returns no results above threshold", async () => {
+    it("returns no match when AI returns no results above threshold", async () => {
       process.env.ANTHROPIC_API_KEY = "test-key"
 
       mockFetch.mockResolvedValueOnce({
