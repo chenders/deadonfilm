@@ -133,7 +133,7 @@ async function runBackfill(options: {
   const params: number[] = []
 
   if (missingOnly) {
-    query += " AND tvmaze_id IS NULL AND thetvdb_id IS NULL"
+    query += " AND (tvmaze_id IS NULL OR thetvdb_id IS NULL OR imdb_id IS NULL)"
   }
 
   query += " ORDER BY popularity DESC NULLS LAST"
