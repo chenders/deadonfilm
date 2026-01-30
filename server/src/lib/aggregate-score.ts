@@ -53,6 +53,12 @@ const FULL_CONFIDENCE_VOTES = 10000
 // Minimum sources required for a reliable aggregate
 const MIN_SOURCES_FOR_AGGREGATE = 1
 
+// Bayesian averaging constants
+// PRIOR_MEAN: Global mean rating to regress toward (typical movie/show average)
+const PRIOR_MEAN = 6.5
+// MIN_CONFIDENCE_THRESHOLD: Controls regression strength - higher = more regression to mean
+const MIN_CONFIDENCE_THRESHOLD = 0.4
+
 /**
  * Normalize a rating to a 0-10 scale
  *
@@ -86,6 +92,41 @@ export function confidenceFactor(votes: number | null): number {
 
   // Linear scale up to full confidence threshold
   return Math.min(1.0, votes / FULL_CONFIDENCE_VOTES)
+}
+
+/**
+ * Apply Bayesian adjustment to pull low-confidence scores toward a prior mean
+ *
+ * Uses IMDb-style weighted rating formula:
+ * adjustedScore = (confidence / (confidence + m)) * rawScore + (m / (confidence + m)) * C
+ *
+ * Where:
+ * - confidence = calculated confidence (0-1)
+ * - m = minimum confidence threshold (regression strength)
+ * - C = prior mean (average rating to regress toward)
+ *
+ * Effect:
+ * - High confidence (0.8+): Score stays close to raw average
+ * - Low confidence (0.1): Score pulled significantly toward prior mean
+ *
+ * @param rawScore - The calculated weighted average score
+ * @param confidence - The confidence level (0-1)
+ * @param priorMean - The mean to regress toward (default 6.5)
+ * @param minConfidence - Regression strength parameter (default 0.4)
+ * @returns Bayesian-adjusted score
+ */
+export function applyBayesianAdjustment(
+  rawScore: number,
+  confidence: number,
+  priorMean: number = PRIOR_MEAN,
+  minConfidence: number = MIN_CONFIDENCE_THRESHOLD
+): number {
+  // Pull low-confidence scores toward the prior mean
+  const adjusted =
+    (confidence / (confidence + minConfidence)) * rawScore +
+    (minConfidence / (confidence + minConfidence)) * priorMean
+
+  return Math.round(adjusted * 100) / 100
 }
 
 /**
@@ -141,7 +182,10 @@ export function calculateAggregateScore(ratings: RatingInput[]): AggregateResult
   const controversy = calculateControversy(normalizedRatings)
 
   return {
-    score: score !== null ? Math.round(score * 100) / 100 : null, // Round to 2 decimal places
+    score:
+      score !== null
+        ? applyBayesianAdjustment(score, confidence) // Apply Bayesian adjustment to prevent obscure content with high ratings from topping rankings
+        : null,
     confidence: Math.round(confidence * 100) / 100,
     sourcesUsed: validRatings.length,
     controversy,
