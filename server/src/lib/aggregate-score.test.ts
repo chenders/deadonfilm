@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   normalizeRating,
   confidenceFactor,
+  applyBayesianAdjustment,
   calculateAggregateScore,
   calculateControversy,
   buildMovieRatingInputs,
@@ -61,6 +62,73 @@ describe("aggregate-score", () => {
     })
   })
 
+  describe("applyBayesianAdjustment", () => {
+    it("keeps high confidence scores close to raw score", () => {
+      // With confidence 0.9 and minConfidence 0.4:
+      // adjusted = (0.9 / 1.3) * 9.0 + (0.4 / 1.3) * 6.5 = 6.23 + 2.0 = 8.23
+      const adjusted = applyBayesianAdjustment(9.0, 0.9)
+      expect(adjusted).toBeGreaterThan(8.0)
+      expect(adjusted).toBeLessThan(9.0)
+    })
+
+    it("pulls low confidence scores toward prior mean", () => {
+      // With confidence 0.1 and minConfidence 0.4:
+      // adjusted = (0.1 / 0.5) * 10.0 + (0.4 / 0.5) * 6.5 = 2.0 + 5.2 = 7.2
+      const adjusted = applyBayesianAdjustment(10.0, 0.1)
+      expect(adjusted).toBeCloseTo(7.2, 1)
+    })
+
+    it("produces intermediate result for medium confidence", () => {
+      // With confidence 0.5 and minConfidence 0.4:
+      // adjusted = (0.5 / 0.9) * 8.0 + (0.4 / 0.9) * 6.5 ≈ 4.44 + 2.89 = 7.33
+      const adjusted = applyBayesianAdjustment(8.0, 0.5)
+      expect(adjusted).toBeGreaterThan(7.0)
+      expect(adjusted).toBeLessThan(8.0)
+    })
+
+    it("returns prior mean for zero confidence", () => {
+      // With confidence 0 and minConfidence 0.4:
+      // adjusted = (0 / 0.4) * 10.0 + (0.4 / 0.4) * 6.5 = 0 + 6.5 = 6.5
+      const adjusted = applyBayesianAdjustment(10.0, 0)
+      expect(adjusted).toBe(6.5)
+    })
+
+    it("applies slight regression even at full confidence (1.0)", () => {
+      // With confidence 1.0 and minConfidence 0.4:
+      // adjusted = (1.0 / 1.4) * 8.0 + (0.4 / 1.4) * 6.5 ≈ 5.71 + 1.86 = 7.57
+      const adjusted = applyBayesianAdjustment(8.0, 1.0)
+      // Even at full confidence, there's slight regression
+      expect(adjusted).toBeGreaterThan(7.5)
+      expect(adjusted).toBeLessThan(8.0)
+    })
+
+    it("allows custom prior mean", () => {
+      // With prior mean 5.0 instead of 6.5
+      const adjusted = applyBayesianAdjustment(10.0, 0.1, 5.0)
+      // Should pull toward 5.0 instead of 6.5
+      expect(adjusted).toBeLessThan(applyBayesianAdjustment(10.0, 0.1, 6.5))
+    })
+
+    it("allows custom minConfidence threshold", () => {
+      // Higher minConfidence = more aggressive regression
+      const lessAggressive = applyBayesianAdjustment(10.0, 0.5, 6.5, 0.2)
+      const moreAggressive = applyBayesianAdjustment(10.0, 0.5, 6.5, 0.8)
+      expect(lessAggressive).toBeGreaterThan(moreAggressive)
+    })
+
+    it("rounds to 2 decimal places", () => {
+      const adjusted = applyBayesianAdjustment(7.333333, 0.5)
+      expect(adjusted.toString()).toMatch(/^\d+\.\d{1,2}$/)
+    })
+
+    it("pulls low ratings up toward prior mean", () => {
+      // Low rating with low confidence should be pulled UP toward 6.5
+      const adjusted = applyBayesianAdjustment(3.0, 0.1)
+      expect(adjusted).toBeGreaterThan(3.0)
+      expect(adjusted).toBeLessThan(6.5)
+    })
+  })
+
   describe("calculateAggregateScore", () => {
     it("returns null score when no ratings provided", () => {
       const result = calculateAggregateScore([])
@@ -69,32 +137,34 @@ describe("aggregate-score", () => {
       expect(result.sourcesUsed).toBe(0)
     })
 
-    it("calculates score from single source", () => {
+    it("calculates score from single source with Bayesian adjustment", () => {
       const ratings: RatingInput[] = [
         { source: "imdb", rating: 8.0, scale: "decimal", votes: 10000 },
       ]
       const result = calculateAggregateScore(ratings)
 
-      expect(result.score).toBe(8.0)
+      // With full confidence (1.0), Bayesian adjustment still pulls slightly toward 6.5
+      // adjusted = (1.0 / 1.4) * 8.0 + (0.4 / 1.4) * 6.5 ≈ 7.57
+      expect(result.score).toBeCloseTo(7.57, 1)
       expect(result.sourcesUsed).toBe(1)
       expect(result.confidence).toBe(1.0)
     })
 
-    it("calculates weighted average from multiple sources", () => {
+    it("calculates weighted average from multiple sources with Bayesian adjustment", () => {
       const ratings: RatingInput[] = [
         { source: "imdb", rating: 8.0, scale: "decimal", votes: 10000 }, // weight 0.30
         { source: "rottenTomatoes", rating: 90, scale: "percent", votes: null }, // weight 0.25, normalized to 9.0
       ]
       const result = calculateAggregateScore(ratings)
 
-      // With full confidence on IMDb (0.30) and minimal confidence on RT (0.25 * 0.1 = 0.025)
-      // weighted = (8.0 * 0.30 + 9.0 * 0.025) / (0.30 + 0.025) = (2.4 + 0.225) / 0.325 ≈ 8.08
-      expect(result.score).toBeGreaterThan(8.0)
-      expect(result.score).toBeLessThan(8.2)
+      // Raw weighted = ~8.08, but confidence is ~0.56 (not all sources have votes)
+      // Bayesian adjustment pulls toward 6.5, so final score is lower than raw
+      expect(result.score).toBeGreaterThan(7.0)
+      expect(result.score).toBeLessThan(8.0)
       expect(result.sourcesUsed).toBe(2)
     })
 
-    it("penalizes sources with low vote counts", () => {
+    it("penalizes sources with low vote counts via Bayesian adjustment", () => {
       const highVotesRating: RatingInput[] = [
         { source: "imdb", rating: 5.0, scale: "decimal", votes: 10000 },
       ]
@@ -105,12 +175,13 @@ describe("aggregate-score", () => {
       const highVotesResult = calculateAggregateScore(highVotesRating)
       const lowVotesResult = calculateAggregateScore(lowVotesRating)
 
-      // Same score, but different confidence
-      expect(highVotesResult.score).toBe(lowVotesResult.score)
+      // With Bayesian adjustment, lower confidence = score pulled more toward 6.5
+      // A 5.0 rating is below the prior mean, so low confidence pulls it UP toward 6.5
+      expect(lowVotesResult.score).toBeGreaterThan(highVotesResult.score!)
       expect(highVotesResult.confidence).toBeGreaterThan(lowVotesResult.confidence)
     })
 
-    it("handles all sources with full confidence", () => {
+    it("handles all sources with full confidence (Bayesian adjusted)", () => {
       const ratings: RatingInput[] = [
         { source: "imdb", rating: 8.0, scale: "decimal", votes: 10000 },
         { source: "rottenTomatoes", rating: 75, scale: "percent", votes: 10000 },
@@ -122,9 +193,10 @@ describe("aggregate-score", () => {
 
       expect(result.sourcesUsed).toBe(5)
       expect(result.confidence).toBe(1.0)
-      // Weighted average of: 8.0*0.30 + 7.5*0.25 + 7.0*0.20 + 7.5*0.15 + 7.0*0.10
-      // = 2.4 + 1.875 + 1.4 + 1.125 + 0.7 = 7.5
-      expect(result.score).toBeCloseTo(7.5, 1)
+      // Raw weighted average = 7.5
+      // With full confidence (1.0), Bayesian pulls slightly toward 6.5
+      // adjusted = (1.0 / 1.4) * 7.5 + (0.4 / 1.4) * 6.5 ≈ 7.21
+      expect(result.score).toBeCloseTo(7.21, 1)
     })
 
     it("filters out null/undefined ratings", () => {
@@ -146,7 +218,8 @@ describe("aggregate-score", () => {
       const result = calculateAggregateScore(ratings)
 
       expect(result.sourcesUsed).toBe(1)
-      expect(result.score).toBe(8.0)
+      // Raw 8.0 with full confidence gets Bayesian adjusted to ~7.57
+      expect(result.score).toBeCloseTo(7.57, 1)
     })
 
     it("filters out NaN ratings", () => {
@@ -165,7 +238,9 @@ describe("aggregate-score", () => {
       ]
       const result = calculateAggregateScore(ratings)
 
-      expect(result.score).toBe(7.33)
+      // Raw 7.33 with full confidence gets Bayesian adjusted
+      // Result should still be rounded to 2 decimal places
+      expect(result.score?.toString()).toMatch(/^\d+\.\d{1,2}$/)
     })
   })
 
@@ -304,7 +379,7 @@ describe("aggregate-score", () => {
   })
 
   describe("integration: calculateAggregateScore with buildMovieRatingInputs", () => {
-    it("calculates score for a well-rated movie", () => {
+    it("calculates score for a well-rated movie (with Bayesian adjustment)", () => {
       const movie = {
         vote_average: 8.2,
         omdb_imdb_rating: 8.5,
@@ -318,8 +393,10 @@ describe("aggregate-score", () => {
       const inputs = buildMovieRatingInputs(movie)
       const result = calculateAggregateScore(inputs)
 
-      expect(result.score).toBeGreaterThan(8.0)
-      expect(result.score).toBeLessThan(9.0)
+      // Raw weighted average is high (~8.5), but confidence is only ~0.5
+      // Bayesian adjustment pulls toward 6.5, resulting in score ~7.5-8.0
+      expect(result.score).toBeGreaterThan(7.0)
+      expect(result.score).toBeLessThan(8.5)
       expect(result.sourcesUsed).toBe(5)
       // Confidence is ~0.5 because RT, Metacritic, and TMDB don't have vote counts
       // Only IMDb (0.30) and Trakt (0.15) have full confidence
