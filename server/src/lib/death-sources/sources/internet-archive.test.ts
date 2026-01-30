@@ -16,6 +16,12 @@ vi.mock("../logger.js", () => ({
   })),
 }))
 
+// Mock AI helpers module
+const mockAiSelectLinks = vi.fn()
+vi.mock("../ai-helpers.js", () => ({
+  aiSelectLinks: (...args: unknown[]) => mockAiSelectLinks(...args),
+}))
+
 import { InternetArchiveSource } from "./internet-archive.js"
 import type { ActorForEnrichment } from "../types.js"
 import { DataSourceType } from "../types.js"
@@ -31,6 +37,9 @@ describe("InternetArchiveSource", () => {
     vi.clearAllMocks()
     source = new InternetArchiveSource()
     mockFetch.mockReset()
+    mockAiSelectLinks.mockReset()
+    // Clear ANTHROPIC_API_KEY by default (tests can set it when testing AI path)
+    delete process.env.ANTHROPIC_API_KEY
   })
 
   afterEach(() => {
@@ -180,6 +189,253 @@ describe("InternetArchiveSource", () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toBe("Network error")
+    })
+
+    it("returns error when no relevant death record found in results", async () => {
+      // Results exist but don't contain actor name or death keywords
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          responseHeader: { status: 0 },
+          response: {
+            numFound: 1,
+            start: 0,
+            docs: [
+              {
+                identifier: "random-doc",
+                title: "Unrelated Document",
+                description: "This document has nothing to do with the actor",
+                mediatype: "texts",
+                downloads: 50,
+              },
+            ],
+          },
+        }),
+      })
+
+      const result = await source.lookup(testActor)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("No relevant death record found in search results")
+    })
+
+    it("handles single-word names without false positives", async () => {
+      const singleNameActor: ActorForEnrichment = {
+        id: 999,
+        tmdbId: 888,
+        name: "Prince",
+        birthday: "1958-06-07",
+        deathday: "2016-04-21",
+        causeOfDeath: null,
+        causeOfDeathDetails: null,
+        popularity: 50.0,
+      }
+
+      // Document contains "Prince" in title but no death keywords
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          responseHeader: { status: 0 },
+          response: {
+            numFound: 1,
+            start: 0,
+            docs: [
+              {
+                identifier: "random-prince-doc",
+                title: "The Little Prince Book",
+                description: "A classic children's story",
+                mediatype: "texts",
+                downloads: 1000,
+              },
+            ],
+          },
+        }),
+      })
+
+      const result = await source.lookup(singleNameActor)
+
+      // Should fail because document doesn't have death keywords
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("No relevant death record found in search results")
+    })
+  })
+
+  describe("AI-powered evaluation", () => {
+    const testActor: ActorForEnrichment = {
+      id: 123,
+      tmdbId: 456,
+      name: "Bela Lugosi",
+      birthday: "1882-10-20",
+      deathday: "1956-08-16",
+      causeOfDeath: null,
+      causeOfDeathDetails: null,
+      popularity: 22.0,
+    }
+
+    it("uses AI evaluation when ANTHROPIC_API_KEY is available", async () => {
+      process.env.ANTHROPIC_API_KEY = "test-key"
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          responseHeader: { status: 0 },
+          response: {
+            numFound: 2,
+            start: 0,
+            docs: [
+              {
+                identifier: "doc-1",
+                title: "Random document",
+                description: "Not about Bela Lugosi",
+                mediatype: "texts",
+                downloads: 100,
+              },
+              {
+                identifier: "lugosi-obit",
+                title: "Bela Lugosi Obituary",
+                description: "Bela Lugosi died in Hollywood after a heart attack.",
+                mediatype: "texts",
+                downloads: 200,
+              },
+            ],
+          },
+        }),
+      })
+
+      // AI selects the second doc as most relevant
+      mockAiSelectLinks.mockResolvedValueOnce({
+        data: [
+          {
+            url: "https://archive.org/details/lugosi-obit",
+            score: 0.85,
+            reason: "Obituary with death details",
+          },
+        ],
+        costUsd: 0.001,
+        model: "claude-sonnet-4-20250514",
+        inputTokens: 100,
+        outputTokens: 50,
+        latencyMs: 500,
+      })
+
+      const result = await source.lookup(testActor)
+
+      expect(mockAiSelectLinks).toHaveBeenCalled()
+      expect(result.success).toBe(true)
+      expect(result.data?.circumstances).toContain("Bela Lugosi Obituary")
+    })
+
+    it("returns no match when AI returns no results above threshold", async () => {
+      process.env.ANTHROPIC_API_KEY = "test-key"
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          responseHeader: { status: 0 },
+          response: {
+            numFound: 1,
+            start: 0,
+            docs: [
+              {
+                identifier: "lugosi-bio",
+                title: "Bela Lugosi Biography",
+                description: "Bela Lugosi died of heart failure in 1956.",
+                mediatype: "texts",
+                downloads: 300,
+              },
+            ],
+          },
+        }),
+      })
+
+      // AI returns results below threshold
+      mockAiSelectLinks.mockResolvedValueOnce({
+        data: [
+          {
+            url: "https://archive.org/details/lugosi-bio",
+            score: 0.3, // Below MIN_AI_RELEVANCE_SCORE (0.5)
+            reason: "Low relevance",
+          },
+        ],
+        costUsd: 0.001,
+        model: "claude-sonnet-4-20250514",
+        inputTokens: 100,
+        outputTokens: 50,
+        latencyMs: 500,
+      })
+
+      const result = await source.lookup(testActor)
+
+      expect(mockAiSelectLinks).toHaveBeenCalled()
+      // AI said no relevant results, so should fail
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("No relevant death record found in search results")
+    })
+
+    it("falls back to keyword matching when AI throws an error", async () => {
+      process.env.ANTHROPIC_API_KEY = "test-key"
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          responseHeader: { status: 0 },
+          response: {
+            numFound: 1,
+            start: 0,
+            docs: [
+              {
+                identifier: "lugosi-bio",
+                title: "Bela Lugosi Biography",
+                description: "Bela Lugosi died of heart failure in 1956.",
+                mediatype: "texts",
+                downloads: 300,
+              },
+            ],
+          },
+        }),
+      })
+
+      // AI throws an error
+      mockAiSelectLinks.mockRejectedValueOnce(new Error("AI service unavailable"))
+
+      const result = await source.lookup(testActor)
+
+      expect(mockAiSelectLinks).toHaveBeenCalled()
+      // Should fall back to keyword matching and succeed
+      expect(result.success).toBe(true)
+      expect(result.data?.circumstances).toContain("Bela Lugosi Biography")
+    })
+
+    it("uses keyword matching when ANTHROPIC_API_KEY is not set", async () => {
+      // Ensure API key is not set
+      delete process.env.ANTHROPIC_API_KEY
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          responseHeader: { status: 0 },
+          response: {
+            numFound: 1,
+            start: 0,
+            docs: [
+              {
+                identifier: "lugosi-bio",
+                title: "Bela Lugosi Biography",
+                description: "Bela Lugosi died of heart failure in 1956.",
+                mediatype: "texts",
+                downloads: 300,
+              },
+            ],
+          },
+        }),
+      })
+
+      const result = await source.lookup(testActor)
+
+      // AI should not be called
+      expect(mockAiSelectLinks).not.toHaveBeenCalled()
+      // Keyword matching should succeed
+      expect(result.success).toBe(true)
     })
   })
 })
