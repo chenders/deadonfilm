@@ -124,6 +124,9 @@ export interface MovieRecord {
   omdb_rotten_tomatoes_audience?: number | null
   omdb_metacritic_score?: number | null
   omdb_updated_at?: Date | null
+  omdb_box_office_cents?: number | null // bigint stored as number
+  omdb_awards_wins?: number | null
+  omdb_awards_nominations?: number | null
 
   // Trakt metrics
   trakt_rating?: number | null
@@ -204,6 +207,9 @@ export interface ShowRecord {
   omdb_rotten_tomatoes_audience?: number | null
   omdb_metacritic_score?: number | null
   omdb_updated_at?: Date | null
+  omdb_total_seasons?: number | null
+  omdb_awards_wins?: number | null
+  omdb_awards_nominations?: number | null
 
   // Trakt metrics
   trakt_rating?: number | null

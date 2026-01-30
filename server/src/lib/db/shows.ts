@@ -29,6 +29,7 @@ export async function upsertShow(show: ShowRecord): Promise<void> {
        expected_deaths, mortality_surprise_score,
        omdb_imdb_rating, omdb_imdb_votes, omdb_rotten_tomatoes_score,
        omdb_rotten_tomatoes_audience, omdb_metacritic_score, omdb_updated_at,
+       omdb_total_seasons, omdb_awards_wins, omdb_awards_nominations,
        trakt_rating, trakt_votes, trakt_watchers, trakt_plays,
        trakt_trending_rank, trakt_updated_at,
        thetvdb_score,
@@ -37,8 +38,9 @@ export async function upsertShow(show: ShowRecord): Promise<void> {
      VALUES (
        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
        $20, $21, $22, $23, $24, $25,
-       $26, $27, $28, $29, $30, $31,
-       $32,
+       $26, $27, $28,
+       $29, $30, $31, $32, $33, $34,
+       $35,
        CURRENT_TIMESTAMP
      )
      ON CONFLICT (tmdb_id) DO UPDATE SET
@@ -66,6 +68,9 @@ export async function upsertShow(show: ShowRecord): Promise<void> {
        omdb_rotten_tomatoes_audience = COALESCE(EXCLUDED.omdb_rotten_tomatoes_audience, shows.omdb_rotten_tomatoes_audience),
        omdb_metacritic_score = COALESCE(EXCLUDED.omdb_metacritic_score, shows.omdb_metacritic_score),
        omdb_updated_at = COALESCE(EXCLUDED.omdb_updated_at, shows.omdb_updated_at),
+       omdb_total_seasons = COALESCE(EXCLUDED.omdb_total_seasons, shows.omdb_total_seasons),
+       omdb_awards_wins = COALESCE(EXCLUDED.omdb_awards_wins, shows.omdb_awards_wins),
+       omdb_awards_nominations = COALESCE(EXCLUDED.omdb_awards_nominations, shows.omdb_awards_nominations),
        trakt_rating = COALESCE(EXCLUDED.trakt_rating, shows.trakt_rating),
        trakt_votes = COALESCE(EXCLUDED.trakt_votes, shows.trakt_votes),
        trakt_watchers = COALESCE(EXCLUDED.trakt_watchers, shows.trakt_watchers),
@@ -100,6 +105,9 @@ export async function upsertShow(show: ShowRecord): Promise<void> {
       show.omdb_rotten_tomatoes_audience || null,
       show.omdb_metacritic_score || null,
       show.omdb_updated_at || null,
+      show.omdb_total_seasons || null,
+      show.omdb_awards_wins || null,
+      show.omdb_awards_nominations || null,
       show.trakt_rating || null,
       show.trakt_votes || null,
       show.trakt_watchers || null,

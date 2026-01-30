@@ -15,7 +15,7 @@ import type { Job } from "bullmq"
 import newrelic from "newrelic"
 import { BaseJobHandler } from "./base.js"
 import { JobType, QueueName, type JobResult, type FetchOMDbRatingsPayload } from "../types.js"
-import { getOMDbRatings } from "../../omdb.js"
+import { getOMDbRatings, type OMDbExtendedMetrics } from "../../omdb.js"
 import { getMovie, upsertMovie } from "../../db/movies.js"
 import { getShow, upsertShow } from "../../db/shows.js"
 
@@ -174,13 +174,7 @@ export class FetchOMDbRatingsHandler extends BaseJobHandler<FetchOMDbRatingsPayl
    */
   private async saveRatingsToDatabase(
     payload: FetchOMDbRatingsPayload,
-    ratings: {
-      imdbRating: number | null
-      imdbVotes: number | null
-      rottenTomatoesScore: number | null
-      rottenTomatoesAudience: number | null
-      metacriticScore: number | null
-    }
+    ratings: OMDbExtendedMetrics
   ): Promise<void> {
     if (payload.entityType === "movie") {
       // Fetch existing movie data
@@ -190,7 +184,7 @@ export class FetchOMDbRatingsHandler extends BaseJobHandler<FetchOMDbRatingsPayl
         throw new Error(`Movie with TMDB ID ${payload.entityId} not found`)
       }
 
-      // Update with OMDb ratings
+      // Update with OMDb ratings (including extended fields)
       await upsertMovie({
         ...movie,
         omdb_imdb_rating: ratings.imdbRating,
@@ -198,6 +192,9 @@ export class FetchOMDbRatingsHandler extends BaseJobHandler<FetchOMDbRatingsPayl
         omdb_rotten_tomatoes_score: ratings.rottenTomatoesScore,
         omdb_rotten_tomatoes_audience: ratings.rottenTomatoesAudience,
         omdb_metacritic_score: ratings.metacriticScore,
+        omdb_box_office_cents: ratings.boxOfficeCents,
+        omdb_awards_wins: ratings.awardsWins,
+        omdb_awards_nominations: ratings.awardsNominations,
         omdb_updated_at: new Date(),
       })
     } else {
@@ -208,7 +205,7 @@ export class FetchOMDbRatingsHandler extends BaseJobHandler<FetchOMDbRatingsPayl
         throw new Error(`Show with TMDB ID ${payload.entityId} not found`)
       }
 
-      // Update with OMDb ratings
+      // Update with OMDb ratings (including extended fields)
       await upsertShow({
         ...show,
         omdb_imdb_rating: ratings.imdbRating,
@@ -216,6 +213,9 @@ export class FetchOMDbRatingsHandler extends BaseJobHandler<FetchOMDbRatingsPayl
         omdb_rotten_tomatoes_score: ratings.rottenTomatoesScore,
         omdb_rotten_tomatoes_audience: ratings.rottenTomatoesAudience,
         omdb_metacritic_score: ratings.metacriticScore,
+        omdb_total_seasons: ratings.totalSeasons,
+        omdb_awards_wins: ratings.awardsWins,
+        omdb_awards_nominations: ratings.awardsNominations,
         omdb_updated_at: new Date(),
       })
     }

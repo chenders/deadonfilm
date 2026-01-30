@@ -30,6 +30,7 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
        imdb_id,
        omdb_imdb_rating, omdb_imdb_votes, omdb_rotten_tomatoes_score,
        omdb_rotten_tomatoes_audience, omdb_metacritic_score, omdb_updated_at,
+       omdb_box_office_cents, omdb_awards_wins, omdb_awards_nominations,
        trakt_rating, trakt_votes, trakt_watchers, trakt_plays,
        trakt_trending_rank, trakt_updated_at,
        updated_at
@@ -38,7 +39,8 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
        $16,
        $17, $18, $19, $20, $21, $22,
-       $23, $24, $25, $26, $27, $28,
+       $23, $24, $25,
+       $26, $27, $28, $29, $30, $31,
        CURRENT_TIMESTAMP
      )
      ON CONFLICT (tmdb_id) DO UPDATE SET
@@ -63,6 +65,9 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
        omdb_rotten_tomatoes_audience = COALESCE(EXCLUDED.omdb_rotten_tomatoes_audience, movies.omdb_rotten_tomatoes_audience),
        omdb_metacritic_score = COALESCE(EXCLUDED.omdb_metacritic_score, movies.omdb_metacritic_score),
        omdb_updated_at = COALESCE(EXCLUDED.omdb_updated_at, movies.omdb_updated_at),
+       omdb_box_office_cents = COALESCE(EXCLUDED.omdb_box_office_cents, movies.omdb_box_office_cents),
+       omdb_awards_wins = COALESCE(EXCLUDED.omdb_awards_wins, movies.omdb_awards_wins),
+       omdb_awards_nominations = COALESCE(EXCLUDED.omdb_awards_nominations, movies.omdb_awards_nominations),
        trakt_rating = COALESCE(EXCLUDED.trakt_rating, movies.trakt_rating),
        trakt_votes = COALESCE(EXCLUDED.trakt_votes, movies.trakt_votes),
        trakt_watchers = COALESCE(EXCLUDED.trakt_watchers, movies.trakt_watchers),
@@ -93,6 +98,9 @@ export async function upsertMovie(movie: MovieRecord): Promise<void> {
       movie.omdb_rotten_tomatoes_audience || null,
       movie.omdb_metacritic_score || null,
       movie.omdb_updated_at || null,
+      movie.omdb_box_office_cents || null,
+      movie.omdb_awards_wins || null,
+      movie.omdb_awards_nominations || null,
       movie.trakt_rating || null,
       movie.trakt_votes || null,
       movie.trakt_watchers || null,
