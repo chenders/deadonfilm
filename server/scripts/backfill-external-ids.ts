@@ -1,10 +1,12 @@
 #!/usr/bin/env tsx
 /**
- * Backfill external IDs (TVmaze, TheTVDB) for shows in the database.
+ * Backfill external IDs (IMDb, TVmaze, TheTVDB) for shows in the database.
  *
  * This script pre-populates external IDs from TMDB's external_ids endpoint
  * and TVmaze's lookup API. Having these IDs stored speeds up future fallback
  * lookups since we don't need to query for them each time.
+ *
+ * IMDb IDs are required for OMDb and Trakt rating lookups.
  *
  * Features:
  * - Exponential backoff retry logic (max 3 attempts)
@@ -52,12 +54,13 @@ interface ShowInfo {
   name: string
   tvmaze_id: number | null
   thetvdb_id: number | null
+  imdb_id: string | null
   external_ids_fetch_attempts: number
 }
 
 const program = new Command()
   .name("backfill-external-ids")
-  .description("Backfill TVmaze and TheTVDB IDs for shows")
+  .description("Backfill IMDb, TVmaze, and TheTVDB IDs for shows")
   .option("-l, --limit <number>", "Limit number of shows to process", parsePositiveInt)
   .option("--missing-only", "Only process shows without external IDs")
   .option("-n, --dry-run", "Preview without writing to database")
@@ -117,7 +120,7 @@ async function runBackfill(options: {
 
   // Build query with retry logic
   let query = `
-    SELECT tmdb_id, name, tvmaze_id, thetvdb_id, external_ids_fetch_attempts
+    SELECT tmdb_id, name, tvmaze_id, thetvdb_id, imdb_id, external_ids_fetch_attempts
     FROM shows
     WHERE external_ids_permanently_failed = false
       AND external_ids_fetch_attempts < 3
@@ -175,10 +178,16 @@ async function runBackfill(options: {
       // Check if we found any new IDs
       const newTvmaze = !show.tvmaze_id && externalIds.tvmazeId
       const newThetvdb = !show.thetvdb_id && externalIds.thetvdbId
+      const newImdb = !show.imdb_id && externalIds.imdbId
 
-      if (newTvmaze || newThetvdb) {
+      if (newTvmaze || newThetvdb || newImdb) {
         if (!dryRun) {
-          await updateShowExternalIds(show.tmdb_id, externalIds.tvmazeId, externalIds.thetvdbId)
+          await updateShowExternalIds(
+            show.tmdb_id,
+            externalIds.tvmazeId,
+            externalIds.thetvdbId,
+            externalIds.imdbId
+          )
 
           // Reset retry tracking on success
           await db.query(
@@ -193,9 +202,9 @@ async function runBackfill(options: {
         updated++
         consecutiveFailures = 0 // Reset circuit breaker on success
         console.log(
-          `${dryRun ? "would update: " : ""}TVmaze=${externalIds.tvmazeId ?? "none"}, TheTVDB=${externalIds.thetvdbId ?? "none"}`
+          `${dryRun ? "would update: " : ""}TVmaze=${externalIds.tvmazeId ?? "none"}, TheTVDB=${externalIds.thetvdbId ?? "none"}, IMDb=${externalIds.imdbId ?? "none"}`
         )
-      } else if (externalIds.tvmazeId || externalIds.thetvdbId) {
+      } else if (externalIds.tvmazeId || externalIds.thetvdbId || externalIds.imdbId) {
         console.log("no new IDs to add")
       } else {
         console.log("no external IDs found")
