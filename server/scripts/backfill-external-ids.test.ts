@@ -125,11 +125,11 @@ describe("backfill-external-ids query building logic", () => {
   }
 
   function buildQuery(options: QueryOptions): { query: string; params: number[] } {
-    let query = "SELECT tmdb_id, name, tvmaze_id, thetvdb_id FROM shows"
+    let query = "SELECT tmdb_id, name, tvmaze_id, thetvdb_id, imdb_id FROM shows"
     const params: number[] = []
 
     if (options.missingOnly) {
-      query += " WHERE tvmaze_id IS NULL AND thetvdb_id IS NULL"
+      query += " WHERE (tvmaze_id IS NULL OR thetvdb_id IS NULL OR imdb_id IS NULL)"
     }
 
     query += " ORDER BY popularity DESC NULLS LAST"
@@ -145,14 +145,14 @@ describe("backfill-external-ids query building logic", () => {
   it("builds basic query without options", () => {
     const { query, params } = buildQuery({})
     expect(query).toBe(
-      "SELECT tmdb_id, name, tvmaze_id, thetvdb_id FROM shows ORDER BY popularity DESC NULLS LAST"
+      "SELECT tmdb_id, name, tvmaze_id, thetvdb_id, imdb_id FROM shows ORDER BY popularity DESC NULLS LAST"
     )
     expect(params).toEqual([])
   })
 
   it("adds WHERE clause for --missing-only", () => {
     const { query, params } = buildQuery({ missingOnly: true })
-    expect(query).toContain("WHERE tvmaze_id IS NULL AND thetvdb_id IS NULL")
+    expect(query).toContain("WHERE (tvmaze_id IS NULL OR thetvdb_id IS NULL OR imdb_id IS NULL)")
     expect(params).toEqual([])
   })
 
@@ -164,7 +164,7 @@ describe("backfill-external-ids query building logic", () => {
 
   it("combines --missing-only and --limit correctly", () => {
     const { query, params } = buildQuery({ missingOnly: true, limit: 100 })
-    expect(query).toContain("WHERE tvmaze_id IS NULL AND thetvdb_id IS NULL")
+    expect(query).toContain("WHERE (tvmaze_id IS NULL OR thetvdb_id IS NULL OR imdb_id IS NULL)")
     expect(query).toContain("ORDER BY popularity DESC NULLS LAST")
     expect(query).toContain("LIMIT $1")
     expect(params).toEqual([100])
@@ -180,64 +180,102 @@ describe("backfill-external-ids update logic", () => {
   interface ShowState {
     tvmaze_id: number | null
     thetvdb_id: number | null
+    imdb_id: string | null
   }
 
   interface ExternalIds {
     tvmazeId: number | null
     thetvdbId: number | null
+    imdbId: string | null
   }
 
   function shouldUpdate(show: ShowState, externalIds: ExternalIds): boolean {
     const newTvmaze = !show.tvmaze_id && externalIds.tvmazeId
     const newThetvdb = !show.thetvdb_id && externalIds.thetvdbId
-    return Boolean(newTvmaze || newThetvdb)
+    const newImdb = !show.imdb_id && externalIds.imdbId
+    return Boolean(newTvmaze || newThetvdb || newImdb)
   }
 
   it("returns true when finding new TVmaze ID", () => {
     expect(
-      shouldUpdate({ tvmaze_id: null, thetvdb_id: null }, { tvmazeId: 82, thetvdbId: null })
+      shouldUpdate(
+        { tvmaze_id: null, thetvdb_id: null, imdb_id: null },
+        { tvmazeId: 82, thetvdbId: null, imdbId: null }
+      )
     ).toBe(true)
   })
 
   it("returns true when finding new TheTVDB ID", () => {
     expect(
-      shouldUpdate({ tvmaze_id: null, thetvdb_id: null }, { tvmazeId: null, thetvdbId: 121361 })
+      shouldUpdate(
+        { tvmaze_id: null, thetvdb_id: null, imdb_id: null },
+        { tvmazeId: null, thetvdbId: 121361, imdbId: null }
+      )
     ).toBe(true)
   })
 
-  it("returns true when finding both new IDs", () => {
+  it("returns true when finding new IMDb ID", () => {
     expect(
-      shouldUpdate({ tvmaze_id: null, thetvdb_id: null }, { tvmazeId: 82, thetvdbId: 121361 })
+      shouldUpdate(
+        { tvmaze_id: null, thetvdb_id: null, imdb_id: null },
+        { tvmazeId: null, thetvdbId: null, imdbId: "tt0108778" }
+      )
     ).toBe(true)
   })
 
-  it("returns false when show already has both IDs", () => {
+  it("returns true when finding all new IDs", () => {
     expect(
-      shouldUpdate({ tvmaze_id: 82, thetvdb_id: 121361 }, { tvmazeId: 82, thetvdbId: 121361 })
+      shouldUpdate(
+        { tvmaze_id: null, thetvdb_id: null, imdb_id: null },
+        { tvmazeId: 82, thetvdbId: 121361, imdbId: "tt0108778" }
+      )
+    ).toBe(true)
+  })
+
+  it("returns false when show already has all IDs", () => {
+    expect(
+      shouldUpdate(
+        { tvmaze_id: 82, thetvdb_id: 121361, imdb_id: "tt0108778" },
+        { tvmazeId: 82, thetvdbId: 121361, imdbId: "tt0108778" }
+      )
     ).toBe(false)
   })
 
   it("returns false when no new IDs found", () => {
     expect(
-      shouldUpdate({ tvmaze_id: null, thetvdb_id: null }, { tvmazeId: null, thetvdbId: null })
+      shouldUpdate(
+        { tvmaze_id: null, thetvdb_id: null, imdb_id: null },
+        { tvmazeId: null, thetvdbId: null, imdbId: null }
+      )
     ).toBe(false)
   })
 
-  it("returns true when finding only missing ID (show has one)", () => {
-    // Show has TVmaze but not TheTVDB, and we find TheTVDB
+  it("returns true when finding only missing IMDb ID (show has others)", () => {
+    // Show has TVmaze and TheTVDB but not IMDb, and we find IMDb
     expect(
-      shouldUpdate({ tvmaze_id: 82, thetvdb_id: null }, { tvmazeId: 82, thetvdbId: 121361 })
+      shouldUpdate(
+        { tvmaze_id: 82, thetvdb_id: 121361, imdb_id: null },
+        { tvmazeId: 82, thetvdbId: 121361, imdbId: "tt0108778" }
+      )
     ).toBe(true)
+  })
 
-    // Show has TheTVDB but not TVmaze, and we find TVmaze
+  it("returns true when finding only missing TheTVDB ID (show has others)", () => {
+    // Show has TVmaze and IMDb but not TheTVDB, and we find TheTVDB
     expect(
-      shouldUpdate({ tvmaze_id: null, thetvdb_id: 121361 }, { tvmazeId: 82, thetvdbId: 121361 })
+      shouldUpdate(
+        { tvmaze_id: 82, thetvdb_id: null, imdb_id: "tt0108778" },
+        { tvmazeId: 82, thetvdbId: 121361, imdbId: "tt0108778" }
+      )
     ).toBe(true)
   })
 
   it("returns false when we only find IDs the show already has", () => {
     expect(
-      shouldUpdate({ tvmaze_id: 82, thetvdb_id: null }, { tvmazeId: 82, thetvdbId: null })
+      shouldUpdate(
+        { tvmaze_id: 82, thetvdb_id: null, imdb_id: "tt0108778" },
+        { tvmazeId: 82, thetvdbId: null, imdbId: "tt0108778" }
+      )
     ).toBe(false)
   })
 })
