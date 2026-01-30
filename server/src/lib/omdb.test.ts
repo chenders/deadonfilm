@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { getOMDbRatings } from "./omdb.js"
+import { getOMDbRatings, parseBoxOffice, parseAwards, parseTotalSeasons } from "./omdb.js"
 import type { OMDbResponse } from "./omdb.js"
 
 // Mock fetch globally
@@ -59,9 +59,13 @@ describe("OMDb API Client", () => {
         rottenTomatoesScore: 91,
         rottenTomatoesAudience: null,
         metacriticScore: 82,
+        boxOfficeCents: 2876718900,
+        awardsWins: null,
+        awardsNominations: null,
+        totalSeasons: null,
       })
 
-      expect(fetch).toHaveBeenCalledWith("http://www.omdbapi.com/?apikey=test-api-key&i=tt0111161")
+      expect(fetch).toHaveBeenCalledWith("https://www.omdbapi.com/?apikey=test-api-key&i=tt0111161")
     })
 
     it("handles comma-formatted vote counts", async () => {
@@ -145,6 +149,10 @@ describe("OMDb API Client", () => {
         rottenTomatoesScore: null,
         rottenTomatoesAudience: null,
         metacriticScore: null,
+        boxOfficeCents: null,
+        awardsWins: null,
+        awardsNominations: null,
+        totalSeasons: null,
       })
     })
 
@@ -299,7 +307,249 @@ describe("OMDb API Client", () => {
 
       await getOMDbRatings("tt0000001", "custom-key")
 
-      expect(fetch).toHaveBeenCalledWith("http://www.omdbapi.com/?apikey=custom-key&i=tt0000001")
+      expect(fetch).toHaveBeenCalledWith("https://www.omdbapi.com/?apikey=custom-key&i=tt0000001")
     })
+
+    it("includes extended metrics for movies", async () => {
+      const mockResponse: OMDbResponse = {
+        Title: "Award Winning Movie",
+        Year: "2020",
+        Rated: "PG-13",
+        Released: "01 Jan 2020",
+        Runtime: "150 min",
+        Genre: "Drama",
+        Director: "Test",
+        Writer: "Test",
+        Actors: "Test",
+        Plot: "Test",
+        Language: "English",
+        Country: "USA",
+        Awards: "Won 7 Oscars. 90 wins & 100 nominations",
+        Poster: "N/A",
+        Ratings: [],
+        Metascore: "N/A",
+        imdbRating: "8.5",
+        imdbVotes: "500,000",
+        imdbID: "tt2222222",
+        Type: "movie",
+        DVD: "N/A",
+        BoxOffice: "$150,000,000",
+        Production: "N/A",
+        Website: "N/A",
+        Response: "True",
+      }
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      } as Response)
+
+      const result = await getOMDbRatings("tt2222222")
+
+      expect(result?.boxOfficeCents).toBe(15000000000)
+      expect(result?.awardsWins).toBe(90)
+      expect(result?.awardsNominations).toBe(100)
+      expect(result?.totalSeasons).toBeNull()
+    })
+
+    it("includes extended metrics for TV series", async () => {
+      const mockResponse: OMDbResponse = {
+        Title: "Award Winning Series",
+        Year: "2015-2023",
+        Rated: "TV-MA",
+        Released: "01 Jan 2015",
+        Runtime: "60 min",
+        Genre: "Drama",
+        Director: "N/A",
+        Writer: "Test",
+        Actors: "Test",
+        Plot: "Test",
+        Language: "English",
+        Country: "USA",
+        Awards: "Won 3 Emmys. 45 wins & 200 nominations",
+        Poster: "N/A",
+        Ratings: [],
+        Metascore: "N/A",
+        imdbRating: "8.8",
+        imdbVotes: "1,000,000",
+        imdbID: "tt3333333",
+        Type: "series",
+        DVD: "N/A",
+        BoxOffice: "N/A",
+        Production: "N/A",
+        Website: "N/A",
+        totalSeasons: "8",
+        Response: "True",
+      }
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      } as Response)
+
+      const result = await getOMDbRatings("tt3333333")
+
+      expect(result?.boxOfficeCents).toBeNull()
+      expect(result?.awardsWins).toBe(45)
+      expect(result?.awardsNominations).toBe(200)
+      expect(result?.totalSeasons).toBe(8)
+    })
+  })
+})
+
+describe("parseBoxOffice", () => {
+  it("parses valid box office values to cents", () => {
+    expect(parseBoxOffice("$58,300,000")).toBe(5830000000)
+    expect(parseBoxOffice("$1,000,000")).toBe(100000000)
+    expect(parseBoxOffice("$100")).toBe(10000)
+    expect(parseBoxOffice("$0")).toBe(0)
+  })
+
+  it("handles values without commas", () => {
+    expect(parseBoxOffice("$1000000")).toBe(100000000)
+    expect(parseBoxOffice("$500")).toBe(50000)
+  })
+
+  it("returns null for N/A", () => {
+    expect(parseBoxOffice("N/A")).toBeNull()
+  })
+
+  it("returns null for empty or undefined values", () => {
+    expect(parseBoxOffice("")).toBeNull()
+    expect(parseBoxOffice(null as unknown as string)).toBeNull()
+    expect(parseBoxOffice(undefined as unknown as string)).toBeNull()
+  })
+
+  it("returns null for invalid formats", () => {
+    expect(parseBoxOffice("unknown")).toBeNull()
+    expect(parseBoxOffice("abc")).toBeNull()
+    expect(parseBoxOffice("$-100")).toBeNull()
+  })
+
+  it("returns null for partial-parse cases like $100M", () => {
+    // These would previously parse as 100 cents due to parseInt partial parsing
+    expect(parseBoxOffice("$100M")).toBeNull()
+    expect(parseBoxOffice("$50 million")).toBeNull()
+    expect(parseBoxOffice("$1.5B")).toBeNull()
+  })
+})
+
+describe("parseAwards", () => {
+  it("parses full awards string with wins and nominations", () => {
+    expect(parseAwards("Won 7 Oscars. 90 wins & 100 nominations")).toEqual({
+      wins: 90,
+      nominations: 100,
+    })
+  })
+
+  it("parses Emmy awards format", () => {
+    expect(parseAwards("Won 2 Emmys. 45 wins & 200 nominations total")).toEqual({
+      wins: 45,
+      nominations: 200,
+    })
+  })
+
+  it("parses simple wins and nominations format", () => {
+    expect(parseAwards("1 win & 2 nominations")).toEqual({
+      wins: 1,
+      nominations: 2,
+    })
+  })
+
+  it("parses singular forms", () => {
+    expect(parseAwards("1 win & 1 nomination")).toEqual({
+      wins: 1,
+      nominations: 1,
+    })
+  })
+
+  it("parses wins only", () => {
+    expect(parseAwards("10 wins")).toEqual({
+      wins: 10,
+      nominations: null,
+    })
+  })
+
+  it("parses nominations only", () => {
+    expect(parseAwards("5 nominations")).toEqual({
+      wins: null,
+      nominations: 5,
+    })
+  })
+
+  it("returns nulls for N/A", () => {
+    expect(parseAwards("N/A")).toEqual({
+      wins: null,
+      nominations: null,
+    })
+  })
+
+  it("returns nulls for empty values", () => {
+    expect(parseAwards("")).toEqual({
+      wins: null,
+      nominations: null,
+    })
+    expect(parseAwards(null as unknown as string)).toEqual({
+      wins: null,
+      nominations: null,
+    })
+  })
+
+  it("handles case variations", () => {
+    expect(parseAwards("50 WINS & 100 NOMINATIONS")).toEqual({
+      wins: 50,
+      nominations: 100,
+    })
+    expect(parseAwards("50 Wins & 100 Nominations")).toEqual({
+      wins: 50,
+      nominations: 100,
+    })
+  })
+
+  it("handles complex award strings", () => {
+    // Real example from OMDB
+    expect(parseAwards("Won 6 Oscars. Another 80 wins & 123 nominations.")).toEqual({
+      wins: 80,
+      nominations: 123,
+    })
+  })
+})
+
+describe("parseTotalSeasons", () => {
+  it("parses valid season counts", () => {
+    expect(parseTotalSeasons("8")).toBe(8)
+    expect(parseTotalSeasons("1")).toBe(1)
+    expect(parseTotalSeasons("25")).toBe(25)
+  })
+
+  it("returns null for N/A", () => {
+    expect(parseTotalSeasons("N/A")).toBeNull()
+  })
+
+  it("returns null for empty values", () => {
+    expect(parseTotalSeasons("")).toBeNull()
+    expect(parseTotalSeasons(null as unknown as string)).toBeNull()
+    expect(parseTotalSeasons(undefined as unknown as string)).toBeNull()
+  })
+
+  it("returns null for invalid values", () => {
+    expect(parseTotalSeasons("abc")).toBeNull()
+    expect(parseTotalSeasons("-1")).toBeNull()
+  })
+
+  it("returns null for partial-parse cases", () => {
+    // These would previously parse as numbers due to parseInt partial parsing
+    expect(parseTotalSeasons("8 seasons")).toBeNull()
+    expect(parseTotalSeasons("10+")).toBeNull()
+    expect(parseTotalSeasons("5-6")).toBeNull()
+  })
+
+  it("handles zero seasons", () => {
+    expect(parseTotalSeasons("0")).toBe(0)
+  })
+
+  it("handles whitespace around valid numbers", () => {
+    expect(parseTotalSeasons(" 8 ")).toBe(8)
+    expect(parseTotalSeasons("  12  ")).toBe(12)
   })
 })

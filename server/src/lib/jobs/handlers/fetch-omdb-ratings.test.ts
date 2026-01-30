@@ -99,6 +99,10 @@ describe("FetchOMDbRatingsHandler", () => {
       rottenTomatoesScore: 79,
       rottenTomatoesAudience: 96,
       metacriticScore: 66,
+      boxOfficeCents: 10076271800,
+      awardsWins: 11,
+      awardsNominations: 43,
+      totalSeasons: null,
     }
 
     it("successfully fetches and saves ratings for a movie", async () => {
@@ -138,6 +142,22 @@ describe("FetchOMDbRatingsHandler", () => {
         entityId: 550,
       })
       expect(movies.upsertMovie).not.toHaveBeenCalled()
+    })
+
+    it("saves extended fields for movies", async () => {
+      vi.mocked(omdb.getOMDbRatings).mockResolvedValue(mockRatings)
+      vi.mocked(movies.getMovie).mockResolvedValue(mockMovie as MovieRecord)
+      vi.mocked(movies.upsertMovie).mockResolvedValue()
+
+      await handler.process(mockJob)
+
+      expect(movies.upsertMovie).toHaveBeenCalledWith(
+        expect.objectContaining({
+          omdb_box_office_cents: 10076271800,
+          omdb_awards_wins: 11,
+          omdb_awards_nominations: 43,
+        })
+      )
     })
 
     it("handles movie not found in database as permanent error", async () => {
@@ -205,6 +225,10 @@ describe("FetchOMDbRatingsHandler", () => {
       rottenTomatoesScore: 96,
       rottenTomatoesAudience: 98,
       metacriticScore: 85,
+      boxOfficeCents: null,
+      awardsWins: 152,
+      awardsNominations: 238,
+      totalSeasons: 5,
     }
 
     it("successfully fetches and saves ratings for a show", async () => {
@@ -227,6 +251,22 @@ describe("FetchOMDbRatingsHandler", () => {
           omdb_rotten_tomatoes_audience: 98,
           omdb_metacritic_score: 85,
           omdb_updated_at: expect.any(Date),
+        })
+      )
+    })
+
+    it("saves extended fields for shows", async () => {
+      vi.mocked(omdb.getOMDbRatings).mockResolvedValue(mockRatings)
+      vi.mocked(shows.getShow).mockResolvedValue(mockShow as ShowRecord)
+      vi.mocked(shows.upsertShow).mockResolvedValue()
+
+      await handler.process(mockJob)
+
+      expect(shows.upsertShow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          omdb_total_seasons: 5,
+          omdb_awards_wins: 152,
+          omdb_awards_nominations: 238,
         })
       )
     })
@@ -334,6 +374,10 @@ describe("FetchOMDbRatingsHandler", () => {
         rottenTomatoesScore: 79,
         rottenTomatoesAudience: 96,
         metacriticScore: 66,
+        boxOfficeCents: 10076271800,
+        awardsWins: 11,
+        awardsNominations: 43,
+        totalSeasons: null,
       }
 
       vi.mocked(omdb.getOMDbRatings).mockResolvedValue(mockRatings)
