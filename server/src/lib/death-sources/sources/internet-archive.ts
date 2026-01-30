@@ -19,6 +19,8 @@
 import { BaseDataSource, DEATH_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType } from "../types.js"
+import { aiSelectLinks, type SearchResultForRanking } from "../ai-helpers.js"
+import { getEnrichmentLogger } from "../logger.js"
 
 const IA_SEARCH_URL = "https://archive.org/advancedsearch.php"
 const IA_DETAILS_URL = "https://archive.org/details"
@@ -49,8 +51,14 @@ interface IASearchResponse {
   }
 }
 
+// Minimum AI relevance score to consider a result valid
+const MIN_AI_RELEVANCE_SCORE = 0.5
+
 /**
  * Internet Archive source for historical death information.
+ *
+ * Uses AI-powered relevance evaluation to filter out irrelevant results
+ * when ANTHROPIC_API_KEY is available.
  */
 export class InternetArchiveSource extends BaseDataSource {
   readonly name = "Internet Archive"
@@ -60,6 +68,9 @@ export class InternetArchiveSource extends BaseDataSource {
 
   // Be polite to Internet Archive servers
   protected minDelayMs = 1500
+
+  // Track AI costs for this lookup
+  private aiCostUsd = 0
 
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
@@ -108,8 +119,8 @@ export class InternetArchiveSource extends BaseDataSource {
         }
       }
 
-      // Find the most relevant item
-      const relevantDoc = this.findRelevantDoc(data.response.docs, actor)
+      // Find the most relevant item using AI if available, otherwise keyword matching
+      const relevantDoc = await this.findRelevantDocWithAI(data.response.docs, actor, searchUrl)
 
       if (!relevantDoc) {
         return {
@@ -201,41 +212,132 @@ export class InternetArchiveSource extends BaseDataSource {
   }
 
   /**
-   * Find the most relevant document for the actor.
+   * Find the most relevant document using AI evaluation when available.
+   *
+   * Strategy:
+   * 1. If ANTHROPIC_API_KEY is available, use AI to evaluate all results
+   * 2. AI ranks results by likelihood of containing actual death information
+   * 3. Only accept results with relevance score >= MIN_AI_RELEVANCE_SCORE
+   * 4. Fall back to keyword matching if AI is not available
+   */
+  private async findRelevantDocWithAI(
+    docs: IASearchDoc[],
+    actor: ActorForEnrichment,
+    _searchUrl: string
+  ): Promise<IASearchDoc | null> {
+    const logger = getEnrichmentLogger()
+
+    // Try AI-powered evaluation if API key is available
+    if (process.env.ANTHROPIC_API_KEY) {
+      try {
+        // Convert docs to search results format for AI evaluation
+        const searchResults: SearchResultForRanking[] = docs.slice(0, 10).map((doc) => ({
+          url: `${IA_DETAILS_URL}/${doc.identifier}`,
+          title: doc.title || doc.identifier,
+          snippet: this.normalizeDescription(doc.description).substring(0, 300),
+        }))
+
+        logger.debug(`[IA_AI_EVAL] ${actor.name}`, {
+          resultCount: searchResults.length,
+        })
+
+        // Use AI to rank relevance
+        const aiResult = await aiSelectLinks(actor, searchResults, 3)
+        this.aiCostUsd = aiResult.costUsd
+
+        // Find the highest-scoring result that meets our threshold
+        const bestMatch = aiResult.data
+          .filter((r) => r.score >= MIN_AI_RELEVANCE_SCORE)
+          .sort((a, b) => b.score - a.score)[0]
+
+        if (bestMatch) {
+          // Find the corresponding doc
+          const matchedDoc = docs.find(
+            (doc) => `${IA_DETAILS_URL}/${doc.identifier}` === bestMatch.url
+          )
+
+          if (matchedDoc) {
+            logger.debug(`[IA_AI_MATCH] ${actor.name}`, {
+              identifier: matchedDoc.identifier,
+              score: bestMatch.score,
+              reason: bestMatch.reason,
+            })
+            return matchedDoc
+          }
+        }
+
+        logger.debug(`[IA_AI_NO_MATCH] ${actor.name}`, {
+          topScore: aiResult.data[0]?.score || 0,
+          threshold: MIN_AI_RELEVANCE_SCORE,
+        })
+
+        // AI found no relevant results
+        return null
+      } catch (error) {
+        logger.debug(`[IA_AI_ERROR] ${actor.name}`, {
+          error: error instanceof Error ? error.message : "Unknown error",
+        })
+        // Fall back to keyword matching on AI error
+      }
+    }
+
+    // Fall back to keyword-based matching when AI is not available
+    return this.findRelevantDoc(docs, actor)
+  }
+
+  /**
+   * Find the most relevant document for the actor using keyword matching.
+   *
+   * IMPORTANT: This method is intentionally strict to avoid returning garbage results.
+   * It requires BOTH the actor's full name AND death keywords to appear in the document.
+   * If no match is found, it returns null rather than a potentially irrelevant document.
    */
   private findRelevantDoc(docs: IASearchDoc[], actor: ActorForEnrichment): IASearchDoc | null {
     const actorNameLower = actor.name.toLowerCase()
     const nameParts = actorNameLower.split(/\s+/)
     const lastName = nameParts[nameParts.length - 1]
+    const isSingleWordName = nameParts.length === 1
 
     // Sort by downloads (popularity/reliability indicator)
     const sortedDocs = [...docs].sort((a, b) => (b.downloads || 0) - (a.downloads || 0))
 
+    // First pass: require FULL name match + death keywords (strictest)
     for (const doc of sortedDocs) {
       const titleLower = doc.title?.toLowerCase() || ""
       const descLower = this.normalizeDescription(doc.description).toLowerCase()
       const subjectLower = this.normalizeDescription(doc.subject).toLowerCase()
       const combined = `${titleLower} ${descLower} ${subjectLower}`
 
-      // Check for actor name
-      if (combined.includes(actorNameLower) || combined.includes(lastName)) {
-        // Check for death keywords
+      // Must contain full name
+      if (combined.includes(actorNameLower)) {
+        // Must also contain death keywords
         if (DEATH_KEYWORDS.some((kw) => combined.includes(kw.toLowerCase()))) {
           return doc
         }
       }
     }
 
-    // Fall back to first doc mentioning the name
-    for (const doc of sortedDocs) {
-      const combined =
-        `${doc.title || ""} ${this.normalizeDescription(doc.description)}`.toLowerCase()
-      if (combined.includes(lastName)) {
-        return doc
+    // Second pass: for multi-word names only, try last name + death keywords
+    // Skip this for single-word names like "D'Angelo" to avoid false positives
+    if (!isSingleWordName) {
+      for (const doc of sortedDocs) {
+        const titleLower = doc.title?.toLowerCase() || ""
+        const descLower = this.normalizeDescription(doc.description).toLowerCase()
+        const subjectLower = this.normalizeDescription(doc.subject).toLowerCase()
+        const combined = `${titleLower} ${descLower} ${subjectLower}`
+
+        if (combined.includes(lastName)) {
+          // Still require death keywords for relevance
+          if (DEATH_KEYWORDS.some((kw) => combined.includes(kw.toLowerCase()))) {
+            return doc
+          }
+        }
       }
     }
 
-    return sortedDocs[0] || null
+    // No fallback - return null if no relevant document found
+    // This prevents returning garbage results like random audio files
+    return null
   }
 
   /**
