@@ -69,9 +69,6 @@ export class InternetArchiveSource extends BaseDataSource {
   // Be polite to Internet Archive servers
   protected minDelayMs = 1500
 
-  // Track AI costs for this lookup
-  private aiCostUsd = 0
-
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
 
@@ -120,7 +117,7 @@ export class InternetArchiveSource extends BaseDataSource {
       }
 
       // Find the most relevant item using AI if available, otherwise keyword matching
-      const relevantDoc = await this.findRelevantDocWithAI(data.response.docs, actor, searchUrl)
+      const relevantDoc = await this.findRelevantDocWithAI(data.response.docs, actor)
 
       if (!relevantDoc) {
         return {
@@ -222,8 +219,7 @@ export class InternetArchiveSource extends BaseDataSource {
    */
   private async findRelevantDocWithAI(
     docs: IASearchDoc[],
-    actor: ActorForEnrichment,
-    _searchUrl: string
+    actor: ActorForEnrichment
   ): Promise<IASearchDoc | null> {
     const logger = getEnrichmentLogger()
 
@@ -243,7 +239,6 @@ export class InternetArchiveSource extends BaseDataSource {
 
         // Use AI to rank relevance
         const aiResult = await aiSelectLinks(actor, searchResults, 3)
-        this.aiCostUsd = aiResult.costUsd
 
         // Find the highest-scoring result that meets our threshold
         const bestMatch = aiResult.data
