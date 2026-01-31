@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import { useState, useEffect, Fragment } from "react"
 import AdminLayout from "../../components/admin/AdminLayout"
 import {
   useSyncStatus,
@@ -452,7 +452,7 @@ export default function SyncPage() {
                 </thead>
                 <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
                   {history.data.history.map((item) => (
-                    <React.Fragment key={item.id}>
+                    <Fragment key={item.id}>
                       <tr
                         onClick={() => toggleExpandedRow(item.id)}
                         onKeyDown={(event) => {
@@ -464,6 +464,7 @@ export default function SyncPage() {
                         role="button"
                         tabIndex={0}
                         aria-expanded={expandedRowId === item.id}
+                        aria-label={`${expandedRowId === item.id ? "Collapse" : "Expand"} ${item.syncType} sync details`}
                         className="cursor-pointer hover:bg-admin-surface-overlay"
                       >
                         <td className="whitespace-nowrap px-6 py-4">
@@ -556,7 +557,7 @@ export default function SyncPage() {
                           </td>
                         </tr>
                       )}
-                    </React.Fragment>
+                    </Fragment>
                   ))}
                   {history.data.history.length === 0 && (
                     <tr>
