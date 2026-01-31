@@ -272,6 +272,86 @@ export interface SyncOptions {
   onProgress?: ProgressCallback
   /** Optional callback for log messages (used with status bar) */
   onLog?: (message: string) => void
+  /** Optional sync history record ID for progress tracking in database */
+  syncId?: number
+}
+
+/**
+ * Progress tracker that updates sync_history periodically.
+ * Updates every 100 items or 30 seconds, whichever comes first.
+ */
+export class SyncProgressTracker {
+  private syncId: number | null
+  private lastUpdateTime: number = 0
+  private lastUpdateCount: number = 0
+  private itemsChecked: number = 0
+  private itemsUpdated: number = 0
+  private newDeathsFound: number = 0
+
+  private static readonly UPDATE_INTERVAL_MS = 30_000 // 30 seconds
+  private static readonly UPDATE_ITEM_THRESHOLD = 100 // Every 100 items
+
+  constructor(syncId?: number) {
+    this.syncId = syncId ?? null
+    this.lastUpdateTime = Date.now()
+  }
+
+  /**
+   * Update progress counters and persist to database if threshold reached.
+   */
+  async update(counts: {
+    itemsChecked?: number
+    itemsUpdated?: number
+    newDeathsFound?: number
+  }): Promise<void> {
+    if (counts.itemsChecked !== undefined) this.itemsChecked = counts.itemsChecked
+    if (counts.itemsUpdated !== undefined) this.itemsUpdated = counts.itemsUpdated
+    if (counts.newDeathsFound !== undefined) this.newDeathsFound = counts.newDeathsFound
+
+    // Check if we should persist to database
+    const now = Date.now()
+    const timeSinceLastUpdate = now - this.lastUpdateTime
+    const itemsSinceLastUpdate = this.itemsChecked - this.lastUpdateCount
+
+    const shouldUpdate =
+      this.syncId !== null &&
+      (timeSinceLastUpdate >= SyncProgressTracker.UPDATE_INTERVAL_MS ||
+        itemsSinceLastUpdate >= SyncProgressTracker.UPDATE_ITEM_THRESHOLD)
+
+    if (shouldUpdate) {
+      await this.persistProgress()
+      this.lastUpdateTime = now
+      this.lastUpdateCount = this.itemsChecked
+    }
+  }
+
+  /**
+   * Force persist current progress to database (call at end of sync phases).
+   */
+  async flush(): Promise<void> {
+    if (this.syncId !== null) {
+      await this.persistProgress()
+    }
+  }
+
+  private async persistProgress(): Promise<void> {
+    if (this.syncId === null) return
+
+    try {
+      const pool = getPool()
+      await pool.query(
+        `UPDATE sync_history SET
+          items_checked = $1,
+          items_updated = $2,
+          new_deaths_found = $3
+        WHERE id = $4 AND status = 'running'`,
+        [this.itemsChecked, this.itemsUpdated, this.newDeathsFound, this.syncId]
+      )
+    } catch (error) {
+      // Log but don't fail the sync if progress update fails
+      console.error(`Failed to update sync progress: ${error}`)
+    }
+  }
 }
 
 export async function runSync(options: SyncOptions): Promise<SyncResult> {
@@ -310,6 +390,9 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
     errors: [],
   }
 
+  // Create progress tracker for database updates
+  const progressTracker = new SyncProgressTracker(options.syncId)
+
   try {
     // Sync people changes
     if (!options.moviesOnly && !options.showsOnly) {
@@ -339,12 +422,16 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
         options.dryRun,
         quiet,
         options.onProgress,
-        options.onLog
+        options.onLog,
+        progressTracker
       )
       result.peopleChecked = peopleResult.checked
       result.newDeathsFound = peopleResult.newDeaths
       result.newlyDeceasedActors.push(...peopleResult.newlyDeceasedActors)
       result.errors.push(...peopleResult.errors)
+
+      // Flush progress after people sync completes
+      await progressTracker.flush()
 
       // Update sync state
       if (!options.dryRun) {
@@ -386,12 +473,17 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
         options.dryRun,
         quiet,
         options.onProgress,
-        options.onLog
+        options.onLog,
+        progressTracker,
+        result // Pass cumulative result for accurate totals
       )
       result.moviesChecked = movieResult.checked
       result.moviesUpdated = movieResult.updated
       result.moviesSkipped = movieResult.skipped
       result.errors.push(...movieResult.errors)
+
+      // Flush progress after movie sync completes
+      await progressTracker.flush()
 
       // Update sync state
       if (!options.dryRun) {
@@ -411,11 +503,16 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
         options.dryRun,
         quiet,
         options.onProgress,
-        options.onLog
+        options.onLog,
+        progressTracker,
+        result // Pass cumulative result for accurate totals
       )
       result.showsChecked = showResult.checked
       result.newEpisodesFound = showResult.newEpisodes
       result.errors.push(...showResult.errors)
+
+      // Flush progress after show sync completes
+      await progressTracker.flush()
 
       // Update sync state
       if (!options.dryRun) {
@@ -759,7 +856,8 @@ async function syncPeopleChanges(
   dryRun: boolean,
   quiet: boolean = false,
   onProgress?: ProgressCallback,
-  onLog?: (message: string) => void
+  onLog?: (message: string) => void,
+  progressTracker?: SyncProgressTracker
 ): Promise<{
   checked: number
   newDeaths: number
@@ -898,6 +996,12 @@ async function syncPeopleChanges(
       const progressBar = drawProgressBar(processedCount, totalPeople)
       console.log(`  ${progressBar}`)
     }
+
+    // Update database progress tracker
+    await progressTracker?.update({
+      itemsChecked: processedCount,
+      newDeathsFound: newDeaths,
+    })
   }
 
   // Post-processing for newly deceased actors
@@ -1034,7 +1138,9 @@ async function syncMovieChanges(
   dryRun: boolean,
   quiet: boolean = false,
   onProgress?: ProgressCallback,
-  onLog?: (message: string) => void
+  onLog?: (message: string) => void,
+  progressTracker?: SyncProgressTracker,
+  cumulativeResult?: SyncResult
 ): Promise<{ checked: number; updated: number; skipped: number; errors: string[] }> {
   log(`\n=== Syncing Movie Changes (${startDate} to ${endDate}) ===\n`, quiet, onLog)
 
@@ -1131,6 +1237,15 @@ async function syncMovieChanges(
       }
     }
 
+    // Update database progress tracker with cumulative totals
+    const totalChecked = (cumulativeResult?.peopleChecked ?? 0) + processedCount
+    const totalUpdated = (cumulativeResult?.moviesUpdated ?? 0) + updated
+    await progressTracker?.update({
+      itemsChecked: totalChecked,
+      itemsUpdated: totalUpdated,
+      newDeathsFound: cumulativeResult?.newDeathsFound ?? 0,
+    })
+
     await delay(250)
   }
 
@@ -1152,7 +1267,9 @@ async function syncActiveShowEpisodes(
   dryRun: boolean,
   quiet: boolean = false,
   onProgress?: ProgressCallback,
-  onLog?: (message: string) => void
+  onLog?: (message: string) => void,
+  progressTracker?: SyncProgressTracker,
+  cumulativeResult?: SyncResult
 ): Promise<{ checked: number; newEpisodes: number; errors: string[] }> {
   log("\n=== Syncing Active TV Show Episodes ===\n", quiet, onLog)
 
@@ -1266,6 +1383,17 @@ async function syncActiveShowEpisodes(
       if (!quiet && (showsChecked % 5 === 0 || showsChecked === totalShows)) {
         log(drawProgressBar(showsChecked, totalShows), quiet, onLog)
       }
+
+      // Update database progress tracker with cumulative totals
+      const totalChecked =
+        (cumulativeResult?.peopleChecked ?? 0) +
+        (cumulativeResult?.moviesChecked ?? 0) +
+        showsChecked
+      await progressTracker?.update({
+        itemsChecked: totalChecked,
+        itemsUpdated: (cumulativeResult?.moviesUpdated ?? 0) + totalNewEpisodes,
+        newDeathsFound: cumulativeResult?.newDeathsFound ?? 0,
+      })
 
       // Delay between shows
       await delay(100)

@@ -130,6 +130,20 @@ async function fetchSyncDetails(syncId: number): Promise<SyncDetails> {
   return response.json()
 }
 
+async function cancelSync(syncId: number): Promise<SyncDetails> {
+  const response = await fetch(adminApi(`/sync/${syncId}/cancel`), {
+    method: "POST",
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    const errorData = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new Error(errorData.error?.message || "Failed to cancel sync")
+  }
+
+  return response.json()
+}
+
 // ============================================================================
 // React Query Hooks
 // ============================================================================
@@ -192,6 +206,21 @@ export function useSyncDetails(
       // Poll every 5 seconds if sync is still running
       const data = query.state.data as SyncDetails | undefined
       return data?.status === "running" ? 5000 : false
+    },
+  })
+}
+
+/**
+ * Hook to cancel a running sync operation.
+ */
+export function useCancelSync() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: cancelSync,
+    onSuccess: () => {
+      // Invalidate all sync queries to reflect the cancelled sync
+      queryClient.invalidateQueries({ queryKey: ["admin", "sync"] })
     },
   })
 }

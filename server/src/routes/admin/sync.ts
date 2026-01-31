@@ -228,6 +228,7 @@ router.post("/tmdb", async (req: Request, res: Response): Promise<void> => {
       moviesOnly,
       showsOnly,
       quiet: true, // Suppress console output since we're running in background
+      syncId, // Pass sync ID for progress tracking
     }
 
     // Capture syncId for the async closure
@@ -280,6 +281,102 @@ router.post("/tmdb", async (req: Request, res: Response): Promise<void> => {
     }
     logger.error({ error }, "Failed to trigger TMDB sync")
     res.status(500).json({ error: { message: "Failed to trigger TMDB sync" } })
+  }
+})
+
+// ============================================================================
+// POST /admin/api/sync/:id/cancel
+// Force-stop a stuck sync operation
+// ============================================================================
+
+router.post("/:id/cancel", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const syncId = parseInt(req.params.id, 10)
+
+    if (isNaN(syncId)) {
+      res.status(400).json({ error: { message: "Invalid sync ID" } })
+      return
+    }
+
+    const pool = getPool()
+
+    // Check if sync exists and is running
+    const checkResult = await pool.query<{ id: number; status: string }>(
+      `SELECT id, status FROM sync_history WHERE id = $1`,
+      [syncId]
+    )
+
+    if (checkResult.rows.length === 0) {
+      res.status(404).json({ error: { message: "Sync not found" } })
+      return
+    }
+
+    if (checkResult.rows[0].status !== "running") {
+      res.status(400).json({
+        error: { message: `Sync is not running (status: ${checkResult.rows[0].status})` },
+      })
+      return
+    }
+
+    // Release the Redis lock (may not exist if it already expired)
+    await releaseLock(SYNC_LOCK_NAME, String(syncId))
+
+    // Update the sync record to failed, but only if still running
+    // This prevents race condition where sync completes between check and update
+    const updateResult = await pool.query<{
+      id: number
+      sync_type: string
+      started_at: string
+      completed_at: string
+      status: string
+      items_checked: number
+      items_updated: number
+      new_deaths_found: number
+      error_message: string
+      parameters: Record<string, unknown> | null
+      triggered_by: string | null
+    }>(
+      `
+      UPDATE sync_history SET
+        status = 'failed',
+        completed_at = NOW(),
+        error_message = 'Manually cancelled by admin'
+      WHERE id = $1 AND status = 'running'
+      RETURNING id, sync_type, started_at, completed_at, status,
+                items_checked, items_updated, new_deaths_found,
+                error_message, parameters, triggered_by
+    `,
+      [syncId]
+    )
+
+    // Check if the update succeeded (sync might have completed in the meantime)
+    if (updateResult.rows.length === 0) {
+      res.status(409).json({
+        error: { message: "Sync already completed or was cancelled by another process" },
+      })
+      return
+    }
+
+    const row = updateResult.rows[0]
+
+    logger.info({ syncId }, "TMDB sync cancelled by admin")
+
+    res.json({
+      id: row.id,
+      syncType: row.sync_type,
+      startedAt: row.started_at,
+      completedAt: row.completed_at,
+      status: row.status,
+      itemsChecked: row.items_checked,
+      itemsUpdated: row.items_updated,
+      newDeathsFound: row.new_deaths_found,
+      errorMessage: row.error_message,
+      parameters: row.parameters,
+      triggeredBy: row.triggered_by,
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to cancel sync")
+    res.status(500).json({ error: { message: "Failed to cancel sync" } })
   }
 })
 
