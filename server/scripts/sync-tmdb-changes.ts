@@ -280,7 +280,7 @@ export interface SyncOptions {
  * Progress tracker that updates sync_history periodically.
  * Updates every 100 items or 30 seconds, whichever comes first.
  */
-class SyncProgressTracker {
+export class SyncProgressTracker {
   private syncId: number | null
   private lastUpdateTime: number = 0
   private lastUpdateCount: number = 0

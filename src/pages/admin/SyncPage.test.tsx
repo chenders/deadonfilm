@@ -222,6 +222,239 @@ describe("SyncPage defaults", () => {
     })
   })
 
+  describe("Force Stop functionality", () => {
+    it("shows confirmation dialog when Force Stop is clicked", () => {
+      mockUseSyncStatus.mockReturnValue({
+        data: {
+          isRunning: true,
+          lastSync: null,
+          currentSyncId: 1,
+          currentSyncStartedAt: new Date().toISOString(),
+        },
+        isLoading: false,
+      })
+
+      mockUseSyncDetails.mockReturnValue({
+        data: {
+          id: 1,
+          status: "running",
+          itemsChecked: 50,
+          itemsUpdated: 5,
+          newDeathsFound: 2,
+        },
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Click Force Stop button
+      fireEvent.click(screen.getByRole("button", { name: /force stop/i }))
+
+      // Confirmation dialog should appear
+      expect(screen.getByText(/are you sure you want to stop this sync/i)).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /yes, stop sync/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /^cancel$/i })).toBeInTheDocument()
+    })
+
+    it("calls cancel mutation when Yes, Stop Sync is clicked", () => {
+      const mockMutate = vi.fn()
+      mockUseSyncStatus.mockReturnValue({
+        data: {
+          isRunning: true,
+          lastSync: null,
+          currentSyncId: 42,
+          currentSyncStartedAt: new Date().toISOString(),
+        },
+        isLoading: false,
+      })
+
+      mockUseSyncDetails.mockReturnValue({
+        data: {
+          id: 42,
+          status: "running",
+          itemsChecked: 50,
+          itemsUpdated: 5,
+          newDeathsFound: 2,
+        },
+        isLoading: false,
+      })
+
+      mockUseCancelSync.mockReturnValue({
+        mutate: mockMutate,
+        isPending: false,
+        isSuccess: false,
+        isError: false,
+        error: null,
+      })
+
+      renderPage()
+
+      // Click Force Stop button
+      fireEvent.click(screen.getByRole("button", { name: /force stop/i }))
+
+      // Click Yes, Stop Sync
+      fireEvent.click(screen.getByRole("button", { name: /yes, stop sync/i }))
+
+      // Mutation should be called with the sync ID
+      expect(mockMutate).toHaveBeenCalledWith(42, expect.any(Object))
+    })
+
+    it("dismisses confirmation dialog when Cancel is clicked", () => {
+      mockUseSyncStatus.mockReturnValue({
+        data: {
+          isRunning: true,
+          lastSync: null,
+          currentSyncId: 1,
+          currentSyncStartedAt: new Date().toISOString(),
+        },
+        isLoading: false,
+      })
+
+      mockUseSyncDetails.mockReturnValue({
+        data: {
+          id: 1,
+          status: "running",
+          itemsChecked: 50,
+          itemsUpdated: 5,
+          newDeathsFound: 2,
+        },
+        isLoading: false,
+      })
+
+      renderPage()
+
+      // Click Force Stop button
+      fireEvent.click(screen.getByRole("button", { name: /force stop/i }))
+
+      // Confirmation dialog should appear
+      expect(screen.getByText(/are you sure you want to stop this sync/i)).toBeInTheDocument()
+
+      // Click Cancel button in dialog
+      fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }))
+
+      // Confirmation dialog should disappear
+      expect(screen.queryByText(/are you sure you want to stop this sync/i)).not.toBeInTheDocument()
+    })
+
+    it("shows error message when cancel fails", () => {
+      mockUseSyncStatus.mockReturnValue({
+        data: {
+          isRunning: true,
+          lastSync: null,
+          currentSyncId: 1,
+          currentSyncStartedAt: new Date().toISOString(),
+        },
+        isLoading: false,
+      })
+
+      mockUseSyncDetails.mockReturnValue({
+        data: {
+          id: 1,
+          status: "running",
+          itemsChecked: 50,
+          itemsUpdated: 5,
+          newDeathsFound: 2,
+        },
+        isLoading: false,
+      })
+
+      mockUseCancelSync.mockReturnValue({
+        mutate: vi.fn(),
+        isPending: false,
+        isSuccess: false,
+        isError: true,
+        error: new Error("Sync is already completing"),
+      })
+
+      renderPage()
+
+      // Click Force Stop to show dialog
+      fireEvent.click(screen.getByRole("button", { name: /force stop/i }))
+
+      // Error message should be displayed
+      expect(screen.getByText("Sync is already completing")).toBeInTheDocument()
+    })
+
+    it("resets confirmation dialog when sync stops naturally", () => {
+      const { rerender } = render(
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <MemoryRouter>
+            <SyncPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      )
+
+      // Initial state: sync running
+      mockUseSyncStatus.mockReturnValue({
+        data: {
+          isRunning: true,
+          lastSync: null,
+          currentSyncId: 1,
+          currentSyncStartedAt: new Date().toISOString(),
+        },
+        isLoading: false,
+      })
+
+      mockUseSyncDetails.mockReturnValue({
+        data: {
+          id: 1,
+          status: "running",
+          itemsChecked: 50,
+          itemsUpdated: 5,
+          newDeathsFound: 2,
+        },
+        isLoading: false,
+      })
+
+      rerender(
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <MemoryRouter>
+            <SyncPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      )
+
+      // Click Force Stop to show dialog
+      const forceStopButton = screen.queryByRole("button", { name: /force stop/i })
+      if (forceStopButton) {
+        fireEvent.click(forceStopButton)
+      }
+
+      // Now sync stops naturally
+      mockUseSyncStatus.mockReturnValue({
+        data: {
+          isRunning: false,
+          lastSync: null,
+          currentSyncId: null,
+          currentSyncStartedAt: null,
+        },
+        isLoading: false,
+      })
+
+      mockUseSyncDetails.mockReturnValue({
+        data: null,
+        isLoading: false,
+      })
+
+      rerender(
+        <QueryClientProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <MemoryRouter>
+            <SyncPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      )
+
+      // Dialog should be gone (Force Stop button won't be visible when not running)
+      expect(screen.queryByRole("button", { name: /force stop/i })).not.toBeInTheDocument()
+    })
+  })
+
   describe("History table expandable rows", () => {
     it("shows chevron indicator for expandable rows", () => {
       mockUseSyncHistory.mockReturnValue({

@@ -49,6 +49,13 @@ export default function SyncPage() {
     return () => clearInterval(interval)
   }, [status.data?.isRunning, status.data?.currentSyncStartedAt])
 
+  // Ensure cancel confirmation dialog state is cleared when sync stops
+  useEffect(() => {
+    if (!status.data?.isRunning) {
+      setShowCancelConfirm(false)
+    }
+  }, [status.data?.isRunning])
+
   const handleTriggerSync = () => {
     const types: ("people" | "movies" | "shows")[] = []
     if (syncPeople) types.push("people")
@@ -447,8 +454,16 @@ export default function SyncPage() {
                   {history.data.history.map((item) => (
                     <React.Fragment key={item.id}>
                       <tr
-                        key={item.id}
                         onClick={() => toggleExpandedRow(item.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            toggleExpandedRow(item.id)
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={expandedRowId === item.id}
                         className="cursor-pointer hover:bg-admin-surface-overlay"
                       >
                         <td className="whitespace-nowrap px-6 py-4">
@@ -523,9 +538,9 @@ export default function SyncPage() {
                               {item.parameters && (
                                 <div>
                                   <span className="text-admin-text-muted">Parameters:</span>
-                                  <span className="ml-2 font-mono text-xs text-admin-text-primary">
-                                    {JSON.stringify(item.parameters)}
-                                  </span>
+                                  <pre className="ml-2 font-mono text-xs text-admin-text-primary">
+                                    {JSON.stringify(item.parameters, null, 2)}
+                                  </pre>
                                 </div>
                               )}
 
