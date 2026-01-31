@@ -2,7 +2,8 @@ import HoverTooltip from "./HoverTooltip"
 import { StarIcon } from "@/components/icons"
 
 interface AggregateScoreProps {
-  score: number | null | undefined
+  /** Score value - accepts string for PostgreSQL NUMERIC type compatibility */
+  score: string | number | null | undefined
   confidence: number | null | undefined
   className?: string
   size?: "sm" | "md" | "lg"
@@ -20,6 +21,12 @@ export default function AggregateScore({
 }: AggregateScoreProps) {
   // Don't render if no score available
   if (score === null || score === undefined) {
+    return null
+  }
+
+  // Ensure score is a number (API might return string from PostgreSQL NUMERIC type)
+  const numericScore = typeof score === "number" ? score : parseFloat(String(score))
+  if (isNaN(numericScore)) {
     return null
   }
 
@@ -48,7 +55,7 @@ export default function AggregateScore({
   const sizes = sizeClasses[size]
 
   // Format score to 1 decimal place
-  const formattedScore = score.toFixed(1)
+  const formattedScore = numericScore.toFixed(1)
 
   // Calculate confidence description
   const getConfidenceLabel = (conf: number | null | undefined): string => {
