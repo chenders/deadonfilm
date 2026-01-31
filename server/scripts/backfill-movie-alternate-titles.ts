@@ -32,13 +32,15 @@ import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
 import {
-  getMovieDetailsWithOriginalTitle,
+  getMovieDetails,
   getMovieAlternativeTitles,
   TMDBAlternativeTitle,
 } from "../src/lib/tmdb.js"
 import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
+import { isPermanentError } from "../src/lib/backfill-utils.js"
 
-const RATE_LIMIT_DELAY_MS = 100
+// Increased delay to account for 2 parallel API calls per movie
+const RATE_LIMIT_DELAY_MS = 150
 
 function parsePositiveInt(value: string): number {
   const parsed = parseInt(value, 10)
@@ -78,22 +80,14 @@ interface Stats {
   errors: number
 }
 
-function isPermanentError(error: unknown): boolean {
-  if (error instanceof Error) {
-    const message = error.message.toLowerCase()
-    // 404 = movie not found in TMDB
-    // 400 = bad request (invalid movie ID)
-    // 401 = unauthorized (bad API key, but we'd see all failures)
-    if (
-      message.includes("404") ||
-      message.includes("not found") ||
-      message.includes("400") ||
-      message.includes("401")
-    ) {
-      return true
-    }
-  }
-  return false
+/**
+ * Check if error is a 401 Unauthorized - indicates misconfigured API token
+ * and should exit immediately rather than marking movies as permanently failed
+ */
+function isAuthError(error: unknown): boolean {
+  const errorMsg =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+  return errorMsg.includes("401") || errorMsg.includes("unauthorized")
 }
 
 function delay(ms: number): Promise<void> {
@@ -170,9 +164,9 @@ async function backfillAlternateTitles(options: BackfillOptions): Promise<Stats>
     process.stdout.write(`[${processed}/${movies.length}] ${movie.title}${retryLabel}... `)
 
     try {
-      // Fetch both in parallel
+      // Fetch both in parallel (delay is increased to compensate for 2 requests)
       const [detailsResult, alternativesResult] = await Promise.all([
-        getMovieDetailsWithOriginalTitle(movie.tmdb_id),
+        getMovieDetails(movie.tmdb_id),
         getMovieAlternativeTitles(movie.tmdb_id),
       ])
 
@@ -188,7 +182,8 @@ async function backfillAlternateTitles(options: BackfillOptions): Promise<Stats>
                alternate_titles_fetch_attempts = 0,
                alternate_titles_last_fetch_attempt = NULL,
                alternate_titles_fetch_error = NULL,
-               alternate_titles_permanently_failed = false
+               alternate_titles_permanently_failed = false,
+               updated_at = NOW()
            WHERE tmdb_id = $3`,
           [originalTitle, JSON.stringify(alternateTitles), movie.tmdb_id]
         )
@@ -215,6 +210,15 @@ async function backfillAlternateTitles(options: BackfillOptions): Promise<Stats>
       consecutiveFailures++
       const errorMsg = error instanceof Error ? error.message : "unknown error"
       console.log(`error: ${errorMsg}`)
+
+      // 401 = misconfigured API token - exit immediately without marking movies as failed
+      if (isAuthError(error)) {
+        console.error("\n❌ Authentication error (401 Unauthorized)")
+        console.error("   Check that TMDB_API_TOKEN is correctly configured.")
+        console.error("   No movies were marked as permanently failed.\n")
+        await resetPool()
+        process.exit(1)
+      }
 
       // Circuit breaker
       if (consecutiveFailures >= maxConsecutiveFailures) {
@@ -249,6 +253,11 @@ async function backfillAlternateTitles(options: BackfillOptions): Promise<Stats>
         if (willMarkPermanent) {
           failed++
         }
+      }
+
+      // Apply rate limit delay after errors to avoid tight failure loops
+      if (processed < movies.length) {
+        await delay(RATE_LIMIT_DELAY_MS)
       }
     }
   }

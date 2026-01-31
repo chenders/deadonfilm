@@ -38,6 +38,7 @@ export interface TMDBMovie {
 export interface TMDBMovieDetails {
   id: number
   title: string
+  original_title: string
   release_date: string
   poster_path: string | null
   overview: string
@@ -648,20 +649,6 @@ export async function getMovieAlternativeTitles(
   movieId: number
 ): Promise<TMDBAlternativeTitlesResponse> {
   return tmdbFetch<TMDBAlternativeTitlesResponse>(`/movie/${movieId}/alternative_titles`)
-}
-
-// Movie Details with Original Title Types
-export interface TMDBMovieDetailsWithOriginalTitle extends TMDBMovieDetails {
-  original_title: string
-}
-
-/**
- * Get movie details including original_title
- */
-export async function getMovieDetailsWithOriginalTitle(
-  movieId: number
-): Promise<TMDBMovieDetailsWithOriginalTitle> {
-  return tmdbFetch<TMDBMovieDetailsWithOriginalTitle>(`/movie/${movieId}?language=en-US`)
 }
 
 /**

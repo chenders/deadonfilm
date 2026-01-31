@@ -55,6 +55,7 @@ describe("getMovie route", () => {
   const mockMovie = {
     id: 14629,
     title: "Breakfast at Tiffany's",
+    original_title: "Breakfast at Tiffany's",
     release_date: "1961-10-05",
     poster_path: "/poster.jpg",
     overview: "A classic film",

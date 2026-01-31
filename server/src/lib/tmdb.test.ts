@@ -10,6 +10,8 @@ import {
   getMovieChanges,
   getAllChangedPersonIds,
   getAllChangedMovieIds,
+  getMovieAlternativeTitles,
+  getMovieDetails,
 } from "./tmdb.js"
 
 describe("TMDB Changes API", () => {
@@ -286,5 +288,102 @@ describe("TMDB Changes API - Error Handling", () => {
     mockFetch.mockRejectedValueOnce(new Error("Network error"))
 
     await expect(getPersonChanges("2024-01-01", "2024-01-14")).rejects.toThrow("Network error")
+  })
+})
+
+describe("TMDB Movie Alternative Titles", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.TMDB_API_TOKEN = "test-token"
+  })
+
+  afterEach(() => {
+    delete process.env.TMDB_API_TOKEN
+  })
+
+  describe("getMovieAlternativeTitles", () => {
+    it("fetches alternative titles with correct URL", async () => {
+      const mockResponse = {
+        id: 550,
+        titles: [
+          { iso_3166_1: "FR", title: "Le Club de la bagarre", type: "" },
+          { iso_3166_1: "DE", title: "Fight Club", type: "" },
+        ],
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      })
+
+      const result = await getMovieAlternativeTitles(550)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.themoviedb.org/3/movie/550/alternative_titles",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer test-token",
+          }),
+        })
+      )
+      expect(result).toEqual(mockResponse)
+      expect(result.titles).toHaveLength(2)
+    })
+  })
+
+  describe("getMovieDetails with original_title", () => {
+    it("returns movie details including original_title", async () => {
+      const mockResponse = {
+        id: 550,
+        title: "Fight Club",
+        original_title: "Fight Club",
+        release_date: "1999-10-15",
+        poster_path: "/poster.jpg",
+        overview: "A movie about fighting.",
+        runtime: 139,
+        genres: [{ id: 18, name: "Drama" }],
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      })
+
+      const result = await getMovieDetails(550)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.themoviedb.org/3/movie/550?language=en-US",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer test-token",
+          }),
+        })
+      )
+      expect(result.original_title).toBe("Fight Club")
+      expect(result.title).toBe("Fight Club")
+    })
+
+    it("returns different original_title for foreign films", async () => {
+      const mockResponse = {
+        id: 123,
+        title: "Seven Samurai",
+        original_title: "七人の侍",
+        release_date: "1954-04-26",
+        poster_path: "/poster.jpg",
+        overview: "A classic samurai film.",
+        runtime: 207,
+        genres: [{ id: 28, name: "Action" }],
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      })
+
+      const result = await getMovieDetails(123)
+
+      expect(result.title).toBe("Seven Samurai")
+      expect(result.original_title).toBe("七人の侍")
+    })
   })
 })
