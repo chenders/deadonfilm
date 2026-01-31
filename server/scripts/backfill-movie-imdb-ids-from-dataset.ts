@@ -34,7 +34,7 @@ import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import Fuse from "fuse.js"
 import { getPool, resetPool } from "../src/lib/db.js"
-import { getMovieIndex } from "../src/lib/imdb.js"
+import { getMovieIndex, type ImdbMovieBasics } from "../src/lib/imdb.js"
 import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 
 function parsePositiveInt(value: string): number {
@@ -72,13 +72,6 @@ interface MovieToProcess {
   popularity: number | null
 }
 
-interface FuseSearchItem {
-  tconst: string
-  primaryTitle: string
-  originalTitle: string
-  startYear: number | null
-}
-
 interface MatchResult {
   imdbId: string
   title: string
@@ -104,7 +97,7 @@ const program = new Command()
     "--min-confidence <number>",
     "Minimum match confidence (0-1)",
     parseConfidence,
-    MIN_CONFIDENCE_REVIEW
+    MIN_CONFIDENCE_AUTO
   )
   .option("-n, --dry-run", "Preview without writing to database")
   .option("--skip-tmdb-failed", "Only process movies that TMDB couldn't resolve")
@@ -142,8 +135,8 @@ interface Stats {
 async function runBackfill(options: Options): Promise<Stats> {
   const { limit, minPopularity, minConfidence, dryRun, skipTmdbFailed } = options
 
-  if (!process.env.DATABASE_URL && !dryRun) {
-    console.error("DATABASE_URL environment variable is required (or use --dry-run)")
+  if (!process.env.DATABASE_URL) {
+    console.error("DATABASE_URL environment variable is required")
     process.exit(1)
   }
 
@@ -167,16 +160,9 @@ async function runBackfill(options: Options): Promise<Stats> {
   const imdbMovies = await getMovieIndex()
   console.log(`Loaded ${imdbMovies.length.toLocaleString()} movies from IMDb dataset\n`)
 
-  // Step 2: Build Fuse.js search index
+  // Step 2: Build Fuse.js search index directly from imdbMovies to avoid memory duplication
   console.log("Building Fuse.js search index...")
-  const fuseItems: FuseSearchItem[] = imdbMovies.map((m) => ({
-    tconst: m.tconst,
-    primaryTitle: m.primaryTitle,
-    originalTitle: m.originalTitle,
-    startYear: m.startYear,
-  }))
-
-  const fuse = new Fuse(fuseItems, {
+  const fuse = new Fuse(imdbMovies, {
     keys: ["primaryTitle", "originalTitle"],
     threshold: 0.35, // 65% minimum similarity for initial search
     includeScore: true,
@@ -262,7 +248,8 @@ async function runBackfill(options: Options): Promise<Stats> {
              -- Reset retry tracking since we now have an IMDb ID
              external_ids_fetch_attempts = 0,
              external_ids_permanently_failed = false,
-             external_ids_fetch_error = NULL
+             external_ids_fetch_error = NULL,
+             external_ids_last_fetch_attempt = NULL
          WHERE id = $3`,
         [match.imdbId, match.needsReview, movie.id]
       )
@@ -302,7 +289,7 @@ async function runBackfill(options: Options): Promise<Stats> {
  * Find the best matching IMDb movie using fuzzy title search with year filtering.
  */
 function findBestMatch(
-  fuse: Fuse<FuseSearchItem>,
+  fuse: Fuse<ImdbMovieBasics>,
   title: string,
   year: number,
   minConfidence: number

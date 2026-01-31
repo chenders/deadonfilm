@@ -67,13 +67,6 @@ interface ComparisonResult {
   agreement: "all" | "partial" | "none" | "no-results"
 }
 
-interface FuseSearchItem {
-  tconst: string
-  primaryTitle: string
-  originalTitle: string
-  startYear: number | null
-}
-
 const program = new Command()
   .name("compare-imdb-lookup-methods")
   .description("Compare OMDB search vs IMDb dataset matching for IMDb ID lookups")
@@ -146,14 +139,8 @@ async function runComparison(options: Options): Promise<void> {
 
   // Build Fuse.js index with both primaryTitle and originalTitle
   console.log("Building Fuse.js search index...")
-  const fuseItems: FuseSearchItem[] = imdbMovies.map((m) => ({
-    tconst: m.tconst,
-    primaryTitle: m.primaryTitle,
-    originalTitle: m.originalTitle,
-    startYear: m.startYear,
-  }))
-
-  const fuse = new Fuse(fuseItems, {
+  // Build Fuse index directly from imdbMovies to avoid duplicating the array in memory
+  const fuse = new Fuse(imdbMovies, {
     keys: ["primaryTitle", "originalTitle"],
     threshold: 0.3, // 70% minimum similarity
     includeScore: true,

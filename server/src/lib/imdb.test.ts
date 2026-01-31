@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { detectAppearanceType } from "./imdb.js"
+import { detectAppearanceType, type ImdbMovieBasics } from "./imdb.js"
 
 /**
  * IMDb Module Tests
@@ -586,15 +586,8 @@ describe("ImdbMovieBasics structure", () => {
   /**
    * Tests for the ImdbMovieBasics type used by getMovieIndex().
    * This is the structure returned for fuzzy movie title matching.
+   * The type is imported from ./imdb.js to stay in sync with the production API.
    */
-
-  interface ImdbMovieBasics {
-    tconst: string
-    primaryTitle: string
-    originalTitle: string
-    startYear: number | null
-    runtimeMinutes: number | null
-  }
 
   it("has correct structure for a typical movie", () => {
     const movie: ImdbMovieBasics = {
