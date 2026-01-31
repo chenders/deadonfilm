@@ -206,6 +206,20 @@ export const mockTriggerSyncResult = {
   dryRun: false,
 }
 
+export const mockSyncDetails = {
+  id: 42,
+  syncType: "tmdb-people",
+  startedAt: "2026-01-26T14:30:00Z",
+  completedAt: null,
+  status: "running" as const,
+  itemsChecked: 250,
+  itemsUpdated: 45,
+  newDeathsFound: 3,
+  errorMessage: null,
+  parameters: { days: 1 },
+  triggeredBy: "admin",
+}
+
 // ============================================================================
 // Mock Data - Batch Enrichment
 // ============================================================================

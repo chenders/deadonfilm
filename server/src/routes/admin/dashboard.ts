@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { getPool } from "../../lib/db/pool.js"
 import { isRedisAvailable } from "../../lib/redis.js"
 import { logger } from "../../lib/logger.js"
+import { getDeathCacheMetadata, type DeathCacheMetadata } from "../../lib/cache.js"
 
 interface DashboardStats {
   systemHealth: {
@@ -21,6 +22,7 @@ interface DashboardStats {
     totalCost: number
     lastMonthCost: number
   }
+  deathCacheStatus: DeathCacheMetadata | null
 }
 
 /**
@@ -110,11 +112,15 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
       logger.debug("death_sources_usage table not found")
     }
 
+    // Get death cache metadata
+    const deathCacheStatus = await getDeathCacheMetadata()
+
     const stats: DashboardStats = {
       systemHealth,
       actorStats,
       enrichmentStats,
       costStats,
+      deathCacheStatus,
     }
 
     res.json(stats)

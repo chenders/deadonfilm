@@ -54,6 +54,12 @@ vi.mock("../../redis.js", () => ({
   closeRedis: vi.fn(),
 }))
 
+vi.mock("../queue-manager.js", () => ({
+  queueManager: {
+    addJob: vi.fn().mockResolvedValue("mock-job-id"),
+  },
+}))
+
 vi.mock("../../logger.js", () => ({
   logger: {
     info: vi.fn(),
@@ -230,9 +236,19 @@ describe("SyncTMDBPeopleHandler", () => {
         })
       )
 
-      // Verify cache invalidation
+      // Verify cache invalidation for actor
       expect(cache.invalidateActorCacheRequired).toHaveBeenCalledWith(actorInternalId)
-      expect(cache.invalidateDeathCaches).toHaveBeenCalled()
+
+      // Verify obscurity calculation job was queued (which handles death cache rebuild)
+      const { queueManager } = await import("../queue-manager.js")
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        JobType.CALCULATE_ACTOR_OBSCURITY,
+        expect.objectContaining({
+          actorIds: [actorInternalId],
+          rebuildCachesOnComplete: true,
+        }),
+        expect.any(Object)
+      )
     })
   })
 

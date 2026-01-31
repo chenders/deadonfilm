@@ -51,6 +51,12 @@ export enum JobType {
   SYNC_TMDB_PEOPLE = "sync-tmdb-people",
   SYNC_TMDB_MOVIES = "sync-tmdb-movies",
   SYNC_TMDB_SHOWS = "sync-tmdb-shows",
+
+  // Actor obscurity calculation
+  CALCULATE_ACTOR_OBSCURITY = "calculate-actor-obscurity",
+
+  // Cache operations
+  REBUILD_DEATH_CACHES = "rebuild-death-caches",
 }
 
 // ============================================================
@@ -247,6 +253,17 @@ export const syncTMDBShowsPayloadSchema = z.object({
   // No date range needed - queries active shows from database
 })
 
+// Actor obscurity calculation payload
+export const calculateActorObscurityPayloadSchema = z.object({
+  actorIds: z.array(z.number().int().positive()).min(1), // Internal actor.id values
+  rebuildCachesOnComplete: z.boolean().default(true), // Whether to rebuild death caches after
+})
+
+// Death caches rebuild payload
+export const rebuildDeathCachesPayloadSchema = z.object({
+  // No parameters needed - rebuilds all death-related caches
+})
+
 /**
  * Map of job types to their payload schemas
  */
@@ -267,6 +284,8 @@ export const jobPayloadSchemas = {
   [JobType.SYNC_TMDB_PEOPLE]: syncTMDBPeoplePayloadSchema,
   [JobType.SYNC_TMDB_MOVIES]: syncTMDBMoviesPayloadSchema,
   [JobType.SYNC_TMDB_SHOWS]: syncTMDBShowsPayloadSchema,
+  [JobType.CALCULATE_ACTOR_OBSCURITY]: calculateActorObscurityPayloadSchema,
+  [JobType.REBUILD_DEATH_CACHES]: rebuildDeathCachesPayloadSchema,
 } as const
 
 // ============================================================
@@ -293,6 +312,8 @@ export type SyncTMDBChangesPayload = z.infer<typeof syncTMDBChangesPayloadSchema
 export type SyncTMDBPeoplePayload = z.infer<typeof syncTMDBPeoplePayloadSchema>
 export type SyncTMDBMoviesPayload = z.infer<typeof syncTMDBMoviesPayloadSchema>
 export type SyncTMDBShowsPayload = z.infer<typeof syncTMDBShowsPayloadSchema>
+export type CalculateActorObscurityPayload = z.infer<typeof calculateActorObscurityPayloadSchema>
+export type RebuildDeathCachesPayload = z.infer<typeof rebuildDeathCachesPayloadSchema>
 
 /**
  * Union type of all possible payloads
@@ -320,6 +341,8 @@ export type JobPayloadMap = {
   [JobType.SYNC_TMDB_PEOPLE]: SyncTMDBPeoplePayload
   [JobType.SYNC_TMDB_MOVIES]: SyncTMDBMoviesPayload
   [JobType.SYNC_TMDB_SHOWS]: SyncTMDBShowsPayload
+  [JobType.CALCULATE_ACTOR_OBSCURITY]: CalculateActorObscurityPayload
+  [JobType.REBUILD_DEATH_CACHES]: RebuildDeathCachesPayload
 }
 
 // ============================================================
@@ -449,4 +472,6 @@ export const jobTypeToQueue: Record<JobType, QueueName> = {
   [JobType.SYNC_TMDB_PEOPLE]: QueueName.MAINTENANCE,
   [JobType.SYNC_TMDB_MOVIES]: QueueName.MAINTENANCE,
   [JobType.SYNC_TMDB_SHOWS]: QueueName.MAINTENANCE,
+  [JobType.CALCULATE_ACTOR_OBSCURITY]: QueueName.MAINTENANCE,
+  [JobType.REBUILD_DEATH_CACHES]: QueueName.CACHE,
 }
