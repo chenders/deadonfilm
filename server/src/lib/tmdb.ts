@@ -629,6 +629,41 @@ export async function getMovieExternalIds(movieId: number): Promise<TMDBExternal
   return tmdbFetch<TMDBExternalIds>(`/movie/${movieId}/external_ids`)
 }
 
+// Movie Alternative Titles Types
+export interface TMDBAlternativeTitle {
+  iso_3166_1: string
+  title: string
+  type: string
+}
+
+export interface TMDBAlternativeTitlesResponse {
+  id: number
+  titles: TMDBAlternativeTitle[]
+}
+
+/**
+ * Get alternative titles for a movie (titles in different countries/regions)
+ */
+export async function getMovieAlternativeTitles(
+  movieId: number
+): Promise<TMDBAlternativeTitlesResponse> {
+  return tmdbFetch<TMDBAlternativeTitlesResponse>(`/movie/${movieId}/alternative_titles`)
+}
+
+// Movie Details with Original Title Types
+export interface TMDBMovieDetailsWithOriginalTitle extends TMDBMovieDetails {
+  original_title: string
+}
+
+/**
+ * Get movie details including original_title
+ */
+export async function getMovieDetailsWithOriginalTitle(
+  movieId: number
+): Promise<TMDBMovieDetailsWithOriginalTitle> {
+  return tmdbFetch<TMDBMovieDetailsWithOriginalTitle>(`/movie/${movieId}?language=en-US`)
+}
+
 /**
  * Search for a person by name
  */
