@@ -33,7 +33,20 @@ export const CACHE_PREFIX = {
   FEATURED_MOVIE: "featured-movie",
   GENRES: "genres",
   DEATHS: "deaths",
+  CACHE_METADATA: "cache-metadata",
 } as const
+
+/**
+ * Metadata about the death cache state.
+ * Stored when caches are rebuilt.
+ */
+export interface DeathCacheMetadata {
+  lastRebuiltAt: string
+  mostRecentDeath?: {
+    name: string
+    deathday: string
+  }
+}
 
 // TTL values in seconds
 // Using long TTLs since we invalidate/rebuild caches when data changes
@@ -277,4 +290,23 @@ export async function rebuildDeathCaches(): Promise<void> {
   } catch (err) {
     logger.warn({ err: (err as Error).message }, "Error rebuilding death caches")
   }
+}
+
+/**
+ * Store metadata about the death cache state.
+ * Called by the REBUILD_DEATH_CACHES job handler.
+ */
+export async function setDeathCacheMetadata(metadata: DeathCacheMetadata): Promise<void> {
+  const key = buildCacheKey(CACHE_PREFIX.CACHE_METADATA, { type: "death" })
+  await setCached(key, metadata, CACHE_TTL.WEEK)
+  logger.debug({ metadata }, "Death cache metadata stored")
+}
+
+/**
+ * Get metadata about the death cache state.
+ * Returns null if not available.
+ */
+export async function getDeathCacheMetadata(): Promise<DeathCacheMetadata | null> {
+  const key = buildCacheKey(CACHE_PREFIX.CACHE_METADATA, { type: "death" })
+  return getCached<DeathCacheMetadata>(key)
 }

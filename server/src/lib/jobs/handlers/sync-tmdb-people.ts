@@ -36,7 +36,8 @@ import {
 import { getCauseOfDeath, verifyDeathDate } from "../../wikidata.js"
 import { calculateYearsLost, calculateMovieMortality } from "../../mortality-stats.js"
 import { getDateRanges } from "../../date-utils.js"
-import { invalidateDeathCaches, invalidateActorCacheRequired } from "../../cache.js"
+import { invalidateActorCacheRequired } from "../../cache.js"
+import { queueManager } from "../queue-manager.js"
 import { initRedis, closeRedis } from "../../redis.js"
 
 const CAST_LIMIT = 30
@@ -259,10 +260,21 @@ export class SyncTMDBPeopleHandler extends BaseJobHandler<
         await this.delay(250)
       }
 
-      // Invalidate death-related caches
-      if (newDeaths > 0) {
-        log.info({ count: newDeaths }, "Invalidating death-related caches")
-        await invalidateDeathCaches()
+      // Queue obscurity calculation for newly deceased actors
+      // This will automatically rebuild death caches after completion
+      if (newlyDeceasedActors.length > 0) {
+        const actorIds = newlyDeceasedActors.map((a) => a.id)
+        log.info({ count: actorIds.length, actorIds }, "Queueing actor obscurity calculation job")
+        await queueManager.addJob(
+          JobType.CALCULATE_ACTOR_OBSCURITY,
+          {
+            actorIds,
+            rebuildCachesOnComplete: true,
+          },
+          {
+            createdBy: "sync-tmdb-people",
+          }
+        )
       }
 
       await closeRedis()
