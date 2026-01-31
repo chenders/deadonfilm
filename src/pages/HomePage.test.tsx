@@ -38,6 +38,7 @@ const mockDeaths = {
       cause_of_death: "Natural causes",
       cause_of_death_details: null,
       profile_path: "/path1.jpg",
+      fallback_profile_url: null,
     },
   ],
 }

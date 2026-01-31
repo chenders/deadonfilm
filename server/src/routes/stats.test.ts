@@ -141,6 +141,7 @@ describe("getRecentDeathsHandler", () => {
       cause_of_death: "Natural causes",
       cause_of_death_details: "Died peacefully at home",
       profile_path: "/path1.jpg",
+      fallback_profile_url: null,
     },
     {
       id: 2,
@@ -150,6 +151,7 @@ describe("getRecentDeathsHandler", () => {
       cause_of_death: null,
       cause_of_death_details: null,
       profile_path: null,
+      fallback_profile_url: null,
     },
   ]
 

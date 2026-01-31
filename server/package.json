@@ -86,6 +86,8 @@
     "backfill:trakt": "tsx scripts/backfill-trakt-ratings.ts",
     "//backfill:thetvdb-scores": "Backfill TheTVDB community scores for TV shows",
     "backfill:thetvdb-scores": "tsx scripts/backfill-thetvdb-scores.ts",
+    "//backfill:fallback-photos": "Backfill fallback profile photos from Wikidata for actors without TMDB photos",
+    "backfill:fallback-photos": "tsx scripts/backfill-actor-fallback-photos.ts",
     "//backfill:movie-imdb-ids": "Backfill IMDb IDs for movies from TMDB (prerequisite for OMDb/Trakt)",
     "backfill:movie-imdb-ids": "tsx scripts/backfill-movie-imdb-ids.ts",
     "//backfill:movie-popularity": "Backfill TMDB popularity scores for movies",
