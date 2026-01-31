@@ -321,7 +321,8 @@ router.post("/:id/cancel", async (req: Request, res: Response): Promise<void> =>
     // Release the Redis lock (may not exist if it already expired)
     await releaseLock(SYNC_LOCK_NAME, String(syncId))
 
-    // Update the sync record to failed
+    // Update the sync record to failed, but only if still running
+    // This prevents race condition where sync completes between check and update
     const updateResult = await pool.query<{
       id: number
       sync_type: string
@@ -340,13 +341,21 @@ router.post("/:id/cancel", async (req: Request, res: Response): Promise<void> =>
         status = 'failed',
         completed_at = NOW(),
         error_message = 'Manually cancelled by admin'
-      WHERE id = $1
+      WHERE id = $1 AND status = 'running'
       RETURNING id, sync_type, started_at, completed_at, status,
                 items_checked, items_updated, new_deaths_found,
                 error_message, parameters, triggered_by
     `,
       [syncId]
     )
+
+    // Check if the update succeeded (sync might have completed in the meantime)
+    if (updateResult.rows.length === 0) {
+      res.status(409).json({
+        error: { message: "Sync already completed or was cancelled by another process" },
+      })
+      return
+    }
 
     const row = updateResult.rows[0]
 
