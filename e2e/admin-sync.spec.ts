@@ -6,6 +6,7 @@ import {
   mockSyncRunning,
   mockSyncHistory,
   mockTriggerSyncResult,
+  mockSyncDetails,
 } from "./fixtures/admin-mocks"
 
 // Set shorter timeouts for faster failure detection
@@ -42,6 +43,20 @@ async function setupSyncMocks(page: Page, isRunning = false) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(mockTriggerSyncResult),
+    })
+  })
+
+  // Mock sync details (for running sync progress)
+  await page.route("**/admin/api/sync/*", async (route) => {
+    // Skip if it's one of the specific routes we already handle
+    const url = route.request().url()
+    if (url.includes("/status") || url.includes("/history") || url.includes("/tmdb")) {
+      return route.fallback()
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockSyncDetails),
     })
   })
 }
