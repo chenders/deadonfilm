@@ -61,6 +61,15 @@ export default function RecentDeaths() {
                 loading="lazy"
                 className="mb-2 h-20 w-16 rounded object-cover"
               />
+            ) : death.fallback_profile_url ? (
+              <img
+                src={death.fallback_profile_url}
+                alt={death.name}
+                width={64}
+                height={80}
+                loading="lazy"
+                className="mb-2 h-20 w-16 rounded object-cover"
+              />
             ) : (
               <div className="mb-2 flex h-20 w-16 items-center justify-center rounded bg-brown-medium/20">
                 <PersonIcon size={28} className="text-text-muted" />

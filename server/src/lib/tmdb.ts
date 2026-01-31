@@ -654,3 +654,68 @@ export async function searchPerson(query: string): Promise<TMDBPersonSearchRespo
     `/search/person?query=${encoded}&include_adult=false&language=en-US&page=1`
   )
 }
+
+// Person Images Types
+export interface TMDBPersonImage {
+  aspect_ratio: number
+  height: number
+  width: number
+  file_path: string
+  vote_average: number
+  vote_count: number
+}
+
+export interface TMDBPersonImagesResponse {
+  id: number
+  profiles: TMDBPersonImage[]
+}
+
+/**
+ * Get all profile images for a person from TMDB.
+ * Returns the best profile image URL, or null if none found.
+ *
+ * @param personId - TMDB person ID
+ * @returns URL to the best profile image, or null if not found
+ */
+export async function getPersonImages(personId: number): Promise<TMDBPersonImagesResponse> {
+  return tmdbFetch<TMDBPersonImagesResponse>(`/person/${personId}/images`)
+}
+
+/**
+ * Get the best profile image URL for a person from TMDB images endpoint.
+ * Falls back to checking all available profile images if the main profile_path is null.
+ *
+ * @param personId - TMDB person ID
+ * @returns Full URL to the profile image on TMDB image CDN, or null if none found
+ */
+export async function getBestPersonImageUrl(personId: number): Promise<string | null> {
+  try {
+    const imagesResponse = await getPersonImages(personId)
+
+    if (!imagesResponse.profiles || imagesResponse.profiles.length === 0) {
+      return null
+    }
+
+    // Sort by vote count and vote average to get the best image
+    const sortedImages = [...imagesResponse.profiles].sort((a, b) => {
+      // Prioritize images with more votes
+      if (a.vote_count !== b.vote_count) {
+        return b.vote_count - a.vote_count
+      }
+      // Then by vote average
+      return b.vote_average - a.vote_average
+    })
+
+    const bestImage = sortedImages[0]
+    if (bestImage && bestImage.file_path) {
+      // Return full URL using TMDB image CDN
+      // w185 is a good size for thumbnails
+      return `https://image.tmdb.org/t/p/w185${bestImage.file_path}`
+    }
+
+    return null
+  } catch (error) {
+    console.error(`Error fetching TMDB images for person ${personId}:`, error)
+    return null
+  }
+}
