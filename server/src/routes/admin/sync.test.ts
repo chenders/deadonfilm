@@ -364,6 +364,102 @@ describe("Admin Sync Endpoints", () => {
   })
 
   // ========================================================================
+  // POST /admin/api/sync/:id/cancel
+  // ========================================================================
+
+  describe("POST /admin/api/sync/:id/cancel", () => {
+    const mockRunningSyncRecord = {
+      id: 1,
+      sync_type: "tmdb-all",
+      started_at: "2024-01-01T10:00:00Z",
+      completed_at: "2024-01-01T10:30:00Z",
+      status: "failed",
+      items_checked: 50,
+      items_updated: 5,
+      new_deaths_found: 2,
+      error_message: "Manually cancelled by admin",
+      parameters: { days: 1 },
+      triggered_by: "admin",
+    }
+
+    beforeEach(async () => {
+      const { releaseLock } = await import("../../lib/redis.js")
+      vi.mocked(releaseLock).mockResolvedValue(true)
+    })
+
+    it("cancels a running sync successfully", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 1, status: "running" }] }) // Check query
+        .mockResolvedValueOnce({ rows: [mockRunningSyncRecord] }) // Update query
+
+      const response = await request(app).post("/admin/api/sync/1/cancel").expect(200)
+
+      expect(response.body).toEqual({
+        id: 1,
+        syncType: "tmdb-all",
+        startedAt: "2024-01-01T10:00:00Z",
+        completedAt: "2024-01-01T10:30:00Z",
+        status: "failed",
+        itemsChecked: 50,
+        itemsUpdated: 5,
+        newDeathsFound: 2,
+        errorMessage: "Manually cancelled by admin",
+        parameters: { days: 1 },
+        triggeredBy: "admin",
+      })
+    })
+
+    it("releases Redis lock when cancelling", async () => {
+      const { releaseLock } = await import("../../lib/redis.js")
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 1, status: "running" }] })
+        .mockResolvedValueOnce({ rows: [mockRunningSyncRecord] })
+
+      await request(app).post("/admin/api/sync/1/cancel").expect(200)
+
+      expect(releaseLock).toHaveBeenCalledWith("sync:tmdb", "1")
+    })
+
+    it("returns 400 for invalid sync ID", async () => {
+      const response = await request(app).post("/admin/api/sync/invalid/cancel").expect(400)
+
+      expect(response.body.error.message).toBe("Invalid sync ID")
+    })
+
+    it("returns 404 when sync not found", async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] })
+
+      const response = await request(app).post("/admin/api/sync/999/cancel").expect(404)
+
+      expect(response.body.error.message).toBe("Sync not found")
+    })
+
+    it("returns 400 when sync is not running", async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [{ id: 1, status: "completed" }] })
+
+      const response = await request(app).post("/admin/api/sync/1/cancel").expect(400)
+
+      expect(response.body.error.message).toBe("Sync is not running (status: completed)")
+    })
+
+    it("returns 400 when sync already failed", async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [{ id: 1, status: "failed" }] })
+
+      const response = await request(app).post("/admin/api/sync/1/cancel").expect(400)
+
+      expect(response.body.error.message).toBe("Sync is not running (status: failed)")
+    })
+
+    it("returns 500 on database error", async () => {
+      mockPool.query.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app).post("/admin/api/sync/1/cancel").expect(500)
+
+      expect(response.body.error.message).toBe("Failed to cancel sync")
+    })
+  })
+
+  // ========================================================================
   // GET /admin/api/sync/:id
   // ========================================================================
 

@@ -1,6 +1,12 @@
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import AdminLayout from "../../components/admin/AdminLayout"
-import { useSyncStatus, useSyncHistory, useTriggerSync } from "../../hooks/admin/useAdminSync"
+import {
+  useSyncStatus,
+  useSyncHistory,
+  useTriggerSync,
+  useSyncDetails,
+  useCancelSync,
+} from "../../hooks/admin/useAdminSync"
 
 export default function SyncPage() {
   // Form state
@@ -10,9 +16,38 @@ export default function SyncPage() {
   const [syncShows, setSyncShows] = useState(true)
   const [dryRun, setDryRun] = useState(false)
 
+  // UI state
+  const [expandedRowId, setExpandedRowId] = useState<number | null>(null)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
   const status = useSyncStatus()
   const history = useSyncHistory(20)
   const triggerMutation = useTriggerSync()
+  const cancelMutation = useCancelSync()
+
+  // Fetch live details for running sync
+  const syncDetails = useSyncDetails(status.data?.currentSyncId ?? null, {
+    enabled: status.data?.isRunning ?? false,
+  })
+
+  // Timer for elapsed time display
+  useEffect(() => {
+    if (!status.data?.isRunning || !status.data?.currentSyncStartedAt) {
+      setElapsedSeconds(0)
+      return
+    }
+
+    const startTime = new Date(status.data.currentSyncStartedAt).getTime()
+    const updateElapsed = () => {
+      const now = Date.now()
+      setElapsedSeconds(Math.floor((now - startTime) / 1000))
+    }
+
+    updateElapsed()
+    const interval = setInterval(updateElapsed, 1000)
+    return () => clearInterval(interval)
+  }, [status.data?.isRunning, status.data?.currentSyncStartedAt])
 
   const handleTriggerSync = () => {
     const types: ("people" | "movies" | "shows")[] = []
@@ -52,6 +87,30 @@ export default function SyncPage() {
     return date.toLocaleString()
   }
 
+  const formatElapsedTime = (seconds: number): string => {
+    if (seconds < 60) return `${seconds}s`
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    if (minutes < 60) return `${minutes}m ${remainingSeconds}s`
+    const hours = Math.floor(minutes / 60)
+    const remainingMinutes = minutes % 60
+    return `${hours}h ${remainingMinutes}m ${remainingSeconds}s`
+  }
+
+  const handleCancelSync = () => {
+    if (status.data?.currentSyncId) {
+      cancelMutation.mutate(status.data.currentSyncId, {
+        onSuccess: () => {
+          setShowCancelConfirm(false)
+        },
+      })
+    }
+  }
+
+  const toggleExpandedRow = (id: number) => {
+    setExpandedRowId(expandedRowId === id ? null : id)
+  }
+
   const getStatusBadgeClass = (syncStatus: string): string => {
     switch (syncStatus) {
       case "completed":
@@ -88,13 +147,80 @@ export default function SyncPage() {
           {status.data && (
             <div className="mt-4 space-y-4">
               {status.data.isRunning ? (
-                <div className="flex items-center gap-3">
-                  <div className="h-3 w-3 animate-pulse rounded-full bg-admin-warning"></div>
-                  <span className="font-medium text-admin-warning">Sync in progress</span>
-                  {status.data.currentSyncStartedAt && (
-                    <span className="text-sm text-admin-text-muted">
-                      Started: {formatDate(status.data.currentSyncStartedAt)}
-                    </span>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 w-3 animate-pulse rounded-full bg-admin-warning"></div>
+                      <span className="font-medium text-admin-warning">Sync in progress</span>
+                      <span className="text-sm text-admin-text-muted">
+                        Running for {formatElapsedTime(elapsedSeconds)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowCancelConfirm(true)}
+                      disabled={cancelMutation.isPending}
+                      className="hover:bg-admin-danger/90 rounded-md bg-admin-danger px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                    >
+                      {cancelMutation.isPending ? "Stopping..." : "Force Stop"}
+                    </button>
+                  </div>
+
+                  {/* Live progress */}
+                  {syncDetails.data && (
+                    <div className="rounded-md bg-admin-surface-overlay p-4">
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-admin-text-muted">Checked:</span>
+                          <span className="ml-2 font-medium text-admin-text-primary">
+                            {syncDetails.data.itemsChecked.toLocaleString()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-admin-text-muted">Updated:</span>
+                          <span className="ml-2 font-medium text-admin-text-primary">
+                            {syncDetails.data.itemsUpdated.toLocaleString()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-admin-text-muted">New Deaths:</span>
+                          <span className="ml-2 font-medium text-admin-text-primary">
+                            {syncDetails.data.newDeathsFound.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cancel confirmation dialog */}
+                  {showCancelConfirm && (
+                    <div className="border-admin-danger/50 bg-admin-danger/10 rounded-md border p-4">
+                      <p className="text-sm text-admin-text-primary">
+                        Are you sure you want to stop this sync? It will be marked as failed.
+                      </p>
+                      <div className="mt-3 flex gap-3">
+                        <button
+                          onClick={handleCancelSync}
+                          disabled={cancelMutation.isPending}
+                          className="hover:bg-admin-danger/90 rounded-md bg-admin-danger px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                          {cancelMutation.isPending ? "Stopping..." : "Yes, Stop Sync"}
+                        </button>
+                        <button
+                          onClick={() => setShowCancelConfirm(false)}
+                          disabled={cancelMutation.isPending}
+                          className="rounded-md bg-admin-surface-overlay px-3 py-1.5 text-sm font-medium text-admin-text-secondary hover:bg-admin-surface-elevated"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      {cancelMutation.isError && (
+                        <p className="mt-2 text-sm text-admin-danger">
+                          {cancelMutation.error instanceof Error
+                            ? cancelMutation.error.message
+                            : "Failed to cancel sync"}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : (
@@ -319,36 +445,103 @@ export default function SyncPage() {
                 </thead>
                 <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
                   {history.data.history.map((item) => (
-                    <tr key={item.id}>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <span className="font-medium text-admin-text-primary">{item.syncType}</span>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <span
-                          className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusBadgeClass(item.status)}`}
-                        >
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {formatDate(item.startedAt)}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {formatDuration(item.startedAt, item.completedAt)}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {item.itemsChecked.toLocaleString()}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {item.itemsUpdated.toLocaleString()}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {item.newDeathsFound.toLocaleString()}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {item.triggeredBy || "N/A"}
-                      </td>
-                    </tr>
+                    <React.Fragment key={item.id}>
+                      <tr
+                        key={item.id}
+                        onClick={() => toggleExpandedRow(item.id)}
+                        className="cursor-pointer hover:bg-admin-surface-overlay"
+                      >
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-admin-text-muted transition-transform ${expandedRowId === item.id ? "rotate-90" : ""}`}
+                            >
+                              ▶
+                            </span>
+                            <span className="font-medium text-admin-text-primary">
+                              {item.syncType}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusBadgeClass(item.status)}`}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {formatDate(item.startedAt)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {formatDuration(item.startedAt, item.completedAt)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {item.itemsChecked.toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {item.itemsUpdated.toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {item.newDeathsFound.toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {item.triggeredBy || "N/A"}
+                        </td>
+                      </tr>
+                      {expandedRowId === item.id && (
+                        <tr>
+                          <td colSpan={8} className="bg-admin-surface-overlay px-6 py-4">
+                            <div className="space-y-3 text-sm">
+                              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                                <div>
+                                  <span className="text-admin-text-muted">Sync ID:</span>
+                                  <span className="ml-2 font-mono text-admin-text-primary">
+                                    {item.id}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-admin-text-muted">Started:</span>
+                                  <span className="ml-2 text-admin-text-primary">
+                                    {formatDate(item.startedAt)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-admin-text-muted">Completed:</span>
+                                  <span className="ml-2 text-admin-text-primary">
+                                    {formatDate(item.completedAt)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-admin-text-muted">Duration:</span>
+                                  <span className="ml-2 text-admin-text-primary">
+                                    {formatDuration(item.startedAt, item.completedAt)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {item.parameters && (
+                                <div>
+                                  <span className="text-admin-text-muted">Parameters:</span>
+                                  <span className="ml-2 font-mono text-xs text-admin-text-primary">
+                                    {JSON.stringify(item.parameters)}
+                                  </span>
+                                </div>
+                              )}
+
+                              {item.errorMessage && (
+                                <div className="border-admin-danger/30 bg-admin-danger/10 rounded-md border p-3">
+                                  <span className="font-medium text-admin-danger">Error:</span>
+                                  <p className="mt-1 whitespace-pre-wrap text-admin-text-primary">
+                                    {item.errorMessage}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                   {history.data.history.length === 0 && (
                     <tr>
