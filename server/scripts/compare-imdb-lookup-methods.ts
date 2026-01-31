@@ -53,7 +53,7 @@ function parseNonNegativeNumber(value: string): number {
 interface MovieToTest {
   tmdb_id: number
   title: string
-  release_date: string | null
+  release_date: string | Date | null
   popularity: number | null
 }
 
@@ -168,7 +168,15 @@ async function runComparison(options: Options): Promise<void> {
 
   for (let i = 0; i < movies.length; i++) {
     const movie = movies[i]
-    const year = movie.release_date ? parseInt(movie.release_date.substring(0, 4), 10) : null
+    // Handle release_date as either Date object or string
+    let year: number | null = null
+    if (movie.release_date) {
+      if (movie.release_date instanceof Date) {
+        year = movie.release_date.getFullYear()
+      } else {
+        year = parseInt(String(movie.release_date).substring(0, 4), 10)
+      }
+    }
 
     process.stdout.write(`[${i + 1}/${movies.length}] ${movie.title} (${year || "?"})... `)
 
