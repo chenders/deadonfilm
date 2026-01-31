@@ -804,6 +804,14 @@ export async function getActorImageFromWikidata(
   birthYear: number | null,
   deathYear: number | null
 ): Promise<string | null> {
+  // Validate year parameters to prevent SPARQL injection
+  if (birthYear !== null && (!Number.isInteger(birthYear) || birthYear < 0 || birthYear > 9999)) {
+    throw new Error("Invalid birthYear")
+  }
+  if (deathYear !== null && (!Number.isInteger(deathYear) || deathYear < 0 || deathYear > 9999)) {
+    throw new Error("Invalid deathYear")
+  }
+
   // Escape backslashes first, then double quotes for SPARQL string literal
   const escapedName = name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 

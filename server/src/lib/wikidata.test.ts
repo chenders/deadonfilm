@@ -3,6 +3,7 @@ import {
   getCauseOfDeath,
   getWikipediaDeathDetails,
   verifyDeathDate,
+  getActorImageFromWikidata,
   type DeathInfoSource,
 } from "./wikidata.js"
 
@@ -937,5 +938,104 @@ describe("verifyDeathDate", () => {
 
     expect(result.verified).toBe(true)
     expect(result.confidence).toBe("verified")
+  })
+})
+
+describe("getActorImageFromWikidata", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns image URL when found", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          results: {
+            bindings: [
+              {
+                personLabel: { value: "John Wayne" },
+                image: {
+                  value: "http://commons.wikimedia.org/wiki/Special:FilePath/John_Wayne.jpg",
+                },
+              },
+            ],
+          },
+        }),
+    })
+
+    const result = await getActorImageFromWikidata("John Wayne", 1907, 1979)
+
+    expect(result).toBe("https://commons.wikimedia.org/wiki/Special:FilePath/John_Wayne.jpg")
+  })
+
+  it("returns null when no results found", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ results: { bindings: [] } }),
+    })
+
+    const result = await getActorImageFromWikidata("Unknown Actor", null, null)
+
+    expect(result).toBeNull()
+  })
+
+  it("returns null when API fails", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false })
+
+    const result = await getActorImageFromWikidata("John Wayne", 1907, 1979)
+
+    expect(result).toBeNull()
+  })
+
+  it("returns null when network error occurs", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("Network error"))
+
+    const result = await getActorImageFromWikidata("John Wayne", 1907, 1979)
+
+    expect(result).toBeNull()
+  })
+
+  it("throws error for invalid birthYear", async () => {
+    await expect(getActorImageFromWikidata("John Wayne", -1, null)).rejects.toThrow(
+      "Invalid birthYear"
+    )
+    await expect(getActorImageFromWikidata("John Wayne", 1.5, null)).rejects.toThrow(
+      "Invalid birthYear"
+    )
+  })
+
+  it("throws error for invalid deathYear", async () => {
+    await expect(getActorImageFromWikidata("John Wayne", null, -1)).rejects.toThrow(
+      "Invalid deathYear"
+    )
+    await expect(getActorImageFromWikidata("John Wayne", null, 99999)).rejects.toThrow(
+      "Invalid deathYear"
+    )
+  })
+
+  it("skips non-matching names in results", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          results: {
+            bindings: [
+              {
+                personLabel: { value: "John Smith" }, // Different name
+                image: { value: "http://commons.wikimedia.org/wiki/Special:FilePath/wrong.jpg" },
+              },
+              {
+                personLabel: { value: "John Wayne" }, // Matching name
+                image: { value: "http://commons.wikimedia.org/wiki/Special:FilePath/correct.jpg" },
+              },
+            ],
+          },
+        }),
+    })
+
+    const result = await getActorImageFromWikidata("John Wayne", null, null)
+
+    expect(result).toBe("https://commons.wikimedia.org/wiki/Special:FilePath/correct.jpg")
   })
 })
