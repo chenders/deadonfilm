@@ -59,6 +59,8 @@
     "backfill:actor-obscure": "tsx scripts/backfill-actor-obscure.ts",
     "//backfill:episodes:fallback": "Backfill episodes from TVmaze/TheTVDB",
     "backfill:episodes:fallback": "tsx scripts/backfill-episodes-fallback.ts",
+    "//backfill:episode-imdb-ids": "Backfill IMDb episode IDs from IMDb datasets (enables OMDb lookups)",
+    "backfill:episode-imdb-ids": "tsx scripts/backfill-episode-imdb-ids.ts",
     "//backfill:documentary-cast": "Backfill cast from IMDB for documentaries/shows with no cast",
     "backfill:documentary-cast": "tsx scripts/backfill-documentary-cast.ts",
     "//backfill:shows:full": "All-in-one TV show backfill with session-wide caching",

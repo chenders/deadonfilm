@@ -21,6 +21,28 @@ interface DashboardStats {
     totalCost: number
     lastMonthCost: number
   }
+  deathCacheStatus: {
+    lastRebuiltAt: string
+    mostRecentDeath?: {
+      name: string
+      deathday: string
+    }
+  } | null
+}
+
+// Format a timestamp as "X minutes/hours/days ago"
+function formatTimeAgo(isoString: string): string {
+  const date = new Date(isoString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return "just now"
+  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? "" : "s"} ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`
 }
 
 // Quick action link configuration
@@ -237,6 +259,49 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        </Card>
+
+        {/* Recent Passings Cache Status */}
+        <Card
+          title="Recent Passings Cache"
+          action={
+            <Link to="/admin/cache" className="text-sm text-admin-interactive hover:underline">
+              Manage Cache
+            </Link>
+          }
+        >
+          {stats.deathCacheStatus ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <div className="text-sm text-admin-text-muted">Last Rebuilt</div>
+                <div className="mt-1 text-lg font-semibold text-admin-text-primary">
+                  {new Date(stats.deathCacheStatus.lastRebuiltAt).toLocaleString()}
+                </div>
+                <div className="mt-1 text-xs text-admin-text-muted">
+                  {formatTimeAgo(stats.deathCacheStatus.lastRebuiltAt)}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-admin-text-muted">Most Recent Death</div>
+                {stats.deathCacheStatus.mostRecentDeath ? (
+                  <>
+                    <div className="mt-1 text-lg font-semibold text-admin-text-primary">
+                      {stats.deathCacheStatus.mostRecentDeath.name}
+                    </div>
+                    <div className="mt-1 text-xs text-admin-text-muted">
+                      {stats.deathCacheStatus.mostRecentDeath.deathday}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-1 text-sm text-admin-text-muted">No data</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-admin-text-muted">
+              Cache status unavailable. Run a cache rebuild to populate this data.
+            </div>
+          )}
         </Card>
 
         {/* Actor Statistics */}
