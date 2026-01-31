@@ -171,10 +171,12 @@ async function runBackfill(options: {
 
       if (externalIds.imdb_id) {
         if (!dryRun) {
-          // Success - reset retry counters
+          // Success - reset retry counters and set source
           await db.query(
             `UPDATE movies
              SET imdb_id = $1,
+                 imdb_id_source = 'tmdb',
+                 imdb_id_needs_review = false,
                  external_ids_fetch_attempts = 0,
                  external_ids_last_fetch_attempt = NULL,
                  external_ids_fetch_error = NULL

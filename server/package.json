@@ -90,6 +90,8 @@
     "backfill:fallback-photos": "tsx scripts/backfill-actor-fallback-photos.ts",
     "//backfill:movie-imdb-ids": "Backfill IMDb IDs for movies from TMDB (prerequisite for OMDb/Trakt)",
     "backfill:movie-imdb-ids": "tsx scripts/backfill-movie-imdb-ids.ts",
+    "//backfill:movie-imdb-ids-dataset": "Backfill IMDb IDs using fuzzy title matching against IMDb dataset",
+    "backfill:movie-imdb-ids-dataset": "tsx scripts/backfill-movie-imdb-ids-from-dataset.ts",
     "//compare:imdb-methods": "Compare OMDB vs IMDb dataset for IMDb ID lookups",
     "compare:imdb-methods": "tsx scripts/compare-imdb-lookup-methods.ts",
     "//backfill:movie-popularity": "Backfill TMDB popularity scores for movies",
