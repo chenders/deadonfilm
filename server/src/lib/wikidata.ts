@@ -786,6 +786,10 @@ function parseDeathDateVerificationResult(
   }
 }
 
+// ============================================================================
+// Actor Image Sources
+// ============================================================================
+
 /**
  * Fetch an actor's image URL from Wikidata.
  * Uses the P18 (image) property and converts to a Commons URL.
@@ -872,6 +876,235 @@ export async function getActorImageFromWikidata(
     return null
   } catch (error) {
     console.error(`Error fetching Wikidata image for ${name}:`, error)
+    return null
+  }
+}
+
+/**
+ * Extract actor's image URL from Wikipedia infobox.
+ * Uses the Wikipedia API to get article content and parses the infobox for image field.
+ *
+ * @param wikipediaUrl - Full URL to the actor's Wikipedia article
+ * @returns URL to the actor's image on Wikimedia Commons, or null if not found
+ */
+export async function getActorImageFromWikipediaInfobox(
+  wikipediaUrl: string
+): Promise<string | null> {
+  try {
+    // Extract article title from URL
+    const urlMatch = wikipediaUrl.match(/\/wiki\/(.+)$/)
+    if (!urlMatch) return null
+
+    const title = decodeURIComponent(urlMatch[1])
+
+    // Use Wikipedia API to get wikitext of the article
+    const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=revisions&rvprop=content&rvslots=main&format=json&origin=*`
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
+      },
+    })
+
+    if (!response.ok) return null
+
+    const data = (await response.json()) as WikipediaApiResponse
+    const pages = data.query?.pages
+
+    if (!pages) return null
+
+    const pageId = Object.keys(pages)[0]
+    if (!pageId || pageId === "-1") return null
+
+    const content = pages[pageId]?.revisions?.[0]?.slots?.main?.["*"]
+    if (!content) return null
+
+    // Look for image in infobox - try various field names
+    const imagePatterns = [
+      /\|\s*image\s*=\s*([^\n|]+)/i,
+      /\|\s*image_name\s*=\s*([^\n|]+)/i,
+      /\|\s*img\s*=\s*([^\n|]+)/i,
+      /\|\s*photo\s*=\s*([^\n|]+)/i,
+      /\|\s*picture\s*=\s*([^\n|]+)/i,
+    ]
+
+    for (const pattern of imagePatterns) {
+      const match = content.match(pattern)
+      if (match && match[1]) {
+        let imageName = match[1].trim()
+
+        // Skip empty or placeholder images
+        if (!imageName || /^(none|no|n\/a|–|—|-|placeholder)/i.test(imageName)) {
+          continue
+        }
+
+        // Remove any wiki formatting and file: prefix
+        imageName = imageName
+          .replace(/\[\[|\]\]/g, "")
+          .replace(/^(?:File|Image):/i, "")
+          .split("|")[0] // Take just the filename before any caption
+          .trim()
+
+        if (imageName && imageName.length > 3) {
+          // Convert filename to Commons FilePath URL
+          // Spaces in filenames need to be underscores in the URL
+          const encodedName = encodeURIComponent(imageName.replace(/ /g, "_"))
+          return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodedName}`
+        }
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error(`Error fetching Wikipedia infobox image:`, error)
+    return null
+  }
+}
+
+// Patterns that indicate non-person images (places, buildings, etc.)
+const NON_PERSON_PATTERNS = [
+  /\bwalk\b/i, // street walks
+  /\bstreet\b/i,
+  /\bbuilding\b/i,
+  /\bhouse\b/i,
+  /\bschool\b/i,
+  /\bpark\b/i,
+  /\bplaza\b/i,
+  /\bbridge\b/i,
+  /\bstatue\b/i,
+  /\bmonument\b/i,
+  /\blogo\b/i,
+  /\bcover\b/i, // album/book covers
+  /\bposter\b/i,
+  /\bsignature\b/i,
+  /\bautograph\b/i,
+  /\bgrave\b/i,
+  /\btombstone\b/i,
+  /\bmemorial\b/i,
+  /\bplaque\b/i,
+  /\bmap\b/i,
+  /\baerial\b/i,
+  /\bskyline\b/i,
+  /\blandscape\b/i,
+  /\bfrom\s+\d+/i, // "from 210" (street address)
+]
+
+// Patterns that indicate person photos (preferred)
+const PERSON_PHOTO_PATTERNS = [
+  /\bportrait\b/i,
+  /\bheadshot\b/i,
+  /\bphoto\s+of\b/i,
+  /\bat\b.*\b(event|conference|premiere|festival|award)/i,
+  /\bin\s+\d{4}\b/i, // "in 2018" - event photos
+  /\bcropped\b/i, // usually person photos
+  /\bby\s+\w+/i, // "by [photographer]"
+]
+
+/**
+ * Search Wikimedia Commons for actor images by name.
+ * Uses the MediaWiki API to search for files matching the actor's name.
+ * Only returns images where the filename contains the actor's name and
+ * appears to be a photo of a person (not a place, building, etc.).
+ *
+ * @param name - Actor's name
+ * @returns URL to a matching image on Wikimedia Commons, or null if not found
+ */
+export async function getActorImageFromCommonsSearch(name: string): Promise<string | null> {
+  try {
+    // Search Commons for files matching the actor's name exactly
+    // Use quotes around the name for exact phrase matching
+    const searchQuery = encodeURIComponent(`"${name}"`)
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${searchQuery}&srnamespace=6&srlimit=20&format=json&origin=*`
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
+      },
+    })
+
+    if (!response.ok) return null
+
+    const data = (await response.json()) as {
+      query?: {
+        search?: Array<{
+          title: string
+          snippet: string
+        }>
+      }
+    }
+
+    const results = data.query?.search
+    if (!results || results.length === 0) return null
+
+    // Normalize actor name for matching (remove non-alpha, lowercase)
+    const normalizedName = name.toLowerCase().replace(/[^a-z]/g, "")
+
+    // Also check last name for partial matches
+    const nameParts = name.toLowerCase().split(/\s+/)
+    const lastName = nameParts[nameParts.length - 1].replace(/[^a-z]/g, "")
+    const firstName = nameParts[0].replace(/[^a-z]/g, "")
+
+    // Score and filter results
+    const candidates: Array<{ title: string; score: number }> = []
+
+    for (const result of results) {
+      const title = result.title
+
+      // Skip non-image files
+      if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(title)) {
+        continue
+      }
+
+      // Check if the filename contains the actor's full name or last name + first name
+      const normalizedTitle = title.toLowerCase().replace(/[^a-z]/g, "")
+
+      // Require the filename to contain the full name OR both first and last name
+      const hasFullName = normalizedTitle.includes(normalizedName)
+      const hasFirstAndLast =
+        lastName.length > 2 &&
+        firstName.length > 2 &&
+        normalizedTitle.includes(lastName) &&
+        normalizedTitle.includes(firstName)
+
+      if (!hasFullName && !hasFirstAndLast) {
+        continue
+      }
+
+      // Check for non-person patterns (skip these)
+      const isNonPerson = NON_PERSON_PATTERNS.some((pattern) => pattern.test(title))
+      if (isNonPerson) {
+        continue
+      }
+
+      // Score based on person-photo patterns
+      let score = 0
+      for (const pattern of PERSON_PHOTO_PATTERNS) {
+        if (pattern.test(title)) {
+          score += 10
+        }
+      }
+
+      // Prefer exact full name matches
+      if (hasFullName) {
+        score += 5
+      }
+
+      candidates.push({ title, score })
+    }
+
+    // Sort by score (highest first) and return the best match
+    candidates.sort((a, b) => b.score - a.score)
+
+    if (candidates.length > 0) {
+      const filename = candidates[0].title.replace(/^File:/i, "")
+      const encodedName = encodeURIComponent(filename.replace(/ /g, "_"))
+      return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodedName}`
+    }
+
+    // No match found
+    return null
+  } catch (error) {
+    console.error(`Error searching Commons for ${name}:`, error)
     return null
   }
 }
