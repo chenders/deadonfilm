@@ -23,6 +23,12 @@ export default function AggregateScore({
     return null
   }
 
+  // Ensure score is a number (API might return string from PostgreSQL NUMERIC type)
+  const numericScore = typeof score === "number" ? score : parseFloat(score)
+  if (isNaN(numericScore)) {
+    return null
+  }
+
   // Size variants
   const sizeClasses = {
     sm: {
@@ -48,7 +54,7 @@ export default function AggregateScore({
   const sizes = sizeClasses[size]
 
   // Format score to 1 decimal place
-  const formattedScore = score.toFixed(1)
+  const formattedScore = numericScore.toFixed(1)
 
   // Calculate confidence description
   const getConfidenceLabel = (conf: number | null | undefined): string => {
