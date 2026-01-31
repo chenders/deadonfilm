@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { getOMDbRatings, parseBoxOffice, parseAwards, parseTotalSeasons } from "./omdb.js"
-import type { OMDbResponse } from "./omdb.js"
+import {
+  getOMDbRatings,
+  parseBoxOffice,
+  parseAwards,
+  parseTotalSeasons,
+  searchOMDbByTitle,
+  searchOMDb,
+} from "./omdb.js"
+import type { OMDbResponse, OMDbSearchResponse } from "./omdb.js"
 
 // Mock fetch globally
 global.fetch = vi.fn()
@@ -551,5 +558,270 @@ describe("parseTotalSeasons", () => {
   it("handles whitespace around valid numbers", () => {
     expect(parseTotalSeasons(" 8 ")).toBe(8)
     expect(parseTotalSeasons("  12  ")).toBe(12)
+  })
+})
+
+describe("searchOMDbByTitle", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.OMDB_API_KEY = "test-api-key"
+  })
+
+  it("successfully finds movie by exact title", async () => {
+    const mockResponse: OMDbResponse = {
+      Title: "The Matrix",
+      Year: "1999",
+      Rated: "R",
+      Released: "31 Mar 1999",
+      Runtime: "136 min",
+      Genre: "Action, Sci-Fi",
+      Director: "The Wachowskis",
+      Writer: "The Wachowskis",
+      Actors: "Keanu Reeves, Laurence Fishburne",
+      Plot: "A computer hacker learns about the true nature of reality.",
+      Language: "English",
+      Country: "USA",
+      Awards: "Won 4 Oscars",
+      Poster: "https://example.com/poster.jpg",
+      Ratings: [],
+      Metascore: "73",
+      imdbRating: "8.7",
+      imdbVotes: "2,000,000",
+      imdbID: "tt0133093",
+      Type: "movie",
+      DVD: "N/A",
+      BoxOffice: "$171,479,930",
+      Production: "N/A",
+      Website: "N/A",
+      Response: "True",
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    } as Response)
+
+    const result = await searchOMDbByTitle("The Matrix", 1999)
+
+    expect(result).toEqual({
+      Title: "The Matrix",
+      Year: "1999",
+      imdbID: "tt0133093",
+      Type: "movie",
+      Poster: "https://example.com/poster.jpg",
+    })
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://www.omdbapi.com/?apikey=test-api-key&t=The+Matrix&type=movie&y=1999"
+    )
+  })
+
+  it("returns null when movie not found", async () => {
+    const mockResponse: OMDbResponse = {
+      Response: "False",
+      Error: "Movie not found!",
+      Title: "",
+      Year: "",
+      Rated: "",
+      Released: "",
+      Runtime: "",
+      Genre: "",
+      Director: "",
+      Writer: "",
+      Actors: "",
+      Plot: "",
+      Language: "",
+      Country: "",
+      Awards: "",
+      Poster: "",
+      Ratings: [],
+      Metascore: "",
+      imdbRating: "",
+      imdbVotes: "",
+      imdbID: "",
+      Type: "",
+      DVD: "",
+      BoxOffice: "",
+      Production: "",
+      Website: "",
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    } as Response)
+
+    const result = await searchOMDbByTitle("Nonexistent Movie 12345")
+
+    expect(result).toBeNull()
+  })
+
+  it("works without year parameter", async () => {
+    const mockResponse: OMDbResponse = {
+      Title: "Crash",
+      Year: "2004",
+      Rated: "R",
+      Released: "06 May 2005",
+      Runtime: "112 min",
+      Genre: "Crime, Drama",
+      Director: "Paul Haggis",
+      Writer: "Paul Haggis, Bobby Moresco",
+      Actors: "Sandra Bullock, Don Cheadle",
+      Plot: "Los Angeles citizens with interrelated lives.",
+      Language: "English",
+      Country: "USA",
+      Awards: "Won 3 Oscars",
+      Poster: "https://example.com/poster.jpg",
+      Ratings: [],
+      Metascore: "69",
+      imdbRating: "7.7",
+      imdbVotes: "450,000",
+      imdbID: "tt0375679",
+      Type: "movie",
+      DVD: "N/A",
+      BoxOffice: "$54,580,300",
+      Production: "N/A",
+      Website: "N/A",
+      Response: "True",
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    } as Response)
+
+    await searchOMDbByTitle("Crash")
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://www.omdbapi.com/?apikey=test-api-key&t=Crash&type=movie"
+    )
+  })
+
+  it("throws error when API key is not set", async () => {
+    delete process.env.OMDB_API_KEY
+
+    await expect(searchOMDbByTitle("The Matrix")).rejects.toThrow(
+      "OMDB_API_KEY environment variable not set"
+    )
+  })
+
+  it("returns null on API error", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    } as Response)
+
+    const result = await searchOMDbByTitle("The Matrix")
+
+    expect(result).toBeNull()
+  })
+})
+
+describe("searchOMDb", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.OMDB_API_KEY = "test-api-key"
+  })
+
+  it("successfully returns multiple search results", async () => {
+    const mockResponse: OMDbSearchResponse = {
+      Search: [
+        { Title: "Crash", Year: "2004", imdbID: "tt0375679", Type: "movie", Poster: "N/A" },
+        { Title: "Crash", Year: "1996", imdbID: "tt0115964", Type: "movie", Poster: "N/A" },
+        { Title: "Crash", Year: "2019-", imdbID: "tt8802966", Type: "series", Poster: "N/A" },
+      ],
+      totalResults: "42",
+      Response: "True",
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    } as Response)
+
+    const results = await searchOMDb("Crash")
+
+    expect(results).toHaveLength(3)
+    expect(results[0].imdbID).toBe("tt0375679")
+    expect(results[1].imdbID).toBe("tt0115964")
+  })
+
+  it("returns empty array when no results found", async () => {
+    const mockResponse: OMDbSearchResponse = {
+      Response: "False",
+      Error: "Movie not found!",
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    } as Response)
+
+    const results = await searchOMDb("Nonexistent Movie 12345")
+
+    expect(results).toEqual([])
+  })
+
+  it("includes year parameter when provided", async () => {
+    const mockResponse: OMDbSearchResponse = {
+      Search: [{ Title: "Crash", Year: "2004", imdbID: "tt0375679", Type: "movie", Poster: "N/A" }],
+      totalResults: "1",
+      Response: "True",
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    } as Response)
+
+    await searchOMDb("Crash", 2004)
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://www.omdbapi.com/?apikey=test-api-key&s=Crash&type=movie&y=2004"
+    )
+  })
+
+  it("supports series type", async () => {
+    const mockResponse: OMDbSearchResponse = {
+      Search: [
+        {
+          Title: "Breaking Bad",
+          Year: "2008-2013",
+          imdbID: "tt0903747",
+          Type: "series",
+          Poster: "N/A",
+        },
+      ],
+      totalResults: "1",
+      Response: "True",
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    } as Response)
+
+    await searchOMDb("Breaking Bad", undefined, "series")
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://www.omdbapi.com/?apikey=test-api-key&s=Breaking+Bad&type=series"
+    )
+  })
+
+  it("throws error when API key is not set", async () => {
+    delete process.env.OMDB_API_KEY
+
+    await expect(searchOMDb("Matrix")).rejects.toThrow("OMDB_API_KEY environment variable not set")
+  })
+
+  it("returns empty array on API error", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    } as Response)
+
+    const results = await searchOMDb("Matrix")
+
+    expect(results).toEqual([])
   })
 })

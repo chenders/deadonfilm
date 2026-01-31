@@ -82,6 +82,14 @@ export interface ImdbPrincipal {
   characters: string[] | null
 }
 
+export interface ImdbMovieBasics {
+  tconst: string // "tt0111161"
+  primaryTitle: string // "The Shawshank Redemption"
+  originalTitle: string // Same or foreign title
+  startYear: number | null // 1994
+  runtimeMinutes: number | null
+}
+
 export interface ImdbPerson {
   nconst: string // Person ID (e.g., "nm0000001")
   primaryName: string
@@ -454,8 +462,77 @@ async function ensureEpisodeIndex(): Promise<Map<string, ImdbEpisode[]>> {
 }
 
 // ============================================================
+// Movie Index (In-Memory)
+// ============================================================
+
+// Movie array for fuzzy matching (loaded once per session)
+let movieIndex: ImdbMovieBasics[] | null = null
+let movieIndexBuildTime: number | null = null
+
+async function ensureMovieIndex(): Promise<ImdbMovieBasics[]> {
+  // Check if index is still valid
+  if (movieIndex && movieIndexBuildTime && Date.now() - movieIndexBuildTime < CACHE_TTL_MS) {
+    return movieIndex
+  }
+
+  console.log("Building IMDb movie index...")
+  const startTime = Date.now()
+
+  const filePath = await ensureFileDownloaded("title.basics.tsv.gz")
+
+  const movies = await parseTsvGz<ImdbMovieBasics>(
+    filePath,
+    (columns, headers) => {
+      const titleType = columns[headers.indexOf("titleType")]
+
+      // Only include movies (feature films) and TV movies
+      if (titleType !== "movie" && titleType !== "tvMovie") {
+        return null
+      }
+
+      const startYear = parseNullableInt(columns[headers.indexOf("startYear")])
+
+      // Skip movies without year (can't match reliably)
+      if (startYear === null) {
+        return null
+      }
+
+      return {
+        tconst: columns[headers.indexOf("tconst")],
+        primaryTitle: columns[headers.indexOf("primaryTitle")],
+        originalTitle: columns[headers.indexOf("originalTitle")],
+        startYear,
+        runtimeMinutes: parseNullableInt(columns[headers.indexOf("runtimeMinutes")]),
+      }
+    },
+    { progressLabel: "titles" }
+  )
+
+  movieIndex = movies
+  movieIndexBuildTime = Date.now()
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(2)
+  console.log(`Built movie index: ${movies.length} movies in ${elapsed}s`)
+
+  return movieIndex
+}
+
+// ============================================================
 // Public API
 // ============================================================
+
+/**
+ * Get the full movie index for fuzzy matching.
+ *
+ * Loads all movies (titleType = "movie" or "tvMovie") from title.basics.tsv.gz
+ * into memory. Results are cached for the session duration.
+ *
+ * Typical size: ~1M movies, ~500MB memory usage.
+ *
+ * @returns Array of movie basics for building a Fuse.js search index
+ */
+export async function getMovieIndex(): Promise<ImdbMovieBasics[]> {
+  return ensureMovieIndex()
+}
 
 /**
  * Get all episodes for a show by IMDb show ID.

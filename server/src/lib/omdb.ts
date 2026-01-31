@@ -54,6 +54,21 @@ export interface OMDbMetrics {
   metacriticScore: number | null
 }
 
+export interface OMDbSearchResult {
+  Title: string
+  Year: string
+  imdbID: string
+  Type: string // "movie" | "series" | "episode" | "game"
+  Poster: string
+}
+
+export interface OMDbSearchResponse {
+  Search?: OMDbSearchResult[]
+  totalResults?: string
+  Response: "True" | "False"
+  Error?: string
+}
+
 export interface OMDbExtendedMetrics extends OMDbMetrics {
   boxOfficeCents: number | null // Movies only - revenue in cents
   awardsWins: number | null // Both movies and shows
@@ -280,5 +295,121 @@ export async function getOMDbRatings(
   } catch (error) {
     console.error(`Error fetching OMDb ratings for ${imdbId}:`, error)
     return null
+  }
+}
+
+/**
+ * Search OMDb by exact title match.
+ *
+ * Uses the "t" (title) parameter which returns a single result
+ * if an exact match is found.
+ *
+ * @param title - Movie/series title to search for
+ * @param year - Optional release year to narrow results
+ * @param type - Content type filter ("movie" or "series")
+ * @param apiKey - OMDb API key (defaults to OMDB_API_KEY env var)
+ * @returns Single search result or null if not found
+ */
+export async function searchOMDbByTitle(
+  title: string,
+  year?: number,
+  type: "movie" | "series" = "movie",
+  apiKey?: string
+): Promise<OMDbSearchResult | null> {
+  const key = apiKey || process.env.OMDB_API_KEY
+  if (!key) {
+    throw new Error("OMDB_API_KEY environment variable not set")
+  }
+
+  await waitForRateLimit()
+
+  const params = new URLSearchParams({
+    apikey: key,
+    t: title,
+    type,
+  })
+  if (year) {
+    params.set("y", year.toString())
+  }
+
+  const url = `${OMDB_API_BASE}?${params.toString()}`
+
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`OMDb API returned ${response.status}`)
+    }
+
+    const data = (await response.json()) as OMDbResponse
+
+    if (data.Response === "False") {
+      return null
+    }
+
+    return {
+      Title: data.Title,
+      Year: data.Year,
+      imdbID: data.imdbID,
+      Type: data.Type,
+      Poster: data.Poster,
+    }
+  } catch (error) {
+    console.error(`Error searching OMDb for title "${title}":`, error)
+    return null
+  }
+}
+
+/**
+ * Search OMDb by keyword.
+ *
+ * Uses the "s" (search) parameter which returns multiple results.
+ * Returns up to 10 results per page (OMDb default).
+ *
+ * @param title - Movie/series title to search for
+ * @param year - Optional release year to narrow results
+ * @param type - Content type filter ("movie" or "series")
+ * @param apiKey - OMDb API key (defaults to OMDB_API_KEY env var)
+ * @returns Array of search results (may be empty)
+ */
+export async function searchOMDb(
+  title: string,
+  year?: number,
+  type: "movie" | "series" = "movie",
+  apiKey?: string
+): Promise<OMDbSearchResult[]> {
+  const key = apiKey || process.env.OMDB_API_KEY
+  if (!key) {
+    throw new Error("OMDB_API_KEY environment variable not set")
+  }
+
+  await waitForRateLimit()
+
+  const params = new URLSearchParams({
+    apikey: key,
+    s: title,
+    type,
+  })
+  if (year) {
+    params.set("y", year.toString())
+  }
+
+  const url = `${OMDB_API_BASE}?${params.toString()}`
+
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`OMDb API returned ${response.status}`)
+    }
+
+    const data = (await response.json()) as OMDbSearchResponse
+
+    if (data.Response === "False" || !data.Search) {
+      return []
+    }
+
+    return data.Search
+  } catch (error) {
+    console.error(`Error searching OMDb for "${title}":`, error)
+    return []
   }
 }
