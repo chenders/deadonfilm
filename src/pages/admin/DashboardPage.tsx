@@ -33,8 +33,14 @@ interface DashboardStats {
 // Format a timestamp as "X minutes/hours/days ago"
 function formatTimeAgo(isoString: string): string {
   const date = new Date(isoString)
+  if (isNaN(date.getTime())) return "unknown"
+
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
+
+  // Handle future timestamps (clock skew, timezone issues)
+  if (diffMs < 0) return "just now"
+
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)

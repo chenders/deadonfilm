@@ -39,9 +39,18 @@ export default function SyncPage() {
     }
 
     const startTime = new Date(status.data.currentSyncStartedAt).getTime()
+
+    // Handle invalid date or future timestamp (clock skew)
+    if (isNaN(startTime)) {
+      setElapsedSeconds(0)
+      return
+    }
+
     const updateElapsed = () => {
       const now = Date.now()
-      setElapsedSeconds(Math.floor((now - startTime) / 1000))
+      const elapsed = Math.floor((now - startTime) / 1000)
+      // Clamp to 0 if negative (future timestamp due to clock skew)
+      setElapsedSeconds(Math.max(0, elapsed))
     }
 
     updateElapsed()
