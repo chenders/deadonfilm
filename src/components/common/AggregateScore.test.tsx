@@ -53,4 +53,19 @@ describe("AggregateScore", () => {
     render(<AggregateScore score={9} confidence={0.9} />)
     expect(screen.getByTestId("aggregate-score-value")).toHaveTextContent("9.0")
   })
+
+  it("handles string scores from PostgreSQL NUMERIC type", () => {
+    // PostgreSQL NUMERIC type may return as string
+    render(<AggregateScore score={"8.45" as unknown as number} confidence={0.75} />)
+
+    expect(screen.getByTestId("aggregate-score")).toBeInTheDocument()
+    expect(screen.getByTestId("aggregate-score-value")).toHaveTextContent("8.4")
+  })
+
+  it("renders nothing when score is unparseable string (NaN)", () => {
+    const { container } = render(
+      <AggregateScore score={"not-a-number" as unknown as number} confidence={0.5} />
+    )
+    expect(container.firstChild).toBeNull()
+  })
 })
