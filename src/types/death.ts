@@ -70,6 +70,7 @@ export interface RecentDeathsResponse {
     cause_of_death: string | null
     cause_of_death_details: string | null
     profile_path: string | null
+    fallback_profile_url: string | null
   }>
 }
 

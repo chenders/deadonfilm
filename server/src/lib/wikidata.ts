@@ -785,3 +785,93 @@ function parseDeathDateVerificationResult(
     confidence: "unverified",
   }
 }
+
+/**
+ * Fetch an actor's image URL from Wikidata.
+ * Uses the P18 (image) property and converts to a Commons URL.
+ *
+ * @param name - Actor's name
+ * @param birthYear - Year of birth (optional, but improves matching)
+ * @param deathYear - Year of death (optional, but improves matching)
+ * @returns URL to the actor's image on Wikimedia Commons, or null if not found
+ */
+export async function getActorImageFromWikidata(
+  name: string,
+  birthYear: number | null,
+  deathYear: number | null
+): Promise<string | null> {
+  // Escape backslashes first, then double quotes for SPARQL string literal
+  const escapedName = name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+
+  // Build query with optional birth/death year filters
+  let filters = ""
+  if (birthYear) {
+    filters += `
+      ?person wdt:P569 ?birthDate .
+      FILTER(YEAR(?birthDate) = ${birthYear})
+    `
+  }
+  if (deathYear) {
+    filters += `
+      ?person wdt:P570 ?deathDate .
+      FILTER(YEAR(?deathDate) >= ${deathYear - 1} && YEAR(?deathDate) <= ${deathYear + 1})
+    `
+  }
+
+  const query = `
+    SELECT ?person ?personLabel ?image WHERE {
+      ?person wdt:P31 wd:Q5 .
+      ?person rdfs:label "${escapedName}"@en .
+      ?person wdt:P18 ?image .
+      ${filters}
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+    }
+    LIMIT 5
+  `
+
+  try {
+    const response = await fetch(`${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(query)}`, {
+      headers: {
+        Accept: "application/sparql-results+json",
+        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
+      },
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const data = (await response.json()) as {
+      results: {
+        bindings: Array<{
+          personLabel?: { value: string }
+          image?: { value: string }
+        }>
+      }
+    }
+
+    // Find matching result
+    for (const binding of data.results.bindings) {
+      const personName = binding.personLabel?.value || ""
+
+      // Verify name matches
+      if (!isNameMatch(name, personName)) {
+        continue
+      }
+
+      // Get the image URL
+      const imageUrl = binding.image?.value
+      if (imageUrl) {
+        // Wikidata returns Commons URL like:
+        // http://commons.wikimedia.org/wiki/Special:FilePath/Example.jpg
+        // We can use this directly or convert to https
+        return imageUrl.replace("http://", "https://")
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error(`Error fetching Wikidata image for ${name}:`, error)
+    return null
+  }
+}

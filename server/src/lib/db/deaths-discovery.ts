@@ -73,6 +73,7 @@ export async function getRecentDeaths(limit: number = 5): Promise<
     cause_of_death: string | null
     cause_of_death_details: string | null
     profile_path: string | null
+    fallback_profile_url: string | null
   }>
 > {
   const db = getPool()
@@ -91,7 +92,8 @@ export async function getRecentDeaths(limit: number = 5): Promise<
        HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
           OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
      )
-     SELECT a.id, a.tmdb_id, a.name, a.deathday, a.cause_of_death, a.cause_of_death_details, a.profile_path
+     SELECT a.id, a.tmdb_id, a.name, a.deathday, a.cause_of_death, a.cause_of_death_details,
+            a.profile_path, a.fallback_profile_url
      FROM actors a
      JOIN actor_appearances aa ON aa.id = a.id
      WHERE a.is_obscure = false
