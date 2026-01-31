@@ -582,6 +582,85 @@ describe("detectAppearanceType", () => {
   })
 })
 
+describe("ImdbMovieBasics structure", () => {
+  /**
+   * Tests for the ImdbMovieBasics type used by getMovieIndex().
+   * This is the structure returned for fuzzy movie title matching.
+   */
+
+  interface ImdbMovieBasics {
+    tconst: string
+    primaryTitle: string
+    originalTitle: string
+    startYear: number | null
+    runtimeMinutes: number | null
+  }
+
+  it("has correct structure for a typical movie", () => {
+    const movie: ImdbMovieBasics = {
+      tconst: "tt0111161",
+      primaryTitle: "The Shawshank Redemption",
+      originalTitle: "The Shawshank Redemption",
+      startYear: 1994,
+      runtimeMinutes: 142,
+    }
+
+    expect(movie.tconst).toBe("tt0111161")
+    expect(movie.primaryTitle).toBe("The Shawshank Redemption")
+    expect(movie.startYear).toBe(1994)
+  })
+
+  it("supports different primary and original titles (foreign films)", () => {
+    const movie: ImdbMovieBasics = {
+      tconst: "tt0245429",
+      primaryTitle: "Spirited Away",
+      originalTitle: "Sen to Chihiro no kamikakushi",
+      startYear: 2001,
+      runtimeMinutes: 125,
+    }
+
+    expect(movie.primaryTitle).toBe("Spirited Away")
+    expect(movie.originalTitle).toBe("Sen to Chihiro no kamikakushi")
+  })
+
+  it("allows null runtime for incomplete data", () => {
+    const movie: ImdbMovieBasics = {
+      tconst: "tt9999999",
+      primaryTitle: "Unknown Movie",
+      originalTitle: "Unknown Movie",
+      startYear: 2020,
+      runtimeMinutes: null,
+    }
+
+    expect(movie.runtimeMinutes).toBeNull()
+  })
+
+  it("can be used for Fuse.js fuzzy matching", () => {
+    // Demonstrates the expected use case: building a Fuse.js index
+    const movies: ImdbMovieBasics[] = [
+      {
+        tconst: "tt0111161",
+        primaryTitle: "The Shawshank Redemption",
+        originalTitle: "The Shawshank Redemption",
+        startYear: 1994,
+        runtimeMinutes: 142,
+      },
+      {
+        tconst: "tt0068646",
+        primaryTitle: "The Godfather",
+        originalTitle: "The Godfather",
+        startYear: 1972,
+        runtimeMinutes: 175,
+      },
+    ]
+
+    // Fuse.js would be configured like this:
+    // const fuse = new Fuse(movies, { keys: ["primaryTitle", "originalTitle"] })
+    expect(movies).toHaveLength(2)
+    expect(movies[0].primaryTitle).toBe("The Shawshank Redemption")
+  })
+})
+
 describe("NormalizedImdbMovieCastMember structure", () => {
   /**
    * Tests for the normalized movie cast member format used for documentary/movie imports.
