@@ -330,6 +330,8 @@ interface StartEnrichmentRequest {
   aiContentExtraction?: boolean
   // Batch mode filters
   usActorsOnly?: boolean
+  // Cache control
+  ignoreCache?: boolean // Default: true - bypass source query cache for fresh data
 }
 
 router.post("/start", async (req: Request, res: Response): Promise<void> => {
@@ -393,6 +395,8 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       followLinks: config.followLinks ?? true,
       aiLinkSelection: config.aiLinkSelection ?? true,
       aiContentExtraction: config.aiContentExtraction ?? true,
+      // Cache control - default true for admin (get fresh data)
+      ignoreCache: config.ignoreCache ?? true,
     }
 
     // Start the enrichment run

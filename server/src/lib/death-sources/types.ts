@@ -646,6 +646,18 @@ export interface WikipediaOptions {
    * Default: 10
    */
   maxSections?: number
+  /**
+   * Follow links to related Wikipedia articles that may contain detailed
+   * information about incidents, accidents, health events, or death circumstances.
+   * Examples: "Dick_Cheney_hunting_accident", "Attempted_assassination_of_Dick_Cheney"
+   * Default: false (opt-in, requires useAISectionSelection)
+   */
+  followLinkedArticles?: boolean
+  /**
+   * Maximum number of linked articles to fetch content from.
+   * Default: 2
+   */
+  maxLinkedArticles?: number
 }
 
 /**
@@ -655,6 +667,8 @@ export const DEFAULT_WIKIPEDIA_OPTIONS: WikipediaOptions = {
   useAISectionSelection: false,
   sectionSelectionModel: "gemini-flash",
   maxSections: 10,
+  followLinkedArticles: false,
+  maxLinkedArticles: 2,
 }
 
 // ============================================================================

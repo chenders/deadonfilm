@@ -40,6 +40,8 @@ export interface EnrichmentRunConfig {
   maxBilling?: number
   topMovies?: number
   usActorsOnly?: boolean
+  /** Bypass source query cache for fresh data. Default: true for admin API */
+  ignoreCache?: boolean
 }
 
 /**
@@ -108,7 +110,7 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
         maxBilling: config.maxBilling,
         topMovies: config.topMovies,
         usActorsOnly: config.usActorsOnly ?? false,
-        ignoreCache: false,
+        ignoreCache: config.ignoreCache ?? true, // Default: bypass cache for admin runs
         staging: false,
       },
       { createdBy: "admin-enrichment" }

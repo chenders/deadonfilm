@@ -10,6 +10,7 @@ const program = new Command()
   .description("Test Wikipedia source section selection")
   .option("-a, --actor <name>", "Actor name to test", "Dick Cheney")
   .option("--ai-selection", "Enable AI-assisted section selection")
+  .option("--follow-links", "Enable following linked Wikipedia articles (requires --ai-selection)")
   .option("--ignore-cache", "Bypass the cache to force a fresh lookup")
   .option("--id <number>", "Actor ID for cache/logging (optional)")
   .option("--birthday <date>", "Actor birthday YYYY-MM-DD (optional)")
@@ -48,10 +49,25 @@ async function main() {
         console.error("Get one at: https://aistudio.google.com/app/apikey")
         process.exit(1)
       }
-      source.setWikipediaOptions({ useAISectionSelection: true })
-      console.log("Called setWikipediaOptions({ useAISectionSelection: true })")
+
+      const wikipediaOptions: { useAISectionSelection: boolean; followLinkedArticles?: boolean } = {
+        useAISectionSelection: true,
+      }
+
+      if (opts.followLinks) {
+        console.log("Link following: ENABLED")
+        wikipediaOptions.followLinkedArticles = true
+      } else {
+        console.log("Link following: disabled (use --follow-links to enable)")
+      }
+
+      source.setWikipediaOptions(wikipediaOptions)
+      console.log(`Called setWikipediaOptions(${JSON.stringify(wikipediaOptions)})`)
     } else {
       console.log("AI section selection: disabled (use --ai-selection to enable)")
+      if (opts.followLinks) {
+        console.log("Note: --follow-links requires --ai-selection to be enabled")
+      }
     }
 
     // Use provided ID or generate one from the actor name
@@ -93,10 +109,22 @@ async function main() {
     console.log("Source:", JSON.stringify(result.source, null, 2))
 
     if (result.data) {
+      const text = result.data.circumstances || ""
       console.log("\n=== Extracted Text (first 5000 chars) ===")
-      console.log(result.data.circumstances?.substring(0, 5000))
-      if ((result.data.circumstances?.length || 0) > 5000) {
+      console.log(text.substring(0, 5000))
+      if (text.length > 5000) {
         console.log("\n[...truncated...]")
+      }
+
+      // Check for linked article content
+      const linkedIdx = text.indexOf("[Linked Article")
+      if (linkedIdx >= 0) {
+        console.log("\n=== Linked Article Content Found ===")
+        console.log(`Position: ${linkedIdx} of ${text.length}`)
+        console.log("Preview:")
+        console.log(text.substring(linkedIdx, linkedIdx + 2000))
+      } else {
+        console.log("\n=== No Linked Article Content Found ===")
       }
     }
 
