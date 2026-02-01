@@ -142,11 +142,47 @@ export async function writeToProduction(
     ]
   )
 
-  // Update has_detailed_death_info flag if needed
+  // Update actors table with enrichment data
+  // Build dynamic UPDATE based on which fields have values
+  const actorUpdates: string[] = []
+  const actorParams: unknown[] = []
+  let actorParamIndex = 1
+
   if (enrichment.hasDetailedDeathInfo) {
-    await db.query(`UPDATE actors SET has_detailed_death_info = true WHERE id = $1`, [
-      enrichment.actorId,
-    ])
+    actorUpdates.push(`has_detailed_death_info = $${actorParamIndex++}`)
+    actorParams.push(true)
+  }
+
+  if (enrichment.causeOfDeath) {
+    actorUpdates.push(`cause_of_death = $${actorParamIndex++}`)
+    actorParams.push(enrichment.causeOfDeath)
+  }
+
+  if (enrichment.causeOfDeathSource) {
+    actorUpdates.push(`cause_of_death_source = $${actorParamIndex++}`)
+    actorParams.push(enrichment.causeOfDeathSource)
+  }
+
+  if (enrichment.causeOfDeathDetails) {
+    actorUpdates.push(`cause_of_death_details = $${actorParamIndex++}`)
+    actorParams.push(enrichment.causeOfDeathDetails)
+  }
+
+  if (enrichment.causeOfDeathDetailsSource) {
+    actorUpdates.push(`cause_of_death_details_source = $${actorParamIndex++}`)
+    actorParams.push(enrichment.causeOfDeathDetailsSource)
+  }
+
+  // Always update enriched_at and updated_at when we have updates
+  if (actorUpdates.length > 0) {
+    actorUpdates.push(`enriched_at = NOW()`)
+    actorUpdates.push(`updated_at = NOW()`)
+    actorParams.push(enrichment.actorId)
+
+    await db.query(
+      `UPDATE actors SET ${actorUpdates.join(", ")} WHERE id = $${actorParamIndex}`,
+      actorParams
+    )
   }
 }
 

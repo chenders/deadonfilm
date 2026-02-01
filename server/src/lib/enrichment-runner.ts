@@ -350,6 +350,10 @@ export class EnrichmentRunner {
       const additionalContext = cleaned?.additionalContext || enrichment.additionalContext
       const relatedDeaths = cleaned?.relatedDeaths || enrichment.relatedDeaths || null
 
+      // Extract cause of death from Claude cleanup (for actors missing it)
+      const causeOfDeath = cleaned?.cause || null
+      const causeOfDeathDetails = cleaned?.details || null
+
       const causeConfidence = cleaned?.causeConfidence || null
       const detailsConfidence = cleaned?.detailsConfidence || null
       const birthdayConfidence = cleaned?.birthdayConfidence || null
@@ -397,9 +401,17 @@ export class EnrichmentRunner {
 
       const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
 
+      // Only include causeOfDeath if actor doesn't already have one
       const enrichmentData: EnrichmentData = {
         actorId,
         hasDetailedDeathInfo: hasDetailedDeathInfo || false,
+        // Fill in cause_of_death if we got one and actor doesn't have it
+        causeOfDeath: !actorRecord?.causeOfDeath && causeOfDeath ? causeOfDeath : undefined,
+        causeOfDeathSource: !actorRecord?.causeOfDeath && causeOfDeath ? "claude-opus-4.5" : undefined,
+        causeOfDeathDetails:
+          !actorRecord?.causeOfDeathDetails && causeOfDeathDetails ? causeOfDeathDetails : undefined,
+        causeOfDeathDetailsSource:
+          !actorRecord?.causeOfDeathDetails && causeOfDeathDetails ? "claude-opus-4.5" : undefined,
       }
 
       // Run entity linking on narrative text fields
@@ -682,7 +694,7 @@ export class EnrichmentRunner {
   ): Promise<ActorRow[]> {
     const db = getPool()
 
-    this.log.info("Querying actors with missing death circumstances")
+    this.log.info("Querying actors needing death enrichment")
 
     const params: (number | string)[] = []
     let query = `
@@ -705,8 +717,12 @@ export class EnrichmentRunner {
       FROM actors a
       LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
       WHERE a.deathday IS NOT NULL
-        AND a.cause_of_death IS NOT NULL
-        AND (c.circumstances IS NULL OR c.notable_factors IS NULL OR array_length(c.notable_factors, 1) IS NULL)
+        AND (
+          a.cause_of_death IS NULL
+          OR c.circumstances IS NULL
+          OR c.notable_factors IS NULL
+          OR array_length(c.notable_factors, 1) IS NULL
+        )
     `
 
     if (minPopularity > 0) {
