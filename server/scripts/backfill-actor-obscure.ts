@@ -87,8 +87,8 @@ async function showStats(closePool = true): Promise<void> {
           SELECT
             ama.actor_id,
             COUNT(*)::int as movie_count,
-            MAX(m.popularity) as max_movie_pop,
-            COUNT(*) FILTER (WHERE m.original_language = 'en' AND m.popularity >= $1)::int as en_movies_pop5
+            MAX(m.tmdb_popularity) as max_movie_pop,
+            COUNT(*) FILTER (WHERE m.original_language = 'en' AND m.tmdb_popularity >= $1)::int as en_movies_pop5
           FROM actor_movie_appearances ama
           JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
           GROUP BY ama.actor_id
@@ -97,8 +97,8 @@ async function showStats(closePool = true): Promise<void> {
           SELECT
             asa.actor_id,
             COUNT(*)::int as episode_count,
-            MAX(s.popularity) as max_show_pop,
-            COUNT(DISTINCT asa.show_tmdb_id) FILTER (WHERE s.original_language = 'en' AND s.popularity >= $1)::int as en_shows_pop5
+            MAX(s.tmdb_popularity) as max_show_pop,
+            COUNT(DISTINCT asa.show_tmdb_id) FILTER (WHERE s.original_language = 'en' AND s.tmdb_popularity >= $1)::int as en_shows_pop5
           FROM actor_show_appearances asa
           JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
           GROUP BY asa.actor_id
@@ -234,8 +234,8 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
           SELECT
             ama.actor_id,
             COUNT(*)::int as movie_count,
-            MAX(m.popularity) as max_movie_pop,
-            COUNT(*) FILTER (WHERE m.original_language = 'en' AND m.popularity >= $7)::int as en_movies_pop5
+            MAX(m.tmdb_popularity) as max_movie_pop,
+            COUNT(*) FILTER (WHERE m.original_language = 'en' AND m.tmdb_popularity >= $7)::int as en_movies_pop5
           FROM actor_movie_appearances ama
           JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
           GROUP BY ama.actor_id
@@ -244,8 +244,8 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
           SELECT
             asa.actor_id,
             COUNT(*)::int as episode_count,
-            MAX(s.popularity) as max_show_pop,
-            COUNT(DISTINCT asa.show_tmdb_id) FILTER (WHERE s.original_language = 'en' AND s.popularity >= $7)::int as en_shows_pop5
+            MAX(s.tmdb_popularity) as max_show_pop,
+            COUNT(DISTINCT asa.show_tmdb_id) FILTER (WHERE s.original_language = 'en' AND s.tmdb_popularity >= $7)::int as en_shows_pop5
           FROM actor_show_appearances asa
           JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
           GROUP BY asa.actor_id
@@ -315,8 +315,8 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
           SELECT
             ama.actor_id,
             COUNT(*)::int as movie_count,
-            MAX(m.popularity) as max_movie_pop,
-            COUNT(*) FILTER (WHERE m.original_language = 'en' AND m.popularity >= $7)::int as en_movies_pop5
+            MAX(m.tmdb_popularity) as max_movie_pop,
+            COUNT(*) FILTER (WHERE m.original_language = 'en' AND m.tmdb_popularity >= $7)::int as en_movies_pop5
           FROM actor_movie_appearances ama
           JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
           GROUP BY ama.actor_id
@@ -325,8 +325,8 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillResult | n
           SELECT
             asa.actor_id,
             COUNT(*)::int as episode_count,
-            MAX(s.popularity) as max_show_pop,
-            COUNT(DISTINCT asa.show_tmdb_id) FILTER (WHERE s.original_language = 'en' AND s.popularity >= $7)::int as en_shows_pop5
+            MAX(s.tmdb_popularity) as max_show_pop,
+            COUNT(DISTINCT asa.show_tmdb_id) FILTER (WHERE s.original_language = 'en' AND s.tmdb_popularity >= $7)::int as en_shows_pop5
           FROM actor_show_appearances asa
           JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
           GROUP BY asa.actor_id

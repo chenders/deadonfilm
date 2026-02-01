@@ -99,8 +99,8 @@ async function findEligibleActors(pool: Pool, count: number): Promise<ActorRow[]
       LEFT JOIN actor_movie_appearances ama ON a.id = ama.actor_id
       LEFT JOIN actor_show_appearances asa ON a.id = asa.actor_id
       JOIN popular_content pc ON
-        (pc.content_type = 'movie' AND pc.content_id = ama.movie_id) OR
-        (pc.content_type = 'show' AND pc.content_id = asa.show_id)
+        (pc.content_type = 'movie' AND pc.content_id = ama.movie_tmdb_id) OR
+        (pc.content_type = 'show' AND pc.content_id = asa.show_tmdb_id)
       WHERE a.deathday IS NOT NULL
         AND a.id NOT IN (
           SELECT DISTINCT actor_id FROM ab_test_comprehensive_results

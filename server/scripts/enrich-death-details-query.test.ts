@@ -340,7 +340,7 @@ describe("enrich-death-details --actor-id query", () => {
       LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
       WHERE a.id = ANY($1::int[])
         AND a.deathday IS NOT NULL
-      ORDER BY a.popularity DESC NULLS LAST
+      ORDER BY a.dof_popularity DESC NULLS LAST
     `,
       [[actorId]]
     )
@@ -366,7 +366,7 @@ describe("enrich-death-details --actor-id query", () => {
       LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
       WHERE a.id = ANY($1::int[])
         AND a.deathday IS NOT NULL
-      ORDER BY a.popularity DESC NULLS LAST
+      ORDER BY a.dof_popularity DESC NULLS LAST
     `,
       [[actorId]]
     )
@@ -389,7 +389,7 @@ describe("enrich-death-details --actor-id query", () => {
       LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
       WHERE a.id = ANY($1::int[])
         AND a.deathday IS NOT NULL
-      ORDER BY a.popularity DESC NULLS LAST
+      ORDER BY a.dof_popularity DESC NULLS LAST
     `,
       [[actorId]]
     )
@@ -415,7 +415,7 @@ describe("enrich-death-details --actor-id query", () => {
       LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
       WHERE a.id = ANY($1::int[])
         AND a.deathday IS NOT NULL
-      ORDER BY a.popularity DESC NULLS LAST
+      ORDER BY a.dof_popularity DESC NULLS LAST
     `,
       [actorIds]
     )

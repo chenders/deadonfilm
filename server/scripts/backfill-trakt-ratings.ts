@@ -77,14 +77,14 @@ interface MovieInfo {
   tmdb_id: number
   title: string
   imdb_id: string
-  popularity: number | null
+  tmdb_popularity: number | null
 }
 
 interface ShowInfo {
   tmdb_id: number
   name: string
   imdb_id: string
-  popularity: number | null
+  tmdb_popularity: number | null
 }
 
 const program = new Command()
@@ -120,7 +120,7 @@ async function queueMovieJobs(
   let paramIndex = 1
 
   if (minPopularity !== undefined) {
-    conditions.push(`popularity >= $${paramIndex}`)
+    conditions.push(`COALESCE(dof_popularity, tmdb_popularity, 0) >= $${paramIndex}`)
     params.push(minPopularity)
     paramIndex += 1
   }
@@ -133,10 +133,10 @@ async function queueMovieJobs(
   }
 
   const query = `
-    SELECT tmdb_id, title, imdb_id, popularity
+    SELECT tmdb_id, title, imdb_id, tmdb_popularity
     FROM movies
     WHERE ${conditions.join("\n      AND ")}
-    ORDER BY popularity DESC NULLS LAST
+    ORDER BY dof_popularity DESC NULLS LAST
     ${limitClause}
   `
 
@@ -149,7 +149,7 @@ async function queueMovieJobs(
     console.log("\nPreview (first 10 movies):")
     for (const movie of movies.slice(0, 10)) {
       console.log(
-        `  - ${movie.title} (${movie.imdb_id}) [popularity: ${movie.popularity?.toFixed(1) ?? "N/A"}]`
+        `  - ${movie.title} (${movie.imdb_id}) [popularity: ${movie.tmdb_popularity?.toFixed(1) ?? "N/A"}]`
       )
     }
     if (movies.length > 10) {
@@ -208,7 +208,7 @@ async function queueShowJobs(
   let paramIndex = 1
 
   if (minPopularity !== undefined) {
-    conditions.push(`popularity >= $${paramIndex}`)
+    conditions.push(`COALESCE(dof_popularity, tmdb_popularity, 0) >= $${paramIndex}`)
     params.push(minPopularity)
     paramIndex += 1
   }
@@ -221,10 +221,10 @@ async function queueShowJobs(
   }
 
   const query = `
-    SELECT tmdb_id, name, imdb_id, popularity
+    SELECT tmdb_id, name, imdb_id, tmdb_popularity
     FROM shows
     WHERE ${conditions.join("\n      AND ")}
-    ORDER BY popularity DESC NULLS LAST
+    ORDER BY dof_popularity DESC NULLS LAST
     ${limitClause}
   `
 
@@ -237,7 +237,7 @@ async function queueShowJobs(
     console.log("\nPreview (first 10 shows):")
     for (const show of shows.slice(0, 10)) {
       console.log(
-        `  - ${show.name} (${show.imdb_id}) [popularity: ${show.popularity?.toFixed(1) ?? "N/A"}]`
+        `  - ${show.name} (${show.imdb_id}) [popularity: ${show.tmdb_popularity?.toFixed(1) ?? "N/A"}]`
       )
     }
     if (shows.length > 10) {

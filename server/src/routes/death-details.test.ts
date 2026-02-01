@@ -67,7 +67,7 @@ describe("getActorDeathDetails", () => {
     cause_of_death_details_source: "claude" as const,
     wikipedia_url: null,
     profile_path: "/profile.jpg",
-    popularity: 50.0,
+    tmdb_popularity: 50.0,
     age_at_death: 80,
     expected_lifespan: 85,
     years_lost: 5,
@@ -80,6 +80,9 @@ describe("getActorDeathDetails", () => {
     deathday_verification_source: null,
     deathday_verified_at: null,
     has_detailed_death_info: true,
+    dof_popularity: null,
+    dof_popularity_confidence: null,
+    dof_popularity_updated_at: null,
     // Fields accessed via `as unknown as` casts in the route handler
     death_manner: "natural",
     death_categories: ["cardiovascular"],
@@ -779,7 +782,7 @@ describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", (
     cause_of_death_details_source: "claude" as const,
     wikipedia_url: null,
     profile_path: "/profile.jpg",
-    popularity: 50.0,
+    tmdb_popularity: 50.0,
     age_at_death: 80,
     expected_lifespan: 85,
     years_lost: 5,
@@ -792,6 +795,9 @@ describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", (
     deathday_verification_source: null,
     deathday_verified_at: null,
     has_detailed_death_info: true,
+    dof_popularity: null,
+    dof_popularity_confidence: null,
+    dof_popularity_updated_at: null,
   }
 
   beforeEach(() => {

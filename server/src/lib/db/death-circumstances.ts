@@ -106,7 +106,7 @@ export async function getNotableDeaths(
      FROM actors a
      LEFT JOIN actor_death_circumstances adc ON a.id = adc.actor_id
      WHERE ${whereClause}
-     ORDER BY a.popularity DESC NULLS LAST, a.deathday DESC
+     ORDER BY a.dof_popularity DESC NULLS LAST, a.deathday DESC
      LIMIT $1 OFFSET $2`,
     [pageSize, offset]
   )

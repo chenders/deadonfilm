@@ -95,6 +95,9 @@ async function initializeSchema(testDb: PGlite): Promise<void> {
       years_lost DECIMAL(5,2),
       violent_death BOOLEAN,
       is_obscure BOOLEAN DEFAULT FALSE,
+      dof_popularity DECIMAL(5,2),
+      dof_popularity_confidence DECIMAL(3,2),
+      dof_popularity_updated_at TIMESTAMP,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );

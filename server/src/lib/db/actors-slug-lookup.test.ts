@@ -32,7 +32,7 @@ describe("getActorByEitherIdWithSlug", () => {
     cause_of_death_details_source: null,
     wikipedia_url: null,
     profile_path: null,
-    popularity: 10,
+    tmdb_popularity: 10,
     age_at_death: null,
     expected_lifespan: null,
     years_lost: null,
@@ -44,6 +44,9 @@ describe("getActorByEitherIdWithSlug", () => {
     deathday_confidence: null,
     deathday_verification_source: null,
     deathday_verified_at: null,
+    dof_popularity: null,
+    dof_popularity_confidence: null,
+    dof_popularity_updated_at: null,
   })
 
   describe("Single actor match", () => {

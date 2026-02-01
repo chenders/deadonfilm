@@ -99,7 +99,7 @@ async function runBackfill(options: BackfillOptions) {
       SELECT tmdb_id, name, details_fetch_attempts
       FROM actors
       WHERE ${conditions.join("\n        AND ")}
-      ORDER BY popularity DESC NULLS LAST, tmdb_id
+      ORDER BY dof_popularity DESC NULLS LAST, tmdb_id
       ${limitClause}
     `,
       params

@@ -86,7 +86,7 @@ async function warmActorCache(options: { limit: number; deceasedOnly: boolean; d
         strange_death, deathday_confidence, deathday_verification_source
       FROM actors
       ${options.deceasedOnly ? "WHERE deathday IS NOT NULL" : ""}
-      ORDER BY popularity DESC NULLS LAST
+      ORDER BY dof_popularity DESC NULLS LAST
       LIMIT $1
     `
 

@@ -30,7 +30,7 @@ const program = new Command()
           AND a.popularity >= $2
           AND (a.has_detailed_death_info = false OR a.has_detailed_death_info IS NULL)
           AND (a.enriched_at IS NULL OR a.enriched_at < NOW() - INTERVAL '30 days')
-        ORDER BY a.popularity DESC NULLS LAST
+        ORDER BY a.dof_popularity DESC NULLS LAST
         LIMIT $1`,
         [limit, MIN_POPULARITY_THRESHOLD]
       )

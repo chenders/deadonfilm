@@ -123,7 +123,14 @@
     "//cache:warm": "Pre-warm Redis cache for popular actors (run after deploy)",
     "cache:warm": "tsx scripts/warm-actor-cache.ts",
     "//sitemap:generate": "Generate sitemap.xml (runs daily in prod)",
-    "sitemap:generate": "node dist/scripts/sitemap-generate.js || tsx scripts/sitemap-generate.ts"
+    "sitemap:generate": "node dist/scripts/sitemap-generate.js || tsx scripts/sitemap-generate.ts",
+    "// === Popularity Scoring ===": "",
+    "//update:popularity": "Weekly recalculation of DOF popularity scores for all entities",
+    "update:popularity": "tsx scripts/scheduled-popularity-update.ts",
+    "//backfill:popularity": "Initial backfill of DOF popularity (movies/shows/actors)",
+    "backfill:popularity": "tsx scripts/backfill-dof-popularity-direct.ts --all",
+    "//backfill:actor-popularity": "Fast actor popularity backfill using SQL aggregation",
+    "backfill:actor-popularity": "tsx scripts/backfill-actor-popularity-fast.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.1",

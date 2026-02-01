@@ -980,8 +980,8 @@ router.post("/batch/submit", async (req: Request, res: Response): Promise<void> 
         WHERE deathday IS NOT NULL
           AND cause_of_death IS NULL
           AND skip_enrichment IS NOT TRUE
-          ${minPopularity !== undefined ? "AND popularity >= $2" : ""}
-        ORDER BY popularity DESC NULLS LAST
+          ${minPopularity !== undefined ? "AND tmdb_popularity >= $2" : ""}
+        ORDER BY dof_popularity DESC NULLS LAST
         LIMIT $1
       `
       queryParams.push(limit)
@@ -998,8 +998,8 @@ router.post("/batch/submit", async (req: Request, res: Response): Promise<void> 
           AND a.cause_of_death IS NOT NULL
           AND adc.actor_id IS NULL
           AND a.skip_enrichment IS NOT TRUE
-          ${minPopularity !== undefined ? "AND a.popularity >= $2" : ""}
-        ORDER BY a.popularity DESC NULLS LAST
+          ${minPopularity !== undefined ? "AND a.tmdb_popularity >= $2" : ""}
+        ORDER BY a.dof_popularity DESC NULLS LAST
         LIMIT $1
       `
       queryParams.push(limit)
@@ -1275,7 +1275,7 @@ router.post("/refetch-details", async (req: Request, res: Response): Promise<voi
 
     if (effectiveMinPopularity !== undefined) {
       queryParams.push(effectiveMinPopularity)
-      popularityClause = `AND a.popularity >= $2`
+      popularityClause = `AND a.tmdb_popularity >= $2`
     }
 
     const actorsResult = await pool.query<{
@@ -1284,14 +1284,14 @@ router.post("/refetch-details", async (req: Request, res: Response): Promise<voi
       popularity: number | null
     }>(
       `
-      SELECT a.id, a.name, a.popularity::float
+      SELECT a.id, a.name, a.dof_popularity::float as popularity
       FROM actors a
       LEFT JOIN actor_death_circumstances adc ON a.id = adc.actor_id
       WHERE a.deathday IS NOT NULL
         AND a.cause_of_death IS NOT NULL
         AND (adc.actor_id IS NULL OR adc.updated_at < NOW() - INTERVAL '90 days')
         ${popularityClause}
-      ORDER BY a.popularity DESC NULLS LAST
+      ORDER BY a.dof_popularity DESC NULLS LAST
       LIMIT $1
     `,
       queryParams.filter((p) => p !== undefined)

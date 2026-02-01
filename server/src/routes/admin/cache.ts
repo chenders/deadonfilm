@@ -110,10 +110,10 @@ router.post("/warm", async (req: Request, res: Response): Promise<void> => {
       deathday: string | null
       popularity: number | null
     }>(
-      `SELECT a.id, a.name, a.deathday, a.popularity::float
+      `SELECT a.id, a.name, a.deathday, a.dof_popularity::float as popularity
        FROM actors a
        WHERE ($1 = false OR a.deathday IS NOT NULL)
-       ORDER BY a.popularity DESC NULLS LAST
+       ORDER BY a.dof_popularity DESC NULLS LAST
        LIMIT $2`,
       [deceasedOnly, limit]
     )

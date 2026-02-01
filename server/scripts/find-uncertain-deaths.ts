@@ -64,7 +64,7 @@ export async function findUncertainDeaths(): Promise<void> {
          OR adc.rumored_circumstances ~* $1
          OR adc.additional_context ~* $1
          OR adc.raw_response::text ~* $1
-       ORDER BY a.popularity DESC NULLS LAST`,
+       ORDER BY a.dof_popularity DESC NULLS LAST`,
       [pattern]
     )
 

@@ -103,7 +103,7 @@ interface ActorRow {
   deathday: Date | string
   cause_of_death: string | null
   cause_of_death_details: string | null
-  popularity: number | null
+  tmdb_popularity: number | null
   circumstances: string | null
   notable_factors: string[] | null
   movie_title?: string
@@ -281,7 +281,7 @@ export class EnrichmentRunner {
       deathday: normalizeDateToString(a.deathday) || "",
       causeOfDeath: a.cause_of_death,
       causeOfDeathDetails: a.cause_of_death_details,
-      popularity: a.popularity,
+      popularity: a.tmdb_popularity,
     }))
 
     // Run enrichment - process actors one by one
@@ -565,7 +565,7 @@ export class EnrichmentRunner {
 
     // Fetch missing popularity scores from TMDB
     const actorsNeedingPopularity = actors.filter(
-      (a) => a.popularity === null && a.tmdb_id !== null
+      (a) => a.tmdb_popularity === null && a.tmdb_id !== null
     )
     if (actorsNeedingPopularity.length > 0) {
       this.log.info({ count: actorsNeedingPopularity.length }, "Fetching popularity from TMDB")
@@ -575,10 +575,10 @@ export class EnrichmentRunner {
       const tmdbIdsToUpdate: number[] = []
       const popularitiesToUpdate: number[] = []
       for (const actor of actors) {
-        if (actor.popularity === null && actor.tmdb_id !== null) {
+        if (actor.tmdb_popularity === null && actor.tmdb_id !== null) {
           const details = personDetails.get(actor.tmdb_id)
           if (details?.popularity !== undefined && details.popularity !== null) {
-            actor.popularity = details.popularity
+            actor.tmdb_popularity = details.popularity
             tmdbIdsToUpdate.push(actor.tmdb_id)
             popularitiesToUpdate.push(details.popularity)
           }
@@ -588,11 +588,11 @@ export class EnrichmentRunner {
       if (tmdbIdsToUpdate.length > 0) {
         await db.query(
           `UPDATE actors AS a
-           SET popularity = v.popularity,
+           SET tmdb_popularity = v.tmdb_popularity,
                updated_at = CURRENT_TIMESTAMP
            FROM (
              SELECT UNNEST($1::int[]) AS tmdb_id,
-                    UNNEST($2::double precision[]) AS popularity
+                    UNNEST($2::double precision[]) AS tmdb_popularity
            ) AS v
            WHERE a.tmdb_id = v.tmdb_id`,
           [tmdbIdsToUpdate, popularitiesToUpdate]
@@ -600,8 +600,8 @@ export class EnrichmentRunner {
       }
 
       actors.sort((a, b) => {
-        const popA = a.popularity ?? 0
-        const popB = b.popularity ?? 0
+        const popA = a.tmdb_popularity ?? 0
+        const popB = b.tmdb_popularity ?? 0
         return popB - popA
       })
     }
@@ -626,14 +626,14 @@ export class EnrichmentRunner {
         a.deathday,
         a.cause_of_death,
         a.cause_of_death_details,
-        a.popularity,
+        a.tmdb_popularity as popularity,
         c.circumstances,
         c.notable_factors
       FROM actors a
       LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
       WHERE a.id = ANY($1::int[])
         AND a.deathday IS NOT NULL
-      ORDER BY a.popularity DESC NULLS LAST`,
+      ORDER BY a.dof_popularity DESC NULLS LAST`,
       [actorIds]
     )
 
@@ -657,14 +657,14 @@ export class EnrichmentRunner {
         a.deathday,
         a.cause_of_death,
         a.cause_of_death_details,
-        a.popularity,
+        a.tmdb_popularity as popularity,
         c.circumstances,
         c.notable_factors
       FROM actors a
       LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
       WHERE a.tmdb_id = ANY($1::int[])
         AND a.deathday IS NOT NULL
-      ORDER BY a.popularity DESC NULLS LAST`,
+      ORDER BY a.dof_popularity DESC NULLS LAST`,
       [tmdbIds]
     )
 
@@ -694,7 +694,7 @@ export class EnrichmentRunner {
         a.deathday,
         a.cause_of_death,
         a.cause_of_death_details,
-        a.popularity,
+        a.tmdb_popularity as popularity,
         c.circumstances,
         c.notable_factors,
         (
@@ -711,7 +711,7 @@ export class EnrichmentRunner {
 
     if (minPopularity > 0) {
       params.push(minPopularity)
-      query += ` AND a.popularity >= $${params.length}`
+      query += ` AND a.tmdb_popularity >= $${params.length}`
     }
 
     if (recentOnly) {
@@ -743,7 +743,7 @@ export class EnrichmentRunner {
 
       query += `
         ORDER BY
-          a.popularity DESC NULLS LAST,
+          a.dof_popularity DESC NULLS LAST,
           a.birthday DESC NULLS LAST,
           (
             SELECT COUNT(*) FROM actor_show_appearances asa
@@ -756,7 +756,7 @@ export class EnrichmentRunner {
             AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
           ) DESC`
     } else {
-      query += ` ORDER BY a.popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+      query += ` ORDER BY a.dof_popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
     }
 
     if (limit) {

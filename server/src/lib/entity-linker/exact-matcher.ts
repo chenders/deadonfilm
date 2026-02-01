@@ -54,13 +54,13 @@ export async function getLinkableEntities(
        WHERE deathday IS NOT NULL
          AND tmdb_id IS NOT NULL
          AND id != $1
-       ORDER BY popularity DESC NULLS LAST
+       ORDER BY dof_popularity DESC NULLS LAST
        LIMIT 5000`
     : `SELECT id, tmdb_id, name
        FROM actors
        WHERE deathday IS NOT NULL
          AND tmdb_id IS NOT NULL
-       ORDER BY popularity DESC NULLS LAST
+       ORDER BY dof_popularity DESC NULLS LAST
        LIMIT 5000`
 
   const actorParams = excludeActorId ? [excludeActorId] : []
@@ -79,8 +79,8 @@ export async function getLinkableEntities(
     SELECT tmdb_id, title,
            EXTRACT(YEAR FROM release_date)::int as release_year
     FROM movies
-    WHERE popularity >= 5 OR deceased_count >= 3
-    ORDER BY popularity DESC NULLS LAST
+    WHERE COALESCE(dof_popularity, tmdb_popularity, 0) >= 5 OR deceased_count >= 3
+    ORDER BY dof_popularity DESC NULLS LAST
     LIMIT 5000
   `)
 
@@ -93,8 +93,8 @@ export async function getLinkableEntities(
     SELECT tmdb_id, name,
            EXTRACT(YEAR FROM first_air_date)::int as first_air_year
     FROM shows
-    WHERE popularity >= 5 OR deceased_count >= 3
-    ORDER BY popularity DESC NULLS LAST
+    WHERE COALESCE(dof_popularity, tmdb_popularity, 0) >= 5 OR deceased_count >= 3
+    ORDER BY dof_popularity DESC NULLS LAST
     LIMIT 5000
   `)
 
