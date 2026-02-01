@@ -315,7 +315,6 @@ export class WikipediaSource extends BaseDataSource {
    * Returns multiple sections when available (e.g., both Health and Death).
    */
   private findRelevantSections(sections: WikipediaSection[]): WikipediaSection[] {
-    console.log(`  DEBUG: findRelevantSections called with ${sections.length} sections`)
     const result: WikipediaSection[] = []
 
     // Primary death sections - always include if found

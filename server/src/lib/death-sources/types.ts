@@ -635,6 +635,10 @@ export interface WikipediaOptions {
   /**
    * Which AI model to use for section selection.
    * Default: "gemini-flash" (cheapest at ~$0.0001/query)
+   *
+   * NOTE: This option is reserved for future use. The current implementation
+   * uses a hardcoded model (gemini-2.0-flash) in wikipedia-section-selector.ts.
+   * When additional models are supported, this option will control model selection.
    */
   sectionSelectionModel?: "gemini-flash"
   /**

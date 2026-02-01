@@ -195,6 +195,7 @@ export async function selectRelevantSections(
           maxOutputTokens: 500,
         },
       }),
+      signal: AbortSignal.timeout(30000), // 30 second timeout to prevent hanging
     })
 
     if (!response.ok) {

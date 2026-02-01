@@ -160,6 +160,42 @@ describe("selectRelevantSections", () => {
     expect(result.selectedSections).not.toContain("Made Up Section")
   })
 
+  it("returns empty array when all AI-returned sections are invalid", async () => {
+    // Edge case: AI returns only sections that don't exist in the original list
+    // This should result in usedAI: true (AI was called), empty sections, but no error
+    // The Wikipedia source will then fall back to regex-based selection
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    sections: ["Completely Made Up", "Another Fake Section", "Nonexistent"],
+                    reasoning: "Selected death-related sections",
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+
+    const result = await selectRelevantSections("Test Actor", mockSections)
+
+    // AI was called and returned a response
+    expect(result.usedAI).toBe(true)
+    // But all sections were filtered out because none matched
+    expect(result.selectedSections).toEqual([])
+    // Cost should still be charged for the API call
+    expect(result.costUsd).toBe(0.0001)
+    // No error - this is a valid (if unhelpful) AI response
+    expect(result.error).toBeUndefined()
+  })
+
   it("respects maxSections option", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
