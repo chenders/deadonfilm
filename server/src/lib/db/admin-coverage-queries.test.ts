@@ -79,14 +79,25 @@ describe("Admin Coverage Queries", () => {
       expect(calls[0][0]).toContain("popularity::float")
     })
 
-    it("applies hasDeathPage filter", async () => {
+    it("applies hasDeathPage filter for without death page", async () => {
       vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
 
       await getActorsForCoverage(mockPool, { hasDeathPage: false }, 1, 50)
 
       const calls = vi.mocked(mockPool.query).mock.calls
-      expect(calls[0][0]).toContain("has_detailed_death_info = $1")
-      expect(calls[0][1]).toEqual([false, 0, 1, 50, 0]) // includes isAsc=0, isDesc=1
+      // hasDeathPage=false should check for NULL or false (most actors have NULL)
+      expect(calls[0][0]).toContain("has_detailed_death_info IS NULL OR has_detailed_death_info = false")
+      expect(calls[0][1]).toEqual([0, 1, 50, 0]) // isAsc=0, isDesc=1, limit, offset
+    })
+
+    it("applies hasDeathPage filter for with death page", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(mockPool, { hasDeathPage: true }, 1, 50)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("has_detailed_death_info = true")
+      expect(calls[0][1]).toEqual([0, 1, 50, 0]) // isAsc=0, isDesc=1, limit, offset
     })
 
     it("applies popularity range filters", async () => {
