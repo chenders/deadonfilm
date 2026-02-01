@@ -280,6 +280,15 @@ export class DeathEnrichmentOrchestrator {
       }
     }
 
+    // Configure Wikipedia options (including AI section selection)
+    if (this.config.wikipediaOptions) {
+      for (const source of this.sources) {
+        if (source instanceof WikipediaSource) {
+          source.setWikipediaOptions(this.config.wikipediaOptions)
+        }
+      }
+    }
+
     console.log(`Initialized ${this.sources.length} data sources:`)
     for (const source of this.sources) {
       console.log(
@@ -306,6 +315,15 @@ export class DeathEnrichmentOrchestrator {
         console.log(`  Page timeout: ${browserConfig.pageTimeoutMs}ms`)
         console.log(`  Idle timeout: ${browserConfig.idleTimeoutMs}ms`)
       }
+    }
+
+    // Log Wikipedia options
+    if (this.config.wikipediaOptions?.useAISectionSelection) {
+      console.log(`\nWikipedia AI section selection enabled:`)
+      console.log(
+        `  Model: ${this.config.wikipediaOptions.sectionSelectionModel || "gemini-flash"}`
+      )
+      console.log(`  Max sections: ${this.config.wikipediaOptions.maxSections || 10}`)
     }
   }
 

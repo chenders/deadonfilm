@@ -152,3 +152,12 @@ export {
   SOURCE_NAMES,
   type ResolvedUrl,
 } from "./url-resolver.js"
+
+// Wikipedia section selector (AI-assisted section selection)
+export {
+  selectRelevantSections,
+  isAISectionSelectionAvailable,
+  createSectionSelectionSourceEntry,
+  type WikipediaSection,
+  type SectionSelectionResult,
+} from "./wikipedia-section-selector.js"
