@@ -30,16 +30,10 @@ import {
   selectRelevantSections,
   isAISectionSelectionAvailable,
   type SectionSelectionResult,
+  type WikipediaSection,
 } from "../wikipedia-section-selector.js"
 
 const WIKIPEDIA_API_BASE = "https://en.wikipedia.org/w/api.php"
-
-interface WikipediaSection {
-  index: string
-  line: string
-  level: string
-  anchor: string
-}
 
 interface WikipediaSectionsResponse {
   parse?: {
