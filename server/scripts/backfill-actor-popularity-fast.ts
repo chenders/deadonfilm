@@ -20,6 +20,7 @@ import { logPercentile } from "../src/lib/popularity-score.js"
 const ACTOR_FILMOGRAPHY_WEIGHT = 0.7
 const ACTOR_TMDB_RECENCY_WEIGHT = 0.3
 const MIN_APPEARANCES_FULL_CONFIDENCE = 10
+const MAX_APPEARANCES_FOR_SCORE = 10
 
 const TMDB_POPULARITY_THRESHOLDS = {
   p25: 5,
@@ -64,29 +65,27 @@ async function run(options: Options): Promise<void> {
     // Single query to aggregate all actor filmography data
     console.log("Aggregating filmography data (this may take a moment)...")
 
+    // Use top-10 algorithm: rank contributions and only average the best ones
     const result = await pool.query<ActorAggregatedData>(
       `
       WITH movie_contributions AS (
-        -- Calculate movie contributions per actor
+        -- Calculate movie contributions per actor with row number for top-N selection
         SELECT
           ama.actor_id,
-          SUM(
-            -- contentScore = dof_popularity * 0.6 + dof_weight * 0.4
-            (COALESCE(m.dof_popularity, 0) * 0.6 + COALESCE(m.dof_weight, 0) * 0.4)
-            *
-            -- billingWeight: 1.0 (1-3), 0.7 (4-10), 0.4 (11+ or null)
-            CASE
-              WHEN ama.billing_order IS NULL THEN 0.4
-              WHEN ama.billing_order <= 3 THEN 1.0
-              WHEN ama.billing_order <= 10 THEN 0.7
-              ELSE 0.4
-            END
-            -- episodeWeight = 1.0 for movies
-          ) AS contribution_sum,
-          COUNT(*) FILTER (WHERE m.dof_popularity IS NOT NULL OR m.dof_weight IS NOT NULL) AS contribution_count
+          -- contentScore = dof_popularity * 0.6 + dof_weight * 0.4
+          (COALESCE(m.dof_popularity, 0) * 0.6 + COALESCE(m.dof_weight, 0) * 0.4)
+          *
+          -- billingWeight: 1.0 (1-3), 0.7 (4-10), 0.4 (11+ or null)
+          CASE
+            WHEN ama.billing_order IS NULL THEN 0.4
+            WHEN ama.billing_order <= 3 THEN 1.0
+            WHEN ama.billing_order <= 10 THEN 0.7
+            ELSE 0.4
+          END
+          AS contribution,
+          m.dof_popularity IS NOT NULL OR m.dof_weight IS NOT NULL AS has_score
         FROM actor_movie_appearances ama
         JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-        GROUP BY ama.actor_id
       ),
       show_episode_counts AS (
         -- First: count episodes per actor-show and get min billing order
@@ -119,34 +118,43 @@ async function run(options: Options): Promise<void> {
           -- episodeWeight = min(1.0, episodeCount / 20)
           LEAST(1.0, episode_count::float / 20.0)
           AS contribution,
-          CASE WHEN dof_popularity IS NOT NULL OR dof_weight IS NOT NULL THEN 1 ELSE 0 END AS has_score
+          dof_popularity IS NOT NULL OR dof_weight IS NOT NULL AS has_score
         FROM show_episode_counts
       ),
-      show_totals AS (
-        -- Sum up show contributions per actor
+      all_contributions AS (
+        -- Combine all contributions from movies and shows
+        SELECT actor_id, contribution, has_score FROM movie_contributions
+        UNION ALL
+        SELECT actor_id, contribution, has_score FROM show_contributions
+      ),
+      ranked_contributions AS (
+        -- Rank contributions per actor (highest first) for top-N selection
         SELECT
           actor_id,
-          SUM(contribution) AS contribution_sum,
-          SUM(has_score) AS contribution_count
-        FROM show_contributions
-        GROUP BY actor_id
+          contribution,
+          has_score,
+          ROW_NUMBER() OVER (PARTITION BY actor_id ORDER BY contribution DESC) AS rank
+        FROM all_contributions
+        WHERE has_score = true
       ),
-      combined AS (
-        -- Combine movie and show contributions
+      top_n_totals AS (
+        -- Sum only top N contributions per actor (matching calculateActorPopularity)
         SELECT
-          COALESCE(mc.actor_id, st.actor_id) AS actor_id,
-          COALESCE(mc.contribution_sum, 0) + COALESCE(st.contribution_sum, 0) AS filmography_sum,
-          COALESCE(mc.contribution_count, 0) + COALESCE(st.contribution_count, 0) AS filmography_count
-        FROM movie_contributions mc
-        FULL OUTER JOIN show_totals st ON mc.actor_id = st.actor_id
+          actor_id,
+          SUM(contribution) AS filmography_sum,
+          COUNT(*) AS filmography_count,
+          (SELECT COUNT(*) FROM ranked_contributions rc2 WHERE rc2.actor_id = ranked_contributions.actor_id) AS total_appearances
+        FROM ranked_contributions
+        WHERE rank <= ${MAX_APPEARANCES_FOR_SCORE}
+        GROUP BY actor_id
       )
       SELECT
         a.id AS actor_id,
         a.tmdb_popularity::text AS tmdb_popularity,
-        c.filmography_sum::text AS filmography_sum,
-        c.filmography_count::text AS filmography_count
+        t.filmography_sum::text AS filmography_sum,
+        t.filmography_count::text AS filmography_count
       FROM actors a
-      LEFT JOIN combined c ON c.actor_id = a.id
+      LEFT JOIN top_n_totals t ON t.actor_id = a.id
       WHERE 1=1 ${whereClause}
       ORDER BY a.id
       `
