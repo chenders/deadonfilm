@@ -448,7 +448,7 @@ async function updateActorPopularity(
         ) as contribution,
         COUNT(*) as appearance_count
       FROM actor_movie_appearances ama
-      JOIN movies m ON ama.movie_id = m.id
+      JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
       WHERE m.dof_popularity IS NOT NULL
       GROUP BY ama.actor_id
     ),
