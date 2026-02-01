@@ -11,11 +11,22 @@ const program = new Command()
   .option("-a, --actor <name>", "Actor name to test", "Dick Cheney")
   .option("--ai-selection", "Enable AI-assisted section selection")
   .option("--ignore-cache", "Bypass the cache to force a fresh lookup")
-  .option("--birthday <date>", "Actor birthday (YYYY-MM-DD)", "1941-01-30")
-  .option("--deathday <date>", "Actor death date (YYYY-MM-DD)", "2025-11-03")
+  .option("--id <number>", "Actor ID for cache/logging (optional)")
+  .option("--birthday <date>", "Actor birthday YYYY-MM-DD (optional)")
+  .option("--deathday <date>", "Actor death date YYYY-MM-DD (optional)")
   .parse()
 
 const opts = program.opts()
+
+// Generate a simple hash for default ID when not provided
+function simpleHash(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i)
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  return Math.abs(hash)
+}
 
 async function main() {
   // Bypass cache if requested
@@ -42,12 +53,28 @@ async function main() {
     console.log("AI section selection: disabled (use --ai-selection to enable)")
   }
 
+  // Use provided ID, or default ID for Dick Cheney, or generate from actor name
+  // Note: Generated IDs may cause cache write failures if actor doesn't exist in DB
+  const DEFAULT_ACTOR = "Dick Cheney"
+  const DEFAULT_ID = 8352 // Dick Cheney's actual actor ID
+
+  let actorId: number
+  if (opts.id) {
+    actorId = parseInt(opts.id, 10)
+  } else if (opts.actor === DEFAULT_ACTOR) {
+    actorId = DEFAULT_ID
+  } else {
+    actorId = simpleHash(opts.actor)
+    console.log(`Note: Using generated ID ${actorId}. Cache writes may fail if actor not in DB.`)
+    console.log(`      Use --id <number> to specify a valid actor ID.`)
+  }
+
   const actor = {
-    id: 8352,
-    tmdbId: 8352,
+    id: actorId,
+    tmdbId: actorId, // Use same value; Wikipedia source doesn't use tmdbId
     name: opts.actor,
-    birthday: opts.birthday,
-    deathday: opts.deathday,
+    birthday: opts.birthday ?? null, // Only include if explicitly provided
+    deathday: opts.deathday ?? null, // Only include if explicitly provided
     causeOfDeath: null,
     causeOfDeathDetails: null,
     popularity: null,
