@@ -306,7 +306,7 @@ export async function getEnrichmentCandidates(
        AND (has_detailed_death_info = false OR has_detailed_death_info IS NULL)
        AND (enriched_at IS NULL OR enriched_at < NOW() - INTERVAL '30 days')
        AND dof_popularity >= $1
-     ORDER BY dof_popularity DESC NULLS LAST, deathday DESC
+     ORDER BY dof_popularity DESC NULLS LAST, deathday DESC NULLS LAST
      LIMIT $2`,
     [minPopularity, limit]
   )
