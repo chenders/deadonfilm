@@ -407,9 +407,12 @@ export class EnrichmentRunner {
         hasDetailedDeathInfo: hasDetailedDeathInfo || false,
         // Fill in cause_of_death if we got one and actor doesn't have it
         causeOfDeath: !actorRecord?.causeOfDeath && causeOfDeath ? causeOfDeath : undefined,
-        causeOfDeathSource: !actorRecord?.causeOfDeath && causeOfDeath ? "claude-opus-4.5" : undefined,
+        causeOfDeathSource:
+          !actorRecord?.causeOfDeath && causeOfDeath ? "claude-opus-4.5" : undefined,
         causeOfDeathDetails:
-          !actorRecord?.causeOfDeathDetails && causeOfDeathDetails ? causeOfDeathDetails : undefined,
+          !actorRecord?.causeOfDeathDetails && causeOfDeathDetails
+            ? causeOfDeathDetails
+            : undefined,
         causeOfDeathDetailsSource:
           !actorRecord?.causeOfDeathDetails && causeOfDeathDetails ? "claude-opus-4.5" : undefined,
       }

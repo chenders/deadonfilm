@@ -86,7 +86,9 @@ describe("Admin Coverage Queries", () => {
 
       const calls = vi.mocked(mockPool.query).mock.calls
       // hasDeathPage=false should check for NULL or false (most actors have NULL)
-      expect(calls[0][0]).toContain("has_detailed_death_info IS NULL OR has_detailed_death_info = false")
+      expect(calls[0][0]).toContain(
+        "has_detailed_death_info IS NULL OR has_detailed_death_info = false"
+      )
       expect(calls[0][1]).toEqual([0, 1, 50, 0]) // isAsc=0, isDesc=1, limit, offset
     })
 
