@@ -166,6 +166,10 @@ const FULL_TV_WEIGHT_EPISODES = 20
 // Minimum appearances for full actor confidence
 const MIN_APPEARANCES_FULL_CONFIDENCE = 10
 
+// Maximum appearances to consider for actor score (use top N)
+// This prevents prolific actors from being penalized for having many minor roles
+const MAX_APPEARANCES_FOR_SCORE = 10
+
 // Actor score composition
 const ACTOR_FILMOGRAPHY_WEIGHT = 0.7
 const ACTOR_TMDB_RECENCY_WEIGHT = 0.3
@@ -580,6 +584,9 @@ function calculateContentWeight(
 
 /**
  * Calculate actor DOF popularity from filmography
+ *
+ * Uses TOP N appearances to prevent prolific actors from being penalized
+ * for having many minor roles alongside their major work.
  */
 export function calculateActorPopularity(input: ActorPopularityInput): ActorPopularityResult {
   const { appearances, tmdbPopularity } = input
@@ -588,9 +595,8 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
     return { dofPopularity: null, confidence: 0 }
   }
 
-  // Calculate filmography contribution
-  let filmographySum = 0
-  let filmographyCount = 0
+  // Calculate contribution for each appearance
+  const contributions: number[] = []
 
   for (const appearance of appearances) {
     if (appearance.contentDofPopularity === null && appearance.contentDofWeight === null) {
@@ -608,16 +614,21 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
     const episodeWeight = appearance.isMovie ? 1.0 : getEpisodeWeight(appearance.episodeCount)
 
     const contribution = contentScore * billingWeight * episodeWeight
-    filmographySum += contribution
-    filmographyCount++
+    contributions.push(contribution)
   }
 
-  if (filmographyCount === 0) {
+  if (contributions.length === 0) {
     return { dofPopularity: null, confidence: 0 }
   }
 
-  // Average filmography contribution
-  const filmographyScore = filmographySum / filmographyCount
+  // Sort contributions descending and take top N
+  // This measures "peak career" - what an actor is best known for
+  contributions.sort((a, b) => b - a)
+  const topContributions = contributions.slice(0, MAX_APPEARANCES_FOR_SCORE)
+
+  // Average the top contributions
+  const filmographySum = topContributions.reduce((sum, c) => sum + c, 0)
+  const filmographyScore = filmographySum / topContributions.length
 
   // Add TMDB popularity for recency
   let finalScore: number
@@ -629,7 +640,7 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
   }
 
   // Calculate confidence based on appearance count
-  const confidence = Math.min(1.0, filmographyCount / MIN_APPEARANCES_FULL_CONFIDENCE)
+  const confidence = Math.min(1.0, contributions.length / MIN_APPEARANCES_FULL_CONFIDENCE)
 
   return {
     dofPopularity: Math.round(Math.min(100, Math.max(0, finalScore)) * 100) / 100,

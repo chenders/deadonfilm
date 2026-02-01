@@ -486,6 +486,103 @@ describe("calculateActorPopularity", () => {
     expect(manyResult.confidence).toBeGreaterThan(fewResult.confidence)
     expect(manyResult.confidence).toBe(1.0)
   })
+
+  it("uses top N appearances so prolific actors aren't penalized", () => {
+    // Actor with 2 great movies in supporting roles (like Lord Tim Hudson in Disney classics)
+    const smallFilmography: ActorPopularityInput = {
+      appearances: [
+        {
+          contentDofPopularity: 80,
+          contentDofWeight: 70,
+          billingOrder: 5, // Supporting
+          episodeCount: null,
+          isMovie: true,
+        },
+        {
+          contentDofPopularity: 75,
+          contentDofWeight: 65,
+          billingOrder: 9, // Supporting
+          episodeCount: null,
+          isMovie: true,
+        },
+      ],
+      tmdbPopularity: null,
+    }
+
+    // Actor with 15 great movies in lead roles (like Heath Ledger)
+    // With old algorithm (average all), more movies could dilute the score
+    // With new algorithm (top 10), the best 10 are used
+    const largeFilmography: ActorPopularityInput = {
+      appearances: [
+        // 10 blockbusters in lead roles
+        ...Array(10).fill({
+          contentDofPopularity: 85,
+          contentDofWeight: 75,
+          billingOrder: 1, // Lead roles
+          episodeCount: null,
+          isMovie: true,
+        }),
+        // 5 smaller films that won't affect score (only top 10 used)
+        ...Array(5).fill({
+          contentDofPopularity: 40,
+          contentDofWeight: 35,
+          billingOrder: 8,
+          episodeCount: null,
+          isMovie: true,
+        }),
+      ],
+      tmdbPopularity: null,
+    }
+
+    const smallResult = calculateActorPopularity(smallFilmography)
+    const largeResult = calculateActorPopularity(largeFilmography)
+
+    // Lead roles in blockbusters should score higher than supporting roles
+    // The 5 smaller films don't drag down the score because only top 10 are used
+    expect(largeResult.dofPopularity!).toBeGreaterThan(smallResult.dofPopularity!)
+  })
+
+  it("minor roles beyond top 10 don't affect score", () => {
+    // Actor with exactly 10 great appearances
+    const baseFilmography: ActorPopularityInput = {
+      appearances: Array(10).fill({
+        contentDofPopularity: 70,
+        contentDofWeight: 60,
+        billingOrder: 1,
+        episodeCount: null,
+        isMovie: true,
+      }),
+      tmdbPopularity: null,
+    }
+
+    // Same actor with 20 additional minor roles
+    const extendedFilmography: ActorPopularityInput = {
+      appearances: [
+        ...Array(10).fill({
+          contentDofPopularity: 70,
+          contentDofWeight: 60,
+          billingOrder: 1,
+          episodeCount: null,
+          isMovie: true,
+        }),
+        // These shouldn't affect the score (beyond top 10)
+        ...Array(20).fill({
+          contentDofPopularity: 20,
+          contentDofWeight: 15,
+          billingOrder: 20, // Minor roles
+          episodeCount: null,
+          isMovie: true,
+        }),
+      ],
+      tmdbPopularity: null,
+    }
+
+    const baseResult = calculateActorPopularity(baseFilmography)
+    const extendedResult = calculateActorPopularity(extendedFilmography)
+
+    // Scores should be identical - minor roles beyond top 10 don't count
+    expect(extendedResult.dofPopularity!).toBe(baseResult.dofPopularity!)
+  })
 })
 
 describe("isUSUKProduction", () => {
