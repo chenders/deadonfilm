@@ -4,27 +4,36 @@
  * Fetches Wikipedia articles and extracts the Death section (or Personal life
  * section as fallback) to get detailed death circumstances.
  *
+ * Supports two section selection modes:
+ * 1. Regex-based (default): Uses predefined patterns to find Death/Health sections
+ * 2. AI-based (opt-in): Uses Gemini Flash to identify non-obvious sections like
+ *    "Hunting and Fishing", "Controversies", etc. that may contain relevant info
+ *
  * Uses the Wikipedia API to get article content in a parseable format.
  */
 
 import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
-import type { ActorForEnrichment, SourceLookupResult, EnrichedDeathInfo } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import type {
+  ActorForEnrichment,
+  SourceLookupResult,
+  EnrichedDeathInfo,
+  WikipediaOptions,
+} from "../types.js"
+import { DataSourceType, SourceAccessBlockedError, DEFAULT_WIKIPEDIA_OPTIONS } from "../types.js"
 import {
   removeScriptTags,
   removeStyleTags,
   stripHtmlTags,
   decodeHtmlEntities,
 } from "../html-utils.js"
+import {
+  selectRelevantSections,
+  isAISectionSelectionAvailable,
+  type SectionSelectionResult,
+  type WikipediaSection,
+} from "../wikipedia-section-selector.js"
 
 const WIKIPEDIA_API_BASE = "https://en.wikipedia.org/w/api.php"
-
-interface WikipediaSection {
-  index: string
-  line: string
-  level: string
-  anchor: string
-}
 
 interface WikipediaSectionsResponse {
   parse?: {
@@ -58,6 +67,16 @@ export class WikipediaSource extends BaseDataSource {
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
   protected minDelayMs = 500 // Wikipedia is generous with rate limits
+
+  private wikipediaOptions: WikipediaOptions = DEFAULT_WIKIPEDIA_OPTIONS
+
+  /**
+   * Configure Wikipedia-specific options.
+   * @param options - Wikipedia options including AI section selection
+   */
+  setWikipediaOptions(options: WikipediaOptions): void {
+    this.wikipediaOptions = { ...DEFAULT_WIKIPEDIA_OPTIONS, ...options }
+  }
 
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
@@ -116,10 +135,46 @@ export class WikipediaSource extends BaseDataSource {
         }
       }
 
-      // Find the Death section (or fallback sections)
-      const deathSection = this.findDeathSection(sectionsData.parse.sections)
+      // Find relevant sections - use AI selection if enabled and available
+      let relevantSections: WikipediaSection[]
+      let sectionSelectionResult: SectionSelectionResult | null = null
+      let sectionSelectionCost = 0
 
-      if (!deathSection) {
+      const useAI = this.wikipediaOptions.useAISectionSelection && isAISectionSelectionAvailable()
+
+      if (useAI) {
+        console.log(`  Using AI section selection for ${actor.name}`)
+        sectionSelectionResult = await selectRelevantSections(
+          actor.name,
+          sectionsData.parse.sections,
+          this.wikipediaOptions
+        )
+        sectionSelectionCost = sectionSelectionResult.costUsd
+
+        if (sectionSelectionResult.usedAI && sectionSelectionResult.selectedSections.length > 0) {
+          // Map selected section titles back to WikipediaSection objects
+          relevantSections = sectionsData.parse.sections.filter((s) =>
+            sectionSelectionResult!.selectedSections.includes(s.line)
+          )
+          console.log(
+            `  AI selected ${relevantSections.length} section(s): ${sectionSelectionResult.selectedSections.join(", ")}`
+          )
+          if (sectionSelectionResult.reasoning) {
+            console.log(`  AI reasoning: ${sectionSelectionResult.reasoning}`)
+          }
+        } else {
+          // AI selection failed or returned no results, fall back to regex
+          console.log(
+            `  AI selection failed (${sectionSelectionResult.error || "no sections"}), falling back to regex`
+          )
+          relevantSections = this.findRelevantSections(sectionsData.parse.sections)
+        }
+      } else {
+        // Use regex-based selection (default)
+        relevantSections = this.findRelevantSections(sectionsData.parse.sections)
+      }
+
+      if (relevantSections.length === 0) {
         return {
           success: false,
           source: this.createSourceEntry(startTime, 0, sectionsUrl),
@@ -128,51 +183,58 @@ export class WikipediaSource extends BaseDataSource {
         }
       }
 
-      console.log(`  Found section: "${deathSection.line}" (index ${deathSection.index})`)
+      const sectionNames = relevantSections.map((s) => s.line).join(", ")
+      console.log(`  Found ${relevantSections.length} section(s): ${sectionNames}`)
 
-      // Fetch the content of the death section
-      const contentUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&section=${deathSection.index}&prop=text&format=json`
+      // Fetch content from all relevant sections
+      const sectionTexts: string[] = []
 
-      const contentResponse = await fetch(contentUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "application/json",
-        },
-      })
+      for (const section of relevantSections) {
+        const contentUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&section=${section.index}&prop=text&format=json`
 
-      if (!contentResponse.ok) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0, contentUrl),
-          data: null,
-          error: `Failed to fetch section content: HTTP ${contentResponse.status}`,
+        const contentResponse = await fetch(contentUrl, {
+          headers: {
+            "User-Agent": this.userAgent,
+            Accept: "application/json",
+          },
+        })
+
+        if (!contentResponse.ok) {
+          console.log(
+            `  Warning: Failed to fetch section "${section.line}": HTTP ${contentResponse.status}`
+          )
+          continue
+        }
+
+        const contentData = (await contentResponse.json()) as WikipediaSectionContentResponse
+
+        if (!contentData.parse?.text?.["*"]) {
+          console.log(`  Warning: No content in section "${section.line}"`)
+          continue
+        }
+
+        // Parse the HTML content
+        const htmlContent = contentData.parse.text["*"]
+        const textContent = this.extractTextFromHtml(htmlContent)
+        const cleanedSectionText = this.cleanWikipediaText(textContent)
+
+        if (cleanedSectionText && cleanedSectionText.length >= 50) {
+          // Add section header for context
+          sectionTexts.push(`[${section.line}] ${cleanedSectionText}`)
         }
       }
 
-      const contentData = (await contentResponse.json()) as WikipediaSectionContentResponse
-
-      if (!contentData.parse?.text?.["*"]) {
+      if (sectionTexts.length === 0) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, contentUrl),
+          source: this.createSourceEntry(startTime, 0, sectionsUrl),
           data: null,
-          error: "No content in section",
+          error: "No usable content in relevant sections",
         }
       }
 
-      // Parse the HTML content
-      const htmlContent = contentData.parse.text["*"]
-      const textContent = this.extractTextFromHtml(htmlContent)
-      const cleanedText = this.cleanWikipediaText(textContent)
-
-      if (!cleanedText || cleanedText.length < 50) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0, contentUrl),
-          data: null,
-          error: "Death section has insufficient content",
-        }
-      }
+      // Combine all section texts
+      const cleanedText = sectionTexts.join("\n\n")
 
       // Extract death information
       const deathInfo = this.extractDeathInfo(cleanedText, actor)
@@ -181,14 +243,42 @@ export class WikipediaSource extends BaseDataSource {
       // Calculate confidence based on content quality
       const confidence = this.calculateDeathConfidence(cleanedText, actor)
 
-      console.log(`  Extracted ${cleanedText.length} chars, confidence: ${confidence.toFixed(2)}`)
+      console.log(
+        `  Extracted ${cleanedText.length} chars from ${sectionTexts.length} section(s), confidence: ${confidence.toFixed(2)}`
+      )
+
+      // Build raw data with section selection metadata
+      const rawData: Record<string, unknown> = {
+        sectionTitles: relevantSections.map((s) => s.line),
+        sectionCount: relevantSections.length,
+        textLength: cleanedText.length,
+      }
+
+      // Include AI section selection metadata if used
+      if (sectionSelectionResult) {
+        rawData.aiSectionSelection = {
+          usedAI: sectionSelectionResult.usedAI,
+          selectedSections: sectionSelectionResult.selectedSections,
+          reasoning: sectionSelectionResult.reasoning,
+          error: sectionSelectionResult.error,
+        }
+      }
+
+      // Create source entry - include AI selection cost in the total cost
+      const sourceEntry = this.createSourceEntry(
+        startTime,
+        confidence,
+        articleUrl,
+        articleTitle,
+        rawData
+      )
+      if (sectionSelectionCost > 0) {
+        sourceEntry.costUsd = sectionSelectionCost
+      }
 
       return {
         success: true,
-        source: this.createSourceEntry(startTime, confidence, articleUrl, articleTitle, {
-          sectionTitle: deathSection.line,
-          textLength: cleanedText.length,
-        }),
+        source: sourceEntry,
         data: deathInfo,
       }
     } catch (error) {
@@ -215,13 +305,14 @@ export class WikipediaSource extends BaseDataSource {
   }
 
   /**
-   * Find the Death section or suitable fallback.
+   * Find all relevant sections for death information.
+   * Returns multiple sections when available (e.g., both Health and Death).
    */
-  private findDeathSection(sections: WikipediaSection[]): WikipediaSection | null {
-    // Priority order for sections - exact death sections first, then variations,
-    // then health sections (which often contain death info), then general fallbacks
-    const sectionPriority = [
-      // Primary death sections
+  private findRelevantSections(sections: WikipediaSection[]): WikipediaSection[] {
+    const result: WikipediaSection[] = []
+
+    // Primary death sections - always include if found
+    const deathPatterns = [
       /^death$/i,
       /^death and legacy$/i,
       /^death and funeral$/i,
@@ -229,33 +320,72 @@ export class WikipediaSource extends BaseDataSource {
       /^death and tributes$/i,
       /^death and memorials$/i,
       /^death and reactions$/i,
-      // Combined life/death sections
       /^later life and death$/i,
       /^final years and death$/i,
       /^illness and death$/i,
       /^decline and death$/i,
-      // Health sections (often contain death info for actors who died of illness)
+    ]
+
+    // Health sections - include alongside death sections for medical context
+    const healthPatterns = [
       /^health$/i,
       /^health issues$/i,
       /^health problems$/i,
       /^declining health$/i,
       /^illness$/i,
       /^final illness$/i,
-      // Fallback sections
-      /^personal life$/i, // Sometimes death info is in Personal life
+    ]
+
+    // Fallback sections - only use if no death or health sections found
+    const fallbackPatterns = [
+      /^personal life$/i,
       /^later life$/i,
       /^final years$/i,
       /^later years$/i,
     ]
 
-    for (const pattern of sectionPriority) {
+    // Find death sections
+    for (const pattern of deathPatterns) {
       const section = sections.find((s) => pattern.test(s.line))
-      if (section) {
-        return section
+      if (section && !result.some((r) => r.index === section.index)) {
+        result.push(section)
+        break // Only take the first matching death section
       }
     }
 
-    return null
+    // Find health sections (include even if death section found)
+    for (const pattern of healthPatterns) {
+      const section = sections.find((s) => pattern.test(s.line))
+      if (section && !result.some((r) => r.index === section.index)) {
+        result.push(section)
+        break // Only take the first matching health section
+      }
+    }
+
+    // If no death or health sections, try fallbacks
+    if (result.length === 0) {
+      for (const pattern of fallbackPatterns) {
+        const section = sections.find((s) => pattern.test(s.line))
+        if (section) {
+          result.push(section)
+          break
+        }
+      }
+    }
+
+    // Sort by section index so content appears in article order
+    result.sort((a, b) => parseInt(a.index) - parseInt(b.index))
+
+    return result
+  }
+
+  /**
+   * Find the Death section or suitable fallback.
+   * @deprecated Use findRelevantSections instead
+   */
+  private findDeathSection(sections: WikipediaSection[]): WikipediaSection | null {
+    const relevant = this.findRelevantSections(sections)
+    return relevant.length > 0 ? relevant[0] : null
   }
 
   /**

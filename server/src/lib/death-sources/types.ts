@@ -19,6 +19,7 @@ export enum DataSourceType {
   CLAUDE_BATCH = "claude_batch",
   CLAUDE_LINK_SELECTOR = "claude_link_selector", // AI-assisted link selection
   CLAUDE_PAGE_EXTRACTOR = "claude_page_extractor", // AI-assisted page content extraction
+  GEMINI_SECTION_SELECTOR = "gemini_section_selector", // AI-assisted Wikipedia section selection
   OPENAI_GPT4O = "openai_gpt4o",
   OPENAI_GPT4O_MINI = "openai_gpt4o_mini",
   PERPLEXITY = "perplexity",
@@ -607,12 +608,54 @@ export interface EnrichmentConfig {
   linkFollow?: LinkFollowConfig
   /** Maximum number of stories to collect from news sources (default: 3) */
   maxStoriesPerSource?: number
+  /** Wikipedia source configuration */
+  wikipediaOptions?: WikipediaOptions
 }
 
 /**
  * Default maximum stories per news source.
  */
 export const DEFAULT_MAX_STORIES_PER_SOURCE = 3
+
+// ============================================================================
+// Wikipedia Options Types
+// ============================================================================
+
+/**
+ * Configuration for Wikipedia source behavior.
+ */
+export interface WikipediaOptions {
+  /**
+   * Use AI (Gemini Flash) to select relevant sections instead of regex patterns.
+   * This can capture non-obvious sections like "Hunting and Fishing" or "Controversies"
+   * that may contain death/health/incident information.
+   * Default: false (opt-in)
+   */
+  useAISectionSelection?: boolean
+  /**
+   * Which AI model to use for section selection.
+   * Default: "gemini-flash" (cheapest at ~$0.0001/query)
+   *
+   * NOTE: This option is reserved for future use. The current implementation
+   * uses a hardcoded model (gemini-2.0-flash) in wikipedia-section-selector.ts.
+   * When additional models are supported, this option will control model selection.
+   */
+  sectionSelectionModel?: "gemini-flash"
+  /**
+   * Maximum number of sections to fetch content from.
+   * Default: 10
+   */
+  maxSections?: number
+}
+
+/**
+ * Default Wikipedia options.
+ */
+export const DEFAULT_WIKIPEDIA_OPTIONS: WikipediaOptions = {
+  useAISectionSelection: false,
+  sectionSelectionModel: "gemini-flash",
+  maxSections: 10,
+}
 
 // ============================================================================
 // Enrichment Run Tracking Types
