@@ -133,12 +133,12 @@ export async function getActorsForCoverage(
   }
 
   if (filters.minPopularity !== undefined) {
-    whereClauses.push(`tmdb_popularity >= $${paramIndex++}`)
+    whereClauses.push(`dof_popularity >= $${paramIndex++}`)
     params.push(filters.minPopularity)
   }
 
   if (filters.maxPopularity !== undefined) {
-    whereClauses.push(`tmdb_popularity <= $${paramIndex++}`)
+    whereClauses.push(`dof_popularity <= $${paramIndex++}`)
     params.push(filters.maxPopularity)
   }
 
@@ -176,17 +176,17 @@ export async function getActorsForCoverage(
   let orderByClause: string
   switch (orderBy) {
     case "death_date":
-      orderByClause = `CASE WHEN ${ascParam} = 1 THEN deathday END ASC, CASE WHEN ${descParam} = 1 THEN deathday END DESC`
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN deathday END ASC NULLS LAST, CASE WHEN ${descParam} = 1 THEN deathday END DESC NULLS LAST`
       break
     case "name":
-      orderByClause = `CASE WHEN ${ascParam} = 1 THEN name END ASC, CASE WHEN ${descParam} = 1 THEN name END DESC`
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN name END ASC NULLS LAST, CASE WHEN ${descParam} = 1 THEN name END DESC NULLS LAST`
       break
     case "enriched_at":
-      orderByClause = `CASE WHEN ${ascParam} = 1 THEN enriched_at END ASC, CASE WHEN ${descParam} = 1 THEN enriched_at END DESC`
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN enriched_at END ASC NULLS LAST, CASE WHEN ${descParam} = 1 THEN enriched_at END DESC NULLS LAST`
       break
     case "popularity":
     default:
-      orderByClause = `CASE WHEN ${ascParam} = 1 THEN tmdb_popularity END ASC, CASE WHEN ${descParam} = 1 THEN tmdb_popularity END DESC`
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN dof_popularity END ASC NULLS LAST, CASE WHEN ${descParam} = 1 THEN dof_popularity END DESC NULLS LAST`
       break
   }
 
@@ -199,7 +199,7 @@ export async function getActorsForCoverage(
        name,
        tmdb_id,
        deathday,
-       tmdb_popularity::float as popularity,
+       dof_popularity::float as popularity,
        has_detailed_death_info,
        enriched_at,
        age_at_death,
@@ -291,7 +291,7 @@ export async function getEnrichmentCandidates(
        name,
        tmdb_id,
        deathday,
-       tmdb_popularity::float as popularity,
+       dof_popularity::float as popularity,
        has_detailed_death_info,
        enriched_at,
        age_at_death,
@@ -301,7 +301,7 @@ export async function getEnrichmentCandidates(
        AND (has_detailed_death_info = false OR has_detailed_death_info IS NULL)
        AND (enriched_at IS NULL OR enriched_at < NOW() - INTERVAL '30 days')
        AND dof_popularity >= $1
-     ORDER BY dof_popularity DESC, deathday DESC
+     ORDER BY dof_popularity DESC NULLS LAST, deathday DESC NULLS LAST
      LIMIT $2`,
     [minPopularity, limit]
   )
