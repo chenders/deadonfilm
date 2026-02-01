@@ -576,7 +576,7 @@ describe("getAllDeathsHandler", () => {
       age_at_death: 85,
       expected_lifespan: 80,
       years_lost: -5,
-      popularity: 10.5,
+      tmdb_popularity: 10.5,
       violent_death: false,
       tvmaze_person_id: null,
       thetvdb_person_id: null,
@@ -585,6 +585,9 @@ describe("getAllDeathsHandler", () => {
       deathday_confidence: null,
       deathday_verification_source: null,
       deathday_verified_at: null,
+      dof_popularity: null,
+      dof_popularity_confidence: null,
+      dof_popularity_updated_at: null,
     },
     {
       id: 2,
@@ -601,7 +604,7 @@ describe("getAllDeathsHandler", () => {
       age_at_death: 72,
       expected_lifespan: 78,
       years_lost: 6,
-      popularity: null,
+      tmdb_popularity: null,
       violent_death: null,
       tvmaze_person_id: null,
       thetvdb_person_id: null,
@@ -610,6 +613,9 @@ describe("getAllDeathsHandler", () => {
       deathday_confidence: null,
       deathday_verification_source: null,
       deathday_verified_at: null,
+      dof_popularity: null,
+      dof_popularity_confidence: null,
+      dof_popularity_updated_at: null,
     },
   ]
 

@@ -81,6 +81,7 @@ import cacheRoutes from "./routes/admin/cache.js"
 import abTestsRoutes from "./routes/admin/ab-tests.js"
 import jobsRoutes from "./routes/admin/jobs.js"
 import dataQualityRoutes from "./routes/admin/data-quality.js"
+import popularityRoutes from "./routes/admin/popularity.js"
 import syncRoutes from "./routes/admin/sync.js"
 import logsRoutes from "./routes/admin/logs.js"
 import { errorHandler } from "./middleware/error-handler.js"
@@ -303,6 +304,7 @@ app.use("/admin/api/cache", adminRoutesLimiter, adminAuthMiddleware, cacheRoutes
 app.use("/admin/api/ab-tests", adminRoutesLimiter, adminAuthMiddleware, abTestsRoutes)
 app.use("/admin/api/jobs", adminRoutesLimiter, adminAuthMiddleware, jobsRoutes)
 app.use("/admin/api/data-quality", adminRoutesLimiter, adminAuthMiddleware, dataQualityRoutes)
+app.use("/admin/api/popularity", adminRoutesLimiter, adminAuthMiddleware, popularityRoutes)
 app.use("/admin/api/sync", adminRoutesLimiter, adminAuthMiddleware, syncRoutes)
 app.use("/admin/api/logs", adminRoutesLimiter, adminAuthMiddleware, logsRoutes)
 

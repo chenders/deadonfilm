@@ -518,7 +518,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
   // Obscure filter - exclude actors without profile photos or low popularity
   if (!includeObscure) {
     conditions.push(`profile_path IS NOT NULL`)
-    conditions.push(`popularity >= 5.0`)
+    conditions.push(`tmdb_popularity >= 5.0`)
   }
 
   // Search filter
@@ -544,7 +544,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
         a.name as actor_name,
         a.birthday,
         a.profile_path,
-        a.popularity,
+        a.tmdb_popularity,
         COUNT(DISTINCT ama.movie_tmdb_id) as total_movies,
         COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as total_episodes,
         EXTRACT(YEAR FROM age(a.birthday))::integer as age
@@ -553,7 +553,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
       LEFT JOIN actor_show_appearances asa ON asa.actor_id = a.id
       WHERE a.deathday IS NULL
         AND a.birthday IS NOT NULL
-      GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.profile_path, a.popularity
+      GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.profile_path, a.tmdb_popularity
       HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
          OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
     )
@@ -564,13 +564,13 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
       birthday::text,
       age,
       profile_path,
-      popularity::decimal,
+      dof_popularity::decimal as popularity,
       total_movies::integer,
       total_episodes::integer,
       COUNT(*) OVER() as total_count
     FROM living_actors
     ${whereClause}
-    ORDER BY age DESC, popularity DESC NULLS LAST
+    ORDER BY age DESC, dof_popularity DESC NULLS LAST
     LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
   `
 
@@ -585,7 +585,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
       ...actor
     }: { total_count: string } & DeathWatchActorRecord): DeathWatchActorRecord => ({
       ...actor,
-      popularity: actor.popularity ? parseFloat(String(actor.popularity)) : null,
+      tmdb_popularity: actor.tmdb_popularity ? parseFloat(String(actor.tmdb_popularity)) : null,
     })
   )
 

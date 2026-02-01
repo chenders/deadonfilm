@@ -57,6 +57,8 @@ import { SyncTMDBPeopleHandler } from "./sync-tmdb-people.js"
 import { SyncTMDBMoviesHandler } from "./sync-tmdb-movies.js"
 import { SyncTMDBShowsHandler } from "./sync-tmdb-shows.js"
 import { CalculateActorObscurityHandler } from "./calculate-actor-obscurity.js"
+import { CalculateContentPopularityHandler } from "./calculate-content-popularity.js"
+import { CalculateActorPopularityHandler } from "./calculate-actor-popularity.js"
 import { RebuildDeathCachesHandler } from "./rebuild-death-caches.js"
 
 // Register handlers
@@ -71,4 +73,6 @@ registerHandler(new SyncTMDBPeopleHandler())
 registerHandler(new SyncTMDBMoviesHandler())
 registerHandler(new SyncTMDBShowsHandler())
 registerHandler(new CalculateActorObscurityHandler())
+registerHandler(new CalculateContentPopularityHandler())
+registerHandler(new CalculateActorPopularityHandler())
 registerHandler(new RebuildDeathCachesHandler())

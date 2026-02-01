@@ -28,7 +28,12 @@ export interface ActorRecord {
   deathday: string | null // null for living actors
   deathday_precision?: DatePrecision | null // null/undefined means 'day' (full precision)
   profile_path: string | null
-  popularity: number | null
+  tmdb_popularity: number | null // Renamed from 'popularity' for clarity
+
+  // DOF popularity scoring
+  dof_popularity: number | null // 0-100 score derived from filmography
+  dof_popularity_confidence: number | null // 0-1 confidence based on data sources
+  dof_popularity_updated_at: string | null
 
   // Death-related fields (null for living actors)
   cause_of_death: string | null
@@ -108,14 +113,20 @@ export interface MovieRecord {
   genres: string[]
   original_language: string | null
   production_countries: string[] | null
-  popularity: number | null
-  vote_average: number | null
+  tmdb_popularity: number | null // Renamed from 'popularity' for clarity
+  tmdb_vote_average: number | null // Renamed from 'vote_average' for clarity
   cast_count: number | null
   deceased_count: number | null
   living_count: number | null
   expected_deaths: number | null
   mortality_surprise_score: number | null
   imdb_id?: string | null
+
+  // DOF popularity scoring
+  dof_popularity?: number | null // 0-100 combined popularity score
+  dof_weight?: number | null // 0-100 cultural weight for actor scoring
+  dof_popularity_confidence?: number | null // 0-1 confidence based on data sources
+  dof_popularity_updated_at?: Date | null
 
   // OMDb metrics
   omdb_imdb_rating?: number | null
@@ -171,7 +182,7 @@ export interface PopularMovieRecord {
   poster_path: string | null
   deceased_count: number
   cast_count: number
-  popularity: number
+  tmdb_popularity: number // Renamed from 'popularity' for clarity
 }
 
 // ============================================================================
@@ -189,8 +200,8 @@ export interface ShowRecord {
   status: string | null
   number_of_seasons: number | null
   number_of_episodes: number | null
-  popularity: number | null
-  vote_average: number | null
+  tmdb_popularity: number | null // Renamed from 'popularity' for clarity
+  tmdb_vote_average: number | null // Renamed from 'vote_average' for clarity
   origin_country: string[]
   original_language: string | null
   cast_count: number | null
@@ -201,6 +212,12 @@ export interface ShowRecord {
   tvmaze_id: number | null
   thetvdb_id: number | null
   imdb_id: string | null
+
+  // DOF popularity scoring
+  dof_popularity?: number | null // 0-100 combined popularity score
+  dof_weight?: number | null // 0-100 cultural weight for actor scoring
+  dof_popularity_confidence?: number | null // 0-1 confidence based on data sources
+  dof_popularity_updated_at?: Date | null
 
   // OMDb metrics
   omdb_imdb_rating?: number | null
@@ -372,7 +389,7 @@ export interface DeathWatchActorRecord {
   birthday: string
   age: number
   profile_path: string | null
-  popularity: number | null
+  tmdb_popularity: number | null // Renamed from 'popularity' for clarity
   total_movies: number
   total_episodes: number
 }
@@ -759,4 +776,21 @@ export interface TriviaFact {
   title: string
   value: string
   link?: string
+}
+
+// ============================================================================
+// Era reference stats types
+// ============================================================================
+
+export interface EraReferenceStatsRecord {
+  year: number
+  median_box_office_cents: number | null
+  avg_box_office_cents: number | null
+  top_10_avg_box_office_cents: number | null
+  inflation_factor: number | null
+  total_movies_released: number | null
+  avg_imdb_votes: number | null
+  avg_trakt_watchers: number | null
+  created_at: Date
+  updated_at: Date
 }

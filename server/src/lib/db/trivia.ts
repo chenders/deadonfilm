@@ -312,12 +312,12 @@ export async function getPopularMovies(limit: number = 10): Promise<PopularMovie
   const db = getPool()
 
   const result = await db.query<PopularMovieRecord>(
-    `SELECT tmdb_id, title, release_year, poster_path, deceased_count, cast_count, popularity
+    `SELECT tmdb_id, title, release_year, poster_path, deceased_count, cast_count, tmdb_popularity
      FROM movies
      WHERE poster_path IS NOT NULL
        AND deceased_count > 0
        AND cast_count >= 3
-     ORDER BY popularity DESC
+     ORDER BY dof_popularity DESC NULLS LAST
      LIMIT $1`,
     [limit]
   )

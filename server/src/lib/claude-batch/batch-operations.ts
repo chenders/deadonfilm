@@ -75,7 +75,7 @@ export function buildActorQuery(options: SubmitBatchOptions): {
         AND cause_of_death IS NOT NULL
         AND cause_of_death_details IS NOT NULL
         AND has_detailed_death_info IS NULL
-      ORDER BY popularity DESC NULLS LAST
+      ORDER BY dof_popularity DESC NULLS LAST
     `
 
     if (limit) {
@@ -89,7 +89,7 @@ export function buildActorQuery(options: SubmitBatchOptions): {
       FROM actors
       WHERE deathday IS NOT NULL
         AND (cause_of_death IS NULL OR cause_of_death_details IS NULL)
-      ORDER BY popularity DESC NULLS LAST
+      ORDER BY dof_popularity DESC NULLS LAST
     `
 
     if (limit) {

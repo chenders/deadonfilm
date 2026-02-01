@@ -396,7 +396,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       deathday: Date | string
       cause_of_death: string | null
       cause_of_death_details: string | null
-      popularity: number | null
+      tmdb_popularity: number | null
       circumstances: string | null
       notable_factors: string[] | null
       movie_title?: string // Only populated when using --top-billed-year
@@ -444,7 +444,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
       // Fetch missing popularity scores from TMDB for actors that don't have them
       const actorsNeedingPopularity = actors.filter(
-        (a) => a.popularity === null && a.tmdb_id !== null
+        (a) => a.tmdb_popularity === null && a.tmdb_id !== null
       )
       if (actorsNeedingPopularity.length > 0) {
         console.log(
@@ -457,10 +457,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         const tmdbIdsToUpdate: number[] = []
         const popularitiesToUpdate: number[] = []
         for (const actor of actors) {
-          if (actor.popularity === null && actor.tmdb_id !== null) {
+          if (actor.tmdb_popularity === null && actor.tmdb_id !== null) {
             const details = personDetails.get(actor.tmdb_id)
             if (details?.popularity !== undefined && details.popularity !== null) {
-              actor.popularity = details.popularity
+              actor.tmdb_popularity = details.popularity
               tmdbIdsToUpdate.push(actor.tmdb_id)
               popularitiesToUpdate.push(details.popularity)
             }
@@ -489,8 +489,8 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
         // Re-sort by popularity descending
         actors.sort((a, b) => {
-          const popA = a.popularity ?? 0
-          const popB = b.popularity ?? 0
+          const popA = a.tmdb_popularity ?? 0
+          const popB = b.tmdb_popularity ?? 0
           return popB - popA
         })
       }
@@ -506,14 +506,14 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           a.deathday,
           a.cause_of_death,
           a.cause_of_death_details,
-          a.popularity,
+          a.popularity AS tmdb_popularity,
           c.circumstances,
           c.notable_factors
         FROM actors a
         LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
         WHERE a.id = ANY($1::int[])
           AND a.deathday IS NOT NULL
-        ORDER BY a.popularity DESC NULLS LAST`,
+        ORDER BY a.dof_popularity DESC NULLS LAST`,
         [actorId]
       )
       actors = result.rows
@@ -529,14 +529,14 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           a.deathday,
           a.cause_of_death,
           a.cause_of_death_details,
-          a.popularity,
+          a.popularity AS tmdb_popularity,
           c.circumstances,
           c.notable_factors
         FROM actors a
         LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
         WHERE a.tmdb_id = ANY($1::int[])
           AND a.deathday IS NOT NULL
-        ORDER BY a.popularity DESC NULLS LAST`,
+        ORDER BY a.dof_popularity DESC NULLS LAST`,
         [tmdbId]
       )
       actors = result.rows
@@ -553,7 +553,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           a.deathday,
           a.cause_of_death,
           a.cause_of_death_details,
-          a.popularity,
+          a.popularity AS tmdb_popularity,
           c.circumstances,
           c.notable_factors,
           (
@@ -618,7 +618,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
             ) DESC`
       } else {
-        query += ` ORDER BY a.popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+        query += ` ORDER BY a.dof_popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
       }
 
       if (limit) {
@@ -824,7 +824,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       deathday: normalizeDateToString(a.deathday) || "",
       causeOfDeath: a.cause_of_death,
       causeOfDeathDetails: a.cause_of_death_details,
-      popularity: a.popularity,
+      popularity: a.tmdb_popularity,
     }))
 
     // Check if we should stop before starting enrichment

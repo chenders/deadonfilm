@@ -128,6 +128,14 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
           Data Quality
         </NavLink>
 
+        <NavLink
+          to="/admin/popularity"
+          isActive={isActive("/admin/popularity")}
+          onClick={onNavigate}
+        >
+          Popularity Scores
+        </NavLink>
+
         <NavLink to="/admin/sync" isActive={isActive("/admin/sync")} onClick={onNavigate}>
           TMDB Sync
         </NavLink>

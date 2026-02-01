@@ -138,8 +138,8 @@ describe("EnrichmentRunner", () => {
       mockQuery
         .mockResolvedValueOnce({
           rows: [
-            { id: 1, name: "Actor One", tmdb_id: 1001, popularity: 50 },
-            { id: 2, name: "Actor Two", tmdb_id: 1002, popularity: 40 },
+            { id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 },
+            { id: 2, name: "Actor Two", tmdb_id: 1002, tmdb_popularity: 40 },
           ],
         })
         .mockResolvedValue({ rows: [] })
@@ -179,7 +179,7 @@ describe("EnrichmentRunner", () => {
 
       mockQuery
         .mockResolvedValueOnce({
-          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, popularity: 50 }],
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
         })
         .mockResolvedValue({ rows: [] })
 
@@ -210,8 +210,8 @@ describe("EnrichmentRunner", () => {
       mockQuery
         .mockResolvedValueOnce({
           rows: [
-            { id: 1, name: "Actor One", tmdb_id: 1001, popularity: 50 },
-            { id: 2, name: "Actor Two", tmdb_id: 1002, popularity: 40 },
+            { id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 },
+            { id: 2, name: "Actor Two", tmdb_id: 1002, tmdb_popularity: 40 },
           ],
         })
         .mockResolvedValue({ rows: [] })
@@ -241,7 +241,7 @@ describe("EnrichmentRunner", () => {
     it("should pass maxTotalCost to orchestrator config", async () => {
       mockQuery
         .mockResolvedValueOnce({
-          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, popularity: 50 }],
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
         })
         .mockResolvedValue({ rows: [] })
 
@@ -267,7 +267,7 @@ describe("EnrichmentRunner", () => {
     it("should return complete EnrichmentStats", async () => {
       mockQuery
         .mockResolvedValueOnce({
-          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, popularity: 50 }],
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
         })
         .mockResolvedValue({ rows: [] })
 
@@ -301,7 +301,7 @@ describe("EnrichmentRunner", () => {
       // Mock: first call returns actors, subsequent calls return empty or INSERT result
       mockQuery
         .mockResolvedValueOnce({
-          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, popularity: 50 }],
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
         })
         .mockResolvedValue({ rows: [{ id: 123 }] }) // For INSERT RETURNING id
 
