@@ -180,7 +180,7 @@ export function useActorForEditing(actorId: number | undefined): UseQueryResult<
     queryKey: ["admin", "actor", "editor", actorId],
     queryFn: () => fetchActorForEditing(actorId!),
     enabled: !!actorId,
-    staleTime: 0, // Editor views should always refetch for immediate consistency
+    staleTime: 30000, // 30 seconds
   })
 }
 
