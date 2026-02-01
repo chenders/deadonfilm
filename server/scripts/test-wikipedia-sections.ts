@@ -11,6 +11,11 @@ const program = new Command()
   .option("-a, --actor <name>", "Actor name to test", "Dick Cheney")
   .option("--ai-selection", "Enable AI-assisted section selection")
   .option("--follow-links", "Enable following linked Wikipedia articles (requires --ai-selection)")
+  .option(
+    "--max-links <number>",
+    "Maximum number of linked articles to follow (default: 2)",
+    parseInt
+  )
   .option("--ignore-cache", "Bypass the cache to force a fresh lookup")
   .option("--id <number>", "Actor ID for cache/logging (optional)")
   .option("--birthday <date>", "Actor birthday YYYY-MM-DD (optional)")
@@ -50,13 +55,21 @@ async function main() {
         process.exit(1)
       }
 
-      const wikipediaOptions: { useAISectionSelection: boolean; followLinkedArticles?: boolean } = {
+      const wikipediaOptions: {
+        useAISectionSelection: boolean
+        followLinkedArticles?: boolean
+        maxLinkedArticles?: number
+      } = {
         useAISectionSelection: true,
       }
 
       if (opts.followLinks) {
         console.log("Link following: ENABLED")
         wikipediaOptions.followLinkedArticles = true
+        if (opts.maxLinks) {
+          wikipediaOptions.maxLinkedArticles = opts.maxLinks
+          console.log(`Max linked articles: ${opts.maxLinks}`)
+        }
       } else {
         console.log("Link following: disabled (use --follow-links to enable)")
       }

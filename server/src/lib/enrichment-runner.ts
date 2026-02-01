@@ -64,6 +64,11 @@ export interface EnrichmentRunnerConfig {
   ignoreCache?: boolean
   runId?: number
   staging?: boolean
+  // Wikipedia-specific options
+  wikipediaUseAISectionSelection?: boolean
+  wikipediaFollowLinkedArticles?: boolean
+  wikipediaMaxLinkedArticles?: number
+  wikipediaMaxSections?: number
 }
 
 /**
@@ -174,6 +179,11 @@ export class EnrichmentRunner {
       ignoreCache = false,
       runId,
       staging = false,
+      // Wikipedia-specific options
+      wikipediaUseAISectionSelection = false,
+      wikipediaFollowLinkedArticles = false,
+      wikipediaMaxLinkedArticles = 2,
+      wikipediaMaxSections = 10,
     } = this.config
 
     // Configure cache behavior
@@ -268,6 +278,16 @@ export class EnrichmentRunner {
             gatherAllSources,
           }
         : undefined,
+      // Wikipedia-specific options for AI section selection and link following
+      wikipediaOptions:
+        wikipediaUseAISectionSelection || wikipediaFollowLinkedArticles
+          ? {
+              useAISectionSelection: wikipediaUseAISectionSelection,
+              followLinkedArticles: wikipediaFollowLinkedArticles,
+              maxLinkedArticles: wikipediaMaxLinkedArticles,
+              maxSections: wikipediaMaxSections,
+            }
+          : undefined,
     }
 
     const orchestrator = new DeathEnrichmentOrchestrator(config)

@@ -506,7 +506,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           a.deathday,
           a.cause_of_death,
           a.cause_of_death_details,
-          a.popularity AS tmdb_popularity,
+          a.dof_popularity AS tmdb_popularity,
           c.circumstances,
           c.notable_factors
         FROM actors a
@@ -529,7 +529,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           a.deathday,
           a.cause_of_death,
           a.cause_of_death_details,
-          a.popularity AS tmdb_popularity,
+          a.dof_popularity AS tmdb_popularity,
           c.circumstances,
           c.notable_factors
         FROM actors a
@@ -555,7 +555,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           a.deathday,
           a.cause_of_death,
           a.cause_of_death_details,
-          a.popularity AS tmdb_popularity,
+          a.dof_popularity AS tmdb_popularity,
           c.circumstances,
           c.notable_factors,
           (
@@ -576,7 +576,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
 
       if (minPopularity > 0) {
         params.push(minPopularity)
-        query += ` AND a.popularity >= $${params.length}`
+        query += ` AND a.dof_popularity >= $${params.length}`
       }
 
       if (recentOnly) {
@@ -611,7 +611,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         // When filtering for US actors, sort by US/English appearances instead of total
         query += `
           ORDER BY
-            a.popularity DESC NULLS LAST,
+            a.dof_popularity DESC NULLS LAST,
             a.birthday DESC NULLS LAST,
             (
               SELECT COUNT(*) FROM actor_show_appearances asa
