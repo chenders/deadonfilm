@@ -35,68 +35,79 @@ async function main() {
     setIgnoreCache(true)
   }
 
-  const source = new WikipediaSource()
+  try {
+    const source = new WikipediaSource()
 
-  // Enable AI section selection if requested
-  if (opts.aiSelection) {
-    console.log("AI section selection: ENABLED")
-    console.log("isAISectionSelectionAvailable():", isAISectionSelectionAvailable())
-    console.log("GOOGLE_AI_API_KEY set:", !!process.env.GOOGLE_AI_API_KEY)
-    if (!isAISectionSelectionAvailable()) {
-      console.error("ERROR: GOOGLE_AI_API_KEY not set. AI section selection requires this key.")
-      console.error("Get one at: https://aistudio.google.com/app/apikey")
-      process.exit(1)
+    // Enable AI section selection if requested
+    if (opts.aiSelection) {
+      console.log("AI section selection: ENABLED")
+      console.log("isAISectionSelectionAvailable():", isAISectionSelectionAvailable())
+      console.log("GOOGLE_AI_API_KEY set:", !!process.env.GOOGLE_AI_API_KEY)
+      if (!isAISectionSelectionAvailable()) {
+        console.error("ERROR: GOOGLE_AI_API_KEY not set. AI section selection requires this key.")
+        console.error("Get one at: https://aistudio.google.com/app/apikey")
+        process.exit(1)
+      }
+      source.setWikipediaOptions({ useAISectionSelection: true })
+      console.log("Called setWikipediaOptions({ useAISectionSelection: true })")
+    } else {
+      console.log("AI section selection: disabled (use --ai-selection to enable)")
     }
-    source.setWikipediaOptions({ useAISectionSelection: true })
-    console.log("Called setWikipediaOptions({ useAISectionSelection: true })")
-  } else {
-    console.log("AI section selection: disabled (use --ai-selection to enable)")
-  }
 
-  // Use provided ID, or default ID for Dick Cheney, or generate from actor name
-  // Note: Generated IDs may cause cache write failures if actor doesn't exist in DB
-  const DEFAULT_ACTOR = "Dick Cheney"
-  const DEFAULT_ID = 8352 // Dick Cheney's actual actor ID
-
-  let actorId: number
-  if (opts.id) {
-    actorId = parseInt(opts.id, 10)
-  } else if (opts.actor === DEFAULT_ACTOR) {
-    actorId = DEFAULT_ID
-  } else {
-    actorId = simpleHash(opts.actor)
-    console.log(`Note: Using generated ID ${actorId}. Cache writes may fail if actor not in DB.`)
-    console.log(`      Use --id <number> to specify a valid actor ID.`)
-  }
-
-  const actor = {
-    id: actorId,
-    tmdbId: actorId, // Use same value; Wikipedia source doesn't use tmdbId
-    name: opts.actor,
-    birthday: opts.birthday ?? null, // Only include if explicitly provided
-    deathday: opts.deathday ?? null, // Only include if explicitly provided
-    causeOfDeath: null,
-    causeOfDeathDetails: null,
-    popularity: null,
-  }
-
-  console.log(`\nTesting Wikipedia source for ${actor.name}...`)
-  const result = await source.lookup(actor)
-
-  console.log("\n=== Result ===")
-  console.log("Success:", result.success)
-  console.log("Source:", JSON.stringify(result.source, null, 2))
-
-  if (result.data) {
-    console.log("\n=== Extracted Text (first 5000 chars) ===")
-    console.log(result.data.circumstances?.substring(0, 5000))
-    if ((result.data.circumstances?.length || 0) > 5000) {
-      console.log("\n[...truncated...]")
+    // Use provided ID or generate one from the actor name
+    // Note: Generated IDs may cause cache write failures if actor doesn't exist in DB
+    let actorId: number
+    if (opts.id) {
+      const parsedId = parseInt(opts.id, 10)
+      if (!Number.isInteger(parsedId) || parsedId <= 0) {
+        console.error(
+          `ERROR: Invalid actor ID "${opts.id}". Please provide a positive integer for --id.`
+        )
+        process.exit(1)
+      }
+      actorId = parsedId
+    } else {
+      actorId = simpleHash(opts.actor)
+      console.log(
+        `Note: Using generated ID ${actorId} for "${opts.actor}". Cache writes may fail if actor not in DB.`
+      )
+      console.log(`      Use --id <number> to specify a valid actor ID.`)
     }
-  }
 
-  if (result.error) {
-    console.log("Error:", result.error)
+    const actor = {
+      id: actorId,
+      tmdbId: null, // Wikipedia-only testing: no TMDB ID associated
+      name: opts.actor,
+      birthday: opts.birthday ?? null, // Only include if explicitly provided
+      deathday: opts.deathday ?? null, // Only include if explicitly provided
+      causeOfDeath: null,
+      causeOfDeathDetails: null,
+      popularity: null,
+    }
+
+    console.log(`\nTesting Wikipedia source for ${actor.name}...`)
+    const result = await source.lookup(actor)
+
+    console.log("\n=== Result ===")
+    console.log("Success:", result.success)
+    console.log("Source:", JSON.stringify(result.source, null, 2))
+
+    if (result.data) {
+      console.log("\n=== Extracted Text (first 5000 chars) ===")
+      console.log(result.data.circumstances?.substring(0, 5000))
+      if ((result.data.circumstances?.length || 0) > 5000) {
+        console.log("\n[...truncated...]")
+      }
+    }
+
+    if (result.error) {
+      console.log("Error:", result.error)
+    }
+  } finally {
+    // Reset cache flag to avoid affecting other scripts if this module is imported
+    if (opts.ignoreCache) {
+      setIgnoreCache(false)
+    }
   }
 }
 
