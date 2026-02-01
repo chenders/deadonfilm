@@ -18,7 +18,7 @@ vi.mock("../../lib/cache.js", () => ({
 }))
 
 vi.mock("../../lib/admin-auth.js", () => ({
-  logAdminAction: vi.fn(),
+  logAdminAction: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock("../../lib/logger.js", () => ({
@@ -45,6 +45,11 @@ describe("admin actors routes", () => {
   }
 
   beforeEach(() => {
+    vi.clearAllMocks()
+
+    // Re-establish mock implementations that may have been cleared
+    vi.mocked(logAdminAction).mockResolvedValue(undefined)
+
     app = express()
     app.use(express.json())
     app.use("/admin/api/actors", router)
@@ -56,10 +61,9 @@ describe("admin actors routes", () => {
 
     mockPool = {
       query: vi.fn(),
-      connect: vi.fn().mockResolvedValue(mockClient),
+      connect: vi.fn().mockImplementation(() => Promise.resolve(mockClient)),
     }
     vi.mocked(getPool).mockReturnValue(mockPool as unknown as ReturnType<typeof getPool>)
-    vi.clearAllMocks()
   })
 
   describe("GET /admin/api/actors/:id", () => {
@@ -363,6 +367,33 @@ describe("admin actors routes", () => {
 
       expect(res.status).toBe(400)
       expect(res.body.error.invalidDates[0].reason).toContain("future")
+    })
+
+    it("should return 400 when death date is before birth date", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // mockActor has birthday: 1907-05-26
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { deathday: "1900-01-01" } }) // Before birthday
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.invalidDates[0].reason).toContain("before birth date")
+    })
+
+    it("should validate deathday against existing birthday when only deathday is updated", async () => {
+      const actorWithBirthday = { ...mockActor, birthday: "1950-06-15" }
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [actorWithBirthday] })
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { deathday: "1940-01-01" } }) // Before existing birthday
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.invalidDates[0].reason).toContain("before birth date")
     })
 
     it("should return 500 when database query fails for GET", async () => {

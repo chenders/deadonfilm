@@ -449,6 +449,24 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
           }
         }
       }
+
+      // Validate that deathday is not before birthday
+      const newBirthday = actorUpdates.birthday as string | undefined
+      const newDeathday = actorUpdates.deathday as string | undefined
+      const effectiveBirthday = newBirthday ?? existingActor.birthday
+      const effectiveDeathday = newDeathday ?? existingActor.deathday
+
+      if (effectiveBirthday && effectiveDeathday) {
+        const birthDate = new Date(effectiveBirthday)
+        const deathDate = new Date(effectiveDeathday)
+        if (deathDate < birthDate) {
+          invalidDates.push({
+            field: "deathday",
+            value: effectiveDeathday,
+            reason: "Death date cannot be before birth date",
+          })
+        }
+      }
     }
 
     if (invalidDates.length > 0) {
@@ -502,12 +520,10 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
     // Wrap all database operations in a transaction for atomicity
     const client = await pool.connect()
     let snapshotId: number
+    const batchId = `admin-edit-${Date.now()}`
 
     try {
       await client.query("BEGIN")
-
-      // Create snapshot before making changes (only if there are actual changes)
-      const batchId = `admin-edit-${Date.now()}`
 
       // Create snapshot using the transaction client
       const actorDataResult = await client.query(`SELECT * FROM actors WHERE id = $1`, [actorId])
@@ -517,7 +533,7 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
       )
 
       const snapshotResult = await client.query<{ id: number }>(
-        `INSERT INTO actor_snapshots (actor_id, actor_data, circumstances_data, trigger_source, trigger_details)
+        `INSERT INTO actor_snapshots (actor_id, snapshot_data, circumstances_data, trigger_source, trigger_details)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
         [
@@ -663,50 +679,50 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
         }
       }
 
-      // Log to audit trail (inside transaction)
-      await logAdminAction({
-        action: "actor-edit",
-        resourceType: "actor",
-        resourceId: actorId,
-        details: {
-          snapshotId,
-          batchId,
-          changes,
-        },
-        ipAddress: req.ip || undefined,
-        userAgent: req.get("user-agent") || undefined,
-      })
-
       await client.query("COMMIT")
-
-      logger.info(
-        { actorId, snapshotId, changeCount: changes.length },
-        "Actor updated via admin editor"
-      )
-
-      // Fetch updated data to return (outside transaction)
-      const updatedActorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [
-        actorId,
-      ])
-      const updatedCircumstancesResult = await pool.query<CircumstancesRow>(
-        `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
-        [actorId]
-      )
-
-      res.json({
-        success: true,
-        snapshotId,
-        batchId,
-        changes,
-        actor: updatedActorResult.rows[0],
-        circumstances: updatedCircumstancesResult.rows[0] || null,
-      })
     } catch (txError) {
       await client.query("ROLLBACK")
       throw txError
     } finally {
       client.release()
     }
+
+    // Log to audit trail (after transaction commits successfully)
+    await logAdminAction({
+      action: "actor-edit",
+      resourceType: "actor",
+      resourceId: actorId,
+      details: {
+        snapshotId,
+        batchId,
+        changes,
+      },
+      ipAddress: req.ip || undefined,
+      userAgent: req.get("user-agent") || undefined,
+    })
+
+    logger.info(
+      { actorId, snapshotId, changeCount: changes.length },
+      "Actor updated via admin editor"
+    )
+
+    // Fetch updated data to return
+    const updatedActorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [
+      actorId,
+    ])
+    const updatedCircumstancesResult = await pool.query<CircumstancesRow>(
+      `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
+      [actorId]
+    )
+
+    res.json({
+      success: true,
+      snapshotId,
+      batchId,
+      changes,
+      actor: updatedActorResult.rows[0],
+      circumstances: updatedCircumstancesResult.rows[0] || null,
+    })
   } catch (error) {
     logger.error({ error, actorId }, "Failed to update actor")
     res.status(500).json({ error: { message: "Failed to update actor" } })
