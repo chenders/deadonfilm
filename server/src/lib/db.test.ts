@@ -482,7 +482,7 @@ describe("Sync State Functions", () => {
           age_at_death: 71,
           expected_lifespan: 78,
           years_lost: 7,
-          popularity: 10.0,
+          tmdb_popularity: 10.0,
           violent_death: false,
           is_obscure: false,
         },
@@ -566,7 +566,7 @@ describe("Sync State Functions", () => {
           age_at_death: null,
           expected_lifespan: null,
           years_lost: null,
-          popularity: null,
+          tmdb_popularity: null,
           violent_death: null,
           is_obscure: null,
         },
@@ -589,7 +589,7 @@ describe("Sync State Functions", () => {
         age_at_death: null,
         expected_lifespan: null,
         years_lost: null,
-        popularity: null,
+        tmdb_popularity: null,
         violent_death: null,
         is_obscure: null,
       })
@@ -617,8 +617,8 @@ describe("Movie Functions", () => {
       genres: ["Drama", "Romance"],
       original_language: null,
       production_countries: null,
-      popularity: null,
-      vote_average: 8.1,
+      tmdb_popularity: null,
+      tmdb_vote_average: 8.1,
       cast_count: 30,
       deceased_count: 26,
       living_count: 4,
@@ -638,14 +638,14 @@ describe("Movie Functions", () => {
       )
     })
 
-    it("preserves existing popularity when new value is NULL", async () => {
+    it("preserves existing tmdb_popularity when new value is NULL", async () => {
       mockQuery.mockResolvedValueOnce({ rows: [] })
 
       await upsertMovie(baseMovie)
 
       // The query should use COALESCE to preserve existing values
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("COALESCE(EXCLUDED.popularity, movies.popularity)"),
+        expect.stringContaining("COALESCE(EXCLUDED.tmdb_popularity, movies.tmdb_popularity)"),
         expect.arrayContaining([289, "Casablanca"])
       )
     })
@@ -682,7 +682,7 @@ describe("Movie Functions", () => {
           birthday: "1935-01-15",
           age: 89,
           profile_path: "/path1.jpg",
-          popularity: "10.5",
+          tmdb_popularity: "10.5",
           total_movies: 25,
         },
       ]
@@ -710,13 +710,13 @@ describe("Movie Functions", () => {
       expect(query).toContain("a.birthday IS NOT NULL")
     })
 
-    it("orders by age DESC, popularity DESC", async () => {
+    it("orders by age DESC, dof_popularity DESC", async () => {
       mockQuery.mockResolvedValueOnce({ rows: [] })
 
       await getDeathWatchActors()
 
       const query = mockQuery.mock.calls[0][0] as string
-      expect(query).toContain("ORDER BY age DESC, popularity DESC NULLS LAST")
+      expect(query).toContain("ORDER BY age DESC, dof_popularity DESC NULLS LAST")
     })
 
     it("uses default limit and offset when not provided", async () => {
@@ -766,7 +766,7 @@ describe("Movie Functions", () => {
 
       const query = mockQuery.mock.calls[0][0] as string
       expect(query).toContain("profile_path IS NOT NULL")
-      expect(query).toContain("popularity >= 5.0")
+      expect(query).toContain("tmdb_popularity >= 5.0")
     })
 
     it("includes obscure actors when includeObscure is true", async () => {
@@ -776,7 +776,7 @@ describe("Movie Functions", () => {
 
       const query = mockQuery.mock.calls[0][0] as string
       expect(query).not.toContain("profile_path IS NOT NULL")
-      expect(query).not.toContain("popularity >= 5.0")
+      expect(query).not.toContain("tmdb_popularity >= 5.0")
     })
 
     it("applies search filter with ILIKE pattern", async () => {
@@ -831,7 +831,7 @@ describe("Movie Functions", () => {
           birthday: "1940-06-20",
           age: 84,
           profile_path: "/path.jpg",
-          popularity: "8.2",
+          tmdb_popularity: "8.2",
           total_movies: 15,
         },
       ]
@@ -843,7 +843,7 @@ describe("Movie Functions", () => {
       expect(result.actors[0].actor_name).toBe("Test Actor")
     })
 
-    it("parses popularity as float", async () => {
+    it("parses tmdb_popularity as float", async () => {
       const mockRows = [
         {
           total_count: "1",
@@ -852,7 +852,7 @@ describe("Movie Functions", () => {
           birthday: "1940-06-20",
           age: 84,
           profile_path: "/path.jpg",
-          popularity: "15.789",
+          tmdb_popularity: "15.789",
           total_movies: 10,
         },
       ]
@@ -860,11 +860,11 @@ describe("Movie Functions", () => {
 
       const result = await getDeathWatchActors()
 
-      expect(result.actors[0].popularity).toBe(15.789)
-      expect(typeof result.actors[0].popularity).toBe("number")
+      expect(result.actors[0].tmdb_popularity).toBe(15.789)
+      expect(typeof result.actors[0].tmdb_popularity).toBe("number")
     })
 
-    it("handles null popularity", async () => {
+    it("handles null tmdb_popularity", async () => {
       const mockRows = [
         {
           total_count: "1",
@@ -873,7 +873,7 @@ describe("Movie Functions", () => {
           birthday: "1940-06-20",
           age: 84,
           profile_path: "/path.jpg",
-          popularity: null,
+          tmdb_popularity: null,
           total_movies: 10,
         },
       ]
@@ -881,7 +881,7 @@ describe("Movie Functions", () => {
 
       const result = await getDeathWatchActors()
 
-      expect(result.actors[0].popularity).toBeNull()
+      expect(result.actors[0].tmdb_popularity).toBeNull()
     })
 
     it("combines minAge filter with obscure filter", async () => {
@@ -892,7 +892,7 @@ describe("Movie Functions", () => {
       const query = mockQuery.mock.calls[0][0] as string
       expect(query).toContain("age >= $1")
       expect(query).toContain("profile_path IS NOT NULL")
-      expect(query).toContain("popularity >= 5.0")
+      expect(query).toContain("tmdb_popularity >= 5.0")
       // Params: minAge, limit, offset
       expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [70, 50, 0])
     })
@@ -1452,7 +1452,7 @@ describe("getActorById", () => {
       expected_lifespan: 78.5,
       years_lost: 8.5,
       violent_death: false,
-      popularity: 15.5,
+      tmdb_popularity: 15.5,
       is_obscure: false,
       imdb_person_id: "nm0000001",
       created_at: new Date("2024-01-01"),
@@ -1837,7 +1837,7 @@ describe("getDeceasedActorsFromTopMovies", () => {
         deathday: "2020-05-15",
         cause_of_death: "Natural causes",
         cause_of_death_details: "Died peacefully",
-        popularity: 25.5,
+        tmdb_popularity: 25.5,
         circumstances: "Found at home",
         notable_factors: ["Oscar winner"],
         movie_title: "Top Movie",
@@ -1948,14 +1948,14 @@ describe("getDeceasedActorsFromTopMovies", () => {
     expect(query).toContain("array_length(c.notable_factors, 1) IS NULL")
   })
 
-  it("orders results by actor popularity descending", async () => {
+  it("orders results by actor dof_popularity descending", async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
     const { getDeceasedActorsFromTopMovies } = await import("./db.js")
     await getDeceasedActorsFromTopMovies({ year: 2020 })
 
     const query = mockQuery.mock.calls[0][0] as string
-    expect(query).toContain("ORDER BY popularity DESC NULLS LAST")
+    expect(query).toContain("ORDER BY dof_popularity DESC NULLS LAST")
   })
 
   it("handles null values in returned actors", async () => {
@@ -1968,7 +1968,7 @@ describe("getDeceasedActorsFromTopMovies", () => {
         deathday: "2020-05-15",
         cause_of_death: "Unknown",
         cause_of_death_details: null,
-        popularity: null,
+        tmdb_popularity: null,
         circumstances: null,
         notable_factors: null,
         movie_title: "Some Movie",
@@ -1982,6 +1982,6 @@ describe("getDeceasedActorsFromTopMovies", () => {
     expect(result).toHaveLength(1)
     expect(result[0].tmdb_id).toBeNull()
     expect(result[0].birthday).toBeNull()
-    expect(result[0].popularity).toBeNull()
+    expect(result[0].tmdb_popularity).toBeNull()
   })
 })

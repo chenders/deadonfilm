@@ -141,7 +141,7 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
     }
     // Insert new non-TMDB actor
     const result = await db.query<{ id: number }>(
-      `INSERT INTO actors (name, birthday, deathday, profile_path, popularity, tvmaze_person_id, thetvdb_person_id, imdb_person_id, updated_at)
+      `INSERT INTO actors (name, birthday, deathday, profile_path, tmdb_popularity, tvmaze_person_id, thetvdb_person_id, imdb_person_id, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
        RETURNING id`,
       [
@@ -149,7 +149,7 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
         actor.birthday ?? null,
         actor.deathday ?? null,
         actor.profile_path ?? null,
-        actor.popularity ?? null,
+        actor.tmdb_popularity ?? null,
         actor.tvmaze_person_id ?? null,
         actor.thetvdb_person_id ?? null,
         actor.imdb_person_id ?? null,
@@ -174,7 +174,7 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
        age_at_death,
        expected_lifespan,
        years_lost,
-       popularity,
+       tmdb_popularity,
        violent_death,
        deathday_confidence,
        deathday_verification_source,
@@ -199,7 +199,7 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
        age_at_death = COALESCE(actors.age_at_death, EXCLUDED.age_at_death),
        expected_lifespan = COALESCE(actors.expected_lifespan, EXCLUDED.expected_lifespan),
        years_lost = COALESCE(actors.years_lost, EXCLUDED.years_lost),
-       popularity = COALESCE(actors.popularity, EXCLUDED.popularity),
+       tmdb_popularity = COALESCE(actors.tmdb_popularity, EXCLUDED.tmdb_popularity),
        violent_death = COALESCE(actors.violent_death, EXCLUDED.violent_death),
        deathday_confidence = COALESCE(actors.deathday_confidence, EXCLUDED.deathday_confidence),
        deathday_verification_source = COALESCE(actors.deathday_verification_source, EXCLUDED.deathday_verification_source),
@@ -220,7 +220,7 @@ export async function upsertActor(actor: ActorInput): Promise<number> {
       actor.age_at_death ?? null,
       actor.expected_lifespan ?? null,
       actor.years_lost ?? null,
-      actor.popularity ?? null,
+      actor.tmdb_popularity ?? null,
       actor.violent_death ?? null,
       actor.deathday_confidence ?? null,
       actor.deathday_verification_source ?? null,
@@ -266,7 +266,7 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
            age_at_death,
            expected_lifespan,
            years_lost,
-           popularity,
+           tmdb_popularity,
            violent_death,
            deathday_confidence,
            deathday_verification_source,
@@ -291,7 +291,7 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
            age_at_death = COALESCE(actors.age_at_death, EXCLUDED.age_at_death),
            expected_lifespan = COALESCE(actors.expected_lifespan, EXCLUDED.expected_lifespan),
            years_lost = COALESCE(actors.years_lost, EXCLUDED.years_lost),
-           popularity = COALESCE(actors.popularity, EXCLUDED.popularity),
+           tmdb_popularity = COALESCE(actors.tmdb_popularity, EXCLUDED.tmdb_popularity),
            violent_death = COALESCE(actors.violent_death, EXCLUDED.violent_death),
            deathday_confidence = COALESCE(actors.deathday_confidence, EXCLUDED.deathday_confidence),
            deathday_verification_source = COALESCE(actors.deathday_verification_source, EXCLUDED.deathday_verification_source),
@@ -312,7 +312,7 @@ export async function batchUpsertActors(actors: ActorInput[]): Promise<Map<numbe
           actor.age_at_death ?? null,
           actor.expected_lifespan ?? null,
           actor.years_lost ?? null,
-          actor.popularity ?? null,
+          actor.tmdb_popularity ?? null,
           actor.violent_death ?? null,
           actor.deathday_confidence ?? null,
           actor.deathday_verification_source ?? null,
@@ -644,7 +644,7 @@ export interface ActorForEnrichmentQuery {
   deathday: Date | string
   cause_of_death: string | null
   cause_of_death_details: string | null
-  popularity: number | null
+  tmdb_popularity: number | null
   circumstances: string | null
   notable_factors: string[] | null
   /** Movie title (only populated when using top-billed-year query) */
@@ -670,16 +670,16 @@ export async function getDeceasedActorsFromTopMovies(options: {
   const db = getPool()
 
   // Use CTEs to:
-  // 1. Identify the top N movies by popularity for the year
+  // 1. Identify the top N movies by tmdb_popularity for the year
   // 2. Find deceased actors who were top-billed in those movies (deduplicated)
-  // 3. Order final results by actor popularity
+  // 3. Order final results by actor tmdb_popularity
   const result = await db.query<ActorForEnrichmentQuery>(
     `WITH top_movies AS (
-      SELECT tmdb_id, title, popularity AS movie_popularity
+      SELECT tmdb_id, title, tmdb_popularity AS movie_popularity
       FROM movies
       WHERE release_year = $1
         AND (original_language = 'en' OR 'US' = ANY(production_countries))
-      ORDER BY popularity DESC NULLS LAST
+      ORDER BY tmdb_popularity DESC NULLS LAST
       LIMIT $2
     ),
     unique_actors AS (
@@ -691,7 +691,7 @@ export async function getDeceasedActorsFromTopMovies(options: {
         a.deathday,
         a.cause_of_death,
         a.cause_of_death_details,
-        a.popularity,
+        a.dof_popularity,
         c.circumstances,
         c.notable_factors,
         tm.title AS movie_title
@@ -708,7 +708,7 @@ export async function getDeceasedActorsFromTopMovies(options: {
       ORDER BY a.id, tm.movie_popularity DESC, ama.billing_order ASC
     )
     SELECT * FROM unique_actors
-    ORDER BY popularity DESC NULLS LAST
+    ORDER BY dof_popularity DESC NULLS LAST
     LIMIT $4`,
     [year, topMoviesCount, maxBilling, limit]
   )

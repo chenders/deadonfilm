@@ -216,8 +216,8 @@ async function runSeeding({ startYear, endYear, moviesPerYear }: SeedOptions): P
             genres: details.genres?.map((g) => g.name) || [],
             original_language: movie.original_language || null,
             production_countries: details.production_countries?.map((c) => c.iso_3166_1) ?? null,
-            popularity: movie.popularity || null,
-            vote_average: null, // Not in TMDBMovie type
+            tmdb_popularity: movie.popularity || null,
+            tmdb_vote_average: null, // Not in TMDBMovie type
             cast_count: topCast.length,
             deceased_count: mortalityStats.actualDeaths,
             living_count: topCast.length - mortalityStats.actualDeaths,

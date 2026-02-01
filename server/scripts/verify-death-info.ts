@@ -238,12 +238,12 @@ async function runVerification(options: VerifyOptions): Promise<{
 
     if (popular || minPopularity > 0) {
       const threshold = popular ? 5 : minPopularity
-      query += ` AND COALESCE(popularity, 0) >= $${paramIndex}`
+      query += ` AND COALESCE(dof_popularity, tmdb_popularity, 0) >= $${paramIndex}`
       params.push(threshold)
       paramIndex++
     }
 
-    query += ` ORDER BY COALESCE(popularity, 0) DESC`
+    query += ` ORDER BY dof_popularity DESC NULLS LAST`
 
     if (limit) {
       query += ` LIMIT $${paramIndex}`

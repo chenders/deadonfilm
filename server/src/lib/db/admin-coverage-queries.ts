@@ -84,7 +84,7 @@ export async function getCoverageStats(pool: Pool): Promise<CoverageStats> {
     enrichment_stats AS (
       SELECT
         COUNT(*) as enrichment_candidates_count,
-        COUNT(*) FILTER (WHERE popularity >= 10) as high_priority_count
+        COUNT(*) FILTER (WHERE tmdb_popularity >= 10) as high_priority_count
       FROM actors
       WHERE deathday IS NOT NULL
         AND (has_detailed_death_info = false OR has_detailed_death_info IS NULL)
@@ -133,12 +133,12 @@ export async function getActorsForCoverage(
   }
 
   if (filters.minPopularity !== undefined) {
-    whereClauses.push(`popularity >= $${paramIndex++}`)
+    whereClauses.push(`tmdb_popularity >= $${paramIndex++}`)
     params.push(filters.minPopularity)
   }
 
   if (filters.maxPopularity !== undefined) {
-    whereClauses.push(`popularity <= $${paramIndex++}`)
+    whereClauses.push(`tmdb_popularity <= $${paramIndex++}`)
     params.push(filters.maxPopularity)
   }
 
@@ -186,7 +186,7 @@ export async function getActorsForCoverage(
       break
     case "popularity":
     default:
-      orderByClause = `CASE WHEN ${ascParam} = 1 THEN popularity END ASC, CASE WHEN ${descParam} = 1 THEN popularity END DESC`
+      orderByClause = `CASE WHEN ${ascParam} = 1 THEN tmdb_popularity END ASC, CASE WHEN ${descParam} = 1 THEN tmdb_popularity END DESC`
       break
   }
 
@@ -199,7 +199,7 @@ export async function getActorsForCoverage(
        name,
        tmdb_id,
        deathday,
-       popularity::float,
+       tmdb_popularity::float as popularity,
        has_detailed_death_info,
        enriched_at,
        age_at_death,
@@ -291,7 +291,7 @@ export async function getEnrichmentCandidates(
        name,
        tmdb_id,
        deathday,
-       popularity::float,
+       tmdb_popularity::float as popularity,
        has_detailed_death_info,
        enriched_at,
        age_at_death,
@@ -300,8 +300,8 @@ export async function getEnrichmentCandidates(
      WHERE deathday IS NOT NULL
        AND (has_detailed_death_info = false OR has_detailed_death_info IS NULL)
        AND (enriched_at IS NULL OR enriched_at < NOW() - INTERVAL '30 days')
-       AND popularity >= $1
-     ORDER BY popularity DESC, deathday DESC
+       AND dof_popularity >= $1
+     ORDER BY dof_popularity DESC, deathday DESC
      LIMIT $2`,
     [minPopularity, limit]
   )

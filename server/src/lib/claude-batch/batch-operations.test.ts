@@ -15,7 +15,7 @@ describe("buildActorQuery", () => {
       expect(query).toContain("FROM actors")
       expect(query).toContain("WHERE deathday IS NOT NULL")
       expect(query).toContain("cause_of_death IS NULL OR cause_of_death_details IS NULL")
-      expect(query).toContain("ORDER BY popularity DESC NULLS LAST")
+      expect(query).toContain("ORDER BY dof_popularity DESC NULLS LAST")
       expect(params).toEqual([])
     })
 
@@ -79,7 +79,7 @@ describe("buildActorQuery", () => {
       expect(query).toContain("AND cause_of_death IS NOT NULL")
       expect(query).toContain("AND cause_of_death_details IS NOT NULL")
       expect(query).toContain("AND has_detailed_death_info IS NULL")
-      expect(query).toContain("ORDER BY popularity DESC NULLS LAST")
+      expect(query).toContain("ORDER BY dof_popularity DESC NULLS LAST")
       expect(params).toEqual([])
     })
 

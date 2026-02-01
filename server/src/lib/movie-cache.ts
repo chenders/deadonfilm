@@ -45,8 +45,8 @@ export function buildMovieRecord(input: MovieCacheInput): MovieRecord {
     genres: movie.genres?.map((g) => g.name) || [],
     original_language: null, // Not available from movie details endpoint
     production_countries: movie.production_countries?.map((c) => c.iso_3166_1) ?? null,
-    popularity: null,
-    vote_average: null,
+    tmdb_popularity: null,
+    tmdb_vote_average: null,
     cast_count: deceasedCount + livingCount,
     deceased_count: deceasedCount,
     living_count: livingCount,

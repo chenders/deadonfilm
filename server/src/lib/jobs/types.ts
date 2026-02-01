@@ -55,6 +55,10 @@ export enum JobType {
   // Actor obscurity calculation
   CALCULATE_ACTOR_OBSCURITY = "calculate-actor-obscurity",
 
+  // Popularity scoring
+  CALCULATE_CONTENT_POPULARITY = "calculate-content-popularity",
+  CALCULATE_ACTOR_POPULARITY = "calculate-actor-popularity",
+
   // Cache operations
   REBUILD_DEATH_CACHES = "rebuild-death-caches",
 }
@@ -264,6 +268,21 @@ export const rebuildDeathCachesPayloadSchema = z.object({
   // No parameters needed - rebuilds all death-related caches
 })
 
+// Content popularity calculation payload
+export const calculateContentPopularityPayloadSchema = z.object({
+  entityType: z.enum(["movie", "show"]),
+  entityIds: z.array(z.number().int().positive()).min(1).optional(), // Specific IDs to process
+  batchSize: z.number().int().positive().default(100),
+  recalculateAll: z.boolean().default(false), // If true, recalculate even if already set
+})
+
+// Actor popularity calculation payload
+export const calculateActorPopularityPayloadSchema = z.object({
+  actorIds: z.array(z.number().int().positive()).min(1).optional(), // Specific IDs to process
+  batchSize: z.number().int().positive().default(100),
+  recalculateAll: z.boolean().default(false), // If true, recalculate even if already set
+})
+
 /**
  * Map of job types to their payload schemas
  */
@@ -285,6 +304,8 @@ export const jobPayloadSchemas = {
   [JobType.SYNC_TMDB_MOVIES]: syncTMDBMoviesPayloadSchema,
   [JobType.SYNC_TMDB_SHOWS]: syncTMDBShowsPayloadSchema,
   [JobType.CALCULATE_ACTOR_OBSCURITY]: calculateActorObscurityPayloadSchema,
+  [JobType.CALCULATE_CONTENT_POPULARITY]: calculateContentPopularityPayloadSchema,
+  [JobType.CALCULATE_ACTOR_POPULARITY]: calculateActorPopularityPayloadSchema,
   [JobType.REBUILD_DEATH_CACHES]: rebuildDeathCachesPayloadSchema,
 } as const
 
@@ -313,6 +334,10 @@ export type SyncTMDBPeoplePayload = z.infer<typeof syncTMDBPeoplePayloadSchema>
 export type SyncTMDBMoviesPayload = z.infer<typeof syncTMDBMoviesPayloadSchema>
 export type SyncTMDBShowsPayload = z.infer<typeof syncTMDBShowsPayloadSchema>
 export type CalculateActorObscurityPayload = z.infer<typeof calculateActorObscurityPayloadSchema>
+export type CalculateContentPopularityPayload = z.infer<
+  typeof calculateContentPopularityPayloadSchema
+>
+export type CalculateActorPopularityPayload = z.infer<typeof calculateActorPopularityPayloadSchema>
 export type RebuildDeathCachesPayload = z.infer<typeof rebuildDeathCachesPayloadSchema>
 
 /**
@@ -342,6 +367,8 @@ export type JobPayloadMap = {
   [JobType.SYNC_TMDB_MOVIES]: SyncTMDBMoviesPayload
   [JobType.SYNC_TMDB_SHOWS]: SyncTMDBShowsPayload
   [JobType.CALCULATE_ACTOR_OBSCURITY]: CalculateActorObscurityPayload
+  [JobType.CALCULATE_CONTENT_POPULARITY]: CalculateContentPopularityPayload
+  [JobType.CALCULATE_ACTOR_POPULARITY]: CalculateActorPopularityPayload
   [JobType.REBUILD_DEATH_CACHES]: RebuildDeathCachesPayload
 }
 
@@ -473,5 +500,7 @@ export const jobTypeToQueue: Record<JobType, QueueName> = {
   [JobType.SYNC_TMDB_MOVIES]: QueueName.MAINTENANCE,
   [JobType.SYNC_TMDB_SHOWS]: QueueName.MAINTENANCE,
   [JobType.CALCULATE_ACTOR_OBSCURITY]: QueueName.MAINTENANCE,
+  [JobType.CALCULATE_CONTENT_POPULARITY]: QueueName.MAINTENANCE,
+  [JobType.CALCULATE_ACTOR_POPULARITY]: QueueName.MAINTENANCE,
   [JobType.REBUILD_DEATH_CACHES]: QueueName.CACHE,
 }

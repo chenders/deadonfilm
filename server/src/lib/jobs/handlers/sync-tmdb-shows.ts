@@ -75,7 +75,7 @@ export class SyncTMDBShowsHandler extends BaseJobHandler<
       `SELECT tmdb_id, name, number_of_seasons
        FROM shows
        WHERE status = 'Returning Series'
-       ORDER BY popularity DESC NULLS LAST`
+       ORDER BY tmdb_popularity DESC NULLS LAST`
     )
     log.info({ showCount: activeShows.length }, "Found active shows")
 

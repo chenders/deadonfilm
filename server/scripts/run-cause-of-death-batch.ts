@@ -210,14 +210,14 @@ async function run(options: {
            FROM actors
            WHERE deathday IS NOT NULL
              AND cause_of_death_checked_at IS NULL
-           ORDER BY popularity DESC NULLS LAST
+           ORDER BY dof_popularity DESC NULLS LAST
            LIMIT $1`
         : `SELECT id, tmdb_id, name, birthday, deathday
            FROM actors
            WHERE deathday IS NOT NULL
              AND cause_of_death IS NULL
              AND cause_of_death_checked_at IS NULL
-           ORDER BY popularity DESC NULLS LAST
+           ORDER BY dof_popularity DESC NULLS LAST
            LIMIT $1`
       const result = await db.query<ActorToProcess>(selectQuery, [limit])
 

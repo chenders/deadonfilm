@@ -28,6 +28,18 @@ import {
   calculateAggregateScore,
 } from "../src/lib/aggregate-score.js"
 
+// Non-English language penalty multiplier for aggregate scores
+// Non-English content gets a significant penalty since our primary audience is English-speaking
+const NON_ENGLISH_PENALTY_MULTIPLIER = 0.4
+
+/**
+ * Check if content is English language
+ */
+function isEnglishLanguage(originalLanguage: string | null): boolean {
+  if (!originalLanguage) return false
+  return originalLanguage.toLowerCase() === "en"
+}
+
 interface Options {
   dryRun: boolean
   moviesOnly: boolean
@@ -89,6 +101,7 @@ async function run(options: Options): Promise<void> {
       const moviesResult = await db.query<{
         tmdb_id: number
         title: string
+        original_language: string | null
         vote_average: number | null
         omdb_imdb_rating: number | null
         omdb_imdb_votes: number | null
@@ -99,7 +112,7 @@ async function run(options: Options): Promise<void> {
       }>(
         `
         SELECT
-          tmdb_id, title, vote_average,
+          tmdb_id, title, original_language, vote_average,
           omdb_imdb_rating, omdb_imdb_votes,
           omdb_rotten_tomatoes_score, omdb_metacritic_score,
           trakt_rating, trakt_votes
@@ -109,7 +122,7 @@ async function run(options: Options): Promise<void> {
            OR omdb_rotten_tomatoes_score IS NOT NULL
            OR omdb_metacritic_score IS NOT NULL
            OR trakt_rating IS NOT NULL
-        ORDER BY popularity DESC NULLS LAST
+        ORDER BY tmdb_popularity DESC NULLS LAST
         LIMIT COALESCE($1, 2147483647)
         `,
         [options.limit]
@@ -124,6 +137,13 @@ async function run(options: Options): Promise<void> {
         const result = calculateAggregateScore(inputs)
 
         if (result.score !== null) {
+          // Apply severe penalty for non-English content
+          let finalScore = result.score
+          const isNonEnglish = !isEnglishLanguage(movie.original_language)
+          if (isNonEnglish) {
+            finalScore = result.score * NON_ENGLISH_PENALTY_MULTIPLIER
+          }
+
           if (!options.dryRun) {
             await db.query(
               `UPDATE movies
@@ -131,7 +151,7 @@ async function run(options: Options): Promise<void> {
                    aggregate_confidence = $2,
                    aggregate_updated_at = CURRENT_TIMESTAMP
                WHERE tmdb_id = $3`,
-              [result.score, result.confidence, movie.tmdb_id]
+              [finalScore, result.confidence, movie.tmdb_id]
             )
           }
           updatedMovies++
@@ -140,8 +160,9 @@ async function run(options: Options): Promise<void> {
           if ((i + 1) % 100 === 0 || result.sourcesUsed >= 4) {
             const controversyNote =
               result.controversy !== null && result.controversy >= 1.5 ? " (controversial)" : ""
+            const languageNote = isNonEnglish ? ` (non-English: ${movie.original_language})` : ""
             console.log(
-              `  [${i + 1}/${totalMovies}] "${movie.title}" -> ${result.score.toFixed(2)} (${result.sourcesUsed} sources, ${(result.confidence * 100).toFixed(0)}% confidence)${controversyNote}`
+              `  [${i + 1}/${totalMovies}] "${movie.title}" -> ${finalScore.toFixed(2)} (${result.sourcesUsed} sources, ${(result.confidence * 100).toFixed(0)}% confidence)${controversyNote}${languageNote}`
             )
           }
         } else {
@@ -159,6 +180,7 @@ async function run(options: Options): Promise<void> {
       const showsResult = await db.query<{
         tmdb_id: number
         name: string
+        original_language: string | null
         vote_average: number | null
         omdb_imdb_rating: number | null
         omdb_imdb_votes: number | null
@@ -170,7 +192,7 @@ async function run(options: Options): Promise<void> {
       }>(
         `
         SELECT
-          tmdb_id, name, vote_average,
+          tmdb_id, name, original_language, vote_average,
           omdb_imdb_rating, omdb_imdb_votes,
           omdb_rotten_tomatoes_score, omdb_metacritic_score,
           trakt_rating, trakt_votes,
@@ -182,7 +204,7 @@ async function run(options: Options): Promise<void> {
            OR omdb_metacritic_score IS NOT NULL
            OR trakt_rating IS NOT NULL
            OR thetvdb_score IS NOT NULL
-        ORDER BY popularity DESC NULLS LAST
+        ORDER BY tmdb_popularity DESC NULLS LAST
         LIMIT COALESCE($1, 2147483647)
         `,
         [options.limit]
@@ -197,6 +219,13 @@ async function run(options: Options): Promise<void> {
         const result = calculateAggregateScore(inputs)
 
         if (result.score !== null) {
+          // Apply severe penalty for non-English content
+          let finalScore = result.score
+          const isNonEnglish = !isEnglishLanguage(show.original_language)
+          if (isNonEnglish) {
+            finalScore = result.score * NON_ENGLISH_PENALTY_MULTIPLIER
+          }
+
           if (!options.dryRun) {
             await db.query(
               `UPDATE shows
@@ -204,7 +233,7 @@ async function run(options: Options): Promise<void> {
                    aggregate_confidence = $2,
                    aggregate_updated_at = CURRENT_TIMESTAMP
                WHERE tmdb_id = $3`,
-              [result.score, result.confidence, show.tmdb_id]
+              [finalScore, result.confidence, show.tmdb_id]
             )
           }
           updatedShows++
@@ -213,8 +242,9 @@ async function run(options: Options): Promise<void> {
           if ((i + 1) % 100 === 0 || result.sourcesUsed >= 5) {
             const controversyNote =
               result.controversy !== null && result.controversy >= 1.5 ? " (controversial)" : ""
+            const languageNote = isNonEnglish ? ` (non-English: ${show.original_language})` : ""
             console.log(
-              `  [${i + 1}/${totalShows}] "${show.name}" -> ${result.score.toFixed(2)} (${result.sourcesUsed} sources, ${(result.confidence * 100).toFixed(0)}% confidence)${controversyNote}`
+              `  [${i + 1}/${totalShows}] "${show.name}" -> ${finalScore.toFixed(2)} (${result.sourcesUsed} sources, ${(result.confidence * 100).toFixed(0)}% confidence)${controversyNote}${languageNote}`
             )
           }
         } else {

@@ -202,7 +202,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
         cause_of_death,
         ROW_NUMBER() OVER (
           PARTITION BY (EXTRACT(YEAR FROM deathday)::int / 10 * 10)
-          ORDER BY popularity DESC NULLS LAST
+          ORDER BY dof_popularity DESC NULLS LAST
         ) as rn
       FROM actors
       WHERE deathday IS NOT NULL
@@ -259,7 +259,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
         COALESCE(m.backdrop_path, m.poster_path) as backdrop_path,
         ROW_NUMBER() OVER (
           PARTITION BY (m.release_year / 10 * 10)
-          ORDER BY m.popularity DESC NULLS LAST
+          ORDER BY m.dof_popularity DESC NULLS LAST
         ) as rn
       FROM movies m
       WHERE m.release_year IS NOT NULL
@@ -499,7 +499,7 @@ export async function getCauseCategory(
        AND cause_of_death IS NOT NULL
        AND (${categoryCondition})
        ${obscureFilter}
-     ORDER BY popularity DESC NULLS LAST
+     ORDER BY dof_popularity DESC NULLS LAST
      LIMIT 5`
   )
 
@@ -550,7 +550,7 @@ export async function getCauseCategory(
        AND (${categoryCondition})
        ${obscureFilter}
        ${causeFilter}
-     ORDER BY popularity DESC NULLS LAST, name
+     ORDER BY dof_popularity DESC NULLS LAST, name
      LIMIT $1 OFFSET $2`,
     actorsParams
   )
@@ -700,7 +700,7 @@ export async function getSpecificCause(
      WHERE a.deathday IS NOT NULL
        AND LOWER(COALESCE(n.normalized_cause, a.cause_of_death)) = LOWER($1)
        ${obscureFilter}
-     ORDER BY a.popularity DESC NULLS LAST
+     ORDER BY a.dof_popularity DESC NULLS LAST
      LIMIT 3`,
     [actualCause]
   )
@@ -732,7 +732,7 @@ export async function getSpecificCause(
      WHERE a.deathday IS NOT NULL
        AND LOWER(COALESCE(n.normalized_cause, a.cause_of_death)) = LOWER($1)
        ${obscureFilter}
-     ORDER BY a.popularity DESC NULLS LAST, a.name
+     ORDER BY a.dof_popularity DESC NULLS LAST, a.name
      LIMIT $2 OFFSET $3`,
     [actualCause, pageSize, offset]
   )

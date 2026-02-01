@@ -332,7 +332,7 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
         posterPath: m.poster_path,
         deceasedCount: m.deceased_count,
         castCount: m.cast_count,
-        popularity: m.popularity,
+        popularity: m.tmdb_popularity,
       })),
     }
     await setCached(cacheKey, response, CACHE_TTL.WEEK)

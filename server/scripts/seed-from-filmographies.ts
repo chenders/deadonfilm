@@ -165,8 +165,8 @@ async function processMovie(
     genres: details.genres?.map((g) => g.name) || [],
     original_language: null, // Will be fetched by backfill:languages if needed
     production_countries: details.production_countries?.map((c) => c.iso_3166_1) ?? null,
-    popularity: null,
-    vote_average: null,
+    tmdb_popularity: null,
+    tmdb_vote_average: null,
     cast_count: topCast.length,
     deceased_count: mortalityStats.actualDeaths,
     living_count: topCast.length - mortalityStats.actualDeaths,

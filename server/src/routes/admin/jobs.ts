@@ -619,7 +619,7 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
       let paramIndex = 1
 
       if (minPopularity !== undefined && minPopularity > 0) {
-        conditions.push(`popularity >= $${paramIndex}`)
+        conditions.push(`dof_popularity >= $${paramIndex}`)
         params.push(minPopularity)
         paramIndex++
       }
@@ -634,7 +634,7 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
         SELECT tmdb_id, imdb_id
         FROM movies
         WHERE ${conditions.join(" AND ")}
-        ORDER BY popularity DESC NULLS LAST
+        ORDER BY dof_popularity DESC NULLS LAST
         ${limitClause}
       `
 
@@ -670,7 +670,7 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
       let paramIndex = 1
 
       if (minPopularity !== undefined && minPopularity > 0) {
-        conditions.push(`popularity >= $${paramIndex}`)
+        conditions.push(`dof_popularity >= $${paramIndex}`)
         params.push(minPopularity)
         paramIndex++
       }
@@ -685,7 +685,7 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
         SELECT tmdb_id, imdb_id
         FROM shows
         WHERE ${conditions.join(" AND ")}
-        ORDER BY popularity DESC NULLS LAST
+        ORDER BY dof_popularity DESC NULLS LAST
         ${limitClause}
       `
 
