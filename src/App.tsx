@@ -46,6 +46,7 @@ const AdminCoverageDashboardPage = lazyWithRetry(
   () => import("./pages/admin/CoverageDashboardPage")
 )
 const AdminActorManagementPage = lazyWithRetry(() => import("./pages/admin/ActorManagementPage"))
+const AdminActorEditorPage = lazyWithRetry(() => import("./pages/admin/ActorEditorPage"))
 const AdminPageViewsPage = lazyWithRetry(() => import("./pages/admin/PageViewsPage"))
 const AdminExternalToolsPage = lazyWithRetry(() => import("./pages/admin/ExternalToolsPage"))
 const AdminEnrichmentRunsPage = lazyWithRetry(() => import("./pages/admin/EnrichmentRunsPage"))
@@ -191,6 +192,16 @@ function App() {
               <AdminThemeProvider>
                 <Suspense fallback={<LoadingSpinner />}>
                   <AdminActorManagementPage />
+                </Suspense>
+              </AdminThemeProvider>
+            }
+          />
+          <Route
+            path="/admin/actors/:id"
+            element={
+              <AdminThemeProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <AdminActorEditorPage />
                 </Suspense>
               </AdminThemeProvider>
             }
