@@ -128,8 +128,13 @@ export async function getActorsForCoverage(
   let paramIndex = 1
 
   if (filters.hasDeathPage !== undefined) {
-    whereClauses.push(`has_detailed_death_info = $${paramIndex++}`)
-    params.push(filters.hasDeathPage)
+    if (filters.hasDeathPage) {
+      // Has death page: look for explicit true
+      whereClauses.push(`has_detailed_death_info = true`)
+    } else {
+      // Without death page: NULL or false (most are NULL)
+      whereClauses.push(`(has_detailed_death_info IS NULL OR has_detailed_death_info = false)`)
+    }
   }
 
   if (filters.minPopularity !== undefined) {
