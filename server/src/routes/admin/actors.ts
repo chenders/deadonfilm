@@ -285,12 +285,7 @@ function detectDataQualityIssues(
 // Get full actor data for editing
 // ============================================================================
 
-router.get("/:id", async (req: Request, res: Response): Promise<void> => {
-  // Skip if this is the diagnostic endpoint
-  if (req.params.id === "diagnostic") {
-    return
-  }
-
+router.get("/:id(\\d+)", async (req: Request, res: Response): Promise<void> => {
   try {
     const pool = getPool()
     const actorId = parseInt(req.params.id, 10)
@@ -363,65 +358,6 @@ interface UpdateActorBody {
   circumstances?: Record<string, unknown>
 }
 
-/**
- * Create a snapshot of the current actor state before making changes
- */
-async function createSnapshot(
-  pool: ReturnType<typeof getPool>,
-  actorId: number,
-  triggerSource: string,
-  triggerDetails?: Record<string, unknown>
-): Promise<number> {
-  // Get current actor data
-  const actorResult = await pool.query(`SELECT * FROM actors WHERE id = $1`, [actorId])
-  if (actorResult.rows.length === 0) {
-    throw new Error("Actor not found")
-  }
-
-  // Get current circumstances data
-  const circumstancesResult = await pool.query(
-    `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
-    [actorId]
-  )
-
-  const snapshotResult = await pool.query<{ id: number }>(
-    `INSERT INTO actor_snapshots (actor_id, snapshot_data, circumstances_data, trigger_source, trigger_details)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id`,
-    [
-      actorId,
-      JSON.stringify(actorResult.rows[0]),
-      circumstancesResult.rows[0] ? JSON.stringify(circumstancesResult.rows[0]) : null,
-      triggerSource,
-      triggerDetails ? JSON.stringify(triggerDetails) : null,
-    ]
-  )
-
-  return snapshotResult.rows[0].id
-}
-
-/**
- * Record a field change in history
- */
-async function recordFieldChange(
-  pool: ReturnType<typeof getPool>,
-  actorId: number,
-  fieldName: string,
-  oldValue: unknown,
-  newValue: unknown,
-  source: string,
-  batchId?: string
-): Promise<void> {
-  const oldStr = oldValue === null || oldValue === undefined ? null : String(oldValue)
-  const newStr = newValue === null || newValue === undefined ? null : String(newValue)
-
-  await pool.query(
-    `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [actorId, fieldName, oldStr, newStr, source, batchId]
-  )
-}
-
 router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
   const pool = getPool()
   const actorId = parseInt(req.params.id, 10)
@@ -492,64 +428,122 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    // Create snapshot before making changes
-    const batchId = `admin-edit-${Date.now()}`
-    const snapshotId = await createSnapshot(pool, actorId, "admin-manual-edit", {
-      batchId,
-      updatedFields: {
-        actor: actorUpdates ? Object.keys(actorUpdates) : [],
-        circumstances: circumstancesUpdates ? Object.keys(circumstancesUpdates) : [],
-      },
-    })
+    // Validate date fields
+    const dateFields = ["birthday", "deathday"]
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+    const invalidDates: { field: string; value: unknown; reason: string }[] = []
 
-    const changes: { table: string; field: string; oldValue: unknown; newValue: unknown }[] = []
-
-    // Update actor fields
-    if (actorUpdates && Object.keys(actorUpdates).length > 0) {
-      const setClauses: string[] = []
-      const values: unknown[] = []
-      let paramIndex = 1
-
-      for (const [field, value] of Object.entries(actorUpdates)) {
-        const oldValue = existingActor[field as keyof ActorRow]
-
-        // Skip if value hasn't changed
-        if (JSON.stringify(oldValue) === JSON.stringify(value)) {
-          continue
+    if (actorUpdates) {
+      for (const field of dateFields) {
+        const value = actorUpdates[field]
+        if (value !== undefined && value !== null) {
+          if (typeof value !== "string" || !dateRegex.test(value)) {
+            invalidDates.push({ field, value, reason: "Invalid format. Expected YYYY-MM-DD" })
+          } else {
+            const parsed = new Date(value)
+            if (isNaN(parsed.getTime())) {
+              invalidDates.push({ field, value, reason: "Invalid date" })
+            } else if (field === "deathday" && parsed > new Date()) {
+              invalidDates.push({ field, value, reason: "Death date cannot be in the future" })
+            }
+          }
         }
-
-        setClauses.push(`${field} = $${paramIndex}`)
-        values.push(value)
-        paramIndex++
-
-        changes.push({ table: "actors", field, oldValue, newValue: value })
-
-        // Record in history
-        await recordFieldChange(pool, actorId, field, oldValue, value, "admin-manual-edit", batchId)
-      }
-
-      if (setClauses.length > 0) {
-        // Add updated_at
-        setClauses.push(`updated_at = NOW()`)
-
-        values.push(actorId)
-        await pool.query(
-          `UPDATE actors SET ${setClauses.join(", ")} WHERE id = $${paramIndex}`,
-          values
-        )
       }
     }
 
-    // Update circumstances fields
+    if (invalidDates.length > 0) {
+      res.status(400).json({
+        error: {
+          message: "Invalid date format",
+          invalidDates,
+        },
+      })
+      return
+    }
+
+    // Calculate changes before creating snapshot (to avoid unnecessary snapshots)
+    const changes: { table: string; field: string; oldValue: unknown; newValue: unknown }[] = []
+
+    // Check actor field changes
+    if (actorUpdates && Object.keys(actorUpdates).length > 0) {
+      for (const [field, value] of Object.entries(actorUpdates)) {
+        const oldValue = existingActor[field as keyof ActorRow]
+        if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
+          changes.push({ table: "actors", field, oldValue, newValue: value })
+        }
+      }
+    }
+
+    // Check circumstances field changes
     if (circumstancesUpdates && Object.keys(circumstancesUpdates).length > 0) {
-      if (existingCircumstances) {
-        // Update existing circumstances
+      for (const [field, value] of Object.entries(circumstancesUpdates)) {
+        const oldValue = existingCircumstances
+          ? existingCircumstances[field as keyof CircumstancesRow]
+          : null
+        if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
+          changes.push({ table: "actor_death_circumstances", field, oldValue, newValue: value })
+        }
+      }
+    }
+
+    // If no actual changes, return early without creating snapshot
+    if (changes.length === 0) {
+      res.json({
+        success: true,
+        snapshotId: null,
+        batchId: null,
+        changes: [],
+        actor: existingActor,
+        circumstances: existingCircumstances,
+      })
+      return
+    }
+
+    // Wrap all database operations in a transaction for atomicity
+    const client = await pool.connect()
+    let snapshotId: number
+
+    try {
+      await client.query("BEGIN")
+
+      // Create snapshot before making changes (only if there are actual changes)
+      const batchId = `admin-edit-${Date.now()}`
+
+      // Create snapshot using the transaction client
+      const actorDataResult = await client.query(`SELECT * FROM actors WHERE id = $1`, [actorId])
+      const circumstancesDataResult = await client.query(
+        `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
+        [actorId]
+      )
+
+      const snapshotResult = await client.query<{ id: number }>(
+        `INSERT INTO actor_snapshots (actor_id, actor_data, circumstances_data, trigger_source, trigger_details)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [
+          actorId,
+          actorDataResult.rows[0],
+          circumstancesDataResult.rows[0] || null,
+          "admin-manual-edit",
+          {
+            batchId,
+            updatedFields: {
+              actor: actorUpdates ? Object.keys(actorUpdates) : [],
+              circumstances: circumstancesUpdates ? Object.keys(circumstancesUpdates) : [],
+            },
+          },
+        ]
+      )
+      snapshotId = snapshotResult.rows[0].id
+
+      // Update actor fields
+      if (actorUpdates && Object.keys(actorUpdates).length > 0) {
         const setClauses: string[] = []
         const values: unknown[] = []
         let paramIndex = 1
 
-        for (const [field, value] of Object.entries(circumstancesUpdates)) {
-          const oldValue = existingCircumstances[field as keyof CircumstancesRow]
+        for (const [field, value] of Object.entries(actorUpdates)) {
+          const oldValue = existingActor[field as keyof ActorRow]
 
           // Skip if value hasn't changed
           if (JSON.stringify(oldValue) === JSON.stringify(value)) {
@@ -560,98 +554,159 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
           values.push(value)
           paramIndex++
 
-          changes.push({ table: "actor_death_circumstances", field, oldValue, newValue: value })
+          // Record in history
+          const oldStr =
+            oldValue === null || oldValue === undefined
+              ? null
+              : typeof oldValue === "object"
+                ? JSON.stringify(oldValue)
+                : String(oldValue)
+          const newStr =
+            value === null || value === undefined
+              ? null
+              : typeof value === "object"
+                ? JSON.stringify(value)
+                : String(value)
 
-          // Record in history (prefix with "circumstances." for clarity)
-          await recordFieldChange(
-            pool,
-            actorId,
-            `circumstances.${field}`,
-            oldValue,
-            value,
-            "admin-manual-edit",
-            batchId
+          await client.query(
+            `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [actorId, field, oldStr, newStr, "admin-manual-edit", batchId]
           )
         }
 
         if (setClauses.length > 0) {
-          // Add updated_at
           setClauses.push(`updated_at = NOW()`)
-
           values.push(actorId)
-          await pool.query(
-            `UPDATE actor_death_circumstances SET ${setClauses.join(", ")} WHERE actor_id = $${paramIndex}`,
+          await client.query(
+            `UPDATE actors SET ${setClauses.join(", ")} WHERE id = $${paramIndex}`,
             values
           )
         }
-      } else {
-        // Create new circumstances record
-        const fields = ["actor_id", ...Object.keys(circumstancesUpdates)]
-        const values = [actorId, ...Object.values(circumstancesUpdates)]
-        const placeholders = values.map((_, i) => `$${i + 1}`).join(", ")
+      }
 
-        await pool.query(
-          `INSERT INTO actor_death_circumstances (${fields.join(", ")}) VALUES (${placeholders})`,
-          values
-        )
+      // Update circumstances fields
+      if (circumstancesUpdates && Object.keys(circumstancesUpdates).length > 0) {
+        if (existingCircumstances) {
+          // Update existing circumstances
+          const setClauses: string[] = []
+          const values: unknown[] = []
+          let paramIndex = 1
 
-        for (const [field, value] of Object.entries(circumstancesUpdates)) {
-          changes.push({
-            table: "actor_death_circumstances",
-            field,
-            oldValue: null,
-            newValue: value,
-          })
+          for (const [field, value] of Object.entries(circumstancesUpdates)) {
+            const oldValue = existingCircumstances[field as keyof CircumstancesRow]
 
-          await recordFieldChange(
-            pool,
-            actorId,
-            `circumstances.${field}`,
-            null,
-            value,
-            "admin-manual-edit",
-            batchId
+            // Skip if value hasn't changed
+            if (JSON.stringify(oldValue) === JSON.stringify(value)) {
+              continue
+            }
+
+            setClauses.push(`${field} = $${paramIndex}`)
+            values.push(value)
+            paramIndex++
+
+            // Record in history
+            const oldStr =
+              oldValue === null || oldValue === undefined
+                ? null
+                : typeof oldValue === "object"
+                  ? JSON.stringify(oldValue)
+                  : String(oldValue)
+            const newStr =
+              value === null || value === undefined
+                ? null
+                : typeof value === "object"
+                  ? JSON.stringify(value)
+                  : String(value)
+
+            await client.query(
+              `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [actorId, `circumstances.${field}`, oldStr, newStr, "admin-manual-edit", batchId]
+            )
+          }
+
+          if (setClauses.length > 0) {
+            setClauses.push(`updated_at = NOW()`)
+            values.push(actorId)
+            await client.query(
+              `UPDATE actor_death_circumstances SET ${setClauses.join(", ")} WHERE actor_id = $${paramIndex}`,
+              values
+            )
+          }
+        } else {
+          // Create new circumstances record
+          const fields = ["actor_id", ...Object.keys(circumstancesUpdates)]
+          const values = [actorId, ...Object.values(circumstancesUpdates)]
+          const placeholders = values.map((_, i) => `$${i + 1}`).join(", ")
+
+          await client.query(
+            `INSERT INTO actor_death_circumstances (${fields.join(", ")}) VALUES (${placeholders})`,
+            values
           )
+
+          // Record history for new circumstances
+          for (const [field, value] of Object.entries(circumstancesUpdates)) {
+            const newStr =
+              value === null || value === undefined
+                ? null
+                : typeof value === "object"
+                  ? JSON.stringify(value)
+                  : String(value)
+
+            await client.query(
+              `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [actorId, `circumstances.${field}`, null, newStr, "admin-manual-edit", batchId]
+            )
+          }
         }
       }
-    }
 
-    // Log to audit trail
-    await logAdminAction({
-      action: "actor-edit",
-      resourceType: "actor",
-      resourceId: actorId,
-      details: {
+      // Log to audit trail (inside transaction)
+      await logAdminAction({
+        action: "actor-edit",
+        resourceType: "actor",
+        resourceId: actorId,
+        details: {
+          snapshotId,
+          batchId,
+          changes,
+        },
+        ipAddress: req.ip || undefined,
+        userAgent: req.get("user-agent") || undefined,
+      })
+
+      await client.query("COMMIT")
+
+      logger.info(
+        { actorId, snapshotId, changeCount: changes.length },
+        "Actor updated via admin editor"
+      )
+
+      // Fetch updated data to return (outside transaction)
+      const updatedActorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [
+        actorId,
+      ])
+      const updatedCircumstancesResult = await pool.query<CircumstancesRow>(
+        `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
+        [actorId]
+      )
+
+      res.json({
+        success: true,
         snapshotId,
         batchId,
         changes,
-      },
-      ipAddress: req.ip || undefined,
-      userAgent: req.get("user-agent") || undefined,
-    })
-
-    logger.info(
-      { actorId, snapshotId, changeCount: changes.length },
-      "Actor updated via admin editor"
-    )
-
-    // Fetch updated data to return
-    const updatedActorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [
-      actorId,
-    ])
-    const updatedCircumstancesResult = await pool.query<CircumstancesRow>(
-      `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
-      [actorId]
-    )
-
-    res.json({
-      success: true,
-      snapshotId,
-      batchId,
-      changes,
-      actor: updatedActorResult.rows[0],
-      circumstances: updatedCircumstancesResult.rows[0] || null,
-    })
+        actor: updatedActorResult.rows[0],
+        circumstances: updatedCircumstancesResult.rows[0] || null,
+      })
+    } catch (txError) {
+      await client.query("ROLLBACK")
+      throw txError
+    } finally {
+      client.release()
+    }
   } catch (error) {
     logger.error({ error, actorId }, "Failed to update actor")
     res.status(500).json({ error: { message: "Failed to update actor" } })

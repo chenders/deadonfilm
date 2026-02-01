@@ -37,6 +37,11 @@ describe("admin actors routes", () => {
   let app: Express
   let mockPool: {
     query: ReturnType<typeof vi.fn>
+    connect: ReturnType<typeof vi.fn>
+  }
+  let mockClient: {
+    query: ReturnType<typeof vi.fn>
+    release: ReturnType<typeof vi.fn>
   }
 
   beforeEach(() => {
@@ -44,8 +49,14 @@ describe("admin actors routes", () => {
     app.use(express.json())
     app.use("/admin/api/actors", router)
 
+    mockClient = {
+      query: vi.fn(),
+      release: vi.fn(),
+    }
+
     mockPool = {
       query: vi.fn(),
+      connect: vi.fn().mockResolvedValue(mockClient),
     }
     vi.mocked(getPool).mockReturnValue(mockPool as unknown as ReturnType<typeof getPool>)
     vi.clearAllMocks()
@@ -96,11 +107,11 @@ describe("admin actors routes", () => {
       expect(res.body.error.message).toBe("Actor not found")
     })
 
-    it("should return 400 for invalid ID", async () => {
+    it("should return 404 for non-numeric ID (not matched by route)", async () => {
+      // Route uses /:id(\\d+) so non-numeric IDs don't match and return 404
       const res = await request(app).get("/admin/api/actors/invalid")
 
-      expect(res.status).toBe(400)
-      expect(res.body.error.message).toBe("Invalid actor ID")
+      expect(res.status).toBe(404)
     })
 
     it("should detect data quality issues", async () => {
@@ -172,25 +183,26 @@ describe("admin actors routes", () => {
     }
 
     it("should update actor fields", async () => {
+      // Pool queries (outside transaction)
       mockPool.query
         // Check actor exists
         .mockResolvedValueOnce({ rows: [mockActor] })
         // Check circumstances
         .mockResolvedValueOnce({ rows: [mockCircumstances] })
-        // Create snapshot - actor
-        .mockResolvedValueOnce({ rows: [mockActor] })
-        // Create snapshot - circumstances
-        .mockResolvedValueOnce({ rows: [mockCircumstances] })
-        // Insert snapshot
-        .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-        // Record history
-        .mockResolvedValueOnce({ rows: [] })
-        // Update actor
-        .mockResolvedValueOnce({ rows: [] })
-        // Fetch updated actor
+        // Fetch updated actor (after transaction)
         .mockResolvedValueOnce({ rows: [{ ...mockActor, cause_of_death: "Lung cancer" }] })
-        // Fetch updated circumstances
+        // Fetch updated circumstances (after transaction)
         .mockResolvedValueOnce({ rows: [mockCircumstances] })
+
+      // Client queries (inside transaction)
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockResolvedValueOnce({ rows: [mockCircumstances] }) // Select circumstances for snapshot
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert snapshot
+        .mockResolvedValueOnce({ rows: [] }) // Record history
+        .mockResolvedValueOnce({ rows: [] }) // Update actor
+        .mockResolvedValueOnce({ rows: [] }) // COMMIT
 
       const res = await request(app)
         .patch("/admin/api/actors/123")
@@ -208,6 +220,7 @@ describe("admin actors routes", () => {
           resourceId: 123,
         })
       )
+      expect(mockClient.release).toHaveBeenCalled()
     })
 
     it("should return 400 for non-editable fields", async () => {
@@ -259,14 +272,18 @@ describe("admin actors routes", () => {
         .mockResolvedValueOnce({ rows: [mockActor] })
         .mockResolvedValueOnce({ rows: [mockCircumstances] })
         .mockResolvedValueOnce({ rows: [mockActor] })
-        .mockResolvedValueOnce({ rows: [mockCircumstances] })
-        .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-        .mockResolvedValueOnce({ rows: [] }) // history
-        .mockResolvedValueOnce({ rows: [] }) // update
-        .mockResolvedValueOnce({ rows: [mockActor] })
         .mockResolvedValueOnce({
           rows: [{ ...mockCircumstances, circumstances: "Updated circumstances" }],
         })
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockResolvedValueOnce({ rows: [mockCircumstances] }) // Select circumstances for snapshot
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert snapshot
+        .mockResolvedValueOnce({ rows: [] }) // history
+        .mockResolvedValueOnce({ rows: [] }) // update
+        .mockResolvedValueOnce({ rows: [] }) // COMMIT
 
       const res = await request(app)
         .patch("/admin/api/actors/123")
@@ -281,14 +298,18 @@ describe("admin actors routes", () => {
         .mockResolvedValueOnce({ rows: [mockActor] })
         .mockResolvedValueOnce({ rows: [] }) // no existing circumstances
         .mockResolvedValueOnce({ rows: [mockActor] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-        .mockResolvedValueOnce({ rows: [] }) // insert circumstances
-        .mockResolvedValueOnce({ rows: [] }) // history
-        .mockResolvedValueOnce({ rows: [mockActor] })
         .mockResolvedValueOnce({
           rows: [{ actor_id: 123, circumstances: "New circumstances" }],
         })
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockResolvedValueOnce({ rows: [] }) // Select circumstances for snapshot
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert snapshot
+        .mockResolvedValueOnce({ rows: [] }) // insert circumstances
+        .mockResolvedValueOnce({ rows: [] }) // history
+        .mockResolvedValueOnce({ rows: [] }) // COMMIT
 
       const res = await request(app)
         .patch("/admin/api/actors/123")
@@ -297,14 +318,8 @@ describe("admin actors routes", () => {
       expect(res.status).toBe(200)
     })
 
-    it("should skip unchanged fields", async () => {
+    it("should skip unchanged fields and return early without creating snapshot", async () => {
       mockPool.query
-        .mockResolvedValueOnce({ rows: [mockActor] })
-        .mockResolvedValueOnce({ rows: [mockCircumstances] })
-        .mockResolvedValueOnce({ rows: [mockActor] })
-        .mockResolvedValueOnce({ rows: [mockCircumstances] })
-        .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-        // No update or history calls since value unchanged
         .mockResolvedValueOnce({ rows: [mockActor] })
         .mockResolvedValueOnce({ rows: [mockCircumstances] })
 
@@ -314,6 +329,70 @@ describe("admin actors routes", () => {
 
       expect(res.status).toBe(200)
       expect(res.body.changes).toHaveLength(0)
+      expect(res.body.snapshotId).toBeNull()
+      // Should not have started a transaction
+      expect(mockPool.connect).not.toHaveBeenCalled()
+    })
+
+    it("should return 400 for invalid date format", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { birthday: "not-a-date" } })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid date format")
+      expect(res.body.error.invalidDates[0].field).toBe("birthday")
+    })
+
+    it("should return 400 for future death date", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+
+      const futureDate = new Date()
+      futureDate.setFullYear(futureDate.getFullYear() + 1)
+      const futureDateStr = futureDate.toISOString().split("T")[0]
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { deathday: futureDateStr } })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.invalidDates[0].reason).toContain("future")
+    })
+
+    it("should return 500 when database query fails for GET", async () => {
+      mockPool.query.mockRejectedValueOnce(new Error("Database connection failed"))
+
+      const res = await request(app).get("/admin/api/actors/123")
+
+      expect(res.status).toBe(500)
+      expect(res.body.error.message).toBe("Failed to fetch actor data")
+    })
+
+    it("should rollback transaction and return 500 when PATCH fails", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockRejectedValueOnce(new Error("Database error")) // Select circumstances fails
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { cause_of_death: "Lung cancer" } })
+
+      expect(res.status).toBe(500)
+      expect(res.body.error.message).toBe("Failed to update actor")
+      // Verify rollback was called
+      expect(mockClient.query).toHaveBeenCalledWith("ROLLBACK")
+      expect(mockClient.release).toHaveBeenCalled()
     })
   })
 
