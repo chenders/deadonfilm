@@ -101,6 +101,14 @@ IMPORTANT: Return section titles EXACTLY as they appear in the list above. Case 
 }
 
 /**
+ * Strip number prefix from a section title if present.
+ * Handles formats like "27. Health problems" -> "Health problems"
+ */
+function stripNumberPrefix(title: string): string {
+  return title.replace(/^\d+\.\s*/, "")
+}
+
+/**
  * Parse the Gemini response to extract selected sections.
  */
 function parseSelectionResponse(responseText: string): ParsedSelectionResponse | null {
@@ -117,8 +125,13 @@ function parseSelectionResponse(responseText: string): ParsedSelectionResponse |
       return null
     }
 
+    // Filter to strings and strip any number prefixes that Gemini may have included
+    const sections = parsed.sections
+      .filter((s: unknown): s is string => typeof s === "string")
+      .map(stripNumberPrefix)
+
     return {
-      sections: parsed.sections.filter((s: unknown): s is string => typeof s === "string"),
+      sections,
       reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : undefined,
     }
   } catch {

@@ -134,6 +134,44 @@ describe("selectRelevantSections", () => {
     expect(result.selectedSections).toEqual(["Health problems", "Death and funeral"])
   })
 
+  it("strips number prefixes from AI-returned section titles", async () => {
+    // AI sometimes includes the numbered list format in its response
+    // e.g., "27. Health problems" instead of "Health problems"
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    sections: [
+                      "3. Health problems",
+                      "4. Death and funeral",
+                      "7. Hunting and fishing",
+                    ],
+                    reasoning: "Selected health and death sections",
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+
+    const result = await selectRelevantSections("Test Actor", mockSections)
+
+    expect(result.usedAI).toBe(true)
+    // Should strip the number prefixes and match original titles
+    expect(result.selectedSections).toEqual([
+      "Health problems",
+      "Death and funeral",
+      "Hunting and fishing",
+    ])
+  })
+
   it("filters out sections that do not exist in the original list", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
