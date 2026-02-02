@@ -33,6 +33,7 @@ vi.mock("../../lib/logger.js", () => ({
 import router from "./actors.js"
 import { getPool } from "../../lib/db/pool.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
+import { invalidateActorCache } from "../../lib/cache.js"
 
 describe("admin actors routes", () => {
   let app: Express
@@ -222,6 +223,8 @@ describe("admin actors routes", () => {
         })
       )
       expect(mockClient.release).toHaveBeenCalled()
+      // Verify cache invalidation
+      expect(invalidateActorCache).toHaveBeenCalledWith(123)
     })
 
     it("should return 400 for non-editable fields", async () => {
@@ -446,6 +449,93 @@ describe("admin actors routes", () => {
       expect(res.status).toBe(400)
       expect(res.body.error.message).toBe("Invalid enum value")
       expect(res.body.error.invalidEnums[0].field).toBe("circumstances_confidence")
+    })
+
+    it("should return 400 for invalid deathday_confidence in actor updates", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { deathday_confidence: "high" } }) // Invalid - should be verified/unverified/conflicting
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid enum value")
+      expect(res.body.error.invalidEnums[0].field).toBe("deathday_confidence")
+      expect(res.body.error.invalidEnums[0].validValues).toEqual([
+        "verified",
+        "unverified",
+        "conflicting",
+      ])
+    })
+
+    it("should return 400 for non-editable circumstances fields", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({ rows: [] })
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { id: 999, actor_id: 456 } }) // These are not editable
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Cannot update non-editable fields")
+      expect(res.body.error.invalidFields.circumstances).toContain("id")
+      expect(res.body.error.invalidFields.circumstances).toContain("actor_id")
+    })
+
+    it("should accept null values for nullable fields", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+        birthday: "1950-01-01",
+        deathday: "2020-01-01",
+        cause_of_death: "Heart attack",
+      }
+      const mockCircumstances = {
+        id: 1,
+        actor_id: 123,
+        circumstances: "Some circumstances",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+        .mockResolvedValueOnce({ rows: [{ ...mockActor, cause_of_death: null }] })
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockResolvedValueOnce({ rows: [mockCircumstances] }) // Select circumstances for snapshot
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert snapshot
+        .mockResolvedValueOnce({ rows: [] }) // Record history
+        .mockResolvedValueOnce({ rows: [] }) // Update actor
+        .mockResolvedValueOnce({ rows: [] }) // COMMIT
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { cause_of_death: null } })
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+      expect(res.body.changes).toHaveLength(1)
+      expect(res.body.changes[0].field).toBe("cause_of_death")
+      expect(res.body.changes[0].newValue).toBeNull()
     })
 
     it("should update both actor and circumstances fields in same transaction", async () => {
