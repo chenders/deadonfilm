@@ -444,7 +444,7 @@ describe("Admin Coverage Queries", () => {
       await getActorPreview(mockPool, 789)
 
       const showsCall = vi.mocked(mockPool.query).mock.calls[1]
-      expect(showsCall[0]).toContain("ORDER BY asa.episode_count DESC")
+      expect(showsCall[0]).toContain("ORDER BY COUNT(*) DESC")
       expect(showsCall[0]).toContain("LIMIT 3")
       expect(showsCall[1]).toEqual([789])
     })

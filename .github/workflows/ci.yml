@@ -11,65 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Fast build jobs - produce artifacts for E2E and Docker
-  frontend-build:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Upload frontend build
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: dist/
-          retention-days: 1
-
-  backend-build:
-    name: Backend Build
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: server
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: server/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Upload backend build
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-dist
-          path: server/dist/
-          retention-days: 1
-
-  # Quality checks - run in parallel, not blocking E2E
   codeql:
     name: CodeQL Security Scan
     runs-on: ubuntu-latest
@@ -102,8 +43,8 @@ jobs:
         with:
           category: "/language:javascript-typescript"
 
-  frontend-quality:
-    name: Frontend Quality
+  frontend:
+    name: Frontend
     runs-on: ubuntu-latest
 
     steps:
@@ -141,8 +82,18 @@ jobs:
         run: npm audit --audit-level=high
         continue-on-error: true
 
-  backend-quality:
-    name: Backend Quality
+      - name: Build
+        run: npm run build
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+          retention-days: 1
+
+  backend:
+    name: Backend
     runs-on: ubuntu-latest
 
     defaults:
@@ -263,6 +214,16 @@ jobs:
         run: npm audit --audit-level=high
         continue-on-error: true
 
+      - name: Build
+        run: npm run build
+
+      - name: Upload backend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: server/dist/
+          retention-days: 1
+
       - name: Stop containers
         if: always()
         run: |
@@ -273,7 +234,7 @@ jobs:
   e2e:
     name: E2E Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: ubuntu-latest
-    needs: [frontend-build, backend-build]
+    needs: [frontend, backend]
     # Note: No container - run directly on runner to avoid Docker-in-Docker issues
     strategy:
       fail-fast: false
@@ -349,7 +310,7 @@ jobs:
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
-    needs: [frontend-build, backend-build]
+    needs: [frontend, backend]
 
     steps:
       - uses: actions/checkout@v4
@@ -381,44 +342,4 @@ jobs:
           docker logs test-container
           docker stop test-container
           docker rm test-container
-
-  # Quality gate - ensures all jobs pass before merge
-  ci-complete:
-    name: CI Complete
-    runs-on: ubuntu-latest
-    needs: [frontend-build, backend-build, frontend-quality, backend-quality, e2e, docker, codeql]
-    if: always()
-
-    steps:
-      - name: Check all jobs passed
-        run: |
-          if [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
-            echo "Frontend build failed"
-            exit 1
-          fi
-          if [[ "${{ needs.backend-build.result }}" != "success" ]]; then
-            echo "Backend build failed"
-            exit 1
-          fi
-          if [[ "${{ needs.frontend-quality.result }}" != "success" ]]; then
-            echo "Frontend quality checks failed"
-            exit 1
-          fi
-          if [[ "${{ needs.backend-quality.result }}" != "success" ]]; then
-            echo "Backend quality checks failed"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e.result }}" != "success" ]]; then
-            echo "E2E tests failed"
-            exit 1
-          fi
-          if [[ "${{ needs.docker.result }}" != "success" ]]; then
-            echo "Docker build failed"
-            exit 1
-          fi
-          if [[ "${{ needs.codeql.result }}" != "success" ]]; then
-            echo "CodeQL analysis failed"
-            exit 1
-          fi
-          echo "All CI checks passed!"
 
