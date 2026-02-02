@@ -140,7 +140,8 @@ describe("WikipediaSource", () => {
     })
 
     it("handles article not found error", async () => {
-      mockFetch.mockResolvedValueOnce({
+      // All article lookups (primary + alternates) return not found
+      mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({
           error: {

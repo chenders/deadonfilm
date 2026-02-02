@@ -90,29 +90,27 @@ export class WikipediaSource extends BaseDataSource {
       // Try the primary article title first
       const result = await this.tryArticleLookup(actor, articleTitle, startTime)
 
-      // If disambiguation handling is enabled, check if we need to try alternates
-      if (this.wikipediaOptions.handleDisambiguation !== false) {
-        // Check if we got a disambiguation page or wrong person
-        if (result.needsAlternate) {
-          console.log(`  ${result.alternateReason}, trying alternate titles...`)
+      // Try alternates if needed (disambiguation page, date validation failure, etc.)
+      // This applies regardless of which validation detected the issue
+      if (result.needsAlternate) {
+        console.log(`  ${result.alternateReason}, trying alternate titles...`)
 
-          // Try alternate titles
-          const alternateTitles = this.generateAlternateTitles(actor.name)
-          for (const altTitle of alternateTitles) {
-            console.log(`  Trying: ${altTitle}`)
-            const altResult = await this.tryArticleLookup(actor, altTitle, startTime)
+        // Try alternate titles
+        const alternateTitles = this.generateAlternateTitles(actor.name)
+        for (const altTitle of alternateTitles) {
+          console.log(`  Trying: ${altTitle}`)
+          const altResult = await this.tryArticleLookup(actor, altTitle, startTime)
 
-            if (altResult.success && !altResult.needsAlternate) {
-              console.log(`  Found correct article: ${altTitle}`)
-              return altResult.result!
-            }
+          if (altResult.success && !altResult.needsAlternate) {
+            console.log(`  Found correct article: ${altTitle}`)
+            return altResult.result!
           }
+        }
 
-          // None of the alternates worked, return the original result with a note
-          console.log(`  No valid alternate found, returning original result`)
-          if (result.result) {
-            return result.result
-          }
+        // None of the alternates worked, return the original result with a note
+        console.log(`  No valid alternate found, returning original result`)
+        if (result.result) {
+          return result.result
         }
       }
 
@@ -121,12 +119,19 @@ export class WikipediaSource extends BaseDataSource {
         return result.result
       }
 
-      // This shouldn't happen but provide a fallback
+      // No SourceLookupResult was produced; construct a deterministic error message
+      let errorMessage = "No valid Wikipedia article found"
+      if (result.alternateReason) {
+        errorMessage = result.alternateReason
+      } else if (result.needsAlternate) {
+        errorMessage = "No valid Wikipedia article found after trying alternates"
+      }
+
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0),
         data: null,
-        error: "Unexpected error in article lookup",
+        error: errorMessage,
       }
     } catch (error) {
       if (error instanceof SourceAccessBlockedError) {
@@ -236,8 +241,9 @@ export class WikipediaSource extends BaseDataSource {
       }
     }
 
-    // Validate person by dates if enabled
-    if (this.wikipediaOptions.validatePersonDates !== false) {
+    // Validate person by dates if enabled and actor has dates to validate
+    // Skip the API call if there are no dates to check against
+    if (this.wikipediaOptions.validatePersonDates !== false && (actor.birthday || actor.deathday)) {
       const introText = await this.fetchArticleIntro(articleTitle)
       if (introText) {
         const validation = this.validatePersonByDates(actor, introText)
@@ -821,7 +827,15 @@ export class WikipediaSource extends BaseDataSource {
     const sectionTitles = sections.map((s) => s.line.toLowerCase())
 
     // Disambiguation page signals
-    const disambigSections = ["people", "other uses", "given name", "surname", "places", "arts"]
+    const disambigSections = [
+      "people",
+      "other uses",
+      "given name",
+      "surname",
+      "places",
+      "arts",
+      "see also",
+    ]
     const hasDisambigSections = disambigSections.some((d) =>
       sectionTitles.some((t) => t === d || t.includes(d))
     )

@@ -280,7 +280,9 @@ export async function cleanupWithClaude(
     lastProject: parsed.last_project,
     careerStatusAtDeath: parsed.career_status_at_death,
     posthumousReleases: parsed.posthumous_releases,
-    hasSubstantiveContent: parsed.has_substantive_content,
+    // Validate has_substantive_content is actually a boolean, default to false if missing/invalid
+    hasSubstantiveContent:
+      typeof parsed.has_substantive_content === "boolean" ? parsed.has_substantive_content : false,
     cleanupSource: "claude-opus-4.5",
     cleanupTimestamp: new Date().toISOString(),
   }
