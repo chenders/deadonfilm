@@ -107,10 +107,12 @@ export class WikipediaSource extends BaseDataSource {
           }
         }
 
-        // None of the alternates worked, return the original result with a note
-        console.log(`  No valid alternate found, returning original result`)
+        // None of the alternates worked; return the original result if available
         if (result.result) {
+          console.log(`  No valid alternate found, returning original result`)
           return result.result
+        } else {
+          console.log(`  No valid alternate found and no original result to return`)
         }
       }
 
