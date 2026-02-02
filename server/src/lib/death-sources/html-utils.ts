@@ -164,6 +164,42 @@ export function cleanHtmlEntities(html: string): string {
   return text
 }
 
+// Patterns that strongly indicate JavaScript/TypeScript code
+// Hoisted to module level to avoid re-allocation on each call
+const CODE_PATTERNS = [
+  /\bfunction\s*\(/,
+  /\b(?:const|let|var)\s+\w+\s*=/,
+  /\bif\s*\([^)]+\)\s*\{/,
+  /\bdocument\.\w+/,
+  /=>\s*[{(]/,
+  /\bthis\.\w+\s*[=;]/,
+  /\breturn\s+(?:this|null|true|false|undefined)\b/,
+  /\bclass\s+\w+\s*\{/,
+  /\b(?:async|await)\s+\w+/,
+  /\b(?:try|catch|throw)\s*[{(]/,
+  /\bwindow\.\w+/,
+  /\bconsole\.\w+/,
+  /\.(?:push|pop|shift|unshift|slice|splice|map|filter|reduce)\s*\(/,
+  /\b(?:new|delete|typeof|instanceof)\s+\w+/,
+  /\[\s*\d+\s*\]/,
+  /===|!==|&&|\|\|/,
+  /\bfor\s*\([^)]+\)/,
+  /\bwhile\s*\([^)]+\)/,
+  /\bswitch\s*\([^)]+\)/,
+  /\)\s*\{|\{\s*$/,
+  /\.innerHTML\s*=/,
+  /\.innerText\s*=/,
+  /\.textContent\s*=/,
+  /\.value\s*=/,
+  /\.style\.\w+\s*=/,
+  /\.getElementById\s*\(/,
+  /\.querySelector\s*\(/,
+  /\.addEventListener\s*\(/,
+]
+
+// Minimum number of pattern matches required to classify as code
+const CODE_PATTERN_THRESHOLD = 2
+
 /**
  * Detect if text looks like programming code using heuristics.
  * Designed to catch JavaScript/TypeScript code fragments that might
@@ -175,42 +211,18 @@ export function cleanHtmlEntities(html: string): string {
 export function looksLikeCode(text: string): boolean {
   if (!text || text.length < 20) return false
 
-  // Patterns that strongly indicate JavaScript/TypeScript code
-  const codePatterns = [
-    /\bfunction\s*\(/,
-    /\b(?:const|let|var)\s+\w+\s*=/,
-    /\bif\s*\([^)]+\)\s*\{/,
-    /\bdocument\.\w+/,
-    /=>\s*[{(]/,
-    /\bthis\.\w+\s*[=;]/,
-    /\breturn\s+(?:this|null|true|false|undefined)\b/,
-    /\bclass\s+\w+\s*\{/,
-    /\b(?:async|await)\s+\w+/,
-    /\b(?:try|catch|throw)\s*[{(]/,
-    /\bwindow\.\w+/,
-    /\bconsole\.\w+/,
-    /\.(?:push|pop|shift|unshift|slice|splice|map|filter|reduce)\s*\(/,
-    /\b(?:new|delete|typeof|instanceof)\s+\w+/,
-    /\[\s*\d+\s*\]/,
-    /===|!==|&&|\|\|/,
-    /\bfor\s*\([^)]+\)/,
-    /\bwhile\s*\([^)]+\)/,
-    /\bswitch\s*\([^)]+\)/,
-    /\)\s*\{|\{\s*$/,
-    /\.innerHTML\s*=/,
-    /\.innerText\s*=/,
-    /\.textContent\s*=/,
-    /\.value\s*=/,
-    /\.style\.\w+\s*=/,
-    /\.getElementById\s*\(/,
-    /\.querySelector\s*\(/,
-    /\.addEventListener\s*\(/,
-  ]
+  // Short-circuit once we reach the threshold
+  let matchCount = 0
+  for (const pattern of CODE_PATTERNS) {
+    if (pattern.test(text)) {
+      matchCount++
+      if (matchCount >= CODE_PATTERN_THRESHOLD) {
+        return true
+      }
+    }
+  }
 
-  const matches = codePatterns.filter((p) => p.test(text)).length
-
-  // Require at least 2 patterns to match to avoid false positives
-  return matches >= 2
+  return false
 }
 
 /**
