@@ -577,8 +577,10 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
     }
 
     // Validate career_status_at_death (circumstances field)
-    if (circumstancesUpdates?.career_status_at_death !== undefined &&
-        circumstancesUpdates.career_status_at_death !== null) {
+    if (
+      circumstancesUpdates?.career_status_at_death !== undefined &&
+      circumstancesUpdates.career_status_at_death !== null
+    ) {
       if (
         typeof circumstancesUpdates.career_status_at_death !== "string" ||
         !VALID_CAREER_STATUS.includes(circumstancesUpdates.career_status_at_death)
