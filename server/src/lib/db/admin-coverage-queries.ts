@@ -191,22 +191,21 @@ export async function getActorsForCoverage(
   }
 
   if (filters.causeOfDeath) {
-    // Match actors whose cause_of_death normalizes to the filter value,
-    // or whose original cause_of_death matches directly
+    // Match actors whose cause_of_death, when normalized if possible,
+    // equals the filter value. Falls back to the original cause_of_death
+    // when no normalization mapping exists.
     whereClauses.push(
-      `(
-        cause_of_death IN (
-          SELECT original_cause FROM cause_of_death_normalizations WHERE normalized_cause = $${paramIndex++}
-        )
-        OR cause_of_death = $${paramIndex++}
-        OR EXISTS (
-          SELECT 1 FROM cause_of_death_normalizations n
+      `COALESCE(
+        (
+          SELECT n.normalized_cause
+          FROM cause_of_death_normalizations n
           WHERE n.original_cause = actors.cause_of_death
-          AND n.normalized_cause = $${paramIndex++}
-        )
-      )`
+          LIMIT 1
+        ),
+        actors.cause_of_death
+      ) = $${paramIndex++}`
     )
-    params.push(filters.causeOfDeath, filters.causeOfDeath, filters.causeOfDeath)
+    params.push(filters.causeOfDeath)
   }
 
   const whereClause = whereClauses.join(" AND ")
