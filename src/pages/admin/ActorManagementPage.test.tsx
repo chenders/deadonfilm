@@ -7,6 +7,16 @@ import ActorManagementPage from "./ActorManagementPage"
 // Mock the hooks
 vi.mock("../../hooks/admin/useCoverage", () => ({
   useActorsForCoverage: vi.fn(),
+  useCausesOfDeath: vi.fn(() => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  })),
+  useActorPreview: vi.fn(() => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  })),
 }))
 
 vi.mock("../../hooks/useAdminAuth", () => ({
@@ -14,7 +24,7 @@ vi.mock("../../hooks/useAdminAuth", () => ({
   AdminAuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-import { useActorsForCoverage } from "../../hooks/admin/useCoverage"
+import { useActorsForCoverage, useCausesOfDeath } from "../../hooks/admin/useCoverage"
 
 const mockActors = [
   {
@@ -24,6 +34,8 @@ const mockActors = [
     popularity: 45.5,
     has_detailed_death_info: true,
     cause_of_death: "Stomach cancer",
+    age_at_death: 72,
+    enriched_at: "2024-01-15T10:00:00Z",
   },
   {
     id: 2,
@@ -32,6 +44,8 @@ const mockActors = [
     popularity: 32.1,
     has_detailed_death_info: true,
     cause_of_death: "Car accident",
+    age_at_death: 24,
+    enriched_at: null,
   },
   {
     id: 3,
@@ -40,6 +54,8 @@ const mockActors = [
     popularity: 55.8,
     has_detailed_death_info: false,
     cause_of_death: null,
+    age_at_death: 36,
+    enriched_at: "2024-02-01T10:00:00Z",
   },
 ]
 
@@ -458,5 +474,174 @@ describe("ActorManagementPage", () => {
     // Marilyn Monroe has null cause_of_death, should show dash
     // There may be multiple dashes for popularity too, so just check it exists
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1)
+  })
+
+  describe("Cause of Death Filter", () => {
+    const mockCauses = [
+      { value: "heart attack", label: "heart attack", count: 50 },
+      { value: "cancer", label: "cancer", count: 45 },
+      { value: "natural causes", label: "natural causes", count: 30 },
+      { value: "car accident", label: "car accident", count: 20 },
+    ]
+
+    beforeEach(() => {
+      vi.mocked(useCausesOfDeath).mockReturnValue({
+        data: mockCauses,
+        isLoading: false,
+        error: null,
+      } as never)
+
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: {
+          items: mockActors,
+          total: 3,
+          totalPages: 1,
+        },
+        isLoading: false,
+        error: null,
+      } as never)
+    })
+
+    it("renders the cause filter input", () => {
+      renderComponent()
+
+      expect(screen.getByLabelText("Cause of Death")).toBeInTheDocument()
+    })
+
+    it("shows cause options when input is focused", () => {
+      renderComponent()
+
+      const causeInput = screen.getByLabelText("Cause of Death")
+      fireEvent.focus(causeInput)
+
+      // Should show causes (label and count in separate spans)
+      expect(screen.getByText("heart attack")).toBeInTheDocument()
+      expect(screen.getByText("(50)")).toBeInTheDocument()
+      expect(screen.getByText("cancer")).toBeInTheDocument()
+      expect(screen.getByText("(45)")).toBeInTheDocument()
+      expect(screen.getByText("natural causes")).toBeInTheDocument()
+      expect(screen.getByText("(30)")).toBeInTheDocument()
+    })
+
+    it("filters causes as user types", () => {
+      renderComponent()
+
+      const causeInput = screen.getByLabelText("Cause of Death")
+      fireEvent.focus(causeInput)
+      fireEvent.change(causeInput, { target: { value: "can" } })
+
+      // Should only show matching causes
+      expect(screen.getByText("cancer")).toBeInTheDocument()
+      expect(screen.queryByText("heart attack")).not.toBeInTheDocument()
+      expect(screen.queryByText("natural causes")).not.toBeInTheDocument()
+    })
+
+    it("selects a cause when clicking on an option", () => {
+      renderComponent()
+
+      const causeInput = screen.getByLabelText("Cause of Death")
+      fireEvent.focus(causeInput)
+
+      // Click on a cause option (the button contains both label and count spans)
+      const cancerOption = screen.getByText("cancer")
+      fireEvent.mouseDown(cancerOption)
+
+      // Advance timers for URL update
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+
+      // Should update URL params via useActorsForCoverage call
+      const calls = vi.mocked(useActorsForCoverage).mock.calls
+      const latestFilters = calls[calls.length - 1]?.[2]
+      expect(latestFilters?.causeOfDeath).toBe("cancer")
+    })
+
+    it("clears cause filter when clear button is clicked", () => {
+      // Start with a filter applied (via URL)
+      renderComponent("/admin/actors?causeOfDeath=cancer")
+
+      // The clear button should be visible when there's a filter applied
+      const clearButton = screen.getByRole("button", { name: "Clear cause filter" })
+      fireEvent.click(clearButton)
+
+      // Advance timers for URL update
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+
+      // Should clear the filter
+      const calls = vi.mocked(useActorsForCoverage).mock.calls
+      const latestFilters = calls[calls.length - 1]?.[2]
+      expect(latestFilters?.causeOfDeath).toBeUndefined()
+
+      // Clear button should no longer be visible
+      expect(screen.queryByRole("button", { name: "Clear cause filter" })).not.toBeInTheDocument()
+    })
+
+    it("resets pagination when cause filter changes", () => {
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: {
+          items: mockActors,
+          total: 150,
+          totalPages: 3,
+        },
+        isLoading: false,
+        error: null,
+      } as never)
+
+      // Start on page 2
+      renderComponent("/admin/actors?page=2")
+
+      const causeInput = screen.getByLabelText("Cause of Death")
+      fireEvent.focus(causeInput)
+
+      // Select a cause
+      const cancerOption = screen.getByText("cancer")
+      fireEvent.mouseDown(cancerOption)
+
+      // Advance timers for URL update
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+
+      // Page should be reset to 1
+      const calls = vi.mocked(useActorsForCoverage).mock.calls
+      const latestCall = calls[calls.length - 1]
+      expect(latestCall[0]).toBe(1) // First arg is page number
+    })
+
+    it("hides dropdown when no causes match search", () => {
+      renderComponent()
+
+      const causeInput = screen.getByLabelText("Cause of Death")
+      fireEvent.focus(causeInput)
+
+      // Initially should show options
+      expect(screen.getByText("heart attack")).toBeInTheDocument()
+
+      // Type something that doesn't match any cause
+      fireEvent.change(causeInput, { target: { value: "xyz123" } })
+
+      // Dropdown should be hidden (no cause options visible)
+      expect(screen.queryByText("heart attack")).not.toBeInTheDocument()
+      expect(screen.queryByText("cancer")).not.toBeInTheDocument()
+    })
+
+    it("shows empty state when causes data is not yet loaded", () => {
+      vi.mocked(useCausesOfDeath).mockReturnValue({
+        data: undefined,
+        isLoading: true,
+        error: null,
+      } as never)
+
+      renderComponent()
+
+      const causeInput = screen.getByLabelText("Cause of Death")
+      fireEvent.focus(causeInput)
+
+      // Dropdown should not show any options
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    })
   })
 })

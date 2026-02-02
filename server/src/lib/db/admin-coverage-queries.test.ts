@@ -6,6 +6,8 @@ import {
   getCoverageTrends,
   getEnrichmentCandidates,
   captureCurrentSnapshot,
+  getDistinctCausesOfDeath,
+  getActorPreview,
 } from "./admin-coverage-queries.js"
 
 describe("Admin Coverage Queries", () => {
@@ -174,6 +176,31 @@ describe("Admin Coverage Queries", () => {
       expect(result.pageSize).toBe(50)
       expect(result.totalPages).toBe(0)
     })
+
+    it("applies causeOfDeath filter", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(mockPool, { causeOfDeath: "heart attack" }, 1, 50)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      // Should match both normalized and original causes
+      expect(calls[0][0]).toContain("cause_of_death_normalizations")
+      expect(calls[0][0]).toContain("normalized_cause")
+      // Filter value should appear 3 times (for three match conditions)
+      expect(calls[0][1]).toContain("heart attack")
+    })
+
+    it("applies causeOfDeath filter with other filters", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(mockPool, { causeOfDeath: "cancer", minPopularity: 10 }, 1, 50)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("popularity >= $1")
+      expect(calls[0][0]).toContain("cause_of_death_normalizations")
+      expect(calls[0][1]).toContain(10)
+      expect(calls[0][1]).toContain("cancer")
+    })
   })
 
   describe("getCoverageTrends", () => {
@@ -289,6 +316,186 @@ describe("Admin Coverage Queries", () => {
       const call = vi.mocked(mockPool.query).mock.calls[0]
       expect(call[0]).toContain("enriched_at IS NULL")
       expect(call[0]).toContain("enriched_at < NOW() - INTERVAL '30 days'")
+    })
+  })
+
+  describe("getDistinctCausesOfDeath", () => {
+    it("returns distinct causes with counts", async () => {
+      const mockCauses = [
+        { cause: "heart attack", count: "50" },
+        { cause: "cancer", count: "45" },
+        { cause: "natural causes", count: "30" },
+      ]
+
+      vi.mocked(mockPool.query).mockResolvedValueOnce({
+        rows: mockCauses,
+      } as any)
+
+      const result = await getDistinctCausesOfDeath(mockPool)
+
+      expect(result).toHaveLength(3)
+      expect(result[0]).toEqual({ value: "heart attack", label: "heart attack", count: 50 })
+      expect(result[1]).toEqual({ value: "cancer", label: "cancer", count: 45 })
+      expect(result[2]).toEqual({ value: "natural causes", label: "natural causes", count: 30 })
+    })
+
+    it("uses normalization table for grouping", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getDistinctCausesOfDeath(mockPool)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("cause_of_death_normalizations")
+      expect(calls[0][0]).toContain("COALESCE(n.normalized_cause, a.cause_of_death)")
+    })
+
+    it("filters out causes with fewer than 3 actors", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getDistinctCausesOfDeath(mockPool)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("HAVING COUNT(*) >= 3")
+    })
+
+    it("limits results to 100", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getDistinctCausesOfDeath(mockPool)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("LIMIT 100")
+    })
+
+    it("orders by count descending", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getDistinctCausesOfDeath(mockPool)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("ORDER BY COUNT(*) DESC")
+    })
+
+    it("handles empty results", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const result = await getDistinctCausesOfDeath(mockPool)
+
+      expect(result).toEqual([])
+    })
+  })
+
+  describe("getActorPreview", () => {
+    it("returns top movies and shows for an actor", async () => {
+      const mockMovies = [
+        { title: "Movie 1", release_year: 2020, character_name: "Hero", dof_popularity: 100 },
+        { title: "Movie 2", release_year: 2018, character_name: "Villain", dof_popularity: 80 },
+      ]
+      const mockShows = [
+        { name: "Show 1", first_air_year: 2015, character_name: "Lead", episode_count: 50 },
+      ]
+      const mockCounts = { total_movies: "10", total_shows: "5" }
+
+      vi.mocked(mockPool.query)
+        .mockResolvedValueOnce({ rows: mockMovies } as any)
+        .mockResolvedValueOnce({ rows: mockShows } as any)
+        .mockResolvedValueOnce({ rows: [mockCounts] } as any)
+
+      const result = await getActorPreview(mockPool, 123)
+
+      expect(result.topMovies).toHaveLength(2)
+      expect(result.topMovies[0]).toEqual({
+        title: "Movie 1",
+        releaseYear: 2020,
+        character: "Hero",
+        popularity: 100,
+      })
+      expect(result.topShows).toHaveLength(1)
+      expect(result.topShows[0]).toEqual({
+        name: "Show 1",
+        firstAirYear: 2015,
+        character: "Lead",
+        episodeCount: 50,
+      })
+      expect(result.totalMovies).toBe(10)
+      expect(result.totalShows).toBe(5)
+    })
+
+    it("queries movies ordered by popularity", async () => {
+      vi.mocked(mockPool.query)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [{ total_movies: "0", total_shows: "0" }] } as any)
+
+      await getActorPreview(mockPool, 456)
+
+      const moviesCall = vi.mocked(mockPool.query).mock.calls[0]
+      expect(moviesCall[0]).toContain("ORDER BY m.dof_popularity DESC")
+      expect(moviesCall[0]).toContain("LIMIT 5")
+      expect(moviesCall[1]).toEqual([456])
+    })
+
+    it("queries shows ordered by episode count", async () => {
+      vi.mocked(mockPool.query)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [{ total_movies: "0", total_shows: "0" }] } as any)
+
+      await getActorPreview(mockPool, 789)
+
+      const showsCall = vi.mocked(mockPool.query).mock.calls[1]
+      expect(showsCall[0]).toContain("ORDER BY asa.episode_count DESC")
+      expect(showsCall[0]).toContain("LIMIT 3")
+      expect(showsCall[1]).toEqual([789])
+    })
+
+    it("handles actor with no movies or shows", async () => {
+      vi.mocked(mockPool.query)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [{ total_movies: "0", total_shows: "0" }] } as any)
+
+      const result = await getActorPreview(mockPool, 999)
+
+      expect(result.topMovies).toEqual([])
+      expect(result.topShows).toEqual([])
+      expect(result.totalMovies).toBe(0)
+      expect(result.totalShows).toBe(0)
+    })
+
+    it("handles null popularity and episode counts", async () => {
+      const mockMovies = [
+        { title: "Movie 1", release_year: null, character_name: null, dof_popularity: null },
+      ]
+      const mockShows = [
+        { name: "Show 1", first_air_year: null, character_name: null, episode_count: null },
+      ]
+
+      vi.mocked(mockPool.query)
+        .mockResolvedValueOnce({ rows: mockMovies } as any)
+        .mockResolvedValueOnce({ rows: mockShows } as any)
+        .mockResolvedValueOnce({ rows: [{ total_movies: "1", total_shows: "1" }] } as any)
+
+      const result = await getActorPreview(mockPool, 123)
+
+      expect(result.topMovies[0].popularity).toBe(0) // null coalesced to 0
+      expect(result.topMovies[0].releaseYear).toBeNull()
+      expect(result.topMovies[0].character).toBeNull()
+      expect(result.topShows[0].episodeCount).toBe(0) // null coalesced to 0
+      expect(result.topShows[0].firstAirYear).toBeNull()
+      expect(result.topShows[0].character).toBeNull()
+    })
+
+    it("handles missing counts row", async () => {
+      vi.mocked(mockPool.query)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [] } as any) // Empty counts result
+
+      const result = await getActorPreview(mockPool, 123)
+
+      expect(result.totalMovies).toBe(0)
+      expect(result.totalShows).toBe(0)
     })
   })
 
