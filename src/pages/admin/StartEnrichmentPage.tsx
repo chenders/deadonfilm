@@ -43,10 +43,10 @@ export default function StartEnrichmentPage() {
   const [aiLinkSelection, setAiLinkSelection] = useState<boolean>(true)
   const [aiContentExtraction, setAiContentExtraction] = useState<boolean>(true)
 
-  // Wikipedia-specific options
+  // Wikipedia-specific options - enabled by default like other advanced options
   const [wikipediaUseAISectionSelection, setWikipediaUseAISectionSelection] =
-    useState<boolean>(false)
-  const [wikipediaFollowLinkedArticles, setWikipediaFollowLinkedArticles] = useState<boolean>(false)
+    useState<boolean>(true)
+  const [wikipediaFollowLinkedArticles, setWikipediaFollowLinkedArticles] = useState<boolean>(true)
   const [wikipediaMaxLinkedArticles, setWikipediaMaxLinkedArticles] = useState<number>(2)
   const [wikipediaMaxSections, setWikipediaMaxSections] = useState<number>(10)
 
