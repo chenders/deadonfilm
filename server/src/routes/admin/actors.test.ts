@@ -170,6 +170,101 @@ describe("admin actors routes", () => {
     })
   })
 
+  describe("GET /admin/api/actors/:id/history/:field", () => {
+    const mockHistoryRows = [
+      {
+        id: 1,
+        old_value: "heart attack",
+        new_value: "cardiac arrest",
+        source: "admin-manual-edit",
+        batch_id: "admin-edit-123",
+        created_at: "2026-01-15T10:00:00Z",
+      },
+      {
+        id: 2,
+        old_value: null,
+        new_value: "heart attack",
+        source: "claude-enrichment",
+        batch_id: null,
+        created_at: "2026-01-10T10:00:00Z",
+      },
+    ]
+
+    it("should return history for valid actor field", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 123 }] }) // actor exists check
+        .mockResolvedValueOnce({ rows: mockHistoryRows }) // history query
+        .mockResolvedValueOnce({ rows: [{ count: "2" }] }) // count query
+
+      const res = await request(app).get("/admin/api/actors/123/history/cause_of_death")
+
+      expect(res.status).toBe(200)
+      expect(res.body.field).toBe("cause_of_death")
+      expect(res.body.history).toHaveLength(2)
+      expect(res.body.history[0].old_value).toBe("heart attack")
+      expect(res.body.total).toBe(2)
+      expect(res.body.hasMore).toBe(false)
+    })
+
+    it("should return history for circumstances field with prefix", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 123 }] })
+        .mockResolvedValueOnce({ rows: mockHistoryRows })
+        .mockResolvedValueOnce({ rows: [{ count: "2" }] })
+
+      const res = await request(app).get(
+        "/admin/api/actors/123/history/circumstances.circumstances"
+      )
+
+      expect(res.status).toBe(200)
+      expect(res.body.field).toBe("circumstances.circumstances")
+    })
+
+    it("should return 404 for non-existent actor", async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] })
+
+      const res = await request(app).get("/admin/api/actors/999/history/cause_of_death")
+
+      expect(res.status).toBe(404)
+      expect(res.body.error.message).toBe("Actor not found")
+    })
+
+    it("should return 400 for invalid field name", async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [{ id: 123 }] })
+
+      const res = await request(app).get("/admin/api/actors/123/history/invalid_field")
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid field name")
+    })
+
+    it("should respect limit parameter", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 123 }] })
+        .mockResolvedValueOnce({ rows: mockHistoryRows.slice(0, 1) })
+        .mockResolvedValueOnce({ rows: [{ count: "2" }] })
+
+      const res = await request(app).get("/admin/api/actors/123/history/cause_of_death?limit=1")
+
+      expect(res.status).toBe(200)
+      expect(res.body.history).toHaveLength(1)
+      expect(res.body.hasMore).toBe(true)
+    })
+
+    it("should cap limit at 200", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 123 }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: "0" }] })
+
+      await request(app).get("/admin/api/actors/123/history/cause_of_death?limit=500")
+
+      // Verify the query was called with capped limit
+      const historyQueryCall = mockPool.query.mock.calls[1]
+      expect(historyQueryCall[1]).toContain(200) // limit should be capped
+    })
+  })
+
   describe("PATCH /admin/api/actors/:id", () => {
     const mockActor = {
       id: 123,
