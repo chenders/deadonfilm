@@ -19,6 +19,10 @@ const VALID_DEATH_MANNER = ["natural", "accident", "suicide", "homicide", "undet
 const VALID_CONFIDENCE = ["high", "medium", "low", "disputed"]
 // For actors.deathday_confidence specifically (different constraint)
 const VALID_DEATHDAY_CONFIDENCE_ACTOR = ["verified", "unverified", "conflicting"]
+// For date precision fields (birthday_precision, deathday_precision)
+const VALID_DATE_PRECISION = ["year", "month", "day"]
+// For career_status_at_death field
+const VALID_CAREER_STATUS = ["active", "semi-retired", "retired", "hiatus", "unknown"]
 
 // Helper function to convert values to string for history storage
 function valueToHistoryString(value: unknown): string | null {
@@ -559,6 +563,34 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
       }
     }
 
+    // Validate date precision fields (actor fields)
+    const datePrecisionFields = ["birthday_precision", "deathday_precision"]
+    if (actorUpdates) {
+      for (const field of datePrecisionFields) {
+        const value = actorUpdates[field]
+        if (value !== undefined && value !== null) {
+          if (typeof value !== "string" || !VALID_DATE_PRECISION.includes(value)) {
+            invalidEnums.push({ field, value, validValues: VALID_DATE_PRECISION })
+          }
+        }
+      }
+    }
+
+    // Validate career_status_at_death (circumstances field)
+    if (circumstancesUpdates?.career_status_at_death !== undefined &&
+        circumstancesUpdates.career_status_at_death !== null) {
+      if (
+        typeof circumstancesUpdates.career_status_at_death !== "string" ||
+        !VALID_CAREER_STATUS.includes(circumstancesUpdates.career_status_at_death)
+      ) {
+        invalidEnums.push({
+          field: "career_status_at_death",
+          value: circumstancesUpdates.career_status_at_death,
+          validValues: VALID_CAREER_STATUS,
+        })
+      }
+    }
+
     if (invalidEnums.length > 0) {
       res.status(400).json({
         error: {
@@ -661,6 +693,16 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
             expectedType: "object[]",
             actualType: typeof circumstancesUpdates.posthumous_releases,
           })
+        } else if (
+          !circumstancesUpdates.posthumous_releases.every(
+            (item: unknown) => typeof item === "object" && item !== null && !Array.isArray(item)
+          )
+        ) {
+          invalidTypes.push({
+            field: "posthumous_releases",
+            expectedType: "object[]",
+            actualType: "array with non-object elements",
+          })
         }
       }
 
@@ -674,6 +716,16 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
             field: "related_celebrities",
             expectedType: "object[]",
             actualType: typeof circumstancesUpdates.related_celebrities,
+          })
+        } else if (
+          !circumstancesUpdates.related_celebrities.every(
+            (item: unknown) => typeof item === "object" && item !== null && !Array.isArray(item)
+          )
+        ) {
+          invalidTypes.push({
+            field: "related_celebrities",
+            expectedType: "object[]",
+            actualType: "array with non-object elements",
           })
         }
       }
