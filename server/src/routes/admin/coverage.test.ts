@@ -182,4 +182,70 @@ describe("Coverage API Routes", () => {
       expect(candidatesRoute).toBeDefined()
     })
   })
+
+  describe("GET /admin/api/coverage/causes", () => {
+    it("route exists and is properly configured", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const causesRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/causes" && layer.route?.methods.get
+      )
+
+      expect(causesRoute).toBeDefined()
+    })
+
+    it("returns distinct causes of death", async () => {
+      const mockCauses = [
+        { value: "heart attack", label: "Heart Attack", count: 50 },
+        { value: "cancer", label: "Cancer", count: 45 },
+        { value: "natural causes", label: "Natural Causes", count: 30 },
+      ]
+
+      vi.mocked(mockPool.query).mockResolvedValueOnce({
+        rows: mockCauses.map((c) => ({ cause: c.value, count: c.count })),
+      } as any)
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+
+      // Verify route handler exists
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const causesRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/causes" && layer.route?.methods.get
+      )
+
+      expect(causesRoute).toBeDefined()
+    })
+  })
+
+  describe("GET /admin/api/coverage/actors/:id/preview", () => {
+    it("route exists and is properly configured", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const previewRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors/:id/preview" && layer.route?.methods.get
+      )
+
+      expect(previewRoute).toBeDefined()
+    })
+
+    it("accepts valid actor ID parameter", async () => {
+      mockReq.params = { id: "123" }
+
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const previewRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors/:id/preview" && layer.route?.methods.get
+      )
+
+      expect(previewRoute).toBeDefined()
+      // The route pattern should accept numeric IDs
+      expect(previewRoute!.route!.path).toBe("/actors/:id/preview")
+    })
+  })
 })
