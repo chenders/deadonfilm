@@ -161,6 +161,74 @@ describe("StartEnrichmentPage defaults", () => {
     })
   })
 
+  describe("Wikipedia Options defaults (admin UI only, not in CLI)", () => {
+    it("has wikipediaUseAISectionSelection disabled by default", () => {
+      renderPage()
+      const aiSectionCheckbox = screen.getByRole("checkbox", {
+        name: /use ai for section selection/i,
+      })
+      expect(aiSectionCheckbox).not.toBeChecked()
+    })
+
+    it("has wikipediaFollowLinkedArticles disabled by default", () => {
+      renderPage()
+      const followLinkedCheckbox = screen.getByRole("checkbox", {
+        name: /follow linked wikipedia articles/i,
+      })
+      expect(followLinkedCheckbox).not.toBeChecked()
+    })
+
+    it("has wikipediaMaxSections defaulted to 10", () => {
+      renderPage()
+      const maxSectionsInput = screen.getByRole("spinbutton", {
+        name: /max sections to fetch/i,
+      })
+      expect(maxSectionsInput).toHaveValue(10)
+    })
+
+    it("does not show maxLinkedArticles input when followLinkedArticles is disabled", () => {
+      renderPage()
+      // The maxLinkedArticles input should not be visible when followLinkedArticles is unchecked
+      const maxLinkedInput = screen.queryByRole("spinbutton", {
+        name: /max linked articles/i,
+      })
+      expect(maxLinkedInput).not.toBeInTheDocument()
+    })
+
+    it("shows maxLinkedArticles input when followLinkedArticles is enabled", async () => {
+      renderPage()
+      const { fireEvent } = await import("@testing-library/react")
+
+      // Initially hidden
+      expect(
+        screen.queryByRole("spinbutton", { name: /max linked articles/i })
+      ).not.toBeInTheDocument()
+
+      // Click to enable follow linked articles
+      const followLinkedCheckbox = screen.getByRole("checkbox", {
+        name: /follow linked wikipedia articles/i,
+      })
+      fireEvent.click(followLinkedCheckbox)
+
+      // Now visible with default value of 2
+      const maxLinkedInput = screen.getByRole("spinbutton", {
+        name: /max linked articles/i,
+      })
+      expect(maxLinkedInput).toBeInTheDocument()
+      expect(maxLinkedInput).toHaveValue(2)
+    })
+
+    it("has data-testid attributes on Wikipedia UI elements", () => {
+      renderPage()
+
+      expect(screen.getByTestId("wikipedia-use-ai-section-selection")).toBeInTheDocument()
+      expect(screen.getByTestId("wikipedia-follow-linked-articles")).toBeInTheDocument()
+      expect(screen.getByTestId("wikipedia-max-sections")).toBeInTheDocument()
+      // maxLinkedArticles is conditionally rendered, so check it's not there initially
+      expect(screen.queryByTestId("wikipedia-max-linked-articles")).not.toBeInTheDocument()
+    })
+  })
+
   describe("CLI Reference shows correct default command", () => {
     it("shows the equivalent CLI command with proper flags", () => {
       renderPage()
