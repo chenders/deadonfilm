@@ -407,15 +407,16 @@ export async function getActorPreview(pool: Pool, actorId: number): Promise<Acto
 
   // Fetch top 3 shows by episode count
   // Each row in actor_show_appearances represents one episode, so we count rows per show
+  // Pick first character name alphabetically when it varies across episodes
   const showsResult = await pool.query<{
     name: string
     first_air_year: number | null
     character_name: string | null
-    episode_count: string
+    episode_count: number
   }>(
     `SELECT s.name, s.first_air_year,
             (array_agg(asa.character_name ORDER BY asa.character_name))[1] as character_name,
-            COUNT(*)::text as episode_count
+            COUNT(*) as episode_count
      FROM actor_show_appearances asa
      JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
      WHERE asa.actor_id = $1
@@ -444,7 +445,7 @@ export async function getActorPreview(pool: Pool, actorId: number): Promise<Acto
       name: row.name,
       firstAirYear: row.first_air_year,
       character: row.character_name,
-      episodeCount: parseInt(row.episode_count, 10),
+      episodeCount: Number(row.episode_count),
     })),
     totalMovies: parseInt(countsResult.rows[0]?.total_movies ?? "0", 10),
     totalShows: parseInt(countsResult.rows[0]?.total_shows ?? "0", 10),
