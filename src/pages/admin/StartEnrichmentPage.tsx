@@ -837,27 +837,29 @@ export default function StartEnrichmentPage() {
           <p className="mb-4 text-admin-text-secondary">
             Equivalent CLI command for this configuration:
           </p>
-          <div className="overflow-x-auto rounded bg-admin-surface-base p-4 font-mono text-sm text-admin-text-secondary">
-            cd server && npm run enrich:death-details --{" "}
-            {selectionMode === "specific" && selectedActorIds.length > 0
-              ? `--actor-id ${selectedActorIds.join(",")}`
-              : `--limit ${limit}`}{" "}
-            --max-total-cost {maxTotalCost}
-            {maxCostPerActor ? ` --max-cost-per-actor ${maxCostPerActor}` : ""}
-            {selectionMode === "batch" && minPopularity > 0
-              ? ` --min-popularity ${minPopularity}`
-              : ""}
-            {selectionMode === "batch" && recentOnly ? " --recent-only" : ""}
-            {selectionMode === "batch" && usActorsOnly ? " --us-actors-only" : ""}
-            {free ? "" : " --disable-free"}
-            {paid ? "" : " --disable-paid"}
-            {ai ? " --ai" : ""}
-            {gatherAllSources ? "" : " --disable-gather-all-sources"}
-            {claudeCleanup ? "" : " --disable-claude-cleanup"}
-            {followLinks ? "" : " --disable-follow-links"}
-            {aiLinkSelection ? "" : " --disable-ai-link-selection"}
-            {aiContentExtraction ? "" : " --disable-ai-content-extraction"}
-            {confidence !== 0.5 ? ` --confidence ${confidence}` : ""}
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <pre className="whitespace-pre-wrap break-words rounded bg-admin-surface-base p-4 font-mono text-sm text-admin-text-secondary sm:whitespace-pre">
+              cd server && npm run enrich:death-details --{" "}
+              {selectionMode === "specific" && selectedActorIds.length > 0
+                ? `--actor-id ${selectedActorIds.join(",")}`
+                : `--limit ${limit}`}{" "}
+              --max-total-cost {maxTotalCost}
+              {maxCostPerActor ? ` --max-cost-per-actor ${maxCostPerActor}` : ""}
+              {selectionMode === "batch" && minPopularity > 0
+                ? ` --min-popularity ${minPopularity}`
+                : ""}
+              {selectionMode === "batch" && recentOnly ? " --recent-only" : ""}
+              {selectionMode === "batch" && usActorsOnly ? " --us-actors-only" : ""}
+              {free ? "" : " --disable-free"}
+              {paid ? "" : " --disable-paid"}
+              {ai ? " --ai" : ""}
+              {gatherAllSources ? "" : " --disable-gather-all-sources"}
+              {claudeCleanup ? "" : " --disable-claude-cleanup"}
+              {followLinks ? "" : " --disable-follow-links"}
+              {aiLinkSelection ? "" : " --disable-ai-link-selection"}
+              {aiContentExtraction ? "" : " --disable-ai-content-extraction"}
+              {confidence !== 0.5 ? ` --confidence ${confidence}` : ""}
+            </pre>
           </div>
         </div>
       </div>

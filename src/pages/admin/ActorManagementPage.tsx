@@ -397,7 +397,7 @@ export default function ActorManagementPage() {
 
         {/* Data Table */}
         {data && (
-          <>
+          <div className={selectedActorIds.size > 0 ? "pb-24" : ""}>
             <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-admin-text-muted">
@@ -406,18 +406,22 @@ export default function ActorManagementPage() {
               </div>
 
               <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-                <table className="min-w-[600px] md:min-w-full">
+                <table className="w-full min-w-[600px] md:min-w-full">
                   <thead className="border-b border-admin-border bg-admin-surface-base">
                     <tr>
-                      <th className="px-4 py-3 text-left">
-                        <input
-                          type="checkbox"
-                          checked={
-                            data.items.length > 0 && selectedActorIds.size === data.items.length
-                          }
-                          onChange={handleSelectAll}
-                          className="h-4 w-4 rounded border-admin-border bg-admin-surface-elevated text-admin-interactive"
-                        />
+                      <th className="px-2 py-3 text-left md:px-4">
+                        <label className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={
+                              data.items.length > 0 && selectedActorIds.size === data.items.length
+                            }
+                            onChange={handleSelectAll}
+                            aria-label="Select all actors"
+                            className="h-4 w-4 rounded border-admin-border bg-admin-surface-elevated text-admin-interactive"
+                          />
+                          <span className="sr-only">Select all actors</span>
+                        </label>
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                         Name
@@ -460,13 +464,17 @@ export default function ActorManagementPage() {
                             selectedActorIds.has(actor.id) ? "bg-admin-interactive-secondary" : ""
                           }`}
                         >
-                          <td className="px-4 py-3">
-                            <input
-                              type="checkbox"
-                              checked={selectedActorIds.has(actor.id)}
-                              onChange={() => handleSelectActor(actor.id)}
-                              className="h-4 w-4 rounded border-admin-border bg-admin-surface-elevated text-admin-interactive"
-                            />
+                          <td className="px-2 py-1 md:px-4 md:py-3">
+                            <label className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedActorIds.has(actor.id)}
+                                onChange={() => handleSelectActor(actor.id)}
+                                aria-label={`Select ${actor.name}`}
+                                className="h-4 w-4 rounded border-admin-border bg-admin-surface-elevated text-admin-interactive"
+                              />
+                              <span className="sr-only">Select {actor.name}</span>
+                            </label>
                           </td>
                           <td className="px-4 py-3 text-admin-text-primary">
                             <AdminHoverCard content={<ActorPreviewCard actorId={actor.id} />}>
@@ -556,26 +564,26 @@ export default function ActorManagementPage() {
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
 
         {/* Bulk Actions Bar (Fixed Bottom) */}
         {selectedActorIds.size > 0 && (
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-admin-border bg-admin-surface-base p-4 shadow-lg">
-            <div className="mx-auto flex max-w-7xl items-center justify-between">
-              <div className="text-admin-text-primary">
+            <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-center text-admin-text-primary sm:text-left">
                 {selectedActorIds.size} actor{selectedActorIds.size !== 1 ? "s" : ""} selected
               </div>
-              <div className="flex space-x-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
                 <button
                   onClick={() => setSelectedActorIds(new Set())}
-                  className="rounded bg-admin-interactive-secondary px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-surface-overlay"
+                  className="min-h-[44px] rounded bg-admin-interactive-secondary px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-surface-overlay"
                 >
                   Clear Selection
                 </button>
                 <button
                   onClick={handleEnrichSelected}
-                  className="rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
+                  className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
                 >
                   Enrich Selected
                 </button>

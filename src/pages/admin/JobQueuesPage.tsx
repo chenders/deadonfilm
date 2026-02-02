@@ -556,8 +556,8 @@ export default function JobQueuesPage() {
                 No jobs processed in the last 24 hours
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+                <table className="w-full min-w-[600px]">
                   <thead>
                     <tr className="border-b border-admin-border text-left text-xs font-semibold uppercase tracking-wider text-admin-text-muted">
                       <th className="pb-2">Job Type</th>

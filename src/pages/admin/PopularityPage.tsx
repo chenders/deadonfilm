@@ -47,23 +47,25 @@ export default function PopularityPage() {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-admin-border">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                data-testid={tab.testId}
-                className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
-                  activeTab === tab.id
-                    ? "border-admin-interactive text-admin-interactive"
-                    : "border-transparent text-admin-text-muted hover:border-admin-border hover:text-admin-text-secondary"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+        <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+          <div className="border-b border-admin-border">
+            <nav className="-mb-px flex min-w-max space-x-4 md:space-x-8">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  data-testid={tab.testId}
+                  className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+                    activeTab === tab.id
+                      ? "border-admin-interactive text-admin-interactive"
+                      : "border-transparent text-admin-text-muted hover:border-admin-border hover:text-admin-text-secondary"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
 
         {/* Overview Tab */}
@@ -329,77 +331,79 @@ export default function PopularityPage() {
                 className="rounded-lg bg-admin-surface-elevated shadow-admin-sm"
                 data-testid="top-actors-table"
               >
-                <table className="min-w-full divide-y divide-admin-border">
-                  <thead className="bg-admin-surface-overlay">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Rank
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Actor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        DOF Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Confidence
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        TMDB Pop
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Death Date
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
-                    {topActors.data.actors.map((actor, index) => (
-                      <tr key={actor.id}>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-muted">
-                          {index + 1}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <div className="font-medium text-admin-text-primary">{actor.name}</div>
-                          <div className="text-sm text-admin-text-muted">
-                            ID: {actor.id}
-                            {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <span className="font-semibold text-admin-interactive">
-                            {actor.dofPopularity.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                              actor.confidence >= 0.7
-                                ? "bg-admin-success/20 text-admin-success"
-                                : actor.confidence >= 0.5
-                                  ? "bg-admin-warning/20 text-admin-warning"
-                                  : "bg-admin-danger/20 text-admin-danger"
-                            }`}
-                          >
-                            {(actor.confidence * 100).toFixed(0)}%
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.tmdbPopularity?.toFixed(1) ?? "N/A"}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.deathday ?? "N/A"}
-                        </td>
-                      </tr>
-                    ))}
-                    {topActors.data.actors.length === 0 && (
+                <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+                  <table className="w-full min-w-[700px] divide-y divide-admin-border">
+                    <thead className="bg-admin-surface-overlay">
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-admin-text-muted">
-                          No actors found with the selected criteria
-                        </td>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Rank
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Actor
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          DOF Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Confidence
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          TMDB Pop
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Death Date
+                        </th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
+                      {topActors.data.actors.map((actor, index) => (
+                        <tr key={actor.id}>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-muted">
+                            {index + 1}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <div className="font-medium text-admin-text-primary">{actor.name}</div>
+                            <div className="text-sm text-admin-text-muted">
+                              ID: {actor.id}
+                              {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <span className="font-semibold text-admin-interactive">
+                              {actor.dofPopularity.toFixed(2)}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <span
+                              className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                                actor.confidence >= 0.7
+                                  ? "bg-admin-success/20 text-admin-success"
+                                  : actor.confidence >= 0.5
+                                    ? "bg-admin-warning/20 text-admin-warning"
+                                    : "bg-admin-danger/20 text-admin-danger"
+                              }`}
+                            >
+                              {(actor.confidence * 100).toFixed(0)}%
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.tmdbPopularity?.toFixed(1) ?? "N/A"}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.deathday ?? "N/A"}
+                          </td>
+                        </tr>
+                      ))}
+                      {topActors.data.actors.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center text-admin-text-muted">
+                            No actors found with the selected criteria
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -425,63 +429,65 @@ export default function PopularityPage() {
 
             {lowConfidence.data && (
               <div className="rounded-lg bg-admin-surface-elevated shadow-admin-sm">
-                <table className="min-w-full divide-y divide-admin-border">
-                  <thead className="bg-admin-surface-overlay">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Actor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        DOF Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Confidence
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Movies
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Shows
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
-                    {lowConfidence.data.actors.map((actor) => (
-                      <tr key={actor.id}>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <div className="font-medium text-admin-text-primary">{actor.name}</div>
-                          <div className="text-sm text-admin-text-muted">
-                            ID: {actor.id}
-                            {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <span className="font-semibold text-admin-text-primary">
-                            {actor.dofPopularity.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <span className="bg-admin-warning/20 inline-flex rounded-full px-2 text-xs font-semibold leading-5 text-admin-warning">
-                            {(actor.confidence * 100).toFixed(0)}%
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.movieCount}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.showCount}
-                        </td>
-                      </tr>
-                    ))}
-                    {lowConfidence.data.actors.length === 0 && (
+                <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+                  <table className="w-full min-w-[600px] divide-y divide-admin-border">
+                    <thead className="bg-admin-surface-overlay">
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-admin-text-muted">
-                          No low confidence actors found
-                        </td>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Actor
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          DOF Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Confidence
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Movies
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Shows
+                        </th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
+                      {lowConfidence.data.actors.map((actor) => (
+                        <tr key={actor.id}>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <div className="font-medium text-admin-text-primary">{actor.name}</div>
+                            <div className="text-sm text-admin-text-muted">
+                              ID: {actor.id}
+                              {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <span className="font-semibold text-admin-text-primary">
+                              {actor.dofPopularity.toFixed(2)}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <span className="bg-admin-warning/20 inline-flex rounded-full px-2 text-xs font-semibold leading-5 text-admin-warning">
+                              {(actor.confidence * 100).toFixed(0)}%
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.movieCount}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.showCount}
+                          </td>
+                        </tr>
+                      ))}
+                      {lowConfidence.data.actors.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-admin-text-muted">
+                            No low confidence actors found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -512,53 +518,55 @@ export default function PopularityPage() {
 
             {missing.data && (
               <div className="rounded-lg bg-admin-surface-elevated shadow-admin-sm">
-                <table className="min-w-full divide-y divide-admin-border">
-                  <thead className="bg-admin-surface-overlay">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Actor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        TMDB Popularity
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Movies
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Shows
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
-                    {missing.data.actors.map((actor) => (
-                      <tr key={actor.id}>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <div className="font-medium text-admin-text-primary">{actor.name}</div>
-                          <div className="text-sm text-admin-text-muted">
-                            ID: {actor.id}
-                            {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.tmdbPopularity?.toFixed(1) ?? "N/A"}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.movieCount}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.showCount}
-                        </td>
-                      </tr>
-                    ))}
-                    {missing.data.actors.length === 0 && (
+                <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+                  <table className="w-full min-w-[500px] divide-y divide-admin-border">
+                    <thead className="bg-admin-surface-overlay">
                       <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-admin-text-muted">
-                          All deceased actors have DOF popularity scores
-                        </td>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Actor
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          TMDB Popularity
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Movies
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Shows
+                        </th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
+                      {missing.data.actors.map((actor) => (
+                        <tr key={actor.id}>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <div className="font-medium text-admin-text-primary">{actor.name}</div>
+                            <div className="text-sm text-admin-text-muted">
+                              ID: {actor.id}
+                              {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.tmdbPopularity?.toFixed(1) ?? "N/A"}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.movieCount}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.showCount}
+                          </td>
+                        </tr>
+                      ))}
+                      {missing.data.actors.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-12 text-center text-admin-text-muted">
+                            All deceased actors have DOF popularity scores
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

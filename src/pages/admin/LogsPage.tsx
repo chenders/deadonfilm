@@ -192,7 +192,7 @@ export default function LogsPage() {
       key: "message",
       label: "Message",
       render: (row) => (
-        <div className="max-w-xl">
+        <div className="max-w-[200px] md:max-w-xl">
           <div className="truncate text-sm text-admin-text-primary" title={row.message}>
             {row.message}
           </div>
@@ -395,124 +395,126 @@ export default function LogsPage() {
         )}
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
-          <div>
-            <label
-              htmlFor="filter-level"
-              className="mb-1 block text-xs font-medium text-admin-text-muted"
-            >
-              Level
-            </label>
-            <select
-              id="filter-level"
-              value={filters.level || ""}
-              onChange={(e) =>
-                updateFilters({ level: (e.target.value as LogLevel) || undefined, page: 1 })
-              }
-              className="rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-1.5 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
-            >
-              <option value="">All Levels</option>
-              <option value="fatal">Fatal</option>
-              <option value="error">Error</option>
-              <option value="warn">Warning</option>
-              <option value="info">Info</option>
-              <option value="debug">Debug</option>
-              <option value="trace">Trace</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="filter-source"
-              className="mb-1 block text-xs font-medium text-admin-text-muted"
-            >
-              Source
-            </label>
-            <select
-              id="filter-source"
-              value={filters.source || ""}
-              onChange={(e) =>
-                updateFilters({ source: (e.target.value as LogSource) || undefined, page: 1 })
-              }
-              className="rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-1.5 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
-            >
-              <option value="">All Sources</option>
-              <option value="route">Route</option>
-              <option value="script">Script</option>
-              <option value="cronjob">Cron Job</option>
-              <option value="middleware">Middleware</option>
-              <option value="startup">Startup</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <DateInput
-            id="filter-start-date"
-            label="From"
-            value={filters.startDate || ""}
-            onChange={(value) => updateFilters({ startDate: value || undefined, page: 1 })}
-            helpText=""
-            showClearButton={true}
-            className="w-36"
-          />
-
-          <DateInput
-            id="filter-end-date"
-            label="To"
-            value={filters.endDate || ""}
-            onChange={(value) => updateFilters({ endDate: value || undefined, page: 1 })}
-            helpText=""
-            showClearButton={true}
-            className="w-36"
-          />
-
-          <div className="flex-1">
-            <label
-              htmlFor="filter-search"
-              className="mb-1 block text-xs font-medium text-admin-text-muted"
-            >
-              Search
-            </label>
-            <input
-              id="filter-search"
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search in message..."
-              className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-1.5 text-sm text-admin-text-primary placeholder-admin-text-muted focus:border-admin-interactive focus:outline-none"
-            />
-          </div>
-
-          {(filters.level ||
-            filters.source ||
-            searchInput ||
-            filters.startDate ||
-            filters.endDate) && (
-            <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setSearchInput("")
-                  updateFilters({
-                    level: undefined,
-                    source: undefined,
-                    search: undefined,
-                    startDate: undefined,
-                    endDate: undefined,
-                    page: 1,
-                  })
-                }}
-                className="rounded-md px-3 py-1.5 text-sm text-admin-text-muted hover:bg-admin-surface-overlay hover:text-admin-text-primary"
+        <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4">
+          <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap md:gap-3">
+            <div className="col-span-1">
+              <label
+                htmlFor="filter-level"
+                className="mb-1 block text-xs font-medium text-admin-text-muted"
               >
-                Clear Filters
-              </button>
+                Level
+              </label>
+              <select
+                id="filter-level"
+                value={filters.level || ""}
+                onChange={(e) =>
+                  updateFilters({ level: (e.target.value as LogLevel) || undefined, page: 1 })
+                }
+                className="min-h-[44px] w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-1.5 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none md:w-auto"
+              >
+                <option value="">All Levels</option>
+                <option value="fatal">Fatal</option>
+                <option value="error">Error</option>
+                <option value="warn">Warning</option>
+                <option value="info">Info</option>
+                <option value="debug">Debug</option>
+                <option value="trace">Trace</option>
+              </select>
             </div>
-          )}
+
+            <div className="col-span-1">
+              <label
+                htmlFor="filter-source"
+                className="mb-1 block text-xs font-medium text-admin-text-muted"
+              >
+                Source
+              </label>
+              <select
+                id="filter-source"
+                value={filters.source || ""}
+                onChange={(e) =>
+                  updateFilters({ source: (e.target.value as LogSource) || undefined, page: 1 })
+                }
+                className="min-h-[44px] w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-1.5 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none md:w-auto"
+              >
+                <option value="">All Sources</option>
+                <option value="route">Route</option>
+                <option value="script">Script</option>
+                <option value="cronjob">Cron Job</option>
+                <option value="middleware">Middleware</option>
+                <option value="startup">Startup</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <DateInput
+              id="filter-start-date"
+              label="From"
+              value={filters.startDate || ""}
+              onChange={(value) => updateFilters({ startDate: value || undefined, page: 1 })}
+              helpText=""
+              showClearButton={true}
+              className="col-span-1 w-full md:w-36"
+            />
+
+            <DateInput
+              id="filter-end-date"
+              label="To"
+              value={filters.endDate || ""}
+              onChange={(value) => updateFilters({ endDate: value || undefined, page: 1 })}
+              helpText=""
+              showClearButton={true}
+              className="col-span-1 w-full md:w-36"
+            />
+
+            <div className="col-span-2 md:flex-1">
+              <label
+                htmlFor="filter-search"
+                className="mb-1 block text-xs font-medium text-admin-text-muted"
+              >
+                Search
+              </label>
+              <input
+                id="filter-search"
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search in message..."
+                className="min-h-[44px] w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-1.5 text-sm text-admin-text-primary placeholder-admin-text-muted focus:border-admin-interactive focus:outline-none"
+              />
+            </div>
+
+            {(filters.level ||
+              filters.source ||
+              searchInput ||
+              filters.startDate ||
+              filters.endDate) && (
+              <div className="col-span-2 flex items-end md:col-span-1">
+                <button
+                  onClick={() => {
+                    setSearchInput("")
+                    updateFilters({
+                      level: undefined,
+                      source: undefined,
+                      search: undefined,
+                      startDate: undefined,
+                      endDate: undefined,
+                      page: 1,
+                    })
+                  }}
+                  className="min-h-[44px] w-full rounded-md px-3 py-1.5 text-sm text-admin-text-muted hover:bg-admin-surface-overlay hover:text-admin-text-primary md:w-auto"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Table */}
         <div className="rounded-lg border border-admin-border bg-admin-surface-elevated">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-admin-border bg-admin-surface-inset">
                   {columns.map((col) => (

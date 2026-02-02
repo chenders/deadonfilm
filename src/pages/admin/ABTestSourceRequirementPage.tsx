@@ -3,10 +3,12 @@ import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import { useABTestResults } from "../../hooks/admin/useABTests"
+import { useIsMobile } from "../../hooks/useIsMobile"
 
 export default function ABTestSourceRequirementPage() {
   const { data, isLoading, error } = useABTestResults()
   const [expandedActorId, setExpandedActorId] = useState<number | null>(null)
+  const isMobile = useIsMobile(768) // Use md breakpoint for diff viewer
 
   if (isLoading) {
     return (
@@ -202,7 +204,7 @@ export default function ABTestSourceRequirementPage() {
                           <ReactDiffViewer
                             oldValue={comparison.withSources?.circumstances || ""}
                             newValue={comparison.withoutSources?.circumstances || ""}
-                            splitView={true}
+                            splitView={!isMobile}
                             compareMethod={DiffMethod.WORDS}
                             leftTitle="With Sources Required"
                             rightTitle="Without Sources Required"
