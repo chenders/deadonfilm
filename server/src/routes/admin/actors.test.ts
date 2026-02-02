@@ -476,6 +476,305 @@ describe("admin actors routes", () => {
       ])
     })
 
+    it("should return 400 for invalid career_status_at_death value", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { career_status_at_death: "working" } }) // Invalid value
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid enum value")
+      expect(res.body.error.invalidEnums[0].field).toBe("career_status_at_death")
+      expect(res.body.error.invalidEnums[0].validValues).toEqual([
+        "active",
+        "semi-retired",
+        "retired",
+        "hiatus",
+        "unknown",
+      ])
+    })
+
+    it("should accept valid career_status_at_death values", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+      const mockCircumstances = {
+        id: 1,
+        actor_id: 123,
+        career_status_at_death: null,
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({
+          rows: [{ ...mockCircumstances, career_status_at_death: "retired" }],
+        })
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockResolvedValueOnce({ rows: [mockCircumstances] }) // Select circumstances for snapshot
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert snapshot
+        .mockResolvedValueOnce({ rows: [] }) // history
+        .mockResolvedValueOnce({ rows: [] }) // update
+        .mockResolvedValueOnce({ rows: [] }) // COMMIT
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { career_status_at_death: "retired" } })
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+    })
+
+    it("should return 400 for invalid birthday_precision value", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { birthday_precision: "exact" } }) // Invalid value
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid enum value")
+      expect(res.body.error.invalidEnums[0].field).toBe("birthday_precision")
+      expect(res.body.error.invalidEnums[0].validValues).toEqual(["year", "month", "day"])
+    })
+
+    it("should return 400 for invalid deathday_precision value", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { deathday_precision: "approximate" } }) // Invalid value
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid enum value")
+      expect(res.body.error.invalidEnums[0].field).toBe("deathday_precision")
+      expect(res.body.error.invalidEnums[0].validValues).toEqual(["year", "month", "day"])
+    })
+
+    it("should accept valid date precision values", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+        birthday_precision: null,
+        deathday_precision: null,
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ ...mockActor, birthday_precision: "month", deathday_precision: "day" }],
+        })
+        .mockResolvedValueOnce({ rows: [] })
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockResolvedValueOnce({ rows: [] }) // Select circumstances for snapshot
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert snapshot
+        .mockResolvedValueOnce({ rows: [] }) // history birthday_precision
+        .mockResolvedValueOnce({ rows: [] }) // history deathday_precision
+        .mockResolvedValueOnce({ rows: [] }) // update
+        .mockResolvedValueOnce({ rows: [] }) // COMMIT
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { birthday_precision: "month", deathday_precision: "day" } })
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+    })
+
+    it("should return 400 for invalid sources field type (not array)", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { sources: "not an array" } })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid field type")
+      expect(res.body.error.invalidTypes[0].field).toBe("sources")
+      expect(res.body.error.invalidTypes[0].expectedType).toBe("object[]")
+    })
+
+    it("should return 400 for invalid sources field (array with non-objects)", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { sources: ["string1", "string2"] } })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid field type")
+      expect(res.body.error.invalidTypes[0].field).toBe("sources")
+      expect(res.body.error.invalidTypes[0].actualType).toBe("array with non-object elements")
+    })
+
+    it("should accept valid sources field (array of objects)", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+      const mockCircumstances = {
+        id: 1,
+        actor_id: 123,
+        sources: null,
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({
+          rows: [{ ...mockCircumstances, sources: [{ url: "https://example.com", name: "Test" }] }],
+        })
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockResolvedValueOnce({ rows: [mockCircumstances] }) // Select circumstances for snapshot
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert snapshot
+        .mockResolvedValueOnce({ rows: [] }) // history
+        .mockResolvedValueOnce({ rows: [] }) // update
+        .mockResolvedValueOnce({ rows: [] }) // COMMIT
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { sources: [{ url: "https://example.com", name: "Test" }] } })
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+    })
+
+    it("should return 400 for invalid entity_links field type (not object)", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { entity_links: "not an object" } })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid field type")
+      expect(res.body.error.invalidTypes[0].field).toBe("entity_links")
+      expect(res.body.error.invalidTypes[0].expectedType).toBe("object")
+    })
+
+    it("should return 400 for invalid entity_links field type (array instead of object)", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { entity_links: [{ key: "value" }] } })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid field type")
+      expect(res.body.error.invalidTypes[0].field).toBe("entity_links")
+      expect(res.body.error.invalidTypes[0].actualType).toBe("array")
+    })
+
+    it("should accept valid entity_links field (object)", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+      const mockCircumstances = {
+        id: 1,
+        actor_id: 123,
+        entity_links: null,
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({ rows: [mockCircumstances] })
+        .mockResolvedValueOnce({ rows: [mockActor] })
+        .mockResolvedValueOnce({
+          rows: [{ ...mockCircumstances, entity_links: { wikipedia: "https://en.wikipedia.org" } }],
+        })
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockResolvedValueOnce({ rows: [mockCircumstances] }) // Select circumstances for snapshot
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert snapshot
+        .mockResolvedValueOnce({ rows: [] }) // history
+        .mockResolvedValueOnce({ rows: [] }) // update
+        .mockResolvedValueOnce({ rows: [] }) // COMMIT
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { entity_links: { wikipedia: "https://en.wikipedia.org" } } })
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+    })
+
     it("should return 400 for non-editable circumstances fields", async () => {
       const mockActor = {
         id: 123,
