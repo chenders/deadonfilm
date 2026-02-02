@@ -408,6 +408,46 @@ describe("admin actors routes", () => {
       expect(res.body.error.invalidDates[0].reason).toBe("Birth date cannot be after death date")
     })
 
+    it("should return 400 for invalid death_manner value", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { death_manner: "invalid_value" } })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid enum value")
+      expect(res.body.error.invalidEnums[0].field).toBe("death_manner")
+    })
+
+    it("should return 400 for invalid confidence value", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ circumstances: { circumstances_confidence: "very_high" } })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Invalid enum value")
+      expect(res.body.error.invalidEnums[0].field).toBe("circumstances_confidence")
+    })
+
     it("should return 500 when database query fails for GET", async () => {
       mockPool.query.mockRejectedValueOnce(new Error("Database connection failed"))
 

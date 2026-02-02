@@ -13,6 +13,17 @@ import { logAdminAction } from "../../lib/admin-auth.js"
 
 const router = Router()
 
+// Valid values for constrained fields (matching database CHECK constraints)
+const VALID_DEATH_MANNER = ["natural", "accident", "suicide", "homicide", "undetermined", "pending"]
+const VALID_CONFIDENCE = ["high", "medium", "low", "disputed"]
+
+// Helper function to convert values to string for history storage
+function valueToHistoryString(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+  if (typeof value === "object") return JSON.stringify(value)
+  return String(value)
+}
+
 // Fields that should NOT be editable via the admin editor
 const NON_EDITABLE_FIELDS = new Set([
   // Computed fields
@@ -489,6 +500,49 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
       return
     }
 
+    // Validate constrained enum fields
+    const invalidEnums: { field: string; value: unknown; validValues: string[] }[] = []
+
+    // Validate death_manner (actor field)
+    if (actorUpdates?.death_manner !== undefined && actorUpdates.death_manner !== null) {
+      if (!VALID_DEATH_MANNER.includes(actorUpdates.death_manner as string)) {
+        invalidEnums.push({
+          field: "death_manner",
+          value: actorUpdates.death_manner,
+          validValues: VALID_DEATH_MANNER,
+        })
+      }
+    }
+
+    // Validate confidence fields (circumstances fields)
+    const confidenceFields = [
+      "circumstances_confidence",
+      "cause_confidence",
+      "details_confidence",
+      "birthday_confidence",
+      "deathday_confidence",
+    ]
+    if (circumstancesUpdates) {
+      for (const field of confidenceFields) {
+        const value = circumstancesUpdates[field]
+        if (value !== undefined && value !== null) {
+          if (!VALID_CONFIDENCE.includes(value as string)) {
+            invalidEnums.push({ field, value, validValues: VALID_CONFIDENCE })
+          }
+        }
+      }
+    }
+
+    if (invalidEnums.length > 0) {
+      res.status(400).json({
+        error: {
+          message: "Invalid enum value",
+          invalidEnums,
+        },
+      })
+      return
+    }
+
     // Calculate changes before creating snapshot (to avoid unnecessary snapshots)
     const changes: { table: string; field: string; oldValue: unknown; newValue: unknown }[] = []
 
@@ -583,29 +637,24 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
           paramIndex++
 
           // Record in history
-          const oldStr =
-            oldValue === null || oldValue === undefined
-              ? null
-              : typeof oldValue === "object"
-                ? JSON.stringify(oldValue)
-                : String(oldValue)
-          const newStr =
-            value === null || value === undefined
-              ? null
-              : typeof value === "object"
-                ? JSON.stringify(value)
-                : String(value)
-
           await client.query(
             `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
              VALUES ($1, $2, $3, $4, $5, $6)`,
-            [actorId, field, oldStr, newStr, "admin-manual-edit", batchId]
+            [
+              actorId,
+              field,
+              valueToHistoryString(oldValue),
+              valueToHistoryString(value),
+              "admin-manual-edit",
+              batchId,
+            ]
           )
         }
 
         if (setClauses.length > 0) {
           setClauses.push(`updated_at = NOW()`)
           values.push(actorId)
+          // Note: Field names are validated against ACTOR_EDITABLE_FIELDS allowlist above
           await client.query(
             `UPDATE actors SET ${setClauses.join(", ")} WHERE id = $${paramIndex}`,
             values
@@ -634,29 +683,24 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
             paramIndex++
 
             // Record in history
-            const oldStr =
-              oldValue === null || oldValue === undefined
-                ? null
-                : typeof oldValue === "object"
-                  ? JSON.stringify(oldValue)
-                  : String(oldValue)
-            const newStr =
-              value === null || value === undefined
-                ? null
-                : typeof value === "object"
-                  ? JSON.stringify(value)
-                  : String(value)
-
             await client.query(
               `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
                VALUES ($1, $2, $3, $4, $5, $6)`,
-              [actorId, `circumstances.${field}`, oldStr, newStr, "admin-manual-edit", batchId]
+              [
+                actorId,
+                `circumstances.${field}`,
+                valueToHistoryString(oldValue),
+                valueToHistoryString(value),
+                "admin-manual-edit",
+                batchId,
+              ]
             )
           }
 
           if (setClauses.length > 0) {
             setClauses.push(`updated_at = NOW()`)
             values.push(actorId)
+            // Note: Field names are validated against CIRCUMSTANCES_EDITABLE_FIELDS allowlist above
             await client.query(
               `UPDATE actor_death_circumstances SET ${setClauses.join(", ")} WHERE actor_id = $${paramIndex}`,
               values
@@ -664,6 +708,7 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
           }
         } else {
           // Create new circumstances record
+          // Note: Field names are validated against CIRCUMSTANCES_EDITABLE_FIELDS allowlist above
           const fields = ["actor_id", ...Object.keys(circumstancesUpdates)]
           const values = [actorId, ...Object.values(circumstancesUpdates)]
           const placeholders = values.map((_, i) => `$${i + 1}`).join(", ")
@@ -675,17 +720,17 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
 
           // Record history for new circumstances
           for (const [field, value] of Object.entries(circumstancesUpdates)) {
-            const newStr =
-              value === null || value === undefined
-                ? null
-                : typeof value === "object"
-                  ? JSON.stringify(value)
-                  : String(value)
-
             await client.query(
               `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
                VALUES ($1, $2, $3, $4, $5, $6)`,
-              [actorId, `circumstances.${field}`, null, newStr, "admin-manual-edit", batchId]
+              [
+                actorId,
+                `circumstances.${field}`,
+                null,
+                valueToHistoryString(value),
+                "admin-manual-edit",
+                batchId,
+              ]
             )
           }
         }
