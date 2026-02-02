@@ -7,7 +7,7 @@
 import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
-import { getCached, CACHE_KEYS } from "../../lib/cache.js"
+import { getCached, CACHE_KEYS, invalidateActorCache } from "../../lib/cache.js"
 import { createActorSlug } from "../../lib/slug-utils.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
 
@@ -358,7 +358,7 @@ interface UpdateActorBody {
   circumstances?: Record<string, unknown>
 }
 
-router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
+router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> => {
   const pool = getPool()
   const actorId = parseInt(req.params.id, 10)
 
@@ -445,6 +445,34 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
               invalidDates.push({ field, value, reason: "Invalid date" })
             } else if (field === "deathday" && parsed > new Date()) {
               invalidDates.push({ field, value, reason: "Death date cannot be in the future" })
+            } else if (field === "deathday") {
+              // Check death date is not before birth date
+              const birthday =
+                actorUpdates.birthday !== undefined ? actorUpdates.birthday : existingActor.birthday
+              if (birthday && typeof birthday === "string") {
+                const birthDate = new Date(birthday)
+                if (!isNaN(birthDate.getTime()) && parsed < birthDate) {
+                  invalidDates.push({
+                    field,
+                    value,
+                    reason: "Death date cannot be before birth date",
+                  })
+                }
+              }
+            } else if (field === "birthday") {
+              // Check birthday is not after death date
+              const deathday =
+                actorUpdates.deathday !== undefined ? actorUpdates.deathday : existingActor.deathday
+              if (deathday && typeof deathday === "string") {
+                const deathDate = new Date(deathday)
+                if (!isNaN(deathDate.getTime()) && parsed > deathDate) {
+                  invalidDates.push({
+                    field,
+                    value,
+                    reason: "Birth date cannot be after death date",
+                  })
+                }
+              }
             }
           }
         }
@@ -517,7 +545,7 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
       )
 
       const snapshotResult = await client.query<{ id: number }>(
-        `INSERT INTO actor_snapshots (actor_id, actor_data, circumstances_data, trigger_source, trigger_details)
+        `INSERT INTO actor_snapshots (actor_id, snapshot_data, circumstances_data, trigger_source, trigger_details)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
         [
@@ -663,7 +691,9 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
         }
       }
 
-      // Log to audit trail (inside transaction)
+      await client.query("COMMIT")
+
+      // Log to audit trail (after commit - uses separate connection)
       await logAdminAction({
         action: "actor-edit",
         resourceType: "actor",
@@ -677,7 +707,8 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
         userAgent: req.get("user-agent") || undefined,
       })
 
-      await client.query("COMMIT")
+      // Invalidate actor cache to ensure fresh data is served
+      await invalidateActorCache(actorId)
 
       logger.info(
         { actorId, snapshotId, changeCount: changes.length },

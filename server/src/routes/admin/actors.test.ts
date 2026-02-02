@@ -9,6 +9,7 @@ vi.mock("../../lib/db/pool.js", () => ({
 
 vi.mock("../../lib/cache.js", () => ({
   getCached: vi.fn(),
+  invalidateActorCache: vi.fn().mockResolvedValue(undefined),
   CACHE_KEYS: {
     actor: (id: number) => ({
       profile: `actor:id:${id}`,
@@ -363,6 +364,48 @@ describe("admin actors routes", () => {
 
       expect(res.status).toBe(400)
       expect(res.body.error.invalidDates[0].reason).toContain("future")
+    })
+
+    it("should return 400 when death date is before birth date", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+        birthday: "1950-01-01",
+        deathday: "2020-01-01",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { deathday: "1940-01-01" } }) // Death before birth
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.invalidDates[0].reason).toBe("Death date cannot be before birth date")
+    })
+
+    it("should return 400 when birth date is after death date", async () => {
+      const mockActor = {
+        id: 123,
+        tmdb_id: 456,
+        name: "Test Actor",
+        birthday: "1950-01-01",
+        deathday: "2020-01-01",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [] }) // Get circumstances
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({ actor: { birthday: "2025-01-01" } }) // Birth after death
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.invalidDates[0].reason).toBe("Birth date cannot be after death date")
     })
 
     it("should return 500 when database query fails for GET", async () => {
