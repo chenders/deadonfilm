@@ -161,6 +161,41 @@ describe("StartEnrichmentPage defaults", () => {
     })
   })
 
+  describe("Wikipedia Options defaults (admin UI only, not in CLI)", () => {
+    it("has wikipediaUseAISectionSelection disabled by default", () => {
+      renderPage()
+      const aiSectionCheckbox = screen.getByRole("checkbox", {
+        name: /use ai for section selection/i,
+      })
+      expect(aiSectionCheckbox).not.toBeChecked()
+    })
+
+    it("has wikipediaFollowLinkedArticles disabled by default", () => {
+      renderPage()
+      const followLinkedCheckbox = screen.getByRole("checkbox", {
+        name: /follow linked wikipedia articles/i,
+      })
+      expect(followLinkedCheckbox).not.toBeChecked()
+    })
+
+    it("has wikipediaMaxSections defaulted to 10", () => {
+      renderPage()
+      const maxSectionsInput = screen.getByRole("spinbutton", {
+        name: /max sections to fetch/i,
+      })
+      expect(maxSectionsInput).toHaveValue(10)
+    })
+
+    it("does not show maxLinkedArticles input when followLinkedArticles is disabled", () => {
+      renderPage()
+      // The maxLinkedArticles input should not be visible when followLinkedArticles is unchecked
+      const maxLinkedInput = screen.queryByRole("spinbutton", {
+        name: /max linked articles/i,
+      })
+      expect(maxLinkedInput).not.toBeInTheDocument()
+    })
+  })
+
   describe("CLI Reference shows correct default command", () => {
     it("shows the equivalent CLI command with proper flags", () => {
       renderPage()

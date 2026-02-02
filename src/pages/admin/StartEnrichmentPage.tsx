@@ -854,12 +854,6 @@ export default function StartEnrichmentPage() {
             {aiLinkSelection ? "" : " --disable-ai-link-selection"}
             {aiContentExtraction ? "" : " --disable-ai-content-extraction"}
             {confidence !== 0.5 ? ` --confidence ${confidence}` : ""}
-            {wikipediaUseAISectionSelection ? " --wikipedia-ai-section-selection" : ""}
-            {wikipediaFollowLinkedArticles ? " --wikipedia-follow-linked-articles" : ""}
-            {wikipediaFollowLinkedArticles && wikipediaMaxLinkedArticles !== 2
-              ? ` --wikipedia-max-linked-articles ${wikipediaMaxLinkedArticles}`
-              : ""}
-            {wikipediaMaxSections !== 10 ? ` --wikipedia-max-sections ${wikipediaMaxSections}` : ""}
           </div>
         </div>
       </div>
