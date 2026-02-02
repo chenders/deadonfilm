@@ -137,6 +137,8 @@ export interface ExtendedEnrichmentResult extends EnrichmentResult {
   cleanedDeathInfo?: CleanedDeathInfo
   /** Cost of Claude cleanup call */
   cleanupCostUsd?: number
+  /** Per-actor statistics for tracking (all sources attempted, costs, timing) */
+  actorStats?: EnrichmentStats
 }
 
 /**
@@ -810,6 +812,9 @@ export class DeathEnrichmentOrchestrator {
       totalCostUsd: actorStats.totalCostUsd,
       totalTimeMs: actorStats.totalTimeMs,
     })
+
+    // Attach actorStats to result for callers to access full tracking data
+    result.actorStats = actorStats
 
     return result
   }
