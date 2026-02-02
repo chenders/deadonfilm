@@ -127,9 +127,12 @@ export class WikipediaSource extends BaseDataSource {
         errorMessage = "No valid Wikipedia article found after trying alternates"
       }
 
+      // Carry through the last attempted article URL for debugging/observability
+      const lastAttemptedUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(articleTitle)}`
+
       return {
         success: false,
-        source: this.createSourceEntry(startTime, 0),
+        source: this.createSourceEntry(startTime, 0, lastAttemptedUrl),
         data: null,
         error: errorMessage,
       }
@@ -138,9 +141,12 @@ export class WikipediaSource extends BaseDataSource {
         throw error
       }
       const errorMessage = error instanceof Error ? error.message : "Unknown error"
+      // Include the article title in error cases for debugging
+      const articleTitle = this.buildArticleTitle(actor.name)
+      const lastAttemptedUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(articleTitle)}`
       return {
         success: false,
-        source: this.createSourceEntry(startTime, 0),
+        source: this.createSourceEntry(startTime, 0, lastAttemptedUrl),
         data: null,
         error: errorMessage,
       }
