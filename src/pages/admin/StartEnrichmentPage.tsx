@@ -619,6 +619,7 @@ export default function StartEnrichmentPage() {
                   <input
                     type="checkbox"
                     id="wikipediaUseAISectionSelection"
+                    data-testid="wikipedia-use-ai-section-selection"
                     checked={wikipediaUseAISectionSelection}
                     onChange={(e) => setWikipediaUseAISectionSelection(e.target.checked)}
                     className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
@@ -636,6 +637,7 @@ export default function StartEnrichmentPage() {
                   <input
                     type="checkbox"
                     id="wikipediaFollowLinkedArticles"
+                    data-testid="wikipedia-follow-linked-articles"
                     checked={wikipediaFollowLinkedArticles}
                     onChange={(e) => setWikipediaFollowLinkedArticles(e.target.checked)}
                     className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
@@ -659,6 +661,7 @@ export default function StartEnrichmentPage() {
                     </label>
                     <input
                       id="wikipediaMaxLinkedArticles"
+                      data-testid="wikipedia-max-linked-articles"
                       type="number"
                       min="1"
                       max="10"
@@ -684,6 +687,7 @@ export default function StartEnrichmentPage() {
                   </label>
                   <input
                     id="wikipediaMaxSections"
+                    data-testid="wikipedia-max-sections"
                     type="number"
                     min="1"
                     max="20"

@@ -194,6 +194,39 @@ describe("StartEnrichmentPage defaults", () => {
       })
       expect(maxLinkedInput).not.toBeInTheDocument()
     })
+
+    it("shows maxLinkedArticles input when followLinkedArticles is enabled", async () => {
+      renderPage()
+      const { fireEvent } = await import("@testing-library/react")
+
+      // Initially hidden
+      expect(
+        screen.queryByRole("spinbutton", { name: /max linked articles/i })
+      ).not.toBeInTheDocument()
+
+      // Click to enable follow linked articles
+      const followLinkedCheckbox = screen.getByRole("checkbox", {
+        name: /follow linked wikipedia articles/i,
+      })
+      fireEvent.click(followLinkedCheckbox)
+
+      // Now visible with default value of 2
+      const maxLinkedInput = screen.getByRole("spinbutton", {
+        name: /max linked articles/i,
+      })
+      expect(maxLinkedInput).toBeInTheDocument()
+      expect(maxLinkedInput).toHaveValue(2)
+    })
+
+    it("has data-testid attributes on Wikipedia UI elements", () => {
+      renderPage()
+
+      expect(screen.getByTestId("wikipedia-use-ai-section-selection")).toBeInTheDocument()
+      expect(screen.getByTestId("wikipedia-follow-linked-articles")).toBeInTheDocument()
+      expect(screen.getByTestId("wikipedia-max-sections")).toBeInTheDocument()
+      // maxLinkedArticles is conditionally rendered, so check it's not there initially
+      expect(screen.queryByTestId("wikipedia-max-linked-articles")).not.toBeInTheDocument()
+    })
   })
 
   describe("CLI Reference shows correct default command", () => {
