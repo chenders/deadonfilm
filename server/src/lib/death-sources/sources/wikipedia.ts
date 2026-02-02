@@ -874,8 +874,14 @@ export class WikipediaSource extends BaseDataSource {
 
     // Extract years from Wikipedia intro
     // Common patterns: "born January 15, 1952", "(1952-2020)", "1952 – 2020"
+    // Also handles full-date lifespans like "(January 15, 1951 – March 10, 2020)"
     const birthMatch = introText.match(/\bborn\b[^)]*?(\d{4})|^\s*\((\d{4})\s*[-–]/im)
     const deathMatch = introText.match(/\bdied\b[^)]*?(\d{4})|[-–]\s*(\d{4})\s*\)/im)
+
+    // Try to match full-date lifespans first, e.g. "(January 15, 1951 – March 10, 2020)"
+    const fullDateLifeSpanMatch = introText.match(
+      /\(\s*[A-Z][a-z]+[^)]*?(\d{4})\s*[-–]\s*[A-Z][a-z]+[^)]*?(\d{4})\s*\)/
+    )
 
     // Also try the common "(YYYY-YYYY)" pattern
     const lifeSpanMatch = introText.match(/\((\d{4})\s*[-–]\s*(\d{4})\)/)
@@ -883,7 +889,10 @@ export class WikipediaSource extends BaseDataSource {
     let wikiBirthYear: number | null = null
     let wikiDeathYear: number | null = null
 
-    if (lifeSpanMatch) {
+    if (fullDateLifeSpanMatch) {
+      wikiBirthYear = parseInt(fullDateLifeSpanMatch[1], 10)
+      wikiDeathYear = parseInt(fullDateLifeSpanMatch[2], 10)
+    } else if (lifeSpanMatch) {
       wikiBirthYear = parseInt(lifeSpanMatch[1], 10)
       wikiDeathYear = parseInt(lifeSpanMatch[2], 10)
     } else {
