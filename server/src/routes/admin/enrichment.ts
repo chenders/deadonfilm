@@ -330,6 +330,19 @@ interface StartEnrichmentRequest {
   aiContentExtraction?: boolean
   // Batch mode filters
   usActorsOnly?: boolean
+  // Cache control
+  ignoreCache?: boolean // Default: true - bypass source query cache for fresh data
+  // Wikipedia-specific options
+  wikipedia?: {
+    /** Use AI (Gemini Flash) for section selection instead of regex patterns */
+    useAISectionSelection?: boolean
+    /** Follow links to related Wikipedia articles (e.g., hunting incident pages) */
+    followLinkedArticles?: boolean
+    /** Maximum number of linked articles to fetch. Default: 2 */
+    maxLinkedArticles?: number
+    /** Maximum sections to fetch. Default: 10 */
+    maxSections?: number
+  }
 }
 
 router.post("/start", async (req: Request, res: Response): Promise<void> => {
@@ -393,6 +406,10 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       followLinks: config.followLinks ?? true,
       aiLinkSelection: config.aiLinkSelection ?? true,
       aiContentExtraction: config.aiContentExtraction ?? true,
+      // Cache control - default true for admin (get fresh data)
+      ignoreCache: config.ignoreCache ?? true,
+      // Wikipedia-specific options
+      wikipedia: config.wikipedia,
     }
 
     // Start the enrichment run

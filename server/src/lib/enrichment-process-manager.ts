@@ -40,6 +40,19 @@ export interface EnrichmentRunConfig {
   maxBilling?: number
   topMovies?: number
   usActorsOnly?: boolean
+  /** Bypass source query cache for fresh data. Default: true for admin API */
+  ignoreCache?: boolean
+  /** Wikipedia-specific options */
+  wikipedia?: {
+    /** Use AI (Gemini Flash) for section selection instead of regex. Default: false */
+    useAISectionSelection?: boolean
+    /** Follow links to related Wikipedia articles. Default: false */
+    followLinkedArticles?: boolean
+    /** Maximum linked articles to fetch. Default: 2 */
+    maxLinkedArticles?: number
+    /** Maximum sections to fetch. Default: 10 */
+    maxSections?: number
+  }
 }
 
 /**
@@ -108,8 +121,13 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
         maxBilling: config.maxBilling,
         topMovies: config.topMovies,
         usActorsOnly: config.usActorsOnly ?? false,
-        ignoreCache: false,
+        ignoreCache: config.ignoreCache ?? true, // Default: bypass cache for admin runs (reset at end of each run)
         staging: false,
+        // Wikipedia-specific options
+        wikipediaUseAISectionSelection: config.wikipedia?.useAISectionSelection ?? false,
+        wikipediaFollowLinkedArticles: config.wikipedia?.followLinkedArticles ?? false,
+        wikipediaMaxLinkedArticles: config.wikipedia?.maxLinkedArticles ?? 2,
+        wikipediaMaxSections: config.wikipedia?.maxSections ?? 10,
       },
       { createdBy: "admin-enrichment" }
     )

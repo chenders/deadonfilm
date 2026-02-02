@@ -312,6 +312,7 @@ describe("EnrichDeathDetailsHandler", () => {
           circumstancesConfidence: "high",
           locationOfDeath: "UCLA Medical Center, Los Angeles",
           notableFactors: ["cancer", "lung removal"],
+          hasSubstantiveContent: true,
         },
         circumstancesSource: {
           confidence: 0.85,

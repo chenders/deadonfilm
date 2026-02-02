@@ -134,6 +134,44 @@ describe("selectRelevantSections", () => {
     expect(result.selectedSections).toEqual(["Health problems", "Death and funeral"])
   })
 
+  it("strips number prefixes from AI-returned section titles", async () => {
+    // AI sometimes includes the numbered list format in its response
+    // e.g., "27. Health problems" instead of "Health problems"
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    sections: [
+                      "3. Health problems",
+                      "4. Death and funeral",
+                      "7. Hunting and fishing",
+                    ],
+                    reasoning: "Selected health and death sections",
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+
+    const result = await selectRelevantSections("Test Actor", mockSections)
+
+    expect(result.usedAI).toBe(true)
+    // Should strip the number prefixes and match original titles
+    expect(result.selectedSections).toEqual([
+      "Health problems",
+      "Death and funeral",
+      "Hunting and fishing",
+    ])
+  })
+
   it("filters out sections that do not exist in the original list", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -365,6 +403,94 @@ describe("selectRelevantSections", () => {
     expect(body.generationConfig.temperature).toBe(0.1)
     expect(body.generationConfig.maxOutputTokens).toBe(500)
   })
+
+  it("returns linked articles when followLinkedArticles is enabled", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    sections: ["Health problems", "Death and funeral"],
+                    linkedArticles: ["Dick_Cheney_hunting_incident", "Some_Other_Article"],
+                    reasoning: "Selected sections and related articles",
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+
+    const result = await selectRelevantSections("Dick Cheney", mockSections, {
+      followLinkedArticles: true,
+    })
+
+    expect(result.usedAI).toBe(true)
+    expect(result.selectedSections).toEqual(["Health problems", "Death and funeral"])
+    expect(result.linkedArticles).toEqual(["Dick_Cheney_hunting_incident", "Some_Other_Article"])
+    expect(result.reasoning).toBe("Selected sections and related articles")
+  })
+
+  it("respects maxLinkedArticles option", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    sections: ["Death and funeral"],
+                    linkedArticles: ["Article1", "Article2", "Article3", "Article4"],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+
+    const result = await selectRelevantSections("Test Actor", mockSections, {
+      followLinkedArticles: true,
+      maxLinkedArticles: 2,
+    })
+
+    expect(result.linkedArticles).toHaveLength(2)
+    expect(result.linkedArticles).toEqual(["Article1", "Article2"])
+  })
+
+  it("does not include linkedArticles prompt when followLinkedArticles is false", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({ sections: ["Death and funeral"] }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
+
+    await selectRelevantSections("Test Actor", mockSections, { followLinkedArticles: false })
+
+    const [, options] = mockFetch.mock.calls[0]
+    const body = JSON.parse(options.body)
+    // Prompt should NOT contain linkedArticles instructions when disabled
+    expect(body.contents[0].parts[0].text).not.toContain("linkedArticles")
+  })
 })
 
 describe("createSectionSelectionSourceEntry", () => {
@@ -401,5 +527,19 @@ describe("createSectionSelectionSourceEntry", () => {
     expect(entry.rawData.selectedSections).toEqual([])
     expect(entry.rawData.usedAI).toBe(false)
     expect(entry.rawData.error).toBe("API key not configured")
+  })
+
+  it("includes linked articles in source entry when present", () => {
+    const result = {
+      selectedSections: ["Health problems"],
+      linkedArticles: ["Dick_Cheney_hunting_incident"],
+      reasoning: "Selected with linked articles",
+      costUsd: 0.0001,
+      usedAI: true,
+    }
+
+    const entry = createSectionSelectionSourceEntry(result)
+
+    expect(entry.rawData.linkedArticles).toEqual(["Dick_Cheney_hunting_incident"])
   })
 })

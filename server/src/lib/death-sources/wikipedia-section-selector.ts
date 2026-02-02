@@ -35,6 +35,8 @@ export interface WikipediaSection {
 export interface SectionSelectionResult {
   /** Section titles that were selected as relevant */
   selectedSections: string[]
+  /** Linked Wikipedia article titles to fetch for additional context */
+  linkedArticles?: string[]
   /** Optional reasoning for debugging/logging */
   reasoning?: string
   /** Cost of the AI call in USD */
@@ -68,16 +70,21 @@ interface GeminiApiResponse {
  */
 interface ParsedSelectionResponse {
   sections: string[]
+  linkedArticles?: string[]
   reasoning?: string
 }
 
 /**
  * Build the prompt for Gemini to select relevant sections.
  */
-function buildSectionSelectionPrompt(actorName: string, sectionTitles: string[]): string {
+function buildSectionSelectionPrompt(
+  actorName: string,
+  sectionTitles: string[],
+  includeLinkedArticles: boolean = false
+): string {
   const sectionsFormatted = sectionTitles.map((title, i) => `${i + 1}. ${title}`).join("\n")
 
-  return `You are analyzing Wikipedia sections for "${actorName}" to find death/health/incident information.
+  const basePrompt = `You are analyzing Wikipedia sections for "${actorName}" to find death/health/incident information.
 
 Available sections:
 ${sectionsFormatted}
@@ -89,7 +96,30 @@ Select ALL sections that might contain:
 - Assassination attempts, attacks, violence
 - Controversies that involved physical harm or health impacts
 - Notable incidents that may relate to their eventual death or health decline
-- Any section mentioning specific medical conditions, surgeries, or treatments
+- Any section mentioning specific medical conditions, surgeries, or treatments`
+
+  if (includeLinkedArticles) {
+    return `${basePrompt}
+
+Also identify up to 2 Wikipedia article titles that are commonly linked from these sections and would contain detailed information about:
+- Specific accidents, incidents, or events (e.g., "Dick_Cheney_hunting_incident")
+- Assassination attempts or attacks (e.g., "Attempted_assassination_of_Ronald_Reagan")
+- Specific health events or medical procedures
+- Crashes, disasters, or tragedies the person was involved in
+
+Return JSON only:
+{"sections": ["Section Title 1", "Section Title 2", ...], "linkedArticles": ["Article_Title_1", "Article_Title_2"], "reasoning": "Brief explanation"}
+
+For linkedArticles, use Wikipedia article title format (underscores for spaces, e.g., "Dick_Cheney_hunting_incident").
+Only include linkedArticles if you are confident such articles exist and would provide valuable additional context.
+
+Be inclusive for sections - it's better to include a section that turns out irrelevant than miss important information.
+For example, "Hunting and Fishing" might contain info about a hunting accident, "Personal life" might mention health struggles.
+
+IMPORTANT: Return section titles EXACTLY as they appear in the list above. Case matters.`
+  }
+
+  return `${basePrompt}
 
 Return JSON only:
 {"sections": ["Section Title 1", "Section Title 2", ...], "reasoning": "Brief explanation"}
@@ -101,7 +131,15 @@ IMPORTANT: Return section titles EXACTLY as they appear in the list above. Case 
 }
 
 /**
- * Parse the Gemini response to extract selected sections.
+ * Strip number prefix from a section title if present.
+ * Handles formats like "27. Health problems" -> "Health problems"
+ */
+function stripNumberPrefix(title: string): string {
+  return title.replace(/^\d+\.\s*/, "")
+}
+
+/**
+ * Parse the Gemini response to extract selected sections and linked articles.
  */
 function parseSelectionResponse(responseText: string): ParsedSelectionResponse | null {
   try {
@@ -117,8 +155,19 @@ function parseSelectionResponse(responseText: string): ParsedSelectionResponse |
       return null
     }
 
+    // Filter to strings and strip any number prefixes that Gemini may have included
+    const sections = parsed.sections
+      .filter((s: unknown): s is string => typeof s === "string")
+      .map(stripNumberPrefix)
+
+    // Extract linked articles if present
+    const linkedArticles = Array.isArray(parsed.linkedArticles)
+      ? parsed.linkedArticles.filter((s: unknown): s is string => typeof s === "string")
+      : undefined
+
     return {
-      sections: parsed.sections.filter((s: unknown): s is string => typeof s === "string"),
+      sections,
+      linkedArticles,
       reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : undefined,
     }
   } catch {
@@ -174,7 +223,8 @@ export async function selectRelevantSections(
   }
 
   const sectionTitles = sections.map((s) => s.line)
-  const prompt = buildSectionSelectionPrompt(actorName, sectionTitles)
+  const includeLinkedArticles = options.followLinkedArticles ?? false
+  const prompt = buildSectionSelectionPrompt(actorName, sectionTitles, includeLinkedArticles)
 
   try {
     const url = `${GEMINI_API_BASE}/models/${GEMINI_FLASH_MODEL}:generateContent?key=${apiKey}`
@@ -247,8 +297,14 @@ export async function selectRelevantSections(
     const maxSections = options.maxSections ?? DEFAULT_WIKIPEDIA_OPTIONS.maxSections ?? 10
     const limitedSections = normalizedSections.slice(0, maxSections)
 
+    // Limit linked articles
+    const maxLinkedArticles =
+      options.maxLinkedArticles ?? DEFAULT_WIKIPEDIA_OPTIONS.maxLinkedArticles ?? 2
+    const limitedLinkedArticles = parsed.linkedArticles?.slice(0, maxLinkedArticles)
+
     return {
       selectedSections: limitedSections,
+      linkedArticles: limitedLinkedArticles,
       reasoning: parsed.reasoning,
       costUsd: 0.0001, // Gemini Flash cost per query
       usedAI: true,
@@ -271,6 +327,7 @@ export function createSectionSelectionSourceEntry(result: SectionSelectionResult
   costUsd: number
   rawData: {
     selectedSections: string[]
+    linkedArticles?: string[]
     reasoning?: string
     usedAI: boolean
     error?: string
@@ -281,6 +338,7 @@ export function createSectionSelectionSourceEntry(result: SectionSelectionResult
     costUsd: result.costUsd,
     rawData: {
       selectedSections: result.selectedSections,
+      linkedArticles: result.linkedArticles,
       reasoning: result.reasoning,
       usedAI: result.usedAI,
       error: result.error,

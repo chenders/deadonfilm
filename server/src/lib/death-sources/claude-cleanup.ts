@@ -60,6 +60,8 @@ interface ClaudeCleanupResponse {
     name: string
     relationship: string
   }> | null
+  // Quality gate
+  has_substantive_content: boolean
 }
 
 /**
@@ -87,13 +89,15 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
 {
   "cause": "specific medical cause (e.g., 'pancreatic cancer', 'heart failure', 'hantavirus pulmonary syndrome'). Null if unknown.",
   "cause_confidence": "high|medium|low|disputed",
-  "details": "2-4 sentences of medical context about the cause. Null if no details available.",
+  "details": "2-4 sentences of medical context about the immediate cause of death. This is a SHORT summary; put extensive medical history in circumstances instead. Null if no details available.",
   "details_confidence": "high|medium|low|disputed",
 
   "birthday_confidence": "high|medium|low|disputed - based on source agreement and reliability. Null if not discussed.",
   "deathday_confidence": "high|medium|low|disputed - based on source agreement and reliability. Null if not discussed.",
 
-  "circumstances": "COMPREHENSIVE narrative of the death. This is the main content for the death page. Include:
+  "circumstances": "COMPREHENSIVE narrative of the death AND relevant medical history. This is the main content for the death page. Include:
+    - MEDICAL HISTORY: Chronic conditions, major illnesses, surgeries, hospitalizations that contributed to or contextualize the death (e.g., heart attacks, cancer diagnoses, organ transplants, medical devices like pacemakers/LVADs)
+    - NOTABLE HEALTH INCIDENTS: Any significant health events during their life that are part of their public story (accidents, near-death experiences, long recoveries)
     - Full timeline of events leading to and surrounding the death
     - How and when the body was discovered, by whom
     - Location details (home, hospital, on set, etc.)
@@ -102,7 +106,7 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
     - Any investigations (police, coroner) and their conclusions
     - Media coverage significance if it was a major news story
     - Anything unusual, tragic, or newsworthy about the circumstances
-    Write as clean prose suitable for a death page on an entertainment website. Multiple paragraphs are fine.",
+    Start with medical history context if relevant, then cover the death itself. Write as clean prose suitable for a death page on an entertainment website. Multiple paragraphs are fine.",
   "circumstances_confidence": "high|medium|low|disputed",
 
   "rumored_circumstances": "Alternative accounts, disputed information, conspiracy theories, or unconfirmed reports. Null if none.",
@@ -126,11 +130,15 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
 
   "posthumous_releases": [{"title": "Project Name", "year": 2024, "tmdb_id": null, "imdb_id": null, "type": "movie|show|documentary|unknown"}] - projects released after their death. Null if none.",
 
-  "additional_context": "Career context relevant to the death (e.g., 'had retired from acting in 2004', 'was filming at the time', 'won two Academy Awards'). Null if not relevant or no notable context."
+  "additional_context": "Career context relevant to the death (e.g., 'had retired from acting in 2004', 'was filming at the time', 'won two Academy Awards'). Null if not relevant or no notable context.",
+
+  "has_substantive_content": true/false - Set to FALSE if you cannot provide meaningful death details beyond generic statements such as: information is limited, no details available, cause of death was not disclosed, or similar. Set to FALSE if the sources contain JavaScript code, HTML fragments, website markup, or technical code instead of natural language biography text. Set to TRUE only if there are actual facts about the death circumstances, medical history, cause of death, or specific details about how/where/when they died. A death page should only be created when there is real information to share.
 }
 
 CRITICAL INSTRUCTIONS:
 - Be THOROUGH in circumstances - capture the full story, not just the medical cause
+- ALWAYS include relevant medical history: heart conditions, cancer battles, transplants, chronic illnesses, medical devices, significant surgeries
+- Include notable health incidents even if not directly causing death (accidents, near-death experiences, long-term health struggles)
 - If the death was a major news story, capture WHY it was newsworthy
 - Include related deaths (spouse, family) if they're part of the story
 - Include related_celebrities if any notable people are mentioned in the death story
@@ -141,6 +149,8 @@ CRITICAL INSTRUCTIONS:
 - Do NOT include career achievements, filmography, or awards unless directly death-related
 - Write clean, factual prose suitable for publication
 - Use null for any field where information is not available
+- Set has_substantive_content to FALSE if the sources only say things like "cause unknown", "no details released", "information is limited" - we don't want to create death pages that just say "we don't know anything"
+- Set has_substantive_content to FALSE if the sources contain JavaScript code, function definitions, variable declarations, website markup, or other technical/programming content instead of actual biographical information
 - Return ONLY valid JSON, no markdown code fences`
 }
 
@@ -271,6 +281,9 @@ export async function cleanupWithClaude(
     lastProject: parsed.last_project,
     careerStatusAtDeath: parsed.career_status_at_death,
     posthumousReleases: parsed.posthumous_releases,
+    // Validate has_substantive_content is actually a boolean, default to false if missing/invalid
+    hasSubstantiveContent:
+      typeof parsed.has_substantive_content === "boolean" ? parsed.has_substantive_content : false,
     cleanupSource: "claude-opus-4.5",
     cleanupTimestamp: new Date().toISOString(),
   }

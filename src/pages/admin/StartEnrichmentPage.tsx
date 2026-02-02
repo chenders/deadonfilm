@@ -43,6 +43,13 @@ export default function StartEnrichmentPage() {
   const [aiLinkSelection, setAiLinkSelection] = useState<boolean>(true)
   const [aiContentExtraction, setAiContentExtraction] = useState<boolean>(true)
 
+  // Wikipedia-specific options - enabled by default like other advanced options
+  const [wikipediaUseAISectionSelection, setWikipediaUseAISectionSelection] =
+    useState<boolean>(true)
+  const [wikipediaFollowLinkedArticles, setWikipediaFollowLinkedArticles] = useState<boolean>(true)
+  const [wikipediaMaxLinkedArticles, setWikipediaMaxLinkedArticles] = useState<number>(2)
+  const [wikipediaMaxSections, setWikipediaMaxSections] = useState<number>(10)
+
   // Actor selection mode and state
   const [selectionMode, setSelectionMode] = useState<"batch" | "specific">(
     preSelectedActorIds.length > 0 ? "specific" : "batch"
@@ -153,6 +160,13 @@ export default function StartEnrichmentPage() {
         followLinks,
         aiLinkSelection,
         aiContentExtraction,
+        // Wikipedia-specific options
+        wikipedia: {
+          useAISectionSelection: wikipediaUseAISectionSelection,
+          followLinkedArticles: wikipediaFollowLinkedArticles,
+          maxLinkedArticles: wikipediaMaxLinkedArticles,
+          maxSections: wikipediaMaxSections,
+        },
       })
 
       // Navigate to the run details page
@@ -592,6 +606,99 @@ export default function StartEnrichmentPage() {
                 >
                   Use AI for content extraction
                 </label>
+              </div>
+            </div>
+
+            {/* Wikipedia-specific options */}
+            <div className="mt-6 border-t border-admin-border pt-4">
+              <h3 className="mb-3 text-sm font-semibold text-admin-text-primary">
+                Wikipedia Options
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="wikipediaUseAISectionSelection"
+                    data-testid="wikipedia-use-ai-section-selection"
+                    checked={wikipediaUseAISectionSelection}
+                    onChange={(e) => setWikipediaUseAISectionSelection(e.target.checked)}
+                    className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
+                  />
+                  <label
+                    htmlFor="wikipediaUseAISectionSelection"
+                    className="ml-2 block text-sm text-admin-text-secondary"
+                  >
+                    Use AI for section selection
+                    <span className="ml-1 text-admin-text-muted">(Gemini Flash)</span>
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="wikipediaFollowLinkedArticles"
+                    data-testid="wikipedia-follow-linked-articles"
+                    checked={wikipediaFollowLinkedArticles}
+                    onChange={(e) => setWikipediaFollowLinkedArticles(e.target.checked)}
+                    className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
+                  />
+                  <label
+                    htmlFor="wikipediaFollowLinkedArticles"
+                    className="ml-2 block text-sm text-admin-text-secondary"
+                  >
+                    Follow linked Wikipedia articles
+                  </label>
+                </div>
+
+                {wikipediaFollowLinkedArticles && (
+                  <div className="ml-6">
+                    <label
+                      htmlFor="wikipediaMaxLinkedArticles"
+                      className="block text-sm font-medium text-admin-text-secondary"
+                    >
+                      Max linked articles
+                      <span className="ml-1 text-admin-text-muted">(1-10)</span>
+                    </label>
+                    <input
+                      id="wikipediaMaxLinkedArticles"
+                      data-testid="wikipedia-max-linked-articles"
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={wikipediaMaxLinkedArticles}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value, 10)
+                        setWikipediaMaxLinkedArticles(
+                          isNaN(value) ? 2 : Math.min(10, Math.max(1, value))
+                        )
+                      }}
+                      className="mt-1 block w-32 rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label
+                    htmlFor="wikipediaMaxSections"
+                    className="block text-sm font-medium text-admin-text-secondary"
+                  >
+                    Max sections to fetch
+                    <span className="ml-1 text-admin-text-muted">(1-20)</span>
+                  </label>
+                  <input
+                    id="wikipediaMaxSections"
+                    data-testid="wikipedia-max-sections"
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={wikipediaMaxSections}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10)
+                      setWikipediaMaxSections(isNaN(value) ? 10 : Math.min(20, Math.max(1, value)))
+                    }}
+                    className="mt-1 block w-32 rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
+                  />
+                </div>
               </div>
             </div>
           </div>

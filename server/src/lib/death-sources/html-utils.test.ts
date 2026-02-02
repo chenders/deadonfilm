@@ -13,6 +13,9 @@ import {
   stripHtmlTags,
   htmlToText,
   cleanHtmlEntities,
+  looksLikeCode,
+  stripCodeFromText,
+  htmlToTextClean,
 } from "./html-utils.js"
 
 describe("decodeHtmlEntities", () => {
@@ -541,6 +544,184 @@ describe("cleanHtmlEntities", () => {
 
     it("should normalize newlines and tabs", () => {
       expect(cleanHtmlEntities("Line\n\n\nbreaks\t\ttabs")).toBe("Line breaks tabs")
+    })
+  })
+})
+
+describe("looksLikeCode", () => {
+  describe("detects JavaScript code patterns", () => {
+    it("should detect function declarations", () => {
+      expect(looksLikeCode("function foo() { return this.bar; }")).toBe(true)
+    })
+
+    it("should detect const/let/var declarations", () => {
+      expect(looksLikeCode("const x = 5; let y = function() { return x; }")).toBe(true)
+    })
+
+    it("should detect if statements with braces", () => {
+      expect(looksLikeCode("if (data.type == 'video') { this.playVideo(); }")).toBe(true)
+    })
+
+    it("should detect document object access", () => {
+      expect(looksLikeCode("document.getElementById('content'); return null")).toBe(true)
+    })
+
+    it("should detect arrow functions", () => {
+      expect(looksLikeCode("items.map(item => { return item.id === id; })")).toBe(true)
+    })
+
+    it("should detect this keyword assignments", () => {
+      expect(looksLikeCode("this.assetData = data; return this.items")).toBe(true)
+    })
+
+    it("should detect class declarations", () => {
+      expect(looksLikeCode("class VideoPlayer { constructor() { this.init(); } }")).toBe(true)
+    })
+
+    it("should detect async/await patterns", () => {
+      expect(looksLikeCode("async function loadData() { await fetch(url); }")).toBe(true)
+    })
+
+    it("should detect try/catch blocks", () => {
+      expect(looksLikeCode("try { doSomething(); } catch(e) { console.log(e); }")).toBe(true)
+    })
+
+    it("should detect complex JavaScript", () => {
+      const code =
+        "item.id === id) this.assetData = data; if (data.type == 'video') { this.playVideoInline()"
+      expect(looksLikeCode(code)).toBe(true)
+    })
+
+    it("should detect DOM manipulation code", () => {
+      const code = "document.getElementById('content').innerHTML = this.render();"
+      expect(looksLikeCode(code)).toBe(true)
+    })
+  })
+
+  describe("does not detect natural language", () => {
+    it("should not detect biography text", () => {
+      expect(looksLikeCode("Michael Kenneth Williams was an American actor.")).toBe(false)
+    })
+
+    it("should not detect longer biography text", () => {
+      const bio = "Michael Kenneth Williams was an American actor known for The Wire."
+      expect(looksLikeCode(bio)).toBe(false)
+    })
+
+    it("should not detect location text", () => {
+      expect(looksLikeCode("Born November 22, 1966 in Brooklyn, New York")).toBe(false)
+    })
+
+    it("should not detect death information", () => {
+      expect(looksLikeCode("He died on September 6, 2021, from an accidental drug overdose.")).toBe(
+        false
+      )
+    })
+
+    it("should not detect career descriptions", () => {
+      expect(
+        looksLikeCode(
+          "Williams was best known for his role as Omar Little in the HBO series The Wire."
+        )
+      ).toBe(false)
+    })
+
+    it("should not detect quotes or dialogue", () => {
+      expect(
+        looksLikeCode('He once said, "Acting is about truth and honesty in every moment."')
+      ).toBe(false)
+    })
+  })
+
+  describe("edge cases", () => {
+    it("should require multiple patterns to match", () => {
+      // Just one pattern isn't enough
+      expect(looksLikeCode("The document was filed yesterday")).toBe(false)
+      expect(looksLikeCode("He was known as the function coordinator")).toBe(false)
+    })
+
+    it("should return false for empty string", () => {
+      expect(looksLikeCode("")).toBe(false)
+    })
+
+    it("should return false for very short text", () => {
+      expect(looksLikeCode("Hi there")).toBe(false)
+    })
+
+    it("should return false for text under 20 characters", () => {
+      expect(looksLikeCode("const x = 5;")).toBe(false) // Too short
+    })
+  })
+})
+
+describe("stripCodeFromText", () => {
+  describe("removes code segments", () => {
+    it("should return empty for all-code input", () => {
+      const code = "function test() { return this.getValue(); }"
+      const result = stripCodeFromText(code)
+      expect(result).toBe("")
+    })
+
+    it("should preserve biography text", () => {
+      const bio = "Michael Williams was an American actor. He died in 2021."
+      const result = stripCodeFromText(bio)
+      expect(result).toContain("Michael Williams")
+      expect(result).toContain("American actor")
+    })
+
+    it("should return empty for JavaScript garbage", () => {
+      const jsGarbage =
+        "item.id === id) this.assetData = data; if (data.type == 'video') { this.playVideoInline()"
+      const result = stripCodeFromText(jsGarbage)
+      expect(result).toBe("")
+    })
+  })
+
+  describe("edge cases", () => {
+    it("should handle empty string", () => {
+      expect(stripCodeFromText("")).toBe("")
+    })
+  })
+})
+
+describe("htmlToTextClean", () => {
+  describe("cleans HTML and strips code", () => {
+    it("should clean HTML tags and preserve normal text", () => {
+      // Script tags are removed by htmlToText before code detection
+      const html = "<p>Normal text here.</p>"
+      const result = htmlToTextClean(html)
+      expect(result).toContain("Normal text")
+    })
+
+    it("should strip embedded JavaScript code", () => {
+      // This tests code that appears in text content, not script tags
+      const html = "<div>function getData() { return this.items; }</div>"
+      const result = htmlToTextClean(html)
+      expect(result).toBe("")
+    })
+
+    it("should preserve clean biography HTML", () => {
+      const html = "<p>John Doe (1950-2020) was an American actor.</p>"
+      const result = htmlToTextClean(html)
+      expect(result).toContain("John Doe")
+      expect(result).toContain("American actor")
+    })
+  })
+
+  describe("Television Academy garbage case", () => {
+    it("should reject JavaScript garbage from client-side rendered pages", () => {
+      // This is the actual garbage that was saved to the database
+      const jsGarbage =
+        "item.id === id) this.assetData = data; if (data.type == 'video') { this.playVideoInline()"
+      const result = htmlToTextClean(`<div>${jsGarbage}</div>`)
+      expect(result).toBe("")
+    })
+
+    it("should reject location matched from JavaScript variable", () => {
+      // The regex matched "in content" from "document.getElementById('content')"
+      const jsLocation = "document.getElementById('content').innerHTML = value;"
+      const result = htmlToTextClean(`<p>${jsLocation}</p>`)
+      expect(result).toBe("")
     })
   })
 })
