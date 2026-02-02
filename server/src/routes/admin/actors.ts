@@ -94,6 +94,12 @@ const CIRCUMSTANCES_EDITABLE_FIELDS = [
   "entity_links",
 ]
 
+// All fields that can have history queried
+const HISTORY_QUERYABLE_FIELDS = new Set([
+  ...ACTOR_EDITABLE_FIELDS,
+  ...CIRCUMSTANCES_EDITABLE_FIELDS.map((f) => `circumstances.${f}`),
+])
+
 // Uncertainty markers that indicate data quality issues
 const UNCERTAINTY_MARKERS = [
   "possibly",
@@ -921,6 +927,79 @@ router.get("/:id/diagnostic", async (req: Request, res: Response): Promise<void>
   } catch (error) {
     logger.error({ error }, "Failed to fetch actor diagnostic data")
     res.status(500).json({ error: { message: "Failed to fetch actor diagnostic data" } })
+  }
+})
+
+// ============================================================================
+// GET /admin/api/actors/:id/history/:field
+// Get paginated history for a specific field
+// ============================================================================
+
+router.get("/:id(\\d+)/history/:field", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const actorId = parseInt(req.params.id, 10)
+    const fieldName = req.params.field
+
+    if (isNaN(actorId)) {
+      res.status(400).json({ error: { message: "Invalid actor ID" } })
+      return
+    }
+
+    // Validate field name
+    if (!HISTORY_QUERYABLE_FIELDS.has(fieldName)) {
+      res.status(400).json({ error: { message: "Invalid field name" } })
+      return
+    }
+
+    // Verify actor exists
+    const actorResult = await pool.query(`SELECT id FROM actors WHERE id = $1`, [actorId])
+    if (actorResult.rows.length === 0) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
+
+    // Parse pagination params
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 200)
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0)
+
+    // Query history
+    const historyResult = await pool.query<{
+      id: number
+      old_value: string | null
+      new_value: string | null
+      source: string
+      batch_id: string | null
+      created_at: string
+    }>(
+      `SELECT id, old_value, new_value, source, batch_id, created_at
+       FROM actor_death_info_history
+       WHERE actor_id = $1 AND field_name = $2
+       ORDER BY created_at DESC
+       LIMIT $3 OFFSET $4`,
+      [actorId, fieldName, limit, offset]
+    )
+
+    // Get total count
+    const countResult = await pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text as count
+       FROM actor_death_info_history
+       WHERE actor_id = $1 AND field_name = $2`,
+      [actorId, fieldName]
+    )
+
+    const total = parseInt(countResult.rows[0]?.count || "0", 10)
+    const hasMore = offset + historyResult.rows.length < total
+
+    res.json({
+      field: fieldName,
+      history: historyResult.rows,
+      total,
+      hasMore,
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch field history")
+    res.status(500).json({ error: { message: "Failed to fetch field history" } })
   }
 })
 
