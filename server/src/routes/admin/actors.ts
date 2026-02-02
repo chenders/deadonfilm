@@ -241,19 +241,22 @@ function detectDataQualityIssues(
     })
   }
 
-  if (circumstances?.cause_confidence === "low") {
+  if (circumstances?.cause_confidence === "low" || circumstances?.cause_confidence === "disputed") {
     issues.push({
       field: "cause_of_death",
-      issue: "Low confidence on cause of death",
-      severity: "warning",
+      issue: `${circumstances.cause_confidence === "disputed" ? "Disputed" : "Low"} confidence on cause of death`,
+      severity: circumstances.cause_confidence === "disputed" ? "error" : "warning",
     })
   }
 
-  if (circumstances?.circumstances_confidence === "low") {
+  if (
+    circumstances?.circumstances_confidence === "low" ||
+    circumstances?.circumstances_confidence === "disputed"
+  ) {
     issues.push({
       field: "circumstances",
-      issue: "Low confidence on circumstances",
-      severity: "warning",
+      issue: `${circumstances.circumstances_confidence === "disputed" ? "Disputed" : "Low"} confidence on circumstances`,
+      severity: circumstances.circumstances_confidence === "disputed" ? "error" : "warning",
     })
   }
 
@@ -566,6 +569,145 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
       return
     }
 
+    // Validate boolean fields (actor fields)
+    const booleanActorFields = [
+      "violent_death",
+      "covid_related",
+      "strange_death",
+      "has_detailed_death_info",
+    ]
+    const invalidTypes: { field: string; expectedType: string; actualType: string }[] = []
+
+    if (actorUpdates) {
+      for (const field of booleanActorFields) {
+        const value = actorUpdates[field]
+        if (value !== undefined && value !== null && typeof value !== "boolean") {
+          invalidTypes.push({ field, expectedType: "boolean", actualType: typeof value })
+        }
+      }
+
+      // Validate death_categories is an array of strings
+      if (actorUpdates.death_categories !== undefined && actorUpdates.death_categories !== null) {
+        if (!Array.isArray(actorUpdates.death_categories)) {
+          invalidTypes.push({
+            field: "death_categories",
+            expectedType: "string[]",
+            actualType: typeof actorUpdates.death_categories,
+          })
+        } else if (!actorUpdates.death_categories.every((v: unknown) => typeof v === "string")) {
+          invalidTypes.push({
+            field: "death_categories",
+            expectedType: "string[]",
+            actualType: "array with non-string elements",
+          })
+        }
+      }
+    }
+
+    // Validate circumstances array/object fields
+    if (circumstancesUpdates) {
+      // notable_factors should be string[]
+      if (
+        circumstancesUpdates.notable_factors !== undefined &&
+        circumstancesUpdates.notable_factors !== null
+      ) {
+        if (!Array.isArray(circumstancesUpdates.notable_factors)) {
+          invalidTypes.push({
+            field: "notable_factors",
+            expectedType: "string[]",
+            actualType: typeof circumstancesUpdates.notable_factors,
+          })
+        } else if (
+          !circumstancesUpdates.notable_factors.every((v: unknown) => typeof v === "string")
+        ) {
+          invalidTypes.push({
+            field: "notable_factors",
+            expectedType: "string[]",
+            actualType: "array with non-string elements",
+          })
+        }
+      }
+
+      // related_celebrity_ids should be number[]
+      if (
+        circumstancesUpdates.related_celebrity_ids !== undefined &&
+        circumstancesUpdates.related_celebrity_ids !== null
+      ) {
+        if (!Array.isArray(circumstancesUpdates.related_celebrity_ids)) {
+          invalidTypes.push({
+            field: "related_celebrity_ids",
+            expectedType: "number[]",
+            actualType: typeof circumstancesUpdates.related_celebrity_ids,
+          })
+        } else if (
+          !circumstancesUpdates.related_celebrity_ids.every((v: unknown) => typeof v === "number")
+        ) {
+          invalidTypes.push({
+            field: "related_celebrity_ids",
+            expectedType: "number[]",
+            actualType: "array with non-number elements",
+          })
+        }
+      }
+
+      // posthumous_releases should be an array of objects
+      if (
+        circumstancesUpdates.posthumous_releases !== undefined &&
+        circumstancesUpdates.posthumous_releases !== null
+      ) {
+        if (!Array.isArray(circumstancesUpdates.posthumous_releases)) {
+          invalidTypes.push({
+            field: "posthumous_releases",
+            expectedType: "object[]",
+            actualType: typeof circumstancesUpdates.posthumous_releases,
+          })
+        }
+      }
+
+      // related_celebrities should be an array of objects
+      if (
+        circumstancesUpdates.related_celebrities !== undefined &&
+        circumstancesUpdates.related_celebrities !== null
+      ) {
+        if (!Array.isArray(circumstancesUpdates.related_celebrities)) {
+          invalidTypes.push({
+            field: "related_celebrities",
+            expectedType: "object[]",
+            actualType: typeof circumstancesUpdates.related_celebrities,
+          })
+        }
+      }
+
+      // last_project should be an object
+      if (
+        circumstancesUpdates.last_project !== undefined &&
+        circumstancesUpdates.last_project !== null
+      ) {
+        if (
+          typeof circumstancesUpdates.last_project !== "object" ||
+          Array.isArray(circumstancesUpdates.last_project)
+        ) {
+          invalidTypes.push({
+            field: "last_project",
+            expectedType: "object",
+            actualType: Array.isArray(circumstancesUpdates.last_project)
+              ? "array"
+              : typeof circumstancesUpdates.last_project,
+          })
+        }
+      }
+    }
+
+    if (invalidTypes.length > 0) {
+      res.status(400).json({
+        error: {
+          message: "Invalid field type",
+          invalidTypes,
+        },
+      })
+      return
+    }
+
     // Calculate changes before creating snapshot (to avoid unnecessary snapshots)
     const changes: { table: string; field: string; oldValue: unknown; newValue: unknown }[] = []
 
@@ -615,7 +757,14 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
       const batchId = `admin-edit-${Date.now()}`
 
       // Create snapshot using the transaction client
+      // Re-fetch within transaction to ensure consistency (handles race condition if actor deleted)
       const actorDataResult = await client.query(`SELECT * FROM actors WHERE id = $1`, [actorId])
+      if (actorDataResult.rows.length === 0) {
+        await client.query("ROLLBACK")
+        res.status(404).json({ error: { message: "Actor not found (deleted during edit)" } })
+        return
+      }
+
       const circumstancesDataResult = await client.query(
         `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
         [actorId]
