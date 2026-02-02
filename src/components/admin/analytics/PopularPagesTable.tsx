@@ -53,8 +53,8 @@ export default function PopularPagesTable({
     <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
       <h2 className="mb-6 text-xl font-semibold text-admin-text-primary">Most Popular Pages</h2>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+        <table className="w-full min-w-[700px]">
           <thead>
             <tr className="border-b border-admin-border">
               <th className="px-4 py-3 text-left text-sm font-medium text-admin-text-muted">

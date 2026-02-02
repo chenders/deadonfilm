@@ -172,8 +172,8 @@ export default function EnrichmentReviewPage() {
         {data && (
           <>
             <div className="overflow-hidden rounded-lg border border-admin-border bg-admin-surface-elevated shadow-admin-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+                <table className="w-full min-w-[800px]">
                   <thead className="border-b border-admin-border bg-admin-surface-base">
                     <tr>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">

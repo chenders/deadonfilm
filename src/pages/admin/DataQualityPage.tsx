@@ -65,23 +65,25 @@ export default function DataQualityPage() {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-admin-border">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                data-testid={tab.testId}
-                className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
-                  activeTab === tab.id
-                    ? "border-admin-interactive text-admin-interactive"
-                    : "border-transparent text-admin-text-muted hover:border-admin-border hover:text-admin-text-secondary"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+        <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+          <div className="border-b border-admin-border">
+            <nav className="-mb-px flex min-w-max space-x-4 md:space-x-8">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  data-testid={tab.testId}
+                  className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+                    activeTab === tab.id
+                      ? "border-admin-interactive text-admin-interactive"
+                      : "border-transparent text-admin-text-muted hover:border-admin-border hover:text-admin-text-secondary"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
 
         {/* Overview Tab */}
@@ -160,7 +162,7 @@ export default function DataQualityPage() {
         {activeTab === "future-deaths" && (
           <div className="space-y-6">
             <div className="rounded-lg bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h3 className="text-xl font-semibold text-admin-text-primary">
                     Future/Invalid Death Dates
@@ -169,11 +171,11 @@ export default function DataQualityPage() {
                     These actors have death dates that are impossible or suspicious
                   </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                   <button
                     onClick={() => handleCleanupFutureDeaths(true)}
                     disabled={cleanupMutation.isPending}
-                    className="rounded-md bg-admin-interactive-secondary px-4 py-2 text-sm font-semibold text-admin-text-primary hover:bg-admin-surface-overlay disabled:cursor-not-allowed disabled:opacity-50"
+                    className="min-h-[44px] rounded-md bg-admin-interactive-secondary px-4 py-2 text-sm font-semibold text-admin-text-primary hover:bg-admin-surface-overlay disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Preview Cleanup
                   </button>
@@ -181,7 +183,7 @@ export default function DataQualityPage() {
                     onClick={() => handleCleanupFutureDeaths(false)}
                     disabled={cleanupMutation.isPending}
                     data-testid="cleanup-future-deaths-button"
-                    className="hover:bg-admin-danger/90 rounded-md bg-admin-danger px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    className="hover:bg-admin-danger/90 min-h-[44px] rounded-md bg-admin-danger px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {cleanupMutation.isPending ? "Cleaning..." : "Cleanup All"}
                   </button>
@@ -220,69 +222,71 @@ export default function DataQualityPage() {
                 className="rounded-lg bg-admin-surface-elevated shadow-admin-sm"
                 data-testid="future-deaths-table"
               >
-                <table className="min-w-full divide-y divide-admin-border">
-                  <thead className="bg-admin-surface-overlay">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Actor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Death Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Birth Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Issue
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Popularity
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
-                    {futureDeaths.data.actors.map((actor) => (
-                      <tr key={actor.id}>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <div className="font-medium text-admin-text-primary">{actor.name}</div>
-                          <div className="text-sm text-admin-text-muted">
-                            ID: {actor.id}
-                            {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.deathDate}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.birthDate || "Unknown"}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                              actor.issueType === "future_date"
-                                ? "bg-admin-danger/20 text-admin-danger"
-                                : "bg-admin-warning/20 text-admin-warning"
-                            }`}
-                          >
-                            {actor.issueType === "future_date"
-                              ? "Future Date"
-                              : "Death Before Birth"}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.popularity?.toFixed(1) ?? "N/A"}
-                        </td>
-                      </tr>
-                    ))}
-                    {futureDeaths.data.actors.length === 0 && (
+                <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+                  <table className="w-full min-w-[700px] divide-y divide-admin-border">
+                    <thead className="bg-admin-surface-overlay">
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-admin-text-muted">
-                          No actors with future or invalid death dates
-                        </td>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Actor
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Death Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Birth Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Issue
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Popularity
+                        </th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
+                      {futureDeaths.data.actors.map((actor) => (
+                        <tr key={actor.id}>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <div className="font-medium text-admin-text-primary">{actor.name}</div>
+                            <div className="text-sm text-admin-text-muted">
+                              ID: {actor.id}
+                              {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.deathDate}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.birthDate || "Unknown"}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <span
+                              className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                                actor.issueType === "future_date"
+                                  ? "bg-admin-danger/20 text-admin-danger"
+                                  : "bg-admin-warning/20 text-admin-warning"
+                              }`}
+                            >
+                              {actor.issueType === "future_date"
+                                ? "Future Date"
+                                : "Death Before Birth"}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.popularity?.toFixed(1) ?? "N/A"}
+                          </td>
+                        </tr>
+                      ))}
+                      {futureDeaths.data.actors.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-admin-text-muted">
+                            No actors with future or invalid death dates
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
                 {/* Pagination */}
                 {futureDeaths.data.totalPages > 1 && (
@@ -340,53 +344,55 @@ export default function DataQualityPage() {
 
             {uncertainDeaths.data && (
               <div className="rounded-lg bg-admin-surface-elevated shadow-admin-sm">
-                <table className="min-w-full divide-y divide-admin-border">
-                  <thead className="bg-admin-surface-overlay">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Actor
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Death Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Popularity
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                        Circumstances (excerpt)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
-                    {uncertainDeaths.data.actors.map((actor) => (
-                      <tr key={actor.id}>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <div className="font-medium text-admin-text-primary">{actor.name}</div>
-                          <div className="text-sm text-admin-text-muted">
-                            ID: {actor.id}
-                            {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.deathDate}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.popularity?.toFixed(1) ?? "N/A"}
-                        </td>
-                        <td className="max-w-md truncate px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.circumstancesExcerpt || "N/A"}
-                        </td>
-                      </tr>
-                    ))}
-                    {uncertainDeaths.data.actors.length === 0 && (
+                <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+                  <table className="w-full min-w-[700px] divide-y divide-admin-border">
+                    <thead className="bg-admin-surface-overlay">
                       <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-admin-text-muted">
-                          No actors with uncertain death records
-                        </td>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Actor
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Death Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Popularity
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                          Circumstances (excerpt)
+                        </th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
+                      {uncertainDeaths.data.actors.map((actor) => (
+                        <tr key={actor.id}>
+                          <td className="whitespace-nowrap px-6 py-4">
+                            <div className="font-medium text-admin-text-primary">{actor.name}</div>
+                            <div className="text-sm text-admin-text-muted">
+                              ID: {actor.id}
+                              {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.deathDate}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.popularity?.toFixed(1) ?? "N/A"}
+                          </td>
+                          <td className="max-w-md truncate px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.circumstancesExcerpt || "N/A"}
+                          </td>
+                        </tr>
+                      ))}
+                      {uncertainDeaths.data.actors.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-12 text-center text-admin-text-muted">
+                            No actors with uncertain death records
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
                 {/* Pagination */}
                 {uncertainDeaths.data.totalPages > 1 && (

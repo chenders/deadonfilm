@@ -184,7 +184,7 @@ export default function SyncPage() {
                   {/* Live progress */}
                   {syncDetails.data && (
                     <div className="rounded-md bg-admin-surface-overlay p-4">
-                      <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
                         <div>
                           <span className="text-admin-text-muted">Checked:</span>
                           <span className="ml-2 font-medium text-admin-text-primary">
@@ -429,8 +429,11 @@ export default function SyncPage() {
           )}
 
           {history.data && (
-            <div data-testid="sync-history-table" className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-admin-border">
+            <div
+              data-testid="sync-history-table"
+              className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0"
+            >
+              <table className="w-full min-w-[900px] divide-y divide-admin-border">
                 <thead className="bg-admin-surface-overlay">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
