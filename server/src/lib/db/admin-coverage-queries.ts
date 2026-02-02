@@ -60,8 +60,36 @@ export interface ActorCoverageFilters {
   deathDateStart?: string
   deathDateEnd?: string
   searchName?: string
+  causeOfDeath?: string
   orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
   orderDirection?: "asc" | "desc"
+}
+
+export interface CauseOfDeathOption {
+  value: string // normalized cause value
+  label: string // display label (same as value)
+  count: number // number of actors
+}
+
+export interface ActorPreviewMovie {
+  title: string
+  releaseYear: number | null
+  character: string | null
+  popularity: number
+}
+
+export interface ActorPreviewShow {
+  name: string
+  firstAirYear: number | null
+  character: string | null
+  episodeCount: number
+}
+
+export interface ActorPreviewData {
+  topMovies: ActorPreviewMovie[]
+  topShows: ActorPreviewShow[]
+  totalMovies: number
+  totalShows: number
 }
 
 // ============================================================================
@@ -160,6 +188,25 @@ export async function getActorsForCoverage(
   if (filters.searchName) {
     whereClauses.push(`name ILIKE $${paramIndex++}`)
     params.push(`%${filters.searchName}%`)
+  }
+
+  if (filters.causeOfDeath) {
+    // Match actors whose cause_of_death normalizes to the filter value,
+    // or whose original cause_of_death matches directly
+    whereClauses.push(
+      `(
+        cause_of_death IN (
+          SELECT original_cause FROM cause_of_death_normalizations WHERE normalized_cause = $${paramIndex++}
+        )
+        OR cause_of_death = $${paramIndex++}
+        OR EXISTS (
+          SELECT 1 FROM cause_of_death_normalizations n
+          WHERE n.original_cause = actors.cause_of_death
+          AND n.normalized_cause = $${paramIndex++}
+        )
+      )`
+    )
+    params.push(filters.causeOfDeath, filters.causeOfDeath, filters.causeOfDeath)
   }
 
   const whereClause = whereClauses.join(" AND ")
@@ -312,6 +359,93 @@ export async function getEnrichmentCandidates(
   )
 
   return result.rows
+}
+
+/**
+ * Get distinct causes of death for filter dropdown.
+ * Uses normalization table for grouping, returns causes with at least 3 actors.
+ */
+export async function getDistinctCausesOfDeath(pool: Pool): Promise<CauseOfDeathOption[]> {
+  const result = await pool.query<{ cause: string; count: string }>(
+    `SELECT
+       COALESCE(n.normalized_cause, a.cause_of_death) as cause,
+       COUNT(*)::text as count
+     FROM actors a
+     LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     WHERE a.deathday IS NOT NULL AND a.cause_of_death IS NOT NULL
+     GROUP BY COALESCE(n.normalized_cause, a.cause_of_death)
+     HAVING COUNT(*) >= 3
+     ORDER BY COUNT(*) DESC
+     LIMIT 100`
+  )
+
+  return result.rows.map((row) => ({
+    value: row.cause,
+    label: row.cause,
+    count: parseInt(row.count, 10),
+  }))
+}
+
+/**
+ * Get actor preview data for hover card (top movies and shows).
+ */
+export async function getActorPreview(pool: Pool, actorId: number): Promise<ActorPreviewData> {
+  // Fetch top 5 movies by popularity
+  const moviesResult = await pool.query<{
+    title: string
+    release_year: number | null
+    character_name: string | null
+    dof_popularity: number
+  }>(
+    `SELECT m.title, m.release_year, ama.character_name, m.dof_popularity
+     FROM actor_movie_appearances ama
+     JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+     WHERE ama.actor_id = $1
+     ORDER BY m.dof_popularity DESC NULLS LAST
+     LIMIT 5`,
+    [actorId]
+  )
+
+  // Fetch top 3 shows by episode count
+  const showsResult = await pool.query<{
+    name: string
+    first_air_year: number | null
+    character_name: string | null
+    episode_count: number
+  }>(
+    `SELECT s.name, s.first_air_year, asa.character_name, asa.episode_count
+     FROM actor_show_appearances asa
+     JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
+     WHERE asa.actor_id = $1
+     ORDER BY asa.episode_count DESC NULLS LAST
+     LIMIT 3`,
+    [actorId]
+  )
+
+  // Get total counts
+  const countsResult = await pool.query<{ total_movies: string; total_shows: string }>(
+    `SELECT
+       (SELECT COUNT(*) FROM actor_movie_appearances WHERE actor_id = $1)::text as total_movies,
+       (SELECT COUNT(*) FROM actor_show_appearances WHERE actor_id = $1)::text as total_shows`,
+    [actorId]
+  )
+
+  return {
+    topMovies: moviesResult.rows.map((row) => ({
+      title: row.title,
+      releaseYear: row.release_year,
+      character: row.character_name,
+      popularity: row.dof_popularity ?? 0,
+    })),
+    topShows: showsResult.rows.map((row) => ({
+      name: row.name,
+      firstAirYear: row.first_air_year,
+      character: row.character_name,
+      episodeCount: row.episode_count ?? 0,
+    })),
+    totalMovies: parseInt(countsResult.rows[0]?.total_movies ?? "0", 10),
+    totalShows: parseInt(countsResult.rows[0]?.total_shows ?? "0", 10),
+  }
 }
 
 /**

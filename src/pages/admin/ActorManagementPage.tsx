@@ -4,8 +4,41 @@ import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
 import DateRangePicker from "../../components/admin/analytics/DateRangePicker"
-import { useActorsForCoverage, type ActorCoverageFilters } from "../../hooks/admin/useCoverage"
+import {
+  useActorsForCoverage,
+  useCausesOfDeath,
+  type ActorCoverageFilters,
+} from "../../hooks/admin/useCoverage"
+import AdminHoverCard from "../../components/admin/ui/AdminHoverCard"
+import ActorPreviewCard from "../../components/admin/ActorPreviewCard"
 import { useDebouncedSearchParam } from "../../hooks/useDebouncedSearchParam"
+import { createActorSlug } from "../../utils/slugify"
+
+/**
+ * Format a date as relative time (e.g., "2 days ago", "3 months ago")
+ */
+function formatRelativeTime(dateStr: string | null): string {
+  if (!dateStr) return "Never"
+
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return "Today"
+  if (diffDays === 1) return "Yesterday"
+  if (diffDays < 7) return `${diffDays} days ago`
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7)
+    return `${weeks} week${weeks > 1 ? "s" : ""} ago`
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30)
+    return `${months} month${months > 1 ? "s" : ""} ago`
+  }
+  const years = Math.floor(diffDays / 365)
+  return `${years} year${years > 1 ? "s" : ""} ago`
+}
 
 export default function ActorManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -13,6 +46,8 @@ export default function ActorManagementPage() {
 
   const [page, setPage] = useState(1)
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
+  const [causeSearchInput, setCauseSearchInput] = useState("")
+  const [showCauseDropdown, setShowCauseDropdown] = useState(false)
   const pageSize = 50
 
   // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
@@ -37,11 +72,17 @@ export default function ActorManagementPage() {
     deathDateStart: searchParams.get("deathDateStart") || undefined,
     deathDateEnd: searchParams.get("deathDateEnd") || undefined,
     searchName: searchParams.get("searchName") || undefined,
+    causeOfDeath: searchParams.get("causeOfDeath") || undefined,
     orderBy: (searchParams.get("orderBy") as ActorCoverageFilters["orderBy"]) || "popularity",
     orderDirection: (searchParams.get("orderDirection") as "asc" | "desc") || "desc",
   }
 
   const { data, isLoading, error } = useActorsForCoverage(page, pageSize, filters)
+  const { data: causesData } = useCausesOfDeath()
+
+  // Filter causes based on search input
+  const filteredCauses =
+    causesData?.filter((c) => c.label.toLowerCase().includes(causeSearchInput.toLowerCase())) ?? []
 
   // Reset page and clear selection when search changes
   // The debounced hook updates the URL directly, so we mirror the behavior of handleFilterChange here.
@@ -71,6 +112,9 @@ export default function ActorManagementPage() {
     }
     if (updatedFilters.searchName) {
       params.set("searchName", updatedFilters.searchName)
+    }
+    if (updatedFilters.causeOfDeath) {
+      params.set("causeOfDeath", updatedFilters.causeOfDeath)
     }
     if (updatedFilters.orderBy) {
       params.set("orderBy", updatedFilters.orderBy)
@@ -220,6 +264,66 @@ export default function ActorManagementPage() {
                 />
               </div>
 
+              {/* Cause of Death */}
+              <div className="relative">
+                <label htmlFor="causeOfDeath" className="mb-1 block text-sm text-admin-text-muted">
+                  Cause of Death
+                </label>
+                <div className="relative">
+                  <input
+                    id="causeOfDeath"
+                    type="text"
+                    value={filters.causeOfDeath || causeSearchInput}
+                    onChange={(e) => {
+                      setCauseSearchInput(e.target.value)
+                      setShowCauseDropdown(true)
+                      if (!e.target.value) {
+                        handleFilterChange({ causeOfDeath: undefined })
+                      }
+                    }}
+                    onFocus={() => setShowCauseDropdown(true)}
+                    onBlur={() => {
+                      // Delay to allow click on dropdown item
+                      setTimeout(() => setShowCauseDropdown(false), 200)
+                    }}
+                    className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 pr-8 text-admin-text-primary focus:ring-admin-interactive"
+                    placeholder="Search causes..."
+                  />
+                  {filters.causeOfDeath && (
+                    <button
+                      onClick={() => {
+                        setCauseSearchInput("")
+                        handleFilterChange({ causeOfDeath: undefined })
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-admin-text-muted hover:text-admin-text-primary"
+                      aria-label="Clear cause filter"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {showCauseDropdown && filteredCauses.length > 0 && (
+                  <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded border border-admin-border bg-admin-surface-elevated shadow-lg">
+                    {filteredCauses.slice(0, 20).map((cause) => (
+                      <li key={cause.value}>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-sm text-admin-text-primary hover:bg-admin-interactive-secondary"
+                          onMouseDown={() => {
+                            handleFilterChange({ causeOfDeath: cause.value })
+                            setCauseSearchInput("")
+                            setShowCauseDropdown(false)
+                          }}
+                        >
+                          <span>{cause.label}</span>
+                          <span className="ml-2 text-admin-text-muted">({cause.count})</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               {/* Sort By */}
               <div>
                 <label htmlFor="orderBy" className="mb-1 block text-sm text-admin-text-muted">
@@ -318,6 +422,9 @@ export default function ActorManagementPage() {
                         Death Date
                       </th>
                       <th className="px-4 py-3 text-right text-sm font-semibold text-admin-text-secondary">
+                        Age
+                      </th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-admin-text-secondary">
                         Popularity
                       </th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
@@ -326,12 +433,18 @@ export default function ActorManagementPage() {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                         Cause of Death
                       </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
+                        Enriched
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-admin-border">
                     {data.items.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-admin-text-muted">
+                        <td colSpan={9} className="px-4 py-8 text-center text-admin-text-muted">
                           No actors match the current filters
                         </td>
                       </tr>
@@ -351,11 +464,18 @@ export default function ActorManagementPage() {
                               className="h-4 w-4 rounded border-admin-border bg-admin-surface-elevated text-admin-interactive"
                             />
                           </td>
-                          <td className="px-4 py-3 text-admin-text-primary">{actor.name}</td>
+                          <td className="px-4 py-3 text-admin-text-primary">
+                            <AdminHoverCard content={<ActorPreviewCard actorId={actor.id} />}>
+                              <span className="cursor-pointer hover:underline">{actor.name}</span>
+                            </AdminHoverCard>
+                          </td>
                           <td className="px-4 py-3 text-admin-text-muted">
                             {actor.deathday
                               ? new Date(actor.deathday).toLocaleDateString()
                               : "Unknown"}
+                          </td>
+                          <td className="px-4 py-3 text-right text-admin-text-muted">
+                            {actor.age_at_death ?? "—"}
                           </td>
                           <td className="px-4 py-3 text-right text-admin-text-muted">
                             {actor.popularity?.toFixed(1) ?? "—"}
@@ -369,6 +489,33 @@ export default function ActorManagementPage() {
                           </td>
                           <td className="px-4 py-3 text-sm text-admin-text-muted">
                             {actor.cause_of_death || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-admin-text-muted">
+                            {formatRelativeTime(actor.enriched_at)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <a
+                              href={`/actor/${createActorSlug(actor.name, actor.id)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+                              title="View public actor page"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                />
+                              </svg>
+                            </a>
                           </td>
                         </tr>
                       ))

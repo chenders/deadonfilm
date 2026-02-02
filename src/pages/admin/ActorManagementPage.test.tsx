@@ -7,6 +7,16 @@ import ActorManagementPage from "./ActorManagementPage"
 // Mock the hooks
 vi.mock("../../hooks/admin/useCoverage", () => ({
   useActorsForCoverage: vi.fn(),
+  useCausesOfDeath: vi.fn(() => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  })),
+  useActorPreview: vi.fn(() => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  })),
 }))
 
 vi.mock("../../hooks/useAdminAuth", () => ({
@@ -24,6 +34,8 @@ const mockActors = [
     popularity: 45.5,
     has_detailed_death_info: true,
     cause_of_death: "Stomach cancer",
+    age_at_death: 72,
+    enriched_at: "2024-01-15T10:00:00Z",
   },
   {
     id: 2,
@@ -32,6 +44,8 @@ const mockActors = [
     popularity: 32.1,
     has_detailed_death_info: true,
     cause_of_death: "Car accident",
+    age_at_death: 24,
+    enriched_at: null,
   },
   {
     id: 3,
@@ -40,6 +54,8 @@ const mockActors = [
     popularity: 55.8,
     has_detailed_death_info: false,
     cause_of_death: null,
+    age_at_death: 36,
+    enriched_at: "2024-02-01T10:00:00Z",
   },
 ]
 
