@@ -448,6 +448,47 @@ describe("admin actors routes", () => {
       expect(res.body.error.invalidEnums[0].field).toBe("circumstances_confidence")
     })
 
+    it("should update both actor and circumstances fields in same transaction", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Check actor exists
+        .mockResolvedValueOnce({ rows: [mockCircumstances] }) // Check circumstances
+        .mockResolvedValueOnce({ rows: [{ ...mockActor, cause_of_death: "Lung cancer" }] }) // Fetch updated actor
+        .mockResolvedValueOnce({
+          rows: [{ ...mockCircumstances, circumstances: "Updated circumstances" }],
+        }) // Fetch updated circumstances
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockActor] }) // Select actor for snapshot
+        .mockResolvedValueOnce({ rows: [mockCircumstances] }) // Select circumstances for snapshot
+        .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Insert snapshot
+        .mockResolvedValueOnce({ rows: [] }) // Record actor history
+        .mockResolvedValueOnce({ rows: [] }) // Update actor
+        .mockResolvedValueOnce({ rows: [] }) // Record circumstances history
+        .mockResolvedValueOnce({ rows: [] }) // Update circumstances
+        .mockResolvedValueOnce({ rows: [] }) // COMMIT
+
+      const res = await request(app)
+        .patch("/admin/api/actors/123")
+        .send({
+          actor: { cause_of_death: "Lung cancer" },
+          circumstances: { circumstances: "Updated circumstances" },
+        })
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+      expect(res.body.snapshotId).toBe(1)
+      expect(res.body.changes).toHaveLength(2)
+      expect(res.body.changes.map((c: { field: string }) => c.field).sort()).toEqual([
+        "cause_of_death",
+        "circumstances",
+      ])
+      // Verify transaction was used
+      expect(mockClient.query).toHaveBeenCalledWith("BEGIN")
+      expect(mockClient.query).toHaveBeenCalledWith("COMMIT")
+      expect(mockClient.release).toHaveBeenCalled()
+    })
+
     it("should return 500 when database query fails for GET", async () => {
       mockPool.query.mockRejectedValueOnce(new Error("Database connection failed"))
 
