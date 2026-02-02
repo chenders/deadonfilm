@@ -16,11 +16,28 @@ export function useIsMobile(breakpoint = 640): boolean {
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < breakpoint)
 
+    // Throttle resize handling to animation frames to avoid excessive re-renders
+    let frameId: number | null = null
+    const handleResize = () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId)
+      }
+      frameId = requestAnimationFrame(() => {
+        checkMobile()
+        frameId = null
+      })
+    }
+
     // Check immediately on mount
     checkMobile()
 
-    window.addEventListener("resize", checkMobile)
-    return () => window.removeEventListener("resize", checkMobile)
+    window.addEventListener("resize", handleResize)
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId)
+      }
+      window.removeEventListener("resize", handleResize)
+    }
   }, [breakpoint])
 
   return isMobile

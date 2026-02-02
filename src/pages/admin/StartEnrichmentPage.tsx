@@ -837,8 +837,8 @@ export default function StartEnrichmentPage() {
           <p className="mb-4 text-admin-text-secondary">
             Equivalent CLI command for this configuration:
           </p>
-          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <pre className="whitespace-pre-wrap break-words rounded bg-admin-surface-base p-4 font-mono text-sm text-admin-text-secondary sm:whitespace-pre">
+          <div>
+            <pre className="whitespace-pre-wrap break-words rounded bg-admin-surface-base p-4 font-mono text-sm text-admin-text-secondary">
               cd server && npm run enrich:death-details --{" "}
               {selectionMode === "specific" && selectedActorIds.length > 0
                 ? `--actor-id ${selectedActorIds.join(",")}`
