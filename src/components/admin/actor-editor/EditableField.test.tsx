@@ -287,6 +287,7 @@ describe("EditableField", () => {
     const mockFullHistory = [
       {
         id: 1,
+        field_name: "test",
         old_value: "value3",
         new_value: "value4",
         source: "admin-manual-edit",
@@ -295,6 +296,7 @@ describe("EditableField", () => {
       },
       {
         id: 2,
+        field_name: "test",
         old_value: "value2",
         new_value: "value3",
         source: "claude-enrichment",
@@ -303,6 +305,7 @@ describe("EditableField", () => {
       },
       {
         id: 3,
+        field_name: "test",
         old_value: "value1",
         new_value: "value2",
         source: "admin-manual-edit",

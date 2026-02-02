@@ -42,10 +42,11 @@ export default function EditableField({
 }: EditableFieldProps) {
   const [showFullHistory, setShowFullHistory] = useState(false)
 
-  const {
-    history: fullHistory,
-    isLoading: isLoadingHistory,
-  } = useFieldHistory(actorId, name, showFullHistory)
+  const { history: fullHistory, isLoading: isLoadingHistory } = useFieldHistory(
+    actorId,
+    name,
+    showFullHistory
+  )
 
   const lastChange = history.length > 0 ? history[0] : null
   const hasHistory = history.length > 0
@@ -239,7 +240,7 @@ export default function EditableField({
                     <button
                       type="button"
                       onClick={() => handleRevert(change.old_value)}
-                      className="shrink-0 rounded bg-admin-surface-overlay px-2 py-1 text-admin-text-muted hover:bg-admin-surface-raised hover:text-admin-text-primary"
+                      className="hover:bg-admin-surface-raised shrink-0 rounded bg-admin-surface-overlay px-2 py-1 text-admin-text-muted hover:text-admin-text-primary"
                       title={`Revert to: ${change.old_value ?? "(empty)"}`}
                     >
                       Revert
