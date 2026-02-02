@@ -121,7 +121,7 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
         maxBilling: config.maxBilling,
         topMovies: config.topMovies,
         usActorsOnly: config.usActorsOnly ?? false,
-        ignoreCache: config.ignoreCache ?? true, // Default: bypass cache for admin runs
+        ignoreCache: config.ignoreCache ?? true, // Default: bypass cache for admin runs (reset at end of each run)
         staging: false,
         // Wikipedia-specific options
         wikipediaUseAISectionSelection: config.wikipedia?.useAISectionSelection ?? false,

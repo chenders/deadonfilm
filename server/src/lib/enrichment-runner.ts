@@ -186,9 +186,11 @@ export class EnrichmentRunner {
       wikipediaMaxSections = 10,
     } = this.config
 
-    // Configure cache behavior
+    // Configure cache behavior for this run
+    // Always explicitly set the cache behavior to ensure per-run isolation
+    // Reset to false at the end of run() to prevent leakage between runs in same worker
+    setIgnoreCache(ignoreCache)
     if (ignoreCache) {
-      setIgnoreCache(true)
       this.log.info("Cache disabled - all requests will be made fresh")
     }
 
@@ -230,6 +232,7 @@ export class EnrichmentRunner {
 
     if (actors.length === 0) {
       this.log.info("No actors to enrich")
+      setIgnoreCache(false) // Reset cache behavior before returning
       return {
         actorsProcessed: 0,
         actorsEnriched: 0,
@@ -247,6 +250,7 @@ export class EnrichmentRunner {
     // Check if we should stop before starting
     if (this.shouldStop()) {
       this.log.info("Enrichment stopped before starting (abort signal)")
+      setIgnoreCache(false) // Reset cache behavior before returning
       return {
         actorsProcessed: 0,
         actorsEnriched: 0,
@@ -345,6 +349,7 @@ export class EnrichmentRunner {
         )
         costLimitReached = true
       } else {
+        setIgnoreCache(false) // Reset cache behavior before rethrowing
         throw error
       }
     }
@@ -562,6 +567,10 @@ export class EnrichmentRunner {
       },
       "Enrichment complete"
     )
+
+    // Reset cache behavior to default (use cache) to ensure per-run isolation
+    // This prevents ignoreCache=true from leaking into subsequent runs in the same worker
+    setIgnoreCache(false)
 
     return {
       actorsProcessed: stats.actorsProcessed,
