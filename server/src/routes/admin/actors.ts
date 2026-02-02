@@ -15,7 +15,10 @@ const router = Router()
 
 // Valid values for constrained fields (matching database CHECK constraints)
 const VALID_DEATH_MANNER = ["natural", "accident", "suicide", "homicide", "undetermined", "pending"]
+// For circumstances confidence fields (cause_confidence, details_confidence, etc.)
 const VALID_CONFIDENCE = ["high", "medium", "low", "disputed"]
+// For actors.deathday_confidence specifically (different constraint)
+const VALID_DEATHDAY_CONFIDENCE_ACTOR = ["verified", "unverified", "conflicting"]
 
 // Helper function to convert values to string for history storage
 function valueToHistoryString(value: unknown): string | null {
@@ -505,11 +508,31 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
 
     // Validate death_manner (actor field)
     if (actorUpdates?.death_manner !== undefined && actorUpdates.death_manner !== null) {
-      if (!VALID_DEATH_MANNER.includes(actorUpdates.death_manner as string)) {
+      if (
+        typeof actorUpdates.death_manner !== "string" ||
+        !VALID_DEATH_MANNER.includes(actorUpdates.death_manner)
+      ) {
         invalidEnums.push({
           field: "death_manner",
           value: actorUpdates.death_manner,
           validValues: VALID_DEATH_MANNER,
+        })
+      }
+    }
+
+    // Validate deathday_confidence (actor field - uses different valid values)
+    if (
+      actorUpdates?.deathday_confidence !== undefined &&
+      actorUpdates.deathday_confidence !== null
+    ) {
+      if (
+        typeof actorUpdates.deathday_confidence !== "string" ||
+        !VALID_DEATHDAY_CONFIDENCE_ACTOR.includes(actorUpdates.deathday_confidence)
+      ) {
+        invalidEnums.push({
+          field: "deathday_confidence",
+          value: actorUpdates.deathday_confidence,
+          validValues: VALID_DEATHDAY_CONFIDENCE_ACTOR,
         })
       }
     }
@@ -526,7 +549,7 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
       for (const field of confidenceFields) {
         const value = circumstancesUpdates[field]
         if (value !== undefined && value !== null) {
-          if (!VALID_CONFIDENCE.includes(value as string)) {
+          if (typeof value !== "string" || !VALID_CONFIDENCE.includes(value)) {
             invalidEnums.push({ field, value, validValues: VALID_CONFIDENCE })
           }
         }
