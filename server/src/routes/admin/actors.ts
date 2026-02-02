@@ -7,10 +7,1053 @@
 import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
-import { getCached, CACHE_KEYS } from "../../lib/cache.js"
+import { getCached, CACHE_KEYS, invalidateActorCache } from "../../lib/cache.js"
 import { createActorSlug } from "../../lib/slug-utils.js"
+import { logAdminAction } from "../../lib/admin-auth.js"
 
 const router = Router()
+
+// Valid values for constrained fields (matching database CHECK constraints)
+const VALID_DEATH_MANNER = ["natural", "accident", "suicide", "homicide", "undetermined", "pending"]
+// For circumstances confidence fields (cause_confidence, details_confidence, etc.)
+const VALID_CONFIDENCE = ["high", "medium", "low", "disputed"]
+// For actors.deathday_confidence specifically (different constraint)
+const VALID_DEATHDAY_CONFIDENCE_ACTOR = ["verified", "unverified", "conflicting"]
+// For date precision fields (birthday_precision, deathday_precision)
+const VALID_DATE_PRECISION = ["year", "month", "day"]
+// For career_status_at_death field
+const VALID_CAREER_STATUS = ["active", "semi-retired", "retired", "hiatus", "unknown"]
+
+// Helper function to convert values to string for history storage
+function valueToHistoryString(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+  if (typeof value === "object") return JSON.stringify(value)
+  return String(value)
+}
+
+// Fields that should NOT be editable via the admin editor
+const NON_EDITABLE_FIELDS = new Set([
+  // Computed fields
+  "tmdb_popularity",
+  "dof_popularity",
+  "dof_popularity_confidence",
+  "dof_popularity_updated_at",
+  "is_obscure",
+  "age_at_death",
+  "expected_lifespan",
+  "years_lost",
+  // External IDs (managed by sync)
+  "tmdb_id",
+  "imdb_person_id",
+  "tvmaze_person_id",
+  "thetvdb_person_id",
+  // System fields
+  "id",
+  "created_at",
+  "updated_at",
+  // Fetch tracking (managed by enrichment system)
+  "details_fetch_attempts",
+  "details_last_fetch_attempt",
+  "details_fetch_error",
+  "details_permanently_failed",
+])
+
+// Actor fields that are editable
+const ACTOR_EDITABLE_FIELDS = [
+  "name",
+  "birthday",
+  "deathday",
+  "profile_path",
+  "fallback_profile_url",
+  "cause_of_death",
+  "cause_of_death_source",
+  "cause_of_death_details",
+  "cause_of_death_details_source",
+  "wikipedia_url",
+  "violent_death",
+  "birthday_precision",
+  "deathday_precision",
+  "cause_of_death_checked_at",
+  "death_manner",
+  "death_categories",
+  "covid_related",
+  "strange_death",
+  "has_detailed_death_info",
+  "deathday_confidence",
+  "deathday_verification_source",
+  "deathday_verified_at",
+  "enriched_at",
+  "enrichment_source",
+  "enrichment_version",
+]
+
+// Circumstances fields that are editable
+const CIRCUMSTANCES_EDITABLE_FIELDS = [
+  "circumstances",
+  "circumstances_confidence",
+  "rumored_circumstances",
+  "cause_confidence",
+  "details_confidence",
+  "birthday_confidence",
+  "deathday_confidence",
+  "location_of_death",
+  "last_project",
+  "career_status_at_death",
+  "posthumous_releases",
+  "related_celebrity_ids",
+  "related_celebrities",
+  "additional_context",
+  "notable_factors",
+  "sources",
+  "related_deaths",
+  "enriched_at",
+  "enrichment_source",
+  "enrichment_version",
+  "entity_links",
+]
+
+// Uncertainty markers that indicate data quality issues
+const UNCERTAINTY_MARKERS = [
+  "possibly",
+  "reportedly",
+  "allegedly",
+  "unconfirmed",
+  "disputed",
+  "uncertain",
+  "rumored",
+  "believed to",
+  "thought to",
+  "may have",
+  "might have",
+  "could have",
+  "some sources",
+  "conflicting reports",
+]
+
+interface ActorRow {
+  id: number
+  tmdb_id: number | null
+  name: string
+  birthday: string | null
+  deathday: string | null
+  profile_path: string | null
+  fallback_profile_url: string | null
+  tmdb_popularity: string | null
+  cause_of_death: string | null
+  cause_of_death_source: string | null
+  cause_of_death_details: string | null
+  cause_of_death_details_source: string | null
+  wikipedia_url: string | null
+  age_at_death: number | null
+  expected_lifespan: string | null
+  years_lost: string | null
+  violent_death: boolean | null
+  created_at: string
+  updated_at: string
+  is_obscure: boolean
+  tvmaze_person_id: number | null
+  thetvdb_person_id: number | null
+  imdb_person_id: string | null
+  birthday_precision: string | null
+  deathday_precision: string | null
+  cause_of_death_checked_at: string | null
+  death_manner: string | null
+  death_categories: string[] | null
+  covid_related: boolean | null
+  strange_death: boolean | null
+  has_detailed_death_info: boolean | null
+  deathday_confidence: string | null
+  deathday_verification_source: string | null
+  deathday_verified_at: string | null
+  enriched_at: string | null
+  enrichment_source: string | null
+  enrichment_version: string | null
+  details_fetch_attempts: number
+  details_last_fetch_attempt: string | null
+  details_fetch_error: string | null
+  details_permanently_failed: boolean
+  dof_popularity: string | null
+  dof_popularity_confidence: string | null
+  dof_popularity_updated_at: string | null
+}
+
+interface CircumstancesRow {
+  id: number
+  actor_id: number
+  circumstances: string | null
+  circumstances_confidence: string | null
+  rumored_circumstances: string | null
+  cause_confidence: string | null
+  details_confidence: string | null
+  birthday_confidence: string | null
+  deathday_confidence: string | null
+  location_of_death: string | null
+  last_project: Record<string, unknown> | null
+  career_status_at_death: string | null
+  posthumous_releases: Record<string, unknown>[] | null
+  related_celebrity_ids: number[] | null
+  related_celebrities: Record<string, unknown>[] | null
+  additional_context: string | null
+  notable_factors: string[] | null
+  sources: Record<string, unknown>[] | null
+  raw_response: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+  related_deaths: string | null
+  enriched_at: string | null
+  enrichment_source: string | null
+  enrichment_version: string | null
+  entity_links: Record<string, unknown> | null
+}
+
+interface DataQualityIssue {
+  field: string
+  issue: string
+  severity: "warning" | "error"
+}
+
+/**
+ * Detect data quality issues in actor data
+ */
+function detectDataQualityIssues(
+  actor: ActorRow,
+  circumstances: CircumstancesRow | null
+): DataQualityIssue[] {
+  const issues: DataQualityIssue[] = []
+
+  // Check for uncertainty markers in circumstances
+  if (circumstances?.circumstances) {
+    const lowerCircumstances = circumstances.circumstances.toLowerCase()
+    for (const marker of UNCERTAINTY_MARKERS) {
+      if (lowerCircumstances.includes(marker)) {
+        issues.push({
+          field: "circumstances",
+          issue: `Contains uncertainty marker: "${marker}"`,
+          severity: "warning",
+        })
+        break
+      }
+    }
+  }
+
+  // Check for low confidence fields
+  if (actor.deathday_confidence === "unverified" || actor.deathday_confidence === "conflicting") {
+    issues.push({
+      field: "deathday",
+      issue: `Death date confidence: ${actor.deathday_confidence}`,
+      severity: actor.deathday_confidence === "conflicting" ? "error" : "warning",
+    })
+  }
+
+  if (circumstances?.cause_confidence === "low" || circumstances?.cause_confidence === "disputed") {
+    issues.push({
+      field: "cause_of_death",
+      issue: `${circumstances.cause_confidence === "disputed" ? "Disputed" : "Low"} confidence on cause of death`,
+      severity: circumstances.cause_confidence === "disputed" ? "error" : "warning",
+    })
+  }
+
+  if (
+    circumstances?.circumstances_confidence === "low" ||
+    circumstances?.circumstances_confidence === "disputed"
+  ) {
+    issues.push({
+      field: "circumstances",
+      issue: `${circumstances.circumstances_confidence === "disputed" ? "Disputed" : "Low"} confidence on circumstances`,
+      severity: circumstances.circumstances_confidence === "disputed" ? "error" : "warning",
+    })
+  }
+
+  // Check for future death dates
+  if (actor.deathday) {
+    const deathDate = new Date(actor.deathday)
+    if (deathDate > new Date()) {
+      issues.push({
+        field: "deathday",
+        issue: "Death date is in the future",
+        severity: "error",
+      })
+    }
+  }
+
+  // Check for death date before birth date
+  if (actor.birthday && actor.deathday) {
+    const birthDate = new Date(actor.birthday)
+    const deathDate = new Date(actor.deathday)
+    if (deathDate < birthDate) {
+      issues.push({
+        field: "deathday",
+        issue: "Death date is before birth date",
+        severity: "error",
+      })
+    }
+  }
+
+  // Check for missing enrichment data on deceased actors
+  if (actor.deathday && !actor.cause_of_death && !circumstances?.circumstances) {
+    issues.push({
+      field: "cause_of_death",
+      issue: "Deceased actor missing death details",
+      severity: "warning",
+    })
+  }
+
+  return issues
+}
+
+// ============================================================================
+// GET /admin/api/actors/:id
+// Get full actor data for editing
+// ============================================================================
+
+router.get("/:id(\\d+)", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const actorId = parseInt(req.params.id, 10)
+
+    if (isNaN(actorId)) {
+      res.status(400).json({ error: { message: "Invalid actor ID" } })
+      return
+    }
+
+    // Fetch actor data
+    const actorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [actorId])
+
+    if (actorResult.rows.length === 0) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
+
+    const actor = actorResult.rows[0]
+
+    // Fetch circumstances data
+    const circumstancesResult = await pool.query<CircumstancesRow>(
+      `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
+      [actorId]
+    )
+
+    const circumstances = circumstancesResult.rows[0] || null
+
+    // Detect data quality issues
+    const dataQualityIssues = detectDataQualityIssues(actor, circumstances)
+
+    // Get recent change history
+    const historyResult = await pool.query<{
+      field_name: string
+      old_value: string | null
+      new_value: string | null
+      source: string
+      created_at: string
+    }>(
+      `SELECT field_name, old_value, new_value, source, created_at
+       FROM actor_death_info_history
+       WHERE actor_id = $1
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [actorId]
+    )
+
+    res.json({
+      actor,
+      circumstances,
+      dataQualityIssues,
+      recentHistory: historyResult.rows,
+      editableFields: {
+        actor: ACTOR_EDITABLE_FIELDS,
+        circumstances: CIRCUMSTANCES_EDITABLE_FIELDS,
+      },
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch actor for editing")
+    res.status(500).json({ error: { message: "Failed to fetch actor data" } })
+  }
+})
+
+// ============================================================================
+// PATCH /admin/api/actors/:id
+// Update actor fields with history tracking
+// ============================================================================
+
+interface UpdateActorBody {
+  actor?: Record<string, unknown>
+  circumstances?: Record<string, unknown>
+}
+
+router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> => {
+  const pool = getPool()
+  const actorId = parseInt(req.params.id, 10)
+
+  if (isNaN(actorId)) {
+    res.status(400).json({ error: { message: "Invalid actor ID" } })
+    return
+  }
+
+  const body = req.body as UpdateActorBody
+  const { actor: actorUpdates, circumstances: circumstancesUpdates } = body
+
+  if (!actorUpdates && !circumstancesUpdates) {
+    res.status(400).json({ error: { message: "No updates provided" } })
+    return
+  }
+
+  try {
+    // Verify actor exists
+    const existingActorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [
+      actorId,
+    ])
+
+    if (existingActorResult.rows.length === 0) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
+
+    const existingActor = existingActorResult.rows[0]
+
+    // Get existing circumstances
+    const existingCircumstancesResult = await pool.query<CircumstancesRow>(
+      `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
+      [actorId]
+    )
+    const existingCircumstances = existingCircumstancesResult.rows[0] || null
+
+    // Validate that all fields being updated are editable
+    const invalidActorFields: string[] = []
+    const invalidCircumstancesFields: string[] = []
+
+    if (actorUpdates) {
+      for (const field of Object.keys(actorUpdates)) {
+        if (NON_EDITABLE_FIELDS.has(field) || !ACTOR_EDITABLE_FIELDS.includes(field)) {
+          invalidActorFields.push(field)
+        }
+      }
+    }
+
+    if (circumstancesUpdates) {
+      for (const field of Object.keys(circumstancesUpdates)) {
+        if (!CIRCUMSTANCES_EDITABLE_FIELDS.includes(field)) {
+          invalidCircumstancesFields.push(field)
+        }
+      }
+    }
+
+    if (invalidActorFields.length > 0 || invalidCircumstancesFields.length > 0) {
+      res.status(400).json({
+        error: {
+          message: "Cannot update non-editable fields",
+          invalidFields: {
+            actor: invalidActorFields,
+            circumstances: invalidCircumstancesFields,
+          },
+        },
+      })
+      return
+    }
+
+    // Validate date fields
+    const dateFields = ["birthday", "deathday"]
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+    const invalidDates: { field: string; value: unknown; reason: string }[] = []
+
+    if (actorUpdates) {
+      for (const field of dateFields) {
+        const value = actorUpdates[field]
+        if (value !== undefined && value !== null) {
+          if (typeof value !== "string" || !dateRegex.test(value)) {
+            invalidDates.push({ field, value, reason: "Invalid format. Expected YYYY-MM-DD" })
+          } else {
+            const parsed = new Date(value)
+            if (isNaN(parsed.getTime())) {
+              invalidDates.push({ field, value, reason: "Invalid date" })
+            } else if (field === "deathday" && parsed > new Date()) {
+              invalidDates.push({ field, value, reason: "Death date cannot be in the future" })
+            } else if (field === "deathday") {
+              // Check death date is not before birth date
+              const birthday =
+                actorUpdates.birthday !== undefined ? actorUpdates.birthday : existingActor.birthday
+              if (birthday && typeof birthday === "string") {
+                const birthDate = new Date(birthday)
+                if (!isNaN(birthDate.getTime()) && parsed < birthDate) {
+                  invalidDates.push({
+                    field,
+                    value,
+                    reason: "Death date cannot be before birth date",
+                  })
+                }
+              }
+            } else if (field === "birthday") {
+              // Check birthday is not after death date
+              const deathday =
+                actorUpdates.deathday !== undefined ? actorUpdates.deathday : existingActor.deathday
+              if (deathday && typeof deathday === "string") {
+                const deathDate = new Date(deathday)
+                if (!isNaN(deathDate.getTime()) && parsed > deathDate) {
+                  invalidDates.push({
+                    field,
+                    value,
+                    reason: "Birth date cannot be after death date",
+                  })
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (invalidDates.length > 0) {
+      res.status(400).json({
+        error: {
+          message: "Invalid date format",
+          invalidDates,
+        },
+      })
+      return
+    }
+
+    // Validate constrained enum fields
+    const invalidEnums: { field: string; value: unknown; validValues: string[] }[] = []
+
+    // Validate death_manner (actor field)
+    if (actorUpdates?.death_manner !== undefined && actorUpdates.death_manner !== null) {
+      if (
+        typeof actorUpdates.death_manner !== "string" ||
+        !VALID_DEATH_MANNER.includes(actorUpdates.death_manner)
+      ) {
+        invalidEnums.push({
+          field: "death_manner",
+          value: actorUpdates.death_manner,
+          validValues: VALID_DEATH_MANNER,
+        })
+      }
+    }
+
+    // Validate deathday_confidence (actor field - uses different valid values)
+    if (
+      actorUpdates?.deathday_confidence !== undefined &&
+      actorUpdates.deathday_confidence !== null
+    ) {
+      if (
+        typeof actorUpdates.deathday_confidence !== "string" ||
+        !VALID_DEATHDAY_CONFIDENCE_ACTOR.includes(actorUpdates.deathday_confidence)
+      ) {
+        invalidEnums.push({
+          field: "deathday_confidence",
+          value: actorUpdates.deathday_confidence,
+          validValues: VALID_DEATHDAY_CONFIDENCE_ACTOR,
+        })
+      }
+    }
+
+    // Validate confidence fields (circumstances fields)
+    const confidenceFields = [
+      "circumstances_confidence",
+      "cause_confidence",
+      "details_confidence",
+      "birthday_confidence",
+      "deathday_confidence",
+    ]
+    if (circumstancesUpdates) {
+      for (const field of confidenceFields) {
+        const value = circumstancesUpdates[field]
+        if (value !== undefined && value !== null) {
+          if (typeof value !== "string" || !VALID_CONFIDENCE.includes(value)) {
+            invalidEnums.push({ field, value, validValues: VALID_CONFIDENCE })
+          }
+        }
+      }
+    }
+
+    // Validate date precision fields (actor fields)
+    const datePrecisionFields = ["birthday_precision", "deathday_precision"]
+    if (actorUpdates) {
+      for (const field of datePrecisionFields) {
+        const value = actorUpdates[field]
+        if (value !== undefined && value !== null) {
+          if (typeof value !== "string" || !VALID_DATE_PRECISION.includes(value)) {
+            invalidEnums.push({ field, value, validValues: VALID_DATE_PRECISION })
+          }
+        }
+      }
+    }
+
+    // Validate career_status_at_death (circumstances field)
+    if (
+      circumstancesUpdates?.career_status_at_death !== undefined &&
+      circumstancesUpdates.career_status_at_death !== null
+    ) {
+      if (
+        typeof circumstancesUpdates.career_status_at_death !== "string" ||
+        !VALID_CAREER_STATUS.includes(circumstancesUpdates.career_status_at_death)
+      ) {
+        invalidEnums.push({
+          field: "career_status_at_death",
+          value: circumstancesUpdates.career_status_at_death,
+          validValues: VALID_CAREER_STATUS,
+        })
+      }
+    }
+
+    if (invalidEnums.length > 0) {
+      res.status(400).json({
+        error: {
+          message: "Invalid enum value",
+          invalidEnums,
+        },
+      })
+      return
+    }
+
+    // Validate boolean fields (actor fields)
+    const booleanActorFields = [
+      "violent_death",
+      "covid_related",
+      "strange_death",
+      "has_detailed_death_info",
+    ]
+    const invalidTypes: { field: string; expectedType: string; actualType: string }[] = []
+
+    if (actorUpdates) {
+      for (const field of booleanActorFields) {
+        const value = actorUpdates[field]
+        if (value !== undefined && value !== null && typeof value !== "boolean") {
+          invalidTypes.push({ field, expectedType: "boolean", actualType: typeof value })
+        }
+      }
+
+      // Validate death_categories is an array of strings
+      if (actorUpdates.death_categories !== undefined && actorUpdates.death_categories !== null) {
+        if (!Array.isArray(actorUpdates.death_categories)) {
+          invalidTypes.push({
+            field: "death_categories",
+            expectedType: "string[]",
+            actualType: typeof actorUpdates.death_categories,
+          })
+        } else if (!actorUpdates.death_categories.every((v: unknown) => typeof v === "string")) {
+          invalidTypes.push({
+            field: "death_categories",
+            expectedType: "string[]",
+            actualType: "array with non-string elements",
+          })
+        }
+      }
+    }
+
+    // Validate circumstances array/object fields
+    if (circumstancesUpdates) {
+      // notable_factors should be string[]
+      if (
+        circumstancesUpdates.notable_factors !== undefined &&
+        circumstancesUpdates.notable_factors !== null
+      ) {
+        if (!Array.isArray(circumstancesUpdates.notable_factors)) {
+          invalidTypes.push({
+            field: "notable_factors",
+            expectedType: "string[]",
+            actualType: typeof circumstancesUpdates.notable_factors,
+          })
+        } else if (
+          !circumstancesUpdates.notable_factors.every((v: unknown) => typeof v === "string")
+        ) {
+          invalidTypes.push({
+            field: "notable_factors",
+            expectedType: "string[]",
+            actualType: "array with non-string elements",
+          })
+        }
+      }
+
+      // related_celebrity_ids should be number[]
+      if (
+        circumstancesUpdates.related_celebrity_ids !== undefined &&
+        circumstancesUpdates.related_celebrity_ids !== null
+      ) {
+        if (!Array.isArray(circumstancesUpdates.related_celebrity_ids)) {
+          invalidTypes.push({
+            field: "related_celebrity_ids",
+            expectedType: "number[]",
+            actualType: typeof circumstancesUpdates.related_celebrity_ids,
+          })
+        } else if (
+          !circumstancesUpdates.related_celebrity_ids.every((v: unknown) => typeof v === "number")
+        ) {
+          invalidTypes.push({
+            field: "related_celebrity_ids",
+            expectedType: "number[]",
+            actualType: "array with non-number elements",
+          })
+        }
+      }
+
+      // posthumous_releases should be an array of objects
+      if (
+        circumstancesUpdates.posthumous_releases !== undefined &&
+        circumstancesUpdates.posthumous_releases !== null
+      ) {
+        if (!Array.isArray(circumstancesUpdates.posthumous_releases)) {
+          invalidTypes.push({
+            field: "posthumous_releases",
+            expectedType: "object[]",
+            actualType: typeof circumstancesUpdates.posthumous_releases,
+          })
+        } else if (
+          !circumstancesUpdates.posthumous_releases.every(
+            (item: unknown) => typeof item === "object" && item !== null && !Array.isArray(item)
+          )
+        ) {
+          invalidTypes.push({
+            field: "posthumous_releases",
+            expectedType: "object[]",
+            actualType: "array with non-object elements",
+          })
+        }
+      }
+
+      // related_celebrities should be an array of objects
+      if (
+        circumstancesUpdates.related_celebrities !== undefined &&
+        circumstancesUpdates.related_celebrities !== null
+      ) {
+        if (!Array.isArray(circumstancesUpdates.related_celebrities)) {
+          invalidTypes.push({
+            field: "related_celebrities",
+            expectedType: "object[]",
+            actualType: typeof circumstancesUpdates.related_celebrities,
+          })
+        } else if (
+          !circumstancesUpdates.related_celebrities.every(
+            (item: unknown) => typeof item === "object" && item !== null && !Array.isArray(item)
+          )
+        ) {
+          invalidTypes.push({
+            field: "related_celebrities",
+            expectedType: "object[]",
+            actualType: "array with non-object elements",
+          })
+        }
+      }
+
+      // last_project should be an object
+      if (
+        circumstancesUpdates.last_project !== undefined &&
+        circumstancesUpdates.last_project !== null
+      ) {
+        if (
+          typeof circumstancesUpdates.last_project !== "object" ||
+          Array.isArray(circumstancesUpdates.last_project)
+        ) {
+          invalidTypes.push({
+            field: "last_project",
+            expectedType: "object",
+            actualType: Array.isArray(circumstancesUpdates.last_project)
+              ? "array"
+              : typeof circumstancesUpdates.last_project,
+          })
+        }
+      }
+
+      // sources should be an array of objects
+      if (circumstancesUpdates.sources !== undefined && circumstancesUpdates.sources !== null) {
+        if (!Array.isArray(circumstancesUpdates.sources)) {
+          invalidTypes.push({
+            field: "sources",
+            expectedType: "object[]",
+            actualType: typeof circumstancesUpdates.sources,
+          })
+        } else if (
+          !circumstancesUpdates.sources.every(
+            (item: unknown) => typeof item === "object" && item !== null && !Array.isArray(item)
+          )
+        ) {
+          invalidTypes.push({
+            field: "sources",
+            expectedType: "object[]",
+            actualType: "array with non-object elements",
+          })
+        }
+      }
+
+      // entity_links should be an object
+      if (
+        circumstancesUpdates.entity_links !== undefined &&
+        circumstancesUpdates.entity_links !== null
+      ) {
+        if (
+          typeof circumstancesUpdates.entity_links !== "object" ||
+          Array.isArray(circumstancesUpdates.entity_links)
+        ) {
+          invalidTypes.push({
+            field: "entity_links",
+            expectedType: "object",
+            actualType: Array.isArray(circumstancesUpdates.entity_links)
+              ? "array"
+              : typeof circumstancesUpdates.entity_links,
+          })
+        }
+      }
+    }
+
+    if (invalidTypes.length > 0) {
+      res.status(400).json({
+        error: {
+          message: "Invalid field type",
+          invalidTypes,
+        },
+      })
+      return
+    }
+
+    // Calculate changes before creating snapshot (to avoid unnecessary snapshots)
+    const changes: { table: string; field: string; oldValue: unknown; newValue: unknown }[] = []
+
+    // Check actor field changes
+    if (actorUpdates && Object.keys(actorUpdates).length > 0) {
+      for (const [field, value] of Object.entries(actorUpdates)) {
+        const oldValue = existingActor[field as keyof ActorRow]
+        if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
+          changes.push({ table: "actors", field, oldValue, newValue: value })
+        }
+      }
+    }
+
+    // Check circumstances field changes
+    if (circumstancesUpdates && Object.keys(circumstancesUpdates).length > 0) {
+      for (const [field, value] of Object.entries(circumstancesUpdates)) {
+        const oldValue = existingCircumstances
+          ? existingCircumstances[field as keyof CircumstancesRow]
+          : null
+        if (JSON.stringify(oldValue) !== JSON.stringify(value)) {
+          changes.push({ table: "actor_death_circumstances", field, oldValue, newValue: value })
+        }
+      }
+    }
+
+    // If no actual changes, return early without creating snapshot
+    if (changes.length === 0) {
+      res.json({
+        success: true,
+        snapshotId: null,
+        batchId: null,
+        changes: [],
+        actor: existingActor,
+        circumstances: existingCircumstances,
+      })
+      return
+    }
+
+    // Wrap all database operations in a transaction for atomicity
+    const client = await pool.connect()
+    let snapshotId: number
+
+    try {
+      await client.query("BEGIN")
+
+      // Create snapshot before making changes (only if there are actual changes)
+      const batchId = `admin-edit-${Date.now()}`
+
+      // Create snapshot using the transaction client
+      // Re-fetch within transaction to ensure consistency (handles race condition if actor deleted)
+      const actorDataResult = await client.query(`SELECT * FROM actors WHERE id = $1`, [actorId])
+      if (actorDataResult.rows.length === 0) {
+        await client.query("ROLLBACK")
+        res.status(404).json({ error: { message: "Actor not found (deleted during edit)" } })
+        return
+      }
+
+      const circumstancesDataResult = await client.query(
+        `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
+        [actorId]
+      )
+
+      const snapshotResult = await client.query<{ id: number }>(
+        `INSERT INTO actor_snapshots (actor_id, snapshot_data, circumstances_data, trigger_source, trigger_details)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [
+          actorId,
+          actorDataResult.rows[0],
+          circumstancesDataResult.rows[0] || null,
+          "admin-manual-edit",
+          {
+            batchId,
+            updatedFields: {
+              actor: actorUpdates ? Object.keys(actorUpdates) : [],
+              circumstances: circumstancesUpdates ? Object.keys(circumstancesUpdates) : [],
+            },
+          },
+        ]
+      )
+      snapshotId = snapshotResult.rows[0].id
+
+      // Update actor fields
+      if (actorUpdates && Object.keys(actorUpdates).length > 0) {
+        const setClauses: string[] = []
+        const values: unknown[] = []
+        let paramIndex = 1
+
+        for (const [field, value] of Object.entries(actorUpdates)) {
+          const oldValue = existingActor[field as keyof ActorRow]
+
+          // Skip if value hasn't changed
+          if (JSON.stringify(oldValue) === JSON.stringify(value)) {
+            continue
+          }
+
+          setClauses.push(`${field} = $${paramIndex}`)
+          values.push(value)
+          paramIndex++
+
+          // Record in history
+          await client.query(
+            `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              actorId,
+              field,
+              valueToHistoryString(oldValue),
+              valueToHistoryString(value),
+              "admin-manual-edit",
+              batchId,
+            ]
+          )
+        }
+
+        if (setClauses.length > 0) {
+          setClauses.push(`updated_at = NOW()`)
+          values.push(actorId)
+          // Note: Field names are validated against ACTOR_EDITABLE_FIELDS allowlist above
+          await client.query(
+            `UPDATE actors SET ${setClauses.join(", ")} WHERE id = $${paramIndex}`,
+            values
+          )
+        }
+      }
+
+      // Update circumstances fields
+      if (circumstancesUpdates && Object.keys(circumstancesUpdates).length > 0) {
+        if (existingCircumstances) {
+          // Update existing circumstances
+          const setClauses: string[] = []
+          const values: unknown[] = []
+          let paramIndex = 1
+
+          for (const [field, value] of Object.entries(circumstancesUpdates)) {
+            const oldValue = existingCircumstances[field as keyof CircumstancesRow]
+
+            // Skip if value hasn't changed
+            if (JSON.stringify(oldValue) === JSON.stringify(value)) {
+              continue
+            }
+
+            setClauses.push(`${field} = $${paramIndex}`)
+            values.push(value)
+            paramIndex++
+
+            // Record in history
+            await client.query(
+              `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [
+                actorId,
+                `circumstances.${field}`,
+                valueToHistoryString(oldValue),
+                valueToHistoryString(value),
+                "admin-manual-edit",
+                batchId,
+              ]
+            )
+          }
+
+          if (setClauses.length > 0) {
+            setClauses.push(`updated_at = NOW()`)
+            values.push(actorId)
+            // Note: Field names are validated against CIRCUMSTANCES_EDITABLE_FIELDS allowlist above
+            await client.query(
+              `UPDATE actor_death_circumstances SET ${setClauses.join(", ")} WHERE actor_id = $${paramIndex}`,
+              values
+            )
+          }
+        } else {
+          // Create new circumstances record
+          // Note: Field names are validated against CIRCUMSTANCES_EDITABLE_FIELDS allowlist above
+          const fields = ["actor_id", ...Object.keys(circumstancesUpdates)]
+          const values = [actorId, ...Object.values(circumstancesUpdates)]
+          const placeholders = values.map((_, i) => `$${i + 1}`).join(", ")
+
+          await client.query(
+            `INSERT INTO actor_death_circumstances (${fields.join(", ")}) VALUES (${placeholders})`,
+            values
+          )
+
+          // Record history for new circumstances
+          for (const [field, value] of Object.entries(circumstancesUpdates)) {
+            await client.query(
+              `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [
+                actorId,
+                `circumstances.${field}`,
+                null,
+                valueToHistoryString(value),
+                "admin-manual-edit",
+                batchId,
+              ]
+            )
+          }
+        }
+      }
+
+      await client.query("COMMIT")
+
+      // Log to audit trail (after commit - uses separate connection)
+      await logAdminAction({
+        action: "actor-edit",
+        resourceType: "actor",
+        resourceId: actorId,
+        details: {
+          snapshotId,
+          batchId,
+          changes,
+        },
+        ipAddress: req.ip || undefined,
+        userAgent: req.get("user-agent") || undefined,
+      })
+
+      // Invalidate actor cache to ensure fresh data is served
+      await invalidateActorCache(actorId)
+
+      logger.info(
+        { actorId, snapshotId, changeCount: changes.length },
+        "Actor updated via admin editor"
+      )
+
+      // Fetch updated data to return (outside transaction)
+      const updatedActorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [
+        actorId,
+      ])
+      const updatedCircumstancesResult = await pool.query<CircumstancesRow>(
+        `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
+        [actorId]
+      )
+
+      res.json({
+        success: true,
+        snapshotId,
+        batchId,
+        changes,
+        actor: updatedActorResult.rows[0],
+        circumstances: updatedCircumstancesResult.rows[0] || null,
+      })
+    } catch (txError) {
+      await client.query("ROLLBACK")
+      throw txError
+    } finally {
+      client.release()
+    }
+  } catch (error) {
+    logger.error({ error, actorId }, "Failed to update actor")
+    res.status(500).json({ error: { message: "Failed to update actor" } })
+  }
+})
 
 // ============================================================================
 // GET /admin/api/actors/:id/diagnostic
