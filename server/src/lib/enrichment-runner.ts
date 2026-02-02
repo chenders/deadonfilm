@@ -187,318 +187,318 @@ export class EnrichmentRunner {
     } = this.config
 
     // Configure cache behavior for this run
-    // Always explicitly set the cache behavior to ensure per-run isolation
-    // Reset to false at the end of run() to prevent leakage between runs in same worker
+    // Use try/finally to ensure cache is always reset, even if exceptions are thrown
     setIgnoreCache(ignoreCache)
     if (ignoreCache) {
       this.log.info("Cache disabled - all requests will be made fresh")
     }
 
-    const db = getPool()
-    let actors: ActorRow[]
+    try {
+      const db = getPool()
+      let actors: ActorRow[]
 
-    // Query actors based on configuration
-    if (topBilledYear) {
-      actors = await this.queryTopBilledActors(
-        topBilledYear,
-        maxBilling ?? 5,
-        topMovies ?? 20,
-        limit
-      )
-    } else if (actorIds && actorIds.length > 0) {
-      actors = await this.queryActorsByInternalId(actorIds)
-    } else if (tmdbIds && tmdbIds.length > 0) {
-      actors = await this.queryActorsByTmdbId(tmdbIds)
-    } else {
-      actors = await this.queryActorsWithMissingCircumstances(
-        limit,
-        minPopularity,
-        recentOnly,
-        usActorsOnly
-      )
-    }
-
-    // Report initial progress
-    if (this.onProgress) {
-      await this.onProgress({
-        currentActorIndex: 0,
-        currentActorName: "",
-        actorsQueried: actors.length,
-        actorsProcessed: 0,
-        actorsEnriched: 0,
-        totalCostUsd: 0,
-      })
-    }
-
-    if (actors.length === 0) {
-      this.log.info("No actors to enrich")
-      setIgnoreCache(false) // Reset cache behavior before returning
-      return {
-        actorsProcessed: 0,
-        actorsEnriched: 0,
-        fillRate: 0,
-        totalCostUsd: 0,
-        totalTimeMs: Date.now() - startTime,
-        costBySource: {},
-        exitReason: "completed",
-        updatedActors: [],
+      // Query actors based on configuration
+      if (topBilledYear) {
+        actors = await this.queryTopBilledActors(
+          topBilledYear,
+          maxBilling ?? 5,
+          topMovies ?? 20,
+          limit
+        )
+      } else if (actorIds && actorIds.length > 0) {
+        actors = await this.queryActorsByInternalId(actorIds)
+      } else if (tmdbIds && tmdbIds.length > 0) {
+        actors = await this.queryActorsByTmdbId(tmdbIds)
+      } else {
+        actors = await this.queryActorsWithMissingCircumstances(
+          limit,
+          minPopularity,
+          recentOnly,
+          usActorsOnly
+        )
       }
-    }
 
-    this.log.info({ actorCount: actors.length }, "Starting enrichment")
-
-    // Check if we should stop before starting
-    if (this.shouldStop()) {
-      this.log.info("Enrichment stopped before starting (abort signal)")
-      setIgnoreCache(false) // Reset cache behavior before returning
-      return {
-        actorsProcessed: 0,
-        actorsEnriched: 0,
-        fillRate: 0,
-        totalCostUsd: 0,
-        totalTimeMs: Date.now() - startTime,
-        costBySource: {},
-        exitReason: "interrupted",
-        updatedActors: [],
+      // Report initial progress
+      if (this.onProgress) {
+        await this.onProgress({
+          currentActorIndex: 0,
+          currentActorName: "",
+          actorsQueried: actors.length,
+          actorsProcessed: 0,
+          actorsEnriched: 0,
+          totalCostUsd: 0,
+        })
       }
-    }
 
-    // Configure the orchestrator
-    const config: Partial<EnrichmentConfig> = {
-      sourceCategories: {
-        free,
-        paid,
-        ai,
-      },
-      confidenceThreshold,
-      costLimits: {
-        maxCostPerActor,
-        maxTotalCost,
-      },
-      claudeCleanup: claudeCleanup
-        ? {
-            enabled: true,
-            model: "claude-opus-4-5-20251101",
-            gatherAllSources,
-          }
-        : undefined,
-      // Wikipedia-specific options for AI section selection and link following
-      wikipediaOptions:
-        wikipediaUseAISectionSelection || wikipediaFollowLinkedArticles
+      if (actors.length === 0) {
+        this.log.info("No actors to enrich")
+        return {
+          actorsProcessed: 0,
+          actorsEnriched: 0,
+          fillRate: 0,
+          totalCostUsd: 0,
+          totalTimeMs: Date.now() - startTime,
+          costBySource: {},
+          exitReason: "completed",
+          updatedActors: [],
+        }
+      }
+
+      this.log.info({ actorCount: actors.length }, "Starting enrichment")
+
+      // Check if we should stop before starting
+      if (this.shouldStop()) {
+        this.log.info("Enrichment stopped before starting (abort signal)")
+        return {
+          actorsProcessed: 0,
+          actorsEnriched: 0,
+          fillRate: 0,
+          totalCostUsd: 0,
+          totalTimeMs: Date.now() - startTime,
+          costBySource: {},
+          exitReason: "interrupted",
+          updatedActors: [],
+        }
+      }
+
+      // Configure the orchestrator
+      const config: Partial<EnrichmentConfig> = {
+        sourceCategories: {
+          free,
+          paid,
+          ai,
+        },
+        confidenceThreshold,
+        costLimits: {
+          maxCostPerActor,
+          maxTotalCost,
+        },
+        claudeCleanup: claudeCleanup
           ? {
-              useAISectionSelection: wikipediaUseAISectionSelection,
-              followLinkedArticles: wikipediaFollowLinkedArticles,
-              maxLinkedArticles: wikipediaMaxLinkedArticles,
-              maxSections: wikipediaMaxSections,
+              enabled: true,
+              model: "claude-opus-4-5-20251101",
+              gatherAllSources,
             }
           : undefined,
-    }
-
-    const orchestrator = new DeathEnrichmentOrchestrator(config)
-
-    // Convert to ActorForEnrichment format
-    const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
-      id: a.id,
-      tmdbId: a.tmdb_id,
-      name: a.name,
-      birthday: normalizeDateToString(a.birthday),
-      deathday: normalizeDateToString(a.deathday) || "",
-      causeOfDeath: a.cause_of_death,
-      causeOfDeathDetails: a.cause_of_death_details,
-      popularity: a.tmdb_popularity,
-    }))
-
-    // Run enrichment - process actors one by one
-    const results = new Map<number, Awaited<ReturnType<typeof orchestrator.enrichActor>>>()
-    let costLimitReached = false
-    let wasInterrupted = false
-
-    try {
-      for (let i = 0; i < actorsToEnrich.length; i++) {
-        // Check for abort signal
-        if (this.shouldStop()) {
-          this.log.info("Enrichment interrupted by abort signal")
-          wasInterrupted = true
-          break
-        }
-
-        const actor = actorsToEnrich[i]
-
-        // Report progress
-        if (this.onProgress) {
-          const stats = orchestrator.getStats()
-          await this.onProgress({
-            currentActorIndex: i + 1,
-            currentActorName: actor.name,
-            actorsQueried: actors.length,
-            actorsProcessed: stats.actorsProcessed,
-            actorsEnriched: stats.actorsEnriched,
-            totalCostUsd: stats.totalCostUsd,
-          })
-        }
-
-        // Enrich this actor
-        const enrichment = await orchestrator.enrichActor(actor)
-        results.set(actor.id, enrichment)
-      }
-    } catch (error) {
-      if (error instanceof CostLimitExceededError) {
-        this.log.warn(
-          { limit: error.limit, currentCost: error.currentCost },
-          "Cost limit reached - stopping enrichment"
-        )
-        costLimitReached = true
-      } else {
-        setIgnoreCache(false) // Reset cache behavior before rethrowing
-        throw error
-      }
-    }
-
-    // Apply results to database
-    const updatedActors: Array<{ name: string; id: number }> = []
-    let updated = 0
-
-    for (const [actorId, enrichment] of results) {
-      if (
-        !enrichment.circumstances &&
-        !enrichment.notableFactors?.length &&
-        !enrichment.cleanedDeathInfo
-      ) {
-        continue
-      }
-
-      const cleaned = enrichment.cleanedDeathInfo
-      const circumstances = cleaned?.circumstances || enrichment.circumstances
-      const rumoredCircumstances = cleaned?.rumoredCircumstances || enrichment.rumoredCircumstances
-      const locationOfDeath = cleaned?.locationOfDeath || enrichment.locationOfDeath
-      const notableFactors = cleaned?.notableFactors || enrichment.notableFactors
-      const additionalContext = cleaned?.additionalContext || enrichment.additionalContext
-      const relatedDeaths = cleaned?.relatedDeaths || enrichment.relatedDeaths || null
-
-      // Extract cause of death from Claude cleanup (for actors missing it)
-      const causeOfDeath = cleaned?.cause || null
-      const causeOfDeathDetails = cleaned?.details || null
-
-      const causeConfidence = cleaned?.causeConfidence || null
-      const detailsConfidence = cleaned?.detailsConfidence || null
-      const birthdayConfidence = cleaned?.birthdayConfidence || null
-      const deathdayConfidence = cleaned?.deathdayConfidence || null
-      const lastProject = cleaned?.lastProject || enrichment.lastProject || null
-      const careerStatusAtDeath =
-        cleaned?.careerStatusAtDeath || enrichment.careerStatusAtDeath || null
-      const posthumousReleases =
-        cleaned?.posthumousReleases || enrichment.posthumousReleases || null
-      const relatedCelebrities =
-        cleaned?.relatedCelebrities || enrichment.relatedCelebrities || null
-
-      // Look up related_celebrity_ids from actors table
-      let relatedCelebrityIds: number[] | null = null
-      if (relatedCelebrities && relatedCelebrities.length > 0) {
-        const names = relatedCelebrities.map((c) => c.name)
-        const idResult = await db.query<{ id: number }>(
-          `SELECT id FROM actors WHERE name = ANY($1)`,
-          [names]
-        )
-        if (idResult.rows.length > 0) {
-          relatedCelebrityIds = idResult.rows.map((r) => r.id)
-        }
-      }
-
-      // Determine confidence level
-      const circumstancesConfidence =
-        cleaned?.circumstancesConfidence ||
-        (enrichment.circumstancesSource?.confidence
-          ? enrichment.circumstancesSource.confidence >= 0.7
-            ? "high"
-            : enrichment.circumstancesSource.confidence >= 0.4
-              ? "medium"
-              : "low"
-          : null)
-
-      // Determine if we have substantive death info
-      const hasSubstantiveCircumstances =
-        circumstances && circumstances.length > MIN_CIRCUMSTANCES_LENGTH
-      const hasSubstantiveRumors =
-        rumoredCircumstances && rumoredCircumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH
-      const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
-      const hasDetailedDeathInfo =
-        hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths
-
-      const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
-
-      // Only include causeOfDeath if actor doesn't already have one
-      const enrichmentData: EnrichmentData = {
-        actorId,
-        hasDetailedDeathInfo: hasDetailedDeathInfo || false,
-        // Fill in cause_of_death if we got one and actor doesn't have it
-        causeOfDeath: !actorRecord?.causeOfDeath && causeOfDeath ? causeOfDeath : undefined,
-        causeOfDeathSource:
-          !actorRecord?.causeOfDeath && causeOfDeath ? "claude-opus-4.5" : undefined,
-        causeOfDeathDetails:
-          !actorRecord?.causeOfDeathDetails && causeOfDeathDetails
-            ? causeOfDeathDetails
+        // Wikipedia-specific options for AI section selection and link following
+        wikipediaOptions:
+          wikipediaUseAISectionSelection || wikipediaFollowLinkedArticles
+            ? {
+                useAISectionSelection: wikipediaUseAISectionSelection,
+                followLinkedArticles: wikipediaFollowLinkedArticles,
+                maxLinkedArticles: wikipediaMaxLinkedArticles,
+                maxSections: wikipediaMaxSections,
+              }
             : undefined,
-        causeOfDeathDetailsSource:
-          !actorRecord?.causeOfDeathDetails && causeOfDeathDetails ? "claude-opus-4.5" : undefined,
       }
 
-      // Run entity linking on narrative text fields
-      const entityLinks = await linkMultipleFields(
-        db,
-        {
+      const orchestrator = new DeathEnrichmentOrchestrator(config)
+
+      // Convert to ActorForEnrichment format
+      const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
+        id: a.id,
+        tmdbId: a.tmdb_id,
+        name: a.name,
+        birthday: normalizeDateToString(a.birthday),
+        deathday: normalizeDateToString(a.deathday) || "",
+        causeOfDeath: a.cause_of_death,
+        causeOfDeathDetails: a.cause_of_death_details,
+        popularity: a.tmdb_popularity,
+      }))
+
+      // Run enrichment - process actors one by one
+      const results = new Map<number, Awaited<ReturnType<typeof orchestrator.enrichActor>>>()
+      let costLimitReached = false
+      let wasInterrupted = false
+
+      try {
+        for (let i = 0; i < actorsToEnrich.length; i++) {
+          // Check for abort signal
+          if (this.shouldStop()) {
+            this.log.info("Enrichment interrupted by abort signal")
+            wasInterrupted = true
+            break
+          }
+
+          const actor = actorsToEnrich[i]
+
+          // Report progress
+          if (this.onProgress) {
+            const stats = orchestrator.getStats()
+            await this.onProgress({
+              currentActorIndex: i + 1,
+              currentActorName: actor.name,
+              actorsQueried: actors.length,
+              actorsProcessed: stats.actorsProcessed,
+              actorsEnriched: stats.actorsEnriched,
+              totalCostUsd: stats.totalCostUsd,
+            })
+          }
+
+          // Enrich this actor
+          const enrichment = await orchestrator.enrichActor(actor)
+          results.set(actor.id, enrichment)
+        }
+      } catch (error) {
+        if (error instanceof CostLimitExceededError) {
+          this.log.warn(
+            { limit: error.limit, currentCost: error.currentCost },
+            "Cost limit reached - stopping enrichment"
+          )
+          costLimitReached = true
+        } else {
+          throw error
+        }
+      }
+
+      // Apply results to database
+      const updatedActors: Array<{ name: string; id: number }> = []
+      let updated = 0
+
+      for (const [actorId, enrichment] of results) {
+        if (
+          !enrichment.circumstances &&
+          !enrichment.notableFactors?.length &&
+          !enrichment.cleanedDeathInfo
+        ) {
+          continue
+        }
+
+        const cleaned = enrichment.cleanedDeathInfo
+        const circumstances = cleaned?.circumstances || enrichment.circumstances
+        const rumoredCircumstances =
+          cleaned?.rumoredCircumstances || enrichment.rumoredCircumstances
+        const locationOfDeath = cleaned?.locationOfDeath || enrichment.locationOfDeath
+        const notableFactors = cleaned?.notableFactors || enrichment.notableFactors
+        const additionalContext = cleaned?.additionalContext || enrichment.additionalContext
+        const relatedDeaths = cleaned?.relatedDeaths || enrichment.relatedDeaths || null
+
+        // Extract cause of death from Claude cleanup (for actors missing it)
+        const causeOfDeath = cleaned?.cause || null
+        const causeOfDeathDetails = cleaned?.details || null
+
+        const causeConfidence = cleaned?.causeConfidence || null
+        const detailsConfidence = cleaned?.detailsConfidence || null
+        const birthdayConfidence = cleaned?.birthdayConfidence || null
+        const deathdayConfidence = cleaned?.deathdayConfidence || null
+        const lastProject = cleaned?.lastProject || enrichment.lastProject || null
+        const careerStatusAtDeath =
+          cleaned?.careerStatusAtDeath || enrichment.careerStatusAtDeath || null
+        const posthumousReleases =
+          cleaned?.posthumousReleases || enrichment.posthumousReleases || null
+        const relatedCelebrities =
+          cleaned?.relatedCelebrities || enrichment.relatedCelebrities || null
+
+        // Look up related_celebrity_ids from actors table
+        let relatedCelebrityIds: number[] | null = null
+        if (relatedCelebrities && relatedCelebrities.length > 0) {
+          const names = relatedCelebrities.map((c) => c.name)
+          const idResult = await db.query<{ id: number }>(
+            `SELECT id FROM actors WHERE name = ANY($1)`,
+            [names]
+          )
+          if (idResult.rows.length > 0) {
+            relatedCelebrityIds = idResult.rows.map((r) => r.id)
+          }
+        }
+
+        // Determine confidence level
+        const circumstancesConfidence =
+          cleaned?.circumstancesConfidence ||
+          (enrichment.circumstancesSource?.confidence
+            ? enrichment.circumstancesSource.confidence >= 0.7
+              ? "high"
+              : enrichment.circumstancesSource.confidence >= 0.4
+                ? "medium"
+                : "low"
+            : null)
+
+        // Determine if we have substantive death info
+        const hasSubstantiveCircumstances =
+          circumstances && circumstances.length > MIN_CIRCUMSTANCES_LENGTH
+        const hasSubstantiveRumors =
+          rumoredCircumstances && rumoredCircumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH
+        const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
+        const hasDetailedDeathInfo =
+          hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths
+
+        const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
+
+        // Only include causeOfDeath if actor doesn't already have one
+        const enrichmentData: EnrichmentData = {
+          actorId,
+          hasDetailedDeathInfo: hasDetailedDeathInfo || false,
+          // Fill in cause_of_death if we got one and actor doesn't have it
+          causeOfDeath: !actorRecord?.causeOfDeath && causeOfDeath ? causeOfDeath : undefined,
+          causeOfDeathSource:
+            !actorRecord?.causeOfDeath && causeOfDeath ? "claude-opus-4.5" : undefined,
+          causeOfDeathDetails:
+            !actorRecord?.causeOfDeathDetails && causeOfDeathDetails
+              ? causeOfDeathDetails
+              : undefined,
+          causeOfDeathDetailsSource:
+            !actorRecord?.causeOfDeathDetails && causeOfDeathDetails
+              ? "claude-opus-4.5"
+              : undefined,
+        }
+
+        // Run entity linking on narrative text fields
+        const entityLinks = await linkMultipleFields(
+          db,
+          {
+            circumstances,
+            rumored_circumstances: rumoredCircumstances,
+            additional_context: additionalContext,
+          },
+          { excludeActorId: actorId }
+        )
+
+        const circumstancesData: DeathCircumstancesData = {
+          actorId,
           circumstances,
-          rumored_circumstances: rumoredCircumstances,
-          additional_context: additionalContext,
-        },
-        { excludeActorId: actorId }
-      )
+          circumstancesConfidence,
+          rumoredCircumstances,
+          causeConfidence,
+          detailsConfidence,
+          birthdayConfidence,
+          deathdayConfidence,
+          locationOfDeath,
+          lastProject,
+          careerStatusAtDeath,
+          posthumousReleases,
+          relatedCelebrityIds,
+          relatedCelebrities,
+          notableFactors,
+          additionalContext,
+          relatedDeaths,
+          sources: {
+            circumstances: enrichment.circumstancesSource,
+            rumoredCircumstances: enrichment.rumoredCircumstancesSource,
+            notableFactors: enrichment.notableFactorsSource,
+            locationOfDeath: enrichment.locationOfDeathSource,
+            additionalContext: enrichment.additionalContextSource,
+            lastProject: enrichment.lastProjectSource,
+            careerStatusAtDeath: enrichment.careerStatusAtDeathSource,
+            posthumousReleases: enrichment.posthumousReleasesSource,
+            relatedCelebrities: enrichment.relatedCelebritiesSource,
+            cleanupSource: cleaned ? "claude-opus-4.5" : null,
+          },
+          rawResponse: enrichment.rawSources
+            ? {
+                rawSources: enrichment.rawSources,
+                gatheredAt: new Date().toISOString(),
+              }
+            : null,
+          entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
+          enrichmentSource: "multi-source-enrichment",
+          enrichmentVersion: "2.0.0",
+        }
 
-      const circumstancesData: DeathCircumstancesData = {
-        actorId,
-        circumstances,
-        circumstancesConfidence,
-        rumoredCircumstances,
-        causeConfidence,
-        detailsConfidence,
-        birthdayConfidence,
-        deathdayConfidence,
-        locationOfDeath,
-        lastProject,
-        careerStatusAtDeath,
-        posthumousReleases,
-        relatedCelebrityIds,
-        relatedCelebrities,
-        notableFactors,
-        additionalContext,
-        relatedDeaths,
-        sources: {
-          circumstances: enrichment.circumstancesSource,
-          rumoredCircumstances: enrichment.rumoredCircumstancesSource,
-          notableFactors: enrichment.notableFactorsSource,
-          locationOfDeath: enrichment.locationOfDeathSource,
-          additionalContext: enrichment.additionalContextSource,
-          lastProject: enrichment.lastProjectSource,
-          careerStatusAtDeath: enrichment.careerStatusAtDeathSource,
-          posthumousReleases: enrichment.posthumousReleasesSource,
-          relatedCelebrities: enrichment.relatedCelebritiesSource,
-          cleanupSource: cleaned ? "claude-opus-4.5" : null,
-        },
-        rawResponse: enrichment.rawSources
-          ? {
-              rawSources: enrichment.rawSources,
-              gatheredAt: new Date().toISOString(),
-            }
-          : null,
-        entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
-        enrichmentSource: "multi-source-enrichment",
-        enrichmentVersion: "2.0.0",
-      }
-
-      // Record per-actor results for all runs with a runId
-      let enrichmentRunActorId: number | null = null
-      if (runId) {
-        const eraResult = await db.query<{ id: number }>(
-          `INSERT INTO enrichment_run_actors (
+        // Record per-actor results for all runs with a runId
+        let enrichmentRunActorId: number | null = null
+        if (runId) {
+          const eraResult = await db.query<{ id: number }>(
+            `INSERT INTO enrichment_run_actors (
             run_id,
             actor_id,
             was_enriched,
@@ -509,78 +509,79 @@ export class EnrichmentRunner {
             cost_usd
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           RETURNING id`,
-          [
-            runId,
-            actorId,
-            true,
-            enrichment.circumstancesSource?.confidence || null,
-            JSON.stringify([enrichment.circumstancesSource?.type].filter(Boolean)),
-            enrichment.circumstancesSource?.type || null,
-            null,
-            enrichment.circumstancesSource?.costUsd || 0,
-          ]
-        )
-        enrichmentRunActorId = eraResult.rows[0].id
-      }
-
-      // Route to staging or production
-      if (staging && enrichmentRunActorId) {
-        await writeToStaging(db, enrichmentRunActorId, enrichmentData, circumstancesData)
-        this.log.debug({ actorName: actorRecord?.name }, "Staged for review")
-      } else {
-        await writeToProduction(db, enrichmentData, circumstancesData)
-        await invalidateActorCache(actorId)
-        if (actorRecord) {
-          updatedActors.push({
-            name: actorRecord.name,
-            id: actorId,
-          })
+            [
+              runId,
+              actorId,
+              true,
+              enrichment.circumstancesSource?.confidence || null,
+              JSON.stringify([enrichment.circumstancesSource?.type].filter(Boolean)),
+              enrichment.circumstancesSource?.type || null,
+              null,
+              enrichment.circumstancesSource?.costUsd || 0,
+            ]
+          )
+          enrichmentRunActorId = eraResult.rows[0].id
         }
+
+        // Route to staging or production
+        if (staging && enrichmentRunActorId) {
+          await writeToStaging(db, enrichmentRunActorId, enrichmentData, circumstancesData)
+          this.log.debug({ actorName: actorRecord?.name }, "Staged for review")
+        } else {
+          await writeToProduction(db, enrichmentData, circumstancesData)
+          await invalidateActorCache(actorId)
+          if (actorRecord) {
+            updatedActors.push({
+              name: actorRecord.name,
+              id: actorId,
+            })
+          }
+        }
+
+        updated++
       }
 
-      updated++
-    }
+      // Get final stats
+      const stats = orchestrator.getStats()
 
-    // Get final stats
-    const stats = orchestrator.getStats()
+      // Rebuild caches if we updated anything (only in production mode)
+      if (updated > 0 && !staging) {
+        await rebuildDeathCaches()
+        this.log.info("Rebuilt death caches")
+      }
 
-    // Rebuild caches if we updated anything (only in production mode)
-    if (updated > 0 && !staging) {
-      await rebuildDeathCaches()
-      this.log.info("Rebuilt death caches")
-    }
+      const exitReason: "completed" | "cost_limit" | "interrupted" = costLimitReached
+        ? "cost_limit"
+        : wasInterrupted
+          ? "interrupted"
+          : "completed"
 
-    const exitReason: "completed" | "cost_limit" | "interrupted" = costLimitReached
-      ? "cost_limit"
-      : wasInterrupted
-        ? "interrupted"
-        : "completed"
+      this.log.info(
+        {
+          actorsProcessed: stats.actorsProcessed,
+          actorsEnriched: stats.actorsEnriched,
+          fillRate: stats.fillRate,
+          databaseUpdates: updated,
+          totalCostUsd: stats.totalCostUsd,
+          exitReason,
+        },
+        "Enrichment complete"
+      )
 
-    this.log.info(
-      {
+      return {
         actorsProcessed: stats.actorsProcessed,
         actorsEnriched: stats.actorsEnriched,
         fillRate: stats.fillRate,
-        databaseUpdates: updated,
         totalCostUsd: stats.totalCostUsd,
+        totalTimeMs: stats.totalTimeMs,
+        costBySource: stats.costBySource,
         exitReason,
-      },
-      "Enrichment complete"
-    )
-
-    // Reset cache behavior to default (use cache) to ensure per-run isolation
-    // This prevents ignoreCache=true from leaking into subsequent runs in the same worker
-    setIgnoreCache(false)
-
-    return {
-      actorsProcessed: stats.actorsProcessed,
-      actorsEnriched: stats.actorsEnriched,
-      fillRate: stats.fillRate,
-      totalCostUsd: stats.totalCostUsd,
-      totalTimeMs: stats.totalTimeMs,
-      costBySource: stats.costBySource,
-      exitReason,
-      updatedActors,
+        updatedActors,
+      }
+    } finally {
+      // Always reset cache behavior to default (use cache) to ensure per-run isolation
+      // This prevents ignoreCache=true from leaking into subsequent runs in the same worker
+      setIgnoreCache(false)
     }
   }
 
