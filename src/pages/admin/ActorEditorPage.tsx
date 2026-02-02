@@ -374,7 +374,7 @@ export default function ActorEditorPage() {
                   options={field.options}
                   value={getFieldValue("circumstances", field.name)}
                   onChange={(value) => handleFieldChange("circumstances", field.name, value)}
-                  history={getFieldHistory(`circumstances.${field.name}`)}
+                  history={getFieldHistory(field.name)}
                   onRevert={(oldValue) => handleFieldChange("circumstances", field.name, oldValue)}
                   className={field.type === "textarea" ? "md:col-span-2" : ""}
                 />
