@@ -400,8 +400,8 @@ export default function JobRunsPage() {
 
         {/* Table */}
         <div className="rounded-lg border border-admin-border bg-admin-surface-elevated">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-admin-border bg-admin-surface-inset">
                   {columns.map((col) => (
