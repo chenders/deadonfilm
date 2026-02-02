@@ -213,13 +213,17 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
           : null)
 
       // Determine if we have substantive death info
+      // Quality gate: if Claude cleanup ran, require hasSubstantiveContent === true
+      // If Claude cleanup was skipped (cleaned is undefined), rely on content length checks only
       const hasSubstantiveCircumstances =
         circumstances && circumstances.length > MIN_CIRCUMSTANCES_LENGTH
       const hasSubstantiveRumors =
         rumoredCircumstances && rumoredCircumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH
       const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
+      const passesQualityGate = cleaned === undefined || cleaned.hasSubstantiveContent === true
       const hasDetailedDeathInfo =
-        hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths
+        passesQualityGate &&
+        (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths)
 
       // 8. Build data objects for database write
       const enrichmentData: EnrichmentData = {

@@ -414,13 +414,19 @@ export class EnrichmentRunner {
             : null)
 
         // Determine if we have substantive death info
+        // Check Claude's quality gate first - REQUIRE explicit true, not just "not false"
+        // This prevents null/undefined from sneaking through as truthy
         const hasSubstantiveCircumstances =
           circumstances && circumstances.length > MIN_CIRCUMSTANCES_LENGTH
         const hasSubstantiveRumors =
           rumoredCircumstances && rumoredCircumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH
         const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
+        // Quality gate: if Claude cleanup ran, require hasSubstantiveContent === true
+        // If Claude cleanup was skipped (cleaned is undefined), rely on content length checks only
+        const passesQualityGate = cleaned === undefined || cleaned.hasSubstantiveContent === true
         const hasDetailedDeathInfo =
-          hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths
+          passesQualityGate &&
+          (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths)
 
         const actorRecord = actorsToEnrich.find((a) => a.id === actorId)
 

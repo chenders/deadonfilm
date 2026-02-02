@@ -15,7 +15,7 @@
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
-import { htmlToText } from "../html-utils.js"
+import { htmlToText, htmlToTextClean, looksLikeCode } from "../html-utils.js"
 
 const TV_ACADEMY_BASE_URL = "https://www.televisionacademy.com"
 const IN_MEMORIAM_URL = `${TV_ACADEMY_BASE_URL}/in-memoriam`
@@ -267,7 +267,7 @@ export class TelevisionAcademySource extends BaseDataSource {
   /**
    * Parse bio page HTML.
    */
-  private parseBioPage(html: string): BioPageData {
+  private parseBioPage(html: string): BioPageData | null {
     const data: BioPageData = {
       name: null,
       birthDate: null,
@@ -281,7 +281,7 @@ export class TelevisionAcademySource extends BaseDataSource {
     // Extract name from title or heading
     const titleMatch = html.match(/<title>([^<]+)<\/title>/i)
     if (titleMatch) {
-      data.name = this.cleanHtml(titleMatch[1])
+      data.name = htmlToText(titleMatch[1])
         .replace(/\s*\|.*$/, "")
         .trim()
     }
@@ -307,12 +307,13 @@ export class TelevisionAcademySource extends BaseDataSource {
       }
     }
 
-    // Extract birth location
+    // Extract birth location - validate it doesn't look like code
     // eslint-disable-next-line security/detect-unsafe-regex -- Acceptable for controlled text scraping
     const locationMatch = html.match(/(?:Born|in)\s+([A-Z][a-zA-Z\s,]+(?:,\s*[A-Z][a-zA-Z\s]+)?)/i)
     if (locationMatch) {
       const location = locationMatch[1].trim()
-      if (location.length < 60 && !location.match(/^\d/)) {
+      // Validate: proper length, doesn't start with digit, and doesn't look like code
+      if (location.length < 60 && !location.match(/^\d/) && !looksLikeCode(location)) {
         data.birthLocation = location
       }
     }
@@ -334,6 +335,7 @@ export class TelevisionAcademySource extends BaseDataSource {
     }
 
     // Extract career summary - look for biography section
+    // Use code-stripping version for text content
     const bioPatterns = [
       /<div[^>]*class="[^"]*bio[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
       /<p[^>]*class="[^"]*biography[^"]*"[^>]*>([\s\S]*?)<\/p>/i,
@@ -342,7 +344,7 @@ export class TelevisionAcademySource extends BaseDataSource {
     for (const pattern of bioPatterns) {
       const match = html.match(pattern)
       if (match) {
-        const text = this.cleanHtml(match[1])
+        const text = htmlToTextClean(match[1])
         if (text.length > 50) {
           data.careerSummary = text.substring(0, 500)
           break
@@ -354,7 +356,7 @@ export class TelevisionAcademySource extends BaseDataSource {
     if (!data.careerSummary) {
       const paragraphs = html.match(/<p[^>]*>([\s\S]*?)<\/p>/gi) || []
       for (const p of paragraphs) {
-        const text = this.cleanHtml(p)
+        const text = htmlToTextClean(p)
         if (
           text.length > 100 &&
           (text.includes("was") || text.includes("worked") || text.includes("known"))
@@ -379,14 +381,26 @@ export class TelevisionAcademySource extends BaseDataSource {
       }
     }
 
-    return data
-  }
+    // Validate we got meaningful data - if everything is null/empty, return null
+    const hasAnyContent =
+      data.name ||
+      data.careerSummary ||
+      data.birthDate ||
+      data.deathDate ||
+      data.professions.length > 0
 
-  /**
-   * Clean HTML tags and entities.
-   */
-  private cleanHtml(html: string): string {
-    return htmlToText(html)
+    if (!hasAnyContent) {
+      console.log("  Television Academy: No usable content extracted from page")
+      return null
+    }
+
+    // Extra validation: if careerSummary still looks like code, null it out
+    if (data.careerSummary && looksLikeCode(data.careerSummary)) {
+      console.log("  Television Academy: Career summary still contains code after cleaning")
+      data.careerSummary = null
+    }
+
+    return data
   }
 }
 
