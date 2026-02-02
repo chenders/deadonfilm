@@ -132,7 +132,7 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
 
   "additional_context": "Career context relevant to the death (e.g., 'had retired from acting in 2004', 'was filming at the time', 'won two Academy Awards'). Null if not relevant or no notable context.",
 
-  "has_substantive_content": true/false - Set to FALSE if you cannot provide meaningful death details beyond generic statements like "information is limited", "no details available", "cause of death was not disclosed", or similar. Set to TRUE only if there are actual facts about the death circumstances, medical history, cause of death, or specific details about how/where/when they died. A death page should only be created when there is real information to share.
+  "has_substantive_content": true/false - Set to FALSE if you cannot provide meaningful death details beyond generic statements like "information is limited", "no details available", "cause of death was not disclosed", or similar. Set to FALSE if the sources contain JavaScript code, HTML fragments, website markup, or technical code instead of natural language biography text. Set to TRUE only if there are actual facts about the death circumstances, medical history, cause of death, or specific details about how/where/when they died. A death page should only be created when there is real information to share.
 }
 
 CRITICAL INSTRUCTIONS:
@@ -150,6 +150,7 @@ CRITICAL INSTRUCTIONS:
 - Write clean, factual prose suitable for publication
 - Use null for any field where information is not available
 - Set has_substantive_content to FALSE if the sources only say things like "cause unknown", "no details released", "information is limited" - we don't want to create death pages that just say "we don't know anything"
+- Set has_substantive_content to FALSE if the sources contain JavaScript code, function definitions, variable declarations, website markup, or other technical/programming content instead of actual biographical information
 - Return ONLY valid JSON, no markdown code fences`
 }
 

@@ -163,3 +163,92 @@ export function cleanHtmlEntities(html: string): string {
   text = text.replace(/\s+/g, " ").trim()
   return text
 }
+
+/**
+ * Detect if text looks like programming code using heuristics.
+ * Designed to catch JavaScript/TypeScript code fragments that might
+ * appear in scraped web pages from client-side rendered sites.
+ *
+ * @param text - Text to analyze
+ * @returns True if text appears to be programming code
+ */
+export function looksLikeCode(text: string): boolean {
+  if (!text || text.length < 20) return false
+
+  // Patterns that strongly indicate JavaScript/TypeScript code
+  const codePatterns = [
+    /\bfunction\s*\(/,
+    /\b(?:const|let|var)\s+\w+\s*=/,
+    /\bif\s*\([^)]+\)\s*\{/,
+    /\bdocument\.\w+/,
+    /=>\s*[{(]/,
+    /\bthis\.\w+\s*[=;]/,
+    /\breturn\s+(?:this|null|true|false|undefined)\b/,
+    /\bclass\s+\w+\s*\{/,
+    /\b(?:async|await)\s+\w+/,
+    /\b(?:try|catch|throw)\s*[{(]/,
+    /\bwindow\.\w+/,
+    /\bconsole\.\w+/,
+    /\.(?:push|pop|shift|unshift|slice|splice|map|filter|reduce)\s*\(/,
+    /\b(?:new|delete|typeof|instanceof)\s+\w+/,
+    /\[\s*\d+\s*\]/,
+    /===|!==|&&|\|\|/,
+    /\bfor\s*\([^)]+\)/,
+    /\bwhile\s*\([^)]+\)/,
+    /\bswitch\s*\([^)]+\)/,
+    /\)\s*\{|\{\s*$/,
+    /\.innerHTML\s*=/,
+    /\.innerText\s*=/,
+    /\.textContent\s*=/,
+    /\.value\s*=/,
+    /\.style\.\w+\s*=/,
+    /\.getElementById\s*\(/,
+    /\.querySelector\s*\(/,
+    /\.addEventListener\s*\(/,
+  ]
+
+  const matches = codePatterns.filter((p) => p.test(text)).length
+
+  // Require at least 2 patterns to match to avoid false positives
+  return matches >= 2
+}
+
+/**
+ * Strip code segments from text, keeping natural language content.
+ *
+ * @param text - Text that may contain code segments
+ * @returns Text with code segments removed
+ */
+export function stripCodeFromText(text: string): string {
+  if (!text) return ""
+
+  // If the whole text looks like code, return empty
+  if (looksLikeCode(text)) {
+    return ""
+  }
+
+  // Split into segments by sentence endings or code delimiters
+  const segments = text.split(/(?<=[.!?])\s+|(?<=[;{}])\s+/)
+
+  // Filter out code segments
+  const filtered = segments
+    .map((segment) => segment.trim())
+    .filter((segment) => {
+      if (segment.length < 15) return false // Too short to be useful
+      return !looksLikeCode(segment)
+    })
+
+  return filtered.join(" ").trim()
+}
+
+/**
+ * Clean HTML to plain text, stripping any code-like content.
+ * Combines HTML cleaning with code detection for maximum safety.
+ *
+ * @param html - HTML string to clean
+ * @returns Clean plain text with code segments removed
+ */
+export function htmlToTextClean(html: string): string {
+  const text = htmlToText(html)
+  return stripCodeFromText(text)
+}
