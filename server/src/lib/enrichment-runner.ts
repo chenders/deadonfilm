@@ -95,6 +95,10 @@ export interface EnrichmentStats {
   costBySource: Record<string, number>
   exitReason: "completed" | "cost_limit" | "interrupted"
   updatedActors: Array<{ name: string; id: number }>
+  /** Source hit rates: maps source type to {attempts, successes} */
+  sourceHitRates?: Record<string, { attempts: number; successes: number }>
+  /** List of unique source types that were attempted across all actors */
+  uniqueSourcesAttempted?: string[]
 }
 
 /**
@@ -311,6 +315,9 @@ export class EnrichmentRunner {
       let costLimitReached = false
       let wasInterrupted = false
 
+      // Track source hit rates: {source: {attempts: n, successes: n}}
+      const sourceHitRates: Record<string, { attempts: number; successes: number }> = {}
+
       try {
         for (let i = 0; i < actorsToEnrich.length; i++) {
           // Check for abort signal
@@ -338,6 +345,19 @@ export class EnrichmentRunner {
           // Enrich this actor
           const enrichment = await orchestrator.enrichActor(actor)
           results.set(actor.id, enrichment)
+
+          // Aggregate source hit rates from actorStats
+          if (enrichment.actorStats?.sourcesAttempted) {
+            for (const attempt of enrichment.actorStats.sourcesAttempted) {
+              if (!sourceHitRates[attempt.source]) {
+                sourceHitRates[attempt.source] = { attempts: 0, successes: 0 }
+              }
+              sourceHitRates[attempt.source].attempts++
+              if (attempt.success) {
+                sourceHitRates[attempt.source].successes++
+              }
+            }
+          }
         }
       } catch (error) {
         if (error instanceof CostLimitExceededError) {
@@ -503,6 +523,22 @@ export class EnrichmentRunner {
         // Record per-actor results for all runs with a runId
         let enrichmentRunActorId: number | null = null
         if (runId) {
+          // Use actorStats for full tracking data (all sources attempted, total cost, timing)
+          const actorStats = enrichment.actorStats
+          const sourcesAttempted =
+            actorStats?.sourcesAttempted?.map((s) => ({
+              source: s.source,
+              success: s.success,
+              costUsd: s.costUsd || 0,
+            })) ||
+            [
+              {
+                source: enrichment.circumstancesSource?.type,
+                success: true,
+                costUsd: enrichment.circumstancesSource?.costUsd || 0,
+              },
+            ].filter((s) => s.source)
+
           const eraResult = await db.query<{ id: number }>(
             `INSERT INTO enrichment_run_actors (
             run_id,
@@ -520,10 +556,10 @@ export class EnrichmentRunner {
               actorId,
               true,
               enrichment.circumstancesSource?.confidence || null,
-              JSON.stringify([enrichment.circumstancesSource?.type].filter(Boolean)),
+              JSON.stringify(sourcesAttempted),
               enrichment.circumstancesSource?.type || null,
-              null,
-              enrichment.circumstancesSource?.costUsd || 0,
+              actorStats?.totalTimeMs || null,
+              actorStats?.totalCostUsd || enrichment.circumstancesSource?.costUsd || 0,
             ]
           )
           enrichmentRunActorId = eraResult.rows[0].id
@@ -583,6 +619,8 @@ export class EnrichmentRunner {
         costBySource: stats.costBySource,
         exitReason,
         updatedActors,
+        sourceHitRates,
+        uniqueSourcesAttempted: Object.keys(sourceHitRates),
       }
     } finally {
       // Always reset cache behavior to default (use cache) to ensure per-run isolation

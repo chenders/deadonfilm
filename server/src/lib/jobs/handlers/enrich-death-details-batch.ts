@@ -159,10 +159,12 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
              cost_by_source = $7,
              exit_reason = $8,
              review_status = $9,
+             source_hit_rates = $10,
+             sources_attempted = $11,
              process_id = NULL,
              current_actor_index = NULL,
              current_actor_name = NULL
-         WHERE id = $10`,
+         WHERE id = $12`,
         [
           stats.exitReason === "completed" || stats.exitReason === "cost_limit"
             ? "completed"
@@ -175,6 +177,8 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
           JSON.stringify(stats.costBySource),
           stats.exitReason,
           reviewStatus,
+          JSON.stringify(stats.sourceHitRates || {}),
+          JSON.stringify(stats.uniqueSourcesAttempted || []),
           runId,
         ]
       )
