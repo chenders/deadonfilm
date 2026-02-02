@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { useCoverageStats, useActorsForCoverage, useCoverageTrends } from "./useCoverage"
+import {
+  useCoverageStats,
+  useActorsForCoverage,
+  useCoverageTrends,
+  useCausesOfDeath,
+  useActorPreview,
+} from "./useCoverage"
 
 // Mock fetch globally
 globalThis.fetch = vi.fn()
@@ -166,5 +172,104 @@ describe("useCoverageTrends", () => {
       expect.stringContaining("granularity=daily"),
       expect.any(Object)
     )
+  })
+})
+
+describe("useCausesOfDeath", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("fetches distinct causes of death", async () => {
+    const mockCauses = [
+      { value: "heart attack", label: "heart attack", count: 50 },
+      { value: "cancer", label: "cancer", count: 45 },
+      { value: "natural causes", label: "natural causes", count: 30 },
+    ]
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockCauses,
+    } as Response)
+
+    const { result } = renderHook(() => useCausesOfDeath(), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(mockCauses)
+    expect(fetch).toHaveBeenCalledWith("/admin/api/coverage/causes", { credentials: "include" })
+  })
+
+  it("handles fetch errors", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    } as Response)
+
+    const { result } = renderHook(() => useCausesOfDeath(), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+
+    expect(result.current.error).toBeTruthy()
+  })
+})
+
+describe("useActorPreview", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("fetches actor preview data", async () => {
+    const mockPreview = {
+      topMovies: [{ title: "Movie 1", releaseYear: 2020, character: "Hero", popularity: 100 }],
+      topShows: [{ name: "Show 1", firstAirYear: 2015, character: "Lead", episodeCount: 50 }],
+      totalMovies: 10,
+      totalShows: 5,
+    }
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockPreview,
+    } as Response)
+
+    const { result } = renderHook(() => useActorPreview(123), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data).toEqual(mockPreview)
+    expect(fetch).toHaveBeenCalledWith("/admin/api/coverage/actors/123/preview", {
+      credentials: "include",
+    })
+  })
+
+  it("does not fetch when actorId is null", async () => {
+    const { result } = renderHook(() => useActorPreview(null), {
+      wrapper: createWrapper(),
+    })
+
+    // Query should not run when actorId is null (enabled: false)
+    expect(result.current.fetchStatus).toBe("idle")
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("handles fetch errors", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+    } as Response)
+
+    const { result } = renderHook(() => useActorPreview(999), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+
+    expect(result.current.error).toBeTruthy()
   })
 })

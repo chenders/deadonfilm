@@ -54,8 +54,36 @@ export interface ActorCoverageFilters {
   deathDateStart?: string
   deathDateEnd?: string
   searchName?: string
+  causeOfDeath?: string
   orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
   orderDirection?: "asc" | "desc"
+}
+
+export interface CauseOfDeathOption {
+  value: string
+  label: string
+  count: number
+}
+
+export interface ActorPreviewMovie {
+  title: string
+  releaseYear: number | null
+  character: string | null
+  popularity: number
+}
+
+export interface ActorPreviewShow {
+  name: string
+  firstAirYear: number | null
+  character: string | null
+  episodeCount: number
+}
+
+export interface ActorPreviewData {
+  topMovies: ActorPreviewMovie[]
+  topShows: ActorPreviewShow[]
+  totalMovies: number
+  totalShows: number
 }
 
 // ============================================================================
@@ -108,6 +136,9 @@ async function fetchActorsForCoverage(
   if (filters.orderDirection) {
     params.append("orderDirection", filters.orderDirection)
   }
+  if (filters.causeOfDeath) {
+    params.append("causeOfDeath", filters.causeOfDeath)
+  }
 
   const response = await fetch(`/admin/api/coverage/actors?${params.toString()}`, {
     credentials: "include",
@@ -137,6 +168,30 @@ async function fetchCoverageTrends(
 
   if (!response.ok) {
     throw new Error("Failed to fetch coverage trends")
+  }
+
+  return response.json()
+}
+
+async function fetchCausesOfDeath(): Promise<CauseOfDeathOption[]> {
+  const response = await fetch("/admin/api/coverage/causes", {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch causes of death")
+  }
+
+  return response.json()
+}
+
+async function fetchActorPreview(actorId: number): Promise<ActorPreviewData> {
+  const response = await fetch(`/admin/api/coverage/actors/${actorId}/preview`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch actor preview")
   }
 
   return response.json()
@@ -217,6 +272,30 @@ export function useEnrichmentCandidates(
   return useQuery({
     queryKey: ["admin", "coverage", "candidates", minPopularity, limit],
     queryFn: () => fetchEnrichmentCandidates(minPopularity, limit),
+    staleTime: 300000, // 5 minutes
+  })
+}
+
+/**
+ * Hook to fetch distinct causes of death for filtering.
+ */
+export function useCausesOfDeath(): UseQueryResult<CauseOfDeathOption[]> {
+  return useQuery({
+    queryKey: ["admin", "coverage", "causes"],
+    queryFn: fetchCausesOfDeath,
+    staleTime: 900000, // 15 minutes
+  })
+}
+
+/**
+ * Hook to fetch actor preview data for hover card.
+ * Only fetches when actorId is provided (non-null).
+ */
+export function useActorPreview(actorId: number | null): UseQueryResult<ActorPreviewData> {
+  return useQuery({
+    queryKey: ["admin", "coverage", "actor-preview", actorId],
+    queryFn: () => fetchActorPreview(actorId!),
+    enabled: actorId !== null,
     staleTime: 300000, // 5 minutes
   })
 }

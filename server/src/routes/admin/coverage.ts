@@ -16,6 +16,8 @@ import {
   getActorsForCoverage,
   getCoverageTrends,
   getEnrichmentCandidates,
+  getDistinctCausesOfDeath,
+  getActorPreview,
   ActorCoverageFilters,
 } from "../../lib/db/admin-coverage-queries.js"
 
@@ -35,6 +37,23 @@ router.get("/stats", async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     logger.error({ error }, "Failed to fetch coverage stats")
     res.status(500).json({ error: { message: "Failed to fetch coverage stats" } })
+  }
+})
+
+// ============================================================================
+// GET /admin/api/coverage/causes
+// Distinct causes of death for filter dropdown
+// ============================================================================
+
+router.get("/causes", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const causes = await getDistinctCausesOfDeath(pool)
+
+    res.json(causes)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch causes of death")
+    res.status(500).json({ error: { message: "Failed to fetch causes of death" } })
   }
 })
 
@@ -76,6 +95,10 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
 
     if (req.query.searchName) {
       filters.searchName = req.query.searchName as string
+    }
+
+    if (req.query.causeOfDeath) {
+      filters.causeOfDeath = req.query.causeOfDeath as string
     }
 
     if (req.query.orderBy) {
@@ -141,6 +164,30 @@ router.get("/trends", async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     logger.error({ error }, "Failed to fetch coverage trends")
     res.status(500).json({ error: { message: "Failed to fetch coverage trends" } })
+  }
+})
+
+// ============================================================================
+// GET /admin/api/coverage/actors/:id/preview
+// Actor preview data for hover card
+// ============================================================================
+
+router.get("/actors/:id/preview", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const actorId = parseInt(req.params.id, 10)
+
+    if (isNaN(actorId) || actorId <= 0) {
+      res.status(400).json({ error: { message: "Invalid actor ID" } })
+      return
+    }
+
+    const preview = await getActorPreview(pool, actorId)
+
+    res.json(preview)
+  } catch (error) {
+    logger.error({ error, actorId: req.params.id }, "Failed to fetch actor preview")
+    res.status(500).json({ error: { message: "Failed to fetch actor preview" } })
   }
 })
 
