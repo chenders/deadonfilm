@@ -414,6 +414,9 @@ export interface CleanedDeathInfo {
   careerStatusAtDeath: CareerStatus | null
   posthumousReleases: ProjectReference[] | null
 
+  // Quality gate - false if content is just "no information available"
+  hasSubstantiveContent: boolean
+
   // Metadata
   cleanupSource: "claude-opus-4.5"
   cleanupTimestamp: string
@@ -658,6 +661,20 @@ export interface WikipediaOptions {
    * Default: 2
    */
   maxLinkedArticles?: number
+  /**
+   * Handle disambiguation pages by detecting them and trying alternate article titles.
+   * When a disambiguation page is detected (e.g., "Graham Greene" which lists multiple people),
+   * the source will try alternate titles like "Graham_Greene_(actor)".
+   * Default: true
+   */
+  handleDisambiguation?: boolean
+  /**
+   * Validate that the Wikipedia article is about the correct person by comparing
+   * birth/death years from the article against the actor's known dates.
+   * When validation fails, try alternate titles.
+   * Default: true
+   */
+  validatePersonDates?: boolean
 }
 
 /**
@@ -669,6 +686,8 @@ export const DEFAULT_WIKIPEDIA_OPTIONS: WikipediaOptions = {
   maxSections: 10,
   followLinkedArticles: false,
   maxLinkedArticles: 2,
+  handleDisambiguation: true,
+  validatePersonDates: true,
 }
 
 // ============================================================================
