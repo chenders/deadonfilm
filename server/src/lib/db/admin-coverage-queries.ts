@@ -445,7 +445,7 @@ export async function getActorPreview(pool: Pool, actorId: number): Promise<Acto
       name: row.name,
       firstAirYear: row.first_air_year,
       character: row.character_name,
-      episodeCount: parseInt(row.episode_count?.toString() ?? "0", 10),
+      episodeCount: row.episode_count ?? 0,
     })),
     totalMovies: parseInt(countsResult.rows[0]?.total_movies ?? "0", 10),
     totalShows: parseInt(countsResult.rows[0]?.total_shows ?? "0", 10),
