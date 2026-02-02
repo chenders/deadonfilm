@@ -415,7 +415,7 @@ export async function getActorPreview(pool: Pool, actorId: number): Promise<Acto
     episode_count: number
   }>(
     `SELECT s.name, s.first_air_year,
-            (array_agg(asa.character_name ORDER BY asa.character_name))[1] as character_name,
+            (array_agg(asa.character_name ORDER BY asa.character_name NULLS LAST))[1] as character_name,
             COUNT(*) as episode_count
      FROM actor_show_appearances asa
      JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
@@ -445,7 +445,7 @@ export async function getActorPreview(pool: Pool, actorId: number): Promise<Acto
       name: row.name,
       firstAirYear: row.first_air_year,
       character: row.character_name,
-      episodeCount: Number(row.episode_count),
+      episodeCount: parseInt(row.episode_count?.toString() ?? "0", 10),
     })),
     totalMovies: parseInt(countsResult.rows[0]?.total_movies ?? "0", 10),
     totalShows: parseInt(countsResult.rows[0]?.total_shows ?? "0", 10),
