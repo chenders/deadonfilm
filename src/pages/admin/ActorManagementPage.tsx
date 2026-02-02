@@ -21,6 +21,9 @@ function formatRelativeTime(dateStr: string | null): string {
   if (!dateStr) return "Never"
 
   const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown"
+  }
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
@@ -273,11 +276,12 @@ export default function ActorManagementPage() {
                   <input
                     id="causeOfDeath"
                     type="text"
-                    value={filters.causeOfDeath || causeSearchInput}
+                    value={causeSearchInput}
                     onChange={(e) => {
                       setCauseSearchInput(e.target.value)
                       setShowCauseDropdown(true)
-                      if (!e.target.value) {
+                      // Clear the filter when user starts typing to allow refinement
+                      if (filters.causeOfDeath) {
                         handleFilterChange({ causeOfDeath: undefined })
                       }
                     }}
@@ -311,7 +315,7 @@ export default function ActorManagementPage() {
                           className="w-full px-3 py-2 text-left text-sm text-admin-text-primary hover:bg-admin-interactive-secondary"
                           onMouseDown={() => {
                             handleFilterChange({ causeOfDeath: cause.value })
-                            setCauseSearchInput("")
+                            setCauseSearchInput(cause.label)
                             setShowCauseDropdown(false)
                           }}
                         >
@@ -466,7 +470,12 @@ export default function ActorManagementPage() {
                           </td>
                           <td className="px-4 py-3 text-admin-text-primary">
                             <AdminHoverCard content={<ActorPreviewCard actorId={actor.id} />}>
-                              <span className="cursor-pointer hover:underline">{actor.name}</span>
+                              <button
+                                type="button"
+                                className="cursor-pointer border-0 bg-transparent p-0 text-left text-inherit hover:underline"
+                              >
+                                {actor.name}
+                              </button>
                             </AdminHoverCard>
                           </td>
                           <td className="px-4 py-3 text-admin-text-muted">

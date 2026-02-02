@@ -110,10 +110,11 @@ export default function AdminHoverCard({
   }, [closeCard])
 
   // Handle touch events (mobile)
+  // Note: We avoid preventDefault() here as it can block native scrolling
+  // when a user starts a scroll gesture on the trigger
   const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
+    (_e: React.TouchEvent) => {
       if (disabled) return
-      e.preventDefault()
       if (isOpen) {
         closeCard()
       } else {
