@@ -105,6 +105,17 @@ export interface StartEnrichmentRequest {
   maxBilling?: number
   topMovies?: number
   usActorsOnly?: boolean
+  /** Wikipedia-specific options */
+  wikipedia?: {
+    /** Use AI (Gemini Flash) for section selection instead of regex. Default: false */
+    useAISectionSelection?: boolean
+    /** Follow links to related Wikipedia articles. Default: false */
+    followLinkedArticles?: boolean
+    /** Maximum linked articles to fetch. Default: 2 */
+    maxLinkedArticles?: number
+    /** Maximum sections to fetch. Default: 10 */
+    maxSections?: number
+  }
   // Legacy fields
   sources?: string[]
   dryRun?: boolean
