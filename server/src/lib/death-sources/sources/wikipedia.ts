@@ -233,8 +233,25 @@ export class WikipediaSource extends BaseDataSource {
         }
       }
 
-      // Combine all section texts
-      const cleanedText = sectionTexts.join("\n\n")
+      // Fetch content from linked articles if AI selected any
+      let linkedArticleTexts: string[] = []
+      if (
+        sectionSelectionResult?.linkedArticles &&
+        sectionSelectionResult.linkedArticles.length > 0 &&
+        this.wikipediaOptions.followLinkedArticles
+      ) {
+        console.log(
+          `  Fetching ${sectionSelectionResult.linkedArticles.length} linked article(s): ${sectionSelectionResult.linkedArticles.join(", ")}`
+        )
+        linkedArticleTexts = await this.fetchLinkedArticlesContent(
+          sectionSelectionResult.linkedArticles
+        )
+        console.log(`  Retrieved content from ${linkedArticleTexts.length} linked article(s)`)
+      }
+
+      // Combine all section texts with linked article content
+      const allTexts = [...sectionTexts, ...linkedArticleTexts]
+      const cleanedText = allTexts.join("\n\n")
 
       // Extract death information
       const deathInfo = this.extractDeathInfo(cleanedText, actor)
@@ -259,9 +276,16 @@ export class WikipediaSource extends BaseDataSource {
         rawData.aiSectionSelection = {
           usedAI: sectionSelectionResult.usedAI,
           selectedSections: sectionSelectionResult.selectedSections,
+          linkedArticles: sectionSelectionResult.linkedArticles,
           reasoning: sectionSelectionResult.reasoning,
           error: sectionSelectionResult.error,
         }
+      }
+
+      // Include linked article metadata
+      if (linkedArticleTexts.length > 0) {
+        rawData.linkedArticleCount = linkedArticleTexts.length
+        rawData.linkedArticlesFollowed = sectionSelectionResult?.linkedArticles || []
       }
 
       // Create source entry - include AI selection cost in the total cost
@@ -444,6 +468,128 @@ export class WikipediaSource extends BaseDataSource {
     cleaned = cleaned.trim()
 
     return cleaned
+  }
+
+  /**
+   * Fetch content from linked Wikipedia articles.
+   * Gets the intro (section 0) and any Death/Health sections.
+   *
+   * @param articleTitles - Wikipedia article titles (with underscores)
+   * @returns Array of text content from each linked article
+   */
+  private async fetchLinkedArticlesContent(articleTitles: string[]): Promise<string[]> {
+    const results: string[] = []
+
+    for (const articleTitle of articleTitles) {
+      try {
+        // First check if the article exists by getting its sections
+        // Use redirects=1 to automatically follow Wikipedia redirects
+        const sectionsUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&prop=sections&format=json&redirects=1`
+
+        const sectionsResponse = await fetch(sectionsUrl, {
+          headers: {
+            "User-Agent": this.userAgent,
+            Accept: "application/json",
+          },
+        })
+
+        if (!sectionsResponse.ok) {
+          console.log(
+            `    Linked article "${articleTitle}" not found (HTTP ${sectionsResponse.status})`
+          )
+          continue
+        }
+
+        const sectionsData = (await sectionsResponse.json()) as WikipediaSectionsResponse
+
+        if (sectionsData.error) {
+          console.log(`    Linked article "${articleTitle}" not found: ${sectionsData.error.info}`)
+          continue
+        }
+
+        // Fetch the intro (section 0) which usually has the summary
+        // Use redirects=1 to follow redirects
+        const introUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&section=0&prop=text&format=json&redirects=1`
+
+        const introResponse = await fetch(introUrl, {
+          headers: {
+            "User-Agent": this.userAgent,
+            Accept: "application/json",
+          },
+        })
+
+        if (!introResponse.ok) {
+          continue
+        }
+
+        const introData = (await introResponse.json()) as WikipediaSectionContentResponse
+
+        if (!introData.parse?.text?.["*"]) {
+          continue
+        }
+
+        // Extract intro text
+        const introHtml = introData.parse.text["*"]
+        const introText = this.extractTextFromHtml(introHtml)
+        const cleanedIntro = this.cleanWikipediaText(introText)
+
+        // Build the content with a header
+        const articleContent: string[] = []
+        const humanReadableTitle = articleTitle.replace(/_/g, " ")
+
+        if (cleanedIntro && cleanedIntro.length >= 50) {
+          articleContent.push(`[Linked Article: ${humanReadableTitle}] ${cleanedIntro}`)
+        }
+
+        // Also fetch any Death/Incident sections from the linked article
+        if (sectionsData.parse?.sections) {
+          const deathSections = this.findRelevantSections(sectionsData.parse.sections)
+
+          for (const section of deathSections.slice(0, 2)) {
+            // Limit to 2 sections
+            // Use redirects=1 to follow redirects
+            const contentUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&section=${section.index}&prop=text&format=json&redirects=1`
+
+            const contentResponse = await fetch(contentUrl, {
+              headers: {
+                "User-Agent": this.userAgent,
+                Accept: "application/json",
+              },
+            })
+
+            if (!contentResponse.ok) {
+              continue
+            }
+
+            const contentData = (await contentResponse.json()) as WikipediaSectionContentResponse
+
+            if (!contentData.parse?.text?.["*"]) {
+              continue
+            }
+
+            const sectionHtml = contentData.parse.text["*"]
+            const sectionText = this.extractTextFromHtml(sectionHtml)
+            const cleanedSection = this.cleanWikipediaText(sectionText)
+
+            if (cleanedSection && cleanedSection.length >= 50) {
+              articleContent.push(
+                `[Linked Article: ${humanReadableTitle} - ${section.line}] ${cleanedSection}`
+              )
+            }
+          }
+        }
+
+        if (articleContent.length > 0) {
+          results.push(articleContent.join("\n\n"))
+        }
+      } catch (error) {
+        console.log(
+          `    Error fetching linked article "${articleTitle}": ${error instanceof Error ? error.message : "Unknown error"}`
+        )
+      }
+    }
+
+    return results
   }
 
   /**

@@ -513,7 +513,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
         WHERE a.id = ANY($1::int[])
           AND a.deathday IS NOT NULL
-        ORDER BY a.dof_popularity DESC NULLS LAST`,
+        ORDER BY a.popularity DESC NULLS LAST`,
         [actorId]
       )
       actors = result.rows
@@ -536,7 +536,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
         WHERE a.tmdb_id = ANY($1::int[])
           AND a.deathday IS NOT NULL
-        ORDER BY a.dof_popularity DESC NULLS LAST`,
+        ORDER BY a.popularity DESC NULLS LAST`,
         [tmdbId]
       )
       actors = result.rows
@@ -624,7 +624,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
             ) DESC`
       } else {
-        query += ` ORDER BY a.dof_popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+        query += ` ORDER BY a.popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
       }
 
       if (limit) {

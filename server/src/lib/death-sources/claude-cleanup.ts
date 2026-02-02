@@ -87,13 +87,15 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
 {
   "cause": "specific medical cause (e.g., 'pancreatic cancer', 'heart failure', 'hantavirus pulmonary syndrome'). Null if unknown.",
   "cause_confidence": "high|medium|low|disputed",
-  "details": "2-4 sentences of medical context about the cause. Null if no details available.",
+  "details": "2-4 sentences of medical context about the immediate cause of death. This is a SHORT summary; put extensive medical history in circumstances instead. Null if no details available.",
   "details_confidence": "high|medium|low|disputed",
 
   "birthday_confidence": "high|medium|low|disputed - based on source agreement and reliability. Null if not discussed.",
   "deathday_confidence": "high|medium|low|disputed - based on source agreement and reliability. Null if not discussed.",
 
-  "circumstances": "COMPREHENSIVE narrative of the death. This is the main content for the death page. Include:
+  "circumstances": "COMPREHENSIVE narrative of the death AND relevant medical history. This is the main content for the death page. Include:
+    - MEDICAL HISTORY: Chronic conditions, major illnesses, surgeries, hospitalizations that contributed to or contextualize the death (e.g., heart attacks, cancer diagnoses, organ transplants, medical devices like pacemakers/LVADs)
+    - NOTABLE HEALTH INCIDENTS: Any significant health events during their life that are part of their public story (accidents, near-death experiences, long recoveries)
     - Full timeline of events leading to and surrounding the death
     - How and when the body was discovered, by whom
     - Location details (home, hospital, on set, etc.)
@@ -102,7 +104,7 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
     - Any investigations (police, coroner) and their conclusions
     - Media coverage significance if it was a major news story
     - Anything unusual, tragic, or newsworthy about the circumstances
-    Write as clean prose suitable for a death page on an entertainment website. Multiple paragraphs are fine.",
+    Start with medical history context if relevant, then cover the death itself. Write as clean prose suitable for a death page on an entertainment website. Multiple paragraphs are fine.",
   "circumstances_confidence": "high|medium|low|disputed",
 
   "rumored_circumstances": "Alternative accounts, disputed information, conspiracy theories, or unconfirmed reports. Null if none.",
@@ -131,6 +133,8 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
 
 CRITICAL INSTRUCTIONS:
 - Be THOROUGH in circumstances - capture the full story, not just the medical cause
+- ALWAYS include relevant medical history: heart conditions, cancer battles, transplants, chronic illnesses, medical devices, significant surgeries
+- Include notable health incidents even if not directly causing death (accidents, near-death experiences, long-term health struggles)
 - If the death was a major news story, capture WHY it was newsworthy
 - Include related deaths (spouse, family) if they're part of the story
 - Include related_celebrities if any notable people are mentioned in the death story
