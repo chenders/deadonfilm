@@ -386,12 +386,20 @@ jobs:
   ci-complete:
     name: CI Complete
     runs-on: ubuntu-latest
-    needs: [frontend-quality, backend-quality, e2e, docker, codeql]
+    needs: [frontend-build, backend-build, frontend-quality, backend-quality, e2e, docker, codeql]
     if: always()
 
     steps:
       - name: Check all jobs passed
         run: |
+          if [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
+            echo "Frontend build failed"
+            exit 1
+          fi
+          if [[ "${{ needs.backend-build.result }}" != "success" ]]; then
+            echo "Backend build failed"
+            exit 1
+          fi
           if [[ "${{ needs.frontend-quality.result }}" != "success" ]]; then
             echo "Frontend quality checks failed"
             exit 1
