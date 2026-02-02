@@ -526,18 +526,21 @@ export class EnrichmentRunner {
           // Use actorStats for full tracking data (all sources attempted, total cost, timing)
           const actorStats = enrichment.actorStats
           const sourcesAttempted =
-            actorStats?.sourcesAttempted?.map((s) => ({
-              source: s.source,
-              success: s.success,
-              costUsd: s.costUsd || 0,
-            })) ||
-            [
-              {
-                source: enrichment.circumstancesSource?.type,
-                success: true,
-                costUsd: enrichment.circumstancesSource?.costUsd || 0,
-              },
-            ].filter((s) => s.source)
+            actorStats?.sourcesAttempted && actorStats.sourcesAttempted.length > 0
+              ? actorStats.sourcesAttempted.map((s) => ({
+                  source: s.source,
+                  success: s.success,
+                  costUsd: s.costUsd || 0,
+                }))
+              : enrichment.circumstancesSource?.type
+                ? [
+                    {
+                      source: enrichment.circumstancesSource.type,
+                      success: true,
+                      costUsd: enrichment.circumstancesSource.costUsd || 0,
+                    },
+                  ]
+                : []
 
           const eraResult = await db.query<{ id: number }>(
             `INSERT INTO enrichment_run_actors (
