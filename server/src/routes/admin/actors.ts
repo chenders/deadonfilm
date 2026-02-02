@@ -750,6 +750,46 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
           })
         }
       }
+
+      // sources should be an array of objects
+      if (circumstancesUpdates.sources !== undefined && circumstancesUpdates.sources !== null) {
+        if (!Array.isArray(circumstancesUpdates.sources)) {
+          invalidTypes.push({
+            field: "sources",
+            expectedType: "object[]",
+            actualType: typeof circumstancesUpdates.sources,
+          })
+        } else if (
+          !circumstancesUpdates.sources.every(
+            (item: unknown) => typeof item === "object" && item !== null && !Array.isArray(item)
+          )
+        ) {
+          invalidTypes.push({
+            field: "sources",
+            expectedType: "object[]",
+            actualType: "array with non-object elements",
+          })
+        }
+      }
+
+      // entity_links should be an object
+      if (
+        circumstancesUpdates.entity_links !== undefined &&
+        circumstancesUpdates.entity_links !== null
+      ) {
+        if (
+          typeof circumstancesUpdates.entity_links !== "object" ||
+          Array.isArray(circumstancesUpdates.entity_links)
+        ) {
+          invalidTypes.push({
+            field: "entity_links",
+            expectedType: "object",
+            actualType: Array.isArray(circumstancesUpdates.entity_links)
+              ? "array"
+              : typeof circumstancesUpdates.entity_links,
+          })
+        }
+      }
     }
 
     if (invalidTypes.length > 0) {
