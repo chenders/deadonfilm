@@ -275,6 +275,12 @@ describe("getCovidDeathsHandler", () => {
       dof_popularity: null,
       dof_popularity_confidence: null,
       dof_popularity_updated_at: null,
+      biography: null,
+      biography_source_url: null,
+      biography_source_type: null,
+      biography_generated_at: null,
+      biography_raw_tmdb: null,
+      biography_has_content: null,
     },
     {
       id: 2,
@@ -303,6 +309,12 @@ describe("getCovidDeathsHandler", () => {
       dof_popularity: null,
       dof_popularity_confidence: null,
       dof_popularity_updated_at: null,
+      biography: null,
+      biography_source_url: null,
+      biography_source_type: null,
+      biography_generated_at: null,
+      biography_raw_tmdb: null,
+      biography_has_content: null,
     },
   ]
 
@@ -531,6 +543,12 @@ describe("getUnnaturalDeathsHandler", () => {
       dof_popularity: null,
       dof_popularity_confidence: null,
       dof_popularity_updated_at: null,
+      biography: null,
+      biography_source_url: null,
+      biography_source_type: null,
+      biography_generated_at: null,
+      biography_raw_tmdb: null,
+      biography_has_content: null,
     },
     {
       id: 2,
@@ -559,6 +577,12 @@ describe("getUnnaturalDeathsHandler", () => {
       dof_popularity: null,
       dof_popularity_confidence: null,
       dof_popularity_updated_at: null,
+      biography: null,
+      biography_source_url: null,
+      biography_source_type: null,
+      biography_generated_at: null,
+      biography_raw_tmdb: null,
+      biography_has_content: null,
     },
   ]
 

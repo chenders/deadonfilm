@@ -129,6 +129,14 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
         </NavLink>
 
         <NavLink
+          to="/admin/biographies"
+          isActive={isActive("/admin/biographies")}
+          onClick={onNavigate}
+        >
+          Biographies
+        </NavLink>
+
+        <NavLink
           to="/admin/popularity"
           isActive={isActive("/admin/popularity")}
           onClick={onNavigate}

@@ -124,6 +124,12 @@ describe("getActor", () => {
     deathday_verification_source: null,
     deathday_verified_at: null,
     has_detailed_death_info: false,
+    biography: null,
+    biography_source_url: null,
+    biography_source_type: null,
+    biography_generated_at: null,
+    biography_raw_tmdb: null,
+    biography_has_content: null,
   }
 
   const mockDeceasedRecord = {
@@ -154,6 +160,12 @@ describe("getActor", () => {
     deathday_verification_source: null,
     deathday_verified_at: null,
     has_detailed_death_info: false,
+    biography: null,
+    biography_source_url: null,
+    biography_source_type: null,
+    biography_generated_at: null,
+    biography_raw_tmdb: null,
+    biography_has_content: null,
   }
 
   beforeEach(() => {
@@ -220,6 +232,8 @@ describe("getActor", () => {
         birthday: "1980-05-15",
         deathday: null,
         biography: "A famous actor.",
+        biographySourceUrl: "https://www.themoviedb.org/person/12345",
+        biographySourceType: "tmdb",
         profilePath: "/profile.jpg",
         placeOfBirth: "Los Angeles, CA",
       },
@@ -313,6 +327,8 @@ describe("getActor", () => {
         birthday: "1940-03-10",
         deathday: "2020-08-15",
         biography: "A legendary performer.",
+        biographySourceUrl: "https://www.themoviedb.org/person/67890",
+        biographySourceType: "tmdb",
         profilePath: "/legacy.jpg",
         placeOfBirth: "New York, NY",
       },
