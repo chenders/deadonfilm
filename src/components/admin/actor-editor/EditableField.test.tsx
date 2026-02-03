@@ -2,6 +2,20 @@ import { describe, it, expect, vi } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import EditableField from "./EditableField"
 
+// Mock the useFieldHistory hook
+vi.mock("../../../hooks/admin/useFieldHistory", () => ({
+  useFieldHistory: vi.fn(() => ({
+    history: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    total: 0,
+    hasMore: false,
+  })),
+}))
+
+import { useFieldHistory } from "../../../hooks/admin/useFieldHistory"
+
 describe("EditableField", () => {
   describe("text input", () => {
     it("renders text input with label", () => {
@@ -266,6 +280,154 @@ describe("EditableField", () => {
       // Now shows "Hide history" and change history panel
       expect(screen.getByText("Hide history")).toBeInTheDocument()
       expect(screen.getByText("Change History")).toBeInTheDocument()
+    })
+  })
+
+  describe("expanded history panel", () => {
+    // Note: mockFullHistory includes field_name because it's used both:
+    // 1. For the history prop (expects FieldChange which requires field_name)
+    // 2. For mocking useFieldHistory (expects FieldHistoryEntry which doesn't have field_name)
+    // The extra property is harmless when passed to useFieldHistory mock
+    const mockFullHistory = [
+      {
+        id: 1,
+        field_name: "test",
+        old_value: "value3",
+        new_value: "value4",
+        source: "admin-manual-edit",
+        batch_id: "batch-1",
+        created_at: "2026-01-15T10:00:00Z",
+      },
+      {
+        id: 2,
+        field_name: "test",
+        old_value: "value2",
+        new_value: "value3",
+        source: "claude-enrichment",
+        batch_id: null,
+        created_at: "2026-01-10T10:00:00Z",
+      },
+      {
+        id: 3,
+        field_name: "test",
+        old_value: "value1",
+        new_value: "value2",
+        source: "admin-manual-edit",
+        batch_id: "batch-2",
+        created_at: "2026-01-05T10:00:00Z",
+      },
+    ]
+
+    it("should show loading state when fetching full history", () => {
+      vi.mocked(useFieldHistory).mockReturnValue({
+        history: [],
+        isLoading: true,
+        isError: false,
+        error: null,
+        total: 0,
+        hasMore: false,
+      })
+
+      render(
+        <EditableField
+          name="test"
+          label="Test Field"
+          value="value4"
+          onChange={vi.fn()}
+          actorId={123}
+          history={[mockFullHistory[0]]}
+        />
+      )
+
+      fireEvent.click(screen.getByText("Show history"))
+
+      expect(screen.getByText("Loading history...")).toBeInTheDocument()
+    })
+
+    it("should show all history entries when expanded", () => {
+      vi.mocked(useFieldHistory).mockReturnValue({
+        history: mockFullHistory,
+        isLoading: false,
+        isError: false,
+        error: null,
+        total: 3,
+        hasMore: false,
+      })
+
+      render(
+        <EditableField
+          name="test"
+          label="Test Field"
+          value="value4"
+          onChange={vi.fn()}
+          actorId={123}
+          history={[mockFullHistory[0]]}
+          onRevert={vi.fn()}
+        />
+      )
+
+      fireEvent.click(screen.getByText("Show history"))
+
+      expect(screen.getAllByRole("button", { name: /Revert/i })).toHaveLength(3)
+    })
+
+    it("should call onRevert with correct value from any history row", () => {
+      vi.mocked(useFieldHistory).mockReturnValue({
+        history: mockFullHistory,
+        isLoading: false,
+        isError: false,
+        error: null,
+        total: 3,
+        hasMore: false,
+      })
+
+      const handleRevert = vi.fn()
+      render(
+        <EditableField
+          name="test"
+          label="Test Field"
+          value="value4"
+          onChange={vi.fn()}
+          actorId={123}
+          history={[mockFullHistory[0]]}
+          onRevert={handleRevert}
+        />
+      )
+
+      fireEvent.click(screen.getByText("Show history"))
+
+      const revertButtons = screen.getAllByRole("button", { name: /Revert/i })
+      fireEvent.click(revertButtons[2])
+
+      expect(handleRevert).toHaveBeenCalledWith("value1")
+    })
+
+    it("should only fetch when panel is expanded", () => {
+      vi.mocked(useFieldHistory).mockReturnValue({
+        history: [],
+        isLoading: false,
+        isError: false,
+        error: null,
+        total: 0,
+        hasMore: false,
+      })
+
+      render(
+        <EditableField
+          name="test"
+          label="Test Field"
+          value="value"
+          onChange={vi.fn()}
+          actorId={123}
+          history={[mockFullHistory[0]]}
+        />
+      )
+
+      expect(useFieldHistory).toHaveBeenLastCalledWith(123, "test", false)
+
+      fireEvent.click(screen.getByText("Show history"))
+
+      expect(useFieldHistory).toHaveBeenLastCalledWith(123, "test", true)
     })
   })
 })

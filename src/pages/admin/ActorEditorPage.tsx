@@ -332,6 +332,7 @@ export default function ActorEditorPage() {
               {BASIC_FIELDS.map((field) => (
                 <EditableField
                   key={field.name}
+                  actorId={actorId}
                   name={field.name}
                   label={field.label}
                   type={field.type}
@@ -350,6 +351,7 @@ export default function ActorEditorPage() {
               {DEATH_FIELDS.map((field) => (
                 <EditableField
                   key={field.name}
+                  actorId={actorId}
                   name={field.name}
                   label={field.label}
                   type={field.type}
@@ -369,6 +371,7 @@ export default function ActorEditorPage() {
               {CIRCUMSTANCES_FIELDS.map((field) => (
                 <EditableField
                   key={field.name}
+                  actorId={actorId}
                   name={field.name}
                   label={field.label}
                   type={field.type}

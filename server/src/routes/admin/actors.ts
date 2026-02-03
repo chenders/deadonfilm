@@ -7,29 +7,11 @@
 import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
-import { getCached, CACHE_KEYS, invalidateActorCache } from "../../lib/cache.js"
+import { getCached, invalidateActorCache, CACHE_KEYS } from "../../lib/cache.js"
 import { createActorSlug } from "../../lib/slug-utils.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
 
 const router = Router()
-
-// Valid values for constrained fields (matching database CHECK constraints)
-const VALID_DEATH_MANNER = ["natural", "accident", "suicide", "homicide", "undetermined", "pending"]
-// For circumstances confidence fields (cause_confidence, details_confidence, etc.)
-const VALID_CONFIDENCE = ["high", "medium", "low", "disputed"]
-// For actors.deathday_confidence specifically (different constraint)
-const VALID_DEATHDAY_CONFIDENCE_ACTOR = ["verified", "unverified", "conflicting"]
-// For date precision fields (birthday_precision, deathday_precision)
-const VALID_DATE_PRECISION = ["year", "month", "day"]
-// For career_status_at_death field
-const VALID_CAREER_STATUS = ["active", "semi-retired", "retired", "hiatus", "unknown"]
-
-// Helper function to convert values to string for history storage
-function valueToHistoryString(value: unknown): string | null {
-  if (value === null || value === undefined) return null
-  if (typeof value === "object") return JSON.stringify(value)
-  return String(value)
-}
 
 // Fields that should NOT be editable via the admin editor
 const NON_EDITABLE_FIELDS = new Set([
@@ -111,6 +93,12 @@ const CIRCUMSTANCES_EDITABLE_FIELDS = [
   "enrichment_version",
   "entity_links",
 ]
+
+// All fields that can have history queried
+const HISTORY_QUERYABLE_FIELDS = new Set([
+  ...ACTOR_EDITABLE_FIELDS,
+  ...CIRCUMSTANCES_EDITABLE_FIELDS.map((f) => `circumstances.${f}`),
+])
 
 // Uncertainty markers that indicate data quality issues
 const UNCERTAINTY_MARKERS = [
@@ -466,36 +454,26 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
               invalidDates.push({ field, value, reason: "Invalid date" })
             } else if (field === "deathday" && parsed > new Date()) {
               invalidDates.push({ field, value, reason: "Death date cannot be in the future" })
-            } else if (field === "deathday") {
-              // Check death date is not before birth date
-              const birthday =
-                actorUpdates.birthday !== undefined ? actorUpdates.birthday : existingActor.birthday
-              if (birthday && typeof birthday === "string") {
-                const birthDate = new Date(birthday)
-                if (!isNaN(birthDate.getTime()) && parsed < birthDate) {
-                  invalidDates.push({
-                    field,
-                    value,
-                    reason: "Death date cannot be before birth date",
-                  })
-                }
-              }
-            } else if (field === "birthday") {
-              // Check birthday is not after death date
-              const deathday =
-                actorUpdates.deathday !== undefined ? actorUpdates.deathday : existingActor.deathday
-              if (deathday && typeof deathday === "string") {
-                const deathDate = new Date(deathday)
-                if (!isNaN(deathDate.getTime()) && parsed > deathDate) {
-                  invalidDates.push({
-                    field,
-                    value,
-                    reason: "Birth date cannot be after death date",
-                  })
-                }
-              }
             }
           }
+        }
+      }
+
+      // Validate that deathday is not before birthday
+      const newBirthday = actorUpdates.birthday as string | undefined
+      const newDeathday = actorUpdates.deathday as string | undefined
+      const effectiveBirthday = newBirthday ?? existingActor.birthday
+      const effectiveDeathday = newDeathday ?? existingActor.deathday
+
+      if (effectiveBirthday && effectiveDeathday) {
+        const birthDate = new Date(effectiveBirthday)
+        const deathDate = new Date(effectiveDeathday)
+        if (deathDate < birthDate) {
+          invalidDates.push({
+            field: "deathday",
+            value: effectiveDeathday,
+            reason: "Death date cannot be before birth date",
+          })
         }
       }
     }
@@ -505,298 +483,6 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
         error: {
           message: "Invalid date format",
           invalidDates,
-        },
-      })
-      return
-    }
-
-    // Validate constrained enum fields
-    const invalidEnums: { field: string; value: unknown; validValues: string[] }[] = []
-
-    // Validate death_manner (actor field)
-    if (actorUpdates?.death_manner !== undefined && actorUpdates.death_manner !== null) {
-      if (
-        typeof actorUpdates.death_manner !== "string" ||
-        !VALID_DEATH_MANNER.includes(actorUpdates.death_manner)
-      ) {
-        invalidEnums.push({
-          field: "death_manner",
-          value: actorUpdates.death_manner,
-          validValues: VALID_DEATH_MANNER,
-        })
-      }
-    }
-
-    // Validate deathday_confidence (actor field - uses different valid values)
-    if (
-      actorUpdates?.deathday_confidence !== undefined &&
-      actorUpdates.deathday_confidence !== null
-    ) {
-      if (
-        typeof actorUpdates.deathday_confidence !== "string" ||
-        !VALID_DEATHDAY_CONFIDENCE_ACTOR.includes(actorUpdates.deathday_confidence)
-      ) {
-        invalidEnums.push({
-          field: "deathday_confidence",
-          value: actorUpdates.deathday_confidence,
-          validValues: VALID_DEATHDAY_CONFIDENCE_ACTOR,
-        })
-      }
-    }
-
-    // Validate confidence fields (circumstances fields)
-    const confidenceFields = [
-      "circumstances_confidence",
-      "cause_confidence",
-      "details_confidence",
-      "birthday_confidence",
-      "deathday_confidence",
-    ]
-    if (circumstancesUpdates) {
-      for (const field of confidenceFields) {
-        const value = circumstancesUpdates[field]
-        if (value !== undefined && value !== null) {
-          if (typeof value !== "string" || !VALID_CONFIDENCE.includes(value)) {
-            invalidEnums.push({ field, value, validValues: VALID_CONFIDENCE })
-          }
-        }
-      }
-    }
-
-    // Validate date precision fields (actor fields)
-    const datePrecisionFields = ["birthday_precision", "deathday_precision"]
-    if (actorUpdates) {
-      for (const field of datePrecisionFields) {
-        const value = actorUpdates[field]
-        if (value !== undefined && value !== null) {
-          if (typeof value !== "string" || !VALID_DATE_PRECISION.includes(value)) {
-            invalidEnums.push({ field, value, validValues: VALID_DATE_PRECISION })
-          }
-        }
-      }
-    }
-
-    // Validate career_status_at_death (circumstances field)
-    if (
-      circumstancesUpdates?.career_status_at_death !== undefined &&
-      circumstancesUpdates.career_status_at_death !== null
-    ) {
-      if (
-        typeof circumstancesUpdates.career_status_at_death !== "string" ||
-        !VALID_CAREER_STATUS.includes(circumstancesUpdates.career_status_at_death)
-      ) {
-        invalidEnums.push({
-          field: "career_status_at_death",
-          value: circumstancesUpdates.career_status_at_death,
-          validValues: VALID_CAREER_STATUS,
-        })
-      }
-    }
-
-    if (invalidEnums.length > 0) {
-      res.status(400).json({
-        error: {
-          message: "Invalid enum value",
-          invalidEnums,
-        },
-      })
-      return
-    }
-
-    // Validate boolean fields (actor fields)
-    const booleanActorFields = [
-      "violent_death",
-      "covid_related",
-      "strange_death",
-      "has_detailed_death_info",
-    ]
-    const invalidTypes: { field: string; expectedType: string; actualType: string }[] = []
-
-    if (actorUpdates) {
-      for (const field of booleanActorFields) {
-        const value = actorUpdates[field]
-        if (value !== undefined && value !== null && typeof value !== "boolean") {
-          invalidTypes.push({ field, expectedType: "boolean", actualType: typeof value })
-        }
-      }
-
-      // Validate death_categories is an array of strings
-      if (actorUpdates.death_categories !== undefined && actorUpdates.death_categories !== null) {
-        if (!Array.isArray(actorUpdates.death_categories)) {
-          invalidTypes.push({
-            field: "death_categories",
-            expectedType: "string[]",
-            actualType: typeof actorUpdates.death_categories,
-          })
-        } else if (!actorUpdates.death_categories.every((v: unknown) => typeof v === "string")) {
-          invalidTypes.push({
-            field: "death_categories",
-            expectedType: "string[]",
-            actualType: "array with non-string elements",
-          })
-        }
-      }
-    }
-
-    // Validate circumstances array/object fields
-    if (circumstancesUpdates) {
-      // notable_factors should be string[]
-      if (
-        circumstancesUpdates.notable_factors !== undefined &&
-        circumstancesUpdates.notable_factors !== null
-      ) {
-        if (!Array.isArray(circumstancesUpdates.notable_factors)) {
-          invalidTypes.push({
-            field: "notable_factors",
-            expectedType: "string[]",
-            actualType: typeof circumstancesUpdates.notable_factors,
-          })
-        } else if (
-          !circumstancesUpdates.notable_factors.every((v: unknown) => typeof v === "string")
-        ) {
-          invalidTypes.push({
-            field: "notable_factors",
-            expectedType: "string[]",
-            actualType: "array with non-string elements",
-          })
-        }
-      }
-
-      // related_celebrity_ids should be number[]
-      if (
-        circumstancesUpdates.related_celebrity_ids !== undefined &&
-        circumstancesUpdates.related_celebrity_ids !== null
-      ) {
-        if (!Array.isArray(circumstancesUpdates.related_celebrity_ids)) {
-          invalidTypes.push({
-            field: "related_celebrity_ids",
-            expectedType: "number[]",
-            actualType: typeof circumstancesUpdates.related_celebrity_ids,
-          })
-        } else if (
-          !circumstancesUpdates.related_celebrity_ids.every((v: unknown) => typeof v === "number")
-        ) {
-          invalidTypes.push({
-            field: "related_celebrity_ids",
-            expectedType: "number[]",
-            actualType: "array with non-number elements",
-          })
-        }
-      }
-
-      // posthumous_releases should be an array of objects
-      if (
-        circumstancesUpdates.posthumous_releases !== undefined &&
-        circumstancesUpdates.posthumous_releases !== null
-      ) {
-        if (!Array.isArray(circumstancesUpdates.posthumous_releases)) {
-          invalidTypes.push({
-            field: "posthumous_releases",
-            expectedType: "object[]",
-            actualType: typeof circumstancesUpdates.posthumous_releases,
-          })
-        } else if (
-          !circumstancesUpdates.posthumous_releases.every(
-            (item: unknown) => typeof item === "object" && item !== null && !Array.isArray(item)
-          )
-        ) {
-          invalidTypes.push({
-            field: "posthumous_releases",
-            expectedType: "object[]",
-            actualType: "array with non-object elements",
-          })
-        }
-      }
-
-      // related_celebrities should be an array of objects
-      if (
-        circumstancesUpdates.related_celebrities !== undefined &&
-        circumstancesUpdates.related_celebrities !== null
-      ) {
-        if (!Array.isArray(circumstancesUpdates.related_celebrities)) {
-          invalidTypes.push({
-            field: "related_celebrities",
-            expectedType: "object[]",
-            actualType: typeof circumstancesUpdates.related_celebrities,
-          })
-        } else if (
-          !circumstancesUpdates.related_celebrities.every(
-            (item: unknown) => typeof item === "object" && item !== null && !Array.isArray(item)
-          )
-        ) {
-          invalidTypes.push({
-            field: "related_celebrities",
-            expectedType: "object[]",
-            actualType: "array with non-object elements",
-          })
-        }
-      }
-
-      // last_project should be an object
-      if (
-        circumstancesUpdates.last_project !== undefined &&
-        circumstancesUpdates.last_project !== null
-      ) {
-        if (
-          typeof circumstancesUpdates.last_project !== "object" ||
-          Array.isArray(circumstancesUpdates.last_project)
-        ) {
-          invalidTypes.push({
-            field: "last_project",
-            expectedType: "object",
-            actualType: Array.isArray(circumstancesUpdates.last_project)
-              ? "array"
-              : typeof circumstancesUpdates.last_project,
-          })
-        }
-      }
-
-      // sources should be an array of objects
-      if (circumstancesUpdates.sources !== undefined && circumstancesUpdates.sources !== null) {
-        if (!Array.isArray(circumstancesUpdates.sources)) {
-          invalidTypes.push({
-            field: "sources",
-            expectedType: "object[]",
-            actualType: typeof circumstancesUpdates.sources,
-          })
-        } else if (
-          !circumstancesUpdates.sources.every(
-            (item: unknown) => typeof item === "object" && item !== null && !Array.isArray(item)
-          )
-        ) {
-          invalidTypes.push({
-            field: "sources",
-            expectedType: "object[]",
-            actualType: "array with non-object elements",
-          })
-        }
-      }
-
-      // entity_links should be an object
-      if (
-        circumstancesUpdates.entity_links !== undefined &&
-        circumstancesUpdates.entity_links !== null
-      ) {
-        if (
-          typeof circumstancesUpdates.entity_links !== "object" ||
-          Array.isArray(circumstancesUpdates.entity_links)
-        ) {
-          invalidTypes.push({
-            field: "entity_links",
-            expectedType: "object",
-            actualType: Array.isArray(circumstancesUpdates.entity_links)
-              ? "array"
-              : typeof circumstancesUpdates.entity_links,
-          })
-        }
-      }
-    }
-
-    if (invalidTypes.length > 0) {
-      res.status(400).json({
-        error: {
-          message: "Invalid field type",
-          invalidTypes,
         },
       })
       return
@@ -843,22 +529,13 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
     // Wrap all database operations in a transaction for atomicity
     const client = await pool.connect()
     let snapshotId: number
+    const batchId = `admin-edit-${Date.now()}`
 
     try {
       await client.query("BEGIN")
 
-      // Create snapshot before making changes (only if there are actual changes)
-      const batchId = `admin-edit-${Date.now()}`
-
       // Create snapshot using the transaction client
-      // Re-fetch within transaction to ensure consistency (handles race condition if actor deleted)
       const actorDataResult = await client.query(`SELECT * FROM actors WHERE id = $1`, [actorId])
-      if (actorDataResult.rows.length === 0) {
-        await client.query("ROLLBACK")
-        res.status(404).json({ error: { message: "Actor not found (deleted during edit)" } })
-        return
-      }
-
       const circumstancesDataResult = await client.query(
         `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
         [actorId]
@@ -903,24 +580,29 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
           paramIndex++
 
           // Record in history
+          const oldStr =
+            oldValue === null || oldValue === undefined
+              ? null
+              : typeof oldValue === "object"
+                ? JSON.stringify(oldValue)
+                : String(oldValue)
+          const newStr =
+            value === null || value === undefined
+              ? null
+              : typeof value === "object"
+                ? JSON.stringify(value)
+                : String(value)
+
           await client.query(
             `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
              VALUES ($1, $2, $3, $4, $5, $6)`,
-            [
-              actorId,
-              field,
-              valueToHistoryString(oldValue),
-              valueToHistoryString(value),
-              "admin-manual-edit",
-              batchId,
-            ]
+            [actorId, field, oldStr, newStr, "admin-manual-edit", batchId]
           )
         }
 
         if (setClauses.length > 0) {
           setClauses.push(`updated_at = NOW()`)
           values.push(actorId)
-          // Note: Field names are validated against ACTOR_EDITABLE_FIELDS allowlist above
           await client.query(
             `UPDATE actors SET ${setClauses.join(", ")} WHERE id = $${paramIndex}`,
             values
@@ -949,24 +631,29 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
             paramIndex++
 
             // Record in history
+            const oldStr =
+              oldValue === null || oldValue === undefined
+                ? null
+                : typeof oldValue === "object"
+                  ? JSON.stringify(oldValue)
+                  : String(oldValue)
+            const newStr =
+              value === null || value === undefined
+                ? null
+                : typeof value === "object"
+                  ? JSON.stringify(value)
+                  : String(value)
+
             await client.query(
               `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
                VALUES ($1, $2, $3, $4, $5, $6)`,
-              [
-                actorId,
-                `circumstances.${field}`,
-                valueToHistoryString(oldValue),
-                valueToHistoryString(value),
-                "admin-manual-edit",
-                batchId,
-              ]
+              [actorId, `circumstances.${field}`, oldStr, newStr, "admin-manual-edit", batchId]
             )
           }
 
           if (setClauses.length > 0) {
             setClauses.push(`updated_at = NOW()`)
             values.push(actorId)
-            // Note: Field names are validated against CIRCUMSTANCES_EDITABLE_FIELDS allowlist above
             await client.query(
               `UPDATE actor_death_circumstances SET ${setClauses.join(", ")} WHERE actor_id = $${paramIndex}`,
               values
@@ -974,7 +661,6 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
           }
         } else {
           // Create new circumstances record
-          // Note: Field names are validated against CIRCUMSTANCES_EDITABLE_FIELDS allowlist above
           const fields = ["actor_id", ...Object.keys(circumstancesUpdates)]
           const values = [actorId, ...Object.values(circumstancesUpdates)]
           const placeholders = values.map((_, i) => `$${i + 1}`).join(", ")
@@ -986,69 +672,73 @@ router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> =>
 
           // Record history for new circumstances
           for (const [field, value] of Object.entries(circumstancesUpdates)) {
+            const newStr =
+              value === null || value === undefined
+                ? null
+                : typeof value === "object"
+                  ? JSON.stringify(value)
+                  : String(value)
+
             await client.query(
               `INSERT INTO actor_death_info_history (actor_id, field_name, old_value, new_value, source, batch_id)
                VALUES ($1, $2, $3, $4, $5, $6)`,
-              [
-                actorId,
-                `circumstances.${field}`,
-                null,
-                valueToHistoryString(value),
-                "admin-manual-edit",
-                batchId,
-              ]
+              [actorId, `circumstances.${field}`, null, newStr, "admin-manual-edit", batchId]
             )
           }
         }
       }
 
       await client.query("COMMIT")
-
-      // Log to audit trail (after commit - uses separate connection)
-      await logAdminAction({
-        action: "actor-edit",
-        resourceType: "actor",
-        resourceId: actorId,
-        details: {
-          snapshotId,
-          batchId,
-          changes,
-        },
-        ipAddress: req.ip || undefined,
-        userAgent: req.get("user-agent") || undefined,
-      })
-
-      // Invalidate actor cache to ensure fresh data is served
-      await invalidateActorCache(actorId)
-
-      logger.info(
-        { actorId, snapshotId, changeCount: changes.length },
-        "Actor updated via admin editor"
-      )
-
-      // Fetch updated data to return (outside transaction)
-      const updatedActorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [
-        actorId,
-      ])
-      const updatedCircumstancesResult = await pool.query<CircumstancesRow>(
-        `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
-        [actorId]
-      )
-
-      res.json({
-        success: true,
-        snapshotId,
-        batchId,
-        changes,
-        actor: updatedActorResult.rows[0],
-        circumstances: updatedCircumstancesResult.rows[0] || null,
-      })
     } catch (txError) {
       await client.query("ROLLBACK")
       throw txError
     } finally {
       client.release()
     }
+
+    // Log to audit trail (after transaction commits successfully)
+    await logAdminAction({
+      action: "actor-edit",
+      resourceType: "actor",
+      resourceId: actorId,
+      details: {
+        snapshotId,
+        batchId,
+        changes,
+      },
+      ipAddress: req.ip || undefined,
+      userAgent: req.get("user-agent") || undefined,
+    })
+
+    logger.info(
+      { actorId, snapshotId, changeCount: changes.length },
+      "Actor updated via admin editor"
+    )
+
+    // Invalidate cache to ensure fresh data is served
+    try {
+      await invalidateActorCache(actorId)
+    } catch (err) {
+      logger.warn({ err, actorId }, "Failed to invalidate actor cache")
+    }
+
+    // Fetch updated data to return
+    const updatedActorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [
+      actorId,
+    ])
+    const updatedCircumstancesResult = await pool.query<CircumstancesRow>(
+      `SELECT * FROM actor_death_circumstances WHERE actor_id = $1`,
+      [actorId]
+    )
+
+    res.json({
+      success: true,
+      snapshotId,
+      batchId,
+      changes,
+      actor: updatedActorResult.rows[0],
+      circumstances: updatedCircumstancesResult.rows[0] || null,
+    })
   } catch (error) {
     logger.error({ error, actorId }, "Failed to update actor")
     res.status(500).json({ error: { message: "Failed to update actor" } })
@@ -1247,6 +937,79 @@ router.get("/:id/diagnostic", async (req: Request, res: Response): Promise<void>
   } catch (error) {
     logger.error({ error }, "Failed to fetch actor diagnostic data")
     res.status(500).json({ error: { message: "Failed to fetch actor diagnostic data" } })
+  }
+})
+
+// ============================================================================
+// GET /admin/api/actors/:id/history/:field
+// Get paginated history for a specific field
+// ============================================================================
+
+router.get("/:id(\\d+)/history/:field", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const actorId = parseInt(req.params.id, 10)
+    const fieldName = req.params.field
+
+    if (isNaN(actorId)) {
+      res.status(400).json({ error: { message: "Invalid actor ID" } })
+      return
+    }
+
+    // Validate field name
+    if (!HISTORY_QUERYABLE_FIELDS.has(fieldName)) {
+      res.status(400).json({ error: { message: "Invalid field name" } })
+      return
+    }
+
+    // Verify actor exists
+    const actorResult = await pool.query(`SELECT id FROM actors WHERE id = $1`, [actorId])
+    if (actorResult.rows.length === 0) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
+
+    // Parse pagination params
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 200)
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0)
+
+    // Query history
+    const historyResult = await pool.query<{
+      id: number
+      old_value: string | null
+      new_value: string | null
+      source: string
+      batch_id: string | null
+      created_at: string
+    }>(
+      `SELECT id, old_value, new_value, source, batch_id, created_at
+       FROM actor_death_info_history
+       WHERE actor_id = $1 AND field_name = $2
+       ORDER BY created_at DESC
+       LIMIT $3 OFFSET $4`,
+      [actorId, fieldName, limit, offset]
+    )
+
+    // Get total count
+    const countResult = await pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text as count
+       FROM actor_death_info_history
+       WHERE actor_id = $1 AND field_name = $2`,
+      [actorId, fieldName]
+    )
+
+    const total = parseInt(countResult.rows[0]?.count || "0", 10)
+    const hasMore = offset + historyResult.rows.length < total
+
+    res.json({
+      field: fieldName,
+      history: historyResult.rows,
+      total,
+      hasMore,
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch field history")
+    res.status(500).json({ error: { message: "Failed to fetch field history" } })
   }
 })
 
