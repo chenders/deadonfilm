@@ -197,7 +197,7 @@ describe("Admin Biographies Routes", () => {
       const response = await request(app).post("/admin/api/biographies/generate").send({})
 
       expect(response.status).toBe(400)
-      expect(response.body.error.message).toBe("actorId is required and must be a number")
+      expect(response.body.error.message).toBe("actorId is required and must be a positive integer")
     })
 
     it("returns 404 for non-existent actor", async () => {

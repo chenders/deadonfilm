@@ -8,6 +8,7 @@
 import Anthropic from "@anthropic-ai/sdk"
 import type { Pool } from "pg"
 import { recordAIUsage, aiUsageTableExists } from "../death-sources/ai-usage-tracker.js"
+import { logger } from "../logger.js"
 
 // Claude Sonnet model ID
 const MODEL_ID = "claude-sonnet-4-20250514"
@@ -40,10 +41,27 @@ export interface ActorForBiography {
 }
 
 /**
+ * Sanitize an actor name before including it in an AI prompt.
+ * Removes control characters and limits length to prevent prompt injection.
+ */
+function sanitizeActorNameForPrompt(actorName: string): string {
+  return (
+    actorName
+      .trim()
+      .replace(/[\r\n]+/g, " ")
+      // eslint-disable-next-line no-control-regex -- Intentional: sanitizing control characters from user input
+      .replace(/[\x00-\x1f\x7f]/g, "")
+      .replace(/\s+/g, " ")
+      .slice(0, 200)
+  )
+}
+
+/**
  * Build the prompt for biography generation.
  */
 export function buildBiographyPrompt(actorName: string, rawBiography: string): string {
-  return `Rewrite this actor biography for ${actorName}. Create a clean, professional summary suitable for a movie database.
+  const safeActorName = sanitizeActorNameForPrompt(actorName)
+  return `Rewrite this actor biography for ${safeActorName}. Create a clean, professional summary suitable for a movie database.
 
 ORIGINAL BIOGRAPHY:
 ${rawBiography}
@@ -122,12 +140,22 @@ function parseResponse(responseText: string): {
       hasSubstantiveContent: parsed.has_substantive_content === true,
     }
   } catch {
-    // Fallback regex extraction
-    const bioMatch = responseText.match(/"biography"\s*:\s*"([^"]*)"/)
+    // Fallback regex extraction - handles escaped quotes in JSON strings
+    const bioMatch = responseText.match(/"biography"\s*:\s*"((?:[^"\\]|\\.)*)"/s)
     const contentMatch = responseText.match(/"has_substantive_content"\s*:\s*(true|false)/)
 
+    let biography: string | null = null
+    if (bioMatch) {
+      try {
+        // Decode JSON string escapes (e.g., \" -> ", \\ -> \)
+        biography = JSON.parse(`"${bioMatch[1]}"`)
+      } catch {
+        biography = bioMatch[1]
+      }
+    }
+
     return {
-      biography: bioMatch ? bioMatch[1] : null,
+      biography,
       hasSubstantiveContent: contentMatch ? contentMatch[1] === "true" : false,
     }
   }
@@ -170,7 +198,7 @@ export async function generateBiography(
 
   const client = getClient()
   if (!client) {
-    console.log(`No ANTHROPIC_API_KEY - skipping biography generation for ${actor.name}`)
+    logger.info({ actorName: actor.name }, "No ANTHROPIC_API_KEY - skipping biography generation")
     return {
       biography: null,
       hasSubstantiveContent: false,
@@ -213,7 +241,7 @@ export async function generateBiography(
       latencyMs,
     }
   } catch (error) {
-    console.error(`Biography generation error for ${actor.name}:`, error)
+    logger.error({ error, actorName: actor.name }, "Biography generation error")
     return {
       biography: null,
       hasSubstantiveContent: false,

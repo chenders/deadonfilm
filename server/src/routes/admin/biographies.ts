@@ -17,6 +17,9 @@ import {
 
 const router = Router()
 
+// Minimum TMDB biography length to be considered substantial enough for generation
+const MIN_BIOGRAPHY_LENGTH = 50
+
 // ============================================================================
 // GET /admin/api/biographies
 // Get actors needing biography generation
@@ -151,8 +154,10 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
     const pool = getPool()
     const { actorId } = req.body as GenerateRequest
 
-    if (!actorId || typeof actorId !== "number") {
-      res.status(400).json({ error: { message: "actorId is required and must be a number" } })
+    if (!actorId || typeof actorId !== "number" || !Number.isInteger(actorId) || actorId <= 0) {
+      res
+        .status(400)
+        .json({ error: { message: "actorId is required and must be a positive integer" } })
       return
     }
 
@@ -182,7 +187,7 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
     // Fetch TMDB biography
     const tmdbPerson = await getPersonDetails(actor.tmdb_id)
 
-    if (!tmdbPerson.biography || tmdbPerson.biography.trim().length < 50) {
+    if (!tmdbPerson.biography || tmdbPerson.biography.trim().length < MIN_BIOGRAPHY_LENGTH) {
       // Save that there's no substantial TMDB biography
       await pool.query(
         `UPDATE actors SET
@@ -280,6 +285,18 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
     const pool = getPool()
     const { actorIds, limit = 10, minPopularity = 0 } = req.body as BatchGenerateRequest
 
+    // Validate actorIds if provided
+    if (
+      actorIds !== undefined &&
+      (!Array.isArray(actorIds) ||
+        !actorIds.every((id) => typeof id === "number" && Number.isInteger(id) && id > 0))
+    ) {
+      res.status(400).json({
+        error: { message: "actorIds must be an array of positive integers" },
+      })
+      return
+    }
+
     // Rate limiting: max 50 per request
     const maxLimit = 50
     const safeLimit = Math.min(limit, maxLimit)
@@ -347,7 +364,7 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
         // Fetch TMDB biography
         const tmdbPerson = await getPersonDetails(actor.tmdb_id)
 
-        if (!tmdbPerson.biography || tmdbPerson.biography.trim().length < 50) {
+        if (!tmdbPerson.biography || tmdbPerson.biography.trim().length < MIN_BIOGRAPHY_LENGTH) {
           await pool.query(
             `UPDATE actors SET
               biography_raw_tmdb = $1,
