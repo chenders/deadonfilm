@@ -497,6 +497,20 @@ describe("Admin Coverage Queries", () => {
       expect(result.totalMovies).toBe(0)
       expect(result.totalShows).toBe(0)
     })
+
+    it("casts movie popularity to float to ensure numeric type", async () => {
+      vi.mocked(mockPool.query)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [] } as any)
+        .mockResolvedValueOnce({ rows: [{ total_movies: "0", total_shows: "0" }] } as any)
+
+      await getActorPreview(mockPool, 123)
+
+      const moviesCall = vi.mocked(mockPool.query).mock.calls[0]
+      // Verify the SQL uses COALESCE and ::float cast to prevent string type issues
+      // pg driver returns decimal as string, which breaks .toFixed() in the frontend
+      expect(moviesCall[0]).toContain("COALESCE(m.dof_popularity, 0)::float")
+    })
   })
 
   describe("captureCurrentSnapshot", () => {
