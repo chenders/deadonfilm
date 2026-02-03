@@ -82,23 +82,26 @@ export function sanitizeBiographyForPrompt(rawBiography: string): string {
 export function buildBiographyPrompt(actorName: string, rawBiography: string): string {
   const safeActorName = sanitizeActorNameForPrompt(actorName)
   const safeBiography = sanitizeBiographyForPrompt(rawBiography)
-  return `Rewrite this actor biography for ${safeActorName}. Create a clean, professional summary suitable for a movie database.
+  return `Rewrite this actor biography for ${safeActorName}. Create a clean, factual summary suitable for a movie database.
 
 ORIGINAL BIOGRAPHY:
 ${safeBiography}
 
 REQUIREMENTS:
 1. Maximum 6 lines of text (this is a HARD LIMIT)
-2. Focus on career highlights: notable roles, genres, career trajectory
-3. Third person voice
-4. DO NOT include:
-   - Birth or death dates (these are displayed separately)
+2. Use neutral, factual language - AVOID superlatives and praise words like "renowned", "acclaimed", "legendary", "beloved", "masterful", "commanding", "extraordinary"
+3. Structure:
+   - Start with any noteworthy pre-fame background (interesting childhood, education, career before acting) if available
+   - Cover career highlights: notable roles, genres, career trajectory
+   - End with ONE brief sentence about how they died (cause of death, age, year) if they are deceased
+4. Third person voice
+5. DO NOT include:
+   - Specific birth dates (displayed separately on the page)
    - "From Wikipedia" or source attributions
    - Citation markers like [1], [2], etc.
    - URLs or external links
-   - Family information unless career-relevant (e.g., "daughter of actors...")
    - Trailing ellipsis (...)
-5. If the original is mostly biographical dates and family info with little career content, return has_substantive_content: false
+6. If the original is mostly biographical dates with little career content, return has_substantive_content: false
 
 Respond with JSON only:
 {
