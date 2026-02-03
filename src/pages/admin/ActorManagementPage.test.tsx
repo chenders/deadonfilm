@@ -644,4 +644,169 @@ describe("ActorManagementPage", () => {
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
     })
   })
+
+  describe("Biography Regeneration", () => {
+    beforeEach(() => {
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: {
+          items: mockActors,
+          total: 3,
+          page: 1,
+          pageSize: 50,
+          totalPages: 1,
+        },
+        isLoading: false,
+        error: null,
+      } as never)
+      vi.mocked(useCausesOfDeath).mockReturnValue({
+        data: [],
+        isLoading: false,
+        error: null,
+      } as never)
+    })
+
+    it("renders regenerate biography button for each actor", () => {
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+      expect(regenerateButtons).toHaveLength(mockActors.length)
+    })
+
+    it("calls biography API with correct payload and credentials on button click", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true, result: { biography: "Test bio" } }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      // Mock alert
+      const mockAlert = vi.fn()
+      vi.stubGlobal("alert", mockAlert)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      // Click regenerate for first actor (John Wayne, id: 1)
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        // Run pending timers to allow async operations
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockFetch).toHaveBeenCalledWith("/admin/api/biographies/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ actorId: 1 }),
+      })
+    })
+
+    it("shows success alert when biography regeneration succeeds", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true, result: { biography: "New biography" } }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      const mockAlert = vi.fn()
+      vi.stubGlobal("alert", mockAlert)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockAlert).toHaveBeenCalledWith("Biography regenerated successfully")
+    })
+
+    it("shows appropriate message when no biography content available", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true, result: { biography: null } }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      const mockAlert = vi.fn()
+      vi.stubGlobal("alert", mockAlert)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockAlert).toHaveBeenCalledWith("No substantial biography content available from TMDB")
+    })
+
+    it("shows error alert when biography regeneration fails", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({ error: { message: "Actor not found" } }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      const mockAlert = vi.fn()
+      vi.stubGlobal("alert", mockAlert)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockAlert).toHaveBeenCalledWith("Actor not found")
+    })
+
+    it("disables all regenerate buttons while regeneration is in progress", async () => {
+      // Create a promise that we can control
+      let resolvePromise: (value: unknown) => void
+      const mockFetch = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          })
+      )
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      // Initially all buttons should be enabled
+      regenerateButtons.forEach((button) => {
+        expect(button).not.toBeDisabled()
+      })
+
+      // Click first button
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+      })
+
+      // All buttons should now be disabled
+      const buttonsAfterClick = screen.getAllByRole("button", { name: "Regenerate biography" })
+      buttonsAfterClick.forEach((button) => {
+        expect(button).toBeDisabled()
+      })
+
+      // Resolve the promise
+      await act(async () => {
+        resolvePromise!({
+          ok: true,
+          json: () => Promise.resolve({ success: true, result: { biography: "Bio" } }),
+        })
+        await vi.runAllTimersAsync()
+      })
+    })
+  })
 })

@@ -167,6 +167,7 @@ export default function ActorManagementPage() {
       const response = await fetch("/admin/api/biographies/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ actorId }),
       })
 
@@ -570,6 +571,7 @@ export default function ActorManagementPage() {
                                 disabled={regeneratingBiography !== null}
                                 className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
                                 title="Regenerate biography"
+                                aria-label="Regenerate biography"
                               >
                                 {regeneratingBiography === actor.id ? (
                                   <svg
