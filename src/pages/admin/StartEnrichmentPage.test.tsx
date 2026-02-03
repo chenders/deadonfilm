@@ -98,12 +98,12 @@ describe("StartEnrichmentPage defaults", () => {
       expect(aiCheckbox).toBeChecked()
     })
 
-    it("has gatherAllSources enabled by default (CLI: enabled, use --disable-gather-all-sources to turn off)", () => {
+    it("has gatherAllSources disabled by default (stop on first match)", () => {
       renderPage()
       const gatherAllCheckbox = screen.getByRole("checkbox", {
         name: /gather data from all sources/i,
       })
-      expect(gatherAllCheckbox).toBeChecked()
+      expect(gatherAllCheckbox).not.toBeChecked()
     })
   })
 

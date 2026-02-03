@@ -35,7 +35,7 @@ export default function StartEnrichmentPage() {
   const [free, setFree] = useState<boolean>(true)
   const [paid, setPaid] = useState<boolean>(true)
   const [ai, setAi] = useState<boolean>(true) // Admin enrichment uses all available sources for comprehensive data
-  const [gatherAllSources, setGatherAllSources] = useState<boolean>(true)
+  const [gatherAllSources, setGatherAllSources] = useState<boolean>(false) // Stop on first match by default
 
   // Advanced options - defaults match CLI script (enabled by default)
   const [claudeCleanup, setClaudeCleanup] = useState<boolean>(true)
