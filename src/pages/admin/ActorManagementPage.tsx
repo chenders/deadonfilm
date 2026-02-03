@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
@@ -511,28 +511,50 @@ export default function ActorManagementPage() {
                             {formatRelativeTime(actor.enriched_at)}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <a
-                              href={`/actor/${createActorSlug(actor.name, actor.id)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
-                              title="View public actor page"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
+                            <div className="flex items-center justify-center gap-1">
+                              <Link
+                                to={`/admin/actors/${actor.id}`}
+                                className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+                                title="Edit actor"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                />
-                              </svg>
-                            </a>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              </Link>
+                              <a
+                                href={`/actor/${createActorSlug(actor.name, actor.id)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+                                title="View public actor page"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                  />
+                                </svg>
+                              </a>
+                            </div>
                           </td>
                         </tr>
                       ))
