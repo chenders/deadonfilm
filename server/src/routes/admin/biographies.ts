@@ -53,7 +53,8 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 
     // Parse filters
     const minPopularity = Number.parseFloat(req.query.minPopularity as string) || 0
-    const needsGeneration = req.query.needsGeneration !== "false"
+    const needsGeneration = req.query.needsGeneration === "true"
+    const searchName = (req.query.searchName as string)?.trim() || ""
 
     const offset = (page - 1) * pageSize
 
@@ -69,6 +70,11 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     if (minPopularity > 0) {
       whereClause += ` AND COALESCE(tmdb_popularity, 0) >= $${paramIndex++}`
       params.push(minPopularity)
+    }
+
+    if (searchName) {
+      whereClause += ` AND name ILIKE $${paramIndex++}`
+      params.push(`%${searchName}%`)
     }
 
     // Get total count
@@ -278,12 +284,18 @@ interface BatchGenerateRequest {
   actorIds?: number[]
   limit?: number
   minPopularity?: number
+  allowRegeneration?: boolean
 }
 
 router.post("/generate-batch", async (req: Request, res: Response): Promise<void> => {
   try {
     const pool = getPool()
-    const { actorIds, limit = 10, minPopularity = 0 } = req.body as BatchGenerateRequest
+    const {
+      actorIds,
+      limit = 10,
+      minPopularity = 0,
+      allowRegeneration = false,
+    } = req.body as BatchGenerateRequest
 
     // Validate actorIds if provided
     if (
@@ -312,6 +324,7 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
     if (actorIds && actorIds.length > 0) {
       // Process specific actors using ANY() with array parameter
       // This avoids dynamic placeholder generation that triggers CodeQL warnings
+      const biographyFilter = allowRegeneration ? "" : "AND biography IS NULL"
       const result = await pool.query<{
         id: number
         tmdb_id: number
@@ -323,13 +336,14 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
          FROM actors
          WHERE id = ANY($1::int[])
            AND tmdb_id IS NOT NULL
-           AND biography IS NULL
+           ${biographyFilter}
          LIMIT $2`,
         [actorIds, safeLimit]
       )
       actorsToProcess = result.rows
     } else {
       // Get actors by popularity
+      const biographyFilter = allowRegeneration ? "" : "AND biography IS NULL"
       const result = await pool.query<{
         id: number
         tmdb_id: number
@@ -340,7 +354,7 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
         `SELECT id, tmdb_id, name, wikipedia_url, imdb_person_id
          FROM actors
          WHERE tmdb_id IS NOT NULL
-           AND biography IS NULL
+           ${biographyFilter}
            AND COALESCE(tmdb_popularity, 0) >= $1
          ORDER BY COALESCE(tmdb_popularity, 0) DESC
          LIMIT $2`,
