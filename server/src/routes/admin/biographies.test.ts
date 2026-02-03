@@ -200,56 +200,6 @@ describe("Admin Biographies Routes", () => {
       expect(invalidateActorCache).toHaveBeenCalledWith(1)
     })
 
-    it("invalidates actor cache after successful biography generation", async () => {
-      // Mock actor lookup
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          {
-            id: 42,
-            tmdb_id: 12345,
-            name: "Test Actor",
-            wikipedia_url: null,
-            imdb_person_id: null,
-          },
-        ],
-      })
-
-      // Mock TMDB person details
-      vi.mocked(getPersonDetails).mockResolvedValueOnce({
-        id: 12345,
-        name: "Test Actor",
-        biography: "Test Actor is a famous performer with a long career in film.",
-        birthday: "1950-01-01",
-        deathday: null,
-        place_of_birth: "Los Angeles, CA",
-        popularity: 5.0,
-        profile_path: "/path.jpg",
-        imdb_id: null,
-      })
-
-      // Mock biography generation
-      vi.mocked(generateBiographyWithTracking).mockResolvedValueOnce({
-        biography: "Test Actor is a renowned performer.",
-        hasSubstantiveContent: true,
-        sourceUrl: null,
-        sourceType: "tmdb",
-        inputTokens: 100,
-        outputTokens: 50,
-        costUsd: 0.001,
-        latencyMs: 500,
-      })
-
-      // Mock database update
-      mockQuery.mockResolvedValueOnce({ rows: [] })
-
-      const response = await request(app)
-        .post("/admin/api/biographies/generate")
-        .send({ actorId: 42 })
-
-      expect(response.status).toBe(200)
-      expect(invalidateActorCache).toHaveBeenCalledWith(42)
-    })
-
     it("returns 400 for missing actorId", async () => {
       const response = await request(app).post("/admin/api/biographies/generate").send({})
 

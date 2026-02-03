@@ -250,7 +250,9 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
       ]
     )
 
-    // Invalidate cache so updated biography is served
+    // Invalidate cache so updated biography is served.
+    // Note: invalidateActorCache() handles Redis failures internally and does not throw,
+    // but we keep the try/catch as defensive coding in case that behavior changes.
     try {
       await invalidateActorCache(actorId)
     } catch (err) {
@@ -439,7 +441,9 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
 
         totalCost += result.costUsd
 
-        // Invalidate cache so updated biography is served
+        // Invalidate cache so updated biography is served.
+        // Note: invalidateActorCache() handles Redis failures internally and does not throw,
+        // but we keep the try/catch as defensive coding in case that behavior changes.
         try {
           await invalidateActorCache(actor.id)
         } catch (err) {
