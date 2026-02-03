@@ -16,7 +16,7 @@ exports.up = (pgm) => {
     },
     biography_generated_at: { type: "timestamp" },
     biography_raw_tmdb: { type: "text" },
-    biography_has_content: { type: "boolean", default: false },
+    biography_has_content: { type: "boolean" },
   })
 
   pgm.createIndex("actors", ["biography_generated_at"], {

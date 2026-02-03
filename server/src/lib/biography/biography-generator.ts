@@ -57,14 +57,35 @@ function sanitizeActorNameForPrompt(actorName: string): string {
 }
 
 /**
+ * Sanitize a raw biography before including it in an AI prompt.
+ * Normalizes whitespace, removes control characters, and limits length
+ * to reduce prompt injection risk and prevent excessive token usage.
+ */
+function sanitizeBiographyForPrompt(rawBiography: string): string {
+  return (
+    rawBiography
+      .trim()
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      // eslint-disable-next-line no-control-regex -- Intentional: sanitizing control characters from upstream text
+      .replace(/[\x00-\x09\x0b-\x1f\x7f]/g, "")
+      // Collapse runs of more than two newlines to avoid extreme spacing
+      .replace(/\n{3,}/g, "\n\n")
+      // Limit to a reasonable length to keep prompts within token budget
+      .slice(0, 4000)
+  )
+}
+
+/**
  * Build the prompt for biography generation.
  */
 export function buildBiographyPrompt(actorName: string, rawBiography: string): string {
   const safeActorName = sanitizeActorNameForPrompt(actorName)
+  const safeBiography = sanitizeBiographyForPrompt(rawBiography)
   return `Rewrite this actor biography for ${safeActorName}. Create a clean, professional summary suitable for a movie database.
 
 ORIGINAL BIOGRAPHY:
-${rawBiography}
+${safeBiography}
 
 REQUIREMENTS:
 1. Maximum 6 lines of text (this is a HARD LIMIT)
