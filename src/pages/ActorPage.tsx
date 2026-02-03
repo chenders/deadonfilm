@@ -216,6 +216,19 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
   )
 }
 
+function getSourceDisplayName(type: "wikipedia" | "tmdb" | "imdb" | null): string {
+  switch (type) {
+    case "wikipedia":
+      return "Wikipedia"
+    case "tmdb":
+      return "TMDB"
+    case "imdb":
+      return "IMDb"
+    default:
+      return "source"
+  }
+}
+
 export default function ActorPage() {
   const { slug } = useParams<{ slug: string }>()
   const location = useLocation()
@@ -337,14 +350,21 @@ export default function ActorPage() {
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           {/* Profile photo */}
           {profileUrl ? (
-            <img
-              src={profileUrl}
-              alt={actor.name}
-              width={144}
-              height={192}
-              className="h-48 w-36 flex-shrink-0 rounded-lg object-cover shadow-md"
-              data-testid="actor-profile-photo"
-            />
+            <a
+              href={actor.biographySourceUrl || `https://www.themoviedb.org/person/${actor.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0"
+            >
+              <img
+                src={profileUrl}
+                alt={actor.name}
+                width={144}
+                height={192}
+                className="h-48 w-36 rounded-lg object-cover shadow-md transition-opacity hover:opacity-90"
+                data-testid="actor-profile-photo"
+              />
+            </a>
           ) : (
             <div
               className="flex h-48 w-36 flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-md"
@@ -464,9 +484,17 @@ export default function ActorPage() {
         {actor.biography && (
           <div className="mb-6 rounded-lg bg-white p-4">
             <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
-            <p className="line-clamp-6 text-sm leading-relaxed text-text-muted">
-              {actor.biography}
-            </p>
+            <p className="text-sm leading-relaxed text-text-muted">{actor.biography}</p>
+            {actor.biographySourceUrl && (
+              <a
+                href={actor.biographySourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-sm text-brown-medium hover:text-brown-dark hover:underline"
+              >
+                Read more on {getSourceDisplayName(actor.biographySourceType)} →
+              </a>
+            )}
           </div>
         )}
 

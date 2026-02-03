@@ -56,6 +56,14 @@ export interface ActorRecord {
   deathday_verification_source: string | null // e.g., 'wikidata'
   deathday_verified_at: string | null
 
+  // Biography fields
+  biography: string | null
+  biography_source_url: string | null
+  biography_source_type: "wikipedia" | "tmdb" | "imdb" | null
+  biography_generated_at: string | null
+  biography_raw_tmdb: string | null
+  biography_has_content: boolean | null
+
   // Computed column
   is_obscure: boolean | null
 }
