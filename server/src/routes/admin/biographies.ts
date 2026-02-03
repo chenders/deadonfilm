@@ -79,12 +79,13 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const totalCount = parseInt(countResult.rows[0].count, 10)
 
     // Get actors
+    // Cast tmdb_popularity to float so pg returns a number (not string from numeric type)
     const result = await pool.query<ActorNeedingBiography>(
       `SELECT
         id,
         tmdb_id,
         name,
-        tmdb_popularity,
+        tmdb_popularity::float as tmdb_popularity,
         biography,
         biography_generated_at,
         wikipedia_url,
