@@ -5,6 +5,7 @@
 
 import { useState } from "react"
 import type { FieldChange } from "../../../hooks/admin/useActorEditor"
+import { useFieldHistory } from "../../../hooks/admin/useFieldHistory"
 
 export type FieldType = "text" | "textarea" | "date" | "boolean" | "select" | "array"
 
@@ -21,6 +22,7 @@ interface EditableFieldProps {
   history?: FieldChange[]
   onRevert?: (previousValue: string | null) => void
   className?: string
+  actorId?: number
 }
 
 export default function EditableField({
@@ -36,15 +38,24 @@ export default function EditableField({
   history = [],
   onRevert,
   className = "",
+  actorId,
 }: EditableFieldProps) {
-  const [showHistory, setShowHistory] = useState(false)
+  const [showFullHistory, setShowFullHistory] = useState(false)
+
+  const { history: fullHistory, isLoading: isLoadingHistory } = useFieldHistory(
+    actorId,
+    name,
+    showFullHistory
+  )
 
   const lastChange = history.length > 0 ? history[0] : null
   const hasHistory = history.length > 0
 
-  const handleRevert = () => {
-    if (lastChange && onRevert) {
-      onRevert(lastChange.old_value)
+  const displayHistory = showFullHistory ? fullHistory : history.slice(0, 5)
+
+  const handleRevert = (oldValue: string | null) => {
+    if (onRevert) {
+      onRevert(oldValue)
     }
   }
 
@@ -166,16 +177,16 @@ export default function EditableField({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowHistory(!showHistory)}
+              onClick={() => setShowFullHistory(!showFullHistory)}
               className="text-xs text-admin-text-muted hover:text-admin-text-primary"
               title="View history"
             >
-              {showHistory ? "Hide history" : "Show history"}
+              {showFullHistory ? "Hide history" : "Show history"}
             </button>
-            {onRevert && (
+            {!showFullHistory && onRevert && lastChange && (
               <button
                 type="button"
-                onClick={handleRevert}
+                onClick={() => handleRevert(lastChange.old_value)}
                 className="bg-admin-surface-raised flex items-center gap-1 rounded px-2 py-1 text-xs text-admin-text-muted hover:bg-admin-surface-inset hover:text-admin-text-primary"
                 title={`Revert to: ${lastChange?.old_value ?? "(empty)"}`}
               >
@@ -191,33 +202,54 @@ export default function EditableField({
 
       {helpText && <p className="text-xs text-admin-text-muted">{helpText}</p>}
 
-      {lastChange && !showHistory && (
+      {lastChange && !showFullHistory && (
         <p className="text-xs text-admin-text-muted">
           Last changed: {new Date(lastChange.created_at).toLocaleDateString()} by{" "}
           {lastChange.source}
         </p>
       )}
 
-      {showHistory && history.length > 0 && (
-        <div className="bg-admin-surface-raised mt-2 rounded border border-admin-border p-2">
+      {showFullHistory && (
+        <div className="bg-admin-surface-raised mt-2 max-h-[200px] overflow-y-auto rounded border border-admin-border p-2">
           <h4 className="mb-2 text-xs font-medium text-admin-text-primary">Change History</h4>
-          <ul className="space-y-1 text-xs">
-            {history.slice(0, 5).map((change, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-admin-text-muted">
-                <span className="shrink-0 text-admin-text-primary">
-                  {new Date(change.created_at).toLocaleDateString()}
-                </span>
-                <span className="shrink-0 rounded bg-admin-surface-inset px-1">
-                  {change.source}
-                </span>
-                <span className="truncate">
-                  <span className="line-through">{change.old_value || "(empty)"}</span>
-                  {" → "}
-                  <span>{change.new_value || "(empty)"}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          {isLoadingHistory ? (
+            <p className="text-xs text-admin-text-muted">Loading history...</p>
+          ) : displayHistory.length === 0 ? (
+            <p className="text-xs text-admin-text-muted">No history available</p>
+          ) : (
+            <ul className="space-y-2">
+              {displayHistory.map((change, idx) => (
+                <li
+                  key={"id" in change ? change.id : idx}
+                  className="flex items-start justify-between gap-2 rounded bg-admin-surface-inset p-2 text-xs"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-admin-text-muted">
+                      <span>{new Date(change.created_at).toLocaleDateString()}</span>
+                      <span className="rounded bg-admin-surface-overlay px-1">{change.source}</span>
+                    </div>
+                    <div className="mt-1 truncate text-admin-text-primary">
+                      <span className="text-admin-text-muted line-through">
+                        {change.old_value || "(empty)"}
+                      </span>
+                      {" → "}
+                      <span>{change.new_value || "(empty)"}</span>
+                    </div>
+                  </div>
+                  {onRevert && (
+                    <button
+                      type="button"
+                      onClick={() => handleRevert(change.old_value)}
+                      className="hover:bg-admin-surface-raised shrink-0 rounded bg-admin-surface-overlay px-2 py-1 text-admin-text-muted hover:text-admin-text-primary"
+                      title={`Revert to: ${change.old_value ?? "(empty)"}`}
+                    >
+                      Revert
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>
