@@ -837,7 +837,7 @@ export default function StartEnrichmentPage() {
           <p className="mb-4 text-admin-text-secondary">
             Equivalent CLI command for this configuration:
           </p>
-          <div className="overflow-x-auto rounded bg-admin-surface-base p-4 font-mono text-sm text-admin-text-secondary">
+          <pre className="whitespace-pre-wrap break-words rounded bg-admin-surface-base p-4 font-mono text-sm text-admin-text-secondary">
             cd server && npm run enrich:death-details --{" "}
             {selectionMode === "specific" && selectedActorIds.length > 0
               ? `--actor-id ${selectedActorIds.join(",")}`
@@ -858,7 +858,7 @@ export default function StartEnrichmentPage() {
             {aiLinkSelection ? "" : " --disable-ai-link-selection"}
             {aiContentExtraction ? "" : " --disable-ai-content-extraction"}
             {confidence !== 0.5 ? ` --confidence ${confidence}` : ""}
-          </div>
+          </pre>
         </div>
       </div>
     </AdminLayout>

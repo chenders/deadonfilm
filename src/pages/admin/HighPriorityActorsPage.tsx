@@ -122,102 +122,108 @@ export default function HighPriorityActorsPage() {
 
           {/* Actors Table */}
           {!isLoading && !error && actors && actors.length > 0 && (
-            <>
-              <div className="overflow-hidden rounded-lg bg-admin-surface-elevated shadow-admin-sm">
-                <table className="min-w-full divide-y divide-admin-border">
-                  <thead className="bg-admin-surface-overlay">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left">
-                        <input
-                          type="checkbox"
-                          checked={actors.length > 0 && selectedActorIds.size === actors.length}
-                          onChange={handleSelectAll}
-                          aria-label="Select all actors"
-                          data-testid="select-all-checkbox"
-                          className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
-                        />
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
-                      >
-                        Name
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
-                      >
-                        Death Date
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
-                      >
-                        Popularity
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
-                      >
-                        Last Enriched
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
-                    {actors.map((actor) => (
-                      <tr
-                        key={actor.id}
-                        className={`transition-colors hover:bg-admin-interactive-secondary ${
-                          selectedActorIds.has(actor.id) ? "bg-admin-interactive-secondary" : ""
-                        }`}
-                      >
-                        <td className="px-6 py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedActorIds.has(actor.id)}
-                            onChange={() => handleSelectActor(actor.id)}
-                            aria-label={`Select ${actor.name}`}
-                            data-testid="actor-checkbox"
-                            className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
-                          />
-                        </td>
-                        <td className="px-6 py-4 text-sm font-medium text-admin-text-primary">
-                          {actor.name}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-admin-text-secondary">
-                          {formatDate(actor.deathday)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-admin-text-secondary">
-                          {actor.popularity?.toFixed(1) ?? "N/A"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-admin-text-secondary">
-                          {formatDate(actor.enriched_at)}
-                        </td>
+            <div className={selectedActorIds.size > 0 ? "pb-24" : ""}>
+              <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+                <div className="inline-block min-w-full overflow-hidden rounded-lg bg-admin-surface-elevated shadow-admin-sm">
+                  <table className="w-full min-w-[700px] divide-y divide-admin-border">
+                    <thead className="bg-admin-surface-overlay">
+                      <tr>
+                        <th scope="col" className="px-3 py-3 text-left md:px-6">
+                          <label className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center">
+                            <input
+                              type="checkbox"
+                              checked={actors.length > 0 && selectedActorIds.size === actors.length}
+                              onChange={handleSelectAll}
+                              aria-label="Select all actors"
+                              data-testid="select-all-checkbox"
+                              className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
+                            />
+                          </label>
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
+                        >
+                          Name
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
+                        >
+                          Death Date
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
+                        >
+                          Popularity
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-secondary"
+                        >
+                          Last Enriched
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
+                      {actors.map((actor) => (
+                        <tr
+                          key={actor.id}
+                          className={`transition-colors hover:bg-admin-interactive-secondary ${
+                            selectedActorIds.has(actor.id) ? "bg-admin-interactive-secondary" : ""
+                          }`}
+                        >
+                          <td className="px-3 py-2 md:px-6 md:py-4">
+                            <label className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedActorIds.has(actor.id)}
+                                onChange={() => handleSelectActor(actor.id)}
+                                aria-label={`Select ${actor.name}`}
+                                data-testid="actor-checkbox"
+                                className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-2 focus:ring-admin-interactive"
+                              />
+                            </label>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-admin-text-primary">
+                            {actor.name}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-admin-text-secondary">
+                            {formatDate(actor.deathday)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-admin-text-secondary">
+                            {actor.popularity?.toFixed(1) ?? "N/A"}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-admin-text-secondary">
+                            {formatDate(actor.enriched_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Results Summary */}
               <div className="mt-4 text-sm text-admin-text-muted">
                 Showing {actors.length} high-priority actors
               </div>
-            </>
+            </div>
           )}
 
           {/* Fixed Action Bar */}
           {selectedActorIds.size > 0 && (
             <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-admin-border bg-admin-surface-elevated p-4 shadow-lg">
-              <div className="mx-auto flex max-w-7xl items-center justify-between">
-                <span className="text-sm font-medium text-admin-text-primary">
+              <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-center text-sm font-medium text-admin-text-primary sm:text-left">
                   {selectedActorIds.size} actor{selectedActorIds.size !== 1 ? "s" : ""} selected
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
                   <button
                     onClick={() => setSelectedActorIds(new Set())}
                     data-testid="clear-selection-button"
-                    className="rounded bg-admin-surface-overlay px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary"
+                    className="min-h-[44px] rounded bg-admin-surface-overlay px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary"
                   >
                     Clear Selection
                   </button>
@@ -225,7 +231,7 @@ export default function HighPriorityActorsPage() {
                     onClick={handleEnrichSelected}
                     disabled={startEnrichment.isPending}
                     data-testid="enrich-selected-button"
-                    className="rounded bg-admin-interactive px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
+                    className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {startEnrichment.isPending ? "Starting..." : "Enrich Selected"}
                   </button>
@@ -233,9 +239,6 @@ export default function HighPriorityActorsPage() {
               </div>
             </div>
           )}
-
-          {/* Add bottom padding when action bar is visible */}
-          {selectedActorIds.size > 0 && <div className="h-20" />}
         </div>
       </div>
     </AdminLayout>

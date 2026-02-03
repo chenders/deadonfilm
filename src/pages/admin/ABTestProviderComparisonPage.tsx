@@ -3,10 +3,12 @@ import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import { useABTestProviderComparison } from "../../hooks/admin/useABTestProviderComparison"
+import { useIsMobile } from "../../hooks/useIsMobile"
 
 export default function ABTestProviderComparisonPage() {
   const { data, isLoading, error } = useABTestProviderComparison()
   const [expandedActorId, setExpandedActorId] = useState<number | null>(null)
+  const isMobile = useIsMobile(768) // Use md breakpoint for diff viewer
 
   if (isLoading) {
     return (
@@ -219,7 +221,7 @@ export default function ABTestProviderComparisonPage() {
                             <ReactDiffViewer
                               oldValue={comparison.providers[providerKeys[0]].circumstances || ""}
                               newValue={comparison.providers[providerKeys[1]].circumstances || ""}
-                              splitView={true}
+                              splitView={!isMobile}
                               compareMethod={DiffMethod.WORDS}
                               leftTitle={providerKeys[0]}
                               rightTitle={providerKeys[1]}
@@ -250,9 +252,11 @@ export default function ABTestProviderComparisonPage() {
 
                       {/* Side-by-side comparison for all providers */}
                       <div
-                        className="grid gap-4 md:gap-6"
+                        className="grid grid-cols-1 gap-4 md:gap-6"
                         style={{
-                          gridTemplateColumns: `repeat(${Math.min(providerKeys.length, 3)}, minmax(0, 1fr))`,
+                          gridTemplateColumns: isMobile
+                            ? undefined
+                            : `repeat(${Math.min(providerKeys.length, 3)}, minmax(0, 1fr))`,
                         }}
                       >
                         {providerKeys.map((provider) => {
