@@ -237,7 +237,7 @@ function detectDataQualityIssues(
     issues.push({
       field: "cause_of_death",
       issue: `${circumstances.cause_confidence === "disputed" ? "Disputed" : "Low"} confidence on cause of death`,
-      severity: "warning",
+      severity: circumstances.cause_confidence === "disputed" ? "error" : "warning",
     })
   }
 
@@ -248,7 +248,7 @@ function detectDataQualityIssues(
     issues.push({
       field: "circumstances",
       issue: `${circumstances.circumstances_confidence === "disputed" ? "Disputed" : "Low"} confidence on circumstances`,
-      severity: "warning",
+      severity: circumstances.circumstances_confidence === "disputed" ? "error" : "warning",
     })
   }
 
