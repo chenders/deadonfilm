@@ -6,6 +6,7 @@ import ErrorMessage from "../../components/common/ErrorMessage"
 import AdminHoverCard from "../../components/admin/ui/AdminHoverCard"
 import ActorPreviewCard from "../../components/admin/ActorPreviewCard"
 import { createActorSlug } from "../../utils/slugify"
+import { useDebouncedSearchParam } from "../../hooks/useDebouncedSearchParam"
 
 interface BiographyActor {
   id: number
@@ -167,24 +168,23 @@ export default function BiographyManagementPage() {
   const [page, setPage] = useState(1)
   const [minPopularity, setMinPopularity] = useState(0)
   const [needsGeneration, setNeedsGeneration] = useState(false)
-  const [searchNameInput, setSearchNameInput] = useState("")
-  const [searchName, setSearchName] = useState("")
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
   const [batchLimit, setBatchLimit] = useState(10)
   const [generatingActorId, setGeneratingActorId] = useState<number | null>(null)
   const pageSize = 50
 
-  // Debounce search input
+  // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
+  const [searchNameInput, setSearchNameInput, searchName] = useDebouncedSearchParam({
+    paramName: "searchName",
+    debounceMs: 300,
+    resetPageOnChange: true,
+  })
+
+  // Reset page and clear selection when search changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchNameInput !== searchName) {
-        setSearchName(searchNameInput)
-        setPage(1)
-        setSelectedActorIds(new Set())
-      }
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [searchNameInput, searchName])
+    setPage(1)
+    setSelectedActorIds(new Set())
+  }, [searchName])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-biographies", page, pageSize, minPopularity, needsGeneration, searchName],
