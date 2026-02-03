@@ -124,6 +124,12 @@ describe("getActor", () => {
     deathday_verification_source: null,
     deathday_verified_at: null,
     has_detailed_death_info: false,
+    biography: null,
+    biography_source_url: null,
+    biography_source_type: null,
+    biography_generated_at: null,
+    biography_raw_tmdb: null,
+    biography_has_content: null,
   }
 
   const mockDeceasedRecord = {
@@ -154,6 +160,12 @@ describe("getActor", () => {
     deathday_verification_source: null,
     deathday_verified_at: null,
     has_detailed_death_info: false,
+    biography: null,
+    biography_source_url: null,
+    biography_source_type: null,
+    biography_generated_at: null,
+    biography_raw_tmdb: null,
+    biography_has_content: null,
   }
 
   beforeEach(() => {

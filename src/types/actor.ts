@@ -111,6 +111,8 @@ export interface ActorProfileResponse {
     deathday: string | null
     deathdayPrecision?: DatePrecision | null
     biography: string
+    biographySourceUrl: string | null
+    biographySourceType: "wikipedia" | "tmdb" | "imdb" | null
     profilePath: string | null
     placeOfBirth: string | null
   }

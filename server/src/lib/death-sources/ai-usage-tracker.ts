@@ -16,7 +16,11 @@ import type { Pool } from "pg"
 /**
  * Types of AI helper operations.
  */
-export type AIOperation = "link_selection" | "content_extraction" | "cleanup"
+export type AIOperation =
+  | "link_selection"
+  | "content_extraction"
+  | "cleanup"
+  | "biography_generation"
 
 /**
  * Quality rating for AI results.

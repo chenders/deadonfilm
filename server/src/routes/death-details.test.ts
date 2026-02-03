@@ -83,6 +83,12 @@ describe("getActorDeathDetails", () => {
     dof_popularity: null,
     dof_popularity_confidence: null,
     dof_popularity_updated_at: null,
+    biography: null,
+    biography_source_url: null,
+    biography_source_type: null,
+    biography_generated_at: null,
+    biography_raw_tmdb: null,
+    biography_has_content: null,
     // Fields accessed via `as unknown as` casts in the route handler
     death_manner: "natural",
     death_categories: ["cardiovascular"],
@@ -798,6 +804,12 @@ describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", (
     dof_popularity: null,
     dof_popularity_confidence: null,
     dof_popularity_updated_at: null,
+    biography: null,
+    biography_source_url: null,
+    biography_source_type: null,
+    biography_generated_at: null,
+    biography_raw_tmdb: null,
+    biography_has_content: null,
   }
 
   beforeEach(() => {

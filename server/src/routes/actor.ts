@@ -18,6 +18,8 @@ interface ActorProfileResponse {
     birthday: string | null
     deathday: string | null
     biography: string
+    biographySourceUrl: string | null
+    biographySourceType: "wikipedia" | "tmdb" | "imdb" | null
     profilePath: string | null
     placeOfBirth: string | null
   }
@@ -147,13 +149,22 @@ export async function getActor(req: Request, res: Response) {
       }
     }
 
+    // Use DB biography if available, fall back to TMDB
+    const biography = actorRecord.biography || person.biography
+    const biographySourceUrl =
+      actorRecord.biography_source_url ||
+      (actorRecord.tmdb_id ? `https://www.themoviedb.org/person/${actorRecord.tmdb_id}` : null)
+    const biographySourceType = actorRecord.biography_source_type || (biography ? "tmdb" : null)
+
     const response: ActorProfileResponse = {
       actor: {
         id: person.id,
         name: person.name,
         birthday: person.birthday,
         deathday: person.deathday,
-        biography: person.biography,
+        biography,
+        biographySourceUrl,
+        biographySourceType,
         profilePath: person.profile_path,
         placeOfBirth: person.place_of_birth,
       },
