@@ -7,6 +7,7 @@ import { useParams, Link } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
 import { EditableField } from "../../components/admin/actor-editor"
 import { useActorEditor, type UpdateActorRequest } from "../../hooks/admin/useActorEditor"
+import { createActorSlug } from "../../utils/slugify"
 
 type TabId = "basic" | "death" | "circumstances"
 
@@ -172,7 +173,7 @@ export default function ActorEditorPage() {
       await updateActorAsync(request)
       setPendingChanges({ actor: {}, circumstances: {} })
     } catch {
-      // Error is handled by the hook
+      // Hook sets updateError state; displayed by the error UI section below
     }
   }, [hasChanges, pendingChanges, updateActorAsync])
 
@@ -275,7 +276,7 @@ export default function ActorEditorPage() {
             </Link>
             {actor && (
               <Link
-                to={`/actor/${actor.name.toLowerCase().replace(/\s+/g, "-")}-${actor.id}`}
+                to={`/actor/${createActorSlug(actor.name, actor.id)}`}
                 target="_blank"
                 className="bg-admin-surface-raised rounded px-3 py-2 text-sm text-admin-text-muted hover:bg-admin-surface-inset"
               >
@@ -377,7 +378,7 @@ export default function ActorEditorPage() {
                   options={field.options}
                   value={getFieldValue("circumstances", field.name)}
                   onChange={(value) => handleFieldChange("circumstances", field.name, value)}
-                  history={getFieldHistory(`circumstances.${field.name}`)}
+                  history={getFieldHistory(field.name)}
                   onRevert={(oldValue) => handleFieldChange("circumstances", field.name, oldValue)}
                   className={field.type === "textarea" ? "md:col-span-2" : ""}
                 />
