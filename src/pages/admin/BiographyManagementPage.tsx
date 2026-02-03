@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
@@ -68,7 +68,8 @@ async function fetchBiographies(
   page: number,
   pageSize: number,
   minPopularity: number,
-  needsGeneration: boolean
+  needsGeneration: boolean,
+  searchName: string
 ): Promise<BiographyResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -76,6 +77,10 @@ async function fetchBiographies(
     minPopularity: minPopularity.toString(),
     needsGeneration: needsGeneration.toString(),
   })
+
+  if (searchName.trim()) {
+    params.set("searchName", searchName.trim())
+  }
 
   const response = await fetch(`/admin/api/biographies?${params}`, {
     credentials: "include",
@@ -107,13 +112,14 @@ async function generateBiography(actorId: number): Promise<GenerateResult> {
 async function generateBiographiesBatch(
   actorIds: number[],
   limit?: number,
-  minPopularity?: number
+  minPopularity?: number,
+  allowRegeneration?: boolean
 ): Promise<BatchGenerateResult> {
   const response = await fetch("/admin/api/biographies/generate-batch", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ actorIds, limit, minPopularity }),
+    body: JSON.stringify({ actorIds, limit, minPopularity, allowRegeneration }),
   })
 
   if (!response.ok) {
@@ -160,15 +166,29 @@ export default function BiographyManagementPage() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [minPopularity, setMinPopularity] = useState(0)
-  const [needsGeneration, setNeedsGeneration] = useState(true)
+  const [needsGeneration, setNeedsGeneration] = useState(false)
+  const [searchNameInput, setSearchNameInput] = useState("")
+  const [searchName, setSearchName] = useState("")
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
   const [batchLimit, setBatchLimit] = useState(10)
   const [generatingActorId, setGeneratingActorId] = useState<number | null>(null)
   const pageSize = 50
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchNameInput !== searchName) {
+        setSearchName(searchNameInput)
+        setPage(1)
+        setSelectedActorIds(new Set())
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchNameInput, searchName])
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-biographies", page, pageSize, minPopularity, needsGeneration],
-    queryFn: () => fetchBiographies(page, pageSize, minPopularity, needsGeneration),
+    queryKey: ["admin-biographies", page, pageSize, minPopularity, needsGeneration, searchName],
+    queryFn: () => fetchBiographies(page, pageSize, minPopularity, needsGeneration, searchName),
   })
 
   const generateMutation = useMutation({
@@ -179,8 +199,18 @@ export default function BiographyManagementPage() {
   })
 
   const batchGenerateMutation = useMutation({
-    mutationFn: (params: { actorIds?: number[]; limit?: number; minPopularity?: number }) =>
-      generateBiographiesBatch(params.actorIds || [], params.limit, params.minPopularity),
+    mutationFn: (params: {
+      actorIds?: number[]
+      limit?: number
+      minPopularity?: number
+      allowRegeneration?: boolean
+    }) =>
+      generateBiographiesBatch(
+        params.actorIds || [],
+        params.limit,
+        params.minPopularity,
+        params.allowRegeneration
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-biographies"] })
       setSelectedActorIds(new Set())
@@ -199,7 +229,10 @@ export default function BiographyManagementPage() {
   const handleGenerateSelected = async () => {
     if (selectedActorIds.size === 0) return
     try {
-      await batchGenerateMutation.mutateAsync({ actorIds: Array.from(selectedActorIds) })
+      await batchGenerateMutation.mutateAsync({
+        actorIds: Array.from(selectedActorIds),
+        allowRegeneration: true,
+      })
     } catch {
       // Error state is handled by the mutation's isError property
     }
@@ -276,7 +309,22 @@ export default function BiographyManagementPage() {
             Filters & Batch Actions
           </h2>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {/* Name Search */}
+            <div>
+              <label htmlFor="searchName" className="mb-1 block text-sm text-admin-text-muted">
+                Name Search
+              </label>
+              <input
+                id="searchName"
+                type="text"
+                value={searchNameInput}
+                onChange={(e) => setSearchNameInput(e.target.value)}
+                className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
+                placeholder="Actor name..."
+              />
+            </div>
+
             {/* Min Popularity */}
             <div>
               <label htmlFor="minPopularity" className="mb-1 block text-sm text-admin-text-muted">
@@ -297,7 +345,7 @@ export default function BiographyManagementPage() {
               />
             </div>
 
-            {/* Needs Generation Filter */}
+            {/* Biography Status Filter */}
             <div>
               <label htmlFor="needsGeneration" className="mb-1 block text-sm text-admin-text-muted">
                 Biography Status
@@ -308,11 +356,12 @@ export default function BiographyManagementPage() {
                 onChange={(e) => {
                   setNeedsGeneration(e.target.value === "true")
                   setPage(1)
+                  setSelectedActorIds(new Set())
                 }}
                 className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
               >
-                <option value="true">Needs Generation</option>
                 <option value="false">All Actors</option>
+                <option value="true">Needs Generation Only</option>
               </select>
             </div>
 
