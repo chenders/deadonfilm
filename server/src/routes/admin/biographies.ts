@@ -10,6 +10,7 @@ import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
 import { getPersonDetails } from "../../lib/tmdb.js"
+import { invalidateActorCache } from "../../lib/cache.js"
 import {
   generateBiographyWithTracking,
   type ActorForBiography,
@@ -249,6 +250,16 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
       ]
     )
 
+    // Invalidate cache so updated biography is served
+    try {
+      await invalidateActorCache(actorId)
+    } catch (cacheError) {
+      logger.warn(
+        { cacheError, actorId },
+        "Failed to invalidate actor cache after biography update"
+      )
+    }
+
     // Log admin action
     await logAdminAction({
       action: "generate_biography",
@@ -430,6 +441,16 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
         )
 
         totalCost += result.costUsd
+
+        // Invalidate cache so updated biography is served
+        try {
+          await invalidateActorCache(actor.id)
+        } catch (cacheError) {
+          logger.warn(
+            { cacheError, actorId: actor.id },
+            "Failed to invalidate actor cache after biography update"
+          )
+        }
 
         results.push({
           actorId: actor.id,
