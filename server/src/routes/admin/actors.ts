@@ -7,7 +7,7 @@
 import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
-import { getCached, CACHE_KEYS } from "../../lib/cache.js"
+import { getCached, invalidateActorCache, CACHE_KEYS } from "../../lib/cache.js"
 import { createActorSlug } from "../../lib/slug-utils.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
 
@@ -233,18 +233,21 @@ function detectDataQualityIssues(
     })
   }
 
-  if (circumstances?.cause_confidence === "low") {
+  if (circumstances?.cause_confidence === "low" || circumstances?.cause_confidence === "disputed") {
     issues.push({
       field: "cause_of_death",
-      issue: "Low confidence on cause of death",
+      issue: `${circumstances.cause_confidence === "disputed" ? "Disputed" : "Low"} confidence on cause of death`,
       severity: "warning",
     })
   }
 
-  if (circumstances?.circumstances_confidence === "low") {
+  if (
+    circumstances?.circumstances_confidence === "low" ||
+    circumstances?.circumstances_confidence === "disputed"
+  ) {
     issues.push({
       field: "circumstances",
-      issue: "Low confidence on circumstances",
+      issue: `${circumstances.circumstances_confidence === "disputed" ? "Disputed" : "Low"} confidence on circumstances`,
       severity: "warning",
     })
   }
@@ -364,7 +367,7 @@ interface UpdateActorBody {
   circumstances?: Record<string, unknown>
 }
 
-router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
+router.patch("/:id(\\d+)", async (req: Request, res: Response): Promise<void> => {
   const pool = getPool()
   const actorId = parseInt(req.params.id, 10)
 
@@ -711,6 +714,13 @@ router.patch("/:id", async (req: Request, res: Response): Promise<void> => {
       { actorId, snapshotId, changeCount: changes.length },
       "Actor updated via admin editor"
     )
+
+    // Invalidate cache to ensure fresh data is served
+    try {
+      await invalidateActorCache(actorId)
+    } catch (err) {
+      logger.warn({ err, actorId }, "Failed to invalidate actor cache")
+    }
 
     // Fetch updated data to return
     const updatedActorResult = await pool.query<ActorRow>(`SELECT * FROM actors WHERE id = $1`, [

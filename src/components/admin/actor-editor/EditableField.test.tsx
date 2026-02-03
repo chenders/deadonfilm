@@ -284,6 +284,10 @@ describe("EditableField", () => {
   })
 
   describe("expanded history panel", () => {
+    // Note: mockFullHistory includes field_name because it's used both:
+    // 1. For the history prop (expects FieldChange which requires field_name)
+    // 2. For mocking useFieldHistory (expects FieldHistoryEntry which doesn't have field_name)
+    // The extra property is harmless when passed to useFieldHistory mock
     const mockFullHistory = [
       {
         id: 1,
