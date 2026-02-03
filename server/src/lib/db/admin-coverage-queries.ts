@@ -396,7 +396,7 @@ export async function getActorPreview(pool: Pool, actorId: number): Promise<Acto
     character_name: string | null
     dof_popularity: number
   }>(
-    `SELECT m.title, m.release_year, ama.character_name, m.dof_popularity
+    `SELECT m.title, m.release_year, ama.character_name, m.dof_popularity::float as dof_popularity
      FROM actor_movie_appearances ama
      JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
      WHERE ama.actor_id = $1
