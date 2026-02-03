@@ -253,11 +253,8 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
     // Invalidate cache so updated biography is served
     try {
       await invalidateActorCache(actorId)
-    } catch (cacheError) {
-      logger.warn(
-        { cacheError, actorId },
-        "Failed to invalidate actor cache after biography update"
-      )
+    } catch (err) {
+      logger.warn({ err, actorId }, "Failed to invalidate actor cache after biography update")
     }
 
     // Log admin action
@@ -445,9 +442,9 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
         // Invalidate cache so updated biography is served
         try {
           await invalidateActorCache(actor.id)
-        } catch (cacheError) {
+        } catch (err) {
           logger.warn(
-            { cacheError, actorId: actor.id },
+            { err, actorId: actor.id },
             "Failed to invalidate actor cache after biography update"
           )
         }

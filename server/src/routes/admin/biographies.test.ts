@@ -35,8 +35,14 @@ vi.mock("../../lib/biography/biography-generator.js", () => ({
   generateBiographyWithTracking: vi.fn(),
 }))
 
+// Mock cache
+vi.mock("../../lib/cache.js", () => ({
+  invalidateActorCache: vi.fn(),
+}))
+
 import { getPersonDetails } from "../../lib/tmdb.js"
 import { generateBiographyWithTracking } from "../../lib/biography/biography-generator.js"
+import { invalidateActorCache } from "../../lib/cache.js"
 
 describe("Admin Biographies Routes", () => {
   let app: express.Express
@@ -191,6 +197,57 @@ describe("Admin Biographies Routes", () => {
       expect(response.body.success).toBe(true)
       expect(response.body.result.biography).toBe("John Wayne was a legendary American actor.")
       expect(response.body.result.hasSubstantiveContent).toBe(true)
+      expect(invalidateActorCache).toHaveBeenCalledWith(1)
+    })
+
+    it("invalidates actor cache after successful biography generation", async () => {
+      // Mock actor lookup
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 42,
+            tmdb_id: 12345,
+            name: "Test Actor",
+            wikipedia_url: null,
+            imdb_person_id: null,
+          },
+        ],
+      })
+
+      // Mock TMDB person details
+      vi.mocked(getPersonDetails).mockResolvedValueOnce({
+        id: 12345,
+        name: "Test Actor",
+        biography: "Test Actor is a famous performer with a long career in film.",
+        birthday: "1950-01-01",
+        deathday: null,
+        place_of_birth: "Los Angeles, CA",
+        popularity: 5.0,
+        profile_path: "/path.jpg",
+        imdb_id: null,
+      })
+
+      // Mock biography generation
+      vi.mocked(generateBiographyWithTracking).mockResolvedValueOnce({
+        biography: "Test Actor is a renowned performer.",
+        hasSubstantiveContent: true,
+        sourceUrl: null,
+        sourceType: "tmdb",
+        inputTokens: 100,
+        outputTokens: 50,
+        costUsd: 0.001,
+        latencyMs: 500,
+      })
+
+      // Mock database update
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      const response = await request(app)
+        .post("/admin/api/biographies/generate")
+        .send({ actorId: 42 })
+
+      expect(response.status).toBe(200)
+      expect(invalidateActorCache).toHaveBeenCalledWith(42)
     })
 
     it("returns 400 for missing actorId", async () => {
@@ -320,6 +377,53 @@ describe("Admin Biographies Routes", () => {
       expect(response.body.results).toHaveLength(1)
       expect(response.body.results[0].success).toBe(true)
       expect(response.body.summary.successful).toBe(1)
+      expect(invalidateActorCache).toHaveBeenCalledWith(1)
+    })
+
+    it("invalidates cache for each actor in batch", async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 10, tmdb_id: 100, name: "Actor A", wikipedia_url: null, imdb_person_id: null },
+          { id: 20, tmdb_id: 200, name: "Actor B", wikipedia_url: null, imdb_person_id: null },
+        ],
+      })
+
+      // Mock TMDB and generation for both actors
+      for (let i = 0; i < 2; i++) {
+        vi.mocked(getPersonDetails).mockResolvedValueOnce({
+          id: 100 + i * 100,
+          name: `Actor ${i === 0 ? "A" : "B"}`,
+          biography: "A well-known actor with a long career spanning several decades.",
+          birthday: null,
+          deathday: null,
+          place_of_birth: null,
+          popularity: 10,
+          profile_path: null,
+          imdb_id: null,
+        })
+
+        vi.mocked(generateBiographyWithTracking).mockResolvedValueOnce({
+          biography: `Actor ${i === 0 ? "A" : "B"} biography.`,
+          hasSubstantiveContent: true,
+          sourceUrl: null,
+          sourceType: "tmdb",
+          inputTokens: 100,
+          outputTokens: 50,
+          costUsd: 0.001,
+          latencyMs: 500,
+        })
+
+        mockQuery.mockResolvedValueOnce({ rows: [] })
+      }
+
+      const response = await request(app)
+        .post("/admin/api/biographies/generate-batch")
+        .send({ actorIds: [10, 20] })
+
+      expect(response.status).toBe(200)
+      expect(invalidateActorCache).toHaveBeenCalledWith(10)
+      expect(invalidateActorCache).toHaveBeenCalledWith(20)
+      expect(invalidateActorCache).toHaveBeenCalledTimes(2)
     })
 
     it("respects limit parameter", async () => {
