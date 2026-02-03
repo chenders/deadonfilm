@@ -133,6 +133,12 @@ function formatRelativeTime(dateStr: string | null): string {
   }
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
+
+  // Handle future dates (should not happen, but defensive)
+  if (diffMs < 0) {
+    return "Just now"
+  }
+
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0) return "Today"
@@ -192,11 +198,19 @@ export default function BiographyManagementPage() {
 
   const handleGenerateSelected = async () => {
     if (selectedActorIds.size === 0) return
-    await batchGenerateMutation.mutateAsync({ actorIds: Array.from(selectedActorIds) })
+    try {
+      await batchGenerateMutation.mutateAsync({ actorIds: Array.from(selectedActorIds) })
+    } catch {
+      // Error state is handled by the mutation's isError property
+    }
   }
 
   const handleGenerateByPopularity = async () => {
-    await batchGenerateMutation.mutateAsync({ limit: batchLimit, minPopularity })
+    try {
+      await batchGenerateMutation.mutateAsync({ limit: batchLimit, minPopularity })
+    } catch {
+      // Error state is handled by the mutation's isError property
+    }
   }
 
   const handleSelectActor = (actorId: number) => {

@@ -4,6 +4,8 @@ import {
   calculateCost,
   determineSourceUrl,
   generateBiography,
+  sanitizeActorNameForPrompt,
+  sanitizeBiographyForPrompt,
   type ActorForBiography,
 } from "./biography-generator.js"
 
@@ -136,6 +138,80 @@ describe("biography-generator", () => {
       const result = determineSourceUrl(actor)
 
       expect(result).toBeNull()
+    })
+  })
+
+  describe("sanitizeActorNameForPrompt", () => {
+    it("trims whitespace", () => {
+      expect(sanitizeActorNameForPrompt("  John Wayne  ")).toBe("John Wayne")
+    })
+
+    it("replaces newlines with spaces", () => {
+      expect(sanitizeActorNameForPrompt("John\nWayne")).toBe("John Wayne")
+      expect(sanitizeActorNameForPrompt("John\r\nWayne")).toBe("John Wayne")
+    })
+
+    it("removes control characters", () => {
+      expect(sanitizeActorNameForPrompt("John\x00Wayne")).toBe("JohnWayne")
+      expect(sanitizeActorNameForPrompt("John\x1fWayne")).toBe("JohnWayne")
+      expect(sanitizeActorNameForPrompt("John\x7fWayne")).toBe("JohnWayne")
+    })
+
+    it("collapses multiple spaces", () => {
+      expect(sanitizeActorNameForPrompt("John    Wayne")).toBe("John Wayne")
+    })
+
+    it("truncates to 200 characters", () => {
+      const longName = "A".repeat(250)
+      expect(sanitizeActorNameForPrompt(longName)).toHaveLength(200)
+    })
+
+    it("handles empty string", () => {
+      expect(sanitizeActorNameForPrompt("")).toBe("")
+    })
+
+    it("handles normal names unchanged", () => {
+      expect(sanitizeActorNameForPrompt("Robert De Niro")).toBe("Robert De Niro")
+      expect(sanitizeActorNameForPrompt("Renée Zellweger")).toBe("Renée Zellweger")
+    })
+  })
+
+  describe("sanitizeBiographyForPrompt", () => {
+    it("trims whitespace", () => {
+      expect(sanitizeBiographyForPrompt("  Bio text  ")).toBe("Bio text")
+    })
+
+    it("normalizes Windows line endings", () => {
+      expect(sanitizeBiographyForPrompt("Line1\r\nLine2")).toBe("Line1\nLine2")
+    })
+
+    it("normalizes old Mac line endings", () => {
+      expect(sanitizeBiographyForPrompt("Line1\rLine2")).toBe("Line1\nLine2")
+    })
+
+    it("removes control characters but preserves newlines", () => {
+      expect(sanitizeBiographyForPrompt("Bio\x00text")).toBe("Biotext")
+      expect(sanitizeBiographyForPrompt("Bio\x09text")).toBe("Biotext") // tab
+      expect(sanitizeBiographyForPrompt("Bio\ntext")).toBe("Bio\ntext") // newline preserved
+    })
+
+    it("collapses excessive newlines to double newlines", () => {
+      expect(sanitizeBiographyForPrompt("Para1\n\n\n\nPara2")).toBe("Para1\n\nPara2")
+      expect(sanitizeBiographyForPrompt("Para1\n\n\n\n\n\nPara2")).toBe("Para1\n\nPara2")
+    })
+
+    it("truncates to 4000 characters", () => {
+      const longBio = "A".repeat(5000)
+      expect(sanitizeBiographyForPrompt(longBio)).toHaveLength(4000)
+    })
+
+    it("handles empty string", () => {
+      expect(sanitizeBiographyForPrompt("")).toBe("")
+    })
+
+    it("handles normal biography text unchanged", () => {
+      const bio = "John Wayne was an American actor. He appeared in many Western films."
+      expect(sanitizeBiographyForPrompt(bio)).toBe(bio)
     })
   })
 

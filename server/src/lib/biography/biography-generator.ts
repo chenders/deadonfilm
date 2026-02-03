@@ -44,7 +44,7 @@ export interface ActorForBiography {
  * Sanitize an actor name before including it in an AI prompt.
  * Removes control characters and limits length to prevent prompt injection.
  */
-function sanitizeActorNameForPrompt(actorName: string): string {
+export function sanitizeActorNameForPrompt(actorName: string): string {
   return (
     actorName
       .trim()
@@ -61,7 +61,7 @@ function sanitizeActorNameForPrompt(actorName: string): string {
  * Normalizes whitespace, removes control characters, and limits length
  * to reduce prompt injection risk and prevent excessive token usage.
  */
-function sanitizeBiographyForPrompt(rawBiography: string): string {
+export function sanitizeBiographyForPrompt(rawBiography: string): string {
   return (
     rawBiography
       .trim()

@@ -424,7 +424,11 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
         })
 
         // Rate limiting: wait 1.2 seconds between requests (50 RPM for Sonnet)
-        await new Promise((resolve) => setTimeout(resolve, 1200))
+        // Skip delay after the last actor to avoid unnecessary wait
+        const isLastActor = actorsToProcess.indexOf(actor) === actorsToProcess.length - 1
+        if (!isLastActor) {
+          await new Promise((resolve) => setTimeout(resolve, 1200))
+        }
       } catch (error) {
         results.push({
           actorId: actor.id,
