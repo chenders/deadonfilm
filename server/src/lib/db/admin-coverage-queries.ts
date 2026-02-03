@@ -414,13 +414,13 @@ export async function getActorPreview(pool: Pool, actorId: number): Promise<Acto
     character_name: string | null
     episode_count: number
   }>(
-    `SELECT s.name, s.first_air_year,
+    `SELECT s.name, EXTRACT(YEAR FROM s.first_air_date)::integer as first_air_year,
             (array_agg(asa.character_name ORDER BY asa.character_name NULLS LAST))[1] as character_name,
             COUNT(*) as episode_count
      FROM actor_show_appearances asa
      JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
      WHERE asa.actor_id = $1
-     GROUP BY s.tmdb_id, s.name, s.first_air_year
+     GROUP BY s.tmdb_id, s.name, s.first_air_date
      ORDER BY COUNT(*) DESC
      LIMIT 3`,
     [actorId]
