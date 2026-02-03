@@ -310,8 +310,8 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
     }> = []
 
     if (actorIds && actorIds.length > 0) {
-      // Process specific actors
-      const placeholders = actorIds.map((_, i) => `$${i + 1}`).join(", ")
+      // Process specific actors using ANY() with array parameter
+      // This avoids dynamic placeholder generation that triggers CodeQL warnings
       const result = await pool.query<{
         id: number
         tmdb_id: number
@@ -321,11 +321,11 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
       }>(
         `SELECT id, tmdb_id, name, wikipedia_url, imdb_person_id
          FROM actors
-         WHERE id IN (${placeholders})
+         WHERE id = ANY($1::int[])
            AND tmdb_id IS NOT NULL
            AND biography IS NULL
-         LIMIT $${actorIds.length + 1}`,
-        [...actorIds, safeLimit]
+         LIMIT $2`,
+        [actorIds, safeLimit]
       )
       actorsToProcess = result.rows
     } else {
