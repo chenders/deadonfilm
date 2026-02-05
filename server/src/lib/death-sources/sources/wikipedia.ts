@@ -920,12 +920,18 @@ export class WikipediaSource extends BaseDataSource {
       this.wikipediaOptions.useAIDateValidation !== false && isAIDateExtractionAvailable()
 
     if (useAI) {
+      console.log(`  Using AI date validation for ${actor.name}`)
       const aiResult = await extractDatesWithAI(actor.name, introText)
       costUsd = aiResult.costUsd
 
       if (aiResult.usedAI && (aiResult.birthYear !== null || aiResult.deathYear !== null)) {
+        console.log(`  AI extracted: birth=${aiResult.birthYear}, death=${aiResult.deathYear}`)
         wikiBirthYear = aiResult.birthYear
         wikiDeathYear = aiResult.deathYear
+      } else if (aiResult.error) {
+        console.log(
+          `  AI date extraction failed (${aiResult.error}), falling back to regex when needed`
+        )
       }
     }
 

@@ -163,6 +163,18 @@ describe("extractDatesWithAI", () => {
     expect(result.costUsd).toBe(0)
   })
 
+  it("handles timeout gracefully", async () => {
+    mockFetch.mockRejectedValueOnce(new DOMException("The operation was aborted", "AbortError"))
+
+    const result = await extractDatesWithAI("Test Actor", "Some intro text")
+
+    expect(result.usedAI).toBe(false)
+    expect(result.birthYear).toBeNull()
+    expect(result.deathYear).toBeNull()
+    expect(result.error).toContain("aborted")
+    expect(result.costUsd).toBe(0)
+  })
+
   it("handles malformed JSON response", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
