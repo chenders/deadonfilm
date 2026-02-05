@@ -76,6 +76,7 @@ describe("ActorManagementPage", () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   const renderComponent = (initialPath = "/admin/actors") => {
@@ -675,7 +676,11 @@ describe("ActorManagementPage", () => {
     it("calls biography API with correct payload and credentials on button click", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ success: true, result: { biography: "Test bio" } }),
+        json: () =>
+          Promise.resolve({
+            success: true,
+            result: { biography: "Test bio", hasSubstantiveContent: true },
+          }),
       })
       vi.stubGlobal("fetch", mockFetch)
 
@@ -705,7 +710,11 @@ describe("ActorManagementPage", () => {
     it("shows success alert when biography regeneration succeeds", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ success: true, result: { biography: "New biography" } }),
+        json: () =>
+          Promise.resolve({
+            success: true,
+            result: { biography: "New biography", hasSubstantiveContent: true },
+          }),
       })
       vi.stubGlobal("fetch", mockFetch)
 
@@ -727,7 +736,12 @@ describe("ActorManagementPage", () => {
     it("shows appropriate message when no biography content available", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ success: true, result: { biography: null } }),
+        json: () =>
+          Promise.resolve({
+            success: true,
+            message: "No substantial TMDB biography available",
+            result: { biography: null, hasSubstantiveContent: false },
+          }),
       })
       vi.stubGlobal("fetch", mockFetch)
 
@@ -743,7 +757,7 @@ describe("ActorManagementPage", () => {
         await vi.runAllTimersAsync()
       })
 
-      expect(mockAlert).toHaveBeenCalledWith("No substantial biography content available from TMDB")
+      expect(mockAlert).toHaveBeenCalledWith("No substantial TMDB biography available")
     })
 
     it("shows error alert when biography regeneration fails", async () => {
@@ -803,10 +817,58 @@ describe("ActorManagementPage", () => {
       await act(async () => {
         resolvePromise!({
           ok: true,
-          json: () => Promise.resolve({ success: true, result: { biography: "Bio" } }),
+          json: () =>
+            Promise.resolve({
+              success: true,
+              result: { biography: "Bio", hasSubstantiveContent: true },
+            }),
         })
         await vi.runAllTimersAsync()
       })
+    })
+
+    it("shows spinner on clicked row and document icon on other rows during regeneration", async () => {
+      let resolvePromise: (value: unknown) => void
+      const mockFetch = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          })
+      )
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      // Initially all rows show document icons, no spinners
+      expect(screen.getAllByTestId("biography-icon")).toHaveLength(mockActors.length)
+      expect(screen.queryByTestId("biography-spinner")).not.toBeInTheDocument()
+
+      // Click regenerate for first actor
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+      })
+
+      // Clicked row should show spinner, other rows should still show document icon
+      expect(screen.getByTestId("biography-spinner")).toBeInTheDocument()
+      expect(screen.getAllByTestId("biography-icon")).toHaveLength(mockActors.length - 1)
+
+      // Resolve the promise
+      await act(async () => {
+        resolvePromise!({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              result: { biography: "Bio", hasSubstantiveContent: true },
+            }),
+        })
+        await vi.runAllTimersAsync()
+      })
+
+      // After resolution, all rows should show document icons again
+      expect(screen.getAllByTestId("biography-icon")).toHaveLength(mockActors.length)
+      expect(screen.queryByTestId("biography-spinner")).not.toBeInTheDocument()
     })
   })
 })

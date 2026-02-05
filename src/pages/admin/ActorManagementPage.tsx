@@ -180,9 +180,9 @@ export default function ActorManagementPage() {
       if (result.success) {
         // Show brief success indication - the UI will update on next data fetch
         alert(
-          result.result.biography
+          result.result.hasSubstantiveContent
             ? "Biography regenerated successfully"
-            : "No substantial biography content available from TMDB"
+            : result.message || "No substantial biography content available from TMDB"
         )
       }
     } catch (err) {
@@ -575,6 +575,7 @@ export default function ActorManagementPage() {
                               >
                                 {regeneratingBiography === actor.id ? (
                                   <svg
+                                    data-testid="biography-spinner"
                                     className="h-4 w-4 animate-spin"
                                     xmlns="http://www.w3.org/2000/svg"
                                     fill="none"
@@ -596,6 +597,7 @@ export default function ActorManagementPage() {
                                   </svg>
                                 ) : (
                                   <svg
+                                    data-testid="biography-icon"
                                     xmlns="http://www.w3.org/2000/svg"
                                     className="h-4 w-4"
                                     fill="none"
