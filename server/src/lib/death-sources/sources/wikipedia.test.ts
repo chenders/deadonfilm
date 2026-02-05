@@ -27,6 +27,7 @@ describe("WikipediaSource", () => {
     // Disable disambiguation handling for existing tests to avoid breaking them
     // New tests specifically for disambiguation are added below
     source.setWikipediaOptions({
+      useAISectionSelection: false,
       handleDisambiguation: false,
       validatePersonDates: false,
     })
@@ -770,7 +771,10 @@ describe("WikipediaSource", () => {
 
     beforeEach(() => {
       // Enable disambiguation handling for these tests
+      // Explicitly disable AI section selection to avoid test isolation issues
+      // (other test files may set GOOGLE_AI_API_KEY via vi.stubEnv)
       source.setWikipediaOptions({
+        useAISectionSelection: false,
         handleDisambiguation: true,
         validatePersonDates: true,
       })
