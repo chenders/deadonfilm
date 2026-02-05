@@ -471,6 +471,7 @@ export class WikipediaSource extends BaseDataSource {
     // Primary death sections - always include if found
     const deathPatterns = [
       /^death$/i,
+      /^death\b/i, // Catch "Death of...", "Death and ..." variants not listed below
       /^death and legacy$/i,
       /^death and funeral$/i,
       /^death and aftermath$/i,
@@ -481,6 +482,21 @@ export class WikipediaSource extends BaseDataSource {
       /^final years and death$/i,
       /^illness and death$/i,
       /^decline and death$/i,
+    ]
+
+    // Violent death sections - assassination, murder, accident, etc.
+    const violentDeathPatterns = [
+      /^assassination$/i,
+      /^assassination\b/i, // "Assassination and aftermath", "Assassination and funeral"
+      /^murder$/i,
+      /^killing$/i,
+      /^shooting$/i,
+      /^accident$/i,
+      /^fatal accident$/i,
+      /^incident$/i,
+      /^crash$/i,
+      /^plane crash$/i,
+      /^car crash$/i,
     ]
 
     // Health sections - include alongside death sections for medical context
@@ -507,6 +523,16 @@ export class WikipediaSource extends BaseDataSource {
       if (section && !result.some((r) => r.index === section.index)) {
         result.push(section)
         break // Only take the first matching death section
+      }
+    }
+
+    // Find violent death sections (assassination, murder, accident, etc.)
+    // These are treated as primary death sections
+    for (const pattern of violentDeathPatterns) {
+      const section = sections.find((s) => pattern.test(s.line))
+      if (section && !result.some((r) => r.index === section.index)) {
+        result.push(section)
+        break // Only take the first matching violent death section
       }
     }
 
