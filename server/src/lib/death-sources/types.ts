@@ -632,7 +632,7 @@ export interface WikipediaOptions {
    * Use AI (Gemini Flash) to select relevant sections instead of regex patterns.
    * This can capture non-obvious sections like "Hunting and Fishing" or "Controversies"
    * that may contain death/health/incident information.
-   * Default: false (opt-in)
+   * Default: true (requires GOOGLE_AI_API_KEY, falls back to regex if unavailable)
    */
   useAISectionSelection?: boolean
   /**
@@ -653,7 +653,7 @@ export interface WikipediaOptions {
    * Follow links to related Wikipedia articles that may contain detailed
    * information about incidents, accidents, health events, or death circumstances.
    * Examples: "Dick_Cheney_hunting_accident", "Attempted_assassination_of_Dick_Cheney"
-   * Default: false (opt-in, requires useAISectionSelection)
+   * Default: false (opt-in, requires useAISectionSelection to be enabled)
    */
   followLinkedArticles?: boolean
   /**
@@ -681,7 +681,7 @@ export interface WikipediaOptions {
  * Default Wikipedia options.
  */
 export const DEFAULT_WIKIPEDIA_OPTIONS: WikipediaOptions = {
-  useAISectionSelection: false,
+  useAISectionSelection: true,
   sectionSelectionModel: "gemini-flash",
   maxSections: 10,
   followLinkedArticles: false,
