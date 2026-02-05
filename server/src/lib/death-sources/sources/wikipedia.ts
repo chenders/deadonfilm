@@ -469,9 +469,10 @@ export class WikipediaSource extends BaseDataSource {
     const result: WikipediaSection[] = []
 
     // Primary death sections - always include if found
+    // NOTE: Order matters - the loop breaks on first match, so specific patterns
+    // must come before the catch-all /^death\b/i pattern
     const deathPatterns = [
       /^death$/i,
-      /^death\b/i, // Catch "Death of...", "Death and ..." variants not listed below
       /^death and legacy$/i,
       /^death and funeral$/i,
       /^death and aftermath$/i,
@@ -482,6 +483,7 @@ export class WikipediaSource extends BaseDataSource {
       /^final years and death$/i,
       /^illness and death$/i,
       /^decline and death$/i,
+      /^death\b/i, // Catch-all for "Death of...", "Death and ..." variants not listed above
     ]
 
     // Violent death sections - assassination, murder, accident, etc.
@@ -493,7 +495,7 @@ export class WikipediaSource extends BaseDataSource {
       /^shooting$/i,
       /^accident$/i,
       /^fatal accident$/i,
-      /^incident$/i,
+      /^fatal incident$/i,
       /^crash$/i,
       /^plane crash$/i,
       /^car crash$/i,
