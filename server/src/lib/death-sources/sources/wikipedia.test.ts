@@ -27,6 +27,7 @@ describe("WikipediaSource", () => {
     // Disable disambiguation handling for existing tests to avoid breaking them
     // New tests specifically for disambiguation are added below
     source.setWikipediaOptions({
+      useAISectionSelection: false,
       handleDisambiguation: false,
       validatePersonDates: false,
     })
@@ -317,6 +318,221 @@ describe("WikipediaSource", () => {
 
       expect(result.success).toBe(true)
       expect(result.data?.circumstances).toContain("passed away")
+    })
+
+    it("finds Assassination section for violent deaths", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "John F. Kennedy",
+              pageid: 12345,
+              sections: [
+                { index: "0", line: "Introduction", level: "1" },
+                { index: "1", line: "Early life", level: "2" },
+                { index: "2", line: "Presidency", level: "2" },
+                { index: "3", line: "Assassination", level: "2" },
+                { index: "4", line: "Legacy", level: "2" },
+              ],
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "John F. Kennedy",
+              pageid: 12345,
+              text: {
+                "*": `<p>Kennedy was assassinated on November 22, 1963, in Dallas, Texas.
+                He was shot while riding in a presidential motorcade through Dealey Plaza.</p>`,
+              },
+            },
+          }),
+        })
+
+      const result = await source.lookup({
+        ...mockActor,
+        name: "John F. Kennedy",
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.data?.circumstances).toContain("assassinated")
+    })
+
+    it("finds Murder section for violent deaths", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "Test Actor",
+              pageid: 11111,
+              sections: [
+                { index: "0", line: "Introduction", level: "1" },
+                { index: "1", line: "Career", level: "2" },
+                { index: "2", line: "Murder", level: "2" },
+                { index: "3", line: "Legacy", level: "2" },
+              ],
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "Test Actor",
+              pageid: 11111,
+              text: {
+                "*": `<p>Test Actor was murdered on January 5, 2020, at their home in Los Angeles.</p>`,
+              },
+            },
+          }),
+        })
+
+      const result = await source.lookup({
+        ...mockActor,
+        name: "Test Actor",
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.data?.circumstances).toContain("murdered")
+    })
+
+    it("finds Plane crash section for accident deaths", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "Test Pilot",
+              pageid: 22222,
+              sections: [
+                { index: "0", line: "Introduction", level: "1" },
+                { index: "1", line: "Career", level: "2" },
+                { index: "2", line: "Plane crash", level: "2" },
+                { index: "3", line: "Aftermath", level: "2" },
+              ],
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "Test Pilot",
+              pageid: 22222,
+              text: {
+                "*": `<p>The plane crashed on takeoff from Van Nuys Airport on March 3, 2019.
+                All three people on board were killed.</p>`,
+              },
+            },
+          }),
+        })
+
+      const result = await source.lookup({
+        ...mockActor,
+        name: "Test Pilot",
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.data?.circumstances).toContain("plane crashed")
+    })
+
+    it("finds both Death and Assassination sections when both exist", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "Test Leader",
+              pageid: 33333,
+              sections: [
+                { index: "0", line: "Introduction", level: "1" },
+                { index: "1", line: "Death", level: "2" },
+                { index: "2", line: "Assassination", level: "2" },
+                { index: "3", line: "Legacy", level: "2" },
+              ],
+            },
+          }),
+        })
+        // Death section content (must be >=50 chars after HTML stripping)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "Test Leader",
+              pageid: 33333,
+              text: {
+                "*": `<p>Test Leader died on April 14, 1865, at Petersen House in Washington, D.C., surrounded by government officials and family members.</p>`,
+              },
+            },
+          }),
+        })
+        // Assassination section content
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "Test Leader",
+              pageid: 33333,
+              text: {
+                "*": `<p>The assassination was carried out by a gunman at Ford's Theatre during a performance of Our American Cousin on the evening of April 14.</p>`,
+              },
+            },
+          }),
+        })
+
+      const result = await source.lookup({
+        ...mockActor,
+        name: "Test Leader",
+      })
+
+      expect(result.success).toBe(true)
+      // Should include content from both sections
+      expect(result.data?.circumstances).toContain("died")
+      expect(result.data?.circumstances).toContain("assassination")
+    })
+
+    it("matches 'Death and aftermath' pattern (catch-all at end of list)", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "Test Actor",
+              pageid: 44444,
+              sections: [
+                { index: "0", line: "Introduction", level: "1" },
+                { index: "1", line: "Career", level: "2" },
+                { index: "2", line: "Death and controversy", level: "2" },
+                { index: "3", line: "Legacy", level: "2" },
+              ],
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            parse: {
+              title: "Test Actor",
+              pageid: 44444,
+              text: {
+                "*": `<p>Test Actor died under controversial circumstances in 2020.</p>`,
+              },
+            },
+          }),
+        })
+
+      const result = await source.lookup({
+        ...mockActor,
+        name: "Test Actor",
+      })
+
+      expect(result.success).toBe(true)
+      // The catch-all /^death\b/i should match "Death and controversy"
+      expect(result.data?.circumstances).toContain("controversial")
     })
   })
 
@@ -770,7 +986,10 @@ describe("WikipediaSource", () => {
 
     beforeEach(() => {
       // Enable disambiguation handling for these tests
+      // Explicitly disable AI section selection to avoid test isolation issues
+      // (other test files may set GOOGLE_AI_API_KEY via vi.stubEnv)
       source.setWikipediaOptions({
+        useAISectionSelection: false,
         handleDisambiguation: true,
         validatePersonDates: true,
       })
