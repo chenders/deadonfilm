@@ -127,6 +127,17 @@ export function mergeEnrichmentData(
 }
 
 /**
+ * Structured log entry for per-actor enrichment tracking.
+ * Stored as JSONB in enrichment_run_actors.log_entries.
+ */
+export interface ActorLogEntry {
+  timestamp: string
+  level: "info" | "warn" | "error" | "debug"
+  message: string
+  data?: Record<string, unknown>
+}
+
+/**
  * Extended enrichment result that includes raw sources and Claude cleanup data.
  * Used when claudeCleanup is enabled.
  */
@@ -139,6 +150,8 @@ export interface ExtendedEnrichmentResult extends EnrichmentResult {
   cleanupCostUsd?: number
   /** Per-actor statistics for tracking (all sources attempted, costs, timing) */
   actorStats?: EnrichmentStats
+  /** Per-actor structured log entries for debugging/audit */
+  logEntries?: ActorLogEntry[]
 }
 
 /**
@@ -365,6 +378,7 @@ export class DeathEnrichmentOrchestrator {
     }
 
     const startTime = Date.now()
+    const logEntries: ActorLogEntry[] = []
     const costBreakdown = this.createEmptyCostBreakdown()
     const actorStats: EnrichmentStats = {
       actorId: actor.id,
@@ -419,6 +433,12 @@ export class DeathEnrichmentOrchestrator {
         if (error instanceof SourceAccessBlockedError) {
           this.logger.sourceBlocked(actor.name, source.type, error.statusCode, error.url)
           this.statusBar.log(`    BLOCKED (${error.statusCode}) - flagged for review`)
+          logEntries.push({
+            timestamp: new Date().toISOString(),
+            level: "warn",
+            message: "[BLOCKED]",
+            data: { source: source.name, statusCode: error.statusCode, url: error.url },
+          })
           // Continue to next source, don't fail the whole enrichment
           const attemptStats: SourceAttemptStats = {
             source: source.type,
@@ -434,15 +454,23 @@ export class DeathEnrichmentOrchestrator {
         // Handle SourceTimeoutError specially
         if (error instanceof SourceTimeoutError) {
           if (error.isHighPriority) {
-            // High-priority source timeout - flag for review
             this.logger.sourceBlocked(actor.name, source.type, 408, "timeout")
             this.statusBar.log(
               `    TIMEOUT (${error.timeoutMs}ms) - high-priority source, flagged for review`
             )
           } else {
-            // Low-priority source timeout - just log and continue
             this.statusBar.log(`    TIMEOUT (${error.timeoutMs}ms) - low-priority source, skipping`)
           }
+          logEntries.push({
+            timestamp: new Date().toISOString(),
+            level: "warn",
+            message: "[TIMEOUT]",
+            data: {
+              source: source.name,
+              timeoutMs: error.timeoutMs,
+              highPriority: error.isHighPriority,
+            },
+          })
 
           const attemptStats: SourceAttemptStats = {
             source: source.type,
@@ -499,6 +527,12 @@ export class DeathEnrichmentOrchestrator {
       if (!lookupResult.success || !lookupResult.data) {
         this.logger.sourceFailed(actor.name, source.type, lookupResult.error || "No data")
         this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "warn",
+          message: "[FAILED]",
+          data: { source: source.name, error: lookupResult.error || "No data" },
+        })
 
         // Record source failure in New Relic
         newrelic.recordCustomEvent("EnrichmentSourceFailed", {
@@ -522,6 +556,17 @@ export class DeathEnrichmentOrchestrator {
       const fieldsFound = this.getFieldsFromData(lookupResult.data)
       this.logger.sourceSuccess(actor.name, source.type, fieldsFound)
       this.statusBar.log(`    Success! Confidence: ${lookupResult.source.confidence.toFixed(2)}`)
+      logEntries.push({
+        timestamp: new Date().toISOString(),
+        level: "info",
+        message: "[SUCCESS]",
+        data: {
+          source: source.name,
+          confidence: lookupResult.source.confidence,
+          fieldsFound,
+          costUsd: sourceCost,
+        },
+      })
 
       // Record source success in New Relic
       newrelic.recordCustomEvent("EnrichmentSourceSuccess", {
@@ -715,13 +760,24 @@ export class DeathEnrichmentOrchestrator {
       this.statusBar.log(`  Running Claude Opus 4.5 cleanup on ${rawSources.length} sources...`)
       try {
         // Wrap Claude cleanup in New Relic segment
-        const { cleaned, costUsd } = await newrelic.startSegment(
-          "ClaudeCleanup",
-          true,
-          async () => {
-            return cleanupWithClaude(actor, rawSources)
-          }
-        )
+        const cleanupResult = await newrelic.startSegment("ClaudeCleanup", true, async () => {
+          return cleanupWithClaude(actor, rawSources)
+        })
+        const { cleaned, costUsd, prompt, responseText, inputTokens, outputTokens } = cleanupResult
+
+        // Log Claude request/response
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "info",
+          message: "[CLAUDE_REQUEST]",
+          data: { sourceCount: rawSources.length, promptLength: prompt.length, prompt },
+        })
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "info",
+          message: "[CLAUDE_RESPONSE]",
+          data: { inputTokens, outputTokens, costUsd, response: responseText },
+        })
 
         // Add cleanup cost to stats
         actorStats.totalCostUsd += costUsd
@@ -764,6 +820,12 @@ export class DeathEnrichmentOrchestrator {
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown cleanup error"
         this.statusBar.log(`    Cleanup failed: ${errorMsg}`)
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "error",
+          message: "[CLAUDE_ERROR]",
+          data: { error: errorMsg },
+        })
 
         // Record cleanup error in New Relic
         if (error instanceof Error) {
@@ -813,8 +875,21 @@ export class DeathEnrichmentOrchestrator {
       totalTimeMs: actorStats.totalTimeMs,
     })
 
-    // Attach actorStats to result for callers to access full tracking data
+    // Add completion entry
+    logEntries.push({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      message: "[COMPLETE]",
+      data: {
+        totalTimeMs: actorStats.totalTimeMs,
+        totalCostUsd: actorStats.totalCostUsd,
+        fieldsEnriched: actorStats.fieldsFilledAfter,
+      },
+    })
+
+    // Attach actorStats and logEntries to result for callers to access full tracking data
     result.actorStats = actorStats
+    result.logEntries = logEntries
 
     return result
   }

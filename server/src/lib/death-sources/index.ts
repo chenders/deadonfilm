@@ -44,6 +44,7 @@ export {
   DeathEnrichmentOrchestrator,
   DEFAULT_CONFIG,
   type ExtendedEnrichmentResult,
+  type ActorLogEntry,
 } from "./orchestrator.js"
 
 // Claude cleanup

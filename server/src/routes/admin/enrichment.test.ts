@@ -252,6 +252,7 @@ describe("Admin Enrichment Endpoints", () => {
           links_followed: 2,
           pages_fetched: 3,
           error: null,
+          has_logs: false,
         },
       ],
       total: 1,
