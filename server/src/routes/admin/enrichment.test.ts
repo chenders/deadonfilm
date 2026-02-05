@@ -402,6 +402,89 @@ describe("Admin Enrichment Endpoints", () => {
     })
   })
 
+  describe("GET /admin/api/enrichment/runs/:id/actors/:actorId/logs", () => {
+    const mockLogEntries = [
+      {
+        timestamp: "2024-01-01T00:00:00.000Z",
+        level: "info",
+        message: "[ATTEMPT]",
+        data: { source: "wikidata" },
+      },
+      {
+        timestamp: "2024-01-01T00:00:01.000Z",
+        level: "info",
+        message: "[SUCCESS]",
+        data: { source: "wikidata", confidence: 0.95 },
+      },
+    ]
+
+    it("returns actor logs for valid run and actor IDs", async () => {
+      mockPoolQuery.mockResolvedValue({
+        rows: [{ log_entries: mockLogEntries, actor_name: "Test Actor" }],
+      })
+
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/actors/100/logs")
+        .expect(200)
+
+      expect(response.body).toEqual({
+        actorName: "Test Actor",
+        logEntries: mockLogEntries,
+      })
+    })
+
+    it("returns empty log entries when column is null", async () => {
+      mockPoolQuery.mockResolvedValue({
+        rows: [{ log_entries: null, actor_name: "Test Actor" }],
+      })
+
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/actors/100/logs")
+        .expect(200)
+
+      expect(response.body).toEqual({
+        actorName: "Test Actor",
+        logEntries: [],
+      })
+    })
+
+    it("returns 400 for invalid run ID", async () => {
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/invalid/actors/100/logs")
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Invalid run ID or actor ID")
+    })
+
+    it("returns 400 for invalid actor ID", async () => {
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/actors/invalid/logs")
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Invalid run ID or actor ID")
+    })
+
+    it("returns 404 when run/actor combination not found", async () => {
+      mockPoolQuery.mockResolvedValue({ rows: [] })
+
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/999/actors/999/logs")
+        .expect(404)
+
+      expect(response.body.error.message).toBe("Not found")
+    })
+
+    it("returns 500 on database error", async () => {
+      mockPoolQuery.mockRejectedValue(new Error("Database error"))
+
+      const response = await request(app)
+        .get("/admin/api/enrichment/runs/1/actors/100/logs")
+        .expect(500)
+
+      expect(response.body.error.message).toContain("Failed to fetch actor enrichment logs")
+    })
+  })
+
   describe("GET /admin/api/enrichment/runs/:id/logs", () => {
     const mockLogs = [
       {
