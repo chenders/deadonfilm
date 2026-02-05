@@ -486,14 +486,13 @@ export class WikipediaSource extends BaseDataSource {
       /^death\b/i, // Catch-all for "Death of...", "Death and ..." variants not listed above
     ]
 
-    // Violent death sections - assassination, murder, accident, etc.
+    // Violent death sections - assassination, murder, fatal accident, etc.
     const violentDeathPatterns = [
       /^assassination$/i,
       /^assassination\b/i, // "Assassination and aftermath", "Assassination and funeral"
       /^murder$/i,
       /^killing$/i,
       /^shooting$/i,
-      /^accident$/i,
       /^fatal accident$/i,
       /^fatal incident$/i,
       /^crash$/i,
