@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { useQueryClient } from "@tanstack/react-query"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
@@ -13,6 +14,7 @@ import AdminHoverCard from "../../components/admin/ui/AdminHoverCard"
 import ActorPreviewCard from "../../components/admin/ActorPreviewCard"
 import { useDebouncedSearchParam } from "../../hooks/useDebouncedSearchParam"
 import { createActorSlug } from "../../utils/slugify"
+import { useToast } from "../../contexts/ToastContext"
 
 /**
  * Format a date as relative time (e.g., "2 days ago", "3 months ago")
@@ -46,6 +48,8 @@ function formatRelativeTime(dateStr: string | null): string {
 export default function ActorManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
 
   const [page, setPage] = useState(1)
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
@@ -178,15 +182,15 @@ export default function ActorManagementPage() {
 
       const result = await response.json()
       if (result.success) {
-        // Show brief success indication - the UI will update on next data fetch
-        alert(
+        toast.success(
           result.result.hasSubstantiveContent
             ? "Biography regenerated successfully"
             : result.message || "No substantial biography content available from TMDB"
         )
+        await queryClient.invalidateQueries({ queryKey: ["admin", "coverage", "actors"] })
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to regenerate biography")
+      toast.error(err instanceof Error ? err.message : "Failed to regenerate biography")
     } finally {
       setRegeneratingBiography(null)
     }

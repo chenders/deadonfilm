@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, act } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter, Routes, Route } from "react-router-dom"
+import { ToastProvider } from "../../contexts/ToastContext"
+import ToastContainer from "../../components/common/ToastContainer"
 import ActorManagementPage from "./ActorManagementPage"
 
 // Mock the hooks
@@ -82,11 +84,14 @@ describe("ActorManagementPage", () => {
   const renderComponent = (initialPath = "/admin/actors") => {
     return render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter future={futureFlags} initialEntries={[initialPath]}>
-          <Routes>
-            <Route path="/admin/actors" element={<ActorManagementPage />} />
-          </Routes>
-        </MemoryRouter>
+        <ToastProvider>
+          <MemoryRouter future={futureFlags} initialEntries={[initialPath]}>
+            <Routes>
+              <Route path="/admin/actors" element={<ActorManagementPage />} />
+            </Routes>
+          </MemoryRouter>
+          <ToastContainer />
+        </ToastProvider>
       </QueryClientProvider>
     )
   }
@@ -684,10 +689,6 @@ describe("ActorManagementPage", () => {
       })
       vi.stubGlobal("fetch", mockFetch)
 
-      // Mock alert
-      const mockAlert = vi.fn()
-      vi.stubGlobal("alert", mockAlert)
-
       renderComponent()
 
       const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
@@ -707,7 +708,7 @@ describe("ActorManagementPage", () => {
       })
     })
 
-    it("shows success alert when biography regeneration succeeds", async () => {
+    it("shows success toast when biography regeneration succeeds", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () =>
@@ -718,9 +719,6 @@ describe("ActorManagementPage", () => {
       })
       vi.stubGlobal("fetch", mockFetch)
 
-      const mockAlert = vi.fn()
-      vi.stubGlobal("alert", mockAlert)
-
       renderComponent()
 
       const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
@@ -730,10 +728,10 @@ describe("ActorManagementPage", () => {
         await vi.runAllTimersAsync()
       })
 
-      expect(mockAlert).toHaveBeenCalledWith("Biography regenerated successfully")
+      expect(screen.getByText("Biography regenerated successfully")).toBeInTheDocument()
     })
 
-    it("shows appropriate message when no biography content available", async () => {
+    it("shows appropriate toast when no biography content available", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () =>
@@ -745,9 +743,6 @@ describe("ActorManagementPage", () => {
       })
       vi.stubGlobal("fetch", mockFetch)
 
-      const mockAlert = vi.fn()
-      vi.stubGlobal("alert", mockAlert)
-
       renderComponent()
 
       const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
@@ -757,18 +752,40 @@ describe("ActorManagementPage", () => {
         await vi.runAllTimersAsync()
       })
 
-      expect(mockAlert).toHaveBeenCalledWith("No substantial TMDB biography available")
+      expect(screen.getByText("No substantial TMDB biography available")).toBeInTheDocument()
     })
 
-    it("shows error alert when biography regeneration fails", async () => {
+    it("shows error toast when biography regeneration fails", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: false,
         json: () => Promise.resolve({ error: { message: "Actor not found" } }),
       })
       vi.stubGlobal("fetch", mockFetch)
 
-      const mockAlert = vi.fn()
-      vi.stubGlobal("alert", mockAlert)
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(screen.getByText("Actor not found")).toBeInTheDocument()
+    })
+
+    it("invalidates query cache after successful biography regeneration", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            result: { biography: "New biography", hasSubstantiveContent: true },
+          }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
 
       renderComponent()
 
@@ -779,7 +796,9 @@ describe("ActorManagementPage", () => {
         await vi.runAllTimersAsync()
       })
 
-      expect(mockAlert).toHaveBeenCalledWith("Actor not found")
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["admin", "coverage", "actors"],
+      })
     })
 
     it("disables all regenerate buttons while regeneration is in progress", async () => {
