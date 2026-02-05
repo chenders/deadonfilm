@@ -551,8 +551,9 @@ export class EnrichmentRunner {
             sources_attempted,
             winning_source,
             processing_time_ms,
-            cost_usd
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            cost_usd,
+            log_entries
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           RETURNING id`,
             [
               runId,
@@ -563,6 +564,7 @@ export class EnrichmentRunner {
               enrichment.circumstancesSource?.type || null,
               actorStats?.totalTimeMs || null,
               actorStats?.totalCostUsd || enrichment.circumstancesSource?.costUsd || 0,
+              JSON.stringify(enrichment.logEntries || []),
             ]
           )
           enrichmentRunActorId = eraResult.rows[0].id

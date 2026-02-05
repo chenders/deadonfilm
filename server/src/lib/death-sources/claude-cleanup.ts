@@ -203,10 +203,20 @@ CRITICAL INSTRUCTIONS:
  * @param rawSources - Raw data gathered from various sources
  * @returns Cleaned, structured death information
  */
+/** Result from Claude cleanup including I/O data for logging */
+export interface ClaudeCleanupResult {
+  cleaned: CleanedDeathInfo
+  costUsd: number
+  prompt: string
+  responseText: string
+  inputTokens: number
+  outputTokens: number
+}
+
 export async function cleanupWithClaude(
   actor: ActorForEnrichment,
   rawSources: RawSourceData[]
-): Promise<{ cleaned: CleanedDeathInfo; costUsd: number }> {
+): Promise<ClaudeCleanupResult> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY environment variable is required for Claude cleanup")
   }
@@ -350,7 +360,7 @@ export async function cleanupWithClaude(
     cleanupSource: "claude-opus-4.5",
     cleanupTimestamp: new Date().toISOString(),
   })
-  return { cleaned, costUsd }
+  return { cleaned, costUsd, prompt, responseText, inputTokens, outputTokens }
 }
 
 /**
