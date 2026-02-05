@@ -10,6 +10,7 @@ import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
 import { getPersonDetails } from "../../lib/tmdb.js"
+import { invalidateActorCache } from "../../lib/cache.js"
 import {
   generateBiographyWithTracking,
   type ActorForBiography,
@@ -19,6 +20,19 @@ const router = Router()
 
 // Minimum TMDB biography length to be considered substantial enough for generation
 const MIN_BIOGRAPHY_LENGTH = 50
+
+/**
+ * Best-effort cache invalidation after biography updates.
+ * invalidateActorCache() currently swallows errors internally, but we wrap
+ * in try/catch defensively in case that behaviour changes.
+ */
+async function invalidateActorCacheBestEffort(actorId: number): Promise<void> {
+  try {
+    await invalidateActorCache(actorId)
+  } catch (err) {
+    logger.warn({ err, actorId }, "Failed to invalidate actor cache after biography update")
+  }
+}
 
 // ============================================================================
 // GET /admin/api/biographies
@@ -249,6 +263,8 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
       ]
     )
 
+    await invalidateActorCacheBestEffort(actorId)
+
     // Log admin action
     await logAdminAction({
       action: "generate_biography",
@@ -430,6 +446,8 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
         )
 
         totalCost += result.costUsd
+
+        await invalidateActorCacheBestEffort(actor.id)
 
         results.push({
           actorId: actor.id,
