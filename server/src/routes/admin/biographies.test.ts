@@ -36,13 +36,13 @@ vi.mock("../../lib/biography/biography-generator.js", () => ({
 }))
 
 // Mock cache
+const mockInvalidateActorCache = vi.fn()
 vi.mock("../../lib/cache.js", () => ({
-  invalidateActorCache: vi.fn(),
+  invalidateActorCache: (...args: unknown[]) => mockInvalidateActorCache(...args),
 }))
 
 import { getPersonDetails } from "../../lib/tmdb.js"
 import { generateBiographyWithTracking } from "../../lib/biography/biography-generator.js"
-import { invalidateActorCache } from "../../lib/cache.js"
 
 describe("Admin Biographies Routes", () => {
   let app: express.Express
@@ -197,7 +197,7 @@ describe("Admin Biographies Routes", () => {
       expect(response.body.success).toBe(true)
       expect(response.body.result.biography).toBe("John Wayne was a legendary American actor.")
       expect(response.body.result.hasSubstantiveContent).toBe(true)
-      expect(invalidateActorCache).toHaveBeenCalledWith(1)
+      expect(mockInvalidateActorCache).toHaveBeenCalledWith(1)
     })
 
     it("returns 400 for missing actorId", async () => {
@@ -327,7 +327,7 @@ describe("Admin Biographies Routes", () => {
       expect(response.body.results).toHaveLength(1)
       expect(response.body.results[0].success).toBe(true)
       expect(response.body.summary.successful).toBe(1)
-      expect(invalidateActorCache).toHaveBeenCalledWith(1)
+      expect(mockInvalidateActorCache).toHaveBeenCalledWith(1)
     })
 
     it("invalidates cache for each actor in batch", async () => {
@@ -371,9 +371,59 @@ describe("Admin Biographies Routes", () => {
         .send({ actorIds: [10, 20] })
 
       expect(response.status).toBe(200)
-      expect(invalidateActorCache).toHaveBeenCalledWith(10)
-      expect(invalidateActorCache).toHaveBeenCalledWith(20)
-      expect(invalidateActorCache).toHaveBeenCalledTimes(2)
+      expect(mockInvalidateActorCache).toHaveBeenCalledWith(10)
+      expect(mockInvalidateActorCache).toHaveBeenCalledWith(20)
+      expect(mockInvalidateActorCache).toHaveBeenCalledTimes(2)
+    })
+
+    it("still succeeds when cache invalidation fails in batch", async () => {
+      mockInvalidateActorCache.mockRejectedValueOnce(new Error("Redis unavailable"))
+
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            tmdb_id: 12345,
+            name: "Actor One",
+            wikipedia_url: null,
+            imdb_person_id: null,
+          },
+        ],
+      })
+
+      vi.mocked(getPersonDetails).mockResolvedValueOnce({
+        id: 12345,
+        name: "Actor One",
+        biography: "A well-known actor with a long career spanning several decades.",
+        birthday: null,
+        deathday: null,
+        place_of_birth: null,
+        popularity: 10,
+        profile_path: null,
+        imdb_id: null,
+      })
+
+      vi.mocked(generateBiographyWithTracking).mockResolvedValueOnce({
+        biography: "Actor One is a well-known actor.",
+        hasSubstantiveContent: true,
+        sourceUrl: "https://www.themoviedb.org/person/12345",
+        sourceType: "tmdb",
+        inputTokens: 500,
+        outputTokens: 200,
+        costUsd: 0.005,
+        latencyMs: 1500,
+      })
+
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      const response = await request(app)
+        .post("/admin/api/biographies/generate-batch")
+        .send({ actorIds: [1], limit: 1 })
+
+      expect(response.status).toBe(200)
+      expect(response.body.results[0].success).toBe(true)
+      expect(response.body.results[0].biography).toBe("Actor One is a well-known actor.")
+      expect(mockInvalidateActorCache).toHaveBeenCalledWith(1)
     })
 
     it("respects limit parameter", async () => {

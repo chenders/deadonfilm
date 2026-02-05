@@ -21,6 +21,19 @@ const router = Router()
 // Minimum TMDB biography length to be considered substantial enough for generation
 const MIN_BIOGRAPHY_LENGTH = 50
 
+/**
+ * Best-effort cache invalidation after biography updates.
+ * invalidateActorCache() currently swallows errors internally, but we wrap
+ * in try/catch defensively in case that behaviour changes.
+ */
+async function invalidateActorCacheBestEffort(actorId: number): Promise<void> {
+  try {
+    await invalidateActorCache(actorId)
+  } catch (err) {
+    logger.warn({ err, actorId }, "Failed to invalidate actor cache after biography update")
+  }
+}
+
 // ============================================================================
 // GET /admin/api/biographies
 // Get actors needing biography generation
@@ -250,14 +263,7 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
       ]
     )
 
-    // Invalidate cache so updated biography is served.
-    // Note: invalidateActorCache() handles Redis failures internally and does not throw,
-    // but we keep the try/catch as defensive coding in case that behavior changes.
-    try {
-      await invalidateActorCache(actorId)
-    } catch (err) {
-      logger.warn({ err, actorId }, "Failed to invalidate actor cache after biography update")
-    }
+    await invalidateActorCacheBestEffort(actorId)
 
     // Log admin action
     await logAdminAction({
@@ -441,17 +447,7 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
 
         totalCost += result.costUsd
 
-        // Invalidate cache so updated biography is served.
-        // Note: invalidateActorCache() handles Redis failures internally and does not throw,
-        // but we keep the try/catch as defensive coding in case that behavior changes.
-        try {
-          await invalidateActorCache(actor.id)
-        } catch (err) {
-          logger.warn(
-            { err, actorId: actor.id },
-            "Failed to invalidate actor cache after biography update"
-          )
-        }
+        await invalidateActorCacheBestEffort(actor.id)
 
         results.push({
           actorId: actor.id,
