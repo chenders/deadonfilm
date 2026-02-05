@@ -52,6 +52,19 @@ export interface EnrichmentRunActor {
   links_followed: number
   pages_fetched: number
   error: string | null
+  has_logs: boolean
+}
+
+export interface ActorLogEntry {
+  timestamp: string
+  level: "info" | "warn" | "error" | "debug"
+  message: string
+  data?: Record<string, unknown>
+}
+
+export interface ActorLogsResponse {
+  actorName: string
+  logEntries: ActorLogEntry[]
 }
 
 export interface SourcePerformanceStats {
@@ -478,6 +491,37 @@ export function useEnrichmentRunLogs(
     queryFn: () => fetchEnrichmentRunLogs(runId, page, pageSize, level),
     staleTime: 30000, // 30 seconds
     enabled: !!runId,
+  })
+}
+
+// ============================================================================
+// Actor Logs API
+// ============================================================================
+
+async function fetchActorLogs(runId: number, actorId: number): Promise<ActorLogsResponse> {
+  const response = await fetch(`/admin/api/enrichment/runs/${runId}/actors/${actorId}/logs`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch actor enrichment logs")
+  }
+
+  return response.json()
+}
+
+/**
+ * Hook to fetch per-actor enrichment log entries.
+ */
+export function useActorEnrichmentLogs(
+  runId: number,
+  actorId: number | null
+): UseQueryResult<ActorLogsResponse> {
+  return useQuery({
+    queryKey: ["admin", "enrichment", "run", runId, "actors", actorId, "logs"],
+    queryFn: () => fetchActorLogs(runId, actorId!),
+    staleTime: 60000,
+    enabled: !!runId && !!actorId,
   })
 }
 

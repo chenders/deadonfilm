@@ -56,6 +56,7 @@ export interface EnrichmentRunActor {
   links_followed: number
   pages_fetched: number
   error: string | null
+  has_logs: boolean
 }
 
 export interface SourcePerformanceStats {
@@ -263,7 +264,8 @@ export async function getEnrichmentRunActors(
       era.cost_usd::text,
       era.links_followed,
       era.pages_fetched,
-      era.error
+      era.error,
+      (era.log_entries IS NOT NULL AND era.log_entries != '[]'::jsonb) AS has_logs
     FROM enrichment_run_actors era
     JOIN actors a ON a.id = era.actor_id
     WHERE era.run_id = $1

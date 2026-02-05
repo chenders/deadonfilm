@@ -15,7 +15,9 @@ import {
   useEnrichmentRunProgress,
   useStopEnrichmentRun,
   useEnrichmentRunLogs,
+  useActorEnrichmentLogs,
   type EnrichmentRunLog,
+  type ActorLogEntry,
 } from "../../hooks/admin/useEnrichmentRuns"
 import { createActorSlug } from "../../utils/slugify"
 
@@ -27,6 +29,10 @@ export default function EnrichmentRunDetailsPage() {
   const [logsPage, setLogsPage] = useState(1)
   const [logLevel, setLogLevel] = useState<string | undefined>(undefined)
   const logsPageSize = 50
+  const [selectedActorForLogs, setSelectedActorForLogs] = useState<{
+    actorId: number
+    actorName: string
+  } | null>(null)
   const { toast } = useToast()
 
   const { data: run, isLoading: runLoading, error: runError } = useEnrichmentRunDetails(runId)
@@ -334,6 +340,7 @@ export default function EnrichmentRunDetailsPage() {
                       <th className="px-3 py-2 text-right text-admin-text-secondary">Cost</th>
                       <th className="px-3 py-2 text-right text-admin-text-secondary">Time</th>
                       <th className="px-3 py-2 text-left text-admin-text-secondary">Error</th>
+                      <th className="px-3 py-2 text-center text-admin-text-secondary">Logs</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-admin-border">
@@ -368,6 +375,23 @@ export default function EnrichmentRunDetailsPage() {
                           title={actor.error || ""}
                         >
                           {actor.error || "—"}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {actor.has_logs ? (
+                            <button
+                              onClick={() =>
+                                setSelectedActorForLogs({
+                                  actorId: actor.actor_id,
+                                  actorName: actor.actor_name,
+                                })
+                              }
+                              className="hover:bg-admin-interactive-secondary/80 rounded bg-admin-interactive-secondary px-2 py-1 text-xs text-admin-interactive hover:text-admin-interactive-hover"
+                            >
+                              View
+                            </button>
+                          ) : (
+                            <span className="text-admin-text-muted">—</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -478,6 +502,16 @@ export default function EnrichmentRunDetailsPage() {
           )}
         </div>
       </div>
+
+      {/* Actor Logs Modal */}
+      {selectedActorForLogs && (
+        <ActorLogsModal
+          runId={runId}
+          actorId={selectedActorForLogs.actorId}
+          actorName={selectedActorForLogs.actorName}
+          onClose={() => setSelectedActorForLogs(null)}
+        />
+      )}
     </AdminLayout>
   )
 }
@@ -535,6 +569,146 @@ function LogEntry({ log }: { log: EnrichmentRunLog }) {
           </summary>
           <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-[10px] text-admin-text-muted">
             {log.error_stack}
+          </pre>
+        </details>
+      )}
+    </div>
+  )
+}
+
+/** Color map for actor log entry level badges */
+const ACTOR_LOG_LEVEL_BADGE: Record<string, string> = {
+  info: "bg-blue-800 text-blue-200",
+  warn: "bg-yellow-800 text-yellow-200",
+  error: "bg-red-800 text-red-200",
+  debug: "bg-gray-700 text-gray-200",
+}
+
+/** Messages that contain large payloads shown in collapsible sections */
+const COLLAPSIBLE_MESSAGES = new Set(["[CLAUDE_REQUEST]", "[CLAUDE_RESPONSE]"])
+
+/**
+ * Modal showing per-actor enrichment log entries with Claude I/O data.
+ */
+function ActorLogsModal({
+  runId,
+  actorId,
+  actorName,
+  onClose,
+}: {
+  runId: number
+  actorId: number
+  actorName: string
+  onClose: () => void
+}) {
+  const { data, isLoading, error } = useActorEnrichmentLogs(runId, actorId)
+
+  const formatTimestamp = (ts: string) => {
+    const date = new Date(ts)
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="mx-4 flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg border border-admin-border bg-admin-surface-elevated shadow-lg">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-admin-border px-6 py-4">
+          <div>
+            <h3 className="text-lg font-semibold text-admin-text-primary">
+              Enrichment Logs: {actorName}
+            </h3>
+            <p className="text-sm text-admin-text-muted">
+              Run #{runId} / Actor #{actorId}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded p-1 text-admin-text-muted hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {isLoading && (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          )}
+          {error && <ErrorMessage message="Failed to load actor logs" />}
+          {data && data.logEntries.length === 0 && (
+            <p className="py-8 text-center text-admin-text-muted">No log entries recorded</p>
+          )}
+          {data && data.logEntries.length > 0 && (
+            <div className="space-y-2">
+              {data.logEntries.map((entry, i) => (
+                <ActorLogEntryRow key={i} entry={entry} formatTimestamp={formatTimestamp} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Single log entry row within the actor logs modal.
+ */
+function ActorLogEntryRow({
+  entry,
+  formatTimestamp,
+}: {
+  entry: ActorLogEntry
+  formatTimestamp: (ts: string) => string
+}) {
+  const isCollapsible = COLLAPSIBLE_MESSAGES.has(entry.message)
+  const badgeColor = ACTOR_LOG_LEVEL_BADGE[entry.level] || "bg-gray-700 text-gray-200"
+
+  return (
+    <div className="rounded border border-admin-border px-3 py-2 text-sm">
+      <div className="flex items-start gap-2">
+        <span className="shrink-0 font-mono text-xs text-admin-text-muted">
+          {formatTimestamp(entry.timestamp)}
+        </span>
+        <span
+          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${badgeColor}`}
+        >
+          {entry.level}
+        </span>
+        <span className="font-medium text-admin-text-primary">{entry.message}</span>
+      </div>
+
+      {entry.data && !isCollapsible && (
+        <pre className="mt-1 overflow-x-auto rounded bg-admin-surface-base p-2 text-xs text-admin-text-secondary">
+          {JSON.stringify(entry.data, null, 2)}
+        </pre>
+      )}
+
+      {entry.data && isCollapsible && (
+        <details className="mt-1">
+          <summary className="cursor-pointer text-xs text-admin-text-muted hover:text-admin-text-secondary">
+            {entry.message === "[CLAUDE_REQUEST]"
+              ? `Prompt (${(entry.data.promptLength as number)?.toLocaleString() || "?"} chars)`
+              : `Response (${(entry.data.inputTokens as number)?.toLocaleString() || "?"} in / ${(entry.data.outputTokens as number)?.toLocaleString() || "?"} out tokens, $${(entry.data.costUsd as number)?.toFixed(4) || "?"})`}
+          </summary>
+          <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap rounded bg-admin-surface-base p-2 text-xs text-admin-text-secondary">
+            {entry.message === "[CLAUDE_REQUEST]"
+              ? (entry.data.prompt as string)
+              : (entry.data.response as string)}
           </pre>
         </details>
       )}
