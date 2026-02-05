@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, act } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter, Routes, Route } from "react-router-dom"
+import { ToastProvider } from "../../contexts/ToastContext"
+import ToastContainer from "../../components/common/ToastContainer"
 import ActorManagementPage from "./ActorManagementPage"
 
 // Mock the hooks
@@ -76,16 +78,20 @@ describe("ActorManagementPage", () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   const renderComponent = (initialPath = "/admin/actors") => {
     return render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter future={futureFlags} initialEntries={[initialPath]}>
-          <Routes>
-            <Route path="/admin/actors" element={<ActorManagementPage />} />
-          </Routes>
-        </MemoryRouter>
+        <ToastProvider>
+          <MemoryRouter future={futureFlags} initialEntries={[initialPath]}>
+            <Routes>
+              <Route path="/admin/actors" element={<ActorManagementPage />} />
+            </Routes>
+          </MemoryRouter>
+          <ToastContainer />
+        </ToastProvider>
       </QueryClientProvider>
     )
   }
@@ -642,6 +648,246 @@ describe("ActorManagementPage", () => {
 
       // Dropdown should not show any options
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    })
+  })
+
+  describe("Biography Regeneration", () => {
+    beforeEach(() => {
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: {
+          items: mockActors,
+          total: 3,
+          page: 1,
+          pageSize: 50,
+          totalPages: 1,
+        },
+        isLoading: false,
+        error: null,
+      } as never)
+      vi.mocked(useCausesOfDeath).mockReturnValue({
+        data: [],
+        isLoading: false,
+        error: null,
+      } as never)
+    })
+
+    it("renders regenerate biography button for each actor", () => {
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+      expect(regenerateButtons).toHaveLength(mockActors.length)
+    })
+
+    it("calls biography API with correct payload and credentials on button click", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            result: { biography: "Test bio", hasSubstantiveContent: true },
+          }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      // Click regenerate for first actor (John Wayne, id: 1)
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        // Run pending timers to allow async operations
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockFetch).toHaveBeenCalledWith("/admin/api/biographies/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ actorId: 1 }),
+      })
+    })
+
+    it("shows success toast when biography regeneration succeeds", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            result: { biography: "New biography", hasSubstantiveContent: true },
+          }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(screen.getByText("Biography regenerated successfully")).toBeInTheDocument()
+    })
+
+    it("shows appropriate toast when no biography content available", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            message: "No substantial TMDB biography available",
+            result: { biography: null, hasSubstantiveContent: false },
+          }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(screen.getByText("No substantial TMDB biography available")).toBeInTheDocument()
+    })
+
+    it("shows error toast when biography regeneration fails", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({ error: { message: "Actor not found" } }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(screen.getByText("Actor not found")).toBeInTheDocument()
+    })
+
+    it("invalidates query cache after successful biography regeneration", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            result: { biography: "New biography", hasSubstantiveContent: true },
+          }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries")
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ["admin", "coverage", "actors"],
+      })
+    })
+
+    it("disables all regenerate buttons while regeneration is in progress", async () => {
+      // Create a promise that we can control
+      let resolvePromise: (value: unknown) => void
+      const mockFetch = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          })
+      )
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+
+      // Initially all buttons should be enabled
+      regenerateButtons.forEach((button) => {
+        expect(button).not.toBeDisabled()
+      })
+
+      // Click first button
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+      })
+
+      // All buttons should now be disabled
+      const buttonsAfterClick = screen.getAllByRole("button", { name: "Regenerate biography" })
+      buttonsAfterClick.forEach((button) => {
+        expect(button).toBeDisabled()
+      })
+
+      // Resolve the promise
+      await act(async () => {
+        resolvePromise!({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              result: { biography: "Bio", hasSubstantiveContent: true },
+            }),
+        })
+        await vi.runAllTimersAsync()
+      })
+    })
+
+    it("shows spinner on clicked row and document icon on other rows during regeneration", async () => {
+      let resolvePromise: (value: unknown) => void
+      const mockFetch = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          })
+      )
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      // Initially all rows show document icons, no spinners
+      expect(screen.getAllByTestId("biography-icon")).toHaveLength(mockActors.length)
+      expect(screen.queryByTestId("biography-spinner")).not.toBeInTheDocument()
+
+      // Click regenerate for first actor
+      const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate biography" })
+      await act(async () => {
+        fireEvent.click(regenerateButtons[0])
+      })
+
+      // Clicked row should show spinner, other rows should still show document icon
+      expect(screen.getByTestId("biography-spinner")).toBeInTheDocument()
+      expect(screen.getAllByTestId("biography-icon")).toHaveLength(mockActors.length - 1)
+
+      // Resolve the promise
+      await act(async () => {
+        resolvePromise!({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              result: { biography: "Bio", hasSubstantiveContent: true },
+            }),
+        })
+        await vi.runAllTimersAsync()
+      })
+
+      // After resolution, all rows should show document icons again
+      expect(screen.getAllByTestId("biography-icon")).toHaveLength(mockActors.length)
+      expect(screen.queryByTestId("biography-spinner")).not.toBeInTheDocument()
     })
   })
 })

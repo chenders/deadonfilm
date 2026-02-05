@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { useQueryClient } from "@tanstack/react-query"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
@@ -13,6 +14,7 @@ import AdminHoverCard from "../../components/admin/ui/AdminHoverCard"
 import ActorPreviewCard from "../../components/admin/ActorPreviewCard"
 import { useDebouncedSearchParam } from "../../hooks/useDebouncedSearchParam"
 import { createActorSlug } from "../../utils/slugify"
+import { useToast } from "../../contexts/ToastContext"
 
 /**
  * Format a date as relative time (e.g., "2 days ago", "3 months ago")
@@ -46,11 +48,14 @@ function formatRelativeTime(dateStr: string | null): string {
 export default function ActorManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
 
   const [page, setPage] = useState(1)
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
   const [causeSearchInput, setCauseSearchInput] = useState("")
   const [showCauseDropdown, setShowCauseDropdown] = useState(false)
+  const [regeneratingBiography, setRegeneratingBiography] = useState<number | null>(null)
   const pageSize = 50
 
   // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
@@ -156,6 +161,39 @@ export default function ActorManagementPage() {
 
     const actorIds = Array.from(selectedActorIds)
     navigate("/admin/enrichment/start", { state: { selectedActorIds: actorIds } })
+  }
+
+  const handleRegenerateBiography = async (actorId: number) => {
+    if (regeneratingBiography !== null) return
+
+    setRegeneratingBiography(actorId)
+    try {
+      const response = await fetch("/admin/api/biographies/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ actorId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error?.message || "Failed to regenerate biography")
+      }
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success(
+          result.result.hasSubstantiveContent
+            ? "Biography regenerated successfully"
+            : result.message || "No substantial biography content available from TMDB"
+        )
+        await queryClient.invalidateQueries({ queryKey: ["admin", "coverage", "actors"] })
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to regenerate biography")
+    } finally {
+      setRegeneratingBiography(null)
+    }
   }
 
   return (
@@ -532,6 +570,53 @@ export default function ActorManagementPage() {
                                   />
                                 </svg>
                               </Link>
+                              <button
+                                onClick={() => handleRegenerateBiography(actor.id)}
+                                disabled={regeneratingBiography !== null}
+                                className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                title="Regenerate biography"
+                                aria-label="Regenerate biography"
+                              >
+                                {regeneratingBiography === actor.id ? (
+                                  <svg
+                                    data-testid="biography-spinner"
+                                    className="h-4 w-4 animate-spin"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle
+                                      className="opacity-25"
+                                      cx="12"
+                                      cy="12"
+                                      r="10"
+                                      stroke="currentColor"
+                                      strokeWidth="4"
+                                    />
+                                    <path
+                                      className="opacity-75"
+                                      fill="currentColor"
+                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    />
+                                  </svg>
+                                ) : (
+                                  <svg
+                                    data-testid="biography-icon"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
                               <a
                                 href={`/actor/${createActorSlug(actor.name, actor.id)}`}
                                 target="_blank"
