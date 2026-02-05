@@ -18,6 +18,12 @@ vi.mock("../wikipedia-section-selector.js", () => ({
   isAISectionSelectionAvailable: vi.fn().mockReturnValue(false),
 }))
 
+// Mock the date extractor module
+vi.mock("../wikipedia-date-extractor.js", () => ({
+  extractDatesWithAI: vi.fn(),
+  isAIDateExtractionAvailable: vi.fn().mockReturnValue(false),
+}))
+
 describe("WikipediaSource", () => {
   let source: WikipediaSource
 

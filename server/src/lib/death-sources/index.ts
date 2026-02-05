@@ -162,3 +162,10 @@ export {
   type WikipediaSection,
   type SectionSelectionResult,
 } from "./wikipedia-section-selector.js"
+
+// Wikipedia date extractor (AI-assisted date validation)
+export {
+  extractDatesWithAI,
+  isAIDateExtractionAvailable,
+  type DateExtractionResult,
+} from "./wikipedia-date-extractor.js"
