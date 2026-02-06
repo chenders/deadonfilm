@@ -2,32 +2,25 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router-dom"
-import BiographyManagementPage from "./BiographyManagementPage"
-
-// Mock AdminLayout
-vi.mock("../../components/admin/AdminLayout", () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="admin-layout">{children}</div>
-  ),
-}))
+import BiographiesTab from "./BiographiesTab"
 
 // Mock LoadingSpinner
-vi.mock("../../components/common/LoadingSpinner", () => ({
+vi.mock("../../common/LoadingSpinner", () => ({
   default: () => <div data-testid="loading-spinner">Loading...</div>,
 }))
 
 // Mock ErrorMessage
-vi.mock("../../components/common/ErrorMessage", () => ({
+vi.mock("../../common/ErrorMessage", () => ({
   default: ({ message }: { message: string }) => <div data-testid="error-message">{message}</div>,
 }))
 
 // Mock AdminHoverCard
-vi.mock("../../components/admin/ui/AdminHoverCard", () => ({
+vi.mock("../ui/AdminHoverCard", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 // Mock ActorPreviewCard
-vi.mock("../../components/admin/ActorPreviewCard", () => ({
+vi.mock("../ActorPreviewCard", () => ({
   default: () => <div data-testid="actor-preview">Preview</div>,
 }))
 
@@ -35,7 +28,7 @@ vi.mock("../../components/admin/ActorPreviewCard", () => ({
 const mockFetch = vi.fn()
 vi.stubGlobal("fetch", mockFetch)
 
-describe("BiographyManagementPage", () => {
+describe("BiographiesTab", () => {
   let queryClient: QueryClient
 
   beforeEach(() => {
@@ -56,8 +49,8 @@ describe("BiographyManagementPage", () => {
   const renderComponent = () => {
     return render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={["/admin/biographies"]}>
-          <BiographyManagementPage />
+        <MemoryRouter initialEntries={["/admin/actors?tab=biographies"]}>
+          <BiographiesTab />
         </MemoryRouter>
       </QueryClientProvider>
     )
@@ -69,24 +62,6 @@ describe("BiographyManagementPage", () => {
     renderComponent()
 
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument()
-  })
-
-  it("renders page title", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          actors: [],
-          pagination: { page: 1, pageSize: 50, totalCount: 0, totalPages: 0 },
-          stats: { totalActors: 0, withBiography: 0, withoutBiography: 0 },
-        }),
-    })
-
-    renderComponent()
-
-    await waitFor(() => {
-      expect(screen.getByText("Biography Management")).toBeInTheDocument()
-    })
   })
 
   it("renders stats cards when data is loaded", async () => {

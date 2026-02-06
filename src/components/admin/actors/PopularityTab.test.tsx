@@ -1,14 +1,14 @@
 /**
- * Tests for PopularityPage
+ * Tests for PopularityTab
  */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router-dom"
-import PopularityPage from "./PopularityPage"
+import PopularityTab from "./PopularityTab"
 
 // Mock the hooks
-vi.mock("../../hooks/admin/usePopularity", () => ({
+vi.mock("../../../hooks/admin/usePopularity", () => ({
   usePopularityStats: vi.fn(),
   useTopActors: vi.fn(),
   useLowConfidenceActors: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock("../../hooks/admin/usePopularity", () => ({
 }))
 
 // Mock useAdminAuth
-vi.mock("../../hooks/useAdminAuth", () => ({
+vi.mock("../../../hooks/useAdminAuth", () => ({
   useAdminAuth: () => ({
     isAuthenticated: true,
     isLoading: false,
@@ -31,7 +31,7 @@ import {
   useLowConfidenceActors,
   useMissingPopularityActors,
   usePopularityLastRun,
-} from "../../hooks/admin/usePopularity"
+} from "../../../hooks/admin/usePopularity"
 
 const mockStats = {
   actors: {
@@ -127,13 +127,13 @@ function renderPage() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <PopularityPage />
+        <PopularityTab />
       </MemoryRouter>
     </QueryClientProvider>
   )
 }
 
-describe("PopularityPage", () => {
+describe("PopularityTab", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -180,16 +180,7 @@ describe("PopularityPage", () => {
     } as unknown as ReturnType<typeof usePopularityLastRun>)
   })
 
-  describe("Header and Tabs", () => {
-    it("renders page title and description", () => {
-      renderPage()
-
-      expect(screen.getByText("DOF Popularity Scores")).toBeInTheDocument()
-      expect(
-        screen.getByText("View and analyze popularity scores for movies, shows, and actors")
-      ).toBeInTheDocument()
-    })
-
+  describe("Tabs", () => {
     it("renders all tabs", () => {
       renderPage()
 

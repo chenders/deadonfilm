@@ -216,10 +216,13 @@ describe("App", () => {
 
       renderApp("/admin/data-quality")
 
-      // Should redirect to login since not authenticated
-      await waitFor(() => {
-        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-      })
+      // Redirects through /admin/actors?tab=data-quality, then to login
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it("routes to /admin/sync for TMDB sync management", async () => {
