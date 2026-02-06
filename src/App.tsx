@@ -42,7 +42,7 @@ const NotableDeathsPage = lazyWithRetry(() => import("./pages/NotableDeathsPage"
 const AdminLoginPage = lazyWithRetry(() => import("./pages/admin/LoginPage"))
 const AdminDashboardPage = lazyWithRetry(() => import("./pages/admin/DashboardPage"))
 const AdminAnalyticsHubPage = lazyWithRetry(() => import("./pages/admin/AnalyticsHubPage"))
-const AdminActorManagementPage = lazyWithRetry(() => import("./pages/admin/ActorManagementPage"))
+const AdminActorHubPage = lazyWithRetry(() => import("./pages/admin/ActorHubPage"))
 const AdminActorEditorPage = lazyWithRetry(() => import("./pages/admin/ActorEditorPage"))
 const AdminExternalToolsPage = lazyWithRetry(() => import("./pages/admin/ExternalToolsPage"))
 const AdminEnrichmentRunsPage = lazyWithRetry(() => import("./pages/admin/EnrichmentRunsPage"))
@@ -54,7 +54,6 @@ const AdminEnrichmentReviewPage = lazyWithRetry(() => import("./pages/admin/Enri
 const AdminHighPriorityActorsPage = lazyWithRetry(
   () => import("./pages/admin/HighPriorityActorsPage")
 )
-const AdminActorDiagnosticPage = lazyWithRetry(() => import("./pages/admin/ActorDiagnosticPage"))
 const AdminCacheManagementPage = lazyWithRetry(() => import("./pages/admin/CacheManagementPage"))
 const AdminSitemapManagementPage = lazyWithRetry(
   () => import("./pages/admin/SitemapManagementPage")
@@ -72,17 +71,12 @@ const AdminABTestComprehensiveIndexPage = lazyWithRetry(
 const AdminABTestComprehensiveDetailPage = lazyWithRetry(
   () => import("./pages/admin/ABTestComprehensiveDetailPage")
 )
-const AdminDataQualityPage = lazyWithRetry(() => import("./pages/admin/DataQualityPage"))
-const AdminPopularityPage = lazyWithRetry(() => import("./pages/admin/PopularityPage"))
 const AdminSyncPage = lazyWithRetry(() => import("./pages/admin/SyncPage"))
 const AdminJobQueuesPage = lazyWithRetry(() => import("./pages/admin/JobQueuesPage"))
 const AdminJobRunsPage = lazyWithRetry(() => import("./pages/admin/JobRunsPage"))
 const AdminJobDetailsPage = lazyWithRetry(() => import("./pages/admin/JobDetailsPage"))
 const AdminDeadLetterQueuePage = lazyWithRetry(() => import("./pages/admin/DeadLetterQueuePage"))
 const AdminLogsPage = lazyWithRetry(() => import("./pages/admin/LogsPage"))
-const AdminBiographyManagementPage = lazyWithRetry(
-  () => import("./pages/admin/BiographyManagementPage")
-)
 
 function App() {
   useGoogleAnalytics()
@@ -184,7 +178,7 @@ function App() {
             element={
               <AdminThemeProvider>
                 <Suspense fallback={<LoadingSpinner />}>
-                  <AdminActorManagementPage />
+                  <AdminActorHubPage />
                 </Suspense>
               </AdminThemeProvider>
             }
@@ -215,13 +209,7 @@ function App() {
           />
           <Route
             path="/admin/actor-diagnostic"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminActorDiagnosticPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
+            element={<Navigate to="/admin/actors?tab=diagnostic" replace />}
           />
           <Route
             path="/admin/cache"
@@ -245,23 +233,11 @@ function App() {
           />
           <Route
             path="/admin/data-quality"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminDataQualityPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
+            element={<Navigate to="/admin/actors?tab=data-quality" replace />}
           />
           <Route
             path="/admin/popularity"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminPopularityPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
+            element={<Navigate to="/admin/actors?tab=popularity" replace />}
           />
           <Route
             path="/admin/sync"
@@ -375,13 +351,7 @@ function App() {
           />
           <Route
             path="/admin/biographies"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminBiographyManagementPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
+            element={<Navigate to="/admin/actors?tab=biographies" replace />}
           />
 
           {/* Public routes (with Layout) */}

@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, screen, fireEvent, act } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter, Routes, Route } from "react-router-dom"
-import { ToastProvider } from "../../contexts/ToastContext"
-import ToastContainer from "../../components/common/ToastContainer"
-import ActorManagementPage from "./ActorManagementPage"
+import { ToastProvider } from "../../../contexts/ToastContext"
+import ToastContainer from "../../common/ToastContainer"
+import ActorManagementTab from "./ActorManagementTab"
 
 // Mock the hooks
-vi.mock("../../hooks/admin/useCoverage", () => ({
+vi.mock("../../../hooks/admin/useCoverage", () => ({
   useActorsForCoverage: vi.fn(),
   useCausesOfDeath: vi.fn(() => ({
     data: [],
@@ -21,12 +21,12 @@ vi.mock("../../hooks/admin/useCoverage", () => ({
   })),
 }))
 
-vi.mock("../../hooks/useAdminAuth", () => ({
+vi.mock("../../../hooks/useAdminAuth", () => ({
   useAdminAuth: vi.fn(() => ({ isAuthenticated: true, isLoading: false })),
   AdminAuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-import { useActorsForCoverage, useCausesOfDeath } from "../../hooks/admin/useCoverage"
+import { useActorsForCoverage, useCausesOfDeath } from "../../../hooks/admin/useCoverage"
 
 const mockActors = [
   {
@@ -63,7 +63,7 @@ const mockActors = [
 
 const futureFlags = { v7_startTransition: true, v7_relativeSplatPath: true }
 
-describe("ActorManagementPage", () => {
+describe("ActorManagementTab", () => {
   let queryClient: QueryClient
 
   beforeEach(() => {
@@ -81,13 +81,13 @@ describe("ActorManagementPage", () => {
     vi.unstubAllGlobals()
   })
 
-  const renderComponent = (initialPath = "/admin/actors") => {
+  const renderComponent = (initialPath = "/admin/actors?tab=management") => {
     return render(
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <MemoryRouter future={futureFlags} initialEntries={[initialPath]}>
             <Routes>
-              <Route path="/admin/actors" element={<ActorManagementPage />} />
+              <Route path="/admin/actors" element={<ActorManagementTab />} />
             </Routes>
           </MemoryRouter>
           <ToastContainer />
@@ -132,7 +132,6 @@ describe("ActorManagementPage", () => {
 
     renderComponent()
 
-    expect(screen.getByRole("heading", { name: "Actor Management" })).toBeInTheDocument()
     expect(screen.getByText("John Wayne")).toBeInTheDocument()
     expect(screen.getByText("James Dean")).toBeInTheDocument()
     expect(screen.getByText("Marilyn Monroe")).toBeInTheDocument()
@@ -229,7 +228,7 @@ describe("ActorManagementPage", () => {
     } as never)
 
     // Start on page 2
-    renderComponent("/admin/actors?page=2")
+    renderComponent("/admin/actors?tab=management&page=2")
 
     const searchInput = screen.getByLabelText("Name Search")
 
@@ -565,7 +564,7 @@ describe("ActorManagementPage", () => {
 
     it("clears cause filter when clear button is clicked", () => {
       // Start with a filter applied (via URL)
-      renderComponent("/admin/actors?causeOfDeath=cancer")
+      renderComponent("/admin/actors?tab=management&causeOfDeath=cancer")
 
       // The clear button should be visible when there's a filter applied
       const clearButton = screen.getByRole("button", { name: "Clear cause filter" })
@@ -597,7 +596,7 @@ describe("ActorManagementPage", () => {
       } as never)
 
       // Start on page 2
-      renderComponent("/admin/actors?page=2")
+      renderComponent("/admin/actors?tab=management&page=2")
 
       const causeInput = screen.getByLabelText("Cause of Death")
       fireEvent.focus(causeInput)

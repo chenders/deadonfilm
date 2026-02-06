@@ -1,5 +1,5 @@
 /**
- * Tests for DataQualityPage defaults
+ * Tests for DataQualityTab defaults
  *
  * These tests verify that the admin UI defaults match the expected behavior
  */
@@ -7,10 +7,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router-dom"
-import DataQualityPage from "./DataQualityPage"
+import DataQualityTab from "./DataQualityTab"
 
 // Mock the hooks
-vi.mock("../../hooks/admin/useDataQuality", () => ({
+vi.mock("../../../hooks/admin/useDataQuality", () => ({
   useDataQualityOverview: () => ({
     data: {
       futureDeathsCount: 5,
@@ -54,14 +54,7 @@ vi.mock("../../hooks/admin/useDataQuality", () => ({
   }),
 }))
 
-vi.mock("../../hooks/useAdminAuth", () => ({
-  useAdminAuth: () => ({
-    isAuthenticated: true,
-    isLoading: false,
-  }),
-}))
-
-function renderPage() {
+function renderTab() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -69,26 +62,26 @@ function renderPage() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <DataQualityPage />
+        <DataQualityTab />
       </MemoryRouter>
     </QueryClientProvider>
   )
 }
 
-describe("DataQualityPage defaults", () => {
+describe("DataQualityTab defaults", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   describe("Tab defaults", () => {
     it("shows Overview tab as active by default", () => {
-      renderPage()
+      renderTab()
       const overviewTab = screen.getByTestId("data-quality-overview-tab")
       expect(overviewTab).toHaveClass("border-admin-interactive")
     })
 
     it("shows all tab options", () => {
-      renderPage()
+      renderTab()
       expect(screen.getByTestId("data-quality-overview-tab")).toBeInTheDocument()
       expect(screen.getByTestId("data-quality-future-deaths-tab")).toBeInTheDocument()
       expect(screen.getByTestId("data-quality-uncertain-tab")).toBeInTheDocument()
@@ -98,7 +91,7 @@ describe("DataQualityPage defaults", () => {
 
   describe("Reset Enrichment form defaults", () => {
     it("has resetDryRun unchecked by default", async () => {
-      renderPage()
+      renderTab()
 
       // Navigate to Reset Enrichment tab
       const resetTab = screen.getByTestId("data-quality-reset-tab")
@@ -110,7 +103,7 @@ describe("DataQualityPage defaults", () => {
     })
 
     it("has actorId input empty by default", async () => {
-      renderPage()
+      renderTab()
 
       // Navigate to Reset Enrichment tab
       const resetTab = screen.getByTestId("data-quality-reset-tab")
@@ -122,7 +115,7 @@ describe("DataQualityPage defaults", () => {
     })
 
     it("has tmdbId input empty by default", async () => {
-      renderPage()
+      renderTab()
 
       // Navigate to Reset Enrichment tab
       const resetTab = screen.getByTestId("data-quality-reset-tab")
@@ -136,17 +129,17 @@ describe("DataQualityPage defaults", () => {
 
   describe("Overview statistics render correctly", () => {
     it("displays future deaths count", () => {
-      renderPage()
+      renderTab()
       expect(screen.getByText("5")).toBeInTheDocument()
     })
 
     it("displays uncertain deaths count", () => {
-      renderPage()
+      renderTab()
       expect(screen.getByText("10")).toBeInTheDocument()
     })
 
     it("displays pending reset count", () => {
-      renderPage()
+      renderTab()
       expect(screen.getByText("100")).toBeInTheDocument()
     })
   })
