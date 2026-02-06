@@ -14,6 +14,7 @@
 
 import Anthropic from "@anthropic-ai/sdk"
 import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
+import { DeathMannerSchema } from "../claude-batch/schemas.js"
 import type {
   ActorForEnrichment,
   CleanedDeathInfo,
@@ -60,6 +61,8 @@ interface ClaudeCleanupResponse {
     name: string
     relationship: string
   }> | null
+  // Manner of death
+  manner: "natural" | "accident" | "suicide" | "homicide" | "undetermined" | "pending" | null
   // Quality gate
   has_substantive_content: boolean
 }
@@ -158,6 +161,8 @@ Extract ALL death-related information into clean, factual prose written in the t
     natural_causes, alzheimers, cancer, heart_disease, covid_related"],
 
   "location_of_death": "city, state/province, country where they died. Null if unknown.",
+
+  "manner": "natural|accident|suicide|homicide|undetermined|pending - medical examiner classification. null if unknown.",
 
   "related_deaths": "If family members or others died in connection (same incident, discovered together, etc.), describe here with names, relationships, causes, and timeline. Null if none.",
 
@@ -326,6 +331,7 @@ export async function cleanupWithClaude(
     circumstancesConfidence: parsed.circumstances_confidence,
     rumoredCircumstances: parsed.rumored_circumstances,
     locationOfDeath: parsed.location_of_death,
+    manner: DeathMannerSchema.safeParse(parsed.manner).success ? parsed.manner : null,
     notableFactors: parsed.notable_factors || [],
     relatedDeaths: parsed.related_deaths,
     relatedCelebrities,
@@ -350,6 +356,7 @@ export async function cleanupWithClaude(
     circumstancesConfidence: parsed.circumstances_confidence || "",
     rumoredCircumstances: parsed.rumored_circumstances || "",
     locationOfDeath: parsed.location_of_death || "",
+    manner: parsed.manner || "",
     notableFactors: (parsed.notable_factors || []).join(", "),
     relatedDeaths: parsed.related_deaths || "",
     relatedCelebrities: (parsed.related_celebrities || []).map((rc) => rc.name).join(", "),
