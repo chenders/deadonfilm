@@ -85,7 +85,7 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
   return (
     <div
       data-testid="deceased-card"
-      className="group rounded-lg border border-brown-medium/20 bg-white p-4"
+      className="group rounded-lg border border-brown-medium/20 bg-surface-elevated p-4"
     >
       <div className="flex items-start gap-4">
         {profileUrl ? (

@@ -7,6 +7,7 @@ import { toTitleCase } from "@/utils/formatText"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import { PersonIcon } from "@/components/icons"
+import ConfidenceIndicator from "@/components/common/ConfidenceIndicator"
 import type { NotableDeathActor, NotableDeathsFilter } from "@/types"
 
 // Filter tab configuration
@@ -34,29 +35,6 @@ function FactorBadge({ factor }: { factor: string }) {
   )
 }
 
-// Confidence indicator (compact version)
-function ConfidenceIndicator({ level }: { level: string | null }) {
-  if (!level) return null
-
-  const levels: Record<string, { color: string; label: string }> = {
-    high: { color: "bg-green-500", label: "High" },
-    medium: { color: "bg-yellow-500", label: "Medium" },
-    low: { color: "bg-orange-500", label: "Low" },
-    disputed: { color: "bg-red-500", label: "Disputed" },
-  }
-
-  const config = levels[level] || levels.medium
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-white ${config.color}`}
-      title={`${config.label} confidence`}
-    >
-      {config.label}
-    </span>
-  )
-}
-
 function ActorCard({ actor }: { actor: NotableDeathActor }) {
   const profileUrl = getProfileUrl(actor.profilePath, "w185")
 
@@ -64,7 +42,7 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
     <Link
       to={`/actor/${actor.slug}/death`}
       data-testid={`notable-death-${actor.id}`}
-      className="block rounded-lg bg-white p-4 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-4 transition-colors hover:bg-cream"
     >
       <div className="flex items-start gap-4">
         {/* Profile image */}
@@ -111,7 +89,7 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
               </span>
             )}
             {actor.circumstancesConfidence && (
-              <ConfidenceIndicator level={actor.circumstancesConfidence} />
+              <ConfidenceIndicator level={actor.circumstancesConfidence} variant="badge" />
             )}
           </div>
 

@@ -27,7 +27,7 @@ export default function CastToggle({
       className="mb-6 flex flex-wrap items-center justify-center gap-3"
     >
       {/* Deceased/Living toggle */}
-      <div className="inline-flex overflow-hidden rounded-lg border border-brown-medium/30 bg-white">
+      <div className="inline-flex overflow-hidden rounded-lg border border-brown-medium/30 bg-surface-elevated">
         <button
           data-testid="deceased-toggle-btn"
           aria-pressed={!showLiving}
@@ -35,10 +35,10 @@ export default function CastToggle({
           disabled={deceasedDisabled}
           className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
             deceasedDisabled
-              ? "cursor-not-allowed bg-gray-100 text-gray-400"
+              ? "cursor-not-allowed bg-disabled text-disabled-text"
               : !showLiving
                 ? "bg-accent text-white"
-                : "bg-white text-brown-dark hover:bg-beige"
+                : "bg-surface-elevated text-brown-dark hover:bg-beige"
           }`}
         >
           Deceased ({deceasedCount.toLocaleString()})
@@ -50,10 +50,10 @@ export default function CastToggle({
           disabled={livingDisabled}
           className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
             livingDisabled
-              ? "cursor-not-allowed bg-gray-100 text-gray-400"
+              ? "cursor-not-allowed bg-disabled text-disabled-text"
               : showLiving
                 ? "bg-living text-white"
-                : "bg-white text-brown-dark hover:bg-beige"
+                : "bg-surface-elevated text-brown-dark hover:bg-beige"
           }`}
         >
           Living ({livingCount.toLocaleString()})
@@ -62,7 +62,7 @@ export default function CastToggle({
 
       {/* List/Timeline toggle - only show when viewing deceased */}
       {!showLiving && deceasedCount > 0 && (
-        <div className="inline-flex items-center gap-1 rounded-lg border border-brown-medium/30 bg-white p-1">
+        <div className="inline-flex items-center gap-1 rounded-lg border border-brown-medium/30 bg-surface-elevated p-1">
           <button
             data-testid="list-view-btn"
             aria-pressed={viewMode === "list"}

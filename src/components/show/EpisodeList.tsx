@@ -75,7 +75,7 @@ export default function EpisodeList({
               key={`${episode.seasonNumber}-${episode.episodeNumber}`}
               to={`/episode/${slug}`}
               data-testid={`episode-link-${episode.episodeNumber}`}
-              className="block rounded-lg border border-brown-medium/20 bg-white p-3 transition-colors hover:border-accent/30 hover:bg-beige/30"
+              className="block rounded-lg border border-brown-medium/20 bg-surface-elevated p-3 transition-colors hover:border-accent/30 hover:bg-beige/30"
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <div className="flex items-baseline justify-between gap-2">

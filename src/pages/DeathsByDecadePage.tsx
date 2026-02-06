@@ -17,7 +17,7 @@ function ActorRow({ person, rank }: { person: DeathByDecade; rank: number }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`death-row-${person.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">

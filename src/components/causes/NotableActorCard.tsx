@@ -17,7 +17,7 @@ export default function NotableActorCard({ actor }: NotableActorCardProps) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`notable-actor-${actor.id}`}
-      className="flex flex-col items-center rounded-lg bg-white p-3 text-center transition-colors hover:bg-cream"
+      className="flex flex-col items-center rounded-lg bg-surface-elevated p-3 text-center transition-colors hover:bg-cream"
     >
       {profileUrl ? (
         <img

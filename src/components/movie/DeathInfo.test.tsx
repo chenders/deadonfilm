@@ -418,7 +418,9 @@ describe("DeathInfo", () => {
     const lifespanBarContainer = container.querySelector(".w-40.ml-auto")
     expect(lifespanBarContainer).toBeInTheDocument()
     // Verify it contains the bar visualization
-    expect(lifespanBarContainer?.querySelector(".rounded-full.bg-gray-200")).toBeInTheDocument()
+    expect(
+      lifespanBarContainer?.querySelector(".rounded-full.bg-surface-inset")
+    ).toBeInTheDocument()
   })
 
   it("does not render lifespan bar when ageAtDeath is null and birthday unavailable", () => {

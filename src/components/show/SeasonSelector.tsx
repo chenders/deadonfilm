@@ -28,7 +28,7 @@ export default function SeasonSelector({
     <div data-testid="season-selector" className="w-full">
       <h3 className="mb-2 text-center text-sm font-medium text-text-muted">Browse Episodes</h3>
       <div className="flex justify-center">
-        <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-brown-medium/30 bg-white">
+        <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-brown-medium/30 bg-surface-elevated">
           {seasons.map((season, index) => {
             const isSelected = selectedSeason === season.seasonNumber
             const isFirst = index === 0
@@ -41,7 +41,9 @@ export default function SeasonSelector({
                 aria-pressed={isSelected}
                 onClick={() => handleSeasonClick(season.seasonNumber)}
                 className={`whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                  isSelected ? "bg-accent text-white" : "bg-white text-brown-dark hover:bg-beige"
+                  isSelected
+                    ? "bg-accent text-white"
+                    : "bg-surface-elevated text-brown-dark hover:bg-beige"
                 } ${isFirst ? "rounded-l-lg" : "border-l border-brown-medium/30"} ${isLast ? "rounded-r-lg" : ""}`}
               >
                 S{season.seasonNumber}

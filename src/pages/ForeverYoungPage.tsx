@@ -22,7 +22,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
   return (
     <div
       data-testid={`forever-young-row-${movie.id}`}
-      className="rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -57,7 +57,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
         <Link to={`/actor/${actorSlug}`} className="flex items-center gap-3 text-right">
           <div className="min-w-0">
             <p className="font-display text-brown-dark hover:underline">{movie.actor.name}</p>
-            <p className="text-sm text-red-700">
+            <p className="text-sm text-accent">
               Died {Math.round(movie.actor.yearsLost)} years early
             </p>
             {movie.actor.causeOfDeath && (
@@ -114,7 +114,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
           <Link to={`/actor/${actorSlug}`} className="mt-1 block">
             <p className="text-xs text-brown-dark">
               <span className="font-medium">{movie.actor.name}</span>
-              <span className="text-red-700">
+              <span className="text-accent">
                 {" "}
                 died {Math.round(movie.actor.yearsLost)} years early
               </span>

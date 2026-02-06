@@ -40,7 +40,7 @@ function ActorRow({ actor }: { actor: CursedActor }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`cursed-actor-row-${actor.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -234,7 +234,7 @@ export default function CursedActorsPage() {
                 onChange={(e) =>
                   updateParams({ status: e.target.value === "all" ? undefined : e.target.value })
                 }
-                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+                className="rounded border border-brown-medium/30 bg-surface-elevated px-2 py-1.5 text-sm"
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -254,7 +254,7 @@ export default function CursedActorsPage() {
                 onChange={(e) =>
                   updateParams({ minMovies: e.target.value === "2" ? undefined : e.target.value })
                 }
-                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+                className="rounded border border-brown-medium/30 bg-surface-elevated px-2 py-1.5 text-sm"
               >
                 {MIN_MOVIES_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -272,7 +272,7 @@ export default function CursedActorsPage() {
                 id="from-decade-mobile"
                 value={fromDecade?.toString() || ""}
                 onChange={(e) => updateParams({ from: e.target.value || undefined })}
-                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+                className="rounded border border-brown-medium/30 bg-surface-elevated px-2 py-1.5 text-sm"
               >
                 {DECADE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -290,7 +290,7 @@ export default function CursedActorsPage() {
                 id="to-decade-mobile"
                 value={toDecade?.toString() || ""}
                 onChange={(e) => updateParams({ to: e.target.value || undefined })}
-                className="rounded border border-brown-medium/30 bg-white px-2 py-1.5 text-sm"
+                className="rounded border border-brown-medium/30 bg-surface-elevated px-2 py-1.5 text-sm"
               >
                 {DECADE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -324,7 +324,7 @@ export default function CursedActorsPage() {
                 onChange={(e) =>
                   updateParams({ status: e.target.value === "all" ? undefined : e.target.value })
                 }
-                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+                className="rounded border border-brown-medium/30 bg-surface-elevated px-2 py-1 text-sm"
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -342,7 +342,7 @@ export default function CursedActorsPage() {
                 id="from-decade"
                 value={fromDecade?.toString() || ""}
                 onChange={(e) => updateParams({ from: e.target.value || undefined })}
-                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+                className="rounded border border-brown-medium/30 bg-surface-elevated px-2 py-1 text-sm"
               >
                 {DECADE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -360,7 +360,7 @@ export default function CursedActorsPage() {
                 id="to-decade"
                 value={toDecade?.toString() || ""}
                 onChange={(e) => updateParams({ to: e.target.value || undefined })}
-                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+                className="rounded border border-brown-medium/30 bg-surface-elevated px-2 py-1 text-sm"
               >
                 {DECADE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -380,7 +380,7 @@ export default function CursedActorsPage() {
                 onChange={(e) =>
                   updateParams({ minMovies: e.target.value === "2" ? undefined : e.target.value })
                 }
-                className="rounded border border-brown-medium/30 bg-white px-2 py-1 text-sm"
+                className="rounded border border-brown-medium/30 bg-surface-elevated px-2 py-1 text-sm"
               >
                 {MIN_MOVIES_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>

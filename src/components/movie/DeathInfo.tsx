@@ -98,7 +98,7 @@ export default function DeathInfo({
           Age {ageAtDeath}
           {yearsLostNum !== null && (
             <span
-              className={yearsLostNum > 0 ? "text-accent" : "text-green-700"}
+              className={yearsLostNum > 0 ? "text-accent" : "text-lifespan-longer"}
               title={
                 yearsLostNum > 0
                   ? `Died ${Math.abs(yearsLostNum).toFixed(1)} years earlier than expected for their birth year`
@@ -124,7 +124,7 @@ export default function DeathInfo({
               : `Lived ${ageAtDeath} years, ${Math.abs(Math.round(yearsLostNum))} more than expected`
           }
         >
-          <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-200">
+          <div className="flex h-2 w-full overflow-hidden rounded-full bg-surface-inset">
             {yearsLostNum > 0 ? (
               <>
                 {/* Life lived (solid) - died early */}
@@ -144,7 +144,7 @@ export default function DeathInfo({
               </>
             ) : (
               /* Lived longer than expected - full bar */
-              <div className="w-full bg-green-600" />
+              <div className="w-full bg-lifespan-longer" />
             )}
           </div>
           <div className="mt-0.5 flex justify-between text-[10px] text-text-muted">
