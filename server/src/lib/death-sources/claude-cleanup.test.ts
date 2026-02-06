@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { buildCleanupPrompt, estimateCleanupCost } from "./claude-cleanup.js"
+import { DeathMannerSchema } from "../claude-batch/schemas.js"
 import { DataSourceType } from "./types.js"
 import type { ActorForEnrichment, RawSourceData } from "./types.js"
 
@@ -127,6 +128,37 @@ describe("claude-cleanup", () => {
       expect(prompt).toContain('"rumored_circumstances"')
       expect(prompt).toContain('"notable_factors"')
       expect(prompt).toContain('"has_substantive_content"')
+    })
+
+    it("includes manner field in JSON schema", () => {
+      const prompt = buildCleanupPrompt(mockActor, mockSources)
+
+      expect(prompt).toContain('"manner"')
+      expect(prompt).toContain("medical examiner classification")
+      expect(prompt).toContain("natural|accident|suicide|homicide|undetermined|pending")
+    })
+  })
+
+  describe("manner validation with DeathMannerSchema", () => {
+    it("accepts valid manner values", () => {
+      const validValues = ["natural", "accident", "suicide", "homicide", "undetermined", "pending"]
+      for (const value of validValues) {
+        const result = DeathMannerSchema.safeParse(value)
+        expect(result.success).toBe(true)
+      }
+    })
+
+    it("rejects invalid manner values", () => {
+      const invalidValues = ["accidental", "murder", "unknown", "Natural", "SUICIDE", ""]
+      for (const value of invalidValues) {
+        const result = DeathMannerSchema.safeParse(value)
+        expect(result.success).toBe(false)
+      }
+    })
+
+    it("rejects null and undefined", () => {
+      expect(DeathMannerSchema.safeParse(null).success).toBe(false)
+      expect(DeathMannerSchema.safeParse(undefined).success).toBe(false)
     })
   })
 

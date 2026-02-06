@@ -356,7 +356,7 @@ export async function cleanupWithClaude(
     circumstancesConfidence: parsed.circumstances_confidence || "",
     rumoredCircumstances: parsed.rumored_circumstances || "",
     locationOfDeath: parsed.location_of_death || "",
-    manner: parsed.manner || "",
+    manner: cleaned.manner || "",
     notableFactors: (parsed.notable_factors || []).join(", "),
     relatedDeaths: parsed.related_deaths || "",
     relatedCelebrities: (parsed.related_celebrities || []).map((rc) => rc.name).join(", "),
