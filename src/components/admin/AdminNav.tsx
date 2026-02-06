@@ -67,20 +67,8 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
           Analytics
         </NavLink>
 
-        <NavLink to="/admin/coverage" isActive={isActive("/admin/coverage")} onClick={onNavigate}>
-          Death Coverage
-        </NavLink>
-
         <NavLink to="/admin/actors" isActive={isActive("/admin/actors")} onClick={onNavigate}>
           Actor Management
-        </NavLink>
-
-        <NavLink
-          to="/admin/page-views"
-          isActive={isActive("/admin/page-views")}
-          onClick={onNavigate}
-        >
-          Page Views
         </NavLink>
 
         <NavLink
