@@ -415,6 +415,9 @@ export interface CleanedDeathInfo {
   careerStatusAtDeath: CareerStatus | null
   posthumousReleases: ProjectReference[] | null
 
+  // Manner of death (medical examiner classification)
+  manner: "natural" | "accident" | "suicide" | "homicide" | "undetermined" | "pending" | null
+
   // Quality gate - false if content is just "no information available"
   hasSubstantiveContent: boolean
 
