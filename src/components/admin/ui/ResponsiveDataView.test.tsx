@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, within } from "@testing-library/react"
 import ResponsiveDataView from "./ResponsiveDataView"
 import { Column, PaginationConfig } from "./DataTable"
 
@@ -109,10 +109,11 @@ describe("ResponsiveDataView", () => {
     )
 
     // Mobile pagination shows page info
-    expect(screen.getByText("Page 1 of 3")).toBeInTheDocument()
+    const mobileView = within(screen.getByTestId("mobile-view"))
+    expect(mobileView.getByText("Page 1 of 3")).toBeInTheDocument()
 
-    // Click next
-    fireEvent.click(screen.getByRole("button", { name: "Next page" }))
+    // Click next on mobile pagination
+    fireEvent.click(mobileView.getByRole("button", { name: "Next page" }))
     expect(onPageChange).toHaveBeenCalledWith(2)
   })
 
@@ -134,7 +135,8 @@ describe("ResponsiveDataView", () => {
       />
     )
 
-    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled()
+    const mobileView = within(screen.getByTestId("mobile-view"))
+    expect(mobileView.getByRole("button", { name: "Previous page" })).toBeDisabled()
   })
 
   it("disables next button on last page", () => {
@@ -155,7 +157,8 @@ describe("ResponsiveDataView", () => {
       />
     )
 
-    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled()
+    const mobileView = within(screen.getByTestId("mobile-view"))
+    expect(mobileView.getByRole("button", { name: "Next page" })).toBeDisabled()
   })
 
   it("renders selectable mobile cards", () => {

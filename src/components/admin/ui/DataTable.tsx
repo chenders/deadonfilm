@@ -225,7 +225,7 @@ export default function DataTable<T>({
             {onExport && (
               <div className="relative">
                 <select
-                  className="appearance-none rounded border border-admin-border bg-admin-surface-overlay px-3 py-1.5 pr-8 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
+                  className="min-h-[44px] appearance-none rounded border border-admin-border bg-admin-surface-overlay px-3 py-1.5 pr-8 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
                   onChange={(e) => {
                     if (e.target.value) {
                       onExport(e.target.value as "csv" | "json")
@@ -271,6 +271,7 @@ export default function DataTable<T>({
                     type="checkbox"
                     checked={selectedKeys.size === data.length && data.length > 0}
                     onChange={handleSelectAll}
+                    aria-label="Select all rows"
                     className="h-4 w-4 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-admin-interactive"
                   />
                 </th>
@@ -407,7 +408,8 @@ export default function DataTable<T>({
               type="button"
               onClick={() => pagination.onPageChange(pagination.page - 1)}
               disabled={pagination.page <= 1}
-              className="rounded p-1.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Previous page"
+              className="rounded p-2.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -431,7 +433,8 @@ export default function DataTable<T>({
                   key={pageNum}
                   type="button"
                   onClick={() => pagination.onPageChange(pageNum as number)}
-                  className={`min-w-[2rem] rounded px-2 py-1 text-sm transition-colors ${
+                  aria-label={`Go to page ${pageNum}`}
+                  className={`min-h-[44px] min-w-[44px] rounded px-2 py-1 text-sm transition-colors ${
                     pagination.page === pageNum
                       ? "bg-admin-interactive text-white"
                       : "text-admin-text-muted hover:bg-admin-surface-overlay hover:text-admin-text-primary"
@@ -445,7 +448,8 @@ export default function DataTable<T>({
               type="button"
               onClick={() => pagination.onPageChange(pagination.page + 1)}
               disabled={pagination.page >= Math.ceil(pagination.total / pagination.pageSize)}
-              className="rounded p-1.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Next page"
+              className="rounded p-2.5 text-admin-text-muted transition-colors hover:bg-admin-surface-overlay hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
