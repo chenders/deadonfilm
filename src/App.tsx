@@ -44,7 +44,7 @@ const AdminDashboardPage = lazyWithRetry(() => import("./pages/admin/DashboardPa
 const AdminAnalyticsHubPage = lazyWithRetry(() => import("./pages/admin/AnalyticsHubPage"))
 const AdminActorHubPage = lazyWithRetry(() => import("./pages/admin/ActorHubPage"))
 const AdminActorEditorPage = lazyWithRetry(() => import("./pages/admin/ActorEditorPage"))
-const AdminExternalToolsPage = lazyWithRetry(() => import("./pages/admin/ExternalToolsPage"))
+const AdminSystemOpsPage = lazyWithRetry(() => import("./pages/admin/SystemOpsPage"))
 const AdminEnrichmentRunsPage = lazyWithRetry(() => import("./pages/admin/EnrichmentRunsPage"))
 const AdminEnrichmentRunDetailsPage = lazyWithRetry(
   () => import("./pages/admin/EnrichmentRunDetailsPage")
@@ -53,10 +53,6 @@ const AdminStartEnrichmentPage = lazyWithRetry(() => import("./pages/admin/Start
 const AdminEnrichmentReviewPage = lazyWithRetry(() => import("./pages/admin/EnrichmentReviewPage"))
 const AdminHighPriorityActorsPage = lazyWithRetry(
   () => import("./pages/admin/HighPriorityActorsPage")
-)
-const AdminCacheManagementPage = lazyWithRetry(() => import("./pages/admin/CacheManagementPage"))
-const AdminSitemapManagementPage = lazyWithRetry(
-  () => import("./pages/admin/SitemapManagementPage")
 )
 const AdminABTestsIndexPage = lazyWithRetry(() => import("./pages/admin/ABTestsIndexPage"))
 const AdminABTestSourceRequirementPage = lazyWithRetry(
@@ -71,7 +67,6 @@ const AdminABTestComprehensiveIndexPage = lazyWithRetry(
 const AdminABTestComprehensiveDetailPage = lazyWithRetry(
   () => import("./pages/admin/ABTestComprehensiveDetailPage")
 )
-const AdminSyncPage = lazyWithRetry(() => import("./pages/admin/SyncPage"))
 const AdminJobQueuesPage = lazyWithRetry(() => import("./pages/admin/JobQueuesPage"))
 const AdminJobRunsPage = lazyWithRetry(() => import("./pages/admin/JobRunsPage"))
 const AdminJobDetailsPage = lazyWithRetry(() => import("./pages/admin/JobDetailsPage"))
@@ -197,39 +192,28 @@ function App() {
             path="/admin/page-views"
             element={<Navigate to="/admin/analytics?tab=page-views" replace />}
           />
-          <Route
-            path="/admin/tools"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminExternalToolsPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
-          />
+          <Route path="/admin/tools" element={<Navigate to="/admin/dashboard" replace />} />
           <Route
             path="/admin/actor-diagnostic"
             element={<Navigate to="/admin/actors?tab=diagnostic" replace />}
           />
           <Route
-            path="/admin/cache"
+            path="/admin/operations"
             element={
               <AdminThemeProvider>
                 <Suspense fallback={<LoadingSpinner />}>
-                  <AdminCacheManagementPage />
+                  <AdminSystemOpsPage />
                 </Suspense>
               </AdminThemeProvider>
             }
           />
           <Route
+            path="/admin/cache"
+            element={<Navigate to="/admin/operations?tab=cache" replace />}
+          />
+          <Route
             path="/admin/sitemap"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminSitemapManagementPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
+            element={<Navigate to="/admin/operations?tab=sitemap" replace />}
           />
           <Route
             path="/admin/data-quality"
@@ -241,13 +225,7 @@ function App() {
           />
           <Route
             path="/admin/sync"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminSyncPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
+            element={<Navigate to="/admin/operations?tab=sync" replace />}
           />
           <Route
             path="/admin/ab-tests"

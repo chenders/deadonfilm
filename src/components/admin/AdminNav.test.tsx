@@ -82,15 +82,15 @@ describe("AdminNav", () => {
     expect(actorsLink).toHaveAttribute("href", "/admin/actors")
   })
 
-  it("renders TMDB sync navigation link", async () => {
+  it("renders system ops navigation link", async () => {
     renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /tmdb sync/i })).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: /system ops/i })).toBeInTheDocument()
     })
 
-    const syncLink = screen.getByRole("link", { name: /tmdb sync/i })
-    expect(syncLink).toHaveAttribute("href", "/admin/sync")
+    const opsLink = screen.getByRole("link", { name: /system ops/i })
+    expect(opsLink).toHaveAttribute("href", "/admin/operations")
   })
 
   it("highlights active route", async () => {

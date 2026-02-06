@@ -1,5 +1,5 @@
 /**
- * Tests for SyncPage defaults
+ * Tests for SyncTab defaults
  *
  * These tests verify that the admin UI defaults match the expected sync behavior
  */
@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router-dom"
-import SyncPage from "./SyncPage"
+import SyncTab from "./SyncTab"
 
 // Mock the hooks
 const mockUseSyncStatus = vi.fn()
@@ -16,7 +16,7 @@ const mockUseTriggerSync = vi.fn()
 const mockUseSyncDetails = vi.fn()
 const mockUseCancelSync = vi.fn()
 
-vi.mock("../../hooks/admin/useAdminSync", () => ({
+vi.mock("../../../hooks/admin/useAdminSync", () => ({
   useSyncStatus: () => mockUseSyncStatus(),
   useSyncHistory: () => mockUseSyncHistory(),
   useTriggerSync: () => mockUseTriggerSync(),
@@ -24,14 +24,7 @@ vi.mock("../../hooks/admin/useAdminSync", () => ({
   useCancelSync: () => mockUseCancelSync(),
 }))
 
-vi.mock("../../hooks/useAdminAuth", () => ({
-  useAdminAuth: () => ({
-    isAuthenticated: true,
-    isLoading: false,
-  }),
-}))
-
-function renderPage() {
+function renderTab() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -39,13 +32,13 @@ function renderPage() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <SyncPage />
+        <SyncTab />
       </MemoryRouter>
     </QueryClientProvider>
   )
 }
 
-describe("SyncPage defaults", () => {
+describe("SyncTab defaults", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -92,31 +85,31 @@ describe("SyncPage defaults", () => {
 
   describe("Sync form defaults", () => {
     it("has syncDays defaulted to 1", () => {
-      renderPage()
+      renderTab()
       const daysInput = screen.getByTestId("sync-days-input")
       expect(daysInput).toHaveValue(1)
     })
 
     it("has People sync type checked by default", () => {
-      renderPage()
+      renderTab()
       const peopleCheckbox = screen.getByTestId("sync-type-people-checkbox")
       expect(peopleCheckbox).toBeChecked()
     })
 
     it("has Movies sync type checked by default", () => {
-      renderPage()
+      renderTab()
       const moviesCheckbox = screen.getByTestId("sync-type-movies-checkbox")
       expect(moviesCheckbox).toBeChecked()
     })
 
     it("has Shows sync type checked by default", () => {
-      renderPage()
+      renderTab()
       const showsCheckbox = screen.getByTestId("sync-type-shows-checkbox")
       expect(showsCheckbox).toBeChecked()
     })
 
     it("has dryRun unchecked by default", () => {
-      renderPage()
+      renderTab()
       // Find the dry run checkbox by its label text
       const dryRunCheckbox = screen.getByRole("checkbox", { name: /dry run/i })
       expect(dryRunCheckbox).not.toBeChecked()
@@ -125,22 +118,22 @@ describe("SyncPage defaults", () => {
 
   describe("UI elements render correctly", () => {
     it("renders sync status card", () => {
-      renderPage()
+      renderTab()
       expect(screen.getByTestId("sync-status-card")).toBeInTheDocument()
     })
 
     it("renders sync trigger form", () => {
-      renderPage()
+      renderTab()
       expect(screen.getByTestId("sync-trigger-form")).toBeInTheDocument()
     })
 
     it("renders sync history table", () => {
-      renderPage()
+      renderTab()
       expect(screen.getByTestId("sync-history-table")).toBeInTheDocument()
     })
 
     it("renders submit button enabled when at least one type is checked", () => {
-      renderPage()
+      renderTab()
       const submitButton = screen.getByTestId("sync-submit-button")
       expect(submitButton).not.toBeDisabled()
     })
@@ -169,7 +162,7 @@ describe("SyncPage defaults", () => {
         isLoading: false,
       })
 
-      renderPage()
+      renderTab()
 
       expect(screen.getByRole("button", { name: /force stop/i })).toBeInTheDocument()
     })
@@ -196,7 +189,7 @@ describe("SyncPage defaults", () => {
         isLoading: false,
       })
 
-      renderPage()
+      renderTab()
 
       // Check that progress values are displayed
       expect(screen.getByText("123")).toBeInTheDocument()
@@ -215,7 +208,7 @@ describe("SyncPage defaults", () => {
         isLoading: false,
       })
 
-      renderPage()
+      renderTab()
 
       const submitButton = screen.getByTestId("sync-submit-button")
       expect(submitButton).toBeDisabled()
@@ -245,7 +238,7 @@ describe("SyncPage defaults", () => {
         isLoading: false,
       })
 
-      renderPage()
+      renderTab()
 
       // Click Force Stop button
       fireEvent.click(screen.getByRole("button", { name: /force stop/i }))
@@ -287,7 +280,7 @@ describe("SyncPage defaults", () => {
         error: null,
       })
 
-      renderPage()
+      renderTab()
 
       // Click Force Stop button
       fireEvent.click(screen.getByRole("button", { name: /force stop/i }))
@@ -321,7 +314,7 @@ describe("SyncPage defaults", () => {
         isLoading: false,
       })
 
-      renderPage()
+      renderTab()
 
       // Click Force Stop button
       fireEvent.click(screen.getByRole("button", { name: /force stop/i }))
@@ -366,7 +359,7 @@ describe("SyncPage defaults", () => {
         error: new Error("Sync is already completing"),
       })
 
-      renderPage()
+      renderTab()
 
       // Click Force Stop to show dialog
       fireEvent.click(screen.getByRole("button", { name: /force stop/i }))
@@ -381,7 +374,7 @@ describe("SyncPage defaults", () => {
           client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
         >
           <MemoryRouter>
-            <SyncPage />
+            <SyncTab />
           </MemoryRouter>
         </QueryClientProvider>
       )
@@ -413,7 +406,7 @@ describe("SyncPage defaults", () => {
           client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
         >
           <MemoryRouter>
-            <SyncPage />
+            <SyncTab />
           </MemoryRouter>
         </QueryClientProvider>
       )
@@ -445,7 +438,7 @@ describe("SyncPage defaults", () => {
           client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
         >
           <MemoryRouter>
-            <SyncPage />
+            <SyncTab />
           </MemoryRouter>
         </QueryClientProvider>
       )
@@ -478,7 +471,7 @@ describe("SyncPage defaults", () => {
         isLoading: false,
       })
 
-      renderPage()
+      renderTab()
 
       // Check that chevron is present
       expect(screen.getByText("▶")).toBeInTheDocument()
@@ -506,7 +499,7 @@ describe("SyncPage defaults", () => {
         isLoading: false,
       })
 
-      renderPage()
+      renderTab()
 
       // Click to expand - find the row and click it
       const row = screen.getByText("tmdb-all").closest("tr")
