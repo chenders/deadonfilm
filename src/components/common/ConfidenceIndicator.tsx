@@ -30,7 +30,7 @@ export default function ConfidenceIndicator({ level, variant = "dots" }: Confide
 
     return (
       <span
-        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-white ${config.color}`}
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-overlay-text ${config.color}`}
         title={`${config.label} confidence`}
       >
         {config.label}

@@ -28,7 +28,7 @@ export default {
 
         // Text
         'text-primary': colorVar('--text-primary'),
-        'text-muted': colorVar('--text-secondary'),
+        'text-muted': colorVar('--text-muted'),
 
         // Living actors - antique gold palette
         living: {
