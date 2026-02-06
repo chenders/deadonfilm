@@ -126,4 +126,125 @@ describe("AdminTabs", () => {
     expect(screen.getByText("Tab A")).toBeInTheDocument()
     expect(screen.getByText("Tab B")).toBeInTheDocument()
   })
+
+  it("sets type=button on tab buttons", () => {
+    render(
+      <AdminTabs tabs={tabs} activeTab="overview" onTabChange={() => {}}>
+        Content
+      </AdminTabs>
+    )
+
+    const tabButtons = screen.getAllByRole("tab")
+    tabButtons.forEach((btn) => {
+      expect(btn).toHaveAttribute("type", "button")
+    })
+  })
+
+  it("sets aria-controls on the active tab pointing to the panel", () => {
+    render(
+      <AdminTabs tabs={tabs} activeTab="details" onTabChange={() => {}}>
+        Content
+      </AdminTabs>
+    )
+
+    const activeButton = screen.getByTestId("tab-details")
+    const panel = screen.getByRole("tabpanel")
+    expect(activeButton).toHaveAttribute("aria-controls", panel.id)
+  })
+
+  it("sets aria-labelledby on the panel pointing to the active tab", () => {
+    render(
+      <AdminTabs tabs={tabs} activeTab="details" onTabChange={() => {}}>
+        Content
+      </AdminTabs>
+    )
+
+    const activeButton = screen.getByTestId("tab-details")
+    const panel = screen.getByRole("tabpanel")
+    expect(panel).toHaveAttribute("aria-labelledby", activeButton.id)
+  })
+
+  it("only active tab has tabIndex=0, others have tabIndex=-1", () => {
+    render(
+      <AdminTabs tabs={tabs} activeTab="details" onTabChange={() => {}}>
+        Content
+      </AdminTabs>
+    )
+
+    expect(screen.getByTestId("tab-overview")).toHaveAttribute("tabindex", "-1")
+    expect(screen.getByTestId("tab-details")).toHaveAttribute("tabindex", "0")
+    expect(screen.getByTestId("tab-settings")).toHaveAttribute("tabindex", "-1")
+  })
+
+  it("navigates to next tab on ArrowRight", () => {
+    const onTabChange = vi.fn()
+    render(
+      <AdminTabs tabs={tabs} activeTab="overview" onTabChange={onTabChange}>
+        Content
+      </AdminTabs>
+    )
+
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowRight" })
+    expect(onTabChange).toHaveBeenCalledWith("details")
+  })
+
+  it("navigates to previous tab on ArrowLeft", () => {
+    const onTabChange = vi.fn()
+    render(
+      <AdminTabs tabs={tabs} activeTab="details" onTabChange={onTabChange}>
+        Content
+      </AdminTabs>
+    )
+
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowLeft" })
+    expect(onTabChange).toHaveBeenCalledWith("overview")
+  })
+
+  it("wraps around on ArrowRight from last tab", () => {
+    const onTabChange = vi.fn()
+    render(
+      <AdminTabs tabs={tabs} activeTab="settings" onTabChange={onTabChange}>
+        Content
+      </AdminTabs>
+    )
+
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowRight" })
+    expect(onTabChange).toHaveBeenCalledWith("overview")
+  })
+
+  it("wraps around on ArrowLeft from first tab", () => {
+    const onTabChange = vi.fn()
+    render(
+      <AdminTabs tabs={tabs} activeTab="overview" onTabChange={onTabChange}>
+        Content
+      </AdminTabs>
+    )
+
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "ArrowLeft" })
+    expect(onTabChange).toHaveBeenCalledWith("settings")
+  })
+
+  it("navigates to first tab on Home", () => {
+    const onTabChange = vi.fn()
+    render(
+      <AdminTabs tabs={tabs} activeTab="settings" onTabChange={onTabChange}>
+        Content
+      </AdminTabs>
+    )
+
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "Home" })
+    expect(onTabChange).toHaveBeenCalledWith("overview")
+  })
+
+  it("navigates to last tab on End", () => {
+    const onTabChange = vi.fn()
+    render(
+      <AdminTabs tabs={tabs} activeTab="overview" onTabChange={onTabChange}>
+        Content
+      </AdminTabs>
+    )
+
+    fireEvent.keyDown(screen.getByRole("tablist"), { key: "End" })
+    expect(onTabChange).toHaveBeenCalledWith("settings")
+  })
 })

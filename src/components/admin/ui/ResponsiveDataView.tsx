@@ -119,33 +119,37 @@ export default function ResponsiveDataView<T>({
             })}
 
             {/* Mobile pagination */}
-            {pagination && pagination.total > pagination.pageSize && (
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-sm text-admin-text-muted">
-                  Page {pagination.page} of {Math.ceil(pagination.total / pagination.pageSize)}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => pagination.onPageChange(pagination.page - 1)}
-                    disabled={pagination.page <= 1}
-                    aria-label="Previous page"
-                    className="min-h-[44px] min-w-[44px] rounded-md bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-secondary hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Prev
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => pagination.onPageChange(pagination.page + 1)}
-                    disabled={pagination.page >= Math.ceil(pagination.total / pagination.pageSize)}
-                    aria-label="Next page"
-                    className="min-h-[44px] min-w-[44px] rounded-md bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-secondary hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+            {pagination &&
+              (() => {
+                const totalPages = Math.ceil(pagination.total / pagination.pageSize)
+                return totalPages > 1 ? (
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-sm text-admin-text-muted">
+                      Page {pagination.page} of {totalPages}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => pagination.onPageChange(pagination.page - 1)}
+                        disabled={pagination.page <= 1}
+                        aria-label="Previous page"
+                        className="min-h-[44px] min-w-[44px] rounded-md bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-secondary hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Prev
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => pagination.onPageChange(pagination.page + 1)}
+                        disabled={pagination.page >= totalPages}
+                        aria-label="Next page"
+                        className="min-h-[44px] min-w-[44px] rounded-md bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-secondary hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                ) : null
+              })()}
           </div>
         )}
       </div>
