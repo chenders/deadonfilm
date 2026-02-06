@@ -21,24 +21,13 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts"
-
-type Granularity = "daily" | "weekly" | "monthly"
-
-const getDefaultDateRange = () => {
-  const end = new Date()
-  const start = new Date()
-  start.setDate(start.getDate() - 30)
-  return {
-    startDate: start.toISOString(),
-    endDate: end.toISOString(),
-  }
-}
+import { Granularity, getDefaultDateRangeISO } from "./shared"
 
 export default function PageViewsTab() {
   const [granularity, setGranularity] = useState<Granularity>("daily")
   const pageTypeFilter = "all"
 
-  const defaultRange = getDefaultDateRange()
+  const defaultRange = getDefaultDateRangeISO()
   const [startDate] = useState(defaultRange.startDate)
   const [endDate] = useState(defaultRange.endDate)
 

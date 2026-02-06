@@ -13,21 +13,10 @@ import HourlyPatternsChart from "./HourlyPatternsChart"
 import ActorUrlMigrationSection from "./ActorUrlMigrationSection"
 import StatCard from "./StatCard"
 import { usePageVisitStats } from "../../../hooks/admin/useAnalytics"
-import { formatLocalDate } from "../../../utils/formatDate"
-
-const getDefaultDateRange = () => {
-  const end = new Date()
-  const start = new Date()
-  start.setDate(start.getDate() - 30)
-
-  return {
-    startDate: formatLocalDate(start),
-    endDate: formatLocalDate(end),
-  }
-}
+import { getDefaultDateRangeLocal } from "./shared"
 
 export default function CostAnalyticsTab() {
-  const defaultRange = getDefaultDateRange()
+  const defaultRange = getDefaultDateRangeLocal()
   const [startDate, setStartDate] = useState(defaultRange.startDate)
   const [endDate, setEndDate] = useState(defaultRange.endDate)
 
