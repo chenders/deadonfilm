@@ -225,7 +225,7 @@ describe("App", () => {
       )
     })
 
-    it("routes to /admin/sync for TMDB sync management", async () => {
+    it("redirects /admin/sync to /admin/operations?tab=sync", async () => {
       globalThis.fetch = vi.fn(() =>
         Promise.resolve({
           ok: false,
@@ -235,7 +235,7 @@ describe("App", () => {
 
       renderApp("/admin/sync")
 
-      // Should redirect to login since not authenticated
+      // Redirects through /admin/operations?tab=sync, then to login
       await waitFor(() => {
         expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
       })
