@@ -41,13 +41,9 @@ const NotableDeathsPage = lazyWithRetry(() => import("./pages/NotableDeathsPage"
 // Admin pages
 const AdminLoginPage = lazyWithRetry(() => import("./pages/admin/LoginPage"))
 const AdminDashboardPage = lazyWithRetry(() => import("./pages/admin/DashboardPage"))
-const AdminAnalyticsPage = lazyWithRetry(() => import("./pages/admin/AnalyticsPage"))
-const AdminCoverageDashboardPage = lazyWithRetry(
-  () => import("./pages/admin/CoverageDashboardPage")
-)
+const AdminAnalyticsHubPage = lazyWithRetry(() => import("./pages/admin/AnalyticsHubPage"))
 const AdminActorManagementPage = lazyWithRetry(() => import("./pages/admin/ActorManagementPage"))
 const AdminActorEditorPage = lazyWithRetry(() => import("./pages/admin/ActorEditorPage"))
-const AdminPageViewsPage = lazyWithRetry(() => import("./pages/admin/PageViewsPage"))
 const AdminExternalToolsPage = lazyWithRetry(() => import("./pages/admin/ExternalToolsPage"))
 const AdminEnrichmentRunsPage = lazyWithRetry(() => import("./pages/admin/EnrichmentRunsPage"))
 const AdminEnrichmentRunDetailsPage = lazyWithRetry(
@@ -124,7 +120,7 @@ function App() {
             element={
               <AdminThemeProvider>
                 <Suspense fallback={<LoadingSpinner />}>
-                  <AdminAnalyticsPage />
+                  <AdminAnalyticsHubPage />
                 </Suspense>
               </AdminThemeProvider>
             }
@@ -181,13 +177,7 @@ function App() {
           />
           <Route
             path="/admin/coverage"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminCoverageDashboardPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
+            element={<Navigate to="/admin/analytics?tab=coverage" replace />}
           />
           <Route
             path="/admin/actors"
@@ -211,13 +201,7 @@ function App() {
           />
           <Route
             path="/admin/page-views"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminPageViewsPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
+            element={<Navigate to="/admin/analytics?tab=page-views" replace />}
           />
           <Route
             path="/admin/tools"

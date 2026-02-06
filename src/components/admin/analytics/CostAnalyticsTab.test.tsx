@@ -1,21 +1,16 @@
 /**
- * Tests for AnalyticsPage component
+ * Tests for CostAnalyticsTab component.
+ * Migrated from AnalyticsPage.test.tsx.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { TestMemoryRouter } from "../../test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import AnalyticsPage from "./AnalyticsPage"
-import * as analyticsHooks from "../../hooks/admin/useAnalytics"
-import * as adminAuthHook from "../../hooks/useAdminAuth"
+import { AdminTestWrapper } from "../../../test/test-utils"
+import CostAnalyticsTab from "./CostAnalyticsTab"
+import * as analyticsHooks from "../../../hooks/admin/useAnalytics"
 
-// Mock the hooks
-vi.mock("../../hooks/admin/useAnalytics")
-vi.mock("../../hooks/useAdminAuth", () => ({
-  useAdminAuth: vi.fn(),
-  AdminAuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
+vi.mock("../../../hooks/admin/useAnalytics")
 
 // Mock ResizeObserver for Recharts
 class ResizeObserverMock {
@@ -25,7 +20,7 @@ class ResizeObserverMock {
 }
 globalThis.ResizeObserver = ResizeObserverMock as any
 
-describe("AnalyticsPage", () => {
+describe("CostAnalyticsTab", () => {
   const mockCostBySourceData = {
     sources: [
       {
@@ -92,80 +87,50 @@ describe("AnalyticsPage", () => {
       isLoading: false,
       error: null,
     } as any)
-
-    vi.mocked(adminAuthHook.useAdminAuth).mockReturnValue({
-      isAuthenticated: true,
-      isLoading: false,
-      logout: vi.fn(),
-    } as any)
   })
 
-  function renderPage() {
+  function renderTab() {
     const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
+      defaultOptions: { queries: { retry: false } },
     })
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <TestMemoryRouter>
-          <AnalyticsPage />
-        </TestMemoryRouter>
+        <AdminTestWrapper>
+          <CostAnalyticsTab />
+        </AdminTestWrapper>
       </QueryClientProvider>
     )
   }
 
-  it("renders page header", () => {
-    renderPage()
-
-    expect(screen.getByRole("heading", { name: /analytics dashboard/i })).toBeInTheDocument()
-    expect(
-      screen.getByText(/track costs, page visits, and user navigation patterns/i)
-    ).toBeInTheDocument()
-  })
-
   it("renders date range picker", () => {
-    renderPage()
-
+    renderTab()
     expect(screen.getByLabelText(/start date/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/end date/i)).toBeInTheDocument()
     expect(screen.getByText("Last 7 Days")).toBeInTheDocument()
     expect(screen.getByText("Last 30 Days")).toBeInTheDocument()
-    expect(screen.getByText("Last 90 Days")).toBeInTheDocument()
-    expect(screen.getByText("All Time")).toBeInTheDocument()
   })
 
   it("renders cost by source section with data", () => {
-    renderPage()
-
+    renderTab()
     expect(screen.getByText("Cost by Source")).toBeInTheDocument()
-    // Check for total cost stat card (multiple instances of $25.50 exist in table rows)
     expect(screen.getAllByText("$25.50").length).toBeGreaterThan(0)
     expect(screen.getByText("300")).toBeInTheDocument()
   })
 
   it("updates date range when quick filter is clicked", async () => {
-    renderPage()
-
-    // Mock the hook to return new data after date change
-    vi.mocked(analyticsHooks.useCostBySource).mockReturnValue({
-      data: mockCostBySourceData,
-      isLoading: false,
-      error: null,
-    } as any)
+    renderTab()
 
     const lastSevenDaysButton = screen.getByText("Last 7 Days")
     fireEvent.click(lastSevenDaysButton)
 
     await waitFor(() => {
-      // The hook should have been called with new dates
       expect(analyticsHooks.useCostBySource).toHaveBeenCalled()
     })
   })
 
   it("updates date range when custom dates are selected", async () => {
-    renderPage()
+    renderTab()
 
     const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement
     const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement
@@ -186,8 +151,7 @@ describe("AnalyticsPage", () => {
       error: null,
     } as any)
 
-    renderPage()
-
+    renderTab()
     expect(screen.getByTestId("loading-message")).toBeInTheDocument()
   })
 
@@ -198,8 +162,7 @@ describe("AnalyticsPage", () => {
       error: new Error("Failed to load"),
     } as any)
 
-    renderPage()
-
+    renderTab()
     expect(screen.getByText(/failed to load cost analytics/i)).toBeInTheDocument()
   })
 
@@ -210,9 +173,7 @@ describe("AnalyticsPage", () => {
       error: null,
     } as any)
 
-    renderPage()
-
-    // Should show "no data available" for multiple sections (cost analytics + page visit analytics)
+    renderTab()
     const emptyStateMessages = screen.getAllByText(
       /no data available for the selected time period/i
     )

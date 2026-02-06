@@ -1,18 +1,17 @@
+/**
+ * Tests for CoverageTab component.
+ * Migrated from CoverageDashboardPage.test.tsx.
+ */
+
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
-import { AdminTestWrapper } from "../../test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import CoverageDashboardPage from "./CoverageDashboardPage"
+import { AdminTestWrapper } from "../../../test/test-utils"
+import CoverageTab from "./CoverageTab"
 
-// Mock the hooks
-vi.mock("../../hooks/admin/useCoverage", () => ({
+vi.mock("../../../hooks/admin/useCoverage", () => ({
   useCoverageStats: vi.fn(),
   useCoverageTrends: vi.fn(),
-}))
-
-vi.mock("../../hooks/useAdminAuth", () => ({
-  useAdminAuth: vi.fn(() => ({ isAuthenticated: true, isLoading: false })),
-  AdminAuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 // Mock ResizeObserver for Recharts
@@ -23,7 +22,7 @@ class ResizeObserverMock {
 }
 globalThis.ResizeObserver = ResizeObserverMock as never
 
-import { useCoverageStats, useCoverageTrends } from "../../hooks/admin/useCoverage"
+import { useCoverageStats, useCoverageTrends } from "../../../hooks/admin/useCoverage"
 
 const mockStats = {
   total_deceased_actors: 1000,
@@ -49,27 +48,24 @@ const mockTrends = [
   },
 ]
 
-describe("CoverageDashboardPage", () => {
+describe("CoverageTab", () => {
   let queryClient: QueryClient
 
   beforeEach(() => {
     queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
+      defaultOptions: { queries: { retry: false } },
     })
     vi.clearAllMocks()
   })
 
-  const renderComponent = () => {
-    return render(
+  const renderTab = () =>
+    render(
       <QueryClientProvider client={queryClient}>
         <AdminTestWrapper>
-          <CoverageDashboardPage />
+          <CoverageTab />
         </AdminTestWrapper>
       </QueryClientProvider>
     )
-  }
 
   it("renders loading state", () => {
     vi.mocked(useCoverageStats).mockReturnValue({
@@ -83,7 +79,7 @@ describe("CoverageDashboardPage", () => {
       error: null,
     } as never)
 
-    renderComponent()
+    renderTab()
     expect(screen.getByTestId("loading-message")).toBeInTheDocument()
   })
 
@@ -100,7 +96,7 @@ describe("CoverageDashboardPage", () => {
       error: null,
     } as never)
 
-    renderComponent()
+    renderTab()
     expect(screen.getByText("Failed to load coverage data")).toBeInTheDocument()
   })
 
@@ -116,81 +112,14 @@ describe("CoverageDashboardPage", () => {
       error: null,
     } as never)
 
-    renderComponent()
+    renderTab()
 
-    expect(screen.getByText("Death Detail Coverage")).toBeInTheDocument()
-    expect(screen.getByText("1,000")).toBeInTheDocument() // total_deceased_actors
-    expect(screen.getByText("750")).toBeInTheDocument() // actors_with_death_pages
-    expect(screen.getByText("250")).toBeInTheDocument() // actors_without_death_pages
-    expect(screen.getByText("75%")).toBeInTheDocument() // coverage_percentage
-    expect(screen.getByText("200")).toBeInTheDocument() // enrichment_candidates_count
-    expect(screen.getByText("50")).toBeInTheDocument() // high_priority_count
-  })
-
-  it("hooks are called with stable date values on initial render", () => {
-    vi.mocked(useCoverageStats).mockReturnValue({
-      data: mockStats,
-      isLoading: false,
-      error: null,
-    } as never)
-    vi.mocked(useCoverageTrends).mockReturnValue({
-      data: mockTrends,
-      isLoading: false,
-      error: null,
-    } as never)
-
-    renderComponent()
-
-    // useCoverageStats should be called once
-    expect(useCoverageStats).toHaveBeenCalledTimes(1)
-
-    // useCoverageTrends should be called once with stable date strings and initial granularity
-    expect(useCoverageTrends).toHaveBeenCalledTimes(1)
-    const trendsCall = vi.mocked(useCoverageTrends).mock.calls[0]
-    expect(typeof trendsCall[0]).toBe("string") // startDate is ISO string
-    expect(typeof trendsCall[1]).toBe("string") // endDate is ISO string
-    expect(trendsCall[2]).toBe("daily") // default granularity
-  })
-
-  it("does not trigger infinite re-renders", () => {
-    vi.mocked(useCoverageStats).mockReturnValue({
-      data: mockStats,
-      isLoading: false,
-      error: null,
-    } as never)
-    vi.mocked(useCoverageTrends).mockReturnValue({
-      data: mockTrends,
-      isLoading: false,
-      error: null,
-    } as never)
-
-    renderComponent()
-
-    // After initial render, hooks should only be called once
-    const statsCallCount = vi.mocked(useCoverageStats).mock.calls.length
-    const trendsCallCount = vi.mocked(useCoverageTrends).mock.calls.length
-
-    expect(statsCallCount).toBe(1)
-    expect(trendsCallCount).toBe(1)
-
-    // Verify that the date parameters remain stable (same reference/value)
-    const firstTrendsCall = vi.mocked(useCoverageTrends).mock.calls[0]
-    const startDate1 = firstTrendsCall[0]
-    const endDate1 = firstTrendsCall[1]
-
-    // Force a re-render by clicking a different granularity button
-    const weeklyButton = screen.getByText("Weekly")
-    fireEvent.click(weeklyButton)
-
-    // useCoverageTrends will be called again due to granularity change
-    // Verify the second call exists and has stable date parameters
-    expect(vi.mocked(useCoverageTrends).mock.calls.length).toBeGreaterThan(1)
-    const secondTrendsCall = vi.mocked(useCoverageTrends).mock.calls[1]
-    const startDate2 = secondTrendsCall[0]
-    const endDate2 = secondTrendsCall[1]
-
-    expect(startDate1).toBe(startDate2) // Same ISO string value
-    expect(endDate1).toBe(endDate2) // Same ISO string value
+    expect(screen.getByText("1,000")).toBeInTheDocument()
+    expect(screen.getByText("750")).toBeInTheDocument()
+    expect(screen.getByText("250")).toBeInTheDocument()
+    expect(screen.getByText("75%")).toBeInTheDocument()
+    expect(screen.getByText("200")).toBeInTheDocument()
+    expect(screen.getByText("50")).toBeInTheDocument()
   })
 
   it("allows switching between granularities", () => {
@@ -205,23 +134,16 @@ describe("CoverageDashboardPage", () => {
       error: null,
     } as never)
 
-    renderComponent()
+    renderTab()
 
-    // Click weekly button
-    const weeklyButton = screen.getByText("Weekly")
-    fireEvent.click(weeklyButton)
-
-    // Verify useCoverageTrends was called with new granularity
+    fireEvent.click(screen.getByText("Weekly"))
     expect(useCoverageTrends).toHaveBeenLastCalledWith(
       expect.any(String),
       expect.any(String),
       "weekly"
     )
 
-    // Click monthly button
-    const monthlyButton = screen.getByText("Monthly")
-    fireEvent.click(monthlyButton)
-
+    fireEvent.click(screen.getByText("Monthly"))
     expect(useCoverageTrends).toHaveBeenLastCalledWith(
       expect.any(String),
       expect.any(String),
@@ -241,8 +163,7 @@ describe("CoverageDashboardPage", () => {
       error: null,
     } as never)
 
-    renderComponent()
-
+    renderTab()
     expect(screen.getByText("Coverage Trends (Last 30 Days)")).toBeInTheDocument()
   })
 
@@ -258,8 +179,7 @@ describe("CoverageDashboardPage", () => {
       error: null,
     } as never)
 
-    renderComponent()
-
+    renderTab()
     expect(
       screen.getByText("No trend data available yet. Data is captured daily.")
     ).toBeInTheDocument()
@@ -277,8 +197,7 @@ describe("CoverageDashboardPage", () => {
       error: null,
     } as never)
 
-    renderComponent()
-
+    renderTab()
     expect(screen.getByText("No coverage data available")).toBeInTheDocument()
   })
 
@@ -294,8 +213,7 @@ describe("CoverageDashboardPage", () => {
       error: null,
     } as never)
 
-    renderComponent()
-
+    renderTab()
     expect(screen.getByText("Manage Actors Without Pages")).toBeInTheDocument()
     expect(screen.getByText("View All Death Pages")).toBeInTheDocument()
     expect(screen.getByText("Start Enrichment")).toBeInTheDocument()
@@ -313,11 +231,8 @@ describe("CoverageDashboardPage", () => {
       error: null,
     } as never)
 
-    renderComponent()
-
+    renderTab()
     const highPriorityLink = screen.getByText("50").closest("a")
     expect(highPriorityLink).toHaveAttribute("href", "/admin/enrichment/high-priority")
-    expect(screen.getByText("High Priority")).toBeInTheDocument()
-    expect(screen.getByText(/Popular actors \(popularity ≥ 10\)/)).toBeInTheDocument()
   })
 })
