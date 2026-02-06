@@ -323,7 +323,6 @@ export async function getSourcePerformanceStats(
       SELECT
         element->>'source' AS source,
         (element->>'costUsd')::numeric AS source_cost,
-        (element->>'success')::boolean AS source_success,
         era.winning_source,
         era.processing_time_ms
       FROM enrichment_run_actors era
@@ -367,7 +366,6 @@ export async function getRunSourcePerformanceStats(
       SELECT
         element->>'source' AS source,
         (element->>'costUsd')::numeric AS source_cost,
-        (element->>'success')::boolean AS source_success,
         era.winning_source,
         era.processing_time_ms
       FROM enrichment_run_actors era
