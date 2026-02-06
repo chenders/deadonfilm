@@ -20,6 +20,7 @@ export enum DataSourceType {
   CLAUDE_LINK_SELECTOR = "claude_link_selector", // AI-assisted link selection
   CLAUDE_PAGE_EXTRACTOR = "claude_page_extractor", // AI-assisted page content extraction
   GEMINI_SECTION_SELECTOR = "gemini_section_selector", // AI-assisted Wikipedia section selection
+  GEMINI_DATE_EXTRACTOR = "gemini_date_extractor", // AI-assisted Wikipedia date extraction
   OPENAI_GPT4O = "openai_gpt4o",
   OPENAI_GPT4O_MINI = "openai_gpt4o_mini",
   PERPLEXITY = "perplexity",
@@ -675,6 +676,12 @@ export interface WikipediaOptions {
    * Default: true
    */
   validatePersonDates?: boolean
+  /**
+   * Use AI (Gemini Flash) to extract birth/death years from Wikipedia intro text
+   * instead of regex. Falls back to regex if AI is unavailable.
+   * Default: true
+   */
+  useAIDateValidation?: boolean
 }
 
 /**
@@ -688,6 +695,7 @@ export const DEFAULT_WIKIPEDIA_OPTIONS: WikipediaOptions = {
   maxLinkedArticles: 2,
   handleDisambiguation: true,
   validatePersonDates: true,
+  useAIDateValidation: true,
 }
 
 // ============================================================================
