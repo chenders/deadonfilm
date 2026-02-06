@@ -127,7 +127,44 @@ describe("claude-cleanup", () => {
       expect(prompt).toContain('"circumstances"')
       expect(prompt).toContain('"rumored_circumstances"')
       expect(prompt).toContain('"notable_factors"')
+      expect(prompt).toContain('"categories"')
       expect(prompt).toContain('"has_substantive_content"')
+    })
+
+    it("includes expanded notable_factors tags", () => {
+      const prompt = buildCleanupPrompt(mockActor, mockSources)
+
+      // Original tags
+      expect(prompt).toContain("on_set")
+      expect(prompt).toContain("vehicle_crash")
+      expect(prompt).toContain("cancer")
+
+      // New tags added in expansion
+      expect(prompt).toContain("plane_crash")
+      expect(prompt).toContain("assassination")
+      expect(prompt).toContain("poisoning")
+      expect(prompt).toContain("fall")
+      expect(prompt).toContain("surgical_complications")
+      expect(prompt).toContain("misdiagnosis")
+      expect(prompt).toContain("pandemic")
+      expect(prompt).toContain("war_related")
+      expect(prompt).toContain("autoerotic_asphyxiation")
+      expect(prompt).toContain("found_dead")
+      expect(prompt).toContain("young_death")
+      expect(prompt).toContain("terrorism")
+      expect(prompt).toContain("electrocution")
+      expect(prompt).toContain("exposure")
+    })
+
+    it("includes categories field with valid category values", () => {
+      const prompt = buildCleanupPrompt(mockActor, mockSources)
+
+      expect(prompt).toContain('"categories"')
+      expect(prompt).toContain("heart-disease")
+      expect(prompt).toContain("neurological")
+      expect(prompt).toContain("respiratory")
+      expect(prompt).toContain("infectious")
+      expect(prompt).toContain("liver-kidney")
     })
 
     it("includes manner field in JSON schema", () => {
