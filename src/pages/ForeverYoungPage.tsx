@@ -57,7 +57,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
         <Link to={`/actor/${actorSlug}`} className="flex items-center gap-3 text-right">
           <div className="min-w-0">
             <p className="font-display text-brown-dark hover:underline">{movie.actor.name}</p>
-            <p className="text-sm text-accent">
+            <p className="text-sm text-years-lost">
               Died {Math.round(movie.actor.yearsLost)} years early
             </p>
             {movie.actor.causeOfDeath && (
@@ -114,7 +114,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
           <Link to={`/actor/${actorSlug}`} className="mt-1 block">
             <p className="text-xs text-brown-dark">
               <span className="font-medium">{movie.actor.name}</span>
-              <span className="text-accent">
+              <span className="text-years-lost">
                 {" "}
                 died {Math.round(movie.actor.yearsLost)} years early
               </span>

@@ -42,8 +42,12 @@ export default {
 
         // Lifespan indicators
         'lifespan-early': colorVar('--lifespan-early'),
-        'lifespan-longer': colorVar('--lifespan-longer'),
+        'lifespan-longer': colorVar('--lifespan-longer-fill'),
+        'lifespan-longer-text': colorVar('--lifespan-longer-text'),
         'lifespan-track': colorVar('--lifespan-early-track'),
+
+        // Years lost text
+        'years-lost': colorVar('--years-lost'),
 
         // Status (toasts)
         'status-success': colorVar('--status-success'),
@@ -65,6 +69,7 @@ export default {
         // Warning banner
         'warning-bg': colorVar('--warning-bg'),
         'warning-border': colorVar('--warning-border'),
+        'warning-text-strong': colorVar('--warning-text-strong'),
         'warning-text': colorVar('--warning-text'),
         'warning-icon': colorVar('--warning-icon'),
 

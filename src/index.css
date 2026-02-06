@@ -10,7 +10,7 @@
   --surface-base: #f5f0e8;
   --surface-elevated: #ffffff;
   --surface-muted: #e8dcc8;
-  --surface-inset: #ded4c4;
+  --surface-inset: #e5e7eb; /* matches Tailwind gray-200 for parity */
 
   /* Text */
   --text-primary: #2c1810;
@@ -39,8 +39,12 @@
   /* Lifespan Indicators */
   --lifespan-early: #8b0000;
   --lifespan-early-track: #f5e5e5;
-  --lifespan-longer: #228b22;
+  --lifespan-longer-text: #15803d; /* matches Tailwind green-700 */
+  --lifespan-longer-fill: #16a34a; /* matches Tailwind green-600 */
   --lifespan-longer-track: #e5f5e5;
+
+  /* Years Lost Text */
+  --years-lost: #b91c1c; /* matches Tailwind red-700 */
 
   /* Decorative */
   --circle-ornament: #d4c4a8;
@@ -80,7 +84,8 @@
   /* Warning Banner */
   --warning-bg: #fff7ed;
   --warning-border: #fdba74;
-  --warning-text: #9a3412;
+  --warning-text-strong: #9a3412; /* matches Tailwind orange-800 (headings) */
+  --warning-text: #c2410c; /* matches Tailwind orange-700 (body) */
   --warning-icon: #ea580c;
 
   /* Disabled */

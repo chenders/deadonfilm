@@ -98,7 +98,7 @@ export default function DeathInfo({
           Age {ageAtDeath}
           {yearsLostNum !== null && (
             <span
-              className={yearsLostNum > 0 ? "text-accent" : "text-lifespan-longer"}
+              className={yearsLostNum > 0 ? "text-accent" : "text-lifespan-longer-text"}
               title={
                 yearsLostNum > 0
                   ? `Died ${Math.abs(yearsLostNum).toFixed(1)} years earlier than expected for their birth year`

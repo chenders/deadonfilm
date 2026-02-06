@@ -42,7 +42,7 @@ function LowConfidenceWarning({ level }: { level: string | null }) {
           />
         </svg>
         <div>
-          <h3 className="font-medium text-warning-text">
+          <h3 className="font-medium text-warning-text-strong">
             {isDisputed ? "Information Disputed" : "Unverified Information"}
           </h3>
           <p className="mt-1 text-sm text-warning-text">
