@@ -71,15 +71,15 @@ describe("AdminNav", () => {
     expect(jobsLink).toHaveAttribute("href", "/admin/jobs")
   })
 
-  it("renders data quality navigation link", async () => {
+  it("renders actors navigation link", async () => {
     renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /data quality/i })).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: /actors/i })).toBeInTheDocument()
     })
 
-    const dataQualityLink = screen.getByRole("link", { name: /data quality/i })
-    expect(dataQualityLink).toHaveAttribute("href", "/admin/data-quality")
+    const actorsLink = screen.getByRole("link", { name: /actors/i })
+    expect(actorsLink).toHaveAttribute("href", "/admin/actors")
   })
 
   it("renders TMDB sync navigation link", async () => {

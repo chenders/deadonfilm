@@ -68,7 +68,7 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
         </NavLink>
 
         <NavLink to="/admin/actors" isActive={isActive("/admin/actors")} onClick={onNavigate}>
-          Actor Management
+          Actors
         </NavLink>
 
         <NavLink
@@ -96,40 +96,8 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
           Operations
         </div>
 
-        <NavLink
-          to="/admin/actor-diagnostic"
-          isActive={isActive("/admin/actor-diagnostic")}
-          onClick={onNavigate}
-        >
-          Actor Diagnostic
-        </NavLink>
-
         <NavLink to="/admin/cache" isActive={isActive("/admin/cache")} onClick={onNavigate}>
           Cache Management
-        </NavLink>
-
-        <NavLink
-          to="/admin/data-quality"
-          isActive={isActive("/admin/data-quality")}
-          onClick={onNavigate}
-        >
-          Data Quality
-        </NavLink>
-
-        <NavLink
-          to="/admin/biographies"
-          isActive={isActive("/admin/biographies")}
-          onClick={onNavigate}
-        >
-          Biographies
-        </NavLink>
-
-        <NavLink
-          to="/admin/popularity"
-          isActive={isActive("/admin/popularity")}
-          onClick={onNavigate}
-        >
-          Popularity Scores
         </NavLink>
 
         <NavLink to="/admin/sync" isActive={isActive("/admin/sync")} onClick={onNavigate}>
