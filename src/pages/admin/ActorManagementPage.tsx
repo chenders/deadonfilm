@@ -337,7 +337,7 @@ export default function ActorManagementPage() {
                         setCauseSearchInput("")
                         handleFilterChange({ causeOfDeath: undefined })
                       }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-admin-text-muted hover:text-admin-text-primary"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-admin-text-muted hover:text-admin-text-primary"
                       aria-label="Clear cause filter"
                     >
                       ×
@@ -552,8 +552,9 @@ export default function ActorManagementPage() {
                             <div className="flex items-center justify-center gap-1">
                               <Link
                                 to={`/admin/actors/${actor.id}`}
-                                className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+                                className="inline-flex items-center justify-center rounded p-2.5 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
                                 title="Edit actor"
+                                aria-label="Edit actor"
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -573,7 +574,7 @@ export default function ActorManagementPage() {
                               <button
                                 onClick={() => handleRegenerateBiography(actor.id)}
                                 disabled={regeneratingBiography !== null}
-                                className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                className="inline-flex items-center justify-center rounded p-2.5 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
                                 title="Regenerate biography"
                                 aria-label="Regenerate biography"
                               >
@@ -621,8 +622,9 @@ export default function ActorManagementPage() {
                                 href={`/actor/${createActorSlug(actor.name, actor.id)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+                                className="inline-flex items-center justify-center rounded p-2.5 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
                                 title="View public actor page"
+                                aria-label="View public actor page (opens in new tab)"
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"

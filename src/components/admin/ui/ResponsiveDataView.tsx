@@ -63,7 +63,7 @@ export default function ResponsiveDataView<T>({
   return (
     <>
       {/* Desktop: DataTable */}
-      <div className={`hidden md:block ${className ?? ""}`}>
+      <div className={`hidden md:block ${className ?? ""}`} data-testid="desktop-view">
         <DataTable
           data={data}
           columns={columns}
@@ -80,7 +80,7 @@ export default function ResponsiveDataView<T>({
       </div>
 
       {/* Mobile: Card list */}
-      <div className={`md:hidden ${className ?? ""}`}>
+      <div className={`md:hidden ${className ?? ""}`} data-testid="mobile-view">
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
