@@ -230,6 +230,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
         actorId,
         hasDetailedDeathInfo: hasDetailedDeathInfo || false,
         deathManner: cleaned?.manner || null,
+        deathCategories: cleaned?.categories || null,
       }
 
       const circumstancesData: DeathCircumstancesData = {

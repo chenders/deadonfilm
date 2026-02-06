@@ -455,6 +455,7 @@ export class EnrichmentRunner {
           actorId,
           hasDetailedDeathInfo: hasDetailedDeathInfo || false,
           deathManner: cleaned?.manner || null,
+          deathCategories: cleaned?.categories || null,
           // Fill in cause_of_death if we got one and actor doesn't have it
           causeOfDeath: !actorRecord?.causeOfDeath && causeOfDeath ? causeOfDeath : undefined,
           causeOfDeathSource:
