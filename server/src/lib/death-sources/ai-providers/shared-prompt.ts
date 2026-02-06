@@ -102,7 +102,7 @@ Respond with JSON only. No biography or career achievements unless death-related
 Required fields:
 ${circumstancesDesc}
 - location_of_death: City, State/Country where they died
-- notable_factors: Tags only: "sudden", "long illness", "accident", "suicide", "overdose", "found unresponsive", "on_set", "vehicle_crash", "fire", "drowning", "homicide", "suspicious_circumstances", "multiple_deaths", "family_tragedy"
+- notable_factors: Tags only: "sudden", "long illness", "accident", "suicide", "overdose", "found unresponsive", "on_set", "vehicle_crash", "plane_crash", "fire", "drowning", "fall", "electrocution", "exposure", "poisoning", "homicide", "assassination", "terrorism", "suspicious_circumstances", "multiple_deaths", "family_tragedy", "surgical_complications", "war_related", "found_dead", "young_death"
 ${rumoredDesc}
 - confidence: "high" | "medium" | "low"
 ${sourcesDesc}

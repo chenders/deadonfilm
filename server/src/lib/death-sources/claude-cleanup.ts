@@ -46,6 +46,7 @@ interface ClaudeCleanupResponse {
   circumstances_confidence: ConfidenceLevel | null
   rumored_circumstances: string | null
   notable_factors: string[] | null
+  categories: string[] | null
   location_of_death: string | null
   related_deaths: string | null
   additional_context: string | null
@@ -154,11 +155,16 @@ Extract ALL death-related information into clean, factual prose written in the t
     Null if there are genuinely no alternative accounts or disputed information.",
 
   "notable_factors": ["array of tags describing notable aspects. Use any applicable from:
-    on_set, vehicle_crash, fire, drowning, overdose, substance_involvement,
-    suicide, homicide, suspicious_circumstances, celebrity_involvement,
-    multiple_deaths, family_tragedy, public_incident, controversial,
-    investigation, media_sensation, workplace_accident, medical_malpractice,
-    natural_causes, alzheimers, cancer, heart_disease, covid_related"],
+    on_set, vehicle_crash, plane_crash, fire, drowning, fall, electrocution, exposure,
+    overdose, substance_involvement, poisoning,
+    suicide, homicide, assassination, terrorism,
+    suspicious_circumstances, investigation, controversial, media_sensation,
+    celebrity_involvement, multiple_deaths, family_tragedy, public_incident,
+    workplace_accident, medical_malpractice, surgical_complications, misdiagnosis,
+    natural_causes, alzheimers, cancer, heart_disease, covid_related, pandemic,
+    war_related, autoerotic_asphyxiation, found_dead, young_death"],
+
+  "categories": ["array of medical/contributing factor categories. Use: cancer, heart-disease, neurological, respiratory, natural, accident, infectious, liver-kidney, suicide, overdose, homicide. Multiple allowed, e.g. ['cancer', 'respiratory']. Null if unknown."],
 
   "location_of_death": "city, state/province, country where they died. Null if unknown.",
 
@@ -333,6 +339,7 @@ export async function cleanupWithClaude(
     locationOfDeath: parsed.location_of_death,
     manner: DeathMannerSchema.safeParse(parsed.manner).success ? parsed.manner : null,
     notableFactors: parsed.notable_factors || [],
+    categories: parsed.categories || null,
     relatedDeaths: parsed.related_deaths,
     relatedCelebrities,
     additionalContext: parsed.additional_context,
@@ -358,6 +365,7 @@ export async function cleanupWithClaude(
     locationOfDeath: parsed.location_of_death || "",
     manner: cleaned.manner || "",
     notableFactors: (parsed.notable_factors || []).join(", "),
+    categories: (parsed.categories || []).join(", "),
     relatedDeaths: parsed.related_deaths || "",
     relatedCelebrities: (parsed.related_celebrities || []).map((rc) => rc.name).join(", "),
     additionalContext: parsed.additional_context || "",

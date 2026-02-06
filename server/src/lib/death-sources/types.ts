@@ -406,6 +406,7 @@ export interface CleanedDeathInfo {
 
   locationOfDeath: string | null
   notableFactors: string[] // Tags: multiple_deaths, investigation, etc.
+  categories: string[] | null // Medical categories: cancer, heart-disease, etc.
   relatedDeaths: string | null // Family/others who died in connection
   relatedCelebrities: RelatedCelebrity[] | null // Celebrities mentioned in death circumstances
   additionalContext: string | null // Career context relevant to death
