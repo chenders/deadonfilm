@@ -63,7 +63,7 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 pt-14 md:pt-0">
+      <main className="min-w-0 flex-1 overflow-x-hidden pt-14 md:pt-0">
         <div className="mx-auto max-w-7xl p-4 md:p-8">{children}</div>
       </main>
     </div>
