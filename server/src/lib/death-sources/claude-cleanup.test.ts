@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { buildCleanupPrompt, estimateCleanupCost } from "./claude-cleanup.js"
+import {
+  buildCleanupPrompt,
+  estimateCleanupCost,
+  VALID_NOTABLE_FACTORS,
+  isViolentDeath,
+} from "./claude-cleanup.js"
 import { DeathMannerSchema } from "../claude-batch/schemas.js"
 import { DataSourceType } from "./types.js"
 import type { ActorForEnrichment, RawSourceData } from "./types.js"
@@ -196,6 +201,96 @@ describe("claude-cleanup", () => {
     it("rejects null and undefined", () => {
       expect(DeathMannerSchema.safeParse(null).success).toBe(false)
       expect(DeathMannerSchema.safeParse(undefined).success).toBe(false)
+    })
+  })
+
+  describe("VALID_NOTABLE_FACTORS", () => {
+    it("contains all expected tags from the prompt", () => {
+      const expectedTags = [
+        "on_set",
+        "vehicle_crash",
+        "plane_crash",
+        "fire",
+        "drowning",
+        "fall",
+        "electrocution",
+        "exposure",
+        "overdose",
+        "substance_involvement",
+        "poisoning",
+        "suicide",
+        "homicide",
+        "assassination",
+        "terrorism",
+        "suspicious_circumstances",
+        "investigation",
+        "controversial",
+        "media_sensation",
+        "celebrity_involvement",
+        "multiple_deaths",
+        "family_tragedy",
+        "public_incident",
+        "workplace_accident",
+        "medical_malpractice",
+        "surgical_complications",
+        "misdiagnosis",
+        "natural_causes",
+        "alzheimers",
+        "cancer",
+        "heart_disease",
+        "covid_related",
+        "pandemic",
+        "war_related",
+        "autoerotic_asphyxiation",
+        "found_dead",
+        "young_death",
+      ]
+
+      for (const tag of expectedTags) {
+        expect(VALID_NOTABLE_FACTORS.has(tag)).toBe(true)
+      }
+      expect(VALID_NOTABLE_FACTORS.size).toBe(expectedTags.length)
+    })
+
+    it("rejects non-standard tags that Claude sometimes returns", () => {
+      expect(VALID_NOTABLE_FACTORS.has("respiratory")).toBe(false)
+      expect(VALID_NOTABLE_FACTORS.has("neurological")).toBe(false)
+      expect(VALID_NOTABLE_FACTORS.has("self-inflicted")).toBe(false)
+      expect(VALID_NOTABLE_FACTORS.has("cardiac")).toBe(false)
+      expect(VALID_NOTABLE_FACTORS.has("infectious")).toBe(false)
+    })
+
+    it("filters invalid tags when used as a filter", () => {
+      const rawFactors = ["cancer", "respiratory", "natural_causes", "neurological"]
+      const filtered = rawFactors.filter((f) => VALID_NOTABLE_FACTORS.has(f))
+
+      expect(filtered).toEqual(["cancer", "natural_causes"])
+    })
+
+    it("stays in sync with the notable_factors list in the prompt", () => {
+      const prompt = buildCleanupPrompt(mockActor, mockSources)
+      for (const tag of VALID_NOTABLE_FACTORS) {
+        expect(prompt).toContain(tag)
+      }
+    })
+  })
+
+  describe("isViolentDeath", () => {
+    it("returns true for homicide, suicide, and accident", () => {
+      expect(isViolentDeath("homicide")).toBe(true)
+      expect(isViolentDeath("suicide")).toBe(true)
+      expect(isViolentDeath("accident")).toBe(true)
+    })
+
+    it("returns false for natural, undetermined, and pending", () => {
+      expect(isViolentDeath("natural")).toBe(false)
+      expect(isViolentDeath("undetermined")).toBe(false)
+      expect(isViolentDeath("pending")).toBe(false)
+    })
+
+    it("returns undefined for null or undefined", () => {
+      expect(isViolentDeath(null)).toBeUndefined()
+      expect(isViolentDeath(undefined)).toBeUndefined()
     })
   })
 

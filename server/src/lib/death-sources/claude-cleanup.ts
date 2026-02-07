@@ -30,6 +30,63 @@ import newrelic from "newrelic"
 const MODEL_ID = "claude-opus-4-5-20251101"
 const MAX_TOKENS = 3000
 
+/**
+ * Valid notable_factors tags that Claude is allowed to return.
+ * Any tags not in this set are filtered out to prevent Claude from
+ * confusing categories (e.g. "respiratory", "neurological") with notable_factors.
+ */
+export const VALID_NOTABLE_FACTORS = new Set([
+  "on_set",
+  "vehicle_crash",
+  "plane_crash",
+  "fire",
+  "drowning",
+  "fall",
+  "electrocution",
+  "exposure",
+  "overdose",
+  "substance_involvement",
+  "poisoning",
+  "suicide",
+  "homicide",
+  "assassination",
+  "terrorism",
+  "suspicious_circumstances",
+  "investigation",
+  "controversial",
+  "media_sensation",
+  "celebrity_involvement",
+  "multiple_deaths",
+  "family_tragedy",
+  "public_incident",
+  "workplace_accident",
+  "medical_malpractice",
+  "surgical_complications",
+  "misdiagnosis",
+  "natural_causes",
+  "alzheimers",
+  "cancer",
+  "heart_disease",
+  "covid_related",
+  "pandemic",
+  "war_related",
+  "autoerotic_asphyxiation",
+  "found_dead",
+  "young_death",
+])
+
+/** Manners of death considered "violent" for the violent_death boolean derivation. */
+const VIOLENT_MANNERS = ["homicide", "suicide", "accident"]
+
+/**
+ * Derive violent_death boolean from death_manner.
+ * Returns undefined if manner is null/undefined (no data to derive from).
+ */
+export function isViolentDeath(manner: string | null | undefined): boolean | undefined {
+  if (manner == null) return undefined
+  return VIOLENT_MANNERS.includes(manner)
+}
+
 // Cost per million tokens (Opus 4.5)
 const INPUT_COST_PER_MILLION = 15
 const OUTPUT_COST_PER_MILLION = 75
@@ -317,7 +374,7 @@ export async function cleanupWithClaude(
   }
 
   // Convert related_celebrities to proper format
-  const relatedCelebrities: RelatedCelebrity[] | null = parsed.related_celebrities
+  const relatedCelebrities: RelatedCelebrity[] | null = Array.isArray(parsed.related_celebrities)
     ? parsed.related_celebrities.map((rc) => ({
         name: rc.name,
         tmdbId: null, // Will be looked up later when persisting
@@ -338,8 +395,10 @@ export async function cleanupWithClaude(
     rumoredCircumstances: parsed.rumored_circumstances,
     locationOfDeath: parsed.location_of_death,
     manner: DeathMannerSchema.safeParse(parsed.manner).success ? parsed.manner : null,
-    notableFactors: parsed.notable_factors || [],
-    categories: parsed.categories || null,
+    notableFactors: (Array.isArray(parsed.notable_factors) ? parsed.notable_factors : []).filter(
+      (f: string) => VALID_NOTABLE_FACTORS.has(f)
+    ),
+    categories: Array.isArray(parsed.categories) ? parsed.categories : null,
     relatedDeaths: parsed.related_deaths,
     relatedCelebrities,
     additionalContext: parsed.additional_context,
@@ -364,14 +423,22 @@ export async function cleanupWithClaude(
     rumoredCircumstances: parsed.rumored_circumstances || "",
     locationOfDeath: parsed.location_of_death || "",
     manner: cleaned.manner || "",
-    notableFactors: (parsed.notable_factors || []).join(", "),
-    categories: (parsed.categories || []).join(", "),
+    notableFactors: cleaned.notableFactors.join(", "),
+    categories: (cleaned.categories || []).join(", "),
     relatedDeaths: parsed.related_deaths || "",
-    relatedCelebrities: (parsed.related_celebrities || []).map((rc) => rc.name).join(", "),
+    relatedCelebrities: (Array.isArray(parsed.related_celebrities)
+      ? parsed.related_celebrities
+      : []
+    )
+      .map((rc) => rc.name)
+      .join(", "),
     additionalContext: parsed.additional_context || "",
     careerStatusAtDeath: parsed.career_status_at_death || "",
     lastProject: parsed.last_project?.title || "",
-    posthumousReleasesCount: (parsed.posthumous_releases || []).length,
+    posthumousReleasesCount: (Array.isArray(parsed.posthumous_releases)
+      ? parsed.posthumous_releases
+      : []
+    ).length,
     cleanupSource: "claude-opus-4.5",
     cleanupTimestamp: new Date().toISOString(),
   })
