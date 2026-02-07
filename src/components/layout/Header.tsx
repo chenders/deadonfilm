@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom"
 import SkullLogo from "./SkullLogo"
+import ThemeToggle from "./ThemeToggle"
 import SearchTrigger from "@/components/search/SearchTrigger"
 
 export default function Header() {
@@ -9,7 +10,7 @@ export default function Header() {
   return (
     <header data-testid="site-header" className="px-4 pb-1 pt-1 md:py-6">
       <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto_1fr] items-center">
-        {/* Left spacer - matches SearchTrigger width to keep logo centered */}
+        {/* Left spacer to keep logo centered */}
         <div aria-hidden="true" />
 
         {/* Centered logo and title */}
@@ -27,8 +28,11 @@ export default function Header() {
           </h1>
         </Link>
 
-        {/* Right-aligned search trigger - hidden on home page which has its own search */}
-        <div className="flex justify-end">{!isHomePage && <SearchTrigger />}</div>
+        {/* Right-aligned controls */}
+        <div className="flex items-center justify-end gap-1">
+          <ThemeToggle />
+          {!isHomePage && <SearchTrigger />}
+        </div>
       </div>
     </header>
   )
