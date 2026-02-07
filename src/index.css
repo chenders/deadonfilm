@@ -96,9 +96,112 @@
   --overlay-text: #ffffff;
 }
 
+/* Dark Cinema theme — warm charcoal-browns evoking old movie theater interiors */
+:root.dark {
+  color-scheme: dark;
+
+  /* Core Surfaces */
+  --surface-base: #141210;
+  --surface-elevated: #1e1b18;
+  --surface-muted: #2a2622;
+  --surface-inset: #1a1816;
+
+  /* Text */
+  --text-primary: #e4e0dc;
+  --text-muted: #8a8480;
+
+  /* Browns — cooled to silver-pewter for dark mode */
+  --brown-dark: #c4bfb8;
+  --brown-medium: #756f68;
+  --brown-light: #918b84;
+
+  /* Deceased / Accent — vivid crimson for dark bg contrast */
+  --deceased-primary: #c42020;
+  --deceased-hover: #e03030;
+  --deceased-bg: #261414;
+  --deceased-border: #4a2020;
+
+  /* Living (gold) — richer, more luminous */
+  --living-primary: #d4a020;
+  --living-light: #e8b830;
+  --living-dark: #a07818;
+  --living-muted: #d4b030;
+  --living-bg: #221e10;
+  --living-border: #584810;
+
+  /* Lifespan Indicators — brighter for readability */
+  --lifespan-early: #c42020;
+  --lifespan-early-track: #261414;
+  --lifespan-longer-text: #4ade80;
+  --lifespan-longer-fill: #22c55e;
+  --lifespan-longer-track: #142214;
+
+  /* Years Lost Text */
+  --years-lost: #ef4444;
+
+  /* Decorative */
+  --circle-ornament: #383436;
+  --timeline-line: #383436;
+
+  /* Interactive */
+  --button-primary-bg: #756f68;
+  --button-primary-text: #e4e0dc;
+  --input-bg: #1a1816;
+  --input-border: #383436;
+
+  /* Tags */
+  --tag-bg: #2a2622;
+  --tag-text: #a09a94;
+
+  /* Tooltip — inverted */
+  --tooltip-bg: #e4e0dc;
+  --tooltip-text: #141210;
+
+  /* Status (Toast) — brighter for dark bg */
+  --status-success: #22c55e;
+  --status-success-border: #16a34a;
+  --status-error: #ef4444;
+  --status-error-border: #dc2626;
+  --status-warning: #eab308;
+  --status-warning-border: #ca8a04;
+  --status-info: #3b82f6;
+  --status-info-border: #2563eb;
+
+  /* Confidence */
+  --confidence-high: #22c55e;
+  --confidence-medium: #eab308;
+  --confidence-low: #f97316;
+  --confidence-disputed: #ef4444;
+  --confidence-inactive: #4a4440;
+
+  /* Warning Banner */
+  --warning-bg: #261c10;
+  --warning-border: #6b4a20;
+  --warning-text-strong: #fdba74;
+  --warning-text: #f97316;
+  --warning-icon: #f97316;
+
+  /* Disabled */
+  --disabled-bg: #2a2622;
+  --disabled-text: #5a5450;
+
+  /* Overlays */
+  --overlay: #000000;
+  --overlay-text: #e4e0dc;
+}
+
 body {
   @apply bg-cream font-body text-text-primary;
   min-height: 100vh;
+}
+
+/* Subtle projector glow in dark mode */
+:root.dark body {
+  background-image: radial-gradient(
+    ellipse 60% 40% at 50% 0%,
+    rgba(130, 124, 118, 0.04) 0%,
+    transparent 70%
+  );
 }
 
 /* Custom scrollbar for vintage feel */
@@ -116,6 +219,19 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-brown-dark;
+}
+
+/* Dark scrollbar */
+:root.dark ::-webkit-scrollbar-track {
+  background: #1e1b18;
+}
+
+:root.dark ::-webkit-scrollbar-thumb {
+  background: #484446;
+}
+
+:root.dark ::-webkit-scrollbar-thumb:hover {
+  background: #686466;
 }
 
 /* Stagger fade-in animation for list items */

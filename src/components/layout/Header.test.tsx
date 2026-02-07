@@ -3,9 +3,13 @@ import { render, screen } from "@testing-library/react"
 import { TestMemoryRouter } from "@/test/test-utils"
 import Header from "./Header"
 
-// Mock SearchTrigger to avoid complex context setup
+// Mock SearchTrigger and ThemeToggle to avoid complex context setup
 vi.mock("@/components/search/SearchTrigger", () => ({
   default: () => <button data-testid="search-trigger">Search</button>,
+}))
+
+vi.mock("./ThemeToggle", () => ({
+  default: () => <button data-testid="theme-toggle">Theme</button>,
 }))
 
 function renderHeader(initialPath = "/movie/test") {
