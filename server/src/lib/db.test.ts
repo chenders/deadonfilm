@@ -166,14 +166,17 @@ describe("Sync State Functions", () => {
   })
 
   describe("getAllActorTmdbIds", () => {
-    it("returns a Set of all actor TMDB IDs", async () => {
+    it("returns a Set of all actor TMDB IDs from both movie and show appearances", async () => {
       mockQuery.mockResolvedValueOnce({
         rows: [{ tmdb_id: 123 }, { tmdb_id: 456 }, { tmdb_id: 789 }],
       })
 
       const result = await getAllActorTmdbIds()
 
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("SELECT DISTINCT a.tmdb_id"))
+      const query = mockQuery.mock.calls[0][0] as string
+      expect(query).toContain("actor_movie_appearances")
+      expect(query).toContain("actor_show_appearances")
+      expect(query).toContain("UNION")
       expect(result).toBeInstanceOf(Set)
       expect(result.size).toBe(3)
       expect(result.has(123)).toBe(true)
