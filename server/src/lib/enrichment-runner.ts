@@ -114,6 +114,7 @@ interface ActorRow {
   cause_of_death: string | null
   cause_of_death_details: string | null
   tmdb_popularity: number | null
+  dof_popularity: number | null
   circumstances: string | null
   notable_factors: string[] | null
   movie_title?: string
@@ -309,7 +310,7 @@ export class EnrichmentRunner {
         deathday: normalizeDateToString(a.deathday) || "",
         causeOfDeath: a.cause_of_death,
         causeOfDeathDetails: a.cause_of_death_details,
-        popularity: a.tmdb_popularity,
+        popularity: a.dof_popularity ?? a.tmdb_popularity,
       }))
 
       // Run enrichment - process actors one by one
@@ -698,8 +699,8 @@ export class EnrichmentRunner {
       }
 
       actors.sort((a, b) => {
-        const popA = a.tmdb_popularity ?? 0
-        const popB = b.tmdb_popularity ?? 0
+        const popA = a.dof_popularity ?? a.tmdb_popularity ?? 0
+        const popB = b.dof_popularity ?? b.tmdb_popularity ?? 0
         return popB - popA
       })
     }
@@ -725,7 +726,8 @@ export class EnrichmentRunner {
         a.deathday,
         a.cause_of_death,
         a.cause_of_death_details,
-        a.tmdb_popularity as popularity,
+        a.tmdb_popularity,
+        a.dof_popularity,
         c.circumstances,
         c.notable_factors
       FROM actors a

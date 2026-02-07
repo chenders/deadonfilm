@@ -646,6 +646,7 @@ export interface ActorForEnrichmentQuery {
   cause_of_death: string | null
   cause_of_death_details: string | null
   tmdb_popularity: number | null
+  dof_popularity: number | null
   circumstances: string | null
   notable_factors: string[] | null
   /** Movie title (only populated when using top-billed-year query) */
