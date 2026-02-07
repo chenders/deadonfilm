@@ -54,7 +54,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
       <h2 className="font-display text-xl text-brown-dark">Deaths Over Time</h2>
 
       {/* Vertical Timeline */}
-      <div className="rounded-lg border border-brown-medium/20 bg-white p-4">
+      <div className="rounded-lg border border-brown-medium/20 bg-surface-elevated p-4">
         <div className="relative pl-4">
           {/* Vertical timeline line */}
           <div className="absolute bottom-2 left-[7px] top-2 w-0.5 bg-brown-medium/20" />
@@ -172,7 +172,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                                       {/* Tooltip for cause of death details */}
                                       {hoveredActorId === actor.id && (
                                         <div
-                                          className="absolute bottom-full left-0 z-20 mb-2 w-72 rounded-lg border border-brown-medium/30 bg-white p-3 text-left text-xs text-brown-dark shadow-lg"
+                                          className="absolute bottom-full left-0 z-20 mb-2 w-72 rounded-lg border border-brown-medium/30 bg-surface-elevated p-3 text-left text-xs text-brown-dark shadow-lg"
                                           data-testid="cause-details-tooltip-expanded"
                                         >
                                           <span className="leading-relaxed">
@@ -246,7 +246,7 @@ export default function MiniTimeline({ releaseYear, deceased }: MiniTimelineProp
                                     />
                                     {hoveredActorId === actor.id && (
                                       <div
-                                        className="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-brown-medium/30 bg-white p-3 text-left text-xs text-brown-dark shadow-lg"
+                                        className="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-brown-medium/30 bg-surface-elevated p-3 text-left text-xs text-brown-dark shadow-lg"
                                         data-testid="cause-details-tooltip"
                                       >
                                         <span className="leading-relaxed">

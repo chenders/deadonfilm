@@ -122,7 +122,7 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
     return (
       <Link
         to={`/movie/${slug}`}
-        className="flex items-center gap-3 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+        className="flex items-center gap-3 rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
         data-testid="filmography-row"
       >
         {posterUrl ? (
@@ -176,7 +176,7 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
   return (
     <Link
       to={`/show/${slug}`}
-      className="flex items-center gap-3 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="flex items-center gap-3 rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
       data-testid="filmography-row"
     >
       {posterUrl ? (
@@ -482,7 +482,7 @@ export default function ActorPage() {
 
         {/* Biography */}
         {actor.biography && (
-          <div className="mb-6 rounded-lg bg-white p-4">
+          <div className="mb-6 rounded-lg bg-surface-elevated p-4">
             <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
             <p className="text-sm leading-relaxed text-text-muted">{actor.biography}</p>
             {actor.biographySourceUrl && (
@@ -517,7 +517,7 @@ export default function ActorPage() {
           </h2>
 
           {combinedFilmography.length === 0 ? (
-            <div className="rounded-lg bg-white p-6 text-center text-text-muted">
+            <div className="rounded-lg bg-surface-elevated p-6 text-center text-text-muted">
               <p>No movies or TV shows in our database yet.</p>
               <p className="mt-1 text-sm">
                 This actor hasn't appeared in any productions we've analyzed for mortality

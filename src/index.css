@@ -6,11 +6,94 @@
 @tailwind utilities;
 
 :root {
-  --color-cream: #f5f0e8;
-  --color-beige: #e8dcc8;
-  --color-brown-dark: #3d2914;
-  --color-brown-medium: #6b4423;
-  --color-accent: #8b0000;
+  /* Core Surfaces */
+  --surface-base: #f5f0e8;
+  --surface-elevated: #ffffff;
+  --surface-muted: #e8dcc8;
+  --surface-inset: #e5e7eb; /* matches Tailwind gray-200 for parity */
+
+  /* Text */
+  --text-primary: #2c1810;
+  --text-muted: #6b5b4f;
+
+  /* Browns (structural) */
+  --brown-dark: #3d2914;
+  --brown-medium: #6b4423;
+  --brown-light: #8b6914;
+
+  /* Deceased / Accent */
+  --deceased-primary: #8b0000;
+  --deceased-hover: #6b0000;
+  --deceased-bg: #faf5f5;
+  --deceased-border: #d4a5a5;
+
+  /* Living (gold) */
+  --living-primary: #b8860b;
+  --living-light: #daa520;
+  --living-dark: #6b5010;
+  --living-muted: #c9a227;
+  --living-bg: #faf6e9;
+  --living-border: #d4af37;
+
+  /* Lifespan Indicators */
+  --lifespan-early: #8b0000;
+  --lifespan-early-track: #f5e5e5;
+  --lifespan-longer-text: #15803d; /* matches Tailwind green-700 */
+  --lifespan-longer-fill: #16a34a; /* matches Tailwind green-600 */
+  --lifespan-longer-track: #e5f5e5;
+
+  /* Years Lost Text */
+  --years-lost: #b91c1c; /* matches Tailwind red-700 */
+
+  /* Decorative */
+  --circle-ornament: #d4c4a8;
+  --timeline-line: #d4c4a8;
+
+  /* Interactive */
+  --button-primary-bg: #6b4423;
+  --button-primary-text: #ffffff;
+  --input-bg: #ffffff;
+  --input-border: #d4c4a8;
+
+  /* Tags */
+  --tag-bg: #f0ebe4;
+  --tag-text: #6b5b4f;
+
+  /* Tooltip */
+  --tooltip-bg: #3d2914;
+  --tooltip-text: #f5f0e8;
+
+  /* Status (Toast) */
+  --status-success: #16a34a;
+  --status-success-border: #22c55e;
+  --status-error: #dc2626;
+  --status-error-border: #ef4444;
+  --status-warning: #ca8a04;
+  --status-warning-border: #eab308;
+  --status-info: #2563eb;
+  --status-info-border: #3b82f6;
+
+  /* Confidence */
+  --confidence-high: #22c55e;
+  --confidence-medium: #eab308;
+  --confidence-low: #f97316;
+  --confidence-disputed: #ef4444;
+  --confidence-inactive: #d1d5db;
+
+  /* Warning Banner */
+  --warning-bg: #fff7ed;
+  --warning-border: #fdba74;
+  --warning-text-strong: #9a3412; /* matches Tailwind orange-800 (headings) */
+  --warning-text: #c2410c; /* matches Tailwind orange-700 (body) */
+  --warning-icon: #ea580c;
+
+  /* Disabled */
+  --disabled-bg: #f3f4f6;
+  --disabled-text: #9ca3af;
+
+  /* Overlays */
+  --overlay: #000000;
+  --overlay-text: #ffffff;
 }
 
 body {

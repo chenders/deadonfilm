@@ -49,9 +49,9 @@ function DecadeCard({ category }: DecadeCardProps) {
         {topMovie && (
           <Link
             to={`/movie/${createMovieSlug(topMovie.title, topMovie.releaseYear?.toString() || "", topMovie.tmdbId)}`}
-            className="pointer-events-auto absolute right-2 top-2 z-10 rounded bg-black/80 px-2 py-1 transition-colors hover:bg-black/90"
+            className="pointer-events-auto absolute right-2 top-2 z-10 rounded bg-overlay/80 px-2 py-1 transition-colors hover:bg-overlay/90"
           >
-            <span className="text-xs text-white/90">
+            <span className="text-xs text-overlay-text/90">
               {topMovie.title}
               {topMovie.releaseYear && ` (${topMovie.releaseYear})`}
             </span>
@@ -62,7 +62,7 @@ function DecadeCard({ category }: DecadeCardProps) {
         {featuredActor && (
           <Link
             to={`/actor/${createActorSlug(featuredActor.name, featuredActor.id)}`}
-            className="pointer-events-auto absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full bg-black/80 py-1 pl-1 pr-3 transition-colors hover:bg-black/90"
+            className="pointer-events-auto absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full bg-overlay/80 py-1 pl-1 pr-3 transition-colors hover:bg-overlay/90"
           >
             {featuredActor.profilePath ? (
               <img
@@ -74,10 +74,10 @@ function DecadeCard({ category }: DecadeCardProps) {
               />
             ) : (
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brown-medium/50">
-                <SkullIcon size={14} className="text-white/70" />
+                <SkullIcon size={14} className="text-overlay-text/70" />
               </div>
             )}
-            <span className="text-[10px] font-medium uppercase tracking-wide text-white">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-overlay-text">
               Top Actor: {featuredActor.name}
             </span>
           </Link>

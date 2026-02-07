@@ -149,7 +149,7 @@ export default function CauseCategoryPage() {
         <div className="mb-8 grid gap-6 md:grid-cols-2">
           {/* Decade Breakdown */}
           {data.decadeBreakdown.length > 0 && (
-            <div className="rounded-lg bg-white p-4">
+            <div className="rounded-lg bg-surface-elevated p-4">
               <h2 className="mb-4 font-display text-lg text-brown-dark">Deaths by Decade</h2>
               <DecadeChart breakdown={data.decadeBreakdown} />
             </div>
@@ -157,7 +157,7 @@ export default function CauseCategoryPage() {
 
           {/* Specific Causes */}
           {data.specificCauses.length > 0 && (
-            <div className="rounded-lg bg-white p-4">
+            <div className="rounded-lg bg-surface-elevated p-4">
               <h2 className="mb-4 font-display text-lg text-brown-dark">Specific Causes</h2>
               <SpecificCauseList causes={data.specificCauses} categorySlug={data.slug} />
             </div>

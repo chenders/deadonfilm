@@ -25,7 +25,7 @@ function ActorRow({ actor }: { actor: DeathWatchActor }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`death-watch-row-${actor.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -186,7 +186,7 @@ export default function DeathWatchPage() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search for an actor..."
               data-testid="search-input"
-              className="w-full max-w-md rounded-lg border border-brown-medium/30 bg-white px-4 py-2 text-sm text-brown-dark placeholder-text-muted focus:border-brown-medium focus:outline-none focus:ring-1 focus:ring-brown-medium"
+              className="w-full max-w-md rounded-lg border border-brown-medium/30 bg-surface-elevated px-4 py-2 text-sm text-brown-dark placeholder-text-muted focus:border-brown-medium focus:outline-none focus:ring-1 focus:ring-brown-medium"
             />
           </div>
           <div className="flex justify-center">
