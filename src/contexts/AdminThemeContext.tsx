@@ -63,14 +63,20 @@ export function AdminThemeProvider({ children, defaultTheme = "dark" }: AdminThe
     }
 
     // Set background on html+body to prevent white bleed-through
-    // when content overflows horizontally on mobile
-    const bgColor = resolvedTheme === "light" ? "#f6f8fa" : "#1e2228"
-    root.style.backgroundColor = bgColor
-    document.body.style.backgroundColor = bgColor
+    // when content overflows horizontally on mobile.
+    // Derive the color from the CSS variable so there's a single source of truth.
+    const previousRootBg = root.style.backgroundColor
+    const previousBodyBg = document.body.style.backgroundColor
+    const bgColor = getComputedStyle(root).getPropertyValue("--admin-surface-base").trim()
+
+    if (bgColor) {
+      root.style.backgroundColor = bgColor
+      document.body.style.backgroundColor = bgColor
+    }
 
     return () => {
-      root.style.backgroundColor = ""
-      document.body.style.backgroundColor = ""
+      root.style.backgroundColor = previousRootBg
+      document.body.style.backgroundColor = previousBodyBg
     }
   }, [resolvedTheme])
 
