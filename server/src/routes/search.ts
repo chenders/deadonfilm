@@ -164,7 +164,7 @@ async function searchActorsLocal(query: string, limit: number): Promise<SearchRe
  *   - type: 'movie' | 'tv' | 'all' | 'person' (default: 'movie' for backwards compatibility)
  */
 export async function searchMovies(req: Request, res: Response) {
-  const query = req.query.q as string
+  const query = (req.query.q as string)?.trim() || ""
   const type = (req.query.type as string) || "movie"
 
   if (!query || query.length < 2) {
