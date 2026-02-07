@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react"
 import { useSearchParams } from "react-router-dom"
 import { TestMemoryRouter } from "../../../test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -369,8 +369,10 @@ describe("ErrorLogsTab", () => {
         expect(screen.getAllByText("Database connection failed").length).toBeGreaterThanOrEqual(1)
       })
 
-      const expandButtons = screen.getAllByLabelText(/Expand details/i)
-      fireEvent.click(expandButtons[0])
+      // Scope to the first mobile card to avoid order-dependent queries
+      const card = screen.getByTestId("error-log-card-1")
+      const expandButton = within(card).getByLabelText(/Expand details/i)
+      fireEvent.click(expandButton)
 
       await waitFor(() => {
         // Stack trace appears in both mobile and desktop expanded views
@@ -386,17 +388,16 @@ describe("ErrorLogsTab", () => {
         expect(screen.getAllByText("Database connection failed").length).toBeGreaterThanOrEqual(1)
       })
 
-      // Expand first
-      const expandButtons = screen.getAllByLabelText(/Expand details/i)
-      fireEvent.click(expandButtons[0])
+      // Expand first — scope to the first mobile card
+      const card = screen.getByTestId("error-log-card-1")
+      fireEvent.click(within(card).getByLabelText(/Expand details/i))
 
       await waitFor(() => {
         expect(screen.getAllByText("Stack Trace:").length).toBeGreaterThanOrEqual(1)
       })
 
-      // Collapse
-      const collapseButtons = screen.getAllByLabelText(/Collapse details/i)
-      fireEvent.click(collapseButtons[0])
+      // Collapse — scope to the same card
+      fireEvent.click(within(card).getByLabelText(/Collapse details/i))
 
       await waitFor(() => {
         expect(screen.queryByText("Stack Trace:")).not.toBeInTheDocument()
