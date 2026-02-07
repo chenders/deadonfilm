@@ -374,7 +374,7 @@ export async function cleanupWithClaude(
   }
 
   // Convert related_celebrities to proper format
-  const relatedCelebrities: RelatedCelebrity[] | null = parsed.related_celebrities
+  const relatedCelebrities: RelatedCelebrity[] | null = Array.isArray(parsed.related_celebrities)
     ? parsed.related_celebrities.map((rc) => ({
         name: rc.name,
         tmdbId: null, // Will be looked up later when persisting
@@ -426,11 +426,13 @@ export async function cleanupWithClaude(
     notableFactors: cleaned.notableFactors.join(", "),
     categories: (cleaned.categories || []).join(", "),
     relatedDeaths: parsed.related_deaths || "",
-    relatedCelebrities: (parsed.related_celebrities || []).map((rc) => rc.name).join(", "),
+    relatedCelebrities: (Array.isArray(parsed.related_celebrities) ? parsed.related_celebrities : [])
+      .map((rc) => rc.name)
+      .join(", "),
     additionalContext: parsed.additional_context || "",
     careerStatusAtDeath: parsed.career_status_at_death || "",
     lastProject: parsed.last_project?.title || "",
-    posthumousReleasesCount: (parsed.posthumous_releases || []).length,
+    posthumousReleasesCount: (Array.isArray(parsed.posthumous_releases) ? parsed.posthumous_releases : []).length,
     cleanupSource: "claude-opus-4.5",
     cleanupTimestamp: new Date().toISOString(),
   })
