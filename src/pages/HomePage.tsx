@@ -42,7 +42,7 @@ export default function HomePage() {
 
       <div data-testid="home-page" className="mx-auto max-w-2xl text-center">
         <p data-testid="home-tagline" className="mb-6 text-lg text-text-muted">
-          Search for a movie or TV show to see which cast members have passed away
+          Search for a movie, TV show, or person to see who has passed away
         </p>
 
         <SearchBar />

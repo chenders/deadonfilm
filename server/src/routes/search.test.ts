@@ -15,6 +15,11 @@ vi.mock("newrelic", () => ({
   },
 }))
 
+const mockQuery = vi.fn()
+vi.mock("../lib/db.js", () => ({
+  getPool: () => ({ query: mockQuery }),
+}))
+
 import { searchMovies } from "./search.js"
 import { searchMovies as tmdbSearch } from "../lib/tmdb.js"
 import newrelic from "newrelic"
@@ -423,5 +428,165 @@ describe("searchMovies route", () => {
     await searchMovies(mockReq as Request, mockRes as Response)
 
     expect(newrelic.recordCustomEvent).not.toHaveBeenCalled()
+  })
+
+  describe("person search", () => {
+    it("returns person results for type=person", async () => {
+      mockQuery.mockResolvedValue({
+        rows: [
+          {
+            id: 4165,
+            name: "John Wayne",
+            birthday: "1907-05-26",
+            deathday: "1979-06-11",
+            profile_path: "/john-wayne.jpg",
+            tmdb_popularity: 25.5,
+          },
+        ],
+      })
+      mockReq = { query: { q: "John Wayne", type: "person" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      const calledWith = jsonSpy.mock.calls[0][0]
+      expect(calledWith.results).toHaveLength(1)
+      expect(calledWith.results[0]).toEqual({
+        id: 4165,
+        title: "John Wayne",
+        release_date: "",
+        poster_path: "/john-wayne.jpg",
+        overview: "",
+        media_type: "person",
+        is_deceased: true,
+        death_year: 1979,
+        birth_year: 1907,
+      })
+    })
+
+    it("returns empty person results for no matches", async () => {
+      mockQuery.mockResolvedValue({ rows: [] })
+      mockReq = { query: { q: "xyznonexistent", type: "person" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      const calledWith = jsonSpy.mock.calls[0][0]
+      expect(calledWith.results).toHaveLength(0)
+    })
+
+    it("returns living actor with birth year but no death year", async () => {
+      mockQuery.mockResolvedValue({
+        rows: [
+          {
+            id: 500,
+            name: "Tom Hanks",
+            birthday: "1956-07-09",
+            deathday: null,
+            profile_path: "/tom-hanks.jpg",
+            tmdb_popularity: 80,
+          },
+        ],
+      })
+      mockReq = { query: { q: "Tom Hanks", type: "person" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      const calledWith = jsonSpy.mock.calls[0][0]
+      expect(calledWith.results[0].is_deceased).toBe(false)
+      expect(calledWith.results[0].death_year).toBeNull()
+      expect(calledWith.results[0].birth_year).toBe(1956)
+    })
+
+    it("does not call TMDB API for person search", async () => {
+      mockQuery.mockResolvedValue({ rows: [] })
+      mockReq = { query: { q: "Tom Hanks", type: "person" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      expect(tmdbSearch).not.toHaveBeenCalled()
+    })
+
+    it("includes person results in type=all after movie/TV results", async () => {
+      const mockTmdbMovies = {
+        page: 1,
+        results: [
+          {
+            id: 1,
+            title: "Wayne's World",
+            popularity: 30,
+            release_date: "1992-02-14",
+            poster_path: null,
+            overview: "",
+            genre_ids: [],
+            original_language: "en",
+          },
+        ],
+        total_pages: 1,
+        total_results: 1,
+      }
+      const mockTmdbTV = {
+        page: 1,
+        results: [],
+        total_pages: 1,
+        total_results: 0,
+      }
+
+      vi.mocked(tmdbSearch).mockResolvedValue(mockTmdbMovies)
+      const { searchTVShows } = await import("../lib/tmdb.js")
+      vi.mocked(searchTVShows).mockResolvedValue(mockTmdbTV)
+
+      mockQuery.mockResolvedValue({
+        rows: [
+          {
+            id: 4165,
+            name: "John Wayne",
+            birthday: "1907-05-26",
+            deathday: "1979-06-11",
+            profile_path: "/wayne.jpg",
+            tmdb_popularity: 25,
+          },
+        ],
+      })
+      mockReq = { query: { q: "Wayne", type: "all" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      const calledWith = jsonSpy.mock.calls[0][0]
+      // Movie results come first, person results after
+      const movieResults = calledWith.results.filter(
+        (r: { media_type: string }) => r.media_type === "movie"
+      )
+      const personResults = calledWith.results.filter(
+        (r: { media_type: string }) => r.media_type === "person"
+      )
+      expect(movieResults.length).toBeGreaterThan(0)
+      expect(personResults.length).toBeGreaterThan(0)
+
+      // Person results should be after movie/TV results
+      const lastMovieIndex = calledWith.results.findLastIndex(
+        (r: { media_type: string }) => r.media_type !== "person"
+      )
+      const firstPersonIndex = calledWith.results.findIndex(
+        (r: { media_type: string }) => r.media_type === "person"
+      )
+      expect(firstPersonIndex).toBeGreaterThan(lastMovieIndex)
+    })
+  })
+
+  it("returns 400 for invalid type including 'person' misspelling", async () => {
+    mockReq = { query: { q: "test", type: "persons" } }
+
+    await searchMovies(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(400)
+  })
+
+  it("accepts person as a valid type", async () => {
+    mockQuery.mockResolvedValue({ rows: [] })
+    mockReq = { query: { q: "test", type: "person" } }
+
+    await searchMovies(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).not.toHaveBeenCalled()
+    expect(jsonSpy).toHaveBeenCalled()
   })
 })

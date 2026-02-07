@@ -5,6 +5,7 @@ import {
   type TMDBMovie,
   type TMDBTVShow,
 } from "../lib/tmdb.js"
+import { getPool } from "../lib/db.js"
 import newrelic from "newrelic"
 
 // Unified search result type
@@ -14,7 +15,10 @@ interface SearchResult {
   release_date: string
   poster_path: string | null
   overview: string
-  media_type: "movie" | "tv"
+  media_type: "movie" | "tv" | "person"
+  is_deceased?: boolean
+  death_year?: number | null
+  birth_year?: number | null
 }
 
 /**
@@ -112,10 +116,49 @@ function escapeRegex(str: string): string {
 }
 
 /**
- * Unified search endpoint supporting movies, TV shows, or both.
+ * Search for actors in the local database using ILIKE with pg_trgm index.
+ */
+async function searchActorsLocal(query: string, limit: number): Promise<SearchResult[]> {
+  const db = getPool()
+  const pattern = `%${query}%`
+
+  const result = await db.query<{
+    id: number
+    name: string
+    birthday: string | null
+    deathday: string | null
+    profile_path: string | null
+    tmdb_popularity: number | null
+  }>(
+    `SELECT id, name, birthday, deathday, profile_path, tmdb_popularity
+     FROM actors
+     WHERE name ILIKE $1
+       AND profile_path IS NOT NULL
+     ORDER BY
+       CASE WHEN LOWER(name) = LOWER($2) THEN 0 ELSE 1 END,
+       tmdb_popularity DESC NULLS LAST
+     LIMIT $3`,
+    [pattern, query.trim(), limit]
+  )
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    title: row.name,
+    release_date: "",
+    poster_path: row.profile_path,
+    overview: "",
+    media_type: "person" as const,
+    is_deceased: row.deathday !== null,
+    death_year: row.deathday ? parseInt(row.deathday.substring(0, 4), 10) : null,
+    birth_year: row.birthday ? parseInt(row.birthday.substring(0, 4), 10) : null,
+  }))
+}
+
+/**
+ * Unified search endpoint supporting movies, TV shows, people, or all.
  * Query params:
  *   - q: search query (required, min 2 chars)
- *   - type: 'movie' | 'tv' | 'all' (default: 'movie' for backwards compatibility)
+ *   - type: 'movie' | 'tv' | 'all' | 'person' (default: 'movie' for backwards compatibility)
  */
 export async function searchMovies(req: Request, res: Response) {
   const query = req.query.q as string
@@ -126,10 +169,10 @@ export async function searchMovies(req: Request, res: Response) {
   }
 
   // Validate type parameter
-  if (!["movie", "tv", "all"].includes(type)) {
+  if (!["movie", "tv", "all", "person"].includes(type)) {
     return res
       .status(400)
-      .json({ error: { message: "Invalid type. Must be 'movie', 'tv', or 'all'" } })
+      .json({ error: { message: "Invalid type. Must be 'movie', 'tv', 'all', or 'person'" } })
   }
 
   try {
@@ -143,6 +186,12 @@ export async function searchMovies(req: Request, res: Response) {
       "query.term": query.substring(0, 100), // Limit to 100 chars for safety
     })) {
       newrelic.addCustomAttribute(key, value)
+    }
+
+    // Person-only search
+    if (type === "person") {
+      const personResults = await searchActorsLocal(query, 10)
+      results.push(...personResults)
     }
 
     // Fetch movies if type is 'movie' or 'all'
@@ -189,7 +238,7 @@ export async function searchMovies(req: Request, res: Response) {
       results.push(...tvResults)
     }
 
-    // For 'all' type, interleave results (alternating movie/tv)
+    // For 'all' type, interleave movie/tv results then append person results
     let finalResults = results
     if (type === "all" && results.length > 0) {
       const movies = results.filter((r) => r.media_type === "movie")
@@ -200,6 +249,10 @@ export async function searchMovies(req: Request, res: Response) {
         if (i < movies.length) finalResults.push(movies[i])
         if (i < tvShows.length) finalResults.push(tvShows[i])
       }
+
+      // Append up to 3 person results after interleaved movie/TV results
+      const personResults = await searchActorsLocal(query, 3)
+      finalResults.push(...personResults)
     }
 
     newrelic.recordCustomEvent("Search", {

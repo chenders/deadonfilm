@@ -22,6 +22,17 @@ const mockSearchResults = [
     overview: "A movie about reality",
     media_type: "movie" as const,
   },
+  {
+    id: 4165,
+    title: "John Wayne",
+    release_date: "",
+    poster_path: "/wayne.jpg",
+    overview: "",
+    media_type: "person" as const,
+    is_deceased: true,
+    death_year: 1979,
+    birth_year: 1907,
+  },
 ]
 
 vi.mock("@/hooks/useUnifiedSearch", () => ({
@@ -85,7 +96,7 @@ describe("SearchModal", () => {
     const modal = screen.getByTestId("search-modal")
     expect(modal).toHaveAttribute("role", "dialog")
     expect(modal).toHaveAttribute("aria-modal", "true")
-    expect(modal).toHaveAttribute("aria-label", "Search movies and TV shows")
+    expect(modal).toHaveAttribute("aria-label", "Search movies, TV shows, and people")
   })
 
   it("calls onClose when Escape is pressed", async () => {
@@ -206,6 +217,22 @@ describe("SearchModal", () => {
     renderModal(true)
 
     expect(screen.getByText("Esc")).toBeInTheDocument()
+  })
+
+  it("navigates to actor page when person result is selected", async () => {
+    renderModal(true)
+
+    const input = screen.getByTestId("search-input")
+    fireEvent.change(input, { target: { value: "wa" } })
+    fireEvent.focus(input)
+
+    await waitFor(() => {
+      expect(screen.getByText("John Wayne")).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText("John Wayne"))
+
+    expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining("/actor/"))
   })
 
   it("resets query when modal closes", async () => {

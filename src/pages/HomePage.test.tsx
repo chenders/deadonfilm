@@ -101,14 +101,14 @@ describe("HomePage", () => {
     renderWithProviders(<HomePage />)
 
     expect(screen.getByTestId("home-tagline")).toHaveTextContent(
-      "Search for a movie or TV show to see which cast members have passed away"
+      "Search for a movie, TV show, or person to see who has passed away"
     )
   })
 
   it("renders search bar with media type toggle", async () => {
     renderWithProviders(<HomePage />)
 
-    expect(screen.getByPlaceholderText(/search movies and tv shows/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/search movies, shows, and people/i)).toBeInTheDocument()
     expect(screen.getByTestId("media-type-toggle")).toBeInTheDocument()
   })
 
