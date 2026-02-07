@@ -132,7 +132,7 @@ describe("DeceasedCard", () => {
       renderWithRouter(<DeceasedCard actor={mockActor} />)
 
       const card = screen.getByTestId("deceased-card")
-      expect(card).toHaveClass("bg-white")
+      expect(card).toHaveClass("bg-surface-elevated")
       expect(card).toHaveClass("rounded-lg")
     })
   })

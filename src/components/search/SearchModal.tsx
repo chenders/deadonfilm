@@ -96,7 +96,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       data-testid="search-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[10vh] transition-opacity duration-150 sm:pt-[15vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-overlay/50 pt-[10vh] transition-opacity duration-150 sm:pt-[15vh]"
       onClick={handleBackdropClick}
     >
       <div
@@ -111,7 +111,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         <button
           data-testid="search-modal-close"
           onClick={onClose}
-          className="absolute right-6 top-4 rounded-full p-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:hidden"
+          className="absolute right-6 top-4 rounded-full p-2 text-overlay-text/80 transition-colors hover:bg-overlay-text/10 hover:text-overlay-text sm:hidden"
           aria-label="Close search"
         >
           <svg

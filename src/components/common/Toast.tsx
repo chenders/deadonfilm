@@ -14,10 +14,10 @@ const iconMap: Record<ToastVariant, string> = {
 }
 
 const styleMap: Record<ToastVariant, string> = {
-  success: "bg-green-600 border-green-500",
-  error: "bg-red-600 border-red-500",
-  warning: "bg-yellow-600 border-yellow-500",
-  info: "bg-blue-600 border-blue-500",
+  success: "bg-status-success border-status-success-border",
+  error: "bg-status-error border-status-error-border",
+  warning: "bg-status-warning border-status-warning-border",
+  info: "bg-status-info border-status-info-border",
 }
 
 export default function Toast({ toast, onDismiss }: ToastProps) {
@@ -50,13 +50,13 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
       role="alert"
       className={`flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg transition-all duration-300 ease-out ${styleMap[toast.type]} ${isEntering ? "translate-x-full opacity-0" : "translate-x-0 opacity-100"} ${isExiting ? "translate-x-full opacity-0" : ""} `}
     >
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white">
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-overlay-text/20 text-sm font-bold text-overlay-text">
         {iconMap[toast.type]}
       </span>
-      <span className="flex-1 text-sm font-medium text-white">{toast.message}</span>
+      <span className="flex-1 text-sm font-medium text-overlay-text">{toast.message}</span>
       <button
         onClick={handleDismiss}
-        className="ml-2 rounded p-1 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+        className="ml-2 rounded p-1 text-overlay-text/80 transition-colors hover:bg-overlay-text/20 hover:text-overlay-text"
         aria-label="Dismiss notification"
       >
         <svg
