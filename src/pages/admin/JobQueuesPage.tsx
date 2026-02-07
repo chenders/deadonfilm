@@ -1,12 +1,14 @@
 /**
- * Job Queues Overview Page
+ * Jobs & Logs Hub Page
  *
- * Displays real-time stats for all background job queues with
- * controls to pause/resume and links to Bull Board for detailed management.
+ * Consolidates Background Jobs (queue management) and Error Logs
+ * into a single tabbed view.
  */
 
 import { Link } from "react-router-dom"
 import AdminLayout from "../../components/admin/AdminLayout"
+import AdminTabs from "../../components/admin/ui/AdminTabs"
+import { useTabParam } from "../../hooks/admin/useTabParam"
 import { Card, StatCard, Skeleton } from "../../components/admin/ui"
 import {
   useQueueStats,
@@ -20,6 +22,12 @@ import {
   type BackfillOMDbConfig,
 } from "../../hooks/useJobQueue"
 import { useState } from "react"
+import ErrorLogsTab from "../../components/admin/jobs/ErrorLogsTab"
+
+const tabs = [
+  { id: "queues", label: "Queues", testId: "tab-queues" },
+  { id: "logs", label: "Error Logs", testId: "tab-logs" },
+]
 
 // Status badge colors
 const statusColors = {
@@ -313,7 +321,7 @@ function OMDbBackfillCard() {
   )
 }
 
-export default function JobQueuesPage() {
+function QueuesTabContent() {
   const { data: queuesData, isLoading: queuesLoading, error: queuesError } = useQueueStats(3000)
   const { data: statsData, isLoading: statsLoading } = useJobStats()
   const pauseQueue = usePauseQueue()
@@ -337,185 +345,138 @@ export default function JobQueuesPage() {
 
   if (queuesLoading) {
     return (
-      <AdminLayout>
-        <div className="space-y-6">
-          <div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="mt-2 h-5 w-64" />
-          </div>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton.StatCard key={i} />
-            ))}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton.Card key={i} />
-            ))}
-          </div>
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton.StatCard key={i} />
+          ))}
         </div>
-      </AdminLayout>
+        <div className="grid gap-4 md:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton.Card key={i} />
+          ))}
+        </div>
+      </div>
     )
   }
 
   if (queuesError) {
     return (
-      <AdminLayout>
-        <div className="py-12 text-center">
-          <svg
-            className="mx-auto h-12 w-12 text-admin-danger"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-          <p className="mt-4 text-admin-danger">Failed to load queue stats</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 rounded-lg bg-admin-interactive px-4 py-2 text-sm font-medium text-white hover:bg-admin-interactive-hover"
-          >
-            Retry
-          </button>
-        </div>
-      </AdminLayout>
+      <div className="py-12 text-center">
+        <svg
+          className="mx-auto h-12 w-12 text-admin-danger"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+        <p className="mt-4 text-admin-danger">Failed to load queue stats</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 rounded-lg bg-admin-interactive px-4 py-2 text-sm font-medium text-white hover:bg-admin-interactive-hover"
+        >
+          Retry
+        </button>
+      </div>
     )
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-admin-text-primary md:text-3xl">
-              Background Jobs
-            </h1>
-            <p className="mt-1 text-admin-text-muted">Monitor and manage background job queues</p>
-          </div>
-          <a
-            href="/admin/bull-board"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg bg-admin-interactive px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-admin-interactive-hover"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div className="space-y-6">
+      {/* Bull Board Link */}
+      <div className="flex justify-end">
+        <a
+          href="/admin/bull-board"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-lg bg-admin-interactive px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-admin-interactive-hover"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+            />
+          </svg>
+          Open Bull Board
+        </a>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <StatCard
+          label="Queued"
+          value={totals.waiting.toLocaleString()}
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            Open Bull Board
-          </a>
-        </div>
-
-        {/* Summary Stats */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-          <StatCard
-            label="Queued"
-            value={totals.waiting.toLocaleString()}
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Active"
-            value={totals.active.toLocaleString()}
-            variant="success"
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Completed"
-            value={totals.completed.toLocaleString()}
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Failed"
-            value={totals.failed.toLocaleString()}
-            variant={totals.failed > 0 ? "danger" : "default"}
-            href="/admin/jobs/runs?status=failed"
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Dead Letter"
-            value={deadLetterCount.toLocaleString()}
-            variant={deadLetterCount > 0 ? "warning" : "default"}
-            href="/admin/jobs/dead-letter"
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                />
-              </svg>
-            }
-          />
-        </div>
-
-        {/* Quick Links */}
-        <div className="flex flex-wrap gap-3">
-          <Link
-            to="/admin/jobs/runs"
-            className="inline-flex items-center gap-2 rounded-md border border-admin-border bg-admin-surface-elevated px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-surface-overlay"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          }
+        />
+        <StatCard
+          label="Active"
+          value={totals.active.toLocaleString()}
+          variant="success"
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                d="M13 10V3L4 14h7v7l9-11h-7z"
               />
             </svg>
-            View Job History
-          </Link>
-          <Link
-            to="/admin/jobs/dead-letter"
-            className="inline-flex items-center gap-2 rounded-md border border-admin-border bg-admin-surface-elevated px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-surface-overlay"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          }
+        />
+        <StatCard
+          label="Completed"
+          value={totals.completed.toLocaleString()}
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Failed"
+          value={totals.failed.toLocaleString()}
+          variant={totals.failed > 0 ? "danger" : "default"}
+          href="/admin/jobs/runs?status=failed"
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          }
+        />
+        <StatCard
+          label="Dead Letter"
+          value={deadLetterCount.toLocaleString()}
+          variant={deadLetterCount > 0 ? "warning" : "default"}
+          href="/admin/jobs/dead-letter"
+          icon={
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -523,130 +484,181 @@ export default function JobQueuesPage() {
                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
               />
             </svg>
-            Dead Letter Queue
-            {deadLetterCount > 0 && (
-              <span className="bg-admin-warning/20 rounded-full px-2 py-0.5 text-xs font-medium text-admin-warning">
-                {deadLetterCount}
-              </span>
-            )}
-          </Link>
+          }
+        />
+      </div>
+
+      {/* Quick Links */}
+      <div className="flex flex-wrap gap-3">
+        <Link
+          to="/admin/jobs/runs"
+          className="inline-flex items-center gap-2 rounded-md border border-admin-border bg-admin-surface-elevated px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-surface-overlay"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+            />
+          </svg>
+          View Job History
+        </Link>
+        <Link
+          to="/admin/jobs/dead-letter"
+          className="inline-flex items-center gap-2 rounded-md border border-admin-border bg-admin-surface-elevated px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-surface-overlay"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+            />
+          </svg>
+          Dead Letter Queue
+          {deadLetterCount > 0 && (
+            <span className="bg-admin-warning/20 rounded-full px-2 py-0.5 text-xs font-medium text-admin-warning">
+              {deadLetterCount}
+            </span>
+          )}
+        </Link>
+      </div>
+
+      {/* Queue Cards */}
+      <div>
+        <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Queues</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          {queuesData?.queues.map((queue) => (
+            <QueueCard
+              key={queue.name}
+              queue={queue}
+              onPause={() => pauseQueue.mutate(queue.name)}
+              onResume={() => resumeQueue.mutate(queue.name)}
+              isPending={pauseQueue.isPending || resumeQueue.isPending}
+            />
+          ))}
         </div>
+      </div>
 
-        {/* Queue Cards */}
-        <div>
-          <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Queues</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            {queuesData?.queues.map((queue) => (
-              <QueueCard
-                key={queue.name}
-                queue={queue}
-                onPause={() => pauseQueue.mutate(queue.name)}
-                onResume={() => resumeQueue.mutate(queue.name)}
-                isPending={pauseQueue.isPending || resumeQueue.isPending}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Job Stats */}
-        {!statsLoading && statsData && (
-          <Card title="Job Performance (Last 24h)">
-            {statsData.successRates.length === 0 ? (
-              <p className="text-sm text-admin-text-muted">
-                No jobs processed in the last 24 hours
-              </p>
-            ) : (
-              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-                <table className="w-full min-w-[600px]">
-                  <thead>
-                    <tr className="border-b border-admin-border text-left text-xs font-semibold uppercase tracking-wider text-admin-text-muted">
-                      <th className="pb-2">Job Type</th>
-                      <th className="pb-2 text-right">Total</th>
-                      <th className="pb-2 text-right">Completed</th>
-                      <th className="pb-2 text-right">Success Rate</th>
-                      <th className="pb-2 text-right">Avg Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-admin-border-subtle">
-                    {statsData.successRates.map((stat) => {
-                      const duration = statsData.durations.find((d) => d.job_type === stat.job_type)
-                      return (
-                        <tr key={stat.job_type}>
-                          <td className="py-2 font-mono text-sm text-admin-text-primary">
-                            {stat.job_type}
-                          </td>
-                          <td className="py-2 text-right text-sm text-admin-text-secondary">
-                            {stat.total}
-                          </td>
-                          <td className="py-2 text-right text-sm text-admin-text-secondary">
-                            {stat.completed}
-                          </td>
-                          <td className="py-2 text-right">
-                            <span
-                              className={`text-sm font-medium ${
-                                parseFloat(stat.success_rate) >= 90
-                                  ? "text-admin-success"
-                                  : parseFloat(stat.success_rate) >= 70
-                                    ? "text-admin-warning"
-                                    : "text-admin-danger"
-                              }`}
-                            >
-                              {stat.success_rate}%
-                            </span>
-                          </td>
-                          <td className="py-2 text-right text-sm text-admin-text-secondary">
-                            {duration ? `${duration.avg_ms}ms` : "-"}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        )}
-
-        {/* Cleanup Section */}
-        <Card title="Maintenance">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <label
-                htmlFor="cleanup-period"
-                className="mb-1 block text-sm font-medium text-admin-text-primary"
-              >
-                Cleanup completed jobs older than
-              </label>
-              <select
-                id="cleanup-period"
-                value={cleanupPeriod}
-                onChange={(e) => setCleanupPeriod(Number(e.target.value))}
-                className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none sm:w-48"
-              >
-                <option value={1}>1 hour</option>
-                <option value={6}>6 hours</option>
-                <option value={24}>24 hours</option>
-                <option value={48}>48 hours</option>
-                <option value={168}>7 days</option>
-              </select>
+      {/* Job Stats */}
+      {!statsLoading && statsData && (
+        <Card title="Job Performance (Last 24h)">
+          {statsData.successRates.length === 0 ? (
+            <p className="text-sm text-admin-text-muted">No jobs processed in the last 24 hours</p>
+          ) : (
+            <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+              <table className="w-full min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-admin-border text-left text-xs font-semibold uppercase tracking-wider text-admin-text-muted">
+                    <th className="pb-2">Job Type</th>
+                    <th className="pb-2 text-right">Total</th>
+                    <th className="pb-2 text-right">Completed</th>
+                    <th className="pb-2 text-right">Success Rate</th>
+                    <th className="pb-2 text-right">Avg Duration</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-admin-border-subtle">
+                  {statsData.successRates.map((stat) => {
+                    const duration = statsData.durations.find((d) => d.job_type === stat.job_type)
+                    return (
+                      <tr key={stat.job_type}>
+                        <td className="py-2 font-mono text-sm text-admin-text-primary">
+                          {stat.job_type}
+                        </td>
+                        <td className="py-2 text-right text-sm text-admin-text-secondary">
+                          {stat.total}
+                        </td>
+                        <td className="py-2 text-right text-sm text-admin-text-secondary">
+                          {stat.completed}
+                        </td>
+                        <td className="py-2 text-right">
+                          <span
+                            className={`text-sm font-medium ${
+                              parseFloat(stat.success_rate) >= 90
+                                ? "text-admin-success"
+                                : parseFloat(stat.success_rate) >= 70
+                                  ? "text-admin-warning"
+                                  : "text-admin-danger"
+                            }`}
+                          >
+                            {stat.success_rate}%
+                          </span>
+                        </td>
+                        <td className="py-2 text-right text-sm text-admin-text-secondary">
+                          {duration ? `${duration.avg_ms}ms` : "-"}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-            <button
-              onClick={() => cleanupJobs.mutate(cleanupPeriod)}
-              disabled={cleanupJobs.isPending}
-              className="rounded-md bg-admin-surface-overlay px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {cleanupJobs.isPending ? "Cleaning..." : "Run Cleanup"}
-            </button>
-          </div>
-          {cleanupJobs.isSuccess && (
-            <p className="mt-3 text-sm text-admin-success">
-              Cleaned {cleanupJobs.data.cleaned} completed jobs
-            </p>
           )}
         </Card>
+      )}
 
-        {/* OMDB Backfill Section */}
-        <OMDbBackfillCard />
+      {/* Cleanup Section */}
+      <Card title="Maintenance">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label
+              htmlFor="cleanup-period"
+              className="mb-1 block text-sm font-medium text-admin-text-primary"
+            >
+              Cleanup completed jobs older than
+            </label>
+            <select
+              id="cleanup-period"
+              value={cleanupPeriod}
+              onChange={(e) => setCleanupPeriod(Number(e.target.value))}
+              className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none sm:w-48"
+            >
+              <option value={1}>1 hour</option>
+              <option value={6}>6 hours</option>
+              <option value={24}>24 hours</option>
+              <option value={48}>48 hours</option>
+              <option value={168}>7 days</option>
+            </select>
+          </div>
+          <button
+            onClick={() => cleanupJobs.mutate(cleanupPeriod)}
+            disabled={cleanupJobs.isPending}
+            className="rounded-md bg-admin-surface-overlay px-4 py-2 text-sm font-medium text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {cleanupJobs.isPending ? "Cleaning..." : "Run Cleanup"}
+          </button>
+        </div>
+        {cleanupJobs.isSuccess && (
+          <p className="mt-3 text-sm text-admin-success">
+            Cleaned {cleanupJobs.data.cleaned} completed jobs
+          </p>
+        )}
+      </Card>
+
+      {/* OMDB Backfill Section */}
+      <OMDbBackfillCard />
+    </div>
+  )
+}
+
+export default function JobQueuesPage() {
+  const [activeTab, setActiveTab] = useTabParam<string>("queues")
+
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-admin-text-primary md:text-3xl">Jobs & Logs</h1>
+          <p className="mt-2 text-admin-text-muted">
+            Monitor background job queues and application error logs
+          </p>
+        </div>
+
+        <AdminTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+          {activeTab === "queues" && <QueuesTabContent />}
+          {activeTab === "logs" && <ErrorLogsTab />}
+        </AdminTabs>
       </div>
     </AdminLayout>
   )

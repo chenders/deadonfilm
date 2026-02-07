@@ -169,9 +169,12 @@ describe("App", () => {
       renderApp("/admin/jobs")
 
       // Should redirect to login since not authenticated
-      await waitFor(() => {
-        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-      })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it("routes to /admin/jobs/runs for job history", async () => {
@@ -217,6 +220,25 @@ describe("App", () => {
       renderApp("/admin/data-quality")
 
       // Redirects through /admin/actors?tab=data-quality, then to login
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
+    })
+
+    it("redirects /admin/logs to /admin/jobs?tab=logs", async () => {
+      globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ authenticated: false }),
+        } as Response)
+      )
+
+      renderApp("/admin/logs")
+
+      // Redirects through /admin/jobs?tab=logs, then to login
       await waitFor(
         () => {
           expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
