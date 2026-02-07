@@ -524,7 +524,7 @@ export default function ErrorLogsTab() {
                   {
                     label: "Message",
                     value: (
-                      <span className="line-clamp-2 text-admin-text-primary" title={row.message}>
+                      <span className="text-admin-text-primary" title={row.message}>
                         {row.message}
                       </span>
                     ),

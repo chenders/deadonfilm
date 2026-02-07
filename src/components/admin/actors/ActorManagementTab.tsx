@@ -429,7 +429,17 @@ export default function ActorManagementTab() {
                     }
                     selectable
                     selected={selectedActorIds.has(actor.id)}
-                    onSelectionChange={() => handleSelectActor(actor.id)}
+                    onSelectionChange={(selected) => {
+                      setSelectedActorIds((prev) => {
+                        const next = new Set(prev)
+                        if (selected) {
+                          next.add(actor.id)
+                        } else {
+                          next.delete(actor.id)
+                        }
+                        return next
+                      })
+                    }}
                     fields={[
                       {
                         label: "Popularity",

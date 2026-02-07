@@ -370,10 +370,7 @@ export default function EnrichmentRunDetailsPage() {
                             {
                               label: "Error",
                               value: (
-                                <span
-                                  className="line-clamp-2 text-xs text-red-400"
-                                  title={actor.error}
-                                >
+                                <span className="text-xs text-red-400" title={actor.error}>
                                   {actor.error}
                                 </span>
                               ),

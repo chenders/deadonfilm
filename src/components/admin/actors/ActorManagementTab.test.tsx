@@ -261,9 +261,8 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // Select an actor via mobile card checkbox (index 0 = first mobile card)
-    const checkboxes = screen.getAllByRole("checkbox")
-    fireEvent.click(checkboxes[0])
+    // Select an actor via mobile card checkbox
+    fireEvent.click(screen.getAllByLabelText("Select John Wayne")[0])
 
     // Verify selection is shown
     expect(screen.getByText("1 actor selected")).toBeInTheDocument()
@@ -297,12 +296,8 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    const checkboxes = screen.getAllByRole("checkbox")
-    // 3 mobile actor cards + 1 desktop select-all + 3 desktop actor rows = 7
-    expect(checkboxes).toHaveLength(7)
-
-    // Select first mobile card actor checkbox (index 0 = John Wayne mobile card)
-    fireEvent.click(checkboxes[0])
+    // Select John Wayne via accessible name
+    fireEvent.click(screen.getAllByLabelText("Select John Wayne")[0])
 
     // Action bar should appear
     expect(screen.getByText("1 actor selected")).toBeInTheDocument()
@@ -323,9 +318,7 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    const checkboxes = screen.getAllByRole("checkbox")
-    // Index 3 is the desktop select-all (after 3 mobile actor checkboxes)
-    const selectAllCheckbox = checkboxes[3]
+    const selectAllCheckbox = screen.getAllByLabelText("Select all actors")[0]
 
     // Select all
     fireEvent.click(selectAllCheckbox)
@@ -349,9 +342,8 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // Select all actors (index 3 is desktop select-all)
-    const checkboxes = screen.getAllByRole("checkbox")
-    fireEvent.click(checkboxes[3])
+    // Select all actors
+    fireEvent.click(screen.getAllByLabelText("Select all actors")[0])
 
     expect(screen.getByText("3 actors selected")).toBeInTheDocument()
 
@@ -375,10 +367,9 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // Select two actors via mobile card checkboxes (indices 0-2 are mobile cards)
-    const checkboxes = screen.getAllByRole("checkbox")
-    fireEvent.click(checkboxes[0])
-    fireEvent.click(checkboxes[1])
+    // Select two actors via accessible names
+    fireEvent.click(screen.getAllByLabelText("Select John Wayne")[0])
+    fireEvent.click(screen.getAllByLabelText("Select James Dean")[0])
 
     expect(screen.getByText("2 actors selected")).toBeInTheDocument()
 
