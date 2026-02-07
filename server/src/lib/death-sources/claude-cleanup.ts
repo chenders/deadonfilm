@@ -30,6 +30,51 @@ import newrelic from "newrelic"
 const MODEL_ID = "claude-opus-4-5-20251101"
 const MAX_TOKENS = 3000
 
+/**
+ * Valid notable_factors tags that Claude is allowed to return.
+ * Any tags not in this set are filtered out to prevent Claude from
+ * confusing categories (e.g. "respiratory", "neurological") with notable_factors.
+ */
+export const VALID_NOTABLE_FACTORS = new Set([
+  "on_set",
+  "vehicle_crash",
+  "plane_crash",
+  "fire",
+  "drowning",
+  "fall",
+  "electrocution",
+  "exposure",
+  "overdose",
+  "substance_involvement",
+  "poisoning",
+  "suicide",
+  "homicide",
+  "assassination",
+  "terrorism",
+  "suspicious_circumstances",
+  "investigation",
+  "controversial",
+  "media_sensation",
+  "celebrity_involvement",
+  "multiple_deaths",
+  "family_tragedy",
+  "public_incident",
+  "workplace_accident",
+  "medical_malpractice",
+  "surgical_complications",
+  "misdiagnosis",
+  "natural_causes",
+  "alzheimers",
+  "cancer",
+  "heart_disease",
+  "covid_related",
+  "pandemic",
+  "war_related",
+  "autoerotic_asphyxiation",
+  "found_dead",
+  "young_death",
+])
+
 // Cost per million tokens (Opus 4.5)
 const INPUT_COST_PER_MILLION = 15
 const OUTPUT_COST_PER_MILLION = 75
@@ -338,7 +383,9 @@ export async function cleanupWithClaude(
     rumoredCircumstances: parsed.rumored_circumstances,
     locationOfDeath: parsed.location_of_death,
     manner: DeathMannerSchema.safeParse(parsed.manner).success ? parsed.manner : null,
-    notableFactors: parsed.notable_factors || [],
+    notableFactors: (parsed.notable_factors || []).filter((f: string) =>
+      VALID_NOTABLE_FACTORS.has(f)
+    ),
     categories: parsed.categories || null,
     relatedDeaths: parsed.related_deaths,
     relatedCelebrities,

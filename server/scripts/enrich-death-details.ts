@@ -929,6 +929,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       const relatedCelebrities =
         cleaned?.relatedCelebrities || enrichment.relatedCelebrities || null
 
+      // Manner and categories from Claude cleanup
+      const manner = cleaned?.manner || null
+      const categories = cleaned?.categories || null
+
       // Look up related_celebrity_ids from actors table
       let relatedCelebrityIds: number[] | null = null
       if (relatedCelebrities && relatedCelebrities.length > 0) {
@@ -980,6 +984,11 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
             : undefined,
         causeOfDeathDetailsSource:
           !actorRecord?.causeOfDeathDetails && causeOfDeathDetails ? "claude-opus-4.5" : undefined,
+        // Manner of death and categories from Claude cleanup
+        deathManner: manner,
+        deathCategories: categories,
+        // Derive violent_death from manner
+        violentDeath: manner ? ["homicide", "suicide", "accident"].includes(manner) : undefined,
       }
 
       const circumstancesData: DeathCircumstancesData = {
