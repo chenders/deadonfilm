@@ -243,7 +243,7 @@ export async function searchMovies(req: Request, res: Response) {
 
     // For 'all' type, interleave movie/tv results then append person results
     let finalResults = results
-    if (type === "all" && results.length > 0) {
+    if (type === "all") {
       const movies = results.filter((r) => r.media_type === "movie")
       const tvShows = results.filter((r) => r.media_type === "tv")
       finalResults = []

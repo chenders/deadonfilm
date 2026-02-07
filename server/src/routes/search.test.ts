@@ -603,6 +603,39 @@ describe("searchMovies route", () => {
       )
       expect(firstPersonIndex).toBeGreaterThan(lastMovieIndex)
     })
+
+    it("returns person results in type=all even when TMDB returns no movie/TV results", async () => {
+      const emptyTmdb = {
+        page: 1,
+        results: [],
+        total_pages: 0,
+        total_results: 0,
+      }
+      vi.mocked(tmdbSearch).mockResolvedValue(emptyTmdb)
+      const { searchTVShows } = await import("../lib/tmdb.js")
+      vi.mocked(searchTVShows).mockResolvedValue(emptyTmdb)
+
+      mockQuery.mockResolvedValue({
+        rows: [
+          {
+            id: 4165,
+            name: "John Wayne",
+            birthday: "1907-05-26",
+            deathday: "1979-06-11",
+            profile_path: "/wayne.jpg",
+            tmdb_popularity: 25,
+          },
+        ],
+      })
+      mockReq = { query: { q: "Wayne", type: "all" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      const calledWith = jsonSpy.mock.calls[0][0]
+      expect(calledWith.results.length).toBeGreaterThan(0)
+      expect(calledWith.results[0].media_type).toBe("person")
+      expect(calledWith.results[0].title).toBe("John Wayne")
+    })
   })
 
   it("returns 400 for invalid type including 'person' misspelling", async () => {
