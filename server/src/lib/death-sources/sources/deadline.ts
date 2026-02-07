@@ -17,6 +17,7 @@ import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
+import { fetchFromArchive } from "../archive-fallback.js"
 import {
   extractLocation,
   extractNotableFactors,
@@ -51,9 +52,20 @@ export class DeadlineSource extends BaseDataSource {
       }
     }
 
+    const deathYear = new Date(actor.deathday).getFullYear()
+
+    // Deadline Hollywood was founded in 2006 — no articles exist for earlier deaths
+    if (deathYear < 2006) {
+      return {
+        success: false,
+        source: this.createSourceEntry(startTime, 0),
+        data: null,
+        error: "Deadline was not founded until 2006",
+      }
+    }
+
     try {
       // Search for obituary using DuckDuckGo HTML (more scraping-friendly)
-      const deathYear = new Date(actor.deathday).getFullYear()
       const searchQuery = `site:deadline.com "${actor.name}" obituary OR dies OR dead OR death ${deathYear}`
       const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
 
@@ -168,6 +180,13 @@ export class DeadlineSource extends BaseDataSource {
     })
 
     if (response.status === 403) {
+      // Try archive.org fallback before giving up
+      console.log(`  Deadline blocked (403), trying archive.org fallback...`)
+      const archiveResult = await fetchFromArchive(url)
+      if (archiveResult.success && archiveResult.content) {
+        console.log(`  Archive.org fallback succeeded for Deadline`)
+        return this.parseArticle(archiveResult.content, actor)
+      }
       throw new SourceAccessBlockedError(`Deadline blocked access (403)`, this.type, url, 403)
     }
 

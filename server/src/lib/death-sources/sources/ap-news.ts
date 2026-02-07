@@ -33,8 +33,10 @@ export class APNewsSource extends BaseDataSource {
     try {
       console.log(`AP News search for: ${actor.name}`)
 
-      // Build search query
-      const query = `${actor.name} dies OR died OR death OR obituary`
+      // Build search query — include death year when available to help surface era-appropriate results
+      const deathYear = actor.deathday ? new Date(actor.deathday).getFullYear() : null
+      const yearSuffix = deathYear ? ` ${deathYear}` : ""
+      const query = `${actor.name} died OR death OR obituary${yearSuffix}`
       const searchUrl = `${AP_SEARCH_URL}?q=${encodeURIComponent(query)}`
 
       const response = await fetch(searchUrl, {

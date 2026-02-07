@@ -377,5 +377,52 @@ describe("GeminiProSource", () => {
       const rawData = result.source.rawData as { resolvedSources: unknown[] }
       expect(rawData.resolvedSources).toEqual([])
     })
+
+    it("relaxes source requirement for pre-2010 deaths", async () => {
+      const historicalActor: ActorForEnrichment = {
+        ...testActor,
+        name: "Christopher Reeve",
+        deathday: "2004-10-10",
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      circumstances: "Died of cardiac arrest following treatment for an infection",
+                      notable_factors: ["quadriplegia", "long illness"],
+                      rumored_circumstances: null,
+                      location_of_death: "Mount Kisco, New York",
+                      confidence: "high",
+                      sources: [],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      })
+
+      const result = await source.lookup(historicalActor)
+
+      expect(result.success).toBe(true)
+      expect(result.data?.circumstances).toContain("cardiac arrest")
+
+      // Verify the prompt was sent without source requirements
+      // The fetch call body should contain the prompt
+      const fetchCall = mockFetch.mock.calls[0]
+      const requestBody = JSON.parse(fetchCall[1].body as string)
+      const promptText = requestBody.contents[0].parts[0].text as string
+
+      // For pre-2010 deaths, the prompt should NOT require source URLs
+      // (the requireSources flag is set to false)
+      expect(promptText).not.toContain("You MUST provide at least one source URL")
+    })
   })
 })

@@ -22,7 +22,7 @@ vi.mock("../archive-fallback.js", () => ({
   fetchFromArchive: (...args: unknown[]) => mockFetchFromArchive(...args),
 }))
 
-import { DeadlineSource } from "./deadline.js"
+import { LegacySource } from "./legacy.js"
 import type { ActorForEnrichment } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 
@@ -30,11 +30,11 @@ import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 const mockFetch = vi.fn()
 global.fetch = mockFetch
 
-describe("DeadlineSource", () => {
-  let source: DeadlineSource
+describe("LegacySource", () => {
+  let source: LegacySource
 
   beforeEach(() => {
-    source = new DeadlineSource()
+    source = new LegacySource()
     mockFetch.mockReset()
     mockFetchFromArchive.mockReset()
   })
@@ -45,11 +45,11 @@ describe("DeadlineSource", () => {
 
   describe("properties", () => {
     it("has correct name", () => {
-      expect(source.name).toBe("Deadline")
+      expect(source.name).toBe("Legacy.com")
     })
 
     it("has correct type", () => {
-      expect(source.type).toBe(DataSourceType.DEADLINE)
+      expect(source.type).toBe(DataSourceType.LEGACY)
     })
 
     it("is marked as free", () => {
@@ -69,9 +69,9 @@ describe("DeadlineSource", () => {
     const testActor: ActorForEnrichment = {
       id: 123,
       tmdbId: 456,
-      name: "Lance Reddick",
-      birthday: "1962-12-31",
-      deathday: "2023-03-17",
+      name: "Betty White",
+      birthday: "1922-01-17",
+      deathday: "2021-12-31",
       causeOfDeath: null,
       causeOfDeathDetails: null,
       popularity: 25.0,
@@ -86,30 +86,29 @@ describe("DeadlineSource", () => {
       const result = await source.lookup(livingActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe("Actor is not deceased")
+      expect(result.error).toBe("No death date provided")
       expect(mockFetch).not.toHaveBeenCalled()
     })
 
-    it("returns early for deaths before 2006", async () => {
-      const oldActor: ActorForEnrichment = {
+    it("returns error for single-name actors", async () => {
+      const singleNameActor: ActorForEnrichment = {
         ...testActor,
-        name: "Christopher Reeve",
-        deathday: "2004-10-10",
+        name: "Cher",
       }
 
-      const result = await source.lookup(oldActor)
+      const result = await source.lookup(singleNameActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe("Deadline was not founded until 2006")
+      expect(result.error).toBe("Cannot search with single name")
       expect(mockFetch).not.toHaveBeenCalled()
     })
 
-    it("finds obituary and extracts death information", async () => {
-      // Search returns Deadline URL
+    it("finds obituary via DuckDuckGo search and extracts death info", async () => {
+      // DuckDuckGo search returns Legacy.com URL
       const searchHtml = `
         <html><body>
-          <a href="https://deadline.com/2023/03/lance-reddick-dead-the-wire-john-wick-actor/">
-            Lance Reddick Dead: 'The Wire' & 'John Wick' Actor Was 60
+          <a href="https://www.legacy.com/us/obituaries/latimes/name/betty-white-obituary?id=32067890">
+            Betty White Obituary
           </a>
         </body></html>
       `
@@ -119,15 +118,14 @@ describe("DeadlineSource", () => {
         text: async () => searchHtml,
       })
 
-      // Article with death info
-      const articleHtml = `
+      // Obituary page with death info
+      const obituaryHtml = `
         <html>
           <body>
             <article>
-              <p>Lance Reddick, the imposing actor best known for his roles in "The Wire"
-              and the "John Wick" franchise, died on March 17. He was 60.</p>
-              <p>Reddick died of natural causes at his home in Los Angeles, according to
-              his publicist.</p>
+              <p>Betty White, the beloved actress and comedian, died on December 31, 2021
+              at her home in Los Angeles. She was 99 years old.</p>
+              <p>White died of natural causes, just weeks before her 100th birthday.</p>
             </article>
           </body>
         </html>
@@ -135,17 +133,17 @@ describe("DeadlineSource", () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: async () => articleHtml,
+        text: async () => obituaryHtml,
       })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(true)
-      expect(result.source.type).toBe(DataSourceType.DEADLINE)
+      expect(result.source.type).toBe(DataSourceType.LEGACY)
       expect(result.data?.circumstances).toContain("died")
     })
 
-    it("returns error when no obituary found in search", async () => {
+    it("returns error when no obituary found in search results", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -155,7 +153,7 @@ describe("DeadlineSource", () => {
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("No Deadline obituary found")
+      expect(result.error).toContain("No Legacy.com obituary found")
     })
 
     it("throws SourceAccessBlockedError on 403 during search", async () => {
@@ -167,11 +165,13 @@ describe("DeadlineSource", () => {
       await expect(source.lookup(testActor)).rejects.toThrow(SourceAccessBlockedError)
     })
 
-    it("throws SourceAccessBlockedError on 403 during article fetch", async () => {
+    it("throws SourceAccessBlockedError on 403 during obituary fetch", async () => {
       // Search succeeds
       const searchHtml = `
         <html><body>
-          <a href="https://deadline.com/2023/03/lance-reddick-dead/">Article</a>
+          <a href="https://www.legacy.com/us/obituaries/latimes/name/betty-white-obituary?id=32067890">
+            Obituary
+          </a>
         </body></html>
       `
       mockFetch.mockResolvedValueOnce({
@@ -180,7 +180,7 @@ describe("DeadlineSource", () => {
         text: async () => searchHtml,
       })
 
-      // Article returns 403
+      // Obituary page returns 403
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 403,
@@ -195,11 +195,13 @@ describe("DeadlineSource", () => {
       await expect(source.lookup(testActor)).rejects.toThrow(SourceAccessBlockedError)
     })
 
-    it("tries archive.org fallback when article returns 403", async () => {
+    it("tries archive.org fallback when obituary returns 403", async () => {
       // Search succeeds
       const searchHtml = `
         <html><body>
-          <a href="https://deadline.com/2023/03/lance-reddick-dead/">Article</a>
+          <a href="https://www.legacy.com/us/obituaries/latimes/name/betty-white-obituary?id=32067890">
+            Obituary
+          </a>
         </body></html>
       `
       mockFetch.mockResolvedValueOnce({
@@ -208,7 +210,7 @@ describe("DeadlineSource", () => {
         text: async () => searchHtml,
       })
 
-      // Article returns 403
+      // Obituary page returns 403
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 403,
@@ -219,7 +221,7 @@ describe("DeadlineSource", () => {
         success: true,
         content: `
           <html><body>
-            <p>Lance Reddick died on March 17. He was 60.</p>
+            <p>Betty White died on December 31, 2021 at her home in Los Angeles.</p>
           </body></html>
         `,
       })
@@ -231,10 +233,12 @@ describe("DeadlineSource", () => {
       expect(result.data?.circumstances).toContain("died")
     })
 
-    it("returns error when article has no death info", async () => {
+    it("returns error when obituary has no death info", async () => {
       const searchHtml = `
         <html><body>
-          <a href="https://deadline.com/2023/03/lance-reddick-interview/">Article</a>
+          <a href="https://www.legacy.com/us/obituaries/latimes/name/betty-white-obituary?id=32067890">
+            Obituary
+          </a>
         </body></html>
       `
       mockFetch.mockResolvedValueOnce({
@@ -243,29 +247,31 @@ describe("DeadlineSource", () => {
         text: async () => searchHtml,
       })
 
-      const articleHtml = `
+      const obituaryHtml = `
         <html>
           <body>
-            <p>Lance Reddick discusses his role in the upcoming John Wick sequel.</p>
+            <p>Betty White was a celebrated actress known for her roles in The Golden Girls.</p>
           </body>
         </html>
       `
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: async () => articleHtml,
+        text: async () => obituaryHtml,
       })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("No death information")
+      expect(result.error).toContain("No death details")
     })
 
     it("extracts location of death", async () => {
       const searchHtml = `
         <html><body>
-          <a href="https://deadline.com/2023/03/actor-dies/">Obituary</a>
+          <a href="https://www.legacy.com/us/obituaries/latimes/name/betty-white-obituary?id=32067890">
+            Obituary
+          </a>
         </body></html>
       `
       mockFetch.mockResolvedValueOnce({
@@ -274,57 +280,23 @@ describe("DeadlineSource", () => {
         text: async () => searchHtml,
       })
 
-      const articleHtml = `
+      const obituaryHtml = `
         <html>
           <body>
-            <p>Reddick died in Los Angeles from natural causes.</p>
+            <p>White died in Los Angeles from natural causes.</p>
           </body>
         </html>
       `
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: async () => articleHtml,
+        text: async () => obituaryHtml,
       })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(true)
       expect(result.data?.locationOfDeath).toBe("Los Angeles")
-    })
-
-    it("extracts notable factors", async () => {
-      const searchHtml = `
-        <html><body>
-          <a href="https://deadline.com/2023/03/actor-dies/">Obituary</a>
-        </body></html>
-      `
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => searchHtml,
-      })
-
-      const articleHtml = `
-        <html>
-          <body>
-            <p>Reddick died suddenly and unexpectedly at his home.
-            His death came as a tragedy to the industry. An autopsy
-            was requested by the family.</p>
-          </body>
-        </html>
-      `
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => articleHtml,
-      })
-
-      const result = await source.lookup(testActor)
-
-      expect(result.success).toBe(true)
-      expect(result.data?.notableFactors).toContain("sudden")
-      expect(result.data?.notableFactors).toContain("unexpected")
     })
 
     it("handles network errors gracefully", async () => {
@@ -348,10 +320,12 @@ describe("DeadlineSource", () => {
       expect(result.error).toBe("Search failed: HTTP 500")
     })
 
-    it("returns error when article fetch fails with non-403 status", async () => {
+    it("returns error when obituary fetch fails with non-403 status", async () => {
       const searchHtml = `
         <html><body>
-          <a href="https://deadline.com/2023/03/lance-reddick-dead/">Article</a>
+          <a href="https://www.legacy.com/us/obituaries/latimes/name/betty-white-obituary?id=32067890">
+            Obituary
+          </a>
         </body></html>
       `
       mockFetch.mockResolvedValueOnce({
@@ -360,7 +334,7 @@ describe("DeadlineSource", () => {
         text: async () => searchHtml,
       })
 
-      // Article returns 404
+      // Obituary returns 404
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
@@ -369,15 +343,15 @@ describe("DeadlineSource", () => {
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe("Could not fetch Deadline article")
+      expect(result.error).toBe("Could not fetch Legacy.com obituary")
     })
 
-    it("prefers death-related URLs over other article types", async () => {
+    it("includes additionalContext from Legacy.com", async () => {
       const searchHtml = `
         <html><body>
-          <a href="https://deadline.com/2023/03/lance-reddick-interview/">Interview</a>
-          <a href="https://deadline.com/2023/03/lance-reddick-dead-dies/">Death News</a>
-          <a href="https://deadline.com/2023/03/lance-reddick-review/">Review</a>
+          <a href="https://www.legacy.com/us/obituaries/latimes/name/betty-white-obituary?id=32067890">
+            Obituary
+          </a>
         </body></html>
       `
       mockFetch.mockResolvedValueOnce({
@@ -386,54 +360,23 @@ describe("DeadlineSource", () => {
         text: async () => searchHtml,
       })
 
-      const articleHtml = `
-        <html><body><p>Reddick died on March 17.</p></body></html>
-      `
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => articleHtml,
-      })
-
-      await source.lookup(testActor)
-
-      // Should fetch the death URL, not the interview
-      expect(mockFetch).toHaveBeenNthCalledWith(
-        2,
-        expect.stringContaining("dead"),
-        expect.any(Object)
-      )
-    })
-
-    it("identifies actor references with 'the star'", async () => {
-      const searchHtml = `
-        <html><body>
-          <a href="https://deadline.com/2023/03/actor-dies/">Article</a>
-        </body></html>
-      `
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        text: async () => searchHtml,
-      })
-
-      const articleHtml = `
+      const obituaryHtml = `
         <html>
           <body>
-            <p>Lance Reddick, the star of The Wire, died peacefully at home surrounded by family.</p>
+            <p>White died in Los Angeles from natural causes on December 31.</p>
           </body>
         </html>
       `
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: async () => articleHtml,
+        text: async () => obituaryHtml,
       })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(true)
-      expect(result.data?.circumstances).toContain("died peacefully")
+      expect(result.data?.additionalContext).toContain("Legacy.com")
     })
   })
 })

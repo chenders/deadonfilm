@@ -96,6 +96,42 @@ describe("APNewsSource", () => {
       expect(result.source.url).toContain("apnews.com")
     })
 
+    it("includes death year in search query", async () => {
+      // Mock search results page
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: async () => `
+          <html>
+            <body>
+              <a href="/article/john-smith-death-obituary-123">
+                <h3>John Smith Dies at 74</h3>
+                <p>The acclaimed actor John Smith has died after a battle with cancer.</p>
+              </a>
+            </body>
+          </html>
+        `,
+      })
+      // Mock article page
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: async () => `
+          <html>
+            <body>
+              <div class="RichTextStoryBody">
+                John Smith died peacefully at his home on June 1, 2024.
+              </div>
+            </body>
+          </html>
+        `,
+      })
+
+      await source.lookup(mockActor)
+
+      // Verify the search URL includes the death year (2024)
+      const searchUrl = mockFetch.mock.calls[0][0] as string
+      expect(searchUrl).toContain("2024")
+    })
+
     it("falls back to search snippet when article fetch fails", async () => {
       // Mock search results page with death info in snippet
       mockFetch.mockResolvedValueOnce({

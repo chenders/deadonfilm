@@ -12,11 +12,18 @@ vi.mock("../cache.js", () => ({
   setCachedQuery: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Mock archive fallback
+const mockFetchFromArchive = vi.fn()
+vi.mock("../archive-fallback.js", () => ({
+  fetchFromArchive: (...args: unknown[]) => mockFetchFromArchive(...args),
+}))
+
 describe("IMDbSource", () => {
   let source: IMDbSource
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFetchFromArchive.mockReset()
     source = new IMDbSource()
   })
 
@@ -131,6 +138,12 @@ describe("IMDbSource", () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 429,
+      })
+
+      // Archive fallback also fails
+      mockFetchFromArchive.mockResolvedValueOnce({
+        success: false,
+        content: null,
       })
 
       await expect(source.lookup(mockActor)).rejects.toThrow(SourceAccessBlockedError)
@@ -278,6 +291,91 @@ describe("IMDbSource", () => {
       expect(result.success).toBe(true)
       // Verify bio URL used the person ID
       expect(mockFetch.mock.calls[1][0]).toContain("nm0001234")
+    })
+
+    it("uses known imdbPersonId and skips search API", async () => {
+      const actorWithImdbId = {
+        ...mockActor,
+        imdbPersonId: "nm0001659",
+      }
+
+      // Only one fetch (bio page) should be called - no suggestion API search
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: async () => `
+          <html><body>
+            <div class="ipc-html-content">
+              John Smith died on June 1, 2024 after a long illness.
+              He passed away at his home in Los Angeles.
+            </div>
+          </body></html>
+        `,
+      })
+
+      const result = await source.lookup(actorWithImdbId)
+
+      expect(result.success).toBe(true)
+      // Only 1 fetch call (bio page), not 2 (search + bio)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      // The bio URL should use the known IMDb ID
+      expect(mockFetch.mock.calls[0][0]).toContain("nm0001659")
+    })
+
+    it("tries archive.org fallback when bio page returns 403", async () => {
+      // Search succeeds
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          d: [{ id: "nm0001234", l: "John Smith" }],
+        }),
+      })
+      // Bio page returns 403
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+      })
+
+      // Archive fallback returns content
+      mockFetchFromArchive.mockResolvedValueOnce({
+        success: true,
+        content: `
+          <html><body>
+            <div class="ipc-html-content">
+              John Smith died on June 1, 2024 after a battle with cancer.
+            </div>
+          </body></html>
+        `,
+      })
+
+      const result = await source.lookup(mockActor)
+
+      expect(result.success).toBe(true)
+      expect(mockFetchFromArchive).toHaveBeenCalled()
+      expect(result.data?.circumstances).toBeDefined()
+    })
+
+    it("throws SourceAccessBlockedError when bio page 403 and archive fallback fails", async () => {
+      // Search succeeds
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          d: [{ id: "nm0001234", l: "John Smith" }],
+        }),
+      })
+      // Bio page returns 403
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+      })
+
+      // Archive fallback fails
+      mockFetchFromArchive.mockResolvedValueOnce({
+        success: false,
+        content: null,
+      })
+
+      await expect(source.lookup(mockActor)).rejects.toThrow(SourceAccessBlockedError)
+      expect(mockFetchFromArchive).toHaveBeenCalled()
     })
   })
 })

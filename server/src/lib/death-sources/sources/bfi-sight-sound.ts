@@ -51,6 +51,17 @@ export class BFISightSoundSource extends BaseDataSource {
     }
 
     const deathYear = new Date(actor.deathday).getFullYear()
+
+    // BFI online memoriam lists only cover roughly 2015 onwards
+    if (deathYear < 2015) {
+      return {
+        success: false,
+        source: this.createSourceEntry(startTime, 0),
+        data: null,
+        error: "BFI memoriam lists not available before 2015",
+      }
+    }
+
     const memoriamUrl = `${BFI_BASE_URL}/sight-and-sound/lists/memoriam-obituaries-those-who-died-${deathYear}`
 
     try {

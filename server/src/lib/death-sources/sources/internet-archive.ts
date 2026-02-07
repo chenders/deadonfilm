@@ -53,6 +53,10 @@ interface IASearchResponse {
 
 // Minimum AI relevance score to consider a result valid
 const MIN_AI_RELEVANCE_SCORE = 0.5
+// Lower threshold for highly popular actors (popularity >= 20) — archive materials
+// about famous actors may have metadata that doesn't perfectly describe death circumstances
+const MIN_AI_RELEVANCE_SCORE_POPULAR = 0.3
+const POPULAR_ACTOR_THRESHOLD = 20
 
 /**
  * Internet Archive source for historical death information.
@@ -240,9 +244,16 @@ export class InternetArchiveSource extends BaseDataSource {
         // Use AI to rank relevance
         const aiResult = await aiSelectLinks(actor, searchResults, 3)
 
+        // Use lower threshold for popular actors whose archive materials may have
+        // less precise metadata
+        const threshold =
+          (actor.popularity ?? 0) >= POPULAR_ACTOR_THRESHOLD
+            ? MIN_AI_RELEVANCE_SCORE_POPULAR
+            : MIN_AI_RELEVANCE_SCORE
+
         // Find the highest-scoring result that meets our threshold
         const bestMatch = aiResult.data
-          .filter((r) => r.score >= MIN_AI_RELEVANCE_SCORE)
+          .filter((r) => r.score >= threshold)
           .sort((a, b) => b.score - a.score)[0]
 
         if (bestMatch) {
@@ -263,7 +274,7 @@ export class InternetArchiveSource extends BaseDataSource {
 
         logger.debug(`[IA_AI_NO_MATCH] ${actor.name}`, {
           topScore: aiResult.data[0]?.score || 0,
-          threshold: MIN_AI_RELEVANCE_SCORE,
+          threshold,
         })
 
         // AI found no relevant results
