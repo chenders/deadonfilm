@@ -693,6 +693,7 @@ export async function getDeceasedActorsFromTopMovies(options: {
         a.deathday,
         a.cause_of_death,
         a.cause_of_death_details,
+        a.tmdb_popularity,
         a.dof_popularity,
         c.circumstances,
         c.notable_factors,

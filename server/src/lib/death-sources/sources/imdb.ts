@@ -48,8 +48,10 @@ export class IMDbSource extends BaseDataSource {
     try {
       console.log(`IMDb lookup for: ${actor.name}`)
 
-      // Use known IMDb ID if available, otherwise search
-      let imdbId: string | null = actor.imdbPersonId || null
+      // Use known IMDb ID if available (validate format), otherwise search
+      const IMDB_ID_PATTERN = /^nm\d+$/
+      let imdbId: string | null =
+        actor.imdbPersonId && IMDB_ID_PATTERN.test(actor.imdbPersonId) ? actor.imdbPersonId : null
 
       if (imdbId) {
         console.log(`  Using known IMDb ID: ${imdbId}`)

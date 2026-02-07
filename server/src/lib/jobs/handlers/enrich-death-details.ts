@@ -46,6 +46,7 @@ export interface SingleActorEnrichmentResult {
 interface ActorRow {
   id: number
   tmdb_id: number | null
+  imdb_person_id: string | null
   name: string
   birthday: Date | string | null
   deathday: Date | string | null
@@ -122,6 +123,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
     const actorForEnrichment: ActorForEnrichment = {
       id: actor.id,
       tmdbId: actor.tmdb_id,
+      imdbPersonId: actor.imdb_person_id ?? null,
       name: actor.name,
       birthday: this.normalizeDateToString(actor.birthday),
       deathday: this.normalizeDateToString(actor.deathday) || "",
@@ -307,7 +309,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
   private async fetchActor(db: Pool, actorId: number): Promise<ActorRow | null> {
     const result = await db.query<ActorRow>(
       `SELECT
-        a.id, a.tmdb_id, a.name, a.birthday, a.deathday,
+        a.id, a.tmdb_id, a.imdb_person_id, a.name, a.birthday, a.deathday,
         a.cause_of_death, a.cause_of_death_details, a.popularity,
         c.circumstances, c.notable_factors
       FROM actors a

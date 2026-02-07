@@ -42,13 +42,13 @@ export class LegacySource extends BaseDataSource {
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
 
-    // Only process deceased actors
+    // Death date required for Legacy.com search (used to narrow results by year)
     if (!actor.deathday) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0),
         data: null,
-        error: "Actor is not deceased",
+        error: "No death date provided",
       }
     }
 

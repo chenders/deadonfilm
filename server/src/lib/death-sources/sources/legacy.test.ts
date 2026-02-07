@@ -86,7 +86,7 @@ describe("LegacySource", () => {
       const result = await source.lookup(livingActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe("Actor is not deceased")
+      expect(result.error).toBe("No death date provided")
       expect(mockFetch).not.toHaveBeenCalled()
     })
 
