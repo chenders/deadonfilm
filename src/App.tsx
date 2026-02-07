@@ -71,7 +71,6 @@ const AdminJobQueuesPage = lazyWithRetry(() => import("./pages/admin/JobQueuesPa
 const AdminJobRunsPage = lazyWithRetry(() => import("./pages/admin/JobRunsPage"))
 const AdminJobDetailsPage = lazyWithRetry(() => import("./pages/admin/JobDetailsPage"))
 const AdminDeadLetterQueuePage = lazyWithRetry(() => import("./pages/admin/DeadLetterQueuePage"))
-const AdminLogsPage = lazyWithRetry(() => import("./pages/admin/LogsPage"))
 
 function App() {
   useGoogleAnalytics()
@@ -317,16 +316,7 @@ function App() {
               </AdminThemeProvider>
             }
           />
-          <Route
-            path="/admin/logs"
-            element={
-              <AdminThemeProvider>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AdminLogsPage />
-                </Suspense>
-              </AdminThemeProvider>
-            }
-          />
+          <Route path="/admin/logs" element={<Navigate to="/admin/jobs?tab=logs" replace />} />
           <Route
             path="/admin/biographies"
             element={<Navigate to="/admin/actors?tab=biographies" replace />}

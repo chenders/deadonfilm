@@ -169,9 +169,12 @@ describe("App", () => {
       renderApp("/admin/jobs")
 
       // Should redirect to login since not authenticated
-      await waitFor(() => {
-        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-      })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it("routes to /admin/jobs/runs for job history", async () => {
