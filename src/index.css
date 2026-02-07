@@ -197,7 +197,11 @@ body {
 
 /* Subtle projector glow in dark mode */
 :root.dark body {
-  background-image: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(130, 124, 118, 0.04) 0%, transparent 70%);
+  background-image: radial-gradient(
+    ellipse 60% 40% at 50% 0%,
+    rgba(130, 124, 118, 0.04) 0%,
+    transparent 70%
+  );
 }
 
 /* Custom scrollbar for vintage feel */
