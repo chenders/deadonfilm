@@ -77,6 +77,7 @@ import {
   MIN_CIRCUMSTANCES_LENGTH,
   MIN_RUMORED_CIRCUMSTANCES_LENGTH,
 } from "../src/lib/claude-batch/index.js"
+import { isViolentDeath } from "../src/lib/death-sources/claude-cleanup.js"
 import { createActorSlug } from "../src/lib/slug-utils.js"
 import { getBrowserAuthConfig } from "../src/lib/death-sources/browser-auth/config.js"
 import { getSessionInfo } from "../src/lib/death-sources/browser-auth/session-manager.js"
@@ -929,6 +930,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
       const relatedCelebrities =
         cleaned?.relatedCelebrities || enrichment.relatedCelebrities || null
 
+      // Manner and categories from Claude cleanup
+      const manner = cleaned?.manner || null
+      const categories = cleaned?.categories || null
+
       // Look up related_celebrity_ids from actors table
       let relatedCelebrityIds: number[] | null = null
       if (relatedCelebrities && relatedCelebrities.length > 0) {
@@ -980,6 +985,11 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
             : undefined,
         causeOfDeathDetailsSource:
           !actorRecord?.causeOfDeathDetails && causeOfDeathDetails ? "claude-opus-4.5" : undefined,
+        // Manner of death and categories from Claude cleanup
+        deathManner: manner,
+        deathCategories: categories,
+        // Derive violent_death from manner
+        violentDeath: isViolentDeath(manner),
       }
 
       const circumstancesData: DeathCircumstancesData = {

@@ -185,6 +185,11 @@ export async function writeToProduction(
     actorParams.push(enrichment.deathCategories)
   }
 
+  if (enrichment.violentDeath !== undefined && enrichment.violentDeath !== null) {
+    actorUpdates.push(`violent_death = $${actorParamIndex++}`)
+    actorParams.push(enrichment.violentDeath)
+  }
+
   // Always update enriched_at and updated_at when we have updates
   if (actorUpdates.length > 0) {
     actorUpdates.push(`enriched_at = NOW()`)
