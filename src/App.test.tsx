@@ -228,6 +228,25 @@ describe("App", () => {
       )
     })
 
+    it("redirects /admin/logs to /admin/jobs?tab=logs", async () => {
+      globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ authenticated: false }),
+        } as Response)
+      )
+
+      renderApp("/admin/logs")
+
+      // Redirects through /admin/jobs?tab=logs, then to login
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
+    })
+
     it("redirects /admin/sync to /admin/operations?tab=sync", async () => {
       globalThis.fetch = vi.fn(() =>
         Promise.resolve({

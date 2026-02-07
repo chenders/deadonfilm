@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { useSearchParams } from "react-router-dom"
 import { TestMemoryRouter } from "../../../test/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import ErrorLogsTab from "./ErrorLogsTab"
 import * as useErrorLogsModule from "../../../hooks/useErrorLogs"
 import * as adminAuthHook from "../../../hooks/useAdminAuth"
+
+// Helper to display current URL search params for assertions
+function LocationDisplay() {
+  const [searchParams] = useSearchParams()
+  return <div data-testid="location-display">{searchParams.toString()}</div>
+}
 
 // Mock the hooks
 vi.mock("../../../hooks/useErrorLogs")
@@ -121,6 +128,7 @@ describe("ErrorLogsTab", () => {
       <QueryClientProvider client={queryClient}>
         <TestMemoryRouter initialEntries={[initialRoute]}>
           <ErrorLogsTab />
+          <LocationDisplay />
         </TestMemoryRouter>
       </QueryClientProvider>
     )
@@ -258,6 +266,42 @@ describe("ErrorLogsTab", () => {
       renderTab()
 
       expect(screen.queryByRole("button", { name: /Clear Filters/i })).not.toBeInTheDocument()
+    })
+
+    it("preserves tab=logs param when changing level filter", () => {
+      renderTab()
+
+      fireEvent.change(screen.getByLabelText(/Level/i), { target: { value: "error" } })
+
+      const location = screen.getByTestId("location-display")
+      expect(location.textContent).toContain("tab=logs")
+      expect(location.textContent).toContain("level=error")
+    })
+
+    it("preserves tab=logs param when changing source filter", () => {
+      renderTab()
+
+      fireEvent.change(screen.getByLabelText(/Source/i), { target: { value: "route" } })
+
+      const location = screen.getByTestId("location-display")
+      expect(location.textContent).toContain("tab=logs")
+      expect(location.textContent).toContain("source=route")
+    })
+
+    it("ignores invalid level values from URL", () => {
+      renderTab("/admin/jobs?tab=logs&level=invalid")
+
+      // Should default to "All Levels" (empty value) since "invalid" is not a valid LogLevel
+      const levelSelect = screen.getByLabelText(/Level/i) as HTMLSelectElement
+      expect(levelSelect.value).toBe("")
+    })
+
+    it("ignores invalid source values from URL", () => {
+      renderTab("/admin/jobs?tab=logs&source=invalid")
+
+      // Should default to "All Sources" (empty value) since "invalid" is not a valid LogSource
+      const sourceSelect = screen.getByLabelText(/Source/i) as HTMLSelectElement
+      expect(sourceSelect.value).toBe("")
     })
   })
 
