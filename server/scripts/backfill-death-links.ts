@@ -22,7 +22,7 @@ import "dotenv/config"
 import { Command, InvalidArgumentError } from "commander"
 import { getPool, resetPool } from "../src/lib/db.js"
 import { invalidateActorCacheRequired } from "../src/lib/cache.js"
-import { initRedis } from "../src/lib/redis.js"
+import { initRedis, closeRedis } from "../src/lib/redis.js"
 import type { ProjectInfo, RelatedCelebrity } from "../src/lib/db/types.js"
 import {
   lookupProject,
@@ -140,6 +140,7 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
 
   try {
     // Find records that have projects or celebrities without tmdb_ids
+    console.log("Querying death circumstances records...")
     const result = await db.query<DeathCircumstanceRecord>(
       `SELECT
          adc.id,
@@ -165,7 +166,6 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
 
     if (records.length === 0) {
       console.log("No records with projects or celebrities found.")
-      await resetPool()
       return
     }
 
@@ -256,6 +256,7 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
       console.log("  (Dry run - no changes made)")
     }
   } finally {
+    await closeRedis()
     await resetPool()
   }
 }
