@@ -13,7 +13,7 @@ export default function Footer() {
             className="opacity-60 transition-opacity hover:opacity-80"
             data-testid="tmdb-logo-link"
           >
-            <img src="/tmdb-logo.svg" alt="TMDB" width="92" height="12" className="h-3" />
+            <img src="/tmdb-logo.svg" alt="TMDB" width="92" height="12" className="h-3 dark:brightness-0 dark:invert" />
           </a>
           <p className="text-[10px] text-text-muted">
             This product uses the{" "}
