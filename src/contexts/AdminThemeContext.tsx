@@ -53,13 +53,24 @@ export function AdminThemeProvider({ children, defaultTheme = "dark" }: AdminThe
     return getSystemTheme()
   })
 
-  // Apply theme class to document
+  // Apply theme class and background to document
   useEffect(() => {
     const root = document.documentElement
     if (resolvedTheme === "light") {
       root.classList.add("admin-light")
     } else {
       root.classList.remove("admin-light")
+    }
+
+    // Set background on html+body to prevent white bleed-through
+    // when content overflows horizontally on mobile
+    const bgColor = resolvedTheme === "light" ? "#f6f8fa" : "#1e2228"
+    root.style.backgroundColor = bgColor
+    document.body.style.backgroundColor = bgColor
+
+    return () => {
+      root.style.backgroundColor = ""
+      document.body.style.backgroundColor = ""
     }
   }, [resolvedTheme])
 
