@@ -165,6 +165,11 @@ export async function getAllActorTmdbIds(): Promise<Set<number>> {
     `SELECT DISTINCT a.tmdb_id
      FROM actor_movie_appearances ama
      JOIN actors a ON ama.actor_id = a.id
+     WHERE a.tmdb_id IS NOT NULL
+     UNION
+     SELECT DISTINCT a.tmdb_id
+     FROM actor_show_appearances asa
+     JOIN actors a ON asa.actor_id = a.id
      WHERE a.tmdb_id IS NOT NULL`
   )
   return new Set(result.rows.map((r) => r.tmdb_id))

@@ -443,6 +443,29 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
           errors_count: peopleResult.errors.length,
         })
       }
+
+      // Invalidate death caches immediately after people sync so new deaths
+      // are visible on the website even if movie/show sync fails later
+      if (!options.dryRun && result.newDeathsFound > 0) {
+        if (!quiet) {
+          console.log(
+            `\nInvalidating death-related caches (${result.newDeathsFound} new deaths found)...`
+          )
+        }
+        await initRedis()
+        await invalidateDeathCaches()
+        await closeRedis()
+        if (!quiet) {
+          console.log("  ✓ Death list caches cleared")
+          console.log("  ✓ Death statistics caches cleared")
+        }
+
+        // Record cache invalidation event
+        newrelic.recordCustomEvent("CacheInvalidation", {
+          cacheType: "death-related",
+          count: result.newDeathsFound,
+        })
+      }
     }
 
     // Sync movie changes
@@ -526,31 +549,12 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
       }
     }
 
-    // Invalidate caches after successful sync (if not dry run)
+    // Invalidate movie caches after sync (if not dry run)
     if (!options.dryRun) {
-      if (!quiet) console.log("\n=== Syncing System State ===")
-      await initRedis()
-
-      if (result.newDeathsFound > 0) {
-        if (!quiet) {
-          console.log(
-            `Invalidating death-related caches (${result.newDeathsFound} new deaths found)...`
-          )
-        }
-        await invalidateDeathCaches()
-        if (!quiet) {
-          console.log("  ✓ Death list caches cleared")
-          console.log("  ✓ Death statistics caches cleared")
-        }
-
-        // Record cache invalidation event
-        newrelic.recordCustomEvent("CacheInvalidation", {
-          cacheType: "death-related",
-          count: result.newDeathsFound,
-        })
-      }
-
       if (result.moviesUpdated > 0) {
+        if (!quiet) console.log("\n=== Syncing System State ===")
+        await initRedis()
+
         if (!quiet) {
           console.log(`Invalidating movie caches (${result.moviesUpdated} movies updated)...`)
         }
@@ -565,14 +569,14 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
           cacheType: "movie-related",
           count: result.moviesUpdated,
         })
+
+        await closeRedis()
+        if (!quiet) console.log("System state synchronized")
       }
 
       if (result.moviesSkipped > 0 && !quiet) {
         console.log(`  → ${result.moviesSkipped} movies skipped (no cache invalidation needed)`)
       }
-
-      await closeRedis()
-      if (!quiet) console.log("System state synchronized")
     }
 
     // Print summary (skip if quiet mode)
@@ -1279,7 +1283,7 @@ async function syncActiveShowEpisodes(
   // Get all active (Returning Series) shows from our database
   log("Loading active shows from database...", quiet, onLog)
   const { rows: activeShows } = await pool.query<ActiveShow>(
-    `SELECT tmdb_id, name, number_of_seasons FROM shows WHERE status = 'Returning Series' ORDER BY popularity DESC NULLS LAST`
+    `SELECT tmdb_id, name, number_of_seasons FROM shows WHERE status = 'Returning Series' ORDER BY tmdb_popularity DESC NULLS LAST`
   )
   log(`  Found ${activeShows.length} active shows`, quiet, onLog)
 
