@@ -545,6 +545,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
         a.birthday,
         a.profile_path,
         a.tmdb_popularity,
+        a.dof_popularity,
         COUNT(DISTINCT ama.movie_tmdb_id) as total_movies,
         COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as total_episodes,
         EXTRACT(YEAR FROM age(a.birthday))::integer as age
@@ -553,7 +554,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
       LEFT JOIN actor_show_appearances asa ON asa.actor_id = a.id
       WHERE a.deathday IS NULL
         AND a.birthday IS NOT NULL
-      GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.profile_path, a.tmdb_popularity
+      GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.profile_path, a.tmdb_popularity, a.dof_popularity
       HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
          OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
     )
