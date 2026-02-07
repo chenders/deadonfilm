@@ -109,7 +109,8 @@ describe("BiographiesTab", () => {
     renderComponent()
 
     await waitFor(() => {
-      expect(screen.getByText("John Wayne")).toBeInTheDocument()
+      // Content appears in both mobile card view and desktop table
+      expect(screen.getAllByText("John Wayne").length).toBeGreaterThanOrEqual(1)
     })
   })
 

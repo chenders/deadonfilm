@@ -20,6 +20,7 @@ import {
   type LogSource,
 } from "../../../hooks/useErrorLogs"
 import { useDebouncedSearchParam } from "../../../hooks/useDebouncedSearchParam"
+import MobileCard from "../ui/MobileCard"
 
 // Level badge styles
 const levelStyles: Record<LogLevel, string> = {
@@ -502,7 +503,114 @@ export default function ErrorLogsTab() {
 
       {/* Table */}
       <div className="rounded-lg border border-admin-border bg-admin-surface-elevated">
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        {/* Mobile card view */}
+        <div className="space-y-3 p-4 md:hidden">
+          {data?.logs.map((row) => (
+            <div key={row.id}>
+              <MobileCard
+                data-testid={`error-log-card-${row.id}`}
+                title={
+                  <div className="flex items-center gap-2">
+                    <LevelBadge level={row.level} />
+                    <SourceBadge source={row.source} />
+                  </div>
+                }
+                subtitle={
+                  <span title={formatTimestamp(row.created_at)}>
+                    {formatRelativeTime(row.created_at)}
+                  </span>
+                }
+                fields={[
+                  {
+                    label: "Message",
+                    value: (
+                      <span className="line-clamp-2 text-admin-text-primary" title={row.message}>
+                        {row.message}
+                      </span>
+                    ),
+                  },
+                  ...(row.path
+                    ? [
+                        {
+                          label: "Request",
+                          value: (
+                            <span className="font-mono text-xs">
+                              {row.method} {row.path}
+                            </span>
+                          ),
+                        },
+                      ]
+                    : []),
+                  ...(row.script_name
+                    ? [
+                        {
+                          label: "Script",
+                          value: <span className="font-mono text-xs">{row.script_name}</span>,
+                        },
+                      ]
+                    : []),
+                ]}
+                actions={
+                  <button
+                    onClick={() => toggleExpanded(row.id)}
+                    className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay"
+                    aria-label={expandedRows.has(row.id) ? "Collapse details" : "Expand details"}
+                    aria-expanded={expandedRows.has(row.id)}
+                  >
+                    {expandedRows.has(row.id) ? "Hide Details" : "Show Details"}
+                  </button>
+                }
+              />
+              {expandedRows.has(row.id) && (
+                <div className="mt-2 rounded-lg border border-admin-border bg-admin-surface-inset p-3 text-sm">
+                  <div className="space-y-3">
+                    <div>
+                      <div className="font-medium text-admin-text-primary">Message:</div>
+                      <div className="mt-1 whitespace-pre-wrap text-admin-text-secondary">
+                        {row.message}
+                      </div>
+                    </div>
+                    {(row.request_id || row.path) && (
+                      <div>
+                        <div className="font-medium text-admin-text-primary">Request:</div>
+                        <div className="mt-1 font-mono text-xs text-admin-text-muted">
+                          {row.request_id && <div>ID: {row.request_id}</div>}
+                          {row.path && (
+                            <div>
+                              {row.method} {row.path}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {row.details && Object.keys(row.details).length > 0 && (
+                      <div>
+                        <div className="font-medium text-admin-text-primary">Details:</div>
+                        <pre className="mt-1 max-h-40 overflow-auto rounded bg-admin-surface-overlay p-2 font-mono text-xs text-admin-text-muted">
+                          {JSON.stringify(row.details, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {row.error_stack && (
+                      <div>
+                        <div className="font-medium text-admin-danger">Stack Trace:</div>
+                        <pre className="mt-1 max-h-60 overflow-auto rounded bg-admin-surface-overlay p-2 font-mono text-xs text-admin-text-muted">
+                          {row.error_stack}
+                        </pre>
+                      </div>
+                    )}
+                    <div className="text-xs text-admin-text-muted">
+                      Logged at: {formatTimestamp(row.created_at)}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="-mx-4 hidden overflow-x-auto px-4 sm:mx-0 sm:px-0 md:block">
           <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-admin-border bg-admin-surface-inset">

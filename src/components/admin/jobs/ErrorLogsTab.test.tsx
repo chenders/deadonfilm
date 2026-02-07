@@ -310,8 +310,9 @@ describe("ErrorLogsTab", () => {
       renderTab()
 
       await waitFor(() => {
-        expect(screen.getByText("Database connection failed")).toBeInTheDocument()
-        expect(screen.getByText("Rate limit approaching")).toBeInTheDocument()
+        // Content appears in both mobile card view and desktop table
+        expect(screen.getAllByText("Database connection failed").length).toBeGreaterThanOrEqual(1)
+        expect(screen.getAllByText("Rate limit approaching").length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -319,8 +320,9 @@ describe("ErrorLogsTab", () => {
       renderTab()
 
       await waitFor(() => {
-        expect(screen.getByText("error")).toBeInTheDocument()
-        expect(screen.getByText("warn")).toBeInTheDocument()
+        // Level badges appear in both mobile and desktop views
+        expect(screen.getAllByText("error").length).toBeGreaterThanOrEqual(1)
+        expect(screen.getAllByText("warn").length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -328,8 +330,9 @@ describe("ErrorLogsTab", () => {
       renderTab()
 
       await waitFor(() => {
-        expect(screen.getByText("route")).toBeInTheDocument()
-        expect(screen.getByText("script")).toBeInTheDocument()
+        // Source badges appear in both mobile and desktop views
+        expect(screen.getAllByText("route").length).toBeGreaterThanOrEqual(1)
+        expect(screen.getAllByText("script").length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -337,7 +340,7 @@ describe("ErrorLogsTab", () => {
       renderTab()
 
       await waitFor(() => {
-        expect(screen.getByText("GET /api/actors/456")).toBeInTheDocument()
+        expect(screen.getAllByText("GET /api/actors/456").length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -345,7 +348,7 @@ describe("ErrorLogsTab", () => {
       renderTab()
 
       await waitFor(() => {
-        expect(screen.getByText("sync-tmdb-changes")).toBeInTheDocument()
+        expect(screen.getAllByText("sync-tmdb-changes").length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -354,7 +357,8 @@ describe("ErrorLogsTab", () => {
 
       await waitFor(() => {
         const expandButtons = screen.getAllByLabelText(/Expand details/i)
-        expect(expandButtons.length).toBe(2)
+        // 2 desktop buttons + 2 mobile buttons = 4
+        expect(expandButtons.length).toBe(4)
       })
     })
 
@@ -362,15 +366,16 @@ describe("ErrorLogsTab", () => {
       renderTab()
 
       await waitFor(() => {
-        expect(screen.getByText("Database connection failed")).toBeInTheDocument()
+        expect(screen.getAllByText("Database connection failed").length).toBeGreaterThanOrEqual(1)
       })
 
       const expandButtons = screen.getAllByLabelText(/Expand details/i)
       fireEvent.click(expandButtons[0])
 
       await waitFor(() => {
-        expect(screen.getByText("Stack Trace:")).toBeInTheDocument()
-        expect(screen.getByText(/Error: Connection refused/)).toBeInTheDocument()
+        // Stack trace appears in both mobile and desktop expanded views
+        expect(screen.getAllByText("Stack Trace:").length).toBeGreaterThanOrEqual(1)
+        expect(screen.getAllByText(/Error: Connection refused/).length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -378,7 +383,7 @@ describe("ErrorLogsTab", () => {
       renderTab()
 
       await waitFor(() => {
-        expect(screen.getByText("Database connection failed")).toBeInTheDocument()
+        expect(screen.getAllByText("Database connection failed").length).toBeGreaterThanOrEqual(1)
       })
 
       // Expand first
@@ -386,12 +391,12 @@ describe("ErrorLogsTab", () => {
       fireEvent.click(expandButtons[0])
 
       await waitFor(() => {
-        expect(screen.getByText("Stack Trace:")).toBeInTheDocument()
+        expect(screen.getAllByText("Stack Trace:").length).toBeGreaterThanOrEqual(1)
       })
 
       // Collapse
-      const collapseButton = screen.getByLabelText(/Collapse details/i)
-      fireEvent.click(collapseButton)
+      const collapseButtons = screen.getAllByLabelText(/Collapse details/i)
+      fireEvent.click(collapseButtons[0])
 
       await waitFor(() => {
         expect(screen.queryByText("Stack Trace:")).not.toBeInTheDocument()

@@ -132,9 +132,10 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    expect(screen.getByText("John Wayne")).toBeInTheDocument()
-    expect(screen.getByText("James Dean")).toBeInTheDocument()
-    expect(screen.getByText("Marilyn Monroe")).toBeInTheDocument()
+    // Content appears in both mobile card view and desktop table
+    expect(screen.getAllByText("John Wayne").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("James Dean").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("Marilyn Monroe").length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText("3 actors found")).toBeInTheDocument()
   })
 
@@ -260,10 +261,9 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // Select an actor
+    // Select an actor via mobile card checkbox (index 0 = first mobile card)
     const checkboxes = screen.getAllByRole("checkbox")
-    // First checkbox is select all, skip it
-    fireEvent.click(checkboxes[1])
+    fireEvent.click(checkboxes[0])
 
     // Verify selection is shown
     expect(screen.getByText("1 actor selected")).toBeInTheDocument()
@@ -298,11 +298,11 @@ describe("ActorManagementTab", () => {
     renderComponent()
 
     const checkboxes = screen.getAllByRole("checkbox")
-    // First checkbox is select all, skip it
-    expect(checkboxes).toHaveLength(4) // 1 select all + 3 actors
+    // 3 mobile actor cards + 1 desktop select-all + 3 desktop actor rows = 7
+    expect(checkboxes).toHaveLength(7)
 
-    // Select first actor
-    fireEvent.click(checkboxes[1])
+    // Select first mobile card actor checkbox (index 0 = John Wayne mobile card)
+    fireEvent.click(checkboxes[0])
 
     // Action bar should appear
     expect(screen.getByText("1 actor selected")).toBeInTheDocument()
@@ -324,7 +324,8 @@ describe("ActorManagementTab", () => {
     renderComponent()
 
     const checkboxes = screen.getAllByRole("checkbox")
-    const selectAllCheckbox = checkboxes[0]
+    // Index 3 is the desktop select-all (after 3 mobile actor checkboxes)
+    const selectAllCheckbox = checkboxes[3]
 
     // Select all
     fireEvent.click(selectAllCheckbox)
@@ -348,9 +349,9 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // Select all actors
+    // Select all actors (index 3 is desktop select-all)
     const checkboxes = screen.getAllByRole("checkbox")
-    fireEvent.click(checkboxes[0])
+    fireEvent.click(checkboxes[3])
 
     expect(screen.getByText("3 actors selected")).toBeInTheDocument()
 
@@ -374,10 +375,10 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // Select some actors
+    // Select two actors via mobile card checkboxes (indices 0-2 are mobile cards)
     const checkboxes = screen.getAllByRole("checkbox")
+    fireEvent.click(checkboxes[0])
     fireEvent.click(checkboxes[1])
-    fireEvent.click(checkboxes[2])
 
     expect(screen.getByText("2 actors selected")).toBeInTheDocument()
 
@@ -401,7 +402,10 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    expect(screen.getByText("No actors match the current filters")).toBeInTheDocument()
+    // Empty state appears in both mobile and desktop views
+    expect(
+      screen.getAllByText("No actors match the current filters").length
+    ).toBeGreaterThanOrEqual(1)
   })
 
   it("renders pagination when multiple pages exist", () => {
@@ -452,13 +456,13 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // John Wayne and James Dean have detailed death info
+    // John Wayne and James Dean have detailed death info (mobile + desktop = 4)
     const checkmarks = screen.getAllByText("✓")
-    expect(checkmarks).toHaveLength(2)
+    expect(checkmarks).toHaveLength(4)
 
-    // Marilyn Monroe does not
+    // Marilyn Monroe does not (mobile + desktop = 2)
     const crosses = screen.getAllByText("✗")
-    expect(crosses).toHaveLength(1)
+    expect(crosses).toHaveLength(2)
   })
 
   it("displays cause of death or dash when missing", () => {
@@ -474,10 +478,10 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    expect(screen.getByText("Stomach cancer")).toBeInTheDocument()
-    expect(screen.getByText("Car accident")).toBeInTheDocument()
+    // Content appears in both mobile card view and desktop table
+    expect(screen.getAllByText("Stomach cancer").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("Car accident").length).toBeGreaterThanOrEqual(1)
     // Marilyn Monroe has null cause_of_death, should show dash
-    // There may be multiple dashes for popularity too, so just check it exists
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1)
   })
 
