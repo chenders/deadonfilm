@@ -13,6 +13,11 @@ vi.mock("../../hooks/useAdminAuth", () => ({
   AdminAuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+// Mock ErrorLogsTab to isolate hub testing
+vi.mock("../../components/admin/jobs/ErrorLogsTab", () => ({
+  default: () => <div data-testid="error-logs-tab">Error Logs Content</div>,
+}))
+
 describe("JobQueuesPage", () => {
   const mockQueues = {
     queues: [
@@ -74,6 +79,8 @@ describe("JobQueuesPage", () => {
   }
 
   beforeEach(() => {
+    vi.clearAllMocks()
+
     vi.mocked(useJobQueueModule.useQueueStats).mockReturnValue({
       data: mockQueues,
       isLoading: false,
@@ -127,7 +134,7 @@ describe("JobQueuesPage", () => {
     })
   })
 
-  function renderPage() {
+  function renderPage(initialRoute = "/admin/jobs") {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -136,173 +143,204 @@ describe("JobQueuesPage", () => {
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <TestMemoryRouter>
+        <TestMemoryRouter initialEntries={[initialRoute]}>
           <JobQueuesPage />
         </TestMemoryRouter>
       </QueryClientProvider>
     )
   }
 
-  it("renders loading state", () => {
-    vi.mocked(useJobQueueModule.useQueueStats).mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      error: null,
-    } as ReturnType<typeof useJobQueueModule.useQueueStats>)
+  describe("hub page", () => {
+    it("renders page header", () => {
+      renderPage()
+      expect(screen.getByRole("heading", { name: /jobs & logs/i })).toBeInTheDocument()
+      expect(
+        screen.getByText(/monitor background job queues and application error logs/i)
+      ).toBeInTheDocument()
+    })
 
-    renderPage()
+    it("renders all tabs", () => {
+      renderPage()
+      expect(screen.getByRole("tab", { name: /queues/i })).toBeInTheDocument()
+      expect(screen.getByRole("tab", { name: /error logs/i })).toBeInTheDocument()
+    })
 
-    // Check for skeleton elements
-    expect(document.querySelector(".animate-pulse")).toBeInTheDocument()
-  })
-
-  it("renders error state when fetch fails", () => {
-    vi.mocked(useJobQueueModule.useQueueStats).mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: new Error("Failed to load"),
-    } as ReturnType<typeof useJobQueueModule.useQueueStats>)
-
-    renderPage()
-
-    expect(screen.getByText(/Failed to load queue stats/i)).toBeInTheDocument()
-  })
-
-  it("displays queue stats summary", async () => {
-    renderPage()
-
-    await waitFor(() => {
-      // Check totals (10+5 waiting, 2+1 active, 100+50 completed, 5+2 failed)
-      expect(screen.getByText("15")).toBeInTheDocument() // queued (waiting)
-      // Multiple "3"s on page (active total, delayed count, dead letter count)
-      // Just verify page renders with queue data
+    it("shows queues tab by default", () => {
+      renderPage()
       expect(screen.getByText("ratings")).toBeInTheDocument()
+      expect(screen.queryByTestId("error-logs-tab")).not.toBeInTheDocument()
+    })
+
+    it("switches to error logs tab on click", () => {
+      renderPage()
+      fireEvent.click(screen.getByRole("tab", { name: /error logs/i }))
+      expect(screen.getByTestId("error-logs-tab")).toBeInTheDocument()
+      expect(screen.queryByText("ratings")).not.toBeInTheDocument()
+    })
+
+    it("opens correct tab when URL has ?tab=logs", () => {
+      renderPage("/admin/jobs?tab=logs")
+      expect(screen.getByTestId("error-logs-tab")).toBeInTheDocument()
+      expect(screen.queryByText("ratings")).not.toBeInTheDocument()
     })
   })
 
-  it("displays individual queue cards", async () => {
-    renderPage()
+  describe("queues tab", () => {
+    it("renders loading state", () => {
+      vi.mocked(useJobQueueModule.useQueueStats).mockReturnValue({
+        data: undefined,
+        isLoading: true,
+        error: null,
+      } as ReturnType<typeof useJobQueueModule.useQueueStats>)
 
-    await waitFor(() => {
-      expect(screen.getByText("ratings")).toBeInTheDocument()
-      expect(screen.getByText("enrichment")).toBeInTheDocument()
-    })
-  })
+      renderPage()
 
-  it("shows running status for active queues", async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText("Running")).toBeInTheDocument()
-    })
-  })
-
-  it("shows paused status for paused queues", async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText("Paused")).toBeInTheDocument()
-    })
-  })
-
-  it("calls pause mutation when pause button clicked", async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText("ratings")).toBeInTheDocument()
+      // Check for skeleton elements
+      expect(document.querySelector(".animate-pulse")).toBeInTheDocument()
     })
 
-    // Find the Pause button (for the running queue)
-    const pauseButton = screen.getByRole("button", { name: "Pause" })
-    fireEvent.click(pauseButton)
+    it("renders error state when fetch fails", () => {
+      vi.mocked(useJobQueueModule.useQueueStats).mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: new Error("Failed to load"),
+      } as ReturnType<typeof useJobQueueModule.useQueueStats>)
 
-    expect(mockPauseQueue).toHaveBeenCalledWith("ratings")
-  })
+      renderPage()
 
-  it("calls resume mutation when resume button clicked", async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText("enrichment")).toBeInTheDocument()
+      expect(screen.getByText(/Failed to load queue stats/i)).toBeInTheDocument()
     })
 
-    // Find the Resume button (for the paused queue)
-    const resumeButton = screen.getByRole("button", { name: "Resume" })
-    fireEvent.click(resumeButton)
+    it("displays queue stats summary", async () => {
+      renderPage()
 
-    expect(mockResumeQueue).toHaveBeenCalledWith("enrichment")
-  })
-
-  it("displays dead letter count in stat card", async () => {
-    renderPage()
-
-    await waitFor(() => {
-      // Dead letter section should show count
-      expect(screen.getByText("Dead Letter")).toBeInTheDocument()
-      // Verify link to dead letter page exists
-      expect(screen.getByRole("link", { name: /Dead Letter Queue/i })).toBeInTheDocument()
-    })
-  })
-
-  it("displays job performance stats", async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText("fetch-omdb-ratings")).toBeInTheDocument()
-      expect(screen.getByText("95.00%")).toBeInTheDocument()
-      expect(screen.getByText("150ms")).toBeInTheDocument()
-    })
-  })
-
-  it("calls cleanup mutation when cleanup button clicked", async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText("Run Cleanup")).toBeInTheDocument()
+      await waitFor(() => {
+        // Check totals (10+5 waiting, 2+1 active, 100+50 completed, 5+2 failed)
+        expect(screen.getByText("15")).toBeInTheDocument() // queued (waiting)
+        expect(screen.getByText("ratings")).toBeInTheDocument()
+      })
     })
 
-    const cleanupButton = screen.getByRole("button", { name: "Run Cleanup" })
-    fireEvent.click(cleanupButton)
+    it("displays individual queue cards", async () => {
+      renderPage()
 
-    expect(mockCleanupJobs).toHaveBeenCalledWith(24) // default 24 hours
-  })
-
-  it("shows cleanup period selector", async () => {
-    renderPage()
-
-    await waitFor(() => {
-      const select = screen.getByLabelText(/cleanup completed jobs older than/i)
-      expect(select).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText("ratings")).toBeInTheDocument()
+        expect(screen.getByText("enrichment")).toBeInTheDocument()
+      })
     })
-  })
 
-  it("displays cleanup success message", async () => {
-    vi.mocked(useJobQueueModule.useCleanupJobs).mockReturnValue({
-      mutate: mockCleanupJobs,
-      isPending: false,
-      isSuccess: true,
-      data: { success: true, cleaned: 42 },
-    } as unknown as ReturnType<typeof useJobQueueModule.useCleanupJobs>)
+    it("shows running status for active queues", async () => {
+      renderPage()
 
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText(/Cleaned 42 completed jobs/i)).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText("Running")).toBeInTheDocument()
+      })
     })
-  })
 
-  it("displays links to job history and dead letter queue", async () => {
-    renderPage()
+    it("shows paused status for paused queues", async () => {
+      renderPage()
 
-    await waitFor(() => {
-      expect(screen.getByRole("link", { name: /View Job History/i })).toHaveAttribute(
-        "href",
-        "/admin/jobs/runs"
-      )
-      expect(screen.getByRole("link", { name: /Dead Letter Queue/i })).toHaveAttribute(
-        "href",
-        "/admin/jobs/dead-letter"
-      )
+      await waitFor(() => {
+        expect(screen.getByText("Paused")).toBeInTheDocument()
+      })
+    })
+
+    it("calls pause mutation when pause button clicked", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("ratings")).toBeInTheDocument()
+      })
+
+      const pauseButton = screen.getByRole("button", { name: "Pause" })
+      fireEvent.click(pauseButton)
+
+      expect(mockPauseQueue).toHaveBeenCalledWith("ratings")
+    })
+
+    it("calls resume mutation when resume button clicked", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("enrichment")).toBeInTheDocument()
+      })
+
+      const resumeButton = screen.getByRole("button", { name: "Resume" })
+      fireEvent.click(resumeButton)
+
+      expect(mockResumeQueue).toHaveBeenCalledWith("enrichment")
+    })
+
+    it("displays dead letter count in stat card", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("Dead Letter")).toBeInTheDocument()
+        expect(screen.getByRole("link", { name: /Dead Letter Queue/i })).toBeInTheDocument()
+      })
+    })
+
+    it("displays job performance stats", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("fetch-omdb-ratings")).toBeInTheDocument()
+        expect(screen.getByText("95.00%")).toBeInTheDocument()
+        expect(screen.getByText("150ms")).toBeInTheDocument()
+      })
+    })
+
+    it("calls cleanup mutation when cleanup button clicked", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("Run Cleanup")).toBeInTheDocument()
+      })
+
+      const cleanupButton = screen.getByRole("button", { name: "Run Cleanup" })
+      fireEvent.click(cleanupButton)
+
+      expect(mockCleanupJobs).toHaveBeenCalledWith(24) // default 24 hours
+    })
+
+    it("shows cleanup period selector", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        const select = screen.getByLabelText(/cleanup completed jobs older than/i)
+        expect(select).toBeInTheDocument()
+      })
+    })
+
+    it("displays cleanup success message", async () => {
+      vi.mocked(useJobQueueModule.useCleanupJobs).mockReturnValue({
+        mutate: mockCleanupJobs,
+        isPending: false,
+        isSuccess: true,
+        data: { success: true, cleaned: 42 },
+      } as unknown as ReturnType<typeof useJobQueueModule.useCleanupJobs>)
+
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText(/Cleaned 42 completed jobs/i)).toBeInTheDocument()
+      })
+    })
+
+    it("displays links to job history and dead letter queue", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByRole("link", { name: /View Job History/i })).toHaveAttribute(
+          "href",
+          "/admin/jobs/runs"
+        )
+        expect(screen.getByRole("link", { name: /Dead Letter Queue/i })).toHaveAttribute(
+          "href",
+          "/admin/jobs/dead-letter"
+        )
+      })
     })
   })
 })

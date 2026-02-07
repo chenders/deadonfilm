@@ -100,11 +100,7 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
         </NavLink>
 
         <NavLink to="/admin/jobs" isActive={isActive("/admin/jobs")} onClick={onNavigate}>
-          Background Jobs
-        </NavLink>
-
-        <NavLink to="/admin/logs" isActive={isActive("/admin/logs")} onClick={onNavigate}>
-          Error Logs
+          Jobs & Logs
         </NavLink>
       </div>
 
