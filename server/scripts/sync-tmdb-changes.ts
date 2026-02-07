@@ -452,9 +452,9 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
             `\nInvalidating death-related caches (${result.newDeathsFound} new deaths found)...`
           )
         }
-        const redisAvailable = await initRedis()
-        if (redisAvailable) {
-          try {
+        try {
+          const redisAvailable = await initRedis()
+          if (redisAvailable) {
             await invalidateDeathCaches()
             if (!quiet) {
               console.log("  ✓ Death list caches cleared")
@@ -466,9 +466,9 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
               cacheType: "death-related",
               count: result.newDeathsFound,
             })
-          } finally {
-            await closeRedis()
           }
+        } finally {
+          await closeRedis()
         }
       }
     }
@@ -558,9 +558,9 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
     if (!options.dryRun) {
       if (result.moviesUpdated > 0) {
         if (!quiet) console.log("\n=== Syncing System State ===")
-        const redisAvailable = await initRedis()
-        if (redisAvailable) {
-          try {
+        try {
+          const redisAvailable = await initRedis()
+          if (redisAvailable) {
             if (!quiet) {
               console.log(`Invalidating movie caches (${result.moviesUpdated} movies updated)...`)
             }
@@ -575,11 +575,11 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
               cacheType: "movie-related",
               count: result.moviesUpdated,
             })
-          } finally {
-            await closeRedis()
           }
-          if (!quiet) console.log("System state synchronized")
+        } finally {
+          await closeRedis()
         }
+        if (!quiet) console.log("System state synchronized")
       }
 
       if (result.moviesSkipped > 0 && !quiet) {

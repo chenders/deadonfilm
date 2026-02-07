@@ -157,7 +157,7 @@ export async function updateSyncState(
 // ============================================================================
 
 /**
- * Get all unique actor TMDB IDs from actor_appearances (excludes actors without TMDB IDs).
+ * Get all unique actor TMDB IDs from movie and show appearances (excludes actors without TMDB IDs).
  */
 export async function getAllActorTmdbIds(): Promise<Set<number>> {
   const db = getPool()
