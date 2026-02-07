@@ -426,13 +426,19 @@ export async function cleanupWithClaude(
     notableFactors: cleaned.notableFactors.join(", "),
     categories: (cleaned.categories || []).join(", "),
     relatedDeaths: parsed.related_deaths || "",
-    relatedCelebrities: (Array.isArray(parsed.related_celebrities) ? parsed.related_celebrities : [])
+    relatedCelebrities: (Array.isArray(parsed.related_celebrities)
+      ? parsed.related_celebrities
+      : []
+    )
       .map((rc) => rc.name)
       .join(", "),
     additionalContext: parsed.additional_context || "",
     careerStatusAtDeath: parsed.career_status_at_death || "",
     lastProject: parsed.last_project?.title || "",
-    posthumousReleasesCount: (Array.isArray(parsed.posthumous_releases) ? parsed.posthumous_releases : []).length,
+    posthumousReleasesCount: (Array.isArray(parsed.posthumous_releases)
+      ? parsed.posthumous_releases
+      : []
+    ).length,
     cleanupSource: "claude-opus-4.5",
     cleanupTimestamp: new Date().toISOString(),
   })
