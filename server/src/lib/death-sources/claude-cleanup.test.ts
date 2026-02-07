@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { buildCleanupPrompt, estimateCleanupCost, VALID_NOTABLE_FACTORS } from "./claude-cleanup.js"
+import {
+  buildCleanupPrompt,
+  estimateCleanupCost,
+  VALID_NOTABLE_FACTORS,
+  isViolentDeath,
+} from "./claude-cleanup.js"
 import { DeathMannerSchema } from "../claude-batch/schemas.js"
 import { DataSourceType } from "./types.js"
 import type { ActorForEnrichment, RawSourceData } from "./types.js"
@@ -261,21 +266,31 @@ describe("claude-cleanup", () => {
 
       expect(filtered).toEqual(["cancer", "natural_causes"])
     })
-  })
 
-  describe("manner to violent_death derivation", () => {
-    it("classifies homicide, suicide, and accident as violent", () => {
-      const violentManners = ["homicide", "suicide", "accident"]
-      for (const manner of violentManners) {
-        expect(["homicide", "suicide", "accident"].includes(manner)).toBe(true)
+    it("stays in sync with the notable_factors list in the prompt", () => {
+      const prompt = buildCleanupPrompt(mockActor, mockSources)
+      for (const tag of VALID_NOTABLE_FACTORS) {
+        expect(prompt).toContain(tag)
       }
     })
+  })
 
-    it("classifies natural and undetermined as non-violent", () => {
-      const nonViolentManners = ["natural", "undetermined", "pending"]
-      for (const manner of nonViolentManners) {
-        expect(["homicide", "suicide", "accident"].includes(manner)).toBe(false)
-      }
+  describe("isViolentDeath", () => {
+    it("returns true for homicide, suicide, and accident", () => {
+      expect(isViolentDeath("homicide")).toBe(true)
+      expect(isViolentDeath("suicide")).toBe(true)
+      expect(isViolentDeath("accident")).toBe(true)
+    })
+
+    it("returns false for natural, undetermined, and pending", () => {
+      expect(isViolentDeath("natural")).toBe(false)
+      expect(isViolentDeath("undetermined")).toBe(false)
+      expect(isViolentDeath("pending")).toBe(false)
+    })
+
+    it("returns undefined for null or undefined", () => {
+      expect(isViolentDeath(null)).toBeUndefined()
+      expect(isViolentDeath(undefined)).toBeUndefined()
     })
   })
 

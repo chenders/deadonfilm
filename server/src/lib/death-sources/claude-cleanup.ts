@@ -75,6 +75,18 @@ export const VALID_NOTABLE_FACTORS = new Set([
   "young_death",
 ])
 
+/** Manners of death considered "violent" for the violent_death boolean derivation. */
+const VIOLENT_MANNERS = ["homicide", "suicide", "accident"]
+
+/**
+ * Derive violent_death boolean from death_manner.
+ * Returns undefined if manner is null/undefined (no data to derive from).
+ */
+export function isViolentDeath(manner: string | null | undefined): boolean | undefined {
+  if (manner == null) return undefined
+  return VIOLENT_MANNERS.includes(manner)
+}
+
 // Cost per million tokens (Opus 4.5)
 const INPUT_COST_PER_MILLION = 15
 const OUTPUT_COST_PER_MILLION = 75
@@ -383,10 +395,10 @@ export async function cleanupWithClaude(
     rumoredCircumstances: parsed.rumored_circumstances,
     locationOfDeath: parsed.location_of_death,
     manner: DeathMannerSchema.safeParse(parsed.manner).success ? parsed.manner : null,
-    notableFactors: (parsed.notable_factors || []).filter((f: string) =>
-      VALID_NOTABLE_FACTORS.has(f)
+    notableFactors: (Array.isArray(parsed.notable_factors) ? parsed.notable_factors : []).filter(
+      (f: string) => VALID_NOTABLE_FACTORS.has(f)
     ),
-    categories: parsed.categories || null,
+    categories: Array.isArray(parsed.categories) ? parsed.categories : null,
     relatedDeaths: parsed.related_deaths,
     relatedCelebrities,
     additionalContext: parsed.additional_context,

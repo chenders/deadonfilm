@@ -77,6 +77,7 @@ import {
   MIN_CIRCUMSTANCES_LENGTH,
   MIN_RUMORED_CIRCUMSTANCES_LENGTH,
 } from "../src/lib/claude-batch/index.js"
+import { isViolentDeath } from "../src/lib/death-sources/claude-cleanup.js"
 import { createActorSlug } from "../src/lib/slug-utils.js"
 import { getBrowserAuthConfig } from "../src/lib/death-sources/browser-auth/config.js"
 import { getSessionInfo } from "../src/lib/death-sources/browser-auth/session-manager.js"
@@ -988,7 +989,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
         deathManner: manner,
         deathCategories: categories,
         // Derive violent_death from manner
-        violentDeath: manner ? ["homicide", "suicide", "accident"].includes(manner) : undefined,
+        violentDeath: isViolentDeath(manner),
       }
 
       const circumstancesData: DeathCircumstancesData = {

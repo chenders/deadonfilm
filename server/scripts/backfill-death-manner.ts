@@ -2,14 +2,14 @@
 import "dotenv/config" // MUST be first import
 import { Command } from "commander"
 import pg from "pg"
-import { VALID_NOTABLE_FACTORS } from "../src/lib/death-sources/claude-cleanup.js"
+import { VALID_NOTABLE_FACTORS, isViolentDeath } from "../src/lib/death-sources/claude-cleanup.js"
 
 const { Pool } = pg
 
 /**
  * Backfill death_manner for enriched actors missing it.
  *
- * Infers death_manner from notable_factors + cause_of_death for 293 v2.0.0
+ * Infers death_manner from notable_factors (plus manual overrides) for 293 v2.0.0
  * actors enriched before Feb 6 when manner wasn't persisted.
  *
  * Also:
@@ -87,13 +87,6 @@ function inferMannerFromFactors(factors: string[]): DeathManner | null {
   return null
 }
 
-/**
- * Derive violent_death boolean from death_manner.
- */
-function isViolentDeath(manner: DeathManner): boolean {
-  return ["homicide", "suicide", "accident"].includes(manner)
-}
-
 interface ActorRow {
   id: number
   name: string
@@ -133,7 +126,6 @@ async function runBackfill(options: { dryRun?: boolean }) {
 
     if (actors.length === 0) {
       console.log("Nothing to backfill. Done!")
-      await pool.end()
       return
     }
 
@@ -165,7 +157,7 @@ async function runBackfill(options: { dryRun?: boolean }) {
       }
 
       mannerCounts[manner] = (mannerCounts[manner] || 0) + 1
-      const violent = isViolentDeath(manner)
+      const violent = isViolentDeath(manner) ?? false
       const violentChanged = actor.violent_death !== violent
 
       if (violentChanged) {
@@ -246,7 +238,7 @@ async function runBackfill(options: { dryRun?: boolean }) {
 
     let violentAligned = 0
     for (const row of misalignedResult.rows) {
-      const shouldBeViolent = ["homicide", "suicide", "accident"].includes(row.death_manner)
+      const shouldBeViolent = isViolentDeath(row.death_manner) ?? false
       violentAligned++
 
       if (options.dryRun) {
@@ -282,7 +274,7 @@ async function runBackfill(options: { dryRun?: boolean }) {
     }
   } catch (error) {
     console.error("Fatal error:", error)
-    process.exit(1)
+    process.exitCode = 1
   } finally {
     await pool.end()
   }
