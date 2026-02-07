@@ -107,6 +107,7 @@ export interface EnrichmentStats {
 interface ActorRow {
   id: number
   tmdb_id: number | null
+  imdb_person_id: string | null
   name: string
   birthday: Date | string | null
   deathday: Date | string
@@ -302,6 +303,7 @@ export class EnrichmentRunner {
       const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
         id: a.id,
         tmdbId: a.tmdb_id,
+        imdbPersonId: a.imdb_person_id ?? null,
         name: a.name,
         birthday: normalizeDateToString(a.birthday),
         deathday: normalizeDateToString(a.deathday) || "",
@@ -717,6 +719,7 @@ export class EnrichmentRunner {
       `SELECT
         a.id,
         a.tmdb_id,
+        a.imdb_person_id,
         a.name,
         a.birthday,
         a.deathday,
@@ -748,6 +751,7 @@ export class EnrichmentRunner {
       `SELECT
         a.id,
         a.tmdb_id,
+        a.imdb_person_id,
         a.name,
         a.birthday,
         a.deathday,
@@ -785,6 +789,7 @@ export class EnrichmentRunner {
       SELECT
         a.id,
         a.tmdb_id,
+        a.imdb_person_id,
         a.name,
         a.birthday,
         a.deathday,

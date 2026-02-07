@@ -14,6 +14,7 @@ import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-s
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
+import { fetchFromArchive } from "../archive-fallback.js"
 
 const IMDB_BASE_URL = "https://www.imdb.com"
 
@@ -47,19 +48,25 @@ export class IMDbSource extends BaseDataSource {
     try {
       console.log(`IMDb lookup for: ${actor.name}`)
 
-      // First, search for the actor to get their IMDb ID
-      const imdbId = await this.findIMDbId(actor)
+      // Use known IMDb ID if available, otherwise search
+      let imdbId: string | null = actor.imdbPersonId || null
 
-      if (!imdbId) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0),
-          data: null,
-          error: "Could not find IMDb ID for actor",
+      if (imdbId) {
+        console.log(`  Using known IMDb ID: ${imdbId}`)
+      } else {
+        imdbId = await this.findIMDbId(actor)
+
+        if (!imdbId) {
+          return {
+            success: false,
+            source: this.createSourceEntry(startTime, 0),
+            data: null,
+            error: "Could not find IMDb ID for actor",
+          }
         }
-      }
 
-      console.log(`  Found IMDb ID: ${imdbId}`)
+        console.log(`  Found IMDb ID: ${imdbId}`)
+      }
 
       // Fetch the bio page
       const bioUrl = `${IMDB_BASE_URL}/name/${imdbId}/bio`
@@ -206,6 +213,13 @@ export class IMDbSource extends BaseDataSource {
       })
 
       if (response.status === 403 || response.status === 429) {
+        // Try archive.org fallback before giving up
+        console.log(`  IMDb blocked (${response.status}), trying archive.org fallback...`)
+        const archiveResult = await fetchFromArchive(url)
+        if (archiveResult.success && archiveResult.content) {
+          console.log(`  Archive.org fallback succeeded`)
+          return archiveResult.content
+        }
         throw new SourceAccessBlockedError(
           `IMDb returned ${response.status}`,
           this.type,

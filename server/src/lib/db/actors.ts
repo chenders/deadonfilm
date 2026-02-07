@@ -639,6 +639,7 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
 export interface ActorForEnrichmentQuery {
   id: number
   tmdb_id: number | null
+  imdb_person_id: string | null
   name: string
   birthday: Date | string | null
   deathday: Date | string
@@ -686,6 +687,7 @@ export async function getDeceasedActorsFromTopMovies(options: {
       SELECT DISTINCT ON (a.id)
         a.id,
         a.tmdb_id,
+        a.imdb_person_id,
         a.name,
         a.birthday,
         a.deathday,
