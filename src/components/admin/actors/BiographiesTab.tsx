@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import LoadingSpinner from "../../common/LoadingSpinner"
 import ErrorMessage from "../../common/ErrorMessage"
 import AdminHoverCard from "../ui/AdminHoverCard"
+import MobileCard from "../ui/MobileCard"
 import ActorPreviewCard from "../ActorPreviewCard"
 import { createActorSlug } from "../../../utils/slugify"
 import { useDebouncedSearchParam } from "../../../hooks/useDebouncedSearchParam"
@@ -399,7 +400,88 @@ export default function BiographiesTab() {
               </p>
             </div>
 
-            <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+            {/* Mobile card view */}
+            <div className="space-y-3 md:hidden">
+              {data.actors.length === 0 ? (
+                <p className="py-8 text-center text-admin-text-muted">
+                  No actors match the current filters
+                </p>
+              ) : (
+                data.actors.map((actor) => (
+                  <MobileCard
+                    key={actor.id}
+                    data-testid={`biography-card-${actor.id}`}
+                    title={actor.name}
+                    subtitle={`Popularity: ${actor.popularity?.toFixed(1) ?? "—"}`}
+                    selectable
+                    selected={selectedActorIds.has(actor.id)}
+                    onSelectionChange={(selected) => {
+                      setSelectedActorIds((prev) => {
+                        const next = new Set(prev)
+                        if (selected) {
+                          next.add(actor.id)
+                        } else {
+                          next.delete(actor.id)
+                        }
+                        return next
+                      })
+                    }}
+                    fields={[
+                      {
+                        label: "Biography",
+                        value: actor.hasBiography ? (
+                          <span className="text-admin-success">✓</span>
+                        ) : (
+                          <span className="text-admin-text-muted">✗</span>
+                        ),
+                      },
+                      {
+                        label: "Wikipedia",
+                        value: actor.hasWikipedia ? (
+                          <span className="text-admin-success">✓</span>
+                        ) : (
+                          <span className="text-admin-text-muted">✗</span>
+                        ),
+                      },
+                      {
+                        label: "IMDb",
+                        value: actor.hasImdb ? (
+                          <span className="text-admin-success">✓</span>
+                        ) : (
+                          <span className="text-admin-text-muted">✗</span>
+                        ),
+                      },
+                      {
+                        label: "Generated",
+                        value: formatRelativeTime(actor.generatedAt),
+                      },
+                    ]}
+                    actions={
+                      <>
+                        <button
+                          onClick={() => handleGenerateSingle(actor.id)}
+                          disabled={generatingActorId === actor.id || generateMutation.isPending}
+                          className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay disabled:opacity-50"
+                        >
+                          {generatingActorId === actor.id ? "..." : "Generate"}
+                        </button>
+                        <a
+                          href={`/actor/${createActorSlug(actor.name, actor.id)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay"
+                        >
+                          View
+                        </a>
+                      </>
+                    }
+                  />
+                ))
+              )}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="-mx-4 hidden overflow-x-auto px-4 md:mx-0 md:block md:px-0">
               <table className="w-full min-w-[600px] md:min-w-full">
                 <thead className="border-b border-admin-border bg-admin-surface-base">
                   <tr>

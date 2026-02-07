@@ -260,8 +260,9 @@ describe("EnrichmentRunDetailsPage", () => {
     renderPage()
 
     expect(screen.getByText("Actor Results")).toBeInTheDocument()
-    expect(screen.getByText("John Doe")).toBeInTheDocument()
-    expect(screen.getByText("Jane Smith")).toBeInTheDocument()
+    // Content appears in both mobile card view and desktop table
+    expect(screen.getAllByText("John Doe").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("Jane Smith").length).toBeGreaterThanOrEqual(1)
   })
 
   it("displays enriched status indicator", () => {
@@ -286,15 +287,17 @@ describe("EnrichmentRunDetailsPage", () => {
   it("displays actor costs", () => {
     renderPage()
 
-    expect(screen.getByText("$0.025")).toBeInTheDocument()
-    expect(screen.getByText("$0.010")).toBeInTheDocument()
+    // Content appears in both mobile card view and desktop table
+    expect(screen.getAllByText("$0.025").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("$0.010").length).toBeGreaterThanOrEqual(1)
   })
 
   it("displays processing times", () => {
     renderPage()
 
-    expect(screen.getByText("1500ms")).toBeInTheDocument()
-    expect(screen.getByText("800ms")).toBeInTheDocument()
+    // Content appears in both mobile card view and desktop table
+    expect(screen.getAllByText("1500ms").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("800ms").length).toBeGreaterThanOrEqual(1)
   })
 
   it("displays average time per actor", () => {

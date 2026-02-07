@@ -20,6 +20,7 @@ import {
   type ActorLogEntry,
 } from "../../hooks/admin/useEnrichmentRuns"
 import { createActorSlug } from "../../utils/slugify"
+import MobileCard from "../../components/admin/ui/MobileCard"
 
 export default function EnrichmentRunDetailsPage() {
   const { id } = useParams<{ id: string }>()
@@ -330,7 +331,75 @@ export default function EnrichmentRunDetailsPage() {
           {actorsError && <ErrorMessage message="Failed to load actor results" />}
           {actors && (
             <>
-              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+              {/* Mobile card view */}
+              <div className="space-y-3 md:hidden">
+                {actors.items.map((actor) => (
+                  <MobileCard
+                    key={actor.actor_id}
+                    data-testid={`enrichment-actor-card-${actor.actor_id}`}
+                    title={
+                      <Link
+                        to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}/death`}
+                        className="text-admin-interactive hover:text-admin-interactive-hover hover:underline"
+                      >
+                        {actor.actor_name}
+                      </Link>
+                    }
+                    subtitle={
+                      actor.was_enriched ? (
+                        <span className="text-admin-success">Enriched</span>
+                      ) : (
+                        <span className="text-admin-text-muted">Not enriched</span>
+                      )
+                    }
+                    fields={[
+                      {
+                        label: "Source",
+                        value: actor.winning_source || "—",
+                      },
+                      {
+                        label: "Cost",
+                        value: `$${parseFloat(actor.cost_usd).toFixed(3)}`,
+                      },
+                      {
+                        label: "Time",
+                        value:
+                          actor.processing_time_ms != null ? `${actor.processing_time_ms}ms` : "—",
+                      },
+                      ...(actor.error
+                        ? [
+                            {
+                              label: "Error",
+                              value: (
+                                <span className="text-xs text-red-400" title={actor.error}>
+                                  {actor.error}
+                                </span>
+                              ),
+                            },
+                          ]
+                        : []),
+                    ]}
+                    actions={
+                      actor.has_logs ? (
+                        <button
+                          onClick={() =>
+                            setSelectedActorForLogs({
+                              actorId: actor.actor_id,
+                              actorName: actor.actor_name,
+                            })
+                          }
+                          className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-interactive hover:bg-admin-surface-overlay"
+                        >
+                          View Logs
+                        </button>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </div>
+
+              {/* Desktop table view */}
+              <div className="-mx-4 hidden overflow-x-auto px-4 md:mx-0 md:block md:px-0">
                 <table className="min-w-[700px] text-sm md:min-w-full">
                   <thead className="border-b border-admin-border">
                     <tr>
@@ -368,7 +437,7 @@ export default function EnrichmentRunDetailsPage() {
                           ${parseFloat(actor.cost_usd).toFixed(3)}
                         </td>
                         <td className="px-3 py-2 text-right text-admin-text-secondary">
-                          {actor.processing_time_ms ? `${actor.processing_time_ms}ms` : "—"}
+                          {actor.processing_time_ms != null ? `${actor.processing_time_ms}ms` : "—"}
                         </td>
                         <td
                           className="max-w-xs truncate px-3 py-2 text-xs text-red-400"

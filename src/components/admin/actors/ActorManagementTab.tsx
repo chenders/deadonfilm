@@ -10,6 +10,7 @@ import {
   type ActorCoverageFilters,
 } from "../../../hooks/admin/useCoverage"
 import AdminHoverCard from "../ui/AdminHoverCard"
+import MobileCard from "../ui/MobileCard"
 import ActorPreviewCard from "../ActorPreviewCard"
 import { useDebouncedSearchParam } from "../../../hooks/useDebouncedSearchParam"
 import { createActorSlug } from "../../../utils/slugify"
@@ -409,7 +410,87 @@ export default function ActorManagementTab() {
               </p>
             </div>
 
-            <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+            {/* Mobile card view */}
+            <div className="space-y-3 md:hidden">
+              {data.items.length === 0 ? (
+                <p className="py-8 text-center text-admin-text-muted">
+                  No actors match the current filters
+                </p>
+              ) : (
+                data.items.map((actor) => (
+                  <MobileCard
+                    key={actor.id}
+                    data-testid={`actor-card-${actor.id}`}
+                    title={actor.name}
+                    subtitle={
+                      actor.deathday
+                        ? `Died ${new Date(actor.deathday).toLocaleDateString()}${actor.age_at_death ? ` (age ${actor.age_at_death})` : ""}`
+                        : "Death date unknown"
+                    }
+                    selectable
+                    selected={selectedActorIds.has(actor.id)}
+                    onSelectionChange={(selected) => {
+                      setSelectedActorIds((prev) => {
+                        const next = new Set(prev)
+                        if (selected) {
+                          next.add(actor.id)
+                        } else {
+                          next.delete(actor.id)
+                        }
+                        return next
+                      })
+                    }}
+                    fields={[
+                      {
+                        label: "Popularity",
+                        value: actor.popularity?.toFixed(1) ?? "—",
+                      },
+                      {
+                        label: "Death Page",
+                        value: actor.has_detailed_death_info ? (
+                          <span className="text-admin-success">✓</span>
+                        ) : (
+                          <span className="text-admin-text-muted">✗</span>
+                        ),
+                      },
+                      { label: "Cause", value: actor.cause_of_death || "—" },
+                      {
+                        label: "Enriched",
+                        value: formatRelativeTime(actor.enriched_at),
+                      },
+                    ]}
+                    actions={
+                      <>
+                        <Link
+                          to={`/admin/actors/${actor.id}`}
+                          className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleRegenerateBiography(actor.id)}
+                          disabled={regeneratingBiography !== null}
+                          className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay disabled:opacity-50"
+                        >
+                          {regeneratingBiography === actor.id ? "..." : "Bio"}
+                        </button>
+                        <a
+                          href={`/actor/${createActorSlug(actor.name, actor.id)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay"
+                        >
+                          View
+                        </a>
+                      </>
+                    }
+                  />
+                ))
+              )}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="-mx-4 hidden overflow-x-auto px-4 md:mx-0 md:block md:px-0">
               <table className="w-full min-w-[600px] md:min-w-full">
                 <thead className="border-b border-admin-border bg-admin-surface-base">
                   <tr>
