@@ -59,7 +59,10 @@ function PersonPhoto({ profilePath, name }: { profilePath: string | null; name: 
   const profile = getProfileUrls(profilePath)
 
   return (
-    <div className="-my-1 h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-brown-medium/10">
+    <div
+      data-testid="person-photo"
+      className="-my-1 h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-brown-medium/10"
+    >
       {profile ? (
         <img
           src={profile.src}
@@ -205,7 +208,10 @@ export default function SearchResult({
         {/* Mortality/death indicator */}
         {isPerson ? (
           result.is_deceased && (
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center text-accent">
+            <div
+              data-testid="person-deceased-indicator"
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center text-accent"
+            >
               <SkullIcon size={20} />
             </div>
           )

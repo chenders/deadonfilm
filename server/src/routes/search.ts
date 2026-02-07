@@ -119,8 +119,11 @@ function escapeRegex(str: string): string {
  * Search for actors in the local database using ILIKE with pg_trgm index.
  */
 async function searchActorsLocal(query: string, limit: number): Promise<SearchResult[]> {
+  const trimmed = query.trim()
+  if (trimmed.length < 2) return []
+
   const db = getPool()
-  const pattern = `%${query}%`
+  const pattern = `%${trimmed}%`
 
   const result = await db.query<{
     id: number
@@ -138,7 +141,7 @@ async function searchActorsLocal(query: string, limit: number): Promise<SearchRe
        CASE WHEN LOWER(name) = LOWER($2) THEN 0 ELSE 1 END,
        tmdb_popularity DESC NULLS LAST
      LIMIT $3`,
-    [pattern, query.trim(), limit]
+    [pattern, trimmed, limit]
   )
 
   return result.rows.map((row) => ({

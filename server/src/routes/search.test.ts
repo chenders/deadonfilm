@@ -496,6 +496,39 @@ describe("searchMovies route", () => {
       expect(calledWith.results[0].birth_year).toBe(1956)
     })
 
+    it("returns empty results for very short person queries", async () => {
+      mockReq = { query: { q: "A", type: "person" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      const calledWith = jsonSpy.mock.calls[0][0]
+      expect(calledWith.results).toHaveLength(0)
+      expect(mockQuery).not.toHaveBeenCalled()
+    })
+
+    it("trims whitespace from person search query", async () => {
+      mockQuery.mockResolvedValue({
+        rows: [
+          {
+            id: 500,
+            name: "Tom Hanks",
+            birthday: "1956-07-09",
+            deathday: null,
+            profile_path: "/tom-hanks.jpg",
+            tmdb_popularity: 80,
+          },
+        ],
+      })
+      mockReq = { query: { q: "  Tom Hanks  ", type: "person" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      // Verify the query was called with trimmed values
+      const queryCall = mockQuery.mock.calls[0]
+      expect(queryCall[1][0]).toBe("%Tom Hanks%") // trimmed ILIKE pattern
+      expect(queryCall[1][1]).toBe("Tom Hanks") // trimmed exact match
+    })
+
     it("does not call TMDB API for person search", async () => {
       mockQuery.mockResolvedValue({ rows: [] })
       mockReq = { query: { q: "Tom Hanks", type: "person" } }

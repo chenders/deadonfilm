@@ -243,8 +243,7 @@ describe("SearchResult", () => {
 
       const img = screen.getByRole("img", { name: "John Wayne" })
       expect(img).toBeInTheDocument()
-      // Circular photo should have rounded-full class on parent
-      expect(img.parentElement).toHaveClass("rounded-full")
+      expect(screen.getByTestId("person-photo")).toBeInTheDocument()
     })
 
     it("renders living person with birth year", () => {
@@ -259,24 +258,23 @@ describe("SearchResult", () => {
       render(<SearchResult result={mockPersonNoPhoto} {...defaultProps} />)
 
       expect(screen.queryByRole("img")).not.toBeInTheDocument()
-      // PersonIcon should be present as placeholder inside circular container
-      const container = document.querySelector(".rounded-full")
-      expect(container?.querySelector("svg")).toBeInTheDocument()
+      // PersonIcon should be present as placeholder inside person-photo container
+      const container = screen.getByTestId("person-photo")
+      expect(container.querySelector("svg")).toBeInTheDocument()
     })
 
     it("shows skull icon for deceased person", () => {
       render(<SearchResult result={mockDeceasedPerson} {...defaultProps} />)
 
-      const skullContainer = document.querySelector('[class*="text-accent"]')
-      expect(skullContainer).toBeInTheDocument()
-      expect(skullContainer?.querySelector("svg")).toBeInTheDocument()
+      const indicator = screen.getByTestId("person-deceased-indicator")
+      expect(indicator).toBeInTheDocument()
+      expect(indicator.querySelector("svg")).toBeInTheDocument()
     })
 
     it("does not show skull icon for living person", () => {
       render(<SearchResult result={mockLivingPerson} {...defaultProps} />)
 
-      const skullContainers = document.querySelectorAll('[class*="text-accent"]')
-      expect(skullContainers.length).toBe(0)
+      expect(screen.queryByTestId("person-deceased-indicator")).not.toBeInTheDocument()
     })
 
     it("does not show mortality hint skulls for person results", () => {
