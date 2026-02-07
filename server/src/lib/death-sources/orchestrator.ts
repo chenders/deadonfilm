@@ -38,16 +38,17 @@ import { GoogleSearchSource } from "./sources/google.js"
 import { BingSearchSource } from "./sources/bing.js"
 import { WebSearchBase } from "./sources/web-search-base.js"
 import { FindAGraveSource } from "./sources/findagrave.js"
-// LegacySource disabled - 0% success rate
+import { LegacySource } from "./sources/legacy.js"
 import { TelevisionAcademySource } from "./sources/television-academy.js"
-// IBDBSource removed - consistently blocked by anti-scraping protection
+import { IBDBSource } from "./sources/ibdb.js"
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
 import { IMDbSource } from "./sources/imdb.js"
 import { VarietySource } from "./sources/variety.js"
 import { DeadlineSource } from "./sources/deadline.js"
 import { NewsAPISource } from "./sources/newsapi.js"
-// Disabled sources (0% success rate) - AlloCineSource, DoubanSource, SoompiSource, ChroniclingAmericaSource, FilmiBeatSource
+import { ChroniclingAmericaSource } from "./sources/chronicling-america.js"
+// Disabled sources (0% success rate) - AlloCineSource, DoubanSource, SoompiSource, FilmiBeatSource
 import { TroveSource } from "./sources/trove.js"
 import { EuropeanaSource } from "./sources/europeana.js"
 import { InternetArchiveSource } from "./sources/internet-archive.js"
@@ -224,6 +225,7 @@ export class DeathEnrichmentOrchestrator {
       new IMDbSource(), // IMDb bio pages (scraped)
       new TelevisionAcademySource(), // Official TV industry deaths
       new BFISightSoundSource(), // International film obituaries
+      new IBDBSource(), // Broadway theatre database (via DuckDuckGo + archive.org)
 
       // Phase 2: Web Search (with link following)
       // DuckDuckGo is free, Google and Bing have free tiers but may incur costs
@@ -241,16 +243,17 @@ export class DeathEnrichmentOrchestrator {
 
       // Phase 4: Obituary sites
       new FindAGraveSource(),
-      // LegacySource disabled - 0% success rate
+      new LegacySource(), // Legacy.com obituaries (via DuckDuckGo + archive.org)
 
       // Phase 5: International sources (regional film databases)
-      // AlloCineSource, DoubanSource, SoompiSource, ChroniclingAmericaSource disabled - 0% success rate
+      // AlloCineSource, DoubanSource, SoompiSource disabled - 0% success rate
       // FilmiBeatSource removed - consistently blocked by anti-scraping protection (403)
 
       // Phase 6: Historical archives (for pre-internet deaths)
       new TroveSource(), // Australian newspapers (requires API key)
       new EuropeanaSource(), // European archives (requires API key)
       new InternetArchiveSource(), // Books, documents, historical media
+      new ChroniclingAmericaSource(), // Library of Congress newspapers (1756-1963)
 
       // Phase 7: Genealogical records (good for historical death dates/places)
       new FamilySearchSource(), // FamilySearch API (requires API key)

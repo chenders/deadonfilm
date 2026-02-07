@@ -76,6 +76,8 @@ const ARCHIVE_FALLBACK_DOMAINS = [
   "variety.com",
   "deadline.com",
   "apnews.com",
+  "legacy.com",
+  "ibdb.com",
 ]
 
 /**

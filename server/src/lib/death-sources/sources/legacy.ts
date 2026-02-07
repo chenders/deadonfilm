@@ -8,21 +8,24 @@
  * - Funeral/service information
  * - Family information that may include cause of death
  *
+ * Uses DuckDuckGo HTML search to find Legacy.com obituary URLs,
+ * then fetches and parses the obituary page directly.
+ * Falls back to archive.org if the obituary page returns 403.
+ *
  * Free to access via web scraping (no API key required).
  */
 
-import {
-  BaseDataSource,
-  CIRCUMSTANCE_KEYWORDS,
-  DEATH_KEYWORDS,
-  NOTABLE_FACTOR_KEYWORDS,
-} from "../base-source.js"
+import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
-
-const LEGACY_SEARCH_URL = "https://www.legacy.com/search"
-const LEGACY_BASE_URL = "https://www.legacy.com"
+import { fetchFromArchive } from "../archive-fallback.js"
+import {
+  extractLocation,
+  extractNotableFactors,
+  extractDeathSentences,
+  extractUrlFromSearchResults,
+} from "./news-utils.js"
 
 /**
  * Legacy.com source for modern obituaries.
@@ -39,12 +42,19 @@ export class LegacySource extends BaseDataSource {
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
 
-    // Parse name parts for search
-    const nameParts = actor.name.split(" ")
-    const firstName = nameParts[0]
-    const lastName = nameParts.slice(1).join(" ")
+    // Only process deceased actors
+    if (!actor.deathday) {
+      return {
+        success: false,
+        source: this.createSourceEntry(startTime, 0),
+        data: null,
+        error: "Actor is not deceased",
+      }
+    }
 
-    if (!lastName) {
+    // Need at least a last name for search
+    const nameParts = actor.name.split(" ")
+    if (nameParts.length < 2) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0),
@@ -53,40 +63,28 @@ export class LegacySource extends BaseDataSource {
       }
     }
 
-    // Build search URL
-    const deathYear = actor.deathday ? new Date(actor.deathday).getFullYear() : null
-
-    const searchParams = new URLSearchParams({
-      firstName: firstName,
-      lastName: lastName,
-      countryId: "1", // US
-    })
-
-    // Legacy.com uses date ranges for search
-    if (deathYear) {
-      // Search within 1 year of death date
-      searchParams.set("dateRange", "Custom")
-      searchParams.set("startDate", `${deathYear - 1}-01-01`)
-      searchParams.set("endDate", `${deathYear + 1}-12-31`)
-    }
-
-    const searchUrl = `${LEGACY_SEARCH_URL}?${searchParams.toString()}`
-
     try {
-      console.log(`Legacy.com search for: ${actor.name}`)
+      // Search via DuckDuckGo HTML (more scraping-friendly than legacy.com's SPA search)
+      const deathYear = new Date(actor.deathday).getFullYear()
+      const searchQuery = `site:legacy.com "${actor.name}" obituary ${deathYear}`
+      const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
 
-      // Search for obituaries
-      const searchResponse = await fetch(searchUrl, {
+      const searchResponse = await fetch(ddgSearchUrl, {
         headers: {
           "User-Agent": this.userAgent,
           Accept: "text/html,application/xhtml+xml",
         },
+        signal: this.createTimeoutSignal(),
       })
+
+      if (searchResponse.status === 403) {
+        throw new SourceAccessBlockedError(`Search blocked (403)`, this.type, ddgSearchUrl, 403)
+      }
 
       if (!searchResponse.ok) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, searchUrl),
+          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
           data: null,
           error: `Search failed: HTTP ${searchResponse.status}`,
         }
@@ -94,46 +92,32 @@ export class LegacySource extends BaseDataSource {
 
       const searchHtml = await searchResponse.text()
 
-      // Find obituary links in search results
-      const obituaryUrl = this.extractObituaryUrl(searchHtml, actor)
+      // Find Legacy.com obituary URLs in search results
+      const obituaryUrl = this.extractLegacyUrl(searchHtml, actor)
 
       if (!obituaryUrl) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, searchUrl),
+          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
           data: null,
-          error: "No matching obituary found",
+          error: "No Legacy.com obituary found in search results",
         }
       }
 
-      console.log(`  Found obituary: ${obituaryUrl}`)
-
-      // Wait before fetching obituary page
-      await this.waitForRateLimit()
-
       // Fetch the obituary page
-      const obituaryResponse = await fetch(obituaryUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "text/html,application/xhtml+xml",
-        },
-      })
+      await this.waitForRateLimit()
+      const obituaryData = await this.fetchObituaryPage(obituaryUrl, actor)
 
-      if (!obituaryResponse.ok) {
+      if (!obituaryData) {
         return {
           success: false,
           source: this.createSourceEntry(startTime, 0.1, obituaryUrl),
           data: null,
-          error: `Obituary page failed: HTTP ${obituaryResponse.status}`,
+          error: "Could not fetch Legacy.com obituary",
         }
       }
 
-      const obituaryHtml = await obituaryResponse.text()
-
-      // Extract death information from obituary page
-      const data = this.parseObituaryPage(obituaryHtml)
-
-      if (!data.circumstances && !data.locationOfDeath) {
+      if (!obituaryData.circumstances && !obituaryData.locationOfDeath) {
         return {
           success: false,
           source: this.createSourceEntry(startTime, 0.2, obituaryUrl),
@@ -142,28 +126,32 @@ export class LegacySource extends BaseDataSource {
         }
       }
 
-      // Calculate confidence based on what we found
+      // Calculate confidence
       let confidence = 0.4 // Legacy.com obituaries tend to be reliable
-      if (data.circumstances) confidence += 0.3
-      if (data.locationOfDeath) confidence += 0.1
-      if (data.notableFactors.length > 0) confidence += 0.1
+      if (obituaryData.circumstances) confidence += 0.3
+      if (obituaryData.locationOfDeath) confidence += 0.1
+      if (obituaryData.notableFactors.length > 0) confidence += 0.1
 
       return {
         success: true,
-        source: this.createSourceEntry(startTime, confidence, obituaryUrl),
+        source: this.createSourceEntry(startTime, Math.min(confidence, 0.85), obituaryUrl),
         data: {
-          circumstances: data.circumstances,
+          circumstances: obituaryData.circumstances,
           rumoredCircumstances: null,
-          notableFactors: data.notableFactors,
+          notableFactors: obituaryData.notableFactors,
           relatedCelebrities: [],
-          locationOfDeath: data.locationOfDeath,
-          additionalContext: data.fullText,
+          locationOfDeath: obituaryData.locationOfDeath,
+          additionalContext: "Source: Legacy.com (obituary database)",
         },
       }
     } catch (error) {
+      if (error instanceof SourceAccessBlockedError) {
+        throw error
+      }
+
       return {
         success: false,
-        source: this.createSourceEntry(startTime, 0, searchUrl),
+        source: this.createSourceEntry(startTime, 0),
         data: null,
         error: error instanceof Error ? error.message : "Unknown error",
       }
@@ -171,193 +159,67 @@ export class LegacySource extends BaseDataSource {
   }
 
   /**
-   * Extract obituary URL from search results.
+   * Extract Legacy.com URL from DuckDuckGo search results.
    */
-  private extractObituaryUrl(html: string, actor: ActorForEnrichment): string | null {
-    // Look for obituary links in the search results
-    // Legacy.com uses various URL patterns
-    const obituaryPatterns = [/href="(\/us\/obituaries\/[^"]+)"/g, /href="(\/obituaries\/[^"]+)"/g]
+  private extractLegacyUrl(html: string, actor: ActorForEnrichment): string | null {
+    const urlPattern = /https?:\/\/(?:www\.)?legacy\.com\/(?:us\/)?obituaries\/[^"'\s<>]+/gi
+    return extractUrlFromSearchResults(html, urlPattern, actor)
+  }
 
-    const matches: string[] = []
+  /**
+   * Fetch and parse a Legacy.com obituary page.
+   */
+  private async fetchObituaryPage(
+    url: string,
+    actor: ActorForEnrichment
+  ): Promise<ObituaryData | null> {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": this.userAgent,
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: this.createTimeoutSignal(),
+    })
 
-    for (const pattern of obituaryPatterns) {
-      let match
-      while ((match = pattern.exec(html)) !== null) {
-        matches.push(match[1])
+    if (response.status === 403) {
+      // Try archive.org fallback before giving up
+      console.log(`  Legacy.com blocked (403), trying archive.org fallback...`)
+      const archiveResult = await fetchFromArchive(url)
+      if (archiveResult.success && archiveResult.content) {
+        console.log(`  Archive.org fallback succeeded for Legacy.com`)
+        return this.parseObituaryPage(archiveResult.content, actor)
       }
+      throw new SourceAccessBlockedError(`Legacy.com blocked access (403)`, this.type, url, 403)
     }
 
-    if (matches.length === 0) {
+    if (!response.ok) {
       return null
     }
 
-    // Try to find the best match based on name
-    const normalizedActorName = actor.name.toLowerCase().replace(/[^a-z]/g, "")
-
-    for (const obituaryPath of matches) {
-      // Extract name from URL path
-      const urlName =
-        obituaryPath.split("/").pop()?.replace(/-/g, "").replace(/\d+/g, "").toLowerCase() || ""
-
-      if (urlName.includes(normalizedActorName) || normalizedActorName.includes(urlName)) {
-        return `${LEGACY_BASE_URL}${obituaryPath}`
-      }
-    }
-
-    // If no good match, return the first result
-    return `${LEGACY_BASE_URL}${matches[0]}`
+    const html = await response.text()
+    return this.parseObituaryPage(html, actor)
   }
 
   /**
-   * Parse obituary page for death information.
+   * Parse obituary page HTML for death information.
    */
-  private parseObituaryPage(html: string): ParsedObituaryData {
-    const result: ParsedObituaryData = {
-      circumstances: null,
-      locationOfDeath: null,
-      notableFactors: [],
-      fullText: null,
+  private parseObituaryPage(html: string, actor: ActorForEnrichment): ObituaryData {
+    const text = htmlToText(html)
+
+    // Extract death-related sentences using shared utility
+    const deathSentences = extractDeathSentences(text, actor, 4)
+
+    return {
+      circumstances: deathSentences.length > 0 ? deathSentences.join(". ") : null,
+      locationOfDeath: extractLocation(text),
+      notableFactors: extractNotableFactors(text),
     }
-
-    // Extract obituary text - Legacy.com uses various class names
-    const textPatterns = [
-      /<div[^>]*class="[^"]*obit-text[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-      /<div[^>]*class="[^"]*obituary-text[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-      /<article[^>]*>([\s\S]*?)<\/article>/i,
-      /<div[^>]*class="[^"]*obit-body[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-    ]
-
-    let obituaryText = ""
-
-    for (const pattern of textPatterns) {
-      const match = html.match(pattern)
-      if (match) {
-        obituaryText = this.cleanHtml(match[1])
-        if (obituaryText.length > 50) {
-          break
-        }
-      }
-    }
-
-    if (obituaryText) {
-      result.fullText = obituaryText.substring(0, 2000) // Limit length
-
-      // Extract death circumstances
-      if (this.containsDeathInfo(obituaryText)) {
-        result.circumstances = this.extractCircumstances(obituaryText)
-      }
-
-      // Extract notable factors
-      result.notableFactors = this.extractNotableFactors(obituaryText)
-    }
-
-    // Extract location - look for common patterns
-    const locationPatterns = [
-      // eslint-disable-next-line security/detect-unsafe-regex -- Bounded quantifiers prevent catastrophic backtracking
-      /(?:died|passed away)[^.]{0,50}(?:in|at)\s+([A-Z][a-zA-Z\s,]{1,50}(?:,\s*[A-Z]{2})?)/i,
-      // eslint-disable-next-line security/detect-unsafe-regex -- Bounded quantifiers prevent catastrophic backtracking
-      /([A-Z][a-zA-Z]+(?:,\s*[A-Z]{2})?)\s*[-–]\s*[A-Z][a-z]+\s+\d/,
-    ]
-
-    for (const pattern of locationPatterns) {
-      const match = html.match(pattern)
-      if (match) {
-        const location = match[1].trim()
-        if (location.length < 60) {
-          result.locationOfDeath = location
-          break
-        }
-      }
-    }
-
-    return result
-  }
-
-  /**
-   * Check if text contains death-related information.
-   */
-  private containsDeathInfo(text: string): boolean {
-    const lower = text.toLowerCase()
-    return DEATH_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase()))
-  }
-
-  /**
-   * Extract circumstances from obituary text.
-   */
-  private extractCircumstances(text: string): string | null {
-    // Find sentences mentioning death cause or manner
-    const sentences = text.split(/[.!?]+/).map((s) => s.trim())
-    const deathSentences = sentences.filter((s) => this.containsDeathInfo(s))
-
-    if (deathSentences.length === 0) {
-      return null
-    }
-
-    // Look for sentences with more specific cause information
-    const causeKeywords = [
-      "cause of death",
-      "died from",
-      "died of",
-      "passed away from",
-      "succumbed to",
-      "lost battle",
-      "after battling",
-      "complications from",
-      "following",
-    ]
-
-    const lower = text.toLowerCase()
-    for (const keyword of causeKeywords) {
-      if (lower.includes(keyword)) {
-        // Find the sentence containing this keyword
-        for (const sentence of deathSentences) {
-          if (sentence.toLowerCase().includes(keyword)) {
-            return sentence.replace(/\s+/g, " ").trim()
-          }
-        }
-      }
-    }
-
-    // Return first 2 relevant sentences
-    return deathSentences.slice(0, 2).join(". ").replace(/\s+/g, " ").trim()
-  }
-
-  /**
-   * Extract notable factors from obituary text.
-   */
-  private extractNotableFactors(text: string): string[] {
-    const factors: string[] = []
-    const lower = text.toLowerCase()
-
-    for (const keyword of NOTABLE_FACTOR_KEYWORDS) {
-      if (lower.includes(keyword.toLowerCase())) {
-        factors.push(keyword)
-      }
-    }
-
-    // Also check circumstance keywords
-    for (const keyword of CIRCUMSTANCE_KEYWORDS) {
-      if (lower.includes(keyword.toLowerCase())) {
-        if (!factors.includes(keyword)) {
-          factors.push(keyword)
-        }
-      }
-    }
-
-    return [...new Set(factors)].slice(0, 5)
-  }
-
-  /**
-   * Clean HTML tags and entities from text.
-   */
-  private cleanHtml(html: string): string {
-    return htmlToText(html)
   }
 }
 
-interface ParsedObituaryData {
+interface ObituaryData {
   circumstances: string | null
   locationOfDeath: string | null
   notableFactors: string[]
-  fullText: string | null
 }

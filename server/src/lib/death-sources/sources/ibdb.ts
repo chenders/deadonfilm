@@ -7,20 +7,23 @@
  * - Theatrical credits and roles
  * - Professional biographical information
  *
- * Note: IBDB has anti-scraping protection that may return 403 errors.
- * This source uses browser-like headers to attempt access. If blocked,
- * it flags the source for review to investigate alternative access methods.
+ * Note: IBDB blocks direct scraping (403). This source uses DuckDuckGo
+ * HTML search to find IBDB person URLs, then fetches the page directly
+ * with archive.org fallback on 403.
  *
- * Free to access (when accessible) via web scraping (no API key required).
+ * IBDB returns circumstances: null — it only provides career context
+ * (Broadway credits) and death date verification. Still useful as
+ * supplementary data since the orchestrator merges data from multiple sources.
+ *
+ * Free to access via web scraping (no API key required).
  */
 
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
-
-const IBDB_BASE_URL = "https://www.ibdb.com"
-const IBDB_SEARCH_URL = `${IBDB_BASE_URL}/search`
+import { fetchFromArchive } from "../archive-fallback.js"
+import { extractUrlFromSearchResults } from "./news-utils.js"
 
 /**
  * IBDB (Internet Broadway Database) source for Broadway actors.
@@ -34,47 +37,28 @@ export class IBDBSource extends BaseDataSource {
   // Conservative rate limit to be respectful
   protected minDelayMs = 2000
 
-  /**
-   * Browser-like headers to avoid 403 blocking.
-   */
-  private readonly browserHeaders = {
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    Accept:
-      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Cache-Control": "no-cache",
-    Pragma: "no-cache",
-    "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"macOS"',
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Upgrade-Insecure-Requests": "1",
-  }
-
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
 
     try {
-      console.log(`IBDB search for: ${actor.name}`)
+      // Search via DuckDuckGo HTML (IBDB blocks direct scraping)
+      const searchQuery = `site:ibdb.com "${actor.name}" broadway`
+      const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
 
-      // Search for the actor
-      const searchUrl = `${IBDB_SEARCH_URL}?q=${encodeURIComponent(actor.name)}&type=person`
-
-      const searchResponse = await fetch(searchUrl, {
-        headers: this.browserHeaders,
+      const searchResponse = await fetch(ddgSearchUrl, {
+        headers: {
+          "User-Agent": this.userAgent,
+          Accept: "text/html,application/xhtml+xml",
+        },
+        signal: this.createTimeoutSignal(),
       })
 
       // Check for blocking
       if (searchResponse.status === 403) {
         throw new SourceAccessBlockedError(
-          `IBDB returned 403 Forbidden - anti-scraping protection active`,
+          `DuckDuckGo search blocked (403)`,
           this.type,
-          searchUrl,
+          ddgSearchUrl,
           403
         )
       }
@@ -82,7 +66,7 @@ export class IBDBSource extends BaseDataSource {
       if (!searchResponse.ok) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, searchUrl),
+          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
           data: null,
           error: `HTTP ${searchResponse.status}`,
         }
@@ -90,19 +74,17 @@ export class IBDBSource extends BaseDataSource {
 
       const searchHtml = await searchResponse.text()
 
-      // Find matching person in search results
-      const personUrl = this.findPersonInResults(searchHtml, actor)
+      // Find IBDB person URL in search results
+      const personUrl = this.extractIBDBUrl(searchHtml, actor)
 
       if (!personUrl) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, searchUrl),
+          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
           data: null,
           error: "Actor not found in IBDB search results",
         }
       }
-
-      console.log(`  Found IBDB page: ${personUrl}`)
 
       // Fetch the person page
       await this.waitForRateLimit()
@@ -144,14 +126,12 @@ export class IBDBSource extends BaseDataSource {
       }
     } catch (error) {
       if (error instanceof SourceAccessBlockedError) {
-        // Log this specifically - source needs review for alternative access
-        console.warn(`  IBDB BLOCKED: ${error.message}`)
         throw error
       }
 
       return {
         success: false,
-        source: this.createSourceEntry(startTime, 0, IBDB_SEARCH_URL),
+        source: this.createSourceEntry(startTime, 0),
         data: null,
         error: error instanceof Error ? error.message : "Unknown error",
       }
@@ -159,66 +139,36 @@ export class IBDBSource extends BaseDataSource {
   }
 
   /**
-   * Find matching person URL in search results.
+   * Extract IBDB person URL from DuckDuckGo search results.
    */
-  private findPersonInResults(html: string, actor: ActorForEnrichment): string | null {
-    // IBDB person URLs: /broadway-cast-staff/{name}-{id}
-    const personPattern = /href="(\/broadway-cast-staff\/[^"]+)"/g
-    const matches: string[] = []
-
-    let match
-    while ((match = personPattern.exec(html)) !== null) {
-      matches.push(match[1])
-    }
-
-    if (matches.length === 0) {
-      return null
-    }
-
-    // Normalize actor name for matching
-    const normalizedName = actor.name.toLowerCase().replace(/[^a-z]/g, "")
-    const nameParts = actor.name.toLowerCase().split(" ")
-    const lastName = nameParts[nameParts.length - 1]
-    const firstName = nameParts[0]
-
-    // Try to find best match
-    for (const personPath of matches) {
-      const pathName = personPath
-        .replace("/broadway-cast-staff/", "")
-        .replace(/-\d+$/, "") // Remove ID
-        .replace(/-/g, "")
-
-      // Exact match
-      if (pathName === normalizedName) {
-        return `${IBDB_BASE_URL}${personPath}`
-      }
-
-      // Contains first and last name
-      if (pathName.includes(firstName) && pathName.includes(lastName)) {
-        return `${IBDB_BASE_URL}${personPath}`
-      }
-    }
-
-    // Return first result as fallback if it contains the last name
-    for (const personPath of matches) {
-      if (personPath.toLowerCase().includes(lastName)) {
-        return `${IBDB_BASE_URL}${personPath}`
-      }
-    }
-
-    return null
+  private extractIBDBUrl(html: string, actor: ActorForEnrichment): string | null {
+    const urlPattern = /https?:\/\/(?:www\.)?ibdb\.com\/broadway-cast-staff\/[^"'\s<>]+/gi
+    return extractUrlFromSearchResults(html, urlPattern, actor)
   }
 
   /**
    * Fetch and parse a person's IBDB page.
+   * Falls back to archive.org on 403.
    */
   private async fetchPersonPage(url: string): Promise<IBDBPersonData | null> {
     try {
       const response = await fetch(url, {
-        headers: this.browserHeaders,
+        headers: {
+          "User-Agent": this.userAgent,
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        signal: this.createTimeoutSignal(),
       })
 
       if (response.status === 403) {
+        // Try archive.org fallback before giving up
+        console.log(`  IBDB blocked (403), trying archive.org fallback...`)
+        const archiveResult = await fetchFromArchive(url)
+        if (archiveResult.success && archiveResult.content) {
+          console.log(`  Archive.org fallback succeeded for IBDB`)
+          return this.parsePersonPage(archiveResult.content)
+        }
         throw new SourceAccessBlockedError(
           `IBDB returned 403 Forbidden on person page`,
           this.type,
