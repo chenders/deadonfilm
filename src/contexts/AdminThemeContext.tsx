@@ -53,13 +53,30 @@ export function AdminThemeProvider({ children, defaultTheme = "dark" }: AdminThe
     return getSystemTheme()
   })
 
-  // Apply theme class to document
+  // Apply theme class and background to document
   useEffect(() => {
     const root = document.documentElement
     if (resolvedTheme === "light") {
       root.classList.add("admin-light")
     } else {
       root.classList.remove("admin-light")
+    }
+
+    // Set background on html+body to prevent white bleed-through
+    // when content overflows horizontally on mobile.
+    // Derive the color from the CSS variable so there's a single source of truth.
+    const previousRootBg = root.style.backgroundColor
+    const previousBodyBg = document.body.style.backgroundColor
+    const bgColor = getComputedStyle(root).getPropertyValue("--admin-surface-base").trim()
+
+    if (bgColor) {
+      root.style.backgroundColor = bgColor
+      document.body.style.backgroundColor = bgColor
+    }
+
+    return () => {
+      root.style.backgroundColor = previousRootBg
+      document.body.style.backgroundColor = previousBodyBg
     }
   }, [resolvedTheme])
 
