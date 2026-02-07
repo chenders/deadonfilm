@@ -310,7 +310,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
     const result = await db.query<ActorRow>(
       `SELECT
         a.id, a.tmdb_id, a.imdb_person_id, a.name, a.birthday, a.deathday,
-        a.cause_of_death, a.cause_of_death_details, a.popularity,
+        a.cause_of_death, a.cause_of_death_details, a.tmdb_popularity AS popularity,
         c.circumstances, c.notable_factors
       FROM actors a
       LEFT JOIN actor_death_circumstances c ON c.actor_id = a.id
