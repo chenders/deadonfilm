@@ -82,6 +82,20 @@ describe("BFISightSoundSource", () => {
       expect(result.error).toContain("No death date")
     })
 
+    it("returns early for deaths before 2015", async () => {
+      const oldActor: ActorForEnrichment = {
+        ...testActor,
+        name: "Christopher Reeve",
+        deathday: "2004-10-10",
+      }
+
+      const result = await source.lookup(oldActor)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("BFI memoriam lists not available before 2015")
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
     it("returns error when memoriam page is not found and alternate year also fails", async () => {
       // First call returns 404
       mockFetch.mockResolvedValueOnce({

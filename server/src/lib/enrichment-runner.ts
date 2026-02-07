@@ -107,12 +107,14 @@ export interface EnrichmentStats {
 interface ActorRow {
   id: number
   tmdb_id: number | null
+  imdb_person_id: string | null
   name: string
   birthday: Date | string | null
   deathday: Date | string
   cause_of_death: string | null
   cause_of_death_details: string | null
   tmdb_popularity: number | null
+  dof_popularity: number | null
   circumstances: string | null
   notable_factors: string[] | null
   movie_title?: string
@@ -302,12 +304,13 @@ export class EnrichmentRunner {
       const actorsToEnrich: ActorForEnrichment[] = actors.map((a) => ({
         id: a.id,
         tmdbId: a.tmdb_id,
+        imdbPersonId: a.imdb_person_id ?? null,
         name: a.name,
         birthday: normalizeDateToString(a.birthday),
         deathday: normalizeDateToString(a.deathday) || "",
         causeOfDeath: a.cause_of_death,
         causeOfDeathDetails: a.cause_of_death_details,
-        popularity: a.tmdb_popularity,
+        popularity: a.dof_popularity ?? a.tmdb_popularity,
       }))
 
       // Run enrichment - process actors one by one
@@ -696,8 +699,8 @@ export class EnrichmentRunner {
       }
 
       actors.sort((a, b) => {
-        const popA = a.tmdb_popularity ?? 0
-        const popB = b.tmdb_popularity ?? 0
+        const popA = a.dof_popularity ?? a.tmdb_popularity ?? 0
+        const popB = b.dof_popularity ?? b.tmdb_popularity ?? 0
         return popB - popA
       })
     }
@@ -717,12 +720,14 @@ export class EnrichmentRunner {
       `SELECT
         a.id,
         a.tmdb_id,
+        a.imdb_person_id,
         a.name,
         a.birthday,
         a.deathday,
         a.cause_of_death,
         a.cause_of_death_details,
-        a.tmdb_popularity as popularity,
+        a.tmdb_popularity,
+        a.dof_popularity,
         c.circumstances,
         c.notable_factors
       FROM actors a
@@ -748,6 +753,7 @@ export class EnrichmentRunner {
       `SELECT
         a.id,
         a.tmdb_id,
+        a.imdb_person_id,
         a.name,
         a.birthday,
         a.deathday,
@@ -785,6 +791,7 @@ export class EnrichmentRunner {
       SELECT
         a.id,
         a.tmdb_id,
+        a.imdb_person_id,
         a.name,
         a.birthday,
         a.deathday,

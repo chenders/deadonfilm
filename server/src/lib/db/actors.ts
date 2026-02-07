@@ -639,12 +639,14 @@ export async function getActorFilmography(actorTmdbId: number): Promise<ActorFil
 export interface ActorForEnrichmentQuery {
   id: number
   tmdb_id: number | null
+  imdb_person_id: string | null
   name: string
   birthday: Date | string | null
   deathday: Date | string
   cause_of_death: string | null
   cause_of_death_details: string | null
   tmdb_popularity: number | null
+  dof_popularity: number | null
   circumstances: string | null
   notable_factors: string[] | null
   /** Movie title (only populated when using top-billed-year query) */
@@ -686,11 +688,13 @@ export async function getDeceasedActorsFromTopMovies(options: {
       SELECT DISTINCT ON (a.id)
         a.id,
         a.tmdb_id,
+        a.imdb_person_id,
         a.name,
         a.birthday,
         a.deathday,
         a.cause_of_death,
         a.cause_of_death_details,
+        a.tmdb_popularity,
         a.dof_popularity,
         c.circumstances,
         c.notable_factors,

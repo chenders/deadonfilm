@@ -348,12 +348,12 @@ describe("InternetArchiveSource", () => {
         }),
       })
 
-      // AI returns results below threshold
+      // AI returns results below threshold (0.2 is below both normal 0.5 and popular 0.3 thresholds)
       mockAiSelectLinks.mockResolvedValueOnce({
         data: [
           {
             url: "https://archive.org/details/lugosi-bio",
-            score: 0.3, // Below MIN_AI_RELEVANCE_SCORE (0.5)
+            score: 0.2, // Below both MIN_AI_RELEVANCE_SCORE (0.5) and MIN_AI_RELEVANCE_SCORE_POPULAR (0.3)
             reason: "Low relevance",
           },
         ],
@@ -368,6 +368,106 @@ describe("InternetArchiveSource", () => {
 
       expect(mockAiSelectLinks).toHaveBeenCalled()
       // AI said no relevant results, so should fail
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("No relevant death record found in search results")
+    })
+
+    it("uses lower AI threshold for popular actors (popularity >= 20)", async () => {
+      process.env.ANTHROPIC_API_KEY = "test-key"
+
+      // testActor already has popularity: 22.0 which is >= 20
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          responseHeader: { status: 0 },
+          response: {
+            numFound: 1,
+            start: 0,
+            docs: [
+              {
+                identifier: "lugosi-bio",
+                title: "Bela Lugosi Biography",
+                description: "Bela Lugosi died of heart failure in 1956.",
+                mediatype: "texts",
+                downloads: 300,
+              },
+            ],
+          },
+        }),
+      })
+
+      // AI returns score of 0.35 - above popular threshold (0.3) but below normal threshold (0.5)
+      mockAiSelectLinks.mockResolvedValueOnce({
+        data: [
+          {
+            url: "https://archive.org/details/lugosi-bio",
+            score: 0.35,
+            reason: "Somewhat relevant archive material",
+          },
+        ],
+        costUsd: 0.001,
+        model: "claude-sonnet-4-20250514",
+        inputTokens: 100,
+        outputTokens: 50,
+        latencyMs: 500,
+      })
+
+      const result = await source.lookup(testActor)
+
+      expect(mockAiSelectLinks).toHaveBeenCalled()
+      // Popular actor should pass with score 0.35 (above 0.3 threshold)
+      expect(result.success).toBe(true)
+    })
+
+    it("rejects low AI score for non-popular actors", async () => {
+      process.env.ANTHROPIC_API_KEY = "test-key"
+
+      const unpopularActor: ActorForEnrichment = {
+        ...testActor,
+        popularity: 5.0, // Below POPULAR_ACTOR_THRESHOLD (20)
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          responseHeader: { status: 0 },
+          response: {
+            numFound: 1,
+            start: 0,
+            docs: [
+              {
+                identifier: "lugosi-bio",
+                title: "Bela Lugosi Biography",
+                description: "Bela Lugosi died of heart failure in 1956.",
+                mediatype: "texts",
+                downloads: 300,
+              },
+            ],
+          },
+        }),
+      })
+
+      // Same score of 0.35 - above popular threshold but below normal threshold
+      mockAiSelectLinks.mockResolvedValueOnce({
+        data: [
+          {
+            url: "https://archive.org/details/lugosi-bio",
+            score: 0.35,
+            reason: "Somewhat relevant archive material",
+          },
+        ],
+        costUsd: 0.001,
+        model: "claude-sonnet-4-20250514",
+        inputTokens: 100,
+        outputTokens: 50,
+        latencyMs: 500,
+      })
+
+      const result = await source.lookup(unpopularActor)
+
+      expect(mockAiSelectLinks).toHaveBeenCalled()
+      // Non-popular actor should fail with score 0.35 (below 0.5 threshold)
       expect(result.success).toBe(false)
       expect(result.error).toBe("No relevant death record found in search results")
     })

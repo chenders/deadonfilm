@@ -358,4 +358,24 @@ export class GeminiProSource extends GeminiBaseSource {
 
   // Rate limit
   protected minDelayMs = 500
+
+  /**
+   * Override to relax source URL requirement for pre-2010 deaths.
+   * For older deaths, most source URLs are dead, so requiring them
+   * causes Gemini to return null even when it has good training data.
+   */
+  protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
+    const deathYear = actor.deathday ? new Date(actor.deathday).getFullYear() : null
+    const originalRequireSources = this.requireSources
+
+    if (deathYear && deathYear < 2010) {
+      this.requireSources = false
+    }
+
+    try {
+      return await super.performLookup(actor)
+    } finally {
+      this.requireSources = originalRequireSources
+    }
+  }
 }

@@ -141,6 +141,7 @@ export interface EnrichmentSourceEntry {
 export interface ActorForEnrichment {
   id: number
   tmdbId: number | null
+  imdbPersonId?: string | null
   name: string
   birthday: string | null
   deathday: string | null
