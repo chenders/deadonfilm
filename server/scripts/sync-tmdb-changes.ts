@@ -452,19 +452,24 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
             `\nInvalidating death-related caches (${result.newDeathsFound} new deaths found)...`
           )
         }
-        await initRedis()
-        await invalidateDeathCaches()
-        await closeRedis()
-        if (!quiet) {
-          console.log("  ✓ Death list caches cleared")
-          console.log("  ✓ Death statistics caches cleared")
-        }
+        const redisAvailable = await initRedis()
+        if (redisAvailable) {
+          try {
+            await invalidateDeathCaches()
+            if (!quiet) {
+              console.log("  ✓ Death list caches cleared")
+              console.log("  ✓ Death statistics caches cleared")
+            }
 
-        // Record cache invalidation event
-        newrelic.recordCustomEvent("CacheInvalidation", {
-          cacheType: "death-related",
-          count: result.newDeathsFound,
-        })
+            // Record cache invalidation event
+            newrelic.recordCustomEvent("CacheInvalidation", {
+              cacheType: "death-related",
+              count: result.newDeathsFound,
+            })
+          } finally {
+            await closeRedis()
+          }
+        }
       }
     }
 
@@ -553,25 +558,28 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
     if (!options.dryRun) {
       if (result.moviesUpdated > 0) {
         if (!quiet) console.log("\n=== Syncing System State ===")
-        await initRedis()
+        const redisAvailable = await initRedis()
+        if (redisAvailable) {
+          try {
+            if (!quiet) {
+              console.log(`Invalidating movie caches (${result.moviesUpdated} movies updated)...`)
+            }
+            await invalidateMovieCaches()
+            if (!quiet) {
+              console.log("  ✓ Movie list caches cleared")
+              console.log("  ✓ Movie statistics caches cleared")
+            }
 
-        if (!quiet) {
-          console.log(`Invalidating movie caches (${result.moviesUpdated} movies updated)...`)
+            // Record cache invalidation event
+            newrelic.recordCustomEvent("CacheInvalidation", {
+              cacheType: "movie-related",
+              count: result.moviesUpdated,
+            })
+          } finally {
+            await closeRedis()
+          }
+          if (!quiet) console.log("System state synchronized")
         }
-        await invalidateMovieCaches()
-        if (!quiet) {
-          console.log("  ✓ Movie list caches cleared")
-          console.log("  ✓ Movie statistics caches cleared")
-        }
-
-        // Record cache invalidation event
-        newrelic.recordCustomEvent("CacheInvalidation", {
-          cacheType: "movie-related",
-          count: result.moviesUpdated,
-        })
-
-        await closeRedis()
-        if (!quiet) console.log("System state synchronized")
       }
 
       if (result.moviesSkipped > 0 && !quiet) {
