@@ -2,7 +2,7 @@
  * Tests for prerender middleware
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest"
 import type { Request, Response, NextFunction } from "express"
 
 // Mock cache module
@@ -35,6 +35,10 @@ vi.stubGlobal("fetch", mockFetch)
 
 import { prerenderMiddleware } from "./prerender.js"
 import { getCached, setCached } from "../lib/cache.js"
+
+afterAll(() => {
+  vi.unstubAllGlobals()
+})
 
 function makeReq(overrides: Record<string, unknown> = {}): Request {
   const path = (overrides.path as string) || "/actor/john-wayne-2157"

@@ -340,15 +340,6 @@ async function startServer() {
     // Initialize Redis (optional - caching disabled if not available)
     const redisAvailable = await initRedis()
 
-    // Flush prerender cache on startup so deploys don't serve stale HTML
-    // referencing old hashed asset filenames
-    if (redisAvailable) {
-      const flushed = await invalidatePrerenderCache()
-      if (flushed > 0) {
-        logger.info({ flushed }, "Flushed stale prerender cache on startup")
-      }
-    }
-
     // Initialize job queue manager
     try {
       await queueManager.initialize()
@@ -376,6 +367,21 @@ async function startServer() {
         },
         `Server running on port ${PORT}`
       )
+
+      // Flush prerender cache after server is listening so deploys don't
+      // serve stale HTML referencing old hashed asset filenames.
+      // Fire-and-forget to avoid blocking request handling.
+      if (redisAvailable) {
+        invalidatePrerenderCache()
+          .then((flushed) => {
+            if (flushed > 0) {
+              logger.info({ flushed }, "Flushed stale prerender cache on startup")
+            }
+          })
+          .catch((err) => {
+            logger.warn({ err }, "Failed to flush prerender cache on startup")
+          })
+      }
     })
   } catch (error) {
     logger.fatal({ error }, "Failed to start server")

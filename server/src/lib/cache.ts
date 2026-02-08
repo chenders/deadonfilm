@@ -207,7 +207,9 @@ export async function invalidateActorCache(actorId: number): Promise<void> {
   const keys = getActorCacheKeys(actorId)
   await invalidateKeys(...keys)
   // Invalidate prerendered pages for this specific actor
-  await invalidatePrerenderCache(`/actor/*-${actorId}`)
+  // Use exact pattern without trailing wildcard to prevent over-matching
+  // (e.g. actorId 2157 should not match 21570)
+  await invalidateByPattern(`${CACHE_PREFIX.PRERENDER}:*:/actor/*-${actorId}`)
 }
 
 /**
@@ -222,7 +224,8 @@ export async function invalidateActorCacheRequired(actorId: number): Promise<voi
   const keys = getActorCacheKeys(actorId)
   await instrumentedDel(...keys)
   // Also invalidate prerendered pages for this actor
-  await invalidatePrerenderCache(`/actor/*-${actorId}`)
+  // Use exact pattern without trailing wildcard to prevent over-matching
+  await invalidateByPattern(`${CACHE_PREFIX.PRERENDER}:*:/actor/*-${actorId}`)
   logger.info({ keys, actorId }, "Actor cache invalidated")
 }
 
