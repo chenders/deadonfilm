@@ -202,15 +202,15 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
           )}
 
           {/* View all results link */}
-          {query.length >= 2 && (
+          {query.trim().length >= 2 && (
             <div className="border-t border-brown-medium/20 p-3 text-center">
               <Link
-                to={`/search?q=${encodeURIComponent(query)}${mediaType !== "all" ? `&type=${mediaType}` : ""}`}
+                to={`/search?q=${encodeURIComponent(query.trim())}${mediaType !== "all" ? `&type=${mediaType}` : ""}`}
                 data-testid="search-modal-view-all"
                 onClick={onClose}
                 className="text-sm text-brown-medium hover:text-brown-dark hover:underline"
               >
-                View all results for "{query}"
+                View all results for "{query.trim()}"
               </Link>
             </div>
           )}

@@ -141,13 +141,14 @@ export default function SearchResultsPage() {
       return
     }
     setInputValue(queryParam)
-  }, [queryParam])
+  }, [queryParam, mediaType])
 
   const updateSearchParams = useCallback(
     (newQuery: string, newType: SearchMediaType) => {
       isLocalUpdateRef.current = true
       const params: Record<string, string> = {}
-      if (newQuery) params.q = newQuery
+      const trimmed = newQuery.trim()
+      if (trimmed) params.q = trimmed
       if (newType !== "all") params.type = newType
       setSearchParams(params, { replace: true })
     },
@@ -187,7 +188,8 @@ export default function SearchResultsPage() {
   const personResults = results.filter((r) => r.media_type === "person")
 
   const hasResults = results.length > 0
-  const showNoResults = inputValue.length >= 2 && !isLoading && !hasResults
+  const effectiveQuery = inputValue.trim()
+  const showNoResults = effectiveQuery.length >= 2 && !isLoading && !hasResults
   const normalizedQuery = queryParam.trim().toLowerCase()
   const shouldNoindex = normalizedQuery.length < MIN_QUERY_LENGTH || (!isLoading && !hasResults)
   const canonical =
@@ -226,7 +228,7 @@ export default function SearchResultsPage() {
       </div>
 
       {/* Loading */}
-      {isLoading && inputValue.length >= 2 && (
+      {isLoading && effectiveQuery.length >= 2 && (
         <div className="py-12">
           <LoadingSpinner message="Searching..." />
         </div>
@@ -297,7 +299,7 @@ export default function SearchResultsPage() {
       )}
 
       {/* Empty state (no query) */}
-      {!inputValue && (
+      {!effectiveQuery && (
         <div data-testid="search-empty-state" className="py-16 text-center">
           <p className="text-text-muted">
             Enter a search term to find movies, TV shows, and people.
