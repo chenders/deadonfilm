@@ -24,6 +24,9 @@ vi.mock("../../components/admin/analytics/PageViewsTab", () => ({
 vi.mock("../../components/admin/analytics/CoverageTab", () => ({
   default: () => <div data-testid="coverage-tab">Coverage Content</div>,
 }))
+vi.mock("../../components/admin/analytics/SeoMetricsTab", () => ({
+  default: () => <div data-testid="seo-metrics-tab">SEO Metrics Content</div>,
+}))
 
 describe("AnalyticsHubPage", () => {
   let queryClient: QueryClient
@@ -46,14 +49,17 @@ describe("AnalyticsHubPage", () => {
   it("renders page header", () => {
     renderPage()
     expect(screen.getByRole("heading", { name: /analytics/i })).toBeInTheDocument()
-    expect(screen.getByText(/track costs, page views, and death coverage/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/track costs, page views, death coverage, and SEO metrics/i)
+    ).toBeInTheDocument()
   })
 
-  it("renders all three tabs", () => {
+  it("renders all four tabs", () => {
     renderPage()
     expect(screen.getByRole("tab", { name: /cost analytics/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /page views/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /death coverage/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /seo metrics/i })).toBeInTheDocument()
   })
 
   it("shows cost analytics tab by default", () => {
