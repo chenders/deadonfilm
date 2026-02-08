@@ -3,6 +3,7 @@ import { useSearchParams, Link } from "react-router-dom"
 import { useUnifiedSearch } from "@/hooks/useUnifiedSearch"
 import { createMovieSlug, createShowSlug, createActorSlug } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
+import { getMediaBadge, getPersonSubtitle, isValidMediaType } from "@/utils/search-utils"
 import { SEO } from "@/components/SEO"
 import MediaTypeToggle from "@/components/search/MediaTypeToggle"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
@@ -22,31 +23,8 @@ function getResultUrl(result: UnifiedSearchResult): string {
   return `/movie/${createMovieSlug(result.title, result.release_date, result.id)}`
 }
 
-function getMediaBadge(mediaType: "movie" | "tv" | "person") {
-  switch (mediaType) {
-    case "tv":
-      return { label: "TV", className: "bg-living/20 text-living-dark" }
-    case "person":
-      return { label: "Person", className: "bg-brown-medium/15 text-brown-medium" }
-    default:
-      return { label: "Film", className: "bg-brown-medium/10 text-brown-medium" }
-  }
-}
-
-function getPersonSubtitle(result: UnifiedSearchResult): string {
-  if (result.is_deceased && result.death_year && result.birth_year) {
-    const age = result.death_year - result.birth_year
-    return `Died ${result.death_year} (age ${age})`
-  }
-  if (result.is_deceased && result.death_year) {
-    return `Died ${result.death_year}`
-  }
-  if (result.birth_year) {
-    return `b. ${result.birth_year}`
-  }
-  return ""
-}
-
+// Larger image sizes than the search modal (w92/w185 vs w45_and_h67_face)
+// because ResultCard renders at 56px/72px vs the modal's 40px/56px
 function getPosterUrls(posterPath: string | null) {
   if (!posterPath) return null
   const base = "https://media.themoviedb.org/t/p"
@@ -70,6 +48,9 @@ function ResultCard({ result }: { result: UnifiedSearchResult }) {
   const year = isPerson ? "" : getYear(result.release_date)
   const badge = getMediaBadge(result.media_type)
   const url = getResultUrl(result)
+  const imageUrls = isPerson
+    ? getProfileUrls(result.poster_path)
+    : getPosterUrls(result.poster_path)
 
   return (
     <Link
@@ -80,10 +61,10 @@ function ResultCard({ result }: { result: UnifiedSearchResult }) {
       {/* Image */}
       {isPerson ? (
         <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-full bg-brown-medium/10">
-          {getProfileUrls(result.poster_path) ? (
+          {imageUrls ? (
             <img
-              src={getProfileUrls(result.poster_path)!.src}
-              srcSet={getProfileUrls(result.poster_path)!.srcSet}
+              src={imageUrls.src}
+              srcSet={imageUrls.srcSet}
               alt={result.title}
               width={56}
               height={56}
@@ -97,10 +78,10 @@ function ResultCard({ result }: { result: UnifiedSearchResult }) {
         </div>
       ) : (
         <div className="h-[72px] w-12 flex-shrink-0 overflow-hidden rounded bg-brown-medium/10">
-          {getPosterUrls(result.poster_path) ? (
+          {imageUrls ? (
             <img
-              src={getPosterUrls(result.poster_path)!.src}
-              srcSet={getPosterUrls(result.poster_path)!.srcSet}
+              src={imageUrls.src}
+              srcSet={imageUrls.srcSet}
               alt={`${result.title} poster`}
               width={48}
               height={72}
@@ -137,10 +118,6 @@ function ResultCard({ result }: { result: UnifiedSearchResult }) {
   )
 }
 
-function isValidMediaType(value: string | null): value is SearchMediaType {
-  return value === "all" || value === "movie" || value === "tv" || value === "person"
-}
-
 export default function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryParam = searchParams.get("q") || ""
@@ -149,6 +126,8 @@ export default function SearchResultsPage() {
 
   const [inputValue, setInputValue] = useState(queryParam)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const mediaTypeRef = useRef(mediaType)
+  mediaTypeRef.current = mediaType
 
   const { data, isLoading } = useUnifiedSearch(inputValue, mediaType)
   const results = data?.results || []
@@ -176,7 +155,7 @@ export default function SearchResultsPage() {
       clearTimeout(debounceTimerRef.current)
     }
     debounceTimerRef.current = setTimeout(() => {
-      updateSearchParams(value, mediaType)
+      updateSearchParams(value, mediaTypeRef.current)
     }, 400)
   }
 
@@ -189,6 +168,9 @@ export default function SearchResultsPage() {
   }, [])
 
   const handleMediaTypeChange = (type: SearchMediaType) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
     updateSearchParams(inputValue, type)
   }
 
