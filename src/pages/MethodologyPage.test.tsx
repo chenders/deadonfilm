@@ -33,7 +33,6 @@ describe("MethodologyPage", () => {
     expect(screen.getByRole("heading", { name: /overview/i })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /actuarial life tables/i })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /expected deaths/i })).toBeInTheDocument()
-    expect(screen.getByRole("heading", { name: /curse score/i })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /years lost/i })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /archived footage rule/i })).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /limitations/i })).toBeInTheDocument()
@@ -41,7 +40,6 @@ describe("MethodologyPage", () => {
 
   it("renders formulas", () => {
     renderPage()
-    expect(screen.getByText(/curse score = \(actual deaths/i)).toBeInTheDocument()
     expect(screen.getByText(/years lost = expected lifespan/i)).toBeInTheDocument()
   })
 

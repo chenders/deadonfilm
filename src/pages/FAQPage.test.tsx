@@ -33,7 +33,6 @@ describe("FAQPage", () => {
   it("renders FAQ items as h2 headings", () => {
     renderPage()
     expect(screen.getByRole("heading", { name: /what is dead on film\?/i })).toBeInTheDocument()
-    expect(screen.getByRole("heading", { name: /what is the curse score\?/i })).toBeInTheDocument()
     expect(
       screen.getByRole("heading", { name: /how is 'years lost' calculated\?/i })
     ).toBeInTheDocument()
@@ -45,7 +44,7 @@ describe("FAQPage", () => {
   it("renders FAQ answers", () => {
     renderPage()
     expect(screen.getByText(/movie and tv cast mortality database/i)).toBeInTheDocument()
-    expect(screen.getByText(/actuarial tables would predict/i)).toBeInTheDocument()
+    expect(screen.getByText(/cohort life expectancy tables/i)).toBeInTheDocument()
   })
 
   it("renders JSON-LD for FAQPage schema", () => {

@@ -22,11 +22,6 @@ const FAQ_ITEMS = [
       "We use a multi-source pipeline to verify death information. The primary source is AI-assisted analysis of reliable references, followed by structured data from Wikidata and Wikipedia. Information is cross-referenced across sources for accuracy.",
   },
   {
-    question: "What is the Curse Score?",
-    answer:
-      "The Curse Score measures whether a movie or show's cast has experienced more deaths than statistically expected. It's calculated as (Actual Deaths - Expected Deaths) / Expected Deaths. A positive score means more cast members have died than actuarial tables would predict, while a negative score means fewer.",
-  },
-  {
     question: "How is 'Years Lost' calculated?",
     answer:
       "Years Lost compares an actor's actual lifespan to their expected lifespan based on U.S. Social Security Administration cohort life expectancy tables. A positive value means the actor died earlier than statistically expected for someone of their birth year and sex.",
@@ -65,7 +60,7 @@ export default function FAQPage() {
         <title>FAQ - Dead on Film</title>
         <meta
           name="description"
-          content="Frequently asked questions about Dead on Film. Learn about our data sources, mortality statistics, curse scores, and how we determine cause of death."
+          content="Frequently asked questions about Dead on Film. Learn about our data sources, mortality statistics, and how we determine cause of death."
         />
         <meta property="og:title" content="FAQ - Dead on Film" />
         <meta

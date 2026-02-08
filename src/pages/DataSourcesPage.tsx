@@ -129,8 +129,8 @@ export default function DataSourcesPage() {
                 </li>
               </ul>
               <p className="leading-relaxed">
-                This data forms the basis for our Expected Deaths, Curse Score, and Years Lost
-                calculations. See our{" "}
+                This data forms the basis for our Expected Deaths and Years Lost calculations. See
+                our{" "}
                 <Link to="/methodology" className="text-accent underline hover:text-brown-dark">
                   Methodology
                 </Link>{" "}

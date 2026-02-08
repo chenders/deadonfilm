@@ -12,7 +12,7 @@ export default function MethodologyPage() {
         <title>Methodology - Dead on Film</title>
         <meta
           name="description"
-          content="How Dead on Film calculates mortality statistics, curse scores, and years lost using actuarial life tables from the U.S. Social Security Administration."
+          content="How Dead on Film calculates mortality statistics and years lost using actuarial life tables from the U.S. Social Security Administration."
         />
         <meta property="og:title" content="Methodology - Dead on Film" />
         <meta
@@ -77,32 +77,6 @@ export default function MethodologyPage() {
                 yearly probability of death for each year from age 50 to 80, accounting for the
                 improving mortality rates of their birth cohort.
               </p>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="mb-3 font-display text-xl text-brown-dark">Curse Score</h2>
-            <div className="space-y-3 text-text-muted">
-              <p className="leading-relaxed">
-                The Curse Score measures how a production&apos;s actual mortality compares to what
-                actuarial tables would predict. It is calculated as:
-              </p>
-              <div className="rounded-lg bg-beige p-4 font-mono text-sm">
-                Curse Score = (Actual Deaths &minus; Expected Deaths) / Expected Deaths
-              </div>
-              <ul className="ml-4 list-disc space-y-1 leading-relaxed">
-                <li>
-                  A <strong>positive</strong> score means more cast members have died than expected
-                  &mdash; the production is &ldquo;cursed.&rdquo;
-                </li>
-                <li>
-                  A <strong>negative</strong> score means fewer deaths than expected.
-                </li>
-                <li>
-                  A score near <strong>zero</strong> means mortality is close to statistical
-                  expectations.
-                </li>
-              </ul>
             </div>
           </section>
 

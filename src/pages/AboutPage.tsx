@@ -49,7 +49,7 @@ export default function AboutPage() {
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Why Does This Exist?</h2>
             <p className="leading-relaxed text-text-muted">
-              Have you ever watched a classic film and wondered how many of the actors are still
+              Have you ever watched a movie or TV show and wondered how many of the actors are still
               alive? Dead on Film was built to answer that question. What started as simple
               curiosity grew into a comprehensive database covering hundreds of thousands of actors
               across movies and television.
