@@ -47,7 +47,7 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push
+      - name: Build and push app image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -61,6 +61,26 @@ jobs:
             VITE_NEW_RELIC_BROWSER_ACCOUNT_ID=${{ secrets.VITE_NEW_RELIC_BROWSER_ACCOUNT_ID }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Extract prerender metadata
+        id: prerender-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-prerender
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push prerender image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.prerender
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.prerender-meta.outputs.tags }}
+          cache-from: type=gha,scope=prerender
+          cache-to: type=gha,mode=max,scope=prerender
 
       - name: Deploy application
         run: |
@@ -81,14 +101,14 @@ jobs:
             fi
           fi
           # Pull images, ignoring those with build configs (like db)
-          docker compose --profile prerender pull --ignore-buildable
+          docker compose pull --ignore-buildable
 
           # Start containers and wait for all to be healthy
           # Using --force-recreate to ensure containers use the new image
           echo "=== Starting containers ==="
-          if ! docker compose --profile prerender up -d --force-recreate --remove-orphans --wait --wait-timeout 120; then
+          if ! docker compose up -d --force-recreate --remove-orphans --wait --wait-timeout 120; then
             echo "=== Container health check failed! ==="
-            docker compose --profile prerender ps -a
+            docker compose ps -a
             echo "--- db logs ---"
             docker compose logs db --tail=50
             echo "--- app logs ---"
@@ -98,12 +118,12 @@ jobs:
             echo "--- cron logs ---"
             docker compose logs cron --tail=50
             echo "--- prerender logs ---"
-            docker compose --profile prerender logs prerender --tail=50 || true
+            docker compose logs prerender --tail=50 || true
             exit 1
           fi
 
           echo "=== All containers healthy ==="
-          docker compose --profile prerender ps
+          docker compose ps
 
           # Verify health endpoint from within Docker network
           # Note: Can't use localhost:3000 because self-hosted runner is Docker-in-Docker
