@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit"
 import cookieParser from "cookie-parser"
 import { logger } from "./lib/logger.js"
 import { initRedis, isRedisAvailable } from "./lib/redis.js"
+import { invalidatePrerenderCache } from "./lib/cache.js"
 import { skipRateLimitForAdmin } from "./middleware/rate-limit-utils.js"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
@@ -86,6 +87,7 @@ import syncRoutes from "./routes/admin/sync.js"
 import logsRoutes from "./routes/admin/logs.js"
 import biographiesRoutes from "./routes/admin/biographies.js"
 import { errorHandler } from "./middleware/error-handler.js"
+import { prerenderMiddleware, prerenderRateLimiter } from "./middleware/prerender.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -198,6 +200,11 @@ app.use((req, res, next) => {
   })
   next()
 })
+
+// Prerender middleware — serves fully-rendered HTML to search engine crawlers
+// Must be before routes so bot requests are intercepted before reaching the API
+// Rate limited to prevent DoS via spoofed bot user agents
+app.use(prerenderRateLimiter, prerenderMiddleware)
 
 // Health check endpoint (internal container health checks)
 app.get("/health", (_req, res) => {
@@ -360,6 +367,21 @@ async function startServer() {
         },
         `Server running on port ${PORT}`
       )
+
+      // Flush prerender cache after server is listening so deploys don't
+      // serve stale HTML referencing old hashed asset filenames.
+      // Fire-and-forget to avoid blocking request handling.
+      if (redisAvailable) {
+        invalidatePrerenderCache()
+          .then((flushed) => {
+            if (flushed > 0) {
+              logger.info({ flushed }, "Flushed stale prerender cache on startup")
+            }
+          })
+          .catch((err) => {
+            logger.warn({ err }, "Failed to flush prerender cache on startup")
+          })
+      }
     })
   } catch (error) {
     logger.fatal({ error }, "Failed to start server")
