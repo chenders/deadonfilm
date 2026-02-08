@@ -4,6 +4,27 @@ import { createActorSlug, createMovieSlug, createShowSlug } from "./slug-utils.j
 const BASE_URL = "https://deadonfilm.com"
 export const URLS_PER_SITEMAP = 50000
 
+interface SitemapPage {
+  loc: string
+  priority: string
+  changefreq: string
+}
+
+/**
+ * Generate paginated page entries for the sitemap (pages 2 through maxPage)
+ */
+function generatePaginatedPages(
+  basePath: string,
+  maxPage: number,
+  priority: string
+): SitemapPage[] {
+  const pages: SitemapPage[] = []
+  for (let i = 2; i <= maxPage; i++) {
+    pages.push({ loc: `${basePath}?page=${i}`, priority, changefreq: "weekly" })
+  }
+  return pages
+}
+
 /**
  * Static pages configuration
  */
@@ -16,6 +37,7 @@ const staticPages = [
   { loc: "/death-watch", priority: "0.7", changefreq: "daily" },
   { loc: "/forever-young", priority: "0.6", changefreq: "weekly" },
   { loc: "/deaths", priority: "0.5", changefreq: "weekly" },
+  { loc: "/deaths/all", priority: "0.5", changefreq: "weekly" },
   { loc: "/deaths/notable", priority: "0.7", changefreq: "weekly" },
   { loc: "/movies/genres", priority: "0.5", changefreq: "weekly" },
   // Causes of death 3-level hierarchy
@@ -37,6 +59,11 @@ const staticPages = [
   { loc: "/faq", priority: "0.5", changefreq: "monthly" },
   { loc: "/methodology", priority: "0.5", changefreq: "monthly" },
   { loc: "/data-sources", priority: "0.4", changefreq: "monthly" },
+  // Paginated pages (first few pages of major lists)
+  ...generatePaginatedPages("/deaths/all", 5, "0.3"),
+  ...generatePaginatedPages("/deaths/notable", 5, "0.4"),
+  ...generatePaginatedPages("/cursed-movies", 5, "0.4"),
+  ...generatePaginatedPages("/cursed-actors", 5, "0.4"),
 ]
 
 /**

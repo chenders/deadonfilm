@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useDeathsByCause } from "@/hooks/useDeathsByCause"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
@@ -144,8 +145,13 @@ export default function DeathsByCausePage() {
           name="description"
           content={`${data.pagination.totalCount} actors who died from ${data.cause}. Browse actors by cause of death from movies and TV shows.`}
         />
-        <link rel="canonical" href={`https://deadonfilm.com/deaths/${data.slug}`} />
       </Helmet>
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/deaths/${data.slug}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="deaths-by-cause-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">

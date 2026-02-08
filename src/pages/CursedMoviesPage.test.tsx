@@ -75,7 +75,7 @@ describe("CursedMoviesPage", () => {
 
     renderWithProviders(<CursedMoviesPage />)
 
-    expect(screen.getByText("Loading cursed movies...")).toBeInTheDocument()
+    expect(screen.getByText("Loading movies...")).toBeInTheDocument()
   })
 
   it("renders movie list when data loads", async () => {
@@ -229,7 +229,7 @@ describe("CursedMoviesPage", () => {
       expect(screen.getAllByText("15/20").length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText("10/15").length).toBeGreaterThanOrEqual(1)
 
-      // Check curse score display (mortalitySurpriseScore * 100)%
+      // Check excess mortality display (mortalitySurpriseScore * 100)%
       expect(screen.getAllByText("200%").length).toBeGreaterThanOrEqual(1) // 2.0 * 100
       expect(screen.getAllByText("150%").length).toBeGreaterThanOrEqual(1) // 1.5 * 100
     })

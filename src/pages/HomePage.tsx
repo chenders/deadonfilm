@@ -13,7 +13,7 @@ export default function HomePage() {
         <title>Dead on Film - Movie & TV Show Cast Mortality Database</title>
         <meta
           name="description"
-          content="Look up any movie or TV show and see which actors have passed away. Discover mortality statistics, death dates, and causes of death for your favorite films and shows."
+          content="Look up any movie or TV show and see which actors have passed away. Discover mortality statistics, death dates, and causes of death for films and TV shows."
         />
         <meta
           property="og:title"

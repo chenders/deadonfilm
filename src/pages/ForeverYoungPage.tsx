@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useForeverYoung } from "@/hooks/useForeverYoung"
 import { createMovieSlug, createActorSlug } from "@/utils/slugify"
 import { getPosterUrl, getProfileUrl } from "@/services/api"
@@ -182,8 +183,14 @@ export default function ForeverYoungPage() {
           name="twitter:description"
           content="Movies and TV shows featuring actors who died tragically young"
         />
-        <link rel="canonical" href="https://deadonfilm.com/forever-young" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/forever-young"
+        />
+      )}
 
       <div data-testid="forever-young-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">

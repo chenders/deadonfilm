@@ -35,13 +35,13 @@ export default function CalculationExplainer({ type }: CalculationExplainerProps
               </section>
 
               <section>
-                <h4 className="font-medium text-brown-dark">Curse Score</h4>
+                <h4 className="font-medium text-brown-dark">Excess Mortality</h4>
                 <p>
-                  The curse score measures how much higher the actual deaths are compared to
+                  Excess mortality measures how much higher the actual deaths are compared to
                   expected:
                 </p>
                 <p className="mt-1 rounded bg-beige px-2 py-1 font-mono text-xs">
-                  Curse Score = (Actual Deaths - Expected Deaths) / Expected Deaths
+                  Excess Mortality = (Actual Deaths - Expected Deaths) / Expected Deaths
                 </p>
                 <p className="mt-1">
                   A score of 50% means 50% more deaths than statistically expected. A score of 100%
@@ -52,7 +52,7 @@ export default function CalculationExplainer({ type }: CalculationExplainerProps
               <section>
                 <h4 className="font-medium text-brown-dark">Why This Matters</h4>
                 <p>
-                  Without this calculation, old movies would always appear "cursed" simply because
+                  Without this calculation, older movies would always rank highest simply because
                   their casts are elderly. A 1930s film with all deceased actors isn't unusual -
                   it's expected. This method identifies films with <em>unexpectedly</em> high
                   mortality.
@@ -79,13 +79,13 @@ export default function CalculationExplainer({ type }: CalculationExplainerProps
               </section>
 
               <section>
-                <h4 className="font-medium text-brown-dark">Curse Score</h4>
+                <h4 className="font-medium text-brown-dark">Excess Mortality</h4>
                 <p>
                   We sum up the expected and actual deaths across all of an actor's films, then
                   calculate:
                 </p>
                 <p className="mt-1 rounded bg-beige px-2 py-1 font-mono text-xs">
-                  Curse Score = (Total Actual Deaths - Total Expected Deaths) / Total Expected
+                  Excess Mortality = (Total Actual Deaths - Total Expected Deaths) / Total Expected
                   Deaths
                 </p>
                 <p className="mt-1">
@@ -106,7 +106,7 @@ export default function CalculationExplainer({ type }: CalculationExplainerProps
               <section>
                 <h4 className="font-medium text-brown-dark">Why This Matters</h4>
                 <p>
-                  Actors who primarily work in period dramas with older casts would appear "cursed"
+                  Actors who primarily work in period dramas with older casts would rank highest
                   without this adjustment. This method identifies actors whose co-stars died at
                   genuinely unusual rates, controlling for age.
                 </p>

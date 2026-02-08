@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useDeathsByDecade, useDecadeCategories } from "@/hooks/useDeathsByDecade"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
@@ -167,8 +168,13 @@ export default function DeathsByDecadePage() {
           name="description"
           content={`${data.pagination.totalCount} actors who died in the ${data.decadeLabel}. Browse actors by decade of death from movies and TV shows.`}
         />
-        <link rel="canonical" href={`https://deadonfilm.com/deaths/decade/${data.decadeLabel}`} />
       </Helmet>
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/deaths/decade/${data.decadeLabel}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="deaths-by-decade-page" className="mx-auto max-w-3xl">
         <div className="mb-4 text-center">

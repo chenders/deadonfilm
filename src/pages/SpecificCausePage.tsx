@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useSpecificCauseDetail } from "@/hooks/useCausesOfDeath"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
@@ -66,11 +67,13 @@ export default function SpecificCausePage() {
           property="og:description"
           content={`Explore ${data.count.toLocaleString()} actors who died from ${data.cause.toLowerCase()}`}
         />
-        <link
-          rel="canonical"
-          href={`https://deadonfilm.com/causes-of-death/${data.categorySlug}/${data.slug}`}
-        />
       </Helmet>
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/causes-of-death/${data.categorySlug}/${data.slug}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="specific-cause-page" className="mx-auto max-w-4xl">
         {/* Breadcrumb */}
