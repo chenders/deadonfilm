@@ -303,6 +303,7 @@ interface ArticleSchemaInput {
   publishedDate: string
   updatedDate?: string
   wordCount: number
+  author: string
 }
 
 /**
@@ -320,7 +321,7 @@ export function buildArticleSchema(article: ArticleSchemaInput): Record<string, 
     url: `${BASE_URL}/articles/${article.slug}`,
     author: {
       "@type": "Organization",
-      name: "Dead on Film",
+      name: article.author,
       url: BASE_URL,
     },
     publisher: {

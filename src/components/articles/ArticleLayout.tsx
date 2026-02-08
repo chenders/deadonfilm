@@ -7,6 +7,31 @@ import { ArticleMeta, CATEGORY_LABELS, getReadingTime, getRelatedArticles } from
 
 const BASE_URL = "https://deadonfilm.com"
 
+/**
+ * Format a YYYY-MM-DD date string to long display format (e.g. "January 15, 2026").
+ * Returns the raw string if parsing fails.
+ */
+function formatArticleDate(dateString: string): string {
+  try {
+    const date = new Date(dateString + "T00:00:00")
+    if (isNaN(date.getTime())) return dateString
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  } catch {
+    return dateString
+  }
+}
+
+/**
+ * Convert a YYYY-MM-DD date to full ISO-8601 for Open Graph meta tags.
+ */
+function toISOTimestamp(dateString: string): string {
+  return `${dateString}T00:00:00Z`
+}
+
 interface ArticleLayoutProps {
   article: ArticleMeta
   children: ReactNode
@@ -25,13 +50,7 @@ export function ArticleCard({ article }: { article: ArticleMeta }) {
       <h2 className="mb-2 font-display text-lg text-brown-dark">{article.title}</h2>
       <p className="mb-3 text-sm leading-relaxed text-text-muted">{article.description}</p>
       <div className="flex items-center gap-3 text-xs text-text-muted">
-        <time dateTime={article.publishedDate}>
-          {new Date(article.publishedDate + "T00:00:00").toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </time>
+        <time dateTime={article.publishedDate}>{formatArticleDate(article.publishedDate)}</time>
         <span aria-label="reading time">{getReadingTime(article.wordCount)} min read</span>
       </div>
     </Link>
@@ -41,21 +60,8 @@ export function ArticleCard({ article }: { article: ArticleMeta }) {
 export default function ArticleLayout({ article, children }: ArticleLayoutProps) {
   const readingTime = getReadingTime(article.wordCount)
   const relatedArticles = getRelatedArticles(article)
-  const publishedDisplay = new Date(article.publishedDate + "T00:00:00").toLocaleDateString(
-    "en-US",
-    {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    }
-  )
-  const updatedDisplay = article.updatedDate
-    ? new Date(article.updatedDate + "T00:00:00").toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : null
+  const publishedDisplay = formatArticleDate(article.publishedDate)
+  const updatedDisplay = article.updatedDate ? formatArticleDate(article.updatedDate) : null
 
   return (
     <>
@@ -65,9 +71,9 @@ export default function ArticleLayout({ article, children }: ArticleLayoutProps)
         <meta property="og:title" content={`${article.title} - Dead on Film`} />
         <meta property="og:description" content={article.description} />
         <meta property="og:type" content="article" />
-        <meta property="article:published_time" content={article.publishedDate} />
+        <meta property="article:published_time" content={toISOTimestamp(article.publishedDate)} />
         {article.updatedDate && (
-          <meta property="article:modified_time" content={article.updatedDate} />
+          <meta property="article:modified_time" content={toISOTimestamp(article.updatedDate)} />
         )}
         <link rel="canonical" href={`${BASE_URL}/articles/${article.slug}`} />
       </Helmet>
@@ -86,6 +92,7 @@ export default function ArticleLayout({ article, children }: ArticleLayoutProps)
           publishedDate: article.publishedDate,
           updatedDate: article.updatedDate,
           wordCount: article.wordCount,
+          author: article.author,
         })}
       />
 

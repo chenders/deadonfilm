@@ -209,6 +209,7 @@ describe("buildArticleSchema", () => {
       slug: "test-article",
       publishedDate: "2026-01-15",
       wordCount: 1200,
+      author: "Dead on Film",
     })
 
     expect(result["@context"]).toBe("https://schema.org")
@@ -241,6 +242,7 @@ describe("buildArticleSchema", () => {
       publishedDate: "2026-01-15",
       updatedDate: "2026-02-01",
       wordCount: 500,
+      author: "Dead on Film",
     })
 
     expect(result.datePublished).toBe("2026-01-15")
@@ -254,6 +256,7 @@ describe("buildArticleSchema", () => {
       slug: "test",
       publishedDate: "2026-01-15",
       wordCount: 500,
+      author: "Dead on Film",
     })
 
     expect(result.dateModified).toBe("2026-01-15")
