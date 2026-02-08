@@ -128,17 +128,24 @@ export default function SearchResultsPage() {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const mediaTypeRef = useRef(mediaType)
   mediaTypeRef.current = mediaType
+  const isLocalUpdateRef = useRef(false)
 
   const { data, isLoading } = useUnifiedSearch(inputValue, mediaType)
   const results = data?.results || []
 
   // Sync input value when URL changes externally (e.g., browser back/forward)
+  // Skip syncing when the URL change was triggered by our own debounced update
   useEffect(() => {
+    if (isLocalUpdateRef.current) {
+      isLocalUpdateRef.current = false
+      return
+    }
     setInputValue(queryParam)
   }, [queryParam])
 
   const updateSearchParams = useCallback(
     (newQuery: string, newType: SearchMediaType) => {
+      isLocalUpdateRef.current = true
       const params: Record<string, string> = {}
       if (newQuery) params.q = newQuery
       if (newType !== "all") params.type = newType
