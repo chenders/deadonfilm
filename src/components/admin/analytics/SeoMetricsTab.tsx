@@ -71,9 +71,21 @@ export default function SeoMetricsTab() {
     isLoading: typesLoading,
     error: typesError,
   } = usePageTypePerformance(days, isConfigured)
-  const { data: sitemaps, isLoading: sitemapsLoading } = useSitemaps(isConfigured)
-  const { data: indexing, isLoading: indexingLoading } = useIndexingStatus(90, isConfigured)
-  const { data: alerts, isLoading: alertsLoading } = useGscAlerts(false, isConfigured)
+  const {
+    data: sitemaps,
+    isLoading: sitemapsLoading,
+    error: sitemapsError,
+  } = useSitemaps(isConfigured)
+  const {
+    data: indexing,
+    isLoading: indexingLoading,
+    error: indexingError,
+  } = useIndexingStatus(days, isConfigured)
+  const {
+    data: alerts,
+    isLoading: alertsLoading,
+    error: alertsError,
+  } = useGscAlerts(false, isConfigured)
   const snapshotMutation = useGscSnapshot()
   const inspectMutation = useInspectUrl()
   const acknowledgeMutation = useAcknowledgeAlert()
@@ -148,6 +160,11 @@ export default function SeoMetricsTab() {
       </div>
 
       {/* Alerts */}
+      {alertsError && (
+        <div className="border-admin-danger/30 bg-admin-danger/5 rounded-lg border p-4 text-sm text-admin-danger">
+          Failed to load SEO alerts
+        </div>
+      )}
       {!alertsLoading && alerts && alerts.data.length > 0 && (
         <AlertsSection
           alerts={alerts.data}
@@ -182,10 +199,11 @@ export default function SeoMetricsTab() {
         <IndexingSection
           data={indexing}
           isLoading={indexingLoading}
+          error={indexingError}
           chartTheme={chartTheme}
           tooltipStyle={tooltipStyle}
         />
-        <SitemapsSection data={sitemaps} isLoading={sitemapsLoading} />
+        <SitemapsSection data={sitemaps} isLoading={sitemapsLoading} error={sitemapsError} />
       </div>
 
       {/* URL Inspection Tool */}
@@ -562,13 +580,25 @@ function PageTypeSection({
 function IndexingSection({
   data,
   isLoading,
+  error,
   chartTheme,
   tooltipStyle,
 }: {
   data?: ReturnType<typeof useIndexingStatus>["data"]
   isLoading: boolean
+  error?: Error | null
 } & ChartThemeProps) {
   if (isLoading) return <LoadingSection title="Indexing Health" />
+  if (error) {
+    return (
+      <div>
+        <h2 className="mb-4 text-xl font-semibold text-admin-text-primary">Indexing Health</h2>
+        <div className="border-admin-danger/30 bg-admin-danger/5 rounded-lg border p-6 text-center text-sm text-admin-danger">
+          Failed to load indexing data
+        </div>
+      </div>
+    )
+  }
   if (!data || data.data.length === 0) {
     return (
       <div>
@@ -639,11 +669,23 @@ function IndexingSection({
 function SitemapsSection({
   data,
   isLoading,
+  error,
 }: {
   data?: ReturnType<typeof useSitemaps>["data"]
   isLoading: boolean
+  error?: Error | null
 }) {
   if (isLoading) return <LoadingSection title="Sitemaps" />
+  if (error) {
+    return (
+      <div>
+        <h2 className="mb-4 text-xl font-semibold text-admin-text-primary">Sitemaps</h2>
+        <div className="border-admin-danger/30 bg-admin-danger/5 rounded-lg border p-6 text-center text-sm text-admin-danger">
+          Failed to load sitemap data
+        </div>
+      </div>
+    )
+  }
   if (!data?.configured) {
     return null
   }
