@@ -178,6 +178,7 @@ describe("generateStaticSitemap", () => {
     expect(xml).toContain("https://deadonfilm.com/movies/genres")
     // Articles
     expect(xml).toContain("https://deadonfilm.com/articles")
+    expect(xml).toContain("https://deadonfilm.com/articles/deadliest-horror-franchises")
     // Authority/trust pages
     expect(xml).toContain("https://deadonfilm.com/about")
     expect(xml).toContain("https://deadonfilm.com/faq")

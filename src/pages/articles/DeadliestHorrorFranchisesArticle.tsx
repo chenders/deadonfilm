@@ -93,8 +93,8 @@ export default function DeadliestHorrorFranchisesArticle() {
       <section>
         <div className="rounded-lg border border-brown-medium/20 bg-brown-medium/5 p-5">
           <p className="text-center text-lg font-medium text-brown-dark">
-            Across these five franchises, an estimated 260 cast members have died out of a combined
-            1,096 unique actors &mdash; a raw mortality rate of 23.7%.
+            Across these five franchises, an estimated 129 cast members have died out of a combined
+            1,096 unique actors &mdash; a raw mortality rate of approximately 11.8%.
           </p>
         </div>
       </section>

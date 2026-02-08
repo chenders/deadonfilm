@@ -65,6 +65,8 @@ export default function ArticleLayout({ article, children }: ArticleLayoutProps)
   const relatedArticles = getRelatedArticles(article)
   const publishedDisplay = formatArticleDate(article.publishedDate)
   const updatedDisplay = article.updatedDate ? formatArticleDate(article.updatedDate) : null
+  const publishedISO = toISOTimestamp(article.publishedDate)
+  const updatedISO = article.updatedDate ? toISOTimestamp(article.updatedDate) : ""
 
   return (
     <>
@@ -74,11 +76,11 @@ export default function ArticleLayout({ article, children }: ArticleLayoutProps)
         <meta property="og:title" content={`${article.title} - Dead on Film`} />
         <meta property="og:description" content={article.description} />
         <meta property="og:type" content="article" />
-        {toISOTimestamp(article.publishedDate) && (
-          <meta property="article:published_time" content={toISOTimestamp(article.publishedDate)} />
+        {publishedISO && (
+          <meta property="article:published_time" content={publishedISO} />
         )}
-        {article.updatedDate && toISOTimestamp(article.updatedDate) && (
-          <meta property="article:modified_time" content={toISOTimestamp(article.updatedDate)} />
+        {updatedISO && (
+          <meta property="article:modified_time" content={updatedISO} />
         )}
         <link rel="canonical" href={`${BASE_URL}/articles/${article.slug}`} />
       </Helmet>
