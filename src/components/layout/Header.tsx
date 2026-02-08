@@ -20,12 +20,12 @@ export default function Header() {
           className="flex items-center justify-center gap-2 transition-opacity hover:opacity-80 md:gap-3"
         >
           <SkullLogo data-testid="skull-logo" className="h-auto w-16 md:w-24" />
-          <h1
+          <p
             data-testid="site-title"
             className="font-display text-2xl italic text-brown-dark md:text-5xl"
           >
             Dead on Film
-          </h1>
+          </p>
         </Link>
 
         {/* Right-aligned controls */}

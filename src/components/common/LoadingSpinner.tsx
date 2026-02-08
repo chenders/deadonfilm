@@ -6,7 +6,11 @@ interface LoadingSpinnerProps {
 
 export default function LoadingSpinner({ message = "Loading..." }: LoadingSpinnerProps) {
   return (
-    <div data-testid="loading-spinner" className="flex flex-col items-center justify-center py-12">
+    <div
+      data-testid="loading-spinner"
+      role="status"
+      className="flex flex-col items-center justify-center py-12"
+    >
       {/* Film reel container with projector-style glow */}
       <div className="relative">
         {/* Subtle glow effect behind the reel */}
