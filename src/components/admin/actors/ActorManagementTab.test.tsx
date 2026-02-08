@@ -461,12 +461,12 @@ describe("ActorManagementTab", () => {
     renderComponent()
 
     // John Wayne and James Dean have detailed death info - checkmarks appear inline with names
-    // in both mobile and desktop views
+    // in both mobile (MobileCard) and desktop (table row) views
     const checkmarks = screen.getAllByText("✓")
-    expect(checkmarks.length).toBeGreaterThanOrEqual(2)
+    // Exactly 2 actors × 2 views (mobile + desktop) = 4 checkmarks
+    expect(checkmarks).toHaveLength(4)
 
     // Marilyn Monroe does not have death info - no checkmark for her
-    // (no standalone ✗ column anymore)
   })
 
   it("displays cause of death or dash when missing", () => {

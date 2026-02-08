@@ -404,7 +404,6 @@ export default function ActorManagementTab() {
             const params = new URLSearchParams()
             if (tab) params.set("tab", tab)
             setSearchParams(params)
-            setPage(1)
             setSelectedActorIds(new Set())
           }}
           className="mt-4 text-sm text-admin-text-muted transition-colors hover:text-admin-text-primary"
@@ -444,6 +443,7 @@ export default function ActorManagementTab() {
                   <MobileCard
                     key={actor.id}
                     data-testid={`actor-card-${actor.id}`}
+                    ariaLabel={actor.name}
                     title={
                       <>
                         {actor.name}
