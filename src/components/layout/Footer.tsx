@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom"
+
 export default function Footer() {
   return (
     <footer
@@ -6,6 +8,36 @@ export default function Footer() {
     >
       <div className="mx-auto max-w-4xl px-4">
         <div className="flex flex-col items-center gap-2 text-center">
+          <nav
+            data-testid="footer-nav"
+            aria-label="Footer"
+            className="mb-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-1"
+          >
+            <Link
+              to="/about"
+              className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+            >
+              About
+            </Link>
+            <Link
+              to="/faq"
+              className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+            >
+              FAQ
+            </Link>
+            <Link
+              to="/methodology"
+              className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+            >
+              Methodology
+            </Link>
+            <Link
+              to="/data-sources"
+              className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+            >
+              Data Sources
+            </Link>
+          </nav>
           <a
             href="https://www.themoviedb.org/"
             target="_blank"
