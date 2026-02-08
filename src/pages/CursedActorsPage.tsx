@@ -196,7 +196,7 @@ export default function CursedActorsPage() {
           content="Actors ranked by how many of their co-stars died above statistical expectations"
         />
       </Helmet>
-      {data && (
+      {data && !hasFilters && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}

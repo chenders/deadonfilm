@@ -96,11 +96,13 @@ export default function CauseCategoryPage() {
           content={`Explore ${data.count.toLocaleString()} actors who died from ${data.label.toLowerCase()}`}
         />
       </Helmet>
-      <PaginationHead
-        currentPage={page}
-        totalPages={data.pagination.totalPages}
-        basePath={`/causes-of-death/${data.slug}`}
-      />
+      {!includeObscure && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath={`/causes-of-death/${data.slug}`}
+        />
+      )}
 
       <div data-testid="cause-category-page" className="mx-auto max-w-5xl">
         {/* Breadcrumb */}

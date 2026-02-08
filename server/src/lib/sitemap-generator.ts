@@ -27,6 +27,7 @@ const staticPages = [
   { loc: "/death-watch", priority: "0.7", changefreq: "daily" },
   { loc: "/forever-young", priority: "0.6", changefreq: "weekly" },
   { loc: "/deaths", priority: "0.5", changefreq: "weekly" },
+  { loc: "/deaths/all", priority: "0.5", changefreq: "weekly" },
   { loc: "/deaths/notable", priority: "0.7", changefreq: "weekly" },
   { loc: "/movies/genres", priority: "0.5", changefreq: "weekly" },
   // Causes of death 3-level hierarchy

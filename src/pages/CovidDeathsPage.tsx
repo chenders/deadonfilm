@@ -161,7 +161,7 @@ export default function CovidDeathsPage() {
           content="Actors who died from COVID-19 or related complications"
         />
       </Helmet>
-      {data && (
+      {data && !includeObscure && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}

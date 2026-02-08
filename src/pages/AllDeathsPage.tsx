@@ -169,7 +169,7 @@ export default function AllDeathsPage() {
           content="Complete list of deceased actors in our database, ordered by death date"
         />
       </Helmet>
-      {data && (
+      {data && !includeObscure && !searchQuery && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}

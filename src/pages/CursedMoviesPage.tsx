@@ -217,7 +217,7 @@ export default function CursedMoviesPage() {
           content="Movies ranked by how many cast members died above statistical expectations"
         />
       </Helmet>
-      {data && (
+      {data && !hasFilters && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}
