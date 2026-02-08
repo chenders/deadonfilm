@@ -49,20 +49,25 @@ export default function SeoMetricsTab() {
   const [days, setDays] = useState(30)
   const [inspectUrlInput, setInspectUrlInput] = useState("")
 
-  const { data: status } = useGscStatus()
-  const { data: performance, isLoading: perfLoading } = useSearchPerformance(days)
-  const { data: topQueries, isLoading: queriesLoading } = useTopQueries(days, 20)
-  const { data: topPages, isLoading: pagesLoading } = useTopPages(days, 20)
-  const { data: pageTypes, isLoading: typesLoading } = usePageTypePerformance(days)
-  const { data: sitemaps } = useSitemaps()
-  const { data: indexing } = useIndexingStatus(90)
-  const { data: alerts } = useGscAlerts(false)
+  const { data: status, isLoading: statusLoading } = useGscStatus()
+  const isConfigured = status?.configured === true
+  const { data: performance, isLoading: perfLoading } = useSearchPerformance(days, isConfigured)
+  const { data: topQueries, isLoading: queriesLoading } = useTopQueries(days, 20, isConfigured)
+  const { data: topPages, isLoading: pagesLoading } = useTopPages(days, 20, isConfigured)
+  const { data: pageTypes, isLoading: typesLoading } = usePageTypePerformance(days, isConfigured)
+  const { data: sitemaps } = useSitemaps(isConfigured)
+  const { data: indexing } = useIndexingStatus(90, isConfigured)
+  const { data: alerts } = useGscAlerts(false, isConfigured)
   const snapshotMutation = useGscSnapshot()
   const inspectMutation = useInspectUrl()
   const acknowledgeMutation = useAcknowledgeAlert()
 
   const chartTheme = useChartTheme()
   const tooltipStyle = useChartTooltipStyle()
+
+  if (statusLoading) {
+    return <LoadingSection title="SEO Metrics" />
+  }
 
   if (!status?.configured) {
     return <GscNotConfigured />
@@ -275,8 +280,8 @@ function PerformanceOverview({
               stroke={chartTheme.axis}
               tick={{ fontSize: 12 }}
               tickFormatter={(value: string) => {
-                const d = new Date(value + "T00:00:00")
-                return `${d.getMonth() + 1}/${d.getDate()}`
+                const d = new Date(value + "T00:00:00Z")
+                return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`
               }}
             />
             <YAxis yAxisId="left" stroke={chartTheme.axis} tick={{ fontSize: 12 }} />
@@ -557,8 +562,8 @@ function IndexingSection({
                 stroke={chartTheme.axis}
                 tick={{ fontSize: 11 }}
                 tickFormatter={(value: string) => {
-                  const d = new Date(value + "T00:00:00")
-                  return `${d.getMonth() + 1}/${d.getDate()}`
+                  const d = new Date(value + "T00:00:00Z")
+                  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`
                 }}
               />
               <YAxis stroke={chartTheme.axis} tick={{ fontSize: 12 }} />

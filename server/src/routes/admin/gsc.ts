@@ -26,8 +26,15 @@ import {
   getSitemaps,
   inspectUrl,
   daysAgo,
+  categorizeUrl,
   type SearchType,
 } from "../../lib/gsc-client.js"
+
+const VALID_SEARCH_TYPES = new Set<string>(["web", "image", "video", "news"])
+const MIN_DAYS = 1
+const MAX_DAYS = 365
+const MIN_LIMIT = 1
+const MAX_LIMIT = 100
 import {
   getSearchPerformanceHistory,
   getTopQueriesHistory,
@@ -36,11 +43,6 @@ import {
   getIndexingStatusHistory,
   getGscAlerts,
   acknowledgeGscAlert,
-  upsertSearchPerformance,
-  upsertTopQuery,
-  upsertTopPage,
-  upsertPageTypePerformance,
-  upsertIndexingStatus,
 } from "../../lib/db/admin-gsc-queries.js"
 
 const router = Router()
@@ -64,8 +66,24 @@ router.get("/status", async (_req: Request, res: Response): Promise<void> => {
 
 router.get("/performance", async (req: Request, res: Response): Promise<void> => {
   try {
-    const days = parseInt(req.query.days as string) || 30
-    const searchType = (req.query.searchType as SearchType) || "web"
+    const days = req.query.days ? parseInt(req.query.days as string, 10) : 30
+    if (isNaN(days) || days < MIN_DAYS || days > MAX_DAYS) {
+      res
+        .status(400)
+        .json({ error: { message: `Invalid days. Must be between ${MIN_DAYS} and ${MAX_DAYS}` } })
+      return
+    }
+
+    const searchType = ((req.query.searchType as string) || "web") as SearchType
+    if (!VALID_SEARCH_TYPES.has(searchType)) {
+      res.status(400).json({
+        error: {
+          message: `Invalid searchType. Must be one of: ${[...VALID_SEARCH_TYPES].join(", ")}`,
+        },
+      })
+      return
+    }
+
     const source = (req.query.source as string) || "auto"
 
     const startDate = (req.query.startDate as string) || daysAgo(days)
@@ -124,8 +142,22 @@ router.get("/performance", async (req: Request, res: Response): Promise<void> =>
 
 router.get("/top-queries", async (req: Request, res: Response): Promise<void> => {
   try {
-    const days = parseInt(req.query.days as string) || 30
-    const limit = parseInt(req.query.limit as string) || 50
+    const days = req.query.days ? parseInt(req.query.days as string, 10) : 30
+    if (isNaN(days) || days < MIN_DAYS || days > MAX_DAYS) {
+      res
+        .status(400)
+        .json({ error: { message: `Invalid days. Must be between ${MIN_DAYS} and ${MAX_DAYS}` } })
+      return
+    }
+
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50
+    if (isNaN(limit) || limit < MIN_LIMIT || limit > MAX_LIMIT) {
+      res.status(400).json({
+        error: { message: `Invalid limit. Must be between ${MIN_LIMIT} and ${MAX_LIMIT}` },
+      })
+      return
+    }
+
     const source = (req.query.source as string) || "auto"
 
     const startDate = (req.query.startDate as string) || daysAgo(days)
@@ -168,8 +200,22 @@ router.get("/top-queries", async (req: Request, res: Response): Promise<void> =>
 
 router.get("/top-pages", async (req: Request, res: Response): Promise<void> => {
   try {
-    const days = parseInt(req.query.days as string) || 30
-    const limit = parseInt(req.query.limit as string) || 50
+    const days = req.query.days ? parseInt(req.query.days as string, 10) : 30
+    if (isNaN(days) || days < MIN_DAYS || days > MAX_DAYS) {
+      res
+        .status(400)
+        .json({ error: { message: `Invalid days. Must be between ${MIN_DAYS} and ${MAX_DAYS}` } })
+      return
+    }
+
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50
+    if (isNaN(limit) || limit < MIN_LIMIT || limit > MAX_LIMIT) {
+      res.status(400).json({
+        error: { message: `Invalid limit. Must be between ${MIN_LIMIT} and ${MAX_LIMIT}` },
+      })
+      return
+    }
+
     const source = (req.query.source as string) || "auto"
 
     const startDate = (req.query.startDate as string) || daysAgo(days)
@@ -212,7 +258,14 @@ router.get("/top-pages", async (req: Request, res: Response): Promise<void> => {
 
 router.get("/page-types", async (req: Request, res: Response): Promise<void> => {
   try {
-    const days = parseInt(req.query.days as string) || 30
+    const days = req.query.days ? parseInt(req.query.days as string, 10) : 30
+    if (isNaN(days) || days < MIN_DAYS || days > MAX_DAYS) {
+      res
+        .status(400)
+        .json({ error: { message: `Invalid days. Must be between ${MIN_DAYS} and ${MAX_DAYS}` } })
+      return
+    }
+
     const source = (req.query.source as string) || "auto"
 
     const startDate = (req.query.startDate as string) || daysAgo(days)
@@ -375,96 +428,116 @@ router.post("/snapshot", async (_req: Request, res: Response): Promise<void> => 
     }
 
     const pool = getPool()
+    const client = await pool.connect()
     const yesterday = daysAgo(1)
     const thirtyDaysAgo = daysAgo(30)
 
-    // Snapshot search performance (last 30 days)
+    // Fetch all data from GSC API before writing to DB
     const performance = await getSearchPerformanceOverTime(thirtyDaysAgo, yesterday)
-    for (const row of performance.rows) {
-      await upsertSearchPerformance(pool, {
-        date: row.keys[0],
-        clicks: row.clicks,
-        impressions: row.impressions,
-        ctr: row.ctr,
-        position: row.position,
-      })
-    }
-
-    // Snapshot top queries (for yesterday)
     const queries = await getTopQueries(yesterday, yesterday, 100)
-    for (const row of queries.rows) {
-      await upsertTopQuery(pool, {
-        date: yesterday,
-        query: row.keys[0],
-        clicks: row.clicks,
-        impressions: row.impressions,
-        ctr: row.ctr,
-        position: row.position,
-      })
-    }
-
-    // Snapshot top pages (for yesterday)
     const pages = await getTopPages(yesterday, yesterday, 100)
-    for (const row of pages.rows) {
-      await upsertTopPage(pool, {
-        date: yesterday,
-        page_url: row.keys[0],
-        page_type: "other", // Will be categorized by getPerformanceByPageType
-        clicks: row.clicks,
-        impressions: row.impressions,
-        ctr: row.ctr,
-        position: row.position,
-      })
-    }
-
-    // Snapshot page type performance (for yesterday)
     const pageTypes = await getPerformanceByPageType(yesterday, yesterday)
-    for (const [pageType, data] of Object.entries(pageTypes)) {
-      await upsertPageTypePerformance(pool, {
-        date: yesterday,
-        page_type: pageType,
-        clicks: data.clicks,
-        impressions: data.impressions,
-        ctr: data.ctr,
-        position: data.position,
-      })
-    }
-
-    // Snapshot indexing status from sitemaps
     const sitemaps = await getSitemaps()
-    let totalSubmitted = 0
-    let totalIndexed = 0
-    const indexDetails: Record<string, { submitted: number; indexed: number }> = {}
 
-    for (const sitemap of sitemaps) {
-      for (const content of sitemap.contents) {
-        totalSubmitted += content.submitted
-        totalIndexed += content.indexed
-        if (!indexDetails[content.type]) {
-          indexDetails[content.type] = { submitted: 0, indexed: 0 }
-        }
-        indexDetails[content.type].submitted += content.submitted
-        indexDetails[content.type].indexed += content.indexed
+    try {
+      await client.query("BEGIN")
+
+      // Snapshot search performance (last 30 days)
+      for (const row of performance.rows) {
+        await client.query(
+          `INSERT INTO gsc_search_performance (date, search_type, clicks, impressions, ctr, position)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (date, search_type)
+           DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
+          [row.keys[0], "web", row.clicks, row.impressions, row.ctr, row.position]
+        )
       }
+
+      // Snapshot top queries (for yesterday)
+      for (const row of queries.rows) {
+        await client.query(
+          `INSERT INTO gsc_top_queries (date, query, clicks, impressions, ctr, position)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (date, query)
+           DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
+          [yesterday, row.keys[0], row.clicks, row.impressions, row.ctr, row.position]
+        )
+      }
+
+      // Snapshot top pages (for yesterday) - derive page_type from URL
+      for (const row of pages.rows) {
+        const pageUrl = row.keys[0]
+        let path: string
+        try {
+          path = new URL(pageUrl).pathname
+        } catch {
+          path = pageUrl
+        }
+        const pageType = categorizeUrl(path)
+
+        await client.query(
+          `INSERT INTO gsc_top_pages (date, page_url, page_type, clicks, impressions, ctr, position)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (date, page_url)
+           DO UPDATE SET page_type = $3, clicks = $4, impressions = $5, ctr = $6, position = $7, fetched_at = now()`,
+          [yesterday, pageUrl, pageType, row.clicks, row.impressions, row.ctr, row.position]
+        )
+      }
+
+      // Snapshot page type performance (for yesterday)
+      for (const [pageType, data] of Object.entries(pageTypes)) {
+        await client.query(
+          `INSERT INTO gsc_page_type_performance (date, page_type, clicks, impressions, ctr, position)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (date, page_type)
+           DO UPDATE SET clicks = $3, impressions = $4, ctr = $5, position = $6, fetched_at = now()`,
+          [yesterday, pageType, data.clicks, data.impressions, data.ctr, data.position]
+        )
+      }
+
+      // Snapshot indexing status from sitemaps
+      let totalSubmitted = 0
+      let totalIndexed = 0
+      const indexDetails: Record<string, { submitted: number; indexed: number }> = {}
+
+      for (const sitemap of sitemaps) {
+        for (const content of sitemap.contents) {
+          totalSubmitted += content.submitted
+          totalIndexed += content.indexed
+          if (!indexDetails[content.type]) {
+            indexDetails[content.type] = { submitted: 0, indexed: 0 }
+          }
+          indexDetails[content.type].submitted += content.submitted
+          indexDetails[content.type].indexed += content.indexed
+        }
+      }
+
+      await client.query(
+        `INSERT INTO gsc_indexing_status (date, total_submitted, total_indexed, index_details)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (date)
+         DO UPDATE SET total_submitted = $2, total_indexed = $3, index_details = $4, fetched_at = now()`,
+        [yesterday, totalSubmitted, totalIndexed, JSON.stringify(indexDetails)]
+      )
+
+      await client.query("COMMIT")
+
+      res.json({
+        success: true,
+        snapshot: {
+          performanceDays: performance.rows.length,
+          queries: queries.rows.length,
+          pages: pages.rows.length,
+          pageTypes: Object.keys(pageTypes).length,
+          indexing: { totalSubmitted, totalIndexed },
+        },
+      })
+    } catch (txError) {
+      await client.query("ROLLBACK")
+      throw txError
+    } finally {
+      client.release()
     }
-
-    await upsertIndexingStatus(pool, {
-      date: yesterday,
-      total_submitted: totalSubmitted,
-      total_indexed: totalIndexed,
-      index_details: indexDetails,
-    })
-
-    res.json({
-      success: true,
-      snapshot: {
-        performanceDays: performance.rows.length,
-        queries: queries.rows.length,
-        pages: pages.rows.length,
-        pageTypes: Object.keys(pageTypes).length,
-        indexing: { totalSubmitted, totalIndexed },
-      },
-    })
   } catch (error) {
     logger.error({ error }, "Failed to create GSC snapshot")
     res.status(500).json({ error: { message: "Failed to create snapshot" } })

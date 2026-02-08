@@ -161,7 +161,8 @@ async function fetchGscStatus(): Promise<GscStatus> {
 }
 
 async function fetchPerformance(days: number): Promise<PerformanceResponse> {
-  const response = await fetch(`/admin/api/gsc/performance?days=${days}`, {
+  const params = new URLSearchParams({ days: String(days) })
+  const response = await fetch(`/admin/api/gsc/performance?${params}`, {
     credentials: "include",
   })
   if (!response.ok) throw new Error("Failed to fetch search performance")
@@ -169,7 +170,8 @@ async function fetchPerformance(days: number): Promise<PerformanceResponse> {
 }
 
 async function fetchTopQueries(days: number, limit: number): Promise<TopQueryResponse> {
-  const response = await fetch(`/admin/api/gsc/top-queries?days=${days}&limit=${limit}`, {
+  const params = new URLSearchParams({ days: String(days), limit: String(limit) })
+  const response = await fetch(`/admin/api/gsc/top-queries?${params}`, {
     credentials: "include",
   })
   if (!response.ok) throw new Error("Failed to fetch top queries")
@@ -177,7 +179,8 @@ async function fetchTopQueries(days: number, limit: number): Promise<TopQueryRes
 }
 
 async function fetchTopPages(days: number, limit: number): Promise<TopPageResponse> {
-  const response = await fetch(`/admin/api/gsc/top-pages?days=${days}&limit=${limit}`, {
+  const params = new URLSearchParams({ days: String(days), limit: String(limit) })
+  const response = await fetch(`/admin/api/gsc/top-pages?${params}`, {
     credentials: "include",
   })
   if (!response.ok) throw new Error("Failed to fetch top pages")
@@ -185,7 +188,8 @@ async function fetchTopPages(days: number, limit: number): Promise<TopPageRespon
 }
 
 async function fetchPageTypes(days: number): Promise<PageTypeResponse> {
-  const response = await fetch(`/admin/api/gsc/page-types?days=${days}`, {
+  const params = new URLSearchParams({ days: String(days) })
+  const response = await fetch(`/admin/api/gsc/page-types?${params}`, {
     credentials: "include",
   })
   if (!response.ok) throw new Error("Failed to fetch page type performance")
@@ -199,7 +203,8 @@ async function fetchSitemaps(): Promise<SitemapsResponse> {
 }
 
 async function fetchIndexing(days: number): Promise<IndexingResponse> {
-  const response = await fetch(`/admin/api/gsc/indexing?days=${days}`, {
+  const params = new URLSearchParams({ days: String(days) })
+  const response = await fetch(`/admin/api/gsc/indexing?${params}`, {
     credentials: "include",
   })
   if (!response.ok) throw new Error("Failed to fetch indexing status")
@@ -258,59 +263,83 @@ export function useGscStatus(): UseQueryResult<GscStatus> {
   })
 }
 
-export function useSearchPerformance(days = 30): UseQueryResult<PerformanceResponse> {
+export function useSearchPerformance(
+  days = 30,
+  enabled = true
+): UseQueryResult<PerformanceResponse> {
   return useQuery({
     queryKey: ["admin", "gsc", "performance", days],
     queryFn: () => fetchPerformance(days),
     staleTime: STALE_TIME,
+    enabled,
   })
 }
 
-export function useTopQueries(days = 30, limit = 50): UseQueryResult<TopQueryResponse> {
+export function useTopQueries(
+  days = 30,
+  limit = 50,
+  enabled = true
+): UseQueryResult<TopQueryResponse> {
   return useQuery({
     queryKey: ["admin", "gsc", "top-queries", days, limit],
     queryFn: () => fetchTopQueries(days, limit),
     staleTime: STALE_TIME,
+    enabled,
   })
 }
 
-export function useTopPages(days = 30, limit = 50): UseQueryResult<TopPageResponse> {
+export function useTopPages(
+  days = 30,
+  limit = 50,
+  enabled = true
+): UseQueryResult<TopPageResponse> {
   return useQuery({
     queryKey: ["admin", "gsc", "top-pages", days, limit],
     queryFn: () => fetchTopPages(days, limit),
     staleTime: STALE_TIME,
+    enabled,
   })
 }
 
-export function usePageTypePerformance(days = 30): UseQueryResult<PageTypeResponse> {
+export function usePageTypePerformance(
+  days = 30,
+  enabled = true
+): UseQueryResult<PageTypeResponse> {
   return useQuery({
     queryKey: ["admin", "gsc", "page-types", days],
     queryFn: () => fetchPageTypes(days),
     staleTime: STALE_TIME,
+    enabled,
   })
 }
 
-export function useSitemaps(): UseQueryResult<SitemapsResponse> {
+export function useSitemaps(enabled = true): UseQueryResult<SitemapsResponse> {
   return useQuery({
     queryKey: ["admin", "gsc", "sitemaps"],
     queryFn: fetchSitemaps,
     staleTime: STALE_TIME,
+    enabled,
   })
 }
 
-export function useIndexingStatus(days = 90): UseQueryResult<IndexingResponse> {
+export function useIndexingStatus(days = 90, enabled = true): UseQueryResult<IndexingResponse> {
   return useQuery({
     queryKey: ["admin", "gsc", "indexing", days],
     queryFn: () => fetchIndexing(days),
     staleTime: STALE_TIME,
+    enabled,
   })
 }
 
-export function useGscAlerts(acknowledged?: boolean): UseQueryResult<AlertsResponse> {
+export function useGscAlerts(
+  acknowledged?: boolean,
+  enabled = true
+): UseQueryResult<AlertsResponse> {
   return useQuery({
     queryKey: ["admin", "gsc", "alerts", acknowledged],
     queryFn: () => fetchAlerts(acknowledged),
     staleTime: STALE_TIME,
+    enabled,
   })
 }
 

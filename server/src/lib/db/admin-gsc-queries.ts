@@ -71,7 +71,7 @@ export interface GscAlert {
 
 export async function upsertSearchPerformance(
   pool: Pool,
-  data: Omit<SearchPerformanceSnapshot, "fetched_at"> & { search_type?: string }
+  data: SearchPerformanceSnapshot & { search_type?: string }
 ): Promise<void> {
   await pool.query(
     `INSERT INTO gsc_search_performance (date, search_type, clicks, impressions, ctr, position)
@@ -106,10 +106,7 @@ export async function getSearchPerformanceHistory(
 // Top Queries
 // ============================================================================
 
-export async function upsertTopQuery(
-  pool: Pool,
-  data: Omit<TopQuerySnapshot, "fetched_at">
-): Promise<void> {
+export async function upsertTopQuery(pool: Pool, data: TopQuerySnapshot): Promise<void> {
   await pool.query(
     `INSERT INTO gsc_top_queries (date, query, clicks, impressions, ctr, position)
      VALUES ($1, $2, $3, $4, $5, $6)
@@ -156,10 +153,7 @@ export async function getTopQueriesHistory(
 // Top Pages
 // ============================================================================
 
-export async function upsertTopPage(
-  pool: Pool,
-  data: Omit<TopPageSnapshot, "fetched_at">
-): Promise<void> {
+export async function upsertTopPage(pool: Pool, data: TopPageSnapshot): Promise<void> {
   await pool.query(
     `INSERT INTO gsc_top_pages (date, page_url, page_type, clicks, impressions, ctr, position)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -217,7 +211,7 @@ export async function getTopPagesHistory(
 
 export async function upsertPageTypePerformance(
   pool: Pool,
-  data: Omit<PageTypePerformanceSnapshot, "fetched_at">
+  data: PageTypePerformanceSnapshot
 ): Promise<void> {
   await pool.query(
     `INSERT INTO gsc_page_type_performance (date, page_type, clicks, impressions, ctr, position)
@@ -265,7 +259,7 @@ export async function getPageTypePerformanceHistory(
 
 export async function upsertIndexingStatus(
   pool: Pool,
-  data: Omit<IndexingStatusSnapshot, "fetched_at">
+  data: IndexingStatusSnapshot
 ): Promise<void> {
   await pool.query(
     `INSERT INTO gsc_indexing_status (date, total_submitted, total_indexed, index_details)

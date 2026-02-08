@@ -276,10 +276,10 @@ describe("SeoMetricsTab", () => {
     const button90 = screen.getByText("90 days")
 
     fireEvent.click(button7)
-    expect(useSearchPerformance).toHaveBeenCalledWith(7)
+    expect(useSearchPerformance).toHaveBeenCalledWith(7, true)
 
     fireEvent.click(button90)
-    expect(useSearchPerformance).toHaveBeenCalledWith(90)
+    expect(useSearchPerformance).toHaveBeenCalledWith(90, true)
   })
 
   it("renders Save Snapshot button", () => {

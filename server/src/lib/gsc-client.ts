@@ -279,7 +279,12 @@ export async function getPerformanceByPageType(
 
   for (const row of result.rows) {
     const url = row.keys[0] || ""
-    const path = url.replace(siteUrl, "")
+    let path: string
+    try {
+      path = new URL(url).pathname
+    } catch {
+      path = url.replace(siteUrl, "")
+    }
     const category = categorizeUrl(path)
 
     if (!categories[category]) {
@@ -313,7 +318,7 @@ export async function getPerformanceByPageType(
 /**
  * Categorize a URL path into a page type.
  */
-function categorizeUrl(path: string): string {
+export function categorizeUrl(path: string): string {
   if (path === "/" || path === "") return "home"
   if (path.startsWith("/actor/") && path.includes("/death")) return "actor-death"
   if (path.startsWith("/actor/")) return "actor"
