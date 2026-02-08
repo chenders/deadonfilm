@@ -233,6 +233,8 @@ services:
         labels: "service"
 
   prerender:
+    profiles:
+      - prerender
     build:
       context: .
       dockerfile: Dockerfile.prerender
