@@ -176,6 +176,11 @@ describe("generateStaticSitemap", () => {
     expect(xml).toContain("https://deadonfilm.com/forever-young")
     expect(xml).toContain("https://deadonfilm.com/deaths")
     expect(xml).toContain("https://deadonfilm.com/movies/genres")
+    // Authority/trust pages
+    expect(xml).toContain("https://deadonfilm.com/about")
+    expect(xml).toContain("https://deadonfilm.com/faq")
+    expect(xml).toContain("https://deadonfilm.com/methodology")
+    expect(xml).toContain("https://deadonfilm.com/data-sources")
   })
 
   it("includes priority and changefreq for each page", async () => {
@@ -185,6 +190,7 @@ describe("generateStaticSitemap", () => {
     expect(xml).toContain("<priority>0.8</priority>") // Cursed pages
     expect(xml).toContain("<changefreq>daily</changefreq>")
     expect(xml).toContain("<changefreq>weekly</changefreq>")
+    expect(xml).toContain("<changefreq>monthly</changefreq>") // Authority pages
   })
 
   it("includes lastmod with today's date", async () => {
