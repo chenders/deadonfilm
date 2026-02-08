@@ -7,6 +7,8 @@ import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildCollectionPageSchema } from "@/utils/schema"
 import { PersonIcon } from "@/components/icons"
 import type { DeathWatchActor } from "@/types"
 
@@ -173,6 +175,19 @@ export default function DeathWatchPage() {
           totalPages={data.pagination.totalPages}
           basePath="/death-watch"
           includeLinks={!includeObscure && !searchQuery}
+        />
+      )}
+      {page === 1 && data && data.actors.length > 0 && (
+        <JsonLd
+          data={buildCollectionPageSchema(
+            "Death Watch",
+            "Living actors most likely to die soon based on actuarial statistics, ranked by 1-year death probability.",
+            "https://deadonfilm.com/death-watch",
+            data.actors.map((actor) => ({
+              name: actor.name,
+              url: `https://deadonfilm.com/actor/${createActorSlug(actor.name, actor.id)}`,
+            }))
+          )}
         />
       )}
 

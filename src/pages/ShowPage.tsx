@@ -14,6 +14,8 @@ import CastToggle from "@/components/movie/CastToggle"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import AggregateScore from "@/components/common/AggregateScore"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildTVSeriesSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import type { ViewMode } from "@/types"
 
 export default function ShowPage() {
@@ -89,6 +91,13 @@ export default function ShowPage() {
         )}
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
+      <JsonLd data={buildTVSeriesSchema(show, stats, slug!)} />
+      <JsonLd
+        data={buildBreadcrumbSchema([
+          { name: "Home", url: "https://deadonfilm.com" },
+          { name: show.name, url: `https://deadonfilm.com${location.pathname}` },
+        ])}
+      />
 
       <div data-testid="show-page" className="mx-auto max-w-4xl">
         <ShowHeader show={show} hidePoster />

@@ -10,6 +10,8 @@ import { toTitleCase } from "@/utils/formatText"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import HoverTooltip from "@/components/common/HoverTooltip"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildCollectionPageSchema } from "@/utils/schema"
 import { PersonIcon, InfoIcon } from "@/components/icons"
 import type { AllDeath } from "@/types"
 
@@ -175,6 +177,19 @@ export default function AllDeathsPage() {
           totalPages={data.pagination.totalPages}
           basePath="/deaths/all"
           includeLinks={!includeObscure && !searchQuery}
+        />
+      )}
+      {page === 1 && data && data.deaths.length > 0 && (
+        <JsonLd
+          data={buildCollectionPageSchema(
+            "All Deaths",
+            "Complete list of deceased actors in our database, ordered by death date.",
+            "https://deadonfilm.com/deaths/all",
+            data.deaths.map((person) => ({
+              name: person.name,
+              url: `https://deadonfilm.com/actor/${createActorSlug(person.name, person.id)}`,
+            }))
+          )}
         />
       )}
 
