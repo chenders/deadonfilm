@@ -186,11 +186,12 @@ export default function NotableDeathsPage() {
           content="Strange, disputed, and controversial celebrity deaths"
         />
       </Helmet>
-      {data && filter === "all" && !includeObscure && (
+      {data && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}
           basePath="/deaths/notable"
+          includeLinks={filter === "all" && !includeObscure}
         />
       )}
 

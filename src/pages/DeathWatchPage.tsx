@@ -167,11 +167,12 @@ export default function DeathWatchPage() {
           content="Living actors most likely to die soon based on actuarial statistics"
         />
       </Helmet>
-      {data && !includeObscure && !searchQuery && (
+      {data && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}
           basePath="/death-watch"
+          includeLinks={!includeObscure && !searchQuery}
         />
       )}
 

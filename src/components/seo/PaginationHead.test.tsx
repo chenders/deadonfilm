@@ -7,6 +7,7 @@ function renderPaginationHead(props: {
   currentPage: number
   totalPages: number
   basePath: string
+  includeLinks?: boolean
 }) {
   render(
     <HelmetProvider>
@@ -90,5 +91,44 @@ describe("PaginationHead", () => {
     const next = document.querySelector('link[rel="next"]')
     expect(prev).toBeNull()
     expect(next).toBeNull()
+  })
+
+  describe("includeLinks=false", () => {
+    it("omits canonical, prev, and next links", () => {
+      renderPaginationHead({
+        currentPage: 3,
+        totalPages: 5,
+        basePath: "/deaths/all",
+        includeLinks: false,
+      })
+
+      expect(document.querySelector('link[rel="canonical"]')).toBeNull()
+      expect(document.querySelector('link[rel="prev"]')).toBeNull()
+      expect(document.querySelector('link[rel="next"]')).toBeNull()
+    })
+
+    it("still renders noindex for deep pages", () => {
+      renderPaginationHead({
+        currentPage: 25,
+        totalPages: 50,
+        basePath: "/deaths/all",
+        includeLinks: false,
+      })
+
+      const robots = document.querySelector('meta[name="robots"]')
+      expect(robots?.getAttribute("content")).toBe("noindex, follow")
+    })
+
+    it("does not render noindex for shallow pages", () => {
+      renderPaginationHead({
+        currentPage: 3,
+        totalPages: 50,
+        basePath: "/deaths/all",
+        includeLinks: false,
+      })
+
+      const robots = document.querySelector('meta[name="robots"]')
+      expect(robots).toBeNull()
+    })
   })
 })

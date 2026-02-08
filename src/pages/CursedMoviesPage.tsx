@@ -217,11 +217,12 @@ export default function CursedMoviesPage() {
           content="Movies ranked by how many cast members died above statistical expectations"
         />
       </Helmet>
-      {data && !hasFilters && (
+      {data && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}
           basePath="/cursed-movies"
+          includeLinks={!hasFilters}
         />
       )}
       {data && data.movies.length > 0 && (

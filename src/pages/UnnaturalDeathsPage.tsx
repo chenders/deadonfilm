@@ -204,11 +204,12 @@ export default function UnnaturalDeathsPage() {
           content="Actors who died from unnatural causes including accidents, overdoses, homicides, and suicides"
         />
       </Helmet>
-      {data && category === "all" && !showSelfInflicted && !includeObscure && (
+      {data && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}
           basePath="/unnatural-deaths"
+          includeLinks={category === "all" && !showSelfInflicted && !includeObscure}
         />
       )}
 

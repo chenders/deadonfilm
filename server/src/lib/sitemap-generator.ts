@@ -4,13 +4,23 @@ import { createActorSlug, createMovieSlug, createShowSlug } from "./slug-utils.j
 const BASE_URL = "https://deadonfilm.com"
 export const URLS_PER_SITEMAP = 50000
 
+interface SitemapPage {
+  loc: string
+  priority: string
+  changefreq: string
+}
+
 /**
  * Generate paginated page entries for the sitemap (pages 2 through maxPage)
  */
-function generatePaginatedPages(basePath: string, maxPage: number, priority: string) {
-  const pages = []
+function generatePaginatedPages(
+  basePath: string,
+  maxPage: number,
+  priority: string
+): SitemapPage[] {
+  const pages: SitemapPage[] = []
   for (let i = 2; i <= maxPage; i++) {
-    pages.push({ loc: `${basePath}?page=${i}`, priority, changefreq: "weekly" as const })
+    pages.push({ loc: `${basePath}?page=${i}`, priority, changefreq: "weekly" })
   }
   return pages
 }

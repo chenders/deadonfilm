@@ -5,9 +5,16 @@ interface PaginationHeadProps {
   currentPage: number
   totalPages: number
   basePath: string
+  /** When false, only emits noindex for deep pages (skips canonical/prev/next). Use for filtered views. */
+  includeLinks?: boolean
 }
 
-export default function PaginationHead({ currentPage, totalPages, basePath }: PaginationHeadProps) {
+export default function PaginationHead({
+  currentPage,
+  totalPages,
+  basePath,
+  includeLinks = true,
+}: PaginationHeadProps) {
   const { canonicalUrl, prevUrl, nextUrl, noindex } = usePaginationSeo({
     currentPage,
     totalPages,
@@ -16,9 +23,9 @@ export default function PaginationHead({ currentPage, totalPages, basePath }: Pa
 
   return (
     <Helmet>
-      <link rel="canonical" href={canonicalUrl} />
-      {prevUrl && <link rel="prev" href={prevUrl} />}
-      {nextUrl && <link rel="next" href={nextUrl} />}
+      {includeLinks && <link rel="canonical" href={canonicalUrl} />}
+      {includeLinks && prevUrl && <link rel="prev" href={prevUrl} />}
+      {includeLinks && nextUrl && <link rel="next" href={nextUrl} />}
       {noindex && <meta name="robots" content="noindex, follow" />}
     </Helmet>
   )

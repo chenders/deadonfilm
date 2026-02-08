@@ -196,11 +196,12 @@ export default function CursedActorsPage() {
           content="Actors ranked by how many of their co-stars died above statistical expectations"
         />
       </Helmet>
-      {data && !hasFilters && (
+      {data && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}
           basePath="/cursed-actors"
+          includeLinks={!hasFilters}
         />
       )}
       {data && data.actors.length > 0 && (

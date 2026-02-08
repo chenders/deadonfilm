@@ -146,13 +146,12 @@ export default function DeathsByCausePage() {
           content={`${data.pagination.totalCount} actors who died from ${data.cause}. Browse actors by cause of death from movies and TV shows.`}
         />
       </Helmet>
-      {!includeObscure && (
-        <PaginationHead
-          currentPage={page}
-          totalPages={data.pagination.totalPages}
-          basePath={`/deaths/${data.slug}`}
-        />
-      )}
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/deaths/${data.slug}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="deaths-by-cause-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">

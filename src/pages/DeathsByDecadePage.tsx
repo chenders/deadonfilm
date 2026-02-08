@@ -169,13 +169,12 @@ export default function DeathsByDecadePage() {
           content={`${data.pagination.totalCount} actors who died in the ${data.decadeLabel}. Browse actors by decade of death from movies and TV shows.`}
         />
       </Helmet>
-      {!includeObscure && (
-        <PaginationHead
-          currentPage={page}
-          totalPages={data.pagination.totalPages}
-          basePath={`/deaths/decade/${data.decadeLabel}`}
-        />
-      )}
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/deaths/decade/${data.decadeLabel}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="deaths-by-decade-page" className="mx-auto max-w-3xl">
         <div className="mb-4 text-center">

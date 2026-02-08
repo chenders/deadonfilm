@@ -68,13 +68,12 @@ export default function SpecificCausePage() {
           content={`Explore ${data.count.toLocaleString()} actors who died from ${data.cause.toLowerCase()}`}
         />
       </Helmet>
-      {!includeObscure && (
-        <PaginationHead
-          currentPage={page}
-          totalPages={data.pagination.totalPages}
-          basePath={`/causes-of-death/${data.categorySlug}/${data.slug}`}
-        />
-      )}
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/causes-of-death/${data.categorySlug}/${data.slug}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="specific-cause-page" className="mx-auto max-w-4xl">
         {/* Breadcrumb */}
