@@ -8,13 +8,11 @@ function renderPaginationHead(props: {
   totalPages: number
   basePath: string
 }) {
-  const helmetContext = {}
   render(
-    <HelmetProvider context={helmetContext}>
+    <HelmetProvider>
       <PaginationHead {...props} />
     </HelmetProvider>
   )
-  return helmetContext
 }
 
 afterEach(cleanup)

@@ -77,4 +77,36 @@ describe("usePaginationSeo", () => {
 
     expect(result.prevUrl).toBe("https://deadonfilm.com/deaths/all")
   })
+
+  it("clamps NaN currentPage to page 1", () => {
+    const result = usePaginationSeo({ currentPage: NaN, totalPages: 5, basePath: "/deaths/all" })
+
+    expect(result.canonicalUrl).toBe("https://deadonfilm.com/deaths/all")
+    expect(result.prevUrl).toBeNull()
+    expect(result.nextUrl).toBe("https://deadonfilm.com/deaths/all?page=2")
+    expect(result.noindex).toBe(false)
+  })
+
+  it("clamps NaN totalPages to 1", () => {
+    const result = usePaginationSeo({ currentPage: 1, totalPages: NaN, basePath: "/deaths/all" })
+
+    expect(result.canonicalUrl).toBe("https://deadonfilm.com/deaths/all")
+    expect(result.prevUrl).toBeNull()
+    expect(result.nextUrl).toBeNull()
+    expect(result.noindex).toBe(false)
+  })
+
+  it("clamps currentPage exceeding totalPages", () => {
+    const result = usePaginationSeo({ currentPage: 99, totalPages: 5, basePath: "/deaths/all" })
+
+    expect(result.canonicalUrl).toBe("https://deadonfilm.com/deaths/all?page=5")
+    expect(result.nextUrl).toBeNull()
+  })
+
+  it("clamps negative currentPage to 1", () => {
+    const result = usePaginationSeo({ currentPage: -3, totalPages: 5, basePath: "/deaths/all" })
+
+    expect(result.canonicalUrl).toBe("https://deadonfilm.com/deaths/all")
+    expect(result.prevUrl).toBeNull()
+  })
 })

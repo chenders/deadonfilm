@@ -24,13 +24,16 @@ export function usePaginationSeo({
   totalPages,
   basePath,
 }: UsePaginationSeoOptions): PaginationSeo {
-  const canonicalUrl = buildPageUrl(basePath, currentPage)
+  const safeTotal = Number.isFinite(totalPages) ? Math.max(1, totalPages) : 1
+  const safePage = Number.isFinite(currentPage) ? Math.max(1, Math.min(currentPage, safeTotal)) : 1
 
-  const prevUrl = currentPage > 1 ? buildPageUrl(basePath, currentPage - 1) : null
+  const canonicalUrl = buildPageUrl(basePath, safePage)
 
-  const nextUrl = currentPage < totalPages ? buildPageUrl(basePath, currentPage + 1) : null
+  const prevUrl = safePage > 1 ? buildPageUrl(basePath, safePage - 1) : null
 
-  const noindex = currentPage > NOINDEX_THRESHOLD
+  const nextUrl = safePage < safeTotal ? buildPageUrl(basePath, safePage + 1) : null
+
+  const noindex = safePage > NOINDEX_THRESHOLD
 
   return { canonicalUrl, prevUrl, nextUrl, noindex }
 }
