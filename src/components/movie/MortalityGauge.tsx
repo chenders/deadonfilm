@@ -62,6 +62,8 @@ export default function MortalityGauge({ stats }: MortalityGaugeProps) {
           height={size}
           viewBox={`0 0 ${size} ${size}`}
           className="-rotate-90 transform"
+          role="img"
+          aria-label={`Mortality gauge: ${mortalityPercentage}% of cast deceased`}
         >
           {/* Outer decorative ring with sprocket holes */}
           <circle

@@ -230,9 +230,9 @@ describe("HoverTooltip", () => {
       </HoverTooltip>
     )
 
-    const trigger = screen.getByText("Trigger text").parentElement!
-    expect(trigger).toHaveAttribute("role", "button")
-    expect(trigger).toHaveAttribute("tabIndex", "0")
+    const trigger = screen.getByRole("button")
+    expect(trigger).toBeInTheDocument()
+    expect(trigger).toHaveAttribute("type", "button")
   })
 
   it("calls onOpen callback when tooltip is shown via hover", async () => {

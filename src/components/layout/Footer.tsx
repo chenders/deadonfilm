@@ -11,32 +11,66 @@ export default function Footer() {
           <nav
             data-testid="footer-nav"
             aria-label="Footer"
-            className="mb-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-1"
+            className="mb-3 flex flex-col items-center gap-3"
           >
-            <Link
-              to="/about"
-              className="text-sm text-text-muted transition-colors hover:text-brown-dark"
-            >
-              About
-            </Link>
-            <Link
-              to="/faq"
-              className="text-sm text-text-muted transition-colors hover:text-brown-dark"
-            >
-              FAQ
-            </Link>
-            <Link
-              to="/methodology"
-              className="text-sm text-text-muted transition-colors hover:text-brown-dark"
-            >
-              Methodology
-            </Link>
-            <Link
-              to="/data-sources"
-              className="text-sm text-text-muted transition-colors hover:text-brown-dark"
-            >
-              Data Sources
-            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
+              <Link
+                to="/death-watch"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                Death Watch
+              </Link>
+              <Link
+                to="/deaths/notable"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                Notable Deaths
+              </Link>
+              <Link
+                to="/causes-of-death"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                Causes of Death
+              </Link>
+              <Link
+                to="/deaths/decades"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                Deaths by Decade
+              </Link>
+              <Link
+                to="/movies/genres"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                Movie Genres
+              </Link>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
+              <Link
+                to="/about"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                About
+              </Link>
+              <Link
+                to="/faq"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                FAQ
+              </Link>
+              <Link
+                to="/methodology"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                Methodology
+              </Link>
+              <Link
+                to="/data-sources"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                Data Sources
+              </Link>
+            </div>
           </nav>
           <a
             href="https://www.themoviedb.org/"

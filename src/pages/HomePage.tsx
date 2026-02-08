@@ -4,7 +4,7 @@ import QuickActions from "@/components/search/QuickActions"
 import SiteStats from "@/components/home/SiteStats"
 import RecentDeaths from "@/components/home/RecentDeaths"
 import JsonLd from "@/components/seo/JsonLd"
-import { buildWebsiteSchema } from "@/utils/schema"
+import { buildWebsiteSchema, buildOrganizationSchema } from "@/utils/schema"
 
 export default function HomePage() {
   return (
@@ -39,8 +39,10 @@ export default function HomePage() {
       </Helmet>
 
       <JsonLd data={buildWebsiteSchema()} />
+      <JsonLd data={buildOrganizationSchema()} />
 
       <div data-testid="home-page" className="mx-auto max-w-2xl text-center">
+        <h1 className="sr-only">Dead on Film - Movie & TV Show Cast Mortality Database</h1>
         <p data-testid="home-tagline" className="mb-6 text-lg text-text-muted">
           Search for a movie, TV show, or person to see who has passed away
         </p>

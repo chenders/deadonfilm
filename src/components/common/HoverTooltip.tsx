@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useId } from "react"
 import { createPortal } from "react-dom"
 
 interface TooltipPosition {
@@ -22,6 +22,7 @@ function TooltipContent({
   onMouseEnter,
   onMouseLeave,
   testId = "hover-tooltip",
+  tooltipId,
 }: {
   content: string
   triggerRef: React.RefObject<HTMLElement | null>
@@ -29,6 +30,7 @@ function TooltipContent({
   onMouseEnter: () => void
   onMouseLeave: () => void
   testId?: string
+  tooltipId: string
 }) {
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<TooltipPosition | null>(null)
@@ -85,6 +87,8 @@ function TooltipContent({
   return createPortal(
     <div
       ref={tooltipRef}
+      id={tooltipId}
+      role="tooltip"
       data-testid={testId}
       className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
       style={{
@@ -116,7 +120,8 @@ export default function HoverTooltip({
   onOpen,
 }: HoverTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false)
-  const triggerRef = useRef<HTMLSpanElement>(null)
+  const tooltipId = useId()
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasCalledOnOpen = useRef(false)
 
@@ -205,10 +210,10 @@ export default function HoverTooltip({
   }
 
   return (
-    <span
+    <button
       ref={triggerRef}
-      role="button"
-      tabIndex={0}
+      type="button"
+      aria-describedby={showTooltip ? tooltipId : undefined}
       className={`inline-flex min-h-6 cursor-help items-center ${className}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -223,7 +228,8 @@ export default function HoverTooltip({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         testId={testId}
+        tooltipId={tooltipId}
       />
-    </span>
+    </button>
   )
 }

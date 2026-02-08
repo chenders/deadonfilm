@@ -3,6 +3,8 @@
  * These generate JSON-LD objects for various page types
  */
 
+import { createActorSlug } from "./slugify"
+
 const BASE_URL = "https://deadonfilm.com"
 
 interface MovieSchemaInput {
@@ -17,15 +19,21 @@ interface MovieStats {
   mortalityPercentage: number
 }
 
+interface MovieCastMember {
+  id: number
+  name: string
+}
+
 /**
  * Build Movie schema for MoviePage
  */
 export function buildMovieSchema(
   movie: MovieSchemaInput,
   stats: MovieStats,
-  slug: string
+  slug: string,
+  cast?: MovieCastMember[]
 ): Record<string, unknown> {
-  return {
+  const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Movie",
     name: movie.title,
@@ -34,6 +42,16 @@ export function buildMovieSchema(
     image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined,
     url: `${BASE_URL}/movie/${slug}`,
   }
+
+  if (cast && cast.length > 0) {
+    schema.actor = cast.slice(0, 10).map((person) => ({
+      "@type": "Person",
+      name: person.name,
+      url: `${BASE_URL}/actor/${createActorSlug(person.name, person.id)}`,
+    }))
+  }
+
+  return schema
 }
 
 interface PersonSchemaInput {
@@ -43,22 +61,30 @@ interface PersonSchemaInput {
   biography: string
   profilePath: string | null
   placeOfBirth: string | null
+  tmdbId?: number | null
 }
 
 /**
  * Build Person schema for ActorPage
  */
 export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Record<string, unknown> {
+  const sameAs: string[] = []
+  if (actor.tmdbId) {
+    sameAs.push(`https://www.themoviedb.org/person/${actor.tmdbId}`)
+  }
+
   return {
     "@context": "https://schema.org",
     "@type": "Person",
     name: actor.name,
+    jobTitle: "Actor",
     birthDate: actor.birthday || undefined,
     deathDate: actor.deathday || undefined,
     birthPlace: actor.placeOfBirth || undefined,
     description: actor.biography?.slice(0, 200) || undefined,
     image: actor.profilePath ? `https://image.tmdb.org/t/p/h632${actor.profilePath}` : undefined,
     url: `${BASE_URL}/actor/${slug}`,
+    sameAs: sameAs.length > 0 ? sameAs : undefined,
   }
 }
 
@@ -84,6 +110,20 @@ export function buildBreadcrumbSchema(items: BreadcrumbItem[]): Record<string, u
 }
 
 /**
+ * Build Organization schema for publisher attribution (E-E-A-T)
+ */
+export function buildOrganizationSchema(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Dead on Film",
+    url: BASE_URL,
+    description:
+      "Movie and TV show cast mortality database using data from TMDB, Wikidata, and other verified sources.",
+  }
+}
+
+/**
  * Build WebSite schema for homepage SEO
  * Enables sitelinks search box in Google results
  */
@@ -96,6 +136,11 @@ export function buildWebsiteSchema(): Record<string, unknown> {
     url: BASE_URL,
     description:
       "Movie cast mortality database. Look up any movie and see which actors have passed away.",
+    publisher: {
+      "@type": "Organization",
+      name: "Dead on Film",
+      url: BASE_URL,
+    },
     potentialAction: {
       "@type": "SearchAction",
       target: `${BASE_URL}/search?q={search_term_string}`,

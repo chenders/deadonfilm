@@ -152,8 +152,8 @@ describe("getStaticSitemap", () => {
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(xml).toContain("<urlset")
     expect(xml).toContain("https://deadonfilm.com/")
-    expect(xml).toContain("https://deadonfilm.com/cursed-movies")
-    expect(xml).toContain("https://deadonfilm.com/cursed-actors")
+    expect(xml).not.toContain("https://deadonfilm.com/cursed-movies")
+    expect(xml).not.toContain("https://deadonfilm.com/cursed-actors")
     expect(xml).toContain("https://deadonfilm.com/covid-deaths")
     expect(xml).toContain("https://deadonfilm.com/death-watch")
     expect(xml).toContain("<priority>1.0</priority>") // Homepage priority

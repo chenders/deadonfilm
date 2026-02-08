@@ -30,8 +30,6 @@ function generatePaginatedPages(
  */
 const staticPages = [
   { loc: "/", priority: "1.0", changefreq: "daily" },
-  { loc: "/cursed-movies", priority: "0.8", changefreq: "weekly" },
-  { loc: "/cursed-actors", priority: "0.8", changefreq: "weekly" },
   { loc: "/covid-deaths", priority: "0.6", changefreq: "weekly" },
   { loc: "/unnatural-deaths", priority: "0.6", changefreq: "weekly" },
   { loc: "/death-watch", priority: "0.7", changefreq: "daily" },
@@ -62,8 +60,6 @@ const staticPages = [
   // Paginated pages (first few pages of major lists)
   ...generatePaginatedPages("/deaths/all", 5, "0.3"),
   ...generatePaginatedPages("/deaths/notable", 5, "0.4"),
-  ...generatePaginatedPages("/cursed-movies", 5, "0.4"),
-  ...generatePaginatedPages("/cursed-actors", 5, "0.4"),
 ]
 
 /**
@@ -115,7 +111,9 @@ export async function getPageCounts(): Promise<PageCounts> {
     db.query<{ count: string }>(
       "SELECT COUNT(*) FROM movies WHERE mortality_surprise_score IS NOT NULL"
     ),
-    db.query<{ count: string }>("SELECT COUNT(*) FROM actors WHERE deathday IS NOT NULL"),
+    db.query<{ count: string }>(
+      "SELECT COUNT(*) FROM actors WHERE deathday IS NOT NULL OR tmdb_popularity >= 20"
+    ),
     db.query<{ count: string }>(
       "SELECT COUNT(*) FROM shows WHERE mortality_surprise_score IS NOT NULL"
     ),
@@ -257,7 +255,7 @@ export async function generateActorsSitemap(page: number): Promise<SitemapResult
     `
     SELECT id, name, updated_at
     FROM actors
-    WHERE deathday IS NOT NULL
+    WHERE deathday IS NOT NULL OR tmdb_popularity >= 20
     ORDER BY updated_at DESC
     LIMIT $1 OFFSET $2
   `,
