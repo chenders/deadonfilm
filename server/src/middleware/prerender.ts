@@ -25,6 +25,7 @@ export const prerenderRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: "Too many prerender requests" } },
+  skip: (req) => req.headers["x-prerender"] !== "1",
 })
 
 /** Paths that should never be prerendered */
