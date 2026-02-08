@@ -61,10 +61,12 @@ app.get("/render", async (req, res) => {
 })
 
 app.get("/health", (_req, res) => {
+  // Browser launches lazily on first render request.
+  // "not yet started" is healthy — the service is ready to launch on demand.
   const browserOk = isBrowserHealthy()
-  res.status(browserOk ? 200 : 503).json({
-    status: browserOk ? "ok" : "degraded",
-    browser: browserOk ? "connected" : "disconnected",
+  res.json({
+    status: "ok",
+    browser: browserOk ? "connected" : "idle",
   })
 })
 
@@ -72,12 +74,13 @@ const server = app.listen(PORT, () => {
   log.info({ port: PORT, targetHost: TARGET_HOST }, "Prerender service started")
 })
 
-// Graceful shutdown
+// Graceful shutdown — await server.close so in-flight requests can finish,
+// then close the browser. No process.exit() so Node exits naturally.
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, async () => {
     log.info({ signal }, "Shutting down prerender service")
-    server.close()
+    await new Promise<void>((resolve) => server.close(() => resolve()))
     await closeBrowser()
-    process.exit(0)
+    log.info("Prerender service stopped")
   })
 }

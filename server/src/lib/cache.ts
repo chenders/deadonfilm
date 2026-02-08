@@ -206,8 +206,8 @@ export async function flushCache(): Promise<void> {
 export async function invalidateActorCache(actorId: number): Promise<void> {
   const keys = getActorCacheKeys(actorId)
   await invalidateKeys(...keys)
-  // Invalidate prerendered actor pages
-  await invalidatePrerenderCache(`/actor/`)
+  // Invalidate prerendered pages for this specific actor
+  await invalidatePrerenderCache(`/actor/*-${actorId}`)
 }
 
 /**
@@ -250,8 +250,10 @@ export async function invalidateDeathCaches(): Promise<void> {
     invalidateByPattern(`${CACHE_PREFIX.UNNATURAL_DEATHS}:*`),
     // STATS and TRIVIA use simple keys (no parameters), so use invalidateKeys
     invalidateKeys(CACHE_PREFIX.STATS, CACHE_PREFIX.TRIVIA, CACHE_PREFIX.FEATURED_MOVIE),
-    // Invalidate prerendered pages that show death data
-    invalidatePrerenderCache(),
+    // Invalidate prerendered pages that show death data (targeted, not all pages)
+    invalidatePrerenderCache("/death-watch"),
+    invalidatePrerenderCache("/deaths/"),
+    invalidatePrerenderCache("/causes-of-death"),
   ])
 }
 

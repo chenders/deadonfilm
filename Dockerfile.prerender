@@ -2,6 +2,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app/server
 
+# Install build tools for native modules (bcrypt, @newrelic/native-metrics)
+RUN apk add --no-cache python3 make g++
+
 COPY server/package*.json ./
 RUN npm ci
 

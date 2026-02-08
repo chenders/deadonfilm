@@ -7,12 +7,25 @@
  */
 
 import type { Request, Response, NextFunction } from "express"
+import rateLimit from "express-rate-limit"
 import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
 import { logger } from "../lib/logger.js"
 
 const PRERENDER_SERVICE_URL = process.env.PRERENDER_SERVICE_URL || "http://prerender:3001"
 
 const PRERENDER_FETCH_TIMEOUT_MS = 15_000
+
+/** Rate limit for prerender requests: 20 per minute per IP */
+const PRERENDER_RATE_LIMIT = 20
+const RATE_LIMIT_WINDOW_MS = 60 * 1000
+
+export const prerenderRateLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: PRERENDER_RATE_LIMIT,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { message: "Too many prerender requests" } },
+})
 
 /** Paths that should never be prerendered */
 const SKIP_PATH_PREFIXES = ["/api/", "/admin/", "/health", "/sitemap", "/nr-browser.js"]
@@ -54,7 +67,9 @@ export async function prerenderMiddleware(
     return
   }
 
-  const cacheKey = CACHE_KEYS.prerender(req.path).html
+  // Use originalUrl to preserve query parameters (e.g. ?page=2, ?includeObscure=true)
+  const urlForRender = req.originalUrl
+  const cacheKey = CACHE_KEYS.prerender(urlForRender).html
 
   try {
     // Check Redis cache first
@@ -67,14 +82,14 @@ export async function prerenderMiddleware(
     }
 
     // Cache miss — call prerender service
-    const renderUrl = `${PRERENDER_SERVICE_URL}/render?url=${encodeURIComponent(req.path)}`
+    const renderUrl = `${PRERENDER_SERVICE_URL}/render?url=${encodeURIComponent(urlForRender)}`
     const response = await fetch(renderUrl, {
       signal: AbortSignal.timeout(PRERENDER_FETCH_TIMEOUT_MS),
     })
 
     if (!response.ok) {
       logger.warn(
-        { path: req.path, status: response.status },
+        { url: urlForRender, status: response.status },
         "Prerender service returned non-OK status"
       )
       next()
@@ -93,7 +108,7 @@ export async function prerenderMiddleware(
   } catch (err) {
     // On any failure, fall through — Nginx error_page will serve index.html
     logger.warn(
-      { err: (err as Error).message, path: req.path },
+      { err: (err as Error).message, url: urlForRender },
       "Prerender failed, falling through"
     )
     next()

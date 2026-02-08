@@ -37,9 +37,11 @@ import { prerenderMiddleware } from "./prerender.js"
 import { getCached, setCached } from "../lib/cache.js"
 
 function makeReq(overrides: Record<string, unknown> = {}): Request {
+  const path = (overrides.path as string) || "/actor/john-wayne-2157"
   return {
     method: "GET",
-    path: "/actor/john-wayne-2157",
+    path,
+    originalUrl: path,
     headers: { "x-prerender": "1" },
     ...overrides,
   } as unknown as Request
@@ -143,7 +145,11 @@ describe("prerenderMiddleware", () => {
       text: () => Promise.resolve("<html>death-watch</html>"),
     })
 
-    await prerenderMiddleware(makeReq({ path: "/death-watch" }), res as Response, next)
+    await prerenderMiddleware(
+      makeReq({ path: "/death-watch", originalUrl: "/death-watch" }),
+      res as Response,
+      next
+    )
 
     expect(setCached).toHaveBeenCalledWith(
       expect.any(String),
@@ -159,12 +165,41 @@ describe("prerenderMiddleware", () => {
       text: () => Promise.resolve("<html>deaths</html>"),
     })
 
-    await prerenderMiddleware(makeReq({ path: "/deaths/all" }), res as Response, next)
+    await prerenderMiddleware(
+      makeReq({ path: "/deaths/all", originalUrl: "/deaths/all" }),
+      res as Response,
+      next
+    )
 
     expect(setCached).toHaveBeenCalledWith(
       expect.any(String),
       "<html>deaths</html>",
       3600 // PRERENDER_DYNAMIC TTL (1h)
+    )
+  })
+
+  it("preserves query parameters in cache key and render URL", async () => {
+    vi.mocked(getCached).mockResolvedValue(null)
+    mockFetch.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve("<html>page2</html>"),
+    })
+
+    await prerenderMiddleware(
+      makeReq({
+        path: "/deaths/all",
+        originalUrl: "/deaths/all?page=2&includeObscure=true",
+      }),
+      res as Response,
+      next
+    )
+
+    // Cache key should include query string
+    expect(getCached).toHaveBeenCalledWith("prerender:path:/deaths/all?page=2&includeObscure=true")
+    // Render URL should include full originalUrl
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining(encodeURIComponent("/deaths/all?page=2&includeObscure=true")),
+      expect.any(Object)
     )
   })
 
