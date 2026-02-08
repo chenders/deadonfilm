@@ -201,7 +201,7 @@ export default function ForeverYoungPage() {
             "https://deadonfilm.com/forever-young",
             data.movies.map((movie) => ({
               name: movie.title,
-              url: `https://deadonfilm.com/movie/${createMovieSlug(movie.title, movie.releaseYear?.toString() || "unknown", movie.id)}`,
+              url: `https://deadonfilm.com/movie/${createMovieSlug(movie.title, movie.releaseYear?.toString() || "", movie.id)}`,
             }))
           )}
         />

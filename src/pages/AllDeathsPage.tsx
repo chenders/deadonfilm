@@ -179,7 +179,7 @@ export default function AllDeathsPage() {
           includeLinks={!includeObscure && !searchQuery}
         />
       )}
-      {page === 1 && data && data.deaths.length > 0 && (
+      {page === 1 && !includeObscure && !searchQuery && data && data.deaths.length > 0 && (
         <JsonLd
           data={buildCollectionPageSchema(
             "All Deaths",

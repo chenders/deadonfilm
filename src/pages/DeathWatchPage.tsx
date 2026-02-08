@@ -177,7 +177,7 @@ export default function DeathWatchPage() {
           includeLinks={!includeObscure && !searchQuery}
         />
       )}
-      {page === 1 && data && data.actors.length > 0 && (
+      {page === 1 && !includeObscure && !searchQuery && data && data.actors.length > 0 && (
         <JsonLd
           data={buildCollectionPageSchema(
             "Death Watch",
