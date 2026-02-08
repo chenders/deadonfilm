@@ -50,14 +50,12 @@ export default function SearchBar() {
       <h2 className="mb-3 font-display text-lg text-brown-dark">Cast Mortality Database</h2>
       <div className="space-y-3 text-sm text-text-muted">
         <p>
-          Dead on Film lets you discover which actors from your favorite films and TV shows have
-          passed away.
+          Dead on Film lets you discover which actors from any film or TV show have passed away.
         </p>
         <p>
           We calculate <strong>expected vs actual deaths</strong> using US Social Security
-          Administration actuarial life tables. This reveals which productions have statistically
-          unusual mortality rates - not just old content where everyone has died, but those where
-          deaths exceeded what math would predict.
+          Administration actuarial life tables, accounting for each actor's age at the time of
+          filming to identify productions with statistically unusual mortality rates.
         </p>
         <p>
           Search any movie or TV show to see death dates, causes, and how the cast compares to

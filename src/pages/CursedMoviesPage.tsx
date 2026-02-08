@@ -66,7 +66,7 @@ function MovieRow({ movie }: { movie: CursedMovie }) {
           <p className="font-display text-xl text-brown-dark">
             {(movie.mortalitySurpriseScore * 100).toFixed(0)}%
           </p>
-          <p className="text-xs text-text-muted">curse score</p>
+          <p className="text-xs text-text-muted">above expected</p>
         </div>
       </div>
 
@@ -103,7 +103,7 @@ function MovieRow({ movie }: { movie: CursedMovie }) {
             <span className="font-display text-sm">
               {(movie.mortalitySurpriseScore * 100).toFixed(0)}%
             </span>{" "}
-            curse score
+            above expected
             <span className="text-text-muted">
               {" "}
               (+{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"})
@@ -117,12 +117,12 @@ function MovieRow({ movie }: { movie: CursedMovie }) {
 
 function getPageTitle(fromDecade?: number, toDecade?: number): string {
   if (fromDecade && toDecade && fromDecade !== toDecade) {
-    return `Most Cursed Movies (${fromDecade}s-${toDecade}s) - Dead on Film`
+    return `Highest Mortality Movies (${fromDecade}s-${toDecade}s) - Dead on Film`
   }
   if (fromDecade) {
-    return `Most Cursed Movies from the ${fromDecade}s - Dead on Film`
+    return `Highest Mortality Movies from the ${fromDecade}s - Dead on Film`
   }
-  return "Most Cursed Movies - Dead on Film"
+  return "Highest Mortality Movies - Dead on Film"
 }
 
 // Generate min deaths options from 3 to max
@@ -185,7 +185,7 @@ export default function CursedMoviesPage() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading cursed movies..." />
+    return <LoadingSpinner message="Loading movies..." />
   }
 
   if (error) {
@@ -201,7 +201,7 @@ export default function CursedMoviesPage() {
         <title>{getPageTitle(fromDecade, toDecade)}</title>
         <meta
           name="description"
-          content="Discover the most cursed movies and TV shows. Ranked by mortality surprise score - where cast deaths exceeded statistical expectations."
+          content="Discover movies and TV shows with the highest cast mortality. Ranked by excess deaths above statistical expectations."
         />
         <meta property="og:title" content={getPageTitle(fromDecade, toDecade)} />
         <meta
@@ -227,7 +227,7 @@ export default function CursedMoviesPage() {
       {data && data.movies.length > 0 && (
         <JsonLd
           data={buildItemListSchema(
-            "Most Cursed Movies",
+            "Highest Mortality Movies",
             "Movies ranked by statistically abnormal cast mortality",
             data.movies.slice(0, 10).map((movie) => ({
               name: movie.title,
@@ -240,12 +240,10 @@ export default function CursedMoviesPage() {
 
       <div data-testid="cursed-movies-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">Most Cursed Movies</h1>
+          <h1 className="font-display text-3xl text-brown-dark">Highest Mortality Movies</h1>
           <p className="mt-2 text-sm text-text-muted">
-            Movies ranked by statistically abnormal mortality. A film from the 1930s with all
-            deceased actors isn't "cursed" if that's expected for their ages. These films had
-            significantly more deaths than actuarial tables predicted. The curse score shows excess
-            mortality: 50% means 50% more deaths than expected.
+            Movies ranked by excess cast mortality above statistical expectations, accounting for
+            each actor's age at the time of filming using actuarial life tables.
           </p>
         </div>
 

@@ -72,7 +72,7 @@ function ActorRow({ actor }: { actor: CursedActor }) {
           <p className="font-display text-xl text-brown-dark">
             {cursePercentage > 0 ? `${cursePercentage.toFixed(0)}%` : "0%"}
           </p>
-          <p className="text-xs text-text-muted">curse score</p>
+          <p className="text-xs text-text-muted">above expected</p>
         </div>
       </div>
 
@@ -100,7 +100,7 @@ function ActorRow({ actor }: { actor: CursedActor }) {
             <span className="font-display text-sm">
               {cursePercentage > 0 ? `${cursePercentage.toFixed(0)}%` : "0%"}
             </span>{" "}
-            curse score
+            above expected
             <span className="text-text-muted">
               {" "}
               (+{excessDeaths > 0 ? excessDeaths.toFixed(1) : "0"})
@@ -114,12 +114,12 @@ function ActorRow({ actor }: { actor: CursedActor }) {
 
 function getPageTitle(status?: string): string {
   if (status === "living") {
-    return "Most Cursed Living Actors - Dead on Film"
+    return "Highest Mortality Living Actors - Dead on Film"
   }
   if (status === "deceased") {
-    return "Most Cursed Deceased Actors - Dead on Film"
+    return "Highest Mortality Deceased Actors - Dead on Film"
   }
-  return "Most Cursed Actors - Dead on Film"
+  return "Highest Mortality Actors - Dead on Film"
 }
 
 export default function CursedActorsPage() {
@@ -164,7 +164,7 @@ export default function CursedActorsPage() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading cursed actors..." />
+    return <LoadingSpinner message="Loading actors..." />
   }
 
   if (error) {
@@ -180,7 +180,7 @@ export default function CursedActorsPage() {
         <title>{getPageTitle(status)}</title>
         <meta
           name="description"
-          content="Discover actors whose co-stars have died at unusually high rates. Ranked by curse score - how many more deaths than statistically expected across their filmography."
+          content="Discover actors whose co-stars have died at unusually high rates. Ranked by excess mortality - how many more deaths than statistically expected across their filmography."
         />
         <meta property="og:title" content={getPageTitle(status)} />
         <meta
@@ -206,7 +206,7 @@ export default function CursedActorsPage() {
       {data && data.actors.length > 0 && (
         <JsonLd
           data={buildItemListSchema(
-            "Most Cursed Actors",
+            "Highest Mortality Actors",
             "Actors ranked by how many of their co-stars died above statistical expectations",
             data.actors.slice(0, 10).map((actor) => ({
               name: actor.name,
@@ -219,11 +219,10 @@ export default function CursedActorsPage() {
 
       <div data-testid="cursed-actors-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">Most Cursed Actors</h1>
+          <h1 className="font-display text-3xl text-brown-dark">Highest Mortality Actors</h1>
           <p className="mt-2 text-sm text-text-muted">
-            Actors whose co-stars have died at unusually high rates across their filmography. The
-            curse score shows excess co-star mortality: 50% means 50% more co-star deaths than
-            actuarial tables predicted based on cast ages.
+            Actors whose co-stars have died at unusually high rates across their filmography, ranked
+            by excess mortality above what actuarial tables predicted based on cast ages.
           </p>
         </div>
 

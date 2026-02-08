@@ -71,7 +71,7 @@ describe("CursedActorsPage", () => {
 
     renderWithProviders(<CursedActorsPage />)
 
-    expect(screen.getByText("Loading cursed actors...")).toBeInTheDocument()
+    expect(screen.getByText("Loading actors...")).toBeInTheDocument()
   })
 
   it("renders actor list when data loads", async () => {

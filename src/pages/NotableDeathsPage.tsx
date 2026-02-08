@@ -171,7 +171,7 @@ export default function NotableDeathsPage() {
         <title>Notable Deaths | Dead on Film</title>
         <meta
           name="description"
-          content="Explore detailed accounts of celebrity deaths - strange circumstances, disputed accounts, and controversial deaths in Hollywood history."
+          content="Explore detailed accounts of celebrity deaths - strange circumstances, disputed accounts, and controversial deaths in film and television."
         />
         <meta property="og:title" content="Notable Deaths | Dead on Film" />
         <meta

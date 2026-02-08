@@ -57,7 +57,7 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
           </div>
           {movie.mortalitySurpriseScore !== null && movie.mortalitySurpriseScore > 0 && (
             <p className="text-xs text-brown-medium">
-              +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% curse
+              +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% above expected
             </p>
           )}
         </div>
@@ -94,7 +94,7 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
           </p>
           {movie.mortalitySurpriseScore !== null && movie.mortalitySurpriseScore > 0 && (
             <p className="mt-1 text-xs text-accent">
-              +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% curse score
+              +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% above expected
             </p>
           )}
         </div>
@@ -170,7 +170,7 @@ export default function GenreMoviesPage() {
         <title>{data.genre} Movies | Dead on Film</title>
         <meta
           name="description"
-          content={`${data.pagination.totalCount} ${data.genre.toLowerCase()} movies and TV shows ranked by mortality statistics. Browse the most cursed ${data.genre.toLowerCase()} content.`}
+          content={`${data.pagination.totalCount} ${data.genre.toLowerCase()} movies and TV shows ranked by mortality statistics. Browse ${data.genre.toLowerCase()} content with the highest cast mortality.`}
         />
       </Helmet>
       <PaginationHead
@@ -190,7 +190,7 @@ export default function GenreMoviesPage() {
           <h1 className="font-display text-3xl text-brown-dark">{data.genre} Movies</h1>
           <p className="mt-2 text-sm text-text-muted">
             {data.pagination.totalCount.toLocaleString()}{" "}
-            {data.pagination.totalCount === 1 ? "movie" : "movies"} ranked by curse score
+            {data.pagination.totalCount === 1 ? "movie" : "movies"} ranked by excess mortality
           </p>
         </div>
 
