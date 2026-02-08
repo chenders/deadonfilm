@@ -13,7 +13,8 @@ import { logger } from "../lib/logger.js"
 
 const PRERENDER_SERVICE_URL = process.env.PRERENDER_SERVICE_URL || "http://prerender:3001"
 
-const PRERENDER_FETCH_TIMEOUT_MS = 15_000
+// Must exceed the renderer's worst-case time (10s goto + 10s waitForFunction = 20s)
+const PRERENDER_FETCH_TIMEOUT_MS = 25_000
 
 /** Rate limit for prerender requests: 20 per minute per IP */
 const PRERENDER_RATE_LIMIT = 20

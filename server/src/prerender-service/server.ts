@@ -11,7 +11,7 @@
 import "dotenv/config"
 import express from "express"
 import { renderPage, closeBrowser, isBrowserHealthy } from "./renderer.js"
-import pino from "pino"
+import { logger } from "../lib/logger.js"
 
 const app = express()
 const envPort = process.env.PRERENDER_PORT
@@ -23,7 +23,7 @@ if (Number.isNaN(PORT) || PORT <= 0 || PORT > 65535) {
 
 const TARGET_HOST = process.env.PRERENDER_TARGET_HOST || "http://nginx:3000"
 
-const log = pino({ name: "prerender-service" })
+const log = logger.child({ name: "prerender-service" })
 
 app.get("/render", async (req, res) => {
   const rawUrl = req.query.url
@@ -34,34 +34,45 @@ app.get("/render", async (req, res) => {
     return
   }
 
-  const urlPath = rawUrl
+  // Parse the URL to separate pathname from query string so blocklist
+  // checks work even when query params are present (e.g. /admin?foo=1)
+  let parsed: URL
+  try {
+    parsed = new URL(rawUrl, "http://localhost")
+  } catch {
+    res.status(400).json({ error: "Invalid URL" })
+    return
+  }
+
+  const pathname = parsed.pathname
 
   // Validate the path looks reasonable (starts with /)
-  if (!urlPath.startsWith("/")) {
+  if (!pathname.startsWith("/")) {
     res.status(400).json({ error: "URL must be an absolute path" })
     return
   }
 
   // Reject paths with dot-segments to prevent traversal bypasses
   // (e.g. /../admin or /api/../admin would bypass the blocklist below)
-  if (urlPath.includes("/..")) {
+  if (pathname.includes("/..")) {
     res.status(400).json({ error: "Path traversal not allowed" })
     return
   }
 
   // Block API/admin paths from being rendered (exact match and subpaths)
   if (
-    urlPath === "/api" ||
-    urlPath.startsWith("/api/") ||
-    urlPath === "/admin" ||
-    urlPath.startsWith("/admin/")
+    pathname === "/api" ||
+    pathname.startsWith("/api/") ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/")
   ) {
     res.status(400).json({ error: "Cannot render API or admin paths" })
     return
   }
 
-  const fullUrl = `${TARGET_HOST}${urlPath}`
-  log.info({ urlPath, fullUrl }, "Rendering page")
+  // Reconstruct the full URL preserving any query parameters
+  const fullUrl = `${TARGET_HOST}${pathname}${parsed.search}`
+  log.info({ url: rawUrl, fullUrl }, "Rendering page")
 
   try {
     const html = await renderPage(fullUrl)
@@ -69,7 +80,7 @@ app.get("/render", async (req, res) => {
     res.set("X-Prerender", "true")
     res.send(html)
   } catch (err) {
-    log.error({ err, urlPath }, "Render failed")
+    log.error({ err, url: rawUrl }, "Render failed")
 
     // Playwright throws TimeoutError; AbortSignal.timeout throws with name "TimeoutError"
     const error = err as Error
