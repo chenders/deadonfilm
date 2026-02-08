@@ -358,6 +358,50 @@ describe("cache operations with mocked Redis", () => {
     })
   })
 
+  describe("invalidatePrerenderCache", () => {
+    it("invalidates all prerender keys when no pattern is provided", async () => {
+      mockInstrumentedScan.mockResolvedValue([
+        "prerender:path:/actor/test",
+        "prerender:path:/movie/test",
+      ])
+      mockInstrumentedDel.mockResolvedValue(2)
+
+      const { invalidatePrerenderCache, CACHE_PREFIX } = await import("./cache.js")
+      const result = await invalidatePrerenderCache()
+
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.PRERENDER}:*`, 100)
+      expect(mockInstrumentedDel).toHaveBeenCalledWith(
+        "prerender:path:/actor/test",
+        "prerender:path:/movie/test"
+      )
+      expect(result).toBe(2)
+    })
+
+    it("invalidates only matching prerender keys when pattern is provided", async () => {
+      mockInstrumentedScan.mockResolvedValue(["prerender:path:/actor/john-wayne-2157"])
+      mockInstrumentedDel.mockResolvedValue(1)
+
+      const { invalidatePrerenderCache, CACHE_PREFIX } = await import("./cache.js")
+      const result = await invalidatePrerenderCache("/actor/*-2157")
+
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(
+        `${CACHE_PREFIX.PRERENDER}:*/actor/*-2157*`,
+        100
+      )
+      expect(result).toBe(1)
+    })
+
+    it("returns 0 when no keys match", async () => {
+      mockInstrumentedScan.mockResolvedValue([])
+
+      const { invalidatePrerenderCache } = await import("./cache.js")
+      const result = await invalidatePrerenderCache("/nonexistent")
+
+      expect(result).toBe(0)
+      expect(mockInstrumentedDel).not.toHaveBeenCalled()
+    })
+  })
+
   describe("invalidateDeathCaches", () => {
     it("invalidates all death-related cache patterns", async () => {
       // Mock scan to return empty keys (no deletions) for each pattern
@@ -380,6 +424,16 @@ describe("cache operations with mocked Redis", () => {
         CACHE_PREFIX.STATS,
         CACHE_PREFIX.TRIVIA,
         CACHE_PREFIX.FEATURED_MOVIE
+      )
+      // Should invalidate prerender caches for death-related pages
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(
+        `${CACHE_PREFIX.PRERENDER}:*/death-watch*`,
+        100
+      )
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.PRERENDER}:*/deaths*`, 100)
+      expect(mockInstrumentedScan).toHaveBeenCalledWith(
+        `${CACHE_PREFIX.PRERENDER}:*/causes-of-death*`,
+        100
       )
     })
   })

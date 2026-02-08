@@ -26,12 +26,15 @@ const TARGET_HOST = process.env.PRERENDER_TARGET_HOST || "http://nginx:3000"
 const log = pino({ name: "prerender-service" })
 
 app.get("/render", async (req, res) => {
-  const urlPath = req.query.url as string | undefined
+  const rawUrl = req.query.url
 
-  if (!urlPath || typeof urlPath !== "string") {
-    res.status(400).json({ error: "Missing url parameter" })
+  // Handle missing, array (?url=a&url=b), or non-string values
+  if (!rawUrl || typeof rawUrl !== "string") {
+    res.status(400).json({ error: "Missing or invalid url parameter" })
     return
   }
+
+  const urlPath = rawUrl
 
   // Validate the path looks reasonable (starts with /)
   if (!urlPath.startsWith("/")) {
@@ -68,8 +71,9 @@ app.get("/render", async (req, res) => {
   } catch (err) {
     log.error({ err, urlPath }, "Render failed")
 
-    const message = (err as Error).message
-    if (message.includes("timeout") || message.includes("Timeout")) {
+    // Playwright throws TimeoutError; AbortSignal.timeout throws with name "TimeoutError"
+    const error = err as Error
+    if (error.name === "TimeoutError") {
       res.status(504).json({ error: "Render timeout" })
       return
     }
