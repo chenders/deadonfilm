@@ -116,6 +116,7 @@ export default function MoviePage() {
       <JsonLd
         data={buildBreadcrumbSchema([
           { name: "Home", url: "https://deadonfilm.com" },
+          { name: "Movies", url: "https://deadonfilm.com/movies/genres" },
           { name: movie.title, url: `https://deadonfilm.com${location.pathname}` },
         ])}
       />
