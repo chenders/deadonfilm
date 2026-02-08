@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useId } from "react"
 import { useNavigate } from "react-router-dom"
 import { useUnifiedSearch } from "@/hooks/useUnifiedSearch"
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation"
-import { createMovieSlug, createShowSlug } from "@/utils/slugify"
+import { createMovieSlug, createShowSlug, createActorSlug } from "@/utils/slugify"
 import type { UnifiedSearchResult, SearchMediaType } from "@/types"
 import SearchInput from "./SearchInput"
 import SearchDropdown from "./SearchDropdown"
@@ -60,7 +60,10 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   }, [isOpen, onClose])
 
   const handleSelect = (result: UnifiedSearchResult) => {
-    if (result.media_type === "tv") {
+    if (result.media_type === "person") {
+      const slug = createActorSlug(result.title, result.id)
+      navigate(`/actor/${slug}`)
+    } else if (result.media_type === "tv") {
       const slug = createShowSlug(result.title, result.release_date, result.id)
       navigate(`/show/${slug}`)
     } else {
@@ -83,12 +86,13 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     }
   }
 
-  const placeholderText =
-    mediaType === "movie"
-      ? "Search for a movie..."
-      : mediaType === "tv"
-        ? "Search for a TV show..."
-        : "Search movies and TV shows..."
+  const placeholders: Record<SearchMediaType, string> = {
+    all: "Search movies, shows, and people...",
+    movie: "Search for a movie...",
+    tv: "Search for a TV show...",
+    person: "Search for a person...",
+  }
+  const placeholderText = placeholders[mediaType]
 
   if (!isOpen) return null
 
@@ -104,7 +108,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         data-testid="search-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Search movies and TV shows"
+        aria-label="Search movies, TV shows, and people"
         className="mx-4 w-full max-w-xl transform transition-all duration-150"
       >
         {/* Close button for mobile */}
@@ -177,6 +181,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 onSelect={handleSelect}
                 searchQuery={query}
                 inline
+                mediaType={mediaType}
               />
             </div>
           )}

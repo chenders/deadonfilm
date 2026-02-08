@@ -8,7 +8,7 @@ export default function SearchTrigger() {
       data-testid="search-trigger"
       onClick={openSearch}
       className="group relative rounded-full p-2 text-brown-dark transition-colors hover:bg-brown-medium/10"
-      aria-label="Search movies and TV shows"
+      aria-label="Search movies, TV shows, and people"
       title="Search (⌘K)"
     >
       <svg

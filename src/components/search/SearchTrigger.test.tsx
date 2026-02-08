@@ -22,7 +22,7 @@ describe("SearchTrigger", () => {
 
     const button = screen.getByTestId("search-trigger")
     expect(button).toBeInTheDocument()
-    expect(button).toHaveAttribute("aria-label", "Search movies and TV shows")
+    expect(button).toHaveAttribute("aria-label", "Search movies, TV shows, and people")
   })
 
   it("calls openSearch when clicked", () => {
