@@ -41,6 +41,12 @@ describe("Footer", () => {
     expect(link).toHaveAttribute("href", "/data-sources")
   })
 
+  it("renders Articles link", () => {
+    renderFooter()
+    const link = screen.getByRole("link", { name: "Articles" })
+    expect(link).toHaveAttribute("href", "/articles")
+  })
+
   it("renders TMDB attribution", () => {
     renderFooter()
     expect(screen.getByTestId("tmdb-logo-link")).toBeInTheDocument()

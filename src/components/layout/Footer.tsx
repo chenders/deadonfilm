@@ -70,6 +70,12 @@ export default function Footer() {
               >
                 Data Sources
               </Link>
+              <Link
+                to="/articles"
+                className="text-sm text-text-muted transition-colors hover:text-brown-dark"
+              >
+                Articles
+              </Link>
             </div>
           </nav>
           <a
