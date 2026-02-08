@@ -108,6 +108,30 @@ interface ItemListItem {
 /**
  * Build ItemList schema for list pages (cursed movies, cursed actors)
  */
+interface FAQItem {
+  question: string
+  answer: string
+}
+
+/**
+ * Build FAQPage schema for FAQ pages
+ * Generates JSON-LD that enables rich FAQ results in Google Search
+ */
+export function buildFAQPageSchema(items: FAQItem[]): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  }
+}
+
 export function buildItemListSchema(
   name: string,
   description: string,
