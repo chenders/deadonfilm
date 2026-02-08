@@ -17,7 +17,7 @@ import {
   type RelatedMovie,
   type RelatedShow,
 } from "../lib/db/related-content.js"
-import { getCached, setCached, buildCacheKey, CACHE_TTL } from "../lib/cache.js"
+import { getCached, setCached, buildCacheKey, CACHE_TTL, CACHE_PREFIX } from "../lib/cache.js"
 import { sendWithETag } from "../lib/etag.js"
 
 // ============================================================================
@@ -62,12 +62,12 @@ function getBirthDecade(birthday: string | null): number | null {
 export async function getRelatedActorsRoute(req: Request, res: Response) {
   const actorId = parseInt(req.params.id, 10)
 
-  if (!actorId || isNaN(actorId)) {
+  if (!Number.isInteger(actorId) || actorId <= 0) {
     return res.status(400).json({ error: { message: "Invalid actor ID" } })
   }
 
   try {
-    const cacheKey = buildCacheKey("related-actors", { id: actorId })
+    const cacheKey = buildCacheKey(CACHE_PREFIX.RELATED_ACTORS, { id: actorId })
 
     const cached = await getCached<RelatedActorsResponse>(cacheKey)
     if (cached) {
@@ -110,12 +110,12 @@ export async function getRelatedActorsRoute(req: Request, res: Response) {
 export async function getRelatedMoviesRoute(req: Request, res: Response) {
   const movieId = parseInt(req.params.id, 10)
 
-  if (!movieId || isNaN(movieId)) {
+  if (!Number.isInteger(movieId) || movieId <= 0) {
     return res.status(400).json({ error: { message: "Invalid movie ID" } })
   }
 
   try {
-    const cacheKey = buildCacheKey("related-movies", { id: movieId })
+    const cacheKey = buildCacheKey(CACHE_PREFIX.RELATED_MOVIES, { id: movieId })
 
     const cached = await getCached<RelatedMoviesResponse>(cacheKey)
     if (cached) {
@@ -144,12 +144,12 @@ export async function getRelatedMoviesRoute(req: Request, res: Response) {
 export async function getRelatedShowsRoute(req: Request, res: Response) {
   const showId = parseInt(req.params.id, 10)
 
-  if (!showId || isNaN(showId)) {
+  if (!Number.isInteger(showId) || showId <= 0) {
     return res.status(400).json({ error: { message: "Invalid show ID" } })
   }
 
   try {
-    const cacheKey = buildCacheKey("related-shows", { id: showId })
+    const cacheKey = buildCacheKey(CACHE_PREFIX.RELATED_SHOWS, { id: showId })
 
     const cached = await getCached<RelatedShowsResponse>(cacheKey)
     if (cached) {

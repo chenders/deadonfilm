@@ -26,6 +26,11 @@ vi.mock("../lib/cache.js", () => ({
     (prefix: string, params: Record<string, unknown>) => `${prefix}:${JSON.stringify(params)}`
   ),
   CACHE_TTL: { WEEK: 604800 },
+  CACHE_PREFIX: {
+    RELATED_ACTORS: "related-actors",
+    RELATED_MOVIES: "related-movies",
+    RELATED_SHOWS: "related-shows",
+  },
 }))
 
 // Mock the etag module - pass through to res.json for simpler assertions
@@ -78,6 +83,16 @@ describe("getRelatedActorsRoute", () => {
 
   it("returns 400 for zero actor ID", async () => {
     const req = createMockReq({ id: "0" })
+    const res = createMockRes()
+
+    await getRelatedActorsRoute(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith({ error: { message: "Invalid actor ID" } })
+  })
+
+  it("returns 400 for negative actor ID", async () => {
+    const req = createMockReq({ id: "-1" })
     const res = createMockRes()
 
     await getRelatedActorsRoute(req, res)
@@ -309,6 +324,16 @@ describe("getRelatedMoviesRoute", () => {
     expect(res.json).toHaveBeenCalledWith({ error: { message: "Invalid movie ID" } })
   })
 
+  it("returns 400 for negative movie ID", async () => {
+    const req = createMockReq({ id: "-5" })
+    const res = createMockRes()
+
+    await getRelatedMoviesRoute(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith({ error: { message: "Invalid movie ID" } })
+  })
+
   it("returns related movies", async () => {
     const req = createMockReq({ id: "550" })
     const res = createMockRes()
@@ -437,6 +462,16 @@ describe("getRelatedShowsRoute", () => {
 
   it("returns 400 for zero show ID", async () => {
     const req = createMockReq({ id: "0" })
+    const res = createMockRes()
+
+    await getRelatedShowsRoute(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith({ error: { message: "Invalid show ID" } })
+  })
+
+  it("returns 400 for negative show ID", async () => {
+    const req = createMockReq({ id: "-10" })
     const res = createMockRes()
 
     await getRelatedShowsRoute(req, res)
