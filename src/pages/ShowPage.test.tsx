@@ -146,7 +146,7 @@ describe("ShowPage", () => {
     })
 
     // Title appears in both breadcrumb and header; check the header specifically
-    expect(screen.getByTestId("show-title")).toBeInTheDocument()
+    expect(screen.getByTestId("show-title")).toHaveTextContent("Seinfeld")
     expect(screen.getByText("(1989)")).toBeInTheDocument()
   })
 

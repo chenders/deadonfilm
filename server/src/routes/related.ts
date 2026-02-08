@@ -74,10 +74,10 @@ export async function getRelatedActorsRoute(req: Request, res: Response) {
       return sendWithETag(req, res, cached, CACHE_TTL.WEEK)
     }
 
-    // Look up actor's tmdb_id, cause_of_death, and birthday
+    // Look up actor's cause_of_death and birthday
     const db = getPool()
     const actorResult = await db.query(
-      "SELECT tmdb_id, cause_of_death, birthday FROM actors WHERE id = $1",
+      "SELECT cause_of_death, birthday FROM actors WHERE id = $1",
       [actorId]
     )
 

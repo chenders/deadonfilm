@@ -103,15 +103,14 @@ export async function getRelatedActors(
     }>(
       `SELECT a.id, a.tmdb_id, a.name, a.profile_path, a.deathday, a.cause_of_death, a.birthday
        FROM actors a
-       WHERE a.birthday IS NOT NULL
-         AND EXTRACT(YEAR FROM a.birthday) >= $1
-         AND EXTRACT(YEAR FROM a.birthday) <= $2
+       WHERE a.birthday >= make_date($1, 1, 1)
+         AND a.birthday < make_date($2, 1, 1)
          AND a.id != $3
          AND a.is_obscure IS NOT TRUE
          AND a.deathday IS NOT NULL
        ORDER BY a.tmdb_popularity DESC NULLS LAST
        LIMIT $4`,
-      [birthDecade, decadeEnd, actorId, RELATED_ACTORS_LIMIT]
+      [birthDecade, decadeEnd + 1, actorId, RELATED_ACTORS_LIMIT]
     )
 
     return result.rows.map(mapActorRow)
