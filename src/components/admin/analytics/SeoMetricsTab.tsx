@@ -71,9 +71,9 @@ export default function SeoMetricsTab() {
     isLoading: typesLoading,
     error: typesError,
   } = usePageTypePerformance(days, isConfigured)
-  const { data: sitemaps } = useSitemaps(isConfigured)
-  const { data: indexing } = useIndexingStatus(90, isConfigured)
-  const { data: alerts } = useGscAlerts(false, isConfigured)
+  const { data: sitemaps, isLoading: sitemapsLoading } = useSitemaps(isConfigured)
+  const { data: indexing, isLoading: indexingLoading } = useIndexingStatus(90, isConfigured)
+  const { data: alerts, isLoading: alertsLoading } = useGscAlerts(false, isConfigured)
   const snapshotMutation = useGscSnapshot()
   const inspectMutation = useInspectUrl()
   const acknowledgeMutation = useAcknowledgeAlert()
@@ -148,7 +148,7 @@ export default function SeoMetricsTab() {
       </div>
 
       {/* Alerts */}
-      {alerts && alerts.data.length > 0 && (
+      {!alertsLoading && alerts && alerts.data.length > 0 && (
         <AlertsSection
           alerts={alerts.data}
           onAcknowledge={(id) => acknowledgeMutation.mutate(id)}
@@ -179,8 +179,13 @@ export default function SeoMetricsTab() {
 
       {/* Indexing & Sitemaps */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <IndexingSection data={indexing} chartTheme={chartTheme} tooltipStyle={tooltipStyle} />
-        <SitemapsSection data={sitemaps} />
+        <IndexingSection
+          data={indexing}
+          isLoading={indexingLoading}
+          chartTheme={chartTheme}
+          tooltipStyle={tooltipStyle}
+        />
+        <SitemapsSection data={sitemaps} isLoading={sitemapsLoading} />
       </div>
 
       {/* URL Inspection Tool */}
@@ -556,11 +561,14 @@ function PageTypeSection({
 
 function IndexingSection({
   data,
+  isLoading,
   chartTheme,
   tooltipStyle,
 }: {
   data?: ReturnType<typeof useIndexingStatus>["data"]
+  isLoading: boolean
 } & ChartThemeProps) {
+  if (isLoading) return <LoadingSection title="Indexing Health" />
   if (!data || data.data.length === 0) {
     return (
       <div>
@@ -628,7 +636,14 @@ function IndexingSection({
   )
 }
 
-function SitemapsSection({ data }: { data?: ReturnType<typeof useSitemaps>["data"] }) {
+function SitemapsSection({
+  data,
+  isLoading,
+}: {
+  data?: ReturnType<typeof useSitemaps>["data"]
+  isLoading: boolean
+}) {
+  if (isLoading) return <LoadingSection title="Sitemaps" />
   if (!data?.configured) {
     return null
   }
