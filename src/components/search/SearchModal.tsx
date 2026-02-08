@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useId } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { useUnifiedSearch } from "@/hooks/useUnifiedSearch"
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation"
 import { createMovieSlug, createShowSlug, createActorSlug } from "@/utils/slugify"
@@ -198,6 +198,20 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
               <p className="text-sm text-text-muted">
                 No results found for "<span className="italic">{query}</span>"
               </p>
+            </div>
+          )}
+
+          {/* View all results link */}
+          {query.trim().length >= 2 && (
+            <div className="border-t border-brown-medium/20 p-3 text-center">
+              <Link
+                to={`/search?q=${encodeURIComponent(query.trim())}${mediaType !== "all" ? `&type=${mediaType}` : ""}`}
+                data-testid="search-modal-view-all"
+                onClick={onClose}
+                className="text-sm text-brown-medium hover:text-brown-dark hover:underline"
+              >
+                View all results for "{query.trim()}"
+              </Link>
             </div>
           )}
         </div>

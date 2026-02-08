@@ -41,6 +41,7 @@ const AboutPage = lazyWithRetry(() => import("./pages/AboutPage"))
 const FAQPage = lazyWithRetry(() => import("./pages/FAQPage"))
 const MethodologyPage = lazyWithRetry(() => import("./pages/MethodologyPage"))
 const DataSourcesPage = lazyWithRetry(() => import("./pages/DataSourcesPage"))
+const SearchResultsPage = lazyWithRetry(() => import("./pages/SearchResultsPage"))
 
 // Admin pages
 const AdminLoginPage = lazyWithRetry(() => import("./pages/admin/LoginPage"))
@@ -334,6 +335,7 @@ function App() {
                 <Suspense fallback={<LoadingSpinner />}>
                   <Routes>
                     <Route path="/" element={<HomePage />} />
+                    <Route path="/search" element={<SearchResultsPage />} />
                     <Route path="/movie/:slug" element={<MoviePage />} />
                     <Route path="/show/:slug" element={<ShowPage />} />
                     <Route path="/show/:slug/season/:seasonNumber" element={<SeasonPage />} />
