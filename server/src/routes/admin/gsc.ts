@@ -356,7 +356,14 @@ router.post("/inspect-url", async (req: Request, res: Response): Promise<void> =
 
 router.get("/indexing", async (req: Request, res: Response): Promise<void> => {
   try {
-    const days = parseInt(req.query.days as string) || 90
+    const days = req.query.days ? parseInt(req.query.days as string, 10) : 90
+    if (isNaN(days) || days < MIN_DAYS || days > MAX_DAYS) {
+      res
+        .status(400)
+        .json({ error: { message: `Invalid days. Must be between ${MIN_DAYS} and ${MAX_DAYS}` } })
+      return
+    }
+
     const startDate = (req.query.startDate as string) || daysAgo(days)
     const endDate = (req.query.endDate as string) || daysAgo(0)
 
@@ -383,7 +390,13 @@ router.get("/alerts", async (req: Request, res: Response): Promise<void> => {
         : req.query.acknowledged === "false"
           ? false
           : undefined
-    const limit = parseInt(req.query.limit as string) || 50
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50
+    if (isNaN(limit) || limit < MIN_LIMIT || limit > MAX_LIMIT) {
+      res.status(400).json({
+        error: { message: `Invalid limit. Must be between ${MIN_LIMIT} and ${MAX_LIMIT}` },
+      })
+      return
+    }
 
     const data = await getGscAlerts(pool, { acknowledged, limit })
     res.json({ data })
@@ -401,7 +414,7 @@ router.get("/alerts", async (req: Request, res: Response): Promise<void> => {
 router.post("/alerts/:id/acknowledge", async (req: Request, res: Response): Promise<void> => {
   try {
     const pool = getPool()
-    const alertId = parseInt(req.params.id)
+    const alertId = parseInt(req.params.id, 10)
     if (isNaN(alertId)) {
       res.status(400).json({ error: { message: "Invalid alert ID" } })
       return
@@ -427,17 +440,19 @@ router.post("/snapshot", async (_req: Request, res: Response): Promise<void> => 
       return
     }
 
-    const pool = getPool()
-    const client = await pool.connect()
     const yesterday = daysAgo(1)
     const thirtyDaysAgo = daysAgo(30)
 
-    // Fetch all data from GSC API before writing to DB
+    // Fetch all data from GSC API before acquiring a DB connection
     const performance = await getSearchPerformanceOverTime(thirtyDaysAgo, yesterday)
     const queries = await getTopQueries(yesterday, yesterday, 100)
     const pages = await getTopPages(yesterday, yesterday, 100)
     const pageTypes = await getPerformanceByPageType(yesterday, yesterday)
     const sitemaps = await getSitemaps()
+
+    // Now acquire DB connection and write atomically
+    const pool = getPool()
+    const client = await pool.connect()
 
     try {
       await client.query("BEGIN")

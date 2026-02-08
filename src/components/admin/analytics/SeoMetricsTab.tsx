@@ -49,12 +49,28 @@ export default function SeoMetricsTab() {
   const [days, setDays] = useState(30)
   const [inspectUrlInput, setInspectUrlInput] = useState("")
 
-  const { data: status, isLoading: statusLoading } = useGscStatus()
+  const { data: status, isLoading: statusLoading, error: statusError } = useGscStatus()
   const isConfigured = status?.configured === true
-  const { data: performance, isLoading: perfLoading } = useSearchPerformance(days, isConfigured)
-  const { data: topQueries, isLoading: queriesLoading } = useTopQueries(days, 20, isConfigured)
-  const { data: topPages, isLoading: pagesLoading } = useTopPages(days, 20, isConfigured)
-  const { data: pageTypes, isLoading: typesLoading } = usePageTypePerformance(days, isConfigured)
+  const {
+    data: performance,
+    isLoading: perfLoading,
+    error: perfError,
+  } = useSearchPerformance(days, isConfigured)
+  const {
+    data: topQueries,
+    isLoading: queriesLoading,
+    error: queriesError,
+  } = useTopQueries(days, 20, isConfigured)
+  const {
+    data: topPages,
+    isLoading: pagesLoading,
+    error: pagesError,
+  } = useTopPages(days, 20, isConfigured)
+  const {
+    data: pageTypes,
+    isLoading: typesLoading,
+    error: typesError,
+  } = usePageTypePerformance(days, isConfigured)
   const { data: sitemaps } = useSitemaps(isConfigured)
   const { data: indexing } = useIndexingStatus(90, isConfigured)
   const { data: alerts } = useGscAlerts(false, isConfigured)
@@ -65,12 +81,30 @@ export default function SeoMetricsTab() {
   const chartTheme = useChartTheme()
   const tooltipStyle = useChartTooltipStyle()
 
+  const error = statusError || perfError || queriesError || pagesError || typesError
+
   if (statusLoading) {
     return <LoadingSection title="SEO Metrics" />
   }
 
+  if (statusError) {
+    return (
+      <div className="py-12 text-center text-admin-danger">
+        {statusError instanceof Error ? statusError.message : "Failed to load GSC status"}
+      </div>
+    )
+  }
+
   if (!status?.configured) {
     return <GscNotConfigured />
+  }
+
+  if (error) {
+    return (
+      <div className="py-12 text-center text-admin-danger">
+        {error instanceof Error ? error.message : "Failed to load SEO metrics data"}
+      </div>
+    )
   }
 
   return (

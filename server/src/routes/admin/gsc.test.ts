@@ -21,6 +21,7 @@ import {
   getPerformanceByPageType,
   getSitemaps,
   inspectUrl,
+  daysAgo,
 } from "../../lib/gsc-client.js"
 import {
   getSearchPerformanceHistory,
@@ -379,6 +380,22 @@ describe("admin GSC routes", () => {
       expect(jsonSpy).toHaveBeenCalledWith(expect.objectContaining({ data: mockData }))
     })
 
+    it("validates days parameter", async () => {
+      mockReq.query = { days: "0" }
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      expect(statusSpy).toHaveBeenCalledWith(400)
+    })
+
+    it("validates days upper bound", async () => {
+      mockReq.query = { days: "999" }
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      expect(statusSpy).toHaveBeenCalledWith(400)
+    })
+
     it("handles errors", async () => {
       vi.mocked(getIndexingStatusHistory).mockRejectedValue(new Error("DB error"))
 
@@ -412,6 +429,22 @@ describe("admin GSC routes", () => {
       })
     })
 
+    it("validates limit parameter", async () => {
+      mockReq.query = { limit: "0" }
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      expect(statusSpy).toHaveBeenCalledWith(400)
+    })
+
+    it("validates limit upper bound", async () => {
+      mockReq.query = { limit: "999" }
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      expect(statusSpy).toHaveBeenCalledWith(400)
+    })
+
     it("handles errors", async () => {
       vi.mocked(getGscAlerts).mockRejectedValue(new Error("DB error"))
 
@@ -440,6 +473,140 @@ describe("admin GSC routes", () => {
       await handler!(mockReq as Request, mockRes as Response, mockNext)
 
       expect(statusSpy).toHaveBeenCalledWith(400)
+    })
+  })
+
+  describe("POST /snapshot", () => {
+    const handler = findHandler("/snapshot")
+
+    const mockPerformance = {
+      rows: [{ keys: ["2024-01-01"], clicks: 10, impressions: 100, ctr: 0.1, position: 5 }],
+      totals: { clicks: 10, impressions: 100, ctr: 0.1, position: 5 },
+    }
+    const mockQueries = {
+      rows: [{ keys: ["test query"], clicks: 5, impressions: 50, ctr: 0.1, position: 3 }],
+      totals: { clicks: 5, impressions: 50, ctr: 0.1, position: 3 },
+    }
+    const mockPages = {
+      rows: [
+        {
+          keys: ["https://example.com/actor/test-1"],
+          clicks: 8,
+          impressions: 80,
+          ctr: 0.1,
+          position: 4,
+        },
+      ],
+      totals: { clicks: 8, impressions: 80, ctr: 0.1, position: 4 },
+    }
+    const mockPageTypes = {
+      actor: { clicks: 8, impressions: 80, ctr: 0.1, position: 4 },
+    }
+    const mockSitemaps = [
+      {
+        path: "https://example.com/sitemap.xml",
+        lastSubmitted: "2024-01-01",
+        lastDownloaded: "2024-01-01",
+        isPending: false,
+        isIndex: true,
+        warnings: 0,
+        errors: 0,
+        contents: [{ type: "web", submitted: 100, indexed: 90 }],
+      },
+    ]
+
+    let mockClient: {
+      query: ReturnType<typeof vi.fn>
+      release: ReturnType<typeof vi.fn>
+    }
+
+    beforeEach(() => {
+      mockClient = {
+        query: vi.fn(),
+        release: vi.fn(),
+      }
+      vi.mocked(getPool).mockReturnValue({
+        connect: vi.fn().mockResolvedValue(mockClient),
+      } as any)
+    })
+
+    it("returns 400 when GSC is not configured", async () => {
+      vi.mocked(isGscConfigured).mockReturnValue(false)
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      expect(statusSpy).toHaveBeenCalledWith(400)
+      expect(jsonSpy).toHaveBeenCalledWith({
+        error: { message: "GSC is not configured" },
+      })
+    })
+
+    it("snapshots data successfully with transaction", async () => {
+      vi.mocked(isGscConfigured).mockReturnValue(true)
+      vi.mocked(getSearchPerformanceOverTime).mockResolvedValue(mockPerformance)
+      vi.mocked(getTopQueries).mockResolvedValue(mockQueries)
+      vi.mocked(getTopPages).mockResolvedValue(mockPages)
+      vi.mocked(getPerformanceByPageType).mockResolvedValue(mockPageTypes)
+      vi.mocked(getSitemaps).mockResolvedValue(mockSitemaps)
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      // Verify transaction lifecycle
+      const queries = mockClient.query.mock.calls.map((c) => c[0])
+      expect(queries[0]).toBe("BEGIN")
+      expect(queries[queries.length - 1]).toBe("COMMIT")
+      expect(mockClient.release).toHaveBeenCalled()
+
+      // Verify success response
+      expect(jsonSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          snapshot: expect.objectContaining({
+            performanceDays: 1,
+            queries: 1,
+            pages: 1,
+          }),
+        })
+      )
+    })
+
+    it("returns 500 when API fetch fails before transaction", async () => {
+      vi.mocked(isGscConfigured).mockReturnValue(true)
+      vi.mocked(getSearchPerformanceOverTime).mockRejectedValue(new Error("API error"))
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      expect(statusSpy).toHaveBeenCalledWith(500)
+      expect(jsonSpy).toHaveBeenCalledWith({
+        error: { message: "Failed to create snapshot" },
+      })
+      // No transaction should have been started
+      expect(mockClient.query).not.toHaveBeenCalled()
+    })
+
+    it("rolls back transaction on DB write failure", async () => {
+      vi.mocked(isGscConfigured).mockReturnValue(true)
+      vi.mocked(getSearchPerformanceOverTime).mockResolvedValue(mockPerformance)
+      vi.mocked(getTopQueries).mockResolvedValue(mockQueries)
+      vi.mocked(getTopPages).mockResolvedValue(mockPages)
+      vi.mocked(getPerformanceByPageType).mockResolvedValue(mockPageTypes)
+      vi.mocked(getSitemaps).mockResolvedValue(mockSitemaps)
+
+      // BEGIN succeeds, first INSERT fails
+      mockClient.query
+        .mockResolvedValueOnce(undefined) // BEGIN
+        .mockRejectedValueOnce(new Error("DB write error")) // INSERT fails
+        .mockResolvedValue(undefined) // ROLLBACK
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      // Verify rollback was called
+      const queries = mockClient.query.mock.calls.map((c) => c[0])
+      expect(queries).toContain("BEGIN")
+      expect(queries).toContain("ROLLBACK")
+      expect(mockClient.release).toHaveBeenCalled()
+
+      expect(statusSpy).toHaveBeenCalledWith(500)
     })
   })
 })
