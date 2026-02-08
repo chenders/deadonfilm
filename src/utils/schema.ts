@@ -96,6 +96,11 @@ export function buildWebsiteSchema(): Record<string, unknown> {
     url: BASE_URL,
     description:
       "Movie cast mortality database. Look up any movie and see which actors have passed away.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${BASE_URL}/search?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
   }
 }
 
@@ -149,5 +154,132 @@ export function buildItemListSchema(
       url: item.url,
       name: item.name,
     })),
+  }
+}
+
+interface TVSeriesSchemaInput {
+  name: string
+  firstAirDate: string | null
+  posterPath: string | null
+  numberOfSeasons: number
+  numberOfEpisodes: number
+}
+
+interface TVSeriesStats {
+  deceasedCount: number
+  totalCast: number
+  mortalityPercentage: number
+}
+
+/**
+ * Build TVSeries schema for ShowPage
+ */
+export function buildTVSeriesSchema(
+  show: TVSeriesSchemaInput,
+  stats: TVSeriesStats,
+  slug: string
+): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "TVSeries",
+    name: show.name,
+    datePublished: show.firstAirDate || undefined,
+    numberOfSeasons: show.numberOfSeasons,
+    numberOfEpisodes: show.numberOfEpisodes,
+    description: `${stats.deceasedCount} of ${stats.totalCast} cast members (${stats.mortalityPercentage}%) have passed away.`,
+    image: show.posterPath ? `https://image.tmdb.org/t/p/w500${show.posterPath}` : undefined,
+    url: `${BASE_URL}/show/${slug}`,
+  }
+}
+
+interface TVEpisodeSchemaInput {
+  name: string
+  seasonNumber: number
+  episodeNumber: number
+  airDate: string | null
+  overview: string
+  runtime: number | null
+  stillPath: string | null
+}
+
+interface TVEpisodeShowInput {
+  name: string
+  firstAirDate: string | null
+  id: number
+}
+
+/**
+ * Convert runtime in minutes to ISO 8601 duration (e.g. 45 -> "PT45M")
+ */
+function toIsoDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h > 0 && m > 0) return `PT${h}H${m}M`
+  if (h > 0) return `PT${h}H`
+  return `PT${m}M`
+}
+
+/**
+ * Build TVEpisode schema for EpisodePage
+ */
+export function buildTVEpisodeSchema(
+  show: TVEpisodeShowInput,
+  episode: TVEpisodeSchemaInput,
+  stats: TVSeriesStats,
+  episodeUrl: string,
+  showSlug: string
+): Record<string, unknown> {
+  const episodeCode = `S${episode.seasonNumber}E${episode.episodeNumber}`
+  return {
+    "@context": "https://schema.org",
+    "@type": "TVEpisode",
+    name: episode.name,
+    episodeNumber: episode.episodeNumber,
+    seasonNumber: episode.seasonNumber,
+    datePublished: episode.airDate || undefined,
+    description:
+      episode.overview ||
+      `${stats.deceasedCount} of ${stats.totalCast} cast members (${stats.mortalityPercentage}%) from ${show.name} ${episodeCode} have passed away.`,
+    image: episode.stillPath ? `https://image.tmdb.org/t/p/w500${episode.stillPath}` : undefined,
+    duration: episode.runtime != null ? toIsoDuration(episode.runtime) : undefined,
+    url: episodeUrl,
+    partOfSeries: {
+      "@type": "TVSeries",
+      name: show.name,
+      url: `${BASE_URL}/show/${showSlug}`,
+    },
+  }
+}
+
+interface CollectionPageItem {
+  name: string
+  url: string
+}
+
+/**
+ * Build CollectionPage schema for curated list pages (Death Watch, Forever Young, All Deaths)
+ */
+export function buildCollectionPageSchema(
+  name: string,
+  description: string,
+  url: string,
+  items: CollectionPageItem[]
+): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name,
+    description,
+    url,
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: items.length,
+      itemListElement: items.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: item.url,
+        name: item.name,
+      })),
+    },
   }
 }
