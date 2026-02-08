@@ -252,8 +252,10 @@ export async function invalidateDeathCaches(): Promise<void> {
     invalidateKeys(CACHE_PREFIX.STATS, CACHE_PREFIX.TRIVIA, CACHE_PREFIX.FEATURED_MOVIE),
     // Invalidate prerendered pages that show death data (targeted, not all pages)
     invalidatePrerenderCache("/death-watch"),
-    invalidatePrerenderCache("/deaths/"),
+    invalidatePrerenderCache("/deaths"),
     invalidatePrerenderCache("/causes-of-death"),
+    invalidatePrerenderCache("/covid-deaths"),
+    invalidatePrerenderCache("/unnatural-deaths"),
   ])
 }
 

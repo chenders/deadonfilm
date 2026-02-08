@@ -39,6 +39,13 @@ app.get("/render", async (req, res) => {
     return
   }
 
+  // Reject paths with dot-segments to prevent traversal bypasses
+  // (e.g. /../admin or /api/../admin would bypass the blocklist below)
+  if (urlPath.includes("/..")) {
+    res.status(400).json({ error: "Path traversal not allowed" })
+    return
+  }
+
   // Block API/admin paths from being rendered (exact match and subpaths)
   if (
     urlPath === "/api" ||
