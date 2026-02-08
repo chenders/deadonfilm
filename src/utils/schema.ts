@@ -241,7 +241,7 @@ export function buildTVEpisodeSchema(
       episode.overview ||
       `${stats.deceasedCount} of ${stats.totalCast} cast members (${stats.mortalityPercentage}%) from ${show.name} ${episodeCode} have passed away.`,
     image: episode.stillPath ? `https://image.tmdb.org/t/p/w500${episode.stillPath}` : undefined,
-    duration: episode.runtime ? toIsoDuration(episode.runtime) : undefined,
+    duration: episode.runtime != null ? toIsoDuration(episode.runtime) : undefined,
     url: episodeUrl,
     partOfSeries: {
       "@type": "TVSeries",
