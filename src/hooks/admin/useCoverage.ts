@@ -27,6 +27,8 @@ export interface ActorCoverageInfo {
   enriched_at: string | null
   age_at_death: number | null
   cause_of_death: string | null
+  profile_path: string | null
+  death_manner: string | null
 }
 
 export interface CoverageTrendPoint {
@@ -55,6 +57,7 @@ export interface ActorCoverageFilters {
   deathDateEnd?: string
   searchName?: string
   causeOfDeath?: string
+  deathManner?: string
   orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
   orderDirection?: "asc" | "desc"
 }
@@ -138,6 +141,9 @@ async function fetchActorsForCoverage(
   }
   if (filters.causeOfDeath) {
     params.append("causeOfDeath", filters.causeOfDeath)
+  }
+  if (filters.deathManner) {
+    params.append("deathManner", filters.deathManner)
   }
 
   const response = await fetch(`/admin/api/coverage/actors?${params.toString()}`, {
