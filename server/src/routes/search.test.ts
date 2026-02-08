@@ -638,6 +638,60 @@ describe("searchMovies route", () => {
     })
   })
 
+  it("returns 500 when DB fails for type=person", async () => {
+    mockQuery.mockRejectedValue(new Error("connection refused"))
+    mockReq = { query: { q: "Tom Hanks", type: "person" } }
+
+    await searchMovies(mockReq as Request, mockRes as Response)
+
+    expect(statusSpy).toHaveBeenCalledWith(500)
+    expect(jsonSpy).toHaveBeenCalledWith({
+      error: { message: "Failed to search" },
+    })
+  })
+
+  it("still returns movie/TV results when DB fails for type=all", async () => {
+    const mockTmdbMovies = {
+      page: 1,
+      results: [
+        {
+          id: 1,
+          title: "Test Movie",
+          popularity: 30,
+          release_date: "2020-01-01",
+          poster_path: "/test.jpg",
+          overview: "A movie",
+          genre_ids: [],
+          original_language: "en",
+        },
+      ],
+      total_pages: 1,
+      total_results: 1,
+    }
+    const mockTmdbTV = {
+      page: 1,
+      results: [],
+      total_pages: 1,
+      total_results: 0,
+    }
+
+    vi.mocked(tmdbSearch).mockResolvedValue(mockTmdbMovies)
+    const { searchTVShows } = await import("../lib/tmdb.js")
+    vi.mocked(searchTVShows).mockResolvedValue(mockTmdbTV)
+
+    // First call is for movie/TV, second is for person search in "all" mode
+    mockQuery.mockRejectedValue(new Error("connection refused"))
+    mockReq = { query: { q: "test", type: "all" } }
+
+    await searchMovies(mockReq as Request, mockRes as Response)
+
+    // Should still succeed with movie results, just no person results
+    expect(statusSpy).not.toHaveBeenCalled()
+    const calledWith = jsonSpy.mock.calls[0][0]
+    expect(calledWith.results.length).toBe(1)
+    expect(calledWith.results[0].media_type).toBe("movie")
+  })
+
   it("returns 400 for invalid type including 'person' misspelling", async () => {
     mockReq = { query: { q: "test", type: "persons" } }
 
