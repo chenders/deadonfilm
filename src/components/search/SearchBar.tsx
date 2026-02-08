@@ -2,7 +2,7 @@ import { useState, useRef, useId } from "react"
 import { useNavigate } from "react-router-dom"
 import { useUnifiedSearch } from "@/hooks/useUnifiedSearch"
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation"
-import { createMovieSlug, createShowSlug } from "@/utils/slugify"
+import { createMovieSlug, createShowSlug, createActorSlug } from "@/utils/slugify"
 import type { UnifiedSearchResult, SearchMediaType } from "@/types"
 import SearchInput from "./SearchInput"
 import SearchDropdown from "./SearchDropdown"
@@ -21,7 +21,10 @@ export default function SearchBar() {
   const results = data?.results || []
 
   const handleSelect = (result: UnifiedSearchResult) => {
-    if (result.media_type === "tv") {
+    if (result.media_type === "person") {
+      const slug = createActorSlug(result.title, result.id)
+      navigate(`/actor/${slug}`)
+    } else if (result.media_type === "tv") {
       const slug = createShowSlug(result.title, result.release_date, result.id)
       navigate(`/show/${slug}`)
     } else {
@@ -64,12 +67,13 @@ export default function SearchBar() {
     </>
   )
 
-  const placeholderText =
-    mediaType === "movie"
-      ? "Search for a movie..."
-      : mediaType === "tv"
-        ? "Search for a TV show..."
-        : "Search movies and TV shows..."
+  const placeholders: Record<SearchMediaType, string> = {
+    all: "Search movies, shows, and people...",
+    movie: "Search for a movie...",
+    tv: "Search for a TV show...",
+    person: "Search for a person...",
+  }
+  const placeholderText = placeholders[mediaType]
 
   return (
     <div data-testid="search-bar" className="relative mx-auto w-full max-w-xl">
@@ -111,6 +115,7 @@ export default function SearchBar() {
           selectedIndex={selectedIndex}
           onSelect={handleSelect}
           searchQuery={query}
+          mediaType={mediaType}
         />
       )}
 
