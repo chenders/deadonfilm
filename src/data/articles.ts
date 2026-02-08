@@ -1,4 +1,5 @@
-import { lazy, ComponentType } from "react"
+import { ComponentType } from "react"
+import { lazyWithRetry } from "@/utils/lazyWithRetry"
 
 export type ArticleCategory = "analysis" | "lists" | "explainer" | "history"
 
@@ -40,7 +41,7 @@ export const articles: ArticleMeta[] = [
     author: "Dead on Film",
     tags: ["horror", "franchises", "mortality-rates", "analysis"],
     relatedSlugs: [],
-    component: lazy(() => import("../pages/articles/DeadliestHorrorFranchisesArticle")),
+    component: lazyWithRetry(() => import("../pages/articles/DeadliestHorrorFranchisesArticle")),
     wordCount: 1200,
   },
 ]

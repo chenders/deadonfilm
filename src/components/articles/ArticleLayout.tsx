@@ -40,7 +40,14 @@ interface ArticleLayoutProps {
   children: ReactNode
 }
 
-export function ArticleCard({ article }: { article: ArticleMeta }) {
+export function ArticleCard({
+  article,
+  headingLevel = "h2",
+}: {
+  article: ArticleMeta
+  headingLevel?: "h2" | "h3"
+}) {
+  const Heading = headingLevel
   return (
     <Link
       to={`/articles/${article.slug}`}
@@ -50,7 +57,7 @@ export function ArticleCard({ article }: { article: ArticleMeta }) {
       <span className="mb-2 inline-block rounded-full bg-brown-medium/10 px-2.5 py-0.5 text-xs font-medium text-brown-dark">
         {CATEGORY_LABELS[article.category]}
       </span>
-      <h2 className="mb-2 font-display text-lg text-brown-dark">{article.title}</h2>
+      <Heading className="mb-2 font-display text-lg text-brown-dark">{article.title}</Heading>
       <p className="mb-3 text-sm leading-relaxed text-text-muted">{article.description}</p>
       <div className="flex items-center gap-3 text-xs text-text-muted">
         <time dateTime={article.publishedDate}>{formatArticleDate(article.publishedDate)}</time>
@@ -134,7 +141,7 @@ export default function ArticleLayout({ article, children }: ArticleLayoutProps)
             <h2 className="mb-4 font-display text-xl text-brown-dark">Related Articles</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {relatedArticles.map((related) => (
-                <ArticleCard key={related.slug} article={related} />
+                <ArticleCard key={related.slug} article={related} headingLevel="h3" />
               ))}
             </div>
           </section>
