@@ -221,6 +221,8 @@ export async function invalidateActorCacheRequired(actorId: number): Promise<voi
   }
   const keys = getActorCacheKeys(actorId)
   await instrumentedDel(...keys)
+  // Also invalidate prerendered pages for this actor
+  await invalidatePrerenderCache(`/actor/*-${actorId}`)
   logger.info({ keys, actorId }, "Actor cache invalidated")
 }
 

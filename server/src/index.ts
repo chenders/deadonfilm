@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit"
 import cookieParser from "cookie-parser"
 import { logger } from "./lib/logger.js"
 import { initRedis, isRedisAvailable } from "./lib/redis.js"
+import { invalidatePrerenderCache } from "./lib/cache.js"
 import { skipRateLimitForAdmin } from "./middleware/rate-limit-utils.js"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
@@ -338,6 +339,15 @@ async function startServer() {
 
     // Initialize Redis (optional - caching disabled if not available)
     const redisAvailable = await initRedis()
+
+    // Flush prerender cache on startup so deploys don't serve stale HTML
+    // referencing old hashed asset filenames
+    if (redisAvailable) {
+      const flushed = await invalidatePrerenderCache()
+      if (flushed > 0) {
+        logger.info({ flushed }, "Flushed stale prerender cache on startup")
+      }
+    }
 
     // Initialize job queue manager
     try {
