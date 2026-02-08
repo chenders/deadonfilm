@@ -40,7 +40,7 @@ export default function FeaturedCursedMovie() {
         data-testid="featured-movie-title"
         className="mb-3 text-center font-display text-xl text-brown-dark"
       >
-        Most Cursed Movie
+        Highest Mortality Movie
       </h2>
 
       <Link
@@ -84,7 +84,7 @@ export default function FeaturedCursedMovie() {
               </p>
               <p className="text-text-muted">Expected: {movie.expectedDeaths.toFixed(1)} deaths</p>
               <p className="font-medium text-brown-dark">
-                Curse Score: +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% above expected
+                +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% above expected deaths
               </p>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useUnnaturalDeaths } from "@/hooks/useUnnaturalDeaths"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
@@ -202,8 +203,15 @@ export default function UnnaturalDeathsPage() {
           name="twitter:description"
           content="Actors who died from unnatural causes including accidents, overdoses, homicides, and suicides"
         />
-        <link rel="canonical" href="https://deadonfilm.com/unnatural-deaths" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/unnatural-deaths"
+          includeLinks={category === "all" && !showSelfInflicted && !includeObscure}
+        />
+      )}
 
       <div data-testid="unnatural-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
