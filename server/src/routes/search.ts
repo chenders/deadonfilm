@@ -135,8 +135,8 @@ async function searchActorsLocal(query: string, limit: number): Promise<SearchRe
   const result = await db.query<{
     id: number
     name: string
-    birthday: string | null
-    deathday: string | null
+    birthday: Date | null
+    deathday: Date | null
     profile_path: string | null
     tmdb_popularity: number | null
   }>(
@@ -159,8 +159,8 @@ async function searchActorsLocal(query: string, limit: number): Promise<SearchRe
     overview: "",
     media_type: "person" as const,
     is_deceased: row.deathday !== null,
-    death_year: row.deathday ? parseInt(row.deathday.substring(0, 4), 10) : null,
-    birth_year: row.birthday ? parseInt(row.birthday.substring(0, 4), 10) : null,
+    death_year: row.deathday ? new Date(row.deathday).getFullYear() : null,
+    birth_year: row.birthday ? new Date(row.birthday).getFullYear() : null,
   }))
 }
 
