@@ -7,6 +7,8 @@ import { getPosterUrl, getProfileUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import CauseOfDeathBadge from "@/components/common/CauseOfDeathBadge"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildCollectionPageSchema } from "@/utils/schema"
 import { PersonIcon } from "@/components/icons"
 import type { ForeverYoungMovie } from "@/types"
 
@@ -189,6 +191,19 @@ export default function ForeverYoungPage() {
           currentPage={page}
           totalPages={data.pagination.totalPages}
           basePath="/forever-young"
+        />
+      )}
+      {page === 1 && data && data.movies.length > 0 && (
+        <JsonLd
+          data={buildCollectionPageSchema(
+            "Forever Young",
+            "Movies featuring actors who died tragically young, losing 40% or more of their expected lifespan.",
+            "https://deadonfilm.com/forever-young",
+            data.movies.map((movie) => ({
+              name: movie.title,
+              url: `https://deadonfilm.com/movie/${createMovieSlug(movie.title, movie.releaseYear?.toString() || "", movie.id)}`,
+            }))
+          )}
         />
       )}
 
