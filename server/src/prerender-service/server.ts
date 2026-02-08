@@ -52,19 +52,42 @@ app.get("/render", async (req, res) => {
     return
   }
 
+  // Reject encoded slashes/backslashes which can change path structure after decoding
+  const lowerPath = pathname.toLowerCase()
+  if (lowerPath.includes("%2f") || lowerPath.includes("%5c")) {
+    res.status(400).json({ error: "Encoded path separators not allowed" })
+    return
+  }
+
+  // Decode each path segment to catch percent-encoded traversal attempts
+  // (e.g. /%2e%2e/admin bypasses literal ".." check on raw pathname)
+  let decodedPathname: string
+  try {
+    decodedPathname = pathname
+      .split("/")
+      .map((segment) => decodeURIComponent(segment))
+      .join("/")
+  } catch {
+    res.status(400).json({ error: "Invalid path encoding" })
+    return
+  }
+
   // Reject paths with dot-segments to prevent traversal bypasses
-  // (e.g. /../admin or /api/../admin would bypass the blocklist below)
-  if (pathname.includes("/..")) {
+  const segments = decodedPathname.split("/")
+  if (segments.includes(".") || segments.includes("..")) {
     res.status(400).json({ error: "Path traversal not allowed" })
     return
   }
 
+  // Normalize the decoded path for blocklist checks
+  const normalizedPath = "/" + segments.filter((s) => s.length > 0).join("/")
+
   // Block API/admin paths from being rendered (exact match and subpaths)
   if (
-    pathname === "/api" ||
-    pathname.startsWith("/api/") ||
-    pathname === "/admin" ||
-    pathname.startsWith("/admin/")
+    normalizedPath === "/api" ||
+    normalizedPath.startsWith("/api/") ||
+    normalizedPath === "/admin" ||
+    normalizedPath.startsWith("/admin/")
   ) {
     res.status(400).json({ error: "Cannot render API or admin paths" })
     return
