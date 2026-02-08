@@ -10,6 +10,7 @@ export default function ErrorMessage({ message, showHomeLink = true }: ErrorMess
   return (
     <div
       data-testid="error-message"
+      role="alert"
       className="flex flex-col items-center justify-center py-12 text-center"
     >
       {/* Vintage film card styling */}

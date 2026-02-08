@@ -83,7 +83,7 @@ export default function DeceasedCard({ actor, isPolling = false }: DeceasedCardP
           isExpanded ? `Collapse links for ${actor.name}` : `Show links for ${actor.name}`
         }
         onClick={() => setIsExpanded(!isExpanded)}
-        className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-xs text-brown-medium transition-colors hover:text-brown-dark focus:outline-none"
+        className="mt-2 flex w-full items-center justify-center gap-1 rounded py-1 text-xs text-brown-medium transition-colors hover:text-brown-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brown-medium/50"
       >
         <span>{isExpanded ? "Hide links" : "Show links"}</span>
         <ChevronIcon

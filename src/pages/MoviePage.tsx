@@ -105,7 +105,12 @@ export default function MoviePage() {
         )}
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
-      <JsonLd data={buildMovieSchema(movie, stats, slug!)} />
+      <JsonLd
+        data={buildMovieSchema(movie, stats, slug!, [
+          ...enrichedDeceased.map((a) => ({ id: a.id, name: a.name })),
+          ...living.map((a) => ({ id: a.id, name: a.name })),
+        ])}
+      />
       <JsonLd
         data={buildBreadcrumbSchema([
           { name: "Home", url: "https://deadonfilm.com" },

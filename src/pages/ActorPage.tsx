@@ -294,16 +294,19 @@ export default function ActorPage() {
   const hasDeathDetails =
     deathInfo?.causeOfDeathDetails && deathInfo.causeOfDeathDetails.trim().length > 0
 
+  // Build a descriptive meta description based on death status
+  const metaDescription = isDeceased
+    ? `${actor.name} died on ${formatDate(actor.deathday, actor.deathdayPrecision)}${deathInfo?.ageAtDeath ? ` at age ${deathInfo.ageAtDeath}` : ""}.${deathInfo?.causeOfDeath ? ` Cause of death: ${deathInfo.causeOfDeath}.` : ""} See complete filmography and mortality statistics.`
+    : `${actor.name} is alive${currentAge ? ` at age ${currentAge}` : ""}. See filmography and which co-stars have passed away.`
+
   return (
     <>
       <Helmet>
         <title>{actor.name} - Dead on Film</title>
-        <meta
-          name="description"
-          content={`${actor.name}'s profile and filmography on Dead on Film.`}
-        />
+        <meta name="description" content={metaDescription} />
         <meta property="og:title" content={`${actor.name} - Dead on Film`} />
         <meta property="og:type" content="profile" />
+        <meta property="og:description" content={metaDescription} />
         {actor.profilePath && (
           <meta
             property="og:image"
@@ -313,10 +316,7 @@ export default function ActorPage() {
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${actor.name} - Dead on Film`} />
-        <meta
-          name="twitter:description"
-          content={`${actor.name}'s profile and filmography on Dead on Film.`}
-        />
+        <meta name="twitter:description" content={metaDescription} />
         {actor.profilePath && (
           <meta
             name="twitter:image"
