@@ -7,10 +7,12 @@
 
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
+import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { parse as parseYaml } from "yaml"
 
-const ROOT_DIR = resolve(import.meta.dirname, "../../..")
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const ROOT_DIR = resolve(__dirname, "../../..")
 
 function readProjectFile(relativePath: string): string {
   return readFileSync(resolve(ROOT_DIR, relativePath), "utf-8")
@@ -77,36 +79,39 @@ describe("prerender deployment configuration", () => {
     const job = deploy.jobs["build-and-deploy"]
     const steps = job.steps
 
+    function findStepByName(stepName: string): Record<string, unknown> {
+      const step = steps.find((s: Record<string, unknown>) => s.name === stepName)
+      if (!step) {
+        throw new Error(`Expected step "${stepName}" to be present in deploy.yml workflow`)
+      }
+      return step as Record<string, unknown>
+    }
+
     it("has a step to build and push the prerender image", () => {
-      const prerenderBuildStep = steps.find(
-        (s: Record<string, unknown>) => s.name === "Build and push prerender image"
-      )
-      expect(prerenderBuildStep).toBeDefined()
-      expect(prerenderBuildStep.with.file).toBe("Dockerfile.prerender")
-      expect(prerenderBuildStep.with.push).toBe(true)
+      const prerenderBuildStep = findStepByName("Build and push prerender image")
+      const withBlock = prerenderBuildStep.with as Record<string, unknown>
+      expect(withBlock.file).toBe("Dockerfile.prerender")
+      expect(withBlock.push).toBe(true)
     })
 
     it("has metadata extraction for the prerender image", () => {
-      const metaStep = steps.find(
-        (s: Record<string, unknown>) => s.name === "Extract prerender metadata"
-      )
-      expect(metaStep).toBeDefined()
-      expect(metaStep.with.images).toContain("-prerender")
+      const metaStep = findStepByName("Extract prerender metadata")
+      const withBlock = metaStep.with as Record<string, unknown>
+      expect(withBlock.images).toContain("-prerender")
     })
 
     it("deploy step does not use --profile prerender", () => {
-      const deployStep = steps.find((s: Record<string, unknown>) => s.name === "Deploy application")
-      expect(deployStep).toBeDefined()
+      const deployStep = findStepByName("Deploy application")
       expect(deployStep.run).not.toContain("--profile prerender")
     })
 
     it("deploy step pulls all images including prerender", () => {
-      const deployStep = steps.find((s: Record<string, unknown>) => s.name === "Deploy application")
+      const deployStep = findStepByName("Deploy application")
       expect(deployStep.run).toContain("docker compose pull")
     })
 
     it("deploy step shows prerender logs on failure", () => {
-      const deployStep = steps.find((s: Record<string, unknown>) => s.name === "Deploy application")
+      const deployStep = findStepByName("Deploy application")
       expect(deployStep.run).toContain("logs prerender")
     })
   })
