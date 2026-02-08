@@ -39,6 +39,9 @@ import type {
   DeathDetailsResponse,
   NotableDeathsResponse,
   NotableDeathsFilter,
+  RelatedActorsResponse,
+  RelatedMoviesResponse,
+  RelatedShowsResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -460,6 +463,20 @@ export async function getNotableDeaths(
     searchParams.set("includeObscure", "true")
   }
   return fetchJson(`/deaths/notable?${searchParams.toString()}`)
+}
+
+// Related content API functions
+
+export async function getRelatedActors(actorId: number): Promise<RelatedActorsResponse> {
+  return fetchJson(`/actor/${actorId}/related`)
+}
+
+export async function getRelatedMovies(movieId: number): Promise<RelatedMoviesResponse> {
+  return fetchJson(`/movie/${movieId}/related`)
+}
+
+export async function getRelatedShows(showId: number): Promise<RelatedShowsResponse> {
+  return fetchJson(`/show/${showId}/related`)
 }
 
 /**
