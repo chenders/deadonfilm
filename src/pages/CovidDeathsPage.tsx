@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useCovidDeaths } from "@/hooks/useCovidDeaths"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
@@ -159,8 +160,14 @@ export default function CovidDeathsPage() {
           name="twitter:description"
           content="Actors who died from COVID-19 or related complications"
         />
-        <link rel="canonical" href="https://deadonfilm.com/covid-deaths" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/covid-deaths"
+        />
+      )}
 
       <div data-testid="covid-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">

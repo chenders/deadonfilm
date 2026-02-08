@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useQuery } from "@tanstack/react-query"
 import { useCursedMovies } from "@/hooks/useCursedMovies"
 import { getPosterUrl, getCursedMoviesFilters } from "@/services/api"
@@ -215,8 +216,14 @@ export default function CursedMoviesPage() {
           name="twitter:description"
           content="Movies ranked by how many cast members died above statistical expectations"
         />
-        <link rel="canonical" href="https://deadonfilm.com/cursed-movies" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/cursed-movies"
+        />
+      )}
       {data && data.movies.length > 0 && (
         <JsonLd
           data={buildItemListSchema(

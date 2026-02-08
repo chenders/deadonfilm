@@ -5,6 +5,17 @@ const BASE_URL = "https://deadonfilm.com"
 export const URLS_PER_SITEMAP = 50000
 
 /**
+ * Generate paginated page entries for the sitemap (pages 2 through maxPage)
+ */
+function generatePaginatedPages(basePath: string, maxPage: number, priority: string) {
+  const pages = []
+  for (let i = 2; i <= maxPage; i++) {
+    pages.push({ loc: `${basePath}?page=${i}`, priority, changefreq: "weekly" as const })
+  }
+  return pages
+}
+
+/**
  * Static pages configuration
  */
 const staticPages = [
@@ -37,6 +48,11 @@ const staticPages = [
   { loc: "/faq", priority: "0.5", changefreq: "monthly" },
   { loc: "/methodology", priority: "0.5", changefreq: "monthly" },
   { loc: "/data-sources", priority: "0.4", changefreq: "monthly" },
+  // Paginated pages (first few pages of major lists)
+  ...generatePaginatedPages("/deaths/all", 5, "0.3"),
+  ...generatePaginatedPages("/deaths/notable", 5, "0.4"),
+  ...generatePaginatedPages("/cursed-movies", 5, "0.4"),
+  ...generatePaginatedPages("/cursed-actors", 5, "0.4"),
 ]
 
 /**

@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useMoviesByGenre, useGenreCategories } from "@/hooks/useMoviesByGenre"
 import { createMovieSlug } from "@/utils/slugify"
 import { getPosterUrl } from "@/services/api"
@@ -171,8 +172,12 @@ export default function GenreMoviesPage() {
           name="description"
           content={`${data.pagination.totalCount} ${data.genre.toLowerCase()} movies and TV shows ranked by mortality statistics. Browse the most cursed ${data.genre.toLowerCase()} content.`}
         />
-        <link rel="canonical" href={`https://deadonfilm.com/movies/genre/${data.slug}`} />
       </Helmet>
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/movies/genre/${data.slug}`}
+      />
 
       <div data-testid="genre-movies-page" className="mx-auto max-w-3xl">
         <div className="mb-4 text-center">

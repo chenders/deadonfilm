@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useNotableDeaths } from "@/hooks/useDeathDetails"
 import { getProfileUrl } from "@/services/api"
 import { formatDate } from "@/utils/formatDate"
@@ -184,8 +185,14 @@ export default function NotableDeathsPage() {
           name="twitter:description"
           content="Strange, disputed, and controversial celebrity deaths"
         />
-        <link rel="canonical" href="https://deadonfilm.com/deaths/notable" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/deaths/notable"
+        />
+      )}
 
       <div data-testid="notable-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">

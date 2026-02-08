@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useCursedActors } from "@/hooks/useCursedActors"
 import { getDecadeOptions } from "@/utils/formatDate"
 import { createActorSlug } from "@/utils/slugify"
@@ -194,8 +195,14 @@ export default function CursedActorsPage() {
           name="twitter:description"
           content="Actors ranked by how many of their co-stars died above statistical expectations"
         />
-        <link rel="canonical" href="https://deadonfilm.com/cursed-actors" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/cursed-actors"
+        />
+      )}
       {data && data.actors.length > 0 && (
         <JsonLd
           data={buildItemListSchema(

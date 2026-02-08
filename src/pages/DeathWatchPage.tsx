@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useDeathWatch } from "@/hooks/useDeathWatch"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { createActorSlug } from "@/utils/slugify"
@@ -165,8 +166,14 @@ export default function DeathWatchPage() {
           name="twitter:description"
           content="Living actors most likely to die soon based on actuarial statistics"
         />
-        <link rel="canonical" href="https://deadonfilm.com/death-watch" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/death-watch"
+        />
+      )}
 
       <div data-testid="death-watch-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">

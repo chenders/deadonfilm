@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useAllDeaths } from "@/hooks/useAllDeaths"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { createActorSlug } from "@/utils/slugify"
@@ -167,8 +168,14 @@ export default function AllDeathsPage() {
           name="twitter:description"
           content="Complete list of deceased actors in our database, ordered by death date"
         />
-        <link rel="canonical" href="https://deadonfilm.com/deaths/all" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/deaths/all"
+        />
+      )}
 
       <div data-testid="all-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
