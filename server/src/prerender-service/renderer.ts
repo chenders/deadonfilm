@@ -12,23 +12,38 @@ const RENDER_TIMEOUT_MS = 10_000
 const VIEWPORT = { width: 1280, height: 800 }
 
 let browser: Browser | null = null
+let launchPromise: Promise<Browser> | null = null
 
 async function ensureBrowser(): Promise<Browser> {
   if (browser?.isConnected()) {
     return browser
   }
 
+  // Guard against concurrent launch requests with a shared promise
+  if (launchPromise) {
+    return launchPromise
+  }
+
   logger.info("Launching Chromium for prerender service")
-  browser = await chromium.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-  })
+  launchPromise = chromium
+    .launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    })
+    .then((instance) => {
+      browser = instance
 
-  browser.on("disconnected", () => {
-    logger.warn("Chromium browser disconnected")
-    browser = null
-  })
+      browser.on("disconnected", () => {
+        logger.warn("Chromium browser disconnected")
+        browser = null
+      })
 
-  return browser
+      return instance
+    })
+    .finally(() => {
+      launchPromise = null
+    })
+
+  return launchPromise
 }
 
 /**

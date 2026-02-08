@@ -14,7 +14,13 @@ import { renderPage, closeBrowser, isBrowserHealthy } from "./renderer.js"
 import pino from "pino"
 
 const app = express()
-const PORT = process.env.PRERENDER_PORT || 3001
+const envPort = process.env.PRERENDER_PORT
+const PORT = envPort !== undefined ? Number.parseInt(envPort, 10) : 3001
+
+if (Number.isNaN(PORT) || PORT <= 0 || PORT > 65535) {
+  throw new Error(`Invalid PRERENDER_PORT: ${envPort}`)
+}
+
 const TARGET_HOST = process.env.PRERENDER_TARGET_HOST || "http://nginx:3000"
 
 const log = pino({ name: "prerender-service" })
