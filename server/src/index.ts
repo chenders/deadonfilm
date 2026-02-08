@@ -86,6 +86,7 @@ import syncRoutes from "./routes/admin/sync.js"
 import logsRoutes from "./routes/admin/logs.js"
 import biographiesRoutes from "./routes/admin/biographies.js"
 import { errorHandler } from "./middleware/error-handler.js"
+import { prerenderMiddleware } from "./middleware/prerender.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -198,6 +199,10 @@ app.use((req, res, next) => {
   })
   next()
 })
+
+// Prerender middleware — serves fully-rendered HTML to search engine crawlers
+// Must be before routes so bot requests are intercepted before reaching the API
+app.use(prerenderMiddleware)
 
 // Health check endpoint (internal container health checks)
 app.get("/health", (_req, res) => {
