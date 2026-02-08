@@ -59,9 +59,9 @@ app.get("/render", async (req, res) => {
     res.set("X-Prerender", "true")
     res.send(html)
   } catch (err) {
-    const message = (err as Error).message
-    log.error({ err: message, urlPath }, "Render failed")
+    log.error({ err, urlPath }, "Render failed")
 
+    const message = (err as Error).message
     if (message.includes("timeout") || message.includes("Timeout")) {
       res.status(504).json({ error: "Render timeout" })
       return
