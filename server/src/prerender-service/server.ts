@@ -98,8 +98,9 @@ const server = app.listen(PORT, () => {
 
 // Graceful shutdown — await server.close so in-flight requests can finish,
 // then close the browser. No process.exit() so Node exits naturally.
+// Using process.once to prevent double shutdown from repeated signals.
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
-  process.on(signal, async () => {
+  process.once(signal, async () => {
     log.info({ signal }, "Shutting down prerender service")
     await new Promise<void>((resolve) => server.close(() => resolve()))
     await closeBrowser()

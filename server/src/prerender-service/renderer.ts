@@ -82,8 +82,12 @@ export async function renderPage(url: string): Promise<string> {
 
 /**
  * Close the browser instance. Call on shutdown.
+ * Awaits any in-flight launch so a mid-startup shutdown still cleans up.
  */
 export async function closeBrowser(): Promise<void> {
+  if (launchPromise) {
+    await launchPromise.catch(() => {})
+  }
   if (browser) {
     await browser.close().catch(() => {})
     browser = null
