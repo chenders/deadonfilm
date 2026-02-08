@@ -41,7 +41,7 @@ export default function SearchDropdown({
     >
       {results.slice(0, 13).map((result, index) => (
         <Fragment key={`${result.media_type}-${result.id}`}>
-          {index === firstPersonIndex && (
+          {index === firstPersonIndex && firstPersonIndex > 0 && (
             <li
               role="presentation"
               data-testid="people-section-header"

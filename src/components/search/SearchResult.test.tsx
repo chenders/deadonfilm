@@ -281,8 +281,7 @@ describe("SearchResult", () => {
       render(<SearchResult result={mockDeceasedPerson} {...defaultProps} />)
 
       // Person results should not have the mortality hint div with title attribute
-      const mortalityHint = document.querySelector('[title="High mortality likely"]')
-      expect(mortalityHint).not.toBeInTheDocument()
+      expect(screen.queryByTitle("High mortality likely")).not.toBeInTheDocument()
     })
   })
 })
