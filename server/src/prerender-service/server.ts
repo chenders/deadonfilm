@@ -40,7 +40,12 @@ app.get("/render", async (req, res) => {
   }
 
   // Block API/admin paths from being rendered (exact match and subpaths)
-  if (urlPath === "/api" || urlPath.startsWith("/api/") || urlPath === "/admin" || urlPath.startsWith("/admin/")) {
+  if (
+    urlPath === "/api" ||
+    urlPath.startsWith("/api/") ||
+    urlPath === "/admin" ||
+    urlPath.startsWith("/admin/")
+  ) {
     res.status(400).json({ error: "Cannot render API or admin paths" })
     return
   }
