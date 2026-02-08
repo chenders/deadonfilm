@@ -728,12 +728,13 @@ function UrlInspectionSection({
             value={inspectUrlInput}
             onChange={(e) => setInspectUrlInput(e.target.value)}
             placeholder="https://deadonfilm.com/actor/..."
+            aria-label="URL to inspect"
             className="focus:border-admin-interactive-primary focus:ring-admin-interactive-primary flex-1 rounded-md border border-admin-border bg-admin-surface-base px-3 py-2 text-sm text-admin-text-primary placeholder:text-admin-text-muted focus:outline-none focus:ring-1"
             data-testid="gsc-inspect-url-input"
           />
           <button
-            onClick={() => inspectMutation.mutate(inspectUrlInput)}
-            disabled={!inspectUrlInput || inspectMutation.isPending}
+            onClick={() => inspectMutation.mutate(inspectUrlInput.trim())}
+            disabled={!inspectUrlInput.trim() || inspectMutation.isPending}
             className="bg-admin-interactive-primary hover:bg-admin-interactive-primary/90 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
             data-testid="gsc-inspect-url-button"
           >

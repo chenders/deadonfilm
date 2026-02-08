@@ -335,9 +335,21 @@ router.post("/inspect-url", async (req: Request, res: Response): Promise<void> =
       return
     }
 
-    const { url } = req.body
-    if (!url || typeof url !== "string") {
+    const rawUrl = req.body?.url
+    if (!rawUrl || typeof rawUrl !== "string") {
       res.status(400).json({ error: { message: "URL is required" } })
+      return
+    }
+
+    const url = rawUrl.trim()
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        res.status(400).json({ error: { message: "URL must be an absolute HTTP(S) URL" } })
+        return
+      }
+    } catch {
+      res.status(400).json({ error: { message: "URL must be a valid absolute URL" } })
       return
     }
 

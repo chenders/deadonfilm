@@ -359,6 +359,48 @@ describe("admin GSC routes", () => {
 
       expect(statusSpy).toHaveBeenCalledWith(400)
     })
+
+    it("returns 400 for invalid URL format", async () => {
+      vi.mocked(isGscConfigured).mockReturnValue(true)
+      mockReq.body = { url: "not-a-valid-url" }
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      expect(statusSpy).toHaveBeenCalledWith(400)
+      expect(jsonSpy).toHaveBeenCalledWith({
+        error: { message: "URL must be a valid absolute URL" },
+      })
+    })
+
+    it("returns 400 for non-HTTP URL scheme", async () => {
+      vi.mocked(isGscConfigured).mockReturnValue(true)
+      mockReq.body = { url: "ftp://example.com/file" }
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      expect(statusSpy).toHaveBeenCalledWith(400)
+      expect(jsonSpy).toHaveBeenCalledWith({
+        error: { message: "URL must be an absolute HTTP(S) URL" },
+      })
+    })
+
+    it("trims whitespace from URL before inspection", async () => {
+      vi.mocked(isGscConfigured).mockReturnValue(true)
+      mockReq.body = { url: "  https://example.com/actor/test-1  " }
+      vi.mocked(inspectUrl).mockResolvedValue({
+        url: "https://example.com/actor/test-1",
+        indexingState: "Submitted and indexed",
+        pageFetchState: "Successful",
+        robotsTxtState: "ALLOWED",
+        lastCrawlTime: "2024-01-01T00:00:00Z",
+        crawledAs: "DESKTOP",
+        verdict: "PASS",
+      })
+
+      await handler!(mockReq as Request, mockRes as Response, mockNext)
+
+      expect(inspectUrl).toHaveBeenCalledWith("https://example.com/actor/test-1")
+    })
   })
 
   describe("GET /indexing", () => {
