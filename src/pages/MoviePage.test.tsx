@@ -9,6 +9,7 @@ import * as api from "@/services/api"
 // Mock the API
 vi.mock("@/services/api", () => ({
   getMovie: vi.fn(),
+  getRelatedMovies: vi.fn().mockResolvedValue({ movies: [] }),
   getProfileUrl: vi.fn((path: string | null) => (path ? `https://image.tmdb.org${path}` : null)),
   getPosterUrl: vi.fn((path: string | null) => (path ? `https://image.tmdb.org${path}` : null)),
 }))
@@ -126,9 +127,10 @@ describe("MoviePage", () => {
     renderWithProviders(<MoviePage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Fight Club")).toBeInTheDocument()
+      expect(screen.getByTestId("movie-title")).toBeInTheDocument()
     })
 
+    expect(screen.getByTestId("movie-title")).toHaveTextContent("Fight Club")
     expect(screen.getByText("(1999)")).toBeInTheDocument()
   })
 

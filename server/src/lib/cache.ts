@@ -35,6 +35,9 @@ export const CACHE_PREFIX = {
   DEATHS: "deaths",
   PRERENDER: "prerender",
   CACHE_METADATA: "cache-metadata",
+  RELATED_ACTORS: "related-actors",
+  RELATED_MOVIES: "related-movies",
+  RELATED_SHOWS: "related-shows",
 } as const
 
 /**

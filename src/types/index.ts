@@ -117,3 +117,13 @@ export type {
   CauseCategoryDetailResponse,
   SpecificCauseDetailResponse,
 } from "./discovery"
+
+// Related content types
+export type {
+  RelatedActor,
+  RelatedActorsResponse,
+  RelatedMovie,
+  RelatedMoviesResponse,
+  RelatedShow,
+  RelatedShowsResponse,
+} from "./related"
