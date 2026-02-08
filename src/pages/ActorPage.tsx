@@ -3,7 +3,7 @@ import { useParams, useLocation, Link } from "react-router-dom"
 import { createPortal } from "react-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
-import { createMovieSlug, createShowSlug } from "@/utils/slugify"
+import { createMovieSlug, createShowSlug, createActorSlug } from "@/utils/slugify"
 import { formatDate, calculateCurrentAge } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import { getProfileUrl, getPosterUrl } from "@/services/api"
@@ -12,6 +12,10 @@ import ErrorMessage from "@/components/common/ErrorMessage"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildPersonSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import { PersonIcon, FilmReelIcon, TVIcon, InfoIcon } from "@/components/icons"
+import { useRelatedActors } from "@/hooks/useRelatedContent"
+import RelatedContent from "@/components/content/RelatedContent"
+import SeeAlso from "@/components/content/SeeAlso"
+import Breadcrumb from "@/components/layout/Breadcrumb"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
 
 type FilmographyItem =
@@ -271,6 +275,8 @@ export default function ActorPage() {
     return [...movies, ...shows].sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
   }, [data])
 
+  const relatedActors = useRelatedActors(data?.actor?.id ?? 0)
+
   if (!slug) {
     return <ErrorMessage message="Invalid actor URL" />
   }
@@ -346,6 +352,8 @@ export default function ActorPage() {
       />
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
+        <Breadcrumb items={[{ label: "Home", href: "/" }, { label: actor.name }]} />
+
         {/* Header section */}
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           {/* Profile photo */}
@@ -539,6 +547,40 @@ export default function ActorPage() {
             </div>
           )}
         </div>
+
+        {/* Related actors */}
+        {relatedActors.data?.actors && relatedActors.data.actors.length > 0 && (
+          <div className="mt-6">
+            <RelatedContent
+              title={
+                data.deathInfo?.causeOfDeath
+                  ? `Also died of ${toTitleCase(data.deathInfo.causeOfDeath)}`
+                  : "Similar Era Actors"
+              }
+              items={relatedActors.data.actors.map((a) => ({
+                href: `/actor/${createActorSlug(a.name, a.id)}`,
+                title: a.name,
+                subtitle: a.causeOfDeath ? toTitleCase(a.causeOfDeath) : undefined,
+                imageUrl: getProfileUrl(a.profilePath, "w185"),
+              }))}
+            />
+          </div>
+        )}
+
+        {/* Hub page links */}
+        {isDeceased && (
+          <div className="mt-4">
+            <SeeAlso
+              links={[
+                ...(deathInfo?.causeOfDeath
+                  ? [{ href: "/causes-of-death", label: "Deaths by Cause" }]
+                  : []),
+                { href: "/forever-young", label: "Forever Young" },
+                { href: "/death-watch", label: "Death Watch" },
+              ]}
+            />
+          </div>
+        )}
       </div>
     </>
   )

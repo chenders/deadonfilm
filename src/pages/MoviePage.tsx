@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async"
 import { useMovie } from "@/hooks/useMovie"
 import { useDeathInfoPolling } from "@/hooks/useDeathInfoPolling"
 import { usePageViewTracking } from "@/hooks/usePageViewTracking"
-import { extractMovieId } from "@/utils/slugify"
+import { extractMovieId, createMovieSlug } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
 import MovieHeader, { MoviePoster } from "@/components/movie/MovieHeader"
 import MortalityGauge from "@/components/movie/MortalityGauge"
@@ -18,6 +18,11 @@ import ErrorMessage from "@/components/common/ErrorMessage"
 import AggregateScore from "@/components/common/AggregateScore"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildMovieSchema, buildBreadcrumbSchema } from "@/utils/schema"
+import { useRelatedMovies } from "@/hooks/useRelatedContent"
+import { getPosterUrl } from "@/services/api"
+import RelatedContent from "@/components/content/RelatedContent"
+import SeeAlso from "@/components/content/SeeAlso"
+import Breadcrumb from "@/components/layout/Breadcrumb"
 import type { ViewMode } from "@/types"
 
 export default function MoviePage() {
@@ -37,6 +42,8 @@ export default function MoviePage() {
 
   // Track page view for analytics
   usePageViewTracking("movie", movieId || null, location.pathname)
+
+  const relatedMovies = useRelatedMovies(movieId)
 
   // Auto-select the non-zero group when one group is empty
   // Must be before conditional returns to follow Rules of Hooks
@@ -114,6 +121,13 @@ export default function MoviePage() {
       />
 
       <div data-testid="movie-page" className="mx-auto max-w-4xl">
+        <Breadcrumb
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Movies", href: "/movies/genres" },
+            { label: movie.title },
+          ]}
+        />
         <MovieHeader movie={movie} hidePoster />
 
         {/* Poster + Gauge side by side */}
@@ -162,6 +176,31 @@ export default function MoviePage() {
             )}
           </>
         )}
+
+        {/* Related movies */}
+        {relatedMovies.data?.movies && relatedMovies.data.movies.length > 0 && (
+          <div className="mt-6">
+            <RelatedContent
+              title="Related Movies"
+              items={relatedMovies.data.movies.map((m) => ({
+                href: `/movie/${createMovieSlug(m.title, m.releaseDate || "unknown", m.tmdbId)}`,
+                title: m.title,
+                subtitle: m.releaseDate ? m.releaseDate.slice(0, 4) : undefined,
+                imageUrl: getPosterUrl(m.posterPath, "w92"),
+              }))}
+            />
+          </div>
+        )}
+
+        <div className="mt-4">
+          <SeeAlso
+            links={[
+              { href: "/movies/genres", label: "Browse by Genre" },
+              { href: "/causes-of-death", label: "Deaths by Cause" },
+              { href: "/deaths/decades", label: "Deaths by Decade" },
+            ]}
+          />
+        </div>
       </div>
     </>
   )

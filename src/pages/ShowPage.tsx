@@ -3,7 +3,7 @@ import { useParams, useLocation } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useShow } from "@/hooks/useShow"
 import { usePageViewTracking } from "@/hooks/usePageViewTracking"
-import { extractShowId } from "@/utils/slugify"
+import { extractShowId, createShowSlug } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
 import ShowHeader, { ShowPoster } from "@/components/show/ShowHeader"
 import ShowDeceasedList from "@/components/show/ShowDeceasedList"
@@ -16,6 +16,11 @@ import ErrorMessage from "@/components/common/ErrorMessage"
 import AggregateScore from "@/components/common/AggregateScore"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildTVSeriesSchema, buildBreadcrumbSchema } from "@/utils/schema"
+import { useRelatedShows } from "@/hooks/useRelatedContent"
+import { getPosterUrl } from "@/services/api"
+import RelatedContent from "@/components/content/RelatedContent"
+import SeeAlso from "@/components/content/SeeAlso"
+import Breadcrumb from "@/components/layout/Breadcrumb"
 import type { ViewMode } from "@/types"
 
 export default function ShowPage() {
@@ -25,6 +30,8 @@ export default function ShowPage() {
   const { data, isLoading, error } = useShow(showId)
   const [showLiving, setShowLiving] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
+
+  const relatedShows = useRelatedShows(showId)
 
   // Track page view for analytics
   usePageViewTracking("show", showId || null, location.pathname)
@@ -100,6 +107,7 @@ export default function ShowPage() {
       />
 
       <div data-testid="show-page" className="mx-auto max-w-4xl">
+        <Breadcrumb items={[{ label: "Home", href: "/" }, { label: show.name }]} />
         <ShowHeader show={show} hidePoster />
 
         {/* Poster + Gauge side by side */}
@@ -146,6 +154,30 @@ export default function ShowPage() {
             )}
           </>
         )}
+
+        {/* Related shows */}
+        {relatedShows.data?.shows && relatedShows.data.shows.length > 0 && (
+          <div className="mt-6">
+            <RelatedContent
+              title="Related Shows"
+              items={relatedShows.data.shows.map((s) => ({
+                href: `/show/${createShowSlug(s.name, s.firstAirDate, s.tmdbId)}`,
+                title: s.name,
+                subtitle: s.firstAirDate ? s.firstAirDate.slice(0, 4) : undefined,
+                imageUrl: getPosterUrl(s.posterPath, "w92"),
+              }))}
+            />
+          </div>
+        )}
+
+        <div className="mt-4">
+          <SeeAlso
+            links={[
+              { href: "/causes-of-death", label: "Deaths by Cause" },
+              { href: "/deaths/decades", label: "Deaths by Decade" },
+            ]}
+          />
+        </div>
       </div>
     </>
   )

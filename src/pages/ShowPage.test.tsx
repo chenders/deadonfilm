@@ -9,6 +9,7 @@ import * as api from "@/services/api"
 // Mock the API
 vi.mock("@/services/api", () => ({
   getShow: vi.fn(),
+  getRelatedShows: vi.fn().mockResolvedValue({ shows: [] }),
   getProfileUrl: vi.fn((path: string | null) => (path ? `https://image.tmdb.org${path}` : null)),
   getPosterUrl: vi.fn((path: string | null) => (path ? `https://image.tmdb.org${path}` : null)),
 }))
@@ -141,9 +142,11 @@ describe("ShowPage", () => {
     renderWithProviders(<ShowPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Seinfeld")).toBeInTheDocument()
+      expect(screen.getByTestId("show-page")).toBeInTheDocument()
     })
 
+    // Title appears in both breadcrumb and header; check the header specifically
+    expect(screen.getByTestId("show-title")).toBeInTheDocument()
     expect(screen.getByText("(1989)")).toBeInTheDocument()
   })
 

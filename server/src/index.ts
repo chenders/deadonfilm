@@ -56,6 +56,11 @@ import {
 } from "./routes/causes.js"
 import { getGenreCategoriesHandler, getMoviesByGenreHandler } from "./routes/movies.js"
 import {
+  getRelatedActorsRoute,
+  getRelatedMoviesRoute,
+  getRelatedShowsRoute,
+} from "./routes/related.js"
+import {
   getShow,
   searchShows,
   getShowSeasons,
@@ -294,6 +299,10 @@ app.get("/api/causes-of-death/:categorySlug/:causeSlug", getSpecificCauseHandler
 
 app.get("/api/movies/genres", getGenreCategoriesHandler)
 app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
+
+app.get("/api/movie/:id/related", getRelatedMoviesRoute)
+app.get("/api/show/:id/related", getRelatedShowsRoute)
+app.get("/api/actor/:id/related", getRelatedActorsRoute)
 
 // Admin routes (authentication not required for login, but required for other endpoints)
 // codeql[js/missing-rate-limiting] - All admin routes have appropriate rate limiting
