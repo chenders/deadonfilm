@@ -296,6 +296,45 @@ export function buildTVEpisodeSchema(
   }
 }
 
+interface ArticleSchemaInput {
+  title: string
+  description: string
+  slug: string
+  publishedDate: string
+  updatedDate?: string
+  wordCount: number
+}
+
+/**
+ * Build BlogPosting schema for article pages
+ */
+export function buildArticleSchema(article: ArticleSchemaInput): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: article.title,
+    description: article.description,
+    datePublished: article.publishedDate,
+    dateModified: article.updatedDate || article.publishedDate,
+    wordCount: article.wordCount,
+    url: `${BASE_URL}/articles/${article.slug}`,
+    author: {
+      "@type": "Organization",
+      name: "Dead on Film",
+      url: BASE_URL,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Dead on Film",
+      url: BASE_URL,
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `${BASE_URL}/articles/${article.slug}`,
+    },
+  }
+}
+
 interface CollectionPageItem {
   name: string
   url: string

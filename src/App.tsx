@@ -42,6 +42,8 @@ const FAQPage = lazyWithRetry(() => import("./pages/FAQPage"))
 const MethodologyPage = lazyWithRetry(() => import("./pages/MethodologyPage"))
 const DataSourcesPage = lazyWithRetry(() => import("./pages/DataSourcesPage"))
 const SearchResultsPage = lazyWithRetry(() => import("./pages/SearchResultsPage"))
+const ArticlesListPage = lazyWithRetry(() => import("./pages/ArticlesListPage"))
+const ArticlePage = lazyWithRetry(() => import("./pages/ArticlePage"))
 
 // Admin pages
 const AdminLoginPage = lazyWithRetry(() => import("./pages/admin/LoginPage"))
@@ -364,6 +366,9 @@ function App() {
                       path="/causes-of-death/:categorySlug/:causeSlug"
                       element={<SpecificCausePage />}
                     />
+                    {/* Articles */}
+                    <Route path="/articles" element={<ArticlesListPage />} />
+                    <Route path="/articles/:slug" element={<ArticlePage />} />
                     {/* Authority/trust pages */}
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="/faq" element={<FAQPage />} />

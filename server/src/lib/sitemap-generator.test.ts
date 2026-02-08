@@ -176,6 +176,8 @@ describe("generateStaticSitemap", () => {
     expect(xml).toContain("https://deadonfilm.com/forever-young")
     expect(xml).toContain("https://deadonfilm.com/deaths")
     expect(xml).toContain("https://deadonfilm.com/movies/genres")
+    // Articles
+    expect(xml).toContain("https://deadonfilm.com/articles")
     // Authority/trust pages
     expect(xml).toContain("https://deadonfilm.com/about")
     expect(xml).toContain("https://deadonfilm.com/faq")

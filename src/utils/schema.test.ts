@@ -4,6 +4,7 @@ import {
   buildTVEpisodeSchema,
   buildCollectionPageSchema,
   buildWebsiteSchema,
+  buildArticleSchema,
 } from "./schema"
 
 describe("buildTVSeriesSchema", () => {
@@ -197,6 +198,65 @@ describe("buildCollectionPageSchema", () => {
     const mainEntity = result.mainEntity as Record<string, unknown>
     expect(mainEntity.numberOfItems).toBe(0)
     expect(mainEntity.itemListElement).toEqual([])
+  })
+})
+
+describe("buildArticleSchema", () => {
+  it("builds correct BlogPosting schema", () => {
+    const result = buildArticleSchema({
+      title: "Test Article",
+      description: "A test article description",
+      slug: "test-article",
+      publishedDate: "2026-01-15",
+      wordCount: 1200,
+    })
+
+    expect(result["@context"]).toBe("https://schema.org")
+    expect(result["@type"]).toBe("BlogPosting")
+    expect(result.headline).toBe("Test Article")
+    expect(result.description).toBe("A test article description")
+    expect(result.datePublished).toBe("2026-01-15")
+    expect(result.dateModified).toBe("2026-01-15")
+    expect(result.wordCount).toBe(1200)
+    expect(result.url).toBe("https://deadonfilm.com/articles/test-article")
+
+    const author = result.author as Record<string, unknown>
+    expect(author["@type"]).toBe("Organization")
+    expect(author.name).toBe("Dead on Film")
+
+    const publisher = result.publisher as Record<string, unknown>
+    expect(publisher["@type"]).toBe("Organization")
+    expect(publisher.name).toBe("Dead on Film")
+
+    const mainEntity = result.mainEntityOfPage as Record<string, unknown>
+    expect(mainEntity["@type"]).toBe("WebPage")
+    expect(mainEntity["@id"]).toBe("https://deadonfilm.com/articles/test-article")
+  })
+
+  it("uses updatedDate as dateModified when provided", () => {
+    const result = buildArticleSchema({
+      title: "Test",
+      description: "Test",
+      slug: "test",
+      publishedDate: "2026-01-15",
+      updatedDate: "2026-02-01",
+      wordCount: 500,
+    })
+
+    expect(result.datePublished).toBe("2026-01-15")
+    expect(result.dateModified).toBe("2026-02-01")
+  })
+
+  it("falls back to publishedDate for dateModified when no updatedDate", () => {
+    const result = buildArticleSchema({
+      title: "Test",
+      description: "Test",
+      slug: "test",
+      publishedDate: "2026-01-15",
+      wordCount: 500,
+    })
+
+    expect(result.dateModified).toBe("2026-01-15")
   })
 })
 
