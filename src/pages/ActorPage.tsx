@@ -563,6 +563,7 @@ export default function ActorPage() {
                 subtitle: a.causeOfDeath ? toTitleCase(a.causeOfDeath) : undefined,
                 imageUrl: getProfileUrl(a.profilePath, "w185"),
               }))}
+              placeholderIcon={<PersonIcon size={20} className="text-text-muted" />}
             />
           </div>
         )}

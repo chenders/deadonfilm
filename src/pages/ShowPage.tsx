@@ -18,6 +18,7 @@ import JsonLd from "@/components/seo/JsonLd"
 import { buildTVSeriesSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import { useRelatedShows } from "@/hooks/useRelatedContent"
 import { getPosterUrl } from "@/services/api"
+import { TVIcon } from "@/components/icons"
 import RelatedContent from "@/components/content/RelatedContent"
 import SeeAlso from "@/components/content/SeeAlso"
 import Breadcrumb from "@/components/layout/Breadcrumb"
@@ -166,6 +167,7 @@ export default function ShowPage() {
                 subtitle: s.firstAirDate ? s.firstAirDate.slice(0, 4) : undefined,
                 imageUrl: getPosterUrl(s.posterPath, "w92"),
               }))}
+              placeholderIcon={<TVIcon size={20} className="text-text-muted" />}
             />
           </div>
         )}

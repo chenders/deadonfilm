@@ -92,7 +92,10 @@ export async function getRelatedActorsRoute(req: Request, res: Response) {
 
     const response: RelatedActorsResponse = { actors }
 
-    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    // Skip caching empty results — data may not be populated yet
+    if (actors.length > 0) {
+      await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    }
     sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Related actors error:", error)
@@ -123,7 +126,10 @@ export async function getRelatedMoviesRoute(req: Request, res: Response) {
 
     const response: RelatedMoviesResponse = { movies }
 
-    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    // Skip caching empty results — data may not be populated yet
+    if (movies.length > 0) {
+      await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    }
     sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Related movies error:", error)
@@ -154,7 +160,10 @@ export async function getRelatedShowsRoute(req: Request, res: Response) {
 
     const response: RelatedShowsResponse = { shows }
 
-    await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    // Skip caching empty results — data may not be populated yet
+    if (shows.length > 0) {
+      await setCached(cacheKey, response, CACHE_TTL.WEEK)
+    }
     sendWithETag(req, res, response, CACHE_TTL.WEEK)
   } catch (error) {
     console.error("Related shows error:", error)

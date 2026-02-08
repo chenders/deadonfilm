@@ -212,6 +212,31 @@ describe("getRelatedActorsRoute", () => {
     const req = createMockReq({ id: "42" })
     const res = createMockRes()
 
+    const mockRelated = [
+      {
+        id: 10,
+        tmdbId: 200,
+        name: "John Smith",
+        profilePath: null,
+        deathday: "2020-01-15",
+        causeOfDeath: "Cancer",
+        birthday: "1950-05-01",
+      },
+    ]
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ tmdb_id: 100, cause_of_death: "Cancer", birthday: "1950-01-01" }],
+    })
+    vi.mocked(getRelatedActors).mockResolvedValueOnce(mockRelated)
+
+    await getRelatedActorsRoute(req, res)
+
+    expect(setCached).toHaveBeenCalledWith(expect.any(String), { actors: mockRelated }, 604800)
+  })
+
+  it("does not cache empty results", async () => {
+    const req = createMockReq({ id: "42" })
+    const res = createMockRes()
+
     mockQuery.mockResolvedValueOnce({
       rows: [{ tmdb_id: 100, cause_of_death: "Cancer", birthday: "1950-01-01" }],
     })
@@ -219,7 +244,8 @@ describe("getRelatedActorsRoute", () => {
 
     await getRelatedActorsRoute(req, res)
 
-    expect(setCached).toHaveBeenCalledWith(expect.any(String), { actors: [] }, 604800)
+    expect(setCached).not.toHaveBeenCalled()
+    expect(res.json).toHaveBeenCalledWith({ actors: [] })
   })
 
   it("returns 500 on database error", async () => {
@@ -345,11 +371,34 @@ describe("getRelatedMoviesRoute", () => {
     const req = createMockReq({ id: "550" })
     const res = createMockRes()
 
+    const mockRelated = [
+      {
+        tmdbId: 680,
+        title: "Pulp Fiction",
+        releaseDate: "1994-10-14",
+        posterPath: null,
+        deceasedCount: 3,
+        castCount: 15,
+        sharedCastCount: 1,
+      },
+    ]
+    vi.mocked(getRelatedMovies).mockResolvedValueOnce(mockRelated)
+
+    await getRelatedMoviesRoute(req, res)
+
+    expect(setCached).toHaveBeenCalledWith(expect.any(String), { movies: mockRelated }, 604800)
+  })
+
+  it("does not cache empty results", async () => {
+    const req = createMockReq({ id: "550" })
+    const res = createMockRes()
+
     vi.mocked(getRelatedMovies).mockResolvedValueOnce([])
 
     await getRelatedMoviesRoute(req, res)
 
-    expect(setCached).toHaveBeenCalledWith(expect.any(String), { movies: [] }, 604800)
+    expect(setCached).not.toHaveBeenCalled()
+    expect(res.json).toHaveBeenCalledWith({ movies: [] })
   })
 
   it("returns 500 on database error", async () => {
@@ -458,11 +507,34 @@ describe("getRelatedShowsRoute", () => {
     const req = createMockReq({ id: "1399" })
     const res = createMockRes()
 
+    const mockRelated = [
+      {
+        tmdbId: 1396,
+        name: "Breaking Bad",
+        firstAirDate: "2008-01-20",
+        posterPath: null,
+        deceasedCount: 2,
+        castCount: 15,
+        sharedCastCount: 2,
+      },
+    ]
+    vi.mocked(getRelatedShows).mockResolvedValueOnce(mockRelated)
+
+    await getRelatedShowsRoute(req, res)
+
+    expect(setCached).toHaveBeenCalledWith(expect.any(String), { shows: mockRelated }, 604800)
+  })
+
+  it("does not cache empty results", async () => {
+    const req = createMockReq({ id: "1399" })
+    const res = createMockRes()
+
     vi.mocked(getRelatedShows).mockResolvedValueOnce([])
 
     await getRelatedShowsRoute(req, res)
 
-    expect(setCached).toHaveBeenCalledWith(expect.any(String), { shows: [] }, 604800)
+    expect(setCached).not.toHaveBeenCalled()
+    expect(res.json).toHaveBeenCalledWith({ shows: [] })
   })
 
   it("returns 500 on database error", async () => {

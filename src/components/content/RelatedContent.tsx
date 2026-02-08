@@ -12,9 +12,15 @@ interface RelatedContentProps {
   title: string
   items: RelatedItem[]
   icon?: React.ReactNode
+  placeholderIcon?: React.ReactNode
 }
 
-export default function RelatedContent({ title, items, icon }: RelatedContentProps) {
+export default function RelatedContent({
+  title,
+  items,
+  icon,
+  placeholderIcon,
+}: RelatedContentProps) {
   if (items.length === 0) {
     return null
   }
@@ -44,7 +50,7 @@ export default function RelatedContent({ title, items, icon }: RelatedContentPro
               />
             ) : (
               <div className="flex h-[72px] w-[48px] flex-shrink-0 items-center justify-center rounded bg-brown-medium/20">
-                <FilmReelIcon size={20} className="text-text-muted" />
+                {placeholderIcon ?? <FilmReelIcon size={20} className="text-text-muted" />}
               </div>
             )}
 
