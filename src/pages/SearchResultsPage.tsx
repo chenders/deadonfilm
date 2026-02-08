@@ -146,14 +146,20 @@ export default function SearchResultsPage() {
 
   const updateSearchParams = useCallback(
     (newQuery: string, newType: SearchMediaType) => {
-      isLocalUpdateRef.current = true
       const params: Record<string, string> = {}
       const trimmed = newQuery.trim()
       if (trimmed) params.q = trimmed
       if (newType !== "all") params.type = newType
+
+      // Skip no-op updates to prevent isLocalUpdateRef getting stuck true
+      if (new URLSearchParams(params).toString() === searchParams.toString()) {
+        return
+      }
+
+      isLocalUpdateRef.current = true
       setSearchParams(params, { replace: true })
     },
-    [setSearchParams]
+    [searchParams, setSearchParams]
   )
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,7 +242,7 @@ export default function SearchResultsPage() {
       )}
 
       {/* Results */}
-      {!isLoading && hasResults && (
+      {!isLoading && hasResults && effectiveQuery.length >= 2 && (
         <div data-testid="search-results">
           {mediaType === "all" ? (
             <>

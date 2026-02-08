@@ -176,6 +176,13 @@ describe("SearchResultsPage", () => {
     expect(canonical).toHaveAttribute("href", "https://deadonfilm.com/search?q=titanic")
   })
 
+  it("includes type filter in canonical URL", () => {
+    renderPage("/search?q=titanic&type=tv")
+
+    const canonical = document.querySelector('link[rel="canonical"]')
+    expect(canonical).toHaveAttribute("href", "https://deadonfilm.com/search?q=titanic&type=tv")
+  })
+
   it("normalizes canonical URL to lowercase", () => {
     renderPage("/search?q=TITANIC")
 
