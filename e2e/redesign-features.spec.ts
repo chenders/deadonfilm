@@ -169,7 +169,7 @@ test.describe("Frontend Redesign Features", () => {
       await page.goto("/")
 
       // Search for something that won't exist
-      const searchInput = page.getByPlaceholder("Search movies and TV shows...")
+      const searchInput = page.getByPlaceholder("Search movies, shows, and people...")
       await searchInput.fill("xyznonexistentmovie12345")
 
       // Wait for search to complete and API to return

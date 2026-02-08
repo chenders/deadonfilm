@@ -122,39 +122,44 @@ async function searchActorsLocal(query: string, limit: number): Promise<SearchRe
   const trimmed = query.trim()
   if (trimmed.length < 2) return []
 
-  const db = getPool()
-  const pattern = `%${trimmed}%`
+  try {
+    const db = getPool()
+    const pattern = `%${trimmed}%`
 
-  const result = await db.query<{
-    id: number
-    name: string
-    birthday: string | null
-    deathday: string | null
-    profile_path: string | null
-    tmdb_popularity: number | null
-  }>(
-    `SELECT id, name, birthday, deathday, profile_path, tmdb_popularity
-     FROM actors
-     WHERE name ILIKE $1
-       AND profile_path IS NOT NULL
-     ORDER BY
-       CASE WHEN LOWER(name) = LOWER($2) THEN 0 ELSE 1 END,
-       tmdb_popularity DESC NULLS LAST
-     LIMIT $3`,
-    [pattern, trimmed, limit]
-  )
+    const result = await db.query<{
+      id: number
+      name: string
+      birthday: string | null
+      deathday: string | null
+      profile_path: string | null
+      tmdb_popularity: number | null
+    }>(
+      `SELECT id, name, birthday, deathday, profile_path, tmdb_popularity
+       FROM actors
+       WHERE name ILIKE $1
+         AND profile_path IS NOT NULL
+       ORDER BY
+         CASE WHEN LOWER(name) = LOWER($2) THEN 0 ELSE 1 END,
+         tmdb_popularity DESC NULLS LAST
+       LIMIT $3`,
+      [pattern, trimmed, limit]
+    )
 
-  return result.rows.map((row) => ({
-    id: row.id,
-    title: row.name,
-    release_date: "",
-    poster_path: row.profile_path,
-    overview: "",
-    media_type: "person" as const,
-    is_deceased: row.deathday !== null,
-    death_year: row.deathday ? parseInt(row.deathday.substring(0, 4), 10) : null,
-    birth_year: row.birthday ? parseInt(row.birthday.substring(0, 4), 10) : null,
-  }))
+    return result.rows.map((row) => ({
+      id: row.id,
+      title: row.name,
+      release_date: "",
+      poster_path: row.profile_path,
+      overview: "",
+      media_type: "person" as const,
+      is_deceased: row.deathday !== null,
+      death_year: row.deathday ? parseInt(row.deathday.substring(0, 4), 10) : null,
+      birth_year: row.birthday ? parseInt(row.birthday.substring(0, 4), 10) : null,
+    }))
+  } catch (error) {
+    console.error("Actor search failed, returning empty results:", error)
+    return []
+  }
 }
 
 /**
