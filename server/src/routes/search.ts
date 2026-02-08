@@ -116,6 +116,13 @@ function escapeRegex(str: string): string {
 }
 
 /**
+ * Escape SQL LIKE/ILIKE wildcard characters (%, _) and backslashes in user input.
+ */
+function escapeLikePattern(str: string): string {
+  return str.replace(/[\\%_]/g, "\\$&")
+}
+
+/**
  * Search for actors in the local database using ILIKE with pg_trgm index.
  */
 async function searchActorsLocal(query: string, limit: number): Promise<SearchResult[]> {
@@ -123,7 +130,7 @@ async function searchActorsLocal(query: string, limit: number): Promise<SearchRe
   if (trimmed.length < 2) return []
 
   const db = getPool()
-  const pattern = `%${trimmed}%`
+  const pattern = `%${escapeLikePattern(trimmed)}%`
 
   const result = await db.query<{
     id: number
@@ -135,7 +142,7 @@ async function searchActorsLocal(query: string, limit: number): Promise<SearchRe
   }>(
     `SELECT id, name, birthday, deathday, profile_path, tmdb_popularity
        FROM actors
-       WHERE name ILIKE $1
+       WHERE name ILIKE $1 ESCAPE '\\'
          AND profile_path IS NOT NULL
        ORDER BY
          CASE WHEN LOWER(name) = LOWER($2) THEN 0 ELSE 1 END,

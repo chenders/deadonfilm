@@ -529,6 +529,16 @@ describe("searchMovies route", () => {
       expect(queryCall[1][1]).toBe("Tom Hanks") // trimmed exact match
     })
 
+    it("escapes LIKE wildcard characters in person search query", async () => {
+      mockQuery.mockResolvedValue({ rows: [] })
+      mockReq = { query: { q: "100%_match", type: "person" } }
+
+      await searchMovies(mockReq as Request, mockRes as Response)
+
+      const queryCall = mockQuery.mock.calls[0]
+      expect(queryCall[1][0]).toBe("%100\\%\\_match%") // wildcards escaped
+    })
+
     it("does not call TMDB API for person search", async () => {
       mockQuery.mockResolvedValue({ rows: [] })
       mockReq = { query: { q: "Tom Hanks", type: "person" } }
