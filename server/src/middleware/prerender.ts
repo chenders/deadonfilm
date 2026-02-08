@@ -29,7 +29,7 @@ export const prerenderRateLimiter = rateLimit({
 })
 
 /** Paths that should never be prerendered */
-const SKIP_PATH_PREFIXES = ["/api/", "/admin/", "/health", "/sitemap", "/nr-browser.js"]
+const SKIP_PATH_PREFIXES = ["/api", "/admin", "/health", "/sitemap", "/nr-browser.js"]
 
 /** Paths with frequently changing content get shorter cache TTL */
 const DYNAMIC_PATH_PREFIXES = ["/death-watch", "/deaths/"]

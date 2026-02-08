@@ -2,7 +2,9 @@ User-agent: *
 Allow: /
 Sitemap: https://deadonfilm.com/sitemap.xml
 Disallow: /api/
+Disallow: /api
 Disallow: /admin/
+Disallow: /admin
 
 User-agent: SemrushBot
 Disallow: /

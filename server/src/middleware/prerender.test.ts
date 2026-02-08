@@ -90,6 +90,20 @@ describe("prerenderMiddleware", () => {
     expect(getCached).not.toHaveBeenCalled()
   })
 
+  it("skips exact /admin path", async () => {
+    await prerenderMiddleware(makeReq({ path: "/admin" }), res as Response, next)
+
+    expect(next).toHaveBeenCalled()
+    expect(getCached).not.toHaveBeenCalled()
+  })
+
+  it("skips exact /api path", async () => {
+    await prerenderMiddleware(makeReq({ path: "/api" }), res as Response, next)
+
+    expect(next).toHaveBeenCalled()
+    expect(getCached).not.toHaveBeenCalled()
+  })
+
   it("skips /health path", async () => {
     await prerenderMiddleware(makeReq({ path: "/health" }), res as Response, next)
 
