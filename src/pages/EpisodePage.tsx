@@ -104,7 +104,7 @@ export default function EpisodePage() {
           { name: show.name, url: `https://deadonfilm.com/show/${showSlug}` },
           {
             name: `Season ${episode.seasonNumber}`,
-            url: `https://deadonfilm.com/show/${showSlug}`,
+            url: `https://deadonfilm.com/show/${showSlug}/season/${episode.seasonNumber}`,
           },
           {
             name: `Episode ${episode.episodeNumber}`,
