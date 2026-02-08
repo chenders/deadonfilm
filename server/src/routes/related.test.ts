@@ -25,7 +25,7 @@ vi.mock("../lib/cache.js", () => ({
   buildCacheKey: vi.fn(
     (prefix: string, params: Record<string, unknown>) => `${prefix}:${JSON.stringify(params)}`
   ),
-  CACHE_TTL: { WEEK: 604800 },
+  CACHE_TTL: { SHORT: 300, WEEK: 604800 },
   CACHE_PREFIX: {
     RELATED_ACTORS: "related-actors",
     RELATED_MOVIES: "related-movies",
@@ -248,7 +248,7 @@ describe("getRelatedActorsRoute", () => {
     expect(setCached).toHaveBeenCalledWith(expect.any(String), { actors: mockRelated }, 604800)
   })
 
-  it("does not cache empty results", async () => {
+  it("does not cache empty results and uses short HTTP TTL", async () => {
     const req = createMockReq({ id: "42" })
     const res = createMockRes()
 
@@ -260,6 +260,7 @@ describe("getRelatedActorsRoute", () => {
     await getRelatedActorsRoute(req, res)
 
     expect(setCached).not.toHaveBeenCalled()
+    expect(sendWithETag).toHaveBeenCalledWith(req, res, { actors: [] }, 300)
     expect(res.json).toHaveBeenCalledWith({ actors: [] })
   })
 
@@ -414,7 +415,7 @@ describe("getRelatedMoviesRoute", () => {
     expect(setCached).toHaveBeenCalledWith(expect.any(String), { movies: mockRelated }, 604800)
   })
 
-  it("does not cache empty results", async () => {
+  it("does not cache empty results and uses short HTTP TTL", async () => {
     const req = createMockReq({ id: "550" })
     const res = createMockRes()
 
@@ -423,6 +424,7 @@ describe("getRelatedMoviesRoute", () => {
     await getRelatedMoviesRoute(req, res)
 
     expect(setCached).not.toHaveBeenCalled()
+    expect(sendWithETag).toHaveBeenCalledWith(req, res, { movies: [] }, 300)
     expect(res.json).toHaveBeenCalledWith({ movies: [] })
   })
 
@@ -560,7 +562,7 @@ describe("getRelatedShowsRoute", () => {
     expect(setCached).toHaveBeenCalledWith(expect.any(String), { shows: mockRelated }, 604800)
   })
 
-  it("does not cache empty results", async () => {
+  it("does not cache empty results and uses short HTTP TTL", async () => {
     const req = createMockReq({ id: "1399" })
     const res = createMockRes()
 
@@ -569,6 +571,7 @@ describe("getRelatedShowsRoute", () => {
     await getRelatedShowsRoute(req, res)
 
     expect(setCached).not.toHaveBeenCalled()
+    expect(sendWithETag).toHaveBeenCalledWith(req, res, { shows: [] }, 300)
     expect(res.json).toHaveBeenCalledWith({ shows: [] })
   })
 

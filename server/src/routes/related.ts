@@ -96,7 +96,7 @@ export async function getRelatedActorsRoute(req: Request, res: Response) {
     if (actors.length > 0) {
       await setCached(cacheKey, response, CACHE_TTL.WEEK)
     }
-    sendWithETag(req, res, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, actors.length > 0 ? CACHE_TTL.WEEK : CACHE_TTL.SHORT)
   } catch (error) {
     console.error("Related actors error:", error)
     res.status(500).json({ error: { message: "Failed to fetch related actors" } })
@@ -130,7 +130,7 @@ export async function getRelatedMoviesRoute(req: Request, res: Response) {
     if (movies.length > 0) {
       await setCached(cacheKey, response, CACHE_TTL.WEEK)
     }
-    sendWithETag(req, res, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, movies.length > 0 ? CACHE_TTL.WEEK : CACHE_TTL.SHORT)
   } catch (error) {
     console.error("Related movies error:", error)
     res.status(500).json({ error: { message: "Failed to fetch related movies" } })
@@ -164,7 +164,7 @@ export async function getRelatedShowsRoute(req: Request, res: Response) {
     if (shows.length > 0) {
       await setCached(cacheKey, response, CACHE_TTL.WEEK)
     }
-    sendWithETag(req, res, response, CACHE_TTL.WEEK)
+    sendWithETag(req, res, response, shows.length > 0 ? CACHE_TTL.WEEK : CACHE_TTL.SHORT)
   } catch (error) {
     console.error("Related shows error:", error)
     res.status(500).json({ error: { message: "Failed to fetch related shows" } })
