@@ -6,8 +6,8 @@ import { ArticleCard } from "@/components/articles/ArticleLayout"
 
 const BASE_URL = "https://deadonfilm.com"
 
-const sortedArticles = [...articles].sort(
-  (a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime()
+const sortedArticles = [...articles].sort((a, b) =>
+  b.publishedDate.localeCompare(a.publishedDate)
 )
 
 export default function ArticlesListPage() {

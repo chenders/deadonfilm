@@ -27,9 +27,12 @@ function formatArticleDate(dateString: string): string {
 
 /**
  * Convert a YYYY-MM-DD date to full ISO-8601 for Open Graph meta tags.
+ * Returns empty string if the date is invalid.
  */
 function toISOTimestamp(dateString: string): string {
-  return `${dateString}T00:00:00Z`
+  const date = new Date(dateString + "T00:00:00Z")
+  if (isNaN(date.getTime())) return ""
+  return date.toISOString()
 }
 
 interface ArticleLayoutProps {
@@ -71,8 +74,10 @@ export default function ArticleLayout({ article, children }: ArticleLayoutProps)
         <meta property="og:title" content={`${article.title} - Dead on Film`} />
         <meta property="og:description" content={article.description} />
         <meta property="og:type" content="article" />
-        <meta property="article:published_time" content={toISOTimestamp(article.publishedDate)} />
-        {article.updatedDate && (
+        {toISOTimestamp(article.publishedDate) && (
+          <meta property="article:published_time" content={toISOTimestamp(article.publishedDate)} />
+        )}
+        {article.updatedDate && toISOTimestamp(article.updatedDate) && (
           <meta property="article:modified_time" content={toISOTimestamp(article.updatedDate)} />
         )}
         <link rel="canonical" href={`${BASE_URL}/articles/${article.slug}`} />
