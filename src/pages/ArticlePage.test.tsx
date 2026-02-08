@@ -35,8 +35,8 @@ describe("ArticlePage", () => {
     ).toBeInTheDocument()
   })
 
-  it("redirects to /articles for unknown slug", () => {
+  it("redirects to /articles for unknown slug", async () => {
     renderPage("nonexistent-article")
-    expect(screen.getByTestId("articles-list")).toBeInTheDocument()
+    expect(await screen.findByTestId("articles-list")).toBeInTheDocument()
   })
 })
