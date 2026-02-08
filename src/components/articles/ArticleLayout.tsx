@@ -76,12 +76,8 @@ export default function ArticleLayout({ article, children }: ArticleLayoutProps)
         <meta property="og:title" content={`${article.title} - Dead on Film`} />
         <meta property="og:description" content={article.description} />
         <meta property="og:type" content="article" />
-        {publishedISO && (
-          <meta property="article:published_time" content={publishedISO} />
-        )}
-        {updatedISO && (
-          <meta property="article:modified_time" content={updatedISO} />
-        )}
+        {publishedISO && <meta property="article:published_time" content={publishedISO} />}
+        {updatedISO && <meta property="article:modified_time" content={updatedISO} />}
         <link rel="canonical" href={`${BASE_URL}/articles/${article.slug}`} />
       </Helmet>
       <JsonLd
