@@ -204,11 +204,12 @@ export default function SearchResultsPage() {
       ? `${BASE_URL}/search?q=${encodeURIComponent(normalizedQuery)}${canonicalType}`
       : undefined
 
-  const title = queryParam
-    ? `Search results for "${queryParam}"`
+  const displayQuery = queryParam.trim()
+  const title = displayQuery
+    ? `Search results for "${displayQuery}"`
     : "Search movies, shows, and people"
-  const description = queryParam
-    ? `Search results for "${queryParam}" on Dead on Film. Find movies, TV shows, and actors with mortality statistics.`
+  const description = displayQuery
+    ? `Search results for "${displayQuery}" on Dead on Film. Find movies, TV shows, and actors with mortality statistics.`
     : "Search the Dead on Film database for movies, TV shows, and actors. See which cast members have passed away."
 
   return (
@@ -300,7 +301,7 @@ export default function SearchResultsPage() {
             End of Reel
           </p>
           <p className="text-text-muted">
-            No results found for "<span className="italic">{inputValue}</span>"
+            No results found for "<span className="italic">{effectiveQuery}</span>"
           </p>
         </div>
       )}
