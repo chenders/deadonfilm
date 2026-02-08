@@ -23,12 +23,23 @@ export default function ActorManagementTab() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
-  const [page, setPage] = useState(1)
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
   const [causeSearchInput, setCauseSearchInput] = useState("")
   const [showCauseDropdown, setShowCauseDropdown] = useState(false)
   const [regeneratingBiography, setRegeneratingBiography] = useState<number | null>(null)
   const pageSize = 50
+
+  const updatePage = (newPage: number) => {
+    const params = new URLSearchParams(searchParams)
+    if (newPage > 1) {
+      params.set("page", String(newPage))
+    } else {
+      params.delete("page")
+    }
+    setSearchParams(params)
+    setSelectedActorIds(new Set())
+  }
 
   // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
   const [searchNameInput, setSearchNameInput] = useDebouncedSearchParam({
@@ -64,9 +75,8 @@ export default function ActorManagementTab() {
   const filteredCauses =
     causesData?.filter((c) => c.label.toLowerCase().includes(causeSearchInput.toLowerCase())) ?? []
 
-  // Reset page and clear selection when search changes
+  // Clear selection when search changes (page reset handled by useDebouncedSearchParam's resetPageOnChange)
   useEffect(() => {
-    setPage(1)
     setSelectedActorIds(new Set())
   }, [filters.searchName])
 
@@ -109,7 +119,6 @@ export default function ActorManagementTab() {
     }
 
     setSearchParams(params)
-    setPage(1)
     setSelectedActorIds(new Set())
   }
 
@@ -380,7 +389,6 @@ export default function ActorManagementTab() {
               const params = new URLSearchParams()
               if (tab) params.set("tab", tab)
               setSearchParams(params)
-              setPage(1)
               setSelectedActorIds(new Set())
             }}
             className="mt-4 text-sm text-admin-text-muted transition-colors hover:text-admin-text-primary"
@@ -701,7 +709,7 @@ export default function ActorManagementTab() {
             {data.totalPages > 1 && (
               <div className="mt-4 flex items-center justify-between">
                 <button
-                  onClick={() => setPage(page - 1)}
+                  onClick={() => updatePage(page - 1)}
                   disabled={page === 1}
                   className="rounded bg-admin-interactive-secondary px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-surface-overlay disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -711,7 +719,7 @@ export default function ActorManagementTab() {
                   Page {page} of {data.totalPages}
                 </span>
                 <button
-                  onClick={() => setPage(page + 1)}
+                  onClick={() => updatePage(page + 1)}
                   disabled={page === data.totalPages}
                   className="rounded bg-admin-interactive-secondary px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-surface-overlay disabled:cursor-not-allowed disabled:opacity-50"
                 >
