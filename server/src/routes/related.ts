@@ -88,7 +88,7 @@ export async function getRelatedActorsRoute(req: Request, res: Response) {
     const actor = actorResult.rows[0]
     const birthDecade = getBirthDecade(actor.birthday)
 
-    const actors = await getRelatedActors(actor.tmdb_id, actor.cause_of_death, birthDecade)
+    const actors = await getRelatedActors(actorId, actor.cause_of_death, birthDecade)
 
     const response: RelatedActorsResponse = { actors }
 

@@ -183,7 +183,7 @@ export default function MoviePage() {
             <RelatedContent
               title="Related Movies"
               items={relatedMovies.data.movies.map((m) => ({
-                href: `/movie/${createMovieSlug(m.title, m.releaseDate || "unknown", m.tmdbId)}`,
+                href: `/movie/${createMovieSlug(m.title, m.releaseDate || "", m.tmdbId)}`,
                 title: m.title,
                 subtitle: m.releaseDate ? m.releaseDate.slice(0, 4) : undefined,
                 imageUrl: getPosterUrl(m.posterPath, "w92"),

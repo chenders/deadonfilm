@@ -51,12 +51,12 @@ const RELATED_ACTORS_LIMIT = 5
  * Find actors related by same cause of death or same birth decade.
  * Prioritizes cause of death matches, then falls back to birth decade.
  *
- * @param actorTmdbId - The actor's tmdb_id
+ * @param actorId - The actor's internal ID (used for self-exclusion)
  * @param causeOfDeath - The actor's cause of death (null if unknown)
  * @param birthDecade - The start year of the actor's birth decade (e.g., 1940)
  */
 export async function getRelatedActors(
-  actorTmdbId: number,
+  actorId: number,
   causeOfDeath: string | null,
   birthDecade: number | null
 ): Promise<RelatedActor[]> {
@@ -76,12 +76,12 @@ export async function getRelatedActors(
       `SELECT a.id, a.tmdb_id, a.name, a.profile_path, a.deathday, a.cause_of_death, a.birthday
        FROM actors a
        WHERE a.cause_of_death = $1
-         AND ($2::integer IS NULL OR a.tmdb_id IS DISTINCT FROM $2)
+         AND a.id != $2
          AND a.is_obscure IS NOT TRUE
          AND a.deathday IS NOT NULL
        ORDER BY a.tmdb_popularity DESC NULLS LAST
        LIMIT $3`,
-      [causeOfDeath, actorTmdbId, RELATED_ACTORS_LIMIT]
+      [causeOfDeath, actorId, RELATED_ACTORS_LIMIT]
     )
 
     if (result.rows.length > 0) {
@@ -106,12 +106,12 @@ export async function getRelatedActors(
        WHERE a.birthday IS NOT NULL
          AND EXTRACT(YEAR FROM a.birthday) >= $1
          AND EXTRACT(YEAR FROM a.birthday) <= $2
-         AND ($3::integer IS NULL OR a.tmdb_id IS DISTINCT FROM $3)
+         AND a.id != $3
          AND a.is_obscure IS NOT TRUE
          AND a.deathday IS NOT NULL
        ORDER BY a.tmdb_popularity DESC NULLS LAST
        LIMIT $4`,
-      [birthDecade, decadeEnd, actorTmdbId, RELATED_ACTORS_LIMIT]
+      [birthDecade, decadeEnd, actorId, RELATED_ACTORS_LIMIT]
     )
 
     return result.rows.map(mapActorRow)

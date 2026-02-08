@@ -133,7 +133,7 @@ describe("getRelatedActorsRoute", () => {
 
     await getRelatedActorsRoute(req, res)
 
-    expect(getRelatedActors).toHaveBeenCalledWith(100, "Heart attack", 1940)
+    expect(getRelatedActors).toHaveBeenCalledWith(42, "Heart attack", 1940)
     expect(sendWithETag).toHaveBeenCalledWith(req, res, { actors: mockRelatedActors }, 604800)
     expect(res.json).toHaveBeenCalledWith({ actors: mockRelatedActors })
   })
@@ -149,7 +149,23 @@ describe("getRelatedActorsRoute", () => {
 
     await getRelatedActorsRoute(req, res)
 
-    expect(getRelatedActors).toHaveBeenCalledWith(100, null, null)
+    expect(getRelatedActors).toHaveBeenCalledWith(42, null, null)
+  })
+
+  it("handles actor with null tmdb_id", async () => {
+    const req = createMockReq({ id: "42" })
+    const res = createMockRes()
+
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ tmdb_id: null, cause_of_death: "Cancer", birthday: "1950-01-01" }],
+    })
+    vi.mocked(getRelatedActors).mockResolvedValueOnce([])
+
+    await getRelatedActorsRoute(req, res)
+
+    // Should pass actorId (42) for self-exclusion, not tmdb_id
+    expect(getRelatedActors).toHaveBeenCalledWith(42, "Cancer", 1950)
+    expect(res.json).toHaveBeenCalledWith({ actors: [] })
   })
 
   it("computes birth decade correctly", async () => {
@@ -163,7 +179,7 @@ describe("getRelatedActorsRoute", () => {
 
     await getRelatedActorsRoute(req, res)
 
-    expect(getRelatedActors).toHaveBeenCalledWith(100, null, 1970)
+    expect(getRelatedActors).toHaveBeenCalledWith(42, null, 1970)
   })
 
   it("returns cached data when available", async () => {

@@ -15,7 +15,11 @@ export default function SeeAlso({ links }: SeeAlsoProps) {
   }
 
   return (
-    <nav data-testid="see-also" className="rounded-lg bg-surface-elevated p-3">
+    <nav
+      data-testid="see-also"
+      className="rounded-lg bg-surface-elevated p-3"
+      aria-label="See also"
+    >
       <span className="mr-2 text-sm font-medium text-brown-dark">See also:</span>
       {links.map((link, index) => (
         <span key={link.href}>
