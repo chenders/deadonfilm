@@ -125,12 +125,13 @@ export default function SearchResultsPage() {
   const mediaType: SearchMediaType = isValidMediaType(typeParam) ? typeParam : "all"
 
   const [inputValue, setInputValue] = useState(queryParam)
+  const effectiveQuery = inputValue.trim()
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const mediaTypeRef = useRef(mediaType)
   mediaTypeRef.current = mediaType
   const isLocalUpdateRef = useRef(false)
 
-  const { data, isLoading } = useUnifiedSearch(inputValue, mediaType)
+  const { data, isLoading } = useUnifiedSearch(effectiveQuery, mediaType)
   const results = data?.results || []
 
   // Sync input value when URL changes externally (e.g., browser back/forward)
@@ -188,13 +189,13 @@ export default function SearchResultsPage() {
   const personResults = results.filter((r) => r.media_type === "person")
 
   const hasResults = results.length > 0
-  const effectiveQuery = inputValue.trim()
   const showNoResults = effectiveQuery.length >= 2 && !isLoading && !hasResults
   const normalizedQuery = queryParam.trim().toLowerCase()
   const shouldNoindex = normalizedQuery.length < MIN_QUERY_LENGTH || (!isLoading && !hasResults)
+  const canonicalType = mediaType !== "all" ? `&type=${mediaType}` : ""
   const canonical =
     normalizedQuery.length >= MIN_QUERY_LENGTH
-      ? `${BASE_URL}/search?q=${encodeURIComponent(normalizedQuery)}`
+      ? `${BASE_URL}/search?q=${encodeURIComponent(normalizedQuery)}${canonicalType}`
       : undefined
 
   const title = queryParam
