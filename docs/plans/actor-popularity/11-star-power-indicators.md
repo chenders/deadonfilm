@@ -27,22 +27,23 @@ These patterns indicate different levels of "star power" — the ability to carr
 When an actor is billing #1 and there is a significant billing gap to #2 (i.e., the movie is "their" movie — e.g., Tom Cruise in *Mission: Impossible*):
 
 ```typescript
-// Full implementation: check billing gap between #1 and next billed actor
+// Full implementation: check billing gap between top-billed and next actor
+// Note: billingOrder is 0-based in production (TMDB cast order), so top-billed = 0
 function isSoleLead(
   billingOrder: number,
   nextBillingOrder: number | null,
   castSize: number
 ): boolean {
-  if (billingOrder !== 1 || castSize < 5) return false
-  // Sole lead if no #2 actor, or gap of 2+ billing positions to next
-  return nextBillingOrder === null || nextBillingOrder >= 3
+  if (billingOrder !== 0 || castSize < 5) return false
+  // Sole lead if no next actor, or gap of 2+ billing positions to next
+  return nextBillingOrder === null || nextBillingOrder >= 2
 }
 
 // Bonus: 10% boost to that contribution
 const SOLE_LEAD_MULTIPLIER = 1.10
 ```
 
-Note: The billing gap heuristic uses data already available (we have billing orders for all cast members). A simpler fallback — just checking `billingOrder === 1 && castSize >= 5` — could be used initially, but would not distinguish sole leads from co-leads in ensemble films.
+Note: `billingOrder` is 0-based (matching TMDB's cast order). The billing gap heuristic uses data already available (we have billing orders for all cast members). A simpler fallback — just checking `billingOrder === 0 && castSize >= 5` — could be used initially, but would not distinguish sole leads from co-leads in ensemble films.
 
 #### 2. Franchise Participation Bonus
 

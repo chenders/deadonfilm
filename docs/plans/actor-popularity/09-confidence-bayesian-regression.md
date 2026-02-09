@@ -119,7 +119,7 @@ High-confidence actors retain most of their raw score, while low-confidence acto
 
 | Risk | Mitigation |
 |------|------------|
-| Prior mean and regression strength are hard to calibrate | Start with `ACTOR_PRIOR_MEAN = 30` and regression strength `0.4` (same as aggregate-score). Analyze score distribution after applying and tune. |
+| Prior mean and regression strength are hard to calibrate | Start with `ACTOR_PRIOR_MEAN = 30` and regression strength `k = 0.1` (lower than aggregate-score's 0.4, since actor confidence is multi-factor and more informative). Analyze score distribution after applying and tune. |
 | Multi-factor confidence adds complexity | Each factor is independently meaningful and testable. The combined confidence is just a weighted average. |
 | Bayesian adjustment compresses the score range | This is intentional for low-confidence actors. High-confidence actors are minimally affected. Monitor the score distribution's range and variance. |
 | Interaction with other proposals | Bayesian confidence should be implemented after the core formula changes (P0–P2) are stable. The confidence factors should be calibrated against the new score distribution. |
