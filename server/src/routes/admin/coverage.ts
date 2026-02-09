@@ -101,6 +101,14 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
       filters.causeOfDeath = req.query.causeOfDeath as string
     }
 
+    if (req.query.deathManner) {
+      const validManners = ["natural", "accident", "suicide", "homicide", "undetermined", "pending"]
+      const deathManner = req.query.deathManner as string
+      if (validManners.includes(deathManner)) {
+        filters.deathManner = deathManner
+      }
+    }
+
     if (req.query.orderBy) {
       const validOrderBy = ["death_date", "popularity", "name", "enriched_at"]
       const orderBy = req.query.orderBy as string

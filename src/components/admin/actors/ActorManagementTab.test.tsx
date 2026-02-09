@@ -26,6 +26,13 @@ vi.mock("../../../hooks/useAdminAuth", () => ({
   AdminAuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+vi.mock("../../../services/api", () => ({
+  getProfileUrl: vi.fn((path: string | null) => {
+    if (!path) return null
+    return `https://image.tmdb.org/t/p/w45${path}`
+  }),
+}))
+
 import { useActorsForCoverage, useCausesOfDeath } from "../../../hooks/admin/useCoverage"
 
 const mockActors = [
@@ -38,6 +45,8 @@ const mockActors = [
     cause_of_death: "Stomach cancer",
     age_at_death: 72,
     enriched_at: "2024-01-15T10:00:00Z",
+    profile_path: "/john-wayne.jpg",
+    death_manner: "natural",
   },
   {
     id: 2,
@@ -48,6 +57,8 @@ const mockActors = [
     cause_of_death: "Car accident",
     age_at_death: 24,
     enriched_at: null,
+    profile_path: null,
+    death_manner: "accident",
   },
   {
     id: 3,
@@ -58,6 +69,8 @@ const mockActors = [
     cause_of_death: null,
     age_at_death: 36,
     enriched_at: "2024-02-01T10:00:00Z",
+    profile_path: "/marilyn-monroe.jpg",
+    death_manner: null,
   },
 ]
 
@@ -152,7 +165,7 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    const searchInput = screen.getByLabelText("Name Search")
+    const searchInput = screen.getByLabelText("Actor Name")
     fireEvent.change(searchInput, { target: { value: "John" } })
 
     // Input value should update immediately
@@ -172,7 +185,7 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    const searchInput = screen.getByLabelText("Name Search")
+    const searchInput = screen.getByLabelText("Actor Name")
     fireEvent.change(searchInput, { target: { value: "test" } })
 
     // Input value should update immediately
@@ -199,7 +212,7 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    const searchInput = screen.getByLabelText("Name Search")
+    const searchInput = screen.getByLabelText("Actor Name")
 
     act(() => {
       fireEvent.change(searchInput, { target: { value: "Wayne" } })
@@ -231,7 +244,7 @@ describe("ActorManagementTab", () => {
     // Start on page 2
     renderComponent("/admin/actors?tab=management&page=2")
 
-    const searchInput = screen.getByLabelText("Name Search")
+    const searchInput = screen.getByLabelText("Actor Name")
 
     act(() => {
       fireEvent.change(searchInput, { target: { value: "test" } })
@@ -268,7 +281,7 @@ describe("ActorManagementTab", () => {
     expect(screen.getByText("1 actor selected")).toBeInTheDocument()
 
     // Type in search box
-    const searchInput = screen.getByLabelText("Name Search")
+    const searchInput = screen.getByLabelText("Actor Name")
     act(() => {
       fireEvent.change(searchInput, { target: { value: "test" } })
     })
@@ -434,7 +447,7 @@ describe("ActorManagementTab", () => {
     expect(screen.queryByText("Next")).not.toBeInTheDocument()
   })
 
-  it("displays death page status correctly", () => {
+  it("displays death page checkmarks inline with names", () => {
     vi.mocked(useActorsForCoverage).mockReturnValue({
       data: {
         items: mockActors,
@@ -447,13 +460,13 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // John Wayne and James Dean have detailed death info (mobile + desktop = 4)
+    // John Wayne and James Dean have detailed death info - checkmarks appear inline with names
+    // in both mobile (MobileCard) and desktop (table row) views
     const checkmarks = screen.getAllByText("✓")
+    // Exactly 2 actors × 2 views (mobile + desktop) = 4 checkmarks
     expect(checkmarks).toHaveLength(4)
 
-    // Marilyn Monroe does not (mobile + desktop = 2)
-    const crosses = screen.getAllByText("✗")
-    expect(crosses).toHaveLength(2)
+    // Marilyn Monroe does not have death info - no checkmark for her
   })
 
   it("displays cause of death or dash when missing", () => {
@@ -474,6 +487,72 @@ describe("ActorManagementTab", () => {
     expect(screen.getAllByText("Car accident").length).toBeGreaterThanOrEqual(1)
     // Marilyn Monroe has null cause_of_death, should show dash
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("renders thumbnails for actors with profile_path", () => {
+    vi.mocked(useActorsForCoverage).mockReturnValue({
+      data: {
+        items: mockActors,
+        total: 3,
+        totalPages: 1,
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderComponent()
+
+    // John Wayne and Marilyn Monroe have profile_path - should render img thumbnails
+    expect(screen.getByTestId("actor-thumbnail-1")).toBeInTheDocument()
+    expect(screen.getByTestId("actor-thumbnail-3")).toBeInTheDocument()
+
+    // James Dean has null profile_path - should render fallback
+    expect(screen.getByTestId("actor-thumbnail-fallback-2")).toBeInTheDocument()
+  })
+
+  it("renders manner of death filter dropdown", () => {
+    vi.mocked(useActorsForCoverage).mockReturnValue({
+      data: {
+        items: mockActors,
+        total: 3,
+        totalPages: 1,
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderComponent()
+
+    const mannerSelect = screen.getByLabelText("Manner of Death")
+    expect(mannerSelect).toBeInTheDocument()
+
+    // All options should be available
+    const options = mannerSelect.querySelectorAll("option")
+    expect(options).toHaveLength(7)
+    expect(options[0]).toHaveTextContent("All")
+    expect(options[1]).toHaveTextContent("Natural")
+  })
+
+  it("applies manner of death filter", () => {
+    vi.mocked(useActorsForCoverage).mockReturnValue({
+      data: {
+        items: mockActors,
+        total: 3,
+        totalPages: 1,
+      },
+      isLoading: false,
+      error: null,
+    } as never)
+
+    renderComponent()
+
+    const mannerSelect = screen.getByLabelText("Manner of Death")
+    fireEvent.change(mannerSelect, { target: { value: "natural" } })
+
+    // Should update URL params via useActorsForCoverage call
+    const calls = vi.mocked(useActorsForCoverage).mock.calls
+    const latestFilters = calls[calls.length - 1]?.[2]
+    expect(latestFilters?.deathManner).toBe("natural")
   })
 
   describe("Cause of Death Filter", () => {
