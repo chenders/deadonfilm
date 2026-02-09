@@ -132,18 +132,17 @@ describe("QuickActions", () => {
     expect(screen.getByText("🔍")).toBeInTheDocument()
   })
 
-  it("uses flex-wrap layout with max-width to limit buttons per row", () => {
+  it("uses responsive grid/flex layout", () => {
     renderWithRouter(<QuickActions />)
 
     const container = screen.getByTestId("quick-actions")
 
-    // Verify flex layout with wrapping and centered content
-    expect(container.className).toContain("flex")
-    expect(container.className).toContain("flex-wrap")
-    expect(container.className).toContain("justify-center")
-    expect(container.className).toContain("gap-2")
-    // Max-width ensures buttons wrap to max 4 per row on wide screens
-    expect(container.className).toContain("max-w-xl")
+    // Mobile: grid layout, Desktop: flex layout
+    expect(container.className).toContain("grid")
+    expect(container.className).toContain("grid-cols-2")
+    expect(container.className).toContain("md:flex")
+    expect(container.className).toContain("md:flex-wrap")
+    expect(container.className).toContain("md:justify-center")
   })
 
   it("all buttons have consistent styling for height", () => {
@@ -206,5 +205,17 @@ describe("QuickActions", () => {
     // Check that the button contains an SVG element
     const svg = button.querySelector("svg")
     expect(svg).toBeInTheDocument()
+  })
+
+  it("displays short descriptions for mobile", () => {
+    renderWithRouter(<QuickActions />)
+
+    expect(screen.getByText("Actors who died under 40")).toBeInTheDocument()
+    expect(screen.getByText("Actors lost to the pandemic")).toBeInTheDocument()
+    expect(screen.getByText("Accidents, murders, suicides")).toBeInTheDocument()
+    expect(screen.getByText("Aging actors most at risk")).toBeInTheDocument()
+    expect(screen.getByText("How actors died, categorized")).toBeInTheDocument()
+    expect(screen.getByText("Famous actors who have died")).toBeInTheDocument()
+    expect(screen.getByText("Deaths across the decades")).toBeInTheDocument()
   })
 })

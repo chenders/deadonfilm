@@ -190,7 +190,13 @@ describe("DeathWatchPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getDeathWatch).toHaveBeenCalledWith({ page: 2, includeObscure: false, search: "" })
+      expect(api.getDeathWatch).toHaveBeenCalledWith({
+        page: 2,
+        includeObscure: false,
+        search: "",
+        sort: "age",
+        dir: "desc",
+      })
     })
   })
 
@@ -257,7 +263,13 @@ describe("DeathWatchPage", () => {
     fireEvent.click(checkbox)
 
     await waitFor(() => {
-      expect(api.getDeathWatch).toHaveBeenCalledWith({ page: 1, includeObscure: true, search: "" })
+      expect(api.getDeathWatch).toHaveBeenCalledWith({
+        page: 1,
+        includeObscure: true,
+        search: "",
+        sort: "age",
+        dir: "desc",
+      })
     })
   })
 
@@ -342,6 +354,8 @@ describe("DeathWatchPage", () => {
         page: 1,
         includeObscure: false,
         search: "Clint",
+        sort: "age",
+        dir: "desc",
       })
 
       // Search input should be populated with the URL parameter
@@ -400,6 +414,8 @@ describe("DeathWatchPage", () => {
           page: 1,
           includeObscure: true,
           search: "Clint",
+          sort: "age",
+          dir: "desc",
         })
       })
     })
@@ -453,6 +469,8 @@ describe("DeathWatchPage", () => {
             page: 1,
             includeObscure: false,
             search: "Clint",
+            sort: "age",
+            dir: "desc",
           })
         } finally {
           vi.useRealTimers()
@@ -504,6 +522,8 @@ describe("DeathWatchPage", () => {
             page: 1,
             includeObscure: false,
             search: "Clint",
+            sort: "age",
+            dir: "desc",
           })
 
           // Verify "Morgan" was never sent to API

@@ -205,7 +205,7 @@ describe("ForeverYoungPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getForeverYoungMovies).toHaveBeenCalledWith(2)
+      expect(api.getForeverYoungMovies).toHaveBeenCalledWith(2, "years_lost", "desc")
     })
   })
 
@@ -264,7 +264,7 @@ describe("ForeverYoungPage", () => {
     })
 
     await waitFor(() => {
-      expect(api.getForeverYoungMovies).toHaveBeenCalledWith(2)
+      expect(api.getForeverYoungMovies).toHaveBeenCalledWith(2, "years_lost", "desc")
     })
   })
 

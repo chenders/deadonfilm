@@ -206,7 +206,7 @@ describe("ActorPage", () => {
     })
   })
 
-  it("shows cause of death tooltip with details on hover", async () => {
+  it("shows cause of death tooltip with details on click/tap", async () => {
     vi.mocked(api.getActor).mockResolvedValue(mockDeceasedActor)
 
     renderWithProviders(<ActorPage />, {
@@ -217,8 +217,8 @@ describe("ActorPage", () => {
       expect(screen.getByTestId("cause-of-death-trigger")).toBeInTheDocument()
     })
 
-    // Hover to show tooltip
-    fireEvent.mouseEnter(screen.getByTestId("cause-of-death-trigger"))
+    // Click to show tooltip (mobile tap behavior)
+    fireEvent.click(screen.getByTestId("cause-of-death-trigger"))
 
     await waitFor(() => {
       expect(screen.getByTestId("death-details-tooltip")).toBeInTheDocument()

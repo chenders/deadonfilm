@@ -16,10 +16,10 @@ export function useActorDeathDetails(slug: string) {
  * Hook to fetch paginated list of actors with notable death information
  */
 export function useNotableDeaths(params: NotableDeathsParams = {}) {
-  const { page = 1, pageSize = 50, filter = "all", includeObscure = false } = params
+  const { page = 1, pageSize = 50, filter = "all", includeObscure = false, sort, dir } = params
 
   return useQuery({
-    queryKey: ["notable-deaths", page, pageSize, filter, includeObscure],
-    queryFn: () => getNotableDeaths({ page, pageSize, filter, includeObscure }),
+    queryKey: ["notable-deaths", page, pageSize, filter, includeObscure, sort, dir],
+    queryFn: () => getNotableDeaths({ page, pageSize, filter, includeObscure, sort, dir }),
   })
 }
