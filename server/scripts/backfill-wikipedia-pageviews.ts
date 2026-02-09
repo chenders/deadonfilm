@@ -66,7 +66,7 @@ async function run(options: Options): Promise<void> {
       params.push(options.actorId)
       whereClause += ` AND a.id = $${params.length}`
     } else if (!options.force) {
-      whereClause += " AND a.wikipedia_annual_pageviews IS NULL"
+      whereClause += " AND a.wikipedia_pageviews_updated_at IS NULL"
     }
 
     let limitClause = ""
@@ -113,8 +113,10 @@ async function run(options: Options): Promise<void> {
         } else {
           skipped++
         }
-        // Always push (even null) so wikipedia_pageviews_updated_at gets set,
-        // preventing repeated fetches for actors with no pageview data.
+        // Always push (even null) so wikipedia_pageviews_updated_at gets set
+        // for every attempted actor, even when no pageview data is available.
+        // Default mode skips actors with non-null updated_at, preventing
+        // repeated API calls for actors whose articles have no pageview data.
         batchUpdates.push({ id: actor.id, pageviews })
       } catch (error) {
         failed++

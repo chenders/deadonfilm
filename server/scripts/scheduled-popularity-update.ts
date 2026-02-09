@@ -647,6 +647,7 @@ async function refreshWikipediaPageviews(
     SELECT id, wikipedia_url, deathday
     FROM actors
     WHERE wikipedia_url IS NOT NULL
+      AND deathday IS NOT NULL
       AND (wikipedia_pageviews_updated_at IS NULL
            OR wikipedia_pageviews_updated_at < NOW() - INTERVAL '7 days')
     ORDER BY id
