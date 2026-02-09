@@ -5,7 +5,7 @@
  * fame signal in actor popularity scoring.
  *
  * API docs: https://wikimedia.org/api/rest_v1/
- * Rate limit: 100 req/s (we use 10ms delay between requests)
+ * Rate limit: 200 req/s stated, but in practice ~10 req/s avoids 429s
  * Auth: None required, but User-Agent header is mandatory per Wikimedia policy
  */
 
@@ -14,7 +14,13 @@ const WIKIMEDIA_API_BASE =
 
 const USER_AGENT = "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)"
 
-const REQUEST_DELAY_MS = 10
+const REQUEST_DELAY_MS = 100
+
+/** Max retries on 429 responses */
+const MAX_RETRIES = 3
+
+/** Base delay for retry backoff (ms) */
+const RETRY_BASE_DELAY_MS = 2000
 
 /** Months to consider as a "death spike" window */
 const DEATH_SPIKE_MONTHS = 3
@@ -104,35 +110,50 @@ export async function fetchMonthlyPageviews(
 
   const url = `${WIKIMEDIA_API_BASE}/${encodeURIComponent(articleTitle)}/monthly/${formatApiDate(start)}/${formatApiDate(end)}`
 
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": USER_AGENT,
-      },
-    })
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        await rateLimiter.waitForRateLimit()
+      }
 
-    if (response.status === 404) {
-      // Article doesn't exist or has no pageview data
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": USER_AGENT,
+        },
+      })
+
+      if (response.status === 404) {
+        // Article doesn't exist or has no pageview data
+        return []
+      }
+
+      if (response.status === 429 && attempt < MAX_RETRIES) {
+        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        continue
+      }
+
+      if (!response.ok) {
+        console.error(`Wikipedia pageviews API error: ${response.status} for "${articleTitle}"`)
+        return []
+      }
+
+      const data = (await response.json()) as {
+        items: Array<{ timestamp: string; views: number }>
+      }
+
+      return (data.items ?? []).map((item) => ({
+        timestamp: item.timestamp,
+        views: item.views,
+      }))
+    } catch (error) {
+      // Network errors (DNS, connection refused) are not retryable
+      console.error(`Wikipedia pageviews fetch error for "${articleTitle}":`, error)
       return []
     }
-
-    if (!response.ok) {
-      console.error(`Wikipedia pageviews API error: ${response.status} for "${articleTitle}"`)
-      return []
-    }
-
-    const data = (await response.json()) as {
-      items: Array<{ timestamp: string; views: number }>
-    }
-
-    return (data.items ?? []).map((item) => ({
-      timestamp: item.timestamp,
-      views: item.views,
-    }))
-  } catch (error) {
-    console.error(`Wikipedia pageviews fetch error for "${articleTitle}":`, error)
-    return []
   }
+
+  return []
 }
 
 /**
