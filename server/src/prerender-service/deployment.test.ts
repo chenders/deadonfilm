@@ -30,7 +30,7 @@ describe("prerender deployment configuration", () => {
     it("prerender service uses a registry image (not local build)", () => {
       const prerender = compose.services.prerender
       expect(prerender.image).toBeDefined()
-      expect(prerender.image).toMatch(/ghcr\.io\//)
+      expect(prerender.image).toMatch(/^ghcr\.io\//)
       expect(prerender.build).toBeUndefined()
     })
 
