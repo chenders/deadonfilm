@@ -2,8 +2,9 @@ import { useEffect, useRef } from "react"
 import { useLocation } from "react-router-dom"
 import { onCLS, onINP, onLCP, onTTFB } from "web-vitals"
 import type { Metric } from "web-vitals"
+import { trackPageAction } from "../lib/newrelic-browser"
 
-function getPageType(pathname: string): string {
+export function getPageType(pathname: string): string {
   if (pathname === "/") return "home"
   if (pathname.startsWith("/actor/")) return "actor"
   if (pathname.startsWith("/movie/")) return "movie"
@@ -15,12 +16,13 @@ function getPageType(pathname: string): string {
 }
 
 /**
- * Hook to report Core Web Vitals (LCP, CLS, INP, FID, TTFB) to GA4 and New Relic.
- * Initializes once on mount — web-vitals handles its own lifecycle across route changes.
+ * Hook to report Core Web Vitals (LCP, CLS, INP, TTFB) to GA4 and New Relic.
+ * Initializes once on mount for the current page load; metrics are not
+ * automatically reset on client-side route changes in an SPA.
  */
 export function useWebVitals(): void {
-  const locationRef = useRef(useLocation())
   const location = useLocation()
+  const locationRef = useRef(location)
   locationRef.current = location
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function useWebVitals(): void {
       }
 
       // New Relic — enables NRQL dashboards
-      window.newrelic?.addPageAction("WebVital", {
+      trackPageAction("WebVital", {
         metricName: metric.name,
         metricValue: metric.value,
         metricId: metric.id,
