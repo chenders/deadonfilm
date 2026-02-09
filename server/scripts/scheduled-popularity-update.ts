@@ -697,7 +697,7 @@ async function batchUpdateWikipediaPageviews(
   await pool.query(
     `
     UPDATE actors a SET
-      wikipedia_annual_pageviews = u.pageviews,
+      wikipedia_annual_pageviews = COALESCE(u.pageviews, a.wikipedia_annual_pageviews),
       wikipedia_pageviews_updated_at = NOW()
     FROM (
       SELECT unnest($1::int[]) as id,

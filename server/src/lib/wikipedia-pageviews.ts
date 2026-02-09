@@ -80,13 +80,14 @@ export function extractArticleTitle(wikipediaUrl: string): string | null {
 }
 
 /**
- * Format a date as YYYYMMDD for the Wikimedia API.
+ * Format a date as YYYYMMDDHH for the Wikimedia API.
+ * The hour component is always "00" (UTC midnight).
  */
 function formatApiDate(date: Date): string {
   const y = date.getUTCFullYear()
   const m = String(date.getUTCMonth() + 1).padStart(2, "0")
   const d = String(date.getUTCDate()).padStart(2, "0")
-  return `${y}${m}${d}`
+  return `${y}${m}${d}00`
 }
 
 /**
@@ -103,12 +104,12 @@ export async function fetchMonthlyPageviews(
   await rateLimiter.waitForRateLimit()
 
   // Align to full calendar months for the Wikimedia monthly endpoint.
-  // Use the first day of the current month as the end boundary, so we get
-  // the last `months` complete months of data (no partial current month).
+  // Use the first day of the previous month as the end boundary (the API
+  // range is inclusive), so we get exactly `months` complete months of data.
   const now = new Date()
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
   const start = new Date(end)
-  start.setUTCMonth(start.getUTCMonth() - months)
+  start.setUTCMonth(start.getUTCMonth() - (months - 1))
 
   const url = `${WIKIMEDIA_API_BASE}/${encodeURIComponent(articleTitle)}/monthly/${formatApiDate(start)}/${formatApiDate(end)}`
 

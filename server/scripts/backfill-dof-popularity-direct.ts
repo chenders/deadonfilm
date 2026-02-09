@@ -412,9 +412,11 @@ async function backfillActors(pool: ReturnType<typeof getPool>, options: Options
       const popResult = calculateActorPopularity({
         appearances,
         tmdbPopularity: actor.tmdb_popularity,
-        wikipediaAnnualPageviews: actor.wikipedia_annual_pageviews
-          ? Number(actor.wikipedia_annual_pageviews)
-          : null,
+        wikipediaAnnualPageviews:
+          actor.wikipedia_annual_pageviews !== null &&
+          actor.wikipedia_annual_pageviews !== undefined
+            ? Number(actor.wikipedia_annual_pageviews)
+            : null,
       })
 
       if (popResult.dofPopularity !== null) {

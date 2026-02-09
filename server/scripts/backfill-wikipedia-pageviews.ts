@@ -99,7 +99,7 @@ async function run(options: Options): Promise<void> {
     let succeeded = 0
     let failed = 0
     let skipped = 0
-    const batchUpdates: Array<{ id: number; pageviews: number }> = []
+    const batchUpdates: Array<{ id: number; pageviews: number | null }> = []
     const startTime = Date.now()
 
     for (const actor of actorsResult.rows) {
@@ -109,11 +109,13 @@ async function run(options: Options): Promise<void> {
         const pageviews = await fetchActorPageviews(actor.wikipedia_url, actor.deathday)
 
         if (pageviews !== null) {
-          batchUpdates.push({ id: actor.id, pageviews })
           succeeded++
         } else {
           skipped++
         }
+        // Always push (even null) so wikipedia_pageviews_updated_at gets set,
+        // preventing repeated fetches for actors with no pageview data.
+        batchUpdates.push({ id: actor.id, pageviews })
       } catch (error) {
         failed++
         console.error(`  Error for actor ${actor.id}:`, error)
@@ -162,12 +164,12 @@ async function run(options: Options): Promise<void> {
 
 async function batchUpdatePageviews(
   pool: ReturnType<typeof getPool>,
-  updates: Array<{ id: number; pageviews: number }>
+  updates: Array<{ id: number; pageviews: number | null }>
 ): Promise<void> {
   await pool.query(
     `
     UPDATE actors a SET
-      wikipedia_annual_pageviews = u.pageviews,
+      wikipedia_annual_pageviews = COALESCE(u.pageviews, a.wikipedia_annual_pageviews),
       wikipedia_pageviews_updated_at = NOW()
     FROM (
       SELECT unnest($1::int[]) as id,
