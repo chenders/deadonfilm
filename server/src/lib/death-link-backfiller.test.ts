@@ -189,6 +189,29 @@ describe("death-link-backfiller", () => {
       expect(result).toBe(82702)
     })
 
+    it("breaks co-appearance ties using popularity", async () => {
+      // Three actors with same name, two tied on co-appearances
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 500, tmdb_id: 82702, tmdb_popularity: 20.0 }, // Highest popularity
+          { id: 600, tmdb_id: 159572, tmdb_popularity: 15.0 }, // Second popularity
+          { id: 700, tmdb_id: 99999, tmdb_popularity: 2.0 }, // Lowest popularity
+        ],
+      })
+      // Co-appearance query: actors 600 and 700 tied with 3 co-appearances each
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { actor_id: 700, shared_count: "3" },
+          { actor_id: 600, shared_count: "3" },
+        ],
+      })
+
+      const result = await lookupActor(mockDb as never, "Michael Jackson", 999)
+
+      // Should pick 600 (higher popularity) among the tied candidates
+      expect(result).toBe(159572)
+    })
+
     it("falls back to popularity when sourceActorId not provided", async () => {
       // Multiple matches but no sourceActorId for disambiguation
       mockQuery.mockResolvedValueOnce({

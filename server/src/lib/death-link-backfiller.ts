@@ -156,16 +156,22 @@ async function disambiguateByCoAppearances(
   const candidateIds = candidates.map((c) => c.id)
 
   // Count distinct shared content (movies + shows) between source actor and each candidate.
+  // Uses (content_type, content_id) to avoid collisions between movie and show TMDB IDs.
   // For shows, we use DISTINCT show_tmdb_id to avoid inflated counts from episode-level rows
   // (actor_show_appearances has one row per episode).
   const coAppearanceResult = await db.query<{ actor_id: number; shared_count: string }>(
-    `SELECT candidate_id AS actor_id, COUNT(DISTINCT content_id) AS shared_count FROM (
-       SELECT a2.actor_id AS candidate_id, a1.movie_tmdb_id AS content_id
+    `SELECT candidate_id AS actor_id,
+            COUNT(DISTINCT (content_type, content_id)) AS shared_count FROM (
+       SELECT a2.actor_id AS candidate_id,
+              'movie' AS content_type,
+              a1.movie_tmdb_id AS content_id
        FROM actor_movie_appearances a1
        JOIN actor_movie_appearances a2 ON a1.movie_tmdb_id = a2.movie_tmdb_id
        WHERE a1.actor_id = $1 AND a2.actor_id = ANY($2)
        UNION ALL
-       SELECT DISTINCT a2.actor_id AS candidate_id, a1.show_tmdb_id AS content_id
+       SELECT DISTINCT a2.actor_id AS candidate_id,
+                       'show' AS content_type,
+                       a1.show_tmdb_id AS content_id
        FROM actor_show_appearances a1
        JOIN actor_show_appearances a2 ON a1.show_tmdb_id = a2.show_tmdb_id
        WHERE a1.actor_id = $1 AND a2.actor_id = ANY($2)
