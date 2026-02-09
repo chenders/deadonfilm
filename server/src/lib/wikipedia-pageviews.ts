@@ -26,12 +26,12 @@ const RETRY_BASE_DELAY_MS = 2000
 const DEATH_SPIKE_MONTHS = 3
 
 export interface MonthlyPageview {
-  timestamp: string // YYYYMM format from API (e.g. "2025010100")
+  timestamp: string // YYYYMMDDHH format from API (e.g. "2025010100" for 2025-01-01 00:00 UTC)
   views: number
 }
 
 /**
- * Rate limiter to enforce minimum delay between requests (~100 req/s)
+ * Rate limiter to enforce minimum delay between requests (~10 req/s)
  */
 class WikipediaRateLimiter {
   private lastRequestTime = 0
@@ -102,11 +102,13 @@ export async function fetchMonthlyPageviews(
 ): Promise<MonthlyPageview[]> {
   await rateLimiter.waitForRateLimit()
 
-  const end = new Date()
-  const start = new Date()
+  // Align to full calendar months for the Wikimedia monthly endpoint.
+  // Use the first day of the current month as the end boundary, so we get
+  // the last `months` complete months of data (no partial current month).
+  const now = new Date()
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  const start = new Date(end)
   start.setUTCMonth(start.getUTCMonth() - months)
-  // Start from the 1st of the start month
-  start.setUTCDate(1)
 
   const url = `${WIKIMEDIA_API_BASE}/${encodeURIComponent(articleTitle)}/monthly/${formatApiDate(start)}/${formatApiDate(end)}`
 

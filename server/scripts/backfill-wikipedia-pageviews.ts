@@ -3,8 +3,8 @@
  * Backfill Wikipedia annual pageviews for actors
  *
  * Fetches trailing 12-month pageview data from the Wikimedia REST API
- * for all actors that have a wikipedia_url. At ~100 req/s, the full
- * backfill of ~8K actors takes about 80 seconds.
+ * for all actors that have a wikipedia_url. Using the shared Wikipedia client
+ * (~10 req/s), a full backfill of ~8K actors typically takes around 13 minutes.
  *
  * Usage:
  *   npx tsx scripts/backfill-wikipedia-pageviews.ts              # Full backfill (missing only)

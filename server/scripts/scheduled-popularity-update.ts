@@ -659,14 +659,14 @@ async function refreshWikipediaPageviews(
   }
 
   let refreshed = 0
-  const batchUpdates: Array<{ id: number; pageviews: number }> = []
+  const batchUpdates: Array<{ id: number; pageviews: number | null }> = []
 
   for (const actor of staleActors.rows) {
     try {
       const pageviews = await fetchActorPageviews(actor.wikipedia_url, actor.deathday)
-      if (pageviews !== null) {
-        batchUpdates.push({ id: actor.id, pageviews })
-      }
+      // Always push the result (even null) so wikipedia_pageviews_updated_at gets
+      // set — prevents repeated failed lookups for actors with no pageview data.
+      batchUpdates.push({ id: actor.id, pageviews })
     } catch (error) {
       console.error(`Error fetching Wikipedia pageviews for actor ${actor.id}:`, error)
     }
@@ -692,7 +692,7 @@ async function refreshWikipediaPageviews(
 
 async function batchUpdateWikipediaPageviews(
   pool: ReturnType<typeof getPool>,
-  updates: Array<{ id: number; pageviews: number }>
+  updates: Array<{ id: number; pageviews: number | null }>
 ): Promise<void> {
   await pool.query(
     `
