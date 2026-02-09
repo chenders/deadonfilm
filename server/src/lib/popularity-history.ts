@@ -49,7 +49,7 @@ export async function recordActorSnapshots(
       dof_popularity = EXCLUDED.dof_popularity,
       dof_popularity_confidence = EXCLUDED.dof_popularity_confidence,
       run_id = EXCLUDED.run_id,
-      created_at = NOW()
+      updated_at = NOW()
     `,
     [
       updates.map((u) => u.id),
@@ -88,7 +88,7 @@ export async function recordMovieSnapshots(
       dof_weight = EXCLUDED.dof_weight,
       dof_popularity_confidence = EXCLUDED.dof_popularity_confidence,
       run_id = EXCLUDED.run_id,
-      created_at = NOW()
+      updated_at = NOW()
     `,
     [
       updates.map((u) => u.id),
@@ -128,7 +128,7 @@ export async function recordShowSnapshots(
       dof_weight = EXCLUDED.dof_weight,
       dof_popularity_confidence = EXCLUDED.dof_popularity_confidence,
       run_id = EXCLUDED.run_id,
-      created_at = NOW()
+      updated_at = NOW()
     `,
     [
       updates.map((u) => u.id),

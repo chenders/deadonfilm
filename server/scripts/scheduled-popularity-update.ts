@@ -71,7 +71,7 @@ const program = new Command()
   .option("--actors", "Update actors only")
   .option("-b, --batch-size <n>", "Batch size for processing", parseInt, 1000)
   .option("-n, --dry-run", "Preview without updating database")
-  .option("-f, --force", "Bypass daily guard (for manual re-runs after algorithm changes)")
+  .option("-f, --force", "Allow re-run (placeholder for future daily guard)")
   .action(async (options) => {
     await run(options)
   })
