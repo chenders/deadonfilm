@@ -57,9 +57,14 @@ interface SparqlResult {
 
 /**
  * Execute a SPARQL query against Wikidata with retry logic.
+ *
+ * Throws on persistent errors (after retries exhausted) so callers can
+ * distinguish "query failed" from "entity not found on Wikidata".
  */
-async function executeSparqlQuery(query: string): Promise<SparqlResult | null> {
+async function executeSparqlQuery(query: string): Promise<SparqlResult> {
   await rateLimiter.waitForRateLimit()
+
+  let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -77,36 +82,29 @@ async function executeSparqlQuery(query: string): Promise<SparqlResult | null> {
         body: `query=${encodeURIComponent(query)}`,
       })
 
-      if (response.status === 429 && attempt < MAX_RETRIES) {
-        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
-        await new Promise((resolve) => setTimeout(resolve, delay))
-        continue
-      }
-
-      if (response.status >= 500 && attempt < MAX_RETRIES) {
+      if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+        lastError = new Error(`Wikidata SPARQL error: ${response.status}`)
         const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
         await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
 
       if (!response.ok) {
-        console.error(`Wikidata SPARQL error: ${response.status}`)
-        return null
+        throw new Error(`Wikidata SPARQL error: ${response.status}`)
       }
 
       return (await response.json()) as SparqlResult
     } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
       if (attempt < MAX_RETRIES) {
         const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
         await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
-      console.error("Wikidata SPARQL fetch error:", error)
-      return null
     }
   }
 
-  return null
+  throw lastError ?? new Error("Wikidata SPARQL: max retries exhausted")
 }
 
 /**
@@ -115,7 +113,8 @@ async function executeSparqlQuery(query: string): Promise<SparqlResult | null> {
  * Uses Wikidata property P4985 (TMDB person ID) to find the entity,
  * then counts the number of sitelinks (Wikipedia language editions).
  *
- * @returns Number of sitelinks, or null if not found/error
+ * @returns Number of sitelinks, or null if not found on Wikidata.
+ * @throws On network/HTTP errors after retries exhausted.
  */
 export async function fetchSitelinksByTmdbId(tmdbId: number): Promise<number | null> {
   const query = `
@@ -128,12 +127,12 @@ export async function fetchSitelinksByTmdbId(tmdbId: number): Promise<number | n
   `
 
   const result = await executeSparqlQuery(query)
-  if (!result) return null
-
   const bindings = result.results.bindings
   if (bindings.length === 0) return null
 
-  const sitelinks = parseInt(bindings[0].sitelinks?.value ?? "0", 10)
+  const sitelinksValue = bindings[0].sitelinks?.value
+  if (sitelinksValue == null) return null
+  const sitelinks = parseInt(sitelinksValue, 10)
   return isNaN(sitelinks) ? null : sitelinks
 }
 
@@ -143,7 +142,8 @@ export async function fetchSitelinksByTmdbId(tmdbId: number): Promise<number | n
  * Resolves the Wikipedia article to a Wikidata entity via the enwiki sitelink,
  * then counts total sitelinks.
  *
- * @returns Number of sitelinks, or null if not found/error
+ * @returns Number of sitelinks, or null if not found on Wikidata.
+ * @throws On network/HTTP errors after retries exhausted.
  */
 export async function fetchSitelinksByWikipediaUrl(wikipediaUrl: string): Promise<number | null> {
   const title = extractWikipediaTitle(wikipediaUrl)
@@ -163,12 +163,12 @@ export async function fetchSitelinksByWikipediaUrl(wikipediaUrl: string): Promis
   `
 
   const result = await executeSparqlQuery(query)
-  if (!result) return null
-
   const bindings = result.results.bindings
   if (bindings.length === 0) return null
 
-  const sitelinks = parseInt(bindings[0].sitelinks?.value ?? "0", 10)
+  const sitelinksValue = bindings[0].sitelinks?.value
+  if (sitelinksValue == null) return null
+  const sitelinks = parseInt(sitelinksValue, 10)
   return isNaN(sitelinks) ? null : sitelinks
 }
 
@@ -207,9 +207,14 @@ export async function fetchSitelinksBatch(tmdbIds: number[]): Promise<SitelinksB
       GROUP BY ?tmdbId
     `
 
-    const result = await executeSparqlQuery(query)
-    if (!result) {
-      console.error(`Wikidata batch query failed for ${chunk.length} TMDB IDs (skipping chunk)`)
+    let result: SparqlResult
+    try {
+      result = await executeSparqlQuery(query)
+    } catch (error) {
+      console.error(
+        `Wikidata batch query failed for ${chunk.length} TMDB IDs (skipping chunk):`,
+        error
+      )
       continue
     }
 
@@ -220,8 +225,11 @@ export async function fetchSitelinksBatch(tmdbIds: number[]): Promise<SitelinksB
 
     for (const binding of result.results.bindings) {
       const tmdbId = parseInt(binding.tmdbId?.value ?? "", 10)
-      const sitelinks = parseInt(binding.sitelinks?.value ?? "0", 10)
-      if (!isNaN(tmdbId) && !isNaN(sitelinks)) {
+      if (isNaN(tmdbId)) continue
+      const sitelinksValue = binding.sitelinks?.value
+      if (sitelinksValue == null) continue // skip malformed bindings
+      const sitelinks = parseInt(sitelinksValue, 10)
+      if (!isNaN(sitelinks)) {
         results.set(tmdbId, sitelinks)
       }
     }

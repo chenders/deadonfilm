@@ -45,7 +45,12 @@ const program = new Command()
   .name("backfill-wikidata-sitelinks")
   .description("Backfill Wikidata sitelinks count for actors")
   .option("-l, --limit <n>", "Limit number of actors to process", parsePositiveInt)
-  .option("-b, --batch-size <n>", "Batch size for SPARQL queries", parsePositiveInt, 500)
+  .option(
+    "-b, --batch-size <n>",
+    "Actors per processing iteration (SPARQL chunks internally to 100)",
+    parsePositiveInt,
+    500
+  )
   .option("-n, --dry-run", "Preview without writing to database")
   .option("--force", "Re-fetch even if already populated")
   .option("--actor-id <n>", "Process a single actor by ID", parsePositiveInt)

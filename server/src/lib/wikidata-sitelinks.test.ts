@@ -78,7 +78,7 @@ describe("fetchSitelinksByTmdbId", () => {
     expect(result).toBeNull()
   })
 
-  it("returns null on network error after retries", async () => {
+  it("throws on network error after retries", async () => {
     // All 4 attempts (initial + 3 retries) fail
     mockFetch
       .mockRejectedValueOnce(new Error("Network error"))
@@ -86,8 +86,20 @@ describe("fetchSitelinksByTmdbId", () => {
       .mockRejectedValueOnce(new Error("Network error"))
       .mockRejectedValueOnce(new Error("Network error"))
 
-    const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(500))
-    expect(result).toBeNull()
+    const promise = fetchSitelinksByTmdbId(500)
+    // Attach rejection handler immediately to prevent unhandled rejection warning
+    const resultPromise = promise.then(
+      () => {
+        throw new Error("Expected rejection")
+      },
+      (err) => err
+    )
+    for (let i = 0; i < 20; i++) {
+      await vi.advanceTimersByTimeAsync(10_000)
+    }
+    const error = await resultPromise
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toBe("Network error")
   })
 
   it("retries on 429 response", async () => {
@@ -114,21 +126,32 @@ describe("fetchSitelinksByTmdbId", () => {
     expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 
-  it("returns null after max retries exhausted on 429", async () => {
+  it("throws after max retries exhausted on 429", async () => {
     // 4 total calls: initial + 3 retries, all 429
     mockFetch.mockResolvedValue(errorResponse(429))
 
-    const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(500))
-    expect(result).toBeNull()
+    const promise = fetchSitelinksByTmdbId(500)
+    const resultPromise = promise.then(
+      () => {
+        throw new Error("Expected rejection")
+      },
+      (err) => err
+    )
+    for (let i = 0; i < 20; i++) {
+      await vi.advanceTimersByTimeAsync(10_000)
+    }
+    const error = await resultPromise
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toBe("Wikidata SPARQL error: 429")
     expect(mockFetch).toHaveBeenCalledTimes(4)
   })
 
-  it("returns 0 when sitelinks value is missing", async () => {
+  it("returns null when sitelinks value is missing", async () => {
     mockFetch.mockResolvedValueOnce(sparqlResponse([{ item: { value: "Q1" } }]))
 
     const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(500))
-    // Missing sitelinks property → parsed as "0"
-    expect(result).toBe(0)
+    // Missing sitelinks property → null (not 0, to avoid penalizing the actor)
+    expect(result).toBeNull()
   })
 })
 
