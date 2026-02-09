@@ -125,7 +125,7 @@ async function backfillMovies(
     const result = await pool.query(
       `
       SELECT tmdb_id, title, release_year, original_language,
-             omdb_box_office_cents::numeric as omdb_box_office_cents,
+             omdb_box_office_cents::float as omdb_box_office_cents,
              trakt_watchers, trakt_plays,
              omdb_imdb_votes, tmdb_popularity, production_countries,
              omdb_awards_wins, omdb_awards_nominations, aggregate_score

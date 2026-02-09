@@ -140,7 +140,7 @@ async function run(options: Options): Promise<void> {
         skipped++
         if (!options.dryRun) {
           await pool.query(
-            `UPDATE actors SET wikidata_sitelinks_updated_at = NOW() WHERE id = $1`,
+            `UPDATE actors SET wikidata_sitelinks = NULL, wikidata_sitelinks_updated_at = NOW() WHERE id = $1`,
             [actor.id]
           )
         }
