@@ -87,6 +87,8 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         aria-modal={isOpen || undefined}
         aria-hidden={!isOpen || undefined}
         aria-label="Site navigation"
+        // @ts-expect-error -- inert is a standard HTML attribute not yet in React 18 nav types
+        inert={!isOpen ? "" : undefined}
         className={`fixed right-0 top-0 z-50 h-full w-72 transform bg-brown-dark shadow-2xl transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}

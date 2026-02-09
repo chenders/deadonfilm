@@ -39,11 +39,20 @@ export default function SortControl({
         ))}
       </select>
       <button
+        type="button"
         data-testid={`${testId}-dir`}
         onClick={() => onDirChange(currentDir === "asc" ? "desc" : "asc")}
         className="rounded-lg border border-brown-medium/30 bg-surface-elevated px-2 py-1 text-xs text-brown-dark transition-colors hover:bg-cream focus:border-brown-medium focus:outline-none focus:ring-1 focus:ring-brown-medium"
-        title={currentDir === "asc" ? "Ascending order" : "Descending order"}
-        aria-label={currentDir === "asc" ? "Sort ascending" : "Sort descending"}
+        title={
+          currentDir === "asc"
+            ? "Currently sorted ascending. Activate to sort descending."
+            : "Currently sorted descending. Activate to sort ascending."
+        }
+        aria-label={
+          currentDir === "asc"
+            ? "Currently sorted ascending. Activate to sort descending."
+            : "Currently sorted descending. Activate to sort ascending."
+        }
       >
         {currentDir === "asc" ? "\u2191" : "\u2193"}
       </button>
