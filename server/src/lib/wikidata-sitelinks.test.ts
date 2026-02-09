@@ -222,9 +222,7 @@ describe("fetchSitelinksBatch", () => {
       sparqlResponse([{ tmdbId: { value: "500" }, sitelinks: { value: "85" } }])
     )
 
-    const { results, queriedIds } = await runWithFakeTimers(() =>
-      fetchSitelinksBatch([500, 99999])
-    )
+    const { results, queriedIds } = await runWithFakeTimers(() => fetchSitelinksBatch([500, 99999]))
     expect(results.size).toBe(1)
     expect(results.get(500)).toBe(85)
     expect(results.has(99999)).toBe(false)
@@ -240,9 +238,7 @@ describe("fetchSitelinksBatch", () => {
       .mockRejectedValueOnce(new Error("Network error"))
       .mockRejectedValueOnce(new Error("Network error"))
 
-    const { results, queriedIds } = await runWithFakeTimers(() =>
-      fetchSitelinksBatch([500, 6193])
-    )
+    const { results, queriedIds } = await runWithFakeTimers(() => fetchSitelinksBatch([500, 6193]))
     expect(results.size).toBe(0)
     // IDs should NOT be in queriedIds (chunk failed)
     expect(queriedIds.size).toBe(0)

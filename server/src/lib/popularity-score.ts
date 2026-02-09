@@ -185,7 +185,7 @@ const PERCENTILE_THRESHOLDS = {
 } as const
 
 // Hyperbolic decay rate for billing order (Proposal 04)
-// Produces: position 1→1.0, 2→0.87, 3→0.77, 5→0.63, 10→0.43, 15→0.32, 20→0.26
+// 0-based: position 0→1.0, 1→0.87, 2→0.77, 4→0.63, 9→0.43, 14→0.32, 19→0.26
 const BILLING_DECAY_RATE = 0.15
 
 // Default billing weight when billing order is unknown
