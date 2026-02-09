@@ -1,20 +1,25 @@
 /**
- * Prerender middleware for serving fully-rendered HTML to search engine crawlers.
+ * Prerender middleware for serving template-based HTML to search engine crawlers.
  *
  * When Nginx detects a bot user agent, it sets X-Prerender: 1 and proxies
- * the request to Express. This middleware checks Redis for cached HTML,
- * or calls the prerender service to render the page via headless Chrome.
+ * the request to Express. This middleware:
+ *   1. Checks Redis for cached HTML
+ *   2. Matches the URL against known frontend routes
+ *   3. Fetches minimal data from the database
+ *   4. Renders an HTML template with meta tags, OG/Twitter Cards, and JSON-LD
+ *   5. Caches the result in Redis
+ *
+ * On any error, serves fallback HTML with generic site metadata —
+ * strictly better than the empty SPA shell.
  */
 
 import type { Request, Response, NextFunction } from "express"
 import rateLimit from "express-rate-limit"
 import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
 import { logger } from "../lib/logger.js"
-
-const PRERENDER_SERVICE_URL = process.env.PRERENDER_SERVICE_URL || "http://prerender:3001"
-
-// Must exceed the renderer's worst-case time (10s goto + 10s waitForFunction = 20s)
-const PRERENDER_FETCH_TIMEOUT_MS = 25_000
+import { matchUrl } from "../lib/prerender/url-patterns.js"
+import { fetchPageData } from "../lib/prerender/data-fetchers.js"
+import { renderPrerenderHtml, renderFallbackHtml } from "../lib/prerender/renderer.js"
 
 /** Rate limit for prerender requests: 20 per minute per IP */
 const PRERENDER_RATE_LIMIT = 20
@@ -29,8 +34,8 @@ export const prerenderRateLimiter = rateLimit({
   skip: (req) => req.headers["x-prerender"] !== "1",
 })
 
-/** Paths that should never be prerendered */
-const SKIP_PATH_PREFIXES = ["/api", "/admin", "/health", "/sitemap", "/nr-browser.js"]
+/** Paths that should never be prerendered (trailing slash prevents matching e.g. "/assets-foo") */
+const SKIP_PATH_PREFIXES = ["/api/", "/admin", "/health", "/sitemap", "/nr-browser.js", "/assets/"]
 
 /** Paths with frequently changing content get shorter cache TTL */
 const DYNAMIC_PATH_PREFIXES = ["/death-watch", "/deaths", "/covid-deaths", "/unnatural-deaths"]
@@ -40,10 +45,17 @@ function shouldSkip(path: string): boolean {
 }
 
 function getTtl(path: string): number {
+  if (path === "/") return CACHE_TTL.PRERENDER_DYNAMIC // 1 hour for home page
   if (DYNAMIC_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))) {
     return CACHE_TTL.PRERENDER_DYNAMIC
   }
   return CACHE_TTL.PRERENDER
+}
+
+function sendHtml(res: Response, html: string, cacheHeader: string): void {
+  res.set("Content-Type", "text/html")
+  res.set("X-Prerender-Cache", cacheHeader)
+  res.send(html)
 }
 
 export async function prerenderMiddleware(
@@ -69,50 +81,65 @@ export async function prerenderMiddleware(
     return
   }
 
-  // Use originalUrl to preserve query parameters (e.g. ?page=2, ?includeObscure=true)
-  const urlForRender = req.originalUrl
-  const cacheKey = CACHE_KEYS.prerender(urlForRender).html
+  // Normalize path: strip trailing slash (except root) to match matchUrl() behavior
+  // and avoid duplicate cache entries for /path vs /path/
+  const normalizedPath = req.path.replace(/\/$/, "") || "/"
+
+  // Cache key uses normalized path only (not query string) because rendered HTML
+  // doesn't vary by query params — matchUrl() and fetchPageData() are path-based.
+  // This prevents Redis bloat from distinct ?page=N or ?q=... variants.
+  const cacheKey = CACHE_KEYS.prerender(normalizedPath).html
 
   try {
     // Check Redis cache first
     const cached = await getCached<string>(cacheKey)
     if (cached) {
-      res.set("Content-Type", "text/html")
-      res.set("X-Prerender-Cache", "HIT")
-      res.send(cached)
+      sendHtml(res, cached, "HIT")
       return
     }
 
-    // Cache miss — call prerender service
-    const renderUrl = `${PRERENDER_SERVICE_URL}/render?url=${encodeURIComponent(urlForRender)}`
-    const response = await fetch(renderUrl, {
-      signal: AbortSignal.timeout(PRERENDER_FETCH_TIMEOUT_MS),
+    // Match URL against known routes
+    const match = matchUrl(normalizedPath)
+    if (!match) {
+      // Unrecognized path — serve prerender fallback HTML directly to bots
+      const fallbackHtml = renderFallbackHtml(normalizedPath)
+      sendHtml(res, fallbackHtml, "FALLBACK")
+      return
+    }
+
+    // Fetch page data from database
+    const pageData = await fetchPageData(match)
+    if (!pageData) {
+      // Entity not found — return 404 so Nginx @spa_fallback serves index.html
+      res.status(404).send("")
+      return
+    }
+
+    // Render HTML
+    const html = renderPrerenderHtml(pageData)
+
+    // Cache the rendered HTML (fire-and-forget)
+    const ttl = getTtl(normalizedPath)
+    setCached(cacheKey, html, ttl).catch((err) => {
+      logger.warn(
+        { err: (err as Error).message, url: req.originalUrl },
+        "Failed to cache prerender"
+      )
     })
 
-    if (!response.ok) {
-      logger.warn(
-        { url: urlForRender, status: response.status },
-        "Prerender service returned non-OK status"
-      )
-      next()
-      return
-    }
-
-    const html = await response.text()
-
-    // Cache the rendered HTML
-    const ttl = getTtl(req.path)
-    await setCached(cacheKey, html, ttl)
-
-    res.set("Content-Type", "text/html")
-    res.set("X-Prerender-Cache", "MISS")
-    res.send(html)
+    sendHtml(res, html, "MISS")
   } catch (err) {
-    // On any failure, fall through — Nginx error_page will serve index.html
+    // On any error, serve fallback HTML — better than empty SPA shell
     logger.warn(
-      { err: (err as Error).message, url: urlForRender },
-      "Prerender failed, falling through"
+      { err: (err as Error).message, url: req.originalUrl },
+      "Prerender error, serving fallback"
     )
-    next()
+    try {
+      const fallbackHtml = renderFallbackHtml(normalizedPath)
+      sendHtml(res, fallbackHtml, "ERROR-FALLBACK")
+    } catch {
+      // If even fallback fails, let Nginx handle it
+      next()
+    }
   }
 }
