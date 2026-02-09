@@ -225,7 +225,7 @@ async function updateMoviePopularity(
       m.id,
       EXTRACT(YEAR FROM m.release_date)::int as release_year,
       m.tmdb_popularity::float as tmdb_popularity,
-      m.omdb_box_office_cents,
+      m.omdb_box_office_cents::numeric as omdb_box_office_cents,
       m.omdb_imdb_votes::int as omdb_imdb_votes,
       m.trakt_watchers::int as trakt_watchers,
       m.trakt_plays::int as trakt_plays,
