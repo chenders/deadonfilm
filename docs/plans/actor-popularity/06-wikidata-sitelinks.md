@@ -27,8 +27,8 @@ The project already has Wikidata SPARQL infrastructure (`server/src/lib/wikidata
 
 ```sparql
 SELECT ?person ?sitelinks WHERE {
-  ?person wdt:P31 wd:Q5 .         # Instance of human
-  ?person wdt:P646 ?freebaseId .   # Has Freebase ID (links to TMDB)
+  ?person wdt:P31 wd:Q5 .          # Instance of human
+  ?person wdt:P4985 ?tmdbPersonId . # Has TMDB person ID
   ?person wikibase:sitelinks ?sitelinks .
 }
 ```

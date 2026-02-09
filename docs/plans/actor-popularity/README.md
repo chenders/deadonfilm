@@ -160,7 +160,7 @@ Actor dof_popularity =
 - Simple averaging of top-10 contributions is dominated by the weakest of the 10, punishing actors with peaked but not broad careers
 - Billing order step function (1.0/0.7/0.4) creates artificial cliffs — a continuous decay function would be more accurate
 - The `×100` bug in the scheduled script is catastrophic — it makes TMDB the only meaningful signal
-- Non-English penalty is applied at content level (0.4×) and there's no double-application at actor level currently (initially suspected but confirmed not present in `popularity-score.ts` or `calculate-aggregate-scores.ts`)
+- Non-English penalty is applied at content level (0.4×) and there's no double-application at actor level currently (initially suspected but confirmed not present in `popularity-score.ts` or `server/src/lib/aggregate-score.ts`)
 - The content-level language penalty is still harsh — a single 0.4× multiplier treats Japanese blockbusters the same as obscure regional films
 
 **Top recommendations**: Exponentially-weighted positional scoring (P1), Reduce TMDB recency (P1), Smooth billing weights (P2)
