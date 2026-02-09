@@ -121,7 +121,7 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         <div className="overflow-y-auto px-4 py-4">
           {NAV_GROUPS.map((group) => (
             <div key={group.label} className="mb-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-cream/50">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-cream/70">
                 {group.label}
               </h3>
               <ul className="space-y-1">
