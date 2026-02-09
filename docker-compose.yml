@@ -233,11 +233,7 @@ services:
         labels: "service"
 
   prerender:
-    profiles:
-      - prerender
-    build:
-      context: .
-      dockerfile: Dockerfile.prerender
+    image: ghcr.io/chenders/deadonfilm-prerender:${IMAGE_TAG:-latest}
     container_name: deadonfilm-prerender
     restart: unless-stopped
     expose:
