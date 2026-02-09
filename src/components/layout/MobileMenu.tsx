@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { Link, useLocation } from "react-router-dom"
 
 interface MobileMenuProps {
@@ -34,9 +34,13 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const location = useLocation()
 
   // Close menu on route change
+  const prevPathname = useRef(location.pathname)
   useEffect(() => {
-    onClose()
-  }, [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (prevPathname.current !== location.pathname) {
+      prevPathname.current = location.pathname
+      if (isOpen) onClose()
+    }
+  }, [location.pathname, isOpen, onClose])
 
   // Lock body scroll when open
   useEffect(() => {
@@ -80,7 +84,8 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
       <nav
         data-testid="mobile-menu"
         role="dialog"
-        aria-modal="true"
+        aria-modal={isOpen || undefined}
+        aria-hidden={!isOpen || undefined}
         aria-label="Site navigation"
         className={`fixed right-0 top-0 z-50 h-full w-72 transform bg-brown-dark shadow-2xl transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"

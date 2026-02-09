@@ -179,7 +179,7 @@ export async function getForeverYoungMoviesPaginated(
      )
      SELECT COUNT(*) OVER() as total_count, *
      FROM forever_young_movies
-     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}
+     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, movie_tmdb_id ASC, actor_id ASC
      LIMIT $1 OFFSET $2`,
     [limit, offset]
   )
@@ -500,7 +500,7 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
      JOIN actor_appearances aa ON aa.id = actors.id
      WHERE ($3 = true OR is_obscure = false)
        AND ($4::text IS NULL OR actors.name ILIKE $4)
-     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, actors.name
+     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, actors.name, actors.id
      LIMIT $1 OFFSET $2`,
     [limit, offset, includeObscure, searchPattern]
   )
@@ -608,7 +608,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
       COUNT(*) OVER() as total_count
     FROM living_actors
     ${whereClause}
-    ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}${secondarySort}
+    ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}${secondarySort}, actor_id ASC
     LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
   `
 

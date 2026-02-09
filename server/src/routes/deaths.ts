@@ -283,8 +283,10 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
     const offset = (page - 1) * pageSize
     const includeObscure = req.query.includeObscure === "true"
     const search = (req.query.search as string) || undefined
-    const sort = (req.query.sort as string) || undefined
-    const dir = (req.query.dir as string) || undefined
+    // Normalize sort/dir to valid values to prevent cache key bloat
+    const validSorts = ["date", "name", "age"]
+    const sort = validSorts.includes(req.query.sort as string) ? (req.query.sort as string) : "date"
+    const dir = req.query.dir === "asc" ? "asc" : "desc"
 
     // Only cache if there's no search query (search results are too varied)
     const cacheKey = search

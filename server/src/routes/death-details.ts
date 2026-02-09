@@ -542,8 +542,10 @@ export async function getNotableDeaths(req: Request, res: Response) {
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string, 10) || 50))
     const filter = (req.query.filter as "all" | "strange" | "disputed" | "controversial") || "all"
     const includeObscure = req.query.includeObscure === "true"
-    const sort = (req.query.sort as string) || undefined
-    const dir = (req.query.dir as string) || undefined
+    // Normalize sort/dir to valid values to prevent cache key bloat
+    const validSorts = ["date", "name"]
+    const sort = validSorts.includes(req.query.sort as string) ? (req.query.sort as string) : "date"
+    const dir = req.query.dir === "asc" ? "asc" : "desc"
 
     // Validate filter
     if (!["all", "strange", "disputed", "controversial"].includes(filter)) {

@@ -558,6 +558,8 @@ describe("getForeverYoungMoviesHandler", () => {
     expect(db.getForeverYoungMoviesPaginated).toHaveBeenCalledWith({
       limit: 50,
       offset: 50, // page 2 = offset 50
+      sort: "years_lost",
+      dir: "desc",
     })
 
     // Rank should be based on global position
@@ -652,6 +654,8 @@ describe("getForeverYoungMoviesHandler", () => {
     expect(db.getForeverYoungMoviesPaginated).toHaveBeenCalledWith({
       limit: 50,
       offset: 0, // Should default to page 1
+      sort: "years_lost",
+      dir: "desc",
     })
   })
 
@@ -667,6 +671,8 @@ describe("getForeverYoungMoviesHandler", () => {
     expect(db.getForeverYoungMoviesPaginated).toHaveBeenCalledWith({
       limit: 50,
       offset: 0, // Should default to page 1
+      sort: "years_lost",
+      dir: "desc",
     })
   })
 })

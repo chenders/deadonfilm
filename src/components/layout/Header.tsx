@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import SkullLogo from "./SkullLogo"
 import ThemeToggle from "./ThemeToggle"
@@ -15,6 +15,7 @@ export default function Header() {
   const location = useLocation()
   const isHomePage = location.pathname === "/"
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), [])
 
   return (
     <>
@@ -93,9 +94,7 @@ export default function Header() {
       </header>
 
       {/* Mobile menu */}
-      {!isHomePage && (
-        <MobileMenu isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-      )}
+      {!isHomePage && <MobileMenu isOpen={mobileMenuOpen} onClose={closeMobileMenu} />}
     </>
   )
 }
