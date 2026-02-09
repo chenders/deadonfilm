@@ -503,5 +503,8 @@ function getCauseSpecificPageData(categorySlug: string, causeSlug: string): Prer
 
 function getArticlePageData(slug: string): PrerenderPageData {
   const label = slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  return getStaticPageData(label, `Read "${label}" on Dead on Film.`, `/articles/${slug}`)
+  return {
+    ...getStaticPageData(label, `Read "${label}" on Dead on Film.`, `/articles/${slug}`),
+    ogType: "article",
+  }
 }

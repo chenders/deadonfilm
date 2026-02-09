@@ -11,7 +11,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const ROOT_DIR = resolve(__dirname, "../../..")
+const ROOT_DIR = resolve(__dirname, "../../../..")
 
 function readProjectFile(relativePath: string): string {
   return readFileSync(resolve(ROOT_DIR, relativePath), "utf-8")

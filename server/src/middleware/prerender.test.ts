@@ -305,4 +305,47 @@ describe("prerenderMiddleware", () => {
     // since rendered HTML doesn't vary by query params
     expect(getCached).toHaveBeenCalledWith("prerender:path:/deaths/all")
   })
+
+  // ── Trailing slash normalization ──────────────────────────────
+
+  it("normalizes trailing slash in cache key and matchUrl", async () => {
+    vi.mocked(getCached).mockResolvedValue(null)
+    vi.mocked(matchUrl).mockReturnValue({ pageType: "actor", params: { actorId: "2157" } })
+    vi.mocked(fetchPageData).mockResolvedValue({
+      title: "John Wayne",
+      description: "John Wayne filmography",
+      ogType: "profile",
+      canonicalUrl: "https://deadonfilm.com/actor/john-wayne-2157",
+      heading: "John Wayne",
+    })
+    vi.mocked(renderPrerenderHtml).mockReturnValue("<html>actor</html>")
+
+    await prerenderMiddleware(
+      makeReq({ path: "/actor/john-wayne-2157/", originalUrl: "/actor/john-wayne-2157/" }),
+      res as Response,
+      next
+    )
+
+    // Trailing slash should be stripped for cache key and matchUrl
+    expect(getCached).toHaveBeenCalledWith("prerender:path:/actor/john-wayne-2157")
+    expect(matchUrl).toHaveBeenCalledWith("/actor/john-wayne-2157")
+  })
+
+  it("preserves root path as / when normalizing", async () => {
+    vi.mocked(getCached).mockResolvedValue(null)
+    vi.mocked(matchUrl).mockReturnValue({ pageType: "home", params: {} })
+    vi.mocked(fetchPageData).mockResolvedValue({
+      title: "Dead on Film",
+      description: "Movie cast mortality database",
+      ogType: "website",
+      canonicalUrl: "https://deadonfilm.com",
+      heading: "Dead on Film",
+    })
+    vi.mocked(renderPrerenderHtml).mockReturnValue("<html>home</html>")
+
+    await prerenderMiddleware(makeReq({ path: "/", originalUrl: "/" }), res as Response, next)
+
+    expect(getCached).toHaveBeenCalledWith("prerender:path:/")
+    expect(matchUrl).toHaveBeenCalledWith("/")
+  })
 })

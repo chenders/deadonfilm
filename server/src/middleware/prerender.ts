@@ -81,10 +81,14 @@ export async function prerenderMiddleware(
     return
   }
 
-  // Cache key uses path only (not query string) because rendered HTML doesn't
-  // vary by query params — matchUrl() and fetchPageData() are path-based.
+  // Normalize path: strip trailing slash (except root) to match matchUrl() behavior
+  // and avoid duplicate cache entries for /path vs /path/
+  const normalizedPath = req.path.replace(/\/$/, "") || "/"
+
+  // Cache key uses normalized path only (not query string) because rendered HTML
+  // doesn't vary by query params — matchUrl() and fetchPageData() are path-based.
   // This prevents Redis bloat from distinct ?page=N or ?q=... variants.
-  const cacheKey = CACHE_KEYS.prerender(req.path).html
+  const cacheKey = CACHE_KEYS.prerender(normalizedPath).html
 
   try {
     // Check Redis cache first
@@ -95,10 +99,10 @@ export async function prerenderMiddleware(
     }
 
     // Match URL against known routes
-    const match = matchUrl(req.path)
+    const match = matchUrl(normalizedPath)
     if (!match) {
       // Unrecognized path — serve prerender fallback HTML directly to bots
-      const fallbackHtml = renderFallbackHtml(req.path)
+      const fallbackHtml = renderFallbackHtml(normalizedPath)
       sendHtml(res, fallbackHtml, "FALLBACK")
       return
     }
@@ -115,7 +119,7 @@ export async function prerenderMiddleware(
     const html = renderPrerenderHtml(pageData)
 
     // Cache the rendered HTML (fire-and-forget)
-    const ttl = getTtl(req.path)
+    const ttl = getTtl(normalizedPath)
     setCached(cacheKey, html, ttl).catch((err) => {
       logger.warn(
         { err: (err as Error).message, url: req.originalUrl },
@@ -131,7 +135,7 @@ export async function prerenderMiddleware(
       "Prerender error, serving fallback"
     )
     try {
-      const fallbackHtml = renderFallbackHtml(req.path)
+      const fallbackHtml = renderFallbackHtml(normalizedPath)
       sendHtml(res, fallbackHtml, "ERROR-FALLBACK")
     } catch {
       // If even fallback fails, let Nginx handle it
