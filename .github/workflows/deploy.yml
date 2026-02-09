@@ -62,26 +62,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Extract prerender metadata
-        id: prerender_meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-prerender
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push prerender image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile.prerender
-          push: true
-          platforms: linux/amd64
-          tags: ${{ steps.prerender_meta.outputs.tags }}
-          cache-from: type=gha,scope=prerender
-          cache-to: type=gha,mode=max,scope=prerender
-
       - name: Deploy application
         run: |
           cd /opt/deadonfilm
@@ -117,8 +97,6 @@ jobs:
             docker compose logs nginx --tail=100
             echo "--- cron logs ---"
             docker compose logs cron --tail=50
-            echo "--- prerender logs ---"
-            docker compose logs prerender --tail=50 || true
             exit 1
           fi
 
