@@ -155,20 +155,23 @@ async function disambiguateByCoAppearances(
 ): Promise<number | null> {
   const candidateIds = candidates.map((c) => c.id)
 
+  // Count distinct shared content (movies + shows) between source actor and each candidate.
+  // For shows, we use DISTINCT show_tmdb_id to avoid inflated counts from episode-level rows
+  // (actor_show_appearances has one row per episode).
   const coAppearanceResult = await db.query<{ actor_id: number; shared_count: string }>(
-    `SELECT candidate_id AS actor_id, COUNT(*) AS shared_count FROM (
+    `SELECT candidate_id AS actor_id, COUNT(DISTINCT content_id) AS shared_count FROM (
        SELECT a2.actor_id AS candidate_id, a1.movie_tmdb_id AS content_id
        FROM actor_movie_appearances a1
        JOIN actor_movie_appearances a2 ON a1.movie_tmdb_id = a2.movie_tmdb_id
        WHERE a1.actor_id = $1 AND a2.actor_id = ANY($2)
        UNION ALL
-       SELECT a2.actor_id AS candidate_id, a1.show_tmdb_id AS content_id
+       SELECT DISTINCT a2.actor_id AS candidate_id, a1.show_tmdb_id AS content_id
        FROM actor_show_appearances a1
        JOIN actor_show_appearances a2 ON a1.show_tmdb_id = a2.show_tmdb_id
        WHERE a1.actor_id = $1 AND a2.actor_id = ANY($2)
      ) shared
      GROUP BY candidate_id
-     ORDER BY shared_count DESC`,
+     ORDER BY shared_count DESC, candidate_id`,
     [sourceActorId, candidateIds]
   )
 
@@ -176,9 +179,14 @@ async function disambiguateByCoAppearances(
     return null
   }
 
-  // Return the candidate with the most co-appearances
-  const bestMatchId = coAppearanceResult.rows[0].actor_id
-  const bestCandidate = candidates.find((c) => c.id === bestMatchId)
+  // Find the best match: most co-appearances, with popularity as tiebreaker.
+  // candidates array is already sorted by tmdb_popularity DESC NULLS LAST.
+  const topCount = coAppearanceResult.rows[0].shared_count
+  const tiedIds = new Set(
+    coAppearanceResult.rows.filter((r) => r.shared_count === topCount).map((r) => r.actor_id)
+  )
+  // Pick the first candidate (highest popularity) among those tied for most co-appearances
+  const bestCandidate = candidates.find((c) => tiedIds.has(c.id))
   return bestCandidate?.tmdb_id ?? null
 }
 

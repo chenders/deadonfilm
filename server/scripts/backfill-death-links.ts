@@ -213,21 +213,28 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
 
         // Process related_celebrities
         if (record.related_celebrities) {
-          // In relink mode, clear existing celebrity tmdb_ids so they get re-resolved
-          if (relink) {
-            for (const celebrity of record.related_celebrities) {
+          for (const celebrity of record.related_celebrities) {
+            // In relink mode, save existing tmdb_id, clear it for re-resolution,
+            // and restore original if lookup fails (prevents data loss)
+            const originalTmdbId = relink ? getCelebrityTmdbId(celebrity) : null
+            if (relink && originalTmdbId !== null) {
               celebrity.tmdb_id = null
               if ("tmdbId" in celebrity) {
                 ;(celebrity as RelatedCelebrity & { tmdbId?: number | null }).tmdbId = null
               }
             }
-          }
 
-          for (const celebrity of record.related_celebrities) {
             const linked = await processCelebrityWithLogging(db, celebrity, dryRun, record.actor_id)
             if (linked) {
               stats.celebritiesLinked++
               recordModified = true
+            } else if (relink && originalTmdbId !== null) {
+              // Restore original tmdb_id if re-lookup failed
+              celebrity.tmdb_id = originalTmdbId
+              if ("tmdbId" in celebrity) {
+                ;(celebrity as RelatedCelebrity & { tmdbId?: number | null }).tmdbId =
+                  originalTmdbId
+              }
             }
           }
         }
