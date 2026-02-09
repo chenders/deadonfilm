@@ -14,6 +14,7 @@
  *   npx tsx scripts/scheduled-popularity-update.ts --shows      # Shows only
  *   npx tsx scripts/scheduled-popularity-update.ts --actors     # Actors only
  *   npx tsx scripts/scheduled-popularity-update.ts --dry-run    # Preview
+ *   npx tsx scripts/scheduled-popularity-update.ts --force      # Bypass daily guard
  */
 
 import "dotenv/config"
@@ -23,20 +24,26 @@ import { startCronjobRun, completeCronjobRun } from "../src/lib/cronjob-tracking
 import {
   calculateMoviePopularity,
   calculateShowPopularity,
+  calculateActorPopularity,
   isUSUKProduction,
-  logPercentile,
+  ALGORITHM_VERSION,
   type EraReferenceStats,
   type ContentPopularityInput,
   type ShowPopularityInput,
+  type ActorAppearance,
 } from "../src/lib/popularity-score.js"
+import {
+  recordActorSnapshots,
+  recordMovieSnapshots,
+  recordShowSnapshots,
+  type ContentSnapshotUpdate,
+  type ActorSnapshotUpdate,
+} from "../src/lib/popularity-history.js"
 
 const JOB_NAME = "scheduled-popularity-update"
 
-// Constants for actor calculation
-const ACTOR_FILMOGRAPHY_WEIGHT = 0.7
-const ACTOR_TMDB_RECENCY_WEIGHT = 0.3
-const MIN_APPEARANCES_FULL_CONFIDENCE = 10
-const TMDB_POPULARITY_THRESHOLDS = { p25: 5, p50: 15, p75: 40, p90: 100, p99: 500 }
+// Batch size for filmography queries
+const ACTOR_FILMOGRAPHY_BATCH_SIZE = 500
 
 interface Options {
   movies?: boolean
@@ -44,6 +51,7 @@ interface Options {
   actors?: boolean
   batchSize: number
   dryRun?: boolean
+  force?: boolean
 }
 
 interface UpdateStats {
@@ -63,6 +71,7 @@ const program = new Command()
   .option("--actors", "Update actors only")
   .option("-b, --batch-size <n>", "Batch size for processing", parseInt, 1000)
   .option("-n, --dry-run", "Preview without updating database")
+  .option("-f, --force", "Bypass daily guard (for manual re-runs after algorithm changes)")
   .action(async (options) => {
     await run(options)
   })
@@ -84,13 +93,15 @@ async function run(options: Options): Promise<void> {
   const updateActors = options.actors || updateAll
 
   console.log("\n=== Scheduled DOF Popularity Update ===")
+  console.log(`Algorithm version: ${ALGORITHM_VERSION}`)
   console.log(`Started at: ${stats.startTime.toISOString()}`)
   if (options.dryRun) console.log("(DRY RUN - no changes will be made)")
+  if (options.force) console.log("(FORCE - bypassing daily guard)")
   console.log(
     `Updating: ${[updateMovies && "movies", updateShows && "shows", updateActors && "actors"].filter(Boolean).join(", ")}\n`
   )
 
-  let runId: number | undefined
+  let runId: number | null = null
 
   try {
     // Track the cronjob run
@@ -109,21 +120,21 @@ async function run(options: Options): Promise<void> {
     // Update movies
     if (updateMovies) {
       console.log("=== Updating Movie Popularity ===")
-      stats.moviesUpdated = await updateMoviePopularity(pool, eraMap, options)
+      stats.moviesUpdated = await updateMoviePopularity(pool, eraMap, options, runId)
       console.log(`Movies updated: ${stats.moviesUpdated}\n`)
     }
 
     // Update shows
     if (updateShows) {
       console.log("=== Updating Show Popularity ===")
-      stats.showsUpdated = await updateShowPopularity(pool, eraMap, options)
+      stats.showsUpdated = await updateShowPopularity(pool, eraMap, options, runId)
       console.log(`Shows updated: ${stats.showsUpdated}\n`)
     }
 
     // Update actors (after content, since actor scores depend on content scores)
     if (updateActors) {
       console.log("=== Updating Actor Popularity ===")
-      stats.actorsUpdated = await updateActorPopularity(pool, options)
+      stats.actorsUpdated = await updateActorPopularity(pool, options, runId)
       console.log(`Actors updated: ${stats.actorsUpdated}\n`)
     }
 
@@ -180,7 +191,8 @@ interface MovieRow {
 async function updateMoviePopularity(
   pool: ReturnType<typeof getPool>,
   eraMap: Map<number, EraReferenceStats>,
-  options: Options
+  options: Options,
+  runId: number | null
 ): Promise<number> {
   const batchSize = options.batchSize
 
@@ -208,7 +220,7 @@ async function updateMoviePopularity(
   console.log(`Processing ${movieResult.rows.length} movies...`)
 
   let updated = 0
-  const updates: { id: number; popularity: number; weight: number; confidence: number }[] = []
+  const updates: ContentSnapshotUpdate[] = []
 
   for (const movie of movieResult.rows) {
     const era = movie.release_year ? (eraMap.get(movie.release_year) ?? null) : null
@@ -245,6 +257,7 @@ async function updateMoviePopularity(
     if (updates.length >= batchSize) {
       if (!options.dryRun) {
         await batchUpdateMovies(pool, updates)
+        await recordMovieSnapshots(pool, updates, ALGORITHM_VERSION, runId)
       }
       updated += updates.length
       process.stdout.write(`\rUpdated ${updated} movies...`)
@@ -256,6 +269,7 @@ async function updateMoviePopularity(
   if (updates.length > 0) {
     if (!options.dryRun) {
       await batchUpdateMovies(pool, updates)
+      await recordMovieSnapshots(pool, updates, ALGORITHM_VERSION, runId)
     }
     updated += updates.length
   }
@@ -266,7 +280,7 @@ async function updateMoviePopularity(
 
 async function batchUpdateMovies(
   pool: ReturnType<typeof getPool>,
-  updates: { id: number; popularity: number; weight: number; confidence: number }[]
+  updates: ContentSnapshotUpdate[]
 ): Promise<void> {
   await pool.query(
     `
@@ -309,7 +323,8 @@ interface ShowRow {
 async function updateShowPopularity(
   pool: ReturnType<typeof getPool>,
   eraMap: Map<number, EraReferenceStats>,
-  options: Options
+  options: Options,
+  runId: number | null
 ): Promise<number> {
   const batchSize = options.batchSize
 
@@ -334,7 +349,7 @@ async function updateShowPopularity(
   console.log(`Processing ${showResult.rows.length} shows...`)
 
   let updated = 0
-  const updates: { id: number; popularity: number; weight: number; confidence: number }[] = []
+  const updates: ContentSnapshotUpdate[] = []
 
   for (const show of showResult.rows) {
     const era = show.release_year ? (eraMap.get(show.release_year) ?? null) : null
@@ -372,6 +387,7 @@ async function updateShowPopularity(
     if (updates.length >= batchSize) {
       if (!options.dryRun) {
         await batchUpdateShows(pool, updates)
+        await recordShowSnapshots(pool, updates, ALGORITHM_VERSION, runId)
       }
       updated += updates.length
       process.stdout.write(`\rUpdated ${updated} shows...`)
@@ -382,6 +398,7 @@ async function updateShowPopularity(
   if (updates.length > 0) {
     if (!options.dryRun) {
       await batchUpdateShows(pool, updates)
+      await recordShowSnapshots(pool, updates, ALGORITHM_VERSION, runId)
     }
     updated += updates.length
   }
@@ -392,7 +409,7 @@ async function updateShowPopularity(
 
 async function batchUpdateShows(
   pool: ReturnType<typeof getPool>,
-  updates: { id: number; popularity: number; weight: number; confidence: number }[]
+  updates: ContentSnapshotUpdate[]
 ): Promise<void> {
   await pool.query(
     `
@@ -420,129 +437,147 @@ async function batchUpdateShows(
 
 async function updateActorPopularity(
   pool: ReturnType<typeof getPool>,
-  options: Options
+  options: Options,
+  runId: number | null
 ): Promise<number> {
   const batchSize = options.batchSize
 
-  // Efficient SQL aggregation for all actors
-  interface ActorAggregatedData {
-    actor_id: number
-    tmdb_popularity: string | null
-    filmography_sum: string | null
-    filmography_count: string | null
-  }
-
-  const result = await pool.query<ActorAggregatedData>(`
-    WITH movie_contributions AS (
-      SELECT
-        ama.actor_id,
-        SUM(
-          (COALESCE(m.dof_popularity, 0) * 0.6 + COALESCE(m.dof_weight, 0) * 0.4)
-          *
-          CASE
-            WHEN ama.billing_order IS NULL THEN 0.4
-            WHEN ama.billing_order <= 3 THEN 1.0
-            WHEN ama.billing_order <= 10 THEN 0.7
-            ELSE 0.4
-          END
-        ) as contribution,
-        COUNT(*) as appearance_count
-      FROM actor_movie_appearances ama
-      JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-      WHERE m.dof_popularity IS NOT NULL
-      GROUP BY ama.actor_id
-    ),
-    show_contributions_per_show AS (
-      SELECT
-        asa.actor_id,
-        asa.show_tmdb_id,
-        (COALESCE(s.dof_popularity, 0) * 0.6 + COALESCE(s.dof_weight, 0) * 0.4)
-        *
-        CASE
-          WHEN MIN(asa.billing_order) IS NULL THEN 0.4
-          WHEN MIN(asa.billing_order) <= 3 THEN 1.0
-          WHEN MIN(asa.billing_order) <= 10 THEN 0.7
-          ELSE 0.4
-        END
-        *
-        LEAST(1.0, COUNT(*)::float / 20.0) as contribution
-      FROM actor_show_appearances asa
-      JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
-      WHERE s.dof_popularity IS NOT NULL
-      GROUP BY asa.actor_id, asa.show_tmdb_id, s.dof_popularity, s.dof_weight
-    ),
-    show_contributions AS (
-      SELECT
-        actor_id,
-        SUM(contribution) as contribution,
-        COUNT(*) as appearance_count
-      FROM show_contributions_per_show
-      GROUP BY actor_id
-    ),
-    combined AS (
-      SELECT
-        a.id as actor_id,
-        a.tmdb_popularity,
-        COALESCE(mc.contribution, 0) + COALESCE(sc.contribution, 0) as filmography_sum,
-        COALESCE(mc.appearance_count, 0) + COALESCE(sc.appearance_count, 0) as filmography_count
-      FROM actors a
-      LEFT JOIN movie_contributions mc ON mc.actor_id = a.id
-      LEFT JOIN show_contributions sc ON sc.actor_id = a.id
-      WHERE a.deathday IS NOT NULL
-        AND (mc.contribution IS NOT NULL OR sc.contribution IS NOT NULL)
-    )
-    SELECT actor_id, tmdb_popularity::text, filmography_sum::text, filmography_count::text
-    FROM combined
-    ORDER BY actor_id
+  // Get all deceased actors with TMDB popularity
+  const actorsResult = await pool.query<{
+    id: number
+    tmdb_popularity: number | null
+  }>(`
+    SELECT id, tmdb_popularity
+    FROM actors
+    WHERE deathday IS NOT NULL
+    ORDER BY id
   `)
 
-  console.log(`Processing ${result.rows.length} actors...`)
+  console.log(`Processing ${actorsResult.rows.length} actors...`)
 
   let updated = 0
-  const updates: { id: number; popularity: number; confidence: number }[] = []
+  const allUpdates: ActorSnapshotUpdate[] = []
 
-  for (const row of result.rows) {
-    const filmographySum = parseFloat(row.filmography_sum || "0")
-    const filmographyCount = parseInt(row.filmography_count || "0", 10)
-    const tmdbPopularity = row.tmdb_popularity ? parseFloat(row.tmdb_popularity) : 0
+  // Process actors in batches for filmography queries
+  for (let i = 0; i < actorsResult.rows.length; i += ACTOR_FILMOGRAPHY_BATCH_SIZE) {
+    const batch = actorsResult.rows.slice(i, i + ACTOR_FILMOGRAPHY_BATCH_SIZE)
+    const actorIds = batch.map((a) => a.id)
 
-    if (filmographyCount === 0) continue
+    // Fetch filmography for entire batch in 2 parallel queries
+    const [movieRows, showRows] = await Promise.all([
+      pool.query<{
+        actor_id: number
+        dof_popularity: number | null
+        dof_weight: number | null
+        billing_order: number | null
+      }>(
+        `
+        SELECT
+          ama.actor_id,
+          m.dof_popularity,
+          m.dof_weight,
+          ama.billing_order
+        FROM actor_movie_appearances ama
+        JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
+        WHERE ama.actor_id = ANY($1)
+        `,
+        [actorIds]
+      ),
+      pool.query<{
+        actor_id: number
+        dof_popularity: number | null
+        dof_weight: number | null
+        min_billing_order: number | null
+        episode_count: number
+      }>(
+        `
+        SELECT
+          asa.actor_id,
+          s.dof_popularity,
+          s.dof_weight,
+          MIN(asa.billing_order) as min_billing_order,
+          COUNT(*) as episode_count
+        FROM actor_show_appearances asa
+        JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
+        WHERE asa.actor_id = ANY($1)
+        GROUP BY asa.actor_id, s.tmdb_id, s.dof_popularity, s.dof_weight
+        `,
+        [actorIds]
+      ),
+    ])
 
-    // Normalize filmography contribution
-    const normalizedFilmography = Math.min(filmographySum / 10, 100)
+    // Group filmography by actor_id
+    const filmographyMap = new Map<number, ActorAppearance[]>()
 
-    // Calculate TMDB recency component (default to 0 if null)
-    const tmdbPercentile = logPercentile(tmdbPopularity, TMDB_POPULARITY_THRESHOLDS)
-    const tmdbComponent = (tmdbPercentile ?? 0) * 100
-
-    // Weighted combination
-    const popularity =
-      normalizedFilmography * ACTOR_FILMOGRAPHY_WEIGHT + tmdbComponent * ACTOR_TMDB_RECENCY_WEIGHT
-
-    // Confidence based on appearance count
-    const confidence = Math.min(1.0, filmographyCount / MIN_APPEARANCES_FULL_CONFIDENCE)
-
-    updates.push({
-      id: row.actor_id,
-      popularity: Math.min(100, Math.max(0, popularity)),
-      confidence,
-    })
-
-    if (updates.length >= batchSize) {
-      if (!options.dryRun) {
-        await batchUpdateActors(pool, updates)
+    for (const row of movieRows.rows) {
+      if (!filmographyMap.has(row.actor_id)) {
+        filmographyMap.set(row.actor_id, [])
       }
-      updated += updates.length
+      filmographyMap.get(row.actor_id)!.push({
+        contentDofPopularity: row.dof_popularity,
+        contentDofWeight: row.dof_weight,
+        billingOrder: row.billing_order,
+        episodeCount: null,
+        isMovie: true,
+      })
+    }
+
+    for (const row of showRows.rows) {
+      if (!filmographyMap.has(row.actor_id)) {
+        filmographyMap.set(row.actor_id, [])
+      }
+      filmographyMap.get(row.actor_id)!.push({
+        contentDofPopularity: row.dof_popularity,
+        contentDofWeight: row.dof_weight,
+        billingOrder: row.min_billing_order,
+        episodeCount: Number(row.episode_count),
+        isMovie: false,
+      })
+    }
+
+    // Calculate popularity for each actor in batch
+    const batchUpdates: ActorSnapshotUpdate[] = []
+
+    for (const actor of batch) {
+      const appearances = filmographyMap.get(actor.id) ?? []
+      if (appearances.length === 0) continue
+
+      const result = calculateActorPopularity({
+        appearances,
+        tmdbPopularity: actor.tmdb_popularity,
+      })
+
+      if (result.dofPopularity !== null) {
+        batchUpdates.push({
+          id: actor.id,
+          popularity: result.dofPopularity,
+          confidence: result.confidence,
+        })
+      }
+    }
+
+    // Write batch to database
+    if (batchUpdates.length > 0) {
+      if (!options.dryRun) {
+        await batchUpdateActors(pool, batchUpdates)
+      }
+      allUpdates.push(...batchUpdates)
+      updated += batchUpdates.length
       process.stdout.write(`\rUpdated ${updated} actors...`)
-      updates.length = 0
+    }
+
+    // Record snapshots in chunks matching the main batchSize
+    if (allUpdates.length >= batchSize) {
+      if (!options.dryRun) {
+        await recordActorSnapshots(pool, allUpdates, ALGORITHM_VERSION, runId)
+      }
+      allUpdates.length = 0
     }
   }
 
-  if (updates.length > 0) {
-    if (!options.dryRun) {
-      await batchUpdateActors(pool, updates)
-    }
-    updated += updates.length
+  // Final snapshot batch
+  if (allUpdates.length > 0 && !options.dryRun) {
+    await recordActorSnapshots(pool, allUpdates, ALGORITHM_VERSION, runId)
   }
 
   console.log(`\rUpdated ${updated} actors    `)
@@ -551,7 +586,7 @@ async function updateActorPopularity(
 
 async function batchUpdateActors(
   pool: ReturnType<typeof getPool>,
-  updates: { id: number; popularity: number; confidence: number }[]
+  updates: ActorSnapshotUpdate[]
 ): Promise<void> {
   await pool.query(
     `
