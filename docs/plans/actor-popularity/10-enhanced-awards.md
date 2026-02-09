@@ -24,9 +24,11 @@ The content-level awards signal (`calculateAwardsScore`) counts wins and nominat
 
 Wikidata stores award data for actors. Major awards can be queried:
 
+**Wins** (P166 = "award received"):
+
 ```sparql
 SELECT ?person ?award ?awardLabel WHERE {
-  ?person wdt:P166 ?award .  # P166 = "award received"
+  ?person wdt:P166 ?award .
   VALUES ?award {
     wd:Q103916    # Academy Award for Best Actor
     wd:Q103618    # Academy Award for Best Actress
@@ -40,6 +42,23 @@ SELECT ?person ?award ?awardLabel WHERE {
     wd:Q1011548   # Golden Globe Award for Best Actress - Drama
     # ... additional major awards
   }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}
+```
+
+**Nominations** (P1411 = "nominated for"):
+
+```sparql
+SELECT ?person ?award ?awardLabel WHERE {
+  ?person wdt:P1411 ?award .
+  VALUES ?award {
+    wd:Q103916    # Academy Award for Best Actor
+    wd:Q103618    # Academy Award for Best Actress
+    wd:Q106301    # Academy Award for Best Supporting Actor
+    wd:Q106291    # Academy Award for Best Supporting Actress
+    # ... same award categories as above
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
 }
 ```
 
