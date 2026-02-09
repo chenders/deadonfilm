@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import SkullLogo from "./SkullLogo"
 import ThemeToggle from "./ThemeToggle"
@@ -16,6 +16,11 @@ export default function Header() {
   const isHomePage = location.pathname === "/"
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), [])
+
+  // Close mobile menu when navigating to home (MobileMenu unmounts on /, so its effect won't run)
+  useEffect(() => {
+    if (isHomePage) setMobileMenuOpen(false)
+  }, [isHomePage])
 
   return (
     <>

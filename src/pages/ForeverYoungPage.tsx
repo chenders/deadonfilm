@@ -143,8 +143,10 @@ export default function ForeverYoungPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
-  const sort = searchParams.get("sort") || "years_lost"
-  const dir = (searchParams.get("dir") || "desc") as "asc" | "desc"
+  const validSorts = ["years_lost", "name"]
+  const rawSort = searchParams.get("sort")
+  const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "years_lost"
+  const dir = searchParams.get("dir") === "asc" ? "asc" : "desc"
 
   const { data, isLoading, error } = useForeverYoung(page, sort, dir)
 

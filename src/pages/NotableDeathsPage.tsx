@@ -120,8 +120,10 @@ export default function NotableDeathsPage() {
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const filter = (searchParams.get("filter") as NotableDeathsFilter) || "all"
   const includeObscure = searchParams.get("includeObscure") === "true"
-  const sort = searchParams.get("sort") || "date"
-  const dir = (searchParams.get("dir") || "desc") as "asc" | "desc"
+  const validSorts = ["date", "name"]
+  const rawSort = searchParams.get("sort")
+  const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "date"
+  const dir = searchParams.get("dir") === "asc" ? "asc" : "desc"
 
   const { data, isLoading, error } = useNotableDeaths({ page, filter, includeObscure, sort, dir })
 

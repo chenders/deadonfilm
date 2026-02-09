@@ -114,8 +114,10 @@ export default function AllDeathsPage() {
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const includeObscure = searchParams.get("includeObscure") === "true"
-  const sort = searchParams.get("sort") || "date"
-  const dir = (searchParams.get("dir") || "desc") as "asc" | "desc"
+  const validSorts = ["date", "name", "age"]
+  const rawSort = searchParams.get("sort")
+  const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "date"
+  const dir = searchParams.get("dir") === "asc" ? "asc" : "desc"
 
   // Debounced search with URL sync
   const [searchInput, setSearchInput, searchQuery] = useDebouncedSearchParam()
