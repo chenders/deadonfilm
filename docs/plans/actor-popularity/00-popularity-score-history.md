@@ -174,7 +174,7 @@ LIMIT 12;
 ### Detect dramatic score shifts (drift monitoring)
 
 ```sql
--- Actors whose score changed by more than 20 points between two consecutive runs
+-- Actors whose score changed by more than 20 points between consecutive snapshots
 WITH ranked AS (
   SELECT
     actor_id,
@@ -215,14 +215,14 @@ The existing scheduled popularity update runs weekly. Every run should:
 1. Calculate scores for all entities using the current `ALGORITHM_VERSION`
 2. Write updated scores to the entity tables (actors, movies, shows) — existing behavior
 3. **New**: Insert snapshot rows into the history tables using `INSERT ... ON CONFLICT DO UPDATE` (upsert on the unique constraint)
-4. **New**: Skip snapshot recording if the proposed `--dry-run` flag is specified
+4. **New**: Skip snapshot recording when `--dry-run` is specified (flag already supported by the script)
 
 ### 2. On-demand recalculation after algorithm changes (proposed)
 
-The script currently has no daily-run guard or `--force`/`--dry-run` flags. This proposal adds them:
+The script already supports `--dry-run` but has no daily-run guard or `--force` flag. This proposal adds:
 
-- **`--force`**: Bypass a new "already ran today" guard so the script can be re-run manually after deploying algorithm changes
-- **`--dry-run`**: Calculate scores and log results without writing to entity tables or history tables
+- **`--force`** (proposed): Bypass a new "already ran today" guard so the script can be re-run manually after deploying algorithm changes
+- **`--dry-run`** (existing): Calculate scores and log results without writing to entity tables — extend to also skip history table writes
 
 When a PR changes the scoring algorithm:
 
@@ -329,6 +329,6 @@ Maintain a simple version log in code comments or in this document:
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | Migration fails in production | Low | Medium | Standard migration testing; tables are additive (no schema changes to existing tables) |
-| History tables grow too large | Very Low | Low | ~500 MB/year; add retention policy if needed in 2+ years |
+| History tables grow too large | Very Low | Low | Upper bound ~2 GB/year; add retention policy if needed in 2+ years |
 | Forgetting to bump version | Medium | Low | PR checklist; CI could lint for version changes when scoring files are modified |
 | Snapshot insert slows cron run | Low | Low | Batch inserts; upsert is efficient with the unique index |
