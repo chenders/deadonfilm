@@ -63,7 +63,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Extract prerender metadata
-        id: prerender-meta
+        id: prerender_meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-prerender
@@ -78,7 +78,7 @@ jobs:
           file: Dockerfile.prerender
           push: true
           platforms: linux/amd64
-          tags: ${{ steps.prerender-meta.outputs.tags }}
+          tags: ${{ steps.prerender_meta.outputs.tags }}
           cache-from: type=gha,scope=prerender
           cache-to: type=gha,mode=max,scope=prerender
 

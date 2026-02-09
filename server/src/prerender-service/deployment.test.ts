@@ -75,9 +75,12 @@ describe("prerender deployment configuration", () => {
 
   describe("deploy.yml workflow", () => {
     const deployContent = readProjectFile(".github/workflows/deploy.yml")
-    const deploy = parseYaml(deployContent)
-    const job = deploy.jobs["build-and-deploy"]
-    const steps = job.steps
+    const deploy = parseYaml(deployContent) as Record<string, any>
+    const job = deploy.jobs?.["build-and-deploy"]
+    if (!job) {
+      throw new Error('Expected "build-and-deploy" job in deploy.yml')
+    }
+    const steps = job.steps as Array<Record<string, any>>
 
     function findStepByName(stepName: string): Record<string, unknown> {
       const step = steps.find((s: Record<string, unknown>) => s.name === stepName)
