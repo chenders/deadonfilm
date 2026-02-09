@@ -181,7 +181,9 @@ async function run(options: Options): Promise<void> {
             try {
               sitelinks = await fetchSitelinksByWikipediaUrl(actor.wikipedia_url)
             } catch {
-              // ignore fallback errors
+              // Skip this actor on fallback error to avoid poisoning updated_at
+              failed++
+              continue
             }
           }
 
@@ -250,7 +252,7 @@ async function batchUpdateSitelinks(
   await pool.query(
     `
     UPDATE actors a SET
-      wikidata_sitelinks = COALESCE(u.sitelinks, a.wikidata_sitelinks),
+      wikidata_sitelinks = u.sitelinks,
       wikidata_sitelinks_updated_at = NOW()
     FROM (
       SELECT unnest($1::int[]) as id,

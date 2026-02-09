@@ -775,8 +775,13 @@ async function refreshWikidataSitelinks(
       if (sitelinks === null && actor.wikipedia_url) {
         try {
           sitelinks = await fetchSitelinksByWikipediaUrl(actor.wikipedia_url)
-        } catch {
-          // ignore fallback errors
+        } catch (error) {
+          // Skip this actor on fallback error to avoid poisoning updated_at
+          console.error(
+            `Error fetching sitelinks via Wikipedia URL for actor ${actor.id} (skipping):`,
+            error
+          )
+          continue
         }
       }
 
@@ -814,7 +819,7 @@ async function batchUpdateWikidataSitelinks(
   await pool.query(
     `
     UPDATE actors a SET
-      wikidata_sitelinks = COALESCE(u.sitelinks, a.wikidata_sitelinks),
+      wikidata_sitelinks = u.sitelinks,
       wikidata_sitelinks_updated_at = NOW()
     FROM (
       SELECT unnest($1::int[]) as id,

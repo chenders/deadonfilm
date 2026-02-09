@@ -262,8 +262,10 @@ function extractWikipediaTitle(url: string): string | null {
 
 /**
  * Escape a string for use in SPARQL queries.
- * Handles backslashes and double quotes.
+ * Strips control characters and escapes backslashes and double quotes.
  */
 function escapeSparqlString(str: string): string {
-  return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  // eslint-disable-next-line no-control-regex
+  const CONTROL_CHARS = /[\x00-\x1F\x7F]/g
+  return str.replace(CONTROL_CHARS, " ").replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 }
