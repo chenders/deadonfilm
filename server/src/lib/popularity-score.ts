@@ -19,8 +19,9 @@
  * Version history:
  * 1.0 - Initial algorithm baseline
  * 1.1 - Fix scheduled job bugs (×100 TMDB, sum-all vs top-10, normalization)
+ * 2.0 - Weighted positional scoring, reduce TMDB weight 30%→15%, add Wikipedia pageviews 15%
  */
-export const ALGORITHM_VERSION = "1.1"
+export const ALGORITHM_VERSION = "2.0"
 
 // ============================================================================
 // Types
@@ -83,6 +84,8 @@ export interface ActorPopularityInput {
   appearances: ActorAppearance[]
   // Actor's TMDB popularity for recency signal
   tmdbPopularity: number | null
+  // Wikipedia annual pageviews as a fame signal
+  wikipediaAnnualPageviews: number | null
 }
 
 export interface ActorAppearance {
@@ -154,6 +157,13 @@ const PERCENTILE_THRESHOLDS = {
     p90: 100,
     p99: 500,
   },
+  wikipediaAnnualPageviews: {
+    p25: 10_000,
+    p50: 50_000,
+    p75: 200_000,
+    p90: 1_000_000,
+    p99: 10_000_000,
+  },
   boxOfficeCents: {
     // In 2024 dollars
     p25: 1_000_000_00, // $1M
@@ -183,7 +193,13 @@ const MAX_APPEARANCES_FOR_SCORE = 10
 
 // Actor score composition
 const ACTOR_FILMOGRAPHY_WEIGHT = 0.7
-const ACTOR_TMDB_RECENCY_WEIGHT = 0.3
+const ACTOR_TMDB_RECENCY_WEIGHT = 0.15
+const ACTOR_WIKIPEDIA_WEIGHT = 0.15
+
+// Exponential decay factor for weighted positional scoring (Proposal 02)
+// Each successive top-N contribution is worth 85% of the previous one,
+// emphasizing peak career over consistent-but-flat careers.
+const POSITIONAL_DECAY = 0.85
 
 // Current reference year for era adjustments
 const REFERENCE_YEAR = 2024
@@ -199,6 +215,29 @@ const NON_ENGLISH_PENALTY_MULTIPLIER = 0.4
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * Weighted positional average with exponential decay.
+ *
+ * Given a sorted (descending) array of contributions, applies exponential
+ * decay so that the top contribution matters most and each subsequent one
+ * matters 85% as much as the previous. This rewards peaked careers over
+ * flat ones (the "Tom Cruise Problem").
+ *
+ * For uniform contributions, this produces the same result as a simple average.
+ */
+export function weightedPositionalAverage(contributions: number[]): number {
+  if (contributions.length === 0) return 0
+
+  let weightedSum = 0
+  let totalWeight = 0
+  for (let i = 0; i < contributions.length; i++) {
+    const weight = Math.pow(POSITIONAL_DECAY, i)
+    weightedSum += contributions[i] * weight
+    totalWeight += weight
+  }
+  return weightedSum / totalWeight
+}
 
 /**
  * Calculate log-percentile position for a value
@@ -600,7 +639,7 @@ function calculateContentWeight(
  * for having many minor roles alongside their major work.
  */
 export function calculateActorPopularity(input: ActorPopularityInput): ActorPopularityResult {
-  const { appearances, tmdbPopularity } = input
+  const { appearances, tmdbPopularity, wikipediaAnnualPageviews } = input
 
   if (appearances.length === 0) {
     return { dofPopularity: null, confidence: 0 }
@@ -637,18 +676,30 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
   contributions.sort((a, b) => b - a)
   const topContributions = contributions.slice(0, MAX_APPEARANCES_FOR_SCORE)
 
-  // Average the top contributions
-  const filmographySum = topContributions.reduce((sum, c) => sum + c, 0)
-  const filmographyScore = filmographySum / topContributions.length
+  // Weighted positional average: top contributions matter more (Proposal 02)
+  const filmographyScore = weightedPositionalAverage(topContributions)
 
-  // Add TMDB popularity for recency
-  let finalScore: number
+  // Blend filmography with supplementary signals using weight normalization.
+  // When a signal is missing (null), its weight is excluded and remaining
+  // weights are normalized so the score isn't penalized for missing data.
+  let totalWeight = ACTOR_FILMOGRAPHY_WEIGHT
+  let finalScore = filmographyScore * ACTOR_FILMOGRAPHY_WEIGHT
+
   if (tmdbPopularity !== null) {
     const tmdbScore = logPercentile(tmdbPopularity, PERCENTILE_THRESHOLDS.tmdbPopularity) ?? 0
-    finalScore = filmographyScore * ACTOR_FILMOGRAPHY_WEIGHT + tmdbScore * ACTOR_TMDB_RECENCY_WEIGHT
-  } else {
-    finalScore = filmographyScore
+    finalScore += tmdbScore * ACTOR_TMDB_RECENCY_WEIGHT
+    totalWeight += ACTOR_TMDB_RECENCY_WEIGHT
   }
+
+  if (wikipediaAnnualPageviews !== null) {
+    const wikiScore =
+      logPercentile(wikipediaAnnualPageviews, PERCENTILE_THRESHOLDS.wikipediaAnnualPageviews) ?? 0
+    finalScore += wikiScore * ACTOR_WIKIPEDIA_WEIGHT
+    totalWeight += ACTOR_WIKIPEDIA_WEIGHT
+  }
+
+  // Normalize to account for missing signals
+  finalScore = finalScore / totalWeight
 
   // Calculate confidence based on appearance count
   const confidence = Math.min(1.0, contributions.length / MIN_APPEARANCES_FULL_CONFIDENCE)
