@@ -6,7 +6,9 @@
  * actors with articles in many languages are more globally recognized.
  *
  * SPARQL endpoint: https://query.wikidata.org/sparql
- * Rate limit: No formal limit, but Wikidata asks for ~1 req/s for non-batch
+ * Rate limit: No formal limit; we use 100ms minimum delay between requests
+ *   since our queries are lightweight (single ID lookups or small batches).
+ *   Wikidata's ~1 req/s guidance is for heavy/complex queries.
  * Auth: None required, but User-Agent header is mandatory per Wikidata policy
  */
 

@@ -2,7 +2,7 @@
  * Tests for Wikidata Sitelinks API Client
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   fetchSitelinksByTmdbId,
   fetchSitelinksByWikipediaUrl,
@@ -30,8 +30,27 @@ function errorResponse(status: number) {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers()
   mockFetch.mockReset()
 })
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+/**
+ * Helper to run an async function that uses setTimeout-based retries/rate limiting
+ * with fake timers. Starts the operation, then repeatedly advances timers until it resolves.
+ */
+async function runWithFakeTimers<T>(fn: () => Promise<T>): Promise<T> {
+  const promise = fn()
+  // Advance all pending timers (rate limiter delays, retry backoffs)
+  // Loop because each timer advancement may queue new timers
+  for (let i = 0; i < 20; i++) {
+    await vi.advanceTimersByTimeAsync(10_000)
+  }
+  return promise
+}
 
 describe("fetchSitelinksByTmdbId", () => {
   it("returns sitelinks count for a valid TMDB ID", async () => {
@@ -44,7 +63,7 @@ describe("fetchSitelinksByTmdbId", () => {
       ])
     )
 
-    const result = await fetchSitelinksByTmdbId(500)
+    const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(500))
     expect(result).toBe(85)
     expect(mockFetch).toHaveBeenCalledOnce()
     const body = mockFetch.mock.calls[0][1]?.body as string
@@ -55,7 +74,7 @@ describe("fetchSitelinksByTmdbId", () => {
   it("returns null when no results found", async () => {
     mockFetch.mockResolvedValueOnce(sparqlResponse([]))
 
-    const result = await fetchSitelinksByTmdbId(99999999)
+    const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(99999999))
     expect(result).toBeNull()
   })
 
@@ -67,9 +86,9 @@ describe("fetchSitelinksByTmdbId", () => {
       .mockRejectedValueOnce(new Error("Network error"))
       .mockRejectedValueOnce(new Error("Network error"))
 
-    const result = await fetchSitelinksByTmdbId(500)
+    const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(500))
     expect(result).toBeNull()
-  }, 30_000)
+  })
 
   it("retries on 429 response", async () => {
     mockFetch
@@ -78,10 +97,10 @@ describe("fetchSitelinksByTmdbId", () => {
         sparqlResponse([{ item: { value: "Q1" }, sitelinks: { value: "42" } }])
       )
 
-    const result = await fetchSitelinksByTmdbId(500)
+    const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(500))
     expect(result).toBe(42)
     expect(mockFetch).toHaveBeenCalledTimes(2)
-  }, 30_000)
+  })
 
   it("retries on 500 response", async () => {
     mockFetch
@@ -90,24 +109,24 @@ describe("fetchSitelinksByTmdbId", () => {
         sparqlResponse([{ item: { value: "Q1" }, sitelinks: { value: "30" } }])
       )
 
-    const result = await fetchSitelinksByTmdbId(500)
+    const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(500))
     expect(result).toBe(30)
     expect(mockFetch).toHaveBeenCalledTimes(2)
-  }, 30_000)
+  })
 
   it("returns null after max retries exhausted on 429", async () => {
     // 4 total calls: initial + 3 retries, all 429
     mockFetch.mockResolvedValue(errorResponse(429))
 
-    const result = await fetchSitelinksByTmdbId(500)
+    const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(500))
     expect(result).toBeNull()
     expect(mockFetch).toHaveBeenCalledTimes(4)
-  }, 30_000)
+  })
 
   it("returns 0 when sitelinks value is missing", async () => {
     mockFetch.mockResolvedValueOnce(sparqlResponse([{ item: { value: "Q1" } }]))
 
-    const result = await fetchSitelinksByTmdbId(500)
+    const result = await runWithFakeTimers(() => fetchSitelinksByTmdbId(500))
     // Missing sitelinks property → parsed as "0"
     expect(result).toBe(0)
   })
@@ -124,7 +143,9 @@ describe("fetchSitelinksByWikipediaUrl", () => {
       ])
     )
 
-    const result = await fetchSitelinksByWikipediaUrl("https://en.wikipedia.org/wiki/Tom_Cruise")
+    const result = await runWithFakeTimers(() =>
+      fetchSitelinksByWikipediaUrl("https://en.wikipedia.org/wiki/Tom_Cruise")
+    )
     expect(result).toBe(85)
     // Body URL-encodes the query which includes name with spaces (Tom_Cruise → Tom Cruise → Tom%20Cruise)
     const body = mockFetch.mock.calls[0][1]?.body as string
@@ -136,24 +157,28 @@ describe("fetchSitelinksByWikipediaUrl", () => {
       sparqlResponse([{ item: { value: "Q1" }, sitelinks: { value: "50" } }])
     )
 
-    const result = await fetchSitelinksByWikipediaUrl("https://en.m.wikipedia.org/wiki/Tom_Cruise")
+    const result = await runWithFakeTimers(() =>
+      fetchSitelinksByWikipediaUrl("https://en.m.wikipedia.org/wiki/Tom_Cruise")
+    )
     expect(result).toBe(50)
   })
 
   it("returns null for non-English Wikipedia URLs", async () => {
-    const result = await fetchSitelinksByWikipediaUrl("https://fr.wikipedia.org/wiki/Tom_Cruise")
+    const result = await runWithFakeTimers(() =>
+      fetchSitelinksByWikipediaUrl("https://fr.wikipedia.org/wiki/Tom_Cruise")
+    )
     expect(result).toBeNull()
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it("returns null for invalid URLs", async () => {
-    const result = await fetchSitelinksByWikipediaUrl("not-a-url")
+    const result = await runWithFakeTimers(() => fetchSitelinksByWikipediaUrl("not-a-url"))
     expect(result).toBeNull()
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
   it("returns null for empty URL", async () => {
-    const result = await fetchSitelinksByWikipediaUrl("")
+    const result = await runWithFakeTimers(() => fetchSitelinksByWikipediaUrl(""))
     expect(result).toBeNull()
     expect(mockFetch).not.toHaveBeenCalled()
   })
@@ -169,7 +194,7 @@ describe("fetchSitelinksBatch", () => {
       ])
     )
 
-    const result = await fetchSitelinksBatch([500, 6193, 192])
+    const result = await runWithFakeTimers(() => fetchSitelinksBatch([500, 6193, 192]))
     expect(result.size).toBe(3)
     expect(result.get(500)).toBe(85)
     expect(result.get(6193)).toBe(72)
@@ -179,7 +204,7 @@ describe("fetchSitelinksBatch", () => {
   it("returns empty map when no results", async () => {
     mockFetch.mockResolvedValueOnce(sparqlResponse([]))
 
-    const result = await fetchSitelinksBatch([99999])
+    const result = await runWithFakeTimers(() => fetchSitelinksBatch([99999]))
     expect(result.size).toBe(0)
   })
 
@@ -188,7 +213,7 @@ describe("fetchSitelinksBatch", () => {
       sparqlResponse([{ tmdbId: { value: "500" }, sitelinks: { value: "85" } }])
     )
 
-    const result = await fetchSitelinksBatch([500, 99999])
+    const result = await runWithFakeTimers(() => fetchSitelinksBatch([500, 99999]))
     expect(result.size).toBe(1)
     expect(result.get(500)).toBe(85)
     expect(result.has(99999)).toBe(false)
@@ -201,12 +226,12 @@ describe("fetchSitelinksBatch", () => {
       .mockRejectedValueOnce(new Error("Network error"))
       .mockRejectedValueOnce(new Error("Network error"))
 
-    const result = await fetchSitelinksBatch([500, 6193])
+    const result = await runWithFakeTimers(() => fetchSitelinksBatch([500, 6193]))
     expect(result.size).toBe(0)
-  }, 30_000)
+  })
 
   it("handles empty input array", async () => {
-    const result = await fetchSitelinksBatch([])
+    const result = await runWithFakeTimers(() => fetchSitelinksBatch([]))
     expect(result.size).toBe(0)
     expect(mockFetch).not.toHaveBeenCalled()
   })

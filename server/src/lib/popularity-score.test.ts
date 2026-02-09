@@ -233,32 +233,38 @@ describe("calculateAwardsScore", () => {
 })
 
 describe("getBillingWeight", () => {
-  it("returns 1.0 for position 1 (lead)", () => {
-    expect(getBillingWeight(1)).toBeCloseTo(1.0, 5)
+  it("returns exactly 1.0 for position 0 (lead, 0-based)", () => {
+    expect(getBillingWeight(0)).toBeCloseTo(1.0, 5)
   })
 
-  it("returns smooth decay for increasing positions", () => {
+  it("never exceeds 1.0 for any position", () => {
+    // billing_order is 0-based; position 0 should be the maximum (1.0)
+    expect(getBillingWeight(0)).toBeLessThanOrEqual(1.0)
+    expect(getBillingWeight(1)).toBeLessThan(1.0)
+  })
+
+  it("returns smooth decay for increasing positions (0-based)", () => {
+    const pos0 = getBillingWeight(0)
     const pos1 = getBillingWeight(1)
     const pos2 = getBillingWeight(2)
-    const pos3 = getBillingWeight(3)
-    const pos5 = getBillingWeight(5)
-    const pos10 = getBillingWeight(10)
-    const pos15 = getBillingWeight(15)
-    const pos20 = getBillingWeight(20)
+    const pos4 = getBillingWeight(4)
+    const pos9 = getBillingWeight(9)
+    const pos14 = getBillingWeight(14)
+    const pos19 = getBillingWeight(19)
 
     // Values decrease monotonically
+    expect(pos0).toBeGreaterThan(pos1)
     expect(pos1).toBeGreaterThan(pos2)
-    expect(pos2).toBeGreaterThan(pos3)
-    expect(pos3).toBeGreaterThan(pos5)
-    expect(pos5).toBeGreaterThan(pos10)
-    expect(pos10).toBeGreaterThan(pos15)
-    expect(pos15).toBeGreaterThan(pos20)
+    expect(pos2).toBeGreaterThan(pos4)
+    expect(pos4).toBeGreaterThan(pos9)
+    expect(pos9).toBeGreaterThan(pos14)
+    expect(pos14).toBeGreaterThan(pos19)
 
-    // Verify specific hyperbolic decay values: 1/(1 + 0.15*(n-1))
-    expect(pos2).toBeCloseTo(1.0 / (1 + 0.15 * 1), 5) // ~0.87
-    expect(pos3).toBeCloseTo(1.0 / (1 + 0.15 * 2), 5) // ~0.77
-    expect(pos5).toBeCloseTo(1.0 / (1 + 0.15 * 4), 5) // ~0.625
-    expect(pos10).toBeCloseTo(1.0 / (1 + 0.15 * 9), 5) // ~0.426
+    // Verify specific hyperbolic decay values: 1/(1 + 0.15*n) where n is 0-based
+    expect(pos1).toBeCloseTo(1.0 / (1 + 0.15 * 1), 5) // ~0.87
+    expect(pos2).toBeCloseTo(1.0 / (1 + 0.15 * 2), 5) // ~0.77
+    expect(pos4).toBeCloseTo(1.0 / (1 + 0.15 * 4), 5) // ~0.625
+    expect(pos9).toBeCloseTo(1.0 / (1 + 0.15 * 9), 5) // ~0.426
   })
 
   it("returns 0.3 for null billing order", () => {
@@ -268,7 +274,7 @@ describe("getBillingWeight", () => {
   it("never reaches zero for any reasonable position", () => {
     // Even billing position 100 should produce a positive weight
     expect(getBillingWeight(100)).toBeGreaterThan(0)
-    expect(getBillingWeight(100)).toBeCloseTo(1.0 / (1 + 0.15 * 99), 5)
+    expect(getBillingWeight(100)).toBeCloseTo(1.0 / (1 + 0.15 * 100), 5)
   })
 })
 
@@ -542,7 +548,7 @@ describe("calculateActorPopularity", () => {
           {
             contentDofPopularity: 80,
             contentDofWeight: 70,
-            billingOrder: 1,
+            billingOrder: 0,
             episodeCount: null,
             isMovie: true,
           },
@@ -568,7 +574,7 @@ describe("calculateActorPopularity", () => {
           {
             contentDofPopularity: 70,
             contentDofWeight: 60,
-            billingOrder: 1,
+            billingOrder: 0,
             episodeCount: null,
             isMovie: true,
           },
@@ -598,7 +604,7 @@ describe("calculateActorPopularity", () => {
           {
             contentDofPopularity: 70,
             contentDofWeight: 60,
-            billingOrder: 1,
+            billingOrder: 0,
             episodeCount: 5,
             isMovie: false,
           },
@@ -611,7 +617,7 @@ describe("calculateActorPopularity", () => {
           {
             contentDofPopularity: 70,
             contentDofWeight: 60,
-            billingOrder: 1,
+            billingOrder: 0,
             episodeCount: 50,
             isMovie: false,
           },
@@ -628,7 +634,7 @@ describe("calculateActorPopularity", () => {
           {
             contentDofPopularity: 70,
             contentDofWeight: 60,
-            billingOrder: 1,
+            billingOrder: 0,
             episodeCount: null,
             isMovie: true,
           },
@@ -640,7 +646,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(15).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -678,7 +684,7 @@ describe("calculateActorPopularity", () => {
           ...Array(10).fill({
             contentDofPopularity: 85,
             contentDofWeight: 75,
-            billingOrder: 1,
+            billingOrder: 0,
             episodeCount: null,
             isMovie: true,
           }),
@@ -702,7 +708,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(10).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -715,7 +721,7 @@ describe("calculateActorPopularity", () => {
           ...Array(10).fill({
             contentDofPopularity: 70,
             contentDofWeight: 60,
-            billingOrder: 1,
+            billingOrder: 0,
             episodeCount: null,
             isMovie: true,
           }),
@@ -740,7 +746,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 80,
           contentDofWeight: 70,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -753,7 +759,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 80,
           contentDofWeight: 70,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -776,7 +782,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -789,7 +795,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -807,7 +813,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -821,7 +827,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -844,7 +850,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -857,7 +863,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -875,7 +881,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -889,7 +895,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -913,7 +919,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 80,
           contentDofWeight: 70,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -935,7 +941,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(5).fill({
           contentDofPopularity: 70,
           contentDofWeight: 60,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),
@@ -947,7 +953,7 @@ describe("calculateActorPopularity", () => {
     expect(result.dofPopularity).not.toBeNull()
     expect(result.dofPopularity!).toBeGreaterThan(0)
 
-    // contentScore = 70*0.6 + 60*0.4 = 66, billingWeight=1.0, episodeWeight=1.0
+    // contentScore = 70*0.6 + 60*0.4 = 66, billingWeight=1.0 (position 0), episodeWeight=1.0
     // All 5 contributions are identical (66)
     // Peak: avg of top 3 = 66
     // Breadth: weighted positional avg of all 5 = 66 (uniform)
@@ -965,14 +971,14 @@ describe("calculateActorPopularity", () => {
           {
             contentDofPopularity: 95,
             contentDofWeight: 90,
-            billingOrder: 1,
+            billingOrder: 0,
             episodeCount: null,
             isMovie: true,
           },
           ...Array(9).fill({
             contentDofPopularity: 30,
             contentDofWeight: 25,
-            billingOrder: 1,
+            billingOrder: 0,
             episodeCount: null,
             isMovie: true,
           }),
@@ -987,7 +993,7 @@ describe("calculateActorPopularity", () => {
         appearances: Array(10).fill({
           contentDofPopularity: 40,
           contentDofWeight: 35,
-          billingOrder: 1,
+          billingOrder: 0,
           episodeCount: null,
           isMovie: true,
         }),

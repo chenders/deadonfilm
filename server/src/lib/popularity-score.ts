@@ -428,12 +428,13 @@ export function calculateAwardsScore(wins: number | null, nominations: number | 
 /**
  * Get billing weight using hyperbolic decay (Proposal 04).
  *
- * Produces smooth decay: position 1→1.0, 2→0.87, 3→0.77, 5→0.63, etc.
+ * billing_order is 0-based (0 = lead, stored from array index during ingestion).
+ * Produces smooth decay: position 0→1.0, 1→0.87, 2→0.77, 4→0.63, etc.
  * Unknown billing order (null) returns BILLING_NULL_WEIGHT (0.3).
  */
 export function getBillingWeight(billingOrder: number | null): number {
   if (billingOrder === null) return BILLING_NULL_WEIGHT
-  return 1.0 / (1 + BILLING_DECAY_RATE * (billingOrder - 1))
+  return 1.0 / (1 + BILLING_DECAY_RATE * Math.max(0, billingOrder))
 }
 
 /**

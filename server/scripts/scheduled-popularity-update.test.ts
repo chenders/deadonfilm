@@ -14,14 +14,14 @@ describe("scheduled-popularity-update actor calculation", () => {
       {
         contentDofPopularity: 80,
         contentDofWeight: 70,
-        billingOrder: 1,
+        billingOrder: 0,
         episodeCount: null,
         isMovie: true,
       },
       {
         contentDofPopularity: 60,
         contentDofWeight: 50,
-        billingOrder: 5,
+        billingOrder: 4,
         episodeCount: null,
         isMovie: true,
       },
