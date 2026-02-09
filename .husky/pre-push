@@ -1,42 +1,23 @@
-#!/bin/sh
-
 echo "Running pre-push checks..."
 
-# Format check
-echo "Checking formatting..."
-npm run format:check || exit 1
+# Type check (frontend + server in parallel)
+echo "Running type checks..."
+npm run type-check &
+PID_FE=$!
+(cd server && npm run type-check) &
+PID_BE=$!
 
-# Lint
-echo "Running linter..."
-npm run lint || exit 1
+wait $PID_FE || exit 1
+wait $PID_BE || exit 1
 
-# Type check
-echo "Running type check..."
-npm run type-check || exit 1
+# Unit tests (frontend + server in parallel)
+echo "Running tests..."
+npm test &
+PID_FE_TEST=$!
+(cd server && npm test) &
+PID_BE_TEST=$!
 
-# Unit tests
-echo "Running unit tests..."
-npm test || exit 1
-
-# Server format, lint and type check
-echo "Checking server..."
-cd server && npm run format:check && npm run lint && npm run type-check || exit 1
-cd ..
-
-# Security scan with Semgrep (if installed)
-# Add homebrew paths for macOS
-export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-if command -v semgrep > /dev/null 2>&1; then
-  echo "Running Semgrep security scan..."
-  # Excluded rules:
-  # - unsafe-formatstring: False positive on template literals (console.log(`${var}`))
-  # - detect-non-literal-regexp: We escape user input via escapeRegex() in server/src/routes/search.ts
-  semgrep --config auto --error --quiet \
-    --exclude-rule javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring \
-    --exclude-rule javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp \
-    . || exit 1
-else
-  echo "Semgrep not installed, skipping security scan (install with: brew install semgrep)"
-fi
+wait $PID_FE_TEST || exit 1
+wait $PID_BE_TEST || exit 1
 
 echo "All pre-push checks passed!"

@@ -7,8 +7,10 @@ import { Queue } from "bullmq"
 import { setupBullBoard } from "./bull-board.js"
 import { getRedisJobsClient } from "./redis.js"
 
+const hasRedis = !!process.env.REDIS_JOBS_URL
+
 describe("setupBullBoard", () => {
-  describe("with Redis queues", () => {
+  describe.skipIf(!hasRedis)("with Redis queues", () => {
     let testQueue: Queue
 
     beforeEach(async () => {
