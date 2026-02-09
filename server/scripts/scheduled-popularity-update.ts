@@ -14,7 +14,7 @@
  *   npx tsx scripts/scheduled-popularity-update.ts --shows      # Shows only
  *   npx tsx scripts/scheduled-popularity-update.ts --actors     # Actors only
  *   npx tsx scripts/scheduled-popularity-update.ts --dry-run    # Preview
- *   npx tsx scripts/scheduled-popularity-update.ts --force      # Bypass daily guard
+ *   npx tsx scripts/scheduled-popularity-update.ts --force      # Allow manual re-run after algorithm changes
  */
 
 import "dotenv/config"
@@ -96,7 +96,7 @@ async function run(options: Options): Promise<void> {
   console.log(`Algorithm version: ${ALGORITHM_VERSION}`)
   console.log(`Started at: ${stats.startTime.toISOString()}`)
   if (options.dryRun) console.log("(DRY RUN - no changes will be made)")
-  if (options.force) console.log("(FORCE - bypassing daily guard)")
+  if (options.force) console.log("(FORCE - manual re-run after algorithm change)")
   console.log(
     `Updating: ${[updateMovies && "movies", updateShows && "shows", updateActors && "actors"].filter(Boolean).join(", ")}\n`
   )
@@ -474,8 +474,8 @@ async function updateActorPopularity(
         `
         SELECT
           ama.actor_id,
-          m.dof_popularity,
-          m.dof_weight,
+          m.dof_popularity::float,
+          m.dof_weight::float,
           ama.billing_order
         FROM actor_movie_appearances ama
         JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
@@ -493,10 +493,10 @@ async function updateActorPopularity(
         `
         SELECT
           asa.actor_id,
-          s.dof_popularity,
-          s.dof_weight,
+          s.dof_popularity::float,
+          s.dof_weight::float,
           MIN(asa.billing_order) as min_billing_order,
-          COUNT(*) as episode_count
+          COUNT(*)::int as episode_count
         FROM actor_show_appearances asa
         JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
         WHERE asa.actor_id = ANY($1)
