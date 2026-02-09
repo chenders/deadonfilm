@@ -1,3 +1,5 @@
+import { useId } from "react"
+
 interface SortOption {
   value: string
   label: string
@@ -20,13 +22,15 @@ export default function SortControl({
   onDirChange,
   testId = "sort-control",
 }: SortControlProps) {
+  const selectId = useId()
+
   return (
     <div data-testid={testId} className="flex items-center gap-2">
-      <label htmlFor={`${testId}-select`} className="text-xs text-text-muted">
+      <label htmlFor={selectId} className="text-xs text-text-muted">
         Sort by
       </label>
       <select
-        id={`${testId}-select`}
+        id={selectId}
         data-testid={`${testId}-select`}
         value={currentSort}
         onChange={(e) => onSortChange(e.target.value)}

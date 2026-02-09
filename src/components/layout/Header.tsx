@@ -72,9 +72,9 @@ export default function Header() {
             {!isHomePage && (
               <button
                 data-testid="hamburger-button"
-                onClick={() => setMobileMenuOpen(true)}
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
                 className="rounded-lg p-2 text-brown-dark/70 transition-colors hover:bg-brown-medium/10 hover:text-brown-dark md:hidden"
-                aria-label="Open navigation menu"
+                aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
                 aria-expanded={mobileMenuOpen}
               >
                 <svg
