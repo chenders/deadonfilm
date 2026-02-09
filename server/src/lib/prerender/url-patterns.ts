@@ -56,19 +56,22 @@ function extractTrailingId(slug: string): string | null {
  * Parse episode slug format: {showSlug}-s{N}e{N}-{episodeSlug}-{showTmdbId}
  * Example: "breaking-bad-s1e1-pilot-1396"
  *
- * Uses an anchored regex to avoid mis-parsing when the show slug itself
- * contains a "-s{N}e{N}-" substring — the season/episode marker is tied
- * to the trailing show TMDB ID.
+ * Uses the last -s{N}e{N}- match to handle show slugs that may contain
+ * a similar substring. Extracts trailing TMDB ID separately.
  */
 function parseEpisodeSlug(
   slug: string
 ): { showTmdbId: string; season: string; episode: string } | null {
-  // Anchored regex: captures season/episode marker tied to trailing TMDB ID
-  // Format: {showSlug}-s{season}e{episode}-{episodeSlug}-{showTmdbId}
-  const match = slug.match(/^.+-s(\d+)e(\d+)-.+-(\d+)$/)
-  if (!match) return null
+  const showTmdbId = extractTrailingId(slug)
+  if (!showTmdbId) return null
 
-  return { showTmdbId: match[3], season: match[1], episode: match[2] }
+  // Find all -sNeN- markers and use the last one to correctly handle
+  // show slugs that themselves contain a -s{N}e{N}- substring
+  const matches = [...slug.matchAll(/-s(\d+)e(\d+)-/g)]
+  if (matches.length === 0) return null
+
+  const lastMatch = matches[matches.length - 1]
+  return { showTmdbId, season: lastMatch[1], episode: lastMatch[2] }
 }
 
 /** Static pages (exact matches) — defined at module level to avoid per-call allocation */
