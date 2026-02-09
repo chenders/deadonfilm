@@ -73,32 +73,113 @@ export async function lookupProject(
 }
 
 /**
- * Look up an actor by name.
- * Returns the tmdb_id if found, null otherwise.
+ * Look up an actor by name, with optional disambiguation using co-appearance data.
+ *
+ * When multiple actors share the same name, prefers the one who co-appeared
+ * with the source actor (via shared movie/show appearances). Falls back to
+ * highest TMDB popularity as a tiebreaker.
+ *
+ * @param sourceActorId - The actor whose death page we're linking from.
+ *   Used to disambiguate duplicate names via co-appearance data.
  */
-export async function lookupActor(db: Pool | PoolClient, name: string): Promise<number | null> {
-  // Exact match first
-  const exactResult = await db.query<{ tmdb_id: number }>(
-    `SELECT tmdb_id FROM actors WHERE LOWER(name) = LOWER($1) AND tmdb_id IS NOT NULL LIMIT 1`,
-    [name]
-  )
-  if (exactResult.rows.length > 0) {
-    return exactResult.rows[0].tmdb_id
+export async function lookupActor(
+  db: Pool | PoolClient,
+  name: string,
+  sourceActorId?: number
+): Promise<number | null> {
+  // Try exact name match
+  const result = await findActorByName(db, name, sourceActorId)
+  if (result !== null) {
+    return result
   }
 
   // Try without middle names/initials (e.g., "John Q. Public" -> "John Public")
   const simplifiedName = name.replace(/\s+[A-Z]\.?\s+/g, " ").trim()
   if (simplifiedName !== name) {
-    const simplifiedResult = await db.query<{ tmdb_id: number }>(
-      `SELECT tmdb_id FROM actors WHERE LOWER(name) = LOWER($1) AND tmdb_id IS NOT NULL LIMIT 1`,
-      [simplifiedName]
-    )
-    if (simplifiedResult.rows.length > 0) {
-      return simplifiedResult.rows[0].tmdb_id
-    }
+    return findActorByName(db, simplifiedName, sourceActorId)
   }
 
   return null
+}
+
+interface ActorCandidate {
+  id: number
+  tmdb_id: number
+  tmdb_popularity: number | null
+}
+
+/**
+ * Find an actor by exact name match, disambiguating when multiple matches exist.
+ */
+async function findActorByName(
+  db: Pool | PoolClient,
+  name: string,
+  sourceActorId?: number
+): Promise<number | null> {
+  const candidates = await db.query<ActorCandidate>(
+    `SELECT id, tmdb_id, tmdb_popularity FROM actors
+     WHERE LOWER(name) = LOWER($1) AND tmdb_id IS NOT NULL
+     ORDER BY tmdb_popularity DESC NULLS LAST`,
+    [name]
+  )
+
+  if (candidates.rows.length === 0) {
+    return null
+  }
+
+  // Single match - no disambiguation needed
+  if (candidates.rows.length === 1) {
+    return candidates.rows[0].tmdb_id
+  }
+
+  // Multiple matches - try co-appearance disambiguation
+  if (sourceActorId !== undefined) {
+    const disambiguated = await disambiguateByCoAppearances(db, candidates.rows, sourceActorId)
+    if (disambiguated !== null) {
+      return disambiguated
+    }
+  }
+
+  // Fallback: highest popularity (already sorted DESC NULLS LAST)
+  return candidates.rows[0].tmdb_id
+}
+
+/**
+ * Disambiguate between multiple actor candidates using shared movie/show appearances.
+ * Returns the tmdb_id of the best match, or null if no candidates have co-appearances.
+ */
+async function disambiguateByCoAppearances(
+  db: Pool | PoolClient,
+  candidates: ActorCandidate[],
+  sourceActorId: number
+): Promise<number | null> {
+  const candidateIds = candidates.map((c) => c.id)
+
+  const coAppearanceResult = await db.query<{ actor_id: number; shared_count: string }>(
+    `SELECT candidate_id AS actor_id, COUNT(*) AS shared_count FROM (
+       SELECT a2.actor_id AS candidate_id, a1.movie_tmdb_id AS content_id
+       FROM actor_movie_appearances a1
+       JOIN actor_movie_appearances a2 ON a1.movie_tmdb_id = a2.movie_tmdb_id
+       WHERE a1.actor_id = $1 AND a2.actor_id = ANY($2)
+       UNION ALL
+       SELECT a2.actor_id AS candidate_id, a1.show_tmdb_id AS content_id
+       FROM actor_show_appearances a1
+       JOIN actor_show_appearances a2 ON a1.show_tmdb_id = a2.show_tmdb_id
+       WHERE a1.actor_id = $1 AND a2.actor_id = ANY($2)
+     ) shared
+     GROUP BY candidate_id
+     ORDER BY shared_count DESC`,
+    [sourceActorId, candidateIds]
+  )
+
+  if (coAppearanceResult.rows.length === 0) {
+    return null
+  }
+
+  // Return the candidate with the most co-appearances
+  const bestMatchId = coAppearanceResult.rows[0].actor_id
+  const bestCandidate = candidates.find((c) => c.id === bestMatchId)
+  return bestCandidate?.tmdb_id ?? null
 }
 
 // ============================================================================
@@ -163,16 +244,20 @@ export async function processProject(
 /**
  * Process a single celebrity and try to fill in the tmdb_id.
  * Returns true if the celebrity was updated.
+ *
+ * @param sourceActorId - The actor whose death page we're linking from.
+ *   Used to disambiguate duplicate names via co-appearance data.
  */
 export async function processCelebrity(
   db: Pool | PoolClient,
-  celebrity: RelatedCelebrityWithCamelCase
+  celebrity: RelatedCelebrityWithCamelCase,
+  sourceActorId?: number
 ): Promise<boolean> {
   if (getCelebrityTmdbId(celebrity) !== null) {
     return false // Already has tmdb_id
   }
 
-  const tmdbId = await lookupActor(db, celebrity.name)
+  const tmdbId = await lookupActor(db, celebrity.name, sourceActorId)
   if (tmdbId !== null) {
     setCelebrityTmdbId(celebrity, tmdbId)
     return true
@@ -254,7 +339,7 @@ export async function backfillLinksForActors(
     // Process related_celebrities
     if (record.related_celebrities) {
       for (const celebrity of record.related_celebrities) {
-        const linked = await processCelebrity(db, celebrity)
+        const linked = await processCelebrity(db, celebrity, record.actor_id)
         if (linked) {
           result.celebritiesLinked++
           result.linksAdded++
