@@ -69,18 +69,22 @@ The confidence score is then used to regress the actor's score toward a prior me
 const ACTOR_PRIOR_MEAN = 30  // Average actor score
 
 function adjustedActorScore(rawScore: number, confidence: number): number {
-  // High confidence: score stays near raw
-  // Low confidence: score regresses toward prior mean
-  return (confidence / (confidence + 0.4)) * rawScore +
-         (0.4 / (confidence + 0.4)) * ACTOR_PRIOR_MEAN
+  // High confidence: score stays close to raw (but still regresses slightly)
+  // Low confidence: score regresses strongly toward prior mean
+  // At confidence=1.0, regression strength k=0.1 → score ≈ 91% raw + 9% prior
+  // At confidence=0.3, regression strength k=0.1 → score ≈ 75% raw + 25% prior
+  const k = 0.1  // Regression strength (lower = less regression at high confidence)
+  return (confidence / (confidence + k)) * rawScore +
+         (k / (confidence + k)) * ACTOR_PRIOR_MEAN
 }
 ```
 
 This means:
-- An actor with confidence 1.0 and raw score 80 gets: `(1/1.4) × 80 + (0.4/1.4) × 30 = 65.7`
-- An actor with confidence 0.3 and raw score 80 gets: `(0.3/0.7) × 80 + (0.4/0.7) × 30 = 51.4`
+- An actor with confidence 1.0 and raw score 80 gets: `(1/1.1) × 80 + (0.1/1.1) × 30 = 75.5`
+- An actor with confidence 0.3 and raw score 80 gets: `(0.3/0.4) × 80 + (0.1/0.4) × 30 = 67.5`
+- An actor with confidence 0.1 and raw score 80 gets: `(0.1/0.2) × 80 + (0.1/0.2) × 30 = 55.0`
 
-The low-confidence actor's score is pulled significantly toward the mean, reflecting our uncertainty.
+High-confidence actors retain most of their raw score, while low-confidence actors are pulled substantially toward the prior mean.
 
 ---
 
@@ -115,7 +119,7 @@ The low-confidence actor's score is pulled significantly toward the mean, reflec
 
 | Risk | Mitigation |
 |------|------------|
-| Prior mean and regression strength are hard to calibrate | Start with `ACTOR_PRIOR_MEAN = 30` and regression strength `0.4` (same as aggregate-score). Analyze score distribution after applying and tune. |
+| Prior mean and regression strength are hard to calibrate | Start with `ACTOR_PRIOR_MEAN = 30` and regression strength `k = 0.1` (lower than aggregate-score's 0.4, since actor confidence is multi-factor and more informative). Analyze score distribution after applying and tune. |
 | Multi-factor confidence adds complexity | Each factor is independently meaningful and testable. The combined confidence is just a weighted average. |
 | Bayesian adjustment compresses the score range | This is intentional for low-confidence actors. High-confidence actors are minimally affected. Monitor the score distribution's range and variance. |
 | Interaction with other proposals | Bayesian confidence should be implemented after the core formula changes (P0–P2) are stable. The confidence factors should be calibrated against the new score distribution. |
