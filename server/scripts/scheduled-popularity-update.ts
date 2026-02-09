@@ -762,10 +762,18 @@ async function refreshWikidataSitelinks(
     const batchUpdates: Array<{ id: number; sitelinks: number | null }> = []
 
     for (const actor of withTmdb) {
-      batchUpdates.push({
-        id: actor.id,
-        sitelinks: sitelinksByTmdb.get(actor.tmdb_id!) ?? null,
-      })
+      let sitelinks = sitelinksByTmdb.get(actor.tmdb_id!) ?? null
+
+      // Fallback: if TMDB ID not in Wikidata P4985, try Wikipedia URL
+      if (sitelinks === null && actor.wikipedia_url) {
+        try {
+          sitelinks = await fetchSitelinksByWikipediaUrl(actor.wikipedia_url)
+        } catch {
+          // ignore fallback errors
+        }
+      }
+
+      batchUpdates.push({ id: actor.id, sitelinks })
     }
 
     // Individual fetch for actors without TMDB IDs (fallback to Wikipedia URL)

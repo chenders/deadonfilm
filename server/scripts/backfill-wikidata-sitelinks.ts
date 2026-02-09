@@ -158,10 +158,19 @@ async function run(options: Options): Promise<void> {
         // Build updates for this batch
         const batchUpdates: Array<{ id: number; sitelinks: number | null }> = []
 
-        // Process actors with TMDB IDs
+        // Process actors with TMDB IDs (fall back to Wikipedia URL if TMDB lookup fails)
         for (const actor of withTmdb) {
           processed++
-          const sitelinks = sitelinksByTmdb.get(actor.tmdb_id!) ?? null
+          let sitelinks = sitelinksByTmdb.get(actor.tmdb_id!) ?? null
+
+          // Fallback: if TMDB ID not in Wikidata P4985, try Wikipedia URL
+          if (sitelinks === null && actor.wikipedia_url) {
+            try {
+              sitelinks = await fetchSitelinksByWikipediaUrl(actor.wikipedia_url)
+            } catch {
+              // ignore fallback errors
+            }
+          }
 
           if (sitelinks !== null) {
             succeeded++
