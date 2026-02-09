@@ -107,6 +107,8 @@ async function run(options: Options): Promise<void> {
   )
 
   let runId: number | null = null
+  // Capture snapshot date once at run start to avoid midnight-crossing issues
+  const snapshotDate = new Date().toISOString().slice(0, 10)
 
   try {
     // Track the cronjob run
@@ -125,21 +127,21 @@ async function run(options: Options): Promise<void> {
     // Update movies
     if (updateMovies) {
       console.log("=== Updating Movie Popularity ===")
-      stats.moviesUpdated = await updateMoviePopularity(pool, eraMap, options, runId)
+      stats.moviesUpdated = await updateMoviePopularity(pool, eraMap, options, runId, snapshotDate)
       console.log(`Movies updated: ${stats.moviesUpdated}\n`)
     }
 
     // Update shows
     if (updateShows) {
       console.log("=== Updating Show Popularity ===")
-      stats.showsUpdated = await updateShowPopularity(pool, eraMap, options, runId)
+      stats.showsUpdated = await updateShowPopularity(pool, eraMap, options, runId, snapshotDate)
       console.log(`Shows updated: ${stats.showsUpdated}\n`)
     }
 
     // Update actors (after content, since actor scores depend on content scores)
     if (updateActors) {
       console.log("=== Updating Actor Popularity ===")
-      stats.actorsUpdated = await updateActorPopularity(pool, options, runId)
+      stats.actorsUpdated = await updateActorPopularity(pool, options, runId, snapshotDate)
       console.log(`Actors updated: ${stats.actorsUpdated}\n`)
     }
 
@@ -197,7 +199,8 @@ async function updateMoviePopularity(
   pool: ReturnType<typeof getPool>,
   eraMap: Map<number, EraReferenceStats>,
   options: Options,
-  runId: number | null
+  runId: number | null,
+  snapshotDate: string
 ): Promise<number> {
   const batchSize = options.batchSize
 
@@ -262,7 +265,7 @@ async function updateMoviePopularity(
     if (updates.length >= batchSize) {
       if (!options.dryRun) {
         await batchUpdateMovies(pool, updates)
-        await recordMovieSnapshots(pool, updates, ALGORITHM_VERSION, runId)
+        await recordMovieSnapshots(pool, updates, ALGORITHM_VERSION, runId, snapshotDate)
       }
       updated += updates.length
       process.stdout.write(`\rUpdated ${updated} movies...`)
@@ -274,7 +277,7 @@ async function updateMoviePopularity(
   if (updates.length > 0) {
     if (!options.dryRun) {
       await batchUpdateMovies(pool, updates)
-      await recordMovieSnapshots(pool, updates, ALGORITHM_VERSION, runId)
+      await recordMovieSnapshots(pool, updates, ALGORITHM_VERSION, runId, snapshotDate)
     }
     updated += updates.length
   }
@@ -329,7 +332,8 @@ async function updateShowPopularity(
   pool: ReturnType<typeof getPool>,
   eraMap: Map<number, EraReferenceStats>,
   options: Options,
-  runId: number | null
+  runId: number | null,
+  snapshotDate: string
 ): Promise<number> {
   const batchSize = options.batchSize
 
@@ -392,7 +396,7 @@ async function updateShowPopularity(
     if (updates.length >= batchSize) {
       if (!options.dryRun) {
         await batchUpdateShows(pool, updates)
-        await recordShowSnapshots(pool, updates, ALGORITHM_VERSION, runId)
+        await recordShowSnapshots(pool, updates, ALGORITHM_VERSION, runId, snapshotDate)
       }
       updated += updates.length
       process.stdout.write(`\rUpdated ${updated} shows...`)
@@ -403,7 +407,7 @@ async function updateShowPopularity(
   if (updates.length > 0) {
     if (!options.dryRun) {
       await batchUpdateShows(pool, updates)
-      await recordShowSnapshots(pool, updates, ALGORITHM_VERSION, runId)
+      await recordShowSnapshots(pool, updates, ALGORITHM_VERSION, runId, snapshotDate)
     }
     updated += updates.length
   }
@@ -443,7 +447,8 @@ async function batchUpdateShows(
 async function updateActorPopularity(
   pool: ReturnType<typeof getPool>,
   options: Options,
-  runId: number | null
+  runId: number | null,
+  snapshotDate: string
 ): Promise<number> {
   // Actor DB writes use ACTOR_FILMOGRAPHY_BATCH_SIZE (500) since filmography
   // queries need bounded batch sizes. options.batchSize controls snapshot flush frequency.
@@ -578,7 +583,7 @@ async function updateActorPopularity(
     // Record snapshots in chunks matching the main batchSize
     if (allUpdates.length >= batchSize) {
       if (!options.dryRun) {
-        await recordActorSnapshots(pool, allUpdates, ALGORITHM_VERSION, runId)
+        await recordActorSnapshots(pool, allUpdates, ALGORITHM_VERSION, runId, snapshotDate)
       }
       allUpdates.length = 0
     }
@@ -586,7 +591,7 @@ async function updateActorPopularity(
 
   // Final snapshot batch
   if (allUpdates.length > 0 && !options.dryRun) {
-    await recordActorSnapshots(pool, allUpdates, ALGORITHM_VERSION, runId)
+    await recordActorSnapshots(pool, allUpdates, ALGORITHM_VERSION, runId, snapshotDate)
   }
 
   console.log(`\rUpdated ${updated} actors    `)

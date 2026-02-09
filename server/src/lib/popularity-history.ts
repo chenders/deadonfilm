@@ -26,12 +26,15 @@ export interface ContentSnapshotUpdate {
 
 /**
  * Record actor popularity snapshots into history table.
+ * @param snapshotDate - ISO date string (YYYY-MM-DD) to use for snapshot_date.
+ *   Callers should capture this once at run start to avoid midnight-crossing issues.
  */
 export async function recordActorSnapshots(
   pool: Pool,
   updates: ActorSnapshotUpdate[],
   algorithmVersion: string,
-  runId: number | null
+  runId: number | null,
+  snapshotDate: string
 ): Promise<void> {
   if (updates.length === 0) return
 
@@ -44,7 +47,7 @@ export async function recordActorSnapshots(
       u.dof_popularity_confidence,
       $4,
       $5,
-      CURRENT_DATE
+      $6::date
     FROM unnest(
       $1::int[],
       $2::numeric[],
@@ -62,18 +65,21 @@ export async function recordActorSnapshots(
       updates.map((u) => u.confidence),
       algorithmVersion,
       runId,
+      snapshotDate,
     ]
   )
 }
 
 /**
  * Record movie popularity snapshots into history table.
+ * @param snapshotDate - ISO date string (YYYY-MM-DD) to use for snapshot_date.
  */
 export async function recordMovieSnapshots(
   pool: Pool,
   updates: ContentSnapshotUpdate[],
   algorithmVersion: string,
-  runId: number | null
+  runId: number | null,
+  snapshotDate: string
 ): Promise<void> {
   if (updates.length === 0) return
 
@@ -87,7 +93,7 @@ export async function recordMovieSnapshots(
       u.dof_popularity_confidence,
       $5,
       $6,
-      CURRENT_DATE
+      $7::date
     FROM unnest(
       $1::int[],
       $2::numeric[],
@@ -108,18 +114,21 @@ export async function recordMovieSnapshots(
       updates.map((u) => u.confidence),
       algorithmVersion,
       runId,
+      snapshotDate,
     ]
   )
 }
 
 /**
  * Record show popularity snapshots into history table.
+ * @param snapshotDate - ISO date string (YYYY-MM-DD) to use for snapshot_date.
  */
 export async function recordShowSnapshots(
   pool: Pool,
   updates: ContentSnapshotUpdate[],
   algorithmVersion: string,
-  runId: number | null
+  runId: number | null,
+  snapshotDate: string
 ): Promise<void> {
   if (updates.length === 0) return
 
@@ -133,7 +142,7 @@ export async function recordShowSnapshots(
       u.dof_popularity_confidence,
       $5,
       $6,
-      CURRENT_DATE
+      $7::date
     FROM unnest(
       $1::int[],
       $2::numeric[],
@@ -154,6 +163,7 @@ export async function recordShowSnapshots(
       updates.map((u) => u.confidence),
       algorithmVersion,
       runId,
+      snapshotDate,
     ]
   )
 }
