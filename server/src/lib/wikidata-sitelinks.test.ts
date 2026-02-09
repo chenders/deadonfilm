@@ -194,18 +194,27 @@ describe("fetchSitelinksBatch", () => {
       ])
     )
 
-    const result = await runWithFakeTimers(() => fetchSitelinksBatch([500, 6193, 192]))
-    expect(result.size).toBe(3)
-    expect(result.get(500)).toBe(85)
-    expect(result.get(6193)).toBe(72)
-    expect(result.get(192)).toBe(45)
+    const { results, queriedIds } = await runWithFakeTimers(() =>
+      fetchSitelinksBatch([500, 6193, 192])
+    )
+    expect(results.size).toBe(3)
+    expect(results.get(500)).toBe(85)
+    expect(results.get(6193)).toBe(72)
+    expect(results.get(192)).toBe(45)
+    // All IDs should be in queriedIds (successful chunk)
+    expect(queriedIds.size).toBe(3)
+    expect(queriedIds.has(500)).toBe(true)
+    expect(queriedIds.has(6193)).toBe(true)
+    expect(queriedIds.has(192)).toBe(true)
   })
 
   it("returns empty map when no results", async () => {
     mockFetch.mockResolvedValueOnce(sparqlResponse([]))
 
-    const result = await runWithFakeTimers(() => fetchSitelinksBatch([99999]))
-    expect(result.size).toBe(0)
+    const { results, queriedIds } = await runWithFakeTimers(() => fetchSitelinksBatch([99999]))
+    expect(results.size).toBe(0)
+    // ID was still queried successfully (just not found on Wikidata)
+    expect(queriedIds.has(99999)).toBe(true)
   })
 
   it("handles partial results (some actors not on Wikidata)", async () => {
@@ -213,26 +222,36 @@ describe("fetchSitelinksBatch", () => {
       sparqlResponse([{ tmdbId: { value: "500" }, sitelinks: { value: "85" } }])
     )
 
-    const result = await runWithFakeTimers(() => fetchSitelinksBatch([500, 99999]))
-    expect(result.size).toBe(1)
-    expect(result.get(500)).toBe(85)
-    expect(result.has(99999)).toBe(false)
+    const { results, queriedIds } = await runWithFakeTimers(() =>
+      fetchSitelinksBatch([500, 99999])
+    )
+    expect(results.size).toBe(1)
+    expect(results.get(500)).toBe(85)
+    expect(results.has(99999)).toBe(false)
+    // Both IDs were in the queried chunk
+    expect(queriedIds.has(500)).toBe(true)
+    expect(queriedIds.has(99999)).toBe(true)
   })
 
-  it("returns empty map on error after retries", async () => {
+  it("returns empty results and queriedIds on error after retries", async () => {
     mockFetch
       .mockRejectedValueOnce(new Error("Network error"))
       .mockRejectedValueOnce(new Error("Network error"))
       .mockRejectedValueOnce(new Error("Network error"))
       .mockRejectedValueOnce(new Error("Network error"))
 
-    const result = await runWithFakeTimers(() => fetchSitelinksBatch([500, 6193]))
-    expect(result.size).toBe(0)
+    const { results, queriedIds } = await runWithFakeTimers(() =>
+      fetchSitelinksBatch([500, 6193])
+    )
+    expect(results.size).toBe(0)
+    // IDs should NOT be in queriedIds (chunk failed)
+    expect(queriedIds.size).toBe(0)
   })
 
   it("handles empty input array", async () => {
-    const result = await runWithFakeTimers(() => fetchSitelinksBatch([]))
-    expect(result.size).toBe(0)
+    const { results, queriedIds } = await runWithFakeTimers(() => fetchSitelinksBatch([]))
+    expect(results.size).toBe(0)
+    expect(queriedIds.size).toBe(0)
     expect(mockFetch).not.toHaveBeenCalled()
   })
 })

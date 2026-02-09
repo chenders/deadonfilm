@@ -3,7 +3,7 @@
  * Backfill Wikidata sitelinks for actors
  *
  * Fetches the number of Wikipedia language editions (sitelinks) for actors
- * via Wikidata SPARQL. Uses batch queries (up to 500 actors per SPARQL query)
+ * via Wikidata SPARQL. Uses batch queries (up to 100 actors per SPARQL query)
  * for efficiency.
  *
  * Prioritizes TMDB ID lookup (P4985), falls back to Wikipedia URL resolution.
@@ -153,15 +153,23 @@ async function run(options: Options): Promise<void> {
 
         // Batch fetch by TMDB ID
         const tmdbIds = withTmdb.map((a) => a.tmdb_id!)
-        const sitelinksByTmdb = tmdbIds.length > 0 ? await fetchSitelinksBatch(tmdbIds) : new Map()
+        const batchResult =
+          tmdbIds.length > 0
+            ? await fetchSitelinksBatch(tmdbIds)
+            : { results: new Map<number, number>(), queriedIds: new Set<number>() }
 
         // Build updates for this batch
         const batchUpdates: Array<{ id: number; sitelinks: number | null }> = []
 
-        // Process actors with TMDB IDs (fall back to Wikipedia URL if TMDB lookup fails)
+        // Process actors with TMDB IDs — only include actors from successful chunks
         for (const actor of withTmdb) {
           processed++
-          let sitelinks = sitelinksByTmdb.get(actor.tmdb_id!) ?? null
+          if (!batchResult.queriedIds.has(actor.tmdb_id!)) {
+            // This actor was in a failed chunk — skip to avoid poisoning updated_at
+            failed++
+            continue
+          }
+          let sitelinks = batchResult.results.get(actor.tmdb_id!) ?? null
 
           // Fallback: if TMDB ID not in Wikidata P4985, try Wikipedia URL
           if (sitelinks === null && actor.wikipedia_url) {
@@ -194,7 +202,7 @@ async function run(options: Options): Promise<void> {
           } catch (error) {
             failed++
             console.error(`  Error for actor ${actor.id}:`, error)
-            batchUpdates.push({ id: actor.id, sitelinks: null })
+            // Skip updating this actor on fetch error to avoid poisoning updated_at
           }
         }
 

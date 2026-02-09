@@ -172,16 +172,25 @@ export async function fetchSitelinksByWikipediaUrl(wikipediaUrl: string): Promis
   return isNaN(sitelinks) ? null : sitelinks
 }
 
+export interface SitelinksBatchResult {
+  /** Map of tmdbId → sitelinks count (actors not found in successful queries are omitted) */
+  results: Map<number, number>
+  /** Set of TMDB IDs that were in successfully queried chunks */
+  queriedIds: Set<number>
+}
+
 /**
  * Batch fetch sitelinks counts for multiple actors by TMDB person IDs.
  *
  * Uses a VALUES clause to query up to MAX_BATCH_SIZE actors per SPARQL query.
  * This is far more efficient than individual queries for large backfills.
  *
- * @returns Map of tmdbId → sitelinks count (actors not found are omitted)
+ * Returns both results and the set of IDs that were successfully queried,
+ * so callers can distinguish "not on Wikidata" from "query failed".
  */
-export async function fetchSitelinksBatch(tmdbIds: number[]): Promise<Map<number, number>> {
+export async function fetchSitelinksBatch(tmdbIds: number[]): Promise<SitelinksBatchResult> {
   const results = new Map<number, number>()
+  const queriedIds = new Set<number>()
 
   // Process in chunks of MAX_BATCH_SIZE
   for (let i = 0; i < tmdbIds.length; i += MAX_BATCH_SIZE) {
@@ -199,7 +208,15 @@ export async function fetchSitelinksBatch(tmdbIds: number[]): Promise<Map<number
     `
 
     const result = await executeSparqlQuery(query)
-    if (!result) continue
+    if (!result) {
+      console.error(`Wikidata batch query failed for ${chunk.length} TMDB IDs (skipping chunk)`)
+      continue
+    }
+
+    // Mark all IDs in this chunk as successfully queried
+    for (const id of chunk) {
+      queriedIds.add(id)
+    }
 
     for (const binding of result.results.bindings) {
       const tmdbId = parseInt(binding.tmdbId?.value ?? "", 10)
@@ -210,7 +227,7 @@ export async function fetchSitelinksBatch(tmdbIds: number[]): Promise<Map<number
     }
   }
 
-  return results
+  return { results, queriedIds }
 }
 
 /**

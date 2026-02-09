@@ -757,12 +757,19 @@ async function refreshWikidataSitelinks(
     // Batch fetch actors with TMDB IDs
     const withTmdb = batch.filter((a) => a.tmdb_id !== null)
     const tmdbIds = withTmdb.map((a) => a.tmdb_id!)
-    const sitelinksByTmdb = tmdbIds.length > 0 ? await fetchSitelinksBatch(tmdbIds) : new Map()
+    const batchResult =
+      tmdbIds.length > 0
+        ? await fetchSitelinksBatch(tmdbIds)
+        : { results: new Map<number, number>(), queriedIds: new Set<number>() }
 
     const batchUpdates: Array<{ id: number; sitelinks: number | null }> = []
 
     for (const actor of withTmdb) {
-      let sitelinks = sitelinksByTmdb.get(actor.tmdb_id!) ?? null
+      // Only include actors whose TMDB IDs were in successfully queried chunks.
+      // Actors in failed chunks are skipped to avoid setting updated_at on errors.
+      if (!batchResult.queriedIds.has(actor.tmdb_id!)) continue
+
+      let sitelinks = batchResult.results.get(actor.tmdb_id!) ?? null
 
       // Fallback: if TMDB ID not in Wikidata P4985, try Wikipedia URL
       if (sitelinks === null && actor.wikipedia_url) {
@@ -783,8 +790,8 @@ async function refreshWikidataSitelinks(
         const sitelinks = await fetchSitelinksByWikipediaUrl(actor.wikipedia_url!)
         batchUpdates.push({ id: actor.id, sitelinks })
       } catch (error) {
-        console.error(`Error fetching sitelinks for actor ${actor.id}:`, error)
-        batchUpdates.push({ id: actor.id, sitelinks: null })
+        // Skip updating this actor on fetch error to avoid poisoning updated_at
+        console.error(`Error fetching sitelinks for actor ${actor.id} (skipping):`, error)
       }
     }
 
