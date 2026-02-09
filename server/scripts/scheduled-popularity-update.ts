@@ -69,7 +69,12 @@ const program = new Command()
   .option("--movies", "Update movies only")
   .option("--shows", "Update shows only")
   .option("--actors", "Update actors only")
-  .option("-b, --batch-size <n>", "Batch size for processing", parseInt, 1000)
+  .option(
+    "-b, --batch-size <n>",
+    "Batch size for DB writes and snapshot flushes (actors use fixed 500 for filmography queries)",
+    parseInt,
+    1000
+  )
   .option("-n, --dry-run", "Preview without updating database")
   .option("-f, --force", "Allow re-run (placeholder for future daily guard)")
   .action(async (options) => {

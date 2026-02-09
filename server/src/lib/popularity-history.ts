@@ -39,12 +39,17 @@ export async function recordActorSnapshots(
     `
     INSERT INTO actor_popularity_history (actor_id, dof_popularity, dof_popularity_confidence, algorithm_version, run_id, snapshot_date)
     SELECT
-      unnest($1::int[]),
-      unnest($2::numeric[]),
-      unnest($3::numeric[]),
+      u.actor_id,
+      u.dof_popularity,
+      u.dof_popularity_confidence,
       $4,
       $5,
       CURRENT_DATE
+    FROM unnest(
+      $1::int[],
+      $2::numeric[],
+      $3::numeric[]
+    ) AS u(actor_id, dof_popularity, dof_popularity_confidence)
     ON CONFLICT (actor_id, snapshot_date, algorithm_version) DO UPDATE SET
       dof_popularity = EXCLUDED.dof_popularity,
       dof_popularity_confidence = EXCLUDED.dof_popularity_confidence,
@@ -76,13 +81,19 @@ export async function recordMovieSnapshots(
     `
     INSERT INTO movie_popularity_history (movie_id, dof_popularity, dof_weight, dof_popularity_confidence, algorithm_version, run_id, snapshot_date)
     SELECT
-      unnest($1::int[]),
-      unnest($2::numeric[]),
-      unnest($3::numeric[]),
-      unnest($4::numeric[]),
+      u.movie_id,
+      u.dof_popularity,
+      u.dof_weight,
+      u.dof_popularity_confidence,
       $5,
       $6,
       CURRENT_DATE
+    FROM unnest(
+      $1::int[],
+      $2::numeric[],
+      $3::numeric[],
+      $4::numeric[]
+    ) AS u(movie_id, dof_popularity, dof_weight, dof_popularity_confidence)
     ON CONFLICT (movie_id, snapshot_date, algorithm_version) DO UPDATE SET
       dof_popularity = EXCLUDED.dof_popularity,
       dof_weight = EXCLUDED.dof_weight,
@@ -116,13 +127,19 @@ export async function recordShowSnapshots(
     `
     INSERT INTO show_popularity_history (show_id, dof_popularity, dof_weight, dof_popularity_confidence, algorithm_version, run_id, snapshot_date)
     SELECT
-      unnest($1::int[]),
-      unnest($2::numeric[]),
-      unnest($3::numeric[]),
-      unnest($4::numeric[]),
+      u.show_id,
+      u.dof_popularity,
+      u.dof_weight,
+      u.dof_popularity_confidence,
       $5,
       $6,
       CURRENT_DATE
+    FROM unnest(
+      $1::int[],
+      $2::numeric[],
+      $3::numeric[],
+      $4::numeric[]
+    ) AS u(show_id, dof_popularity, dof_weight, dof_popularity_confidence)
     ON CONFLICT (show_id, snapshot_date, algorithm_version) DO UPDATE SET
       dof_popularity = EXCLUDED.dof_popularity,
       dof_weight = EXCLUDED.dof_weight,
