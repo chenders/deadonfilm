@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage"
 import LoadingSpinner from "./components/common/LoadingSpinner"
 import { useGoogleAnalytics } from "./hooks/useGoogleAnalytics"
 import { useNewRelicBrowser } from "./hooks/useNewRelicBrowser"
+import { useWebVitals } from "./hooks/useWebVitals"
 import { lazyWithRetry } from "./utils/lazyWithRetry"
 import { AdminAuthProvider } from "./hooks/useAdminAuth"
 import { AdminThemeProvider } from "./contexts/AdminThemeContext"
@@ -82,6 +83,7 @@ const AdminDeadLetterQueuePage = lazyWithRetry(() => import("./pages/admin/DeadL
 function App() {
   useGoogleAnalytics()
   useNewRelicBrowser()
+  useWebVitals()
 
   return (
     <ToastProvider>
