@@ -6,7 +6,7 @@
 
 ## Problem
 
-The actor popularity improvement plan has 11 proposals that will progressively change the scoring algorithm. Currently, only the latest score is stored on each entity — there's no way to:
+The actor popularity improvement plan has 11 scoring proposals (01–11) that will progressively change the algorithm. This document (Proposal 00) is a P0 prerequisite for that work. Currently, only the latest score is stored on each entity — there's no way to:
 
 - **Compare scores before and after** algorithm changes
 - **Track trends over time** for individual actors, movies, or shows
@@ -87,30 +87,42 @@ Three separate tables, one per entity type. Separate tables (rather than one pol
 | `snapshot_date` | `DATE NOT NULL DEFAULT CURRENT_DATE` | |
 | `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT NOW()` | |
 
-### Indexes (per table)
+### Indexes
 
-Each history table gets four indexes:
+Each history table gets four indexes. Concrete DDL per table:
 
-1. **Entity + date** — history for a specific entity, newest first:
-   ```sql
-   CREATE INDEX idx_{table}_entity_date ON {table} ({entity_id}, snapshot_date DESC);
-   ```
+#### `actor_popularity_history`
 
-2. **Algorithm version + date** — compare scores across algorithm versions:
-   ```sql
-   CREATE INDEX idx_{table}_version_date ON {table} (algorithm_version, snapshot_date);
-   ```
+```sql
+CREATE INDEX idx_actor_pop_hist_entity_date ON actor_popularity_history (actor_id, snapshot_date DESC);
+CREATE INDEX idx_actor_pop_hist_version_date ON actor_popularity_history (algorithm_version, snapshot_date);
+CREATE INDEX idx_actor_pop_hist_run_id ON actor_popularity_history (run_id) WHERE run_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_actor_pop_hist_entity_date_version ON actor_popularity_history (actor_id, snapshot_date, algorithm_version);
+```
 
-3. **Run ID** — look up what a specific cron run produced:
-   ```sql
-   CREATE INDEX idx_{table}_run_id ON {table} (run_id) WHERE run_id IS NOT NULL;
-   ```
+#### `movie_popularity_history`
 
-4. **Unique constraint** — prevent duplicate snapshots; enables upsert on re-runs:
-   ```sql
-   CREATE UNIQUE INDEX uq_{table}_entity_date_version
-   ON {table} ({entity_id}, snapshot_date, algorithm_version);
-   ```
+```sql
+CREATE INDEX idx_movie_pop_hist_entity_date ON movie_popularity_history (movie_id, snapshot_date DESC);
+CREATE INDEX idx_movie_pop_hist_version_date ON movie_popularity_history (algorithm_version, snapshot_date);
+CREATE INDEX idx_movie_pop_hist_run_id ON movie_popularity_history (run_id) WHERE run_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_movie_pop_hist_entity_date_version ON movie_popularity_history (movie_id, snapshot_date, algorithm_version);
+```
+
+#### `show_popularity_history`
+
+```sql
+CREATE INDEX idx_show_pop_hist_entity_date ON show_popularity_history (show_id, snapshot_date DESC);
+CREATE INDEX idx_show_pop_hist_version_date ON show_popularity_history (algorithm_version, snapshot_date);
+CREATE INDEX idx_show_pop_hist_run_id ON show_popularity_history (run_id) WHERE run_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_show_pop_hist_entity_date_version ON show_popularity_history (show_id, snapshot_date, algorithm_version);
+```
+
+**Index purposes**:
+1. **Entity + date** — history for a specific entity, newest first
+2. **Algorithm version + date** — compare scores across algorithm versions
+3. **Run ID** — look up what a specific cron run produced
+4. **Unique constraint** — prevent duplicate snapshots; enables upsert on re-runs
 
 ---
 
@@ -225,7 +237,7 @@ cd server && npx tsx scripts/scheduled-popularity-update.ts --dry-run
 
 ### 3. Snapshot recording on every run
 
-Every non-dry-run execution inserts history rows. The upsert constraint `(entity_id, snapshot_date, algorithm_version)` means:
+Every non-dry-run execution inserts history rows. The per-table upsert constraint (e.g. `(actor_id, snapshot_date, algorithm_version)` for actors) means:
 - Re-running on the same day with the same algorithm version updates rather than duplicates
 - Running with a different algorithm version on the same day creates separate rows (for comparison)
 
@@ -234,18 +246,22 @@ Every non-dry-run execution inserts history rows. The upsert constraint `(entity
 After each run, log warnings for dramatic shifts:
 
 ```typescript
-// After updating scores, query for large deltas
+// After updating scores, query for large deltas within the same algorithm version.
+// Filtering by algorithm_version prevents misleading alerts after a version bump
+// (intentional score changes from a new algorithm are expected, not drift).
 const driftReport = await pool.query(`
   WITH current_run AS (
-    SELECT actor_id, dof_popularity
+    SELECT actor_id, dof_popularity, algorithm_version
     FROM actor_popularity_history
     WHERE run_id = $1
   ),
   previous AS (
-    SELECT DISTINCT ON (actor_id) actor_id, dof_popularity
-    FROM actor_popularity_history
-    WHERE run_id != $1
-    ORDER BY actor_id, snapshot_date DESC
+    SELECT DISTINCT ON (p.actor_id) p.actor_id, p.dof_popularity
+    FROM actor_popularity_history p
+    JOIN current_run c ON c.actor_id = p.actor_id
+      AND c.algorithm_version = p.algorithm_version
+    WHERE p.run_id != $1
+    ORDER BY p.actor_id, p.snapshot_date DESC
   )
   SELECT c.actor_id, p.dof_popularity AS prev, c.dof_popularity AS curr,
          c.dof_popularity - p.dof_popularity AS delta
