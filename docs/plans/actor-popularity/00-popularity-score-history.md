@@ -136,7 +136,7 @@ Back-of-the-envelope estimate:
 - ~50K shows × 52 weeks × ~50 bytes/row ≈ 130 MB/year
 - **Total: ~2 GB/year** (trivial for PostgreSQL)
 
-In practice, only entities that are recalculated in a given run get rows, so actual growth will be much lower — likely under 500 MB/year for all three tables combined.
+The ~2 GB estimate assumes every entity is snapshotted every week. Even if actual growth is lower (e.g. the cron only touches entities whose inputs changed), the upper bound remains trivial for PostgreSQL.
 
 If growth ever becomes a concern, add a retention policy later (e.g. daily snapshots kept for 90 days, then monthly aggregates). But for now, full history is cheap and invaluable.
 
@@ -147,7 +147,8 @@ If growth ever becomes a concern, add a retention policy later (e.g. daily snaps
 ### Compare scores across algorithm versions
 
 ```sql
--- How did Tom Cruise's score change between algorithm 1.0 and 2.0?
+-- How did John Wayne's score change between algorithm 1.0 and 2.0?
+-- (actor_id from URL: /actor/john-wayne-2157)
 SELECT
   algorithm_version,
   snapshot_date,
@@ -162,10 +163,10 @@ ORDER BY snapshot_date DESC, algorithm_version;
 ### Track an entity's score over time
 
 ```sql
--- Actor score trend for the last 12 weeks
+-- John Wayne's score trend for the last 12 weeks
 SELECT snapshot_date, dof_popularity, algorithm_version
 FROM actor_popularity_history
-WHERE actor_id = 2157
+WHERE actor_id = 2157  -- /actor/john-wayne-2157
 ORDER BY snapshot_date DESC
 LIMIT 12;
 ```
@@ -214,21 +215,26 @@ The existing scheduled popularity update runs weekly. Every run should:
 1. Calculate scores for all entities using the current `ALGORITHM_VERSION`
 2. Write updated scores to the entity tables (actors, movies, shows) — existing behavior
 3. **New**: Insert snapshot rows into the history tables using `INSERT ... ON CONFLICT DO UPDATE` (upsert on the unique constraint)
-4. Skip snapshot recording if `--dry-run` is specified
+4. **New**: Skip snapshot recording if the proposed `--dry-run` flag is specified
 
-### 2. On-demand recalculation after algorithm changes
+### 2. On-demand recalculation after algorithm changes (proposed)
+
+The script currently has no daily-run guard or `--force`/`--dry-run` flags. This proposal adds them:
+
+- **`--force`**: Bypass a new "already ran today" guard so the script can be re-run manually after deploying algorithm changes
+- **`--dry-run`**: Calculate scores and log results without writing to entity tables or history tables
 
 When a PR changes the scoring algorithm:
 
 1. Deploy the new code (with bumped `ALGORITHM_VERSION`)
-2. Run the update script manually with `--force` flag to bypass the "already ran today" guard
+2. Run the update script manually with `--force` to bypass the daily guard
 3. The run records snapshots with the new `ALGORITHM_VERSION`, making it easy to compare against previous version's snapshots
 
 ```bash
 # Normal weekly run (cron)
 cd server && npx tsx scripts/scheduled-popularity-update.ts
 
-# Manual run after algorithm change (bypasses daily guard)
+# Manual run after algorithm change (bypasses proposed daily guard)
 cd server && npx tsx scripts/scheduled-popularity-update.ts --force
 
 # Preview without recording snapshots
