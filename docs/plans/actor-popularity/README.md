@@ -81,6 +81,7 @@ The scheduled script multiplies the already-0–100 TMDB percentile by 100 again
 
 | # | Proposal | Impact | Difficulty | Feasibility | Confidence | Priority |
 |---|----------|--------|------------|-------------|------------|----------|
+| 00 | [History tracking & periodic updates](./00-popularity-score-history.md) | 3 | 2 | 5 | 5 | **P0** |
 | 01 | [Fix scheduled job bugs](./01-fix-scheduled-job-bugs.md) | 5 | 1 | 5 | 5 | **P0** |
 | 02 | [Weighted positional scoring](./02-weighted-positional-scoring.md) | 4 | 2 | 5 | 4 | **P1** |
 | 03 | [Reduce TMDB recency weight](./03-reduce-tmdb-recency-weight.md) | 4 | 1 | 5 | 5 | **P1** |
@@ -99,8 +100,12 @@ The scheduled script multiplies the already-0–100 TMDB percentile by 100 again
 
 ## Recommended Implementation Phases
 
-### Phase 0 — Critical Bug Fix (Days)
+### Phase 0 — Critical Bug Fix & Infrastructure (Days)
+- **00**: History tracking tables + algorithm versioning (MUST be deployed BEFORE any score changes)
 - **01**: Fix the `×100` bug, align scheduled script with library, fix sum-all-contributions issue
+
+> **Important**: Proposal 00 must be implemented and the first baseline snapshot captured
+> BEFORE Proposal 01 is deployed. This ensures pre-fix scores are recorded for comparison.
 
 ### Phase 1 — High-Impact Formula Changes (1–2 Weeks)
 - **02**: Exponentially-weighted positional scoring
@@ -183,6 +188,7 @@ Actor dof_popularity =
 
 | File | Description |
 |------|-------------|
+| [00-popularity-score-history.md](./00-popularity-score-history.md) | P0: History tracking infrastructure, algorithm versioning, periodic update formalization |
 | [01-fix-scheduled-job-bugs.md](./01-fix-scheduled-job-bugs.md) | P0: Fix divergent implementations and TMDB ×100 bug |
 | [02-weighted-positional-scoring.md](./02-weighted-positional-scoring.md) | P1: Replace simple average with exponentially-weighted top-N |
 | [03-reduce-tmdb-recency-weight.md](./03-reduce-tmdb-recency-weight.md) | P1: Reduce TMDB from 30% to 15% or bounded bonus |
