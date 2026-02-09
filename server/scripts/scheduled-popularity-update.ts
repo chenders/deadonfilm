@@ -447,7 +447,7 @@ async function updateActorPopularity(
     id: number
     tmdb_popularity: number | null
   }>(`
-    SELECT id, tmdb_popularity
+    SELECT id, tmdb_popularity::float
     FROM actors
     WHERE deathday IS NOT NULL
     ORDER BY id
