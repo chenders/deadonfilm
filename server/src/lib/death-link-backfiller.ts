@@ -119,7 +119,7 @@ async function findActorByName(
   const candidates = await db.query<ActorCandidate>(
     `SELECT id, tmdb_id, tmdb_popularity FROM actors
      WHERE LOWER(name) = LOWER($1) AND tmdb_id IS NOT NULL
-     ORDER BY tmdb_popularity DESC NULLS LAST`,
+     ORDER BY tmdb_popularity DESC NULLS LAST, id ASC`,
     [name]
   )
 
