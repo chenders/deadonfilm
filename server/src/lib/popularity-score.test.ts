@@ -949,7 +949,7 @@ describe("calculateActorPopularity", () => {
     )
 
     // When only filmography is available, score should equal the filmography score
-    // (weight normalization means 0.55/0.55 = 1.0 multiplier on filmography)
+    // (weight normalization means 0.65/0.65 = 1.0 multiplier on filmography)
     expect(result.dofPopularity).not.toBeNull()
     expect(result.dofPopularity!).toBeGreaterThan(0)
 
@@ -958,7 +958,7 @@ describe("calculateActorPopularity", () => {
     // Peak: avg of top 3 = 66
     // Breadth: weighted positional avg of all 5 = 66 (uniform)
     // filmographyScore = 66*0.4 + 66*0.6 = 66
-    // finalScore = 66 * 0.55 / 0.55 = 66
+    // finalScore = 66 * 0.65 / 0.65 = 66
     expect(result.dofPopularity!).toBeCloseTo(66, 0)
   })
 

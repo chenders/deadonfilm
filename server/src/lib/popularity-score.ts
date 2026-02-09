@@ -201,8 +201,9 @@ const MIN_APPEARANCES_FULL_CONFIDENCE = 10
 // This prevents prolific actors from being penalized for having many minor roles
 const MAX_APPEARANCES_FOR_SCORE = 10
 
-// Actor score composition
-const ACTOR_FILMOGRAPHY_WEIGHT = 0.55
+// Actor score composition (must sum to 1.0 for clarity; normalization
+// still handles missing signals gracefully)
+const ACTOR_FILMOGRAPHY_WEIGHT = 0.65
 const ACTOR_TMDB_RECENCY_WEIGHT = 0.15
 const ACTOR_WIKIPEDIA_WEIGHT = 0.15
 const ACTOR_SITELINKS_WEIGHT = 0.05
