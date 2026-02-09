@@ -33,6 +33,7 @@ import {
   type ActorAppearance,
 } from "../src/lib/popularity-score.js"
 import { fetchActorPageviews } from "../src/lib/wikipedia-pageviews.js"
+import { fetchSitelinksBatch, fetchSitelinksByWikipediaUrl } from "../src/lib/wikidata-sitelinks.js"
 import {
   recordActorSnapshots,
   recordMovieSnapshots,
@@ -146,6 +147,13 @@ async function run(options: Options): Promise<void> {
       console.log(`Wikipedia pageviews refreshed: ${wikiRefreshed}\n`)
     }
 
+    // Refresh stale Wikidata sitelinks before actor scoring
+    if (updateActors) {
+      console.log("=== Refreshing Wikidata Sitelinks ===")
+      const sitelinksRefreshed = await refreshWikidataSitelinks(pool, options)
+      console.log(`Wikidata sitelinks refreshed: ${sitelinksRefreshed}\n`)
+    }
+
     // Update actors (after content, since actor scores depend on content scores)
     if (updateActors) {
       console.log("=== Updating Actor Popularity ===")
@@ -191,15 +199,14 @@ interface MovieRow {
   id: number
   release_year: number | null
   tmdb_popularity: number | null
-  budget_cents: number | null
-  revenue_cents: number | null
-  imdb_votes: number | null
+  omdb_box_office_cents: number | null
+  omdb_imdb_votes: number | null
   trakt_watchers: number | null
   trakt_plays: number | null
   aggregate_score: number | null
   production_countries: string[] | null
-  oscar_wins: number | null
-  oscar_nominations: number | null
+  omdb_awards_wins: number | null
+  omdb_awards_nominations: number | null
   original_language: string | null
 }
 
@@ -218,15 +225,14 @@ async function updateMoviePopularity(
       m.id,
       EXTRACT(YEAR FROM m.release_date)::int as release_year,
       m.tmdb_popularity::float as tmdb_popularity,
-      m.budget_cents,
-      m.revenue_cents,
-      m.imdb_votes::int as imdb_votes,
+      m.omdb_box_office_cents,
+      m.omdb_imdb_votes::int as omdb_imdb_votes,
       m.trakt_watchers::int as trakt_watchers,
       m.trakt_plays::int as trakt_plays,
       m.aggregate_score::float as aggregate_score,
       m.production_countries,
-      m.oscar_wins::int as oscar_wins,
-      m.oscar_nominations::int as oscar_nominations,
+      m.omdb_awards_wins::int as omdb_awards_wins,
+      m.omdb_awards_nominations::int as omdb_awards_nominations,
       m.original_language
     FROM movies m
     WHERE m.release_date IS NOT NULL
@@ -245,15 +251,15 @@ async function updateMoviePopularity(
     // Build the input structure
     const input: ContentPopularityInput = {
       releaseYear: movie.release_year,
-      boxOfficeCents: movie.revenue_cents,
+      boxOfficeCents: movie.omdb_box_office_cents,
       traktWatchers: movie.trakt_watchers,
       traktPlays: movie.trakt_plays,
-      imdbVotes: movie.imdb_votes,
+      imdbVotes: movie.omdb_imdb_votes,
       tmdbPopularity: movie.tmdb_popularity,
       isUSUKProduction: isUSUK,
       originalLanguage: movie.original_language,
-      awardsWins: movie.oscar_wins,
-      awardsNominations: movie.oscar_nominations,
+      awardsWins: movie.omdb_awards_wins,
+      awardsNominations: movie.omdb_awards_nominations,
       aggregateScore: movie.aggregate_score,
       eraStats: era,
     }
@@ -326,7 +332,7 @@ interface ShowRow {
   id: number
   release_year: number | null
   tmdb_popularity: number | null
-  imdb_votes: number | null
+  omdb_imdb_votes: number | null
   trakt_watchers: number | null
   trakt_plays: number | null
   aggregate_score: number | null
@@ -350,7 +356,7 @@ async function updateShowPopularity(
       s.id,
       EXTRACT(YEAR FROM s.first_air_date)::int as release_year,
       s.tmdb_popularity::float as tmdb_popularity,
-      s.imdb_votes::int as imdb_votes,
+      s.omdb_imdb_votes::int as omdb_imdb_votes,
       s.trakt_watchers::int as trakt_watchers,
       s.trakt_plays::int as trakt_plays,
       s.aggregate_score::float as aggregate_score,
@@ -378,7 +384,7 @@ async function updateShowPopularity(
       boxOfficeCents: null, // Shows don't have box office
       traktWatchers: show.trakt_watchers,
       traktPlays: show.trakt_plays,
-      imdbVotes: show.imdb_votes,
+      imdbVotes: show.omdb_imdb_votes,
       tmdbPopularity: show.tmdb_popularity,
       isUSUKProduction: isUSUK,
       originalLanguage: show.original_language,
@@ -462,13 +468,14 @@ async function updateActorPopularity(
   // queries need bounded batch sizes. options.batchSize controls snapshot flush frequency.
   const batchSize = options.batchSize
 
-  // Get all deceased actors with TMDB popularity and Wikipedia data
+  // Get all deceased actors with TMDB popularity, Wikipedia, and Wikidata data
   const actorsResult = await pool.query<{
     id: number
     tmdb_popularity: number | null
     wikipedia_annual_pageviews: number | null
+    wikidata_sitelinks: number | null
   }>(`
-    SELECT id, tmdb_popularity::float, wikipedia_annual_pageviews
+    SELECT id, tmdb_popularity::float, wikipedia_annual_pageviews, wikidata_sitelinks
     FROM actors
     WHERE deathday IS NOT NULL
     ORDER BY id
@@ -569,6 +576,7 @@ async function updateActorPopularity(
         appearances,
         tmdbPopularity: actor.tmdb_popularity,
         wikipediaAnnualPageviews: actor.wikipedia_annual_pageviews,
+        wikidataSitelinks: actor.wikidata_sitelinks,
       })
 
       if (result.dofPopularity !== null) {
@@ -707,6 +715,99 @@ async function batchUpdateWikipediaPageviews(
     WHERE a.id = u.id
     `,
     [updates.map((u) => u.id), updates.map((u) => u.pageviews)]
+  )
+}
+
+/**
+ * Refresh Wikidata sitelinks for actors with stale or missing data.
+ *
+ * Sitelinks change slowly, so we use a 30-day refresh interval
+ * (vs 7 days for Wikipedia pageviews).
+ */
+async function refreshWikidataSitelinks(
+  pool: ReturnType<typeof getPool>,
+  options: Options
+): Promise<number> {
+  const staleActors = await pool.query<{
+    id: number
+    tmdb_id: number | null
+    wikipedia_url: string | null
+  }>(`
+    SELECT id, tmdb_id, wikipedia_url
+    FROM actors
+    WHERE (tmdb_id IS NOT NULL OR wikipedia_url IS NOT NULL)
+      AND deathday IS NOT NULL
+      AND (wikidata_sitelinks_updated_at IS NULL
+           OR wikidata_sitelinks_updated_at < NOW() - INTERVAL '30 days')
+    ORDER BY id
+  `)
+
+  console.log(`Found ${staleActors.rows.length} actors with stale Wikidata sitelinks data`)
+
+  if (staleActors.rows.length === 0 || options.dryRun) {
+    return 0
+  }
+
+  let refreshed = 0
+  const SITELINKS_BATCH_SIZE = 500
+
+  for (let i = 0; i < staleActors.rows.length; i += SITELINKS_BATCH_SIZE) {
+    const batch = staleActors.rows.slice(i, i + SITELINKS_BATCH_SIZE)
+
+    // Batch fetch actors with TMDB IDs
+    const withTmdb = batch.filter((a) => a.tmdb_id !== null)
+    const tmdbIds = withTmdb.map((a) => a.tmdb_id!)
+    const sitelinksByTmdb = tmdbIds.length > 0 ? await fetchSitelinksBatch(tmdbIds) : new Map()
+
+    const batchUpdates: Array<{ id: number; sitelinks: number | null }> = []
+
+    for (const actor of withTmdb) {
+      batchUpdates.push({
+        id: actor.id,
+        sitelinks: sitelinksByTmdb.get(actor.tmdb_id!) ?? null,
+      })
+    }
+
+    // Individual fetch for actors without TMDB IDs (fallback to Wikipedia URL)
+    const withoutTmdb = batch.filter((a) => a.tmdb_id === null && a.wikipedia_url !== null)
+    for (const actor of withoutTmdb) {
+      try {
+        const sitelinks = await fetchSitelinksByWikipediaUrl(actor.wikipedia_url!)
+        batchUpdates.push({ id: actor.id, sitelinks })
+      } catch (error) {
+        console.error(`Error fetching sitelinks for actor ${actor.id}:`, error)
+        batchUpdates.push({ id: actor.id, sitelinks: null })
+      }
+    }
+
+    // Write batch
+    if (batchUpdates.length > 0) {
+      await batchUpdateWikidataSitelinks(pool, batchUpdates)
+      refreshed += batchUpdates.length
+      process.stdout.write(`\rRefreshed ${refreshed} Wikidata sitelinks...`)
+    }
+  }
+
+  console.log(`\rRefreshed ${refreshed} Wikidata sitelinks    `)
+  return refreshed
+}
+
+async function batchUpdateWikidataSitelinks(
+  pool: ReturnType<typeof getPool>,
+  updates: Array<{ id: number; sitelinks: number | null }>
+): Promise<void> {
+  await pool.query(
+    `
+    UPDATE actors a SET
+      wikidata_sitelinks = COALESCE(u.sitelinks, a.wikidata_sitelinks),
+      wikidata_sitelinks_updated_at = NOW()
+    FROM (
+      SELECT unnest($1::int[]) as id,
+             unnest($2::int[]) as sitelinks
+    ) u
+    WHERE a.id = u.id
+    `,
+    [updates.map((u) => u.id), updates.map((u) => u.sitelinks)]
   )
 }
 

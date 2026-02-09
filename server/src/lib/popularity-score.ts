@@ -20,8 +20,9 @@
  * 1.0 - Initial algorithm baseline
  * 1.1 - Fix scheduled job bugs (×100 TMDB, sum-all vs top-10, normalization)
  * 2.0 - Weighted positional scoring, reduce TMDB weight 30%→15%, add Wikipedia pageviews 15%
+ * 3.0 - Smooth billing weights, Wikidata sitelinks signal, graduated language penalty, peak-performance blend
  */
-export const ALGORITHM_VERSION = "2.0"
+export const ALGORITHM_VERSION = "3.0"
 
 // ============================================================================
 // Types
@@ -86,6 +87,8 @@ export interface ActorPopularityInput {
   tmdbPopularity: number | null
   // Wikipedia annual pageviews as a fame signal
   wikipediaAnnualPageviews: number | null
+  // Wikidata sitelinks count (number of Wikipedia language editions)
+  wikidataSitelinks: number | null
 }
 
 export interface ActorAppearance {
@@ -172,14 +175,21 @@ const PERCENTILE_THRESHOLDS = {
     p90: 200_000_000_00, // $200M
     p99: 1_000_000_000_00, // $1B
   },
+  wikidataSitelinks: {
+    p25: 10,
+    p50: 25,
+    p75: 50,
+    p90: 75,
+    p99: 100,
+  },
 } as const
 
-// Billing order weight mapping
-const BILLING_WEIGHTS = {
-  lead: 1.0, // Billing 1-3
-  supporting: 0.7, // Billing 4-10
-  minor: 0.4, // Billing 11+
-} as const
+// Hyperbolic decay rate for billing order (Proposal 04)
+// Produces: position 1→1.0, 2→0.87, 3→0.77, 5→0.63, 10→0.43, 15→0.32, 20→0.26
+const BILLING_DECAY_RATE = 0.15
+
+// Default billing weight when billing order is unknown
+const BILLING_NULL_WEIGHT = 0.3
 
 // Episode count threshold for full TV weight
 const FULL_TV_WEIGHT_EPISODES = 20
@@ -192,9 +202,15 @@ const MIN_APPEARANCES_FULL_CONFIDENCE = 10
 const MAX_APPEARANCES_FOR_SCORE = 10
 
 // Actor score composition
-const ACTOR_FILMOGRAPHY_WEIGHT = 0.7
+const ACTOR_FILMOGRAPHY_WEIGHT = 0.55
 const ACTOR_TMDB_RECENCY_WEIGHT = 0.15
 const ACTOR_WIKIPEDIA_WEIGHT = 0.15
+const ACTOR_SITELINKS_WEIGHT = 0.05
+
+// Peak-performance blend weights (Proposal 08)
+const PEAK_WEIGHT = 0.4
+const BREADTH_WEIGHT = 0.6
+const PEAK_TOP_N = 3
 
 // Exponential decay factor for weighted positional scoring (Proposal 02)
 // Each successive top-N contribution is worth 85% of the previous one,
@@ -207,10 +223,24 @@ const REFERENCE_YEAR = 2024
 // Minimum sources for a valid score
 const MIN_SOURCES_FOR_SCORE = 2
 
-// Non-English language penalty multiplier
-// This is a dead-on-film focused site, primarily serving English-speaking audiences.
-// Non-English content gets a severe penalty since our users are less likely to recognize it.
-const NON_ENGLISH_PENALTY_MULTIPLIER = 0.4
+// Graduated language multipliers (Proposal 07)
+// Different languages get different multipliers based on US audience familiarity.
+const LANGUAGE_MULTIPLIERS: Record<string, number> = {
+  en: 1.0,
+  es: 0.75,
+  fr: 0.65,
+  ja: 0.65,
+  ko: 0.65,
+  de: 0.55,
+  it: 0.55,
+  zh: 0.55,
+  hi: 0.5,
+  pt: 0.5,
+  ru: 0.45,
+  sv: 0.45,
+  da: 0.45,
+}
+const DEFAULT_LANGUAGE_MULTIPLIER = 0.35
 
 // ============================================================================
 // Helper Functions
@@ -396,14 +426,30 @@ export function calculateAwardsScore(wins: number | null, nominations: number | 
 }
 
 /**
- * Get billing weight based on order
+ * Get billing weight using hyperbolic decay (Proposal 04).
+ *
+ * Produces smooth decay: position 1→1.0, 2→0.87, 3→0.77, 5→0.63, etc.
+ * Unknown billing order (null) returns BILLING_NULL_WEIGHT (0.3).
  */
 export function getBillingWeight(billingOrder: number | null): number {
-  if (billingOrder === null) return BILLING_WEIGHTS.minor
+  if (billingOrder === null) return BILLING_NULL_WEIGHT
+  return 1.0 / (1 + BILLING_DECAY_RATE * (billingOrder - 1))
+}
 
-  if (billingOrder <= 3) return BILLING_WEIGHTS.lead
-  if (billingOrder <= 10) return BILLING_WEIGHTS.supporting
-  return BILLING_WEIGHTS.minor
+/**
+ * Get language multiplier for content scoring (Proposal 07).
+ *
+ * US/UK productions in non-English languages get a boost (e.g. a Hollywood
+ * film shot in Spanish is more familiar to US audiences than a domestic
+ * Spanish production).
+ */
+export function getLanguageMultiplier(language: string | null, isUSUKProd: boolean): number {
+  if (!language) return DEFAULT_LANGUAGE_MULTIPLIER
+  const mult = LANGUAGE_MULTIPLIERS[language.toLowerCase()] ?? DEFAULT_LANGUAGE_MULTIPLIER
+  if (isUSUKProd && mult < 0.8) {
+    return Math.min(0.85, mult + 0.2)
+  }
+  return mult
 }
 
 /**
@@ -479,10 +525,9 @@ export function calculateMoviePopularity(input: ContentPopularityInput): Content
   const weightedSum = signals.reduce((sum, s) => sum + s.value * s.weight, 0)
   let dofPopularity = weightedSum / totalWeight
 
-  // Apply severe penalty for non-English content
-  if (!isEnglishLanguage(input.originalLanguage)) {
-    dofPopularity *= NON_ENGLISH_PENALTY_MULTIPLIER
-  }
+  // Apply graduated language penalty (Proposal 07)
+  const langMultiplier = getLanguageMultiplier(input.originalLanguage, input.isUSUKProduction)
+  dofPopularity *= langMultiplier
 
   dofPopularity = Math.round(dofPopularity * 100) / 100
 
@@ -562,10 +607,9 @@ export function calculateShowPopularity(input: ShowPopularityInput): ContentPopu
   const weightedSum = signals.reduce((sum, s) => sum + s.value * s.weight, 0)
   let dofPopularity = weightedSum / totalWeight
 
-  // Apply severe penalty for non-English content
-  if (!isEnglishLanguage(input.originalLanguage)) {
-    dofPopularity *= NON_ENGLISH_PENALTY_MULTIPLIER
-  }
+  // Apply graduated language penalty (Proposal 07)
+  const langMultiplier = getLanguageMultiplier(input.originalLanguage, input.isUSUKProduction)
+  dofPopularity *= langMultiplier
 
   dofPopularity = Math.round(dofPopularity * 100) / 100
 
@@ -639,7 +683,7 @@ function calculateContentWeight(
  * for having many minor roles alongside their major work.
  */
 export function calculateActorPopularity(input: ActorPopularityInput): ActorPopularityResult {
-  const { appearances, tmdbPopularity, wikipediaAnnualPageviews } = input
+  const { appearances, tmdbPopularity, wikipediaAnnualPageviews, wikidataSitelinks } = input
 
   if (appearances.length === 0) {
     return { dofPopularity: null, confidence: 0 }
@@ -657,7 +701,7 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
     const contentScore =
       (appearance.contentDofPopularity ?? 0) * 0.6 + (appearance.contentDofWeight ?? 0) * 0.4
 
-    // Apply billing weight
+    // Apply billing weight (hyperbolic decay — Proposal 04)
     const billingWeight = getBillingWeight(appearance.billingOrder)
 
     // Apply episode weight for TV
@@ -676,8 +720,12 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
   contributions.sort((a, b) => b - a)
   const topContributions = contributions.slice(0, MAX_APPEARANCES_FOR_SCORE)
 
-  // Weighted positional average: top contributions matter more (Proposal 02)
-  const filmographyScore = weightedPositionalAverage(topContributions)
+  // Peak-performance blend (Proposal 08):
+  // Blend top-3 peak average (40%) with top-10 breadth via weighted positional (60%)
+  const peakSlice = topContributions.slice(0, PEAK_TOP_N)
+  const peakScore = peakSlice.reduce((s, c) => s + c, 0) / Math.max(peakSlice.length, 1)
+  const breadthScore = weightedPositionalAverage(topContributions)
+  const filmographyScore = peakScore * PEAK_WEIGHT + breadthScore * BREADTH_WEIGHT
 
   // Blend filmography with supplementary signals using weight normalization.
   // When a signal is missing (null), its weight is excluded and remaining
@@ -696,6 +744,13 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
       logPercentile(wikipediaAnnualPageviews, PERCENTILE_THRESHOLDS.wikipediaAnnualPageviews) ?? 0
     finalScore += wikiScore * ACTOR_WIKIPEDIA_WEIGHT
     totalWeight += ACTOR_WIKIPEDIA_WEIGHT
+  }
+
+  if (wikidataSitelinks !== null) {
+    const sitelinksScore =
+      logPercentile(wikidataSitelinks, PERCENTILE_THRESHOLDS.wikidataSitelinks) ?? 0
+    finalScore += sitelinksScore * ACTOR_SITELINKS_WEIGHT
+    totalWeight += ACTOR_SITELINKS_WEIGHT
   }
 
   // Normalize to account for missing signals

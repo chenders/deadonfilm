@@ -344,7 +344,7 @@ async function backfillActors(pool: ReturnType<typeof getPool>, options: Options
   while (offset < total) {
     const actorsResult = await pool.query(
       `
-      SELECT id, name, tmdb_popularity, wikipedia_annual_pageviews
+      SELECT id, name, tmdb_popularity, wikipedia_annual_pageviews, wikidata_sitelinks
       FROM actors
       ${whereClause}
       ORDER BY id
@@ -416,6 +416,10 @@ async function backfillActors(pool: ReturnType<typeof getPool>, options: Options
           actor.wikipedia_annual_pageviews !== null &&
           actor.wikipedia_annual_pageviews !== undefined
             ? Number(actor.wikipedia_annual_pageviews)
+            : null,
+        wikidataSitelinks:
+          actor.wikidata_sitelinks !== null && actor.wikidata_sitelinks !== undefined
+            ? Number(actor.wikidata_sitelinks)
             : null,
       })
 
