@@ -9,6 +9,7 @@ COPY server/package*.json ./
 RUN npm ci
 
 COPY server/src/ ./src/
+COPY server/scripts/ ./scripts/
 COPY server/tsconfig.json ./
 RUN npx tsc
 
