@@ -23,7 +23,7 @@ const MAX_RETRIES = 3
 const RETRY_BASE_DELAY_MS = 2000
 
 /** Max TMDB IDs per batch SPARQL query */
-const MAX_BATCH_SIZE = 500
+const MAX_BATCH_SIZE = 100
 
 /**
  * Rate limiter to enforce minimum delay between requests
@@ -59,19 +59,20 @@ interface SparqlResult {
 async function executeSparqlQuery(query: string): Promise<SparqlResult | null> {
   await rateLimiter.waitForRateLimit()
 
-  const url = `${WIKIDATA_SPARQL_ENDPOINT}?query=${encodeURIComponent(query)}`
-
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       if (attempt > 0) {
         await rateLimiter.waitForRateLimit()
       }
 
-      const response = await fetch(url, {
+      const response = await fetch(WIKIDATA_SPARQL_ENDPOINT, {
+        method: "POST",
         headers: {
           Accept: "application/sparql-results+json",
+          "Content-Type": "application/x-www-form-urlencoded",
           "User-Agent": USER_AGENT,
         },
+        body: `query=${encodeURIComponent(query)}`,
       })
 
       if (response.status === 429 && attempt < MAX_RETRIES) {

@@ -47,8 +47,9 @@ describe("fetchSitelinksByTmdbId", () => {
     const result = await fetchSitelinksByTmdbId(500)
     expect(result).toBe(85)
     expect(mockFetch).toHaveBeenCalledOnce()
-    expect(mockFetch.mock.calls[0][0]).toContain("P4985")
-    expect(mockFetch.mock.calls[0][0]).toContain("500")
+    const body = mockFetch.mock.calls[0][1]?.body as string
+    expect(body).toContain("P4985")
+    expect(body).toContain("500")
   })
 
   it("returns null when no results found", async () => {
@@ -125,8 +126,9 @@ describe("fetchSitelinksByWikipediaUrl", () => {
 
     const result = await fetchSitelinksByWikipediaUrl("https://en.wikipedia.org/wiki/Tom_Cruise")
     expect(result).toBe(85)
-    // URL encodes the name with spaces (Tom_Cruise → Tom Cruise → Tom%20Cruise)
-    expect(mockFetch.mock.calls[0][0]).toContain("Tom%20Cruise")
+    // Body URL-encodes the query which includes name with spaces (Tom_Cruise → Tom Cruise → Tom%20Cruise)
+    const body = mockFetch.mock.calls[0][1]?.body as string
+    expect(body).toContain("Tom%20Cruise")
   })
 
   it("handles mobile Wikipedia URLs", async () => {
