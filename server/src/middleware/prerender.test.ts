@@ -197,9 +197,7 @@ describe("prerenderMiddleware", () => {
       next
     )
 
-    // Wait for fire-and-forget setCached
-    await new Promise((resolve) => setTimeout(resolve, 10))
-
+    // setCached is called synchronously (fire-and-forget) — mock records call immediately
     expect(mockSetCached).toHaveBeenCalledWith(expect.any(String), "<html>death-watch</html>", 3600)
   })
 
@@ -219,8 +217,7 @@ describe("prerenderMiddleware", () => {
 
     await prerenderMiddleware(makeReq({ path: "/", originalUrl: "/" }), res as Response, next)
 
-    await new Promise((resolve) => setTimeout(resolve, 10))
-
+    // setCached is called synchronously (fire-and-forget) — mock records call immediately
     expect(mockSetCached).toHaveBeenCalledWith(expect.any(String), "<html>home</html>", 3600)
   })
 

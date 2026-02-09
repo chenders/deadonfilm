@@ -34,6 +34,7 @@ export type PageType =
   | "data-sources"
   | "articles-index"
   | "article"
+  | "season"
 
 export interface MatchResult {
   pageType: PageType
@@ -68,6 +69,25 @@ function parseEpisodeSlug(
   if (!showTmdbId) return null
 
   return { showTmdbId, season, episode }
+}
+
+/** Static pages (exact matches) — defined at module level to avoid per-call allocation */
+const STATIC_PAGES: Record<string, PageType> = {
+  "/forever-young": "forever-young",
+  "/covid-deaths": "covid-deaths",
+  "/unnatural-deaths": "unnatural-deaths",
+  "/death-watch": "death-watch",
+  "/deaths": "deaths-index",
+  "/deaths/all": "deaths-all",
+  "/deaths/notable": "deaths-notable",
+  "/deaths/decades": "deaths-decades",
+  "/movies/genres": "genres-index",
+  "/causes-of-death": "causes-of-death-index",
+  "/about": "about",
+  "/faq": "faq",
+  "/methodology": "methodology",
+  "/data-sources": "data-sources",
+  "/articles": "articles-index",
 }
 
 /**
@@ -131,6 +151,15 @@ export function matchUrl(path: string): MatchResult | null {
     }
   }
 
+  // Season: /show/{slug}-{year}-{tmdbId}/season/{seasonNumber}
+  const seasonMatch = cleanPath.match(/^\/show\/([^/]+)\/season\/(\d+)$/)
+  if (seasonMatch) {
+    const tmdbId = extractTrailingId(seasonMatch[1])
+    if (tmdbId) {
+      return { pageType: "season", params: { tmdbId, seasonNumber: seasonMatch[2] } }
+    }
+  }
+
   // Show: /show/{slug}-{year}-{tmdbId}
   const showMatch = cleanPath.match(/^\/show\/([^/]+)$/)
   if (showMatch) {
@@ -141,26 +170,8 @@ export function matchUrl(path: string): MatchResult | null {
   }
 
   // Static pages (exact matches)
-  const staticPages: Record<string, PageType> = {
-    "/forever-young": "forever-young",
-    "/covid-deaths": "covid-deaths",
-    "/unnatural-deaths": "unnatural-deaths",
-    "/death-watch": "death-watch",
-    "/deaths": "deaths-index",
-    "/deaths/all": "deaths-all",
-    "/deaths/notable": "deaths-notable",
-    "/deaths/decades": "deaths-decades",
-    "/movies/genres": "genres-index",
-    "/causes-of-death": "causes-of-death-index",
-    "/about": "about",
-    "/faq": "faq",
-    "/methodology": "methodology",
-    "/data-sources": "data-sources",
-    "/articles": "articles-index",
-  }
-
-  if (cleanPath in staticPages) {
-    return { pageType: staticPages[cleanPath], params: {} }
+  if (cleanPath in STATIC_PAGES) {
+    return { pageType: STATIC_PAGES[cleanPath], params: {} }
   }
 
   // Deaths by decade: /deaths/decade/{decade}

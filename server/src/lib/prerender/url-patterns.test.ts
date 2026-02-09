@@ -68,6 +68,29 @@ describe("matchUrl", () => {
     })
   })
 
+  describe("season", () => {
+    it("matches /show/{slug}/season/{seasonNumber}", () => {
+      expect(matchUrl("/show/breaking-bad-2008-1396/season/1")).toEqual({
+        pageType: "season",
+        params: { tmdbId: "1396", seasonNumber: "1" },
+      })
+    })
+
+    it("handles multi-digit season numbers", () => {
+      expect(matchUrl("/show/the-simpsons-1989-456/season/35")).toEqual({
+        pageType: "season",
+        params: { tmdbId: "456", seasonNumber: "35" },
+      })
+    })
+
+    it("strips trailing slash from season path", () => {
+      expect(matchUrl("/show/breaking-bad-2008-1396/season/1/")).toEqual({
+        pageType: "season",
+        params: { tmdbId: "1396", seasonNumber: "1" },
+      })
+    })
+  })
+
   describe("episode", () => {
     it("matches /episode/{showSlug}-s{N}e{N}-{episodeSlug}-{showTmdbId}", () => {
       expect(matchUrl("/episode/breaking-bad-s1e1-pilot-1396")).toEqual({

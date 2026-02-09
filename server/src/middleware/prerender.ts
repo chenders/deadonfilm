@@ -96,7 +96,7 @@ export async function prerenderMiddleware(
     // Match URL against known routes
     const match = matchUrl(req.path)
     if (!match) {
-      // Unrecognized path — serve fallback and let SPA handle it
+      // Unrecognized path — serve prerender fallback HTML directly to bots
       const fallbackHtml = renderFallbackHtml(req.path)
       sendHtml(res, fallbackHtml, "FALLBACK")
       return

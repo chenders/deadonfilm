@@ -25,7 +25,7 @@ import {
 } from "./schema.js"
 import type { PrerenderPageData } from "./renderer.js"
 import type { MatchResult } from "./url-patterns.js"
-import type { EpisodeRecord } from "../db/types.js"
+import type { EpisodeRecord, SeasonRecord } from "../db/types.js"
 
 const BASE_URL = "https://deadonfilm.com"
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p"
@@ -62,6 +62,8 @@ export async function fetchPageData(match: MatchResult): Promise<PrerenderPageDa
         Number(params.season),
         Number(params.episode)
       )
+    case "season":
+      return getSeasonPageData(Number(params.tmdbId), Number(params.seasonNumber))
     case "search":
       return getStaticPageData(
         "Search Movies & TV Shows",
@@ -382,6 +384,59 @@ async function getEpisodePageData(
       ]),
     ],
     heading: `${row.show_name} — ${episodeCode}: ${episodeName}`,
+    subheading: description,
+  }
+}
+
+async function getSeasonPageData(
+  showTmdbId: number,
+  seasonNumber: number
+): Promise<PrerenderPageData | null> {
+  const db = getPool()
+
+  // Join season with show data in a single query
+  const result = await db.query<
+    SeasonRecord & {
+      show_name: string
+      show_poster_path: string | null
+      show_first_air_date: string | null
+    }
+  >(
+    `SELECT se.*, s.name as show_name, s.poster_path as show_poster_path, s.first_air_date as show_first_air_date
+     FROM seasons se
+     JOIN shows s ON s.tmdb_id = se.show_tmdb_id
+     WHERE se.show_tmdb_id = $1 AND se.season_number = $2`,
+    [showTmdbId, seasonNumber]
+  )
+
+  if (result.rows.length === 0) return null
+  const row = result.rows[0]
+
+  const showFirstAirYear = row.show_first_air_date
+    ? parseInt(row.show_first_air_date.slice(0, 4), 10)
+    : null
+  const showSlug = createShowSlug(row.show_name, showFirstAirYear, showTmdbId)
+  const seasonName = row.name || `Season ${seasonNumber}`
+  const title = `${row.show_name} - ${seasonName}`
+  const canonicalUrl = `${BASE_URL}/show/${showSlug}/season/${seasonNumber}`
+
+  const deceased = row.deceased_count ?? 0
+  const episodeCount = row.episode_count ?? 0
+
+  const description = `${deceased} guest stars from ${row.show_name} ${seasonName} have passed away. Browse all ${episodeCount} episodes.`
+
+  return {
+    title: `${title} - Dead on Film`,
+    description,
+    ogType: "video.tv_show",
+    imageUrl: tmdbPoster(row.poster_path || row.show_poster_path),
+    canonicalUrl,
+    jsonLd: buildBreadcrumbSchema([
+      { name: "Home", url: BASE_URL },
+      { name: row.show_name, url: `${BASE_URL}/show/${showSlug}` },
+      { name: seasonName, url: canonicalUrl },
+    ]),
+    heading: title,
     subheading: description,
   }
 }
