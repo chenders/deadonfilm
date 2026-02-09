@@ -440,6 +440,8 @@ async function updateActorPopularity(
   options: Options,
   runId: number | null
 ): Promise<number> {
+  // Actor DB writes use ACTOR_FILMOGRAPHY_BATCH_SIZE (500) since filmography
+  // queries need bounded batch sizes. options.batchSize controls snapshot flush frequency.
   const batchSize = options.batchSize
 
   // Get all deceased actors with TMDB popularity
@@ -480,6 +482,7 @@ async function updateActorPopularity(
         FROM actor_movie_appearances ama
         JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
         WHERE ama.actor_id = ANY($1)
+          AND (m.dof_popularity IS NOT NULL OR m.dof_weight IS NOT NULL)
         `,
         [actorIds]
       ),
@@ -500,6 +503,7 @@ async function updateActorPopularity(
         FROM actor_show_appearances asa
         JOIN shows s ON s.tmdb_id = asa.show_tmdb_id
         WHERE asa.actor_id = ANY($1)
+          AND (s.dof_popularity IS NOT NULL OR s.dof_weight IS NOT NULL)
         GROUP BY asa.actor_id, s.tmdb_id, s.dof_popularity, s.dof_weight
         `,
         [actorIds]
