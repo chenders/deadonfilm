@@ -16,6 +16,8 @@ export interface PrerenderPageData {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[]
   heading: string
   subheading?: string
+  /** Optional robots directive (e.g., "noindex, follow" for search pages) */
+  robots?: string
 }
 
 /**
@@ -71,7 +73,7 @@ export function renderPrerenderHtml(data: PrerenderPageData): string {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapedTitle}</title>
-    <meta name="description" content="${escapedDescription}" />
+    <meta name="description" content="${escapedDescription}" />${data.robots ? `\n    <meta name="robots" content="${escapeHtml(data.robots)}" />` : ""}
     <link rel="canonical" href="${escapedCanonicalUrl}" />
 
     <!-- OpenGraph -->

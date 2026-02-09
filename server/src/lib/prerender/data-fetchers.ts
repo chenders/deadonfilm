@@ -65,11 +65,14 @@ export async function fetchPageData(match: MatchResult): Promise<PrerenderPageDa
     case "season":
       return getSeasonPageData(Number(params.tmdbId), Number(params.seasonNumber))
     case "search":
-      return getStaticPageData(
-        "Search Movies & TV Shows",
-        "Search for movies, TV shows, and actors to see mortality statistics.",
-        "/search"
-      )
+      return {
+        ...getStaticPageData(
+          "Search Movies & TV Shows",
+          "Search for movies, TV shows, and actors to see mortality statistics.",
+          "/search"
+        ),
+        robots: "noindex, follow",
+      }
     case "forever-young":
       return getStaticPageData(
         "Forever Young — Movies Where No Cast Members Have Died",

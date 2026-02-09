@@ -81,9 +81,10 @@ export async function prerenderMiddleware(
     return
   }
 
-  // Use originalUrl to preserve query parameters (e.g. ?page=2, ?includeObscure=true)
-  const urlForRender = req.originalUrl
-  const cacheKey = CACHE_KEYS.prerender(urlForRender).html
+  // Cache key uses path only (not query string) because rendered HTML doesn't
+  // vary by query params — matchUrl() and fetchPageData() are path-based.
+  // This prevents Redis bloat from distinct ?page=N or ?q=... variants.
+  const cacheKey = CACHE_KEYS.prerender(req.path).html
 
   try {
     // Check Redis cache first
@@ -116,14 +117,17 @@ export async function prerenderMiddleware(
     // Cache the rendered HTML (fire-and-forget)
     const ttl = getTtl(req.path)
     setCached(cacheKey, html, ttl).catch((err) => {
-      logger.warn({ err: (err as Error).message, url: urlForRender }, "Failed to cache prerender")
+      logger.warn(
+        { err: (err as Error).message, url: req.originalUrl },
+        "Failed to cache prerender"
+      )
     })
 
     sendHtml(res, html, "MISS")
   } catch (err) {
     // On any error, serve fallback HTML — better than empty SPA shell
     logger.warn(
-      { err: (err as Error).message, url: urlForRender },
+      { err: (err as Error).message, url: req.originalUrl },
       "Prerender error, serving fallback"
     )
     try {

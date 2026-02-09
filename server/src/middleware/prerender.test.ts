@@ -280,7 +280,7 @@ describe("prerenderMiddleware", () => {
 
   // ── Query parameter handling ─────────────────────────────────────
 
-  it("preserves query parameters in cache key", async () => {
+  it("uses path-only cache key ignoring query parameters", async () => {
     vi.mocked(getCached).mockResolvedValue(null)
     vi.mocked(matchUrl).mockReturnValue({ pageType: "deaths-all", params: {} })
     vi.mocked(fetchPageData).mockResolvedValue({
@@ -301,7 +301,8 @@ describe("prerenderMiddleware", () => {
       next
     )
 
-    // Cache key should include query string
-    expect(getCached).toHaveBeenCalledWith("prerender:path:/deaths/all?page=2&includeObscure=true")
+    // Cache key uses path only (not query string) to avoid Redis bloat
+    // since rendered HTML doesn't vary by query params
+    expect(getCached).toHaveBeenCalledWith("prerender:path:/deaths/all")
   })
 })

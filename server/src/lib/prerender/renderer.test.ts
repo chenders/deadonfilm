@@ -149,6 +149,31 @@ describe("renderPrerenderHtml", () => {
     expect(html).toContain("&lt;img")
   })
 
+  it("renders robots meta tag when provided", () => {
+    const html = renderPrerenderHtml({
+      title: "Search",
+      description: "Search page",
+      ogType: "website",
+      canonicalUrl: "https://deadonfilm.com/search",
+      heading: "Search",
+      robots: "noindex, follow",
+    })
+
+    expect(html).toContain('<meta name="robots" content="noindex, follow" />')
+  })
+
+  it("omits robots meta tag when not provided", () => {
+    const html = renderPrerenderHtml({
+      title: "Test",
+      description: "Test",
+      ogType: "website",
+      canonicalUrl: "https://deadonfilm.com/test",
+      heading: "Test",
+    })
+
+    expect(html).not.toContain('name="robots"')
+  })
+
   it("omits subheading when not provided", () => {
     const html = renderPrerenderHtml({
       title: "Test",
