@@ -34,8 +34,8 @@ export const prerenderRateLimiter = rateLimit({
   skip: (req) => req.headers["x-prerender"] !== "1",
 })
 
-/** Paths that should never be prerendered */
-const SKIP_PATH_PREFIXES = ["/api", "/admin", "/health", "/sitemap", "/nr-browser.js", "/assets"]
+/** Paths that should never be prerendered (trailing slash prevents matching e.g. "/assets-foo") */
+const SKIP_PATH_PREFIXES = ["/api/", "/admin", "/health", "/sitemap", "/nr-browser.js", "/assets/"]
 
 /** Paths with frequently changing content get shorter cache TTL */
 const DYNAMIC_PATH_PREFIXES = ["/death-watch", "/deaths", "/covid-deaths", "/unnatural-deaths"]

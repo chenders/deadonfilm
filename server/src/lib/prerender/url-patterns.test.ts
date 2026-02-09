@@ -105,6 +105,16 @@ describe("matchUrl", () => {
         params: { showTmdbId: "456", season: "35", episode: "12" },
       })
     })
+
+    it("correctly parses when show slug contains s{N}e{N} substring", () => {
+      // A show slug like "s1e1-show" should not confuse the parser —
+      // the anchored regex ensures the trailing TMDB ID is associated
+      // with the correct season/episode marker
+      expect(matchUrl("/episode/my-s1e1-show-s2e3-the-episode-789")).toEqual({
+        pageType: "episode",
+        params: { showTmdbId: "789", season: "2", episode: "3" },
+      })
+    })
   })
 
   describe("static pages", () => {
