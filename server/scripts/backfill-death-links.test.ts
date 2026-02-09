@@ -246,10 +246,9 @@ describe("lookupProject", () => {
 })
 
 describe("lookupActor", () => {
-  const createMockDb = (
-    exactRows: { tmdb_id: number }[],
-    simplifiedRows: { tmdb_id: number }[] = []
-  ) => {
+  type ActorRow = { id: number; tmdb_id: number; tmdb_popularity: number | null }
+
+  const createMockDb = (exactRows: ActorRow[], simplifiedRows: ActorRow[] = []) => {
     let callCount = 0
     return {
       query: vi.fn(() => {
@@ -261,7 +260,7 @@ describe("lookupActor", () => {
   }
 
   it("finds actor by exact name match", async () => {
-    const db = createMockDb([{ tmdb_id: 123 }])
+    const db = createMockDb([{ id: 1, tmdb_id: 123, tmdb_popularity: 10.0 }])
     const result = await lookupActor(db, "Tom Hanks")
     expect(result).toBe(123)
   })
@@ -273,19 +272,19 @@ describe("lookupActor", () => {
   })
 
   it("tries simplified name when exact match fails", async () => {
-    const db = createMockDb([], [{ tmdb_id: 456 }])
+    const db = createMockDb([], [{ id: 2, tmdb_id: 456, tmdb_popularity: 5.0 }])
     const result = await lookupActor(db, "John Q. Smith")
     expect(result).toBe(456)
   })
 
   it("simplifies middle initial with period", async () => {
-    const db = createMockDb([], [{ tmdb_id: 789 }])
+    const db = createMockDb([], [{ id: 3, tmdb_id: 789, tmdb_popularity: 3.0 }])
     const result = await lookupActor(db, "Mary J. Watson")
     expect(result).toBe(789)
   })
 
   it("simplifies middle initial without period", async () => {
-    const db = createMockDb([], [{ tmdb_id: 999 }])
+    const db = createMockDb([], [{ id: 4, tmdb_id: 999, tmdb_popularity: 1.0 }])
     const result = await lookupActor(db, "Robert C Downey")
     expect(result).toBe(999)
   })
