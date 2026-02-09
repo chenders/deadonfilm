@@ -76,7 +76,7 @@ const program = new Command()
     1000
   )
   .option("-n, --dry-run", "Preview without updating database")
-  .option("-f, --force", "Allow re-run (placeholder for future daily guard)")
+  .option("-f, --force", "Allow manual re-run after algorithm changes")
   .action(async (options) => {
     await run(options)
   })
