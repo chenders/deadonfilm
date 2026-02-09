@@ -103,8 +103,10 @@ describe("death-link-backfiller", () => {
   })
 
   describe("lookupActor", () => {
-    it("finds actor by exact name match", async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 3084 }] })
+    it("finds actor by exact name match (single result)", async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 100, tmdb_id: 3084, tmdb_popularity: 10.5 }],
+      })
 
       const result = await lookupActor(mockDb as never, "Marlon Brando")
 
@@ -118,7 +120,9 @@ describe("death-link-backfiller", () => {
       // First query returns empty (full name not found)
       mockQuery.mockResolvedValueOnce({ rows: [] })
       // Second query returns result (simplified name found)
-      mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 12345 }] })
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 200, tmdb_id: 12345, tmdb_popularity: 5.0 }],
+      })
 
       const result = await lookupActor(mockDb as never, "John Q. Public")
 
@@ -147,6 +151,101 @@ describe("death-link-backfiller", () => {
       expect(result).toBeNull()
       // Only one query since name has no middle initial
       expect(mockQuery).toHaveBeenCalledTimes(1)
+    })
+
+    it("disambiguates multiple matches using co-appearances", async () => {
+      // Two actors named "Michael Jackson"
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 500, tmdb_id: 82702, tmdb_popularity: 20.0 }, // King of Pop
+          { id: 600, tmdb_id: 159572, tmdb_popularity: 2.0 }, // Voice actor
+        ],
+      })
+      // Co-appearance query: King of Pop shared 14 appearances with source actor
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ actor_id: 500, shared_count: "14" }],
+      })
+
+      const result = await lookupActor(mockDb as never, "Michael Jackson", 999)
+
+      expect(result).toBe(82702)
+      expect(mockQuery).toHaveBeenCalledTimes(2)
+    })
+
+    it("falls back to popularity when no co-appearances exist", async () => {
+      // Two actors with same name, no co-appearances
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 500, tmdb_id: 82702, tmdb_popularity: 20.0 }, // More popular
+          { id: 600, tmdb_id: 159572, tmdb_popularity: 2.0 }, // Less popular
+        ],
+      })
+      // Co-appearance query: no shared appearances
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+
+      const result = await lookupActor(mockDb as never, "Michael Jackson", 999)
+
+      // Falls back to highest popularity (first in pre-sorted list)
+      expect(result).toBe(82702)
+    })
+
+    it("breaks co-appearance ties using popularity", async () => {
+      // Three actors with same name, two tied on co-appearances
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 500, tmdb_id: 82702, tmdb_popularity: 20.0 }, // Highest popularity
+          { id: 600, tmdb_id: 159572, tmdb_popularity: 15.0 }, // Second popularity
+          { id: 700, tmdb_id: 99999, tmdb_popularity: 2.0 }, // Lowest popularity
+        ],
+      })
+      // Co-appearance query: actors 600 and 700 tied with 3 co-appearances each
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { actor_id: 700, shared_count: "3" },
+          { actor_id: 600, shared_count: "3" },
+        ],
+      })
+
+      const result = await lookupActor(mockDb as never, "Michael Jackson", 999)
+
+      // Should pick 600 (higher popularity) among the tied candidates
+      expect(result).toBe(159572)
+    })
+
+    it("falls back to popularity when sourceActorId not provided", async () => {
+      // Multiple matches but no sourceActorId for disambiguation
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 500, tmdb_id: 82702, tmdb_popularity: 20.0 },
+          { id: 600, tmdb_id: 159572, tmdb_popularity: 2.0 },
+        ],
+      })
+
+      const result = await lookupActor(mockDb as never, "Michael Jackson")
+
+      // No co-appearance query since sourceActorId not provided
+      expect(result).toBe(82702)
+      expect(mockQuery).toHaveBeenCalledTimes(1)
+    })
+
+    it("disambiguates simplified name path with co-appearances", async () => {
+      // Exact name match returns empty
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+      // Simplified name returns multiple matches
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 700, tmdb_id: 11111, tmdb_popularity: 15.0 },
+          { id: 800, tmdb_id: 22222, tmdb_popularity: 25.0 },
+        ],
+      })
+      // Co-appearance query: less popular actor is the actual co-star
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ actor_id: 700, shared_count: "3" }],
+      })
+
+      const result = await lookupActor(mockDb as never, "John Q. Smith", 999)
+
+      expect(result).toBe(11111) // Co-star wins over popularity
     })
   })
 
@@ -294,7 +393,9 @@ describe("death-link-backfiller", () => {
 
     it("updates celebrity and returns true when match found", async () => {
       const celebrity = { name: "Marlon Brando", relationship: "co-star", tmdb_id: null }
-      mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 3084 }] })
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 100, tmdb_id: 3084, tmdb_popularity: 10.0 }],
+      })
 
       const result = await processCelebrity(mockDb as never, celebrity)
 
@@ -310,6 +411,26 @@ describe("death-link-backfiller", () => {
 
       expect(result).toBe(false)
       expect(celebrity.tmdb_id).toBeNull()
+    })
+
+    it("passes sourceActorId through to lookupActor for disambiguation", async () => {
+      const celebrity = { name: "Michael Jackson", relationship: "friend", tmdb_id: null }
+      // Multiple matches
+      mockQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 500, tmdb_id: 82702, tmdb_popularity: 20.0 },
+          { id: 600, tmdb_id: 159572, tmdb_popularity: 2.0 },
+        ],
+      })
+      // Co-appearance query
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ actor_id: 500, shared_count: "14" }],
+      })
+
+      const result = await processCelebrity(mockDb as never, celebrity, 999)
+
+      expect(result).toBe(true)
+      expect(celebrity.tmdb_id).toBe(82702)
     })
   })
 
@@ -351,8 +472,10 @@ describe("death-link-backfiller", () => {
       // Lookup for movie
       mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 238 }] })
 
-      // Lookup for actor
-      mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 3084 }] })
+      // Lookup for actor (returns full candidate row)
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 300, tmdb_id: 3084, tmdb_popularity: 10.0 }],
+      })
 
       // Update query
       mockQuery.mockResolvedValueOnce({ rows: [] })
