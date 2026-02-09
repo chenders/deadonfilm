@@ -2,7 +2,7 @@
 
 **Priority**: P0 (Critical — must precede all other changes)
 
-**Status**: Proposed
+**Status**: Implemented
 
 ## Problem
 

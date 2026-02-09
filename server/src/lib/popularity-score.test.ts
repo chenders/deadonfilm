@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from "vitest"
 import {
+  ALGORITHM_VERSION,
   logPercentile,
   adjustBoxOfficeForEra,
   calculateLongevityScore,
@@ -21,6 +22,12 @@ import {
   type ShowPopularityInput,
   type ActorPopularityInput,
 } from "./popularity-score.js"
+
+describe("ALGORITHM_VERSION", () => {
+  it("follows major.minor format", () => {
+    expect(ALGORITHM_VERSION).toMatch(/^\d+\.\d+$/)
+  })
+})
 
 describe("logPercentile", () => {
   const thresholds = { p25: 1000, p50: 10000, p75: 50000, p90: 200000, p99: 1000000 }
