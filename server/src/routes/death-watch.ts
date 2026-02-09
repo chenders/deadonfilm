@@ -35,6 +35,8 @@ export async function getDeathWatchHandler(req: Request, res: Response) {
     const minAge = req.query.minAge ? parseInt(req.query.minAge as string) : undefined
     const includeObscure = req.query.includeObscure === "true"
     const search = (req.query.search as string) || undefined
+    const sort = (req.query.sort as string) || undefined
+    const dir = (req.query.dir as string) || undefined
 
     // Fetch actors from database
     const { actors, totalCount } = await getDeathWatchActors({
@@ -43,6 +45,8 @@ export async function getDeathWatchHandler(req: Request, res: Response) {
       minAge,
       includeObscure,
       search,
+      sort,
+      dir,
     })
 
     // Calculate death probabilities and years remaining for each actor

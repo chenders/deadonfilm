@@ -283,11 +283,13 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
     const offset = (page - 1) * pageSize
     const includeObscure = req.query.includeObscure === "true"
     const search = (req.query.search as string) || undefined
+    const sort = (req.query.sort as string) || undefined
+    const dir = (req.query.dir as string) || undefined
 
     // Only cache if there's no search query (search results are too varied)
     const cacheKey = search
       ? null
-      : buildCacheKey(CACHE_PREFIX.RECENT_DEATHS, { all: true, page, includeObscure })
+      : buildCacheKey(CACHE_PREFIX.RECENT_DEATHS, { all: true, page, includeObscure, sort, dir })
 
     type AllDeathsResponse = {
       deaths: Array<{
@@ -320,6 +322,8 @@ export async function getAllDeathsHandler(req: Request, res: Response) {
       offset,
       includeObscure,
       search,
+      sort,
+      dir,
     })
 
     const response: AllDeathsResponse = {

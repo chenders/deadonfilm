@@ -134,12 +134,24 @@ export async function getForeverYoungMovies(limit: number = 100): Promise<Foreve
   return result.rows.sort((a, b) => b.years_lost - a.years_lost).slice(0, limit)
 }
 
+// Sort column allowlist for getForeverYoungMoviesPaginated
+const FOREVER_YOUNG_SORT_MAP: Record<string, string> = {
+  years_lost: "years_lost",
+  name: "actor_name",
+}
+
 // Get movies featuring leading actors who died abnormally young with pagination
 export async function getForeverYoungMoviesPaginated(
   options: ForeverYoungOptions = {}
 ): Promise<{ movies: ForeverYoungMovieRecord[]; totalCount: number }> {
-  const { limit = 50, offset = 0 } = options
+  const { limit = 50, offset = 0, sort, dir } = options
   const db = getPool()
+
+  // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
+  const sortColumn =
+    FOREVER_YOUNG_SORT_MAP[sort || "years_lost"] || FOREVER_YOUNG_SORT_MAP.years_lost
+  const sortDirection = dir === "asc" ? "ASC" : "DESC"
+  const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
 
   // Find movies where a leading actor died with 40%+ of their expected lifespan still ahead
   // Uses CTE to get one actor per movie (the one who lost the most years),
@@ -167,7 +179,7 @@ export async function getForeverYoungMoviesPaginated(
      )
      SELECT COUNT(*) OVER() as total_count, *
      FROM forever_young_movies
-     ORDER BY years_lost DESC
+     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}
      LIMIT $1 OFFSET $2`,
     [limit, offset]
   )
@@ -445,14 +457,26 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
 // All Deaths functions (paginated list of all deceased actors)
 // ============================================================================
 
+// Sort column allowlist for getAllDeaths - maps user-facing sort keys to SQL column names
+const ALL_DEATHS_SORT_MAP: Record<string, string> = {
+  date: "actors.deathday",
+  name: "actors.name",
+  age: "actors.age_at_death",
+}
+
 // Get all deceased persons, paginated (for "All Deaths" page)
 // Requires actors to have appeared in 2+ movies OR 10+ TV episodes
 export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
   persons: ActorRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0, includeObscure = false, search } = options
+  const { limit = 50, offset = 0, includeObscure = false, search, sort, dir } = options
   const db = getPool()
+
+  // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
+  const sortColumn = ALL_DEATHS_SORT_MAP[sort || "date"] || ALL_DEATHS_SORT_MAP.date
+  const sortDirection = dir === "asc" ? "ASC" : "DESC"
+  const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
 
   // Always pass search parameter (null if not searching) - avoids SQL string interpolation
   const searchPattern = search ? `%${search}%` : null
@@ -476,7 +500,7 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
      JOIN actor_appearances aa ON aa.id = actors.id
      WHERE ($3 = true OR is_obscure = false)
        AND ($4::text IS NULL OR actors.name ILIKE $4)
-     ORDER BY deathday DESC
+     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, actors.name
      LIMIT $1 OFFSET $2`,
     [limit, offset, includeObscure, searchPattern]
   )
@@ -491,6 +515,13 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
 // Death Watch feature - living actors most likely to die soon
 // ============================================================================
 
+// Sort column allowlist for getDeathWatchActors - maps user-facing sort keys to SQL column names
+const DEATH_WATCH_SORT_MAP: Record<string, string> = {
+  age: "age",
+  probability: "age", // Same column since probability is derived from age
+  name: "actor_name",
+}
+
 // Get living actors for the Death Watch feature
 // Returns actors ordered by age (oldest first = highest death probability)
 // Death probability is calculated in application code using actuarial tables
@@ -499,7 +530,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
   actors: DeathWatchActorRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0, minAge, includeObscure = false, search } = options
+  const { limit = 50, offset = 0, minAge, includeObscure = false, search, sort, dir } = options
 
   const db = getPool()
 
@@ -529,6 +560,12 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
+
+  // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
+  const sortColumn = DEATH_WATCH_SORT_MAP[sort || "age"] || DEATH_WATCH_SORT_MAP.age
+  const sortDirection = dir === "asc" ? "ASC" : "DESC"
+  const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
+  const secondarySort = sortColumn === "actor_name" ? "" : ", dof_popularity DESC NULLS LAST"
 
   // Add pagination params
   params.push(limit)
@@ -571,7 +608,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
       COUNT(*) OVER() as total_count
     FROM living_actors
     ${whereClause}
-    ORDER BY age DESC, dof_popularity DESC NULLS LAST
+    ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}${secondarySort}
     LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
   `
 

@@ -719,7 +719,7 @@ describe("Movie Functions", () => {
       await getDeathWatchActors()
 
       const query = mockQuery.mock.calls[0][0] as string
-      expect(query).toContain("ORDER BY age DESC, dof_popularity DESC NULLS LAST")
+      expect(query).toContain("ORDER BY age DESC NULLS LAST, dof_popularity DESC NULLS LAST")
     })
 
     it("uses default limit and offset when not provided", async () => {

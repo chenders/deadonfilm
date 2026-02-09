@@ -218,7 +218,13 @@ describe("AllDeathsPage", () => {
     fireEvent.click(screen.getByText("Next"))
 
     await waitFor(() => {
-      expect(api.getAllDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false, search: "" })
+      expect(api.getAllDeaths).toHaveBeenCalledWith({
+        page: 2,
+        includeObscure: false,
+        search: "",
+        sort: "date",
+        dir: "desc",
+      })
     })
   })
 
@@ -278,7 +284,13 @@ describe("AllDeathsPage", () => {
     })
 
     await waitFor(() => {
-      expect(api.getAllDeaths).toHaveBeenCalledWith({ page: 2, includeObscure: false, search: "" })
+      expect(api.getAllDeaths).toHaveBeenCalledWith({
+        page: 2,
+        includeObscure: false,
+        search: "",
+        sort: "date",
+        dir: "desc",
+      })
     })
   })
 
@@ -360,6 +372,8 @@ describe("AllDeathsPage", () => {
         page: 1,
         includeObscure: true,
         search: "",
+        sort: "date",
+        dir: "desc",
       })
     })
   })
@@ -379,6 +393,8 @@ describe("AllDeathsPage", () => {
         page: 1,
         includeObscure: true,
         search: "",
+        sort: "date",
+        dir: "desc",
       })
     })
   })
@@ -432,6 +448,8 @@ describe("AllDeathsPage", () => {
         page: 1,
         includeObscure: false,
         search: "John",
+        sort: "date",
+        dir: "desc",
       })
 
       // Search input should be populated with the URL parameter
@@ -490,6 +508,8 @@ describe("AllDeathsPage", () => {
           page: 1,
           includeObscure: true,
           search: "John",
+          sort: "date",
+          dir: "desc",
         })
       })
     })
@@ -542,6 +562,8 @@ describe("AllDeathsPage", () => {
             page: 1,
             includeObscure: false,
             search: "John",
+            sort: "date",
+            dir: "desc",
           })
         } finally {
           vi.useRealTimers()
@@ -593,6 +615,8 @@ describe("AllDeathsPage", () => {
             page: 1,
             includeObscure: false,
             search: "John",
+            sort: "date",
+            dir: "desc",
           })
 
           // Verify "Jane" was never sent to API

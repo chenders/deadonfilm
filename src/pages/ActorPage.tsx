@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import { useParams, useLocation, Link } from "react-router-dom"
-import { createPortal } from "react-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
 import { createMovieSlug, createShowSlug, createActorSlug, extractActorId } from "@/utils/slugify"
@@ -16,100 +15,12 @@ import { useRelatedActors } from "@/hooks/useRelatedContent"
 import RelatedContent from "@/components/content/RelatedContent"
 import SeeAlso from "@/components/content/SeeAlso"
 import Breadcrumb from "@/components/layout/Breadcrumb"
+import HoverTooltip from "@/components/common/HoverTooltip"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
 
 type FilmographyItem =
   | { type: "movie"; data: ActorFilmographyMovie; year: number | null }
   | { type: "show"; data: ActorFilmographyShow; year: number | null }
-
-interface TooltipProps {
-  content: string
-  triggerRef: React.RefObject<HTMLElement | null>
-  isVisible: boolean
-  onMouseEnter: () => void
-  onMouseLeave: () => void
-}
-
-interface TooltipContentProps {
-  content: string
-  actorSlug?: string
-  hasDetailedInfo?: boolean
-}
-
-function TooltipContent({ content, actorSlug, hasDetailedInfo }: TooltipContentProps) {
-  return (
-    <>
-      <p className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</p>
-      {hasDetailedInfo && actorSlug && (
-        <Link
-          to={`/actor/${actorSlug}/death`}
-          className="mt-2 block text-right text-xs text-cream/80 underline hover:text-cream"
-        >
-          Read more →
-        </Link>
-      )}
-    </>
-  )
-}
-
-interface ExtendedTooltipProps extends TooltipProps {
-  actorSlug?: string
-  hasDetailedInfo?: boolean
-}
-
-function Tooltip({
-  content,
-  triggerRef,
-  isVisible,
-  onMouseEnter,
-  onMouseLeave,
-  actorSlug,
-  hasDetailedInfo,
-}: ExtendedTooltipProps) {
-  const tooltipRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
-
-  // Calculate position when tooltip becomes visible
-  useEffect(() => {
-    if (isVisible && triggerRef.current) {
-      const trigger = triggerRef.current.getBoundingClientRect()
-      const padding = 8
-      // Position below the trigger
-      const top = trigger.bottom + padding
-      const left = trigger.left
-      setPosition({ top, left })
-    } else if (!isVisible) {
-      setPosition(null)
-    }
-  }, [isVisible, triggerRef])
-
-  if (!isVisible) {
-    return null
-  }
-
-  return createPortal(
-    <div
-      ref={tooltipRef}
-      data-testid="death-details-tooltip"
-      className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
-      style={{
-        top: position?.top ?? -9999,
-        left: position?.left ?? -9999,
-        visibility: position ? "visible" : "hidden",
-      }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      <div className="absolute -top-1 left-4 right-4 flex justify-between">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
-        ))}
-      </div>
-      <TooltipContent content={content} actorSlug={actorSlug} hasDetailedInfo={hasDetailedInfo} />
-    </div>,
-    document.body
-  )
-}
 
 function FilmographyRow({ item }: { item: FilmographyItem }) {
   if (item.type === "movie") {
@@ -237,25 +148,6 @@ export default function ActorPage() {
   const { slug } = useParams<{ slug: string }>()
   const location = useLocation()
   const { data, isLoading, error } = useActor(slug || "")
-
-  // Tooltip state for cause of death details
-  const [showTooltip, setShowTooltip] = useState(false)
-  const triggerRef = useRef<HTMLSpanElement>(null)
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleMouseEnter = () => {
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current)
-      hideTimeoutRef.current = null
-    }
-    setShowTooltip(true)
-  }
-
-  const handleMouseLeave = () => {
-    hideTimeoutRef.current = setTimeout(() => {
-      setShowTooltip(false)
-    }, 100)
-  }
 
   // Combine and sort movies and TV shows chronologically (newest first)
   // Must be before early returns to maintain consistent hook order
@@ -422,28 +314,33 @@ export default function ActorPage() {
                 <p>
                   <span className="font-medium">Cause of Death:</span>{" "}
                   {hasDeathDetails ? (
-                    <span
-                      ref={triggerRef}
-                      data-testid="cause-of-death-trigger"
-                      className="cursor-help underline decoration-dotted"
-                      onMouseEnter={handleMouseEnter}
-                      onMouseLeave={handleMouseLeave}
+                    <HoverTooltip
+                      content={
+                        <>
+                          <p className="leading-relaxed">{deathInfo.causeOfDeathDetails}</p>
+                          {deathInfo.hasDetailedDeathInfo && slug && (
+                            <Link
+                              to={`/actor/${slug}/death`}
+                              className="mt-2 block text-right text-xs text-cream/80 underline hover:text-cream"
+                            >
+                              Read more →
+                            </Link>
+                          )}
+                        </>
+                      }
+                      testId="death-details-tooltip"
                     >
-                      {toTitleCase(deathInfo.causeOfDeath)}
-                      <InfoIcon
-                        size={14}
-                        className="ml-1 inline-block align-text-bottom text-brown-medium"
-                      />
-                      <Tooltip
-                        content={deathInfo.causeOfDeathDetails!}
-                        triggerRef={triggerRef}
-                        isVisible={showTooltip}
-                        onMouseEnter={handleMouseEnter}
-                        onMouseLeave={handleMouseLeave}
-                        actorSlug={slug}
-                        hasDetailedInfo={deathInfo.hasDetailedDeathInfo}
-                      />
-                    </span>
+                      <span
+                        data-testid="cause-of-death-trigger"
+                        className="underline decoration-dotted"
+                      >
+                        {toTitleCase(deathInfo.causeOfDeath)}
+                        <InfoIcon
+                          size={14}
+                          className="ml-1 inline-block align-text-bottom text-brown-medium"
+                        />
+                      </span>
+                    </HoverTooltip>
                   ) : (
                     <span>{toTitleCase(deathInfo.causeOfDeath)}</span>
                   )}

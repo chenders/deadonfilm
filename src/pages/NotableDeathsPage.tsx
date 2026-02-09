@@ -7,6 +7,7 @@ import { formatDate } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import SortControl from "@/components/common/SortControl"
 import { PersonIcon } from "@/components/icons"
 import ConfidenceIndicator from "@/components/common/ConfidenceIndicator"
 import type { NotableDeathActor, NotableDeathsFilter } from "@/types"
@@ -119,8 +120,10 @@ export default function NotableDeathsPage() {
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const filter = (searchParams.get("filter") as NotableDeathsFilter) || "all"
   const includeObscure = searchParams.get("includeObscure") === "true"
+  const sort = searchParams.get("sort") || "date"
+  const dir = (searchParams.get("dir") || "desc") as "asc" | "desc"
 
-  const { data, isLoading, error } = useNotableDeaths({ page, filter, includeObscure })
+  const { data, isLoading, error } = useNotableDeaths({ page, filter, includeObscure, sort, dir })
 
   const setFilter = (newFilter: NotableDeathsFilter) => {
     const newParams = new URLSearchParams(searchParams)
@@ -149,6 +152,28 @@ export default function NotableDeathsPage() {
       newParams.set("includeObscure", "true")
     } else {
       newParams.delete("includeObscure")
+    }
+    newParams.delete("page")
+    setSearchParams(newParams)
+  }
+
+  const handleSortChange = (newSort: string) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newSort !== "date") {
+      newParams.set("sort", newSort)
+    } else {
+      newParams.delete("sort")
+    }
+    newParams.delete("page")
+    setSearchParams(newParams)
+  }
+
+  const handleDirChange = (newDir: "asc" | "desc") => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newDir !== "desc") {
+      newParams.set("dir", newDir)
+    } else {
+      newParams.delete("dir")
     }
     newParams.delete("page")
     setSearchParams(newParams)
@@ -236,6 +261,19 @@ export default function NotableDeathsPage() {
             />
             Include lesser-known actors
           </label>
+        </div>
+
+        <div className="mb-4 flex justify-center">
+          <SortControl
+            options={[
+              { value: "date", label: "Date" },
+              { value: "name", label: "Name" },
+            ]}
+            currentSort={sort}
+            currentDir={dir}
+            onSortChange={handleSortChange}
+            onDirChange={handleDirChange}
+          />
         </div>
 
         {/* Filter description */}

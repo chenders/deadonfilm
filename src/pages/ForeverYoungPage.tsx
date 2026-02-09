@@ -6,6 +6,7 @@ import { createMovieSlug, createActorSlug } from "@/utils/slugify"
 import { getPosterUrl, getProfileUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import SortControl from "@/components/common/SortControl"
 import CauseOfDeathBadge from "@/components/common/CauseOfDeathBadge"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildCollectionPageSchema } from "@/utils/schema"
@@ -142,8 +143,10 @@ export default function ForeverYoungPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
+  const sort = searchParams.get("sort") || "years_lost"
+  const dir = (searchParams.get("dir") || "desc") as "asc" | "desc"
 
-  const { data, isLoading, error } = useForeverYoung(page)
+  const { data, isLoading, error } = useForeverYoung(page, sort, dir)
 
   const goToPage = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams)
@@ -152,6 +155,28 @@ export default function ForeverYoungPage() {
     } else {
       newParams.delete("page")
     }
+    setSearchParams(newParams)
+  }
+
+  const handleSortChange = (newSort: string) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newSort !== "years_lost") {
+      newParams.set("sort", newSort)
+    } else {
+      newParams.delete("sort")
+    }
+    newParams.delete("page")
+    setSearchParams(newParams)
+  }
+
+  const handleDirChange = (newDir: "asc" | "desc") => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newDir !== "desc") {
+      newParams.set("dir", newDir)
+    } else {
+      newParams.delete("dir")
+    }
+    newParams.delete("page")
     setSearchParams(newParams)
   }
 
@@ -217,6 +242,19 @@ export default function ForeverYoungPage() {
             Movies featuring leading actors who died tragically young, losing 40% or more of their
             expected lifespan. Ranked by years of life lost.
           </p>
+        </div>
+
+        <div className="mb-4 flex justify-center">
+          <SortControl
+            options={[
+              { value: "years_lost", label: "Years Lost" },
+              { value: "name", label: "Actor Name" },
+            ]}
+            currentSort={sort}
+            currentDir={dir}
+            onSortChange={handleSortChange}
+            onDirChange={handleDirChange}
+          />
         </div>
 
         {noResults ? (

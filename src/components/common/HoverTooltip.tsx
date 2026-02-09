@@ -7,7 +7,7 @@ interface TooltipPosition {
 }
 
 interface HoverTooltipProps {
-  content: string
+  content: React.ReactNode
   children: React.ReactNode
   className?: string
   testId?: string
@@ -24,7 +24,7 @@ function TooltipContent({
   testId = "hover-tooltip",
   tooltipId,
 }: {
-  content: string
+  content: React.ReactNode
   triggerRef: React.RefObject<HTMLElement | null>
   isVisible: boolean
   onMouseEnter: () => void
@@ -106,7 +106,7 @@ function TooltipContent({
           <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
         ))}
       </div>
-      <p className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</p>
+      <div className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</div>
     </div>,
     document.body
   )
