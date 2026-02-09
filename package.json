@@ -50,7 +50,8 @@
     "react-helmet-async": "^2.0.5",
     "react-router-dom": "^6.30.3",
     "recharts": "^3.7.0",
-    "slugify": "^1.6.6"
+    "slugify": "^1.6.6",
+    "web-vitals": "^5.1.0"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.0",

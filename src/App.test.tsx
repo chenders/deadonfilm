@@ -14,6 +14,10 @@ vi.mock("./hooks/useNewRelicBrowser", () => ({
   useNewRelicBrowser: vi.fn(),
 }))
 
+vi.mock("./hooks/useWebVitals", () => ({
+  useWebVitals: vi.fn(),
+}))
+
 // Mock the API
 vi.mock("@/services/api", () => ({
   getSiteStats: vi.fn(() =>
