@@ -297,37 +297,39 @@ describe("fetchActorPageviews", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date("2025-06-15T00:00:00Z"))
 
-    const mockResponse = {
-      items: [
-        { timestamp: "2024070100", views: 10000 },
-        { timestamp: "2024080100", views: 10000 },
-        { timestamp: "2024090100", views: 10000 },
-        { timestamp: "2024100100", views: 10000 },
-        { timestamp: "2024110100", views: 10000 },
-        { timestamp: "2024120100", views: 10000 },
-        { timestamp: "2025010100", views: 10000 },
-        { timestamp: "2025020100", views: 10000 },
-        { timestamp: "2025030100", views: 10000 },
-        { timestamp: "2025040100", views: 10000 },
-        { timestamp: "2025050100", views: 500000 }, // Death spike
-        { timestamp: "2025060100", views: 200000 }, // Continued spike
-      ],
+    try {
+      const mockResponse = {
+        items: [
+          { timestamp: "2024070100", views: 10000 },
+          { timestamp: "2024080100", views: 10000 },
+          { timestamp: "2024090100", views: 10000 },
+          { timestamp: "2024100100", views: 10000 },
+          { timestamp: "2024110100", views: 10000 },
+          { timestamp: "2024120100", views: 10000 },
+          { timestamp: "2025010100", views: 10000 },
+          { timestamp: "2025020100", views: 10000 },
+          { timestamp: "2025030100", views: 10000 },
+          { timestamp: "2025040100", views: 10000 },
+          { timestamp: "2025050100", views: 500000 }, // Death spike
+          { timestamp: "2025060100", views: 200000 }, // Continued spike
+        ],
+      }
+
+      ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockResponse),
+      })
+
+      const result = await fetchActorPageviews(
+        "https://en.wikipedia.org/wiki/Actor_Name",
+        "2025-05-15"
+      )
+
+      // Pre-death baseline: 10 months × 10000 views = avg 10000, annual = 120000
+      expect(result).toBe(120000)
+    } finally {
+      vi.useRealTimers()
     }
-
-    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(mockResponse),
-    })
-
-    const result = await fetchActorPageviews(
-      "https://en.wikipedia.org/wiki/Actor_Name",
-      "2025-05-15"
-    )
-
-    // Pre-death baseline: 10 months × 10000 views = avg 10000, annual = 120000
-    expect(result).toBe(120000)
-
-    vi.useRealTimers()
   })
 })
