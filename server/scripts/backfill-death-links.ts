@@ -12,10 +12,12 @@
  * Options:
  *   -l, --limit <n>     Limit number of records to process (default: 1000)
  *   -n, --dry-run       Preview without writing to database
+ *   --relink            Re-resolve celebrity links with disambiguation
  *
  * Examples:
  *   npx tsx scripts/backfill-death-links.ts --dry-run
  *   npx tsx scripts/backfill-death-links.ts --limit 100
+ *   npx tsx scripts/backfill-death-links.ts --dry-run --relink
  */
 
 import "dotenv/config"
@@ -44,6 +46,7 @@ export function parsePositiveInt(value: string): number {
 interface BackfillOptions {
   limit: number
   dryRun: boolean
+  relink: boolean
 }
 
 interface DeathCircumstanceRecord {
@@ -97,13 +100,14 @@ async function processProjectWithLogging(
 async function processCelebrityWithLogging(
   db: ReturnType<typeof getPool>,
   celebrity: RelatedCelebrity & { tmdbId?: number | null },
-  dryRun: boolean
+  dryRun: boolean,
+  sourceActorId?: number
 ): Promise<boolean> {
   if (getCelebrityTmdbId(celebrity) !== null) {
     return false // Already has tmdb_id
   }
 
-  const tmdbId = await lookupActor(db, celebrity.name)
+  const tmdbId = await lookupActor(db, celebrity.name, sourceActorId)
   if (tmdbId !== null) {
     if (!dryRun) {
       setCelebrityTmdbId(celebrity, tmdbId)
@@ -118,7 +122,7 @@ async function processCelebrityWithLogging(
 }
 
 async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
-  const { limit, dryRun } = options
+  const { limit, dryRun, relink } = options
 
   if (!process.env.DATABASE_URL) {
     console.error("Error: DATABASE_URL environment variable is not set")
@@ -170,7 +174,7 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
     }
 
     console.log(`Found ${records.length} records with death circumstances`)
-    console.log(`Mode: ${dryRun ? "DRY RUN" : "LIVE"}`)
+    console.log(`Mode: ${dryRun ? "DRY RUN" : "LIVE"}${relink ? " (relink)" : ""}`)
     console.log()
 
     const stats: Stats = {
@@ -210,10 +214,27 @@ async function backfillDeathLinks(options: BackfillOptions): Promise<void> {
         // Process related_celebrities
         if (record.related_celebrities) {
           for (const celebrity of record.related_celebrities) {
-            const linked = await processCelebrityWithLogging(db, celebrity, dryRun)
+            // In relink mode, save existing tmdb_id, clear it for re-resolution,
+            // and restore original if lookup fails (prevents data loss)
+            const originalTmdbId = relink ? getCelebrityTmdbId(celebrity) : null
+            if (relink && originalTmdbId !== null) {
+              celebrity.tmdb_id = null
+              if ("tmdbId" in celebrity) {
+                ;(celebrity as RelatedCelebrity & { tmdbId?: number | null }).tmdbId = null
+              }
+            }
+
+            const linked = await processCelebrityWithLogging(db, celebrity, dryRun, record.actor_id)
             if (linked) {
               stats.celebritiesLinked++
               recordModified = true
+            } else if (relink && originalTmdbId !== null) {
+              // Restore original tmdb_id if re-lookup failed
+              celebrity.tmdb_id = originalTmdbId
+              if ("tmdbId" in celebrity) {
+                ;(celebrity as RelatedCelebrity & { tmdbId?: number | null }).tmdbId =
+                  originalTmdbId
+              }
             }
           }
         }
@@ -270,10 +291,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     )
     .option("-l, --limit <number>", "Limit number of records to process", parsePositiveInt, 1000)
     .option("-n, --dry-run", "Preview without writing to database")
+    .option(
+      "--relink",
+      "Re-resolve celebrity links (clears existing tmdb_ids and re-links with disambiguation)"
+    )
     .action(async (options) => {
       await backfillDeathLinks({
         limit: options.limit,
         dryRun: options.dryRun || false,
+        relink: options.relink || false,
       })
     })
 
