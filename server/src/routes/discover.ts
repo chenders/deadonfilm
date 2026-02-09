@@ -157,10 +157,18 @@ export async function getForeverYoungMoviesHandler(req: Request, res: Response) 
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
     const pageSize = 50
     const offset = (page - 1) * pageSize
+    // Normalize sort/dir to valid values to prevent cache key bloat
+    const validSorts = ["years_lost", "name"]
+    const sort = validSorts.includes(req.query.sort as string)
+      ? (req.query.sort as string)
+      : "years_lost"
+    const dir = req.query.dir === "asc" ? "asc" : "desc"
 
     const { movies, totalCount } = await getForeverYoungMoviesPaginated({
       limit: pageSize,
       offset,
+      sort,
+      dir,
     })
 
     // Map database records to API response format with ranks

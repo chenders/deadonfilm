@@ -52,12 +52,23 @@ export async function getActorDeathCircumstancesByTmdbId(
 /**
  * Get paginated list of actors with detailed death information.
  */
+// Sort column allowlist for getNotableDeaths - maps user-facing sort keys to SQL column names
+const NOTABLE_DEATHS_SORT_MAP: Record<string, string> = {
+  date: "a.deathday",
+  name: "a.name",
+}
+
 export async function getNotableDeaths(
   options: NotableDeathsOptions = {}
 ): Promise<NotableDeathsResponse> {
   const db = getPool()
-  const { page = 1, pageSize = 50, filter = "all", includeObscure = false } = options
+  const { page = 1, pageSize = 50, filter = "all", includeObscure = false, sort, dir } = options
   const offset = (page - 1) * pageSize
+
+  // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
+  const sortColumn = NOTABLE_DEATHS_SORT_MAP[sort || "date"] || NOTABLE_DEATHS_SORT_MAP.date
+  const sortDirection = dir === "asc" ? "ASC" : "DESC"
+  const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
 
   // Build filter conditions
   const conditions: string[] = ["a.deathday IS NOT NULL", "a.has_detailed_death_info = true"]
@@ -106,7 +117,7 @@ export async function getNotableDeaths(
      FROM actors a
      LEFT JOIN actor_death_circumstances adc ON a.id = adc.actor_id
      WHERE ${whereClause}
-     ORDER BY a.dof_popularity DESC NULLS LAST, a.deathday DESC
+     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, a.name, a.id
      LIMIT $1 OFFSET $2`,
     [pageSize, offset]
   )
