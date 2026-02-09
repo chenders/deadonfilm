@@ -76,7 +76,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
       if (actorIds && actorIds.length > 0) {
         // Process specific IDs
         actorsQuery = `
-          SELECT id, tmdb_popularity FROM actors
+          SELECT id, tmdb_popularity, wikipedia_annual_pageviews FROM actors
           WHERE id = ANY($1)
           ${!recalculateAll ? "AND dof_popularity IS NULL" : ""}
         `
@@ -84,7 +84,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
       } else {
         // Batch processing - get actors without scores
         actorsQuery = `
-          SELECT id, tmdb_popularity FROM actors
+          SELECT id, tmdb_popularity, wikipedia_annual_pageviews FROM actors
           ${!recalculateAll ? "WHERE dof_popularity IS NULL" : ""}
           ORDER BY id
           LIMIT $1
@@ -92,10 +92,11 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
         params.push(batchSize)
       }
 
-      const actorsResult = await pool.query<{ id: number; tmdb_popularity: number | null }>(
-        actorsQuery,
-        params
-      )
+      const actorsResult = await pool.query<{
+        id: number
+        tmdb_popularity: number | null
+        wikipedia_annual_pageviews: number | null
+      }>(actorsQuery, params)
       const actors = actorsResult.rows
 
       log.info({ actorCount: actors.length }, "Retrieved actors for processing")
@@ -117,6 +118,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
           const input: ActorPopularityInput = {
             appearances: filmography,
             tmdbPopularity: actor.tmdb_popularity,
+            wikipediaAnnualPageviews: actor.wikipedia_annual_pageviews,
           }
 
           const result = calculateActorPopularity(input)

@@ -16,6 +16,7 @@ import {
   calculateMoviePopularity,
   calculateShowPopularity,
   calculateActorPopularity,
+  weightedPositionalAverage,
   isUSUKProduction,
   isEnglishLanguage,
   type ContentPopularityInput,
@@ -26,6 +27,54 @@ import {
 describe("ALGORITHM_VERSION", () => {
   it("follows major.minor format", () => {
     expect(ALGORITHM_VERSION).toMatch(/^\d+\.\d+$/)
+  })
+
+  it("is version 2.0", () => {
+    expect(ALGORITHM_VERSION).toBe("2.0")
+  })
+})
+
+describe("weightedPositionalAverage", () => {
+  it("returns 0 for empty array", () => {
+    expect(weightedPositionalAverage([])).toBe(0)
+  })
+
+  it("returns the single value for one-element array", () => {
+    expect(weightedPositionalAverage([42])).toBe(42)
+  })
+
+  it("uniform contributions produce same result as simple average", () => {
+    const contributions = [50, 50, 50, 50, 50]
+    const simpleAvg = 50
+    expect(weightedPositionalAverage(contributions)).toBeCloseTo(simpleAvg, 10)
+  })
+
+  it("peaked career beats flat career with same simple average", () => {
+    // Actor A: peaked career (sorted descending)
+    const peaked = [90, 85, 80, 40, 30, 25, 20, 15, 10, 5]
+    // Actor B: flat career (sorted descending)
+    const flat = [42, 41, 41, 40, 40, 40, 39, 39, 39, 39]
+
+    // Simple averages are close: peaked = 40, flat = 40
+    const peakedSimpleAvg = peaked.reduce((a, b) => a + b, 0) / peaked.length
+    const flatSimpleAvg = flat.reduce((a, b) => a + b, 0) / flat.length
+    expect(peakedSimpleAvg).toBe(40)
+    expect(flatSimpleAvg).toBe(40)
+
+    // But weighted positional average should favor the peaked career
+    const peakedScore = weightedPositionalAverage(peaked)
+    const flatScore = weightedPositionalAverage(flat)
+    expect(peakedScore).toBeGreaterThan(flatScore)
+  })
+
+  it("weights decrease for later positions", () => {
+    // First element should have more influence
+    const highFirst = [100, 0, 0, 0, 0]
+    const highLast = [0, 0, 0, 0, 100]
+
+    expect(weightedPositionalAverage(highFirst)).toBeGreaterThan(
+      weightedPositionalAverage(highLast)
+    )
   })
 })
 
@@ -374,6 +423,7 @@ describe("calculateActorPopularity", () => {
     const input: ActorPopularityInput = {
       appearances: [],
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
     const result = calculateActorPopularity(input)
     expect(result.dofPopularity).toBeNull()
@@ -399,6 +449,7 @@ describe("calculateActorPopularity", () => {
         },
       ],
       tmdbPopularity: 50,
+      wikipediaAnnualPageviews: null,
     }
     const result = calculateActorPopularity(input)
     expect(result.dofPopularity).not.toBeNull()
@@ -417,6 +468,7 @@ describe("calculateActorPopularity", () => {
         },
       ],
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
     const supportingRole: ActorPopularityInput = {
       appearances: [
@@ -429,6 +481,7 @@ describe("calculateActorPopularity", () => {
         },
       ],
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
     const leadResult = calculateActorPopularity(leadRole)
     const supportingResult = calculateActorPopularity(supportingRole)
@@ -447,6 +500,7 @@ describe("calculateActorPopularity", () => {
         },
       ],
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
     const manyEpisodes: ActorPopularityInput = {
       appearances: [
@@ -459,6 +513,7 @@ describe("calculateActorPopularity", () => {
         },
       ],
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
     const fewResult = calculateActorPopularity(fewEpisodes)
     const manyResult = calculateActorPopularity(manyEpisodes)
@@ -477,6 +532,7 @@ describe("calculateActorPopularity", () => {
         },
       ],
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
     const many: ActorPopularityInput = {
       appearances: Array(15).fill({
@@ -487,6 +543,7 @@ describe("calculateActorPopularity", () => {
         isMovie: true,
       }),
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
     const fewResult = calculateActorPopularity(few)
     const manyResult = calculateActorPopularity(many)
@@ -495,41 +552,36 @@ describe("calculateActorPopularity", () => {
   })
 
   it("uses top N appearances so prolific actors aren't penalized", () => {
-    // Actor with 2 great movies in supporting roles (like Lord Tim Hudson in Disney classics)
     const smallFilmography: ActorPopularityInput = {
       appearances: [
         {
           contentDofPopularity: 80,
           contentDofWeight: 70,
-          billingOrder: 5, // Supporting
+          billingOrder: 5,
           episodeCount: null,
           isMovie: true,
         },
         {
           contentDofPopularity: 75,
           contentDofWeight: 65,
-          billingOrder: 9, // Supporting
+          billingOrder: 9,
           episodeCount: null,
           isMovie: true,
         },
       ],
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
 
-    // Actor with 15 great movies in lead roles (like Heath Ledger)
-    // With old algorithm (average all), more movies could dilute the score
-    // With new algorithm (top 10), the best 10 are used
     const largeFilmography: ActorPopularityInput = {
       appearances: [
-        // 10 blockbusters in lead roles
         ...Array(10).fill({
           contentDofPopularity: 85,
           contentDofWeight: 75,
-          billingOrder: 1, // Lead roles
+          billingOrder: 1,
           episodeCount: null,
           isMovie: true,
         }),
-        // 5 smaller films that won't affect score (only top 10 used)
         ...Array(5).fill({
           contentDofPopularity: 40,
           contentDofWeight: 35,
@@ -539,18 +591,16 @@ describe("calculateActorPopularity", () => {
         }),
       ],
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
 
     const smallResult = calculateActorPopularity(smallFilmography)
     const largeResult = calculateActorPopularity(largeFilmography)
 
-    // Lead roles in blockbusters should score higher than supporting roles
-    // The 5 smaller films don't drag down the score because only top 10 are used
     expect(largeResult.dofPopularity!).toBeGreaterThan(smallResult.dofPopularity!)
   })
 
   it("minor roles beyond top 10 don't affect score", () => {
-    // Actor with exactly 10 great appearances
     const baseFilmography: ActorPopularityInput = {
       appearances: Array(10).fill({
         contentDofPopularity: 70,
@@ -560,9 +610,9 @@ describe("calculateActorPopularity", () => {
         isMovie: true,
       }),
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
 
-    // Same actor with 20 additional minor roles
     const extendedFilmography: ActorPopularityInput = {
       appearances: [
         ...Array(10).fill({
@@ -572,16 +622,16 @@ describe("calculateActorPopularity", () => {
           episodeCount: null,
           isMovie: true,
         }),
-        // These shouldn't affect the score (beyond top 10)
         ...Array(20).fill({
           contentDofPopularity: 20,
           contentDofWeight: 15,
-          billingOrder: 20, // Minor roles
+          billingOrder: 20,
           episodeCount: null,
           isMovie: true,
         }),
       ],
       tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
     }
 
     const baseResult = calculateActorPopularity(baseFilmography)
@@ -589,6 +639,141 @@ describe("calculateActorPopularity", () => {
 
     // Scores should be identical - minor roles beyond top 10 don't count
     expect(extendedResult.dofPopularity!).toBe(baseResult.dofPopularity!)
+  })
+
+  it("TMDB contributes ~15% not 30%", () => {
+    // Actor with high filmography but zero TMDB
+    const noTmdb: ActorPopularityInput = {
+      appearances: Array(5).fill({
+        contentDofPopularity: 80,
+        contentDofWeight: 70,
+        billingOrder: 1,
+        episodeCount: null,
+        isMovie: true,
+      }),
+      tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
+    }
+
+    // Same actor with very high TMDB
+    const highTmdb: ActorPopularityInput = {
+      ...noTmdb,
+      tmdbPopularity: 500, // p99 level
+    }
+
+    const noTmdbResult = calculateActorPopularity(noTmdb)
+    const highTmdbResult = calculateActorPopularity(highTmdb)
+
+    // TMDB should increase score, but not by more than ~20% (it's 15% of total weight)
+    const percentIncrease =
+      ((highTmdbResult.dofPopularity! - noTmdbResult.dofPopularity!) /
+        noTmdbResult.dofPopularity!) *
+      100
+    expect(percentIncrease).toBeGreaterThan(0)
+    expect(percentIncrease).toBeLessThan(25) // Should be around 15%
+  })
+
+  it("Wikipedia pageviews contribute to scoring", () => {
+    const noWiki: ActorPopularityInput = {
+      appearances: Array(5).fill({
+        contentDofPopularity: 70,
+        contentDofWeight: 60,
+        billingOrder: 1,
+        episodeCount: null,
+        isMovie: true,
+      }),
+      tmdbPopularity: 50,
+      wikipediaAnnualPageviews: null,
+    }
+
+    const highWiki: ActorPopularityInput = {
+      ...noWiki,
+      wikipediaAnnualPageviews: 1_000_000, // p90 level
+    }
+
+    const noWikiResult = calculateActorPopularity(noWiki)
+    const highWikiResult = calculateActorPopularity(highWiki)
+
+    expect(highWikiResult.dofPopularity!).toBeGreaterThan(noWikiResult.dofPopularity!)
+  })
+
+  it("falls back gracefully when Wikipedia data is missing", () => {
+    const withWiki: ActorPopularityInput = {
+      appearances: Array(5).fill({
+        contentDofPopularity: 70,
+        contentDofWeight: 60,
+        billingOrder: 1,
+        episodeCount: null,
+        isMovie: true,
+      }),
+      tmdbPopularity: 50,
+      wikipediaAnnualPageviews: 50000,
+    }
+
+    const withoutWiki: ActorPopularityInput = {
+      ...withWiki,
+      wikipediaAnnualPageviews: null,
+    }
+
+    const withWikiResult = calculateActorPopularity(withWiki)
+    const withoutWikiResult = calculateActorPopularity(withoutWiki)
+
+    // Both should produce valid scores
+    expect(withWikiResult.dofPopularity).not.toBeNull()
+    expect(withoutWikiResult.dofPopularity).not.toBeNull()
+
+    // Scores should be in reasonable range — not drastically different
+    expect(withoutWikiResult.dofPopularity!).toBeGreaterThan(0)
+    expect(withoutWikiResult.dofPopularity!).toBeLessThanOrEqual(100)
+  })
+
+  it("combines all three signals correctly", () => {
+    const input: ActorPopularityInput = {
+      appearances: Array(5).fill({
+        contentDofPopularity: 80,
+        contentDofWeight: 70,
+        billingOrder: 1,
+        episodeCount: null,
+        isMovie: true,
+      }),
+      tmdbPopularity: 100, // p90
+      wikipediaAnnualPageviews: 1_000_000, // p90
+    }
+
+    const result = calculateActorPopularity(input)
+
+    // All signals present: filmography 70% + TMDB 15% + Wikipedia 15%
+    expect(result.dofPopularity).not.toBeNull()
+    expect(result.dofPopularity!).toBeGreaterThan(50) // Should be well above average
+    expect(result.dofPopularity!).toBeLessThanOrEqual(100)
+  })
+
+  it("normalizes weights when signals are missing", () => {
+    // With only filmography (no TMDB, no Wikipedia)
+    const filmographyOnly: ActorPopularityInput = {
+      appearances: Array(5).fill({
+        contentDofPopularity: 70,
+        contentDofWeight: 60,
+        billingOrder: 1,
+        episodeCount: null,
+        isMovie: true,
+      }),
+      tmdbPopularity: null,
+      wikipediaAnnualPageviews: null,
+    }
+
+    const result = calculateActorPopularity(filmographyOnly)
+
+    // When only filmography is available, score should equal the filmography score
+    // (weight normalization means 0.7/0.7 = 1.0 multiplier on filmography)
+    expect(result.dofPopularity).not.toBeNull()
+    expect(result.dofPopularity!).toBeGreaterThan(0)
+
+    // Filmography-only score should be the same as a pure filmography calculation
+    // contentScore = 70*0.6 + 60*0.4 = 42+24 = 66, billingWeight=1.0, episodeWeight=1.0
+    // All 5 contributions are identical (66), so weighted avg = 66
+    // finalScore = 66 * 0.7 / 0.7 = 66
+    expect(result.dofPopularity!).toBeCloseTo(66, 0)
   })
 })
 
