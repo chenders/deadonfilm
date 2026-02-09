@@ -11,6 +11,17 @@
  * Actors get their popularity derived from their filmography.
  */
 
+/**
+ * Bump this version whenever the score calculation logic changes.
+ * - Major: structural changes (new signals, removed signals, changed blending)
+ * - Minor: tuning changes (weight adjustments, threshold tweaks)
+ *
+ * Version history:
+ * 1.0 - Initial algorithm baseline
+ * 1.1 - Fix scheduled job bugs (×100 TMDB, sum-all vs top-10, normalization)
+ */
+export const ALGORITHM_VERSION = "1.1"
+
 // ============================================================================
 // Types
 // ============================================================================
