@@ -20,6 +20,8 @@ export interface MobileCardProps {
   selected?: boolean
   /** Callback when selection changes */
   onSelectionChange?: (selected: boolean) => void
+  /** Plain text label for the selection checkbox (used when title is JSX) */
+  ariaLabel?: string
   /** Optional data-testid */
   "data-testid"?: string
 }
@@ -32,6 +34,7 @@ export default function MobileCard({
   selectable,
   selected,
   onSelectionChange,
+  ariaLabel,
   "data-testid": testId,
 }: MobileCardProps) {
   return (
@@ -47,7 +50,7 @@ export default function MobileCard({
             type="checkbox"
             checked={selected ?? false}
             onChange={(e) => onSelectionChange?.(e.target.checked)}
-            aria-label={`Select ${typeof title === "string" ? title : "item"}`}
+            aria-label={`Select ${ariaLabel ?? (typeof title === "string" ? title : "item")}`}
             className="mt-1 h-4 w-4 shrink-0 rounded border-admin-border bg-admin-surface-overlay text-admin-interactive focus:ring-admin-interactive"
           />
         )}
