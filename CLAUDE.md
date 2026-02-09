@@ -85,7 +85,7 @@ import { Command } from "commander"
 
 ### 8. ALWAYS Run Tests Before Pushing
 
-The pre-push hook automatically runs type-check and tests (frontend + server in parallel) before each push. It will block pushes if anything fails.
+The pre-push hook automatically runs type-check (frontend + server in parallel) and frontend tests before each push. It will block pushes if anything fails.
 
 ```bash
 # The pre-push hook runs automatically, but to run manually:
@@ -142,7 +142,7 @@ npm test && cd server && npm test
 
 Git hooks enforce quality automatically:
 - **Pre-commit** (`lint-staged`): format + lint on staged files only (<5s)
-- **Pre-push** (parallel): type-check + tests for frontend and server (~20-30s)
+- **Pre-push** (parallel): frontend + server type-check, then frontend tests (~20-30s)
 
 To run checks manually:
 
