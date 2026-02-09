@@ -96,6 +96,26 @@ describe("renderPrerenderHtml", () => {
     expect(html).toContain('"@type":"WebSite"')
   })
 
+  it("escapes </script> in JSON-LD to prevent XSS", () => {
+    const html = renderPrerenderHtml({
+      title: "Test",
+      description: "Test",
+      ogType: "website",
+      canonicalUrl: "https://deadonfilm.com/test",
+      heading: "Test",
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        name: 'Malicious</script><script>alert("xss")</script>',
+      },
+    })
+
+    // The raw </script> must NOT appear in the output
+    expect(html).not.toContain("</script><script>alert")
+    // Instead, '<' should be escaped to \u003c
+    expect(html).toContain("\\u003c/script>")
+  })
+
   it("renders multiple JSON-LD schemas", () => {
     const html = renderPrerenderHtml({
       title: "Test",

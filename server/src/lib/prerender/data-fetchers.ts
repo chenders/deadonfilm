@@ -9,7 +9,12 @@ import { getActorById } from "../db/actors.js"
 import { getMovie } from "../db/movies.js"
 import { getShow } from "../db/shows.js"
 import { getPool } from "../db/pool.js"
-import { createActorSlug, createMovieSlug, createShowSlug } from "../slug-utils.js"
+import {
+  createActorSlug,
+  createMovieSlug,
+  createShowSlug,
+  createEpisodeSlug,
+} from "../slug-utils.js"
 import {
   buildMovieSchema,
   buildPersonSchema,
@@ -341,15 +346,14 @@ async function getEpisodePageData(
   const episodeCode = `S${seasonNumber}E${episodeNumber}`
   const episodeName = row.name || `Episode ${episodeNumber}`
 
-  // Build episode URL slug
-  const episodeSlugPart = episodeName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-  const fullSlug = `${row.show_name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")}-s${seasonNumber}e${episodeNumber}-${episodeSlugPart}-${showTmdbId}`
+  // Build episode URL slug using shared slugify utility for proper transliteration
+  const fullSlug = createEpisodeSlug(
+    row.show_name,
+    episodeName,
+    seasonNumber,
+    episodeNumber,
+    showTmdbId
+  )
   const canonicalUrl = `${BASE_URL}/episode/${fullSlug}`
 
   const deceased = row.deceased_count ?? 0

@@ -31,6 +31,16 @@ export function escapeHtml(str: string): string {
 }
 
 /**
+ * Safely serialize JSON-LD for embedding in a <script> tag.
+ * Replaces '<' with '\u003c' to prevent premature </script> closing
+ * if any schema field contains "</script>" (e.g., names from external sources).
+ * Matches the frontend JsonLd component's escaping approach.
+ */
+function safeJsonLd(data: Record<string, unknown>): string {
+  return JSON.stringify(data).replace(/</g, "\\u003c")
+}
+
+/**
  * Render a complete HTML document for bot consumption.
  * Includes all SEO meta tags, OG/Twitter Cards, and JSON-LD.
  */
@@ -44,9 +54,9 @@ export function renderPrerenderHtml(data: PrerenderPageData): string {
   const jsonLdScripts = data.jsonLd
     ? Array.isArray(data.jsonLd)
       ? data.jsonLd
-          .map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`)
+          .map((schema) => `<script type="application/ld+json">${safeJsonLd(schema)}</script>`)
           .join("\n    ")
-      : `<script type="application/ld+json">${JSON.stringify(data.jsonLd)}</script>`
+      : `<script type="application/ld+json">${safeJsonLd(data.jsonLd)}</script>`
     : ""
 
   const imageMetaTags = data.imageUrl
