@@ -33,6 +33,8 @@ export interface ActorCoverageInfo {
   enriched_at: string | null
   age_at_death: number | null
   cause_of_death: string | null
+  profile_path: string | null
+  death_manner: string | null
 }
 
 export interface CoverageTrendPoint {
@@ -61,6 +63,7 @@ export interface ActorCoverageFilters {
   deathDateEnd?: string
   searchName?: string
   causeOfDeath?: string
+  deathManner?: string
   orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
   orderDirection?: "asc" | "desc"
 }
@@ -208,6 +211,11 @@ export async function getActorsForCoverage(
     params.push(filters.causeOfDeath)
   }
 
+  if (filters.deathManner) {
+    whereClauses.push(`death_manner = $${paramIndex++}`)
+    params.push(filters.deathManner)
+  }
+
   const whereClause = whereClauses.join(" AND ")
 
   // Build ORDER BY clause without string interpolation
@@ -255,6 +263,8 @@ export async function getActorsForCoverage(
        enriched_at,
        age_at_death,
        cause_of_death,
+       profile_path,
+       death_manner,
        COUNT(*) OVER() as total_count
      FROM actors
      WHERE ${whereClause}

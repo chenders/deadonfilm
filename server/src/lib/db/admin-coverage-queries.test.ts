@@ -190,6 +190,28 @@ describe("Admin Coverage Queries", () => {
       expect(calls[0][1]).toContain("heart attack")
     })
 
+    it("applies deathManner filter", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(mockPool, { deathManner: "natural" }, 1, 50)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("death_manner = $1")
+      expect(calls[0][1]).toEqual(["natural", 0, 1, 50, 0]) // deathManner, isAsc=0, isDesc=1, limit, offset
+    })
+
+    it("applies deathManner filter with other filters", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(mockPool, { deathManner: "accident", minPopularity: 10 }, 1, 50)
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("death_manner")
+      expect(calls[0][0]).toContain("popularity >= $1")
+      expect(calls[0][1]).toContain(10)
+      expect(calls[0][1]).toContain("accident")
+    })
+
     it("applies causeOfDeath filter with other filters", async () => {
       vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
 
