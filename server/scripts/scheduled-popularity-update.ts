@@ -32,6 +32,7 @@ import {
   type ShowPopularityInput,
   type ActorAppearance,
 } from "../src/lib/popularity-score.js"
+import { fetchActorPageviews } from "../src/lib/wikipedia-pageviews.js"
 import {
   recordActorSnapshots,
   recordMovieSnapshots,
@@ -136,6 +137,13 @@ async function run(options: Options): Promise<void> {
       console.log("=== Updating Show Popularity ===")
       stats.showsUpdated = await updateShowPopularity(pool, eraMap, options, runId, snapshotDate)
       console.log(`Shows updated: ${stats.showsUpdated}\n`)
+    }
+
+    // Refresh stale Wikipedia pageviews before actor scoring
+    if (updateActors) {
+      console.log("=== Refreshing Wikipedia Pageviews ===")
+      const wikiRefreshed = await refreshWikipediaPageviews(pool, options)
+      console.log(`Wikipedia pageviews refreshed: ${wikiRefreshed}\n`)
     }
 
     // Update actors (after content, since actor scores depend on content scores)
@@ -454,12 +462,13 @@ async function updateActorPopularity(
   // queries need bounded batch sizes. options.batchSize controls snapshot flush frequency.
   const batchSize = options.batchSize
 
-  // Get all deceased actors with TMDB popularity
+  // Get all deceased actors with TMDB popularity and Wikipedia data
   const actorsResult = await pool.query<{
     id: number
     tmdb_popularity: number | null
+    wikipedia_annual_pageviews: number | null
   }>(`
-    SELECT id, tmdb_popularity::float
+    SELECT id, tmdb_popularity::float, wikipedia_annual_pageviews
     FROM actors
     WHERE deathday IS NOT NULL
     ORDER BY id
@@ -559,6 +568,7 @@ async function updateActorPopularity(
       const result = calculateActorPopularity({
         appearances,
         tmdbPopularity: actor.tmdb_popularity,
+        wikipediaAnnualPageviews: actor.wikipedia_annual_pageviews,
       })
 
       if (result.dofPopularity !== null) {
@@ -616,6 +626,86 @@ async function batchUpdateActors(
     WHERE a.id = u.id
     `,
     [updates.map((u) => u.id), updates.map((u) => u.popularity), updates.map((u) => u.confidence)]
+  )
+}
+
+/**
+ * Refresh Wikipedia pageviews for actors with stale or missing data.
+ *
+ * Fetches fresh pageview data for actors whose wikipedia_pageviews_updated_at
+ * is NULL or older than 7 days.
+ */
+async function refreshWikipediaPageviews(
+  pool: ReturnType<typeof getPool>,
+  options: Options
+): Promise<number> {
+  const staleActors = await pool.query<{
+    id: number
+    wikipedia_url: string
+    deathday: string | null
+  }>(`
+    SELECT id, wikipedia_url, deathday
+    FROM actors
+    WHERE wikipedia_url IS NOT NULL
+      AND (wikipedia_pageviews_updated_at IS NULL
+           OR wikipedia_pageviews_updated_at < NOW() - INTERVAL '7 days')
+    ORDER BY id
+  `)
+
+  console.log(`Found ${staleActors.rows.length} actors with stale Wikipedia pageview data`)
+
+  if (staleActors.rows.length === 0 || options.dryRun) {
+    return 0
+  }
+
+  let refreshed = 0
+  const batchUpdates: Array<{ id: number; pageviews: number }> = []
+
+  for (const actor of staleActors.rows) {
+    try {
+      const pageviews = await fetchActorPageviews(actor.wikipedia_url, actor.deathday)
+      if (pageviews !== null) {
+        batchUpdates.push({ id: actor.id, pageviews })
+      }
+    } catch (error) {
+      console.error(`Error fetching Wikipedia pageviews for actor ${actor.id}:`, error)
+    }
+
+    // Write batch every 100 actors
+    if (batchUpdates.length >= 100) {
+      await batchUpdateWikipediaPageviews(pool, batchUpdates)
+      refreshed += batchUpdates.length
+      process.stdout.write(`\rRefreshed ${refreshed} Wikipedia pageviews...`)
+      batchUpdates.length = 0
+    }
+  }
+
+  // Final batch
+  if (batchUpdates.length > 0) {
+    await batchUpdateWikipediaPageviews(pool, batchUpdates)
+    refreshed += batchUpdates.length
+  }
+
+  console.log(`\rRefreshed ${refreshed} Wikipedia pageviews    `)
+  return refreshed
+}
+
+async function batchUpdateWikipediaPageviews(
+  pool: ReturnType<typeof getPool>,
+  updates: Array<{ id: number; pageviews: number }>
+): Promise<void> {
+  await pool.query(
+    `
+    UPDATE actors a SET
+      wikipedia_annual_pageviews = u.pageviews,
+      wikipedia_pageviews_updated_at = NOW()
+    FROM (
+      SELECT unnest($1::int[]) as id,
+             unnest($2::int[]) as pageviews
+    ) u
+    WHERE a.id = u.id
+    `,
+    [updates.map((u) => u.id), updates.map((u) => u.pageviews)]
   )
 }
 

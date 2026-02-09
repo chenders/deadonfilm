@@ -30,6 +30,7 @@ describe("scheduled-popularity-update actor calculation", () => {
     const result = calculateActorPopularity({
       appearances,
       tmdbPopularity: 50,
+      wikipediaAnnualPageviews: null,
     })
 
     expect(result.dofPopularity).not.toBeNull()
@@ -121,6 +122,7 @@ describe("scheduled-popularity-update actor calculation", () => {
       const result = calculateActorPopularity({
         appearances,
         tmdbPopularity: actorId === 1 ? 50 : null,
+        wikipediaAnnualPageviews: null,
       })
       expect(result.dofPopularity).not.toBeNull()
       expect(result.dofPopularity!).toBeGreaterThan(0)
