@@ -122,9 +122,7 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
       )
     }
 
-    console.log(
-      `\rProcessed ${refreshed} actors, ${withAwards} had recognized awards    `
-    )
+    console.log(`\rProcessed ${refreshed} actors, ${withAwards} had recognized awards    `)
     console.log("\nBackfill complete.")
   } catch (error) {
     console.error("Fatal error:", error)

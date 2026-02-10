@@ -430,16 +430,12 @@ describe("calculateConsistentStarMultiplier", () => {
   })
 
   it("returns 1.0 for non-lead roles", () => {
-    const appearances = Array(5).fill(
-      makeAppearance({ billingOrder: 3, contentDofPopularity: 80 })
-    )
+    const appearances = Array(5).fill(makeAppearance({ billingOrder: 3, contentDofPopularity: 80 }))
     expect(calculateConsistentStarMultiplier(appearances)).toBe(1.0)
   })
 
   it("returns 1.0 for leads in unpopular content", () => {
-    const appearances = Array(5).fill(
-      makeAppearance({ billingOrder: 0, contentDofPopularity: 30 })
-    )
+    const appearances = Array(5).fill(makeAppearance({ billingOrder: 0, contentDofPopularity: 30 }))
     expect(calculateConsistentStarMultiplier(appearances)).toBe(1.0)
   })
 
@@ -453,9 +449,7 @@ describe("calculateConsistentStarMultiplier", () => {
   })
 
   it("returns 1.10 at 8+ qualifying movies", () => {
-    const appearances = Array(8).fill(
-      makeAppearance({ billingOrder: 0, contentDofPopularity: 80 })
-    )
+    const appearances = Array(8).fill(makeAppearance({ billingOrder: 0, contentDofPopularity: 80 }))
     expect(calculateConsistentStarMultiplier(appearances)).toBeCloseTo(1.1, 5)
   })
 

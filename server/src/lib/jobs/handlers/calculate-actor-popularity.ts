@@ -24,10 +24,7 @@ import {
   type ActorPopularityInput,
   type ActorAppearance,
 } from "../../popularity-score.js"
-import {
-  calculateActorAwardsScore,
-  type ActorAwardsData,
-} from "../../wikidata-awards.js"
+import { calculateActorAwardsScore, type ActorAwardsData } from "../../wikidata-awards.js"
 
 // Batch size for processing
 const DEFAULT_BATCH_SIZE = 100
@@ -125,7 +122,9 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
           // Extract pre-computed awards score from JSONB
           const awardsData = actor.actor_awards_data as ActorAwardsData | null
           const actorAwardsScore =
-            awardsData?.totalScore != null ? awardsData.totalScore : calculateActorAwardsScore(awardsData)
+            awardsData?.totalScore != null
+              ? awardsData.totalScore
+              : calculateActorAwardsScore(awardsData)
 
           // Build input and calculate
           const input: ActorPopularityInput = {

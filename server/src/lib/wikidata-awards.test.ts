@@ -95,9 +95,7 @@ describe("calculateActorAwardsScore", () => {
       nominations: [makeAward("Q103916", "oscar")],
       fetchedAt: new Date().toISOString(),
     }
-    expect(calculateActorAwardsScore(winsOnly)).toBeGreaterThan(
-      calculateActorAwardsScore(nomsOnly)
-    )
+    expect(calculateActorAwardsScore(winsOnly)).toBeGreaterThan(calculateActorAwardsScore(nomsOnly))
   })
 
   it("lower tier awards score less than Oscar tier", () => {

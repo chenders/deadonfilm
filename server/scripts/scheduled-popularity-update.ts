@@ -598,7 +598,9 @@ async function updateActorPopularity(
       // Extract pre-computed awards score from JSONB
       const awardsData = actor.actor_awards_data as ActorAwardsData | null
       const actorAwardsScore =
-        awardsData?.totalScore != null ? awardsData.totalScore : calculateActorAwardsScore(awardsData)
+        awardsData?.totalScore != null
+          ? awardsData.totalScore
+          : calculateActorAwardsScore(awardsData)
 
       const result = calculateActorPopularity({
         appearances,
