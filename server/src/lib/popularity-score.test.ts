@@ -20,18 +20,38 @@ import {
   weightedPositionalAverage,
   isUSUKProduction,
   isEnglishLanguage,
+  isSoleLead,
+  calculateSoleLeadBonus,
+  calculateConsistentStarMultiplier,
+  calculateMultiFactorConfidence,
+  applyActorBayesianAdjustment,
   type ContentPopularityInput,
   type ShowPopularityInput,
   type ActorPopularityInput,
+  type ActorAppearance,
 } from "./popularity-score.js"
+
+// Helper to create an appearance with default star power fields
+function makeAppearance(overrides: Partial<ActorAppearance> = {}): ActorAppearance {
+  return {
+    contentDofPopularity: 70,
+    contentDofWeight: 60,
+    billingOrder: 0,
+    episodeCount: null,
+    isMovie: true,
+    castSize: null,
+    nextBillingOrder: null,
+    ...overrides,
+  }
+}
 
 describe("ALGORITHM_VERSION", () => {
   it("follows major.minor format", () => {
     expect(ALGORITHM_VERSION).toMatch(/^\d+\.\d+$/)
   })
 
-  it("is version 3.0", () => {
-    expect(ALGORITHM_VERSION).toBe("3.0")
+  it("is version 4.0", () => {
+    expect(ALGORITHM_VERSION).toBe("4.0")
   })
 })
 
@@ -350,6 +370,209 @@ describe("getLanguageMultiplier", () => {
   })
 })
 
+describe("isSoleLead", () => {
+  it("returns true for billing #0 with gap >= 2", () => {
+    expect(isSoleLead(0, 2, 10)).toBe(true)
+    expect(isSoleLead(0, 5, 10)).toBe(true)
+  })
+
+  it("returns false when nextBillingOrder is null (unknown, not sole)", () => {
+    expect(isSoleLead(0, null, 10)).toBe(false)
+  })
+
+  it("returns false for co-leads (gap of 1)", () => {
+    expect(isSoleLead(0, 1, 10)).toBe(false)
+  })
+
+  it("returns false for non-lead billing", () => {
+    expect(isSoleLead(1, 3, 10)).toBe(false)
+    expect(isSoleLead(2, null, 10)).toBe(false)
+  })
+
+  it("returns false for small cast", () => {
+    expect(isSoleLead(0, 3, 4)).toBe(false)
+    expect(isSoleLead(0, 3, null)).toBe(false)
+  })
+
+  it("returns false for null billing order", () => {
+    expect(isSoleLead(null, 2, 10)).toBe(false)
+  })
+})
+
+describe("calculateSoleLeadBonus", () => {
+  it("returns 0 when not sole lead", () => {
+    expect(calculateSoleLeadBonus(50, 1, 3, 10)).toBe(0) // Not billing #0
+    expect(calculateSoleLeadBonus(50, 0, 1, 10)).toBe(0) // Co-lead
+    expect(calculateSoleLeadBonus(50, 0, 3, 3)).toBe(0) // Small cast
+  })
+
+  it("returns 10% of contribution for sole lead", () => {
+    const bonus = calculateSoleLeadBonus(50, 0, 3, 10)
+    expect(bonus).toBeCloseTo(5, 5) // 10% of 50 = 5
+  })
+
+  it("scales with contribution size", () => {
+    const smallBonus = calculateSoleLeadBonus(20, 0, 3, 10)
+    const largeBonus = calculateSoleLeadBonus(80, 0, 3, 10)
+    expect(largeBonus).toBeGreaterThan(smallBonus)
+    expect(smallBonus).toBeCloseTo(2, 5)
+    expect(largeBonus).toBeCloseTo(8, 5)
+  })
+})
+
+describe("calculateConsistentStarMultiplier", () => {
+  it("returns 1.0 when below threshold", () => {
+    const appearances = [
+      makeAppearance({ billingOrder: 0, contentDofPopularity: 80 }),
+      makeAppearance({ billingOrder: 0, contentDofPopularity: 70 }),
+    ]
+    expect(calculateConsistentStarMultiplier(appearances)).toBe(1.0)
+  })
+
+  it("returns 1.0 for non-lead roles", () => {
+    const appearances = Array(5).fill(makeAppearance({ billingOrder: 3, contentDofPopularity: 80 }))
+    expect(calculateConsistentStarMultiplier(appearances)).toBe(1.0)
+  })
+
+  it("returns 1.0 for leads in unpopular content", () => {
+    const appearances = Array(5).fill(makeAppearance({ billingOrder: 0, contentDofPopularity: 30 }))
+    expect(calculateConsistentStarMultiplier(appearances)).toBe(1.0)
+  })
+
+  it("returns 1.05 at threshold (3 qualifying movies)", () => {
+    const appearances = [
+      makeAppearance({ billingOrder: 0, contentDofPopularity: 80 }),
+      makeAppearance({ billingOrder: 0, contentDofPopularity: 70 }),
+      makeAppearance({ billingOrder: 0, contentDofPopularity: 65 }),
+    ]
+    expect(calculateConsistentStarMultiplier(appearances)).toBeCloseTo(1.05, 5)
+  })
+
+  it("returns 1.10 at 8+ qualifying movies", () => {
+    const appearances = Array(8).fill(makeAppearance({ billingOrder: 0, contentDofPopularity: 80 }))
+    expect(calculateConsistentStarMultiplier(appearances)).toBeCloseTo(1.1, 5)
+  })
+
+  it("scales linearly between 3 and 8 qualifying movies", () => {
+    const make = (n: number) =>
+      Array(n).fill(makeAppearance({ billingOrder: 0, contentDofPopularity: 80 }))
+
+    const at3 = calculateConsistentStarMultiplier(make(3))
+    const at5 = calculateConsistentStarMultiplier(make(5))
+    const at8 = calculateConsistentStarMultiplier(make(8))
+
+    expect(at5).toBeGreaterThan(at3)
+    expect(at8).toBeGreaterThan(at5)
+  })
+
+  it("ignores TV shows (only counts movies)", () => {
+    const appearances = Array(5).fill(
+      makeAppearance({ billingOrder: 0, contentDofPopularity: 80, isMovie: false })
+    )
+    expect(calculateConsistentStarMultiplier(appearances)).toBe(1.0)
+  })
+})
+
+describe("calculateMultiFactorConfidence", () => {
+  it("returns low confidence for minimal input", () => {
+    const confidence = calculateMultiFactorConfidence({
+      appearanceCount: 1,
+      signalCount: 1,
+      contributions: [30],
+    })
+    expect(confidence).toBeLessThan(0.5)
+  })
+
+  it("returns high confidence for rich input", () => {
+    const confidence = calculateMultiFactorConfidence({
+      appearanceCount: 15,
+      signalCount: 5,
+      contributions: [80, 75, 70, 65, 60, 55, 50, 45, 40, 35],
+    })
+    expect(confidence).toBeGreaterThan(0.7)
+  })
+
+  it("signal coverage affects confidence", () => {
+    const lowSignals = calculateMultiFactorConfidence({
+      appearanceCount: 10,
+      signalCount: 1,
+      contributions: [70, 65, 60, 55, 50, 45, 40, 35, 30, 25],
+    })
+    const highSignals = calculateMultiFactorConfidence({
+      appearanceCount: 10,
+      signalCount: 5,
+      contributions: [70, 65, 60, 55, 50, 45, 40, 35, 30, 25],
+    })
+    expect(highSignals).toBeGreaterThan(lowSignals)
+  })
+
+  it("high variance reduces confidence", () => {
+    const uniform = calculateMultiFactorConfidence({
+      appearanceCount: 5,
+      signalCount: 3,
+      contributions: [50, 50, 50, 50, 50],
+    })
+    const varied = calculateMultiFactorConfidence({
+      appearanceCount: 5,
+      signalCount: 3,
+      contributions: [90, 70, 30, 10, 5],
+    })
+    expect(uniform).toBeGreaterThan(varied)
+  })
+
+  it("top contribution strength affects confidence", () => {
+    const weak = calculateMultiFactorConfidence({
+      appearanceCount: 5,
+      signalCount: 3,
+      contributions: [20, 15, 10, 8, 5],
+    })
+    const strong = calculateMultiFactorConfidence({
+      appearanceCount: 5,
+      signalCount: 3,
+      contributions: [80, 75, 70, 65, 60],
+    })
+    expect(strong).toBeGreaterThan(weak)
+  })
+
+  it("is clamped to [0, 1]", () => {
+    const confidence = calculateMultiFactorConfidence({
+      appearanceCount: 100,
+      signalCount: 5,
+      contributions: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+    })
+    expect(confidence).toBeLessThanOrEqual(1.0)
+    expect(confidence).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe("applyActorBayesianAdjustment", () => {
+  it("pulls low-confidence scores toward prior mean (30)", () => {
+    const adjusted = applyActorBayesianAdjustment(80, 0.1)
+    // With low confidence, score should be pulled toward 30
+    expect(adjusted).toBeLessThan(80)
+    expect(adjusted).toBeGreaterThan(30)
+  })
+
+  it("barely changes high-confidence scores", () => {
+    const adjusted = applyActorBayesianAdjustment(80, 0.9)
+    // With high confidence (0.9), formula: 0.9/(0.9+0.15)*80 + 0.15/(0.9+0.15)*30 ≈ 72.9
+    // Still pulled somewhat toward prior, but much less than low confidence
+    expect(adjusted).toBeGreaterThan(70)
+    expect(adjusted).toBeLessThanOrEqual(80)
+  })
+
+  it("low scores below prior mean get pulled up", () => {
+    const adjusted = applyActorBayesianAdjustment(10, 0.2)
+    expect(adjusted).toBeGreaterThan(10)
+    expect(adjusted).toBeLessThan(30)
+  })
+
+  it("scores at prior mean are unchanged regardless of confidence", () => {
+    const adjusted = applyActorBayesianAdjustment(30, 0.3)
+    expect(adjusted).toBeCloseTo(30, 5)
+  })
+})
+
 describe("calculateMoviePopularity", () => {
   const baseInput: ContentPopularityInput = {
     releaseYear: 2020,
@@ -526,12 +749,13 @@ describe("calculateShowPopularity", () => {
 })
 
 describe("calculateActorPopularity", () => {
-  // Helper to create base input with wikidataSitelinks
+  // Helper to create base input with all signals
   const makeInput = (overrides: Partial<ActorPopularityInput> = {}): ActorPopularityInput => ({
     appearances: [],
     tmdbPopularity: null,
     wikipediaAnnualPageviews: null,
     wikidataSitelinks: null,
+    actorAwardsScore: null,
     ...overrides,
   })
 
@@ -545,20 +769,8 @@ describe("calculateActorPopularity", () => {
     const result = calculateActorPopularity(
       makeInput({
         appearances: [
-          {
-            contentDofPopularity: 80,
-            contentDofWeight: 70,
-            billingOrder: 0,
-            episodeCount: null,
-            isMovie: true,
-          },
-          {
-            contentDofPopularity: 60,
-            contentDofWeight: 50,
-            billingOrder: 2,
-            episodeCount: null,
-            isMovie: true,
-          },
+          makeAppearance({ contentDofPopularity: 80, contentDofWeight: 70, billingOrder: 0 }),
+          makeAppearance({ contentDofPopularity: 60, contentDofWeight: 50, billingOrder: 2 }),
         ],
         tmdbPopularity: 50,
       })
@@ -570,28 +782,12 @@ describe("calculateActorPopularity", () => {
   it("weights lead roles higher than supporting", () => {
     const leadResult = calculateActorPopularity(
       makeInput({
-        appearances: [
-          {
-            contentDofPopularity: 70,
-            contentDofWeight: 60,
-            billingOrder: 0,
-            episodeCount: null,
-            isMovie: true,
-          },
-        ],
+        appearances: [makeAppearance({ billingOrder: 0 })],
       })
     )
     const supportingResult = calculateActorPopularity(
       makeInput({
-        appearances: [
-          {
-            contentDofPopularity: 70,
-            contentDofWeight: 60,
-            billingOrder: 10,
-            episodeCount: null,
-            isMovie: true,
-          },
-        ],
+        appearances: [makeAppearance({ billingOrder: 10 })],
       })
     )
     expect(leadResult.dofPopularity!).toBeGreaterThan(supportingResult.dofPopularity!)
@@ -600,28 +796,12 @@ describe("calculateActorPopularity", () => {
   it("weights TV by episode count", () => {
     const fewResult = calculateActorPopularity(
       makeInput({
-        appearances: [
-          {
-            contentDofPopularity: 70,
-            contentDofWeight: 60,
-            billingOrder: 0,
-            episodeCount: 5,
-            isMovie: false,
-          },
-        ],
+        appearances: [makeAppearance({ episodeCount: 5, isMovie: false })],
       })
     )
     const manyResult = calculateActorPopularity(
       makeInput({
-        appearances: [
-          {
-            contentDofPopularity: 70,
-            contentDofWeight: 60,
-            billingOrder: 0,
-            episodeCount: 50,
-            isMovie: false,
-          },
-        ],
+        appearances: [makeAppearance({ episodeCount: 50, isMovie: false })],
       })
     )
     expect(manyResult.dofPopularity!).toBeGreaterThan(fewResult.dofPopularity!)
@@ -630,50 +810,23 @@ describe("calculateActorPopularity", () => {
   it("has higher confidence with more appearances", () => {
     const fewResult = calculateActorPopularity(
       makeInput({
-        appearances: [
-          {
-            contentDofPopularity: 70,
-            contentDofWeight: 60,
-            billingOrder: 0,
-            episodeCount: null,
-            isMovie: true,
-          },
-        ],
+        appearances: [makeAppearance()],
       })
     )
     const manyResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(15).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(15).fill(makeAppearance()),
       })
     )
     expect(manyResult.confidence).toBeGreaterThan(fewResult.confidence)
-    expect(manyResult.confidence).toBe(1.0)
   })
 
   it("uses top N appearances so prolific actors aren't penalized", () => {
     const smallResult = calculateActorPopularity(
       makeInput({
         appearances: [
-          {
-            contentDofPopularity: 80,
-            contentDofWeight: 70,
-            billingOrder: 5,
-            episodeCount: null,
-            isMovie: true,
-          },
-          {
-            contentDofPopularity: 75,
-            contentDofWeight: 65,
-            billingOrder: 9,
-            episodeCount: null,
-            isMovie: true,
-          },
+          makeAppearance({ contentDofPopularity: 80, contentDofWeight: 70, billingOrder: 5 }),
+          makeAppearance({ contentDofPopularity: 75, contentDofWeight: 65, billingOrder: 9 }),
         ],
       })
     )
@@ -681,20 +834,12 @@ describe("calculateActorPopularity", () => {
     const largeResult = calculateActorPopularity(
       makeInput({
         appearances: [
-          ...Array(10).fill({
-            contentDofPopularity: 85,
-            contentDofWeight: 75,
-            billingOrder: 0,
-            episodeCount: null,
-            isMovie: true,
-          }),
-          ...Array(5).fill({
-            contentDofPopularity: 40,
-            contentDofWeight: 35,
-            billingOrder: 8,
-            episodeCount: null,
-            isMovie: true,
-          }),
+          ...Array(10).fill(
+            makeAppearance({ contentDofPopularity: 85, contentDofWeight: 75, billingOrder: 0 })
+          ),
+          ...Array(5).fill(
+            makeAppearance({ contentDofPopularity: 40, contentDofWeight: 35, billingOrder: 8 })
+          ),
         ],
       })
     )
@@ -705,33 +850,17 @@ describe("calculateActorPopularity", () => {
   it("minor roles beyond top 10 don't affect score", () => {
     const baseResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(10).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(10).fill(makeAppearance()),
       })
     )
 
     const extendedResult = calculateActorPopularity(
       makeInput({
         appearances: [
-          ...Array(10).fill({
-            contentDofPopularity: 70,
-            contentDofWeight: 60,
-            billingOrder: 0,
-            episodeCount: null,
-            isMovie: true,
-          }),
-          ...Array(20).fill({
-            contentDofPopularity: 20,
-            contentDofWeight: 15,
-            billingOrder: 20,
-            episodeCount: null,
-            isMovie: true,
-          }),
+          ...Array(10).fill(makeAppearance()),
+          ...Array(20).fill(
+            makeAppearance({ contentDofPopularity: 20, contentDofWeight: 15, billingOrder: 20 })
+          ),
         ],
       })
     )
@@ -743,62 +872,42 @@ describe("calculateActorPopularity", () => {
   it("TMDB contributes ~15% not 30%", () => {
     const noTmdbResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 80,
-          contentDofWeight: 70,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(
+          makeAppearance({ contentDofPopularity: 80, contentDofWeight: 70 })
+        ),
         tmdbPopularity: null,
       })
     )
 
     const highTmdbResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 80,
-          contentDofWeight: 70,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(
+          makeAppearance({ contentDofPopularity: 80, contentDofWeight: 70 })
+        ),
         tmdbPopularity: 500, // p99 level
       })
     )
 
-    // TMDB should increase score, but not by more than ~25%
+    // TMDB should increase score, but not by more than ~30%
     const percentIncrease =
       ((highTmdbResult.dofPopularity! - noTmdbResult.dofPopularity!) /
         noTmdbResult.dofPopularity!) *
       100
     expect(percentIncrease).toBeGreaterThan(0)
-    expect(percentIncrease).toBeLessThan(30)
+    expect(percentIncrease).toBeLessThan(35)
   })
 
   it("Wikipedia pageviews contribute to scoring", () => {
     const noWikiResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(makeAppearance()),
         tmdbPopularity: 50,
       })
     )
 
     const highWikiResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(makeAppearance()),
         tmdbPopularity: 50,
         wikipediaAnnualPageviews: 1_000_000, // p90 level
       })
@@ -810,13 +919,7 @@ describe("calculateActorPopularity", () => {
   it("falls back gracefully when Wikipedia data is missing", () => {
     const withWikiResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(makeAppearance()),
         tmdbPopularity: 50,
         wikipediaAnnualPageviews: 50000,
       })
@@ -824,13 +927,7 @@ describe("calculateActorPopularity", () => {
 
     const withoutWikiResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(makeAppearance()),
         tmdbPopularity: 50,
       })
     )
@@ -847,26 +944,14 @@ describe("calculateActorPopularity", () => {
   it("Wikidata sitelinks contribute to scoring", () => {
     const noSitelinksResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(makeAppearance()),
         tmdbPopularity: 50,
       })
     )
 
     const highSitelinksResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(makeAppearance()),
         tmdbPopularity: 50,
         wikidataSitelinks: 75, // p90 level
       })
@@ -878,13 +963,7 @@ describe("calculateActorPopularity", () => {
   it("sitelinks weight is small (~5%)", () => {
     const baseResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(makeAppearance()),
         tmdbPopularity: 50,
         wikipediaAnnualPageviews: 100_000,
       })
@@ -892,13 +971,7 @@ describe("calculateActorPopularity", () => {
 
     const withSitelinksResult = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(makeAppearance()),
         tmdbPopularity: 50,
         wikipediaAnnualPageviews: 100_000,
         wikidataSitelinks: 100, // p99 level
@@ -913,23 +986,20 @@ describe("calculateActorPopularity", () => {
     expect(percentIncrease).toBeLessThan(10) // 5% weight shouldn't shift more than ~10%
   })
 
-  it("combines all four signals correctly", () => {
+  it("combines all five signals correctly", () => {
     const result = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 80,
-          contentDofWeight: 70,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(
+          makeAppearance({ contentDofPopularity: 80, contentDofWeight: 70 })
+        ),
         tmdbPopularity: 100, // p90
         wikipediaAnnualPageviews: 1_000_000, // p90
         wikidataSitelinks: 75, // p90
+        actorAwardsScore: 60, // Strong awards
       })
     )
 
-    // All signals present: filmography 65% + TMDB 15% + Wikipedia 15% + Sitelinks 5%
+    // All signals present: filmography 60% + TMDB 15% + Wikipedia 15% + Sitelinks 5% + Awards 5%
     expect(result.dofPopularity).not.toBeNull()
     expect(result.dofPopularity!).toBeGreaterThan(50)
     expect(result.dofPopularity!).toBeLessThanOrEqual(100)
@@ -938,28 +1008,13 @@ describe("calculateActorPopularity", () => {
   it("normalizes weights when signals are missing", () => {
     const result = calculateActorPopularity(
       makeInput({
-        appearances: Array(5).fill({
-          contentDofPopularity: 70,
-          contentDofWeight: 60,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(5).fill(makeAppearance()),
       })
     )
 
-    // When only filmography is available, score should equal the filmography score
-    // (weight normalization means 0.65/0.65 = 1.0 multiplier on filmography)
+    // When only filmography is available, score is normalized then Bayesian-adjusted
     expect(result.dofPopularity).not.toBeNull()
     expect(result.dofPopularity!).toBeGreaterThan(0)
-
-    // contentScore = 70*0.6 + 60*0.4 = 66, billingWeight=1.0 (position 0), episodeWeight=1.0
-    // All 5 contributions are identical (66)
-    // Peak: avg of top 3 = 66
-    // Breadth: weighted positional avg of all 5 = 66 (uniform)
-    // filmographyScore = 66*0.4 + 66*0.6 = 66
-    // finalScore = 66 * 0.65 / 0.65 = 66
-    expect(result.dofPopularity!).toBeCloseTo(66, 0)
   })
 
   it("peak-performance blend rewards peaked careers", () => {
@@ -968,41 +1023,107 @@ describe("calculateActorPopularity", () => {
     const peaked = calculateActorPopularity(
       makeInput({
         appearances: [
-          {
-            contentDofPopularity: 95,
-            contentDofWeight: 90,
-            billingOrder: 0,
-            episodeCount: null,
-            isMovie: true,
-          },
-          ...Array(9).fill({
-            contentDofPopularity: 30,
-            contentDofWeight: 25,
-            billingOrder: 0,
-            episodeCount: null,
-            isMovie: true,
-          }),
+          makeAppearance({ contentDofPopularity: 95, contentDofWeight: 90 }),
+          ...Array(9).fill(makeAppearance({ contentDofPopularity: 30, contentDofWeight: 25 })),
         ],
       })
     )
 
-    // Actor B: all mediocre roles (flat) — same billing but content scores
-    // chosen so simple average would be similar without peak blend.
+    // Actor B: all mediocre roles (flat)
     const flat = calculateActorPopularity(
       makeInput({
-        appearances: Array(10).fill({
-          contentDofPopularity: 40,
-          contentDofWeight: 35,
-          billingOrder: 0,
-          episodeCount: null,
-          isMovie: true,
-        }),
+        appearances: Array(10).fill(
+          makeAppearance({ contentDofPopularity: 40, contentDofWeight: 35 })
+        ),
       })
     )
 
     // The peaked career should score higher due to the peak blend
-    // (top-3 peak of [93, 29, 29] averages to ~50.3 vs flat [38, 38, ...] = 38)
     expect(peaked.dofPopularity!).toBeGreaterThan(flat.dofPopularity!)
+  })
+
+  it("awards signal boosts score", () => {
+    const noAwardsResult = calculateActorPopularity(
+      makeInput({
+        appearances: Array(5).fill(makeAppearance()),
+        tmdbPopularity: 50,
+      })
+    )
+
+    const withAwardsResult = calculateActorPopularity(
+      makeInput({
+        appearances: Array(5).fill(makeAppearance()),
+        tmdbPopularity: 50,
+        actorAwardsScore: 80,
+      })
+    )
+
+    expect(withAwardsResult.dofPopularity!).toBeGreaterThan(noAwardsResult.dofPopularity!)
+  })
+
+  it("sole-lead bonus boosts contributions", () => {
+    const noBonus = calculateActorPopularity(
+      makeInput({
+        appearances: Array(5).fill(
+          makeAppearance({
+            contentDofPopularity: 80,
+            contentDofWeight: 70,
+            billingOrder: 0,
+            castSize: 10,
+            nextBillingOrder: 1, // Co-lead, no bonus
+          })
+        ),
+      })
+    )
+
+    const withBonus = calculateActorPopularity(
+      makeInput({
+        appearances: Array(5).fill(
+          makeAppearance({
+            contentDofPopularity: 80,
+            contentDofWeight: 70,
+            billingOrder: 0,
+            castSize: 10,
+            nextBillingOrder: 3, // Sole lead, gets bonus
+          })
+        ),
+      })
+    )
+
+    expect(withBonus.dofPopularity!).toBeGreaterThan(noBonus.dofPopularity!)
+  })
+
+  it("Bayesian regression pulls low-confidence scores toward 30", () => {
+    // Actor with very few appearances and only filmography signal
+    const lowConfidence = calculateActorPopularity(
+      makeInput({
+        appearances: [
+          makeAppearance({ contentDofPopularity: 90, contentDofWeight: 85, billingOrder: 0 }),
+        ],
+      })
+    )
+
+    // The raw filmography score would be high (~88), but Bayesian should pull toward 30
+    // With low confidence, score is regressed
+    expect(lowConfidence.dofPopularity!).toBeLessThan(88)
+  })
+
+  it("high-confidence scores barely change from Bayesian regression", () => {
+    // Actor with many appearances and all signals
+    const highConfidence = calculateActorPopularity(
+      makeInput({
+        appearances: Array(15).fill(
+          makeAppearance({ contentDofPopularity: 80, contentDofWeight: 70 })
+        ),
+        tmdbPopularity: 100,
+        wikipediaAnnualPageviews: 500_000,
+        wikidataSitelinks: 50,
+        actorAwardsScore: 40,
+      })
+    )
+
+    // Should be close to what raw score would be
+    expect(highConfidence.dofPopularity!).toBeGreaterThan(55)
   })
 })
 

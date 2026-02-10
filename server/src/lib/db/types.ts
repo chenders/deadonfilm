@@ -64,6 +64,10 @@ export interface ActorRecord {
   biography_raw_tmdb: string | null
   biography_has_content: boolean | null
 
+  // Awards data from Wikidata
+  actor_awards_data: unknown | null // JSONB: ActorAwardsData from wikidata-awards.ts
+  actor_awards_updated_at: string | null
+
   // Computed column
   is_obscure: boolean | null
 }

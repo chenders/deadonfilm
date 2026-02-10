@@ -53,6 +53,8 @@ describe("getActorByEitherIdWithSlug", () => {
     biography_generated_at: null,
     biography_raw_tmdb: null,
     biography_has_content: null,
+    actor_awards_data: null,
+    actor_awards_updated_at: null,
   })
 
   describe("Single actor match", () => {

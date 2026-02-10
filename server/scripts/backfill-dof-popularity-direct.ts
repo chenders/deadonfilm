@@ -399,6 +399,8 @@ async function backfillActors(pool: ReturnType<typeof getPool>, options: Options
           billingOrder: r.billing_order,
           episodeCount: null,
           isMovie: true,
+          castSize: null,
+          nextBillingOrder: null,
         })),
         ...showAppearances.rows.map((r) => ({
           contentDofPopularity: r.dof_popularity ? Number(r.dof_popularity) : null,
@@ -406,6 +408,8 @@ async function backfillActors(pool: ReturnType<typeof getPool>, options: Options
           billingOrder: r.billing_order,
           episodeCount: r.episode_count ? Number(r.episode_count) : null,
           isMovie: false,
+          castSize: null,
+          nextBillingOrder: null,
         })),
       ]
 
@@ -421,6 +425,7 @@ async function backfillActors(pool: ReturnType<typeof getPool>, options: Options
           actor.wikidata_sitelinks !== null && actor.wikidata_sitelinks !== undefined
             ? Number(actor.wikidata_sitelinks)
             : null,
+        actorAwardsScore: null,
       })
 
       if (popResult.dofPopularity !== null) {

@@ -17,6 +17,8 @@ describe("scheduled-popularity-update actor calculation", () => {
         billingOrder: 0,
         episodeCount: null,
         isMovie: true,
+        castSize: null,
+        nextBillingOrder: null,
       },
       {
         contentDofPopularity: 60,
@@ -24,6 +26,8 @@ describe("scheduled-popularity-update actor calculation", () => {
         billingOrder: 4,
         episodeCount: null,
         isMovie: true,
+        castSize: null,
+        nextBillingOrder: null,
       },
     ]
 
@@ -32,6 +36,7 @@ describe("scheduled-popularity-update actor calculation", () => {
       tmdbPopularity: 50,
       wikipediaAnnualPageviews: null,
       wikidataSitelinks: null,
+      actorAwardsScore: null,
     })
 
     expect(result.dofPopularity).not.toBeNull()
@@ -87,6 +92,8 @@ describe("scheduled-popularity-update actor calculation", () => {
         billingOrder: row.billing_order,
         episodeCount: null,
         isMovie: true,
+        castSize: null,
+        nextBillingOrder: null,
       })
     }
 
@@ -100,6 +107,8 @@ describe("scheduled-popularity-update actor calculation", () => {
         billingOrder: row.min_billing_order,
         episodeCount: Number(row.episode_count),
         isMovie: false,
+        castSize: null,
+        nextBillingOrder: null,
       })
     }
 
@@ -125,6 +134,7 @@ describe("scheduled-popularity-update actor calculation", () => {
         tmdbPopularity: actorId === 1 ? 50 : null,
         wikipediaAnnualPageviews: null,
         wikidataSitelinks: null,
+        actorAwardsScore: null,
       })
       expect(result.dofPopularity).not.toBeNull()
       expect(result.dofPopularity!).toBeGreaterThan(0)
