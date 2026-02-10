@@ -13,7 +13,7 @@
  */
 
 import "dotenv/config"
-import { Command } from "commander"
+import { Command, InvalidArgumentError } from "commander"
 import { getPool } from "../src/lib/db.js"
 import {
   fetchActorAwardsBatch,
@@ -27,11 +27,18 @@ interface BackfillOptions {
   dryRun?: boolean
 }
 
+function parsePositiveInt(value: string): number {
+  const n = parseInt(value, 10)
+  if (isNaN(n) || !Number.isInteger(n) || n <= 0)
+    throw new InvalidArgumentError("Must be a positive integer")
+  return n
+}
+
 const program = new Command()
   .name("backfill-actor-awards")
   .description("Backfill actor awards data from Wikidata")
-  .option("-b, --batch-size <n>", "TMDB IDs per SPARQL batch", parseInt, 500)
-  .option("-l, --limit <n>", "Max actors to process", parseInt)
+  .option("-b, --batch-size <n>", "TMDB IDs per SPARQL batch", parsePositiveInt, 500)
+  .option("-l, --limit <n>", "Max actors to process", parsePositiveInt)
   .option("-n, --dry-run", "Preview without updating database")
   .action(async (options) => {
     await runBackfill(options)

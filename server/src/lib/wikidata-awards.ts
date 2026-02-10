@@ -247,7 +247,7 @@ export async function fetchActorAwardsByTmdbId(tmdbId: number): Promise<ActorAwa
   const awardValues = ALL_AWARD_QIDS.map((qid) => `wd:${qid}`).join(" ")
 
   const query = `
-    SELECT ?award ?awardLabel ?type WHERE {
+    SELECT DISTINCT ?award ?awardLabel ?type WHERE {
       ?person wdt:P4985 "${tmdbId}" .
       {
         ?person wdt:P166 ?award .
@@ -288,7 +288,7 @@ export async function fetchActorAwardsBatch(
     const tmdbValues = chunk.map((id) => `"${id}"`).join(" ")
 
     const query = `
-      SELECT ?tmdbId ?award ?awardLabel ?type WHERE {
+      SELECT DISTINCT ?tmdbId ?award ?awardLabel ?type WHERE {
         VALUES ?tmdbId { ${tmdbValues} }
         ?person wdt:P4985 ?tmdbId .
         {
@@ -363,6 +363,7 @@ function parseAwardsBindings(
 ): ActorAwardsData | null {
   const wins: AwardEntry[] = []
   const nominations: AwardEntry[] = []
+  const seen = new Set<string>()
 
   for (const binding of bindings) {
     const awardUri = binding.award?.value
@@ -373,6 +374,11 @@ function parseAwardsBindings(
 
     const tier = classifyAwardTier(qid)
     if (!tier) continue
+
+    const type = binding.type?.value ?? "unknown"
+    const dedupeKey = `${type}:${qid}`
+    if (seen.has(dedupeKey)) continue
+    seen.add(dedupeKey)
 
     const entry: AwardEntry = {
       wikidataId: qid,
