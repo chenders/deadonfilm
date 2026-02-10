@@ -1146,16 +1146,11 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
     const startTime = Date.now()
 
     // Import orchestrator dynamically to avoid loading all sources at route module load
-    const { DeathEnrichmentOrchestrator } = await import(
-      "../../lib/death-sources/orchestrator.js"
-    )
+    const { DeathEnrichmentOrchestrator } = await import("../../lib/death-sources/orchestrator.js")
     const { writeToProduction } = await import("../../lib/enrichment-db-writer.js")
-    const { linkMultipleFields, hasEntityLinks } = await import(
-      "../../lib/entity-linker/index.js"
-    )
-    const { MIN_CIRCUMSTANCES_LENGTH, MIN_RUMORED_CIRCUMSTANCES_LENGTH } = await import(
-      "../../lib/claude-batch/constants.js"
-    )
+    const { linkMultipleFields, hasEntityLinks } = await import("../../lib/entity-linker/index.js")
+    const { MIN_CIRCUMSTANCES_LENGTH, MIN_RUMORED_CIRCUMSTANCES_LENGTH } =
+      await import("../../lib/claude-batch/constants.js")
 
     const actorForEnrichment = {
       id: actor.id,
@@ -1203,7 +1198,8 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
     const birthdayConfidence = cleaned?.birthdayConfidence || null
     const deathdayConfidence = cleaned?.deathdayConfidence || null
     const lastProject = cleaned?.lastProject || enrichment.lastProject || null
-    const careerStatusAtDeath = cleaned?.careerStatusAtDeath || enrichment.careerStatusAtDeath || null
+    const careerStatusAtDeath =
+      cleaned?.careerStatusAtDeath || enrichment.careerStatusAtDeath || null
     const posthumousReleases = cleaned?.posthumousReleases || enrichment.posthumousReleases || null
     const relatedCelebrities = cleaned?.relatedCelebrities || enrichment.relatedCelebrities || null
 
@@ -1236,8 +1232,7 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
     const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
     const passesQualityGate = cleaned === undefined || cleaned.hasSubstantiveContent === true
     const hasDetailedDeathInfo =
-      passesQualityGate &&
-      (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths)
+      passesQualityGate && (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths)
 
     // Run entity linking
     const entityLinks = await linkMultipleFields(
@@ -1311,9 +1306,8 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
     if (locationOfDeath) fieldsUpdated.push("locationOfDeath")
     if (notableFactors?.length) fieldsUpdated.push("notableFactors")
 
-    const sourcesUsed = enrichment.actorStats?.sourcesAttempted
-      ?.filter((s) => s.success)
-      .map((s) => s.source) || []
+    const sourcesUsed =
+      enrichment.actorStats?.sourcesAttempted?.filter((s) => s.success).map((s) => s.source) || []
 
     await logAdminAction({
       action: "inline-enrich",

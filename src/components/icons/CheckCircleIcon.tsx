@@ -2,11 +2,7 @@ interface CheckCircleIconProps extends React.SVGProps<SVGSVGElement> {
   size?: number
 }
 
-export default function CheckCircleIcon({
-  size = 16,
-  className,
-  ...props
-}: CheckCircleIconProps) {
+export default function CheckCircleIcon({ size = 16, className, ...props }: CheckCircleIconProps) {
   return (
     <svg
       viewBox="0 0 16 16"

@@ -75,9 +75,7 @@ function AdminActorMetadataInner({ actorId }: AdminActorMetadataProps) {
           {data.enrichment.hasCircumstances ? "Yes" : "No"}
         </span>
         {data.dataQuality.isObscure && (
-          <span className="rounded bg-amber-200/60 px-1 font-medium text-amber-800">
-            Obscure
-          </span>
+          <span className="rounded bg-amber-200/60 px-1 font-medium text-amber-800">Obscure</span>
         )}
         {data.dataQuality.deathdayConfidence &&
           data.dataQuality.deathdayConfidence !== "verified" && (

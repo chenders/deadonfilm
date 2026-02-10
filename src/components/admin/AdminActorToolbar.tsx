@@ -1,9 +1,6 @@
 import { useOptionalAdminAuth } from "@/hooks/useAdminAuth"
 import { useOptionalAdminMode } from "@/contexts/AdminModeContext"
-import {
-  useRegenerateBiography,
-  useInlineEnrichDeath,
-} from "@/hooks/admin/useActorInlineActions"
+import { useRegenerateBiography, useInlineEnrichDeath } from "@/hooks/admin/useActorInlineActions"
 import AdminActionButton from "./AdminActionButton"
 import { RefreshIcon, GearIcon, PencilIcon } from "@/components/icons"
 
@@ -31,10 +28,7 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
   const enrichDeath = useInlineEnrichDeath(actorId)
 
   return (
-    <div
-      className="mb-2 flex items-center justify-end gap-1.5"
-      data-testid="admin-actor-toolbar"
-    >
+    <div className="mb-2 flex items-center justify-end gap-1.5" data-testid="admin-actor-toolbar">
       <button
         onClick={toggleAdminMode}
         title={adminModeEnabled ? "Hide admin info" : "Show admin info"}
