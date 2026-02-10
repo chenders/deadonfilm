@@ -232,37 +232,6 @@ services:
         tag: "deadonfilm-cron"
         labels: "service"
 
-  prerender:
-    image: ghcr.io/chenders/deadonfilm-prerender:${IMAGE_TAG:-latest}
-    container_name: deadonfilm-prerender
-    restart: unless-stopped
-    expose:
-      - "3001"
-    environment:
-      - NODE_ENV=production
-      - PRERENDER_TARGET_HOST=http://nginx:3000
-    depends_on:
-      nginx:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '2'
-        reservations:
-          memory: 512M
-    logging:
-      driver: journald
-      options:
-        tag: "deadonfilm-prerender"
-        labels: "service"
-
   redis:
     image: redis:7-alpine
     container_name: deadonfilm-redis

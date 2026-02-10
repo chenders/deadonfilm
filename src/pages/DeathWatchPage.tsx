@@ -7,6 +7,7 @@ import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import SortControl from "@/components/common/SortControl"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildCollectionPageSchema } from "@/utils/schema"
 import { PersonIcon } from "@/components/icons"
@@ -110,11 +111,21 @@ export default function DeathWatchPage() {
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const includeObscure = searchParams.get("includeObscure") === "true"
+  const validSorts = ["age", "probability", "name"]
+  const rawSort = searchParams.get("sort")
+  const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "age"
+  const dir = searchParams.get("dir") === "asc" ? "asc" : "desc"
 
   // Debounced search with URL sync
   const [searchInput, setSearchInput, searchQuery] = useDebouncedSearchParam()
 
-  const { data, isLoading, error } = useDeathWatch({ page, includeObscure, search: searchQuery })
+  const { data, isLoading, error } = useDeathWatch({
+    page,
+    includeObscure,
+    search: searchQuery,
+    sort,
+    dir,
+  })
 
   const goToPage = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams)
@@ -134,6 +145,28 @@ export default function DeathWatchPage() {
       newParams.set("includeObscure", "true")
     }
     newParams.delete("page") // Reset to first page when toggling
+    setSearchParams(newParams)
+  }
+
+  const handleSortChange = (newSort: string) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newSort !== "age") {
+      newParams.set("sort", newSort)
+    } else {
+      newParams.delete("sort")
+    }
+    newParams.delete("page")
+    setSearchParams(newParams)
+  }
+
+  const handleDirChange = (newDir: "asc" | "desc") => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newDir !== "desc") {
+      newParams.set("dir", newDir)
+    } else {
+      newParams.delete("dir")
+    }
+    newParams.delete("page")
     setSearchParams(newParams)
   }
 
@@ -223,6 +256,20 @@ export default function DeathWatchPage() {
               <span className="text-text-muted">Include lesser-known actors</span>
             </label>
           </div>
+        </div>
+
+        <div className="mb-4 flex justify-center">
+          <SortControl
+            options={[
+              { value: "age", label: "Age" },
+              { value: "probability", label: "Probability" },
+              { value: "name", label: "Name" },
+            ]}
+            currentSort={sort}
+            currentDir={dir}
+            onSortChange={handleSortChange}
+            onDirChange={handleDirChange}
+          />
         </div>
 
         {noResults ? (

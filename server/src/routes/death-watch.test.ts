@@ -82,6 +82,8 @@ describe("getDeathWatchHandler", () => {
       minAge: undefined,
       includeObscure: false,
       search: undefined,
+      sort: "age",
+      dir: "desc",
     })
     expect(jsonSpy).toHaveBeenCalledWith({
       actors: [
@@ -453,6 +455,8 @@ describe("getDeathWatchHandler", () => {
       minAge: undefined,
       includeObscure: true,
       search: "Clint",
+      sort: "age",
+      dir: "desc",
     })
   })
 })
