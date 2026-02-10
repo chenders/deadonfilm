@@ -30,6 +30,7 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
   return (
     <div className="mb-2 flex items-center justify-end gap-1.5" data-testid="admin-actor-toolbar">
       <button
+        type="button"
         onClick={toggleAdminMode}
         title={adminModeEnabled ? "Hide admin info" : "Show admin info"}
         aria-label="Toggle admin mode"

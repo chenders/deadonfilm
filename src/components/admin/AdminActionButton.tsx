@@ -53,6 +53,7 @@ export default function AdminActionButton({
 
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={state === "loading"}
       title={title || label}

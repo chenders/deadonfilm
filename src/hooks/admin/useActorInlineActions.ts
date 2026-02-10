@@ -59,7 +59,10 @@ async function fetchActorAdminMetadata(actorId: number): Promise<ActorAdminMetad
   })
 
   if (!response.ok) {
-    throw new Error("Failed to fetch actor metadata")
+    const errorData = (await response.json().catch(() => ({}))) as {
+      error?: { message?: string }
+    }
+    throw new Error(errorData.error?.message || "Failed to fetch actor metadata")
   }
 
   return response.json()

@@ -9,6 +9,7 @@ interface AdminActorMetadataProps {
 function formatRelativeDate(dateStr: string | null): string {
   if (!dateStr) return "Never"
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return dateStr
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))

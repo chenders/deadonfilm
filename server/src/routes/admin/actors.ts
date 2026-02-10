@@ -1081,7 +1081,7 @@ router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<v
         enrichedAt: actor.enriched_at,
         source: actor.enrichment_source,
         causeOfDeathSource: actor.cause_of_death_source,
-        hasCircumstances: circ?.circumstances !== null && circ?.circumstances !== undefined,
+        hasCircumstances: !!circ?.circumstances?.trim(),
         circumstancesEnrichedAt: circ?.enriched_at || null,
       },
       dataQuality: {
@@ -1167,11 +1167,15 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
     const orchestrator = new DeathEnrichmentOrchestrator({}, false)
     const enrichment = await orchestrator.enrichActor(actorForEnrichment)
 
-    // Check if we got useful data
+    // Check if we got useful data from any field
     if (
       !enrichment.circumstances &&
       !enrichment.notableFactors?.length &&
-      !enrichment.cleanedDeathInfo
+      !enrichment.cleanedDeathInfo &&
+      !enrichment.locationOfDeath &&
+      !enrichment.rumoredCircumstances &&
+      !enrichment.additionalContext &&
+      !enrichment.relatedDeaths
     ) {
       res.json({
         success: true,
