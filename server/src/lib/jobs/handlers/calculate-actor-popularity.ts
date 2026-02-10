@@ -132,7 +132,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
             tmdbPopularity: actor.tmdb_popularity,
             wikipediaAnnualPageviews: actor.wikipedia_annual_pageviews,
             wikidataSitelinks: actor.wikidata_sitelinks,
-            actorAwardsScore: actorAwardsScore || null,
+            actorAwardsScore: actorAwardsScore ?? null,
           }
 
           const result = calculateActorPopularity(input)
@@ -202,7 +202,9 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
   ): Promise<ActorAppearance[]> {
     const appearances: ActorAppearance[] = []
 
-    // Get movie appearances with cast size and next billing order for star power
+    // Get movie appearances with cast size and next billing order for star power.
+    // Window functions are computed over the full cast (subquery) before filtering
+    // to the target actor, so cast_size and next_billing_order reflect the real cast.
     const moviesResult = await pool.query<{
       dof_popularity: number | null
       dof_weight: number | null
@@ -211,17 +213,25 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
       next_billing_order: number | null
     }>(
       `
-      SELECT
-        m.dof_popularity,
-        m.dof_weight,
-        ama.billing_order,
-        COUNT(*) OVER (PARTITION BY ama.movie_tmdb_id)::int as cast_size,
-        LEAD(ama.billing_order) OVER (
-          PARTITION BY ama.movie_tmdb_id ORDER BY ama.billing_order
-        ) as next_billing_order
-      FROM actor_movie_appearances ama
-      JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-      WHERE ama.actor_id = $1
+      SELECT w.dof_popularity, w.dof_weight, w.billing_order,
+             w.cast_size, w.next_billing_order
+      FROM (
+        SELECT
+          ama.actor_id,
+          m.dof_popularity,
+          m.dof_weight,
+          ama.billing_order,
+          COUNT(*) OVER (PARTITION BY ama.movie_tmdb_id)::int as cast_size,
+          LEAD(ama.billing_order) OVER (
+            PARTITION BY ama.movie_tmdb_id ORDER BY ama.billing_order
+          ) as next_billing_order
+        FROM actor_movie_appearances ama
+        JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
+        WHERE ama.movie_tmdb_id IN (
+          SELECT movie_tmdb_id FROM actor_movie_appearances WHERE actor_id = $1
+        )
+      ) w
+      WHERE w.actor_id = $1
       `,
       [actorId]
     )

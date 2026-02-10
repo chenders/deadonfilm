@@ -951,9 +951,13 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
     signalCount++
   }
 
-  if (actorAwardsScore !== null && actorAwardsScore > 0) {
-    finalScore += actorAwardsScore * ACTOR_AWARDS_WEIGHT
-    totalWeight += ACTOR_AWARDS_WEIGHT
+  if (actorAwardsScore !== null) {
+    if (actorAwardsScore > 0) {
+      finalScore += actorAwardsScore * ACTOR_AWARDS_WEIGHT
+      totalWeight += ACTOR_AWARDS_WEIGHT
+    }
+    // Count as present signal for confidence even when score is 0
+    // (awards fetched but none recognized ≠ awards not fetched)
     signalCount++
   }
 

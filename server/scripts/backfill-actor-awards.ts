@@ -56,18 +56,26 @@ async function runBackfill(options: BackfillOptions): Promise<void> {
 
   try {
     // Get actors with TMDB ID but no awards data
-    const limitClause = limit ? `LIMIT ${limit}` : ""
+    const params: number[] = []
+    let limitClause = ""
+    if (limit) {
+      params.push(limit)
+      limitClause = ` LIMIT $${params.length}`
+    }
     const actorsResult = await pool.query<{
       id: number
       tmdb_id: number
-    }>(`
+    }>(
+      `
       SELECT id, tmdb_id
       FROM actors
       WHERE tmdb_id IS NOT NULL
         AND actor_awards_updated_at IS NULL
       ORDER BY id
       ${limitClause}
-    `)
+      `,
+      params
+    )
 
     console.log(`Found ${actorsResult.rows.length} actors without awards data`)
 

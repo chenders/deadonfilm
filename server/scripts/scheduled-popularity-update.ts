@@ -503,8 +503,9 @@ async function updateActorPopularity(
     const batch = actorsResult.rows.slice(i, i + ACTOR_FILMOGRAPHY_BATCH_SIZE)
     const actorIds = batch.map((a) => a.id)
 
-    // Fetch filmography for entire batch in 2 parallel queries
-    // Movie query uses window functions for cast_size and next_billing_order (star power)
+    // Fetch filmography for entire batch in 2 parallel queries.
+    // Movie query computes window functions over the full cast per movie (subquery),
+    // then filters to the batch actors, so cast_size/next_billing_order are correct.
     const [movieRows, showRows] = await Promise.all([
       pool.query<{
         actor_id: number
@@ -515,19 +516,26 @@ async function updateActorPopularity(
         next_billing_order: number | null
       }>(
         `
-        SELECT
-          ama.actor_id,
-          m.dof_popularity::float,
-          m.dof_weight::float,
-          ama.billing_order,
-          COUNT(*) OVER (PARTITION BY ama.movie_tmdb_id)::int as cast_size,
-          LEAD(ama.billing_order) OVER (
-            PARTITION BY ama.movie_tmdb_id ORDER BY ama.billing_order
-          ) as next_billing_order
-        FROM actor_movie_appearances ama
-        JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
-        WHERE ama.actor_id = ANY($1)
-          AND (m.dof_popularity IS NOT NULL OR m.dof_weight IS NOT NULL)
+        SELECT w.actor_id, w.dof_popularity, w.dof_weight, w.billing_order,
+               w.cast_size, w.next_billing_order
+        FROM (
+          SELECT
+            ama.actor_id,
+            m.dof_popularity::float,
+            m.dof_weight::float,
+            ama.billing_order,
+            COUNT(*) OVER (PARTITION BY ama.movie_tmdb_id)::int as cast_size,
+            LEAD(ama.billing_order) OVER (
+              PARTITION BY ama.movie_tmdb_id ORDER BY ama.billing_order
+            ) as next_billing_order
+          FROM actor_movie_appearances ama
+          JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
+          WHERE ama.movie_tmdb_id IN (
+            SELECT movie_tmdb_id FROM actor_movie_appearances WHERE actor_id = ANY($1)
+          )
+            AND (m.dof_popularity IS NOT NULL OR m.dof_weight IS NOT NULL)
+        ) w
+        WHERE w.actor_id = ANY($1)
         `,
         [actorIds]
       ),
@@ -607,7 +615,7 @@ async function updateActorPopularity(
         tmdbPopularity: actor.tmdb_popularity,
         wikipediaAnnualPageviews: actor.wikipedia_annual_pageviews,
         wikidataSitelinks: actor.wikidata_sitelinks,
-        actorAwardsScore: actorAwardsScore || null,
+        actorAwardsScore: actorAwardsScore ?? null,
       })
 
       if (result.dofPopularity !== null) {
