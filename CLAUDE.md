@@ -151,7 +151,7 @@ npm run type-check && cd server && npm run type-check
 npm test && cd server && npm test
 ```
 
-**Note:** Server integration tests (Redis/Postgres-dependent) auto-skip locally when Docker containers aren't running. CI runs them with full infrastructure.
+**Note:** Server integration tests (Redis/Postgres-dependent) auto-skip locally when `REDIS_JOBS_URL` and `DATABASE_URL` are not set. CI runs the full suite.
 
 ### Git Workflow
 
