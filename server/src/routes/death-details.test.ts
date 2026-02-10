@@ -89,6 +89,8 @@ describe("getActorDeathDetails", () => {
     biography_generated_at: null,
     biography_raw_tmdb: null,
     biography_has_content: null,
+    actor_awards_data: null,
+    actor_awards_updated_at: null,
     // Fields accessed via `as unknown as` casts in the route handler
     death_manner: "natural",
     death_categories: ["cardiovascular"],
@@ -818,6 +820,8 @@ describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", (
     biography_generated_at: null,
     biography_raw_tmdb: null,
     biography_has_content: null,
+    actor_awards_data: null,
+    actor_awards_updated_at: null,
   }
 
   beforeEach(() => {
