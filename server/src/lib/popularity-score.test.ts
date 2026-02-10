@@ -929,7 +929,7 @@ describe("calculateActorPopularity", () => {
       })
     )
 
-    // All signals present: filmography 55% + TMDB 15% + Wikipedia 15% + Sitelinks 5%
+    // All signals present: filmography 65% + TMDB 15% + Wikipedia 15% + Sitelinks 5%
     expect(result.dofPopularity).not.toBeNull()
     expect(result.dofPopularity!).toBeGreaterThan(50)
     expect(result.dofPopularity!).toBeLessThanOrEqual(100)
