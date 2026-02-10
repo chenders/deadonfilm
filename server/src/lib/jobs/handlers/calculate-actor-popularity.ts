@@ -119,12 +119,17 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
             continue
           }
 
-          // Extract pre-computed awards score from JSONB
+          // Extract pre-computed awards score from JSONB.
+          // When awardsData is null (not yet fetched), preserve null so the
+          // popularity algorithm doesn't treat it as "fetched, score = 0".
           const awardsData = actor.actor_awards_data as ActorAwardsData | null
-          const actorAwardsScore =
-            awardsData?.totalScore != null
-              ? awardsData.totalScore
-              : calculateActorAwardsScore(awardsData)
+          let actorAwardsScore: number | null = null
+          if (awardsData) {
+            actorAwardsScore =
+              awardsData.totalScore != null
+                ? awardsData.totalScore
+                : calculateActorAwardsScore(awardsData)
+          }
 
           // Build input and calculate
           const input: ActorPopularityInput = {
@@ -132,7 +137,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
             tmdbPopularity: actor.tmdb_popularity,
             wikipediaAnnualPageviews: actor.wikipedia_annual_pageviews,
             wikidataSitelinks: actor.wikidata_sitelinks,
-            actorAwardsScore: actorAwardsScore ?? null,
+            actorAwardsScore,
           }
 
           const result = calculateActorPopularity(input)
@@ -223,7 +228,8 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
           ama.billing_order,
           COUNT(*) OVER (PARTITION BY ama.movie_tmdb_id)::int as cast_size,
           LEAD(ama.billing_order) OVER (
-            PARTITION BY ama.movie_tmdb_id ORDER BY ama.billing_order
+            PARTITION BY ama.movie_tmdb_id
+            ORDER BY ama.billing_order NULLS LAST, ama.actor_id
           ) as next_billing_order
         FROM actor_movie_appearances ama
         JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id

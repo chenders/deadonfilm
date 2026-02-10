@@ -14,10 +14,9 @@
 
 **[deadonfilm.com](https://deadonfilm.com)** tracks **572,000+ actors** across **152,000+ movies and TV shows** — who has died, when, how, and whether a production's death toll is statistically unusual.
 
-<!-- Screenshot should show a movie page with the mortality gauge, expected vs.
-     actual comparison, and at least one deceased actor with cause of death visible.
-     This single image needs to communicate the project's depth, not just its existence. -->
-![Dead on Film](docs/screenshot.png)
+<!-- TODO: Add screenshot at docs/screenshot.png showing a movie page with the
+     mortality gauge, expected vs. actual comparison, and at least one deceased
+     actor with cause of death visible. -->
 
 ---
 
