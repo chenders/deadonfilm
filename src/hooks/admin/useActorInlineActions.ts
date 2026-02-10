@@ -122,7 +122,7 @@ export function useRegenerateBiography(actorId: number) {
   return useMutation({
     mutationFn: () => regenerateBiography(actorId),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["actor"] })
+      queryClient.invalidateQueries({ queryKey: ["actors"] })
       queryClient.invalidateQueries({ queryKey: ["admin", "actor-metadata", actorId] })
       if (data.result?.hasSubstantiveContent) {
         toast.success("Biography regenerated")
@@ -143,7 +143,7 @@ export function useInlineEnrichDeath(actorId: number) {
   return useMutation({
     mutationFn: () => enrichActorInline(actorId),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["actor"] })
+      queryClient.invalidateQueries({ queryKey: ["actors"] })
       queryClient.invalidateQueries({ queryKey: ["admin", "actor-metadata", actorId] })
       if (data.fieldsUpdated.length > 0) {
         toast.success(`Enriched: ${data.fieldsUpdated.join(", ")}`)
