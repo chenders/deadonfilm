@@ -14,7 +14,9 @@ import { getPool } from "../../db.js"
 import { queueManager } from "../queue-manager.js"
 import { JobType, QueueName, JobPriority } from "../types.js"
 
-describe("QueueManager", () => {
+const hasIntegrationDeps = !!process.env.REDIS_JOBS_URL && !!process.env.DATABASE_URL
+
+describe.skipIf(!hasIntegrationDeps)("QueueManager", () => {
   let pool: ReturnType<typeof getPool>
 
   beforeAll(async () => {
