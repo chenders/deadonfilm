@@ -76,7 +76,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
       if (actorIds && actorIds.length > 0) {
         // Process specific IDs
         actorsQuery = `
-          SELECT id, tmdb_popularity, wikipedia_annual_pageviews FROM actors
+          SELECT id, tmdb_popularity, wikipedia_annual_pageviews, wikidata_sitelinks FROM actors
           WHERE id = ANY($1)
           ${!recalculateAll ? "AND dof_popularity IS NULL" : ""}
         `
@@ -84,7 +84,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
       } else {
         // Batch processing - get actors without scores
         actorsQuery = `
-          SELECT id, tmdb_popularity, wikipedia_annual_pageviews FROM actors
+          SELECT id, tmdb_popularity, wikipedia_annual_pageviews, wikidata_sitelinks FROM actors
           ${!recalculateAll ? "WHERE dof_popularity IS NULL" : ""}
           ORDER BY id
           LIMIT $1
@@ -96,6 +96,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
         id: number
         tmdb_popularity: number | null
         wikipedia_annual_pageviews: number | null
+        wikidata_sitelinks: number | null
       }>(actorsQuery, params)
       const actors = actorsResult.rows
 
@@ -119,6 +120,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
             appearances: filmography,
             tmdbPopularity: actor.tmdb_popularity,
             wikipediaAnnualPageviews: actor.wikipedia_annual_pageviews,
+            wikidataSitelinks: actor.wikidata_sitelinks,
           }
 
           const result = calculateActorPopularity(input)
