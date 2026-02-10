@@ -35,6 +35,11 @@ import {
 import { fetchActorPageviews } from "../src/lib/wikipedia-pageviews.js"
 import { fetchSitelinksBatch, fetchSitelinksByWikipediaUrl } from "../src/lib/wikidata-sitelinks.js"
 import {
+  fetchActorAwardsBatch,
+  calculateActorAwardsScore,
+  type ActorAwardsData,
+} from "../src/lib/wikidata-awards.js"
+import {
   recordActorSnapshots,
   recordMovieSnapshots,
   recordShowSnapshots,
@@ -152,6 +157,13 @@ async function run(options: Options): Promise<void> {
       console.log("=== Refreshing Wikidata Sitelinks ===")
       const sitelinksRefreshed = await refreshWikidataSitelinks(pool, options)
       console.log(`Wikidata sitelinks refreshed: ${sitelinksRefreshed}\n`)
+    }
+
+    // Refresh stale actor awards before actor scoring
+    if (updateActors) {
+      console.log("=== Refreshing Actor Awards ===")
+      const awardsRefreshed = await refreshActorAwards(pool, options)
+      console.log(`Actor awards refreshed: ${awardsRefreshed}\n`)
     }
 
     // Update actors (after content, since actor scores depend on content scores)
@@ -468,16 +480,16 @@ async function updateActorPopularity(
   // queries need bounded batch sizes. options.batchSize controls snapshot flush frequency.
   const batchSize = options.batchSize
 
-  // Get all deceased actors with TMDB popularity, Wikipedia, and Wikidata data
+  // Get all actors with TMDB popularity, Wikipedia, Wikidata, and awards data
   const actorsResult = await pool.query<{
     id: number
     tmdb_popularity: number | null
     wikipedia_annual_pageviews: number | null
     wikidata_sitelinks: number | null
+    actor_awards_data: ActorAwardsData | null
   }>(`
-    SELECT id, tmdb_popularity::float, wikipedia_annual_pageviews, wikidata_sitelinks
+    SELECT id, tmdb_popularity::float, wikipedia_annual_pageviews, wikidata_sitelinks, actor_awards_data
     FROM actors
-    WHERE deathday IS NOT NULL
     ORDER BY id
   `)
 
@@ -492,19 +504,26 @@ async function updateActorPopularity(
     const actorIds = batch.map((a) => a.id)
 
     // Fetch filmography for entire batch in 2 parallel queries
+    // Movie query uses window functions for cast_size and next_billing_order (star power)
     const [movieRows, showRows] = await Promise.all([
       pool.query<{
         actor_id: number
         dof_popularity: number | null
         dof_weight: number | null
         billing_order: number | null
+        cast_size: number | null
+        next_billing_order: number | null
       }>(
         `
         SELECT
           ama.actor_id,
           m.dof_popularity::float,
           m.dof_weight::float,
-          ama.billing_order
+          ama.billing_order,
+          COUNT(*) OVER (PARTITION BY ama.movie_tmdb_id)::int as cast_size,
+          LEAD(ama.billing_order) OVER (
+            PARTITION BY ama.movie_tmdb_id ORDER BY ama.billing_order
+          ) as next_billing_order
         FROM actor_movie_appearances ama
         JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
         WHERE ama.actor_id = ANY($1)
@@ -549,6 +568,8 @@ async function updateActorPopularity(
         billingOrder: row.billing_order,
         episodeCount: null,
         isMovie: true,
+        castSize: row.cast_size,
+        nextBillingOrder: row.next_billing_order,
       })
     }
 
@@ -562,6 +583,8 @@ async function updateActorPopularity(
         billingOrder: row.min_billing_order,
         episodeCount: Number(row.episode_count),
         isMovie: false,
+        castSize: null,
+        nextBillingOrder: null,
       })
     }
 
@@ -572,11 +595,17 @@ async function updateActorPopularity(
       const appearances = filmographyMap.get(actor.id) ?? []
       if (appearances.length === 0) continue
 
+      // Extract pre-computed awards score from JSONB
+      const awardsData = actor.actor_awards_data as ActorAwardsData | null
+      const actorAwardsScore =
+        awardsData?.totalScore != null ? awardsData.totalScore : calculateActorAwardsScore(awardsData)
+
       const result = calculateActorPopularity({
         appearances,
         tmdbPopularity: actor.tmdb_popularity,
         wikipediaAnnualPageviews: actor.wikipedia_annual_pageviews,
         wikidataSitelinks: actor.wikidata_sitelinks,
+        actorAwardsScore: actorAwardsScore || null,
       })
 
       if (result.dofPopularity !== null) {
@@ -655,7 +684,6 @@ async function refreshWikipediaPageviews(
     SELECT id, wikipedia_url, deathday
     FROM actors
     WHERE wikipedia_url IS NOT NULL
-      AND deathday IS NOT NULL
       AND (wikipedia_pageviews_updated_at IS NULL
            OR wikipedia_pageviews_updated_at < NOW() - INTERVAL '7 days')
     ORDER BY id
@@ -736,7 +764,6 @@ async function refreshWikidataSitelinks(
     SELECT id, tmdb_id, wikipedia_url
     FROM actors
     WHERE (tmdb_id IS NOT NULL OR wikipedia_url IS NOT NULL)
-      AND deathday IS NOT NULL
       AND (wikidata_sitelinks_updated_at IS NULL
            OR wikidata_sitelinks_updated_at < NOW() - INTERVAL '30 days')
     ORDER BY id
@@ -828,6 +855,93 @@ async function batchUpdateWikidataSitelinks(
     WHERE a.id = u.id
     `,
     [updates.map((u) => u.id), updates.map((u) => u.sitelinks)]
+  )
+}
+
+/**
+ * Refresh actor awards from Wikidata for actors with stale or missing data.
+ *
+ * Awards change infrequently, so we use a 30-day refresh interval
+ * (same as sitelinks).
+ */
+async function refreshActorAwards(
+  pool: ReturnType<typeof getPool>,
+  options: Options
+): Promise<number> {
+  const staleActors = await pool.query<{
+    id: number
+    tmdb_id: number
+  }>(`
+    SELECT id, tmdb_id
+    FROM actors
+    WHERE tmdb_id IS NOT NULL
+      AND (actor_awards_updated_at IS NULL
+           OR actor_awards_updated_at < NOW() - INTERVAL '30 days')
+    ORDER BY id
+  `)
+
+  console.log(`Found ${staleActors.rows.length} actors with stale awards data`)
+
+  if (staleActors.rows.length === 0 || options.dryRun) {
+    return 0
+  }
+
+  let refreshed = 0
+  const AWARDS_BATCH_SIZE = 500
+
+  for (let i = 0; i < staleActors.rows.length; i += AWARDS_BATCH_SIZE) {
+    const batch = staleActors.rows.slice(i, i + AWARDS_BATCH_SIZE)
+    const tmdbIds = batch.map((a) => a.tmdb_id)
+
+    const batchResult = await fetchActorAwardsBatch(tmdbIds)
+
+    const batchUpdates: Array<{ id: number; awardsData: ActorAwardsData | null }> = []
+
+    for (const actor of batch) {
+      // Only include actors whose TMDB IDs were in successfully queried chunks
+      if (!batchResult.queriedIds.has(actor.tmdb_id)) continue
+
+      const awardsData = batchResult.results.get(actor.tmdb_id) ?? null
+
+      // Pre-compute the score and store it in the JSONB
+      if (awardsData) {
+        awardsData.totalScore = calculateActorAwardsScore(awardsData)
+      }
+
+      batchUpdates.push({ id: actor.id, awardsData })
+    }
+
+    // Write batch
+    if (batchUpdates.length > 0) {
+      await batchUpdateActorAwards(pool, batchUpdates)
+      refreshed += batchUpdates.length
+      process.stdout.write(`\rRefreshed ${refreshed} actor awards...`)
+    }
+  }
+
+  console.log(`\rRefreshed ${refreshed} actor awards    `)
+  return refreshed
+}
+
+async function batchUpdateActorAwards(
+  pool: ReturnType<typeof getPool>,
+  updates: Array<{ id: number; awardsData: ActorAwardsData | null }>
+): Promise<void> {
+  await pool.query(
+    `
+    UPDATE actors a SET
+      actor_awards_data = u.awards_data::jsonb,
+      actor_awards_updated_at = NOW()
+    FROM (
+      SELECT unnest($1::int[]) as id,
+             unnest($2::text[]) as awards_data
+    ) u
+    WHERE a.id = u.id
+    `,
+    [
+      updates.map((u) => u.id),
+      updates.map((u) => (u.awardsData ? JSON.stringify(u.awardsData) : null)),
+    ]
   )
 }
 

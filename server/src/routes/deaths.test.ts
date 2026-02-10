@@ -594,6 +594,8 @@ describe("getAllDeathsHandler", () => {
       biography_generated_at: null,
       biography_raw_tmdb: null,
       biography_has_content: null,
+      actor_awards_data: null,
+      actor_awards_updated_at: null,
     },
     {
       id: 2,
@@ -628,6 +630,8 @@ describe("getAllDeathsHandler", () => {
       biography_generated_at: null,
       biography_raw_tmdb: null,
       biography_has_content: null,
+      actor_awards_data: null,
+      actor_awards_updated_at: null,
     },
   ]
 

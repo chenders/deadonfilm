@@ -21,8 +21,9 @@
  * 1.1 - Fix scheduled job bugs (×100 TMDB, sum-all vs top-10, normalization)
  * 2.0 - Weighted positional scoring, reduce TMDB weight 30%→15%, add Wikipedia pageviews 15%
  * 3.0 - Smooth billing weights, Wikidata sitelinks signal, graduated language penalty, peak-performance blend
+ * 4.0 - Enhanced awards signal (5%), star power filmography modifiers, multi-factor Bayesian confidence
  */
-export const ALGORITHM_VERSION = "3.0"
+export const ALGORITHM_VERSION = "4.0"
 
 // ============================================================================
 // Types
@@ -89,6 +90,8 @@ export interface ActorPopularityInput {
   wikipediaAnnualPageviews: number | null
   // Wikidata sitelinks count (number of Wikipedia language editions)
   wikidataSitelinks: number | null
+  // Actor-level awards score from Wikidata (0-100)
+  actorAwardsScore: number | null
 }
 
 export interface ActorAppearance {
@@ -97,6 +100,9 @@ export interface ActorAppearance {
   billingOrder: number | null
   episodeCount: number | null // For TV shows
   isMovie: boolean
+  // Star power fields (Proposal 11)
+  castSize: number | null // Total cast count for this content
+  nextBillingOrder: number | null // Billing order of the next-billed actor
 }
 
 export interface ActorPopularityResult {
@@ -203,10 +209,14 @@ const MAX_APPEARANCES_FOR_SCORE = 10
 
 // Actor score composition (must sum to 1.0 for clarity; normalization
 // still handles missing signals gracefully)
-const ACTOR_FILMOGRAPHY_WEIGHT = 0.65
+const ACTOR_FILMOGRAPHY_WEIGHT = 0.6
 const ACTOR_TMDB_RECENCY_WEIGHT = 0.15
 const ACTOR_WIKIPEDIA_WEIGHT = 0.15
 const ACTOR_SITELINKS_WEIGHT = 0.05
+const ACTOR_AWARDS_WEIGHT = 0.05
+
+// Total signal count for confidence calculation
+const TOTAL_ACTOR_SIGNAL_COUNT = 5 // filmography, TMDB, Wikipedia, sitelinks, awards
 
 // Peak-performance blend weights (Proposal 08)
 const PEAK_WEIGHT = 0.4
@@ -217,6 +227,34 @@ const PEAK_TOP_N = 3
 // Each successive top-N contribution is worth 85% of the previous one,
 // emphasizing peak career over consistent-but-flat careers.
 const POSITIONAL_DECAY = 0.85
+
+// Star power constants (Proposal 11)
+/** Minimum cast size for sole-lead detection */
+const SOLE_LEAD_MIN_CAST_SIZE = 5
+/** Sole-lead bonus as fraction of contribution */
+const SOLE_LEAD_BONUS_FRACTION = 0.1
+/** Minimum billing gap to qualify as sole lead (nextBillingOrder >= this) */
+const SOLE_LEAD_MIN_BILLING_GAP = 2
+/** Minimum popular movies (#0 billing + popularity >= 60) for consistent-star */
+const CONSISTENT_STAR_MIN_MOVIES = 3
+/** Content popularity threshold for consistent-star qualifying movies */
+const CONSISTENT_STAR_POPULARITY_THRESHOLD = 60
+/** Maximum consistent-star multiplier (at 8+ qualifying movies) */
+const CONSISTENT_STAR_MAX_MULTIPLIER = 1.1
+/** Minimum consistent-star multiplier (at threshold qualifying movies) */
+const CONSISTENT_STAR_MIN_MULTIPLIER = 1.05
+
+// Bayesian confidence regression constants (Proposal 09)
+/** Prior mean for Bayesian regression — regress toward this score */
+const ACTOR_PRIOR_MEAN = 30
+/** Regression strength (lower = less regression than aggregate-score's 0.4) */
+const ACTOR_REGRESSION_STRENGTH = 0.15
+
+// Multi-factor confidence weights (Proposal 09)
+const CONFIDENCE_APPEARANCE_WEIGHT = 0.3
+const CONFIDENCE_SIGNAL_COVERAGE_WEIGHT = 0.3
+const CONFIDENCE_VARIANCE_WEIGHT = 0.2
+const CONFIDENCE_TOP_STRENGTH_WEIGHT = 0.2
 
 // Current reference year for era adjustments
 const REFERENCE_YEAR = 2024
@@ -463,6 +501,141 @@ export function getEpisodeWeight(episodeCount: number | null): number {
 }
 
 // ============================================================================
+// Star Power Functions (Proposal 11)
+// ============================================================================
+
+/**
+ * Determine if an actor is the sole lead for a given content.
+ *
+ * Sole lead means: billing #0, cast size >= 5, and a billing gap of 2+
+ * positions to the next actor. This distinguishes true "their movie" leads
+ * from co-leads in ensemble films.
+ */
+export function isSoleLead(
+  billingOrder: number | null,
+  nextBillingOrder: number | null,
+  castSize: number | null
+): boolean {
+  if (billingOrder !== 0) return false
+  if (castSize === null || castSize < SOLE_LEAD_MIN_CAST_SIZE) return false
+  if (nextBillingOrder === null) return true // Only person billed = sole lead
+  return nextBillingOrder >= SOLE_LEAD_MIN_BILLING_GAP
+}
+
+/**
+ * Calculate sole-lead bonus for a contribution.
+ * Returns 10% of the contribution when the actor is the sole lead.
+ */
+export function calculateSoleLeadBonus(
+  contribution: number,
+  billingOrder: number | null,
+  nextBillingOrder: number | null,
+  castSize: number | null
+): number {
+  if (!isSoleLead(billingOrder, nextBillingOrder, castSize)) return 0
+  return contribution * SOLE_LEAD_BONUS_FRACTION
+}
+
+/**
+ * Calculate the consistent-star multiplier based on an actor's filmography.
+ *
+ * Counts movies where the actor has billing #0 AND the content has
+ * dof_popularity >= 60. Returns a multiplier:
+ * - <3 qualifying movies: 1.0 (no boost)
+ * - 3 qualifying: 1.05 (5% boost)
+ * - 8+ qualifying: 1.10 (10% boost, maximum)
+ * - Linear interpolation between 3 and 8
+ */
+export function calculateConsistentStarMultiplier(appearances: ActorAppearance[]): number {
+  const qualifyingCount = appearances.filter(
+    (a) =>
+      a.isMovie &&
+      a.billingOrder === 0 &&
+      a.contentDofPopularity !== null &&
+      a.contentDofPopularity >= CONSISTENT_STAR_POPULARITY_THRESHOLD
+  ).length
+
+  if (qualifyingCount < CONSISTENT_STAR_MIN_MOVIES) return 1.0
+
+  // Linear interpolation from 1.05 at 3 movies to 1.10 at 8+ movies
+  const range = 8 - CONSISTENT_STAR_MIN_MOVIES
+  const progress = Math.min(1.0, (qualifyingCount - CONSISTENT_STAR_MIN_MOVIES) / range)
+  return (
+    CONSISTENT_STAR_MIN_MULTIPLIER +
+    progress * (CONSISTENT_STAR_MAX_MULTIPLIER - CONSISTENT_STAR_MIN_MULTIPLIER)
+  )
+}
+
+// ============================================================================
+// Multi-Factor Confidence (Proposal 09)
+// ============================================================================
+
+export interface ConfidenceInput {
+  /** Number of valid contributions */
+  appearanceCount: number
+  /** Number of non-null signals (out of 5: filmography, TMDB, Wiki, sitelinks, awards) */
+  signalCount: number
+  /** Sorted contributions array (descending) */
+  contributions: number[]
+}
+
+/**
+ * Calculate multi-factor confidence replacing simple appearance-count confidence.
+ *
+ * Factors (weighted sum):
+ * - Appearance count (30%): Math.min(1.0, count / 10)
+ * - Signal coverage (30%): signalCount / totalSignals
+ * - Variance penalty (20%): 1.0 - CV * 0.5 (coefficient of variation, clamped)
+ * - Top contribution strength (20%): Math.min(1.0, topStrength / 70)
+ */
+export function calculateMultiFactorConfidence(input: ConfidenceInput): number {
+  const { appearanceCount, signalCount, contributions } = input
+
+  // Factor 1: Appearance count
+  const appearanceFactor = Math.min(1.0, appearanceCount / MIN_APPEARANCES_FULL_CONFIDENCE)
+
+  // Factor 2: Signal coverage
+  const coverageFactor = signalCount / TOTAL_ACTOR_SIGNAL_COUNT
+
+  // Factor 3: Variance penalty (coefficient of variation)
+  let varianceFactor = 1.0
+  if (contributions.length >= 2) {
+    const mean = contributions.reduce((s, c) => s + c, 0) / contributions.length
+    if (mean > 0) {
+      const variance =
+        contributions.reduce((s, c) => s + Math.pow(c - mean, 2), 0) / contributions.length
+      const cv = Math.sqrt(variance) / mean
+      varianceFactor = Math.max(0.3, Math.min(1.0, 1.0 - cv * 0.5))
+    }
+  }
+
+  // Factor 4: Top contribution strength
+  const topStrength = contributions.length > 0 ? contributions[0] : 0
+  const strengthFactor = Math.min(1.0, topStrength / 70)
+
+  const confidence =
+    appearanceFactor * CONFIDENCE_APPEARANCE_WEIGHT +
+    coverageFactor * CONFIDENCE_SIGNAL_COVERAGE_WEIGHT +
+    varianceFactor * CONFIDENCE_VARIANCE_WEIGHT +
+    strengthFactor * CONFIDENCE_TOP_STRENGTH_WEIGHT
+
+  return Math.round(Math.min(1.0, Math.max(0, confidence)) * 100) / 100
+}
+
+/**
+ * Apply Bayesian regression to an actor's final score.
+ *
+ * Pulls low-confidence scores toward the prior mean (30).
+ * High-confidence scores are barely affected.
+ */
+export function applyActorBayesianAdjustment(rawScore: number, confidence: number): number {
+  return (
+    (confidence / (confidence + ACTOR_REGRESSION_STRENGTH)) * rawScore +
+    (ACTOR_REGRESSION_STRENGTH / (confidence + ACTOR_REGRESSION_STRENGTH)) * ACTOR_PRIOR_MEAN
+  )
+}
+
+// ============================================================================
 // Main Calculation Functions
 // ============================================================================
 
@@ -685,7 +858,13 @@ function calculateContentWeight(
  * for having many minor roles alongside their major work.
  */
 export function calculateActorPopularity(input: ActorPopularityInput): ActorPopularityResult {
-  const { appearances, tmdbPopularity, wikipediaAnnualPageviews, wikidataSitelinks } = input
+  const {
+    appearances,
+    tmdbPopularity,
+    wikipediaAnnualPageviews,
+    wikidataSitelinks,
+    actorAwardsScore,
+  } = input
 
   if (appearances.length === 0) {
     return { dofPopularity: null, confidence: 0 }
@@ -709,7 +888,16 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
     // Apply episode weight for TV
     const episodeWeight = appearance.isMovie ? 1.0 : getEpisodeWeight(appearance.episodeCount)
 
-    const contribution = contentScore * billingWeight * episodeWeight
+    let contribution = contentScore * billingWeight * episodeWeight
+
+    // Apply sole-lead bonus (Proposal 11): +10% for sole leads
+    contribution += calculateSoleLeadBonus(
+      contribution,
+      appearance.billingOrder,
+      appearance.nextBillingOrder ?? null,
+      appearance.castSize ?? null
+    )
+
     contributions.push(contribution)
   }
 
@@ -727,18 +915,24 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
   const peakSlice = topContributions.slice(0, PEAK_TOP_N)
   const peakScore = peakSlice.reduce((s, c) => s + c, 0) / Math.max(peakSlice.length, 1)
   const breadthScore = weightedPositionalAverage(topContributions)
-  const filmographyScore = peakScore * PEAK_WEIGHT + breadthScore * BREADTH_WEIGHT
+  let filmographyScore = peakScore * PEAK_WEIGHT + breadthScore * BREADTH_WEIGHT
+
+  // Apply consistent-star multiplier (Proposal 11): 5-10% boost for prolific leads
+  const starMultiplier = calculateConsistentStarMultiplier(appearances)
+  filmographyScore *= starMultiplier
 
   // Blend filmography with supplementary signals using weight normalization.
   // When a signal is missing (null), its weight is excluded and remaining
   // weights are normalized so the score isn't penalized for missing data.
   let totalWeight = ACTOR_FILMOGRAPHY_WEIGHT
   let finalScore = filmographyScore * ACTOR_FILMOGRAPHY_WEIGHT
+  let signalCount = 1 // filmography always present
 
   if (tmdbPopularity !== null) {
     const tmdbScore = logPercentile(tmdbPopularity, PERCENTILE_THRESHOLDS.tmdbPopularity) ?? 0
     finalScore += tmdbScore * ACTOR_TMDB_RECENCY_WEIGHT
     totalWeight += ACTOR_TMDB_RECENCY_WEIGHT
+    signalCount++
   }
 
   if (wikipediaAnnualPageviews !== null) {
@@ -746,6 +940,7 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
       logPercentile(wikipediaAnnualPageviews, PERCENTILE_THRESHOLDS.wikipediaAnnualPageviews) ?? 0
     finalScore += wikiScore * ACTOR_WIKIPEDIA_WEIGHT
     totalWeight += ACTOR_WIKIPEDIA_WEIGHT
+    signalCount++
   }
 
   if (wikidataSitelinks !== null) {
@@ -753,13 +948,27 @@ export function calculateActorPopularity(input: ActorPopularityInput): ActorPopu
       logPercentile(wikidataSitelinks, PERCENTILE_THRESHOLDS.wikidataSitelinks) ?? 0
     finalScore += sitelinksScore * ACTOR_SITELINKS_WEIGHT
     totalWeight += ACTOR_SITELINKS_WEIGHT
+    signalCount++
+  }
+
+  if (actorAwardsScore !== null && actorAwardsScore > 0) {
+    finalScore += actorAwardsScore * ACTOR_AWARDS_WEIGHT
+    totalWeight += ACTOR_AWARDS_WEIGHT
+    signalCount++
   }
 
   // Normalize to account for missing signals
   finalScore = finalScore / totalWeight
 
-  // Calculate confidence based on appearance count
-  const confidence = Math.min(1.0, contributions.length / MIN_APPEARANCES_FULL_CONFIDENCE)
+  // Multi-factor confidence (Proposal 09)
+  const confidence = calculateMultiFactorConfidence({
+    appearanceCount: contributions.length,
+    signalCount,
+    contributions: topContributions,
+  })
+
+  // Apply Bayesian regression (Proposal 09): pull low-confidence scores toward prior mean
+  finalScore = applyActorBayesianAdjustment(finalScore, confidence)
 
   return {
     dofPopularity: Math.round(Math.min(100, Math.max(0, finalScore)) * 100) / 100,
