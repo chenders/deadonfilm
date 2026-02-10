@@ -90,7 +90,12 @@ The pre-push hook automatically runs type-check (frontend + server in parallel) 
 ```bash
 # The pre-push hook runs automatically, but to run manually:
 npm run type-check && cd server && npm run type-check
-npm test && cd server && npm test
+npm test
+
+# Server tests can be run separately (may exit non-zero due to
+# pre-existing unhandled rejections in backfill scripts, even when
+# all tests pass — CI handles server tests reliably):
+# cd server && npm test
 
 # If tests fail, fix them before pushing
 # NEVER push with failing tests - CI will fail and block the PR
@@ -148,7 +153,8 @@ To run checks manually:
 
 ```bash
 npm run type-check && cd server && npm run type-check
-npm test && cd server && npm test
+npm test
+# Server tests: cd server && npm test (may exit non-zero locally; CI runs reliably)
 ```
 
 **Note:** Server integration tests (Redis/Postgres-dependent) auto-skip locally when `REDIS_JOBS_URL` and `DATABASE_URL` are not set. CI runs the full suite.

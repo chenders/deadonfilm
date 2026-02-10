@@ -55,12 +55,12 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": "eslint --max-warnings=0",
-    "src/**/*.{ts,tsx,js,jsx,json,css}": "prettier --check",
+    "src/**/*.{ts,tsx,js,jsx,json,css}": "prettier --write",
     "server/src/**/*.ts": [
       "eslint --max-warnings=0 --config server/eslint.config.js",
-      "prettier --check"
+      "prettier --write"
     ],
-    "server/scripts/**/*.ts": "prettier --check"
+    "server/scripts/**/*.ts": "prettier --write"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.0",
