@@ -487,8 +487,10 @@ async function updateActorPopularity(
     wikipedia_annual_pageviews: number | null
     wikidata_sitelinks: number | null
     actor_awards_data: ActorAwardsData | null
+    actor_awards_updated_at: Date | null
   }>(`
-    SELECT id, tmdb_popularity::float, wikipedia_annual_pageviews, wikidata_sitelinks, actor_awards_data
+    SELECT id, tmdb_popularity::float, wikipedia_annual_pageviews, wikidata_sitelinks,
+           actor_awards_data, actor_awards_updated_at
     FROM actors
     ORDER BY id
   `)
@@ -532,7 +534,7 @@ async function updateActorPopularity(
           FROM actor_movie_appearances ama
           JOIN movies m ON m.tmdb_id = ama.movie_tmdb_id
           WHERE ama.movie_tmdb_id IN (
-            SELECT movie_tmdb_id FROM actor_movie_appearances WHERE actor_id = ANY($1)
+            SELECT DISTINCT movie_tmdb_id FROM actor_movie_appearances WHERE actor_id = ANY($1)
           )
             AND (m.dof_popularity IS NOT NULL OR m.dof_weight IS NOT NULL)
         ) w
@@ -604,9 +606,10 @@ async function updateActorPopularity(
       const appearances = filmographyMap.get(actor.id) ?? []
       if (appearances.length === 0) continue
 
-      // Extract pre-computed awards score from JSONB.
-      // When awardsData is null (not yet fetched), preserve null so the
-      // popularity algorithm doesn't treat it as "fetched, score = 0".
+      // Distinguish three states:
+      // - awardsData non-null → fetched with awards (compute score)
+      // - awardsData null + updated_at set → fetched, no recognized awards (score = 0)
+      // - awardsData null + updated_at null → not yet fetched (score = null)
       const awardsData = actor.actor_awards_data as ActorAwardsData | null
       let actorAwardsScore: number | null = null
       if (awardsData) {
@@ -614,6 +617,8 @@ async function updateActorPopularity(
           awardsData.totalScore != null
             ? awardsData.totalScore
             : calculateActorAwardsScore(awardsData)
+      } else if (actor.actor_awards_updated_at) {
+        actorAwardsScore = 0
       }
 
       const result = calculateActorPopularity({
@@ -896,6 +901,7 @@ async function refreshActorAwards(
       AND (actor_awards_updated_at IS NULL
            OR actor_awards_updated_at < NOW() - INTERVAL '30 days')
     ORDER BY id
+    LIMIT 50000
   `)
 
   console.log(`Found ${staleActors.rows.length} actors with stale awards data`)

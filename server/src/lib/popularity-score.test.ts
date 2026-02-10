@@ -376,8 +376,8 @@ describe("isSoleLead", () => {
     expect(isSoleLead(0, 5, 10)).toBe(true)
   })
 
-  it("returns true when only person billed (nextBillingOrder null)", () => {
-    expect(isSoleLead(0, null, 10)).toBe(true)
+  it("returns false when nextBillingOrder is null (unknown, not sole)", () => {
+    expect(isSoleLead(0, null, 10)).toBe(false)
   })
 
   it("returns false for co-leads (gap of 1)", () => {

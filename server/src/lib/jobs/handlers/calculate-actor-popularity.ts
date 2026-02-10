@@ -77,7 +77,8 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
       if (actorIds && actorIds.length > 0) {
         // Process specific IDs
         actorsQuery = `
-          SELECT id, tmdb_popularity, wikipedia_annual_pageviews, wikidata_sitelinks, actor_awards_data
+          SELECT id, tmdb_popularity, wikipedia_annual_pageviews, wikidata_sitelinks,
+                 actor_awards_data, actor_awards_updated_at
           FROM actors
           WHERE id = ANY($1)
           ${!recalculateAll ? "AND dof_popularity IS NULL" : ""}
@@ -86,7 +87,8 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
       } else {
         // Batch processing - get actors without scores
         actorsQuery = `
-          SELECT id, tmdb_popularity, wikipedia_annual_pageviews, wikidata_sitelinks, actor_awards_data
+          SELECT id, tmdb_popularity, wikipedia_annual_pageviews, wikidata_sitelinks,
+                 actor_awards_data, actor_awards_updated_at
           FROM actors
           ${!recalculateAll ? "WHERE dof_popularity IS NULL" : ""}
           ORDER BY id
@@ -101,6 +103,7 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
         wikipedia_annual_pageviews: number | null
         wikidata_sitelinks: number | null
         actor_awards_data: ActorAwardsData | null
+        actor_awards_updated_at: Date | null
       }>(actorsQuery, params)
       const actors = actorsResult.rows
 
@@ -119,9 +122,10 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
             continue
           }
 
-          // Extract pre-computed awards score from JSONB.
-          // When awardsData is null (not yet fetched), preserve null so the
-          // popularity algorithm doesn't treat it as "fetched, score = 0".
+          // Distinguish three states:
+          // - awardsData non-null → fetched with awards (compute score)
+          // - awardsData null + updated_at set → fetched, no recognized awards (score = 0)
+          // - awardsData null + updated_at null → not yet fetched (score = null)
           const awardsData = actor.actor_awards_data as ActorAwardsData | null
           let actorAwardsScore: number | null = null
           if (awardsData) {
@@ -129,6 +133,8 @@ export class CalculateActorPopularityHandler extends BaseJobHandler<
               awardsData.totalScore != null
                 ? awardsData.totalScore
                 : calculateActorAwardsScore(awardsData)
+          } else if (actor.actor_awards_updated_at) {
+            actorAwardsScore = 0
           }
 
           // Build input and calculate

@@ -518,7 +518,7 @@ export function isSoleLead(
 ): boolean {
   if (billingOrder !== 0) return false
   if (castSize === null || castSize < SOLE_LEAD_MIN_CAST_SIZE) return false
-  if (nextBillingOrder === null) return true // Only person billed = sole lead
+  if (nextBillingOrder === null) return false // Null means unknown, not sole
   return nextBillingOrder >= SOLE_LEAD_MIN_BILLING_GAP
 }
 
