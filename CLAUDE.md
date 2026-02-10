@@ -85,15 +85,23 @@ import { Command } from "commander"
 
 ### 8. ALWAYS Run Tests Before Pushing
 
-All tests MUST pass locally before pushing to GitHub. The pre-push hook will block pushes if tests fail.
+The pre-push hook automatically runs type-check (frontend + server in parallel) and frontend tests before each push. It will block pushes if anything fails.
 
 ```bash
-# Run ALL tests before pushing
-npm test && cd server && npm test
+# The pre-push hook runs automatically, but to run manually:
+npm run type-check && cd server && npm run type-check
+npm test
+
+# Server tests can be run separately (may exit non-zero due to
+# pre-existing unhandled rejections in backfill scripts, even when
+# all tests pass — CI handles server tests reliably):
+# cd server && npm test
 
 # If tests fail, fix them before pushing
 # NEVER push with failing tests - CI will fail and block the PR
 ```
+
+**Note:** Server integration tests (BullMQ/Redis) auto-skip locally when `REDIS_JOBS_URL` and `DATABASE_URL` are not set. CI runs the full suite.
 
 **Why:** GitHub Actions CI runs all tests. Pushing with failing tests wastes CI resources and blocks PR merges. Pre-push hooks catch this locally.
 
@@ -137,12 +145,19 @@ npm test && cd server && npm test
 
 ### Before Every Commit
 
+Git hooks enforce quality automatically:
+- **Pre-commit** (`lint-staged`): format + lint on staged files only (<5s)
+- **Pre-push** (parallel): frontend + server type-check, then frontend tests (~20-30s)
+
+To run checks manually:
+
 ```bash
-npm run format && cd server && npm run format
-npm run lint && cd server && npm run lint
 npm run type-check && cd server && npm run type-check
-npm test && cd server && npm test
+npm test
+# Server tests: cd server && npm test (may exit non-zero locally; CI runs reliably)
 ```
+
+**Note:** Server integration tests (Redis/Postgres-dependent) auto-skip locally when `REDIS_JOBS_URL` and `DATABASE_URL` are not set. CI runs the full suite.
 
 ### Git Workflow
 
