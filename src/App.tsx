@@ -9,6 +9,7 @@ import { useWebVitals } from "./hooks/useWebVitals"
 import { lazyWithRetry } from "./utils/lazyWithRetry"
 import { AdminAuthProvider } from "./hooks/useAdminAuth"
 import { AdminThemeProvider } from "./contexts/AdminThemeContext"
+import { AdminModeProvider } from "./contexts/AdminModeContext"
 import { ToastProvider } from "./contexts/ToastContext"
 import ToastContainer from "./components/common/ToastContainer"
 
@@ -89,6 +90,7 @@ function App() {
     <ToastProvider>
       <ToastContainer />
       <AdminAuthProvider>
+        <AdminModeProvider>
         <Routes>
           {/* Admin routes (no Layout wrapper, wrapped with AdminThemeProvider) */}
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
@@ -382,6 +384,7 @@ function App() {
             }
           />
         </Routes>
+        </AdminModeProvider>
       </AdminAuthProvider>
     </ToastProvider>
   )

@@ -24,3 +24,9 @@ export { default as KidneyIcon } from "./KidneyIcon"
 export { default as LeafIcon } from "./LeafIcon"
 export { default as RibbonIcon } from "./RibbonIcon"
 export { default as QuestionIcon } from "./QuestionIcon"
+
+// Admin inline action icons
+export { default as RefreshIcon } from "./RefreshIcon"
+export { default as CheckCircleIcon } from "./CheckCircleIcon"
+export { default as GearIcon } from "./GearIcon"
+export { default as PencilIcon } from "./PencilIcon"

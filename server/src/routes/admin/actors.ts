@@ -1013,4 +1013,334 @@ router.get("/:id(\\d+)/history/:field", async (req: Request, res: Response): Pro
   }
 })
 
+// ============================================================================
+// GET /admin/api/actors/:id/metadata
+// Get admin metadata for an actor (for inline admin overlay)
+// ============================================================================
+
+router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const actorId = parseInt(req.params.id, 10)
+
+    if (isNaN(actorId)) {
+      res.status(400).json({ error: { message: "Invalid actor ID" } })
+      return
+    }
+
+    const result = await pool.query<{
+      id: number
+      name: string
+      deathday: string | null
+      is_obscure: boolean
+      deathday_confidence: string | null
+      has_detailed_death_info: boolean | null
+      enriched_at: string | null
+      enrichment_source: string | null
+      cause_of_death_source: string | null
+      biography: string | null
+      biography_generated_at: string | null
+      biography_source_type: string | null
+    }>(
+      `SELECT id, name, deathday, is_obscure, deathday_confidence,
+              has_detailed_death_info, enriched_at, enrichment_source,
+              cause_of_death_source, biography, biography_generated_at,
+              biography_source_type
+       FROM actors WHERE id = $1`,
+      [actorId]
+    )
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
+
+    const actor = result.rows[0]
+
+    // Get circumstances data
+    const circumstancesResult = await pool.query<{
+      circumstances: string | null
+      enriched_at: string | null
+      enrichment_source: string | null
+    }>(
+      `SELECT circumstances, enriched_at, enrichment_source
+       FROM actor_death_circumstances WHERE actor_id = $1`,
+      [actorId]
+    )
+
+    const circ = circumstancesResult.rows[0] || null
+
+    res.json({
+      actorId,
+      biography: {
+        hasContent: actor.biography !== null && actor.biography.length > 0,
+        generatedAt: actor.biography_generated_at,
+        sourceType: actor.biography_source_type,
+      },
+      enrichment: {
+        enrichedAt: actor.enriched_at,
+        source: actor.enrichment_source,
+        causeOfDeathSource: actor.cause_of_death_source,
+        hasCircumstances: circ?.circumstances !== null && circ?.circumstances !== undefined,
+        circumstancesEnrichedAt: circ?.enriched_at || null,
+      },
+      dataQuality: {
+        hasDetailedDeathInfo: actor.has_detailed_death_info || false,
+        isObscure: actor.is_obscure,
+        deathdayConfidence: actor.deathday_confidence,
+      },
+      adminEditorUrl: `/admin/actors/${actorId}`,
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch actor metadata")
+    res.status(500).json({ error: { message: "Failed to fetch actor metadata" } })
+  }
+})
+
+// ============================================================================
+// POST /admin/api/actors/:id/enrich-inline
+// Run death enrichment for a single actor inline (no BullMQ)
+// ============================================================================
+
+router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Promise<void> => {
+  const pool = getPool()
+  const actorId = parseInt(req.params.id, 10)
+
+  if (isNaN(actorId)) {
+    res.status(400).json({ error: { message: "Invalid actor ID" } })
+    return
+  }
+
+  try {
+    // Fetch actor
+    const actorResult = await pool.query<{
+      id: number
+      tmdb_id: number | null
+      imdb_person_id: string | null
+      name: string
+      birthday: string | null
+      deathday: string | null
+      cause_of_death: string | null
+      cause_of_death_details: string | null
+      tmdb_popularity: string | null
+    }>(
+      `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
+              cause_of_death, cause_of_death_details,
+              tmdb_popularity
+       FROM actors WHERE id = $1`,
+      [actorId]
+    )
+
+    if (actorResult.rows.length === 0) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
+
+    const actor = actorResult.rows[0]
+
+    if (!actor.deathday) {
+      res.status(400).json({ error: { message: "Actor is not deceased" } })
+      return
+    }
+
+    const startTime = Date.now()
+
+    // Import orchestrator dynamically to avoid loading all sources at route module load
+    const { DeathEnrichmentOrchestrator } = await import(
+      "../../lib/death-sources/orchestrator.js"
+    )
+    const { writeToProduction } = await import("../../lib/enrichment-db-writer.js")
+    const { linkMultipleFields, hasEntityLinks } = await import(
+      "../../lib/entity-linker/index.js"
+    )
+    const { MIN_CIRCUMSTANCES_LENGTH, MIN_RUMORED_CIRCUMSTANCES_LENGTH } = await import(
+      "../../lib/claude-batch/constants.js"
+    )
+
+    const actorForEnrichment = {
+      id: actor.id,
+      tmdbId: actor.tmdb_id,
+      imdbPersonId: actor.imdb_person_id,
+      name: actor.name,
+      birthday: actor.birthday,
+      deathday: actor.deathday,
+      causeOfDeath: actor.cause_of_death,
+      causeOfDeathDetails: actor.cause_of_death_details,
+      popularity: actor.tmdb_popularity ? parseFloat(actor.tmdb_popularity) : null,
+    }
+
+    const orchestrator = new DeathEnrichmentOrchestrator({}, false)
+    const enrichment = await orchestrator.enrichActor(actorForEnrichment)
+
+    // Check if we got useful data
+    if (
+      !enrichment.circumstances &&
+      !enrichment.notableFactors?.length &&
+      !enrichment.cleanedDeathInfo
+    ) {
+      res.json({
+        success: true,
+        fieldsUpdated: [],
+        sourcesUsed: [],
+        durationMs: Date.now() - startTime,
+        message: "No new enrichment data found",
+      })
+      return
+    }
+
+    // Build enrichment and circumstances data (mirroring enrichment-runner.ts logic)
+    const cleaned = enrichment.cleanedDeathInfo
+    const circumstances = cleaned?.circumstances || enrichment.circumstances
+    const rumoredCircumstances = cleaned?.rumoredCircumstances || enrichment.rumoredCircumstances
+    const locationOfDeath = cleaned?.locationOfDeath || enrichment.locationOfDeath
+    const notableFactors = cleaned?.notableFactors || enrichment.notableFactors
+    const additionalContext = cleaned?.additionalContext || enrichment.additionalContext
+    const relatedDeaths = cleaned?.relatedDeaths || enrichment.relatedDeaths || null
+    const causeOfDeath = cleaned?.cause || null
+    const causeOfDeathDetails = cleaned?.details || null
+    const causeConfidence = cleaned?.causeConfidence || null
+    const detailsConfidence = cleaned?.detailsConfidence || null
+    const birthdayConfidence = cleaned?.birthdayConfidence || null
+    const deathdayConfidence = cleaned?.deathdayConfidence || null
+    const lastProject = cleaned?.lastProject || enrichment.lastProject || null
+    const careerStatusAtDeath = cleaned?.careerStatusAtDeath || enrichment.careerStatusAtDeath || null
+    const posthumousReleases = cleaned?.posthumousReleases || enrichment.posthumousReleases || null
+    const relatedCelebrities = cleaned?.relatedCelebrities || enrichment.relatedCelebrities || null
+
+    let relatedCelebrityIds: number[] | null = null
+    if (relatedCelebrities && relatedCelebrities.length > 0) {
+      const names = relatedCelebrities.map((c) => c.name)
+      const idResult = await pool.query<{ id: number }>(
+        `SELECT id FROM actors WHERE name = ANY($1)`,
+        [names]
+      )
+      if (idResult.rows.length > 0) {
+        relatedCelebrityIds = idResult.rows.map((r) => r.id)
+      }
+    }
+
+    const circumstancesConfidence =
+      cleaned?.circumstancesConfidence ||
+      (enrichment.circumstancesSource?.confidence
+        ? enrichment.circumstancesSource.confidence >= 0.7
+          ? "high"
+          : enrichment.circumstancesSource.confidence >= 0.4
+            ? "medium"
+            : "low"
+        : null)
+
+    const hasSubstantiveCircumstances =
+      circumstances && circumstances.length > MIN_CIRCUMSTANCES_LENGTH
+    const hasSubstantiveRumors =
+      rumoredCircumstances && rumoredCircumstances.length > MIN_RUMORED_CIRCUMSTANCES_LENGTH
+    const hasRelatedDeaths = relatedDeaths && relatedDeaths.length > 50
+    const passesQualityGate = cleaned === undefined || cleaned.hasSubstantiveContent === true
+    const hasDetailedDeathInfo =
+      passesQualityGate &&
+      (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths)
+
+    // Run entity linking
+    const entityLinks = await linkMultipleFields(
+      pool,
+      {
+        circumstances,
+        rumored_circumstances: rumoredCircumstances,
+        additional_context: additionalContext,
+      },
+      { excludeActorId: actorId }
+    )
+
+    const enrichmentData = {
+      actorId,
+      hasDetailedDeathInfo: hasDetailedDeathInfo || false,
+      deathManner: cleaned?.manner || null,
+      deathCategories: cleaned?.categories || null,
+      causeOfDeath: !actor.cause_of_death && causeOfDeath ? causeOfDeath : undefined,
+      causeOfDeathSource: !actor.cause_of_death && causeOfDeath ? "claude-opus-4.5" : undefined,
+      causeOfDeathDetails:
+        !actor.cause_of_death_details && causeOfDeathDetails ? causeOfDeathDetails : undefined,
+      causeOfDeathDetailsSource:
+        !actor.cause_of_death_details && causeOfDeathDetails ? "claude-opus-4.5" : undefined,
+    }
+
+    const circumstancesData = {
+      actorId,
+      circumstances,
+      circumstancesConfidence,
+      rumoredCircumstances,
+      causeConfidence,
+      detailsConfidence,
+      birthdayConfidence,
+      deathdayConfidence,
+      locationOfDeath,
+      lastProject,
+      careerStatusAtDeath,
+      posthumousReleases,
+      relatedCelebrityIds,
+      relatedCelebrities,
+      notableFactors,
+      additionalContext,
+      relatedDeaths,
+      sources: {
+        circumstances: enrichment.circumstancesSource,
+        rumoredCircumstances: enrichment.rumoredCircumstancesSource,
+        notableFactors: enrichment.notableFactorsSource,
+        locationOfDeath: enrichment.locationOfDeathSource,
+        additionalContext: enrichment.additionalContextSource,
+        lastProject: enrichment.lastProjectSource,
+        careerStatusAtDeath: enrichment.careerStatusAtDeathSource,
+        posthumousReleases: enrichment.posthumousReleasesSource,
+        relatedCelebrities: enrichment.relatedCelebritiesSource,
+        cleanupSource: cleaned ? "claude-opus-4.5" : null,
+      },
+      rawResponse: enrichment.rawSources
+        ? { rawSources: enrichment.rawSources, gatheredAt: new Date().toISOString() }
+        : null,
+      entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
+      enrichmentSource: "admin-inline-enrichment",
+      enrichmentVersion: "2.0.0",
+    }
+
+    await writeToProduction(pool, enrichmentData, circumstancesData)
+    await invalidateActorCache(actorId)
+
+    const durationMs = Date.now() - startTime
+    const fieldsUpdated: string[] = []
+    if (circumstances) fieldsUpdated.push("circumstances")
+    if (causeOfDeath && !actor.cause_of_death) fieldsUpdated.push("causeOfDeath")
+    if (locationOfDeath) fieldsUpdated.push("locationOfDeath")
+    if (notableFactors?.length) fieldsUpdated.push("notableFactors")
+
+    const sourcesUsed = enrichment.actorStats?.sourcesAttempted
+      ?.filter((s) => s.success)
+      .map((s) => s.source) || []
+
+    await logAdminAction({
+      action: "inline-enrich",
+      resourceType: "actor",
+      resourceId: actorId,
+      details: {
+        actorName: actor.name,
+        fieldsUpdated,
+        sourcesUsed,
+        durationMs,
+      },
+      ipAddress: req.ip || undefined,
+      userAgent: req.get("user-agent") || undefined,
+    })
+
+    logger.info({ actorId, fieldsUpdated, durationMs }, "Inline enrichment completed")
+
+    res.json({
+      success: true,
+      fieldsUpdated,
+      sourcesUsed,
+      durationMs,
+    })
+  } catch (error) {
+    logger.error({ error, actorId }, "Failed to run inline enrichment")
+    res.status(500).json({ error: { message: "Failed to enrich actor" } })
+  }
+})
+
 export default router
