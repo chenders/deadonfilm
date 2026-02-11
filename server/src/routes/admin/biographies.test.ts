@@ -72,7 +72,7 @@ describe("Admin Biographies Routes", () => {
               id: 1,
               tmdb_id: 12345,
               name: "John Wayne",
-              tmdb_popularity: 10.5,
+              dof_popularity: 10.5,
               biography: null,
               biography_generated_at: null,
               wikipedia_url: "https://en.wikipedia.org/wiki/John_Wayne",
