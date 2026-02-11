@@ -112,7 +112,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         imdb_person_id
       FROM actors
       ${whereClause}
-      ORDER BY COALESCE(tmdb_popularity, 0) DESC
+      ORDER BY COALESCE(dof_popularity, 0) DESC
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
       [...params, pageSize, offset]
     )
@@ -373,7 +373,7 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
          WHERE tmdb_id IS NOT NULL
            ${biographyFilter}
            AND COALESCE(tmdb_popularity, 0) >= $1
-         ORDER BY COALESCE(tmdb_popularity, 0) DESC
+         ORDER BY COALESCE(dof_popularity, 0) DESC
          LIMIT $2`,
         [minPopularity, safeLimit]
       )
