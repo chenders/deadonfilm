@@ -7,6 +7,7 @@ import { usePopularPages } from "../../../hooks/admin/useAnalytics"
 import { useChartTheme } from "../../../hooks/admin/useChartTheme"
 import LoadingSpinner from "../../common/LoadingSpinner"
 import ErrorMessage from "../../common/ErrorMessage"
+import MobileCard from "../ui/MobileCard"
 
 interface PopularPagesTableProps {
   startDate?: string
@@ -53,89 +54,115 @@ export default function PopularPagesTable({
     <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
       <h2 className="mb-6 text-xl font-semibold text-admin-text-primary">Most Popular Pages</h2>
 
-      <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-        <table className="w-full min-w-[700px]">
-          <thead>
-            <tr className="border-b border-admin-border">
-              <th className="px-4 py-3 text-left text-sm font-medium text-admin-text-muted">
-                Page
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
-                Internal
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
-                External
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
-                Direct
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
-                Total
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-admin-text-muted">
-                Distribution
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((page, index) => {
-              const internalPct = (page.internal_referrals / page.total_visits) * 100
-              const externalPct = (page.external_referrals / page.total_visits) * 100
-              const directPct = (page.direct_visits / page.total_visits) * 100
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {data.map((page, index) => (
+          <MobileCard
+            key={`${page.path}-${index}`}
+            title={
+              <code className="break-all rounded bg-admin-surface-overlay px-2 py-1 text-xs">
+                {page.path}
+              </code>
+            }
+            fields={[
+              { label: "Internal", value: page.internal_referrals.toLocaleString() },
+              { label: "External", value: page.external_referrals.toLocaleString() },
+              { label: "Direct", value: page.direct_visits.toLocaleString() },
+              {
+                label: "Total",
+                value: <span className="font-semibold">{page.total_visits.toLocaleString()}</span>,
+              },
+            ]}
+          />
+        ))}
+      </div>
 
-              return (
-                <tr key={`${page.path}-${index}`} className="border-b border-admin-border">
-                  <td className="px-4 py-3 text-sm text-admin-text-secondary">
-                    <code className="rounded bg-admin-surface-overlay px-2 py-1 text-xs">
-                      {page.path}
-                    </code>
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm text-admin-text-primary">
-                    {page.internal_referrals.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm text-admin-text-primary">
-                    {page.external_referrals.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm text-admin-text-primary">
-                    {page.direct_visits.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm font-semibold text-admin-text-primary">
-                    {page.total_visits.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex h-4 w-full overflow-hidden rounded-full">
-                      {page.internal_referrals > 0 && (
-                        <div
-                          style={{
-                            width: `${internalPct}%`,
-                            backgroundColor: chartTheme.series[0],
-                          }}
-                          title={`Internal: ${internalPct.toFixed(1)}%`}
-                        />
-                      )}
-                      {page.external_referrals > 0 && (
-                        <div
-                          style={{
-                            width: `${externalPct}%`,
-                            backgroundColor: chartTheme.series[1],
-                          }}
-                          title={`External: ${externalPct.toFixed(1)}%`}
-                        />
-                      )}
-                      {page.direct_visits > 0 && (
-                        <div
-                          className="bg-gray-500"
-                          style={{ width: `${directPct}%` }}
-                          title={`Direct: ${directPct.toFixed(1)}%`}
-                        />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      {/* Desktop table */}
+      <div className="hidden md:block">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px]">
+            <thead>
+              <tr className="border-b border-admin-border">
+                <th className="px-4 py-3 text-left text-sm font-medium text-admin-text-muted">
+                  Page
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
+                  Internal
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
+                  External
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
+                  Direct
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-admin-text-muted">
+                  Total
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-admin-text-muted">
+                  Distribution
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((page, index) => {
+                const internalPct = (page.internal_referrals / page.total_visits) * 100
+                const externalPct = (page.external_referrals / page.total_visits) * 100
+                const directPct = (page.direct_visits / page.total_visits) * 100
+
+                return (
+                  <tr key={`${page.path}-${index}`} className="border-b border-admin-border">
+                    <td className="px-4 py-3 text-sm text-admin-text-secondary">
+                      <code className="rounded bg-admin-surface-overlay px-2 py-1 text-xs">
+                        {page.path}
+                      </code>
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm text-admin-text-primary">
+                      {page.internal_referrals.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm text-admin-text-primary">
+                      {page.external_referrals.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm text-admin-text-primary">
+                      {page.direct_visits.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-admin-text-primary">
+                      {page.total_visits.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex h-4 w-full overflow-hidden rounded-full">
+                        {page.internal_referrals > 0 && (
+                          <div
+                            style={{
+                              width: `${internalPct}%`,
+                              backgroundColor: chartTheme.series[0],
+                            }}
+                            title={`Internal: ${internalPct.toFixed(1)}%`}
+                          />
+                        )}
+                        {page.external_referrals > 0 && (
+                          <div
+                            style={{
+                              width: `${externalPct}%`,
+                              backgroundColor: chartTheme.series[1],
+                            }}
+                            title={`External: ${externalPct.toFixed(1)}%`}
+                          />
+                        )}
+                        {page.direct_visits > 0 && (
+                          <div
+                            className="bg-gray-500"
+                            style={{ width: `${directPct}%` }}
+                            title={`Direct: ${directPct.toFixed(1)}%`}
+                          />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Legend */}

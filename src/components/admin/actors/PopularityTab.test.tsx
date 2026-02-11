@@ -279,8 +279,8 @@ describe("PopularityTab", () => {
       fireEvent.click(screen.getByTestId("popularity-top-actors-tab"))
 
       await waitFor(() => {
-        expect(screen.getByText("42.38")).toBeInTheDocument()
-        expect(screen.getByText("38.45")).toBeInTheDocument()
+        expect(screen.getAllByText("42.38").length).toBeGreaterThanOrEqual(1)
+        expect(screen.getAllByText("38.45").length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -342,9 +342,9 @@ describe("PopularityTab", () => {
       fireEvent.click(screen.getByTestId("popularity-low-confidence-tab"))
 
       await waitFor(() => {
-        expect(screen.getByText("Unknown Actor")).toBeInTheDocument()
-        expect(screen.getByText("15.50")).toBeInTheDocument()
-        expect(screen.getByText("25%")).toBeInTheDocument()
+        expect(screen.getAllByText("Unknown Actor").length).toBeGreaterThanOrEqual(1)
+        expect(screen.getAllByText("15.50").length).toBeGreaterThanOrEqual(1)
+        expect(screen.getAllByText("25%").length).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -354,9 +354,9 @@ describe("PopularityTab", () => {
       fireEvent.click(screen.getByTestId("popularity-low-confidence-tab"))
 
       await waitFor(() => {
-        // movieCount: 2, showCount: 1
-        expect(screen.getByText("2")).toBeInTheDocument()
-        expect(screen.getByText("1")).toBeInTheDocument()
+        // movieCount: 2, showCount: 1 (appear in both mobile card and desktop table)
+        expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1)
+        expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1)
       })
     })
   })
@@ -388,8 +388,8 @@ describe("PopularityTab", () => {
       fireEvent.click(screen.getByTestId("popularity-missing-tab"))
 
       await waitFor(() => {
-        expect(screen.getByText("Missing Score Actor")).toBeInTheDocument()
-        expect(screen.getByText("3.2")).toBeInTheDocument()
+        expect(screen.getAllByText("Missing Score Actor").length).toBeGreaterThanOrEqual(1)
+        expect(screen.getAllByText("3.2").length).toBeGreaterThanOrEqual(1)
       })
     })
   })
@@ -407,7 +407,9 @@ describe("PopularityTab", () => {
       fireEvent.click(screen.getByTestId("popularity-top-actors-tab"))
 
       await waitFor(() => {
-        expect(screen.getByText("No actors found with the selected criteria")).toBeInTheDocument()
+        expect(
+          screen.getAllByText("No actors found with the selected criteria").length
+        ).toBeGreaterThanOrEqual(1)
       })
     })
 
@@ -423,7 +425,9 @@ describe("PopularityTab", () => {
       fireEvent.click(screen.getByTestId("popularity-low-confidence-tab"))
 
       await waitFor(() => {
-        expect(screen.getByText("No low confidence actors found")).toBeInTheDocument()
+        expect(screen.getAllByText("No low confidence actors found").length).toBeGreaterThanOrEqual(
+          1
+        )
       })
     })
 
@@ -440,8 +444,8 @@ describe("PopularityTab", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("All deceased actors have DOF popularity scores")
-        ).toBeInTheDocument()
+          screen.getAllByText("All deceased actors have DOF popularity scores").length
+        ).toBeGreaterThanOrEqual(1)
       })
     })
   })
