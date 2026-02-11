@@ -748,11 +748,15 @@ export default function ActorManagementTab() {
                           </td>
                           <td className="px-3 py-3 text-center text-admin-text-muted">
                             {actor.has_biography ? (
-                              <span className="text-admin-success" title="Has biography">
-                                ✓
+                              <span className="text-admin-success">
+                                <span aria-hidden="true">✓</span>
+                                <span className="sr-only">Has biography</span>
                               </span>
                             ) : (
-                              <span className="text-admin-text-muted">—</span>
+                              <span className="text-admin-text-muted">
+                                <span aria-hidden="true">—</span>
+                                <span className="sr-only">No biography</span>
+                              </span>
                             )}
                           </td>
                           <td className="px-3 py-3 text-right text-admin-text-muted">

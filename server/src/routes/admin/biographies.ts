@@ -347,6 +347,13 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
       return
     }
 
+    if (typeof allowRegeneration !== "boolean") {
+      res.status(400).json({
+        error: { message: "allowRegeneration must be a boolean" },
+      })
+      return
+    }
+
     // Validate actorIds if provided
     if (
       actorIds !== undefined &&

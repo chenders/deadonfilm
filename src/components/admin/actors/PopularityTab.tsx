@@ -37,7 +37,7 @@ export default function PopularityTab() {
     <div className="space-y-8">
       {/* Sub-Tabs */}
       <div className="border-b border-admin-border">
-        <nav className="-mb-px flex flex-wrap space-x-4 md:space-x-8">
+        <nav className="-mb-px flex flex-wrap gap-x-4 md:gap-x-8">
           {subTabs.map((tab) => (
             <button
               key={tab.id}

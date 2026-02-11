@@ -6,12 +6,7 @@
  */
 
 import { logger } from "../logger.js"
-import {
-  removeScriptTags,
-  removeStyleTags,
-  stripHtmlTags,
-  decodeHtmlEntities,
-} from "../death-sources/html-utils.js"
+import { htmlToText } from "../death-sources/html-utils.js"
 
 /**
  * Extract the article title from a Wikipedia URL.
@@ -29,19 +24,12 @@ export function extractWikipediaTitle(url: string): string | null {
 }
 
 /**
- * Clean Wikipedia HTML to plain text.
+ * Clean Wikipedia HTML to plain text using the shared sanitizer,
+ * then remove Wikipedia-specific citation markers like [1], [2], etc.
  */
 function cleanWikipediaHtml(html: string): string {
-  let text = html
-  text = removeScriptTags(text)
-  text = removeStyleTags(text)
-  text = stripHtmlTags(text)
-  text = decodeHtmlEntities(text)
-  // Remove citation markers like [1], [2], etc.
-  text = text.replace(/\[\d+\]/g, "")
-  // Normalize whitespace
-  text = text.replace(/\s+/g, " ").trim()
-  return text
+  const text = htmlToText(html)
+  return text.replace(/\[\d+\]/g, "").replace(/\s+/g, " ").trim()
 }
 
 /**
@@ -62,7 +50,7 @@ export async function fetchWikipediaIntro(wikipediaUrl: string): Promise<string 
   try {
     const parsed = new URL(wikipediaUrl)
     const subdomain = parsed.hostname.split(".")[0]
-    if (subdomain && subdomain !== "www" && /^[a-z]{2,10}(-[a-z]{2,10})?$/.test(subdomain)) {
+    if (subdomain && subdomain !== "www" && /^[a-z-]+$/.test(subdomain)) {
       lang = subdomain
     }
   } catch {
