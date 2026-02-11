@@ -62,14 +62,15 @@ export async function fetchWikipediaIntro(wikipediaUrl: string): Promise<string 
   try {
     const parsed = new URL(wikipediaUrl)
     const subdomain = parsed.hostname.split(".")[0]
-    if (subdomain && subdomain !== "www") {
+    if (subdomain && subdomain !== "www" && /^[a-z]{2,10}(-[a-z]{2,10})?$/.test(subdomain)) {
       lang = subdomain
     }
   } catch {
     // Fall back to English
   }
 
-  const apiUrl = `https://${lang}.wikipedia.org/w/api.php?` +
+  const apiUrl =
+    `https://${lang}.wikipedia.org/w/api.php?` +
     new URLSearchParams({
       action: "parse",
       page: title,

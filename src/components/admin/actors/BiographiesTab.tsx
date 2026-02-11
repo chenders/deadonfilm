@@ -146,7 +146,7 @@ async function queueBatchGeneration(params: {
 
 async function fetchJobRun(jobId: string): Promise<JobRun | null> {
   const response = await fetch(
-    `/admin/api/jobs/runs?jobType=generate-biographies-batch&pageSize=10`,
+    `/admin/api/jobs/runs?jobType=generate-biographies-batch&pageSize=50`,
     { credentials: "include" }
   )
 

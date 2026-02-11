@@ -243,7 +243,7 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
           wikipediaBio = intro
         }
       } catch (err) {
-        logger.debug({ err, actorId }, "Failed to fetch Wikipedia intro for single-actor generate")
+        logger.warn({ err, actorId }, "Failed to fetch Wikipedia intro for single-actor generate")
       }
     }
 
@@ -256,7 +256,12 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
       imdbId: actor.imdb_person_id,
     }
 
-    const result = await generateBiographyWithTracking(pool, actorForBio, tmdbPerson.biography, wikipediaBio)
+    const result = await generateBiographyWithTracking(
+      pool,
+      actorForBio,
+      tmdbPerson.biography,
+      wikipediaBio
+    )
 
     // Save to database
     await pool.query(

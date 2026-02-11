@@ -78,9 +78,7 @@ export class GenerateBiographiesBatchHandler extends BaseJobHandler<
   readonly jobType = JobType.GENERATE_BIOGRAPHIES_BATCH
   readonly queueName = QueueName.ENRICHMENT
 
-  async process(
-    job: Job<GenerateBiographiesBatchPayload>
-  ): Promise<JobResult<BatchSummary>> {
+  async process(job: Job<GenerateBiographiesBatchPayload>): Promise<JobResult<BatchSummary>> {
     const log = this.createLogger(job)
     const { actorIds, limit = 100, minPopularity = 0, allowRegeneration = false } = job.data
 
@@ -138,10 +136,10 @@ export class GenerateBiographiesBatchHandler extends BaseJobHandler<
 
       // Store raw TMDB bio regardless
       try {
-        await db.query(
-          `UPDATE actors SET biography_raw_tmdb = $1 WHERE id = $2`,
-          [tmdbBio, actor.id]
-        )
+        await db.query(`UPDATE actors SET biography_raw_tmdb = $1 WHERE id = $2`, [
+          tmdbBio,
+          actor.id,
+        ])
       } catch (err) {
         log.warn({ err, actorId: actor.id }, "Failed to save raw TMDB bio")
       }
@@ -201,7 +199,11 @@ export class GenerateBiographiesBatchHandler extends BaseJobHandler<
         messages: [
           {
             role: "user" as const,
-            content: buildBiographyPrompt(data.actor.name, data.tmdbBio, data.wikipediaBio ?? undefined),
+            content: buildBiographyPrompt(
+              data.actor.name,
+              data.tmdbBio,
+              data.wikipediaBio ?? undefined
+            ),
           },
         ],
       },
@@ -254,10 +256,7 @@ export class GenerateBiographiesBatchHandler extends BaseJobHandler<
       })
     }
 
-    log.info(
-      { batchId, requestCounts: currentBatch.request_counts },
-      "Anthropic batch completed"
-    )
+    log.info({ batchId, requestCounts: currentBatch.request_counts }, "Anthropic batch completed")
 
     // ================================================================
     // Phase 3: Process results
@@ -292,10 +291,7 @@ export class GenerateBiographiesBatchHandler extends BaseJobHandler<
       }
 
       if (result.result.type !== "succeeded") {
-        log.warn(
-          { actorId, type: result.result.type },
-          "Batch request did not succeed"
-        )
+        log.warn({ actorId, type: result.result.type }, "Batch request did not succeed")
         failed++
         continue
       }
