@@ -43,7 +43,7 @@ interface ActorNeedingBiography {
   id: number
   tmdb_id: number | null
   name: string
-  tmdb_popularity: number | null
+  dof_popularity: number | null
   biography: string | null
   biography_generated_at: string | null
   wikipedia_url: string | null
@@ -82,7 +82,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (minPopularity > 0) {
-      whereClause += ` AND COALESCE(tmdb_popularity, 0) >= $${paramIndex++}`
+      whereClause += ` AND COALESCE(dof_popularity, 0) >= $${paramIndex++}`
       params.push(minPopularity)
     }
 
@@ -99,20 +99,19 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const totalCount = parseInt(countResult.rows[0].count, 10)
 
     // Get actors
-    // Cast tmdb_popularity to float so pg returns a number (not string from numeric type)
     const result = await pool.query<ActorNeedingBiography>(
       `SELECT
         id,
         tmdb_id,
         name,
-        tmdb_popularity::float as tmdb_popularity,
+        dof_popularity::float as dof_popularity,
         biography,
         biography_generated_at,
         wikipedia_url,
         imdb_person_id
       FROM actors
       ${whereClause}
-      ORDER BY COALESCE(tmdb_popularity, 0) DESC
+      ORDER BY COALESCE(dof_popularity, 0) DESC, id ASC
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
       [...params, pageSize, offset]
     )
@@ -137,7 +136,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         id: actor.id,
         tmdbId: actor.tmdb_id,
         name: actor.name,
-        popularity: actor.tmdb_popularity,
+        popularity: actor.dof_popularity,
         hasBiography: actor.biography !== null,
         generatedAt: actor.biography_generated_at,
         hasWikipedia: actor.wikipedia_url !== null,
@@ -372,8 +371,8 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
          FROM actors
          WHERE tmdb_id IS NOT NULL
            ${biographyFilter}
-           AND COALESCE(tmdb_popularity, 0) >= $1
-         ORDER BY COALESCE(tmdb_popularity, 0) DESC
+           AND COALESCE(dof_popularity, 0) >= $1
+         ORDER BY COALESCE(dof_popularity, 0) DESC
          LIMIT $2`,
         [minPopularity, safeLimit]
       )
