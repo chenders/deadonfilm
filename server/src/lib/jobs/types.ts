@@ -280,7 +280,7 @@ export const rebuildDeathCachesPayloadSchema = z.object({
 export const generateBiographiesBatchPayloadSchema = z.object({
   actorIds: z.array(z.number().int().positive()).optional(),
   limit: z.number().int().positive().max(500).optional(),
-  minPopularity: z.number().optional(),
+  minPopularity: z.number().min(0).finite().optional(),
   allowRegeneration: z.boolean().default(false),
 })
 

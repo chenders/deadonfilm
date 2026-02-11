@@ -172,18 +172,20 @@ function BatchStatusPanel({
     refetchInterval: (query) => {
       const run = query.state.data
       if (!run) return 5000
-      if (run.status === "completed" || run.status === "failed") return false
+      if (run.status === "completed" || run.status === "failed" || run.status === "cancelled")
+        return false
       return 5000
     },
   })
 
   useEffect(() => {
-    if (jobRun?.status === "completed") {
+    if (jobRun?.status === "completed" || jobRun?.status === "cancelled") {
       onComplete()
     }
   }, [jobRun?.status, onComplete])
 
-  const isTerminal = jobRun?.status === "completed" || jobRun?.status === "failed"
+  const isTerminal =
+    jobRun?.status === "completed" || jobRun?.status === "failed" || jobRun?.status === "cancelled"
   const summary = jobRun?.result?.data
 
   return (
@@ -193,7 +195,9 @@ function BatchStatusPanel({
           ? "border-admin-error/30 bg-admin-error/10"
           : jobRun?.status === "completed"
             ? "border-admin-success/30 bg-admin-success/10"
-            : "border-admin-interactive/30 bg-admin-interactive/10"
+            : jobRun?.status === "cancelled"
+              ? "border-admin-text-muted/30 bg-admin-text-muted/10"
+              : "border-admin-interactive/30 bg-admin-interactive/10"
       }`}
     >
       <div className="flex items-start justify-between">
@@ -239,6 +243,10 @@ function BatchStatusPanel({
             <span className="text-admin-error">
               Batch failed: {jobRun.error_message || "Unknown error"}
             </span>
+          )}
+
+          {jobRun?.status === "cancelled" && (
+            <span className="text-admin-text-muted">Batch job was cancelled.</span>
           )}
         </div>
 
@@ -313,6 +321,7 @@ export default function BiographiesTab() {
     try {
       await batchQueueMutation.mutateAsync({
         actorIds: Array.from(selectedActorIds),
+        limit: Math.min(selectedActorIds.size, 500),
         allowRegeneration: true,
       })
     } catch {
