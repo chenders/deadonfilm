@@ -49,7 +49,6 @@ export default function ActorManagementTab() {
       params.delete("page")
     }
     setSearchParams(params)
-    setSelectedActorIds(new Set())
   }
 
   // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
@@ -143,12 +142,15 @@ export default function ActorManagementTab() {
 
   const handleSelectAll = () => {
     if (!data) return
-
-    if (selectedActorIds.size === data.items.length) {
-      setSelectedActorIds(new Set())
+    const pageIds = data.items.map((a) => a.id)
+    const allPageSelected = pageIds.every((id) => selectedActorIds.has(id))
+    const newSelection = new Set(selectedActorIds)
+    if (allPageSelected) {
+      pageIds.forEach((id) => newSelection.delete(id))
     } else {
-      setSelectedActorIds(new Set(data.items.map((a) => a.id)))
+      pageIds.forEach((id) => newSelection.add(id))
     }
+    setSelectedActorIds(newSelection)
   }
 
   const handleEnrichSelected = () => {
@@ -524,8 +526,18 @@ export default function ActorManagementTab() {
                         <input
                           type="checkbox"
                           checked={
-                            data.items.length > 0 && selectedActorIds.size === data.items.length
+                            data.items.length > 0 &&
+                            data.items.every((a) => selectedActorIds.has(a.id))
                           }
+                          ref={(el) => {
+                            if (el) {
+                              const pageIds = data.items.map((a) => a.id)
+                              const selectedCount = pageIds.filter((id) =>
+                                selectedActorIds.has(id)
+                              ).length
+                              el.indeterminate = selectedCount > 0 && selectedCount < pageIds.length
+                            }
+                          }}
                           onChange={handleSelectAll}
                           aria-label="Select all actors"
                           className="h-4 w-4 rounded border-admin-border bg-admin-surface-elevated text-admin-interactive"

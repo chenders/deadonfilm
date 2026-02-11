@@ -41,6 +41,25 @@ vi.mock("../../lib/cache.js", () => ({
   invalidateActorCache: (...args: unknown[]) => mockInvalidateActorCache(...args),
 }))
 
+// Mock Wikipedia fetcher
+vi.mock("../../lib/biography/wikipedia-fetcher.js", () => ({
+  fetchWikipediaIntro: vi.fn().mockResolvedValue(null),
+}))
+
+// Mock queue manager
+const mockAddJob = vi.fn()
+vi.mock("../../lib/jobs/queue-manager.js", () => ({
+  queueManager: {
+    addJob: (...args: unknown[]) => mockAddJob(...args),
+  },
+}))
+
+// Mock job types (needed for route import)
+vi.mock("../../lib/jobs/types.js", async () => {
+  const actual = await vi.importActual("../../lib/jobs/types.js")
+  return actual
+})
+
 import { getPersonDetails } from "../../lib/tmdb.js"
 import { generateBiographyWithTracking } from "../../lib/biography/biography-generator.js"
 
@@ -279,214 +298,96 @@ describe("Admin Biographies Routes", () => {
   })
 
   describe("POST /admin/api/biographies/generate-batch", () => {
-    it("generates biographies for multiple actors", async () => {
-      // Mock actor lookup
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          {
-            id: 1,
-            tmdb_id: 12345,
-            name: "Actor One",
-            wikipedia_url: null,
-            imdb_person_id: null,
-          },
-        ],
-      })
-
-      vi.mocked(getPersonDetails).mockResolvedValueOnce({
-        id: 12345,
-        name: "Actor One",
-        biography: "A well-known actor with a long career spanning several decades.",
-        birthday: null,
-        deathday: null,
-        place_of_birth: null,
-        popularity: 10,
-        profile_path: null,
-        imdb_id: null,
-      })
-
-      vi.mocked(generateBiographyWithTracking).mockResolvedValueOnce({
-        biography: "Actor One is a well-known actor.",
-        hasSubstantiveContent: true,
-        sourceUrl: "https://www.themoviedb.org/person/12345",
-        sourceType: "tmdb",
-        inputTokens: 500,
-        outputTokens: 200,
-        costUsd: 0.005,
-        latencyMs: 1500,
-      })
-
-      // Mock database update
-      mockQuery.mockResolvedValueOnce({ rows: [] })
+    it("queues a BullMQ job for batch generation", async () => {
+      mockAddJob.mockResolvedValueOnce("test-job-id-123")
 
       const response = await request(app)
         .post("/admin/api/biographies/generate-batch")
-        .send({ actorIds: [1], limit: 1 })
+        .send({ actorIds: [1, 2, 3], limit: 10 })
 
       expect(response.status).toBe(200)
-      expect(response.body.results).toHaveLength(1)
-      expect(response.body.results[0].success).toBe(true)
-      expect(response.body.summary.successful).toBe(1)
-      expect(mockInvalidateActorCache).toHaveBeenCalledWith(1)
+      expect(response.body.jobId).toBe("test-job-id-123")
+      expect(response.body.queued).toBe(true)
+      expect(mockAddJob).toHaveBeenCalledWith(
+        "generate-biographies-batch",
+        expect.objectContaining({
+          actorIds: [1, 2, 3],
+          limit: 10,
+          allowRegeneration: false,
+        }),
+        expect.objectContaining({
+          attempts: 1,
+          createdBy: "admin-biographies-api",
+        })
+      )
     })
 
-    it("invalidates cache for each actor in batch", async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          { id: 10, tmdb_id: 100, name: "Actor A", wikipedia_url: null, imdb_person_id: null },
-          { id: 20, tmdb_id: 200, name: "Actor B", wikipedia_url: null, imdb_person_id: null },
-        ],
-      })
-
-      // Mock TMDB and generation for both actors
-      for (let i = 0; i < 2; i++) {
-        vi.mocked(getPersonDetails).mockResolvedValueOnce({
-          id: 100 + i * 100,
-          name: `Actor ${i === 0 ? "A" : "B"}`,
-          biography: "A well-known actor with a long career spanning several decades.",
-          birthday: null,
-          deathday: null,
-          place_of_birth: null,
-          popularity: 10,
-          profile_path: null,
-          imdb_id: null,
-        })
-
-        vi.mocked(generateBiographyWithTracking).mockResolvedValueOnce({
-          biography: `Actor ${i === 0 ? "A" : "B"} biography.`,
-          hasSubstantiveContent: true,
-          sourceUrl: null,
-          sourceType: "tmdb",
-          inputTokens: 100,
-          outputTokens: 50,
-          costUsd: 0.001,
-          latencyMs: 500,
-        })
-
-        mockQuery.mockResolvedValueOnce({ rows: [] })
-      }
+    it("caps limit at 500", async () => {
+      mockAddJob.mockResolvedValueOnce("job-456")
 
       const response = await request(app)
         .post("/admin/api/biographies/generate-batch")
-        .send({ actorIds: [10, 20] })
+        .send({ limit: 1000 })
 
       expect(response.status).toBe(200)
-      expect(mockInvalidateActorCache).toHaveBeenCalledWith(10)
-      expect(mockInvalidateActorCache).toHaveBeenCalledWith(20)
-      expect(mockInvalidateActorCache).toHaveBeenCalledTimes(2)
+      expect(mockAddJob).toHaveBeenCalledWith(
+        "generate-biographies-batch",
+        expect.objectContaining({ limit: 500 }),
+        expect.any(Object)
+      )
     })
 
-    it("still succeeds when cache invalidation fails in batch", async () => {
-      mockInvalidateActorCache.mockRejectedValueOnce(new Error("Redis unavailable"))
-
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          {
-            id: 1,
-            tmdb_id: 12345,
-            name: "Actor One",
-            wikipedia_url: null,
-            imdb_person_id: null,
-          },
-        ],
-      })
-
-      vi.mocked(getPersonDetails).mockResolvedValueOnce({
-        id: 12345,
-        name: "Actor One",
-        biography: "A well-known actor with a long career spanning several decades.",
-        birthday: null,
-        deathday: null,
-        place_of_birth: null,
-        popularity: 10,
-        profile_path: null,
-        imdb_id: null,
-      })
-
-      vi.mocked(generateBiographyWithTracking).mockResolvedValueOnce({
-        biography: "Actor One is a well-known actor.",
-        hasSubstantiveContent: true,
-        sourceUrl: "https://www.themoviedb.org/person/12345",
-        sourceType: "tmdb",
-        inputTokens: 500,
-        outputTokens: 200,
-        costUsd: 0.005,
-        latencyMs: 1500,
-      })
-
-      mockQuery.mockResolvedValueOnce({ rows: [] })
+    it("caps actorIds at 500", async () => {
+      mockAddJob.mockResolvedValueOnce("job-789")
+      const manyIds = Array.from({ length: 600 }, (_, i) => i + 1)
 
       const response = await request(app)
         .post("/admin/api/biographies/generate-batch")
-        .send({ actorIds: [1], limit: 1 })
+        .send({ actorIds: manyIds })
 
       expect(response.status).toBe(200)
-      expect(response.body.results[0].success).toBe(true)
-      expect(response.body.results[0].biography).toBe("Actor One is a well-known actor.")
-      expect(mockInvalidateActorCache).toHaveBeenCalledWith(1)
+      const callPayload = mockAddJob.mock.calls[0][1]
+      expect(callPayload.actorIds).toHaveLength(500)
     })
 
-    it("respects limit parameter", async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          { id: 1, tmdb_id: 111, name: "Actor 1", wikipedia_url: null, imdb_person_id: null },
-          { id: 2, tmdb_id: 222, name: "Actor 2", wikipedia_url: null, imdb_person_id: null },
-        ],
-      })
+    it("returns 400 for invalid actorIds", async () => {
+      const response = await request(app)
+        .post("/admin/api/biographies/generate-batch")
+        .send({ actorIds: ["not", "numbers"] })
 
-      // Mock TMDB and generation for both actors
-      for (let i = 0; i < 2; i++) {
-        vi.mocked(getPersonDetails).mockResolvedValueOnce({
-          id: 111 + i * 111,
-          name: `Actor ${i + 1}`,
-          biography: "A well-known actor with a long career spanning several decades.",
-          birthday: null,
-          deathday: null,
-          place_of_birth: null,
-          popularity: 10,
-          profile_path: null,
-          imdb_id: null,
-        })
+      expect(response.status).toBe(400)
+      expect(response.body.error.message).toBe("actorIds must be an array of positive integers")
+    })
 
-        vi.mocked(generateBiographyWithTracking).mockResolvedValueOnce({
-          biography: `Actor ${i + 1} biography.`,
-          hasSubstantiveContent: true,
-          sourceUrl: `https://www.themoviedb.org/person/${111 + i * 111}`,
-          sourceType: "tmdb",
-          inputTokens: 500,
-          outputTokens: 200,
-          costUsd: 0.005,
-          latencyMs: 1500,
-        })
-
-        mockQuery.mockResolvedValueOnce({ rows: [] })
-      }
+    it("queues by-popularity job when no actorIds provided", async () => {
+      mockAddJob.mockResolvedValueOnce("pop-job-id")
 
       const response = await request(app)
         .post("/admin/api/biographies/generate-batch")
-        .send({ limit: 2, minPopularity: 5 })
+        .send({ limit: 50, minPopularity: 5 })
 
       expect(response.status).toBe(200)
-      expect(response.body.results.length).toBeLessThanOrEqual(2)
+      expect(response.body.queued).toBe(true)
+      expect(mockAddJob).toHaveBeenCalledWith(
+        "generate-biographies-batch",
+        expect.objectContaining({
+          limit: 50,
+          minPopularity: 5,
+          actorIds: undefined,
+        }),
+        expect.any(Object)
+      )
     })
 
-    it("handles errors for individual actors in batch", async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          { id: 1, tmdb_id: 12345, name: "Actor One", wikipedia_url: null, imdb_person_id: null },
-        ],
-      })
-
-      vi.mocked(getPersonDetails).mockRejectedValueOnce(new Error("TMDB API error"))
+    it("handles queue manager errors", async () => {
+      mockAddJob.mockRejectedValueOnce(new Error("Redis connection failed"))
 
       const response = await request(app)
         .post("/admin/api/biographies/generate-batch")
         .send({ actorIds: [1] })
 
-      expect(response.status).toBe(200)
-      expect(response.body.results[0].success).toBe(false)
-      expect(response.body.results[0].error).toBe("TMDB API error")
-      expect(response.body.summary.failed).toBe(1)
+      expect(response.status).toBe(500)
+      expect(response.body.error.message).toBe("Failed to queue batch generation")
     })
   })
 })
