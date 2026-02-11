@@ -35,6 +35,7 @@ export interface ActorCoverageInfo {
   cause_of_death: string | null
   profile_path: string | null
   death_manner: string | null
+  has_biography: boolean
 }
 
 export interface CoverageTrendPoint {
@@ -265,6 +266,7 @@ export async function getActorsForCoverage(
        cause_of_death,
        profile_path,
        death_manner,
+       (biography IS NOT NULL) as has_biography,
        COUNT(*) OVER() as total_count
      FROM actors
      WHERE ${whereClause}

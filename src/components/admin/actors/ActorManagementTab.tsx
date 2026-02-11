@@ -560,6 +560,9 @@ export default function ActorManagementTab() {
                     <th className="whitespace-nowrap px-3 py-3 text-right text-sm font-semibold text-admin-text-secondary">
                       Age
                     </th>
+                    <th className="whitespace-nowrap px-3 py-3 text-center text-sm font-semibold text-admin-text-secondary">
+                      Bio
+                    </th>
                     <th className="whitespace-nowrap px-3 py-3 text-right text-sm font-semibold text-admin-text-secondary">
                       Pop.
                     </th>
@@ -568,7 +571,7 @@ export default function ActorManagementTab() {
                 <tbody className="divide-y divide-admin-border">
                   {data.items.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-admin-text-muted">
+                      <td colSpan={8} className="px-4 py-8 text-center text-admin-text-muted">
                         No actors match the current filters
                       </td>
                     </tr>
@@ -742,6 +745,15 @@ export default function ActorManagementTab() {
                           </td>
                           <td className="px-3 py-3 text-right text-admin-text-muted">
                             {actor.age_at_death ?? "—"}
+                          </td>
+                          <td className="px-3 py-3 text-center text-admin-text-muted">
+                            {actor.has_biography ? (
+                              <span className="text-admin-success" title="Has biography">
+                                ✓
+                              </span>
+                            ) : (
+                              <span className="text-admin-text-muted">—</span>
+                            )}
                           </td>
                           <td className="px-3 py-3 text-right text-admin-text-muted">
                             {actor.popularity?.toFixed(1) ?? "—"}
