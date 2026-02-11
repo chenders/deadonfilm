@@ -329,6 +329,7 @@ export default function BiographiesTab() {
   }
 
   const handleBatchComplete = () => {
+    setActiveBatchJobId(null)
     queryClient.invalidateQueries({ queryKey: ["admin-biographies"] })
   }
 

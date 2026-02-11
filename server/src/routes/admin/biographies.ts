@@ -333,6 +333,20 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
       allowRegeneration = false,
     } = req.body as BatchGenerateRequest
 
+    // Validate limit and minPopularity
+    if (typeof limit !== "number" || !Number.isFinite(limit) || limit < 1) {
+      res.status(400).json({
+        error: { message: "limit must be a positive number" },
+      })
+      return
+    }
+    if (typeof minPopularity !== "number" || !Number.isFinite(minPopularity) || minPopularity < 0) {
+      res.status(400).json({
+        error: { message: "minPopularity must be a non-negative number" },
+      })
+      return
+    }
+
     // Validate actorIds if provided
     if (
       actorIds !== undefined &&

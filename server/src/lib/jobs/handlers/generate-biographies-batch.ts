@@ -148,7 +148,7 @@ export class GenerateBiographiesBatchHandler extends BaseJobHandler<
         skippedNoContent++
         try {
           await db.query(
-            `UPDATE actors SET biography_has_content = false, biography_generated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+            `UPDATE actors SET biography = NULL, biography_source_model = NULL, biography_source_version = NULL, biography_has_content = false, biography_generated_at = CURRENT_TIMESTAMP WHERE id = $1`,
             [actor.id]
           )
         } catch (err) {
