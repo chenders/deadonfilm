@@ -507,8 +507,8 @@ describe("SyncTab defaults", () => {
         fireEvent.click(row)
       }
 
-      // Check that error message is shown
-      expect(screen.getByText("Connection timeout after 30s")).toBeInTheDocument()
+      // Check that error message is shown (appears in both mobile card and desktop table expanded views)
+      expect(screen.getAllByText("Connection timeout after 30s").length).toBeGreaterThanOrEqual(1)
     })
   })
 })

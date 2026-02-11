@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AdminTestWrapper } from "@/test/test-utils"
 import CostBySourceSection from "./CostBySourceSection"
@@ -117,20 +117,23 @@ describe("CostBySourceSection", () => {
 
     // Check summary stats
     expect(screen.getByText("$58.00")).toBeInTheDocument()
-    expect(screen.getByText("400")).toBeInTheDocument()
+    expect(screen.getAllByText("400").length).toBeGreaterThanOrEqual(1)
 
-    // Check table data
-    expect(screen.getByText("wikidata")).toBeInTheDocument()
-    expect(screen.getByText("$45.67")).toBeInTheDocument()
-    expect(screen.getByText("150")).toBeInTheDocument()
+    // Check table data (duplicated in mobile cards and desktop table)
+    const table = screen.getByRole("table")
+    const tableScope = within(table)
 
-    expect(screen.getByText("wikipedia")).toBeInTheDocument()
-    expect(screen.getByText("$0.00")).toBeInTheDocument()
-    expect(screen.getByText("200")).toBeInTheDocument()
+    expect(tableScope.getByText("wikidata")).toBeInTheDocument()
+    expect(tableScope.getByText("$45.67")).toBeInTheDocument()
+    expect(tableScope.getByText("150")).toBeInTheDocument()
 
-    expect(screen.getByText("deepseek")).toBeInTheDocument()
-    expect(screen.getByText("$12.33")).toBeInTheDocument()
-    expect(screen.getByText("50")).toBeInTheDocument()
+    expect(tableScope.getByText("wikipedia")).toBeInTheDocument()
+    expect(tableScope.getByText("$0.00")).toBeInTheDocument()
+    expect(tableScope.getByText("200")).toBeInTheDocument()
+
+    expect(tableScope.getByText("deepseek")).toBeInTheDocument()
+    expect(tableScope.getByText("$12.33")).toBeInTheDocument()
+    expect(tableScope.getByText("50")).toBeInTheDocument()
   })
 
   it("formats dates correctly", () => {
@@ -142,9 +145,11 @@ describe("CostBySourceSection", () => {
 
     renderComponent()
 
-    // Check that last_used dates are formatted
+    // Check that last_used dates are formatted (duplicated in mobile cards and desktop table)
     // The exact format may vary by locale, so just check that dates appear
-    expect(screen.getByText(/1\/15\/2024|15\/1\/2024|2024-01-15/)).toBeInTheDocument()
+    expect(screen.getAllByText(/1\/15\/2024|15\/1\/2024|2024-01-15/).length).toBeGreaterThanOrEqual(
+      1
+    )
   })
 
   it("passes date range to hook", () => {
@@ -195,6 +200,6 @@ describe("CostBySourceSection", () => {
 
     renderComponent()
 
-    expect(screen.getByText("Never")).toBeInTheDocument()
+    expect(screen.getAllByText("Never").length).toBeGreaterThanOrEqual(1)
   })
 })

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AdminTestWrapper } from "@/test/test-utils"
 import PopularPagesTable from "./PopularPagesTable"
@@ -117,13 +117,15 @@ describe("PopularPagesTable", () => {
 
       render(<PopularPagesTable />, { wrapper })
 
-      expect(screen.getByText("Page")).toBeInTheDocument()
+      const table = screen.getByRole("table")
+      const tableScope = within(table)
+      expect(tableScope.getByText("Page")).toBeInTheDocument()
       // Internal/External/Direct appear in both header and legend
       expect(screen.getAllByText("Internal").length).toBeGreaterThan(0)
       expect(screen.getAllByText("External").length).toBeGreaterThan(0)
       expect(screen.getAllByText("Direct").length).toBeGreaterThan(0)
-      expect(screen.getByText("Total")).toBeInTheDocument()
-      expect(screen.getByText("Distribution")).toBeInTheDocument()
+      expect(tableScope.getByText("Total")).toBeInTheDocument()
+      expect(tableScope.getByText("Distribution")).toBeInTheDocument()
     })
 
     it("renders all page paths", () => {
@@ -135,9 +137,9 @@ describe("PopularPagesTable", () => {
 
       render(<PopularPagesTable />, { wrapper })
 
-      expect(screen.getByText("/")).toBeInTheDocument()
-      expect(screen.getByText("/deaths")).toBeInTheDocument()
-      expect(screen.getByText("/movie/inception-2010-27205")).toBeInTheDocument()
+      expect(screen.getAllByText("/").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("/deaths").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("/movie/inception-2010-27205").length).toBeGreaterThanOrEqual(1)
     })
 
     it("renders traffic source counts with formatting", () => {
@@ -149,11 +151,13 @@ describe("PopularPagesTable", () => {
 
       render(<PopularPagesTable />, { wrapper })
 
+      const table = screen.getByRole("table")
+      const tableScope = within(table)
       // First row: internal=100, external=50, direct=25, total=175
-      expect(screen.getByText("100")).toBeInTheDocument()
-      expect(screen.getByText("50")).toBeInTheDocument()
-      expect(screen.getByText("25")).toBeInTheDocument()
-      expect(screen.getByText("175")).toBeInTheDocument()
+      expect(tableScope.getByText("100")).toBeInTheDocument()
+      expect(tableScope.getByText("50")).toBeInTheDocument()
+      expect(tableScope.getByText("25")).toBeInTheDocument()
+      expect(tableScope.getByText("175")).toBeInTheDocument()
     })
 
     it("formats large numbers with commas", () => {
@@ -175,10 +179,10 @@ describe("PopularPagesTable", () => {
 
       render(<PopularPagesTable />, { wrapper })
 
-      expect(screen.getByText("5,000")).toBeInTheDocument()
-      expect(screen.getByText("3,000")).toBeInTheDocument()
-      expect(screen.getByText("2,000")).toBeInTheDocument()
-      expect(screen.getByText("10,000")).toBeInTheDocument()
+      expect(screen.getAllByText("5,000").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("3,000").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("2,000").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("10,000").length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -334,8 +338,8 @@ describe("PopularPagesTable", () => {
 
       render(<PopularPagesTable />, { wrapper })
 
-      expect(screen.getByText("/")).toBeInTheDocument()
-      expect(screen.getByText("100")).toBeInTheDocument()
+      expect(screen.getAllByText("/").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("100").length).toBeGreaterThanOrEqual(1)
     })
 
     it("handles all traffic from one source", () => {

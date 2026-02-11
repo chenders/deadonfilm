@@ -49,7 +49,6 @@ export default function ActorManagementTab() {
       params.delete("page")
     }
     setSearchParams(params)
-    setSelectedActorIds(new Set())
   }
 
   // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
@@ -143,12 +142,15 @@ export default function ActorManagementTab() {
 
   const handleSelectAll = () => {
     if (!data) return
-
-    if (selectedActorIds.size === data.items.length) {
-      setSelectedActorIds(new Set())
+    const pageIds = data.items.map((a) => a.id)
+    const allPageSelected = pageIds.every((id) => selectedActorIds.has(id))
+    const newSelection = new Set(selectedActorIds)
+    if (allPageSelected) {
+      pageIds.forEach((id) => newSelection.delete(id))
     } else {
-      setSelectedActorIds(new Set(data.items.map((a) => a.id)))
+      pageIds.forEach((id) => newSelection.add(id))
     }
+    setSelectedActorIds(newSelection)
   }
 
   const handleEnrichSelected = () => {
@@ -524,8 +526,18 @@ export default function ActorManagementTab() {
                         <input
                           type="checkbox"
                           checked={
-                            data.items.length > 0 && selectedActorIds.size === data.items.length
+                            data.items.length > 0 &&
+                            data.items.every((a) => selectedActorIds.has(a.id))
                           }
+                          ref={(el) => {
+                            if (el) {
+                              const pageIds = data.items.map((a) => a.id)
+                              const selectedCount = pageIds.filter((id) =>
+                                selectedActorIds.has(id)
+                              ).length
+                              el.indeterminate = selectedCount > 0 && selectedCount < pageIds.length
+                            }
+                          }}
                           onChange={handleSelectAll}
                           aria-label="Select all actors"
                           className="h-4 w-4 rounded border-admin-border bg-admin-surface-elevated text-admin-interactive"
@@ -548,6 +560,9 @@ export default function ActorManagementTab() {
                     <th className="whitespace-nowrap px-3 py-3 text-right text-sm font-semibold text-admin-text-secondary">
                       Age
                     </th>
+                    <th className="whitespace-nowrap px-3 py-3 text-center text-sm font-semibold text-admin-text-secondary">
+                      Bio
+                    </th>
                     <th className="whitespace-nowrap px-3 py-3 text-right text-sm font-semibold text-admin-text-secondary">
                       Pop.
                     </th>
@@ -556,7 +571,7 @@ export default function ActorManagementTab() {
                 <tbody className="divide-y divide-admin-border">
                   {data.items.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-admin-text-muted">
+                      <td colSpan={8} className="px-4 py-8 text-center text-admin-text-muted">
                         No actors match the current filters
                       </td>
                     </tr>
@@ -730,6 +745,19 @@ export default function ActorManagementTab() {
                           </td>
                           <td className="px-3 py-3 text-right text-admin-text-muted">
                             {actor.age_at_death ?? "—"}
+                          </td>
+                          <td className="px-3 py-3 text-center text-admin-text-muted">
+                            {actor.has_biography ? (
+                              <span className="text-admin-success">
+                                <span aria-hidden="true">✓</span>
+                                <span className="sr-only">Has biography</span>
+                              </span>
+                            ) : (
+                              <span className="text-admin-text-muted">
+                                <span aria-hidden="true">—</span>
+                                <span className="sr-only">No biography</span>
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-3 text-right text-admin-text-muted">
                             {actor.popularity?.toFixed(1) ?? "—"}

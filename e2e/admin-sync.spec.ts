@@ -199,18 +199,19 @@ test.describe("Admin TMDB Sync Page", () => {
     const historyTable = page.locator('[data-testid="sync-history-table"]')
     await expect(historyTable).toBeVisible()
 
-    // Verify history entries (scope to history table to avoid matching status card)
-    await expect(historyTable.getByText("tmdb-people")).toBeVisible()
-    await expect(historyTable.getByText("tmdb-all")).toBeVisible()
-    await expect(historyTable.getByText("tmdb-movies")).toBeVisible()
+    // Verify history entries (scope to desktop table to avoid matching mobile cards)
+    const historyDesktop = historyTable.locator("table")
+    await expect(historyDesktop.getByText("tmdb-people")).toBeVisible()
+    await expect(historyDesktop.getByText("tmdb-all")).toBeVisible()
+    await expect(historyDesktop.getByText("tmdb-movies")).toBeVisible()
 
-    // Verify status badges (scope to history table)
-    await expect(historyTable.getByText("completed").first()).toBeVisible()
-    await expect(historyTable.getByText("failed")).toBeVisible()
+    // Verify status badges (scope to desktop table)
+    await expect(historyDesktop.getByText("completed").first()).toBeVisible()
+    await expect(historyDesktop.getByText("failed")).toBeVisible()
 
-    // Verify triggered by column (scope to history table)
-    await expect(historyTable.getByText("admin").first()).toBeVisible()
-    await expect(historyTable.getByText("cron")).toBeVisible()
+    // Verify triggered by column (scope to desktop table)
+    await expect(historyDesktop.getByText("admin").first()).toBeVisible()
+    await expect(historyDesktop.getByText("cron")).toBeVisible()
 
     // Take screenshot
     await page.screenshot({

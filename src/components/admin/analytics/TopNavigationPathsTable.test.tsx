@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AdminTestWrapper } from "@/test/test-utils"
 import TopNavigationPathsTable from "./TopNavigationPathsTable"
@@ -114,11 +114,13 @@ describe("TopNavigationPathsTable", () => {
 
       render(<TopNavigationPathsTable />, { wrapper })
 
-      expect(screen.getByText("From")).toBeInTheDocument()
-      expect(screen.getByText("To")).toBeInTheDocument()
-      expect(screen.getByText("Count")).toBeInTheDocument()
-      expect(screen.getByText("%")).toBeInTheDocument()
-      expect(screen.getByText("Volume")).toBeInTheDocument()
+      const table = screen.getByRole("table")
+      const tableScope = within(table)
+      expect(tableScope.getByText("From")).toBeInTheDocument()
+      expect(tableScope.getByText("To")).toBeInTheDocument()
+      expect(tableScope.getByText("Count")).toBeInTheDocument()
+      expect(tableScope.getByText("%")).toBeInTheDocument()
+      expect(tableScope.getByText("Volume")).toBeInTheDocument()
     })
 
     it("renders all navigation paths", () => {
@@ -138,8 +140,8 @@ describe("TopNavigationPathsTable", () => {
       const deathsPaths = screen.getAllByText("/deaths")
       expect(deathsPaths.length).toBeGreaterThan(0)
 
-      expect(screen.getByText("/movie/inception-2010-27205")).toBeInTheDocument()
-      expect(screen.getByText("/cursed-movies")).toBeInTheDocument()
+      expect(screen.getAllByText("/movie/inception-2010-27205").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("/cursed-movies").length).toBeGreaterThanOrEqual(1)
     })
 
     it("renders counts with locale formatting", () => {
@@ -151,9 +153,11 @@ describe("TopNavigationPathsTable", () => {
 
       render(<TopNavigationPathsTable />, { wrapper })
 
-      expect(screen.getByText("150")).toBeInTheDocument()
-      expect(screen.getByText("100")).toBeInTheDocument()
-      expect(screen.getByText("75")).toBeInTheDocument()
+      const table = screen.getByRole("table")
+      const tableScope = within(table)
+      expect(tableScope.getByText("150")).toBeInTheDocument()
+      expect(tableScope.getByText("100")).toBeInTheDocument()
+      expect(tableScope.getByText("75")).toBeInTheDocument()
     })
 
     it("renders percentages with correct format", () => {
@@ -165,9 +169,9 @@ describe("TopNavigationPathsTable", () => {
 
       render(<TopNavigationPathsTable />, { wrapper })
 
-      expect(screen.getByText("30.0%")).toBeInTheDocument()
-      expect(screen.getByText("20.0%")).toBeInTheDocument()
-      expect(screen.getByText("15.0%")).toBeInTheDocument()
+      expect(screen.getAllByText("30.0%").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("20.0%").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("15.0%").length).toBeGreaterThanOrEqual(1)
     })
 
     it("formats large numbers with commas", () => {
@@ -188,7 +192,7 @@ describe("TopNavigationPathsTable", () => {
 
       render(<TopNavigationPathsTable />, { wrapper })
 
-      expect(screen.getByText("5,000")).toBeInTheDocument()
+      expect(screen.getAllByText("5,000").length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -310,8 +314,10 @@ describe("TopNavigationPathsTable", () => {
 
       render(<TopNavigationPathsTable />, { wrapper })
 
-      expect(screen.getByText("/search?q=test&type=movie")).toBeInTheDocument()
-      expect(screen.getByText("/movie/the-matrix-1999-603#cast")).toBeInTheDocument()
+      expect(screen.getAllByText("/search?q=test&type=movie").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("/movie/the-matrix-1999-603#cast").length).toBeGreaterThanOrEqual(
+        1
+      )
     })
   })
 
@@ -334,8 +340,8 @@ describe("TopNavigationPathsTable", () => {
 
       render(<TopNavigationPathsTable />, { wrapper })
 
-      // Use getByText with regex to find the percentage
-      expect(screen.getByText(/100\.0%/)).toBeInTheDocument()
+      // Use getAllByText with regex to find the percentage (appears in both mobile and desktop)
+      expect(screen.getAllByText(/100\.0%/).length).toBeGreaterThanOrEqual(1)
     })
 
     it("handles zero counts gracefully", () => {
@@ -356,8 +362,8 @@ describe("TopNavigationPathsTable", () => {
 
       render(<TopNavigationPathsTable />, { wrapper })
 
-      expect(screen.getByText("0")).toBeInTheDocument()
-      expect(screen.getByText("0.0%")).toBeInTheDocument()
+      expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("0.0%").length).toBeGreaterThanOrEqual(1)
     })
   })
 })
