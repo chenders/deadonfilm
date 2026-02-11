@@ -82,7 +82,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (minPopularity > 0) {
-      whereClause += ` AND COALESCE(tmdb_popularity, 0) >= $${paramIndex++}`
+      whereClause += ` AND COALESCE(dof_popularity, 0) >= $${paramIndex++}`
       params.push(minPopularity)
     }
 
@@ -372,7 +372,7 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
          FROM actors
          WHERE tmdb_id IS NOT NULL
            ${biographyFilter}
-           AND COALESCE(tmdb_popularity, 0) >= $1
+           AND COALESCE(dof_popularity, 0) >= $1
          ORDER BY COALESCE(dof_popularity, 0) DESC
          LIMIT $2`,
         [minPopularity, safeLimit]

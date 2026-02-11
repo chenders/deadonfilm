@@ -269,7 +269,7 @@ export async function getEnrichmentRunActors(
     FROM enrichment_run_actors era
     JOIN actors a ON a.id = era.actor_id
     WHERE era.run_id = $1
-    ORDER BY a.dof_popularity DESC NULLS LAST, era.cost_usd DESC
+    ORDER BY a.dof_popularity DESC NULLS LAST, era.cost_usd DESC, era.actor_id ASC
     LIMIT $2 OFFSET $3
     `,
     [runId, pageSize, offset]

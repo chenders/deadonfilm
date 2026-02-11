@@ -142,7 +142,7 @@ router.get("/future-deaths", async (req: Request, res: Response): Promise<void> 
         tmdb_id,
         deathday,
         birthday,
-        tmdb_popularity::float as popularity,
+        dof_popularity::float as popularity,
         CASE
           WHEN deathday > CURRENT_DATE THEN 'future_date'
           WHEN birthday IS NOT NULL AND deathday < birthday THEN 'before_birth'
@@ -346,24 +346,21 @@ router.get("/uncertain-deaths", async (req: Request, res: Response): Promise<voi
       circumstances: string | null
     }>(
       `
-      SELECT * FROM (
-        SELECT DISTINCT ON (a.id)
-          a.id,
-          a.name,
-          a.tmdb_id,
-          a.deathday,
-          a.dof_popularity::float as popularity,
-          adc.circumstances
-        FROM actors a
-        JOIN actor_death_circumstances adc ON a.id = adc.actor_id
-        WHERE
-          adc.circumstances ~* $1
-          OR adc.rumored_circumstances ~* $1
-          OR adc.additional_context ~* $1
-          OR adc.raw_response::text ~* $1
-        ORDER BY a.id
-      ) sub
-      ORDER BY popularity DESC NULLS LAST
+      SELECT
+        a.id,
+        a.name,
+        a.tmdb_id,
+        a.deathday,
+        a.dof_popularity::float as popularity,
+        adc.circumstances
+      FROM actors a
+      JOIN actor_death_circumstances adc ON a.id = adc.actor_id
+      WHERE
+        adc.circumstances ~* $1
+        OR adc.rumored_circumstances ~* $1
+        OR adc.additional_context ~* $1
+        OR adc.raw_response::text ~* $1
+      ORDER BY a.dof_popularity DESC NULLS LAST, a.id ASC
       LIMIT $2 OFFSET $3
     `,
       [pattern, limit, offset]
