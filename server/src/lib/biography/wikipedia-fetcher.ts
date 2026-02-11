@@ -29,7 +29,10 @@ export function extractWikipediaTitle(url: string): string | null {
  */
 function cleanWikipediaHtml(html: string): string {
   const text = htmlToText(html)
-  return text.replace(/\[\d+\]/g, "").replace(/\s+/g, " ").trim()
+  return text
+    .replace(/\[\d+\]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
 }
 
 /**
