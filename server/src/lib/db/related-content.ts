@@ -181,7 +181,7 @@ export async function getRelatedMovies(movieTmdbId: number): Promise<RelatedMovi
      JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
      WHERE ama.movie_tmdb_id != $1
        AND m.is_obscure IS NOT TRUE
-     GROUP BY m.tmdb_id, m.title, m.release_date, m.poster_path, m.deceased_count, m.cast_count
+     GROUP BY m.tmdb_id, m.title, m.release_date, m.poster_path, m.deceased_count, m.cast_count, m.tmdb_popularity
      ORDER BY shared_cast_count DESC, m.tmdb_popularity DESC NULLS LAST
      LIMIT $2`,
     [movieTmdbId, RELATED_MOVIES_LIMIT]
@@ -246,7 +246,7 @@ export async function getRelatedShows(showTmdbId: number): Promise<RelatedShow[]
      FROM shared_actors sa
      JOIN shows s ON sa.show_tmdb_id = s.tmdb_id
      WHERE s.is_obscure IS NOT TRUE
-     GROUP BY s.tmdb_id, s.name, s.first_air_date, s.poster_path, s.deceased_count, s.cast_count
+     GROUP BY s.tmdb_id, s.name, s.first_air_date, s.poster_path, s.deceased_count, s.cast_count, s.tmdb_popularity
      ORDER BY shared_cast_count DESC, s.tmdb_popularity DESC NULLS LAST
      LIMIT $2`,
     [showTmdbId, RELATED_SHOWS_LIMIT]
