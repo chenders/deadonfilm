@@ -53,7 +53,12 @@ export async function fetchWikipediaIntro(wikipediaUrl: string): Promise<string 
   try {
     const parsed = new URL(wikipediaUrl)
     const subdomain = parsed.hostname.split(".")[0]
-    if (subdomain && subdomain !== "www" && /^[a-z-]+$/.test(subdomain)) {
+    // Valid Wikipedia language codes: 2-10 lowercase letters, optionally
+    // followed by a hyphen and another 2-10 letter region code (e.g., "en", "pt-br", "zh-hans").
+    // The regex is safe: input is a short hostname subdomain, anchored, no nested quantifiers.
+    // eslint-disable-next-line security/detect-unsafe-regex
+    const langPattern = /^[a-z]{2,10}(?:-[a-z]{2,10})?$/
+    if (subdomain && subdomain !== "www" && langPattern.test(subdomain)) {
       lang = subdomain
     }
   } catch {
