@@ -16,6 +16,8 @@ import RelatedContent from "@/components/content/RelatedContent"
 import SeeAlso from "@/components/content/SeeAlso"
 import Breadcrumb from "@/components/layout/Breadcrumb"
 import HoverTooltip from "@/components/common/HoverTooltip"
+import AdminActorToolbar from "@/components/admin/AdminActorToolbar"
+import AdminActorMetadata from "@/components/admin/AdminActorMetadata"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
 
 type FilmographyItem =
@@ -247,6 +249,7 @@ export default function ActorPage() {
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
         <Breadcrumb items={[{ label: "Home", href: "/" }, { label: actor.name }]} />
+        <AdminActorToolbar actorId={actorId} />
 
         {/* Header section */}
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
@@ -386,6 +389,8 @@ export default function ActorPage() {
             </div>
           </div>
         </div>
+
+        <AdminActorMetadata actorId={actorId} />
 
         {/* Biography */}
         {actor.biography && (
