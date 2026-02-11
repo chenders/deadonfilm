@@ -6,6 +6,7 @@ import {
   useMissingPopularityActors,
   usePopularityLastRun,
 } from "@/hooks/admin/usePopularity"
+import MobileCard from "../ui/MobileCard"
 
 type SubTab = "overview" | "top-actors" | "low-confidence" | "missing"
 
@@ -35,25 +36,23 @@ export default function PopularityTab() {
   return (
     <div className="space-y-8">
       {/* Sub-Tabs */}
-      <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-        <div className="border-b border-admin-border">
-          <nav className="-mb-px flex min-w-max space-x-4 md:space-x-8">
-            {subTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSubTab(tab.id)}
-                data-testid={tab.testId}
-                className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
-                  activeSubTab === tab.id
-                    ? "border-admin-interactive text-admin-interactive"
-                    : "border-transparent text-admin-text-muted hover:border-admin-border hover:text-admin-text-secondary"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+      <div className="border-b border-admin-border">
+        <nav className="-mb-px flex flex-wrap space-x-4 md:space-x-8">
+          {subTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSubTab(tab.id)}
+              data-testid={tab.testId}
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+                activeSubTab === tab.id
+                  ? "border-admin-interactive text-admin-interactive"
+                  : "border-transparent text-admin-text-muted hover:border-admin-border hover:text-admin-text-secondary"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Overview Tab */}
@@ -319,7 +318,55 @@ export default function PopularityTab() {
               className="rounded-lg bg-admin-surface-elevated shadow-admin-sm"
               data-testid="top-actors-table"
             >
-              <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              {/* Mobile cards */}
+              <div className="space-y-3 p-4 md:hidden">
+                {topActors.data.actors.length === 0 ? (
+                  <p className="py-8 text-center text-admin-text-muted">
+                    No actors found with the selected criteria
+                  </p>
+                ) : (
+                  topActors.data.actors.map((actor, index) => (
+                    <MobileCard
+                      key={actor.id}
+                      title={`#${index + 1} ${actor.name}`}
+                      fields={[
+                        {
+                          label: "DOF Score",
+                          value: (
+                            <span className="font-semibold text-admin-interactive">
+                              {actor.dofPopularity.toFixed(2)}
+                            </span>
+                          ),
+                        },
+                        {
+                          label: "Confidence",
+                          value: (
+                            <span
+                              className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                                actor.confidence >= 0.7
+                                  ? "bg-admin-success/20 text-admin-success"
+                                  : actor.confidence >= 0.5
+                                    ? "bg-admin-warning/20 text-admin-warning"
+                                    : "bg-admin-danger/20 text-admin-danger"
+                              }`}
+                            >
+                              {(actor.confidence * 100).toFixed(0)}%
+                            </span>
+                          ),
+                        },
+                        {
+                          label: "TMDB Pop",
+                          value: actor.tmdbPopularity?.toFixed(1) ?? "N/A",
+                        },
+                        { label: "Death Date", value: actor.deathday ?? "N/A" },
+                      ]}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[700px] divide-y divide-admin-border">
                   <thead className="bg-admin-surface-overlay">
                     <tr>
@@ -415,7 +462,42 @@ export default function PopularityTab() {
 
           {lowConfidence.data && (
             <div className="rounded-lg bg-admin-surface-elevated shadow-admin-sm">
-              <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              {/* Mobile cards */}
+              <div className="space-y-3 p-4 md:hidden">
+                {lowConfidence.data.actors.length === 0 ? (
+                  <p className="py-8 text-center text-admin-text-muted">
+                    No low confidence actors found
+                  </p>
+                ) : (
+                  lowConfidence.data.actors.map((actor) => (
+                    <MobileCard
+                      key={actor.id}
+                      title={actor.name}
+                      fields={[
+                        {
+                          label: "DOF Score",
+                          value: (
+                            <span className="font-semibold">{actor.dofPopularity.toFixed(2)}</span>
+                          ),
+                        },
+                        {
+                          label: "Confidence",
+                          value: (
+                            <span className="bg-admin-warning/20 inline-flex rounded-full px-2 text-xs font-semibold leading-5 text-admin-warning">
+                              {(actor.confidence * 100).toFixed(0)}%
+                            </span>
+                          ),
+                        },
+                        { label: "Movies", value: actor.movieCount },
+                        { label: "Shows", value: actor.showCount },
+                      ]}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[600px] divide-y divide-admin-border">
                   <thead className="bg-admin-surface-overlay">
                     <tr>
@@ -504,7 +586,32 @@ export default function PopularityTab() {
 
           {missing.data && (
             <div className="rounded-lg bg-admin-surface-elevated shadow-admin-sm">
-              <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              {/* Mobile cards */}
+              <div className="space-y-3 p-4 md:hidden">
+                {missing.data.actors.length === 0 ? (
+                  <p className="py-8 text-center text-admin-text-muted">
+                    All deceased actors have DOF popularity scores
+                  </p>
+                ) : (
+                  missing.data.actors.map((actor) => (
+                    <MobileCard
+                      key={actor.id}
+                      title={actor.name}
+                      fields={[
+                        {
+                          label: "TMDB Popularity",
+                          value: actor.tmdbPopularity?.toFixed(1) ?? "N/A",
+                        },
+                        { label: "Movies", value: actor.movieCount },
+                        { label: "Shows", value: actor.showCount },
+                      ]}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[500px] divide-y divide-admin-border">
                   <thead className="bg-admin-surface-overlay">
                     <tr>

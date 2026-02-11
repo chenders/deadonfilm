@@ -6,6 +6,7 @@ import {
   useSyncDetails,
   useCancelSync,
 } from "../../../hooks/admin/useAdminSync"
+import MobileCard from "../ui/MobileCard"
 
 export default function SyncTab() {
   // Form state
@@ -419,157 +420,234 @@ export default function SyncTab() {
         )}
 
         {history.data && (
-          <div
-            data-testid="sync-history-table"
-            className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0"
-          >
-            <table className="w-full min-w-[900px] divide-y divide-admin-border">
-              <thead className="bg-admin-surface-overlay">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                    Started
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                    Duration
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                    Checked
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                    Updated
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                    New Deaths
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
-                    Triggered By
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
-                {history.data.history.map((item) => (
-                  <Fragment key={item.id}>
-                    <tr
-                      onClick={() => toggleExpandedRow(item.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault()
-                          toggleExpandedRow(item.id)
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      aria-expanded={expandedRowId === item.id}
-                      aria-label={`${expandedRowId === item.id ? "Collapse" : "Expand"} ${item.syncType} sync details`}
-                      className="cursor-pointer hover:bg-admin-surface-overlay"
-                    >
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="flex items-center gap-2">
+          <div data-testid="sync-history-table">
+            {/* Mobile cards */}
+            <div className="space-y-3 p-4 md:hidden">
+              {history.data.history.length === 0 ? (
+                <p className="py-8 text-center text-admin-text-muted">No sync history yet</p>
+              ) : (
+                history.data.history.map((item) => (
+                  <div key={item.id}>
+                    <MobileCard
+                      title={
+                        <span className="flex items-center gap-2">
+                          <span>{item.syncType} Sync</span>
                           <span
-                            className={`text-admin-text-muted transition-transform ${expandedRowId === item.id ? "rotate-90" : ""}`}
+                            className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusBadgeClass(item.status)}`}
                           >
-                            ▶
+                            {item.status}
                           </span>
-                          <span className="font-medium text-admin-text-primary">
-                            {item.syncType}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <span
-                          className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusBadgeClass(item.status)}`}
-                        >
-                          {item.status}
                         </span>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {formatDate(item.startedAt)}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {formatDuration(item.startedAt, item.completedAt)}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {item.itemsChecked.toLocaleString()}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {item.itemsUpdated.toLocaleString()}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {item.newDeathsFound.toLocaleString()}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
-                        {item.triggeredBy || "N/A"}
-                      </td>
-                    </tr>
+                      }
+                      fields={[
+                        { label: "Started", value: formatDate(item.startedAt) },
+                        {
+                          label: "Duration",
+                          value: formatDuration(item.startedAt, item.completedAt),
+                        },
+                        { label: "Checked", value: item.itemsChecked.toLocaleString() },
+                        { label: "Updated", value: item.itemsUpdated.toLocaleString() },
+                        { label: "New Deaths", value: item.newDeathsFound.toLocaleString() },
+                        { label: "Triggered By", value: item.triggeredBy || "N/A" },
+                      ]}
+                      actions={
+                        <button
+                          onClick={() => toggleExpandedRow(item.id)}
+                          className="text-xs text-admin-interactive hover:underline"
+                        >
+                          {expandedRowId === item.id ? "Hide Details" : "Show Details"}
+                        </button>
+                      }
+                    />
                     {expandedRowId === item.id && (
-                      <tr>
-                        <td colSpan={8} className="bg-admin-surface-overlay px-6 py-4">
-                          <div className="space-y-3 text-sm">
-                            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                              <div>
-                                <span className="text-admin-text-muted">Sync ID:</span>
-                                <span className="ml-2 font-mono text-admin-text-primary">
-                                  {item.id}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-admin-text-muted">Started:</span>
-                                <span className="ml-2 text-admin-text-primary">
-                                  {formatDate(item.startedAt)}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-admin-text-muted">Completed:</span>
-                                <span className="ml-2 text-admin-text-primary">
-                                  {formatDate(item.completedAt)}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-admin-text-muted">Duration:</span>
-                                <span className="ml-2 text-admin-text-primary">
-                                  {formatDuration(item.startedAt, item.completedAt)}
-                                </span>
-                              </div>
+                      <div className="mt-2 rounded-lg bg-admin-surface-overlay p-4 text-sm">
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-admin-text-muted">Sync ID:</span>
+                            <span className="ml-2 font-mono text-admin-text-primary">
+                              {item.id}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-admin-text-muted">Completed:</span>
+                            <span className="ml-2 text-admin-text-primary">
+                              {formatDate(item.completedAt)}
+                            </span>
+                          </div>
+                          {item.parameters && (
+                            <div>
+                              <span className="text-admin-text-muted">Parameters:</span>
+                              <pre className="mt-1 overflow-x-auto font-mono text-xs text-admin-text-primary">
+                                {JSON.stringify(item.parameters, null, 2)}
+                              </pre>
                             </div>
+                          )}
+                          {item.errorMessage && (
+                            <div className="border-admin-danger/30 bg-admin-danger/10 rounded-md border p-3">
+                              <span className="font-medium text-admin-danger">Error:</span>
+                              <p className="mt-1 whitespace-pre-wrap text-admin-text-primary">
+                                {item.errorMessage}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
 
-                            {item.parameters && (
-                              <div>
-                                <span className="text-admin-text-muted">Parameters:</span>
-                                <pre className="ml-2 font-mono text-xs text-admin-text-primary">
-                                  {JSON.stringify(item.parameters, null, 2)}
-                                </pre>
-                              </div>
-                            )}
-
-                            {item.errorMessage && (
-                              <div className="border-admin-danger/30 bg-admin-danger/10 rounded-md border p-3">
-                                <span className="font-medium text-admin-danger">Error:</span>
-                                <p className="mt-1 whitespace-pre-wrap text-admin-text-primary">
-                                  {item.errorMessage}
-                                </p>
-                              </div>
-                            )}
+            {/* Desktop table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[900px] divide-y divide-admin-border">
+                <thead className="bg-admin-surface-overlay">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                      Started
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                      Duration
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                      Checked
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                      Updated
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                      New Deaths
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-admin-text-muted">
+                      Triggered By
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-admin-border bg-admin-surface-elevated">
+                  {history.data.history.map((item) => (
+                    <Fragment key={item.id}>
+                      <tr
+                        onClick={() => toggleExpandedRow(item.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            toggleExpandedRow(item.id)
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={expandedRowId === item.id}
+                        aria-label={`${expandedRowId === item.id ? "Collapse" : "Expand"} ${item.syncType} sync details`}
+                        className="cursor-pointer hover:bg-admin-surface-overlay"
+                      >
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-admin-text-muted transition-transform ${expandedRowId === item.id ? "rotate-90" : ""}`}
+                            >
+                              ▶
+                            </span>
+                            <span className="font-medium text-admin-text-primary">
+                              {item.syncType}
+                            </span>
                           </div>
                         </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusBadgeClass(item.status)}`}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {formatDate(item.startedAt)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {formatDuration(item.startedAt, item.completedAt)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {item.itemsChecked.toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {item.itemsUpdated.toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {item.newDeathsFound.toLocaleString()}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-admin-text-secondary">
+                          {item.triggeredBy || "N/A"}
+                        </td>
                       </tr>
-                    )}
-                  </Fragment>
-                ))}
-                {history.data.history.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-admin-text-muted">
-                      No sync history yet
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      {expandedRowId === item.id && (
+                        <tr>
+                          <td colSpan={8} className="bg-admin-surface-overlay px-6 py-4">
+                            <div className="space-y-3 text-sm">
+                              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                                <div>
+                                  <span className="text-admin-text-muted">Sync ID:</span>
+                                  <span className="ml-2 font-mono text-admin-text-primary">
+                                    {item.id}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-admin-text-muted">Started:</span>
+                                  <span className="ml-2 text-admin-text-primary">
+                                    {formatDate(item.startedAt)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-admin-text-muted">Completed:</span>
+                                  <span className="ml-2 text-admin-text-primary">
+                                    {formatDate(item.completedAt)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-admin-text-muted">Duration:</span>
+                                  <span className="ml-2 text-admin-text-primary">
+                                    {formatDuration(item.startedAt, item.completedAt)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {item.parameters && (
+                                <div>
+                                  <span className="text-admin-text-muted">Parameters:</span>
+                                  <pre className="ml-2 font-mono text-xs text-admin-text-primary">
+                                    {JSON.stringify(item.parameters, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+
+                              {item.errorMessage && (
+                                <div className="border-admin-danger/30 bg-admin-danger/10 rounded-md border p-3">
+                                  <span className="font-medium text-admin-danger">Error:</span>
+                                  <p className="mt-1 whitespace-pre-wrap text-admin-text-primary">
+                                    {item.errorMessage}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                  {history.data.history.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-6 py-12 text-center text-admin-text-muted">
+                        No sync history yet
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

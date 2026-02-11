@@ -6,6 +6,7 @@ import {
   useUncertainDeaths,
   useResetEnrichment,
 } from "../../../hooks/admin/useDataQuality"
+import MobileCard from "../ui/MobileCard"
 
 type SubTab = "overview" | "future-deaths" | "uncertain-deaths" | "reset-enrichment"
 
@@ -55,25 +56,23 @@ export default function DataQualityTab() {
   return (
     <div className="space-y-8">
       {/* Sub-Tabs */}
-      <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-        <div className="border-b border-admin-border">
-          <nav className="-mb-px flex min-w-max space-x-4 md:space-x-8">
-            {subTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSubTab(tab.id)}
-                data-testid={tab.testId}
-                className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
-                  activeSubTab === tab.id
-                    ? "border-admin-interactive text-admin-interactive"
-                    : "border-transparent text-admin-text-muted hover:border-admin-border hover:text-admin-text-secondary"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+      <div className="border-b border-admin-border">
+        <nav className="-mb-px flex flex-wrap space-x-4 md:space-x-8">
+          {subTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSubTab(tab.id)}
+              data-testid={tab.testId}
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
+                activeSubTab === tab.id
+                  ? "border-admin-interactive text-admin-interactive"
+                  : "border-transparent text-admin-text-muted hover:border-admin-border hover:text-admin-text-secondary"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Overview Sub-Tab */}
@@ -212,7 +211,51 @@ export default function DataQualityTab() {
               className="rounded-lg bg-admin-surface-elevated shadow-admin-sm"
               data-testid="future-deaths-table"
             >
-              <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              {/* Mobile cards */}
+              <div className="space-y-3 p-4 md:hidden">
+                {futureDeaths.data.actors.length === 0 ? (
+                  <p className="py-8 text-center text-admin-text-muted">
+                    No actors with future or invalid death dates
+                  </p>
+                ) : (
+                  futureDeaths.data.actors.map((actor) => (
+                    <MobileCard
+                      key={actor.id}
+                      title={actor.name}
+                      subtitle={
+                        <span className="text-admin-text-muted">
+                          ID: {actor.id}
+                          {actor.tmdbId && ` | TMDB: ${actor.tmdbId}`}
+                        </span>
+                      }
+                      fields={[
+                        { label: "Death Date", value: actor.deathDate },
+                        { label: "Birth Date", value: actor.birthDate || "Unknown" },
+                        {
+                          label: "Issue",
+                          value: (
+                            <span
+                              className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                                actor.issueType === "future_date"
+                                  ? "bg-admin-danger/20 text-admin-danger"
+                                  : "bg-admin-warning/20 text-admin-warning"
+                              }`}
+                            >
+                              {actor.issueType === "future_date"
+                                ? "Future Date"
+                                : "Death Before Birth"}
+                            </span>
+                          ),
+                        },
+                        { label: "Popularity", value: actor.popularity?.toFixed(1) ?? "N/A" },
+                      ]}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[700px] divide-y divide-admin-border">
                   <thead className="bg-admin-surface-overlay">
                     <tr>
@@ -334,7 +377,32 @@ export default function DataQualityTab() {
 
           {uncertainDeaths.data && (
             <div className="rounded-lg bg-admin-surface-elevated shadow-admin-sm">
-              <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              {/* Mobile cards */}
+              <div className="space-y-3 p-4 md:hidden">
+                {uncertainDeaths.data.actors.length === 0 ? (
+                  <p className="py-8 text-center text-admin-text-muted">
+                    No actors with uncertain death records
+                  </p>
+                ) : (
+                  uncertainDeaths.data.actors.map((actor) => (
+                    <MobileCard
+                      key={actor.id}
+                      title={actor.name}
+                      fields={[
+                        { label: "Death Date", value: actor.deathDate },
+                        { label: "Popularity", value: actor.popularity?.toFixed(1) ?? "N/A" },
+                        {
+                          label: "Circumstances",
+                          value: actor.circumstancesExcerpt || "N/A",
+                        },
+                      ]}
+                    />
+                  ))
+                )}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[700px] divide-y divide-admin-border">
                   <thead className="bg-admin-surface-overlay">
                     <tr>
