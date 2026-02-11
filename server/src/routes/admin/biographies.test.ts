@@ -131,7 +131,7 @@ describe("Admin Biographies Routes", () => {
       expect(response.status).toBe(200)
       // Check that the query was called with popularity filter
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("COALESCE(tmdb_popularity, 0) >="),
+        expect.stringContaining("COALESCE(dof_popularity, 0) >="),
         expect.arrayContaining([5])
       )
     })
