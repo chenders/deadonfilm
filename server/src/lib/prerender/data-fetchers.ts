@@ -37,7 +37,11 @@ const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p"
  */
 function extractYear(date: string | Date | null | undefined): string | null {
   if (!date) return null
-  if (date instanceof Date) return String(date.getFullYear())
+  if (date instanceof Date) {
+    const time = date.getTime()
+    if (Number.isNaN(time)) return null
+    return String(date.getUTCFullYear())
+  }
   // String like "1972-03-14"
   return date.slice(0, 4)
 }
