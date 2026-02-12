@@ -30,6 +30,18 @@ import type { EpisodeRecord, SeasonRecord } from "../db/types.js"
 const BASE_URL = "https://deadonfilm.com"
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p"
 
+/**
+ * Extract the 4-digit year from a date value.
+ * PostgreSQL `date` columns come back as JS Date objects from the `pg` driver,
+ * but the TypeScript types declare them as `string | null`.
+ */
+function extractYear(date: string | Date | null | undefined): string | null {
+  if (!date) return null
+  if (date instanceof Date) return String(date.getFullYear())
+  // String like "1972-03-14"
+  return date.slice(0, 4)
+}
+
 function tmdbPoster(path: string | null): string | undefined {
   return path ? `${TMDB_IMAGE_BASE}/w500${path}` : undefined
 }
@@ -203,9 +215,9 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
 
   const isDeceased = !!actor.deathday
   const lifeSpan = isDeceased
-    ? `(${actor.birthday?.slice(0, 4) || "?"} – ${actor.deathday?.slice(0, 4) || "?"})`
+    ? `(${extractYear(actor.birthday) || "?"} – ${extractYear(actor.deathday) || "?"})`
     : actor.birthday
-      ? `(born ${actor.birthday.slice(0, 4)})`
+      ? `(born ${extractYear(actor.birthday)})`
       : ""
 
   const description = isDeceased
@@ -289,7 +301,8 @@ async function getShowPageData(tmdbId: number): Promise<PrerenderPageData | null
   const show = await getShow(tmdbId)
   if (!show) return null
 
-  const firstAirYear = show.first_air_date ? parseInt(show.first_air_date.slice(0, 4), 10) : null
+  const firstAirYearStr = extractYear(show.first_air_date)
+  const firstAirYear = firstAirYearStr ? parseInt(firstAirYearStr, 10) : null
   const slug = createShowSlug(show.name, firstAirYear, show.tmdb_id)
   const canonicalUrl = `${BASE_URL}/show/${slug}`
 
@@ -343,9 +356,8 @@ async function getEpisodePageData(
   if (result.rows.length === 0) return null
   const row = result.rows[0]
 
-  const showFirstAirYear = row.show_first_air_date
-    ? parseInt(row.show_first_air_date.slice(0, 4), 10)
-    : null
+  const showFirstAirYearStr = extractYear(row.show_first_air_date)
+  const showFirstAirYear = showFirstAirYearStr ? parseInt(showFirstAirYearStr, 10) : null
   const showSlug = createShowSlug(row.show_name, showFirstAirYear, showTmdbId)
 
   const episodeCode = `S${seasonNumber}E${episodeNumber}`
@@ -415,9 +427,8 @@ async function getSeasonPageData(
   if (result.rows.length === 0) return null
   const row = result.rows[0]
 
-  const showFirstAirYear = row.show_first_air_date
-    ? parseInt(row.show_first_air_date.slice(0, 4), 10)
-    : null
+  const showFirstAirYearStr = extractYear(row.show_first_air_date)
+  const showFirstAirYear = showFirstAirYearStr ? parseInt(showFirstAirYearStr, 10) : null
   const showSlug = createShowSlug(row.show_name, showFirstAirYear, showTmdbId)
   const seasonName = row.name || `Season ${seasonNumber}`
   const title = `${row.show_name} - ${seasonName}`
