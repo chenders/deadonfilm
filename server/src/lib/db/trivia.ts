@@ -326,7 +326,7 @@ export async function getPopularMovies(limit: number = 10): Promise<PopularMovie
 }
 
 /**
- * Get random popular movies from the top 50 by popularity.
+ * Get random popular movies from the top 50 by dof_popularity score.
  * Used for empty search state suggestions so users see variety.
  */
 export async function getRandomPopularMovies(limit: number = 4): Promise<PopularMovieRecord[]> {
