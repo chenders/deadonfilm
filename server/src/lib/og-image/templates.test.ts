@@ -1,11 +1,5 @@
 import { describe, it, expect } from "vitest"
-import {
-  movieTemplate,
-  actorTemplate,
-  showTemplate,
-  OG_WIDTH,
-  OG_HEIGHT,
-} from "./templates.js"
+import { movieTemplate, actorTemplate, showTemplate, OG_WIDTH, OG_HEIGHT } from "./templates.js"
 
 describe("OG image templates", () => {
   describe("movieTemplate", () => {

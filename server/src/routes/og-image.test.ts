@@ -237,9 +237,6 @@ describe("ogImageHandler", () => {
     mockReq = { params: { type: "movie", id: "238" } }
     await ogImageHandler(mockReq as Request, mockRes as Response)
 
-    expect(redirectSpy).toHaveBeenCalledWith(
-      302,
-      "https://image.tmdb.org/t/p/w500/poster.jpg"
-    )
+    expect(redirectSpy).toHaveBeenCalledWith(302, "https://image.tmdb.org/t/p/w500/poster.jpg")
   })
 })

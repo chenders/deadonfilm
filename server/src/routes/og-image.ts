@@ -79,9 +79,7 @@ export async function ogImageHandler(req: Request, res: Response): Promise<void>
       pngBuffer = await generateMovieOgImage({
         title: movie.title,
         year: movie.release_year,
-        posterUrl: movie.poster_path
-          ? `${TMDB_IMAGE_BASE}/w500${movie.poster_path}`
-          : null,
+        posterUrl: movie.poster_path ? `${TMDB_IMAGE_BASE}/w500${movie.poster_path}` : null,
         posterBase64,
         deceasedCount: movie.deceased_count ?? 0,
         totalCast: movie.cast_count ?? 0,
@@ -101,9 +99,7 @@ export async function ogImageHandler(req: Request, res: Response): Promise<void>
 
       pngBuffer = await generateActorOgImage({
         name: actor.name,
-        profileUrl: actor.profile_path
-          ? `${TMDB_IMAGE_BASE}/h632${actor.profile_path}`
-          : null,
+        profileUrl: actor.profile_path ? `${TMDB_IMAGE_BASE}/h632${actor.profile_path}` : null,
         profileBase64,
         birthYear: birthYear ? String(birthYear) : null,
         deathYear: deathYear ? String(deathYear) : null,
@@ -126,9 +122,7 @@ export async function ogImageHandler(req: Request, res: Response): Promise<void>
       pngBuffer = await generateShowOgImage({
         name: show.name,
         year: firstAirYear,
-        posterUrl: show.poster_path
-          ? `${TMDB_IMAGE_BASE}/w500${show.poster_path}`
-          : null,
+        posterUrl: show.poster_path ? `${TMDB_IMAGE_BASE}/w500${show.poster_path}` : null,
         posterBase64,
         deceasedCount: show.deceased_count ?? 0,
         totalCast: show.cast_count ?? 0,
