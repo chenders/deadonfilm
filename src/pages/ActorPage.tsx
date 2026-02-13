@@ -292,7 +292,7 @@ export default function ActorPage() {
               )}
             </h1>
 
-            <div className="mt-2 space-y-1 text-sm text-text-muted">
+            <div className="mt-2 space-y-1 text-sm text-text-primary">
               {actor.birthday && (
                 <p>
                   <span className="font-medium">Born:</span> {formatDate(actor.birthday)}
@@ -396,7 +396,7 @@ export default function ActorPage() {
         {actor.biography && (
           <div className="mb-6 rounded-lg bg-surface-elevated p-4">
             <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
-            <p className="text-sm leading-relaxed text-text-muted">{actor.biography}</p>
+            <p className="text-sm leading-relaxed text-text-primary">{actor.biography}</p>
             {actor.biographySourceUrl && (
               <a
                 href={actor.biographySourceUrl}

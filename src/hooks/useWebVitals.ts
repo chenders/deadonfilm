@@ -10,7 +10,6 @@ export function getPageType(pathname: string): string {
   if (pathname.startsWith("/movie/")) return "movie"
   if (pathname.startsWith("/show/")) return "show"
   if (pathname.startsWith("/episode/")) return "episode"
-  if (pathname.startsWith("/articles")) return "article"
   if (pathname.startsWith("/admin")) return "admin"
   return "other"
 }

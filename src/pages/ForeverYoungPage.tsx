@@ -240,7 +240,7 @@ export default function ForeverYoungPage() {
             <span className="mr-2">👼</span>
             Forever Young
           </h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Movies featuring leading actors who died tragically young, losing 40% or more of their
             expected lifespan. Ranked by years of life lost.
           </p>

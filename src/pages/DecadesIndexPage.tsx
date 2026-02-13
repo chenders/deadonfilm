@@ -166,7 +166,7 @@ export default function DecadesIndexPage() {
       <div data-testid="decades-index-page" className="mx-auto max-w-6xl">
         <div className="mb-8 text-center">
           <h1 className="mb-2 font-display text-4xl text-brown-dark">Deaths by Decade</h1>
-          <p className="text-sm font-medium uppercase tracking-widest text-text-muted">
+          <p className="text-sm font-medium uppercase tracking-widest text-text-primary">
             {totalDeaths.toLocaleString()} Deaths Across {data.decades.length} Decades
           </p>
         </div>

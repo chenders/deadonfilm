@@ -114,7 +114,7 @@ export default function CauseCategoryPage() {
         {/* Header */}
         <div className="mb-6 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">{data.label}</h1>
-          <p className="text-text-muted">
+          <p className="text-text-primary">
             {data.count.toLocaleString()} actors ({data.percentage.toFixed(1)}% of known causes)
           </p>
         </div>

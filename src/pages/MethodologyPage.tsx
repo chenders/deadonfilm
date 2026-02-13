@@ -32,7 +32,7 @@ export default function MethodologyPage() {
       <div data-testid="methodology-page" className="mx-auto max-w-3xl">
         <div className="mb-8 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">Methodology</h1>
-          <p className="text-text-muted">
+          <p className="text-text-primary">
             How we calculate mortality statistics for movies and TV shows
           </p>
         </div>
@@ -40,7 +40,7 @@ export default function MethodologyPage() {
         <div className="space-y-8">
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Overview</h2>
-            <p className="leading-relaxed text-text-muted">
+            <p className="leading-relaxed text-text-primary">
               Dead on Film compares the actual number of cast deaths to the statistically expected
               number based on actuarial data. This allows us to identify productions where an
               unusually high (or low) number of cast members have passed away, and to quantify how
@@ -52,7 +52,7 @@ export default function MethodologyPage() {
             <h2 className="mb-3 font-display text-xl text-brown-dark">
               Data Foundation: Actuarial Life Tables
             </h2>
-            <p className="leading-relaxed text-text-muted">
+            <p className="leading-relaxed text-text-primary">
               Our mortality calculations are built on period life tables published by the U.S.
               Social Security Administration (SSA). These tables provide the probability of death at
               each age for a given year, broken down by sex. We use cohort life expectancy data that
@@ -62,7 +62,7 @@ export default function MethodologyPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Expected Deaths</h2>
-            <div className="space-y-3 text-text-muted">
+            <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 For each actor in a cast, we calculate the cumulative probability that they would
                 have died between their age at the time of filming and their current age (or age at
@@ -82,7 +82,7 @@ export default function MethodologyPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Years Lost</h2>
-            <div className="space-y-3 text-text-muted">
+            <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 For deceased actors, Years Lost compares their actual lifespan to their expected
                 lifespan:
@@ -100,7 +100,7 @@ export default function MethodologyPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Archived Footage Rule</h2>
-            <p className="leading-relaxed text-text-muted">
+            <p className="leading-relaxed text-text-primary">
               Actors who died more than 3 years before a film&apos;s release date are excluded from
               that production&apos;s mortality statistics. This filters out cases where archived or
               previously recorded footage was used in a production, ensuring that mortality stats
@@ -110,7 +110,7 @@ export default function MethodologyPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Obscure Content Filtering</h2>
-            <div className="space-y-3 text-text-muted">
+            <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 To maintain data quality, we filter out obscure content that may have incomplete or
                 unreliable cast information. A movie is considered obscure if any of the following
@@ -134,7 +134,7 @@ export default function MethodologyPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Limitations</h2>
-            <div className="space-y-3 text-text-muted">
+            <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">Our methodology has several known limitations:</p>
               <ul className="ml-4 list-disc space-y-1 leading-relaxed">
                 <li>
