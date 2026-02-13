@@ -224,7 +224,6 @@ describe("matchUrl", () => {
         params: { categorySlug: "natural-causes", causeSlug: "heart-disease" },
       })
     })
-
   })
 
   describe("unrecognized paths", () => {

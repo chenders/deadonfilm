@@ -507,4 +507,3 @@ function getCauseSpecificPageData(categorySlug: string, causeSlug: string): Prer
     `/causes-of-death/${categorySlug}/${causeSlug}`
   )
 }
-
