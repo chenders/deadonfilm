@@ -16,8 +16,8 @@
  *   npm run backfill:actor-obscure -- --stats   # Show obscure statistics only
  */
 
-import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
 import { OBSCURITY_THRESHOLDS } from "../src/lib/actor-obscurity.js"

@@ -60,20 +60,17 @@ export class CalculateActorObscurityHandler extends BaseJobHandler<
     try {
       const results = await recalculateActorObscurity(actorIds)
 
-      // Count changes
+      // Results only contain actors whose obscurity status changed
       for (const row of results) {
-        if (row.oldObscure !== row.newObscure) {
-          if (row.newObscure) {
-            changedToObscure++
-            log.info({ actorId: row.id, name: row.name }, "Actor changed to obscure")
-          } else {
-            changedToVisible++
-            log.info({ actorId: row.id, name: row.name }, "Actor changed to visible")
-          }
+        if (row.newObscure) {
+          changedToObscure++
+          log.info({ actorId: row.id, name: row.name }, "Actor changed to obscure")
         } else {
-          unchanged++
+          changedToVisible++
+          log.info({ actorId: row.id, name: row.name }, "Actor changed to visible")
         }
       }
+      unchanged = actorIds.length - results.length
 
       // Record metrics
       newrelic.recordMetric("Custom/JobHandler/ActorObscurity/Processed", actorIds.length)

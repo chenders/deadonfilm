@@ -15,10 +15,10 @@ describe("OBSCURITY_THRESHOLDS", () => {
   })
 
   it("thresholds match across all consumers", () => {
-    // These values must stay in sync with the SQL queries in:
+    // These values are used by multiple consumers:
     // - recalculateActorObscurity() in actor-obscurity.ts
     // - backfill-actor-obscure.ts
-    // If you change a threshold here, update the SQL queries too.
+    // If you intentionally change any of these thresholds, update this test and review those consumers to ensure their behavior still makes sense.
     expect(OBSCURITY_THRESHOLDS.HIT_MOVIE_POPULARITY).toBe(20)
     expect(OBSCURITY_THRESHOLDS.MIN_TOTAL_MOVIES).toBe(10)
     expect(OBSCURITY_THRESHOLDS.MIN_TOTAL_EPISODES).toBe(50)

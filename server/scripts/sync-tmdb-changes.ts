@@ -1054,13 +1054,12 @@ async function syncPeopleChanges(
     const actorIdsForObscurity = actorMappings.map((a) => a.id)
     try {
       const obscurityResults = await recalculateActorObscurity(actorIdsForObscurity)
-      const changed = obscurityResults.filter((r) => r.oldObscure !== r.newObscure)
-      for (const r of changed) {
+      for (const r of obscurityResults) {
         const direction = r.newObscure ? "visible → obscure" : "obscure → visible"
         log(`    ${r.name}: ${direction}`, quiet, onLog)
       }
       log(
-        `  ✓ Recalculated obscurity for ${obscurityResults.length} actors (${changed.length} changed)`,
+        `  ✓ Recalculated obscurity for ${actorIdsForObscurity.length} actors (${obscurityResults.length} changed)`,
         quiet,
         onLog
       )

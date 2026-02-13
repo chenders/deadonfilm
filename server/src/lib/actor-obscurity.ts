@@ -30,7 +30,7 @@ export const OBSCURITY_THRESHOLDS = {
 export interface ObscurityResult {
   id: number
   name: string
-  oldObscure: boolean
+  oldObscure: boolean | null
   newObscure: boolean
 }
 
@@ -47,7 +47,7 @@ export async function recalculateActorObscurity(actorIds: number[]): Promise<Obs
   const result = await pool.query<{
     id: number
     name: string
-    old_obscure: boolean
+    old_obscure: boolean | null
     new_obscure: boolean
   }>(
     `
@@ -96,6 +96,7 @@ export async function recalculateActorObscurity(actorIds: number[]): Promise<Obs
       updated_at = NOW()
     FROM actor_metrics am
     WHERE a.id = am.id
+      AND a.is_obscure IS DISTINCT FROM am.new_obscure
     RETURNING a.id, am.name, am.old_obscure, am.new_obscure
     `,
     [
