@@ -58,6 +58,7 @@ import {
   invalidateActorCacheRequired,
 } from "../src/lib/cache.js"
 import { initRedis, closeRedis } from "../src/lib/redis.js"
+import { recalculateActorObscurity } from "../src/lib/actor-obscurity.js"
 
 const SYNC_TYPE_PEOPLE = "person_changes"
 const SYNC_TYPE_MOVIES = "movie_changes"
@@ -1046,6 +1047,28 @@ async function syncPeopleChanges(
     }
     await closeRedis()
     log(`  ✓ Cleared ${successCount} actor profile caches`, quiet, onLog)
+
+    // Recalculate obscurity for newly deceased actors
+    // (their is_obscure flag may be stale or never calculated)
+    log(`\n=== Recalculating Actor Obscurity ===`, quiet, onLog)
+    const actorIdsForObscurity = actorMappings.map((a) => a.id)
+    try {
+      const obscurityResults = await recalculateActorObscurity(actorIdsForObscurity)
+      const changed = obscurityResults.filter((r) => r.oldObscure !== r.newObscure)
+      for (const r of changed) {
+        const direction = r.newObscure ? "visible → obscure" : "obscure → visible"
+        log(`    ${r.name}: ${direction}`, quiet, onLog)
+      }
+      log(
+        `  ✓ Recalculated obscurity for ${obscurityResults.length} actors (${changed.length} changed)`,
+        quiet,
+        onLog
+      )
+    } catch (error) {
+      const errorMsg = `Error recalculating actor obscurity: ${error}`
+      console.error(`    ${errorMsg}`)
+      errors.push(errorMsg)
+    }
 
     // Recalculate mortality stats for movies
     log(`\n=== Updating Movie Mortality Statistics ===`, quiet, onLog)

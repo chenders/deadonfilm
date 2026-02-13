@@ -20,17 +20,10 @@ import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import "dotenv/config"
 import { Command } from "commander"
 import { getPool } from "../src/lib/db.js"
+import { OBSCURITY_THRESHOLDS } from "../src/lib/actor-obscurity.js"
 
-// Thresholds for obscurity detection
-export const THRESHOLDS = {
-  HIT_MOVIE_POPULARITY: 20,
-  HIT_SHOW_POPULARITY: 20,
-  ENGLISH_CONTENT_POPULARITY: 5,
-  MIN_ENGLISH_MOVIES: 3,
-  MIN_ENGLISH_SHOWS: 3,
-  MIN_TOTAL_MOVIES: 10,
-  MIN_TOTAL_EPISODES: 50,
-}
+// Re-export for tests
+export const THRESHOLDS = OBSCURITY_THRESHOLDS
 
 interface BackfillOptions {
   dryRun?: boolean
