@@ -1064,7 +1064,7 @@ async function syncPeopleChanges(
         onLog
       )
     } catch (error) {
-      const errorMsg = `Error recalculating actor obscurity: ${error}`
+      const errorMsg = `Error recalculating actor obscurity: ${error instanceof Error ? error.message : String(error)}`
       console.error(`    ${errorMsg}`)
       errors.push(errorMsg)
     }
