@@ -137,6 +137,7 @@
     "@bull-board/api": "^6.16.4",
     "@bull-board/express": "^6.16.4",
     "@extra/recaptcha": "^4.2.1-next.587",
+    "@resvg/resvg-js": "^2.6.2",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.67.1",
     "commander": "^14.0.2",
@@ -162,6 +163,7 @@
     "playwright-core": "^1.57.0",
     "playwright-extra": "^4.3.6",
     "recharts": "^3.7.0",
+    "satori": "^0.19.2",
     "slugify": "^1.6.6",
     "zod": "^4.3.5"
   },

@@ -82,21 +82,16 @@ export default function ShowPage() {
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
         <meta property="og:type" content="video.tv_show" />
-        {show.posterPath && (
-          <meta property="og:image" content={`https://image.tmdb.org/t/p/w500${show.posterPath}`} />
-        )}
+        <meta property="og:image" content={`https://deadonfilm.com/og/show/${show.id}.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${title} - Dead on Film`} />
         <meta
           name="twitter:description"
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
-        {show.posterPath && (
-          <meta
-            name="twitter:image"
-            content={`https://image.tmdb.org/t/p/w500${show.posterPath}`}
-          />
-        )}
+        <meta name="twitter:image" content={`https://deadonfilm.com/og/show/${show.id}.png`} />
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
       <JsonLd data={buildTVSeriesSchema(show, stats, slug!)} />
