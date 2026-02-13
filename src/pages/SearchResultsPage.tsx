@@ -6,6 +6,7 @@ import { getYear } from "@/utils/formatDate"
 import { getMediaBadge, getPersonSubtitle, isValidMediaType } from "@/utils/search-utils"
 import { SEO } from "@/components/SEO"
 import MediaTypeToggle from "@/components/search/MediaTypeToggle"
+import EmptySearchState from "@/components/search/EmptySearchState"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import { SkullIcon, FilmReelIcon, TVIcon, PersonIcon } from "@/components/icons"
 import type { UnifiedSearchResult, SearchMediaType } from "@/types"
@@ -297,12 +298,12 @@ export default function SearchResultsPage() {
       {/* No results */}
       {showNoResults && (
         <div data-testid="search-no-results" className="py-16 text-center">
-          <p className="mb-2 font-display text-lg uppercase tracking-wide text-brown-dark">
-            End of Reel
-          </p>
-          <p className="text-text-muted">
-            No results found for "<span className="italic">{effectiveQuery}</span>"
-          </p>
+          <EmptySearchState
+            query={effectiveQuery}
+            mediaType={mediaType}
+            onTypeChange={handleMediaTypeChange}
+            variant="full"
+          />
         </div>
       )}
 
