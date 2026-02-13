@@ -163,7 +163,7 @@ Critical rules for PR comments, screenshots, and reviews:
 6. **ALWAYS use `gh api` for PR inline comments** - native CLI lacks inline comment support
 7. **ALWAYS quote heredoc delimiter** (`<<'EOF'` not `<<EOF`) - prevents variable expansion
 8. **ALWAYS resolve threads only after implementing fixes** - never resolve declined suggestions
-9. **ALWAYS request Copilot re-review after fixes** - use REST API: `gh api --method POST repos/{owner}/{repo}/pulls/{pr}/requested_reviewers -f "reviewers[]=copilot-pull-request-reviewer[bot]"` (`gh pr edit --add-reviewer` does NOT work for Copilot)
+9. **ALWAYS request Copilot re-review after fixes** - use `gh pr edit --add-reviewer Copilot`
 
 For detailed examples, see `.claude/rules/github-cli.md` and `.claude/rules/pr-screenshots.md`.
 
