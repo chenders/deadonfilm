@@ -242,7 +242,7 @@ export default function CursedMoviesPage() {
       <div data-testid="cursed-movies-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">Highest Mortality Movies</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Movies ranked by excess cast mortality above statistical expectations, accounting for
             each actor's age at the time of filming using actuarial life tables.
           </p>

@@ -81,14 +81,14 @@ export default function FAQPage() {
       <div data-testid="faq-page" className="mx-auto max-w-3xl">
         <div className="mb-8 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">Frequently Asked Questions</h1>
-          <p className="text-text-muted">Common questions about Dead on Film and how it works</p>
+          <p className="text-text-primary">Common questions about Dead on Film and how it works</p>
         </div>
 
         <div className="space-y-4">
           {FAQ_ITEMS.map((item, index) => (
             <div key={index} className="rounded-lg bg-beige p-5">
               <h2 className="mb-2 font-display text-lg text-brown-dark">{item.question}</h2>
-              <p className="leading-relaxed text-text-muted">{item.answer}</p>
+              <p className="leading-relaxed text-text-primary">{item.answer}</p>
             </div>
           ))}
         </div>

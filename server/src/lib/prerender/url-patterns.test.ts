@@ -225,12 +225,6 @@ describe("matchUrl", () => {
       })
     })
 
-    it("matches /articles/{slug}", () => {
-      expect(matchUrl("/articles/cursed-movies-explained")).toEqual({
-        pageType: "article",
-        params: { slug: "cursed-movies-explained" },
-      })
-    })
   })
 
   describe("unrecognized paths", () => {

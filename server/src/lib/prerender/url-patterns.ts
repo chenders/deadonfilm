@@ -32,8 +32,6 @@ export type PageType =
   | "faq"
   | "methodology"
   | "data-sources"
-  | "articles-index"
-  | "article"
   | "season"
 
 export interface MatchResult {
@@ -90,7 +88,6 @@ const STATIC_PAGES: Record<string, PageType> = {
   "/faq": "faq",
   "/methodology": "methodology",
   "/data-sources": "data-sources",
-  "/articles": "articles-index",
 }
 
 /**
@@ -214,12 +211,6 @@ export function matchUrl(path: string): MatchResult | null {
       pageType: "causes-of-death-category",
       params: { categorySlug: causeCategoryMatch[1] },
     }
-  }
-
-  // Article: /articles/{slug}
-  const articleMatch = cleanPath.match(/^\/articles\/([a-z0-9-]+)$/)
-  if (articleMatch) {
-    return { pageType: "article", params: { slug: articleMatch[1] } }
   }
 
   return null

@@ -110,7 +110,7 @@ export default function CausesOfDeathPage() {
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">Causes of Death</h1>
-          <p className="text-text-muted">
+          <p className="text-text-primary">
             Explore how actors from movies and TV shows have passed away
           </p>
         </div>
