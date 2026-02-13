@@ -227,7 +227,7 @@ export default function DeathWatchPage() {
       <div data-testid="death-watch-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">Death Watch</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Living actors in our database ranked by their probability of dying in the next year,
             based on US Social Security Administration actuarial tables.
           </p>

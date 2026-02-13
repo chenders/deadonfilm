@@ -216,7 +216,7 @@ export default function UnnaturalDeathsPage() {
       <div data-testid="unnatural-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">Unnatural Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Actors who died from unnatural causes. Ordered by death date, most recent first.
           </p>
         </div>

@@ -183,14 +183,6 @@ export async function fetchPageData(match: MatchResult): Promise<PrerenderPageDa
         "Our data sources including TMDB, Wikidata, and SSA actuarial tables.",
         "/data-sources"
       )
-    case "articles-index":
-      return getStaticPageData(
-        "Articles — Dead on Film",
-        "Articles and analysis about mortality in film and television.",
-        "/articles"
-      )
-    case "article":
-      return getArticlePageData(params.slug)
     default:
       return null
   }
@@ -514,12 +506,4 @@ function getCauseSpecificPageData(categorySlug: string, causeSlug: string): Prer
     `Actors who died from ${causeLabel.toLowerCase()}. Browse the complete list.`,
     `/causes-of-death/${categorySlug}/${causeSlug}`
   )
-}
-
-function getArticlePageData(slug: string): PrerenderPageData {
-  const label = slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  return {
-    ...getStaticPageData(label, `Read "${label}" on Dead on Film.`, `/articles/${slug}`),
-    ogType: "article",
-  }
 }

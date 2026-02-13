@@ -267,7 +267,7 @@ export default function ActorDeathPage() {
             <div className="flex-1 text-center sm:text-left">
               <h1 className="font-display text-2xl text-accent">{actor.name}</h1>
 
-              <div className="mt-2 space-y-1 text-sm text-text-muted">
+              <div className="mt-2 space-y-1 text-sm text-text-primary">
                 {actor.birthday && (
                   <p>
                     <span className="font-medium">Born:</span> {formatDate(actor.birthday)}
@@ -314,7 +314,7 @@ export default function ActorDeathPage() {
             <LinkedText
               text={circumstances.official}
               links={getFieldLinks("circumstances")}
-              className="leading-relaxed text-text-muted"
+              className="leading-relaxed text-text-primary"
             />
             {circumstances.confidence && (
               <div className="mt-3">
@@ -335,7 +335,7 @@ export default function ActorDeathPage() {
             <LinkedText
               text={circumstances.rumored}
               links={getFieldLinks("rumored_circumstances")}
-              className="leading-relaxed text-text-muted"
+              className="leading-relaxed text-text-primary"
             />
             <SourceList sources={sources.rumored} title="Sources" />
           </section>
@@ -351,7 +351,7 @@ export default function ActorDeathPage() {
             <LinkedText
               text={circumstances.additionalContext}
               links={getFieldLinks("additional_context")}
-              className="leading-relaxed text-text-muted"
+              className="leading-relaxed text-text-primary"
             />
           </section>
         )}
@@ -363,7 +363,7 @@ export default function ActorDeathPage() {
             data-testid="career-section"
           >
             <h2 className="mb-3 font-display text-lg text-brown-dark">Career Context</h2>
-            <div className="space-y-2 text-sm text-text-muted">
+            <div className="space-y-2 text-sm text-text-primary">
               {career.statusAtDeath && (
                 <p>
                   <span className="font-medium">Status at Death:</span>{" "}

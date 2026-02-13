@@ -71,10 +71,6 @@ describe("getPageType", () => {
     expect(getPageType("/episode/breaking-bad-s01e01-pilot-1396")).toBe("episode")
   })
 
-  it("returns 'article' for /articles paths", () => {
-    expect(getPageType("/articles/some-article")).toBe("article")
-  })
-
   it("returns 'admin' for /admin paths", () => {
     expect(getPageType("/admin/dashboard")).toBe("admin")
   })

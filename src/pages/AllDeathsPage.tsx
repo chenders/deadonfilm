@@ -229,7 +229,7 @@ export default function AllDeathsPage() {
       <div data-testid="all-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">All Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             {includeObscure
               ? "All deceased actors in our database, ordered by death date (most recent first)."
               : "Well-known deceased actors in our database, ordered by death date (most recent first)."}

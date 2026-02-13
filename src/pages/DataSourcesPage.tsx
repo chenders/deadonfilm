@@ -32,13 +32,13 @@ export default function DataSourcesPage() {
       <div data-testid="data-sources-page" className="mx-auto max-w-3xl">
         <div className="mb-8 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">Data Sources</h1>
-          <p className="text-text-muted">Where our data comes from and how we keep it accurate</p>
+          <p className="text-text-primary">Where our data comes from and how we keep it accurate</p>
         </div>
 
         <div className="space-y-8">
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">The Movie Database (TMDB)</h2>
-            <div className="space-y-3 text-text-muted">
+            <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 All movie and TV show metadata comes from{" "}
                 <a
@@ -66,7 +66,7 @@ export default function DataSourcesPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Death Information</h2>
-            <div className="space-y-3 text-text-muted">
+            <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 Death information &mdash; including date, cause, manner, and circumstances &mdash;
                 is gathered through a multi-source pipeline. Sources are queried in priority order,
@@ -107,7 +107,7 @@ export default function DataSourcesPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Actuarial Data</h2>
-            <div className="space-y-3 text-text-muted">
+            <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 Mortality statistics are calculated using life tables and cohort life expectancy
                 data from the{" "}
@@ -141,7 +141,7 @@ export default function DataSourcesPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Data Freshness</h2>
-            <div className="space-y-3 text-text-muted">
+            <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 Our data pipeline runs on multiple schedules to keep information current:
               </p>

@@ -32,13 +32,13 @@ export default function AboutPage() {
       <div data-testid="about-page" className="mx-auto max-w-3xl">
         <div className="mb-8 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">About Dead on Film</h1>
-          <p className="text-text-muted">A movie and TV cast mortality database</p>
+          <p className="text-text-primary">A movie and TV cast mortality database</p>
         </div>
 
         <div className="space-y-8">
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">What is Dead on Film?</h2>
-            <p className="leading-relaxed text-text-muted">
+            <p className="leading-relaxed text-text-primary">
               Dead on Film lets you look up any movie or TV show and see which cast members have
               passed away. For each production, we show mortality statistics including who has died,
               their cause of death, age at death, and how the cast&apos;s mortality compares to
@@ -48,7 +48,7 @@ export default function AboutPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Why Does This Exist?</h2>
-            <p className="leading-relaxed text-text-muted">
+            <p className="leading-relaxed text-text-primary">
               Have you ever watched a movie or TV show and wondered how many of the actors are still
               alive? Dead on Film was built to answer that question. What started as simple
               curiosity grew into a comprehensive database covering hundreds of thousands of actors
@@ -58,7 +58,7 @@ export default function AboutPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">How It Works</h2>
-            <div className="space-y-3 text-text-muted">
+            <div className="space-y-3 text-text-primary">
               <p className="leading-relaxed">
                 We combine data from multiple authoritative sources to build a complete picture of
                 cast mortality:
@@ -85,7 +85,7 @@ export default function AboutPage() {
             <h2 className="mb-3 font-display text-xl text-brown-dark">
               Our Commitment to Accuracy
             </h2>
-            <p className="leading-relaxed text-text-muted">
+            <p className="leading-relaxed text-text-primary">
               We take data accuracy seriously. Death information is cross-referenced across multiple
               sources before being published. Our cause-of-death data uses a priority system that
               favors authoritative sources and flags uncertain information with confidence levels.
@@ -95,7 +95,7 @@ export default function AboutPage() {
 
           <section>
             <h2 className="mb-3 font-display text-xl text-brown-dark">Contact</h2>
-            <p className="leading-relaxed text-text-muted">
+            <p className="leading-relaxed text-text-primary">
               Dead on Film is an independent project. If you notice any errors in our data or have
               questions about the site, you can reach us through our{" "}
               <a

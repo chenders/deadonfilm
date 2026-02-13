@@ -221,7 +221,7 @@ export default function CursedActorsPage() {
       <div data-testid="cursed-actors-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">Highest Mortality Actors</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Actors whose co-stars have died at unusually high rates across their filmography, ranked
             by excess mortality above what actuarial tables predicted based on cast ages.
           </p>

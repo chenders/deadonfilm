@@ -188,7 +188,7 @@ export default function GenreMoviesPage() {
             &larr; All Genres
           </Link>
           <h1 className="font-display text-3xl text-brown-dark">{data.genre} Movies</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             {data.pagination.totalCount.toLocaleString()}{" "}
             {data.pagination.totalCount === 1 ? "movie" : "movies"} ranked by excess mortality
           </p>
