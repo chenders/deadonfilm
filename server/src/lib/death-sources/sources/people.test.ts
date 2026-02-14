@@ -100,9 +100,7 @@ describe("PeopleSource", () => {
       const result = await source.lookup(oldActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe(
-        "People Magazine online archives don't cover deaths before 2000"
-      )
+      expect(result.error).toBe("People Magazine online archives don't cover deaths before 2000")
       expect(mockFetch).not.toHaveBeenCalled()
     })
 

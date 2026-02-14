@@ -66,7 +66,7 @@ export class BBCNewsSource extends BaseDataSource {
 
     try {
       // Search for obituary using DuckDuckGo HTML (more scraping-friendly)
-      const searchQuery = `site:bbc.co.uk OR site:bbc.com "${actor.name}" obituary OR dies OR dead OR death ${deathYear}`
+      const searchQuery = `(site:bbc.co.uk OR site:bbc.com) "${actor.name}" (obituary OR dies OR dead OR death) ${deathYear}`
       const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
 
       const searchResponse = await fetch(ddgSearchUrl, {

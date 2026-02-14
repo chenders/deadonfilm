@@ -16,7 +16,11 @@ import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
-import { extractDeathSentences, extractLocation, extractUrlFromSearchResults } from "./news-utils.js"
+import {
+  extractDeathSentences,
+  extractLocation,
+  extractUrlFromSearchResults,
+} from "./news-utils.js"
 
 /**
  * BAFTA source for industry professional death information.
