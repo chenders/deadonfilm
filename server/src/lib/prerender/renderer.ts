@@ -64,6 +64,8 @@ export function renderPrerenderHtml(data: PrerenderPageData): string {
   const imageMetaTags = data.imageUrl
     ? `
     <meta property="og:image" content="${escapeHtml(data.imageUrl)}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta name="twitter:image" content="${escapeHtml(data.imageUrl)}" />`
     : ""
 

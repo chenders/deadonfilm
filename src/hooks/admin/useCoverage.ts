@@ -29,6 +29,7 @@ export interface ActorCoverageInfo {
   cause_of_death: string | null
   profile_path: string | null
   death_manner: string | null
+  has_biography: boolean
 }
 
 export interface CoverageTrendPoint {

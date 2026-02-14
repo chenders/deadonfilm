@@ -72,10 +72,10 @@ export default function QuickActions() {
   return (
     <div
       data-testid="quick-actions"
-      className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 md:flex md:max-w-xl md:flex-wrap md:justify-center md:gap-2"
+      className="scrollbar-hide -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mt-6 md:mx-auto md:max-w-xl md:flex-wrap md:justify-center md:overflow-visible md:px-0 md:pb-0"
     >
       {QUICK_ACTIONS.map((action) => (
-        <div key={action.testId} className="group relative flex flex-col items-center md:block">
+        <div key={action.testId} className="group relative flex-shrink-0 md:flex-shrink">
           <Link data-testid={action.testId} to={action.to} className={linkClass}>
             {"icon" in action ? (
               <DecadesIcon size={16} />
@@ -85,9 +85,6 @@ export default function QuickActions() {
             {action.label}
           </Link>
           <span className={`${tooltipClass} hidden md:block`}>{action.tooltip}</span>
-          <span className="mt-1 text-center text-[11px] leading-tight text-text-muted md:hidden">
-            {action.shortDesc}
-          </span>
         </div>
       ))}
     </div>

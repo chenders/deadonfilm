@@ -43,7 +43,10 @@ export default function HomePage() {
 
       <div data-testid="home-page" className="mx-auto max-w-2xl text-center">
         <h1 className="sr-only">Dead on Film - Movie & TV Show Cast Mortality Database</h1>
-        <p data-testid="home-tagline" className="mb-6 text-lg text-text-muted">
+        <p
+          data-testid="home-tagline"
+          className="mb-4 text-base text-text-primary sm:mb-6 sm:text-lg"
+        >
           Search for a movie, TV show, or person to see who has passed away
         </p>
 

@@ -52,9 +52,6 @@ const staticPages = [
   { loc: "/causes-of-death/liver-kidney", priority: "0.6", changefreq: "weekly" },
   { loc: "/causes-of-death/natural", priority: "0.6", changefreq: "weekly" },
   { loc: "/causes-of-death/other", priority: "0.5", changefreq: "weekly" },
-  // Articles
-  { loc: "/articles", priority: "0.6", changefreq: "weekly" },
-  { loc: "/articles/deadliest-horror-franchises", priority: "0.7", changefreq: "monthly" },
   // Authority/trust pages
   { loc: "/about", priority: "0.4", changefreq: "monthly" },
   { loc: "/faq", priority: "0.5", changefreq: "monthly" },

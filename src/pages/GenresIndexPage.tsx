@@ -46,7 +46,7 @@ export default function GenresIndexPage() {
       <div data-testid="genres-index-page" className="mx-auto max-w-4xl">
         <div className="mb-6 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">Movies by Genre</h1>
-          <p className="text-text-muted">
+          <p className="text-text-primary">
             {totalMovies.toLocaleString()} movies across {data.genres.length} genres
           </p>
         </div>

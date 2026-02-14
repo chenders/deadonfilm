@@ -187,7 +187,7 @@ export default function DeathsByDecadePage() {
           <h1 className="font-display text-3xl text-brown-dark">
             Deaths in the {data.decadeLabel}
           </h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             {data.pagination.totalCount.toLocaleString()}{" "}
             {data.pagination.totalCount === 1 ? "actor" : "actors"} died during this decade
           </p>

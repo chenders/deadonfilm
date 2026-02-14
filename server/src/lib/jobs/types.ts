@@ -61,6 +61,9 @@ export enum JobType {
 
   // Cache operations
   REBUILD_DEATH_CACHES = "rebuild-death-caches",
+
+  // Biography generation
+  GENERATE_BIOGRAPHIES_BATCH = "generate-biographies-batch",
 }
 
 // ============================================================
@@ -273,6 +276,14 @@ export const rebuildDeathCachesPayloadSchema = z.object({
   // No parameters needed - rebuilds all death-related caches
 })
 
+// Biography batch generation payload
+export const generateBiographiesBatchPayloadSchema = z.object({
+  actorIds: z.array(z.number().int().positive()).optional(),
+  limit: z.number().int().positive().max(500).optional(),
+  minPopularity: z.number().min(0).finite().optional(),
+  allowRegeneration: z.boolean().default(false),
+})
+
 // Content popularity calculation payload
 export const calculateContentPopularityPayloadSchema = z.object({
   entityType: z.enum(["movie", "show"]),
@@ -312,6 +323,7 @@ export const jobPayloadSchemas = {
   [JobType.CALCULATE_CONTENT_POPULARITY]: calculateContentPopularityPayloadSchema,
   [JobType.CALCULATE_ACTOR_POPULARITY]: calculateActorPopularityPayloadSchema,
   [JobType.REBUILD_DEATH_CACHES]: rebuildDeathCachesPayloadSchema,
+  [JobType.GENERATE_BIOGRAPHIES_BATCH]: generateBiographiesBatchPayloadSchema,
 } as const
 
 // ============================================================
@@ -344,6 +356,7 @@ export type CalculateContentPopularityPayload = z.infer<
 >
 export type CalculateActorPopularityPayload = z.infer<typeof calculateActorPopularityPayloadSchema>
 export type RebuildDeathCachesPayload = z.infer<typeof rebuildDeathCachesPayloadSchema>
+export type GenerateBiographiesBatchPayload = z.infer<typeof generateBiographiesBatchPayloadSchema>
 
 /**
  * Union type of all possible payloads
@@ -375,6 +388,7 @@ export type JobPayloadMap = {
   [JobType.CALCULATE_CONTENT_POPULARITY]: CalculateContentPopularityPayload
   [JobType.CALCULATE_ACTOR_POPULARITY]: CalculateActorPopularityPayload
   [JobType.REBUILD_DEATH_CACHES]: RebuildDeathCachesPayload
+  [JobType.GENERATE_BIOGRAPHIES_BATCH]: GenerateBiographiesBatchPayload
 }
 
 // ============================================================
@@ -508,4 +522,5 @@ export const jobTypeToQueue: Record<JobType, QueueName> = {
   [JobType.CALCULATE_CONTENT_POPULARITY]: QueueName.MAINTENANCE,
   [JobType.CALCULATE_ACTOR_POPULARITY]: QueueName.MAINTENANCE,
   [JobType.REBUILD_DEATH_CACHES]: QueueName.CACHE,
+  [JobType.GENERATE_BIOGRAPHIES_BATCH]: QueueName.ENRICHMENT,
 }

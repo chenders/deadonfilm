@@ -224,13 +224,6 @@ describe("matchUrl", () => {
         params: { categorySlug: "natural-causes", causeSlug: "heart-disease" },
       })
     })
-
-    it("matches /articles/{slug}", () => {
-      expect(matchUrl("/articles/cursed-movies-explained")).toEqual({
-        pageType: "article",
-        params: { slug: "cursed-movies-explained" },
-      })
-    })
   })
 
   describe("unrecognized paths", () => {

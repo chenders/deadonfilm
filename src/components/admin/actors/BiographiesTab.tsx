@@ -50,20 +50,32 @@ interface GenerateResult {
   message?: string
 }
 
-interface BatchGenerateResult {
-  results: Array<{
-    actorId: number
-    name: string
-    success: boolean
-    biography: string | null
-    error?: string
-  }>
-  summary: {
-    total: number
-    successful: number
-    failed: number
-    totalCostUsd: number
-  }
+interface BatchQueueResult {
+  jobId: string
+  queued: boolean
+  message: string
+}
+
+interface JobRun {
+  id: number
+  job_id: string
+  job_type: string
+  status: string
+  result: {
+    success?: boolean
+    data?: {
+      total: number
+      succeeded: number
+      failed: number
+      skippedNoContent: number
+      totalCostUsd: number
+      anthropicBatchId: string | null
+    }
+  } | null
+  error_message: string | null
+  queued_at: string
+  started_at: string | null
+  completed_at: string | null
 }
 
 async function fetchBiographies(
@@ -111,35 +123,156 @@ async function generateBiography(actorId: number): Promise<GenerateResult> {
   return response.json()
 }
 
-async function generateBiographiesBatch(
-  actorIds: number[],
-  limit?: number,
-  minPopularity?: number,
+async function queueBatchGeneration(params: {
+  actorIds?: number[]
+  limit?: number
+  minPopularity?: number
   allowRegeneration?: boolean
-): Promise<BatchGenerateResult> {
+}): Promise<BatchQueueResult> {
   const response = await fetch("/admin/api/biographies/generate-batch", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ actorIds, limit, minPopularity, allowRegeneration }),
+    body: JSON.stringify(params),
   })
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error?.message || "Failed to generate biographies")
+    throw new Error(error.error?.message || "Failed to queue batch generation")
   }
 
   return response.json()
+}
+
+async function fetchJobRun(jobId: string): Promise<JobRun | null> {
+  const response = await fetch(
+    `/admin/api/jobs/runs?jobType=generate-biographies-batch&pageSize=50`,
+    { credentials: "include" }
+  )
+
+  if (!response.ok) return null
+
+  const data = await response.json()
+  const run = data.runs?.find((r: JobRun) => r.job_id === jobId)
+  return run || null
+}
+
+function BatchStatusPanel({
+  jobId,
+  onDismiss,
+  onComplete,
+}: {
+  jobId: string
+  onDismiss: () => void
+  onComplete: () => void
+}) {
+  const { data: jobRun } = useQuery({
+    queryKey: ["batch-job-status", jobId],
+    queryFn: () => fetchJobRun(jobId),
+    refetchInterval: (query) => {
+      const run = query.state.data
+      if (!run) return 5000
+      if (run.status === "completed" || run.status === "failed" || run.status === "cancelled")
+        return false
+      return 5000
+    },
+  })
+
+  useEffect(() => {
+    if (jobRun?.status === "completed" || jobRun?.status === "cancelled") {
+      onComplete()
+    }
+  }, [jobRun?.status, onComplete])
+
+  const isTerminal =
+    jobRun?.status === "completed" || jobRun?.status === "failed" || jobRun?.status === "cancelled"
+  const summary = jobRun?.result?.data
+
+  return (
+    <div
+      className={`mt-4 rounded border p-3 ${
+        jobRun?.status === "failed"
+          ? "border-admin-error/30 bg-admin-error/10"
+          : jobRun?.status === "completed"
+            ? "border-admin-success/30 bg-admin-success/10"
+            : jobRun?.status === "cancelled"
+              ? "border-admin-text-muted/30 bg-admin-text-muted/10"
+              : "border-admin-interactive/30 bg-admin-interactive/10"
+      }`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="text-sm text-admin-text-primary">
+          {!jobRun && <span>Queued batch job {jobId}...</span>}
+
+          {jobRun?.status === "pending" && <span>Batch job queued, waiting to start...</span>}
+
+          {jobRun?.status === "active" && (
+            <span className="flex items-center gap-2">
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Batch processing in progress...
+            </span>
+          )}
+
+          {jobRun?.status === "completed" && summary && (
+            <span>
+              Batch complete: {summary.succeeded} succeeded, {summary.failed} failed,{" "}
+              {summary.skippedNoContent} skipped
+              {summary.totalCostUsd > 0 && (
+                <span className="ml-2 text-admin-text-muted">
+                  (Cost: ${summary.totalCostUsd.toFixed(4)})
+                </span>
+              )}
+            </span>
+          )}
+
+          {jobRun?.status === "failed" && (
+            <span className="text-admin-error">
+              Batch failed: {jobRun.error_message || "Unknown error"}
+            </span>
+          )}
+
+          {jobRun?.status === "cancelled" && (
+            <span className="text-admin-text-muted">Batch job was cancelled.</span>
+          )}
+        </div>
+
+        {isTerminal && (
+          <button
+            onClick={onDismiss}
+            className="ml-2 text-admin-text-muted hover:text-admin-text-primary"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function BiographiesTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [minPopularity, setMinPopularity] = useState(0)
-  const [needsGeneration, setNeedsGeneration] = useState(false)
+  const [needsGeneration, setNeedsGeneration] = useState(true)
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
-  const [batchLimit, setBatchLimit] = useState(10)
+  const [batchLimit, setBatchLimit] = useState(100)
   const [generatingActorId, setGeneratingActorId] = useState<number | null>(null)
+  const [activeBatchJobId, setActiveBatchJobId] = useState<string | null>(null)
   const pageSize = 50
 
   // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
@@ -167,22 +300,10 @@ export default function BiographiesTab() {
     },
   })
 
-  const batchGenerateMutation = useMutation({
-    mutationFn: (params: {
-      actorIds?: number[]
-      limit?: number
-      minPopularity?: number
-      allowRegeneration?: boolean
-    }) =>
-      generateBiographiesBatch(
-        params.actorIds || [],
-        params.limit,
-        params.minPopularity,
-        params.allowRegeneration
-      ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-biographies"] })
-      setSelectedActorIds(new Set())
+  const batchQueueMutation = useMutation({
+    mutationFn: queueBatchGeneration,
+    onSuccess: (result) => {
+      setActiveBatchJobId(result.jobId)
     },
   })
 
@@ -198,21 +319,27 @@ export default function BiographiesTab() {
   const handleGenerateSelected = async () => {
     if (selectedActorIds.size === 0) return
     try {
-      await batchGenerateMutation.mutateAsync({
+      await batchQueueMutation.mutateAsync({
         actorIds: Array.from(selectedActorIds),
+        limit: Math.min(selectedActorIds.size, 500),
         allowRegeneration: true,
       })
     } catch {
-      // Error state is handled by the mutation's isError property
+      // Error state handled by mutation
     }
   }
 
   const handleGenerateByPopularity = async () => {
     try {
-      await batchGenerateMutation.mutateAsync({ limit: batchLimit, minPopularity })
+      await batchQueueMutation.mutateAsync({ limit: batchLimit, minPopularity })
     } catch {
-      // Error state is handled by the mutation's isError property
+      // Error state handled by mutation
     }
+  }
+
+  const handleBatchComplete = () => {
+    setActiveBatchJobId(null)
+    queryClient.invalidateQueries({ queryKey: ["admin-biographies"] })
   }
 
   const handleSelectActor = (actorId: number) => {
@@ -227,12 +354,15 @@ export default function BiographiesTab() {
 
   const handleSelectAll = () => {
     if (!data) return
-
-    if (selectedActorIds.size === data.actors.length) {
-      setSelectedActorIds(new Set())
+    const pageIds = data.actors.map((a) => a.id)
+    const allPageSelected = pageIds.every((id) => selectedActorIds.has(id))
+    const newSelection = new Set(selectedActorIds)
+    if (allPageSelected) {
+      pageIds.forEach((id) => newSelection.delete(id))
     } else {
-      setSelectedActorIds(new Set(data.actors.map((a) => a.id)))
+      pageIds.forEach((id) => newSelection.add(id))
     }
+    setSelectedActorIds(newSelection)
   }
 
   return (
@@ -334,10 +464,10 @@ export default function BiographiesTab() {
               onChange={(e) => setBatchLimit(parseInt(e.target.value, 10))}
               className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
             >
-              <option value="5">5 actors</option>
-              <option value="10">10 actors</option>
-              <option value="25">25 actors</option>
               <option value="50">50 actors</option>
+              <option value="100">100 actors</option>
+              <option value="250">250 actors</option>
+              <option value="500">500 actors</option>
             </select>
           </div>
 
@@ -345,35 +475,33 @@ export default function BiographiesTab() {
           <div className="flex items-end">
             <button
               onClick={handleGenerateByPopularity}
-              disabled={batchGenerateMutation.isPending}
+              disabled={batchQueueMutation.isPending || !!activeBatchJobId}
               className="w-full rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {batchGenerateMutation.isPending ? "Generating..." : `Generate Top ${batchLimit}`}
+              {batchQueueMutation.isPending
+                ? "Queueing..."
+                : activeBatchJobId
+                  ? "Batch Running..."
+                  : `Generate Top ${batchLimit}`}
             </button>
           </div>
         </div>
 
-        {/* Batch Results */}
-        {batchGenerateMutation.isSuccess && batchGenerateMutation.data && (
-          <div className="border-admin-success/30 bg-admin-success/10 mt-4 rounded border p-3">
-            <p className="text-sm text-admin-text-primary">
-              Batch complete: {batchGenerateMutation.data.summary.successful}/
-              {batchGenerateMutation.data.summary.total} successful
-              {batchGenerateMutation.data.summary.totalCostUsd > 0 && (
-                <span className="ml-2 text-admin-text-muted">
-                  (Cost: ${batchGenerateMutation.data.summary.totalCostUsd.toFixed(4)})
-                </span>
-              )}
-            </p>
-          </div>
+        {/* Batch Status Panel */}
+        {activeBatchJobId && (
+          <BatchStatusPanel
+            jobId={activeBatchJobId}
+            onDismiss={() => setActiveBatchJobId(null)}
+            onComplete={handleBatchComplete}
+          />
         )}
 
-        {batchGenerateMutation.isError && (
+        {batchQueueMutation.isError && (
           <div className="border-admin-error/30 bg-admin-error/10 mt-4 rounded border p-3">
             <p className="text-admin-error text-sm">
               Error:{" "}
-              {batchGenerateMutation.error instanceof Error
-                ? batchGenerateMutation.error.message
+              {batchQueueMutation.error instanceof Error
+                ? batchQueueMutation.error.message
                 : "Unknown error"}
             </p>
           </div>
@@ -490,8 +618,18 @@ export default function BiographiesTab() {
                         <input
                           type="checkbox"
                           checked={
-                            data.actors.length > 0 && selectedActorIds.size === data.actors.length
+                            data.actors.length > 0 &&
+                            data.actors.every((a) => selectedActorIds.has(a.id))
                           }
+                          ref={(el) => {
+                            if (el) {
+                              const pageIds = data.actors.map((a) => a.id)
+                              const selectedCount = pageIds.filter((id) =>
+                                selectedActorIds.has(id)
+                              ).length
+                              el.indeterminate = selectedCount > 0 && selectedCount < pageIds.length
+                            }
+                          }}
                           onChange={handleSelectAll}
                           aria-label="Select all actors"
                           className="h-4 w-4 rounded border-admin-border"
@@ -669,10 +807,10 @@ export default function BiographiesTab() {
               </button>
               <button
                 onClick={handleGenerateSelected}
-                disabled={batchGenerateMutation.isPending}
+                disabled={batchQueueMutation.isPending || !!activeBatchJobId}
                 className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {batchGenerateMutation.isPending ? "Generating..." : "Generate Selected"}
+                {batchQueueMutation.isPending ? "Queueing..." : "Generate Selected"}
               </button>
             </div>
           </div>

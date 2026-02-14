@@ -225,7 +225,7 @@ export default function NotableDeathsPage() {
       <div data-testid="notable-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">Notable Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Detailed accounts of celebrity deaths with sources and context
           </p>
         </div>

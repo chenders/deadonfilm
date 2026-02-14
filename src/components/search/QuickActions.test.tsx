@@ -132,17 +132,18 @@ describe("QuickActions", () => {
     expect(screen.getByText("🔍")).toBeInTheDocument()
   })
 
-  it("uses responsive grid/flex layout", () => {
+  it("uses responsive horizontal scroll / flex layout", () => {
     renderWithRouter(<QuickActions />)
 
     const container = screen.getByTestId("quick-actions")
 
-    // Mobile: grid layout, Desktop: flex layout
-    expect(container.className).toContain("grid")
-    expect(container.className).toContain("grid-cols-2")
-    expect(container.className).toContain("md:flex")
+    // Mobile: horizontal scroll strip, Desktop: flex-wrap centered
+    expect(container.className).toContain("flex")
+    expect(container.className).toContain("overflow-x-auto")
+    expect(container.className).toContain("scrollbar-hide")
     expect(container.className).toContain("md:flex-wrap")
     expect(container.className).toContain("md:justify-center")
+    expect(container.className).toContain("md:overflow-visible")
   })
 
   it("all buttons have consistent styling for height", () => {
@@ -207,15 +208,11 @@ describe("QuickActions", () => {
     expect(svg).toBeInTheDocument()
   })
 
-  it("displays short descriptions for mobile", () => {
+  it("does not render short descriptions (removed for mobile declutter)", () => {
     renderWithRouter(<QuickActions />)
 
-    expect(screen.getByText("Actors who died under 40")).toBeInTheDocument()
-    expect(screen.getByText("Actors lost to the pandemic")).toBeInTheDocument()
-    expect(screen.getByText("Accidents, murders, suicides")).toBeInTheDocument()
-    expect(screen.getByText("Aging actors most at risk")).toBeInTheDocument()
-    expect(screen.getByText("How actors died, categorized")).toBeInTheDocument()
-    expect(screen.getByText("Famous actors who have died")).toBeInTheDocument()
-    expect(screen.getByText("Deaths across the decades")).toBeInTheDocument()
+    expect(screen.queryByText("Actors who died under 40")).not.toBeInTheDocument()
+    expect(screen.queryByText("Actors lost to the pandemic")).not.toBeInTheDocument()
+    expect(screen.queryByText("Accidents, murders, suicides")).not.toBeInTheDocument()
   })
 })

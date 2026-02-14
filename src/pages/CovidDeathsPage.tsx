@@ -173,7 +173,7 @@ export default function CovidDeathsPage() {
       <div data-testid="covid-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">COVID-19 Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             {includeObscure
               ? "All actors in our database who died from COVID-19, coronavirus, or related complications. Ordered by death date, most recent first."
               : "Well-known actors in our database who died from COVID-19, coronavirus, or related complications. Ordered by death date, most recent first."}

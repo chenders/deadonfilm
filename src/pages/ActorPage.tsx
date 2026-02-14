@@ -209,22 +209,14 @@ export default function ActorPage() {
         <meta property="og:title" content={`${actor.name} - Dead on Film`} />
         <meta property="og:type" content="profile" />
         <meta property="og:description" content={metaDescription} />
-        {actor.profilePath && (
-          <meta
-            property="og:image"
-            content={`https://image.tmdb.org/t/p/h632${actor.profilePath}`}
-          />
-        )}
+        <meta property="og:image" content={`https://deadonfilm.com/og/actor/${actor.id}.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${actor.name} - Dead on Film`} />
         <meta name="twitter:description" content={metaDescription} />
-        {actor.profilePath && (
-          <meta
-            name="twitter:image"
-            content={`https://image.tmdb.org/t/p/h632${actor.profilePath}`}
-          />
-        )}
+        <meta name="twitter:image" content={`https://deadonfilm.com/og/actor/${actor.id}.png`} />
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
       <JsonLd
@@ -292,7 +284,7 @@ export default function ActorPage() {
               )}
             </h1>
 
-            <div className="mt-2 space-y-1 text-sm text-text-muted">
+            <div className="mt-2 space-y-1 text-sm text-text-primary">
               {actor.birthday && (
                 <p>
                   <span className="font-medium">Born:</span> {formatDate(actor.birthday)}
@@ -396,7 +388,7 @@ export default function ActorPage() {
         {actor.biography && (
           <div className="mb-6 rounded-lg bg-surface-elevated p-4">
             <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
-            <p className="text-sm leading-relaxed text-text-muted">{actor.biography}</p>
+            <p className="text-sm leading-relaxed text-text-primary">{actor.biography}</p>
             {actor.biographySourceUrl && (
               <a
                 href={actor.biographySourceUrl}

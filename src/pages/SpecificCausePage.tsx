@@ -92,7 +92,7 @@ export default function SpecificCausePage() {
         {/* Header */}
         <div className="mb-6 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">{data.cause}</h1>
-          <p className="text-text-muted">{data.count.toLocaleString()} actors</p>
+          <p className="text-text-primary">{data.count.toLocaleString()} actors</p>
         </div>
 
         {/* Stats Panel */}

@@ -147,4 +147,143 @@ describe("BiographiesTab", () => {
       expect(screen.getByLabelText("Batch Size")).toBeInTheDocument()
     })
   })
+
+  it("shows batch status panel after queueing a batch job", async () => {
+    const biographiesResponse = {
+      actors: [],
+      pagination: { page: 1, pageSize: 50, totalCount: 0, totalPages: 0 },
+      stats: { totalActors: 100, withBiography: 50, withoutBiography: 50 },
+    }
+
+    const batchQueueResponse = {
+      jobId: "test-job-123",
+      queued: true,
+      message: "Batch queued",
+    }
+
+    const jobRunResponse = {
+      runs: [
+        {
+          id: 1,
+          job_id: "test-job-123",
+          job_type: "generate-biographies-batch",
+          status: "active",
+          result: null,
+          error_message: null,
+          queued_at: "2026-01-01T00:00:00Z",
+          started_at: "2026-01-01T00:01:00Z",
+          completed_at: null,
+        },
+      ],
+    }
+
+    mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes("/admin/api/biographies/generate-batch") && options?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(batchQueueResponse),
+        })
+      }
+      if (url.includes("/admin/api/jobs/runs")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(jobRunResponse),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(biographiesResponse),
+      })
+    })
+
+    const { getByText } = renderComponent()
+
+    // Wait for initial data load
+    await waitFor(() => {
+      expect(screen.getByText("Generate Top 100")).toBeInTheDocument()
+    })
+
+    // Click the batch generate button
+    const batchButton = getByText("Generate Top 100")
+    batchButton.click()
+
+    // Should show the batch status panel with active state
+    await waitFor(() => {
+      expect(screen.getByText("Batch processing in progress...")).toBeInTheDocument()
+    })
+  })
+
+  it("shows completed batch results with cost", async () => {
+    const biographiesResponse = {
+      actors: [],
+      pagination: { page: 1, pageSize: 50, totalCount: 0, totalPages: 0 },
+      stats: { totalActors: 100, withBiography: 50, withoutBiography: 50 },
+    }
+
+    const batchQueueResponse = {
+      jobId: "test-job-456",
+      queued: true,
+      message: "Batch queued",
+    }
+
+    const completedJobRunResponse = {
+      runs: [
+        {
+          id: 1,
+          job_id: "test-job-456",
+          job_type: "generate-biographies-batch",
+          status: "completed",
+          result: {
+            success: true,
+            data: {
+              total: 10,
+              succeeded: 8,
+              failed: 1,
+              skippedNoContent: 1,
+              totalCostUsd: 0.0512,
+              anthropicBatchId: "batch_abc",
+            },
+          },
+          error_message: null,
+          queued_at: "2026-01-01T00:00:00Z",
+          started_at: "2026-01-01T00:01:00Z",
+          completed_at: "2026-01-01T00:10:00Z",
+        },
+      ],
+    }
+
+    mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+      if (url.includes("/admin/api/biographies/generate-batch") && options?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(batchQueueResponse),
+        })
+      }
+      if (url.includes("/admin/api/jobs/runs")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(completedJobRunResponse),
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(biographiesResponse),
+      })
+    })
+
+    const { getByText } = renderComponent()
+
+    await waitFor(() => {
+      expect(screen.getByText("Generate Top 100")).toBeInTheDocument()
+    })
+
+    getByText("Generate Top 100").click()
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Batch complete: 8 succeeded, 1 failed, 1 skipped/)
+      ).toBeInTheDocument()
+      expect(screen.getByText(/\$0\.0512/)).toBeInTheDocument()
+    })
+  })
 })

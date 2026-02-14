@@ -8,6 +8,7 @@ import { useChartTheme, useChartTooltipStyle } from "../../../hooks/admin/useCha
 import LoadingSpinner from "../../common/LoadingSpinner"
 import ErrorMessage from "../../common/ErrorMessage"
 import StatCard from "./StatCard"
+import MobileCard from "../ui/MobileCard"
 
 interface CostBySourceSectionProps {
   startDate?: string
@@ -86,8 +87,27 @@ export default function CostBySourceSection({ startDate, endDate }: CostBySource
         </div>
       </div>
 
-      {/* Detailed table */}
-      <div className="mt-6 overflow-x-auto">
+      {/* Mobile cards */}
+      <div className="mt-6 space-y-3 md:hidden">
+        {data.sources.map((source) => (
+          <MobileCard
+            key={source.source}
+            title={source.source}
+            fields={[
+              { label: "Total Cost", value: `$${source.total_cost.toFixed(2)}` },
+              { label: "Queries", value: source.queries_count.toLocaleString() },
+              { label: "Avg Cost/Query", value: `$${source.avg_cost_per_query.toFixed(4)}` },
+              {
+                label: "Last Used",
+                value: source.last_used ? new Date(source.last_used).toLocaleDateString() : "Never",
+              },
+            ]}
+          />
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="mt-6 hidden overflow-x-auto md:block">
         <table className="w-full">
           <thead>
             <tr className="border-b border-admin-border">
