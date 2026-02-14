@@ -10,6 +10,7 @@
  * Free to use but subject to rate limiting if requests are too frequent.
  */
 
+import { XMLParser } from "fast-xml-parser"
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
@@ -19,6 +20,12 @@ import {
   extractNotableFactors,
   extractDeathSentences,
 } from "./news-utils.js"
+
+const xmlParser = new XMLParser({
+  ignoreAttributes: true,
+  processEntities: true,
+  trimValues: true,
+})
 
 /**
  * Parsed RSS feed item.
@@ -192,43 +199,22 @@ export class GoogleNewsRSSSource extends BaseDataSource {
   }
 
   /**
-   * Parse RSS XML to extract items.
-   * Uses regex-based parsing to avoid external XML dependencies.
+   * Parse RSS XML to extract items using fast-xml-parser.
    */
   private parseRSSItems(xml: string): RSSItem[] {
-    const items: RSSItem[] = []
-    const itemRegex = /<item>([\s\S]*?)<\/item>/gi
-    let match
-    while ((match = itemRegex.exec(xml)) !== null) {
-      const itemXml = match[1]
-      const title = this.extractTag(itemXml, "title")
-      const link = this.extractTag(itemXml, "link")
-      const description = this.extractTag(itemXml, "description")
-      const pubDate = this.extractTag(itemXml, "pubDate")
-      if (title && link) {
-        items.push({
-          title,
-          link,
-          description: description || "",
-          pubDate: pubDate || "",
-        })
-      }
-    }
-    return items
-  }
+    const parsed = xmlParser.parse(xml)
+    const rawItems = parsed?.rss?.channel?.item
+    if (!rawItems) return []
 
-  /**
-   * Extract content from an XML tag, handling CDATA sections.
-   */
-  private extractTag(xml: string, tag: string): string | null {
-    const safeTag = tag.replace(/[-.*+?^${}()|[\]\\]/g, "\\$&")
-    // eslint-disable-next-line security/detect-non-literal-regexp -- tag is always a hardcoded string literal from internal callers
-    const regex = new RegExp(
-      `<${safeTag}>\\s*(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?\\s*</${safeTag}>`,
-      "i"
-    )
-    const match = xml.match(regex)
-    return match ? match[1].trim() : null
+    const itemArray = Array.isArray(rawItems) ? rawItems : [rawItems]
+    return itemArray
+      .filter((item: Record<string, unknown>) => item.title && item.link)
+      .map((item: Record<string, unknown>) => ({
+        title: String(item.title),
+        link: String(item.link),
+        description: item.description ? String(item.description) : "",
+        pubDate: item.pubDate ? String(item.pubDate) : "",
+      }))
   }
 
   /**
