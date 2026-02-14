@@ -161,4 +161,20 @@ describe("EmptySearchState", () => {
     const heading = screen.getByText("End of Reel")
     expect(heading.className).toContain("text-sm")
   })
+
+  it("renders without popular movies when API fails", async () => {
+    const { getRandomPopularMovies } = await import("@/services/api")
+    vi.mocked(getRandomPopularMovies).mockRejectedValueOnce(new Error("Network error"))
+
+    renderComponent()
+
+    // Core UI still renders
+    expect(screen.getByText("End of Reel")).toBeInTheDocument()
+    expect(screen.getByText("Notable Deaths")).toBeInTheDocument()
+
+    // Popular movies section does not appear
+    await waitFor(() => {
+      expect(screen.queryByText("Popular on Dead on Film:")).not.toBeInTheDocument()
+    })
+  })
 })
