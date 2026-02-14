@@ -55,6 +55,15 @@ import { InternetArchiveSource } from "./sources/internet-archive.js"
 import { GuardianSource } from "./sources/guardian.js"
 import { NYTimesSource } from "./sources/nytimes.js"
 import { APNewsSource } from "./sources/ap-news.js"
+import { HollywoodReporterSource } from "./sources/hollywood-reporter.js"
+import { TMZSource } from "./sources/tmz.js"
+import { PeopleSource } from "./sources/people.js"
+import { BBCNewsSource } from "./sources/bbc-news.js"
+import { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
+import { BAFTASource } from "./sources/bafta.js"
+import { WGASource } from "./sources/wga.js"
+import { DGASource } from "./sources/dga.js"
+import { BraveSearchSource } from "./sources/brave.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
@@ -226,12 +235,16 @@ export class DeathEnrichmentOrchestrator {
       new TelevisionAcademySource(), // Official TV industry deaths
       new BFISightSoundSource(), // International film obituaries
       new IBDBSource(), // Broadway theatre database (via DuckDuckGo + archive.org)
+      new BAFTASource(), // BAFTA awards database (via DuckDuckGo)
+      new WGASource(), // Writers Guild of America (via DuckDuckGo)
+      new DGASource(), // Directors Guild of America (via DuckDuckGo)
 
       // Phase 2: Web Search (with link following)
       // DuckDuckGo is free, Google and Bing have free tiers but may incur costs
       new DuckDuckGoSource(),
       new GoogleSearchSource(),
       new BingSearchSource(),
+      new BraveSearchSource(), // Brave Search API (requires API key, $0.005/query)
 
       // Phase 3: News sources (APIs and scraping)
       new GuardianSource(), // Guardian API - UK news (requires API key)
@@ -240,6 +253,11 @@ export class DeathEnrichmentOrchestrator {
       new NewsAPISource(), // NewsAPI - aggregates 80,000+ sources (requires API key)
       new DeadlineSource(), // Deadline Hollywood - entertainment news (scraped)
       new VarietySource(), // Variety - entertainment trade publication (scraped)
+      new HollywoodReporterSource(), // Hollywood Reporter - entertainment news (scraped)
+      new TMZSource(), // TMZ - celebrity news (scraped)
+      new PeopleSource(), // People Magazine - celebrity obituaries (scraped)
+      new BBCNewsSource(), // BBC News - international news (scraped)
+      new GoogleNewsRSSSource(), // Google News RSS - aggregated news feed
 
       // Phase 4: Obituary sites
       new FindAGraveSource(),
