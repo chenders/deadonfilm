@@ -169,6 +169,22 @@ describe("mortality-stats", () => {
       expect(result.actorResults[0].deathProbability).toBe(0)
     })
 
+    it("returns neutral score when deceased actors have missing birthdays", async () => {
+      // Deceased actor with no birthday — expectedDeaths stays 0 because we can't
+      // compute death probability without age. Score should be neutral (0) rather
+      // than actualDeaths/2, since there's no actuarial basis for comparison.
+      const actors: ActorForMortality[] = [
+        { tmdbId: 1, name: "No Birthday", birthday: null, deathday: "2020-01-01" },
+        { tmdbId: 2, name: "Also No Birthday", birthday: null, deathday: "2018-01-01" },
+      ]
+
+      const result = await calculateMovieMortality(2000, actors, 2024)
+
+      expect(result.actualDeaths).toBe(2)
+      expect(result.expectedDeaths).toBe(0)
+      expect(result.mortalitySurpriseScore).toBe(0)
+    })
+
     it("calculates positive surprise score for more deaths than expected", async () => {
       // Old movie with young cast - most should still be alive
       const actors: ActorForMortality[] = [

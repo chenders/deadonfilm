@@ -318,7 +318,10 @@ export async function calculateMovieMortality(
   // Negative = fewer deaths than expected ("blessed" movie)
   // Uses empirical Bayes shrinkage (k=2) to prevent extreme scores when expected
   // deaths are near zero. The +2 prior means small-sample movies can't dominate rankings.
-  const mortalitySurpriseScore = (actualDeaths - expectedDeaths) / (expectedDeaths + 2)
+  // When expectedDeaths is 0 (no birthday data available), the score has no actuarial
+  // basis and should be neutral rather than driven by actualDeaths alone.
+  const mortalitySurpriseScore =
+    expectedDeaths > 0 ? (actualDeaths - expectedDeaths) / (expectedDeaths + 2) : 0
 
   return {
     expectedDeaths: Math.round(expectedDeaths * 100) / 100,
