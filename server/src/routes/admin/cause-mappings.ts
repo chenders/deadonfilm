@@ -103,7 +103,7 @@ router.get("/manner", async (req: Request, res: Response) => {
  */
 router.put("/manner/:cause", async (req: Request, res: Response) => {
   try {
-    const cause = decodeURIComponent(req.params.cause)
+    const cause = req.params.cause
     const { manner } = req.body
 
     const validManners = ["natural", "accident", "suicide", "homicide", "undetermined"]
@@ -123,11 +123,6 @@ router.put("/manner/:cause", async (req: Request, res: Response) => {
        RETURNING *`,
       [cause, manner]
     )
-
-    if (result.rows.length === 0) {
-      res.status(404).json({ error: { message: "Mapping not found" } })
-      return
-    }
 
     logger.info({ cause, manner }, "Updated manner mapping")
     res.json({ success: true, mapping: result.rows[0] })
@@ -205,7 +200,7 @@ router.get("/normalizations", async (req: Request, res: Response) => {
  */
 router.put("/normalizations/:cause", async (req: Request, res: Response) => {
   try {
-    const originalCause = decodeURIComponent(req.params.cause)
+    const originalCause = req.params.cause
     const { normalizedCause } = req.body
 
     if (!normalizedCause || typeof normalizedCause !== "string") {

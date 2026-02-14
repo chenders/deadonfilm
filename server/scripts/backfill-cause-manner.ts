@@ -275,6 +275,24 @@ Respond with JSON array: [{"cause": "exact input", "manner": "classification"}]`
     }
   }
 
+  // Reconciliation: verify Claude returned exactly one result per input cause
+  if (results.length !== causes.length) {
+    throw new Error(
+      `Claude response length mismatch: expected ${causes.length} results, got ${results.length}`
+    )
+  }
+  const requestedCauses = new Set(causes)
+  const seenCauses = new Set<string>()
+  for (const result of results) {
+    if (!requestedCauses.has(result.cause)) {
+      throw new Error(`Claude returned unexpected cause "${result.cause}"`)
+    }
+    if (seenCauses.has(result.cause)) {
+      throw new Error(`Claude returned duplicate entry for cause "${result.cause}"`)
+    }
+    seenCauses.add(result.cause)
+  }
+
   return {
     results,
     usage: {
@@ -410,7 +428,7 @@ async function main(options: { dryRun: boolean; batchSize: number }) {
       console.log(`Batch ${i + 1}/${batches.length} (${batch.length} causes)...`)
 
       try {
-        await rateLimiter.waitForRateLimit("haiku")
+        await rateLimiter.waitForRateLimit("sonnet")
 
         const { results, usage } = await classifyWithClaude(client, batch)
 
