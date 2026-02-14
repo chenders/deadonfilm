@@ -41,6 +41,9 @@ export enum DataSourceType {
   TELEVISION_ACADEMY = "television_academy",
   IBDB = "ibdb",
   BFI_SIGHT_SOUND = "bfi_sight_sound",
+  BAFTA = "bafta",
+  WGA = "wga",
+  DGA = "dga",
 
   // International Film Databases
   ALLOCINE = "allocine", // French
