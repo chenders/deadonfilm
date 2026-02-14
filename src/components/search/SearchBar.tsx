@@ -7,6 +7,7 @@ import type { UnifiedSearchResult, SearchMediaType } from "@/types"
 import SearchInput from "./SearchInput"
 import SearchDropdown from "./SearchDropdown"
 import MediaTypeToggle from "./MediaTypeToggle"
+import EmptySearchState from "./EmptySearchState"
 import InfoPopover from "@/components/common/InfoPopover"
 
 export default function SearchBar() {
@@ -122,12 +123,15 @@ export default function SearchBar() {
           data-testid="search-no-results"
           className="absolute z-50 mt-1 w-full rounded-lg border border-brown-medium/30 bg-cream p-4 text-center shadow-lg"
         >
-          <p className="mb-1 font-display text-sm uppercase tracking-wide text-brown-dark">
-            End of Reel
-          </p>
-          <p className="text-sm text-text-muted">
-            No results found for "<span className="italic">{query}</span>"
-          </p>
+          <EmptySearchState
+            query={query}
+            mediaType={mediaType}
+            onTypeChange={setMediaType}
+            onNavigate={() => {
+              setIsOpen(false)
+              setQuery("")
+            }}
+          />
         </div>
       )}
     </div>

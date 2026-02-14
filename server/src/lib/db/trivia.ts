@@ -324,3 +324,29 @@ export async function getPopularMovies(limit: number = 10): Promise<PopularMovie
 
   return result.rows
 }
+
+/**
+ * Get random popular movies from the top 50 by dof_popularity score.
+ * Used for empty search state suggestions so users see variety.
+ */
+export async function getRandomPopularMovies(limit: number = 4): Promise<PopularMovieRecord[]> {
+  const db = getPool()
+
+  const result = await db.query<PopularMovieRecord>(
+    `SELECT tmdb_id, title, release_year, poster_path, deceased_count, cast_count, tmdb_popularity
+     FROM (
+       SELECT tmdb_id, title, release_year, poster_path, deceased_count, cast_count, tmdb_popularity
+       FROM movies
+       WHERE poster_path IS NOT NULL
+         AND deceased_count > 0
+         AND cast_count >= 3
+       ORDER BY dof_popularity DESC NULLS LAST
+       LIMIT 50
+     ) top_movies
+     ORDER BY RANDOM()
+     LIMIT $1`,
+    [limit]
+  )
+
+  return result.rows
+}

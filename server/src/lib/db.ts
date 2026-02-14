@@ -29,6 +29,7 @@ export {
   getDeathsThisWeek,
   getDeathsThisWeekSimple,
   getPopularMovies,
+  getRandomPopularMovies,
 } from "./db/trivia.js"
 
 // Re-export actor functions for backward compatibility

@@ -8,6 +8,7 @@ import {
   getTrivia,
   getDeathsThisWeekSimple,
   getPopularMovies,
+  getRandomPopularMovies,
   UNNATURAL_DEATH_CATEGORIES,
   type UnnaturalDeathCategory,
 } from "../lib/db.js"
@@ -295,6 +296,18 @@ export async function getThisWeekDeathsHandler(req: Request, res: Response) {
   }
 }
 
+type PopularMoviesResponse = {
+  movies: Array<{
+    id: number
+    title: string
+    releaseYear: number | null
+    posterPath: string | null
+    deceasedCount: number
+    castCount: number
+    popularity: number
+  }>
+}
+
 export async function getPopularMoviesHandler(req: Request, res: Response) {
   try {
     // Check if database is available
@@ -304,18 +317,6 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
 
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 20)
     const cacheKey = buildCacheKey(CACHE_PREFIX.POPULAR_MOVIES, { limit })
-
-    type PopularMoviesResponse = {
-      movies: Array<{
-        id: number
-        title: string
-        releaseYear: number | null
-        posterPath: string | null
-        deceasedCount: number
-        castCount: number
-        popularity: number
-      }>
-    }
 
     const cached = await getCached<PopularMoviesResponse>(cacheKey)
     if (cached) {
@@ -340,6 +341,41 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
   } catch (error) {
     console.error("Popular movies error:", error)
     res.status(500).json({ error: { message: "Failed to fetch popular movies" } })
+  }
+}
+
+export async function getRandomPopularMoviesHandler(req: Request, res: Response) {
+  try {
+    if (!process.env.DATABASE_URL) {
+      return res.json({ movies: [] })
+    }
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 4, 1), 10)
+    const cacheKey = buildCacheKey(CACHE_PREFIX.RANDOM_POPULAR_MOVIES, { limit })
+
+    const cached = await getCached<PopularMoviesResponse>(cacheKey)
+    if (cached) {
+      return sendWithETag(req, res, cached, CACHE_TTL.FOUR_HOURS)
+    }
+
+    const movies = await getRandomPopularMovies(limit)
+
+    const response: PopularMoviesResponse = {
+      movies: movies.map((m) => ({
+        id: m.tmdb_id,
+        title: m.title,
+        releaseYear: m.release_year,
+        posterPath: m.poster_path,
+        deceasedCount: m.deceased_count,
+        castCount: m.cast_count,
+        popularity: m.tmdb_popularity,
+      })),
+    }
+    await setCached(cacheKey, response, CACHE_TTL.FOUR_HOURS)
+    sendWithETag(req, res, response, CACHE_TTL.FOUR_HOURS)
+  } catch (error) {
+    console.error("Random popular movies error:", error)
+    res.status(500).json({ error: { message: "Failed to fetch random popular movies" } })
   }
 }
 
