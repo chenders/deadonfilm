@@ -38,6 +38,7 @@ export const CACHE_PREFIX = {
   RELATED_ACTORS: "related-actors",
   RELATED_MOVIES: "related-movies",
   RELATED_SHOWS: "related-shows",
+  OG_IMAGE: "og-image",
 } as const
 
 /**
