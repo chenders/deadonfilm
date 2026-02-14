@@ -28,6 +28,7 @@ export const CACHE_PREFIX = {
   ACTOR: "actor",
   SHOW: "show",
   POPULAR_MOVIES: "popular-movies",
+  RANDOM_POPULAR_MOVIES: "random-popular-movies",
   COVID_DEATHS: "covid-deaths",
   UNNATURAL_DEATHS: "unnatural-deaths",
   FEATURED_MOVIE: "featured-movie",
@@ -60,6 +61,7 @@ export const CACHE_TTL = {
   WEEK: 604800, // 1 week - standard TTL for data invalidated on change
   PRERENDER: 86400, // 24 hours - prerendered content pages
   PRERENDER_DYNAMIC: 3600, // 1 hour - dynamic pages (death-watch, deaths/*)
+  FOUR_HOURS: 14400, // 4 hours - random popular movies rotation
 } as const
 
 /**

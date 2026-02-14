@@ -29,6 +29,7 @@ import {
   getTriviaHandler,
   getThisWeekDeathsHandler,
   getPopularMoviesHandler,
+  getRandomPopularMoviesHandler,
 } from "./routes/stats.js"
 import { getCursedActorsRoute } from "./routes/actors.js"
 import { getActor } from "./routes/actor.js"
@@ -286,6 +287,7 @@ app.get("/api/featured-movie", getFeaturedMovieHandler)
 app.get("/api/trivia", getTriviaHandler)
 app.get("/api/this-week", getThisWeekDeathsHandler)
 app.get("/api/popular-movies", getPopularMoviesHandler)
+app.get("/api/popular-movies/random", getRandomPopularMoviesHandler)
 app.get("/api/cursed-actors", getCursedActorsRoute)
 app.get("/api/actor/:slug", getActor)
 app.get("/api/actor/:slug/death", getActorDeathDetails)

@@ -7,6 +7,7 @@ import type { UnifiedSearchResult, SearchMediaType } from "@/types"
 import SearchInput from "./SearchInput"
 import SearchDropdown from "./SearchDropdown"
 import MediaTypeToggle from "./MediaTypeToggle"
+import EmptySearchState from "./EmptySearchState"
 
 interface SearchModalProps {
   isOpen: boolean
@@ -192,12 +193,12 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
               data-testid="search-modal-no-results"
               className="border-t border-brown-medium/20 p-4 text-center"
             >
-              <p className="mb-1 font-display text-sm uppercase tracking-wide text-brown-dark">
-                End of Reel
-              </p>
-              <p className="text-sm text-text-muted">
-                No results found for "<span className="italic">{query}</span>"
-              </p>
+              <EmptySearchState
+                query={query}
+                mediaType={mediaType}
+                onTypeChange={setMediaType}
+                onNavigate={onClose}
+              />
             </div>
           )}
 

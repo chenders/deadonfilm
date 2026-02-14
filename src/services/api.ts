@@ -286,6 +286,10 @@ export async function getPopularMovies(limit: number = 10): Promise<PopularMovie
   return fetchJson(`/popular-movies?limit=${limit}`)
 }
 
+export async function getRandomPopularMovies(limit: number = 4): Promise<PopularMoviesResponse> {
+  return fetchJson(`/popular-movies/random?limit=${limit}`)
+}
+
 export async function getCauseCategories(): Promise<CauseCategoriesResponse> {
   return fetchJson("/deaths/causes")
 }
