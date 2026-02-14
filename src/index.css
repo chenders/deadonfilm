@@ -251,6 +251,15 @@ body {
   opacity: 0;
 }
 
+/* Hide scrollbars on horizontal scroll strips (mobile pill/card rows) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-slide-in {
