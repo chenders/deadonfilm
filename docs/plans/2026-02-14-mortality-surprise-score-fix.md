@@ -32,10 +32,10 @@ For movies with large expected deaths (10+), the `+2` barely changes the score. 
 expectedDeaths > 0 ? (actualDeaths - expectedDeaths) / expectedDeaths : 0
 
 // After:
-(actualDeaths - expectedDeaths) / (expectedDeaths + 2)
+expectedDeaths > 0 ? (actualDeaths - expectedDeaths) / (expectedDeaths + 2) : 0
 ```
 
-The `expectedDeaths > 0` guard is no longer needed since the denominator can never be zero.
+The `expectedDeaths > 0` guard is still needed: when `expectedDeaths` is 0 (e.g., missing birthday data), the score should be neutral (0) rather than `actualDeaths / 2`.
 
 ### 2. Backfill — migration to recalculate all stored scores
 
