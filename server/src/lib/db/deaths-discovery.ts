@@ -238,7 +238,6 @@ export const UNNATURAL_DEATH_CATEGORIES = {
       "took his own life",
       "took her own life",
       "died by suicide",
-      "hanging to death",
     ],
   },
   accident: {
@@ -255,11 +254,9 @@ export const UNNATURAL_DEATH_CATEGORIES = {
       "aviation accident",
       "helicopter crash",
       "aircraft crash",
-      "falling from height",
-      "falling",
       "accidental fall",
       "accidental drowning",
-      "drowning",
+      "accident",
     ],
   },
   overdose: {
@@ -269,15 +266,11 @@ export const UNNATURAL_DEATH_CATEGORIES = {
   homicide: {
     label: "Homicide",
     patterns: [
-      "gunshot wound",
-      "gunshot",
-      "shooting",
       "homicide",
       "murdered",
-      "stabbing",
-      "stab wound",
-      "strangulation",
-      "strangled",
+      "murder",
+      "assassination",
+      "assassinated",
     ],
   },
   other: {
@@ -334,31 +327,33 @@ function buildCategoryCondition(patterns: readonly string[]): string {
   return patterns
     .map((p) => {
       const escaped = escapeSqlLikePattern(p.toLowerCase())
-      return `LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) LIKE '%${escaped}%'`
+      return `LOWER(COALESCE(actors.cause_of_death, '') || ' ' || COALESCE(actors.cause_of_death_details, '')) LIKE '%${escaped}%'`
     })
     .join(" OR ")
 }
 
-// Get all unnatural death pattern conditions
+// Get all unnatural death pattern conditions (text patterns OR manner-based)
 function getAllUnnaturalPatterns(): string {
-  const conditions = Object.values(UNNATURAL_DEATH_CATEGORIES)
+  const textConditions = Object.values(UNNATURAL_DEATH_CATEGORIES)
     .map((cat) => `(${buildCategoryCondition(cat.patterns)})`)
     .join(" OR ")
-  return conditions
+  // Also include actors with manner set to suicide, homicide, or accident
+  return `(${textConditions}) OR cmm.manner IN ('suicide', 'homicide', 'accident')`
 }
 
 // Get non-suicide unnatural pattern conditions
 function getNonSuicideUnnaturalPatterns(): string {
-  const conditions = Object.entries(UNNATURAL_DEATH_CATEGORIES)
+  const textConditions = Object.entries(UNNATURAL_DEATH_CATEGORIES)
     .filter(([key]) => key !== "suicide")
     .map(([, cat]) => `(${buildCategoryCondition(cat.patterns)})`)
     .join(" OR ")
-  return conditions
+  return `(${textConditions}) OR cmm.manner IN ('homicide', 'accident')`
 }
 
 // Get suicide pattern conditions (for exclusion)
 function getSuicidePatterns(): string {
-  return buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)
+  const textCondition = buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)
+  return `(${textCondition}) OR cmm.manner = 'suicide'`
 }
 
 // Get deceased persons who died from unnatural causes
@@ -399,7 +394,14 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
     }
   } else {
     const categoryInfo = UNNATURAL_DEATH_CATEGORIES[category]
-    whereCondition = buildCategoryCondition(categoryInfo.patterns)
+    const textCondition = buildCategoryCondition(categoryInfo.patterns)
+    // For manner-based categories, also match by manner
+    const mannerCategories = new Set(["suicide", "homicide", "accident"])
+    if (mannerCategories.has(category)) {
+      whereCondition = `(${textCondition}) OR cmm.manner = '${category}'`
+    } else {
+      whereCondition = textCondition
+    }
   }
 
   // When hiding suicides, also exclude records that match suicide patterns
@@ -408,10 +410,12 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
 
   // Get persons matching the filter
   const result = await db.query<ActorRecord & { total_count: string }>(
-    `SELECT COUNT(*) OVER () as total_count, *
+    `SELECT COUNT(*) OVER () as total_count, actors.*
      FROM actors
-     WHERE (${whereCondition}) ${suicideExclusion} AND ($3 = true OR is_obscure = false)
-     ORDER BY deathday DESC
+     LEFT JOIN cause_of_death_normalizations n ON actors.cause_of_death = n.original_cause
+     LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, actors.cause_of_death) = cmm.normalized_cause
+     WHERE (${whereCondition}) ${suicideExclusion} AND ($3 = true OR actors.is_obscure = false)
+     ORDER BY actors.deathday DESC
      LIMIT $1 OFFSET $2`,
     [limit, offset, includeObscure]
   )
@@ -423,15 +427,17 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
   const categoryCountsResult = await db.query<{ category: string; count: string }>(
     `SELECT
       CASE
-        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)} THEN 'suicide'
-        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.accident.patterns)} THEN 'accident'
+        WHEN cmm.manner = 'suicide' OR (cmm.manner IS NULL AND (${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)})) THEN 'suicide'
+        WHEN cmm.manner = 'accident' OR (cmm.manner IS NULL AND (${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.accident.patterns)})) THEN 'accident'
         WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.overdose.patterns)} THEN 'overdose'
-        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.homicide.patterns)} THEN 'homicide'
+        WHEN cmm.manner = 'homicide' OR (cmm.manner IS NULL AND (${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.homicide.patterns)})) THEN 'homicide'
         WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.other.patterns)} THEN 'other'
       END as category,
       COUNT(*) as count
     FROM actors
-    WHERE (${getAllUnnaturalPatterns()}) AND ($1 = true OR is_obscure = false)
+    LEFT JOIN cause_of_death_normalizations n ON actors.cause_of_death = n.original_cause
+    LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, actors.cause_of_death) = cmm.normalized_cause
+    WHERE (${getAllUnnaturalPatterns()}) AND ($1 = true OR actors.is_obscure = false)
     GROUP BY category`,
     [includeObscure]
   )

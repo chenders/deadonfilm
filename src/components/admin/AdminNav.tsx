@@ -88,6 +88,14 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
         </NavLink>
 
         <NavLink
+          to="/admin/cause-mappings"
+          isActive={isActive("/admin/cause-mappings")}
+          onClick={onNavigate}
+        >
+          Cause Mappings
+        </NavLink>
+
+        <NavLink
           to="/admin/operations"
           isActive={isActive("/admin/operations")}
           onClick={onNavigate}

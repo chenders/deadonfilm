@@ -121,18 +121,9 @@ export const CAUSE_CATEGORIES = {
       "aviation",
       "motorcycle accident",
       "motorcycle crash",
-      "drowning",
-      "drowned",
-      "fall",
-      "fell",
       "accident",
       "crash",
       "collision",
-      "fire",
-      "burns",
-      "electrocution",
-      "choking",
-      "asphyxiation",
     ],
   },
   suicide: {
@@ -154,15 +145,6 @@ export const CAUSE_CATEGORIES = {
       "murder",
       "murdered",
       "homicide",
-      "gunshot",
-      "shot to death",
-      "shot dead",
-      "stabbing",
-      "stabbed",
-      "strangled",
-      "strangulation",
-      "beaten",
-      "killed by",
       "assassination",
       "assassinated",
     ],
@@ -286,11 +268,25 @@ export function buildCategoryCondition(patterns: readonly string[]): string {
 /**
  * Builds a SQL CASE statement that maps cause_of_death to category slugs.
  * This is used for grouping and aggregation queries.
+ *
+ * When mannerColumn is provided, manner-based categories (suicide, homicide, accident)
+ * check manner first, then fall back to text patterns when manner is NULL.
+ * Medical categories (cancer, heart disease, etc.) always use text patterns.
  */
-export function buildCategoryCaseStatement(): string {
+export function buildCategoryCaseStatement(mannerColumn?: string): string {
+  const mannerCategories = new Set(["suicide", "homicide", "accident"])
+
   const cases = Object.entries(CAUSE_CATEGORIES)
     .filter(([key]) => key !== "other") // Handle 'other' as ELSE
-    .map(([, cat]) => `WHEN ${buildCategoryCondition(cat.patterns)} THEN '${cat.slug}'`)
+    .map(([key, cat]) => {
+      if (mannerColumn && mannerCategories.has(key)) {
+        // For intent-based categories: check manner first, fall back to text patterns
+        const mannerCondition = `${mannerColumn} = '${key}'`
+        const textCondition = buildCategoryCondition(cat.patterns)
+        return `WHEN ${mannerCondition} THEN '${cat.slug}'\n        WHEN ${mannerColumn} IS NULL AND (${textCondition}) THEN '${cat.slug}'`
+      }
+      return `WHEN ${buildCategoryCondition(cat.patterns)} THEN '${cat.slug}'`
+    })
     .join("\n        ")
 
   return `CASE
@@ -302,9 +298,20 @@ export function buildCategoryCaseStatement(): string {
 /**
  * Categorizes a cause of death string into a category.
  * Used for application-level categorization (not SQL).
+ *
+ * When manner is provided and is suicide/homicide/accident, returns that
+ * category directly. Otherwise falls through to text pattern matching.
  */
-export function categorizeCauseOfDeath(cause: string | null): CauseCategoryKey {
+export function categorizeCauseOfDeath(
+  cause: string | null,
+  manner?: string | null
+): CauseCategoryKey {
   if (!cause) return "other"
+
+  // If manner explicitly indicates intent, use it directly
+  if (manner === "suicide") return "suicide"
+  if (manner === "homicide") return "homicide"
+  if (manner === "accident") return "accident"
 
   const lowerCause = cause.toLowerCase()
 
