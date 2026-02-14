@@ -93,6 +93,7 @@ import syncRoutes from "./routes/admin/sync.js"
 import logsRoutes from "./routes/admin/logs.js"
 import biographiesRoutes from "./routes/admin/biographies.js"
 import gscRoutes from "./routes/admin/gsc.js"
+import { ogImageHandler } from "./routes/og-image.js"
 import { errorHandler } from "./middleware/error-handler.js"
 import { prerenderMiddleware, prerenderRateLimiter } from "./middleware/prerender.js"
 
@@ -264,6 +265,9 @@ app.get("/sitemap-shows.xml", heavyEndpointLimiter, getShowsSitemap)
 app.get("/sitemap-shows-:page.xml", heavyEndpointLimiter, getShowsSitemap)
 app.get("/sitemap-death-details.xml", heavyEndpointLimiter, getDeathDetailsSitemap)
 app.get("/sitemap-death-details-:page.xml", heavyEndpointLimiter, getDeathDetailsSitemap)
+
+// OG image generation — branded social sharing images (1200x630 PNG)
+app.get("/og/:type/:id.png", heavyEndpointLimiter, ogImageHandler)
 
 // API routes - apply rate limiting to all API endpoints
 app.use("/api", apiLimiter)

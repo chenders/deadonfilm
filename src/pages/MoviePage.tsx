@@ -91,12 +91,9 @@ export default function MoviePage() {
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
         <meta property="og:type" content="video.movie" />
-        {movie.poster_path && (
-          <meta
-            property="og:image"
-            content={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-          />
-        )}
+        <meta property="og:image" content={`https://deadonfilm.com/og/movie/${movie.id}.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${title} - Dead on Film`} />
@@ -104,12 +101,7 @@ export default function MoviePage() {
           name="twitter:description"
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
-        {movie.poster_path && (
-          <meta
-            name="twitter:image"
-            content={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-          />
-        )}
+        <meta name="twitter:image" content={`https://deadonfilm.com/og/movie/${movie.id}.png`} />
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
       <JsonLd

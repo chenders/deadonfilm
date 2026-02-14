@@ -220,11 +220,15 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
     ? `${actor.name} ${lifeSpan}. ${actor.cause_of_death ? `Cause of death: ${actor.cause_of_death}.` : "View filmography and mortality statistics."}`
     : `${actor.name} ${lifeSpan}. View filmography and mortality statistics on Dead on Film.`
 
+  const imageUrl = actor.tmdb_id
+    ? `${BASE_URL}/og/actor/${actor.tmdb_id}.png`
+    : tmdbProfile(actor.profile_path)
+
   return {
     title: `${actor.name} — Dead on Film`,
     description,
     ogType: "profile",
-    imageUrl: tmdbProfile(actor.profile_path),
+    imageUrl,
     canonicalUrl,
     jsonLd: [
       buildPersonSchema(actor, slug),
@@ -249,11 +253,15 @@ async function getActorDeathPageData(actorId: number): Promise<PrerenderPageData
     ? `How did ${actor.name} die? ${actor.cause_of_death}. Detailed death information and circumstances.`
     : `Death details for ${actor.name}. View cause of death, age at death, and circumstances.`
 
+  const imageUrl = actor.tmdb_id
+    ? `${BASE_URL}/og/actor/${actor.tmdb_id}.png`
+    : tmdbProfile(actor.profile_path)
+
   return {
     title: `How Did ${actor.name} Die? — Dead on Film`,
     description,
     ogType: "profile",
-    imageUrl: tmdbProfile(actor.profile_path),
+    imageUrl,
     canonicalUrl,
     jsonLd: buildPersonSchema(actor, slug),
     heading: `How Did ${actor.name} Die?`,
@@ -279,7 +287,7 @@ async function getMoviePageData(tmdbId: number): Promise<PrerenderPageData | nul
     title: `${movie.title}${yearStr} — Cast Deaths | Dead on Film`,
     description,
     ogType: "video.movie",
-    imageUrl: tmdbPoster(movie.poster_path),
+    imageUrl: `${BASE_URL}/og/movie/${movie.tmdb_id}.png`,
     canonicalUrl,
     jsonLd: [
       buildMovieSchema(movie, slug),
@@ -313,7 +321,7 @@ async function getShowPageData(tmdbId: number): Promise<PrerenderPageData | null
     title: `${show.name}${yearStr} — Cast Deaths | Dead on Film`,
     description,
     ogType: "video.tv_show",
-    imageUrl: tmdbPoster(show.poster_path),
+    imageUrl: `${BASE_URL}/og/show/${show.tmdb_id}.png`,
     canonicalUrl,
     jsonLd: [
       buildTVSeriesSchema(show, slug),
