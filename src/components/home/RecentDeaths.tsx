@@ -12,12 +12,15 @@ export default function RecentDeaths() {
 
   if (isLoading) {
     return (
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <div className="animate-pulse">
           <div className="mx-auto mb-4 h-6 w-40 rounded bg-brown-medium/20" />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-32 rounded-lg bg-brown-medium/20" />
+              <div
+                key={i}
+                className="h-32 w-36 flex-shrink-0 rounded-lg bg-brown-medium/20 sm:w-auto sm:flex-shrink"
+              />
             ))}
           </div>
         </div>
@@ -30,7 +33,7 @@ export default function RecentDeaths() {
   }
 
   return (
-    <section data-testid="recent-deaths" className="mt-8">
+    <section data-testid="recent-deaths" className="mt-6 sm:mt-8">
       <div className="mb-4 flex items-center justify-between">
         <h2 data-testid="recent-deaths-title" className="font-display text-xl text-brown-dark">
           Recent Passings
@@ -44,12 +47,15 @@ export default function RecentDeaths() {
         </Link>
       </div>
 
-      <div data-testid="recent-deaths-list" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div
+        data-testid="recent-deaths-list"
+        className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0"
+      >
         {data.deaths.map((death, index) => (
           <Link
             key={death.id}
             to={`/actor/${createActorSlug(death.name, death.id)}`}
-            className="animate-fade-slide-in flex flex-col items-center rounded-lg bg-beige p-3 text-center transition-colors hover:bg-cream"
+            className="animate-fade-slide-in flex w-36 flex-shrink-0 flex-col items-center rounded-lg bg-beige p-3 text-center transition-colors hover:bg-cream sm:w-auto sm:flex-shrink"
             style={{ animationDelay: `${index * 50}ms` }}
           >
             {death.profile_path ? (
