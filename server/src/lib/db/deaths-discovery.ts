@@ -390,7 +390,9 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
     const categoryInfo = UNNATURAL_DEATH_CATEGORIES[category]
     const textCondition = buildCategoryCondition(categoryInfo.patterns)
     // For manner-based categories, also match by manner
-    const mannerCategories = new Set(["suicide", "homicide", "accident"])
+    // SAFETY: category is validated as a key of UNNATURAL_DEATH_CATEGORIES (typed as
+    // UnnaturalDeathCategory) and mannerCategories is a fixed set of known-safe literals.
+    const mannerCategories = new Set<string>(["suicide", "homicide", "accident"])
     if (mannerCategories.has(category)) {
       whereCondition = `(${textCondition}) OR cmm.manner = '${category}'`
     } else {

@@ -463,6 +463,8 @@ export async function getCauseCategory(
     categoryCondition = `NOT (${buildCauseCategoryCondition(allKnownPatterns)}) AND (cmm.manner IS NULL OR cmm.manner = 'undetermined')`
   } else if (usesManner) {
     // For intent-based categories: manner match OR (no manner AND text pattern match)
+    // SAFETY: categorySlug is validated upstream via isValidCategorySlug() and is constrained
+    // to the fixed set in mannerCategories (suicide, homicide, accident). Not user input.
     const textCondition = buildCauseCategoryCondition(categoryInfo.patterns)
     categoryCondition = `(cmm.manner = '${categorySlug}' OR (cmm.manner IS NULL AND (${textCondition})))`
   } else {
@@ -651,6 +653,8 @@ export async function getCauseFromSlugInCategory(
       .flatMap(([, cat]) => cat.patterns)
     categoryCondition = `NOT (${buildCauseCategoryCondition(allKnownPatterns)}) AND (cmm.manner IS NULL OR cmm.manner = 'undetermined')`
   } else if (usesManner) {
+    // SAFETY: categorySlug is validated upstream via isValidCategorySlug() and is constrained
+    // to the fixed set in mannerCategories (suicide, homicide, accident). Not user input.
     const textCondition = buildCauseCategoryCondition(categoryInfo.patterns)
     categoryCondition = `(cmm.manner = '${categorySlug}' OR (cmm.manner IS NULL AND (${textCondition})))`
   } else {
