@@ -231,10 +231,7 @@ describe("suicide filter SQL logic", () => {
 
       // Should return both
       expect(result.rows).toHaveLength(2)
-      expect(result.rows.map((r) => r.name)).toEqual([
-        "Suicide Gunshot Actor",
-        "Homicide Actor",
-      ])
+      expect(result.rows.map((r) => r.name)).toEqual(["Suicide Gunshot Actor", "Homicide Actor"])
     })
   })
 

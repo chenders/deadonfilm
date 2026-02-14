@@ -228,10 +228,7 @@ interface ClaudeBatchResult {
   usage: { inputTokens: number; outputTokens: number }
 }
 
-async function classifyWithClaude(
-  client: Anthropic,
-  causes: string[]
-): Promise<ClaudeBatchResult> {
+async function classifyWithClaude(client: Anthropic, causes: string[]): Promise<ClaudeBatchResult> {
   const prompt = `You are classifying the manner of death for deceased actors/entertainers.
 
 For each cause of death, classify the MANNER (intent/circumstances) as one of:
@@ -484,7 +481,9 @@ async function main(options: { dryRun: boolean; batchSize: number }) {
 
 const program = new Command()
   .name("backfill-cause-manner")
-  .description("Classify cause of death strings by manner (natural/accident/suicide/homicide/undetermined)")
+  .description(
+    "Classify cause of death strings by manner (natural/accident/suicide/homicide/undetermined)"
+  )
   .option("-n, --dry-run", "Preview changes without writing to database")
   .option("-b, --batch-size <number>", "Number of causes per Claude API call", parsePositiveInt, 30)
   .action(async (options) => {

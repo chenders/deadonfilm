@@ -265,13 +265,7 @@ export const UNNATURAL_DEATH_CATEGORIES = {
   },
   homicide: {
     label: "Homicide",
-    patterns: [
-      "homicide",
-      "murdered",
-      "murder",
-      "assassination",
-      "assassinated",
-    ],
+    patterns: ["homicide", "murdered", "murder", "assassination", "assassinated"],
   },
   other: {
     label: "Other",

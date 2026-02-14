@@ -115,27 +115,21 @@ describe("PUT /manner/:cause", () => {
     })
     vi.mocked(getPool).mockReturnValue({ query: queryMock } as never)
 
-    const res = await request(app)
-      .put("/manner/Gunshot%20wound")
-      .send({ manner: "homicide" })
+    const res = await request(app).put("/manner/Gunshot%20wound").send({ manner: "homicide" })
 
     expect(res.status).toBe(200)
     expect(res.body.success).toBe(true)
   })
 
   it("rejects invalid manner", async () => {
-    const res = await request(app)
-      .put("/manner/Gunshot%20wound")
-      .send({ manner: "invalid" })
+    const res = await request(app).put("/manner/Gunshot%20wound").send({ manner: "invalid" })
 
     expect(res.status).toBe(400)
     expect(res.body.error.message).toContain("Invalid manner")
   })
 
   it("rejects missing manner", async () => {
-    const res = await request(app)
-      .put("/manner/Gunshot%20wound")
-      .send({})
+    const res = await request(app).put("/manner/Gunshot%20wound").send({})
 
     expect(res.status).toBe(400)
   })
@@ -196,9 +190,7 @@ describe("PUT /normalizations/:cause", () => {
   })
 
   it("rejects missing normalizedCause", async () => {
-    const res = await request(app)
-      .put("/normalizations/test")
-      .send({})
+    const res = await request(app).put("/normalizations/test").send({})
 
     expect(res.status).toBe(400)
   })

@@ -141,13 +141,7 @@ export const CAUSE_CATEGORIES = {
   homicide: {
     label: "Homicide",
     slug: "homicide",
-    patterns: [
-      "murder",
-      "murdered",
-      "homicide",
-      "assassination",
-      "assassinated",
-    ],
+    patterns: ["murder", "murdered", "homicide", "assassination", "assassinated"],
   },
   infectious: {
     label: "Infectious Disease",
