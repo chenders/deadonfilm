@@ -316,8 +316,9 @@ export async function calculateMovieMortality(
   // Calculate surprise score: how much higher/lower actual deaths are vs expected
   // Positive = more deaths than expected ("cursed" movie)
   // Negative = fewer deaths than expected ("blessed" movie)
-  const mortalitySurpriseScore =
-    expectedDeaths > 0 ? (actualDeaths - expectedDeaths) / expectedDeaths : 0
+  // Uses empirical Bayes shrinkage (k=2) to prevent extreme scores when expected
+  // deaths are near zero. The +2 prior means small-sample movies can't dominate rankings.
+  const mortalitySurpriseScore = (actualDeaths - expectedDeaths) / (expectedDeaths + 2)
 
   return {
     expectedDeaths: Math.round(expectedDeaths * 100) / 100,
