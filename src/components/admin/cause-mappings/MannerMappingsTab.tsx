@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useMannerMappings, useUpdateMannerMapping } from "../../../hooks/admin/useCauseMappings"
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue"
 
 const MANNER_OPTIONS = ["natural", "accident", "suicide", "homicide", "undetermined"] as const
 
@@ -13,9 +14,10 @@ const MANNER_COLORS: Record<string, string> = {
 
 export default function MannerMappingsTab() {
   const [search, setSearch] = useState("")
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [mannerFilter, setMannerFilter] = useState("")
   const { data, isLoading, error } = useMannerMappings(
-    search || undefined,
+    debouncedSearch || undefined,
     mannerFilter || undefined
   )
   const updateManner = useUpdateMannerMapping()

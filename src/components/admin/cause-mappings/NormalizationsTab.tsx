@@ -1,11 +1,13 @@
 import { useState } from "react"
 import { useNormalizations, useUpdateNormalization } from "../../../hooks/admin/useCauseMappings"
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue"
 
 export default function NormalizationsTab() {
   const [search, setSearch] = useState("")
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [editingCause, setEditingCause] = useState<string | null>(null)
   const [editValue, setEditValue] = useState("")
-  const { data, isLoading, error } = useNormalizations(search || undefined)
+  const { data, isLoading, error } = useNormalizations(debouncedSearch || undefined)
   const updateNormalization = useUpdateNormalization()
 
   const handleEdit = (originalCause: string, normalizedCause: string) => {
@@ -87,7 +89,7 @@ export default function NormalizationsTab() {
                         <button
                           onClick={() => handleSave(norm.originalCause)}
                           className="rounded px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
-                          disabled={updateNormalization.isPending}
+                          disabled={updateNormalization.isPending || !editValue.trim()}
                         >
                           Save
                         </button>
@@ -97,6 +99,11 @@ export default function NormalizationsTab() {
                         >
                           Cancel
                         </button>
+                        {updateNormalization.isError && (
+                          <span className="text-xs text-red-600 dark:text-red-400">
+                            Save failed
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <button

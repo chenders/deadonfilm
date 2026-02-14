@@ -55,8 +55,8 @@ describe("GET /manner", () => {
         },
       ],
     })
-    // Second call: unmapped count
-    queryMock.mockResolvedValueOnce({ rows: [{ count: "10" }] })
+    // Second call: overall counts
+    queryMock.mockResolvedValueOnce({ rows: [{ mapped: "1", unmapped: "10" }] })
 
     vi.mocked(getPool).mockReturnValue({ query: queryMock } as never)
 
@@ -67,13 +67,14 @@ describe("GET /manner", () => {
     expect(res.body.mappings[0].normalizedCause).toBe("Heart attack")
     expect(res.body.mappings[0].manner).toBe("natural")
     expect(res.body.mappings[0].actorCount).toBe(50)
+    expect(res.body.totalMapped).toBe(1)
     expect(res.body.totalUnmapped).toBe(10)
   })
 
   it("filters by manner", async () => {
     const queryMock = vi.fn()
     queryMock.mockResolvedValueOnce({ rows: [] })
-    queryMock.mockResolvedValueOnce({ rows: [{ count: "0" }] })
+    queryMock.mockResolvedValueOnce({ rows: [{ mapped: "0", unmapped: "0" }] })
 
     vi.mocked(getPool).mockReturnValue({ query: queryMock } as never)
 
@@ -90,7 +91,7 @@ describe("GET /manner", () => {
   it("filters by search term", async () => {
     const queryMock = vi.fn()
     queryMock.mockResolvedValueOnce({ rows: [] })
-    queryMock.mockResolvedValueOnce({ rows: [{ count: "0" }] })
+    queryMock.mockResolvedValueOnce({ rows: [{ mapped: "0", unmapped: "0" }] })
 
     vi.mocked(getPool).mockReturnValue({ query: queryMock } as never)
 

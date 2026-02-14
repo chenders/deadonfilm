@@ -69,15 +69,17 @@ router.get("/manner", async (req: Request, res: Response) => {
       params
     )
 
-    // Also get count of unmapped causes
-    const unmappedResult = await db.query<{ count: string }>(`
-      SELECT COUNT(DISTINCT COALESCE(n.normalized_cause, a.cause_of_death)) as count
-      FROM actors a
-      LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
-      LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, a.cause_of_death) = cmm.normalized_cause
-      WHERE a.cause_of_death IS NOT NULL
-        AND a.cause_of_death != ''
-        AND cmm.normalized_cause IS NULL
+    // Get overall counts (independent of filters) for stats bar
+    const countsResult = await db.query<{ mapped: string; unmapped: string }>(`
+      SELECT
+        (SELECT COUNT(*) FROM cause_manner_mappings) as mapped,
+        (SELECT COUNT(DISTINCT COALESCE(n.normalized_cause, a.cause_of_death))
+         FROM actors a
+         LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+         LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, a.cause_of_death) = cmm.normalized_cause
+         WHERE a.cause_of_death IS NOT NULL
+           AND a.cause_of_death != ''
+           AND cmm.normalized_cause IS NULL) as unmapped
     `)
 
     res.json({
@@ -88,8 +90,8 @@ router.get("/manner", async (req: Request, res: Response) => {
         createdAt: r.created_at,
         actorCount: parseInt(r.actor_count, 10),
       })),
-      totalMapped: result.rows.length,
-      totalUnmapped: parseInt(unmappedResult.rows[0].count, 10),
+      totalMapped: parseInt(countsResult.rows[0].mapped, 10),
+      totalUnmapped: parseInt(countsResult.rows[0].unmapped, 10),
     })
   } catch (error) {
     logger.error({ error }, "Failed to fetch manner mappings")
