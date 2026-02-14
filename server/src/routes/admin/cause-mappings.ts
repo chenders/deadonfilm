@@ -205,8 +205,8 @@ router.put("/normalizations/:cause", async (req: Request, res: Response) => {
     const originalCause = req.params.cause
     const { normalizedCause } = req.body
 
-    if (!normalizedCause || typeof normalizedCause !== "string") {
-      res.status(400).json({ error: { message: "normalizedCause is required" } })
+    if (typeof normalizedCause !== "string" || !normalizedCause.trim()) {
+      res.status(400).json({ error: { message: "normalizedCause is required and cannot be empty" } })
       return
     }
 

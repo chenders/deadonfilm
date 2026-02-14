@@ -195,6 +195,12 @@ describe("PUT /normalizations/:cause", () => {
 
     expect(res.status).toBe(400)
   })
+
+  it("rejects whitespace-only normalizedCause", async () => {
+    const res = await request(app).put("/normalizations/test").send({ normalizedCause: "   " })
+
+    expect(res.status).toBe(400)
+  })
 })
 
 describe("GET /preview", () => {
