@@ -123,9 +123,10 @@ export default function EmptySearchState({
 }
 
 function PopularMoviesRow({ compact, onNavigate }: { compact: boolean; onNavigate?: () => void }) {
+  const limit = 4
   const { data } = useQuery({
-    queryKey: ["random-popular-movies"],
-    queryFn: () => getRandomPopularMovies(4),
+    queryKey: ["random-popular-movies", limit],
+    queryFn: () => getRandomPopularMovies(limit),
     staleTime: 4 * 60 * 60 * 1000, // 4 hours - matches server cache
     retry: 1,
   })

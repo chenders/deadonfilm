@@ -296,6 +296,18 @@ export async function getThisWeekDeathsHandler(req: Request, res: Response) {
   }
 }
 
+type PopularMoviesResponse = {
+  movies: Array<{
+    id: number
+    title: string
+    releaseYear: number | null
+    posterPath: string | null
+    deceasedCount: number
+    castCount: number
+    popularity: number
+  }>
+}
+
 export async function getPopularMoviesHandler(req: Request, res: Response) {
   try {
     // Check if database is available
@@ -305,18 +317,6 @@ export async function getPopularMoviesHandler(req: Request, res: Response) {
 
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 20)
     const cacheKey = buildCacheKey(CACHE_PREFIX.POPULAR_MOVIES, { limit })
-
-    type PopularMoviesResponse = {
-      movies: Array<{
-        id: number
-        title: string
-        releaseYear: number | null
-        posterPath: string | null
-        deceasedCount: number
-        castCount: number
-        popularity: number
-      }>
-    }
 
     const cached = await getCached<PopularMoviesResponse>(cacheKey)
     if (cached) {
@@ -352,18 +352,6 @@ export async function getRandomPopularMoviesHandler(req: Request, res: Response)
 
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 4, 1), 10)
     const cacheKey = buildCacheKey(CACHE_PREFIX.RANDOM_POPULAR_MOVIES, { limit })
-
-    type PopularMoviesResponse = {
-      movies: Array<{
-        id: number
-        title: string
-        releaseYear: number | null
-        posterPath: string | null
-        deceasedCount: number
-        castCount: number
-        popularity: number
-      }>
-    }
 
     const cached = await getCached<PopularMoviesResponse>(cacheKey)
     if (cached) {

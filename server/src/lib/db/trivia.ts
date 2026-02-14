@@ -335,7 +335,7 @@ export async function getRandomPopularMovies(limit: number = 4): Promise<Popular
   const result = await db.query<PopularMovieRecord>(
     `SELECT tmdb_id, title, release_year, poster_path, deceased_count, cast_count, tmdb_popularity
      FROM (
-       SELECT *
+       SELECT tmdb_id, title, release_year, poster_path, deceased_count, cast_count, tmdb_popularity
        FROM movies
        WHERE poster_path IS NOT NULL
          AND deceased_count > 0
