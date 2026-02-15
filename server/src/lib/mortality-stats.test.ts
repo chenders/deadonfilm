@@ -169,6 +169,22 @@ describe("mortality-stats", () => {
       expect(result.actorResults[0].deathProbability).toBe(0)
     })
 
+    it("returns neutral score when deceased actors have missing birthdays", async () => {
+      // Deceased actor with no birthday — expectedDeaths stays 0 because we can't
+      // compute death probability without age. Score should be neutral (0) rather
+      // than actualDeaths/2, since there's no actuarial basis for comparison.
+      const actors: ActorForMortality[] = [
+        { tmdbId: 1, name: "No Birthday", birthday: null, deathday: "2020-01-01" },
+        { tmdbId: 2, name: "Also No Birthday", birthday: null, deathday: "2018-01-01" },
+      ]
+
+      const result = await calculateMovieMortality(2000, actors, 2024)
+
+      expect(result.actualDeaths).toBe(2)
+      expect(result.expectedDeaths).toBe(0)
+      expect(result.mortalitySurpriseScore).toBe(0)
+    })
+
     it("calculates positive surprise score for more deaths than expected", async () => {
       // Old movie with young cast - most should still be alive
       const actors: ActorForMortality[] = [
@@ -181,6 +197,45 @@ describe("mortality-stats", () => {
 
       // 2 deaths out of 3 young actors is unexpected
       expect(result.mortalitySurpriseScore).toBeGreaterThan(0)
+    })
+
+    it("uses empirical Bayes shrinkage to prevent extreme scores for small expected deaths", async () => {
+      // Single young actor who died — expected deaths near zero
+      // Old formula: (1 - ~0.001) / ~0.001 ≈ 999 (absurd)
+      // New formula: (1 - ~0.001) / (~0.001 + 2) ≈ 0.5 (reasonable)
+      const actors: ActorForMortality[] = [
+        { tmdbId: 1, name: "Young Death", birthday: "1990-01-01", deathday: "2005-01-01" },
+      ]
+
+      const result = await calculateMovieMortality(2000, actors, 2024)
+
+      // Score should be positive (more deaths than expected)
+      expect(result.mortalitySurpriseScore).toBeGreaterThan(0)
+      // But shrinkage prevents it from being extreme — must be less than 1.0
+      // Without shrinkage, this would be hundreds or thousands
+      expect(result.mortalitySurpriseScore).toBeLessThan(1.0)
+    })
+
+    it("produces higher scores for movies with many unexpected deaths vs single unexpected death", async () => {
+      // Single unexpected death
+      const singleDeath: ActorForMortality[] = [
+        { tmdbId: 1, name: "Actor 1", birthday: "1980-01-01", deathday: "2010-01-01" },
+        { tmdbId: 2, name: "Actor 2", birthday: "1980-01-01", deathday: null },
+      ]
+
+      // Many unexpected deaths (large cast, many dead)
+      const manyDeaths: ActorForMortality[] = Array.from({ length: 10 }, (_, i) => ({
+        tmdbId: i + 1,
+        name: `Actor ${i + 1}`,
+        birthday: "1980-01-01",
+        deathday: i < 7 ? "2015-01-01" : null, // 7 of 10 dead
+      }))
+
+      const singleResult = await calculateMovieMortality(2000, singleDeath, 2024)
+      const manyResult = await calculateMovieMortality(2000, manyDeaths, 2024)
+
+      // The movie with many unexpected deaths should rank higher
+      expect(manyResult.mortalitySurpriseScore).toBeGreaterThan(singleResult.mortalitySurpriseScore)
     })
   })
 
