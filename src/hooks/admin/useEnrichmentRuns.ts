@@ -313,11 +313,15 @@ export function useEnrichmentRuns(
 /**
  * Hook to fetch detailed information about a single enrichment run.
  */
-export function useEnrichmentRunDetails(runId: number): UseQueryResult<EnrichmentRunDetails> {
+export function useEnrichmentRunDetails(
+  runId: number,
+  isRunning?: boolean
+): UseQueryResult<EnrichmentRunDetails> {
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId],
     queryFn: () => fetchEnrichmentRunDetails(runId),
-    staleTime: 60000, // 1 minute
+    staleTime: isRunning ? 0 : 60000,
+    refetchInterval: isRunning ? 10000 : false,
     enabled: !!runId,
   })
 }
@@ -328,12 +332,14 @@ export function useEnrichmentRunDetails(runId: number): UseQueryResult<Enrichmen
 export function useEnrichmentRunActors(
   runId: number,
   page: number,
-  pageSize: number
+  pageSize: number,
+  isRunning?: boolean
 ): UseQueryResult<PaginatedResult<EnrichmentRunActor>> {
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId, "actors", page, pageSize],
     queryFn: () => fetchEnrichmentRunActors(runId, page, pageSize),
-    staleTime: 60000, // 1 minute
+    staleTime: isRunning ? 0 : 60000,
+    refetchInterval: isRunning ? 5000 : false,
     enabled: !!runId,
   })
 }
@@ -356,12 +362,14 @@ export function useSourcePerformanceStats(
  * Hook to fetch source performance statistics for a specific run.
  */
 export function useRunSourcePerformanceStats(
-  runId: number
+  runId: number,
+  isRunning?: boolean
 ): UseQueryResult<SourcePerformanceStats[]> {
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId, "sources", "stats"],
     queryFn: () => fetchRunSourcePerformanceStats(runId),
-    staleTime: 60000, // 1 minute
+    staleTime: isRunning ? 0 : 60000,
+    refetchInterval: isRunning ? 10000 : false,
     enabled: !!runId,
   })
 }
@@ -484,12 +492,14 @@ export function useEnrichmentRunLogs(
   runId: number,
   page: number = 1,
   pageSize: number = 50,
-  level?: string
+  level?: string,
+  isRunning?: boolean
 ): UseQueryResult<EnrichmentRunLogsResponse> {
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId, "logs", page, pageSize, level],
     queryFn: () => fetchEnrichmentRunLogs(runId, page, pageSize, level),
-    staleTime: 30000, // 30 seconds
+    staleTime: isRunning ? 0 : 30000,
+    refetchInterval: isRunning ? 15000 : false,
     enabled: !!runId,
   })
 }
