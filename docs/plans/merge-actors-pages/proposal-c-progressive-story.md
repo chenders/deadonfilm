@@ -38,8 +38,6 @@ This is the "accordion FAQ" approach: the page is compact by default, and users 
 │ │ Died 4.2 years before life      │ │
 │ │ expectancy.                     │ │
 │ │                                 │ │
-│ │ [Suicide] [Controversial]       │ │  ← FactorBadges (if any)
-│ │                                 │ │
 │ │         Read full story ▼       │ │
 │ └─────────────────────────────────┘ │
 ├─────────────────────────────────────┤
@@ -184,22 +182,25 @@ No death card shown. Page renders identically to the current `ActorPage`: header
 ```typescript
 // src/components/death/DeathSummaryCard.tsx
 interface DeathSummaryCardProps {
-  // Teaser data (from useActor)
+  // Teaser data (from useActor / ActorProfileResponse.deathInfo)
   causeOfDeath: string | null
   causeOfDeathDetails: string | null
   ageAtDeath: number | null
-  yearsLost: string | null
-  notableFactors?: string[] | null  // Shown as FactorBadges
+  yearsLost: number | null
 
   // Expandable behavior
   hasFullDetails: boolean  // Controls whether expand button shows
-  slug: string             // For lazy-loading death details
+  slug: string             // For lazy-loading death details (full narrative, factors, sources)
 
   // Analytics
   onExpand?: () => void    // Fires virtual pageview
   onCollapse?: () => void
 }
 ```
+
+Note: `notableFactors` are NOT available in `ActorProfileResponse.deathInfo` -- they come
+from `DeathDetailsResponse.circumstances.notableFactors`. Factor badges will only appear
+in the expanded state, rendered by `DeathDetailsContent` after the lazy fetch completes.
 
 Internally manages:
 - `isExpanded` boolean state
@@ -248,27 +249,33 @@ Renders: LowConfidenceWarning, What We Know, Alternative Accounts, Additional Co
 const [isExpanded, setIsExpanded] = useState(false)
 const [hasEverExpanded, setHasEverExpanded] = useState(false)
 
-const { data: deathData, isLoading } = useActorDeathDetails(slug, {
-  enabled: hasEverExpanded,  // Only fetch after first expansion
-})
-
 const handleToggle = () => {
   if (!isExpanded && !hasEverExpanded) {
     setHasEverExpanded(true)
-    props.onExpand?.()  // Fire analytics
+    props.onExpand?.()  // Fire analytics on first expansion
   }
   setIsExpanded(!isExpanded)
 }
+
+// In JSX: Only mount the details panel (and run the query) when expanded.
+// DeathDetailsContent internally calls useActorDeathDetails(slug).
+// Note: useActorDeathDetails only accepts slug: string -- no enabled option.
+// Conditional mounting achieves the same lazy-load behavior.
+{isExpanded && (
+  <DeathDetailsContent slug={slug} />
+)}
 ```
 
 - No API call on page load (identical performance to today)
-- First expand triggers the fetch; loading skeleton shown for ~200-500ms
-- React Query caches the result; subsequent toggle is instant
+- First expand mounts `DeathDetailsContent`, which triggers the fetch; loading skeleton shown for ~200-500ms
+- React Query caches the result; subsequent collapse/expand is instant (component remounts but data is cached)
 - If the user never expands, no bandwidth is wasted
 
 ### Optional: Prefetch on hover
 
 ```typescript
+const queryClient = useQueryClient()
+
 const handleMouseEnter = () => {
   if (!hasEverExpanded) {
     queryClient.prefetchQuery({
@@ -283,11 +290,11 @@ const handleMouseEnter = () => {
 
 ### 301 Redirects
 
-```typescript
-// Server-side
-router.get("/actor/:slug/death", (req, res) => {
-  res.redirect(301, `/actor/${req.params.slug}`)
-})
+```
+# nginx.conf - Server-side redirect (non-API routes are served by nginx)
+location ~ ^/actor/(.+)/death$ {
+  return 301 /actor/$1;
+}
 
 // Client-side
 <Route
@@ -385,7 +392,7 @@ The teaser text (`causeOfDeathDetails`) is always in the DOM, giving search engi
 | `src/components/death/ProjectLink.tsx` | **New file** |
 | `src/components/death/SourceList.tsx` | **New file** |
 | `src/components/death/RelatedCelebrityCard.tsx` | **New file** |
-| `server/src/routes/actor.ts` | Add 301 redirect for `/death` suffix |
+| `nginx.conf` | Add 301 redirect for `/actor/:slug/death` |
 | `server/src/routes/sitemap.ts` | Remove death-details sitemap |
 | `src/utils/schema.ts` | Add death fields to Person schema |
 

@@ -4,7 +4,7 @@
 
 ## Philosophy
 
-One actor, one page, one scroll. All information about an actor -- biography, death circumstances, filmography, related people -- lives on a single continuous page. No tabs, no expand buttons, no second click. The page loads both API payloads in parallel and renders everything immediately.
+One actor, one page, one scroll. All information about an actor -- biography, death circumstances, filmography, related people -- lives on a single continuous page. No tabs, no expand buttons, no second click. The page immediately loads the core actor payload, then conditionally fetches death details as soon as we know `hasDetailedDeathInfo`, so all content renders as soon as its data is available.
 
 This is the "newspaper article" approach: the most important information (who died, how, when) is at the top, with progressively less critical content (filmography, related actors) further down.
 
@@ -142,19 +142,23 @@ interface DeathDetailsSectionProps {
 
 ## API / Data Strategy
 
-### Approach: Parallel fetch on load
+### Approach: Conditional follow-up fetch
 
 ```typescript
 // In ActorPage.tsx
 const { data: actorData, isLoading: actorLoading } = useActor(slug)
-const { data: deathData, isLoading: deathLoading } = useActorDeathDetails(
-  slug,
-  { enabled: actorData?.deathInfo?.hasDetailedDeathInfo === true }
-)
+
+// Death details component only mounts (and fetches) when we know details exist.
+// useActorDeathDetails(slug) fires inside DeathDetailsSection on mount.
+const hasDeathDetails = actorData?.deathInfo?.hasDetailedDeathInfo === true
 ```
 
+Note: The current `useActorDeathDetails` hook only accepts `slug: string`. Rather than
+modifying the hook signature, conditionally mount the `DeathDetailsSection` component
+which internally calls the hook. This avoids needing an `enabled` option.
+
 - `useActor` fires immediately (same as today)
-- `useActorDeathDetails` fires after `useActor` resolves, only if the actor has detailed death info
+- `DeathDetailsSection` mounts after `useActor` resolves only if `hasDetailedDeathInfo` is true, triggering the death details fetch
 - Page renders header + biography + filmography immediately; death sections render when death data arrives
 - Skeleton/loading placeholder shown in death section while loading
 
@@ -176,10 +180,10 @@ A single `/api/actor/:slug?include=death` endpoint could return both payloads. T
   element={<Navigate to={`/actor/${slug}`} replace />}
 />
 
-// server/src/routes/actor.ts - Server-side redirect
-router.get("/actor/:slug/death", (req, res) => {
-  res.redirect(301, `/actor/${req.params.slug}`)
-})
+// nginx.conf - Server-side redirect (non-API routes are served by nginx)
+// location ~ ^/actor/(.+)/death$ {
+//   return 301 /actor/$1;
+// }
 ```
 
 ### Sitemap
@@ -253,7 +257,7 @@ router.get("/actor/:slug/death", (req, res) => {
 | `src/components/death/SourceList.tsx` | **New file** |
 | `src/components/death/RelatedCelebrityCard.tsx` | **New file** |
 | `src/components/death/DeathDetailsSection.tsx` | **New file** |
-| `server/src/routes/actor.ts` | Add 301 redirect for `/death` suffix |
+| `nginx.conf` | Add 301 redirect for `/actor/:slug/death` |
 | `server/src/routes/sitemap.ts` | Remove death-details sitemap |
 | `src/utils/schema.ts` | Add death fields to Person schema |
 

@@ -7,7 +7,7 @@ The actor profile page (`/actor/:slug`) and actor death details page (`/actor/:s
 - **Drop-off risk**: Users must click "View Full Death Details" to see the richest content about a deceased actor
 - **Duplicate headers**: Both pages render the actor photo, name, born/died dates independently
 - **Context switching**: Navigating to `/death` loses the filmography context; navigating back loses the death narrative
-- **Two API calls per journey**: The actor page calls `/api/actor/:slug`, and the death page calls `/api/death-details/:slug` separately
+- **Two API calls per journey**: The actor page calls `/api/actor/:slug`, and the death page calls `/api/actor/:slug/death` separately
 
 The goal is to consolidate these into a single actor page that surfaces death information without a separate route, while preserving analytics, SEO equity, and the distinct content types (data tables vs. narrative text).
 
@@ -30,7 +30,7 @@ The goal is to consolidate these into a single actor page that surfaces death in
 | Must track "death details viewed" | Analytics currently uses `actor_death` page type |
 | Must handle 3 actor states | Deceased with details, deceased without details, living |
 | Must not regress mobile UX | Death narratives are long prose; filmography is compact cards |
-| Component extraction required | `LowConfidenceWarning`, `FactorBadge`, `ProjectLink`, `SourceList`, `RelatedCelebrityCard`, `LinkedText` are currently inlined in `ActorDeathPage.tsx` |
+| Component extraction required | `LowConfidenceWarning`, `FactorBadge`, `ProjectLink`, `SourceList`, `RelatedCelebrityCard` are currently inlined in `ActorDeathPage.tsx`; `LinkedText` already lives in `@/components/death/LinkedText` |
 
 ## Proposal Comparison
 
@@ -150,7 +150,7 @@ These components are currently defined inline and need to be extracted to shared
 ```
 
 - Add redirect route in `src/App.tsx` (replace the `ActorDeathPage` route)
-- Server-side: add 301 redirect in `server/src/routes/actor.ts` for the `/death` suffix
+- Server-side: implement the 301 redirect at the web server layer (e.g., in `nginx.conf`) for the `/actor/:slug/death` path
 
 ### 3. Sitemap Updates
 

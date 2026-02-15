@@ -254,12 +254,14 @@ This eliminates the loading state when the user actually clicks the tab.
 
 ### 301 Redirects
 
-```typescript
-// Server-side redirect: /actor/:slug/death → /actor/:slug#death
-router.get("/actor/:slug/death", (req, res) => {
-  res.redirect(301, `/actor/${req.params.slug}#death`)
-})
+```
+# nginx.conf - Server-side redirect (non-API routes are served by nginx)
+location ~ ^/actor/(.+)/death$ {
+  return 301 /actor/$1#death;
+}
+```
 
+```tsx
 // Client-side: React Router redirect
 <Route
   path="/actor/:slug/death"
@@ -272,7 +274,7 @@ router.get("/actor/:slug/death", (req, res) => {
 Search engine crawlers may not execute JavaScript to switch tabs, meaning death content behind the Death Details tab might not be indexed.
 
 **Mitigations:**
-1. **Server-side rendering**: If SSR is implemented, render the active tab based on the hash. Crawlers requesting `/actor/john-wayne-2157#death` would get the death content pre-rendered.
+1. **Query parameter fallback**: Hash fragments are not sent to the server in HTTP requests, so SSR based on `#death` is not possible. If server-side tab selection is needed, use a query parameter (e.g., `/actor/john-wayne-2157?tab=death`) which the server can read and pre-render the appropriate tab content.
 2. **Structured data**: Include death information in JSON-LD Person schema regardless of active tab. This ensures search engines see death data even without rendering the tab.
 3. **Meta description**: Include cause of death in the meta description (already done on the current actor page).
 4. **Accept the trade-off**: The actor page URL retains full SEO value. The incremental SEO value of the death narrative text may be small compared to the structured data and meta description.
@@ -355,7 +357,7 @@ Search engine crawlers may not execute JavaScript to switch tabs, meaning death 
 | `src/components/death/RelatedCelebrityCard.tsx` | **New file** |
 | `src/components/death/DeathDetailsTab.tsx` | **New file** |
 | `src/components/actor/RelatedTab.tsx` | **New file** |
-| `server/src/routes/actor.ts` | Add 301 redirect for `/death` suffix |
+| `nginx.conf` | Add 301 redirect for `/actor/:slug/death` |
 | `server/src/routes/sitemap.ts` | Remove death-details sitemap |
 | `src/utils/schema.ts` | Add death fields to Person schema |
 
