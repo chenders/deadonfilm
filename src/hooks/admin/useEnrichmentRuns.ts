@@ -313,15 +313,19 @@ export function useEnrichmentRuns(
 /**
  * Hook to fetch detailed information about a single enrichment run.
  */
-export function useEnrichmentRunDetails(
-  runId: number,
-  isRunning?: boolean
-): UseQueryResult<EnrichmentRunDetails> {
+export function useEnrichmentRunDetails(runId: number): UseQueryResult<EnrichmentRunDetails> {
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId],
     queryFn: () => fetchEnrichmentRunDetails(runId),
-    staleTime: isRunning ? 0 : 60000,
-    refetchInterval: isRunning ? 10000 : false,
+    staleTime: 0,
+    refetchInterval: (query) => {
+      // Self-determine polling: poll every 10s while run is active
+      const data = query.state.data
+      if (data && data.exit_reason === null && data.completed_at === null) {
+        return 10000
+      }
+      return false
+    },
     enabled: !!runId,
   })
 }
