@@ -12,15 +12,18 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
+const isServer = typeof window === "undefined"
+
 const STORAGE_KEY = "dof-theme"
+const COOKIE_NAME = "dof-theme"
 
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined") return "light"
+  if (isServer) return "light"
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
 function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system"
+  if (isServer) return "system"
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored === "dark" || stored === "light" || stored === "system") {
     return stored
@@ -28,18 +31,41 @@ function getStoredTheme(): Theme {
   return "system"
 }
 
-interface ThemeProviderProps {
-  children: ReactNode
+/** Write the theme to a cookie so the server can read it for SSR. */
+function setThemeCookie(resolvedTheme: ResolvedTheme) {
+  if (isServer) return
+  document.cookie = `${COOKIE_NAME}=${resolvedTheme};path=/;max-age=31536000;SameSite=Lax`
 }
 
-export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(getStoredTheme)
+interface ThemeProviderProps {
+  children: ReactNode
+  /** Server-side hint from cookie — avoids FOUC when SSR is active */
+  serverTheme?: ResolvedTheme
+}
+
+export function ThemeProvider({ children, serverTheme }: ThemeProviderProps) {
+  // Two-phase init: default to server hint (or "system"), then read localStorage in effect
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (isServer)
+      return serverTheme === "dark" ? "dark" : serverTheme === "light" ? "light" : "system"
+    return getStoredTheme()
+  })
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
+    if (isServer) return serverTheme ?? "light"
     const stored = getStoredTheme()
     if (stored === "dark" || stored === "light") return stored
     return getSystemTheme()
   })
+
+  // On mount, sync from localStorage (handles SSR → client hydration)
+  useEffect(() => {
+    const stored = getStoredTheme()
+    setThemeState(stored)
+    const resolved = stored === "dark" || stored === "light" ? stored : getSystemTheme()
+    setResolvedTheme(resolved)
+    setThemeCookie(resolved)
+  }, [])
 
   // Apply/remove .dark class on <html>
   useEffect(() => {
@@ -57,7 +83,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
     const handleChange = (e: MediaQueryListEvent) => {
-      setResolvedTheme(e.matches ? "dark" : "light")
+      const newResolved = e.matches ? "dark" : "light"
+      setResolvedTheme(newResolved)
+      setThemeCookie(newResolved)
     }
 
     mediaQuery.addEventListener("change", handleChange)
@@ -66,13 +94,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme)
-    localStorage.setItem(STORAGE_KEY, newTheme)
-
-    if (newTheme === "system") {
-      setResolvedTheme(getSystemTheme())
-    } else {
-      setResolvedTheme(newTheme)
+    if (!isServer) {
+      localStorage.setItem(STORAGE_KEY, newTheme)
     }
+
+    const newResolved = newTheme === "system" ? getSystemTheme() : newTheme
+    setResolvedTheme(newResolved)
+    setThemeCookie(newResolved)
   }, [])
 
   const toggleTheme = useCallback(() => {
