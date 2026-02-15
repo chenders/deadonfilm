@@ -35,7 +35,7 @@ const CATEGORY_ENTRIES: Array<{ slug: string; patterns: readonly string[] }> = O
  * Returns every category whose patterns match (not just the first),
  * with manner-based categories (suicide/homicide/accident) prepended.
  */
-function computeCategories(cause: string | null, manner: string | null): string[] {
+export function computeCategories(cause: string | null, manner: string | null): string[] {
   const cats: string[] = []
 
   // Manner-based categories first
@@ -72,7 +72,7 @@ async function run(options: Options) {
     const mannerResult = await pool.query(`
       SELECT count(*) as cnt
       FROM actors a
-      JOIN cause_of_death_normalizations n ON lower(a.cause_of_death) = n.original_cause
+      JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
       JOIN cause_manner_mappings cmm ON cmm.normalized_cause = n.normalized_cause
       WHERE a.death_manner IS DISTINCT FROM cmm.manner
     `)
@@ -85,7 +85,7 @@ async function run(options: Options) {
         SET death_manner = cmm.manner
         FROM cause_of_death_normalizations n
         JOIN cause_manner_mappings cmm ON cmm.normalized_cause = n.normalized_cause
-        WHERE lower(a.cause_of_death) = n.original_cause
+        WHERE a.cause_of_death = n.original_cause
           AND a.death_manner IS DISTINCT FROM cmm.manner
       `)
       console.log(`  Updated ${rowCount} actors`)
@@ -281,4 +281,7 @@ const program = new Command()
     await run(opts)
   })
 
-program.parse()
+// Guard against running during test imports
+if (process.env.NODE_ENV !== "test") {
+  program.parse()
+}
