@@ -1,23 +1,39 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+
+// Mock cache module before importing source
+vi.mock("../cache.js", () => ({
+  getCachedQuery: vi.fn().mockResolvedValue(null),
+  setCachedQuery: vi.fn().mockResolvedValue(undefined),
+}))
+
+// Mock logger to avoid file operations during tests
+vi.mock("../logger.js", () => ({
+  getEnrichmentLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
+}))
+
 import { APNewsSource } from "./ap-news.js"
+import type { ActorForEnrichment } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 
 // Mock fetch globally
 const mockFetch = vi.fn()
 global.fetch = mockFetch
 
-// Mock the cache module
-vi.mock("../cache.js", () => ({
-  getCachedQuery: vi.fn().mockResolvedValue(null),
-  setCachedQuery: vi.fn().mockResolvedValue(undefined),
-}))
-
 describe("APNewsSource", () => {
   let source: APNewsSource
 
   beforeEach(() => {
-    vi.clearAllMocks()
     source = new APNewsSource()
+    mockFetch.mockReset()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   describe("properties", () => {
@@ -43,7 +59,7 @@ describe("APNewsSource", () => {
   })
 
   describe("lookup", () => {
-    const mockActor = {
+    const mockActor: ActorForEnrichment = {
       id: 123,
       tmdbId: 456,
       name: "John Smith",
@@ -54,112 +70,97 @@ describe("APNewsSource", () => {
       popularity: 10.5,
     }
 
-    it("returns results on successful search and article fetch", async () => {
-      // Mock search results page
+    it("returns early for living actors", async () => {
+      const livingActor: ActorForEnrichment = {
+        ...mockActor,
+        deathday: null,
+      }
+
+      const result = await source.lookup(livingActor)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe("Actor is not deceased")
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it("finds obituary and extracts death information", async () => {
+      // Search returns AP News URL
+      const searchHtml = `
+        <html><body>
+          <a href="https://apnews.com/article/john-smith-death-obituary-123">
+            John Smith Dies at 74
+          </a>
+        </body></html>
+      `
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: async () => `
-          <html>
-            <body>
-              <a href="/article/john-smith-death-obituary-123">
-                <h3>John Smith Dies at 74</h3>
-                <p>The acclaimed actor John Smith has died after a battle with cancer.</p>
-              </a>
-            </body>
-          </html>
-        `,
+        status: 200,
+        text: async () => searchHtml,
       })
-      // Mock article page
+
+      // Article with death info
+      const articleHtml = `
+        <html>
+          <body>
+            <article>
+              <p>John Smith, the acclaimed actor, died on June 1, 2024 at his home in Los Angeles.
+              He was 74 years old. Smith passed away after a battle with cancer.</p>
+            </article>
+          </body>
+        </html>
+      `
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: async () => `
-          <html>
-            <head>
-              <meta name="description" content="John Smith, beloved actor, passed away at his home in Los Angeles.">
-            </head>
-            <body>
-              <article>
-                <div class="RichTextStoryBody">
-                  John Smith died peacefully at his home in Los Angeles on June 1, 2024.
-                  He was 74 years old. The actor passed away after a battle with cancer.
-                </div>
-              </article>
-            </body>
-          </html>
-        `,
+        status: 200,
+        text: async () => articleHtml,
       })
 
       const result = await source.lookup(mockActor)
 
       expect(result.success).toBe(true)
-      expect(result.data?.circumstances).toBeDefined()
-      expect(result.source.url).toContain("apnews.com")
+      expect(result.source.type).toBe(DataSourceType.AP_NEWS)
+      expect(result.data?.circumstances).toContain("died")
     })
 
-    it("includes death year in search query", async () => {
-      // Mock search results page
+    it("returns error when no obituary found in search", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: async () => `
-          <html>
-            <body>
-              <a href="/article/john-smith-death-obituary-123">
-                <h3>John Smith Dies at 74</h3>
-                <p>The acclaimed actor John Smith has died after a battle with cancer.</p>
-              </a>
-            </body>
-          </html>
-        `,
-      })
-      // Mock article page
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => `
-          <html>
-            <body>
-              <div class="RichTextStoryBody">
-                John Smith died peacefully at his home on June 1, 2024.
-              </div>
-            </body>
-          </html>
-        `,
+        status: 200,
+        text: async () => "<html><body>No results</body></html>",
       })
 
-      await source.lookup(mockActor)
+      const result = await source.lookup(mockActor)
 
-      // Verify the search URL includes the death year (2024)
-      const searchUrl = mockFetch.mock.calls[0][0] as string
-      expect(searchUrl).toContain("2024")
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("No AP News obituary found")
     })
 
-    it("falls back to search snippet when article fetch fails", async () => {
-      // Mock search results page with death info in snippet
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => `
-          <html>
-            <body>
-              <a href="/article/john-smith-death-123">
-                <h3>John Smith Dies</h3>
-                <p>Actor John Smith has died of natural causes at age 74.</p>
-              </a>
-            </body>
-          </html>
-        `,
-      })
-      // Article fetch fails
+    it("returns error when search is blocked", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        status: 404,
+        status: 403,
       })
 
       const result = await source.lookup(mockActor)
 
-      expect(result.success).toBe(true)
-      expect(result.source.confidence).toBeLessThan(0.5) // Lower confidence for snippet-only
+      expect(result.success).toBe(false)
+      expect(result.error).toBeTruthy()
     })
 
-    it("throws SourceAccessBlockedError on 403", async () => {
+    it("throws SourceAccessBlockedError on 403 during article fetch", async () => {
+      // Search succeeds
+      const searchHtml = `
+        <html><body>
+          <a href="https://apnews.com/article/john-smith-dead/">Article</a>
+        </body></html>
+      `
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => searchHtml,
+      })
+
+      // Article returns 403
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 403,
@@ -168,103 +169,162 @@ describe("APNewsSource", () => {
       await expect(source.lookup(mockActor)).rejects.toThrow(SourceAccessBlockedError)
     })
 
-    it("throws SourceAccessBlockedError on 429", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-      })
-
-      await expect(source.lookup(mockActor)).rejects.toThrow(SourceAccessBlockedError)
-    })
-
-    it("handles no relevant articles found", async () => {
+    it("returns error when article fetch fails with non-403 status", async () => {
+      const searchHtml = `
+        <html><body>
+          <a href="https://apnews.com/article/john-smith-dead/">Article</a>
+        </body></html>
+      `
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: async () => `
-          <html>
-            <body>
-              <a href="/article/unrelated-123">
-                <h3>Some Unrelated Article</h3>
-                <p>This article has nothing to do with the actor.</p>
-              </a>
-            </body>
-          </html>
-        `,
+        status: 200,
+        text: async () => searchHtml,
+      })
+
+      // Article returns 404
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
       })
 
       const result = await source.lookup(mockActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("No relevant death articles")
+      expect(result.error).toBe("Could not fetch AP News article")
     })
 
-    it("handles network errors", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network timeout"))
+    it("returns error when article has no death info", async () => {
+      const searchHtml = `
+        <html><body>
+          <a href="https://apnews.com/article/john-smith-interview/">Article</a>
+        </body></html>
+      `
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => searchHtml,
+      })
+
+      const articleHtml = `
+        <html>
+          <body>
+            <p>John Smith talks about his upcoming movie and reflects on his career.</p>
+          </body>
+        </html>
+      `
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => articleHtml,
+      })
 
       const result = await source.lookup(mockActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("Network timeout")
+      expect(result.error).toContain("No death information")
     })
 
     it("extracts location of death from article", async () => {
+      const searchHtml = `
+        <html><body>
+          <a href="https://apnews.com/article/john-smith-dies/">Obituary</a>
+        </body></html>
+      `
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: async () => `
-          <html><body>
-            <a href="/article/john-smith-death-123">
-              <h3>John Smith Dies</h3>
-              <p>Actor has died.</p>
-            </a>
-          </body></html>
-        `,
+        status: 200,
+        text: async () => searchHtml,
       })
+
+      const articleHtml = `
+        <html><body>
+          <p>Smith died in Los Angeles from cardiac arrest.</p>
+        </body></html>
+      `
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: async () => `
-          <html><body>
-            <div class="RichTextStoryBody">
-              John Smith died at his home in Beverly Hills, California.
-              He passed away peacefully surrounded by family.
-            </div>
-          </body></html>
-        `,
+        status: 200,
+        text: async () => articleHtml,
       })
 
       const result = await source.lookup(mockActor)
 
       expect(result.success).toBe(true)
-      expect(result.data?.locationOfDeath).toBeDefined()
+      expect(result.data?.locationOfDeath).toBe("Los Angeles")
     })
 
     it("extracts notable factors from article text", async () => {
+      const searchHtml = `
+        <html><body>
+          <a href="https://apnews.com/article/john-smith-dies/">Obituary</a>
+        </body></html>
+      `
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: async () => `
-          <html><body>
-            <a href="/article/john-smith-death-123">
-              <h3>John Smith Dies</h3>
-              <p>Actor died of cancer.</p>
-            </a>
-          </body></html>
-        `,
+        status: 200,
+        text: async () => searchHtml,
       })
+
+      const articleHtml = `
+        <html><body>
+          <p>John Smith died suddenly at his home. An autopsy was performed and a
+          coroner investigation is underway. His death was unexpected and came
+          as a tragedy to the entertainment community.</p>
+        </body></html>
+      `
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        text: async () => `
-          <html><body>
-            <div class="RichTextStoryBody">
-              John Smith died after a long battle with cancer.
-              He had been hospitalized for several weeks before his death.
-            </div>
-          </body></html>
-        `,
+        status: 200,
+        text: async () => articleHtml,
       })
 
       const result = await source.lookup(mockActor)
 
       expect(result.success).toBe(true)
-      expect(result.data?.notableFactors).toContain("cancer")
+      expect(result.data?.notableFactors).toContain("autopsy")
+      expect(result.data?.notableFactors).toContain("sudden")
+    })
+
+    it("handles network errors gracefully", async () => {
+      mockFetch.mockRejectedValueOnce(new Error("Network error"))
+
+      const result = await source.lookup(mockActor)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBeTruthy()
+    })
+
+    it("prefers obituary URLs over other article types", async () => {
+      const searchHtml = `
+        <html><body>
+          <a href="https://apnews.com/article/john-smith-interview-123">Interview</a>
+          <a href="https://apnews.com/article/john-smith-obituary-dead-456">Obituary</a>
+          <a href="https://apnews.com/article/john-smith-review-789">Review</a>
+        </body></html>
+      `
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => searchHtml,
+      })
+
+      const articleHtml = `
+        <html><body><p>John Smith died on June 1, 2024.</p></body></html>
+      `
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => articleHtml,
+      })
+
+      await source.lookup(mockActor)
+
+      // Should fetch the obituary URL, not the interview
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("obituary"),
+        expect.any(Object)
+      )
     })
   })
 })
