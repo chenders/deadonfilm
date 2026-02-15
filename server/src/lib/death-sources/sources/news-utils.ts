@@ -8,6 +8,113 @@
 import { DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS, NOTABLE_FACTOR_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment } from "../types.js"
 
+const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
+const GOOGLE_CSE_URL = "https://www.googleapis.com/customsearch/v1"
+
+const DEFAULT_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+export interface WebSearchResult {
+  /** Raw HTML-like text containing URLs and snippets (compatible with extractUrlFromSearchResults) */
+  html: string
+  /** Which search engine was used */
+  engine: "duckduckgo" | "google"
+  /** Error message if search failed entirely */
+  error?: string
+}
+
+/**
+ * Search the web using DDG with automatic Google CSE fallback.
+ *
+ * Tries DuckDuckGo HTML first (free). If CAPTCHA is detected, falls back
+ * to Google Custom Search API (requires GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_CX).
+ *
+ * Returns HTML-like text compatible with extractUrlFromSearchResults().
+ */
+export async function searchWeb(
+  query: string,
+  options?: { userAgent?: string; signal?: AbortSignal }
+): Promise<WebSearchResult> {
+  const userAgent = options?.userAgent || DEFAULT_USER_AGENT
+
+  // Try DuckDuckGo first (free)
+  try {
+    const url = `${DUCKDUCKGO_HTML_URL}?q=${encodeURIComponent(query)}`
+    const response = await fetch(url, {
+      headers: { "User-Agent": userAgent },
+      signal: options?.signal,
+    })
+
+    if (response.ok) {
+      const html = await response.text()
+
+      // Detect CAPTCHA/bot detection
+      if (html.includes("anomaly-modal") || html.includes("bots use DuckDuckGo too")) {
+        console.log("DuckDuckGo CAPTCHA detected, falling back to Google CSE")
+      } else {
+        return { html, engine: "duckduckgo" }
+      }
+    }
+  } catch {
+    // DDG failed, try Google
+  }
+
+  // Fall back to Google Custom Search API
+  const apiKey = process.env.GOOGLE_SEARCH_API_KEY
+  const cx = process.env.GOOGLE_SEARCH_CX
+
+  if (!apiKey || !cx) {
+    return {
+      html: "",
+      engine: "google",
+      error: "DuckDuckGo CAPTCHA blocked and Google Search API not configured",
+    }
+  }
+
+  try {
+    const url = new URL(GOOGLE_CSE_URL)
+    url.searchParams.set("key", apiKey)
+    url.searchParams.set("cx", cx)
+    url.searchParams.set("q", query)
+    url.searchParams.set("num", "10")
+
+    const response = await fetch(url.toString(), {
+      headers: { "User-Agent": userAgent },
+      signal: options?.signal,
+    })
+
+    const data = (await response.json()) as {
+      items?: Array<{ title: string; link: string; snippet: string }>
+      error?: { code: number; message: string }
+    }
+
+    if (!response.ok || data.error) {
+      return {
+        html: "",
+        engine: "google",
+        error: `Google API error: ${data.error?.message || response.status}`,
+      }
+    }
+
+    if (!data.items || data.items.length === 0) {
+      return { html: "", engine: "google", error: "No search results found" }
+    }
+
+    // Build HTML-like text that extractUrlFromSearchResults can parse
+    const html = data.items
+      .map((item) => `<a href="${item.link}">${item.title}</a>\n<p>${item.snippet}</p>`)
+      .join("\n")
+
+    return { html, engine: "google" }
+  } catch (error) {
+    return {
+      html: "",
+      engine: "google",
+      error: error instanceof Error ? error.message : "Google search failed",
+    }
+  }
+}
+
 /**
  * Extract location of death from article text.
  */
