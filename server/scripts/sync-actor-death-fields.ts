@@ -75,6 +75,11 @@ async function run(options: Options) {
       JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
       JOIN cause_manner_mappings cmm ON cmm.normalized_cause = n.normalized_cause
       WHERE a.death_manner IS DISTINCT FROM cmm.manner
+        -- Don't downgrade a specific manner to 'undetermined'
+        AND NOT (
+          a.death_manner IN ('homicide', 'suicide', 'accident', 'natural')
+          AND cmm.manner = 'undetermined'
+        )
     `)
     const mannerCount = parseInt(mannerResult.rows[0].cnt, 10)
     console.log(`${prefix}death_manner: ${mannerCount} actors to sync from cause_manner_mappings`)
@@ -87,6 +92,11 @@ async function run(options: Options) {
         JOIN cause_manner_mappings cmm ON cmm.normalized_cause = n.normalized_cause
         WHERE a.cause_of_death = n.original_cause
           AND a.death_manner IS DISTINCT FROM cmm.manner
+          -- Don't downgrade a specific manner to 'undetermined'
+          AND NOT (
+            a.death_manner IN ('homicide', 'suicide', 'accident', 'natural')
+            AND cmm.manner = 'undetermined'
+          )
       `)
       console.log(`  Updated ${rowCount} actors`)
     }
@@ -150,28 +160,37 @@ async function run(options: Options) {
       id: number
       cause_of_death: string
       death_manner: string | null
+      death_categories: string[] | null
     }>(`
-      SELECT id, cause_of_death, death_manner
+      SELECT id, cause_of_death, death_manner, death_categories
       FROM actors
       WHERE cause_of_death IS NOT NULL
-        AND (death_categories IS NULL OR death_categories = '{}')
     `)
-    console.log(`${prefix}death_categories: ${catRows.rows.length} actors to compute`)
 
-    if (!dryRun && catRows.rows.length > 0) {
+    // Filter to only rows where computed categories differ from current
+    const catUpdates: { id: number; cats: string[] }[] = []
+    for (const row of catRows.rows) {
+      const cats = computeCategories(row.cause_of_death, row.death_manner)
+      const current = row.death_categories || []
+      if (JSON.stringify(cats) !== JSON.stringify(current)) {
+        catUpdates.push({ id: row.id, cats })
+      }
+    }
+    console.log(`${prefix}death_categories: ${catUpdates.length} actors to update`)
+
+    if (!dryRun && catUpdates.length > 0) {
       let updated = 0
       // Batch in groups of 500 for efficiency
       const batchSize = 500
-      for (let i = 0; i < catRows.rows.length; i += batchSize) {
-        const batch = catRows.rows.slice(i, i + batchSize)
+      for (let i = 0; i < catUpdates.length; i += batchSize) {
+        const batch = catUpdates.slice(i, i + batchSize)
         const cases: string[] = []
         const params: unknown[] = []
         let paramIdx = 1
 
         for (const row of batch) {
-          const cats = computeCategories(row.cause_of_death, row.death_manner)
           cases.push(`WHEN id = $${paramIdx} THEN $${paramIdx + 1}::text[]`)
-          params.push(row.id, cats)
+          params.push(row.id, row.cats)
           paramIdx += 2
         }
 
