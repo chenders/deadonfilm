@@ -66,11 +66,19 @@ export default function DeathSummaryCard({
       data-testid="death-summary-card"
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg text-brown-dark">
-          {isExpanded ? "▼" : "▶"} Death Circumstances
-        </h2>
-      </div>
+      <h2 className="font-display text-lg text-brown-dark">
+        {hasFullDetails ? (
+          <button
+            onClick={handleToggle}
+            aria-expanded={isExpanded}
+            className="flex w-full items-center text-left transition-colors hover:text-brown-medium"
+          >
+            <span>{isExpanded ? "▼" : "▶"} Death Circumstances</span>
+          </button>
+        ) : (
+          <span>Death Circumstances</span>
+        )}
+      </h2>
 
       {/* Teaser content (always visible) */}
       <div className="mt-3 text-sm leading-relaxed text-text-primary">

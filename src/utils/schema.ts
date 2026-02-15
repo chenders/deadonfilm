@@ -63,7 +63,6 @@ interface PersonSchemaInput {
   placeOfBirth: string | null
   tmdbId?: number | null
   causeOfDeath?: string | null
-  deathPlace?: string | null
 }
 
 /**
@@ -90,7 +89,6 @@ export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Recor
   }
 
   if (actor.deathday && actor.causeOfDeath) {
-    schema.deathPlace = actor.deathPlace || undefined
     // Schema.org doesn't have a causeOfDeath property, but we can embed it in description
     const deathDesc = `Died ${actor.deathday}. Cause of death: ${actor.causeOfDeath}.`
     schema.description = actor.biography

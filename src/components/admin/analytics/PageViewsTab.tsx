@@ -4,6 +4,7 @@
  */
 
 import { useState } from "react"
+import { createActorSlug } from "@/utils/slugify"
 import LoadingSpinner from "../../common/LoadingSpinner"
 import {
   usePageViewSummary,
@@ -219,7 +220,11 @@ export default function PageViewsTab() {
                     <td className="px-4 py-3 text-admin-text-muted">#{index + 1}</td>
                     <td className="px-4 py-3">
                       <a
-                        href={`/actor/${page.entity_id}`}
+                        href={
+                          page.entity_name && page.entity_tmdb_id
+                            ? `/actor/${createActorSlug(page.entity_name, page.entity_tmdb_id)}`
+                            : `/actor/${page.entity_id}`
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-admin-accent text-admin-text-primary transition-colors"
