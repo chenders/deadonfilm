@@ -98,7 +98,6 @@ export interface PageCounts {
   movies: number
   actors: number
   shows: number
-  deathDetails: number
 }
 
 /**
@@ -107,7 +106,7 @@ export interface PageCounts {
 export async function getPageCounts(): Promise<PageCounts> {
   const db = getPool()
 
-  const [moviesCount, actorsCount, showsCount, deathDetailsCount] = await Promise.all([
+  const [moviesCount, actorsCount, showsCount] = await Promise.all([
     db.query<{ count: string }>(
       "SELECT COUNT(*) FROM movies WHERE mortality_surprise_score IS NOT NULL"
     ),
@@ -117,16 +116,12 @@ export async function getPageCounts(): Promise<PageCounts> {
     db.query<{ count: string }>(
       "SELECT COUNT(*) FROM shows WHERE mortality_surprise_score IS NOT NULL"
     ),
-    db.query<{ count: string }>(
-      "SELECT COUNT(*) FROM actors WHERE has_detailed_death_info = true AND deathday IS NOT NULL"
-    ),
   ])
 
   return {
     movies: Math.ceil(parseInt(moviesCount.rows[0].count) / URLS_PER_SITEMAP),
     actors: Math.ceil(parseInt(actorsCount.rows[0].count) / URLS_PER_SITEMAP),
     shows: Math.ceil(parseInt(showsCount.rows[0].count) / URLS_PER_SITEMAP),
-    deathDetails: Math.ceil(parseInt(deathDetailsCount.rows[0].count) / URLS_PER_SITEMAP),
   }
 }
 
@@ -146,7 +141,6 @@ export async function generateSitemapIndex(): Promise<string> {
   xml += generateSitemapIndexEntries(pageCounts.movies, "sitemap-movies")
   xml += generateSitemapIndexEntries(pageCounts.actors, "sitemap-actors")
   xml += generateSitemapIndexEntries(pageCounts.shows, "sitemap-shows")
-  xml += generateSitemapIndexEntries(pageCounts.deathDetails, "sitemap-death-details")
 
   xml += `</sitemapindex>`
 
@@ -339,58 +333,6 @@ export async function generateShowsSitemap(page: number): Promise<SitemapResult>
   return { xml, isEmpty: showsResult.rows.length === 0, notFound: false }
 }
 
-/**
- * Generates death details sitemap XML for a specific page
- * Only includes actors with has_detailed_death_info = true
- */
-export async function generateDeathDetailsSitemap(page: number): Promise<SitemapResult> {
-  if (isNaN(page) || page < 1) {
-    return { xml: "", isEmpty: false, notFound: false }
-  }
-
-  const offset = (page - 1) * URLS_PER_SITEMAP
-  const db = getPool()
-
-  const actorsResult = await db.query<{
-    id: number
-    name: string
-    updated_at: Date
-  }>(
-    `
-    SELECT id, name, updated_at
-    FROM actors
-    WHERE has_detailed_death_info = true AND deathday IS NOT NULL
-    ORDER BY updated_at DESC
-    LIMIT $1 OFFSET $2
-  `,
-    [URLS_PER_SITEMAP, offset]
-  )
-
-  if (actorsResult.rows.length === 0 && page > 1) {
-    return { xml: "", isEmpty: false, notFound: true }
-  }
-
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-`
-
-  for (const actor of actorsResult.rows) {
-    const slug = createActorSlug(actor.name, actor.id)
-    const lastmod = actor.updated_at.toISOString().split("T")[0]
-    xml += `  <url>
-    <loc>${BASE_URL}/actor/${escapeXml(slug)}/death</loc>
-    <lastmod>${lastmod}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-`
-  }
-
-  xml += `</urlset>`
-
-  return { xml, isEmpty: actorsResult.rows.length === 0, notFound: false }
-}
-
 export interface GeneratedSitemaps {
   files: Map<string, string>
   pageCounts: PageCounts
@@ -439,17 +381,6 @@ export async function generateAllSitemaps(): Promise<GeneratedSitemaps> {
     for (let i = 1; i <= pageCounts.shows; i++) {
       const result = await generateShowsSitemap(i)
       files.set(`sitemap-shows-${i}.xml`, result.xml)
-    }
-  }
-
-  // Generate death details sitemaps
-  if (pageCounts.deathDetails <= 1) {
-    const result = await generateDeathDetailsSitemap(1)
-    files.set("sitemap-death-details.xml", result.xml)
-  } else {
-    for (let i = 1; i <= pageCounts.deathDetails; i++) {
-      const result = await generateDeathDetailsSitemap(i)
-      files.set(`sitemap-death-details-${i}.xml`, result.xml)
     }
   }
 

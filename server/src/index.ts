@@ -40,7 +40,6 @@ import {
   getMoviesSitemap,
   getActorsSitemap,
   getShowsSitemap,
-  getDeathDetailsSitemap,
 } from "./routes/sitemap.js"
 import {
   getCauseCategoriesHandler,
@@ -264,8 +263,6 @@ app.get("/sitemap-actors.xml", heavyEndpointLimiter, getActorsSitemap)
 app.get("/sitemap-actors-:page.xml", heavyEndpointLimiter, getActorsSitemap)
 app.get("/sitemap-shows.xml", heavyEndpointLimiter, getShowsSitemap)
 app.get("/sitemap-shows-:page.xml", heavyEndpointLimiter, getShowsSitemap)
-app.get("/sitemap-death-details.xml", heavyEndpointLimiter, getDeathDetailsSitemap)
-app.get("/sitemap-death-details-:page.xml", heavyEndpointLimiter, getDeathDetailsSitemap)
 
 // OG image generation — branded social sharing images (1200x630 PNG)
 app.get("/og/:type/:id.png", heavyEndpointLimiter, ogImageHandler)

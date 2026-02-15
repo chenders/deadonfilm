@@ -10,14 +10,14 @@ import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildPersonSchema, buildBreadcrumbSchema } from "@/utils/schema"
-import { PersonIcon, FilmReelIcon, TVIcon, InfoIcon } from "@/components/icons"
+import { PersonIcon, FilmReelIcon, TVIcon } from "@/components/icons"
 import { useRelatedActors } from "@/hooks/useRelatedContent"
 import RelatedContent from "@/components/content/RelatedContent"
 import SeeAlso from "@/components/content/SeeAlso"
 import Breadcrumb from "@/components/layout/Breadcrumb"
-import HoverTooltip from "@/components/common/HoverTooltip"
 import AdminActorToolbar from "@/components/admin/AdminActorToolbar"
 import AdminActorMetadata from "@/components/admin/AdminActorMetadata"
+import DeathSummaryCard from "@/components/death/DeathSummaryCard"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
 
 type FilmographyItem =
@@ -193,9 +193,6 @@ export default function ActorPage() {
   const profileUrl = getProfileUrl(actor.profilePath, "h632")
   const currentAge = actor.deathday ? null : calculateCurrentAge(actor.birthday)
   const isDeceased = !!actor.deathday
-  const hasDeathDetails =
-    deathInfo?.causeOfDeathDetails && deathInfo.causeOfDeathDetails.trim().length > 0
-
   // Build a descriptive meta description based on death status
   const metaDescription = isDeceased
     ? `${actor.name} died on ${formatDate(actor.deathday, actor.deathdayPrecision)}${deathInfo?.ageAtDeath ? ` at age ${deathInfo.ageAtDeath}` : ""}.${deathInfo?.causeOfDeath ? ` Cause of death: ${deathInfo.causeOfDeath}.` : ""} See complete filmography and mortality statistics.`
@@ -228,6 +225,7 @@ export default function ActorPage() {
             biography: actor.biography,
             profilePath: actor.profilePath,
             placeOfBirth: actor.placeOfBirth,
+            causeOfDeath: deathInfo?.causeOfDeath,
           },
           slug!
         )}
@@ -308,43 +306,7 @@ export default function ActorPage() {
               {deathInfo?.causeOfDeath && (
                 <p>
                   <span className="font-medium">Cause of Death:</span>{" "}
-                  {hasDeathDetails ? (
-                    <HoverTooltip
-                      content={
-                        <>
-                          <p className="leading-relaxed">{deathInfo.causeOfDeathDetails}</p>
-                          {deathInfo.hasDetailedDeathInfo && slug && (
-                            <Link
-                              to={`/actor/${slug}/death`}
-                              className="mt-2 block text-right text-xs text-cream/80 underline hover:text-cream"
-                            >
-                              Read more →
-                            </Link>
-                          )}
-                        </>
-                      }
-                      testId="death-details-tooltip"
-                    >
-                      <span
-                        data-testid="cause-of-death-trigger"
-                        className="underline decoration-dotted"
-                      >
-                        {toTitleCase(deathInfo.causeOfDeath)}
-                        <InfoIcon
-                          size={14}
-                          className="ml-1 inline-block align-text-bottom text-brown-medium"
-                        />
-                      </span>
-                    </HoverTooltip>
-                  ) : (
-                    <span>{toTitleCase(deathInfo.causeOfDeath)}</span>
-                  )}
-                </p>
-              )}
-
-              {deathInfo?.yearsLost && Number(deathInfo.yearsLost) > 0 && (
-                <p className="text-accent">
-                  Died {Number(deathInfo.yearsLost).toFixed(1)} years before life expectancy
+                  {toTitleCase(deathInfo.causeOfDeath)}
                 </p>
               )}
             </div>
@@ -369,20 +331,35 @@ export default function ActorPage() {
                   Wikipedia
                 </a>
               )}
-              {isDeceased && deathInfo?.hasDetailedDeathInfo && (
-                <Link
-                  to={`/actor/${slug}/death`}
-                  data-testid="death-details-button"
-                  className="rounded-full bg-brown-medium px-3 py-1.5 text-xs text-cream transition-colors hover:bg-brown-dark"
-                >
-                  View Full Death Details →
-                </Link>
-              )}
             </div>
           </div>
         </div>
 
         <AdminActorMetadata actorId={actorId} />
+
+        {/* Death Summary Card */}
+        {isDeceased && deathInfo && (
+          <DeathSummaryCard
+            causeOfDeath={deathInfo.causeOfDeath}
+            causeOfDeathDetails={deathInfo.causeOfDeathDetails}
+            ageAtDeath={deathInfo.ageAtDeath}
+            yearsLost={deathInfo.yearsLost ? Number(deathInfo.yearsLost) : null}
+            hasFullDetails={deathInfo.hasDetailedDeathInfo}
+            slug={slug!}
+            onExpand={() => {
+              // Fire virtual pageview for analytics
+              fetch("/api/page-views/track", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  pageType: "actor_death",
+                  entityId: actorId,
+                  path: `${location.pathname}/death`,
+                }),
+              }).catch(() => {})
+            }}
+          />
+        )}
 
         {/* Biography */}
         {actor.biography && (

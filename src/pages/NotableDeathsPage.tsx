@@ -42,7 +42,7 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
 
   return (
     <Link
-      to={`/actor/${actor.slug}/death`}
+      to={`/actor/${actor.slug}`}
       data-testid={`notable-death-${actor.id}`}
       className="block rounded-lg bg-surface-elevated p-4 transition-colors hover:bg-cream"
     >

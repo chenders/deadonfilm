@@ -219,7 +219,7 @@ export default function PageViewsTab() {
                     <td className="px-4 py-3 text-admin-text-muted">#{index + 1}</td>
                     <td className="px-4 py-3">
                       <a
-                        href={`/actor/${page.entity_id}/death`}
+                        href={`/actor/${page.entity_id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-admin-accent text-admin-text-primary transition-colors"

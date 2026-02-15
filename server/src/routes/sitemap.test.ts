@@ -45,7 +45,6 @@ describe("getSitemapIndex", () => {
       .mockResolvedValueOnce({ rows: [{ count: "100" }] }) // movies
       .mockResolvedValueOnce({ rows: [{ count: "50" }] }) // actors
       .mockResolvedValueOnce({ rows: [{ count: "10" }] }) // shows
-      .mockResolvedValueOnce({ rows: [{ count: "5" }] }) // death details
 
     await getSitemapIndex(mockReq as Request, mockRes as Response)
 
@@ -60,7 +59,7 @@ describe("getSitemapIndex", () => {
     expect(xml).toContain("sitemap-movies.xml")
     expect(xml).toContain("sitemap-actors.xml")
     expect(xml).toContain("sitemap-shows.xml")
-    expect(xml).toContain("sitemap-death-details.xml")
+    expect(xml).not.toContain("sitemap-death-details.xml")
     // Should NOT have numbered suffixes for single pages
     expect(xml).not.toContain("sitemap-movies-1.xml")
   })
@@ -70,7 +69,6 @@ describe("getSitemapIndex", () => {
       .mockResolvedValueOnce({ rows: [{ count: "75000" }] }) // movies: 2 pages
       .mockResolvedValueOnce({ rows: [{ count: "150000" }] }) // actors: 3 pages
       .mockResolvedValueOnce({ rows: [{ count: "25000" }] }) // shows: 1 page
-      .mockResolvedValueOnce({ rows: [{ count: "100" }] }) // death details: 1 page
 
     await getSitemapIndex(mockReq as Request, mockRes as Response)
 
@@ -89,9 +87,6 @@ describe("getSitemapIndex", () => {
     // Shows should have single page (no suffix)
     expect(xml).toContain("sitemap-shows.xml")
     expect(xml).not.toContain("sitemap-shows-1.xml")
-
-    // Death details should have single page
-    expect(xml).toContain("sitemap-death-details.xml")
   })
 
   it("handles zero entries for a content type", async () => {
@@ -99,7 +94,6 @@ describe("getSitemapIndex", () => {
       .mockResolvedValueOnce({ rows: [{ count: "0" }] }) // movies: 0
       .mockResolvedValueOnce({ rows: [{ count: "100" }] }) // actors
       .mockResolvedValueOnce({ rows: [{ count: "50" }] }) // shows
-      .mockResolvedValueOnce({ rows: [{ count: "10" }] }) // death details
 
     await getSitemapIndex(mockReq as Request, mockRes as Response)
 

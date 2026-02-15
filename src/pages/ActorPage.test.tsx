@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, fireEvent } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { HelmetProvider } from "react-helmet-async"
@@ -206,7 +206,7 @@ describe("ActorPage", () => {
     })
   })
 
-  it("shows cause of death tooltip with details on click/tap", async () => {
+  it("shows cause of death in header and details in death summary card", async () => {
     vi.mocked(api.getActor).mockResolvedValue(mockDeceasedActor)
 
     renderWithProviders(<ActorPage />, {
@@ -214,18 +214,17 @@ describe("ActorPage", () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByTestId("cause-of-death-trigger")).toBeInTheDocument()
+      expect(screen.getByTestId("actor-page")).toBeInTheDocument()
     })
 
-    // Click to show tooltip (mobile tap behavior)
-    fireEvent.click(screen.getByTestId("cause-of-death-trigger"))
+    // Header shows cause name (no tooltip)
+    expect(screen.getByText(/Cause of Death:/)).toBeInTheDocument()
+    expect(screen.getByText("Natural Causes")).toBeInTheDocument()
+    expect(screen.queryByTestId("death-details-tooltip")).not.toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(screen.getByTestId("death-details-tooltip")).toBeInTheDocument()
-      expect(
-        screen.getByText("Passed peacefully at home surrounded by family.")
-      ).toBeInTheDocument()
-    })
+    // Death summary card shows the details text
+    expect(screen.getByTestId("death-summary-card")).toBeInTheDocument()
+    expect(screen.getByText("Passed peacefully at home surrounded by family.")).toBeInTheDocument()
   })
 
   it("renders external links (TMDB, Wikipedia)", async () => {
@@ -303,7 +302,7 @@ describe("ActorPage", () => {
     ])
   })
 
-  it("shows years lost when positive", async () => {
+  it("shows years lost in death summary card when positive", async () => {
     vi.mocked(api.getActor).mockResolvedValue({
       ...mockDeceasedActor,
       deathInfo: {
@@ -317,8 +316,10 @@ describe("ActorPage", () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText(/Died 15.0 years before life expectancy/)).toBeInTheDocument()
+      expect(screen.getByTestId("death-summary-card")).toBeInTheDocument()
     })
+
+    expect(screen.getByText(/15\.0 years before life expectancy/)).toBeInTheDocument()
   })
 
   it("filmography links to movie pages", async () => {

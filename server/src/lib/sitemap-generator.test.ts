@@ -63,11 +63,10 @@ describe("getPageCounts", () => {
       .mockResolvedValueOnce({ rows: [{ count: "100" }] }) // movies
       .mockResolvedValueOnce({ rows: [{ count: "50" }] }) // actors
       .mockResolvedValueOnce({ rows: [{ count: "25" }] }) // shows
-      .mockResolvedValueOnce({ rows: [{ count: "10" }] }) // death details
 
     const counts = await getPageCounts()
 
-    expect(counts).toEqual({ movies: 1, actors: 1, shows: 1, deathDetails: 1 })
+    expect(counts).toEqual({ movies: 1, actors: 1, shows: 1 })
   })
 
   it("returns correct page counts for large datasets", async () => {
@@ -75,11 +74,10 @@ describe("getPageCounts", () => {
       .mockResolvedValueOnce({ rows: [{ count: "75000" }] }) // movies: 2 pages
       .mockResolvedValueOnce({ rows: [{ count: "150000" }] }) // actors: 3 pages
       .mockResolvedValueOnce({ rows: [{ count: "50001" }] }) // shows: 2 pages
-      .mockResolvedValueOnce({ rows: [{ count: "100000" }] }) // death details: 2 pages
 
     const counts = await getPageCounts()
 
-    expect(counts).toEqual({ movies: 2, actors: 3, shows: 2, deathDetails: 2 })
+    expect(counts).toEqual({ movies: 2, actors: 3, shows: 2 })
   })
 
   it("handles exactly 50000 entries (1 page)", async () => {
@@ -87,11 +85,10 @@ describe("getPageCounts", () => {
       .mockResolvedValueOnce({ rows: [{ count: "50000" }] })
       .mockResolvedValueOnce({ rows: [{ count: "50000" }] })
       .mockResolvedValueOnce({ rows: [{ count: "50000" }] })
-      .mockResolvedValueOnce({ rows: [{ count: "50000" }] })
 
     const counts = await getPageCounts()
 
-    expect(counts).toEqual({ movies: 1, actors: 1, shows: 1, deathDetails: 1 })
+    expect(counts).toEqual({ movies: 1, actors: 1, shows: 1 })
   })
 
   it("handles zero entries", async () => {
@@ -99,11 +96,10 @@ describe("getPageCounts", () => {
       .mockResolvedValueOnce({ rows: [{ count: "0" }] })
       .mockResolvedValueOnce({ rows: [{ count: "0" }] })
       .mockResolvedValueOnce({ rows: [{ count: "0" }] })
-      .mockResolvedValueOnce({ rows: [{ count: "0" }] })
 
     const counts = await getPageCounts()
 
-    expect(counts).toEqual({ movies: 0, actors: 0, shows: 0, deathDetails: 0 })
+    expect(counts).toEqual({ movies: 0, actors: 0, shows: 0 })
   })
 })
 
@@ -121,7 +117,6 @@ describe("generateSitemapIndex", () => {
       .mockResolvedValueOnce({ rows: [{ count: "100" }] })
       .mockResolvedValueOnce({ rows: [{ count: "50" }] })
       .mockResolvedValueOnce({ rows: [{ count: "10" }] })
-      .mockResolvedValueOnce({ rows: [{ count: "5" }] })
 
     const xml = await generateSitemapIndex()
 
@@ -131,7 +126,7 @@ describe("generateSitemapIndex", () => {
     expect(xml).toContain("sitemap-movies.xml")
     expect(xml).toContain("sitemap-actors.xml")
     expect(xml).toContain("sitemap-shows.xml")
-    expect(xml).toContain("sitemap-death-details.xml")
+    expect(xml).not.toContain("sitemap-death-details.xml")
     expect(xml).not.toContain("sitemap-movies-1.xml")
   })
 
@@ -140,7 +135,6 @@ describe("generateSitemapIndex", () => {
       .mockResolvedValueOnce({ rows: [{ count: "75000" }] }) // 2 pages
       .mockResolvedValueOnce({ rows: [{ count: "150000" }] }) // 3 pages
       .mockResolvedValueOnce({ rows: [{ count: "25000" }] }) // 1 page
-      .mockResolvedValueOnce({ rows: [{ count: "100" }] }) // 1 page
 
     const xml = await generateSitemapIndex()
 
@@ -155,9 +149,6 @@ describe("generateSitemapIndex", () => {
 
     expect(xml).toContain("sitemap-shows.xml")
     expect(xml).not.toContain("sitemap-shows-1.xml")
-
-    expect(xml).toContain("sitemap-death-details.xml")
-    expect(xml).not.toContain("sitemap-death-details-1.xml")
   })
 })
 
@@ -426,13 +417,11 @@ describe("generateAllSitemaps", () => {
       .mockResolvedValueOnce({ rows: [{ count: "100" }] }) // movies
       .mockResolvedValueOnce({ rows: [{ count: "50" }] }) // actors
       .mockResolvedValueOnce({ rows: [{ count: "10" }] }) // shows
-      .mockResolvedValueOnce({ rows: [{ count: "5" }] }) // death details
     // Additional queries for page counts in generateSitemapIndex
     mockQuery
       .mockResolvedValueOnce({ rows: [{ count: "100" }] })
       .mockResolvedValueOnce({ rows: [{ count: "50" }] })
       .mockResolvedValueOnce({ rows: [{ count: "10" }] })
-      .mockResolvedValueOnce({ rows: [{ count: "5" }] })
     // Content queries
     mockQuery
       .mockResolvedValueOnce({
@@ -444,9 +433,6 @@ describe("generateAllSitemaps", () => {
       .mockResolvedValueOnce({
         rows: [{ tmdb_id: 3, name: "Show", first_air_year: 2015, updated_at: new Date() }],
       })
-      .mockResolvedValueOnce({
-        rows: [{ tmdb_id: 4, name: "Death Actor", updated_at: new Date() }],
-      })
 
     const result = await generateAllSitemaps()
 
@@ -455,8 +441,8 @@ describe("generateAllSitemaps", () => {
     expect(result.files.has("sitemap-movies.xml")).toBe(true)
     expect(result.files.has("sitemap-actors.xml")).toBe(true)
     expect(result.files.has("sitemap-shows.xml")).toBe(true)
-    expect(result.files.has("sitemap-death-details.xml")).toBe(true)
-    expect(result.pageCounts).toEqual({ movies: 1, actors: 1, shows: 1, deathDetails: 1 })
+    expect(result.files.has("sitemap-death-details.xml")).toBe(false)
+    expect(result.pageCounts).toEqual({ movies: 1, actors: 1, shows: 1 })
   })
 
   it("generates paginated sitemaps when content exceeds 50k", async () => {
@@ -465,13 +451,11 @@ describe("generateAllSitemaps", () => {
       .mockResolvedValueOnce({ rows: [{ count: "75000" }] }) // movies: 2 pages
       .mockResolvedValueOnce({ rows: [{ count: "50" }] }) // actors
       .mockResolvedValueOnce({ rows: [{ count: "10" }] }) // shows
-      .mockResolvedValueOnce({ rows: [{ count: "5" }] }) // death details
     // Additional queries for generateSitemapIndex
     mockQuery
       .mockResolvedValueOnce({ rows: [{ count: "75000" }] })
       .mockResolvedValueOnce({ rows: [{ count: "50" }] })
       .mockResolvedValueOnce({ rows: [{ count: "10" }] })
-      .mockResolvedValueOnce({ rows: [{ count: "5" }] })
     // Content queries for movies (2 pages)
     mockQuery.mockResolvedValueOnce({
       rows: [{ tmdb_id: 1, title: "Movie 1", release_year: 2020, updated_at: new Date() }],
@@ -479,16 +463,13 @@ describe("generateAllSitemaps", () => {
     mockQuery.mockResolvedValueOnce({
       rows: [{ tmdb_id: 2, title: "Movie 2", release_year: 2021, updated_at: new Date() }],
     })
-    // Content queries for actors, shows, and death details
+    // Content queries for actors and shows
     mockQuery
       .mockResolvedValueOnce({
         rows: [{ tmdb_id: 3, name: "Actor", updated_at: new Date() }],
       })
       .mockResolvedValueOnce({
         rows: [{ tmdb_id: 4, name: "Show", first_air_year: 2015, updated_at: new Date() }],
-      })
-      .mockResolvedValueOnce({
-        rows: [{ tmdb_id: 5, name: "Death Actor", updated_at: new Date() }],
       })
 
     const result = await generateAllSitemaps()
@@ -498,7 +479,7 @@ describe("generateAllSitemaps", () => {
     expect(result.files.has("sitemap-movies.xml")).toBe(false)
     expect(result.files.has("sitemap-actors.xml")).toBe(true)
     expect(result.files.has("sitemap-shows.xml")).toBe(true)
-    expect(result.files.has("sitemap-death-details.xml")).toBe(true)
+    expect(result.files.has("sitemap-death-details.xml")).toBe(false)
     expect(result.pageCounts.movies).toBe(2)
   })
 })
