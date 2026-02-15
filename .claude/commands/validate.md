@@ -1,6 +1,6 @@
 # Validate
 
-Run all quality checks to verify code is ready for commit.
+Run all quality checks on demand. This is NOT required before commits or PRs — lint-staged handles pre-commit checks and CI handles everything else.
 
 ## Instructions
 
@@ -53,6 +53,6 @@ If any check fails:
 
 ## Notes
 
-- All checks must pass before committing per CLAUDE.md requirements
 - Run all 8 commands (4 frontend + 4 backend) in parallel for speed
-- This command is called by `/create-pr` as a pre-flight check
+- This is a standalone command for manual verification — NOT called automatically by other commands
+- Pre-commit (lint-staged) catches lint/format issues; CI catches everything on PR
