@@ -78,6 +78,13 @@ export default {
         disabled: colorVar('--disabled-bg'),
         'disabled-text': colorVar('--disabled-text'),
 
+        // Deceased
+        deceased: {
+          bg: colorVar('--deceased-bg'),
+          border: colorVar('--deceased-border'),
+          text: colorVar('--deceased-primary'),
+        },
+
         // Overlays
         overlay: colorVar('--overlay'),
         'overlay-text': colorVar('--overlay-text'),

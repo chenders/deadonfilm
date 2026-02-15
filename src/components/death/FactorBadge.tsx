@@ -15,7 +15,7 @@ export default function FactorBadge({ factor }: FactorBadgeProps) {
 
   return (
     <span
-      className="inline-block rounded-full bg-beige px-2 py-0.5 text-xs text-brown-dark"
+      className="inline-block rounded-full border border-deceased-border bg-deceased-bg px-2 py-0.5 text-xs text-deceased-text"
       data-testid="factor-badge"
     >
       {formatted}
