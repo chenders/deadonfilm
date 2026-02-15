@@ -1,28 +1,57 @@
 /**
  * Tests for Bull Board setup
+ *
+ * Uses ioredis-mock so tests always run without a real Redis instance.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import RedisMock from "ioredis-mock"
+
+// Mock ioredis so BullMQ queues use in-memory Redis
+vi.mock("ioredis", () => ({
+  default: RedisMock,
+}))
+
+vi.mock("../logger.js", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}))
+
 import { Queue } from "bullmq"
 import { setupBullBoard } from "./bull-board.js"
-import { getRedisJobsClient } from "./redis.js"
-
-const hasRedis = !!process.env.REDIS_JOBS_URL
+import { getRedisJobsClient, _resetForTesting } from "./redis.js"
 
 describe("setupBullBoard", () => {
-  describe.skipIf(!hasRedis)("with Redis queues", () => {
+  let originalEnv: string | undefined
+
+  beforeEach(() => {
+    originalEnv = process.env.REDIS_JOBS_URL
+    process.env.REDIS_JOBS_URL = "redis://localhost:6380"
+    _resetForTesting()
+  })
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.REDIS_JOBS_URL
+    } else {
+      process.env.REDIS_JOBS_URL = originalEnv
+    }
+    _resetForTesting()
+  })
+
+  describe("with Redis queues", () => {
     let testQueue: Queue
 
-    beforeEach(async () => {
-      // Create a test queue
+    beforeEach(() => {
       testQueue = new Queue("test-queue", {
         connection: getRedisJobsClient(),
       })
     })
 
     afterEach(async () => {
-      // Clean up Redis keys and close queue to ensure test isolation
-      await testQueue.obliterate({ force: true })
       await testQueue.close()
     })
 
@@ -44,8 +73,6 @@ describe("setupBullBoard", () => {
         expect(router).toBeDefined()
         expect(typeof router).toBe("function")
       } finally {
-        // Clean up second queue - obliterate to remove Redis keys
-        await queue2.obliterate({ force: true })
         await queue2.close()
       }
     })

@@ -21,10 +21,8 @@ Prepare and commit the current work with proper documentation and tests.
    - For backend changes: add/update tests in `server/src/**/*.test.ts`
    - Run `npm test` (frontend) and `cd server && npm test` (backend) to verify tests pass
 
-4. **Run quality checks**
-   - Run `npm run format && cd server && npm run format` to format code
-   - Run `npm run lint && cd server && npm run lint` to check for lint errors
-   - Run `npm run type-check && cd server && npm run type-check` to verify types
+4. **Format code** (lint-staged handles lint/format on commit, CI handles type-check)
+   - Run `npm run format && cd server && npm run format` to auto-format before staging
 
 5. **Create the commit**
    - Stage all relevant changes with `git add`

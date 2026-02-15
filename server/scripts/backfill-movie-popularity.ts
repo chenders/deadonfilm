@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { fileURLToPath } from "node:url"
 /**
  * Backfill missing movie popularity scores from TMDB.
  *
@@ -253,4 +254,6 @@ const program = new Command()
     })
   })
 
-program.parse()
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  program.parse()
+}
