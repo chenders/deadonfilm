@@ -109,10 +109,6 @@ describe("DeathDetailsContent", () => {
 
     expect(screen.getByTestId("death-details-content")).toBeInTheDocument()
 
-    // Factor badges
-    expect(screen.getByText("On Set Exposure")).toBeInTheDocument()
-    expect(screen.getByText("Agent Orange")).toBeInTheDocument()
-
     // What We Know
     expect(screen.getByTestId("official-section")).toBeInTheDocument()
     expect(screen.getByText(/stomach cancer at UCLA/)).toBeInTheDocument()

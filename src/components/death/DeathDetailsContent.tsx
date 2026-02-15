@@ -9,7 +9,6 @@ import { useActorDeathDetails } from "@/hooks/useDeathDetails"
 import { LinkedText } from "@/components/death/LinkedText"
 import ConfidenceIndicator from "@/components/common/ConfidenceIndicator"
 import LowConfidenceWarning from "@/components/death/LowConfidenceWarning"
-import FactorBadge from "@/components/death/FactorBadge"
 import ProjectLink from "@/components/death/ProjectLink"
 import SourceList from "@/components/death/SourceList"
 import RelatedCelebrityCard from "@/components/death/RelatedCelebrityCard"
@@ -61,15 +60,6 @@ export default function DeathDetailsContent({ slug }: DeathDetailsContentProps) 
 
   return (
     <div className="space-y-5 pt-4" data-testid="death-details-content">
-      {/* Notable factor badges */}
-      {circumstances.notableFactors && circumstances.notableFactors.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {circumstances.notableFactors.map((factor) => (
-            <FactorBadge key={factor} factor={factor} />
-          ))}
-        </div>
-      )}
-
       {/* Low confidence warning */}
       <LowConfidenceWarning level={circumstances.confidence} />
 
