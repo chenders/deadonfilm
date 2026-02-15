@@ -13,8 +13,9 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest"
 import { getPool } from "../../db.js"
 import { queueManager } from "../queue-manager.js"
 import { JobType, QueueName, JobPriority } from "../types.js"
+import { isRedisReachable } from "./check-redis.js"
 
-const hasIntegrationDeps = !!process.env.REDIS_JOBS_URL && !!process.env.DATABASE_URL
+const hasIntegrationDeps = isRedisReachable() && !!process.env.DATABASE_URL
 
 describe.skipIf(!hasIntegrationDeps)("QueueManager", () => {
   let pool: ReturnType<typeof getPool>
