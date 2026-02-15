@@ -219,18 +219,18 @@ export default function PageViewsTab() {
                   >
                     <td className="px-4 py-3 text-admin-text-muted">#{index + 1}</td>
                     <td className="px-4 py-3">
-                      <a
-                        href={
-                          page.entity_name && page.entity_tmdb_id
-                            ? `/actor/${createActorSlug(page.entity_name, page.entity_tmdb_id)}`
-                            : `/actor/${page.entity_id}`
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-admin-accent text-admin-text-primary transition-colors"
-                      >
-                        {page.entity_name}
-                      </a>
+                      {page.entity_name ? (
+                        <a
+                          href={`/actor/${createActorSlug(page.entity_name, page.entity_id)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-admin-accent text-admin-text-primary transition-colors"
+                        >
+                          {page.entity_name}
+                        </a>
+                      ) : (
+                        <span className="text-admin-text-muted">Actor #{page.entity_id}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-admin-text-primary">
                       {page.view_count.toLocaleString()}

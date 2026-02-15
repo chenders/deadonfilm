@@ -139,7 +139,14 @@ export async function getActor(req: Request, res: Response) {
     if (person.deathday) {
       // Fetch detailed death info flag and notable factors in parallel
       const [hasDetailedInfo, circumstancesRow] = await Promise.all([
-        hasDetailedDeathInfo(tmdbIdForFetch),
+        actorRecord.tmdb_id !== null
+          ? hasDetailedDeathInfo(actorRecord.tmdb_id)
+          : getPool()
+              .query<{ has_detailed_death_info: boolean }>(
+                `SELECT has_detailed_death_info FROM actors WHERE id = $1`,
+                [actorRecord.id]
+              )
+              .then((r) => r.rows[0]?.has_detailed_death_info ?? false),
         getPool()
           .query<{ notable_factors: string[] | null }>(
             `SELECT notable_factors FROM actor_death_circumstances WHERE actor_id = $1`,
