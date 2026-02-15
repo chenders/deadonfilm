@@ -35,6 +35,7 @@ export const CACHE_PREFIX = {
   GENRES: "genres",
   DEATHS: "deaths",
   PRERENDER: "prerender",
+  SSR: "ssr",
   CACHE_METADATA: "cache-metadata",
   RELATED_ACTORS: "related-actors",
   RELATED_MOVIES: "related-movies",
@@ -246,6 +247,16 @@ export async function invalidatePrerenderCache(pathPattern?: string): Promise<nu
 }
 
 /**
+ * Invalidate SSR cache for specific path patterns or all SSR-rendered pages.
+ */
+export async function invalidateSSRCache(pathPattern?: string): Promise<number> {
+  if (pathPattern) {
+    return invalidateByPattern(`${CACHE_PREFIX.SSR}:*${pathPattern}*`)
+  }
+  return invalidateByPattern(`${CACHE_PREFIX.SSR}:*`)
+}
+
+/**
  * Invalidate caches related to death data.
  * Call this when new deaths are recorded.
  */
@@ -267,6 +278,12 @@ export async function invalidateDeathCaches(): Promise<void> {
     invalidatePrerenderCache("/causes-of-death"),
     invalidatePrerenderCache("/covid-deaths"),
     invalidatePrerenderCache("/unnatural-deaths"),
+    // Invalidate SSR-rendered pages with death data
+    invalidateSSRCache("/death-watch"),
+    invalidateSSRCache("/deaths"),
+    invalidateSSRCache("/causes-of-death"),
+    invalidateSSRCache("/covid-deaths"),
+    invalidateSSRCache("/unnatural-deaths"),
   ])
 }
 
