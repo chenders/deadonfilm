@@ -328,7 +328,7 @@ export async function getDecadeCategories(): Promise<DecadeCategory[]> {
  */
 export async function getCauseCategoryIndex(): Promise<CauseCategoryIndexResponse> {
   const db = getPool()
-  const categoryCase = buildCategoryCaseStatement()
+  const categoryCase = buildCategoryCaseStatement("cmm.manner")
 
   // Get category counts and stats
   const categoriesResult = await db.query<{
@@ -340,12 +340,14 @@ export async function getCauseCategoryIndex(): Promise<CauseCategoryIndexRespons
     `SELECT
        ${categoryCase} as category_slug,
        COUNT(*) as count,
-       ROUND(AVG(age_at_death)::numeric, 1) as avg_age,
-       ROUND(AVG(years_lost)::numeric, 1) as avg_years_lost
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND cause_of_death IS NOT NULL
-       AND is_obscure = false
+       ROUND(AVG(a.age_at_death)::numeric, 1) as avg_age,
+       ROUND(AVG(a.years_lost)::numeric, 1) as avg_years_lost
+     FROM actors a
+     LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, a.cause_of_death) = cmm.normalized_cause
+     WHERE a.deathday IS NOT NULL
+       AND a.cause_of_death IS NOT NULL
+       AND a.is_obscure = false
      GROUP BY category_slug
      ORDER BY count DESC`
   )
@@ -364,6 +366,7 @@ export async function getCauseCategoryIndex(): Promise<CauseCategoryIndexRespons
          ROW_NUMBER() OVER (PARTITION BY ${categoryCase} ORDER BY COUNT(*) DESC) as rn
        FROM actors a
        LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+       LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, a.cause_of_death) = cmm.normalized_cause
        WHERE a.deathday IS NOT NULL
          AND a.cause_of_death IS NOT NULL
          AND a.is_obscure = false
@@ -444,23 +447,35 @@ export async function getCauseCategory(
   const categoryInfo = getCategoryBySlug(categorySlug)
   if (!categoryInfo) return null
 
+  // Manner-based categories use manner column when available
+  const mannerCategories = new Set(["suicide", "homicide", "accident"])
+  const usesManner = mannerCategories.has(categorySlug)
+
   // Build the category filter condition
   const isOtherCategory = categorySlug === "other"
   let categoryCondition: string
 
   if (isOtherCategory) {
-    // 'other' category = doesn't match any known patterns
+    // 'other' category = doesn't match any known patterns and has no manner mapping
     const allKnownPatterns = Object.entries(CAUSE_CATEGORIES)
       .filter(([key]) => key !== "other")
       .flatMap(([, cat]) => cat.patterns)
-    categoryCondition = `NOT (${buildCauseCategoryCondition(allKnownPatterns)})`
+    categoryCondition = `NOT (${buildCauseCategoryCondition(allKnownPatterns)}) AND (cmm.manner IS NULL OR cmm.manner = 'undetermined')`
+  } else if (usesManner) {
+    // For intent-based categories: manner match OR (no manner AND text pattern match)
+    // SAFETY: categorySlug is validated upstream via isValidCategorySlug() and is constrained
+    // to the fixed set in mannerCategories (suicide, homicide, accident). Not user input.
+    const textCondition = buildCauseCategoryCondition(categoryInfo.patterns)
+    categoryCondition = `(cmm.manner = '${categorySlug}' OR (cmm.manner IS NULL AND (${textCondition})))`
   } else {
     categoryCondition = buildCauseCategoryCondition(categoryInfo.patterns)
   }
 
   // Add specific cause filter if provided
-  const causeFilter = specificCause ? `AND LOWER(cause_of_death) = LOWER($3)` : ""
-  const obscureFilter = includeObscure ? "" : "AND is_obscure = false"
+  const causeFilter = specificCause ? `AND LOWER(a.cause_of_death) = LOWER($3)` : ""
+  const obscureFilter = includeObscure ? "" : "AND a.is_obscure = false"
+  const mannerJoin = `LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, a.cause_of_death) = cmm.normalized_cause`
 
   // Get category stats
   const statsResult = await db.query<{
@@ -470,11 +485,12 @@ export async function getCauseCategory(
   }>(
     `SELECT
        COUNT(*) as count,
-       ROUND(AVG(age_at_death)::numeric, 1) as avg_age,
-       ROUND(AVG(years_lost)::numeric, 1) as avg_years_lost
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND cause_of_death IS NOT NULL
+       ROUND(AVG(a.age_at_death)::numeric, 1) as avg_age,
+       ROUND(AVG(a.years_lost)::numeric, 1) as avg_years_lost
+     FROM actors a
+     ${mannerJoin}
+     WHERE a.deathday IS NOT NULL
+       AND a.cause_of_death IS NOT NULL
        AND (${categoryCondition})
        ${obscureFilter}`,
     []
@@ -483,34 +499,36 @@ export async function getCauseCategory(
   // Get total actors with known cause (for percentage)
   const totalResult = await db.query<{ total: string }>(
     `SELECT COUNT(*) as total
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND cause_of_death IS NOT NULL
+     FROM actors a
+     WHERE a.deathday IS NOT NULL
+       AND a.cause_of_death IS NOT NULL
        ${obscureFilter}`
   )
 
   // Get notable actors (top 5 by popularity)
   const notableResult = await db.query<ActorRecord>(
     `SELECT
-       id, tmdb_id, name, profile_path, deathday,
-       cause_of_death, cause_of_death_details, age_at_death
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND cause_of_death IS NOT NULL
+       a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
+       a.cause_of_death, a.cause_of_death_details, a.age_at_death
+     FROM actors a
+     ${mannerJoin}
+     WHERE a.deathday IS NOT NULL
+       AND a.cause_of_death IS NOT NULL
        AND (${categoryCondition})
        ${obscureFilter}
-     ORDER BY dof_popularity DESC NULLS LAST
+     ORDER BY a.dof_popularity DESC NULLS LAST
      LIMIT 5`
   )
 
   // Get decade breakdown
   const decadeResult = await db.query<{ decade: string; count: string }>(
     `SELECT
-       (EXTRACT(YEAR FROM deathday::date)::int / 10 * 10)::text || 's' as decade,
+       (EXTRACT(YEAR FROM a.deathday::date)::int / 10 * 10)::text || 's' as decade,
        COUNT(*) as count
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND cause_of_death IS NOT NULL
+     FROM actors a
+     ${mannerJoin}
+     WHERE a.deathday IS NOT NULL
+       AND a.cause_of_death IS NOT NULL
        AND (${categoryCondition})
        ${obscureFilter}
      GROUP BY decade
@@ -524,6 +542,7 @@ export async function getCauseCategory(
             AVG(a.age_at_death)::numeric(10,1) as avg_age
      FROM actors a
      LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, a.cause_of_death) = cmm.normalized_cause
      WHERE a.deathday IS NOT NULL
        AND a.cause_of_death IS NOT NULL
        AND (${categoryCondition})
@@ -541,16 +560,17 @@ export async function getCauseCategory(
 
   const actorsResult = await db.query<ActorRecord & { total_count: string }>(
     `SELECT
-       id, tmdb_id, name, profile_path, deathday,
-       cause_of_death, cause_of_death_details, age_at_death, years_lost,
+       a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
+       a.cause_of_death, a.cause_of_death_details, a.age_at_death, a.years_lost,
        COUNT(*) OVER() as total_count
-     FROM actors
-     WHERE deathday IS NOT NULL
-       AND cause_of_death IS NOT NULL
+     FROM actors a
+     ${mannerJoin}
+     WHERE a.deathday IS NOT NULL
+       AND a.cause_of_death IS NOT NULL
        AND (${categoryCondition})
        ${obscureFilter}
        ${causeFilter}
-     ORDER BY dof_popularity DESC NULLS LAST, name
+     ORDER BY a.dof_popularity DESC NULLS LAST, a.name
      LIMIT $1 OFFSET $2`,
     actorsParams
   )
@@ -619,6 +639,10 @@ export async function getCauseFromSlugInCategory(
   const categoryInfo = getCategoryBySlug(categorySlug)
   if (!categoryInfo) return null
 
+  // Manner-based categories use manner column when available
+  const mannerCategories = new Set(["suicide", "homicide", "accident"])
+  const usesManner = mannerCategories.has(categorySlug)
+
   // Build category condition
   const isOtherCategory = categorySlug === "other"
   let categoryCondition: string
@@ -627,7 +651,12 @@ export async function getCauseFromSlugInCategory(
     const allKnownPatterns = Object.entries(CAUSE_CATEGORIES)
       .filter(([key]) => key !== "other")
       .flatMap(([, cat]) => cat.patterns)
-    categoryCondition = `NOT (${buildCauseCategoryCondition(allKnownPatterns)})`
+    categoryCondition = `NOT (${buildCauseCategoryCondition(allKnownPatterns)}) AND (cmm.manner IS NULL OR cmm.manner = 'undetermined')`
+  } else if (usesManner) {
+    // SAFETY: categorySlug is validated upstream via isValidCategorySlug() and is constrained
+    // to the fixed set in mannerCategories (suicide, homicide, accident). Not user input.
+    const textCondition = buildCauseCategoryCondition(categoryInfo.patterns)
+    categoryCondition = `(cmm.manner = '${categorySlug}' OR (cmm.manner IS NULL AND (${textCondition})))`
   } else {
     categoryCondition = buildCauseCategoryCondition(categoryInfo.patterns)
   }
@@ -637,6 +666,7 @@ export async function getCauseFromSlugInCategory(
     `SELECT DISTINCT COALESCE(n.normalized_cause, a.cause_of_death) as cause
      FROM actors a
      LEFT JOIN cause_of_death_normalizations n ON a.cause_of_death = n.original_cause
+     LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, a.cause_of_death) = cmm.normalized_cause
      WHERE a.deathday IS NOT NULL
        AND a.cause_of_death IS NOT NULL
        AND (${categoryCondition})`

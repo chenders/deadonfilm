@@ -129,7 +129,7 @@ describe("cause-categories", () => {
   })
 
   describe("buildCategoryCaseStatement", () => {
-    it("returns valid SQL CASE statement", () => {
+    it("returns valid SQL CASE statement without manner", () => {
       const caseStmt = buildCategoryCaseStatement()
       expect(caseStmt).toContain("CASE")
       expect(caseStmt).toContain("WHEN")
@@ -147,6 +147,18 @@ describe("cause-categories", () => {
           expect(caseStmt).toContain(`THEN '${category.slug}'`)
         }
       }
+    })
+
+    it("includes manner checks when mannerColumn is provided", () => {
+      const caseStmt = buildCategoryCaseStatement("cmm.manner")
+      // Should check manner for intent-based categories
+      expect(caseStmt).toContain("cmm.manner = 'suicide'")
+      expect(caseStmt).toContain("cmm.manner = 'homicide'")
+      expect(caseStmt).toContain("cmm.manner = 'accident'")
+      // Should still have text pattern fallbacks
+      expect(caseStmt).toContain("cmm.manner IS NULL")
+      // Medical categories should NOT have manner checks
+      expect(caseStmt).not.toContain("cmm.manner = 'cancer'")
     })
   })
 
@@ -185,8 +197,12 @@ describe("cause-categories", () => {
     it("categorizes accidents", () => {
       expect(categorizeCauseOfDeath("car accident")).toBe("accident")
       expect(categorizeCauseOfDeath("plane crash")).toBe("accident")
-      expect(categorizeCauseOfDeath("drowning")).toBe("accident")
-      expect(categorizeCauseOfDeath("fell from a building")).toBe("accident")
+      expect(categorizeCauseOfDeath("motorcycle crash")).toBe("accident")
+    })
+
+    it("does not categorize ambiguous mechanisms as accidents without manner", () => {
+      expect(categorizeCauseOfDeath("drowning")).toBe("other")
+      expect(categorizeCauseOfDeath("fell from a building")).toBe("other")
     })
 
     it("categorizes overdoses", () => {
@@ -203,9 +219,33 @@ describe("cause-categories", () => {
 
     it("categorizes homicides", () => {
       expect(categorizeCauseOfDeath("murder")).toBe("homicide")
-      expect(categorizeCauseOfDeath("gunshot wound")).toBe("homicide")
       expect(categorizeCauseOfDeath("assassinated")).toBe("homicide")
-      expect(categorizeCauseOfDeath("stabbed to death")).toBe("homicide")
+    })
+
+    it("does not categorize ambiguous mechanisms as homicide without manner", () => {
+      expect(categorizeCauseOfDeath("gunshot wound")).toBe("other")
+      expect(categorizeCauseOfDeath("stabbed to death")).toBe("other")
+    })
+
+    it("categorizes mechanisms correctly when manner is provided", () => {
+      expect(categorizeCauseOfDeath("gunshot wound", "homicide")).toBe("homicide")
+      expect(categorizeCauseOfDeath("gunshot wound", "suicide")).toBe("suicide")
+      expect(categorizeCauseOfDeath("gunshot wound", "accident")).toBe("accident")
+      expect(categorizeCauseOfDeath("drowning", "accident")).toBe("accident")
+      expect(categorizeCauseOfDeath("drowning", "suicide")).toBe("suicide")
+    })
+
+    it("uses text patterns when manner is null or natural", () => {
+      expect(categorizeCauseOfDeath("lung cancer", null)).toBe("cancer")
+      expect(categorizeCauseOfDeath("lung cancer", "natural")).toBe("cancer")
+      expect(categorizeCauseOfDeath("heart attack", "natural")).toBe("heart_disease")
+    })
+
+    it("manner overrides text patterns for intent-based categories", () => {
+      // Even if the cause text doesn't match any pattern, manner wins
+      expect(categorizeCauseOfDeath("unknown cause", "suicide")).toBe("suicide")
+      expect(categorizeCauseOfDeath("unknown cause", "homicide")).toBe("homicide")
+      expect(categorizeCauseOfDeath("unknown cause", "accident")).toBe("accident")
     })
 
     it("categorizes infectious diseases", () => {
