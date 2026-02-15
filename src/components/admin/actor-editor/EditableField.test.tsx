@@ -103,6 +103,28 @@ describe("EditableField", () => {
       expect(input).toHaveAttribute("type", "date")
       expect(input).toHaveValue("2024-01-15")
     })
+
+    it("slices ISO timestamps to YYYY-MM-DD format", () => {
+      render(
+        <EditableField
+          name="test"
+          label="Test Date"
+          value="1934-09-28T08:00:00.000Z"
+          onChange={vi.fn()}
+          type="date"
+        />
+      )
+
+      expect(screen.getByLabelText("Test Date")).toHaveValue("1934-09-28")
+    })
+
+    it("handles null date value", () => {
+      render(
+        <EditableField name="test" label="Test Date" value={null} onChange={vi.fn()} type="date" />
+      )
+
+      expect(screen.getByLabelText("Test Date")).toHaveValue("")
+    })
   })
 
   describe("boolean input", () => {
