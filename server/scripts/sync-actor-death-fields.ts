@@ -24,10 +24,11 @@ interface Options {
 }
 
 // Build slug lookup from CAUSE_CATEGORIES (use slugs for the array, not keys)
-const CATEGORY_ENTRIES: Array<{ slug: string; patterns: readonly string[] }> =
-  Object.entries(CAUSE_CATEGORIES)
-    .filter(([key]) => key !== "other")
-    .map(([, cat]) => ({ slug: cat.slug, patterns: cat.patterns }))
+const CATEGORY_ENTRIES: Array<{ slug: string; patterns: readonly string[] }> = Object.entries(
+  CAUSE_CATEGORIES
+)
+  .filter(([key]) => key !== "other")
+  .map(([, cat]) => ({ slug: cat.slug, patterns: cat.patterns }))
 
 /**
  * Compute all matching category slugs for a cause + manner.
@@ -155,9 +156,7 @@ async function run(options: Options) {
       WHERE cause_of_death IS NOT NULL
         AND (death_categories IS NULL OR death_categories = '{}')
     `)
-    console.log(
-      `${prefix}death_categories: ${catRows.rows.length} actors to compute`
-    )
+    console.log(`${prefix}death_categories: ${catRows.rows.length} actors to compute`)
 
     if (!dryRun && catRows.rows.length > 0) {
       let updated = 0
