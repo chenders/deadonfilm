@@ -60,6 +60,24 @@ export class PerplexitySource extends BaseDataSource {
   }
 
   protected async performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
+    // Relax source URL requirement for pre-2010 deaths.
+    // For older deaths, most source URLs are dead/paywalled, so requiring them
+    // causes Perplexity to return null even when it has good search data.
+    const deathYear = actor.deathday ? new Date(actor.deathday).getFullYear() : null
+    const originalRequireSources = this.requireSources
+
+    if (deathYear && deathYear < 2010) {
+      this.requireSources = false
+    }
+
+    try {
+      return await this._performLookup(actor)
+    } finally {
+      this.requireSources = originalRequireSources
+    }
+  }
+
+  private async _performLookup(actor: ActorForEnrichment): Promise<SourceLookupResult> {
     const startTime = Date.now()
 
     const client = this.getClient()

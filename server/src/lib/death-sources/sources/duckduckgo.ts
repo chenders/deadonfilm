@@ -53,6 +53,14 @@ export class DuckDuckGoSource extends WebSearchBase {
 
       const html = await response.text()
 
+      // Detect CAPTCHA/bot detection page
+      if (html.includes("anomaly-modal") || html.includes("bots use DuckDuckGo too")) {
+        return {
+          results: [],
+          error: "DuckDuckGo CAPTCHA detected (bot rate-limited)",
+        }
+      }
+
       // Extract search results with URLs
       const results = this.extractResultsFromHtml(html)
 
