@@ -83,6 +83,7 @@ export default {
           bg: colorVar('--deceased-bg'),
           border: colorVar('--deceased-border'),
           text: colorVar('--deceased-primary'),
+          'badge-text': colorVar('--deceased-badge-text'),
         },
 
         // Overlays
