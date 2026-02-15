@@ -33,7 +33,7 @@ If UI-related files were changed:
 
 a. **Check if dev server is running**. If not, start it:
    ```bash
-   npm run dev:all &
+   npm run dev &
    sleep 10  # Wait for server startup
    ```
 
