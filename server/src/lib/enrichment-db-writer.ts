@@ -181,7 +181,10 @@ export async function writeToProduction(
     const mannerFromCategories = (["homicide", "suicide", "accident"] as const).find((m) =>
       enrichment.deathCategories!.includes(m)
     )
-    if (mannerFromCategories && (!enrichment.deathManner || enrichment.deathManner === "undetermined")) {
+    if (
+      mannerFromCategories &&
+      (!enrichment.deathManner || enrichment.deathManner === "undetermined")
+    ) {
       enrichment.deathManner = mannerFromCategories
     }
   }
