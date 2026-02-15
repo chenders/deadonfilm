@@ -178,8 +178,8 @@ export async function writeToProduction(
   // Ensure manner is consistent with categories: if categories contain a
   // manner-like slug but manner is null or 'undetermined', infer from categories
   if (enrichment.deathCategories?.length) {
-    const mannerFromCategories = (["homicide", "suicide", "accident"] as const).find((m) =>
-      enrichment.deathCategories!.includes(m)
+    const mannerFromCategories = (["homicide", "suicide", "accident", "natural"] as const).find(
+      (m) => enrichment.deathCategories!.includes(m)
     )
     if (
       mannerFromCategories &&

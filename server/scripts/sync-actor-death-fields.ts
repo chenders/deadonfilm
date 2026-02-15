@@ -301,9 +301,11 @@ const program = new Command()
   })
 
 // Only parse CLI args when run directly (not when imported for computeCategories)
+import { fileURLToPath } from "node:url"
+import path from "node:path"
+
 const isMainModule =
-  process.argv[1] &&
-  new URL(import.meta.url).pathname === new URL(`file://${process.argv[1]}`).pathname
+  process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
 
 if (isMainModule) {
   program.parse()
