@@ -104,13 +104,13 @@ export default function SeasonPage() {
 
             {/* Stats */}
             <div className="mt-4 flex flex-wrap justify-center gap-4 md:justify-start">
-              <div className="rounded-lg border border-brown-medium/20 bg-white px-4 py-2 text-center">
+              <div className="rounded-lg border border-brown-medium/20 bg-surface-elevated px-4 py-2 text-center">
                 <div className="text-2xl font-bold text-brown-dark">
                   {stats.totalEpisodes.toLocaleString()}
                 </div>
                 <div className="text-xs text-text-muted">Episodes</div>
               </div>
-              <div className="rounded-lg border border-brown-medium/20 bg-white px-4 py-2 text-center">
+              <div className="rounded-lg border border-brown-medium/20 bg-surface-elevated px-4 py-2 text-center">
                 <div className="text-2xl font-bold text-brown-dark">
                   {stats.uniqueGuestStars.toLocaleString()}
                 </div>
@@ -165,7 +165,7 @@ export default function SeasonPage() {
                   key={episode.episodeNumber}
                   to={`/episode/${slug}`}
                   data-testid={`episode-link-${episode.episodeNumber}`}
-                  className="block rounded-lg border border-brown-medium/20 bg-white p-4 transition-colors hover:border-accent/30 hover:bg-beige/30"
+                  className="block rounded-lg border border-brown-medium/20 bg-surface-elevated p-4 transition-colors hover:border-accent/30 hover:bg-beige/30"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">

@@ -1,11 +1,15 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useForeverYoung } from "@/hooks/useForeverYoung"
 import { createMovieSlug, createActorSlug } from "@/utils/slugify"
 import { getPosterUrl, getProfileUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import SortControl from "@/components/common/SortControl"
 import CauseOfDeathBadge from "@/components/common/CauseOfDeathBadge"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildCollectionPageSchema } from "@/utils/schema"
 import { PersonIcon } from "@/components/icons"
 import type { ForeverYoungMovie } from "@/types"
 
@@ -22,7 +26,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
   return (
     <div
       data-testid={`forever-young-row-${movie.id}`}
-      className="rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -57,7 +61,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
         <Link to={`/actor/${actorSlug}`} className="flex items-center gap-3 text-right">
           <div className="min-w-0">
             <p className="font-display text-brown-dark hover:underline">{movie.actor.name}</p>
-            <p className="text-sm text-red-700">
+            <p className="text-sm text-years-lost">
               Died {Math.round(movie.actor.yearsLost)} years early
             </p>
             {movie.actor.causeOfDeath && (
@@ -114,7 +118,7 @@ function MovieRow({ movie }: { movie: ForeverYoungMovie }) {
           <Link to={`/actor/${actorSlug}`} className="mt-1 block">
             <p className="text-xs text-brown-dark">
               <span className="font-medium">{movie.actor.name}</span>
-              <span className="text-red-700">
+              <span className="text-years-lost">
                 {" "}
                 died {Math.round(movie.actor.yearsLost)} years early
               </span>
@@ -139,8 +143,12 @@ export default function ForeverYoungPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
+  const validSorts = ["years_lost", "name"]
+  const rawSort = searchParams.get("sort")
+  const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "years_lost"
+  const dir = searchParams.get("dir") === "asc" ? "asc" : "desc"
 
-  const { data, isLoading, error } = useForeverYoung(page)
+  const { data, isLoading, error } = useForeverYoung(page, sort, dir)
 
   const goToPage = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams)
@@ -149,6 +157,28 @@ export default function ForeverYoungPage() {
     } else {
       newParams.delete("page")
     }
+    setSearchParams(newParams)
+  }
+
+  const handleSortChange = (newSort: string) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newSort !== "years_lost") {
+      newParams.set("sort", newSort)
+    } else {
+      newParams.delete("sort")
+    }
+    newParams.delete("page")
+    setSearchParams(newParams)
+  }
+
+  const handleDirChange = (newDir: "asc" | "desc") => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newDir !== "desc") {
+      newParams.set("dir", newDir)
+    } else {
+      newParams.delete("dir")
+    }
+    newParams.delete("page")
     setSearchParams(newParams)
   }
 
@@ -182,8 +212,27 @@ export default function ForeverYoungPage() {
           name="twitter:description"
           content="Movies and TV shows featuring actors who died tragically young"
         />
-        <link rel="canonical" href="https://deadonfilm.com/forever-young" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/forever-young"
+        />
+      )}
+      {page === 1 && data && data.movies.length > 0 && (
+        <JsonLd
+          data={buildCollectionPageSchema(
+            "Forever Young",
+            "Movies featuring actors who died tragically young, losing 40% or more of their expected lifespan.",
+            "https://deadonfilm.com/forever-young",
+            data.movies.map((movie) => ({
+              name: movie.title,
+              url: `https://deadonfilm.com/movie/${createMovieSlug(movie.title, movie.releaseYear?.toString() || "", movie.id)}`,
+            }))
+          )}
+        />
+      )}
 
       <div data-testid="forever-young-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
@@ -191,10 +240,23 @@ export default function ForeverYoungPage() {
             <span className="mr-2">👼</span>
             Forever Young
           </h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Movies featuring leading actors who died tragically young, losing 40% or more of their
             expected lifespan. Ranked by years of life lost.
           </p>
+        </div>
+
+        <div className="mb-4 flex justify-center">
+          <SortControl
+            options={[
+              { value: "years_lost", label: "Years Lost" },
+              { value: "name", label: "Actor Name" },
+            ]}
+            currentSort={sort}
+            currentDir={dir}
+            onSortChange={handleSortChange}
+            onDirChange={handleDirChange}
+          />
         </div>
 
         {noResults ? (

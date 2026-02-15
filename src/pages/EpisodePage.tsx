@@ -11,6 +11,8 @@ import CastToggle from "@/components/movie/CastToggle"
 import MortalityGauge from "@/components/movie/MortalityGauge"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildTVEpisodeSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import type { ViewMode } from "@/types"
 
 export default function EpisodePage() {
@@ -87,6 +89,29 @@ export default function EpisodePage() {
         {stillUrl && <meta name="twitter:image" content={stillUrl} />}
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
+      <JsonLd
+        data={buildTVEpisodeSchema(
+          show,
+          episode,
+          stats,
+          `https://deadonfilm.com${location.pathname}`,
+          showSlug
+        )}
+      />
+      <JsonLd
+        data={buildBreadcrumbSchema([
+          { name: "Home", url: "https://deadonfilm.com" },
+          { name: show.name, url: `https://deadonfilm.com/show/${showSlug}` },
+          {
+            name: `Season ${episode.seasonNumber}`,
+            url: `https://deadonfilm.com/show/${showSlug}/season/${episode.seasonNumber}`,
+          },
+          {
+            name: `Episode ${episode.episodeNumber}`,
+            url: `https://deadonfilm.com${location.pathname}`,
+          },
+        ])}
+      />
 
       <div data-testid="episode-page" className="mx-auto max-w-4xl">
         {/* Breadcrumb */}

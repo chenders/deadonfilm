@@ -304,6 +304,45 @@ router.get("/runs/:id/logs", async (req: Request, res: Response): Promise<void> 
 })
 
 // ============================================================================
+// GET /admin/api/enrichment/runs/:id/actors/:actorId/logs
+// Get per-actor enrichment log entries
+// ============================================================================
+
+router.get("/runs/:id/actors/:actorId/logs", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+    const actorId = parseInt(req.params.actorId, 10)
+
+    if (isNaN(runId) || isNaN(actorId)) {
+      res.status(400).json({ error: { message: "Invalid run ID or actor ID" } })
+      return
+    }
+
+    const result = await pool.query<{ log_entries: unknown[]; actor_name: string }>(
+      `SELECT era.log_entries, a.name AS actor_name
+       FROM enrichment_run_actors era
+       JOIN actors a ON a.id = era.actor_id
+       WHERE era.run_id = $1 AND era.actor_id = $2`,
+      [runId, actorId]
+    )
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: { message: "Not found" } })
+      return
+    }
+
+    res.json({
+      actorName: result.rows[0].actor_name,
+      logEntries: result.rows[0].log_entries || [],
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch actor enrichment logs")
+    res.status(500).json({ error: { message: "Failed to fetch actor enrichment logs" } })
+  }
+})
+
+// ============================================================================
 // POST /admin/api/enrichment/start
 // Trigger a new enrichment run
 // ============================================================================

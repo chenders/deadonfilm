@@ -61,14 +61,21 @@ test.describe("Admin Cache Management Page", () => {
   })
 
   test("displays cache management page with stats", async ({ page }) => {
+    // /admin/cache redirects to /admin/operations?tab=cache (System Ops hub)
     await page.goto("/admin/cache")
     await page.waitForLoadState("networkidle")
 
-    // Wait for page to load
-    await page.waitForSelector("text=Cache Management", { timeout: 5000 })
+    // Wait for System Ops page to load with Cache tab active
+    await page.waitForSelector("text=System Ops", { timeout: 5000 })
 
-    // Verify page title
-    await expect(page.getByRole("heading", { name: "Cache Management" })).toBeVisible()
+    // Verify hub page title
+    await expect(page.getByRole("heading", { name: "System Ops" })).toBeVisible()
+
+    // Verify Cache tab is active
+    await expect(page.getByRole("tab", { name: "Cache" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
 
     // Take screenshot
     await page.screenshot({

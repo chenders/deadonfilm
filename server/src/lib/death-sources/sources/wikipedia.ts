@@ -32,6 +32,7 @@ import {
   type SectionSelectionResult,
   type WikipediaSection,
 } from "../wikipedia-section-selector.js"
+import { extractDatesWithAI, isAIDateExtractionAvailable } from "../wikipedia-date-extractor.js"
 
 const WIKIPEDIA_API_BASE = "https://en.wikipedia.org/w/api.php"
 
@@ -251,10 +252,12 @@ export class WikipediaSource extends BaseDataSource {
 
     // Validate person by dates if enabled and actor has dates to validate
     // Skip the API call if there are no dates to check against
+    let dateValidationCost = 0
     if (this.wikipediaOptions.validatePersonDates !== false && (actor.birthday || actor.deathday)) {
       const introText = await this.fetchArticleIntro(articleTitle)
       if (introText) {
-        const validation = this.validatePersonByDates(actor, introText)
+        const validation = await this.validatePersonByDates(actor, introText)
+        dateValidationCost = validation.costUsd
         if (!validation.isValid) {
           console.log(`  Date validation failed: ${validation.reason}`)
           return {
@@ -437,8 +440,9 @@ export class WikipediaSource extends BaseDataSource {
       articleTitle,
       rawData
     )
-    if (sectionSelectionCost > 0) {
-      sourceEntry.costUsd = sectionSelectionCost
+    const totalAICost = sectionSelectionCost + dateValidationCost
+    if (totalAICost > 0) {
+      sourceEntry.costUsd = totalAICost
     }
 
     return {
@@ -469,6 +473,8 @@ export class WikipediaSource extends BaseDataSource {
     const result: WikipediaSection[] = []
 
     // Primary death sections - always include if found
+    // NOTE: Order matters - the loop breaks on first match, so specific patterns
+    // must come before the catch-all /^death\b/i pattern
     const deathPatterns = [
       /^death$/i,
       /^death and legacy$/i,
@@ -481,6 +487,21 @@ export class WikipediaSource extends BaseDataSource {
       /^final years and death$/i,
       /^illness and death$/i,
       /^decline and death$/i,
+      /^death\b/i, // Catch-all for "Death of...", "Death and ..." variants not listed above
+    ]
+
+    // Violent death sections - assassination, murder, fatal accident, etc.
+    const violentDeathPatterns = [
+      /^assassination$/i,
+      /^assassination\b/i, // "Assassination and aftermath", "Assassination and funeral"
+      /^murder$/i,
+      /^killing$/i,
+      /^shooting$/i,
+      /^fatal accident$/i,
+      /^fatal incident$/i,
+      /^crash$/i,
+      /^plane crash$/i,
+      /^car crash$/i,
     ]
 
     // Health sections - include alongside death sections for medical context
@@ -507,6 +528,16 @@ export class WikipediaSource extends BaseDataSource {
       if (section && !result.some((r) => r.index === section.index)) {
         result.push(section)
         break // Only take the first matching death section
+      }
+    }
+
+    // Find violent death sections (assassination, murder, accident, etc.)
+    // These are treated as primary death sections
+    for (const pattern of violentDeathPatterns) {
+      const section = sections.find((s) => pattern.test(s.line))
+      if (section && !result.some((r) => r.index === section.index)) {
+        result.push(section)
+        break // Only take the first matching violent death section
       }
     }
 
@@ -871,44 +902,68 @@ export class WikipediaSource extends BaseDataSource {
    *
    * @param actor - The actor we're looking up
    * @param introText - The introduction text from the Wikipedia article
-   * @returns Object with isValid flag and reason for the validation result
+   * @returns Object with isValid flag, reason, and AI cost
    */
-  private validatePersonByDates(
+  private async validatePersonByDates(
     actor: ActorForEnrichment,
     introText: string
-  ): { isValid: boolean; reason: string } {
+  ): Promise<{ isValid: boolean; reason: string; costUsd: number }> {
     const actorBirthYear = actor.birthday ? new Date(actor.birthday).getFullYear() : null
     const actorDeathYear = actor.deathday ? new Date(actor.deathday).getFullYear() : null
 
-    // Extract years from Wikipedia intro
-    // Common patterns: "born January 15, 1952", "(1952-2020)", "1952 – 2020"
-    // Also handles full-date lifespans like "(January 15, 1951 – March 10, 2020)"
-    const birthMatch = introText.match(/\bborn\b[^)]*?(\d{4})|^\s*\((\d{4})\s*[-–]/im)
-    const deathMatch = introText.match(/\bdied\b[^)]*?(\d{4})|[-–]\s*(\d{4})\s*\)/im)
-
-    // Try to match full-date lifespans first, e.g. "(January 15, 1951 – March 10, 2020)"
-    const fullDateLifeSpanMatch = introText.match(
-      /\(\s*[A-Z][a-z]+[^)]*?(\d{4})\s*[-–]\s*[A-Z][a-z]+[^)]*?(\d{4})\s*\)/
-    )
-
-    // Also try the common "(YYYY-YYYY)" pattern
-    const lifeSpanMatch = introText.match(/\((\d{4})\s*[-–]\s*(\d{4})\)/)
-
     let wikiBirthYear: number | null = null
     let wikiDeathYear: number | null = null
+    let costUsd = 0
 
-    if (fullDateLifeSpanMatch) {
-      wikiBirthYear = parseInt(fullDateLifeSpanMatch[1], 10)
-      wikiDeathYear = parseInt(fullDateLifeSpanMatch[2], 10)
-    } else if (lifeSpanMatch) {
-      wikiBirthYear = parseInt(lifeSpanMatch[1], 10)
-      wikiDeathYear = parseInt(lifeSpanMatch[2], 10)
-    } else {
-      if (birthMatch) {
-        wikiBirthYear = parseInt(birthMatch[1] || birthMatch[2], 10)
+    // Try AI extraction first if enabled
+    const useAI =
+      this.wikipediaOptions.useAIDateValidation !== false && isAIDateExtractionAvailable()
+
+    if (useAI) {
+      console.log(`  Using AI date validation for ${actor.name}`)
+      const aiResult = await extractDatesWithAI(actor.name, introText)
+      costUsd = aiResult.costUsd
+
+      if (aiResult.usedAI && (aiResult.birthYear !== null || aiResult.deathYear !== null)) {
+        console.log(`  AI extracted: birth=${aiResult.birthYear}, death=${aiResult.deathYear}`)
+        wikiBirthYear = aiResult.birthYear
+        wikiDeathYear = aiResult.deathYear
+      } else if (aiResult.error) {
+        console.log(
+          `  AI date extraction failed (${aiResult.error}), falling back to regex when needed`
+        )
       }
-      if (deathMatch) {
-        wikiDeathYear = parseInt(deathMatch[1] || deathMatch[2], 10)
+    }
+
+    // Fall back to regex if AI didn't produce results
+    if (wikiBirthYear === null && wikiDeathYear === null) {
+      // Extract years from Wikipedia intro using regex
+      // Common patterns: "born January 15, 1952", "(1952-2020)", "1952 – 2020"
+      // Also handles full-date lifespans like "(January 15, 1951 – March 10, 2020)"
+      const birthMatch = introText.match(/\bborn\b[^)]*?(\d{4})|^\s*\((\d{4})\s*[-–]/im)
+      const deathMatch = introText.match(/\bdied\b[^)]*?(\d{4})|[-–]\s*(\d{4})\s*\)/im)
+
+      // Try to match full-date lifespans first, e.g. "(January 15, 1951 – March 10, 2020)"
+      const fullDateLifeSpanMatch = introText.match(
+        /\(\s*[A-Z][a-z]+[^)]*?(\d{4})\s*[-–]\s*[A-Z][a-z]+[^)]*?(\d{4})\s*\)/
+      )
+
+      // Also try the common "(YYYY-YYYY)" pattern
+      const lifeSpanMatch = introText.match(/\((\d{4})\s*[-–]\s*(\d{4})\)/)
+
+      if (fullDateLifeSpanMatch) {
+        wikiBirthYear = parseInt(fullDateLifeSpanMatch[1], 10)
+        wikiDeathYear = parseInt(fullDateLifeSpanMatch[2], 10)
+      } else if (lifeSpanMatch) {
+        wikiBirthYear = parseInt(lifeSpanMatch[1], 10)
+        wikiDeathYear = parseInt(lifeSpanMatch[2], 10)
+      } else {
+        if (birthMatch) {
+          wikiBirthYear = parseInt(birthMatch[1] || birthMatch[2], 10)
+        }
+        if (deathMatch) {
+          wikiDeathYear = parseInt(deathMatch[1] || deathMatch[2], 10)
+        }
       }
     }
 
@@ -918,6 +973,7 @@ export class WikipediaSource extends BaseDataSource {
         return {
           isValid: false,
           reason: `Birth year mismatch: DB=${actorBirthYear}, Wiki=${wikiBirthYear}`,
+          costUsd,
         }
       }
     }
@@ -927,11 +983,12 @@ export class WikipediaSource extends BaseDataSource {
         return {
           isValid: false,
           reason: `Death year mismatch: DB=${actorDeathYear}, Wiki=${wikiDeathYear}`,
+          costUsd,
         }
       }
     }
 
-    return { isValid: true, reason: "Dates match or not available for comparison" }
+    return { isValid: true, reason: "Dates match or not available for comparison", costUsd }
   }
 
   /**

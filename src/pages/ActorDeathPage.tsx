@@ -12,37 +12,8 @@ import JsonLd from "@/components/seo/JsonLd"
 import { buildBreadcrumbSchema } from "@/utils/schema"
 import { PersonIcon, ExternalLinkIcon } from "@/components/icons"
 import { LinkedText } from "@/components/death/LinkedText"
+import ConfidenceIndicator from "@/components/common/ConfidenceIndicator"
 import type { ProjectInfo, SourceEntry, RelatedCelebrity, EntityLink } from "@/types"
-
-// Confidence indicator component
-function ConfidenceIndicator({ level }: { level: string | null }) {
-  if (!level) return null
-
-  const levels = {
-    high: { dots: 4, color: "bg-green-500", label: "High confidence" },
-    medium: { dots: 3, color: "bg-yellow-500", label: "Medium confidence" },
-    low: { dots: 2, color: "bg-orange-500", label: "Low confidence" },
-    disputed: { dots: 1, color: "bg-red-500", label: "Disputed" },
-  }
-
-  const config = levels[level as keyof typeof levels] || levels.medium
-
-  return (
-    <div
-      className="inline-flex items-center gap-1"
-      title={config.label}
-      data-testid="confidence-indicator"
-    >
-      {[1, 2, 3, 4].map((i) => (
-        <div
-          key={i}
-          className={`h-2 w-2 rounded-full ${i <= config.dots ? config.color : "bg-gray-300"}`}
-        />
-      ))}
-      <span className="ml-1 text-xs text-text-muted">{config.label}</span>
-    </div>
-  )
-}
 
 // Warning banner for low confidence death information
 function LowConfidenceWarning({ level }: { level: string | null }) {
@@ -52,12 +23,12 @@ function LowConfidenceWarning({ level }: { level: string | null }) {
 
   return (
     <div
-      className="mb-6 rounded-lg border-2 border-orange-300 bg-orange-50 p-4"
+      className="mb-6 rounded-lg border-2 border-warning-border bg-warning-bg p-4"
       data-testid="low-confidence-warning"
     >
       <div className="flex items-start gap-3">
         <svg
-          className="mt-0.5 h-5 w-5 flex-shrink-0 text-orange-600"
+          className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning-icon"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -71,10 +42,10 @@ function LowConfidenceWarning({ level }: { level: string | null }) {
           />
         </svg>
         <div>
-          <h3 className="font-medium text-orange-800">
+          <h3 className="font-medium text-warning-text-strong">
             {isDisputed ? "Information Disputed" : "Unverified Information"}
           </h3>
-          <p className="mt-1 text-sm text-orange-700">
+          <p className="mt-1 text-sm text-warning-text">
             {isDisputed
               ? "The circumstances of this death are disputed. Multiple conflicting accounts exist, and the information below may not be accurate."
               : "The information below could not be fully verified. The death date or circumstances may contain inaccuracies."}
@@ -177,7 +148,7 @@ function SourceList({ sources, title }: { sources: SourceEntry[] | null; title: 
 // Related celebrity component
 function RelatedCelebrityCard({ celebrity }: { celebrity: RelatedCelebrity }) {
   const content = (
-    <div className="rounded-lg bg-white p-3">
+    <div className="rounded-lg bg-surface-elevated p-3">
       <p className="font-medium text-brown-dark">{celebrity.name}</p>
       <p className="mt-1 text-sm text-text-muted">{celebrity.relationship}</p>
     </div>
@@ -274,7 +245,7 @@ export default function ActorDeathPage() {
         </Link>
 
         {/* Header section */}
-        <div className="mb-6 rounded-lg bg-white p-4 sm:p-6">
+        <div className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             {/* Profile photo */}
             {profileUrl ? (
@@ -296,7 +267,7 @@ export default function ActorDeathPage() {
             <div className="flex-1 text-center sm:text-left">
               <h1 className="font-display text-2xl text-accent">{actor.name}</h1>
 
-              <div className="mt-2 space-y-1 text-sm text-text-muted">
+              <div className="mt-2 space-y-1 text-sm text-text-primary">
                 {actor.birthday && (
                   <p>
                     <span className="font-medium">Born:</span> {formatDate(actor.birthday)}
@@ -335,12 +306,15 @@ export default function ActorDeathPage() {
 
         {/* What We Know section */}
         {circumstances.official && (
-          <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="official-section">
+          <section
+            className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
+            data-testid="official-section"
+          >
             <h2 className="mb-3 font-display text-lg text-brown-dark">What We Know</h2>
             <LinkedText
               text={circumstances.official}
               links={getFieldLinks("circumstances")}
-              className="leading-relaxed text-text-muted"
+              className="leading-relaxed text-text-primary"
             />
             {circumstances.confidence && (
               <div className="mt-3">
@@ -353,12 +327,15 @@ export default function ActorDeathPage() {
 
         {/* Disputed/Alternative Accounts section */}
         {circumstances.rumored && (
-          <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="rumored-section">
+          <section
+            className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
+            data-testid="rumored-section"
+          >
             <h2 className="mb-3 font-display text-lg text-brown-dark">Alternative Accounts</h2>
             <LinkedText
               text={circumstances.rumored}
               links={getFieldLinks("rumored_circumstances")}
-              className="leading-relaxed text-text-muted"
+              className="leading-relaxed text-text-primary"
             />
             <SourceList sources={sources.rumored} title="Sources" />
           </section>
@@ -366,21 +343,27 @@ export default function ActorDeathPage() {
 
         {/* Additional Context */}
         {circumstances.additionalContext && (
-          <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="context-section">
+          <section
+            className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
+            data-testid="context-section"
+          >
             <h2 className="mb-3 font-display text-lg text-brown-dark">Additional Context</h2>
             <LinkedText
               text={circumstances.additionalContext}
               links={getFieldLinks("additional_context")}
-              className="leading-relaxed text-text-muted"
+              className="leading-relaxed text-text-primary"
             />
           </section>
         )}
 
         {/* Career Context section */}
         {(career.statusAtDeath || career.lastProject || career.posthumousReleases?.length) && (
-          <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="career-section">
+          <section
+            className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
+            data-testid="career-section"
+          >
             <h2 className="mb-3 font-display text-lg text-brown-dark">Career Context</h2>
-            <div className="space-y-2 text-sm text-text-muted">
+            <div className="space-y-2 text-sm text-text-primary">
               {career.statusAtDeath && (
                 <p>
                   <span className="font-medium">Status at Death:</span>{" "}
@@ -423,7 +406,10 @@ export default function ActorDeathPage() {
 
         {/* Sources section */}
         {sources.cause && sources.cause.length > 0 && (
-          <section className="mb-6 rounded-lg bg-white p-4 sm:p-6" data-testid="sources-section">
+          <section
+            className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
+            data-testid="sources-section"
+          >
             <h2 className="mb-3 font-display text-lg text-brown-dark">Sources</h2>
             <SourceList sources={sources.cause} title="Cause of Death" />
           </section>

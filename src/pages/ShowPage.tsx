@@ -3,7 +3,7 @@ import { useParams, useLocation } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useShow } from "@/hooks/useShow"
 import { usePageViewTracking } from "@/hooks/usePageViewTracking"
-import { extractShowId } from "@/utils/slugify"
+import { extractShowId, createShowSlug } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
 import ShowHeader, { ShowPoster } from "@/components/show/ShowHeader"
 import ShowDeceasedList from "@/components/show/ShowDeceasedList"
@@ -14,6 +14,14 @@ import CastToggle from "@/components/movie/CastToggle"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import AggregateScore from "@/components/common/AggregateScore"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildTVSeriesSchema, buildBreadcrumbSchema } from "@/utils/schema"
+import { useRelatedShows } from "@/hooks/useRelatedContent"
+import { getPosterUrl } from "@/services/api"
+import { TVIcon } from "@/components/icons"
+import RelatedContent from "@/components/content/RelatedContent"
+import SeeAlso from "@/components/content/SeeAlso"
+import Breadcrumb from "@/components/layout/Breadcrumb"
 import type { ViewMode } from "@/types"
 
 export default function ShowPage() {
@@ -23,6 +31,8 @@ export default function ShowPage() {
   const { data, isLoading, error } = useShow(showId)
   const [showLiving, setShowLiving] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
+
+  const relatedShows = useRelatedShows(showId)
 
   // Track page view for analytics
   usePageViewTracking("show", showId || null, location.pathname)
@@ -72,25 +82,28 @@ export default function ShowPage() {
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
         <meta property="og:type" content="video.tv_show" />
-        {show.posterPath && (
-          <meta property="og:image" content={`https://image.tmdb.org/t/p/w500${show.posterPath}`} />
-        )}
+        <meta property="og:image" content={`https://deadonfilm.com/og/show/${show.id}.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${title} - Dead on Film`} />
         <meta
           name="twitter:description"
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
-        {show.posterPath && (
-          <meta
-            name="twitter:image"
-            content={`https://image.tmdb.org/t/p/w500${show.posterPath}`}
-          />
-        )}
+        <meta name="twitter:image" content={`https://deadonfilm.com/og/show/${show.id}.png`} />
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
+      <JsonLd data={buildTVSeriesSchema(show, stats, slug!)} />
+      <JsonLd
+        data={buildBreadcrumbSchema([
+          { name: "Home", url: "https://deadonfilm.com" },
+          { name: show.name, url: `https://deadonfilm.com${location.pathname}` },
+        ])}
+      />
 
       <div data-testid="show-page" className="mx-auto max-w-4xl">
+        <Breadcrumb items={[{ label: "Home", href: "/" }, { label: show.name }]} />
         <ShowHeader show={show} hidePoster />
 
         {/* Poster + Gauge side by side */}
@@ -137,6 +150,31 @@ export default function ShowPage() {
             )}
           </>
         )}
+
+        {/* Related shows */}
+        {relatedShows.data?.shows && relatedShows.data.shows.length > 0 && (
+          <div className="mt-6">
+            <RelatedContent
+              title="Related Shows"
+              items={relatedShows.data.shows.map((s) => ({
+                href: `/show/${createShowSlug(s.name, s.firstAirDate, s.tmdbId)}`,
+                title: s.name,
+                subtitle: s.firstAirDate ? s.firstAirDate.slice(0, 4) : undefined,
+                imageUrl: getPosterUrl(s.posterPath, "w92"),
+              }))}
+              placeholderIcon={<TVIcon size={20} className="text-text-muted" />}
+            />
+          </div>
+        )}
+
+        <div className="mt-4">
+          <SeeAlso
+            links={[
+              { href: "/causes-of-death", label: "Deaths by Cause" },
+              { href: "/deaths/decades", label: "Deaths by Decade" },
+            ]}
+          />
+        </div>
       </div>
     </>
   )

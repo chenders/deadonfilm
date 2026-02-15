@@ -9,6 +9,7 @@ vi.mock("../../lib/db/pool.js", () => ({
 
 vi.mock("../../lib/cache.js", () => ({
   getCached: vi.fn(),
+  invalidateActorCache: vi.fn(() => Promise.resolve()),
   CACHE_KEYS: {
     actor: (id: number) => ({
       profile: `actor:id:${id}`,
@@ -29,9 +30,34 @@ vi.mock("../../lib/logger.js", () => ({
   },
 }))
 
+const mockEnrichActor = vi.fn()
+vi.mock("../../lib/death-sources/orchestrator.js", () => {
+  return {
+    DeathEnrichmentOrchestrator: function MockOrchestrator() {
+      return { enrichActor: mockEnrichActor }
+    },
+  }
+})
+
+vi.mock("../../lib/enrichment-db-writer.js", () => ({
+  writeToProduction: vi.fn(() => Promise.resolve()),
+}))
+
+vi.mock("../../lib/entity-linker/index.js", () => ({
+  linkMultipleFields: vi.fn(() => Promise.resolve({})),
+  hasEntityLinks: vi.fn(() => false),
+}))
+
+vi.mock("../../lib/claude-batch/constants.js", () => ({
+  MIN_CIRCUMSTANCES_LENGTH: 200,
+  MIN_RUMORED_CIRCUMSTANCES_LENGTH: 100,
+}))
+
 import router from "./actors.js"
 import { getPool } from "../../lib/db/pool.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
+import { invalidateActorCache } from "../../lib/cache.js"
+import { writeToProduction } from "../../lib/enrichment-db-writer.js"
 
 describe("admin actors routes", () => {
   let app: Express
@@ -519,6 +545,204 @@ describe("admin actors routes", () => {
       // Verify rollback was called
       expect(mockClient.query).toHaveBeenCalledWith("ROLLBACK")
       expect(mockClient.release).toHaveBeenCalled()
+    })
+  })
+
+  describe("GET /admin/api/actors/:id/metadata", () => {
+    const mockActorRow = {
+      id: 123,
+      name: "John Wayne",
+      deathday: "1979-06-11",
+      is_obscure: false,
+      deathday_confidence: "verified",
+      has_detailed_death_info: true,
+      enriched_at: "2026-01-20T00:00:00Z",
+      enrichment_source: "multi-source",
+      cause_of_death_source: "claude",
+      biography: "A decorated film actor...",
+      biography_generated_at: "2026-01-15T00:00:00Z",
+      biography_source_type: "tmdb",
+    }
+
+    const mockCircumstancesRow = {
+      circumstances: "Died of stomach cancer in Los Angeles",
+      enriched_at: "2026-01-20T00:00:00Z",
+      enrichment_source: "claude",
+    }
+
+    it("should return metadata for valid actor", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockActorRow] })
+        .mockResolvedValueOnce({ rows: [mockCircumstancesRow] })
+
+      const res = await request(app).get("/admin/api/actors/123/metadata")
+
+      expect(res.status).toBe(200)
+      expect(res.body.actorId).toBe(123)
+      expect(res.body.biography.hasContent).toBe(true)
+      expect(res.body.biography.generatedAt).toBe("2026-01-15T00:00:00Z")
+      expect(res.body.biography.sourceType).toBe("tmdb")
+      expect(res.body.enrichment.enrichedAt).toBe("2026-01-20T00:00:00Z")
+      expect(res.body.enrichment.source).toBe("multi-source")
+      expect(res.body.enrichment.causeOfDeathSource).toBe("claude")
+      expect(res.body.enrichment.hasCircumstances).toBe(true)
+      expect(res.body.dataQuality.hasDetailedDeathInfo).toBe(true)
+      expect(res.body.dataQuality.isObscure).toBe(false)
+      expect(res.body.dataQuality.deathdayConfidence).toBe("verified")
+      expect(res.body.adminEditorUrl).toBe("/admin/actors/123")
+    })
+
+    it("should return 404 for non-existent actor", async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] })
+
+      const res = await request(app).get("/admin/api/actors/999/metadata")
+
+      expect(res.status).toBe(404)
+      expect(res.body.error.message).toBe("Actor not found")
+    })
+
+    it("should handle actor without biography or circumstances", async () => {
+      const actorNoBio = {
+        ...mockActorRow,
+        biography: null,
+        biography_generated_at: null,
+        biography_source_type: null,
+        enriched_at: null,
+        enrichment_source: null,
+        cause_of_death_source: null,
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [actorNoBio] })
+        .mockResolvedValueOnce({ rows: [] }) // no circumstances
+
+      const res = await request(app).get("/admin/api/actors/123/metadata")
+
+      expect(res.status).toBe(200)
+      expect(res.body.biography.hasContent).toBe(false)
+      expect(res.body.biography.generatedAt).toBeNull()
+      expect(res.body.enrichment.enrichedAt).toBeNull()
+      expect(res.body.enrichment.hasCircumstances).toBe(false)
+      expect(res.body.enrichment.circumstancesEnrichedAt).toBeNull()
+    })
+
+    it("should return 500 on database error", async () => {
+      mockPool.query.mockRejectedValueOnce(new Error("Connection failed"))
+
+      const res = await request(app).get("/admin/api/actors/123/metadata")
+
+      expect(res.status).toBe(500)
+      expect(res.body.error.message).toBe("Failed to fetch actor metadata")
+    })
+  })
+
+  describe("POST /admin/api/actors/:id/enrich-inline", () => {
+    const mockDeceasedActor = {
+      id: 123,
+      tmdb_id: 456,
+      imdb_person_id: "nm0000078",
+      name: "John Wayne",
+      birthday: "1907-05-26",
+      deathday: "1979-06-11",
+      cause_of_death: null,
+      cause_of_death_details: null,
+      tmdb_popularity: "25.5",
+    }
+
+    it("should return 404 for non-existent actor", async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] })
+
+      const res = await request(app).post("/admin/api/actors/999/enrich-inline")
+
+      expect(res.status).toBe(404)
+      expect(res.body.error.message).toBe("Actor not found")
+    })
+
+    it("should return 400 for non-deceased actor", async () => {
+      const aliveActor = { ...mockDeceasedActor, deathday: null }
+      mockPool.query.mockResolvedValueOnce({ rows: [aliveActor] })
+
+      const res = await request(app).post("/admin/api/actors/123/enrich-inline")
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toBe("Actor is not deceased")
+    })
+
+    it("should return success with no data when orchestrator finds nothing", async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [mockDeceasedActor] })
+
+      mockEnrichActor.mockResolvedValueOnce({
+        circumstances: null,
+        notableFactors: [],
+        cleanedDeathInfo: undefined,
+      })
+
+      const res = await request(app).post("/admin/api/actors/123/enrich-inline")
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+      expect(res.body.fieldsUpdated).toEqual([])
+      expect(res.body.message).toBe("No new enrichment data found")
+    })
+
+    it("should enrich actor and write to production", async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [mockDeceasedActor] }) // fetch actor
+        .mockResolvedValueOnce({ rows: [] }) // related celebrities lookup
+
+      mockEnrichActor.mockResolvedValueOnce({
+        circumstances: "A".repeat(250), // Long enough to pass MIN_CIRCUMSTANCES_LENGTH
+        circumstancesSource: { sourceType: "claude", confidence: 0.9 },
+        notableFactors: ["cancer"],
+        notableFactorsSource: { sourceType: "claude", confidence: 0.8 },
+        locationOfDeath: "Los Angeles, CA",
+        locationOfDeathSource: { sourceType: "claude", confidence: 0.9 },
+        additionalContext: null,
+        rumoredCircumstances: null,
+        lastProject: null,
+        careerStatusAtDeath: null,
+        posthumousReleases: null,
+        relatedCelebrities: null,
+        relatedDeaths: null,
+        rawSources: null,
+        cleanedDeathInfo: undefined,
+        actorStats: {
+          sourcesAttempted: [
+            { source: "claude", success: true },
+            { source: "wikidata", success: false },
+          ],
+        },
+      })
+
+      const res = await request(app).post("/admin/api/actors/123/enrich-inline")
+
+      expect(res.status).toBe(200)
+      expect(res.body.success).toBe(true)
+      expect(res.body.fieldsUpdated).toContain("circumstances")
+      expect(res.body.fieldsUpdated).toContain("locationOfDeath")
+      expect(res.body.fieldsUpdated).toContain("notableFactors")
+      expect(res.body.sourcesUsed).toEqual(["claude"])
+      expect(res.body.durationMs).toBeGreaterThanOrEqual(0)
+      expect(writeToProduction).toHaveBeenCalled()
+      expect(invalidateActorCache).toHaveBeenCalledWith(123)
+      expect(logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "inline-enrich",
+          resourceType: "actor",
+          resourceId: 123,
+        })
+      )
+    })
+
+    it("should return 500 on orchestrator error", async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [mockDeceasedActor] })
+
+      mockEnrichActor.mockRejectedValueOnce(new Error("Orchestrator failed"))
+
+      const res = await request(app).post("/admin/api/actors/123/enrich-inline")
+
+      expect(res.status).toBe(500)
+      expect(res.body.error.message).toBe("Failed to enrich actor")
     })
   })
 

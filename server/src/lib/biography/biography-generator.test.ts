@@ -215,6 +215,49 @@ describe("biography-generator", () => {
     })
   })
 
+  describe("buildBiographyPrompt with Wikipedia bio", () => {
+    it("includes both TMDB and Wikipedia sections when wikipediaBio is provided", () => {
+      const prompt = buildBiographyPrompt(
+        "John Wayne",
+        "A famous American actor from TMDB.",
+        "John Wayne was born Marion Robert Morrison, an American actor and filmmaker."
+      )
+
+      expect(prompt).toContain("TMDB BIOGRAPHY:")
+      expect(prompt).toContain("WIKIPEDIA BIOGRAPHY:")
+      expect(prompt).toContain("A famous American actor from TMDB.")
+      expect(prompt).toContain("John Wayne was born Marion Robert Morrison")
+      expect(prompt).not.toContain("ORIGINAL BIOGRAPHY:")
+    })
+
+    it("uses ORIGINAL BIOGRAPHY section when wikipediaBio is undefined", () => {
+      const prompt = buildBiographyPrompt("John Wayne", "A famous American actor.")
+
+      expect(prompt).toContain("ORIGINAL BIOGRAPHY:")
+      expect(prompt).toContain("A famous American actor.")
+      expect(prompt).not.toContain("TMDB BIOGRAPHY:")
+      expect(prompt).not.toContain("WIKIPEDIA BIOGRAPHY:")
+    })
+
+    it("uses ORIGINAL BIOGRAPHY section when wikipediaBio is empty string", () => {
+      const prompt = buildBiographyPrompt("John Wayne", "A famous American actor.", "")
+
+      expect(prompt).toContain("ORIGINAL BIOGRAPHY:")
+      expect(prompt).not.toContain("TMDB BIOGRAPHY:")
+      expect(prompt).not.toContain("WIKIPEDIA BIOGRAPHY:")
+    })
+
+    it("includes sanitized Wikipedia bio content in the prompt", () => {
+      const wikiBio = "  Morrison was raised in  \r\n  Southern California.  "
+      const prompt = buildBiographyPrompt("John Wayne", "TMDB bio text.", wikiBio)
+
+      // sanitizeBiographyForPrompt trims whitespace and normalizes line endings
+      expect(prompt).toContain("Morrison was raised in")
+      expect(prompt).toContain("Southern California.")
+      expect(prompt).toContain("WIKIPEDIA BIOGRAPHY:")
+    })
+  })
+
   describe("generateBiography", () => {
     it("returns hasSubstantiveContent: false for empty input", async () => {
       const actor: ActorForBiography = {

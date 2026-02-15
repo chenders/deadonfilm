@@ -67,20 +67,8 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
           Analytics
         </NavLink>
 
-        <NavLink to="/admin/coverage" isActive={isActive("/admin/coverage")} onClick={onNavigate}>
-          Death Coverage
-        </NavLink>
-
         <NavLink to="/admin/actors" isActive={isActive("/admin/actors")} onClick={onNavigate}>
-          Actor Management
-        </NavLink>
-
-        <NavLink
-          to="/admin/page-views"
-          isActive={isActive("/admin/page-views")}
-          onClick={onNavigate}
-        >
-          Page Views
+          Actors
         </NavLink>
 
         <NavLink
@@ -99,57 +87,20 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
           Review Enrichments
         </NavLink>
 
-        <NavLink to="/admin/tools" isActive={isActive("/admin/tools")} onClick={onNavigate}>
-          External Tools
-        </NavLink>
-
-        {/* Operations Section */}
-        <div className="mb-2 mt-6 px-4 text-xs font-semibold uppercase tracking-wider text-admin-text-muted">
-          Operations
-        </div>
-
         <NavLink
-          to="/admin/actor-diagnostic"
-          isActive={isActive("/admin/actor-diagnostic")}
+          to="/admin/cause-mappings"
+          isActive={isActive("/admin/cause-mappings")}
           onClick={onNavigate}
         >
-          Actor Diagnostic
-        </NavLink>
-
-        <NavLink to="/admin/cache" isActive={isActive("/admin/cache")} onClick={onNavigate}>
-          Cache Management
+          Cause Mappings
         </NavLink>
 
         <NavLink
-          to="/admin/data-quality"
-          isActive={isActive("/admin/data-quality")}
+          to="/admin/operations"
+          isActive={isActive("/admin/operations")}
           onClick={onNavigate}
         >
-          Data Quality
-        </NavLink>
-
-        <NavLink
-          to="/admin/biographies"
-          isActive={isActive("/admin/biographies")}
-          onClick={onNavigate}
-        >
-          Biographies
-        </NavLink>
-
-        <NavLink
-          to="/admin/popularity"
-          isActive={isActive("/admin/popularity")}
-          onClick={onNavigate}
-        >
-          Popularity Scores
-        </NavLink>
-
-        <NavLink to="/admin/sync" isActive={isActive("/admin/sync")} onClick={onNavigate}>
-          TMDB Sync
-        </NavLink>
-
-        <NavLink to="/admin/sitemap" isActive={isActive("/admin/sitemap")} onClick={onNavigate}>
-          Sitemap Management
+          System Ops
         </NavLink>
 
         <NavLink to="/admin/ab-tests" isActive={isActive("/admin/ab-tests")} onClick={onNavigate}>
@@ -157,16 +108,57 @@ export default function AdminNav({ onNavigate }: AdminNavProps) {
         </NavLink>
 
         <NavLink to="/admin/jobs" isActive={isActive("/admin/jobs")} onClick={onNavigate}>
-          Background Jobs
-        </NavLink>
-
-        <NavLink to="/admin/logs" isActive={isActive("/admin/logs")} onClick={onNavigate}>
-          Error Logs
+          Jobs & Logs
         </NavLink>
       </div>
 
-      {/* Footer with theme toggle and logout */}
+      {/* Footer with external links, theme toggle, and logout */}
       <div className="border-t border-admin-border-subtle p-4">
+        {/* External tool links */}
+        <div className="mb-3 flex items-center justify-center gap-3">
+          {import.meta.env.VITE_GOOGLE_ANALYTICS_URL && (
+            <a
+              href={import.meta.env.VITE_GOOGLE_ANALYTICS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md p-2 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+              aria-label="Google Analytics (opens in new tab)"
+              title="Google Analytics"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M22 3.2c0-.66-.54-1.2-1.2-1.2h-3.6C16.54 2 16 2.54 16 3.2v17.6c0 .66.54 1.2 1.2 1.2h3.6c.66 0 1.2-.54 1.2-1.2V3.2zM14 9.2c0-.66-.54-1.2-1.2-1.2H9.2C8.54 8 8 8.54 8 9.2v11.6c0 .66.54 1.2 1.2 1.2h3.6c.66 0 1.2-.54 1.2-1.2V9.2zM6 15.2c0-.66-.54-1.2-1.2-1.2H1.2c-.66 0-1.2.54-1.2 1.2v5.6C0 21.46.54 22 1.2 22h3.6c.66 0 1.2-.54 1.2-1.2v-5.6z" />
+              </svg>
+            </a>
+          )}
+          {import.meta.env.VITE_GOOGLE_SEARCH_CONSOLE_URL && (
+            <a
+              href={import.meta.env.VITE_GOOGLE_SEARCH_CONSOLE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md p-2 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+              aria-label="Google Search Console (opens in new tab)"
+              title="Google Search Console"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+              </svg>
+            </a>
+          )}
+          {import.meta.env.VITE_NEW_RELIC_URL && (
+            <a
+              href={import.meta.env.VITE_NEW_RELIC_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md p-2 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+              aria-label="New Relic APM (opens in new tab)"
+              title="New Relic APM"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </a>
+          )}
+        </div>
         <div className="flex items-center justify-between">
           <ThemeToggle />
           <button

@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useSpecificCauseDetail } from "@/hooks/useCausesOfDeath"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
@@ -66,11 +67,13 @@ export default function SpecificCausePage() {
           property="og:description"
           content={`Explore ${data.count.toLocaleString()} actors who died from ${data.cause.toLowerCase()}`}
         />
-        <link
-          rel="canonical"
-          href={`https://deadonfilm.com/causes-of-death/${data.categorySlug}/${data.slug}`}
-        />
       </Helmet>
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/causes-of-death/${data.categorySlug}/${data.slug}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="specific-cause-page" className="mx-auto max-w-4xl">
         {/* Breadcrumb */}
@@ -89,7 +92,7 @@ export default function SpecificCausePage() {
         {/* Header */}
         <div className="mb-6 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">{data.cause}</h1>
-          <p className="text-text-muted">{data.count.toLocaleString()} actors</p>
+          <p className="text-text-primary">{data.count.toLocaleString()} actors</p>
         </div>
 
         {/* Stats Panel */}
@@ -126,7 +129,7 @@ export default function SpecificCausePage() {
 
         {/* Decade Breakdown */}
         {data.decadeBreakdown.length > 0 && (
-          <div className="mb-8 rounded-lg bg-white p-4">
+          <div className="mb-8 rounded-lg bg-surface-elevated p-4">
             <h2 className="mb-4 font-display text-lg text-brown-dark">Deaths by Decade</h2>
             <DecadeChart breakdown={data.decadeBreakdown} />
           </div>

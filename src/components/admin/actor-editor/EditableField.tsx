@@ -78,18 +78,21 @@ export default function EditableField({
           />
         )
 
-      case "date":
+      case "date": {
+        // HTML date inputs require YYYY-MM-DD format; the API may return full ISO timestamps
+        const dateValue = typeof value === "string" ? value.slice(0, 10) : ""
         return (
           <input
             type="date"
             id={name}
             name={name}
-            value={(value as string) ?? ""}
+            value={dateValue}
             onChange={(e) => onChange(e.target.value || null)}
             disabled={disabled}
             className={baseInputClass}
           />
         )
+      }
 
       case "boolean":
         return (
@@ -187,7 +190,7 @@ export default function EditableField({
               <button
                 type="button"
                 onClick={() => handleRevert(lastChange.old_value)}
-                className="bg-admin-surface-raised flex items-center gap-1 rounded px-2 py-1 text-xs text-admin-text-muted hover:bg-admin-surface-inset hover:text-admin-text-primary"
+                className="bg-admin-surface-raised flex min-h-[44px] items-center gap-1 rounded px-3 py-2 text-xs text-admin-text-muted hover:bg-admin-surface-inset hover:text-admin-text-primary"
                 title={`Revert to: ${lastChange?.old_value ?? "(empty)"}`}
               >
                 <span aria-hidden="true">&#8617;</span>
@@ -240,7 +243,7 @@ export default function EditableField({
                     <button
                       type="button"
                       onClick={() => handleRevert(change.old_value)}
-                      className="hover:bg-admin-surface-raised shrink-0 rounded bg-admin-surface-overlay px-2 py-1 text-admin-text-muted hover:text-admin-text-primary"
+                      className="hover:bg-admin-surface-raised shrink-0 rounded bg-admin-surface-overlay px-3 py-2 text-admin-text-muted hover:text-admin-text-primary"
                       title={`Revert to: ${change.old_value ?? "(empty)"}`}
                     >
                       Revert

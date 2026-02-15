@@ -209,12 +209,12 @@ test.describe("Admin Theme - Dark Mode (Default)", () => {
   test("coverage page with charts has dark theme", async ({ page }) => {
     await loginToAdmin(page)
 
-    // Navigate to coverage page
-    await page.goto("/admin/coverage")
+    // Navigate to coverage tab in analytics hub
+    await page.goto("/admin/analytics?tab=coverage")
     await page.waitForLoadState("networkidle")
 
-    // Wait for page content
-    await page.waitForSelector("text=Death Detail Coverage", { timeout: 5000 })
+    // Wait for coverage tab content
+    await page.waitForSelector("text=Total Deceased", { timeout: 5000 })
 
     // Take screenshot
     await page.screenshot({
@@ -286,8 +286,8 @@ test.describe("Admin Theme - Light Mode", () => {
     await themeToggle.click()
     await page.waitForTimeout(300)
 
-    // Navigate to another page
-    await page.goto("/admin/coverage")
+    // Navigate to another page (coverage tab in analytics hub)
+    await page.goto("/admin/analytics?tab=coverage")
     await page.waitForLoadState("networkidle")
 
     // Verify light theme is still applied

@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import { useParams, useLocation, Link } from "react-router-dom"
-import { createPortal } from "react-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
-import { createMovieSlug, createShowSlug } from "@/utils/slugify"
+import { createMovieSlug, createShowSlug, createActorSlug, extractActorId } from "@/utils/slugify"
 import { formatDate, calculateCurrentAge } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import { getProfileUrl, getPosterUrl } from "@/services/api"
@@ -12,100 +11,18 @@ import ErrorMessage from "@/components/common/ErrorMessage"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildPersonSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import { PersonIcon, FilmReelIcon, TVIcon, InfoIcon } from "@/components/icons"
+import { useRelatedActors } from "@/hooks/useRelatedContent"
+import RelatedContent from "@/components/content/RelatedContent"
+import SeeAlso from "@/components/content/SeeAlso"
+import Breadcrumb from "@/components/layout/Breadcrumb"
+import HoverTooltip from "@/components/common/HoverTooltip"
+import AdminActorToolbar from "@/components/admin/AdminActorToolbar"
+import AdminActorMetadata from "@/components/admin/AdminActorMetadata"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
 
 type FilmographyItem =
   | { type: "movie"; data: ActorFilmographyMovie; year: number | null }
   | { type: "show"; data: ActorFilmographyShow; year: number | null }
-
-interface TooltipProps {
-  content: string
-  triggerRef: React.RefObject<HTMLElement | null>
-  isVisible: boolean
-  onMouseEnter: () => void
-  onMouseLeave: () => void
-}
-
-interface TooltipContentProps {
-  content: string
-  actorSlug?: string
-  hasDetailedInfo?: boolean
-}
-
-function TooltipContent({ content, actorSlug, hasDetailedInfo }: TooltipContentProps) {
-  return (
-    <>
-      <p className="max-h-[calc(60vh-2rem)] overflow-y-auto leading-relaxed">{content}</p>
-      {hasDetailedInfo && actorSlug && (
-        <Link
-          to={`/actor/${actorSlug}/death`}
-          className="mt-2 block text-right text-xs text-cream/80 underline hover:text-cream"
-        >
-          Read more →
-        </Link>
-      )}
-    </>
-  )
-}
-
-interface ExtendedTooltipProps extends TooltipProps {
-  actorSlug?: string
-  hasDetailedInfo?: boolean
-}
-
-function Tooltip({
-  content,
-  triggerRef,
-  isVisible,
-  onMouseEnter,
-  onMouseLeave,
-  actorSlug,
-  hasDetailedInfo,
-}: ExtendedTooltipProps) {
-  const tooltipRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
-
-  // Calculate position when tooltip becomes visible
-  useEffect(() => {
-    if (isVisible && triggerRef.current) {
-      const trigger = triggerRef.current.getBoundingClientRect()
-      const padding = 8
-      // Position below the trigger
-      const top = trigger.bottom + padding
-      const left = trigger.left
-      setPosition({ top, left })
-    } else if (!isVisible) {
-      setPosition(null)
-    }
-  }, [isVisible, triggerRef])
-
-  if (!isVisible) {
-    return null
-  }
-
-  return createPortal(
-    <div
-      ref={tooltipRef}
-      data-testid="death-details-tooltip"
-      className="animate-fade-slide-in fixed z-50 max-w-sm rounded-lg border border-brown-medium/50 bg-brown-dark px-4 py-3 text-sm text-cream shadow-xl sm:max-w-md"
-      style={{
-        top: position?.top ?? -9999,
-        left: position?.left ?? -9999,
-        visibility: position ? "visible" : "hidden",
-      }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      <div className="absolute -top-1 left-4 right-4 flex justify-between">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-2 w-1.5 rounded-sm bg-brown-medium/50" />
-        ))}
-      </div>
-      <TooltipContent content={content} actorSlug={actorSlug} hasDetailedInfo={hasDetailedInfo} />
-    </div>,
-    document.body
-  )
-}
 
 function FilmographyRow({ item }: { item: FilmographyItem }) {
   if (item.type === "movie") {
@@ -122,7 +39,7 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
     return (
       <Link
         to={`/movie/${slug}`}
-        className="flex items-center gap-3 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+        className="flex items-center gap-3 rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
         data-testid="filmography-row"
       >
         {posterUrl ? (
@@ -176,7 +93,7 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
   return (
     <Link
       to={`/show/${slug}`}
-      className="flex items-center gap-3 rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="flex items-center gap-3 rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
       data-testid="filmography-row"
     >
       {posterUrl ? (
@@ -234,25 +151,6 @@ export default function ActorPage() {
   const location = useLocation()
   const { data, isLoading, error } = useActor(slug || "")
 
-  // Tooltip state for cause of death details
-  const [showTooltip, setShowTooltip] = useState(false)
-  const triggerRef = useRef<HTMLSpanElement>(null)
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleMouseEnter = () => {
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current)
-      hideTimeoutRef.current = null
-    }
-    setShowTooltip(true)
-  }
-
-  const handleMouseLeave = () => {
-    hideTimeoutRef.current = setTimeout(() => {
-      setShowTooltip(false)
-    }, 100)
-  }
-
   // Combine and sort movies and TV shows chronologically (newest first)
   // Must be before early returns to maintain consistent hook order
   const combinedFilmography = useMemo(() => {
@@ -270,6 +168,10 @@ export default function ActorPage() {
     }))
     return [...movies, ...shows].sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
   }, [data])
+
+  // Extract internal actor ID from slug (not the TMDB person ID from the API response)
+  const actorId = slug ? extractActorId(slug) : 0
+  const relatedActors = useRelatedActors(actorId)
 
   if (!slug) {
     return <ErrorMessage message="Invalid actor URL" />
@@ -294,35 +196,27 @@ export default function ActorPage() {
   const hasDeathDetails =
     deathInfo?.causeOfDeathDetails && deathInfo.causeOfDeathDetails.trim().length > 0
 
+  // Build a descriptive meta description based on death status
+  const metaDescription = isDeceased
+    ? `${actor.name} died on ${formatDate(actor.deathday, actor.deathdayPrecision)}${deathInfo?.ageAtDeath ? ` at age ${deathInfo.ageAtDeath}` : ""}.${deathInfo?.causeOfDeath ? ` Cause of death: ${deathInfo.causeOfDeath}.` : ""} See complete filmography and mortality statistics.`
+    : `${actor.name} is alive${currentAge ? ` at age ${currentAge}` : ""}. See filmography and which co-stars have passed away.`
+
   return (
     <>
       <Helmet>
         <title>{actor.name} - Dead on Film</title>
-        <meta
-          name="description"
-          content={`${actor.name}'s profile and filmography on Dead on Film.`}
-        />
+        <meta name="description" content={metaDescription} />
         <meta property="og:title" content={`${actor.name} - Dead on Film`} />
         <meta property="og:type" content="profile" />
-        {actor.profilePath && (
-          <meta
-            property="og:image"
-            content={`https://image.tmdb.org/t/p/h632${actor.profilePath}`}
-          />
-        )}
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:image" content={`https://deadonfilm.com/og/actor/${actor.id}.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${actor.name} - Dead on Film`} />
-        <meta
-          name="twitter:description"
-          content={`${actor.name}'s profile and filmography on Dead on Film.`}
-        />
-        {actor.profilePath && (
-          <meta
-            name="twitter:image"
-            content={`https://image.tmdb.org/t/p/h632${actor.profilePath}`}
-          />
-        )}
+        <meta name="twitter:description" content={metaDescription} />
+        <meta name="twitter:image" content={`https://deadonfilm.com/og/actor/${actor.id}.png`} />
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
       <JsonLd
@@ -346,6 +240,9 @@ export default function ActorPage() {
       />
 
       <div data-testid="actor-page" className="mx-auto max-w-3xl">
+        <Breadcrumb items={[{ label: "Home", href: "/" }, { label: actor.name }]} />
+        <AdminActorToolbar actorId={actorId} />
+
         {/* Header section */}
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           {/* Profile photo */}
@@ -387,7 +284,7 @@ export default function ActorPage() {
               )}
             </h1>
 
-            <div className="mt-2 space-y-1 text-sm text-text-muted">
+            <div className="mt-2 space-y-1 text-sm text-text-primary">
               {actor.birthday && (
                 <p>
                   <span className="font-medium">Born:</span> {formatDate(actor.birthday)}
@@ -412,28 +309,33 @@ export default function ActorPage() {
                 <p>
                   <span className="font-medium">Cause of Death:</span>{" "}
                   {hasDeathDetails ? (
-                    <span
-                      ref={triggerRef}
-                      data-testid="cause-of-death-trigger"
-                      className="cursor-help underline decoration-dotted"
-                      onMouseEnter={handleMouseEnter}
-                      onMouseLeave={handleMouseLeave}
+                    <HoverTooltip
+                      content={
+                        <>
+                          <p className="leading-relaxed">{deathInfo.causeOfDeathDetails}</p>
+                          {deathInfo.hasDetailedDeathInfo && slug && (
+                            <Link
+                              to={`/actor/${slug}/death`}
+                              className="mt-2 block text-right text-xs text-cream/80 underline hover:text-cream"
+                            >
+                              Read more →
+                            </Link>
+                          )}
+                        </>
+                      }
+                      testId="death-details-tooltip"
                     >
-                      {toTitleCase(deathInfo.causeOfDeath)}
-                      <InfoIcon
-                        size={14}
-                        className="ml-1 inline-block align-text-bottom text-brown-medium"
-                      />
-                      <Tooltip
-                        content={deathInfo.causeOfDeathDetails!}
-                        triggerRef={triggerRef}
-                        isVisible={showTooltip}
-                        onMouseEnter={handleMouseEnter}
-                        onMouseLeave={handleMouseLeave}
-                        actorSlug={slug}
-                        hasDetailedInfo={deathInfo.hasDetailedDeathInfo}
-                      />
-                    </span>
+                      <span
+                        data-testid="cause-of-death-trigger"
+                        className="underline decoration-dotted"
+                      >
+                        {toTitleCase(deathInfo.causeOfDeath)}
+                        <InfoIcon
+                          size={14}
+                          className="ml-1 inline-block align-text-bottom text-brown-medium"
+                        />
+                      </span>
+                    </HoverTooltip>
                   ) : (
                     <span>{toTitleCase(deathInfo.causeOfDeath)}</span>
                   )}
@@ -480,11 +382,13 @@ export default function ActorPage() {
           </div>
         </div>
 
+        <AdminActorMetadata actorId={actorId} />
+
         {/* Biography */}
         {actor.biography && (
-          <div className="mb-6 rounded-lg bg-white p-4">
+          <div className="mb-6 rounded-lg bg-surface-elevated p-4">
             <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
-            <p className="text-sm leading-relaxed text-text-muted">{actor.biography}</p>
+            <p className="text-sm leading-relaxed text-text-primary">{actor.biography}</p>
             {actor.biographySourceUrl && (
               <a
                 href={actor.biographySourceUrl}
@@ -517,7 +421,7 @@ export default function ActorPage() {
           </h2>
 
           {combinedFilmography.length === 0 ? (
-            <div className="rounded-lg bg-white p-6 text-center text-text-muted">
+            <div className="rounded-lg bg-surface-elevated p-6 text-center text-text-muted">
               <p>No movies or TV shows in our database yet.</p>
               <p className="mt-1 text-sm">
                 This actor hasn't appeared in any productions we've analyzed for mortality
@@ -539,6 +443,41 @@ export default function ActorPage() {
             </div>
           )}
         </div>
+
+        {/* Related actors */}
+        {relatedActors.data?.actors && relatedActors.data.actors.length > 0 && (
+          <div className="mt-6">
+            <RelatedContent
+              title={
+                data.deathInfo?.causeOfDeath
+                  ? `Also died of ${toTitleCase(data.deathInfo.causeOfDeath)}`
+                  : "Similar Era Actors"
+              }
+              items={relatedActors.data.actors.map((a) => ({
+                href: `/actor/${createActorSlug(a.name, a.id)}`,
+                title: a.name,
+                subtitle: a.causeOfDeath ? toTitleCase(a.causeOfDeath) : undefined,
+                imageUrl: getProfileUrl(a.profilePath, "w185"),
+              }))}
+              placeholderIcon={<PersonIcon size={20} className="text-text-muted" />}
+            />
+          </div>
+        )}
+
+        {/* Hub page links */}
+        {isDeceased && (
+          <div className="mt-4">
+            <SeeAlso
+              links={[
+                ...(deathInfo?.causeOfDeath
+                  ? [{ href: "/causes-of-death", label: "Deaths by Cause" }]
+                  : []),
+                { href: "/forever-young", label: "Forever Young" },
+                { href: "/death-watch", label: "Death Watch" },
+              ]}
+            />
+          </div>
+        )}
       </div>
     </>
   )

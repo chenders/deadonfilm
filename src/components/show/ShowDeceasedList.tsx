@@ -85,7 +85,7 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
   return (
     <div
       data-testid="deceased-card"
-      className="group rounded-lg border border-brown-medium/20 bg-white p-4"
+      className="group rounded-lg border border-brown-medium/20 bg-surface-elevated p-4"
     >
       <div className="flex items-start gap-4">
         {profileUrl ? (
@@ -150,7 +150,7 @@ function ShowDeceasedCard({ actor, showId, showName }: ShowDeceasedCardProps) {
           isExpanded ? `Collapse details for ${actor.name}` : `Show details for ${actor.name}`
         }
         onClick={() => setIsExpanded(!isExpanded)}
-        className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-xs text-brown-medium transition-colors hover:text-brown-dark focus:outline-none"
+        className="mt-2 flex w-full items-center justify-center gap-1 rounded py-1 text-xs text-brown-medium transition-colors hover:text-brown-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brown-medium/50"
       >
         <span>{isExpanded ? "Hide details" : "Show details"}</span>
         <ChevronIcon

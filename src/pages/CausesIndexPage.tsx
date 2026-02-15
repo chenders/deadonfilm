@@ -44,7 +44,7 @@ export default function CausesIndexPage() {
       <div data-testid="causes-index-page" className="mx-auto max-w-4xl">
         <div className="mb-6 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">Deaths by Cause</h1>
-          <p className="text-text-muted">{data.causes.length} causes of death documented</p>
+          <p className="text-text-primary">{data.causes.length} causes of death documented</p>
         </div>
 
         <div data-testid="causes-grid" className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">

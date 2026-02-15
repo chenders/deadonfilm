@@ -11,12 +11,18 @@ import { recordAIUsage, aiUsageTableExists } from "../death-sources/ai-usage-tra
 import { logger } from "../logger.js"
 
 // Claude Sonnet model ID
-const MODEL_ID = "claude-sonnet-4-20250514"
+export const MODEL_ID = "claude-sonnet-4-20250514"
 
-// Model pricing (USD per 1M tokens)
+// Model pricing (USD per 1M tokens) — standard synchronous API
 const PRICING = {
   input: 3.0, // $3.00 per 1M input tokens
   output: 15.0, // $15.00 per 1M output tokens
+}
+
+// Batch API pricing (50% discount)
+export const BATCH_PRICING = {
+  input: 1.5, // $1.50 per 1M input tokens
+  output: 7.5, // $7.50 per 1M output tokens
 }
 
 export type BiographySourceType = "wikipedia" | "tmdb" | "imdb"
@@ -79,13 +85,30 @@ export function sanitizeBiographyForPrompt(rawBiography: string): string {
 /**
  * Build the prompt for biography generation.
  */
-export function buildBiographyPrompt(actorName: string, rawBiography: string): string {
+export function buildBiographyPrompt(
+  actorName: string,
+  rawBiography: string,
+  wikipediaBio?: string
+): string {
   const safeActorName = sanitizeActorNameForPrompt(actorName)
   const safeBiography = sanitizeBiographyForPrompt(rawBiography)
+
+  let sourceSection: string
+  if (wikipediaBio) {
+    const safeWikiBio = sanitizeBiographyForPrompt(wikipediaBio)
+    sourceSection = `TMDB BIOGRAPHY:
+${safeBiography}
+
+WIKIPEDIA BIOGRAPHY:
+${safeWikiBio}`
+  } else {
+    sourceSection = `ORIGINAL BIOGRAPHY:
+${safeBiography}`
+  }
+
   return `Rewrite this actor biography for ${safeActorName}. Create a clean, factual summary suitable for a movie database.
 
-ORIGINAL BIOGRAPHY:
-${safeBiography}
+${sourceSection}
 
 REQUIREMENTS:
 1. Maximum 6 lines of text (this is a HARD LIMIT)
@@ -148,7 +171,7 @@ export function determineSourceUrl(
 /**
  * Parse the AI response JSON.
  */
-function parseResponse(responseText: string): {
+export function parseResponse(responseText: string): {
   biography: string | null
   hasSubstantiveContent: boolean
 } {
@@ -202,7 +225,8 @@ function getClient(): Anthropic | null {
  */
 export async function generateBiography(
   actor: ActorForBiography,
-  rawBiography: string
+  rawBiography: string,
+  wikipediaBio?: string
 ): Promise<BiographyResult> {
   const startTime = Date.now()
 
@@ -236,7 +260,7 @@ export async function generateBiography(
   }
 
   try {
-    const prompt = buildBiographyPrompt(actor.name, rawBiography)
+    const prompt = buildBiographyPrompt(actor.name, rawBiography, wikipediaBio)
 
     const message = await client.messages.create({
       model: MODEL_ID,
@@ -285,9 +309,10 @@ export async function generateBiography(
 export async function generateBiographyWithTracking(
   db: Pool,
   actor: ActorForBiography,
-  rawBiography: string
+  rawBiography: string,
+  wikipediaBio?: string
 ): Promise<BiographyResult> {
-  const result = await generateBiography(actor, rawBiography)
+  const result = await generateBiography(actor, rawBiography, wikipediaBio)
 
   // Record AI usage if we made an API call and the table exists
   if (result.inputTokens > 0) {

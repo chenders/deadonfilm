@@ -134,12 +134,24 @@ export async function getForeverYoungMovies(limit: number = 100): Promise<Foreve
   return result.rows.sort((a, b) => b.years_lost - a.years_lost).slice(0, limit)
 }
 
+// Sort column allowlist for getForeverYoungMoviesPaginated
+const FOREVER_YOUNG_SORT_MAP: Record<string, string> = {
+  years_lost: "years_lost",
+  name: "actor_name",
+}
+
 // Get movies featuring leading actors who died abnormally young with pagination
 export async function getForeverYoungMoviesPaginated(
   options: ForeverYoungOptions = {}
 ): Promise<{ movies: ForeverYoungMovieRecord[]; totalCount: number }> {
-  const { limit = 50, offset = 0 } = options
+  const { limit = 50, offset = 0, sort, dir } = options
   const db = getPool()
+
+  // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
+  const sortColumn =
+    FOREVER_YOUNG_SORT_MAP[sort || "years_lost"] || FOREVER_YOUNG_SORT_MAP.years_lost
+  const sortDirection = dir === "asc" ? "ASC" : "DESC"
+  const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
 
   // Find movies where a leading actor died with 40%+ of their expected lifespan still ahead
   // Uses CTE to get one actor per movie (the one who lost the most years),
@@ -167,7 +179,7 @@ export async function getForeverYoungMoviesPaginated(
      )
      SELECT COUNT(*) OVER() as total_count, *
      FROM forever_young_movies
-     ORDER BY years_lost DESC
+     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, movie_tmdb_id ASC, actor_id ASC
      LIMIT $1 OFFSET $2`,
     [limit, offset]
   )
@@ -226,7 +238,6 @@ export const UNNATURAL_DEATH_CATEGORIES = {
       "took his own life",
       "took her own life",
       "died by suicide",
-      "hanging to death",
     ],
   },
   accident: {
@@ -243,11 +254,9 @@ export const UNNATURAL_DEATH_CATEGORIES = {
       "aviation accident",
       "helicopter crash",
       "aircraft crash",
-      "falling from height",
-      "falling",
       "accidental fall",
       "accidental drowning",
-      "drowning",
+      "accident",
     ],
   },
   overdose: {
@@ -256,17 +265,7 @@ export const UNNATURAL_DEATH_CATEGORIES = {
   },
   homicide: {
     label: "Homicide",
-    patterns: [
-      "gunshot wound",
-      "gunshot",
-      "shooting",
-      "homicide",
-      "murdered",
-      "stabbing",
-      "stab wound",
-      "strangulation",
-      "strangled",
-    ],
+    patterns: ["homicide", "murdered", "murder", "assassination", "assassinated"],
   },
   other: {
     label: "Other",
@@ -322,31 +321,33 @@ function buildCategoryCondition(patterns: readonly string[]): string {
   return patterns
     .map((p) => {
       const escaped = escapeSqlLikePattern(p.toLowerCase())
-      return `LOWER(COALESCE(cause_of_death, '') || ' ' || COALESCE(cause_of_death_details, '')) LIKE '%${escaped}%'`
+      return `LOWER(COALESCE(actors.cause_of_death, '') || ' ' || COALESCE(actors.cause_of_death_details, '')) LIKE '%${escaped}%'`
     })
     .join(" OR ")
 }
 
-// Get all unnatural death pattern conditions
+// Get all unnatural death pattern conditions (text patterns OR manner-based)
 function getAllUnnaturalPatterns(): string {
-  const conditions = Object.values(UNNATURAL_DEATH_CATEGORIES)
+  const textConditions = Object.values(UNNATURAL_DEATH_CATEGORIES)
     .map((cat) => `(${buildCategoryCondition(cat.patterns)})`)
     .join(" OR ")
-  return conditions
+  // Also include actors with manner set to suicide, homicide, or accident
+  return `(${textConditions}) OR cmm.manner IN ('suicide', 'homicide', 'accident')`
 }
 
 // Get non-suicide unnatural pattern conditions
 function getNonSuicideUnnaturalPatterns(): string {
-  const conditions = Object.entries(UNNATURAL_DEATH_CATEGORIES)
+  const textConditions = Object.entries(UNNATURAL_DEATH_CATEGORIES)
     .filter(([key]) => key !== "suicide")
     .map(([, cat]) => `(${buildCategoryCondition(cat.patterns)})`)
     .join(" OR ")
-  return conditions
+  return `(${textConditions}) OR cmm.manner IN ('homicide', 'accident')`
 }
 
 // Get suicide pattern conditions (for exclusion)
 function getSuicidePatterns(): string {
-  return buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)
+  const textCondition = buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)
+  return `(${textCondition}) OR cmm.manner = 'suicide'`
 }
 
 // Get deceased persons who died from unnatural causes
@@ -387,7 +388,16 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
     }
   } else {
     const categoryInfo = UNNATURAL_DEATH_CATEGORIES[category]
-    whereCondition = buildCategoryCondition(categoryInfo.patterns)
+    const textCondition = buildCategoryCondition(categoryInfo.patterns)
+    // For manner-based categories, also match by manner
+    // SAFETY: category is validated as a key of UNNATURAL_DEATH_CATEGORIES (typed as
+    // UnnaturalDeathCategory) and mannerCategories is a fixed set of known-safe literals.
+    const mannerCategories = new Set<string>(["suicide", "homicide", "accident"])
+    if (mannerCategories.has(category)) {
+      whereCondition = `(${textCondition}) OR cmm.manner = '${category}'`
+    } else {
+      whereCondition = textCondition
+    }
   }
 
   // When hiding suicides, also exclude records that match suicide patterns
@@ -396,10 +406,12 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
 
   // Get persons matching the filter
   const result = await db.query<ActorRecord & { total_count: string }>(
-    `SELECT COUNT(*) OVER () as total_count, *
+    `SELECT COUNT(*) OVER () as total_count, actors.*
      FROM actors
-     WHERE (${whereCondition}) ${suicideExclusion} AND ($3 = true OR is_obscure = false)
-     ORDER BY deathday DESC
+     LEFT JOIN cause_of_death_normalizations n ON actors.cause_of_death = n.original_cause
+     LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, actors.cause_of_death) = cmm.normalized_cause
+     WHERE (${whereCondition}) ${suicideExclusion} AND ($3 = true OR actors.is_obscure = false)
+     ORDER BY actors.deathday DESC
      LIMIT $1 OFFSET $2`,
     [limit, offset, includeObscure]
   )
@@ -411,15 +423,17 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
   const categoryCountsResult = await db.query<{ category: string; count: string }>(
     `SELECT
       CASE
-        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)} THEN 'suicide'
-        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.accident.patterns)} THEN 'accident'
+        WHEN cmm.manner = 'suicide' OR (cmm.manner IS NULL AND (${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.suicide.patterns)})) THEN 'suicide'
+        WHEN cmm.manner = 'accident' OR (cmm.manner IS NULL AND (${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.accident.patterns)})) THEN 'accident'
         WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.overdose.patterns)} THEN 'overdose'
-        WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.homicide.patterns)} THEN 'homicide'
+        WHEN cmm.manner = 'homicide' OR (cmm.manner IS NULL AND (${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.homicide.patterns)})) THEN 'homicide'
         WHEN ${buildCategoryCondition(UNNATURAL_DEATH_CATEGORIES.other.patterns)} THEN 'other'
       END as category,
       COUNT(*) as count
     FROM actors
-    WHERE (${getAllUnnaturalPatterns()}) AND ($1 = true OR is_obscure = false)
+    LEFT JOIN cause_of_death_normalizations n ON actors.cause_of_death = n.original_cause
+    LEFT JOIN cause_manner_mappings cmm ON COALESCE(n.normalized_cause, actors.cause_of_death) = cmm.normalized_cause
+    WHERE (${getAllUnnaturalPatterns()}) AND ($1 = true OR actors.is_obscure = false)
     GROUP BY category`,
     [includeObscure]
   )
@@ -445,14 +459,26 @@ export async function getUnnaturalDeaths(options: UnnaturalDeathsOptions = {}): 
 // All Deaths functions (paginated list of all deceased actors)
 // ============================================================================
 
+// Sort column allowlist for getAllDeaths - maps user-facing sort keys to SQL column names
+const ALL_DEATHS_SORT_MAP: Record<string, string> = {
+  date: "actors.deathday",
+  name: "actors.name",
+  age: "actors.age_at_death",
+}
+
 // Get all deceased persons, paginated (for "All Deaths" page)
 // Requires actors to have appeared in 2+ movies OR 10+ TV episodes
 export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
   persons: ActorRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0, includeObscure = false, search } = options
+  const { limit = 50, offset = 0, includeObscure = false, search, sort, dir } = options
   const db = getPool()
+
+  // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
+  const sortColumn = ALL_DEATHS_SORT_MAP[sort || "date"] || ALL_DEATHS_SORT_MAP.date
+  const sortDirection = dir === "asc" ? "ASC" : "DESC"
+  const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
 
   // Always pass search parameter (null if not searching) - avoids SQL string interpolation
   const searchPattern = search ? `%${search}%` : null
@@ -476,7 +502,7 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
      JOIN actor_appearances aa ON aa.id = actors.id
      WHERE ($3 = true OR is_obscure = false)
        AND ($4::text IS NULL OR actors.name ILIKE $4)
-     ORDER BY deathday DESC
+     ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, actors.name, actors.id
      LIMIT $1 OFFSET $2`,
     [limit, offset, includeObscure, searchPattern]
   )
@@ -491,6 +517,13 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
 // Death Watch feature - living actors most likely to die soon
 // ============================================================================
 
+// Sort column allowlist for getDeathWatchActors - maps user-facing sort keys to SQL column names
+const DEATH_WATCH_SORT_MAP: Record<string, string> = {
+  age: "age",
+  probability: "age", // Same column since probability is derived from age
+  name: "actor_name",
+}
+
 // Get living actors for the Death Watch feature
 // Returns actors ordered by age (oldest first = highest death probability)
 // Death probability is calculated in application code using actuarial tables
@@ -499,7 +532,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
   actors: DeathWatchActorRecord[]
   totalCount: number
 }> {
-  const { limit = 50, offset = 0, minAge, includeObscure = false, search } = options
+  const { limit = 50, offset = 0, minAge, includeObscure = false, search, sort, dir } = options
 
   const db = getPool()
 
@@ -530,6 +563,12 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
 
+  // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
+  const sortColumn = DEATH_WATCH_SORT_MAP[sort || "age"] || DEATH_WATCH_SORT_MAP.age
+  const sortDirection = dir === "asc" ? "ASC" : "DESC"
+  const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
+  const secondarySort = sortColumn === "actor_name" ? "" : ", dof_popularity DESC NULLS LAST"
+
   // Add pagination params
   params.push(limit)
   const limitParamIndex = paramIndex++
@@ -545,6 +584,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
         a.birthday,
         a.profile_path,
         a.tmdb_popularity,
+        a.dof_popularity,
         COUNT(DISTINCT ama.movie_tmdb_id) as total_movies,
         COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as total_episodes,
         EXTRACT(YEAR FROM age(a.birthday))::integer as age
@@ -553,7 +593,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
       LEFT JOIN actor_show_appearances asa ON asa.actor_id = a.id
       WHERE a.deathday IS NULL
         AND a.birthday IS NOT NULL
-      GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.profile_path, a.tmdb_popularity
+      GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.profile_path, a.tmdb_popularity, a.dof_popularity
       HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
          OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
     )
@@ -570,7 +610,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
       COUNT(*) OVER() as total_count
     FROM living_actors
     ${whereClause}
-    ORDER BY age DESC, dof_popularity DESC NULLS LAST
+    ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}${secondarySort}, actor_id ASC
     LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
   `
 

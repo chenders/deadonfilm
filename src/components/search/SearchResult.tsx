@@ -1,7 +1,8 @@
 import { useRef, useEffect } from "react"
 import type { UnifiedSearchResult } from "@/types"
 import { getYear } from "@/utils/formatDate"
-import { SkullIcon, FilmReelIcon, TVIcon } from "@/components/icons"
+import { getMediaBadge, getPersonSubtitle } from "@/utils/search-utils"
+import { SkullIcon, FilmReelIcon, TVIcon, PersonIcon } from "@/components/icons"
 
 interface SearchResultProps {
   result: UnifiedSearchResult
@@ -43,6 +44,44 @@ function getPosterUrls(posterPath: string | null): {
   }
 }
 
+function getProfileUrls(profilePath: string | null): {
+  src: string
+  srcSet: string
+} | null {
+  if (!profilePath) return null
+  const base = "https://media.themoviedb.org/t/p"
+  return {
+    src: `${base}/w45_and_h67_face${profilePath}`,
+    srcSet: `${base}/w45_and_h67_face${profilePath} 1x, ${base}/w94_and_h141_face${profilePath} 2x`,
+  }
+}
+
+function PersonPhoto({ profilePath, name }: { profilePath: string | null; name: string }) {
+  const profile = getProfileUrls(profilePath)
+
+  return (
+    <div
+      data-testid="person-photo"
+      className="-my-1 h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-brown-medium/10"
+    >
+      {profile ? (
+        <img
+          src={profile.src}
+          srcSet={profile.srcSet}
+          alt={name}
+          width={40}
+          height={40}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-brown-medium/30">
+          <PersonIcon size={16} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MediaPoster({
   posterPath,
   title,
@@ -82,8 +121,10 @@ export default function SearchResult({
   searchQuery,
 }: SearchResultProps) {
   const ref = useRef<HTMLLIElement>(null)
-  const year = getYear(result.release_date)
-  const mortality = getMortalityHint(result.release_date)
+  const isPerson = result.media_type === "person"
+  const year = isPerson ? "" : getYear(result.release_date)
+  const mortality = isPerson ? { level: null, label: null } : getMortalityHint(result.release_date)
+  const badge = getMediaBadge(result.media_type)
 
   // Scroll selected item into view
   useEffect(() => {
@@ -111,48 +152,61 @@ export default function SearchResult({
       })}
     >
       <div className="flex items-center gap-3">
-        <MediaPoster
-          posterPath={result.poster_path}
-          title={result.title}
-          mediaType={result.media_type}
-        />
+        {isPerson ? (
+          <PersonPhoto profilePath={result.poster_path} name={result.title} />
+        ) : (
+          <MediaPoster
+            posterPath={result.poster_path}
+            title={result.title}
+            mediaType={result.media_type as "movie" | "tv"}
+          />
+        )}
 
-        {/* Title, year, and media type badge */}
+        {/* Title, subtitle, and media type badge */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-medium text-brown-dark">{result.title}</span>
             <span
               data-testid={`media-badge-${result.media_type}`}
-              className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                result.media_type === "tv"
-                  ? "bg-living/20 text-living-dark"
-                  : "bg-brown-medium/10 text-brown-medium"
-              }`}
+              className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${badge.className}`}
             >
-              {result.media_type === "tv" ? "TV" : "Film"}
+              {badge.label}
             </span>
           </div>
-          <div className="text-sm text-text-muted">{year}</div>
+          <div className="text-sm text-text-muted">
+            {isPerson ? getPersonSubtitle(result) : year}
+          </div>
         </div>
 
-        {/* Mortality indicator */}
-        <div
-          className={`flex h-7 w-14 flex-shrink-0 items-center justify-end ${
-            mortality.level === "high"
-              ? "text-accent"
-              : mortality.level === "medium"
-                ? "text-brown-medium/60"
-                : ""
-          }`}
-          title={mortality.label || undefined}
-        >
-          {mortality.level && (
-            <>
-              <SkullIcon size={28} />
-              {mortality.level === "high" && <SkullIcon size={28} />}
-            </>
-          )}
-        </div>
+        {/* Mortality/death indicator */}
+        {isPerson ? (
+          result.is_deceased && (
+            <div
+              data-testid="person-deceased-indicator"
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center text-accent"
+            >
+              <SkullIcon size={20} />
+            </div>
+          )
+        ) : (
+          <div
+            className={`flex h-7 w-14 flex-shrink-0 items-center justify-end ${
+              mortality.level === "high"
+                ? "text-accent"
+                : mortality.level === "medium"
+                  ? "text-brown-medium/60"
+                  : ""
+            }`}
+            title={mortality.label || undefined}
+          >
+            {mortality.level && (
+              <>
+                <SkullIcon size={28} />
+                {mortality.level === "high" && <SkullIcon size={28} />}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </li>
   )

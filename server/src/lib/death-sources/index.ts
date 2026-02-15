@@ -32,6 +32,16 @@ export { WikipediaSource } from "./sources/wikipedia.js"
 export { DeadlineSource } from "./sources/deadline.js"
 export { VarietySource } from "./sources/variety.js"
 export { NewsAPISource } from "./sources/newsapi.js"
+export { ChroniclingAmericaSource } from "./sources/chronicling-america.js"
+export { HollywoodReporterSource } from "./sources/hollywood-reporter.js"
+export { TMZSource } from "./sources/tmz.js"
+export { PeopleSource } from "./sources/people.js"
+export { BBCNewsSource } from "./sources/bbc-news.js"
+export { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
+export { BAFTASource } from "./sources/bafta.js"
+export { WGASource } from "./sources/wga.js"
+export { DGASource } from "./sources/dga.js"
+export { BraveSearchSource } from "./sources/brave.js"
 
 // AI providers
 export { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
@@ -44,6 +54,7 @@ export {
   DeathEnrichmentOrchestrator,
   DEFAULT_CONFIG,
   type ExtendedEnrichmentResult,
+  type ActorLogEntry,
 } from "./orchestrator.js"
 
 // Claude cleanup
@@ -161,3 +172,10 @@ export {
   type WikipediaSection,
   type SectionSelectionResult,
 } from "./wikipedia-section-selector.js"
+
+// Wikipedia date extractor (AI-assisted date validation)
+export {
+  extractDatesWithAI,
+  isAIDateExtractionAvailable,
+  type DateExtractionResult,
+} from "./wikipedia-date-extractor.js"

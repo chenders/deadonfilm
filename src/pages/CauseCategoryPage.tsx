@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useCauseCategoryDetail } from "@/hooks/useCausesOfDeath"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
@@ -94,8 +95,13 @@ export default function CauseCategoryPage() {
           property="og:description"
           content={`Explore ${data.count.toLocaleString()} actors who died from ${data.label.toLowerCase()}`}
         />
-        <link rel="canonical" href={`https://deadonfilm.com/causes-of-death/${data.slug}`} />
       </Helmet>
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/causes-of-death/${data.slug}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="cause-category-page" className="mx-auto max-w-5xl">
         {/* Breadcrumb */}
@@ -108,7 +114,7 @@ export default function CauseCategoryPage() {
         {/* Header */}
         <div className="mb-6 text-center">
           <h1 className="mb-2 font-display text-3xl text-brown-dark">{data.label}</h1>
-          <p className="text-text-muted">
+          <p className="text-text-primary">
             {data.count.toLocaleString()} actors ({data.percentage.toFixed(1)}% of known causes)
           </p>
         </div>
@@ -149,7 +155,7 @@ export default function CauseCategoryPage() {
         <div className="mb-8 grid gap-6 md:grid-cols-2">
           {/* Decade Breakdown */}
           {data.decadeBreakdown.length > 0 && (
-            <div className="rounded-lg bg-white p-4">
+            <div className="rounded-lg bg-surface-elevated p-4">
               <h2 className="mb-4 font-display text-lg text-brown-dark">Deaths by Decade</h2>
               <DecadeChart breakdown={data.decadeBreakdown} />
             </div>
@@ -157,7 +163,7 @@ export default function CauseCategoryPage() {
 
           {/* Specific Causes */}
           {data.specificCauses.length > 0 && (
-            <div className="rounded-lg bg-white p-4">
+            <div className="rounded-lg bg-surface-elevated p-4">
               <h2 className="mb-4 font-display text-lg text-brown-dark">Specific Causes</h2>
               <SpecificCauseList causes={data.specificCauses} categorySlug={data.slug} />
             </div>

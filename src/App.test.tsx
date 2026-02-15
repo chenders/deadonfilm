@@ -14,6 +14,10 @@ vi.mock("./hooks/useNewRelicBrowser", () => ({
   useNewRelicBrowser: vi.fn(),
 }))
 
+vi.mock("./hooks/useWebVitals", () => ({
+  useWebVitals: vi.fn(),
+}))
+
 // Mock the API
 vi.mock("@/services/api", () => ({
   getSiteStats: vi.fn(() =>
@@ -169,9 +173,12 @@ describe("App", () => {
       renderApp("/admin/jobs")
 
       // Should redirect to login since not authenticated
-      await waitFor(() => {
-        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-      })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it("routes to /admin/jobs/runs for job history", async () => {
@@ -216,13 +223,35 @@ describe("App", () => {
 
       renderApp("/admin/data-quality")
 
-      // Should redirect to login since not authenticated
-      await waitFor(() => {
-        expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
-      })
+      // Redirects through /admin/actors?tab=data-quality, then to login
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
-    it("routes to /admin/sync for TMDB sync management", async () => {
+    it("redirects /admin/logs to /admin/jobs?tab=logs", async () => {
+      globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ authenticated: false }),
+        } as Response)
+      )
+
+      renderApp("/admin/logs")
+
+      // Redirects through /admin/jobs?tab=logs, then to login
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
+    })
+
+    it("redirects /admin/sync to /admin/operations?tab=sync", async () => {
       globalThis.fetch = vi.fn(() =>
         Promise.resolve({
           ok: false,
@@ -232,7 +261,7 @@ describe("App", () => {
 
       renderApp("/admin/sync")
 
-      // Should redirect to login since not authenticated
+      // Redirects through /admin/operations?tab=sync, then to login
       await waitFor(() => {
         expect(screen.getByTestId("admin-login-password")).toBeInTheDocument()
       })

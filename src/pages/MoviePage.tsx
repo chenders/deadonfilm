@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async"
 import { useMovie } from "@/hooks/useMovie"
 import { useDeathInfoPolling } from "@/hooks/useDeathInfoPolling"
 import { usePageViewTracking } from "@/hooks/usePageViewTracking"
-import { extractMovieId } from "@/utils/slugify"
+import { extractMovieId, createMovieSlug } from "@/utils/slugify"
 import { getYear } from "@/utils/formatDate"
 import MovieHeader, { MoviePoster } from "@/components/movie/MovieHeader"
 import MortalityGauge from "@/components/movie/MortalityGauge"
@@ -18,6 +18,11 @@ import ErrorMessage from "@/components/common/ErrorMessage"
 import AggregateScore from "@/components/common/AggregateScore"
 import JsonLd from "@/components/seo/JsonLd"
 import { buildMovieSchema, buildBreadcrumbSchema } from "@/utils/schema"
+import { useRelatedMovies } from "@/hooks/useRelatedContent"
+import { getPosterUrl } from "@/services/api"
+import RelatedContent from "@/components/content/RelatedContent"
+import SeeAlso from "@/components/content/SeeAlso"
+import Breadcrumb from "@/components/layout/Breadcrumb"
 import type { ViewMode } from "@/types"
 
 export default function MoviePage() {
@@ -37,6 +42,8 @@ export default function MoviePage() {
 
   // Track page view for analytics
   usePageViewTracking("movie", movieId || null, location.pathname)
+
+  const relatedMovies = useRelatedMovies(movieId)
 
   // Auto-select the non-zero group when one group is empty
   // Must be before conditional returns to follow Rules of Hooks
@@ -84,12 +91,9 @@ export default function MoviePage() {
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
         <meta property="og:type" content="video.movie" />
-        {movie.poster_path && (
-          <meta
-            property="og:image"
-            content={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-          />
-        )}
+        <meta property="og:image" content={`https://deadonfilm.com/og/movie/${movie.id}.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${title} - Dead on Film`} />
@@ -97,23 +101,31 @@ export default function MoviePage() {
           name="twitter:description"
           content={`${stats.mortalityPercentage}% of the cast has passed away`}
         />
-        {movie.poster_path && (
-          <meta
-            name="twitter:image"
-            content={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-          />
-        )}
+        <meta name="twitter:image" content={`https://deadonfilm.com/og/movie/${movie.id}.png`} />
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
-      <JsonLd data={buildMovieSchema(movie, stats, slug!)} />
+      <JsonLd
+        data={buildMovieSchema(movie, stats, slug!, [
+          ...enrichedDeceased.map((a) => ({ id: a.id, name: a.name })),
+          ...living.map((a) => ({ id: a.id, name: a.name })),
+        ])}
+      />
       <JsonLd
         data={buildBreadcrumbSchema([
           { name: "Home", url: "https://deadonfilm.com" },
+          { name: "Movies", url: "https://deadonfilm.com/movies/genres" },
           { name: movie.title, url: `https://deadonfilm.com${location.pathname}` },
         ])}
       />
 
       <div data-testid="movie-page" className="mx-auto max-w-4xl">
+        <Breadcrumb
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Movies", href: "/movies/genres" },
+            { label: movie.title },
+          ]}
+        />
         <MovieHeader movie={movie} hidePoster />
 
         {/* Poster + Gauge side by side */}
@@ -162,6 +174,31 @@ export default function MoviePage() {
             )}
           </>
         )}
+
+        {/* Related movies */}
+        {relatedMovies.data?.movies && relatedMovies.data.movies.length > 0 && (
+          <div className="mt-6">
+            <RelatedContent
+              title="Related Movies"
+              items={relatedMovies.data.movies.map((m) => ({
+                href: `/movie/${createMovieSlug(m.title, m.releaseDate || "", m.tmdbId)}`,
+                title: m.title,
+                subtitle: m.releaseDate ? m.releaseDate.slice(0, 4) : undefined,
+                imageUrl: getPosterUrl(m.posterPath, "w92"),
+              }))}
+            />
+          </div>
+        )}
+
+        <div className="mt-4">
+          <SeeAlso
+            links={[
+              { href: "/movies/genres", label: "Browse by Genre" },
+              { href: "/causes-of-death", label: "Deaths by Cause" },
+              { href: "/deaths/decades", label: "Deaths by Decade" },
+            ]}
+          />
+        </div>
       </div>
     </>
   )

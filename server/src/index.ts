@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit"
 import cookieParser from "cookie-parser"
 import { logger } from "./lib/logger.js"
 import { initRedis, isRedisAvailable } from "./lib/redis.js"
+import { invalidatePrerenderCache } from "./lib/cache.js"
 import { skipRateLimitForAdmin } from "./middleware/rate-limit-utils.js"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
@@ -28,6 +29,7 @@ import {
   getTriviaHandler,
   getThisWeekDeathsHandler,
   getPopularMoviesHandler,
+  getRandomPopularMoviesHandler,
 } from "./routes/stats.js"
 import { getCursedActorsRoute } from "./routes/actors.js"
 import { getActor } from "./routes/actor.js"
@@ -54,6 +56,11 @@ import {
   getSpecificCauseHandler,
 } from "./routes/causes.js"
 import { getGenreCategoriesHandler, getMoviesByGenreHandler } from "./routes/movies.js"
+import {
+  getRelatedActorsRoute,
+  getRelatedMoviesRoute,
+  getRelatedShowsRoute,
+} from "./routes/related.js"
 import {
   getShow,
   searchShows,
@@ -85,7 +92,11 @@ import popularityRoutes from "./routes/admin/popularity.js"
 import syncRoutes from "./routes/admin/sync.js"
 import logsRoutes from "./routes/admin/logs.js"
 import biographiesRoutes from "./routes/admin/biographies.js"
+import gscRoutes from "./routes/admin/gsc.js"
+import causeMappingsRoutes from "./routes/admin/cause-mappings.js"
+import { ogImageHandler } from "./routes/og-image.js"
 import { errorHandler } from "./middleware/error-handler.js"
+import { prerenderMiddleware, prerenderRateLimiter } from "./middleware/prerender.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -199,6 +210,11 @@ app.use((req, res, next) => {
   next()
 })
 
+// Prerender middleware — serves fully-rendered HTML to search engine crawlers
+// Must be before routes so bot requests are intercepted before reaching the API
+// Rate limited to prevent DoS via spoofed bot user agents
+app.use(prerenderRateLimiter, prerenderMiddleware)
+
 // Health check endpoint (internal container health checks)
 app.get("/health", (_req, res) => {
   res.json({
@@ -251,6 +267,9 @@ app.get("/sitemap-shows-:page.xml", heavyEndpointLimiter, getShowsSitemap)
 app.get("/sitemap-death-details.xml", heavyEndpointLimiter, getDeathDetailsSitemap)
 app.get("/sitemap-death-details-:page.xml", heavyEndpointLimiter, getDeathDetailsSitemap)
 
+// OG image generation — branded social sharing images (1200x630 PNG)
+app.get("/og/:type/:id.png", heavyEndpointLimiter, ogImageHandler)
+
 // API routes - apply rate limiting to all API endpoints
 app.use("/api", apiLimiter)
 app.get("/api/search", searchMovies)
@@ -269,6 +288,7 @@ app.get("/api/featured-movie", getFeaturedMovieHandler)
 app.get("/api/trivia", getTriviaHandler)
 app.get("/api/this-week", getThisWeekDeathsHandler)
 app.get("/api/popular-movies", getPopularMoviesHandler)
+app.get("/api/popular-movies/random", getRandomPopularMoviesHandler)
 app.get("/api/cursed-actors", getCursedActorsRoute)
 app.get("/api/actor/:slug", getActor)
 app.get("/api/actor/:slug/death", getActorDeathDetails)
@@ -287,6 +307,10 @@ app.get("/api/causes-of-death/:categorySlug/:causeSlug", getSpecificCauseHandler
 
 app.get("/api/movies/genres", getGenreCategoriesHandler)
 app.get("/api/movies/genre/:genre", getMoviesByGenreHandler)
+
+app.get("/api/movie/:id/related", getRelatedMoviesRoute)
+app.get("/api/show/:id/related", getRelatedShowsRoute)
+app.get("/api/actor/:id/related", getRelatedActorsRoute)
 
 // Admin routes (authentication not required for login, but required for other endpoints)
 // codeql[js/missing-rate-limiting] - All admin routes have appropriate rate limiting
@@ -309,6 +333,8 @@ app.use("/admin/api/popularity", adminRoutesLimiter, adminAuthMiddleware, popula
 app.use("/admin/api/sync", adminRoutesLimiter, adminAuthMiddleware, syncRoutes)
 app.use("/admin/api/logs", adminRoutesLimiter, adminAuthMiddleware, logsRoutes)
 app.use("/admin/api/biographies", adminRoutesLimiter, adminAuthMiddleware, biographiesRoutes)
+app.use("/admin/api/gsc", adminRoutesLimiter, adminAuthMiddleware, gscRoutes)
+app.use("/admin/api/cause-mappings", adminRoutesLimiter, adminAuthMiddleware, causeMappingsRoutes)
 
 // Public page view tracking endpoint (rate limited, bot-filtered)
 app.post("/api/page-views/track", pageViewTrackingLimiter, trackPageViewHandler)
@@ -360,6 +386,21 @@ async function startServer() {
         },
         `Server running on port ${PORT}`
       )
+
+      // Flush prerender cache after server is listening so deploys don't
+      // serve stale HTML referencing old hashed asset filenames.
+      // Fire-and-forget to avoid blocking request handling.
+      if (redisAvailable) {
+        invalidatePrerenderCache()
+          .then((flushed) => {
+            if (flushed > 0) {
+              logger.info({ flushed }, "Flushed stale prerender cache on startup")
+            }
+          })
+          .catch((err) => {
+            logger.warn({ err }, "Failed to flush prerender cache on startup")
+          })
+      }
     })
   } catch (error) {
     logger.fatal({ error }, "Failed to start server")

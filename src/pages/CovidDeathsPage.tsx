@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useCovidDeaths } from "@/hooks/useCovidDeaths"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
@@ -18,7 +19,7 @@ function ActorRow({ person }: { person: CovidDeath }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`covid-death-row-${person.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -159,13 +160,20 @@ export default function CovidDeathsPage() {
           name="twitter:description"
           content="Actors who died from COVID-19 or related complications"
         />
-        <link rel="canonical" href="https://deadonfilm.com/covid-deaths" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/covid-deaths"
+          includeLinks={!includeObscure}
+        />
+      )}
 
       <div data-testid="covid-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">COVID-19 Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             {includeObscure
               ? "All actors in our database who died from COVID-19, coronavirus, or related complications. Ordered by death date, most recent first."
               : "Well-known actors in our database who died from COVID-19, coronavirus, or related complications. Ordered by death date, most recent first."}

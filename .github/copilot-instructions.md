@@ -107,7 +107,8 @@ import { Command } from "commander"
 npm run format && cd server && npm run format
 npm run lint && cd server && npm run lint
 npm run type-check && cd server && npm run type-check
-npm test && cd server && npm test
+npm test
+# Server tests: cd server && npm test (may exit non-zero locally; CI runs reliably)
 
 # Development
 npm run dev:all      # Frontend + Backend
@@ -201,7 +202,7 @@ Every PR must include tests covering:
 | Formula | Description |
 |---------|-------------|
 | Expected Deaths | Sum of death probabilities for each actor (filming age to current age) |
-| Curse Score | `(Actual - Expected) / Expected`. Positive = more deaths than expected |
+| Curse Score | `(Actual - Expected) / (Expected + 2)`. Empirical Bayes shrinkage (k=2). Positive = more deaths than expected |
 | Years Lost | `Expected Lifespan - Actual Lifespan`. Positive = died early |
 
 ### Calculation Rules

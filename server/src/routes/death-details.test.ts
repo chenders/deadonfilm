@@ -89,6 +89,8 @@ describe("getActorDeathDetails", () => {
     biography_generated_at: null,
     biography_raw_tmdb: null,
     biography_has_content: null,
+    actor_awards_data: null,
+    actor_awards_updated_at: null,
     // Fields accessed via `as unknown as` casts in the route handler
     death_manner: "natural",
     death_categories: ["cardiovascular"],
@@ -639,6 +641,8 @@ describe("getNotableDeaths", () => {
       pageSize: 50,
       filter: "all",
       includeObscure: false,
+      sort: "date",
+      dir: "desc",
     })
     expect(setSpy).toHaveBeenCalledWith("Cache-Control", "public, max-age=300")
     expect(jsonSpy).toHaveBeenCalledWith(mockNotableDeathsResponse)
@@ -658,6 +662,8 @@ describe("getNotableDeaths", () => {
       pageSize: 25,
       filter: "all",
       includeObscure: false,
+      sort: "date",
+      dir: "desc",
     })
   })
 
@@ -672,6 +678,8 @@ describe("getNotableDeaths", () => {
       pageSize: 50,
       filter: "strange",
       includeObscure: false,
+      sort: "date",
+      dir: "desc",
     })
   })
 
@@ -686,6 +694,8 @@ describe("getNotableDeaths", () => {
       pageSize: 50,
       filter: "all",
       includeObscure: true,
+      sort: "date",
+      dir: "desc",
     })
   })
 
@@ -810,6 +820,8 @@ describe("getActorDeathDetails - URL redirect handling (legacy tmdb_id URLs)", (
     biography_generated_at: null,
     biography_raw_tmdb: null,
     biography_has_content: null,
+    actor_awards_data: null,
+    actor_awards_updated_at: null,
   }
 
   beforeEach(() => {

@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useDeathsByCause } from "@/hooks/useDeathsByCause"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
@@ -17,7 +18,7 @@ function ActorRow({ person, rank }: { person: DeathByCause; rank: number }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`death-row-${person.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -144,8 +145,13 @@ export default function DeathsByCausePage() {
           name="description"
           content={`${data.pagination.totalCount} actors who died from ${data.cause}. Browse actors by cause of death from movies and TV shows.`}
         />
-        <link rel="canonical" href={`https://deadonfilm.com/deaths/${data.slug}`} />
       </Helmet>
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/deaths/${data.slug}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="deaths-by-cause-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
@@ -156,7 +162,7 @@ export default function DeathsByCausePage() {
             &larr; All Causes
           </Link>
           <h1 className="font-display text-3xl text-brown-dark">{data.cause}</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             {data.pagination.totalCount.toLocaleString()}{" "}
             {data.pagination.totalCount === 1 ? "actor" : "actors"} died from this cause
           </p>

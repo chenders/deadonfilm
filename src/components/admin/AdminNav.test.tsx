@@ -60,37 +60,37 @@ describe("AdminNav", () => {
     expect(dashboardLink).toHaveAttribute("href", "/admin/dashboard")
   })
 
-  it("renders background jobs navigation link", async () => {
+  it("renders jobs & logs navigation link", async () => {
     renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /background jobs/i })).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: /jobs & logs/i })).toBeInTheDocument()
     })
 
-    const jobsLink = screen.getByRole("link", { name: /background jobs/i })
+    const jobsLink = screen.getByRole("link", { name: /jobs & logs/i })
     expect(jobsLink).toHaveAttribute("href", "/admin/jobs")
   })
 
-  it("renders data quality navigation link", async () => {
+  it("renders actors navigation link", async () => {
     renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /data quality/i })).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: /actors/i })).toBeInTheDocument()
     })
 
-    const dataQualityLink = screen.getByRole("link", { name: /data quality/i })
-    expect(dataQualityLink).toHaveAttribute("href", "/admin/data-quality")
+    const actorsLink = screen.getByRole("link", { name: /actors/i })
+    expect(actorsLink).toHaveAttribute("href", "/admin/actors")
   })
 
-  it("renders TMDB sync navigation link", async () => {
+  it("renders system ops navigation link", async () => {
     renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /tmdb sync/i })).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: /system ops/i })).toBeInTheDocument()
     })
 
-    const syncLink = screen.getByRole("link", { name: /tmdb sync/i })
-    expect(syncLink).toHaveAttribute("href", "/admin/sync")
+    const opsLink = screen.getByRole("link", { name: /system ops/i })
+    expect(opsLink).toHaveAttribute("href", "/admin/operations")
   })
 
   it("highlights active route", async () => {

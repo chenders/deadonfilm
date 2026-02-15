@@ -10,15 +10,32 @@ import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
 import { getPersonDetails } from "../../lib/tmdb.js"
+import { invalidateActorCache } from "../../lib/cache.js"
 import {
   generateBiographyWithTracking,
   type ActorForBiography,
 } from "../../lib/biography/biography-generator.js"
+import { fetchWikipediaIntro } from "../../lib/biography/wikipedia-fetcher.js"
+import { queueManager } from "../../lib/jobs/queue-manager.js"
+import { JobType, JobPriority } from "../../lib/jobs/types.js"
 
 const router = Router()
 
 // Minimum TMDB biography length to be considered substantial enough for generation
 const MIN_BIOGRAPHY_LENGTH = 50
+
+/**
+ * Best-effort cache invalidation after biography updates.
+ * invalidateActorCache() currently swallows errors internally, but we wrap
+ * in try/catch defensively in case that behaviour changes.
+ */
+async function invalidateActorCacheBestEffort(actorId: number): Promise<void> {
+  try {
+    await invalidateActorCache(actorId)
+  } catch (err) {
+    logger.warn({ err, actorId }, "Failed to invalidate actor cache after biography update")
+  }
+}
 
 // ============================================================================
 // GET /admin/api/biographies
@@ -29,7 +46,7 @@ interface ActorNeedingBiography {
   id: number
   tmdb_id: number | null
   name: string
-  tmdb_popularity: number | null
+  dof_popularity: number | null
   biography: string | null
   biography_generated_at: string | null
   wikipedia_url: string | null
@@ -68,7 +85,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (minPopularity > 0) {
-      whereClause += ` AND COALESCE(tmdb_popularity, 0) >= $${paramIndex++}`
+      whereClause += ` AND COALESCE(dof_popularity, 0) >= $${paramIndex++}`
       params.push(minPopularity)
     }
 
@@ -85,20 +102,19 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const totalCount = parseInt(countResult.rows[0].count, 10)
 
     // Get actors
-    // Cast tmdb_popularity to float so pg returns a number (not string from numeric type)
     const result = await pool.query<ActorNeedingBiography>(
       `SELECT
         id,
         tmdb_id,
         name,
-        tmdb_popularity::float as tmdb_popularity,
+        dof_popularity::float as dof_popularity,
         biography,
         biography_generated_at,
         wikipedia_url,
         imdb_person_id
       FROM actors
       ${whereClause}
-      ORDER BY COALESCE(tmdb_popularity, 0) DESC
+      ORDER BY COALESCE(dof_popularity, 0) DESC, id ASC
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
       [...params, pageSize, offset]
     )
@@ -123,7 +139,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         id: actor.id,
         tmdbId: actor.tmdb_id,
         name: actor.name,
-        popularity: actor.tmdb_popularity,
+        popularity: actor.dof_popularity,
         hasBiography: actor.biography !== null,
         generatedAt: actor.biography_generated_at,
         hasWikipedia: actor.wikipedia_url !== null,
@@ -218,6 +234,19 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
       return
     }
 
+    // Fetch Wikipedia intro if actor has a Wikipedia URL
+    let wikipediaBio: string | undefined
+    if (actor.wikipedia_url) {
+      try {
+        const intro = await fetchWikipediaIntro(actor.wikipedia_url)
+        if (intro) {
+          wikipediaBio = intro
+        }
+      } catch (err) {
+        logger.warn({ err, actorId }, "Failed to fetch Wikipedia intro for single-actor generate")
+      }
+    }
+
     // Generate cleaned biography
     const actorForBio: ActorForBiography = {
       id: actor.id,
@@ -227,7 +256,12 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
       imdbId: actor.imdb_person_id,
     }
 
-    const result = await generateBiographyWithTracking(pool, actorForBio, tmdbPerson.biography)
+    const result = await generateBiographyWithTracking(
+      pool,
+      actorForBio,
+      tmdbPerson.biography,
+      wikipediaBio
+    )
 
     // Save to database
     await pool.query(
@@ -248,6 +282,8 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
         actorId,
       ]
     )
+
+    await invalidateActorCacheBestEffort(actorId)
 
     // Log admin action
     await logAdminAction({
@@ -278,7 +314,7 @@ router.post("/generate", async (req: Request, res: Response): Promise<void> => {
 
 // ============================================================================
 // POST /admin/api/biographies/generate-batch
-// Generate biographies for multiple actors
+// Queue batch biography generation via BullMQ + Anthropic Batches API
 // ============================================================================
 
 interface BatchGenerateRequest {
@@ -290,13 +326,33 @@ interface BatchGenerateRequest {
 
 router.post("/generate-batch", async (req: Request, res: Response): Promise<void> => {
   try {
-    const pool = getPool()
     const {
       actorIds,
-      limit = 10,
+      limit = 100,
       minPopularity = 0,
       allowRegeneration = false,
     } = req.body as BatchGenerateRequest
+
+    // Validate limit and minPopularity
+    if (typeof limit !== "number" || !Number.isFinite(limit) || limit < 1) {
+      res.status(400).json({
+        error: { message: "limit must be a positive number" },
+      })
+      return
+    }
+    if (typeof minPopularity !== "number" || !Number.isFinite(minPopularity) || minPopularity < 0) {
+      res.status(400).json({
+        error: { message: "minPopularity must be a non-negative number" },
+      })
+      return
+    }
+
+    if (typeof allowRegeneration !== "boolean") {
+      res.status(400).json({
+        error: { message: "allowRegeneration must be a boolean" },
+      })
+      return
+    }
 
     // Validate actorIds if provided
     if (
@@ -310,176 +366,50 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
       return
     }
 
-    // Rate limiting: max 50 per request
-    const maxLimit = 50
+    // Max 500 per batch
+    const maxLimit = 500
     const safeLimit = Math.min(limit, maxLimit)
+    const safeActorIds = actorIds ? actorIds.slice(0, maxLimit) : undefined
 
-    let actorsToProcess: Array<{
-      id: number
-      tmdb_id: number
-      name: string
-      wikipedia_url: string | null
-      imdb_person_id: string | null
-    }> = []
-
-    if (actorIds && actorIds.length > 0) {
-      // Process specific actors using ANY() with array parameter
-      // This avoids dynamic placeholder generation that triggers CodeQL warnings
-      const biographyFilter = allowRegeneration ? "" : "AND biography IS NULL"
-      const result = await pool.query<{
-        id: number
-        tmdb_id: number
-        name: string
-        wikipedia_url: string | null
-        imdb_person_id: string | null
-      }>(
-        `SELECT id, tmdb_id, name, wikipedia_url, imdb_person_id
-         FROM actors
-         WHERE id = ANY($1::int[])
-           AND tmdb_id IS NOT NULL
-           ${biographyFilter}
-         LIMIT $2`,
-        [actorIds, safeLimit]
-      )
-      actorsToProcess = result.rows
-    } else {
-      // Get actors by popularity
-      const biographyFilter = allowRegeneration ? "" : "AND biography IS NULL"
-      const result = await pool.query<{
-        id: number
-        tmdb_id: number
-        name: string
-        wikipedia_url: string | null
-        imdb_person_id: string | null
-      }>(
-        `SELECT id, tmdb_id, name, wikipedia_url, imdb_person_id
-         FROM actors
-         WHERE tmdb_id IS NOT NULL
-           ${biographyFilter}
-           AND COALESCE(tmdb_popularity, 0) >= $1
-         ORDER BY COALESCE(tmdb_popularity, 0) DESC
-         LIMIT $2`,
-        [minPopularity, safeLimit]
-      )
-      actorsToProcess = result.rows
-    }
-
-    const results: Array<{
-      actorId: number
-      name: string
-      success: boolean
-      biography: string | null
-      error?: string
-    }> = []
-
-    let totalCost = 0
-
-    for (const actor of actorsToProcess) {
-      try {
-        // Fetch TMDB biography
-        const tmdbPerson = await getPersonDetails(actor.tmdb_id)
-
-        if (!tmdbPerson.biography || tmdbPerson.biography.trim().length < MIN_BIOGRAPHY_LENGTH) {
-          await pool.query(
-            `UPDATE actors SET
-              biography_raw_tmdb = $1,
-              biography_has_content = false,
-              biography_generated_at = CURRENT_TIMESTAMP
-            WHERE id = $2`,
-            [tmdbPerson.biography || "", actor.id]
-          )
-
-          results.push({
-            actorId: actor.id,
-            name: actor.name,
-            success: true,
-            biography: null,
-          })
-          continue
-        }
-
-        // Generate biography
-        const actorForBio: ActorForBiography = {
-          id: actor.id,
-          name: actor.name,
-          tmdbId: actor.tmdb_id,
-          wikipediaUrl: actor.wikipedia_url,
-          imdbId: actor.imdb_person_id,
-        }
-
-        const result = await generateBiographyWithTracking(pool, actorForBio, tmdbPerson.biography)
-
-        // Save to database
-        await pool.query(
-          `UPDATE actors SET
-            biography = $1,
-            biography_source_url = $2,
-            biography_source_type = $3,
-            biography_generated_at = CURRENT_TIMESTAMP,
-            biography_raw_tmdb = $4,
-            biography_has_content = $5
-          WHERE id = $6`,
-          [
-            result.biography,
-            result.sourceUrl,
-            result.sourceType,
-            tmdbPerson.biography,
-            result.hasSubstantiveContent,
-            actor.id,
-          ]
-        )
-
-        totalCost += result.costUsd
-
-        results.push({
-          actorId: actor.id,
-          name: actor.name,
-          success: true,
-          biography: result.biography,
-        })
-
-        // Rate limiting: wait 1.2 seconds between requests (50 RPM for Sonnet)
-        // Skip delay after the last actor to avoid unnecessary wait
-        const isLastActor = actorsToProcess.indexOf(actor) === actorsToProcess.length - 1
-        if (!isLastActor) {
-          await new Promise((resolve) => setTimeout(resolve, 1200))
-        }
-      } catch (error) {
-        results.push({
-          actorId: actor.id,
-          name: actor.name,
-          success: false,
-          biography: null,
-          error: error instanceof Error ? error.message : "Unknown error",
-        })
+    // Queue the job
+    const jobId = await queueManager.addJob(
+      JobType.GENERATE_BIOGRAPHIES_BATCH,
+      {
+        actorIds: safeActorIds,
+        limit: safeLimit,
+        minPopularity,
+        allowRegeneration,
+      },
+      {
+        priority: JobPriority.HIGH,
+        attempts: 1, // Don't retry batch jobs — they're expensive
+        timeout: 5 * 60 * 60 * 1000, // 5 hour timeout
+        createdBy: "admin-biographies-api",
       }
-    }
+    )
 
     // Log admin action
     await logAdminAction({
       action: "generate_biographies_batch",
       resourceType: "actor",
       details: {
-        count: results.length,
-        successful: results.filter((r) => r.success).length,
-        totalCost,
+        jobId,
+        actorCount: safeActorIds?.length ?? safeLimit,
+        minPopularity,
+        allowRegeneration,
       },
       ipAddress: req.ip,
       userAgent: req.get("user-agent"),
     })
 
     res.json({
-      results,
-      summary: {
-        total: results.length,
-        successful: results.filter((r) => r.success).length,
-        failed: results.filter((r) => !r.success).length,
-        totalCostUsd: totalCost,
-      },
+      jobId,
+      queued: true,
+      message: `Batch biography generation job queued (${safeActorIds?.length ?? safeLimit} actors)`,
     })
   } catch (error) {
-    logger.error({ error }, "Failed to generate biographies batch")
-    res.status(500).json({ error: { message: "Failed to generate biographies" } })
+    logger.error({ error }, "Failed to queue biographies batch job")
+    res.status(500).json({ error: { message: "Failed to queue batch generation" } })
   }
 })
 

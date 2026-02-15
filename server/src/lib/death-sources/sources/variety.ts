@@ -16,6 +16,7 @@ import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
+import { fetchFromArchive } from "../archive-fallback.js"
 import {
   extractLocation,
   extractNotableFactors,
@@ -171,6 +172,13 @@ export class VarietySource extends BaseDataSource {
     })
 
     if (response.status === 403) {
+      // Try archive.org fallback before giving up
+      console.log(`  Variety blocked (403), trying archive.org fallback...`)
+      const archiveResult = await fetchFromArchive(url)
+      if (archiveResult.success && archiveResult.content) {
+        console.log(`  Archive.org fallback succeeded for Variety`)
+        return this.parseArticle(archiveResult.content, actor)
+      }
       throw new SourceAccessBlockedError(`Variety blocked access (403)`, this.type, url, 403)
     }
 

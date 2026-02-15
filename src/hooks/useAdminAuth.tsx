@@ -95,3 +95,16 @@ export function useAdminAuth() {
   }
   return context
 }
+
+/**
+ * Non-throwing variant that returns { isAuthenticated: false } when used
+ * outside AdminAuthProvider. Useful for components embedded in pages that
+ * may or may not be wrapped by the auth provider.
+ */
+export function useOptionalAdminAuth(): Pick<AdminAuthContextType, "isAuthenticated"> {
+  const context = useContext(AdminAuthContext)
+  if (context === undefined) {
+    return { isAuthenticated: false }
+  }
+  return context
+}

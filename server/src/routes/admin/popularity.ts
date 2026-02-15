@@ -139,16 +139,19 @@ router.get("/top-actors", async (req: Request, res: Response): Promise<void> => 
       id: number
       tmdb_id: number | null
       name: string
-      dof_popularity: string
-      dof_popularity_confidence: string
-      tmdb_popularity: string | null
+      dof_popularity_text: string
+      dof_popularity_confidence_text: string
+      tmdb_popularity_text: string | null
       deathday: string | null
       profile_path: string | null
     }>(
       `
       SELECT
-        id, tmdb_id, name, dof_popularity::text, dof_popularity_confidence::text,
-        tmdb_popularity::text, deathday, profile_path
+        id, tmdb_id, name,
+        dof_popularity::text AS dof_popularity_text,
+        dof_popularity_confidence::text AS dof_popularity_confidence_text,
+        tmdb_popularity::text AS tmdb_popularity_text,
+        deathday, profile_path
       FROM actors
       WHERE dof_popularity IS NOT NULL
         AND dof_popularity_confidence >= $1
@@ -163,9 +166,9 @@ router.get("/top-actors", async (req: Request, res: Response): Promise<void> => 
         id: row.id,
         tmdbId: row.tmdb_id,
         name: row.name,
-        dofPopularity: parseFloat(row.dof_popularity),
-        confidence: parseFloat(row.dof_popularity_confidence),
-        tmdbPopularity: row.tmdb_popularity ? parseFloat(row.tmdb_popularity) : null,
+        dofPopularity: parseFloat(row.dof_popularity_text),
+        confidence: parseFloat(row.dof_popularity_confidence_text),
+        tmdbPopularity: row.tmdb_popularity_text ? parseFloat(row.tmdb_popularity_text) : null,
         deathday: row.deathday,
         profilePath: row.profile_path,
       })),
@@ -191,16 +194,18 @@ router.get("/low-confidence", async (req: Request, res: Response): Promise<void>
       id: number
       tmdb_id: number | null
       name: string
-      dof_popularity: string
-      dof_popularity_confidence: string
-      tmdb_popularity: string | null
+      dof_popularity_text: string
+      dof_popularity_confidence_text: string
+      tmdb_popularity_text: string | null
       movie_count: string
       show_count: string
     }>(
       `
       SELECT
-        a.id, a.tmdb_id, a.name, a.dof_popularity::text, a.dof_popularity_confidence::text,
-        a.tmdb_popularity::text,
+        a.id, a.tmdb_id, a.name,
+        a.dof_popularity::text AS dof_popularity_text,
+        a.dof_popularity_confidence::text AS dof_popularity_confidence_text,
+        a.tmdb_popularity::text AS tmdb_popularity_text,
         (SELECT COUNT(*) FROM actor_movie_appearances WHERE actor_id = a.id)::text as movie_count,
         (SELECT COUNT(DISTINCT show_tmdb_id) FROM actor_show_appearances WHERE actor_id = a.id)::text as show_count
       FROM actors a
@@ -219,9 +224,9 @@ router.get("/low-confidence", async (req: Request, res: Response): Promise<void>
         id: row.id,
         tmdbId: row.tmdb_id,
         name: row.name,
-        dofPopularity: parseFloat(row.dof_popularity),
-        confidence: parseFloat(row.dof_popularity_confidence),
-        tmdbPopularity: row.tmdb_popularity ? parseFloat(row.tmdb_popularity) : null,
+        dofPopularity: parseFloat(row.dof_popularity_text),
+        confidence: parseFloat(row.dof_popularity_confidence_text),
+        tmdbPopularity: row.tmdb_popularity_text ? parseFloat(row.tmdb_popularity_text) : null,
         movieCount: parseInt(row.movie_count, 10),
         showCount: parseInt(row.show_count, 10),
       })),

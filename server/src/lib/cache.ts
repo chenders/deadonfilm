@@ -28,12 +28,18 @@ export const CACHE_PREFIX = {
   ACTOR: "actor",
   SHOW: "show",
   POPULAR_MOVIES: "popular-movies",
+  RANDOM_POPULAR_MOVIES: "random-popular-movies",
   COVID_DEATHS: "covid-deaths",
   UNNATURAL_DEATHS: "unnatural-deaths",
   FEATURED_MOVIE: "featured-movie",
   GENRES: "genres",
   DEATHS: "deaths",
+  PRERENDER: "prerender",
   CACHE_METADATA: "cache-metadata",
+  RELATED_ACTORS: "related-actors",
+  RELATED_MOVIES: "related-movies",
+  RELATED_SHOWS: "related-shows",
+  OG_IMAGE: "og-image",
 } as const
 
 /**
@@ -53,6 +59,9 @@ export interface DeathCacheMetadata {
 export const CACHE_TTL = {
   SHORT: 300, // 5 minutes - search results, transient data
   WEEK: 604800, // 1 week - standard TTL for data invalidated on change
+  PRERENDER: 86400, // 24 hours - prerendered content pages
+  PRERENDER_DYNAMIC: 3600, // 1 hour - dynamic pages (death-watch, deaths/*)
+  FOUR_HOURS: 14400, // 4 hours - random popular movies rotation
 } as const
 
 /**
@@ -87,6 +96,9 @@ export const CACHE_KEYS = {
   }),
   show: (tmdbId: number) => ({
     details: buildCacheKey(CACHE_PREFIX.SHOW, { id: tmdbId }),
+  }),
+  prerender: (urlPath: string) => ({
+    html: buildCacheKey(CACHE_PREFIX.PRERENDER, { path: urlPath }),
   }),
 } as const
 
@@ -200,6 +212,10 @@ export async function flushCache(): Promise<void> {
 export async function invalidateActorCache(actorId: number): Promise<void> {
   const keys = getActorCacheKeys(actorId)
   await invalidateKeys(...keys)
+  // Invalidate prerendered pages for this specific actor
+  // Use exact pattern without trailing wildcard to prevent over-matching
+  // (e.g. actorId 2157 should not match 21570)
+  await invalidateByPattern(`${CACHE_PREFIX.PRERENDER}:*:/actor/*-${actorId}`)
 }
 
 /**
@@ -213,7 +229,20 @@ export async function invalidateActorCacheRequired(actorId: number): Promise<voi
   }
   const keys = getActorCacheKeys(actorId)
   await instrumentedDel(...keys)
+  // Also invalidate prerendered pages for this actor
+  // Use exact pattern without trailing wildcard to prevent over-matching
+  await invalidateByPattern(`${CACHE_PREFIX.PRERENDER}:*:/actor/*-${actorId}`)
   logger.info({ keys, actorId }, "Actor cache invalidated")
+}
+
+/**
+ * Invalidate prerender cache for specific path patterns or all prerendered pages.
+ */
+export async function invalidatePrerenderCache(pathPattern?: string): Promise<number> {
+  if (pathPattern) {
+    return invalidateByPattern(`${CACHE_PREFIX.PRERENDER}:*${pathPattern}*`)
+  }
+  return invalidateByPattern(`${CACHE_PREFIX.PRERENDER}:*`)
 }
 
 /**
@@ -232,6 +261,12 @@ export async function invalidateDeathCaches(): Promise<void> {
     invalidateByPattern(`${CACHE_PREFIX.UNNATURAL_DEATHS}:*`),
     // STATS and TRIVIA use simple keys (no parameters), so use invalidateKeys
     invalidateKeys(CACHE_PREFIX.STATS, CACHE_PREFIX.TRIVIA, CACHE_PREFIX.FEATURED_MOVIE),
+    // Invalidate prerendered pages that show death data (targeted, not all pages)
+    invalidatePrerenderCache("/death-watch"),
+    invalidatePrerenderCache("/deaths"),
+    invalidatePrerenderCache("/causes-of-death"),
+    invalidatePrerenderCache("/covid-deaths"),
+    invalidatePrerenderCache("/unnatural-deaths"),
   ])
 }
 

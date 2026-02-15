@@ -62,6 +62,42 @@ const mockMediumOldMovie: UnifiedSearchResult = {
   media_type: "movie",
 }
 
+const mockDeceasedPerson: UnifiedSearchResult = {
+  id: 4165,
+  title: "John Wayne",
+  release_date: "",
+  poster_path: "/john-wayne.jpg",
+  overview: "",
+  media_type: "person",
+  is_deceased: true,
+  death_year: 1979,
+  birth_year: 1907,
+}
+
+const mockLivingPerson: UnifiedSearchResult = {
+  id: 500,
+  title: "Tom Hanks",
+  release_date: "",
+  poster_path: "/tom-hanks.jpg",
+  overview: "",
+  media_type: "person",
+  is_deceased: false,
+  death_year: null,
+  birth_year: 1956,
+}
+
+const mockPersonNoPhoto: UnifiedSearchResult = {
+  id: 999,
+  title: "Unknown Actor",
+  release_date: "",
+  poster_path: null,
+  overview: "",
+  media_type: "person",
+  is_deceased: false,
+  death_year: null,
+  birth_year: null,
+}
+
 describe("SearchResult", () => {
   const defaultProps = {
     isSelected: false,
@@ -195,5 +231,57 @@ describe("SearchResult", () => {
     expect(params.id).toBe(603)
     expect(params.media_type).toBe("movie")
     expect(params.search_term).toBe("the matrix")
+  })
+
+  describe("person results", () => {
+    it("renders deceased person with circular photo, Person badge, and death info", () => {
+      render(<SearchResult result={mockDeceasedPerson} {...defaultProps} />)
+
+      expect(screen.getByText("John Wayne")).toBeInTheDocument()
+      expect(screen.getByTestId("media-badge-person")).toHaveTextContent("Person")
+      expect(screen.getByText("Died 1979 (age 72)")).toBeInTheDocument()
+
+      const img = screen.getByRole("img", { name: "John Wayne" })
+      expect(img).toBeInTheDocument()
+      expect(screen.getByTestId("person-photo")).toBeInTheDocument()
+    })
+
+    it("renders living person with birth year", () => {
+      render(<SearchResult result={mockLivingPerson} {...defaultProps} />)
+
+      expect(screen.getByText("Tom Hanks")).toBeInTheDocument()
+      expect(screen.getByText("b. 1956")).toBeInTheDocument()
+      expect(screen.getByTestId("media-badge-person")).toHaveTextContent("Person")
+    })
+
+    it("renders person fallback icon when no photo", () => {
+      render(<SearchResult result={mockPersonNoPhoto} {...defaultProps} />)
+
+      expect(screen.queryByRole("img")).not.toBeInTheDocument()
+      // PersonIcon should be present as placeholder inside person-photo container
+      const container = screen.getByTestId("person-photo")
+      expect(container.querySelector("svg")).toBeInTheDocument()
+    })
+
+    it("shows skull icon for deceased person", () => {
+      render(<SearchResult result={mockDeceasedPerson} {...defaultProps} />)
+
+      const indicator = screen.getByTestId("person-deceased-indicator")
+      expect(indicator).toBeInTheDocument()
+      expect(indicator.querySelector("svg")).toBeInTheDocument()
+    })
+
+    it("does not show skull icon for living person", () => {
+      render(<SearchResult result={mockLivingPerson} {...defaultProps} />)
+
+      expect(screen.queryByTestId("person-deceased-indicator")).not.toBeInTheDocument()
+    })
+
+    it("does not show mortality hint skulls for person results", () => {
+      render(<SearchResult result={mockDeceasedPerson} {...defaultProps} />)
+
+      // Person results should not have the mortality hint div with title attribute
+      expect(screen.queryByTitle("High mortality likely")).not.toBeInTheDocument()
+    })
   })
 })

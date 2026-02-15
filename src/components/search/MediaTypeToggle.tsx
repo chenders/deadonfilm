@@ -9,6 +9,7 @@ const options: { value: SearchMediaType; label: string }[] = [
   { value: "all", label: "All" },
   { value: "movie", label: "Movies" },
   { value: "tv", label: "TV Shows" },
+  { value: "person", label: "People" },
 ]
 
 export default function MediaTypeToggle({ value, onChange }: MediaTypeToggleProps) {

@@ -9,6 +9,7 @@ import * as api from "@/services/api"
 // Mock the API
 vi.mock("@/services/api", () => ({
   getActor: vi.fn(),
+  getRelatedActors: vi.fn().mockResolvedValue({ actors: [] }),
   getProfileUrl: vi.fn((path: string | null) => (path ? `https://image.tmdb.org${path}` : null)),
   getPosterUrl: vi.fn((path: string | null) => (path ? `https://image.tmdb.org${path}` : null)),
 }))
@@ -133,8 +134,11 @@ describe("ActorPage", () => {
     renderWithProviders(<ActorPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Living Actor")).toBeInTheDocument()
+      expect(screen.getByTestId("actor-page")).toBeInTheDocument()
     })
+
+    // Actor name appears in header (and breadcrumb)
+    expect(screen.getAllByText("Living Actor").length).toBeGreaterThanOrEqual(1)
 
     // Should not have deceased label
     expect(screen.queryByTestId("deceased-label")).not.toBeInTheDocument()
@@ -154,7 +158,7 @@ describe("ActorPage", () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText("Deceased Actor")).toBeInTheDocument()
+      expect(screen.getByTestId("actor-page")).toBeInTheDocument()
     })
 
     // Should have deceased label
@@ -202,7 +206,7 @@ describe("ActorPage", () => {
     })
   })
 
-  it("shows cause of death tooltip with details on hover", async () => {
+  it("shows cause of death tooltip with details on click/tap", async () => {
     vi.mocked(api.getActor).mockResolvedValue(mockDeceasedActor)
 
     renderWithProviders(<ActorPage />, {
@@ -213,8 +217,8 @@ describe("ActorPage", () => {
       expect(screen.getByTestId("cause-of-death-trigger")).toBeInTheDocument()
     })
 
-    // Hover to show tooltip
-    fireEvent.mouseEnter(screen.getByTestId("cause-of-death-trigger"))
+    // Click to show tooltip (mobile tap behavior)
+    fireEvent.click(screen.getByTestId("cause-of-death-trigger"))
 
     await waitFor(() => {
       expect(screen.getByTestId("death-details-tooltip")).toBeInTheDocument()
@@ -286,7 +290,7 @@ describe("ActorPage", () => {
     renderWithProviders(<ActorPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Living Actor")).toBeInTheDocument()
+      expect(screen.getByTestId("actor-page")).toBeInTheDocument()
     })
 
     // Verify costarStats is not in the mock data structure
@@ -417,7 +421,7 @@ describe("ActorPage", () => {
       renderWithProviders(<ActorPage />)
 
       await waitFor(() => {
-        expect(screen.getByText("Living Actor")).toBeInTheDocument()
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
       })
 
       // Should show counts for movies and TV shows
@@ -431,7 +435,7 @@ describe("ActorPage", () => {
       renderWithProviders(<ActorPage />)
 
       await waitFor(() => {
-        expect(screen.getByText("Living Actor")).toBeInTheDocument()
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
       })
 
       const filmRows = screen.getAllByTestId("filmography-row")

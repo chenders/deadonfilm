@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useUnnaturalDeaths } from "@/hooks/useUnnaturalDeaths"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
@@ -18,7 +19,7 @@ function ActorRow({ person }: { person: UnnaturalDeath }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`unnatural-death-row-${person.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -202,13 +203,20 @@ export default function UnnaturalDeathsPage() {
           name="twitter:description"
           content="Actors who died from unnatural causes including accidents, overdoses, homicides, and suicides"
         />
-        <link rel="canonical" href="https://deadonfilm.com/unnatural-deaths" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/unnatural-deaths"
+          includeLinks={category === "all" && !showSelfInflicted && !includeObscure}
+        />
+      )}
 
       <div data-testid="unnatural-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">Unnatural Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Actors who died from unnatural causes. Ordered by death date, most recent first.
           </p>
         </div>

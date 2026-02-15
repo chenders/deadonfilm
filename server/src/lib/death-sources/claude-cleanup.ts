@@ -14,6 +14,7 @@
 
 import Anthropic from "@anthropic-ai/sdk"
 import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
+import { DeathMannerSchema } from "../claude-batch/schemas.js"
 import type {
   ActorForEnrichment,
   CleanedDeathInfo,
@@ -27,7 +28,64 @@ import { getEnrichmentLogger } from "./logger.js"
 import newrelic from "newrelic"
 
 const MODEL_ID = "claude-opus-4-5-20251101"
-const MAX_TOKENS = 2000
+const MAX_TOKENS = 3000
+
+/**
+ * Valid notable_factors tags that Claude is allowed to return.
+ * Any tags not in this set are filtered out to prevent Claude from
+ * confusing categories (e.g. "respiratory", "neurological") with notable_factors.
+ */
+export const VALID_NOTABLE_FACTORS = new Set([
+  "on_set",
+  "vehicle_crash",
+  "plane_crash",
+  "fire",
+  "drowning",
+  "fall",
+  "electrocution",
+  "exposure",
+  "overdose",
+  "substance_involvement",
+  "poisoning",
+  "suicide",
+  "homicide",
+  "assassination",
+  "terrorism",
+  "suspicious_circumstances",
+  "investigation",
+  "controversial",
+  "media_sensation",
+  "celebrity_involvement",
+  "multiple_deaths",
+  "family_tragedy",
+  "public_incident",
+  "workplace_accident",
+  "medical_malpractice",
+  "surgical_complications",
+  "misdiagnosis",
+  "natural_causes",
+  "alzheimers",
+  "cancer",
+  "heart_disease",
+  "covid_related",
+  "pandemic",
+  "war_related",
+  "autoerotic_asphyxiation",
+  "found_dead",
+  "young_death",
+])
+
+/** Manners of death considered "violent" for the violent_death boolean derivation. */
+const VIOLENT_MANNERS = ["homicide", "suicide", "accident"]
+
+/**
+ * Derive violent_death boolean from death_manner.
+ * Returns undefined if manner is null/undefined (no data to derive from).
+ */
+export function isViolentDeath(manner: string | null | undefined): boolean | undefined {
+  if (manner == null) return undefined
+  return VIOLENT_MANNERS.includes(manner)
+}
 
 // Cost per million tokens (Opus 4.5)
 const INPUT_COST_PER_MILLION = 15
@@ -45,6 +103,7 @@ interface ClaudeCleanupResponse {
   circumstances_confidence: ConfidenceLevel | null
   rumored_circumstances: string | null
   notable_factors: string[] | null
+  categories: string[] | null
   location_of_death: string | null
   related_deaths: string | null
   additional_context: string | null
@@ -60,6 +119,8 @@ interface ClaudeCleanupResponse {
     name: string
     relationship: string
   }> | null
+  // Manner of death
+  manner: "natural" | "accident" | "suicide" | "homicide" | "undetermined" | "pending" | null
   // Quality gate
   has_substantive_content: boolean
 }
@@ -84,41 +145,87 @@ Raw data gathered from multiple sources:
 
 ${rawDataSection}
 
-Extract ALL death-related information into clean, publication-ready prose. Return JSON with these fields:
+Extract ALL death-related information into clean, factual prose written in the tone of a local news site. Return JSON with these fields:
 
 {
   "cause": "specific medical cause (e.g., 'pancreatic cancer', 'heart failure', 'hantavirus pulmonary syndrome'). Null if unknown.",
   "cause_confidence": "high|medium|low|disputed",
-  "details": "2-4 sentences of medical context about the immediate cause of death. This is a SHORT summary; put extensive medical history in circumstances instead. Null if no details available.",
+  "details": "2-4 sentences about the immediate cause of death. Adapt to manner of death:
+    - NATURAL DEATHS: Medical context (diagnosis timeline, organ failure, treatment attempted)
+    - VIOLENT DEATHS (homicide, assassination, accident): Forensic/investigative findings (autopsy results, ballistics, toxicology, medical examiner ruling, manner of death determination)
+    - OVERDOSE: Toxicology findings, substances involved, accidental vs intentional ruling
+    - SUICIDE: Method, medical examiner findings, toxicology if relevant
+    This is a SHORT summary; put extensive history in circumstances instead. Null if no details available.",
   "details_confidence": "high|medium|low|disputed",
 
   "birthday_confidence": "high|medium|low|disputed - based on source agreement and reliability. Null if not discussed.",
   "deathday_confidence": "high|medium|low|disputed - based on source agreement and reliability. Null if not discussed.",
 
-  "circumstances": "COMPREHENSIVE narrative of the death AND relevant medical history. This is the main content for the death page. Include:
-    - MEDICAL HISTORY: Chronic conditions, major illnesses, surgeries, hospitalizations that contributed to or contextualize the death (e.g., heart attacks, cancer diagnoses, organ transplants, medical devices like pacemakers/LVADs)
-    - NOTABLE HEALTH INCIDENTS: Any significant health events during their life that are part of their public story (accidents, near-death experiences, long recoveries)
-    - Full timeline of events leading to and surrounding the death
+  "circumstances": "COMPREHENSIVE narrative of the death. This is the main content for the death page. Structure the narrative based on the MANNER OF DEATH:
+
+    FOR VIOLENT DEATHS (homicide, assassination, accident, crash, drowning, fire):
+    1. Lead with THE EVENT — what happened, when, where, who was involved
+    2. Investigation — police, FBI, forensic findings, witnesses, evidence
+    3. Legal proceedings — arrests, trials, convictions, sentences
+    4. Aftermath — funeral, public reaction, legacy impact
+    5. Health history ONLY if independently notable (e.g., JFK's hidden Addison's disease is notable in its own right; a murder victim's high blood pressure is not)
+
+    FOR SUICIDE:
+    1. Lead with the event and discovery
+    2. Investigation and medical examiner findings
+    3. Known mental health history, prior attempts
+    4. Other contributing factors, preceding events
+
+    FOR OVERDOSE:
+    1. Lead with the event and discovery
+    2. Toxicology findings, substances identified
+    3. History of substance use if publicly known
+    4. Accidental vs intentional determination
+
+    FOR NATURAL DEATHS:
+    1. Lead with medical history — chronic conditions, major illnesses, surgeries, hospitalizations, medical devices (pacemakers, LVADs), cancer diagnoses, organ transplants
+    2. Notable health incidents during their life (accidents, near-death experiences, long recoveries)
+    3. Progression of final illness or decline
+    4. The death itself — how, when, where, who was present
+
+    FOR ALL DEATHS, also include when relevant:
     - How and when the body was discovered, by whom
     - Location details (home, hospital, on set, etc.)
     - Other people involved or affected (family members who also died, witnesses)
     - First responder/medical examiner findings
-    - Any investigations (police, coroner) and their conclusions
     - Media coverage significance if it was a major news story
     - Anything unusual, tragic, or newsworthy about the circumstances
-    Start with medical history context if relevant, then cover the death itself. Write as clean prose suitable for a death page on an entertainment website. Multiple paragraphs are fine.",
+
+    Write as clean, factual prose in a tone similar to a local news site. Multiple paragraphs are fine.",
   "circumstances_confidence": "high|medium|low|disputed",
 
-  "rumored_circumstances": "Alternative accounts, disputed information, conspiracy theories, or unconfirmed reports. Null if none.",
+  "rumored_circumstances": "Alternative accounts, disputed information, conspiracy theories, or unconfirmed reports. Be COMPREHENSIVE for controversial or high-profile deaths. Include:
+    - Each major alternative theory SEPARATELY — don't lump them into vague summaries
+    - Name specific investigations and their conclusions (e.g., Warren Commission concluded X, HSCA concluded Y)
+    - Name specific people who proposed or championed each theory
+    - Cite specific books, documentaries, and investigative reports by title and author/director when known
+    - Describe key evidence cited for and against each theory
+    - Note how theories evolved over time (declassified documents, deathbed confessions, forensic re-analysis, new witness testimony)
+    - Include official investigations that contradicted each other
+    - Include family disputes about cause of death, medical/forensic disputes between experts
+    - Write multiple paragraphs if warranted — a single vague sentence is insufficient for deaths like JFK, Marilyn Monroe, or Bruce Lee
+    Null if there are genuinely no alternative accounts or disputed information.",
 
   "notable_factors": ["array of tags describing notable aspects. Use any applicable from:
-    on_set, vehicle_crash, fire, drowning, overdose, substance_involvement,
-    suicide, homicide, suspicious_circumstances, celebrity_involvement,
-    multiple_deaths, family_tragedy, public_incident, controversial,
-    investigation, media_sensation, workplace_accident, medical_malpractice,
-    natural_causes, alzheimers, cancer, heart_disease, covid_related"],
+    on_set, vehicle_crash, plane_crash, fire, drowning, fall, electrocution, exposure,
+    overdose, substance_involvement, poisoning,
+    suicide, homicide, assassination, terrorism,
+    suspicious_circumstances, investigation, controversial, media_sensation,
+    celebrity_involvement, multiple_deaths, family_tragedy, public_incident,
+    workplace_accident, medical_malpractice, surgical_complications, misdiagnosis,
+    natural_causes, alzheimers, cancer, heart_disease, covid_related, pandemic,
+    war_related, autoerotic_asphyxiation, found_dead, young_death"],
+
+  "categories": ["array of medical/contributing factor categories. Use: cancer, heart-disease, neurological, respiratory, natural, accident, infectious, liver-kidney, suicide, overdose, homicide. Multiple allowed, e.g. ['cancer', 'respiratory']. Null if unknown."],
 
   "location_of_death": "city, state/province, country where they died. Null if unknown.",
+
+  "manner": "natural|accident|suicide|homicide|undetermined|pending - medical examiner classification. null if unknown.",
 
   "related_deaths": "If family members or others died in connection (same incident, discovered together, etc.), describe here with names, relationships, causes, and timeline. Null if none.",
 
@@ -136,9 +243,11 @@ Extract ALL death-related information into clean, publication-ready prose. Retur
 }
 
 CRITICAL INSTRUCTIONS:
+- ADAPT narrative structure to manner of death: for violent deaths (homicide, assassination, accident), the violent event IS the story — lead with it. For natural deaths, medical history IS the story — lead with it. Do NOT bury an assassination under paragraphs of medical history.
 - Be THOROUGH in circumstances - capture the full story, not just the medical cause
-- ALWAYS include relevant medical history: heart conditions, cancer battles, transplants, chronic illnesses, medical devices, significant surgeries
+- ALWAYS include relevant medical history: heart conditions, cancer battles, transplants, chronic illnesses, medical devices, significant surgeries — but for violent deaths, only include health history if it is independently notable (well-known in its own right), not as a preamble to the actual death event
 - Include notable health incidents even if not directly causing death (accidents, near-death experiences, long-term health struggles)
+- Be COMPREHENSIVE in rumored_circumstances for controversial or high-profile deaths — a single vague sentence summarizing "there are conspiracy theories" is INSUFFICIENT. Name specific theories, investigations, people, books, and evidence. Multiple detailed paragraphs are expected for deaths like JFK, Marilyn Monroe, Bruce Lee, etc.
 - If the death was a major news story, capture WHY it was newsworthy
 - Include related deaths (spouse, family) if they're part of the story
 - Include related_celebrities if any notable people are mentioned in the death story
@@ -147,7 +256,8 @@ CRITICAL INSTRUCTIONS:
 - Remove Wikipedia citation markers [1][2], "citation needed" tags
 - Remove formatting artifacts from web scraping
 - Do NOT include career achievements, filmography, or awards unless directly death-related
-- Write clean, factual prose suitable for publication
+- Write clean, factual prose in a tone similar to a local news site
+- VARY your opening sentences — do NOT start every narrative with "[Name] had a long..." or "[Name] had a complicated medical history" or similar formulaic openings. Each person's story is unique; start with the most distinctive or newsworthy aspect of their death. Some openings might lead with a date, others with a location, others with a dramatic event, others with a diagnosis. Avoid repetitive sentence structures across different people.
 - Use null for any field where information is not available
 - Set has_substantive_content to FALSE if the sources only say things like "cause unknown", "no details released", "information is limited" - we don't want to create death pages that just say "we don't know anything"
 - Set has_substantive_content to FALSE if the sources contain JavaScript code, function definitions, variable declarations, website markup, or other technical/programming content instead of actual biographical information
@@ -161,10 +271,20 @@ CRITICAL INSTRUCTIONS:
  * @param rawSources - Raw data gathered from various sources
  * @returns Cleaned, structured death information
  */
+/** Result from Claude cleanup including I/O data for logging */
+export interface ClaudeCleanupResult {
+  cleaned: CleanedDeathInfo
+  costUsd: number
+  prompt: string
+  responseText: string
+  inputTokens: number
+  outputTokens: number
+}
+
 export async function cleanupWithClaude(
   actor: ActorForEnrichment,
   rawSources: RawSourceData[]
-): Promise<{ cleaned: CleanedDeathInfo; costUsd: number }> {
+): Promise<ClaudeCleanupResult> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY environment variable is required for Claude cleanup")
   }
@@ -254,7 +374,7 @@ export async function cleanupWithClaude(
   }
 
   // Convert related_celebrities to proper format
-  const relatedCelebrities: RelatedCelebrity[] | null = parsed.related_celebrities
+  const relatedCelebrities: RelatedCelebrity[] | null = Array.isArray(parsed.related_celebrities)
     ? parsed.related_celebrities.map((rc) => ({
         name: rc.name,
         tmdbId: null, // Will be looked up later when persisting
@@ -274,7 +394,11 @@ export async function cleanupWithClaude(
     circumstancesConfidence: parsed.circumstances_confidence,
     rumoredCircumstances: parsed.rumored_circumstances,
     locationOfDeath: parsed.location_of_death,
-    notableFactors: parsed.notable_factors || [],
+    manner: DeathMannerSchema.safeParse(parsed.manner).success ? parsed.manner : null,
+    notableFactors: (Array.isArray(parsed.notable_factors) ? parsed.notable_factors : []).filter(
+      (f: string) => VALID_NOTABLE_FACTORS.has(f)
+    ),
+    categories: Array.isArray(parsed.categories) ? parsed.categories : null,
     relatedDeaths: parsed.related_deaths,
     relatedCelebrities,
     additionalContext: parsed.additional_context,
@@ -298,17 +422,27 @@ export async function cleanupWithClaude(
     circumstancesConfidence: parsed.circumstances_confidence || "",
     rumoredCircumstances: parsed.rumored_circumstances || "",
     locationOfDeath: parsed.location_of_death || "",
-    notableFactors: (parsed.notable_factors || []).join(", "),
+    manner: cleaned.manner || "",
+    notableFactors: cleaned.notableFactors.join(", "),
+    categories: (cleaned.categories || []).join(", "),
     relatedDeaths: parsed.related_deaths || "",
-    relatedCelebrities: (parsed.related_celebrities || []).map((rc) => rc.name).join(", "),
+    relatedCelebrities: (Array.isArray(parsed.related_celebrities)
+      ? parsed.related_celebrities
+      : []
+    )
+      .map((rc) => rc.name)
+      .join(", "),
     additionalContext: parsed.additional_context || "",
     careerStatusAtDeath: parsed.career_status_at_death || "",
     lastProject: parsed.last_project?.title || "",
-    posthumousReleasesCount: (parsed.posthumous_releases || []).length,
+    posthumousReleasesCount: (Array.isArray(parsed.posthumous_releases)
+      ? parsed.posthumous_releases
+      : []
+    ).length,
     cleanupSource: "claude-opus-4.5",
     cleanupTimestamp: new Date().toISOString(),
   })
-  return { cleaned, costUsd }
+  return { cleaned, costUsd, prompt, responseText, inputTokens, outputTokens }
 }
 
 /**

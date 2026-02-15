@@ -144,7 +144,7 @@ function ShowLivingCard({ actor, showId, showName }: ShowLivingCardProps) {
               isExpanded ? `Collapse details for ${actor.name}` : `Show details for ${actor.name}`
             }
             onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-xs text-living transition-colors hover:text-living-dark focus:outline-none"
+            className="mt-2 flex w-full items-center justify-center gap-1 rounded py-1 text-xs text-living transition-colors hover:text-living-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-living/50"
           >
             <span>{isExpanded ? "Hide episodes" : "Show episodes"}</span>
             <ChevronIcon

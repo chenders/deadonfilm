@@ -37,6 +37,7 @@ export {
   getDeathsThisWeek,
   getDeathsThisWeekSimple,
   getPopularMovies,
+  getRandomPopularMovies,
 } from "./trivia.js"
 
 // Re-export actor functions
@@ -113,6 +114,10 @@ export {
   getNotableDeaths,
   hasDetailedDeathInfo,
 } from "./death-circumstances.js"
+
+// Re-export related-content functions
+export { getRelatedActors, getRelatedMovies, getRelatedShows } from "./related-content.js"
+export type { RelatedActor, RelatedMovie, RelatedShow } from "./related-content.js"
 
 // Re-export all types
 export type * from "./types.js"

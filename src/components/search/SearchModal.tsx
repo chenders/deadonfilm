@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useId } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { useUnifiedSearch } from "@/hooks/useUnifiedSearch"
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation"
-import { createMovieSlug, createShowSlug } from "@/utils/slugify"
+import { createMovieSlug, createShowSlug, createActorSlug } from "@/utils/slugify"
 import type { UnifiedSearchResult, SearchMediaType } from "@/types"
 import SearchInput from "./SearchInput"
 import SearchDropdown from "./SearchDropdown"
 import MediaTypeToggle from "./MediaTypeToggle"
+import EmptySearchState from "./EmptySearchState"
 
 interface SearchModalProps {
   isOpen: boolean
@@ -60,7 +61,10 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   }, [isOpen, onClose])
 
   const handleSelect = (result: UnifiedSearchResult) => {
-    if (result.media_type === "tv") {
+    if (result.media_type === "person") {
+      const slug = createActorSlug(result.title, result.id)
+      navigate(`/actor/${slug}`)
+    } else if (result.media_type === "tv") {
       const slug = createShowSlug(result.title, result.release_date, result.id)
       navigate(`/show/${slug}`)
     } else {
@@ -83,12 +87,13 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     }
   }
 
-  const placeholderText =
-    mediaType === "movie"
-      ? "Search for a movie..."
-      : mediaType === "tv"
-        ? "Search for a TV show..."
-        : "Search movies and TV shows..."
+  const placeholders: Record<SearchMediaType, string> = {
+    all: "Search movies, shows, and people...",
+    movie: "Search for a movie...",
+    tv: "Search for a TV show...",
+    person: "Search for a person...",
+  }
+  const placeholderText = placeholders[mediaType]
 
   if (!isOpen) return null
 
@@ -96,7 +101,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       data-testid="search-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[10vh] transition-opacity duration-150 sm:pt-[15vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-overlay/50 pt-[10vh] transition-opacity duration-150 sm:pt-[15vh]"
       onClick={handleBackdropClick}
     >
       <div
@@ -104,14 +109,14 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         data-testid="search-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Search movies and TV shows"
+        aria-label="Search movies, TV shows, and people"
         className="mx-4 w-full max-w-xl transform transition-all duration-150"
       >
         {/* Close button for mobile */}
         <button
           data-testid="search-modal-close"
           onClick={onClose}
-          className="absolute right-6 top-4 rounded-full p-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:hidden"
+          className="absolute right-6 top-4 rounded-full p-2 text-overlay-text/80 transition-colors hover:bg-overlay-text/10 hover:text-overlay-text sm:hidden"
           aria-label="Close search"
         >
           <svg
@@ -177,6 +182,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 onSelect={handleSelect}
                 searchQuery={query}
                 inline
+                mediaType={mediaType}
               />
             </div>
           )}
@@ -187,12 +193,26 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
               data-testid="search-modal-no-results"
               className="border-t border-brown-medium/20 p-4 text-center"
             >
-              <p className="mb-1 font-display text-sm uppercase tracking-wide text-brown-dark">
-                End of Reel
-              </p>
-              <p className="text-sm text-text-muted">
-                No results found for "<span className="italic">{query}</span>"
-              </p>
+              <EmptySearchState
+                query={query}
+                mediaType={mediaType}
+                onTypeChange={setMediaType}
+                onNavigate={onClose}
+              />
+            </div>
+          )}
+
+          {/* View all results link */}
+          {query.trim().length >= 2 && (
+            <div className="border-t border-brown-medium/20 p-3 text-center">
+              <Link
+                to={`/search?q=${encodeURIComponent(query.trim())}${mediaType !== "all" ? `&type=${mediaType}` : ""}`}
+                data-testid="search-modal-view-all"
+                onClick={onClose}
+                className="text-sm text-brown-medium hover:text-brown-dark hover:underline"
+              >
+                View all results for "{query.trim()}"
+              </Link>
             </div>
           )}
         </div>

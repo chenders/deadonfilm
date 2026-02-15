@@ -56,6 +56,7 @@ export interface EnrichmentRunActor {
   links_followed: number
   pages_fetched: number
   error: string | null
+  has_logs: boolean
 }
 
 export interface SourcePerformanceStats {
@@ -263,11 +264,12 @@ export async function getEnrichmentRunActors(
       era.cost_usd::text,
       era.links_followed,
       era.pages_fetched,
-      era.error
+      era.error,
+      (era.log_entries IS NOT NULL AND era.log_entries != '[]'::jsonb) AS has_logs
     FROM enrichment_run_actors era
     JOIN actors a ON a.id = era.actor_id
     WHERE era.run_id = $1
-    ORDER BY era.cost_usd DESC, era.processing_time_ms DESC
+    ORDER BY a.dof_popularity DESC NULLS LAST, era.cost_usd DESC, era.actor_id ASC
     LIMIT $2 OFFSET $3
     `,
     [runId, pageSize, offset]
@@ -314,16 +316,18 @@ export async function getSourcePerformanceStats(
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
 
   // This query extracts sources from jsonb array and aggregates statistics
+  // The sources_attempted column contains objects: {source, costUsd, success}
   const result = await pool.query<SourcePerformanceStats>(
     `
     WITH source_attempts AS (
       SELECT
-        jsonb_array_elements_text(era.sources_attempted) AS source,
+        element->>'source' AS source,
+        (element->>'costUsd')::numeric AS source_cost,
         era.winning_source,
-        era.cost_usd,
         era.processing_time_ms
       FROM enrichment_run_actors era
       JOIN enrichment_runs er ON era.run_id = er.id
+      CROSS JOIN LATERAL jsonb_array_elements(era.sources_attempted) AS element
       ${whereClause}
     )
     SELECT
@@ -331,11 +335,11 @@ export async function getSourcePerformanceStats(
       COUNT(*)::int AS total_attempts,
       COUNT(*) FILTER (WHERE source = winning_source)::int AS successful_attempts,
       ROUND(
-        (COUNT(*) FILTER (WHERE source = winning_source)::decimal / COUNT(*)) * 100,
+        (COUNT(*) FILTER (WHERE source = winning_source)::decimal / NULLIF(COUNT(*), 0)) * 100,
         2
       )::float AS success_rate,
-      COALESCE(SUM(cost_usd), 0)::float AS total_cost_usd,
-      COALESCE(AVG(cost_usd), 0)::float AS average_cost_usd,
+      COALESCE(SUM(source_cost), 0)::float AS total_cost_usd,
+      COALESCE(AVG(source_cost), 0)::float AS average_cost_usd,
       COALESCE(SUM(processing_time_ms), 0)::bigint AS total_processing_time_ms,
       COALESCE(AVG(processing_time_ms), 0)::int AS average_processing_time_ms
     FROM source_attempts
@@ -355,15 +359,17 @@ export async function getRunSourcePerformanceStats(
   pool: Pool,
   runId: number
 ): Promise<SourcePerformanceStats[]> {
+  // The sources_attempted column contains objects: {source, costUsd, success}
   const result = await pool.query<SourcePerformanceStats>(
     `
     WITH source_attempts AS (
       SELECT
-        jsonb_array_elements_text(era.sources_attempted) AS source,
+        element->>'source' AS source,
+        (element->>'costUsd')::numeric AS source_cost,
         era.winning_source,
-        era.cost_usd,
         era.processing_time_ms
       FROM enrichment_run_actors era
+      CROSS JOIN LATERAL jsonb_array_elements(era.sources_attempted) AS element
       WHERE era.run_id = $1
     )
     SELECT
@@ -371,11 +377,11 @@ export async function getRunSourcePerformanceStats(
       COUNT(*)::int AS total_attempts,
       COUNT(*) FILTER (WHERE source = winning_source)::int AS successful_attempts,
       ROUND(
-        (COUNT(*) FILTER (WHERE source = winning_source)::decimal / COUNT(*)) * 100,
+        (COUNT(*) FILTER (WHERE source = winning_source)::decimal / NULLIF(COUNT(*), 0)) * 100,
         2
       )::float AS success_rate,
-      COALESCE(SUM(cost_usd), 0)::float AS total_cost_usd,
-      COALESCE(AVG(cost_usd), 0)::float AS average_cost_usd,
+      COALESCE(SUM(source_cost), 0)::float AS total_cost_usd,
+      COALESCE(AVG(source_cost), 0)::float AS average_cost_usd,
       COALESCE(SUM(processing_time_ms), 0)::bigint AS total_processing_time_ms,
       COALESCE(AVG(processing_time_ms), 0)::int AS average_processing_time_ms
     FROM source_attempts

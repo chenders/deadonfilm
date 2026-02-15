@@ -72,6 +72,12 @@ const ARCHIVE_FALLBACK_DOMAINS = [
   "latimes.com",
   "bostonglobe.com",
   "telegraph.co.uk",
+  "imdb.com",
+  "variety.com",
+  "deadline.com",
+  "apnews.com",
+  "legacy.com",
+  "ibdb.com",
 ]
 
 /**

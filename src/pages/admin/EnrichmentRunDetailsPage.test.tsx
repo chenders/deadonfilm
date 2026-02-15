@@ -260,8 +260,9 @@ describe("EnrichmentRunDetailsPage", () => {
     renderPage()
 
     expect(screen.getByText("Actor Results")).toBeInTheDocument()
-    expect(screen.getByText("John Doe")).toBeInTheDocument()
-    expect(screen.getByText("Jane Smith")).toBeInTheDocument()
+    // Content appears in both mobile card view and desktop table
+    expect(screen.getAllByText("John Doe").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("Jane Smith").length).toBeGreaterThanOrEqual(1)
   })
 
   it("displays enriched status indicator", () => {
@@ -286,15 +287,17 @@ describe("EnrichmentRunDetailsPage", () => {
   it("displays actor costs", () => {
     renderPage()
 
-    expect(screen.getByText("$0.025")).toBeInTheDocument()
-    expect(screen.getByText("$0.010")).toBeInTheDocument()
+    // Content appears in both mobile card view and desktop table
+    expect(screen.getAllByText("$0.025").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("$0.010").length).toBeGreaterThanOrEqual(1)
   })
 
   it("displays processing times", () => {
     renderPage()
 
-    expect(screen.getByText("1500ms")).toBeInTheDocument()
-    expect(screen.getByText("800ms")).toBeInTheDocument()
+    // Content appears in both mobile card view and desktop table
+    expect(screen.getAllByText("1500ms").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("800ms").length).toBeGreaterThanOrEqual(1)
   })
 
   it("displays average time per actor", () => {
@@ -356,5 +359,105 @@ describe("EnrichmentRunDetailsPage", () => {
     renderPage()
 
     expect(screen.getByText("Page 1 of 2")).toBeInTheDocument()
+  })
+
+  describe("running enrichment state", () => {
+    const mockRunningRun = {
+      ...mockRunDetails,
+      completed_at: null,
+      duration_ms: null,
+      exit_reason: null,
+      actors_processed: 10,
+      actors_enriched: 7,
+      fill_rate: null,
+      total_cost_usd: "0.25",
+    }
+
+    const mockProgress = {
+      status: "running",
+      currentActorIndex: 15,
+      currentActorName: "Processing Actor",
+      actorsQueried: 50,
+      actorsProcessed: 14,
+      actorsEnriched: 10,
+      totalCostUsd: 0.42,
+      progressPercentage: 28.0,
+      elapsedMs: 30000,
+      estimatedTimeRemainingMs: 77000,
+    }
+
+    beforeEach(() => {
+      vi.mocked(enrichmentHooks.useEnrichmentRunDetails).mockReturnValue({
+        data: mockRunningRun,
+        isLoading: false,
+        error: null,
+      } as any)
+
+      vi.mocked(enrichmentHooks.useEnrichmentRunProgress).mockReturnValue({
+        data: mockProgress,
+        isLoading: false,
+        error: null,
+      } as any)
+    })
+
+    it("shows progress banner when running", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("Running")).toBeInTheDocument()
+        expect(screen.getByText("Processing Actor")).toBeInTheDocument()
+        expect(screen.getByText("28.0%")).toBeInTheDocument()
+      })
+    })
+
+    it("shows stop button when running", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("Stop Run")).toBeInTheDocument()
+      })
+    })
+
+    it("displays summary stats from progress data while running", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        // Should show progress data (14 processed, 10 enriched, $0.42)
+        // not the stale run data (10 processed, 7 enriched, $0.25)
+        expect(screen.getByText("14")).toBeInTheDocument()
+        expect(screen.getByText("10 enriched")).toBeInTheDocument()
+        expect(screen.getByText("$0.42")).toBeInTheDocument()
+      })
+    })
+
+    it("computes fill rate dynamically while running", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        // 10/14 = 71.4%
+        expect(screen.getByText("71.4%")).toBeInTheDocument()
+      })
+    })
+
+    it("shows Running... for duration while active", async () => {
+      renderPage()
+
+      await waitFor(() => {
+        expect(screen.getByText("Running...")).toBeInTheDocument()
+      })
+    })
+
+    it("passes isRunning to polling hooks", () => {
+      renderPage()
+
+      // useEnrichmentRunActors should be called with isRunning=true
+      expect(enrichmentHooks.useEnrichmentRunActors).toHaveBeenCalledWith(1, 1, 50, true)
+
+      // useRunSourcePerformanceStats should be called with isRunning=true
+      expect(enrichmentHooks.useRunSourcePerformanceStats).toHaveBeenCalledWith(1, true)
+
+      // useEnrichmentRunLogs should be called with isRunning=true
+      expect(enrichmentHooks.useEnrichmentRunLogs).toHaveBeenCalledWith(1, 1, 50, undefined, true)
+    })
   })
 })

@@ -338,6 +338,50 @@ describe("DataTable", () => {
     })
   })
 
+  describe("accessibility", () => {
+    it("has aria-label on header checkbox when selectable", () => {
+      render(<DataTable data={testData} columns={testColumns} getRowKey={getRowKey} selectable />)
+      expect(screen.getByRole("checkbox", { name: "Select all rows" })).toBeInTheDocument()
+    })
+
+    it("has aria-label on pagination previous button", () => {
+      render(
+        <DataTable
+          data={testData}
+          columns={testColumns}
+          getRowKey={getRowKey}
+          pagination={{ page: 2, pageSize: 10, total: 50, onPageChange: vi.fn() }}
+        />
+      )
+      expect(screen.getByRole("button", { name: "Previous page" })).toBeInTheDocument()
+    })
+
+    it("has aria-label on pagination next button", () => {
+      render(
+        <DataTable
+          data={testData}
+          columns={testColumns}
+          getRowKey={getRowKey}
+          pagination={{ page: 1, pageSize: 10, total: 50, onPageChange: vi.fn() }}
+        />
+      )
+      expect(screen.getByRole("button", { name: "Next page" })).toBeInTheDocument()
+    })
+
+    it("has aria-label on page number buttons", () => {
+      render(
+        <DataTable
+          data={testData}
+          columns={testColumns}
+          getRowKey={getRowKey}
+          pagination={{ page: 1, pageSize: 10, total: 50, onPageChange: vi.fn() }}
+        />
+      )
+      expect(screen.getByRole("button", { name: "Go to page 1" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Go to page 2" })).toBeInTheDocument()
+    })
+  })
+
   describe("alignment", () => {
     it("applies right alignment to cells", () => {
       const columnsWithAlign: Column<TestRow>[] = [

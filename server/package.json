@@ -96,6 +96,10 @@
     "backfill:movie-alternate-titles": "tsx scripts/backfill-movie-alternate-titles.ts",
     "//compare:imdb-methods": "Compare OMDB vs IMDb dataset for IMDb ID lookups",
     "compare:imdb-methods": "tsx scripts/compare-imdb-lookup-methods.ts",
+    "//backfill:cause-manner": "Classify cause of death strings by manner (natural/accident/suicide/homicide/undetermined)",
+    "backfill:cause-manner": "tsx scripts/backfill-cause-manner.ts",
+    "//sync:death-fields": "Sync deterministic death fields (manner, precision, covid, categories, age/lifespan/years-lost) to actors table",
+    "sync:death-fields": "tsx scripts/sync-actor-death-fields.ts",
     "//backfill:movie-popularity": "Backfill TMDB popularity scores for movies",
     "backfill:movie-popularity": "tsx scripts/backfill-movie-popularity.ts",
     "//backfill:ratings": "Master orchestration script - runs all rating backfills in order",
@@ -137,6 +141,7 @@
     "@bull-board/api": "^6.16.4",
     "@bull-board/express": "^6.16.4",
     "@extra/recaptcha": "^4.2.1-next.587",
+    "@resvg/resvg-js": "^2.6.2",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.67.1",
     "commander": "^14.0.2",
@@ -146,7 +151,9 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-rate-limit": "^8.2.1",
+    "fast-xml-parser": "^5.3.6",
     "fuse.js": "^7.1.0",
+    "googleapis": "^171.4.0",
     "he": "^1.2.0",
     "ini": "^6.0.0",
     "ioredis": "^5.8.2",
@@ -161,6 +168,7 @@
     "playwright-core": "^1.57.0",
     "playwright-extra": "^4.3.6",
     "recharts": "^3.7.0",
+    "satori": "^0.19.2",
     "slugify": "^1.6.6",
     "zod": "^4.3.5"
   },
@@ -192,6 +200,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.48.1",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.15",
+    "yaml": "^2.8.2"
   }
 }

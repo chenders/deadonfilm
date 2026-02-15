@@ -594,6 +594,8 @@ describe("getAllDeathsHandler", () => {
       biography_generated_at: null,
       biography_raw_tmdb: null,
       biography_has_content: null,
+      actor_awards_data: null,
+      actor_awards_updated_at: null,
     },
     {
       id: 2,
@@ -628,6 +630,8 @@ describe("getAllDeathsHandler", () => {
       biography_generated_at: null,
       biography_raw_tmdb: null,
       biography_has_content: null,
+      actor_awards_data: null,
+      actor_awards_updated_at: null,
     },
   ]
 
@@ -657,7 +661,13 @@ describe("getAllDeathsHandler", () => {
 
     await getAllDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0, includeObscure: false })
+    expect(db.getAllDeaths).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      includeObscure: false,
+      sort: "date",
+      dir: "desc",
+    })
     expect(jsonSpy).toHaveBeenCalledWith({
       deaths: [
         {
@@ -699,7 +709,13 @@ describe("getAllDeathsHandler", () => {
 
     await getAllDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 50, includeObscure: false })
+    expect(db.getAllDeaths).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 50,
+      includeObscure: false,
+      sort: "date",
+      dir: "desc",
+    })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         deaths: expect.arrayContaining([
@@ -723,7 +739,13 @@ describe("getAllDeathsHandler", () => {
 
     await getAllDeathsHandler(mockReq as Request, mockRes as Response)
 
-    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0, includeObscure: false })
+    expect(db.getAllDeaths).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      includeObscure: false,
+      sort: "date",
+      dir: "desc",
+    })
     expect(jsonSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         pagination: expect.objectContaining({ page: 1 }),
@@ -778,7 +800,13 @@ describe("getAllDeathsHandler", () => {
     await getAllDeathsHandler(mockReq as Request, mockRes as Response)
 
     // NaN from parseInt defaults to 1
-    expect(db.getAllDeaths).toHaveBeenCalledWith({ limit: 50, offset: 0, includeObscure: false })
+    expect(db.getAllDeaths).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      includeObscure: false,
+      sort: "date",
+      dir: "desc",
+    })
   })
 
   it("calculates totalPages correctly", async () => {
@@ -833,6 +861,8 @@ describe("getAllDeathsHandler", () => {
       offset: 0,
       includeObscure: false,
       search: "John",
+      sort: "date",
+      dir: "desc",
     })
   })
 
@@ -850,6 +880,8 @@ describe("getAllDeathsHandler", () => {
       offset: 50,
       includeObscure: true,
       search: "John",
+      sort: "date",
+      dir: "desc",
     })
   })
 })

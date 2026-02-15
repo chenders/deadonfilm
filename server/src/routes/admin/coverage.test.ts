@@ -109,6 +109,71 @@ describe("Coverage API Routes", () => {
     })
   })
 
+  describe("GET /admin/api/coverage/actors - deathManner filter", () => {
+    it("accepts valid deathManner values", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const actorsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors" && layer.route?.methods.get
+      )
+
+      expect(actorsRoute).toBeDefined()
+
+      // Valid manners should be passed through to filters
+      const validManners = ["natural", "accident", "suicide", "homicide", "undetermined", "pending"]
+      for (const manner of validManners) {
+        const req = {
+          query: { deathManner: manner },
+        } as any
+
+        const { getPool } = await import("../../lib/db/pool.js")
+        vi.mocked(getPool).mockReturnValue(mockPool)
+        vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+        const jsonFn = vi.fn()
+        const res = { json: jsonFn, status: vi.fn(() => ({ json: vi.fn() })) } as any
+
+        await actorsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+        // Verify the query included death_manner filter
+        const calls = vi.mocked(mockPool.query).mock.calls
+        const lastCall = calls[calls.length - 1]
+        expect(lastCall[0]).toContain("death_manner")
+        expect(lastCall[1]).toContain(manner)
+
+        vi.mocked(mockPool.query).mockReset()
+      }
+    })
+
+    it("ignores invalid deathManner values", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const actorsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/actors" && layer.route?.methods.get
+      )
+
+      const req = {
+        query: { deathManner: "invalid_value" },
+      } as any
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      const jsonFn = vi.fn()
+      const res = { json: jsonFn, status: vi.fn(() => ({ json: vi.fn() })) } as any
+
+      await actorsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+      // Invalid manner should NOT appear in query params (only in SELECT, not WHERE)
+      const calls = vi.mocked(mockPool.query).mock.calls
+      const lastCall = calls[calls.length - 1]
+      expect(lastCall[1]).not.toContain("invalid_value")
+    })
+  })
+
   describe("GET /admin/api/coverage/trends", () => {
     it("returns coverage trends with granularity", async () => {
       const mockTrends = [

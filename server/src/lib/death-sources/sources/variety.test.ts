@@ -16,6 +16,12 @@ vi.mock("../logger.js", () => ({
   })),
 }))
 
+// Mock archive fallback
+const mockFetchFromArchive = vi.fn()
+vi.mock("../archive-fallback.js", () => ({
+  fetchFromArchive: (...args: unknown[]) => mockFetchFromArchive(...args),
+}))
+
 import { VarietySource } from "./variety.js"
 import type { ActorForEnrichment } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
@@ -30,6 +36,7 @@ describe("VarietySource", () => {
   beforeEach(() => {
     source = new VarietySource()
     mockFetch.mockReset()
+    mockFetchFromArchive.mockReset()
   })
 
   afterEach(() => {
@@ -166,7 +173,49 @@ describe("VarietySource", () => {
         status: 403,
       })
 
+      // Archive fallback also fails
+      mockFetchFromArchive.mockResolvedValueOnce({
+        success: false,
+        content: null,
+      })
+
       await expect(source.lookup(testActor)).rejects.toThrow(SourceAccessBlockedError)
+    })
+
+    it("tries archive.org fallback when article returns 403", async () => {
+      // Search succeeds
+      const searchHtml = `
+        <html><body>
+          <a href="https://variety.com/2023/tv/news/matthew-perry-dead/">Article</a>
+        </body></html>
+      `
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () => searchHtml,
+      })
+
+      // Article returns 403
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+      })
+
+      // Archive fallback returns content
+      mockFetchFromArchive.mockResolvedValueOnce({
+        success: true,
+        content: `
+          <html><body>
+            <p>Matthew Perry died on October 28, 2023 at his home in Los Angeles.</p>
+          </body></html>
+        `,
+      })
+
+      const result = await source.lookup(testActor)
+
+      expect(result.success).toBe(true)
+      expect(mockFetchFromArchive).toHaveBeenCalled()
+      expect(result.data?.circumstances).toContain("died")
     })
 
     it("returns error when article has no death info", async () => {

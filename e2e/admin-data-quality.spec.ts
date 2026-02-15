@@ -105,13 +105,14 @@ test.describe("Admin Data Quality Page", () => {
     const table = page.locator('[data-testid="future-deaths-table"]')
     await expect(table).toBeVisible()
 
-    // Verify actor data is displayed
-    await expect(page.getByText("Test Actor One")).toBeVisible()
-    await expect(page.getByText("2030-01-01")).toBeVisible()
-    await expect(page.getByText("Future Date")).toBeVisible()
+    // Verify actor data is displayed (scope to table to avoid matching mobile cards)
+    const futureDeathsDesktop = table.locator("table")
+    await expect(futureDeathsDesktop.getByText("Test Actor One")).toBeVisible()
+    await expect(futureDeathsDesktop.getByText("2030-01-01")).toBeVisible()
+    await expect(futureDeathsDesktop.getByText("Future Date")).toBeVisible()
 
-    await expect(page.getByText("Test Actor Two")).toBeVisible()
-    await expect(page.getByText("Death Before Birth")).toBeVisible()
+    await expect(futureDeathsDesktop.getByText("Test Actor Two")).toBeVisible()
+    await expect(futureDeathsDesktop.getByText("Death Before Birth")).toBeVisible()
 
     // Take screenshot
     await page.screenshot({
@@ -152,10 +153,11 @@ test.describe("Admin Data Quality Page", () => {
     await uncertainTab.click()
     await page.waitForTimeout(500)
 
-    // Verify uncertain deaths content
+    // Verify uncertain deaths content (scope to table to avoid matching mobile cards)
     await expect(page.getByText("Uncertain Death Records")).toBeVisible()
-    await expect(page.getByText("Uncertain Actor One")).toBeVisible()
-    await expect(page.getByText("1985-03-15")).toBeVisible()
+    const uncertainDesktop = page.locator(".hidden.md\\:block table")
+    await expect(uncertainDesktop.getByText("Uncertain Actor One")).toBeVisible()
+    await expect(uncertainDesktop.getByText("1985-03-15")).toBeVisible()
 
     // Take screenshot
     await page.screenshot({

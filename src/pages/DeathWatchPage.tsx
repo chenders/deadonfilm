@@ -1,11 +1,15 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useDeathWatch } from "@/hooks/useDeathWatch"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import SortControl from "@/components/common/SortControl"
+import JsonLd from "@/components/seo/JsonLd"
+import { buildCollectionPageSchema } from "@/utils/schema"
 import { PersonIcon } from "@/components/icons"
 import type { DeathWatchActor } from "@/types"
 
@@ -25,7 +29,7 @@ function ActorRow({ actor }: { actor: DeathWatchActor }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`death-watch-row-${actor.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -107,11 +111,21 @@ export default function DeathWatchPage() {
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const includeObscure = searchParams.get("includeObscure") === "true"
+  const validSorts = ["age", "probability", "name"]
+  const rawSort = searchParams.get("sort")
+  const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "age"
+  const dir = searchParams.get("dir") === "asc" ? "asc" : "desc"
 
   // Debounced search with URL sync
   const [searchInput, setSearchInput, searchQuery] = useDebouncedSearchParam()
 
-  const { data, isLoading, error } = useDeathWatch({ page, includeObscure, search: searchQuery })
+  const { data, isLoading, error } = useDeathWatch({
+    page,
+    includeObscure,
+    search: searchQuery,
+    sort,
+    dir,
+  })
 
   const goToPage = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams)
@@ -131,6 +145,28 @@ export default function DeathWatchPage() {
       newParams.set("includeObscure", "true")
     }
     newParams.delete("page") // Reset to first page when toggling
+    setSearchParams(newParams)
+  }
+
+  const handleSortChange = (newSort: string) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newSort !== "age") {
+      newParams.set("sort", newSort)
+    } else {
+      newParams.delete("sort")
+    }
+    newParams.delete("page")
+    setSearchParams(newParams)
+  }
+
+  const handleDirChange = (newDir: "asc" | "desc") => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newDir !== "desc") {
+      newParams.set("dir", newDir)
+    } else {
+      newParams.delete("dir")
+    }
+    newParams.delete("page")
     setSearchParams(newParams)
   }
 
@@ -165,13 +201,33 @@ export default function DeathWatchPage() {
           name="twitter:description"
           content="Living actors most likely to die soon based on actuarial statistics"
         />
-        <link rel="canonical" href="https://deadonfilm.com/death-watch" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/death-watch"
+          includeLinks={!includeObscure && !searchQuery}
+        />
+      )}
+      {page === 1 && !includeObscure && !searchQuery && data && data.actors.length > 0 && (
+        <JsonLd
+          data={buildCollectionPageSchema(
+            "Death Watch",
+            "Living actors most likely to die soon based on actuarial statistics, ranked by 1-year death probability.",
+            "https://deadonfilm.com/death-watch",
+            data.actors.map((actor) => ({
+              name: actor.name,
+              url: `https://deadonfilm.com/actor/${createActorSlug(actor.name, actor.id)}`,
+            }))
+          )}
+        />
+      )}
 
       <div data-testid="death-watch-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">Death Watch</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Living actors in our database ranked by their probability of dying in the next year,
             based on US Social Security Administration actuarial tables.
           </p>
@@ -186,7 +242,7 @@ export default function DeathWatchPage() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search for an actor..."
               data-testid="search-input"
-              className="w-full max-w-md rounded-lg border border-brown-medium/30 bg-white px-4 py-2 text-sm text-brown-dark placeholder-text-muted focus:border-brown-medium focus:outline-none focus:ring-1 focus:ring-brown-medium"
+              className="w-full max-w-md rounded-lg border border-brown-medium/30 bg-surface-elevated px-4 py-2 text-sm text-brown-dark placeholder-text-muted focus:border-brown-medium focus:outline-none focus:ring-1 focus:ring-brown-medium"
             />
           </div>
           <div className="flex justify-center">
@@ -200,6 +256,20 @@ export default function DeathWatchPage() {
               <span className="text-text-muted">Include lesser-known actors</span>
             </label>
           </div>
+        </div>
+
+        <div className="mb-4 flex justify-center">
+          <SortControl
+            options={[
+              { value: "age", label: "Age" },
+              { value: "probability", label: "Probability" },
+              { value: "name", label: "Name" },
+            ]}
+            currentSort={sort}
+            currentDir={dir}
+            onSortChange={handleSortChange}
+            onDirChange={handleDirChange}
+          />
         </div>
 
         {noResults ? (

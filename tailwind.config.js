@@ -1,5 +1,11 @@
 /** @type {import('tailwindcss').Config} */
+
+function colorVar(cssVar) {
+  return `color-mix(in srgb, var(${cssVar}) calc(<alpha-value> * 100%), transparent)`
+}
+
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,24 +13,76 @@ export default {
   theme: {
     extend: {
       colors: {
-        cream: '#f5f0e8',
-        beige: '#e8dcc8',
-        'brown-dark': '#3d2914',
-        'brown-medium': '#6b4423',
-        'brown-light': '#8b6914',
-        accent: '#8b0000',
-        'text-primary': '#2c1810',
-        'text-muted': '#6b5b4f',
-        // Living actors - antique gold palette (replaces Tailwind greens)
+        // Core surfaces
+        cream: colorVar('--surface-base'),
+        beige: colorVar('--surface-muted'),
+        'surface-elevated': colorVar('--surface-elevated'),
+        'surface-inset': colorVar('--surface-inset'),
+
+        // Browns (structural)
+        'brown-dark': colorVar('--brown-dark'),
+        'brown-medium': colorVar('--brown-medium'),
+        'brown-light': colorVar('--brown-light'),
+
+        // Accent / Deceased
+        accent: colorVar('--deceased-primary'),
+
+        // Text
+        'text-primary': colorVar('--text-primary'),
+        'text-muted': colorVar('--text-muted'),
+
+        // Living actors - antique gold palette
         living: {
-          DEFAULT: '#b8860b',   // Dark goldenrod - main accent
-          light: '#daa520',     // Goldenrod - highlights
-          dark: '#6b5010',      // Darker gold for text on light backgrounds (WCAG AA contrast)
-          muted: '#c9a227',     // Muted gold for backgrounds
-          bg: '#faf6e9',        // Very light cream-gold for cards
-          border: '#d4af37',    // Gold border
+          DEFAULT: colorVar('--living-primary'),
+          light: colorVar('--living-light'),
+          dark: colorVar('--living-dark'),
+          muted: colorVar('--living-muted'),
+          bg: colorVar('--living-bg'),
+          border: colorVar('--living-border'),
         },
-        // Admin theme colors - reference CSS variables
+
+        // Lifespan indicators
+        'lifespan-early': colorVar('--lifespan-early'),
+        'lifespan-longer': colorVar('--lifespan-longer-fill'),
+        'lifespan-longer-text': colorVar('--lifespan-longer-text'),
+        'lifespan-track': colorVar('--lifespan-early-track'),
+
+        // Years lost text
+        'years-lost': colorVar('--years-lost'),
+
+        // Status (toasts)
+        'status-success': colorVar('--status-success'),
+        'status-success-border': colorVar('--status-success-border'),
+        'status-error': colorVar('--status-error'),
+        'status-error-border': colorVar('--status-error-border'),
+        'status-warning': colorVar('--status-warning'),
+        'status-warning-border': colorVar('--status-warning-border'),
+        'status-info': colorVar('--status-info'),
+        'status-info-border': colorVar('--status-info-border'),
+
+        // Confidence indicators
+        'confidence-high': colorVar('--confidence-high'),
+        'confidence-medium': colorVar('--confidence-medium'),
+        'confidence-low': colorVar('--confidence-low'),
+        'confidence-disputed': colorVar('--confidence-disputed'),
+        'confidence-inactive': colorVar('--confidence-inactive'),
+
+        // Warning banner
+        'warning-bg': colorVar('--warning-bg'),
+        'warning-border': colorVar('--warning-border'),
+        'warning-text-strong': colorVar('--warning-text-strong'),
+        'warning-text': colorVar('--warning-text'),
+        'warning-icon': colorVar('--warning-icon'),
+
+        // Disabled state
+        disabled: colorVar('--disabled-bg'),
+        'disabled-text': colorVar('--disabled-text'),
+
+        // Overlays
+        overlay: colorVar('--overlay'),
+        'overlay-text': colorVar('--overlay-text'),
+
+        // Admin theme colors - reference CSS variables (UNCHANGED)
         admin: {
           'surface-base': 'var(--admin-surface-base)',
           'surface-elevated': 'var(--admin-surface-elevated)',

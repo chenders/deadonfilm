@@ -20,6 +20,7 @@ export enum DataSourceType {
   CLAUDE_LINK_SELECTOR = "claude_link_selector", // AI-assisted link selection
   CLAUDE_PAGE_EXTRACTOR = "claude_page_extractor", // AI-assisted page content extraction
   GEMINI_SECTION_SELECTOR = "gemini_section_selector", // AI-assisted Wikipedia section selection
+  GEMINI_DATE_EXTRACTOR = "gemini_date_extractor", // AI-assisted Wikipedia date extraction
   OPENAI_GPT4O = "openai_gpt4o",
   OPENAI_GPT4O_MINI = "openai_gpt4o_mini",
   PERPLEXITY = "perplexity",
@@ -40,6 +41,9 @@ export enum DataSourceType {
   TELEVISION_ACADEMY = "television_academy",
   IBDB = "ibdb",
   BFI_SIGHT_SOUND = "bfi_sight_sound",
+  BAFTA = "bafta",
+  WGA = "wga",
+  DGA = "dga",
 
   // International Film Databases
   ALLOCINE = "allocine", // French
@@ -140,6 +144,7 @@ export interface EnrichmentSourceEntry {
 export interface ActorForEnrichment {
   id: number
   tmdbId: number | null
+  imdbPersonId?: string | null
   name: string
   birthday: string | null
   deathday: string | null
@@ -405,6 +410,7 @@ export interface CleanedDeathInfo {
 
   locationOfDeath: string | null
   notableFactors: string[] // Tags: multiple_deaths, investigation, etc.
+  categories: string[] | null // Medical categories: cancer, heart-disease, etc.
   relatedDeaths: string | null // Family/others who died in connection
   relatedCelebrities: RelatedCelebrity[] | null // Celebrities mentioned in death circumstances
   additionalContext: string | null // Career context relevant to death
@@ -413,6 +419,9 @@ export interface CleanedDeathInfo {
   lastProject: ProjectReference | null
   careerStatusAtDeath: CareerStatus | null
   posthumousReleases: ProjectReference[] | null
+
+  // Manner of death (medical examiner classification)
+  manner: "natural" | "accident" | "suicide" | "homicide" | "undetermined" | "pending" | null
 
   // Quality gate - false if content is just "no information available"
   hasSubstantiveContent: boolean
@@ -632,7 +641,7 @@ export interface WikipediaOptions {
    * Use AI (Gemini Flash) to select relevant sections instead of regex patterns.
    * This can capture non-obvious sections like "Hunting and Fishing" or "Controversies"
    * that may contain death/health/incident information.
-   * Default: false (opt-in)
+   * Default: true (requires GOOGLE_AI_API_KEY, falls back to regex if unavailable)
    */
   useAISectionSelection?: boolean
   /**
@@ -653,7 +662,7 @@ export interface WikipediaOptions {
    * Follow links to related Wikipedia articles that may contain detailed
    * information about incidents, accidents, health events, or death circumstances.
    * Examples: "Dick_Cheney_hunting_accident", "Attempted_assassination_of_Dick_Cheney"
-   * Default: false (opt-in, requires useAISectionSelection)
+   * Default: false (opt-in, requires useAISectionSelection to be enabled)
    */
   followLinkedArticles?: boolean
   /**
@@ -675,19 +684,26 @@ export interface WikipediaOptions {
    * Default: true
    */
   validatePersonDates?: boolean
+  /**
+   * Use AI (Gemini Flash) to extract birth/death years from Wikipedia intro text
+   * instead of regex. Falls back to regex if AI is unavailable.
+   * Default: true
+   */
+  useAIDateValidation?: boolean
 }
 
 /**
  * Default Wikipedia options.
  */
 export const DEFAULT_WIKIPEDIA_OPTIONS: WikipediaOptions = {
-  useAISectionSelection: false,
+  useAISectionSelection: true,
   sectionSelectionModel: "gemini-flash",
   maxSections: 10,
   followLinkedArticles: false,
   maxLinkedArticles: 2,
   handleDisambiguation: true,
   validatePersonDates: true,
+  useAIDateValidation: true,
 }
 
 // ============================================================================

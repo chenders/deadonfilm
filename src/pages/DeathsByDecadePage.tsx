@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useDeathsByDecade, useDecadeCategories } from "@/hooks/useDeathsByDecade"
 import { createActorSlug } from "@/utils/slugify"
 import { getProfileUrl } from "@/services/api"
@@ -17,7 +18,7 @@ function ActorRow({ person, rank }: { person: DeathByDecade; rank: number }) {
     <Link
       to={`/actor/${slug}`}
       data-testid={`death-row-${person.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -167,8 +168,13 @@ export default function DeathsByDecadePage() {
           name="description"
           content={`${data.pagination.totalCount} actors who died in the ${data.decadeLabel}. Browse actors by decade of death from movies and TV shows.`}
         />
-        <link rel="canonical" href={`https://deadonfilm.com/deaths/decade/${data.decadeLabel}`} />
       </Helmet>
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/deaths/decade/${data.decadeLabel}`}
+        includeLinks={!includeObscure}
+      />
 
       <div data-testid="deaths-by-decade-page" className="mx-auto max-w-3xl">
         <div className="mb-4 text-center">
@@ -181,7 +187,7 @@ export default function DeathsByDecadePage() {
           <h1 className="font-display text-3xl text-brown-dark">
             Deaths in the {data.decadeLabel}
           </h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             {data.pagination.totalCount.toLocaleString()}{" "}
             {data.pagination.totalCount === 1 ? "actor" : "actors"} died during this decade
           </p>

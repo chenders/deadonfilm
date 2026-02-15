@@ -52,6 +52,19 @@ export interface EnrichmentRunActor {
   links_followed: number
   pages_fetched: number
   error: string | null
+  has_logs: boolean
+}
+
+export interface ActorLogEntry {
+  timestamp: string
+  level: "info" | "warn" | "error" | "debug"
+  message: string
+  data?: Record<string, unknown>
+}
+
+export interface ActorLogsResponse {
+  actorName: string
+  logEntries: ActorLogEntry[]
 }
 
 export interface SourcePerformanceStats {
@@ -304,7 +317,15 @@ export function useEnrichmentRunDetails(runId: number): UseQueryResult<Enrichmen
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId],
     queryFn: () => fetchEnrichmentRunDetails(runId),
-    staleTime: 60000, // 1 minute
+    staleTime: 0,
+    refetchInterval: (query) => {
+      // Self-determine polling: poll every 10s while run is active
+      const data = query.state.data
+      if (data && data.exit_reason === null && data.completed_at === null) {
+        return 10000
+      }
+      return false
+    },
     enabled: !!runId,
   })
 }
@@ -315,12 +336,14 @@ export function useEnrichmentRunDetails(runId: number): UseQueryResult<Enrichmen
 export function useEnrichmentRunActors(
   runId: number,
   page: number,
-  pageSize: number
+  pageSize: number,
+  isRunning?: boolean
 ): UseQueryResult<PaginatedResult<EnrichmentRunActor>> {
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId, "actors", page, pageSize],
     queryFn: () => fetchEnrichmentRunActors(runId, page, pageSize),
-    staleTime: 60000, // 1 minute
+    staleTime: isRunning ? 0 : 60000,
+    refetchInterval: isRunning ? 5000 : false,
     enabled: !!runId,
   })
 }
@@ -343,12 +366,14 @@ export function useSourcePerformanceStats(
  * Hook to fetch source performance statistics for a specific run.
  */
 export function useRunSourcePerformanceStats(
-  runId: number
+  runId: number,
+  isRunning?: boolean
 ): UseQueryResult<SourcePerformanceStats[]> {
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId, "sources", "stats"],
     queryFn: () => fetchRunSourcePerformanceStats(runId),
-    staleTime: 60000, // 1 minute
+    staleTime: isRunning ? 0 : 60000,
+    refetchInterval: isRunning ? 10000 : false,
     enabled: !!runId,
   })
 }
@@ -471,13 +496,46 @@ export function useEnrichmentRunLogs(
   runId: number,
   page: number = 1,
   pageSize: number = 50,
-  level?: string
+  level?: string,
+  isRunning?: boolean
 ): UseQueryResult<EnrichmentRunLogsResponse> {
   return useQuery({
     queryKey: ["admin", "enrichment", "run", runId, "logs", page, pageSize, level],
     queryFn: () => fetchEnrichmentRunLogs(runId, page, pageSize, level),
-    staleTime: 30000, // 30 seconds
+    staleTime: isRunning ? 0 : 30000,
+    refetchInterval: isRunning ? 15000 : false,
     enabled: !!runId,
+  })
+}
+
+// ============================================================================
+// Actor Logs API
+// ============================================================================
+
+async function fetchActorLogs(runId: number, actorId: number): Promise<ActorLogsResponse> {
+  const response = await fetch(`/admin/api/enrichment/runs/${runId}/actors/${actorId}/logs`, {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch actor enrichment logs")
+  }
+
+  return response.json()
+}
+
+/**
+ * Hook to fetch per-actor enrichment log entries.
+ */
+export function useActorEnrichmentLogs(
+  runId: number,
+  actorId: number | null
+): UseQueryResult<ActorLogsResponse> {
+  return useQuery({
+    queryKey: ["admin", "enrichment", "run", runId, "actors", actorId, "logs"],
+    queryFn: () => fetchActorLogs(runId, actorId!),
+    staleTime: 60000,
+    enabled: !!runId && !!actorId,
   })
 }
 

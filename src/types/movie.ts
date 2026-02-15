@@ -11,17 +11,20 @@ export interface MovieSearchResult {
   overview: string
 }
 
-// Unified search result (for mixed movie/TV search)
+// Unified search result (for mixed movie/TV/person search)
 export interface UnifiedSearchResult {
   id: number
   title: string
   release_date: string
   poster_path: string | null
   overview: string
-  media_type: "movie" | "tv"
+  media_type: "movie" | "tv" | "person"
+  is_deceased?: boolean
+  death_year?: number | null
+  birth_year?: number | null
 }
 
-export type SearchMediaType = "movie" | "tv" | "all"
+export type SearchMediaType = "movie" | "tv" | "all" | "person"
 
 export interface UnifiedSearchResponse {
   results: UnifiedSearchResult[]

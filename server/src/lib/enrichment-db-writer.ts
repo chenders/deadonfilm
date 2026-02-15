@@ -21,6 +21,8 @@ export interface EnrichmentData {
   yearsLost?: number | null
   violentDeath?: boolean | null
   hasDetailedDeathInfo?: boolean
+  deathManner?: string | null
+  deathCategories?: string[] | null
 }
 
 export interface DeathCircumstancesData {
@@ -171,6 +173,21 @@ export async function writeToProduction(
   if (enrichment.causeOfDeathDetailsSource) {
     actorUpdates.push(`cause_of_death_details_source = $${actorParamIndex++}`)
     actorParams.push(enrichment.causeOfDeathDetailsSource)
+  }
+
+  if (enrichment.deathManner) {
+    actorUpdates.push(`death_manner = $${actorParamIndex++}`)
+    actorParams.push(enrichment.deathManner)
+  }
+
+  if (enrichment.deathCategories && enrichment.deathCategories.length > 0) {
+    actorUpdates.push(`death_categories = $${actorParamIndex++}`)
+    actorParams.push(enrichment.deathCategories)
+  }
+
+  if (enrichment.violentDeath !== undefined && enrichment.violentDeath !== null) {
+    actorUpdates.push(`violent_death = $${actorParamIndex++}`)
+    actorParams.push(enrichment.violentDeath)
   }
 
   // Always update enriched_at and updated_at when we have updates

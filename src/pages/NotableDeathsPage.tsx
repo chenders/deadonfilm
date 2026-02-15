@@ -1,12 +1,15 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useNotableDeaths } from "@/hooks/useDeathDetails"
 import { getProfileUrl } from "@/services/api"
 import { formatDate } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
+import SortControl from "@/components/common/SortControl"
 import { PersonIcon } from "@/components/icons"
+import ConfidenceIndicator from "@/components/common/ConfidenceIndicator"
 import type { NotableDeathActor, NotableDeathsFilter } from "@/types"
 
 // Filter tab configuration
@@ -34,29 +37,6 @@ function FactorBadge({ factor }: { factor: string }) {
   )
 }
 
-// Confidence indicator (compact version)
-function ConfidenceIndicator({ level }: { level: string | null }) {
-  if (!level) return null
-
-  const levels: Record<string, { color: string; label: string }> = {
-    high: { color: "bg-green-500", label: "High" },
-    medium: { color: "bg-yellow-500", label: "Medium" },
-    low: { color: "bg-orange-500", label: "Low" },
-    disputed: { color: "bg-red-500", label: "Disputed" },
-  }
-
-  const config = levels[level] || levels.medium
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-white ${config.color}`}
-      title={`${config.label} confidence`}
-    >
-      {config.label}
-    </span>
-  )
-}
-
 function ActorCard({ actor }: { actor: NotableDeathActor }) {
   const profileUrl = getProfileUrl(actor.profilePath, "w185")
 
@@ -64,7 +44,7 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
     <Link
       to={`/actor/${actor.slug}/death`}
       data-testid={`notable-death-${actor.id}`}
-      className="block rounded-lg bg-white p-4 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-4 transition-colors hover:bg-cream"
     >
       <div className="flex items-start gap-4">
         {/* Profile image */}
@@ -111,7 +91,7 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
               </span>
             )}
             {actor.circumstancesConfidence && (
-              <ConfidenceIndicator level={actor.circumstancesConfidence} />
+              <ConfidenceIndicator level={actor.circumstancesConfidence} variant="badge" />
             )}
           </div>
 
@@ -140,8 +120,12 @@ export default function NotableDeathsPage() {
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
   const filter = (searchParams.get("filter") as NotableDeathsFilter) || "all"
   const includeObscure = searchParams.get("includeObscure") === "true"
+  const validSorts = ["date", "name"]
+  const rawSort = searchParams.get("sort")
+  const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "date"
+  const dir = searchParams.get("dir") === "asc" ? "asc" : "desc"
 
-  const { data, isLoading, error } = useNotableDeaths({ page, filter, includeObscure })
+  const { data, isLoading, error } = useNotableDeaths({ page, filter, includeObscure, sort, dir })
 
   const setFilter = (newFilter: NotableDeathsFilter) => {
     const newParams = new URLSearchParams(searchParams)
@@ -175,6 +159,28 @@ export default function NotableDeathsPage() {
     setSearchParams(newParams)
   }
 
+  const handleSortChange = (newSort: string) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newSort !== "date") {
+      newParams.set("sort", newSort)
+    } else {
+      newParams.delete("sort")
+    }
+    newParams.delete("page")
+    setSearchParams(newParams)
+  }
+
+  const handleDirChange = (newDir: "asc" | "desc") => {
+    const newParams = new URLSearchParams(searchParams)
+    if (newDir !== "desc") {
+      newParams.set("dir", newDir)
+    } else {
+      newParams.delete("dir")
+    }
+    newParams.delete("page")
+    setSearchParams(newParams)
+  }
+
   if (isLoading) {
     return <LoadingSpinner message="Loading notable deaths..." />
   }
@@ -192,7 +198,7 @@ export default function NotableDeathsPage() {
         <title>Notable Deaths | Dead on Film</title>
         <meta
           name="description"
-          content="Explore detailed accounts of celebrity deaths - strange circumstances, disputed accounts, and controversial deaths in Hollywood history."
+          content="Explore detailed accounts of celebrity deaths - strange circumstances, disputed accounts, and controversial deaths in film and television."
         />
         <meta property="og:title" content="Notable Deaths | Dead on Film" />
         <meta
@@ -206,13 +212,20 @@ export default function NotableDeathsPage() {
           name="twitter:description"
           content="Strange, disputed, and controversial celebrity deaths"
         />
-        <link rel="canonical" href="https://deadonfilm.com/deaths/notable" />
       </Helmet>
+      {data && (
+        <PaginationHead
+          currentPage={page}
+          totalPages={data.pagination.totalPages}
+          basePath="/deaths/notable"
+          includeLinks={filter === "all" && !includeObscure}
+        />
+      )}
 
       <div data-testid="notable-deaths-page" className="mx-auto max-w-3xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">Notable Deaths</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             Detailed accounts of celebrity deaths with sources and context
           </p>
         </div>
@@ -250,6 +263,19 @@ export default function NotableDeathsPage() {
             />
             Include lesser-known actors
           </label>
+        </div>
+
+        <div className="mb-4 flex justify-center">
+          <SortControl
+            options={[
+              { value: "date", label: "Date" },
+              { value: "name", label: "Name" },
+            ]}
+            currentSort={sort}
+            currentDir={dir}
+            onSortChange={handleSortChange}
+            onDirChange={handleDirChange}
+          />
         </div>
 
         {/* Filter description */}

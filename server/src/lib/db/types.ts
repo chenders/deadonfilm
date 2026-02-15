@@ -64,6 +64,10 @@ export interface ActorRecord {
   biography_raw_tmdb: string | null
   biography_has_content: boolean | null
 
+  // Awards data from Wikidata
+  actor_awards_data: unknown | null // JSONB: ActorAwardsData from wikidata-awards.ts
+  actor_awards_updated_at: string | null
+
   // Computed column
   is_obscure: boolean | null
 }
@@ -380,6 +384,8 @@ export interface AllDeathsOptions {
   offset?: number
   includeObscure?: boolean
   search?: string
+  sort?: string
+  dir?: string
 }
 
 export interface DeathWatchOptions {
@@ -388,6 +394,8 @@ export interface DeathWatchOptions {
   minAge?: number
   includeObscure?: boolean
   search?: string
+  sort?: string
+  dir?: string
 }
 
 export interface DeathWatchActorRecord {
@@ -427,6 +435,8 @@ export interface ForeverYoungMovieRecord {
 export interface ForeverYoungOptions {
   limit?: number
   offset?: number
+  sort?: string
+  dir?: string
 }
 
 // ============================================================================
@@ -688,6 +698,8 @@ export interface NotableDeathsOptions {
   pageSize?: number
   filter?: "all" | "strange" | "disputed" | "controversial"
   includeObscure?: boolean
+  sort?: string
+  dir?: string
 }
 
 export interface NotableDeathsResponse {

@@ -38,22 +38,32 @@ import { GoogleSearchSource } from "./sources/google.js"
 import { BingSearchSource } from "./sources/bing.js"
 import { WebSearchBase } from "./sources/web-search-base.js"
 import { FindAGraveSource } from "./sources/findagrave.js"
-// LegacySource disabled - 0% success rate
+import { LegacySource } from "./sources/legacy.js"
 import { TelevisionAcademySource } from "./sources/television-academy.js"
-// IBDBSource removed - consistently blocked by anti-scraping protection
+import { IBDBSource } from "./sources/ibdb.js"
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
 import { IMDbSource } from "./sources/imdb.js"
 import { VarietySource } from "./sources/variety.js"
 import { DeadlineSource } from "./sources/deadline.js"
 import { NewsAPISource } from "./sources/newsapi.js"
-// Disabled sources (0% success rate) - AlloCineSource, DoubanSource, SoompiSource, ChroniclingAmericaSource, FilmiBeatSource
+import { ChroniclingAmericaSource } from "./sources/chronicling-america.js"
+// Disabled sources (0% success rate) - AlloCineSource, DoubanSource, SoompiSource, FilmiBeatSource
 import { TroveSource } from "./sources/trove.js"
 import { EuropeanaSource } from "./sources/europeana.js"
 import { InternetArchiveSource } from "./sources/internet-archive.js"
 import { GuardianSource } from "./sources/guardian.js"
 import { NYTimesSource } from "./sources/nytimes.js"
 import { APNewsSource } from "./sources/ap-news.js"
+import { HollywoodReporterSource } from "./sources/hollywood-reporter.js"
+import { TMZSource } from "./sources/tmz.js"
+import { PeopleSource } from "./sources/people.js"
+import { BBCNewsSource } from "./sources/bbc-news.js"
+import { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
+import { BAFTASource } from "./sources/bafta.js"
+import { WGASource } from "./sources/wga.js"
+import { DGASource } from "./sources/dga.js"
+import { BraveSearchSource } from "./sources/brave.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
@@ -127,6 +137,17 @@ export function mergeEnrichmentData(
 }
 
 /**
+ * Structured log entry for per-actor enrichment tracking.
+ * Stored as JSONB in enrichment_run_actors.log_entries.
+ */
+export interface ActorLogEntry {
+  timestamp: string
+  level: "info" | "warn" | "error" | "debug"
+  message: string
+  data?: Record<string, unknown>
+}
+
+/**
  * Extended enrichment result that includes raw sources and Claude cleanup data.
  * Used when claudeCleanup is enabled.
  */
@@ -139,6 +160,8 @@ export interface ExtendedEnrichmentResult extends EnrichmentResult {
   cleanupCostUsd?: number
   /** Per-actor statistics for tracking (all sources attempted, costs, timing) */
   actorStats?: EnrichmentStats
+  /** Per-actor structured log entries for debugging/audit */
+  logEntries?: ActorLogEntry[]
 }
 
 /**
@@ -211,12 +234,17 @@ export class DeathEnrichmentOrchestrator {
       new IMDbSource(), // IMDb bio pages (scraped)
       new TelevisionAcademySource(), // Official TV industry deaths
       new BFISightSoundSource(), // International film obituaries
+      new IBDBSource(), // Broadway theatre database (via DuckDuckGo + archive.org)
+      new BAFTASource(), // BAFTA awards database (via DuckDuckGo)
+      new WGASource(), // Writers Guild of America (via DuckDuckGo)
+      new DGASource(), // Directors Guild of America (via DuckDuckGo)
 
       // Phase 2: Web Search (with link following)
       // DuckDuckGo is free, Google and Bing have free tiers but may incur costs
       new DuckDuckGoSource(),
       new GoogleSearchSource(),
       new BingSearchSource(),
+      new BraveSearchSource(), // Brave Search API (requires API key, $0.005/query)
 
       // Phase 3: News sources (APIs and scraping)
       new GuardianSource(), // Guardian API - UK news (requires API key)
@@ -225,19 +253,25 @@ export class DeathEnrichmentOrchestrator {
       new NewsAPISource(), // NewsAPI - aggregates 80,000+ sources (requires API key)
       new DeadlineSource(), // Deadline Hollywood - entertainment news (scraped)
       new VarietySource(), // Variety - entertainment trade publication (scraped)
+      new HollywoodReporterSource(), // Hollywood Reporter - entertainment news (scraped)
+      new TMZSource(), // TMZ - celebrity news (scraped)
+      new PeopleSource(), // People Magazine - celebrity obituaries (scraped)
+      new BBCNewsSource(), // BBC News - international news (scraped)
+      new GoogleNewsRSSSource(), // Google News RSS - aggregated news feed
 
       // Phase 4: Obituary sites
       new FindAGraveSource(),
-      // LegacySource disabled - 0% success rate
+      new LegacySource(), // Legacy.com obituaries (via DuckDuckGo + archive.org)
 
       // Phase 5: International sources (regional film databases)
-      // AlloCineSource, DoubanSource, SoompiSource, ChroniclingAmericaSource disabled - 0% success rate
+      // AlloCineSource, DoubanSource, SoompiSource disabled - 0% success rate
       // FilmiBeatSource removed - consistently blocked by anti-scraping protection (403)
 
       // Phase 6: Historical archives (for pre-internet deaths)
       new TroveSource(), // Australian newspapers (requires API key)
       new EuropeanaSource(), // European archives (requires API key)
       new InternetArchiveSource(), // Books, documents, historical media
+      new ChroniclingAmericaSource(), // Library of Congress newspapers (1756-1963)
 
       // Phase 7: Genealogical records (good for historical death dates/places)
       new FamilySearchSource(), // FamilySearch API (requires API key)
@@ -365,6 +399,7 @@ export class DeathEnrichmentOrchestrator {
     }
 
     const startTime = Date.now()
+    const logEntries: ActorLogEntry[] = []
     const costBreakdown = this.createEmptyCostBreakdown()
     const actorStats: EnrichmentStats = {
       actorId: actor.id,
@@ -419,6 +454,12 @@ export class DeathEnrichmentOrchestrator {
         if (error instanceof SourceAccessBlockedError) {
           this.logger.sourceBlocked(actor.name, source.type, error.statusCode, error.url)
           this.statusBar.log(`    BLOCKED (${error.statusCode}) - flagged for review`)
+          logEntries.push({
+            timestamp: new Date().toISOString(),
+            level: "warn",
+            message: "[BLOCKED]",
+            data: { source: source.name, statusCode: error.statusCode, url: error.url },
+          })
           // Continue to next source, don't fail the whole enrichment
           const attemptStats: SourceAttemptStats = {
             source: source.type,
@@ -434,15 +475,23 @@ export class DeathEnrichmentOrchestrator {
         // Handle SourceTimeoutError specially
         if (error instanceof SourceTimeoutError) {
           if (error.isHighPriority) {
-            // High-priority source timeout - flag for review
             this.logger.sourceBlocked(actor.name, source.type, 408, "timeout")
             this.statusBar.log(
               `    TIMEOUT (${error.timeoutMs}ms) - high-priority source, flagged for review`
             )
           } else {
-            // Low-priority source timeout - just log and continue
             this.statusBar.log(`    TIMEOUT (${error.timeoutMs}ms) - low-priority source, skipping`)
           }
+          logEntries.push({
+            timestamp: new Date().toISOString(),
+            level: "warn",
+            message: "[TIMEOUT]",
+            data: {
+              source: source.name,
+              timeoutMs: error.timeoutMs,
+              highPriority: error.isHighPriority,
+            },
+          })
 
           const attemptStats: SourceAttemptStats = {
             source: source.type,
@@ -499,6 +548,12 @@ export class DeathEnrichmentOrchestrator {
       if (!lookupResult.success || !lookupResult.data) {
         this.logger.sourceFailed(actor.name, source.type, lookupResult.error || "No data")
         this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "warn",
+          message: "[FAILED]",
+          data: { source: source.name, error: lookupResult.error || "No data" },
+        })
 
         // Record source failure in New Relic
         newrelic.recordCustomEvent("EnrichmentSourceFailed", {
@@ -522,6 +577,17 @@ export class DeathEnrichmentOrchestrator {
       const fieldsFound = this.getFieldsFromData(lookupResult.data)
       this.logger.sourceSuccess(actor.name, source.type, fieldsFound)
       this.statusBar.log(`    Success! Confidence: ${lookupResult.source.confidence.toFixed(2)}`)
+      logEntries.push({
+        timestamp: new Date().toISOString(),
+        level: "info",
+        message: "[SUCCESS]",
+        data: {
+          source: source.name,
+          confidence: lookupResult.source.confidence,
+          fieldsFound,
+          costUsd: sourceCost,
+        },
+      })
 
       // Record source success in New Relic
       newrelic.recordCustomEvent("EnrichmentSourceSuccess", {
@@ -715,13 +781,24 @@ export class DeathEnrichmentOrchestrator {
       this.statusBar.log(`  Running Claude Opus 4.5 cleanup on ${rawSources.length} sources...`)
       try {
         // Wrap Claude cleanup in New Relic segment
-        const { cleaned, costUsd } = await newrelic.startSegment(
-          "ClaudeCleanup",
-          true,
-          async () => {
-            return cleanupWithClaude(actor, rawSources)
-          }
-        )
+        const cleanupResult = await newrelic.startSegment("ClaudeCleanup", true, async () => {
+          return cleanupWithClaude(actor, rawSources)
+        })
+        const { cleaned, costUsd, prompt, responseText, inputTokens, outputTokens } = cleanupResult
+
+        // Log Claude request/response
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "info",
+          message: "[CLAUDE_REQUEST]",
+          data: { sourceCount: rawSources.length, promptLength: prompt.length, prompt },
+        })
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "info",
+          message: "[CLAUDE_RESPONSE]",
+          data: { inputTokens, outputTokens, costUsd, response: responseText },
+        })
 
         // Add cleanup cost to stats
         actorStats.totalCostUsd += costUsd
@@ -764,6 +841,12 @@ export class DeathEnrichmentOrchestrator {
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown cleanup error"
         this.statusBar.log(`    Cleanup failed: ${errorMsg}`)
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "error",
+          message: "[CLAUDE_ERROR]",
+          data: { error: errorMsg },
+        })
 
         // Record cleanup error in New Relic
         if (error instanceof Error) {
@@ -813,8 +896,21 @@ export class DeathEnrichmentOrchestrator {
       totalTimeMs: actorStats.totalTimeMs,
     })
 
-    // Attach actorStats to result for callers to access full tracking data
+    // Add completion entry
+    logEntries.push({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      message: "[COMPLETE]",
+      data: {
+        totalTimeMs: actorStats.totalTimeMs,
+        totalCostUsd: actorStats.totalCostUsd,
+        fieldsEnriched: actorStats.fieldsFilledAfter,
+      },
+    })
+
+    // Attach actorStats and logEntries to result for callers to access full tracking data
     result.actorStats = actorStats
+    result.logEntries = logEntries
 
     return result
   }

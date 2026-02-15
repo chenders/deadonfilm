@@ -1,11 +1,15 @@
 import { describe, it, expect, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent, within } from "@testing-library/react"
 import { TestMemoryRouter } from "@/test/test-utils"
 import Header from "./Header"
 
-// Mock SearchTrigger to avoid complex context setup
+// Mock SearchTrigger and ThemeToggle to avoid complex context setup
 vi.mock("@/components/search/SearchTrigger", () => ({
   default: () => <button data-testid="search-trigger">Search</button>,
+}))
+
+vi.mock("./ThemeToggle", () => ({
+  default: () => <button data-testid="theme-toggle">Theme</button>,
 }))
 
 function renderHeader(initialPath = "/movie/test") {
@@ -60,47 +64,103 @@ describe("Header", () => {
     })
   })
 
-  describe("layout centering", () => {
-    it("uses a 3-column grid layout to keep logo centered", () => {
-      renderHeader()
+  describe("desktop navigation", () => {
+    it("shows nav links on non-home pages", () => {
+      renderHeader("/movie/test")
 
-      const header = screen.getByTestId("site-header")
-      const gridContainer = header.querySelector(".grid.grid-cols-\\[1fr_auto_1fr\\]")
-
-      expect(gridContainer).toBeInTheDocument()
+      const desktopNav = screen.getByTestId("desktop-nav")
+      expect(desktopNav).toBeInTheDocument()
+      expect(within(desktopNav).getByText("Deaths")).toBeInTheDocument()
+      expect(within(desktopNav).getByText("Genres")).toBeInTheDocument()
+      expect(within(desktopNav).getByText("Causes")).toBeInTheDocument()
     })
 
-    it("has home link in the center column with justify-center", () => {
-      renderHeader()
+    it("hides nav links on home page", () => {
+      renderHeader("/")
 
-      const homeLink = screen.getByTestId("home-link")
-
-      // The home link should have justify-center to center its contents
-      expect(homeLink).toHaveClass("justify-center")
+      expect(screen.queryByTestId("desktop-nav")).not.toBeInTheDocument()
     })
 
-    it("has search trigger in a right-aligned container", () => {
-      renderHeader()
+    it("nav links have correct hrefs", () => {
+      renderHeader("/movie/test")
 
-      const searchTrigger = screen.getByTestId("search-trigger")
-      const rightContainer = searchTrigger.parentElement
+      const desktopNav = screen.getByTestId("desktop-nav")
+      expect(within(desktopNav).getByText("Deaths").closest("a")).toHaveAttribute(
+        "href",
+        "/deaths/all"
+      )
+      expect(within(desktopNav).getByText("Genres").closest("a")).toHaveAttribute("href", "/genres")
+      expect(within(desktopNav).getByText("Causes").closest("a")).toHaveAttribute(
+        "href",
+        "/causes-of-death"
+      )
+    })
+  })
 
-      // The search trigger's parent should have justify-end
-      expect(rightContainer).toHaveClass("justify-end")
+  describe("hamburger menu", () => {
+    it("shows hamburger button on non-home pages", () => {
+      renderHeader("/movie/test")
+
+      expect(screen.getByTestId("hamburger-button")).toBeInTheDocument()
     })
 
-    it("has a left spacer to balance the search trigger", () => {
-      renderHeader()
+    it("hides hamburger button on home page", () => {
+      renderHeader("/")
 
-      const header = screen.getByTestId("site-header")
-      const gridContainer = header.querySelector(".grid.grid-cols-\\[1fr_auto_1fr\\]")
+      expect(screen.queryByTestId("hamburger-button")).not.toBeInTheDocument()
+    })
 
-      // Grid should have 3 children: spacer, home link, search container
-      expect(gridContainer?.children).toHaveLength(3)
+    it("opens mobile menu when hamburger is clicked", () => {
+      renderHeader("/movie/test")
 
-      // First child should be the spacer (aria-hidden div)
-      const spacer = gridContainer?.children[0]
-      expect(spacer).toHaveAttribute("aria-hidden", "true")
+      const hamburger = screen.getByTestId("hamburger-button")
+      fireEvent.click(hamburger)
+
+      const mobileMenu = screen.getByTestId("mobile-menu")
+      expect(mobileMenu).toBeInTheDocument()
+      // Menu should be visible (translated to 0)
+      expect(mobileMenu.className).toContain("translate-x-0")
+    })
+
+    it("closes mobile menu when close button is clicked", () => {
+      renderHeader("/movie/test")
+
+      // Open menu
+      fireEvent.click(screen.getByTestId("hamburger-button"))
+      expect(screen.getByTestId("mobile-menu").className).toContain("translate-x-0")
+
+      // Close menu
+      fireEvent.click(screen.getByTestId("mobile-menu-close"))
+      expect(screen.getByTestId("mobile-menu").className).toContain("translate-x-full")
+    })
+
+    it("closes mobile menu when backdrop is clicked", () => {
+      renderHeader("/movie/test")
+
+      fireEvent.click(screen.getByTestId("hamburger-button"))
+      expect(screen.getByTestId("mobile-menu").className).toContain("translate-x-0")
+
+      fireEvent.click(screen.getByTestId("mobile-menu-backdrop"))
+      expect(screen.getByTestId("mobile-menu").className).toContain("translate-x-full")
+    })
+
+    it("mobile menu contains navigation links", () => {
+      renderHeader("/movie/test")
+
+      fireEvent.click(screen.getByTestId("hamburger-button"))
+
+      // Check all nav groups are present
+      expect(screen.getByText("Explore")).toBeInTheDocument()
+      expect(screen.getByText("Discover")).toBeInTheDocument()
+      expect(screen.getByText("More")).toBeInTheDocument()
+
+      // Check specific links
+      expect(screen.getByTestId("mobile-nav-deaths-all")).toBeInTheDocument()
+      expect(screen.getByTestId("mobile-nav-genres")).toBeInTheDocument()
+      expect(screen.getByTestId("mobile-nav-causes-of-death")).toBeInTheDocument()
+      expect(screen.getByTestId("mobile-nav-death-watch")).toBeInTheDocument()
+      expect(screen.getByTestId("mobile-nav-forever-young")).toBeInTheDocument()
+      expect(screen.getByTestId("mobile-nav-about")).toBeInTheDocument()
     })
   })
 })

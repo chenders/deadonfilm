@@ -1,5 +1,6 @@
 import { useParams, useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
+import PaginationHead from "@/components/seo/PaginationHead"
 import { useMoviesByGenre, useGenreCategories } from "@/hooks/useMoviesByGenre"
 import { createMovieSlug } from "@/utils/slugify"
 import { getPosterUrl } from "@/services/api"
@@ -18,7 +19,7 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
     <Link
       to={`/movie/${slug}`}
       data-testid={`movie-row-${movie.id}`}
-      className="block rounded-lg bg-white p-3 transition-colors hover:bg-cream"
+      className="block rounded-lg bg-surface-elevated p-3 transition-colors hover:bg-cream"
     >
       {/* Desktop layout */}
       <div className="hidden items-center gap-4 md:flex">
@@ -56,7 +57,7 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
           </div>
           {movie.mortalitySurpriseScore !== null && movie.mortalitySurpriseScore > 0 && (
             <p className="text-xs text-brown-medium">
-              +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% curse
+              +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% above expected
             </p>
           )}
         </div>
@@ -93,7 +94,7 @@ function MovieRow({ movie, rank }: { movie: MovieByGenre; rank: number }) {
           </p>
           {movie.mortalitySurpriseScore !== null && movie.mortalitySurpriseScore > 0 && (
             <p className="mt-1 text-xs text-accent">
-              +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% curse score
+              +{(movie.mortalitySurpriseScore * 100).toFixed(0)}% above expected
             </p>
           )}
         </div>
@@ -169,10 +170,14 @@ export default function GenreMoviesPage() {
         <title>{data.genre} Movies | Dead on Film</title>
         <meta
           name="description"
-          content={`${data.pagination.totalCount} ${data.genre.toLowerCase()} movies and TV shows ranked by mortality statistics. Browse the most cursed ${data.genre.toLowerCase()} content.`}
+          content={`${data.pagination.totalCount} ${data.genre.toLowerCase()} movies and TV shows ranked by mortality statistics. Browse ${data.genre.toLowerCase()} content with the highest cast mortality.`}
         />
-        <link rel="canonical" href={`https://deadonfilm.com/movies/genre/${data.slug}`} />
       </Helmet>
+      <PaginationHead
+        currentPage={page}
+        totalPages={data.pagination.totalPages}
+        basePath={`/movies/genre/${data.slug}`}
+      />
 
       <div data-testid="genre-movies-page" className="mx-auto max-w-3xl">
         <div className="mb-4 text-center">
@@ -183,9 +188,9 @@ export default function GenreMoviesPage() {
             &larr; All Genres
           </Link>
           <h1 className="font-display text-3xl text-brown-dark">{data.genre} Movies</h1>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text-primary">
             {data.pagination.totalCount.toLocaleString()}{" "}
-            {data.pagination.totalCount === 1 ? "movie" : "movies"} ranked by curse score
+            {data.pagination.totalCount === 1 ? "movie" : "movies"} ranked by excess mortality
           </p>
         </div>
 

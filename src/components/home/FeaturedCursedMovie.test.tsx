@@ -67,7 +67,7 @@ describe("FeaturedCursedMovie", () => {
       expect(screen.getByTestId("featured-movie-title")).toBeInTheDocument()
     })
 
-    expect(screen.getByText("Most Cursed Movie")).toBeInTheDocument()
+    expect(screen.getByText("Highest Mortality Movie")).toBeInTheDocument()
     expect(screen.getByText("The Conqueror")).toBeInTheDocument()
     expect(screen.getByText("(1956)")).toBeInTheDocument()
   })
@@ -83,7 +83,7 @@ describe("FeaturedCursedMovie", () => {
 
     expect(screen.getByText(/46 of 50 cast deceased/)).toBeInTheDocument()
     expect(screen.getByText("Expected: 20.0 deaths")).toBeInTheDocument()
-    expect(screen.getByText("Curse Score: +130% above expected")).toBeInTheDocument()
+    expect(screen.getByText("+130% above expected deaths")).toBeInTheDocument()
   })
 
   it("links to movie page with correct slug", async () => {

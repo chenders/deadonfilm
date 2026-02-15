@@ -39,6 +39,9 @@ import type {
   DeathDetailsResponse,
   NotableDeathsResponse,
   NotableDeathsFilter,
+  RelatedActorsResponse,
+  RelatedMoviesResponse,
+  RelatedShowsResponse,
 } from "@/types"
 
 const API_BASE = "/api"
@@ -134,8 +137,16 @@ export async function getCursedMoviesFilters(): Promise<CursedMoviesFiltersRespo
   return fetchJson("/cursed-movies/filters")
 }
 
-export async function getForeverYoungMovies(page: number = 1): Promise<ForeverYoungResponse> {
-  return fetchJson(`/forever-young?page=${page}`)
+export async function getForeverYoungMovies(
+  page: number = 1,
+  sort?: string,
+  dir?: string
+): Promise<ForeverYoungResponse> {
+  const params = new URLSearchParams()
+  params.set("page", String(page))
+  if (sort) params.set("sort", sort)
+  if (dir) params.set("dir", dir)
+  return fetchJson(`/forever-young?${params.toString()}`)
 }
 
 export interface CursedActorsOptions {
@@ -240,10 +251,12 @@ export interface DeathWatchOptions {
   minAge?: number
   includeObscure?: boolean
   search?: string
+  sort?: string
+  dir?: string
 }
 
 export async function getDeathWatch(options: DeathWatchOptions = {}): Promise<DeathWatchResponse> {
-  const { page = 1, limit = 50, minAge, includeObscure, search } = options
+  const { page = 1, limit = 50, minAge, includeObscure, search, sort, dir } = options
   const params = new URLSearchParams()
 
   params.set("page", String(page))
@@ -251,6 +264,8 @@ export async function getDeathWatch(options: DeathWatchOptions = {}): Promise<De
   if (minAge) params.set("minAge", String(minAge))
   if (includeObscure) params.set("includeObscure", "true")
   if (search) params.set("search", search)
+  if (sort) params.set("sort", sort)
+  if (dir) params.set("dir", dir)
 
   return fetchJson(`/death-watch?${params.toString()}`)
 }
@@ -269,6 +284,10 @@ export async function getThisWeekDeaths(): Promise<ThisWeekDeathsResponse> {
 
 export async function getPopularMovies(limit: number = 10): Promise<PopularMoviesResponse> {
   return fetchJson(`/popular-movies?limit=${limit}`)
+}
+
+export async function getRandomPopularMovies(limit: number = 4): Promise<PopularMoviesResponse> {
+  return fetchJson(`/popular-movies/random?limit=${limit}`)
 }
 
 export async function getCauseCategories(): Promise<CauseCategoriesResponse> {
@@ -319,10 +338,12 @@ export interface AllDeathsParams {
   page?: number
   includeObscure?: boolean
   search?: string
+  sort?: string
+  dir?: string
 }
 
 export async function getAllDeaths(params: AllDeathsParams = {}): Promise<AllDeathsResponse> {
-  const { page = 1, includeObscure = false, search } = params
+  const { page = 1, includeObscure = false, search, sort, dir } = params
   const searchParams = new URLSearchParams()
   searchParams.set("page", String(page))
   if (includeObscure) {
@@ -330,6 +351,12 @@ export async function getAllDeaths(params: AllDeathsParams = {}): Promise<AllDea
   }
   if (search) {
     searchParams.set("search", search)
+  }
+  if (sort) {
+    searchParams.set("sort", sort)
+  }
+  if (dir) {
+    searchParams.set("dir", dir)
   }
   return fetchJson(`/deaths/all?${searchParams.toString()}`)
 }
@@ -441,6 +468,8 @@ export interface NotableDeathsParams {
   pageSize?: number
   filter?: NotableDeathsFilter
   includeObscure?: boolean
+  sort?: string
+  dir?: string
 }
 
 /**
@@ -449,7 +478,7 @@ export interface NotableDeathsParams {
 export async function getNotableDeaths(
   params: NotableDeathsParams = {}
 ): Promise<NotableDeathsResponse> {
-  const { page = 1, pageSize = 50, filter = "all", includeObscure = false } = params
+  const { page = 1, pageSize = 50, filter = "all", includeObscure = false, sort, dir } = params
   const searchParams = new URLSearchParams()
   searchParams.set("page", String(page))
   searchParams.set("pageSize", String(pageSize))
@@ -459,7 +488,27 @@ export async function getNotableDeaths(
   if (includeObscure) {
     searchParams.set("includeObscure", "true")
   }
+  if (sort) {
+    searchParams.set("sort", sort)
+  }
+  if (dir) {
+    searchParams.set("dir", dir)
+  }
   return fetchJson(`/deaths/notable?${searchParams.toString()}`)
+}
+
+// Related content API functions
+
+export async function getRelatedActors(actorId: number): Promise<RelatedActorsResponse> {
+  return fetchJson(`/actor/${actorId}/related`)
+}
+
+export async function getRelatedMovies(movieId: number): Promise<RelatedMoviesResponse> {
+  return fetchJson(`/movie/${movieId}/related`)
+}
+
+export async function getRelatedShows(showId: number): Promise<RelatedShowsResponse> {
+  return fetchJson(`/show/${showId}/related`)
 }
 
 /**

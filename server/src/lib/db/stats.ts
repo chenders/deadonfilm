@@ -157,14 +157,19 @@ export async function updateSyncState(
 // ============================================================================
 
 /**
- * Get all unique actor TMDB IDs from actor_appearances (excludes actors without TMDB IDs).
+ * Get all unique actor TMDB IDs from movie and show appearances (excludes actors without TMDB IDs).
  */
 export async function getAllActorTmdbIds(): Promise<Set<number>> {
   const db = getPool()
   const result = await db.query<{ tmdb_id: number }>(
-    `SELECT DISTINCT a.tmdb_id
+    `SELECT a.tmdb_id
      FROM actor_movie_appearances ama
      JOIN actors a ON ama.actor_id = a.id
+     WHERE a.tmdb_id IS NOT NULL
+     UNION
+     SELECT a.tmdb_id
+     FROM actor_show_appearances asa
+     JOIN actors a ON asa.actor_id = a.id
      WHERE a.tmdb_id IS NOT NULL`
   )
   return new Set(result.rows.map((r) => r.tmdb_id))
