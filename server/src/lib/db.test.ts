@@ -1623,7 +1623,7 @@ describe("getCauseCategory", () => {
 
     // Find the decade query (4th query)
     const decadeQuery = mockQuery.mock.calls[3][0] as string
-    expect(decadeQuery).toContain("EXTRACT(YEAR FROM deathday::date)::int / 10 * 10")
+    expect(decadeQuery).toContain("EXTRACT(YEAR FROM a.deathday::date)::int / 10 * 10")
     expect(decadeQuery).toContain("'s' as decade")
   })
 })

@@ -73,6 +73,7 @@ const AdminABTestComprehensiveIndexPage = lazyWithRetry(
 const AdminABTestComprehensiveDetailPage = lazyWithRetry(
   () => import("./pages/admin/ABTestComprehensiveDetailPage")
 )
+const AdminCauseMappingsPage = lazyWithRetry(() => import("./pages/admin/CauseMappingsPage"))
 const AdminJobQueuesPage = lazyWithRetry(() => import("./pages/admin/JobQueuesPage"))
 const AdminJobRunsPage = lazyWithRetry(() => import("./pages/admin/JobRunsPage"))
 const AdminJobDetailsPage = lazyWithRetry(() => import("./pages/admin/JobDetailsPage"))
@@ -203,6 +204,16 @@ function App() {
             <Route
               path="/admin/actor-diagnostic"
               element={<Navigate to="/admin/actors?tab=diagnostic" replace />}
+            />
+            <Route
+              path="/admin/cause-mappings"
+              element={
+                <AdminThemeProvider>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <AdminCauseMappingsPage />
+                  </Suspense>
+                </AdminThemeProvider>
+              }
             />
             <Route
               path="/admin/operations"

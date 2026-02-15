@@ -212,9 +212,9 @@ describe("suicide filter SQL logic", () => {
       })
       await insertActor(db, {
         tmdb_id: 2,
-        name: "Homicide Gunshot Actor",
+        name: "Homicide Actor",
         deathday: "2020-01-02",
-        cause_of_death: "gunshot wound",
+        cause_of_death: "murdered during robbery",
       })
 
       // Query all unnatural deaths with suicides included
@@ -231,10 +231,7 @@ describe("suicide filter SQL logic", () => {
 
       // Should return both
       expect(result.rows).toHaveLength(2)
-      expect(result.rows.map((r) => r.name)).toEqual([
-        "Suicide Gunshot Actor",
-        "Homicide Gunshot Actor",
-      ])
+      expect(result.rows.map((r) => r.name)).toEqual(["Suicide Gunshot Actor", "Homicide Actor"])
     })
   })
 
@@ -244,14 +241,14 @@ describe("suicide filter SQL logic", () => {
         tmdb_id: 1,
         name: "Details Suicide Actor",
         deathday: "2020-01-01",
-        cause_of_death: "gunshot wound",
+        cause_of_death: "murdered",
         cause_of_death_details: "died by suicide using a firearm",
       })
       await insertActor(db, {
         tmdb_id: 2,
         name: "Pure Homicide Actor",
         deathday: "2020-01-02",
-        cause_of_death: "gunshot wound",
+        cause_of_death: "murdered",
         cause_of_death_details: "shot during home invasion",
       })
 
@@ -313,7 +310,7 @@ describe("suicide filter SQL logic", () => {
         tmdb_id: 2,
         name: "Real Homicide Actor",
         deathday: "2020-01-02",
-        cause_of_death: "gunshot wound",
+        cause_of_death: "murdered",
       })
 
       const allCondition = getAllUnnaturalPatterns()
@@ -358,7 +355,7 @@ describe("category count queries", () => {
       tmdb_id: 4,
       name: "Homicide Actor",
       deathday: "2020-01-04",
-      cause_of_death: "gunshot wound",
+      cause_of_death: "murdered",
     })
     await insertActor(db, {
       tmdb_id: 5,
@@ -408,10 +405,10 @@ describe("category count queries", () => {
     })
     await insertActor(db, {
       tmdb_id: 2,
-      name: "Homicide Gunshot Actor",
+      name: "Homicide Actor",
       deathday: "2020-01-02",
-      cause_of_death: "gunshot wound",
-      cause_of_death_details: "murdered",
+      cause_of_death: "murdered",
+      cause_of_death_details: "shot during robbery",
     })
 
     const query = `
