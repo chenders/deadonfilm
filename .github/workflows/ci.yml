@@ -14,6 +14,7 @@ jobs:
   codeql:
     name: CodeQL Security Scan
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     permissions:
       actions: read
       contents: read
@@ -59,19 +60,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Type check
-        run: npm run type-check
+      - name: Quality checks (type-check, lint, format)
+        run: |
+          npm run type-check &
+          npm run lint &
+          npm run format:check &
+          wait
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Format check
-        run: npm run format:check
-
-      - name: Run tests with coverage
-        run: npm run test:coverage
+      - name: Run tests
+        run: npm run test${{ github.event_name == 'push' && ':coverage' || '' }}
 
       - name: Upload coverage report
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -198,14 +198,12 @@ jobs:
       - name: Seed database (parallel)
         run: npm run seed:actuarial & npm run seed:cohort & wait || exit 1
 
-      - name: Type check
-        run: npm run type-check
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Format check
-        run: npm run format:check
+      - name: Quality checks (type-check, lint, format)
+        run: |
+          npm run type-check &
+          npm run lint &
+          npm run format:check &
+          wait
 
       - name: Run tests
         run: npm test
@@ -231,10 +229,32 @@ jobs:
           docker rm -f ci-redis-test 2>/dev/null || true
         working-directory: .
 
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      needs-e2e: ${{ steps.filter.outputs.needs-e2e }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            needs-e2e:
+              - 'src/**'
+              - 'e2e/**'
+              - 'playwright.config.ts'
+              - 'index.html'
+              - 'vite.config.ts'
+              - 'package.json'
+              - 'server/src/**'
+
   e2e:
     name: E2E Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: ubuntu-latest
-    needs: [frontend, backend]
+    needs: [frontend, backend, changes]
+    if: needs.changes.outputs.needs-e2e == 'true'
     # Note: No container - run directly on runner to avoid Docker-in-Docker issues
     strategy:
       fail-fast: false
@@ -311,6 +331,7 @@ jobs:
     name: Docker Build
     runs-on: ubuntu-latest
     needs: [frontend, backend]
+    if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v4
