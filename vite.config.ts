@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
   plugins: [react()],
   resolve: {
     alias: {
@@ -10,15 +10,24 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          query: ['@tanstack/react-query'],
+    outDir: isSsrBuild ? 'dist/server' : 'dist/client',
+    ssrManifest: !isSsrBuild,
+    rollupOptions: isSsrBuild
+      ? {}
+      : {
+          output: {
+            manualChunks: {
+              vendor: ['react', 'react-dom', 'react-router-dom'],
+              query: ['@tanstack/react-query'],
+            },
+          },
         },
-      },
-    },
+  },
+  ssr: {
+    // Packages that should be bundled (not externalized) for SSR.
+    // Most deps are fine as externals; add here if they ship ESM-only
+    // or have CSS side-effects that Vite needs to process.
+    noExternal: ['react-helmet-async'],
   },
   server: {
     port: 5173,
@@ -42,4 +51,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
