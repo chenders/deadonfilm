@@ -78,18 +78,21 @@ export default function EditableField({
           />
         )
 
-      case "date":
+      case "date": {
+        // HTML date inputs require YYYY-MM-DD format; the API may return full ISO timestamps
+        const dateValue = typeof value === "string" ? value.slice(0, 10) : ""
         return (
           <input
             type="date"
             id={name}
             name={name}
-            value={(value as string) ?? ""}
+            value={dateValue}
             onChange={(e) => onChange(e.target.value || null)}
             disabled={disabled}
             className={baseInputClass}
           />
         )
+      }
 
       case "boolean":
         return (
