@@ -16,8 +16,9 @@ import { registerHandler, clearHandlers } from "../handlers/index.js"
 import { BaseJobHandler } from "../handlers/base.js"
 import { JobType, QueueName, type JobResult } from "../types.js"
 import { getPool } from "../../db.js"
+import { isRedisReachable } from "./check-redis.js"
 
-const hasIntegrationDeps = !!process.env.REDIS_JOBS_URL && !!process.env.DATABASE_URL
+const hasIntegrationDeps = isRedisReachable() && !!process.env.DATABASE_URL
 
 // Mock handler for testing
 class MockCacheHandler extends BaseJobHandler<{ actorId: number }, { cached: boolean }> {

@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { fileURLToPath } from "node:url"
 /**
  * Backfill OMDb ratings for movies and shows using job queue
  *
@@ -100,9 +101,7 @@ const program = new Command()
     JobPriority.LOW
   )
 
-program.parse()
-
-const options = program.opts<BackfillOptions>()
+// Execution is guarded at the bottom of the file
 
 async function queueMovieJobs(
   limit: number | undefined,
@@ -324,4 +323,8 @@ async function run(options: BackfillOptions) {
   }
 }
 
-run(options)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  program.parse()
+  const options = program.opts<BackfillOptions>()
+  run(options)
+}

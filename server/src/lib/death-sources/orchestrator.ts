@@ -39,8 +39,6 @@ import { BingSearchSource } from "./sources/bing.js"
 import { WebSearchBase } from "./sources/web-search-base.js"
 import { FindAGraveSource } from "./sources/findagrave.js"
 import { LegacySource } from "./sources/legacy.js"
-import { TelevisionAcademySource } from "./sources/television-academy.js"
-import { IBDBSource } from "./sources/ibdb.js"
 import { BFISightSoundSource } from "./sources/bfi-sight-sound.js"
 import { WikipediaSource } from "./sources/wikipedia.js"
 import { IMDbSource } from "./sources/imdb.js"
@@ -60,9 +58,8 @@ import { TMZSource } from "./sources/tmz.js"
 import { PeopleSource } from "./sources/people.js"
 import { BBCNewsSource } from "./sources/bbc-news.js"
 import { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
-import { BAFTASource } from "./sources/bafta.js"
-import { WGASource } from "./sources/wga.js"
-import { DGASource } from "./sources/dga.js"
+// Removed: BAFTASource, WGASource, DGASource — career tributes, not obituaries (no death circumstances)
+// Removed: TelevisionAcademySource, IBDBSource — return circumstances: null by design
 import { BraveSearchSource } from "./sources/brave.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
@@ -228,23 +225,18 @@ export class DeathEnrichmentOrchestrator {
     // Free sources - always available, ordered by expected quality
     // High-accuracy film industry archives first, then structured data, then search
     const freeSources: DataSource[] = [
-      // Phase 1: Structured data and industry archives
+      // Phase 1: Structured data
       new WikidataSource(),
       new WikipediaSource(), // Wikipedia Death section extraction
       new IMDbSource(), // IMDb bio pages (scraped)
-      new TelevisionAcademySource(), // Official TV industry deaths
-      new BFISightSoundSource(), // International film obituaries
-      new IBDBSource(), // Broadway theatre database (via DuckDuckGo + archive.org)
-      new BAFTASource(), // BAFTA awards database (via DuckDuckGo)
-      new WGASource(), // Writers Guild of America (via DuckDuckGo)
-      new DGASource(), // Directors Guild of America (via DuckDuckGo)
+      new BFISightSoundSource(), // International film obituaries (2015+ only)
 
       // Phase 2: Web Search (with link following)
-      // DuckDuckGo is free, Google and Bing have free tiers but may incur costs
-      new DuckDuckGoSource(),
-      new GoogleSearchSource(),
-      new BingSearchSource(),
-      new BraveSearchSource(), // Brave Search API (requires API key, $0.005/query)
+      // Google first (best results), DuckDuckGo as free fallback
+      new GoogleSearchSource(), // Requires GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_CX
+      new BingSearchSource(), // Requires BING_SEARCH_API_KEY
+      new DuckDuckGoSource(), // Free fallback, no API key needed
+      new BraveSearchSource(), // Requires BRAVE_SEARCH_API_KEY, $0.005/query
 
       // Phase 3: News sources (APIs and scraping)
       new GuardianSource(), // Guardian API - UK news (requires API key)
@@ -263,9 +255,11 @@ export class DeathEnrichmentOrchestrator {
       new FindAGraveSource(),
       new LegacySource(), // Legacy.com obituaries (via DuckDuckGo + archive.org)
 
-      // Phase 5: International sources (regional film databases)
-      // AlloCineSource, DoubanSource, SoompiSource disabled - 0% success rate
-      // FilmiBeatSource removed - consistently blocked by anti-scraping protection (403)
+      // Removed sources:
+      // AlloCineSource, DoubanSource, SoompiSource — 0% success rate
+      // FilmiBeatSource — consistently blocked by anti-scraping (403)
+      // TelevisionAcademySource, IBDBSource — return circumstances: null by design (career DBs)
+      // BAFTASource, WGASource, DGASource — career tributes via fragile DuckDuckGo search, no death causes
 
       // Phase 6: Historical archives (for pre-internet deaths)
       new TroveSource(), // Australian newspapers (requires API key)

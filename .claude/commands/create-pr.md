@@ -1,6 +1,6 @@
 # Create PR
 
-Create a pull request with full validation and optional screenshots for UI changes.
+Create a pull request with optional screenshots for UI changes. Quality checks are handled by lint-staged (pre-commit) and CI (on PR).
 
 ## Arguments
 
@@ -8,27 +8,7 @@ Create a pull request with full validation and optional screenshots for UI chang
 
 ## Instructions
 
-### 1. Pre-flight validation
-
-Run all quality checks first. Execute these commands in parallel:
-
-```bash
-# Frontend
-npm run format:check
-npm run lint
-npm run type-check
-npm test
-
-# Backend
-cd server && npm run format:check
-cd server && npm run lint
-cd server && npm run type-check
-cd server && npm test
-```
-
-**If any check fails, STOP and report the failures.** Do not proceed until all checks pass.
-
-### 2. Analyze changes
+### 1. Analyze changes
 
 Understand what's being submitted:
 
@@ -47,7 +27,7 @@ Determine:
   - `src/index.css`
   - `tailwind.config.js`
 
-### 3. Take screenshots (if UI changes detected)
+### 2. Take screenshots (if UI changes detected)
 
 If UI-related files were changed:
 
@@ -84,7 +64,7 @@ c. **Take screenshots** using Playwright:
 
 d. **Stage screenshots**: `git add e2e/screenshots/pr-*.png`
 
-### 4. Stage and commit
+### 3. Stage and commit
 
 Stage all changes:
 ```bash
@@ -106,20 +86,20 @@ EOF
 )"
 ```
 
-### 5. Push branch
+### 4. Push branch
 
 Ensure the branch is pushed to remote:
 ```bash
 git push -u origin $(git branch --show-current)
 ```
 
-### 6. Get commit SHA for screenshot URLs
+### 5. Get commit SHA for screenshot URLs
 
 ```bash
 COMMIT_SHA=$(git rev-parse HEAD)
 ```
 
-### 7. Create pull request
+### 6. Create pull request
 
 Use `gh pr create` with proper formatting:
 
@@ -152,9 +132,9 @@ EOF
 )"
 ```
 
-Replace `COMMIT_SHA` with the actual commit SHA from step 6.
+Replace `COMMIT_SHA` with the actual commit SHA from step 5.
 
-### 8. Report completion
+### 7. Report completion
 
 Output the PR URL so the user can review:
 ```
@@ -171,7 +151,7 @@ PR created: https://github.com/chenders/deadonfilm/pull/XXX
 
 ## Troubleshooting
 
-- **Validation fails**: Fix the issues, then run `/create-pr` again
 - **Screenshots fail**: Ensure dev server is running on port 5173
 - **gh auth error**: Run `gh auth login` to authenticate with GitHub
 - **Branch already has PR**: Command will show existing PR URL instead of creating duplicate
+- **CI fails after PR**: Fix issues, commit, push — CI re-runs automatically
