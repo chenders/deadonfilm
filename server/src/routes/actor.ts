@@ -5,6 +5,7 @@ import {
   getActorShowFilmography,
   hasDetailedDeathInfo,
   getActorByEitherIdWithSlug,
+  getPool,
 } from "../lib/db.js"
 import newrelic from "newrelic"
 import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
@@ -50,6 +51,7 @@ interface ActorProfileResponse {
     ageAtDeath: number | null
     yearsLost: number | null
     hasDetailedDeathInfo: boolean
+    notableFactors: string[] | null
   } | null
 }
 
@@ -135,9 +137,16 @@ export async function getActor(req: Request, res: Response) {
     // Get death info if deceased
     let deathInfo: ActorProfileResponse["deathInfo"] = null
     if (person.deathday) {
-      // We already have the actor record from the lookup, no need to fetch again
-      // Just need to check if detailed death info exists
-      const hasDetailedInfo = await hasDetailedDeathInfo(tmdbIdForFetch)
+      // Fetch detailed death info flag and notable factors in parallel
+      const [hasDetailedInfo, circumstancesRow] = await Promise.all([
+        hasDetailedDeathInfo(tmdbIdForFetch),
+        getPool()
+          .query<{ notable_factors: string[] | null }>(
+            `SELECT notable_factors FROM actor_death_circumstances WHERE actor_id = $1`,
+            [actorRecord.id]
+          )
+          .then((r) => r.rows[0] ?? null),
+      ])
 
       deathInfo = {
         causeOfDeath: actorRecord.cause_of_death,
@@ -146,6 +155,7 @@ export async function getActor(req: Request, res: Response) {
         ageAtDeath: actorRecord.age_at_death ?? calculateAge(person.birthday, person.deathday),
         yearsLost: actorRecord.years_lost,
         hasDetailedDeathInfo: hasDetailedInfo,
+        notableFactors: circumstancesRow?.notable_factors ?? null,
       }
     }
 

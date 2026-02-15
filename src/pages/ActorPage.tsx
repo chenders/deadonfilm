@@ -18,6 +18,7 @@ import Breadcrumb from "@/components/layout/Breadcrumb"
 import AdminActorToolbar from "@/components/admin/AdminActorToolbar"
 import AdminActorMetadata from "@/components/admin/AdminActorMetadata"
 import DeathSummaryCard from "@/components/death/DeathSummaryCard"
+import FactorBadge from "@/components/death/FactorBadge"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
 
 type FilmographyItem =
@@ -332,6 +333,15 @@ export default function ActorPage() {
                 </a>
               )}
             </div>
+
+            {/* Notable factor badges */}
+            {deathInfo?.notableFactors && deathInfo.notableFactors.length > 0 && (
+              <div className="mt-2 flex flex-wrap justify-center gap-1 sm:justify-start">
+                {deathInfo.notableFactors.map((factor) => (
+                  <FactorBadge key={factor} factor={factor} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
