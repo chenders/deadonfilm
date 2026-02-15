@@ -25,6 +25,7 @@ import {
   extractNotableFactors,
   extractDeathSentences,
   extractUrlFromSearchResults,
+  searchWeb,
 } from "./news-utils.js"
 
 /**
@@ -64,33 +65,22 @@ export class LegacySource extends BaseDataSource {
     }
 
     try {
-      // Search via DuckDuckGo HTML (more scraping-friendly than legacy.com's SPA search)
+      // Search via DDG with Google CSE fallback
       const deathYear = new Date(actor.deathday).getFullYear()
       const searchQuery = `site:legacy.com "${actor.name}" obituary ${deathYear}`
-      const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
-
-      const searchResponse = await fetch(ddgSearchUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "text/html,application/xhtml+xml",
-        },
+      const { html: searchHtml, error: searchError } = await searchWeb(searchQuery, {
+        userAgent: this.userAgent,
         signal: this.createTimeoutSignal(),
       })
 
-      if (searchResponse.status === 403) {
-        throw new SourceAccessBlockedError(`Search blocked (403)`, this.type, ddgSearchUrl, 403)
-      }
-
-      if (!searchResponse.ok) {
+      if (searchError || !searchHtml) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
-          error: `Search failed: HTTP ${searchResponse.status}`,
+          error: searchError || "Search returned no results",
         }
       }
-
-      const searchHtml = await searchResponse.text()
 
       // Find Legacy.com obituary URLs in search results
       const obituaryUrl = this.extractLegacyUrl(searchHtml, actor)
@@ -98,7 +88,7 @@ export class LegacySource extends BaseDataSource {
       if (!obituaryUrl) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
           error: "No Legacy.com obituary found in search results",
         }

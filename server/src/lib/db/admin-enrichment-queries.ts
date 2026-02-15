@@ -323,7 +323,7 @@ export async function getSourcePerformanceStats(
       SELECT
         element->>'source' AS source,
         (element->>'costUsd')::numeric AS source_cost,
-        era.winning_source,
+        (element->>'success')::boolean AS source_success,
         era.processing_time_ms
       FROM enrichment_run_actors era
       JOIN enrichment_runs er ON era.run_id = er.id
@@ -333,9 +333,9 @@ export async function getSourcePerformanceStats(
     SELECT
       source,
       COUNT(*)::int AS total_attempts,
-      COUNT(*) FILTER (WHERE source = winning_source)::int AS successful_attempts,
+      COUNT(*) FILTER (WHERE source_success)::int AS successful_attempts,
       ROUND(
-        (COUNT(*) FILTER (WHERE source = winning_source)::decimal / NULLIF(COUNT(*), 0)) * 100,
+        (COUNT(*) FILTER (WHERE source_success)::decimal / NULLIF(COUNT(*), 0)) * 100,
         2
       )::float AS success_rate,
       COALESCE(SUM(source_cost), 0)::float AS total_cost_usd,
@@ -366,7 +366,7 @@ export async function getRunSourcePerformanceStats(
       SELECT
         element->>'source' AS source,
         (element->>'costUsd')::numeric AS source_cost,
-        era.winning_source,
+        (element->>'success')::boolean AS source_success,
         era.processing_time_ms
       FROM enrichment_run_actors era
       CROSS JOIN LATERAL jsonb_array_elements(era.sources_attempted) AS element
@@ -375,9 +375,9 @@ export async function getRunSourcePerformanceStats(
     SELECT
       source,
       COUNT(*)::int AS total_attempts,
-      COUNT(*) FILTER (WHERE source = winning_source)::int AS successful_attempts,
+      COUNT(*) FILTER (WHERE source_success)::int AS successful_attempts,
       ROUND(
-        (COUNT(*) FILTER (WHERE source = winning_source)::decimal / NULLIF(COUNT(*), 0)) * 100,
+        (COUNT(*) FILTER (WHERE source_success)::decimal / NULLIF(COUNT(*), 0)) * 100,
         2
       )::float AS success_rate,
       COALESCE(SUM(source_cost), 0)::float AS total_cost_usd,

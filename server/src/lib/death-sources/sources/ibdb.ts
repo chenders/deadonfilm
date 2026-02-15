@@ -23,7 +23,7 @@ import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 import { fetchFromArchive } from "../archive-fallback.js"
-import { extractUrlFromSearchResults } from "./news-utils.js"
+import { extractUrlFromSearchResults, searchWeb } from "./news-utils.js"
 
 /**
  * IBDB (Internet Broadway Database) source for Broadway actors.
@@ -41,38 +41,21 @@ export class IBDBSource extends BaseDataSource {
     const startTime = Date.now()
 
     try {
-      // Search via DuckDuckGo HTML (IBDB blocks direct scraping)
+      // Search via searchWeb (DDG with Google CSE fallback; IBDB blocks direct scraping)
       const searchQuery = `site:ibdb.com "${actor.name}" broadway`
-      const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
-
-      const searchResponse = await fetch(ddgSearchUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "text/html,application/xhtml+xml",
-        },
+      const { html: searchHtml, error: searchError } = await searchWeb(searchQuery, {
+        userAgent: this.userAgent,
         signal: this.createTimeoutSignal(),
       })
 
-      // Check for blocking
-      if (searchResponse.status === 403) {
-        throw new SourceAccessBlockedError(
-          `DuckDuckGo search blocked (403)`,
-          this.type,
-          ddgSearchUrl,
-          403
-        )
-      }
-
-      if (!searchResponse.ok) {
+      if (searchError || !searchHtml) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
-          error: `HTTP ${searchResponse.status}`,
+          error: searchError || "Search returned no results",
         }
       }
-
-      const searchHtml = await searchResponse.text()
 
       // Find IBDB person URL in search results
       const personUrl = this.extractIBDBUrl(searchHtml, actor)
@@ -80,7 +63,7 @@ export class IBDBSource extends BaseDataSource {
       if (!personUrl) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
           error: "Actor not found in IBDB search results",
         }

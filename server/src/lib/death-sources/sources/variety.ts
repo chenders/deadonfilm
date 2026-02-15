@@ -22,6 +22,7 @@ import {
   extractNotableFactors,
   extractDeathSentences,
   extractUrlFromSearchResults,
+  searchWeb,
 } from "./news-utils.js"
 
 const _VARIETY_BASE_URL = "https://variety.com"
@@ -52,37 +53,22 @@ export class VarietySource extends BaseDataSource {
     }
 
     try {
-      // Search for obituary using Google site search (Variety's own search is limited)
+      // Search for obituary using shared web search (DDG with Google CSE fallback)
       const deathYear = new Date(actor.deathday).getFullYear()
       const searchQuery = `site:variety.com "${actor.name}" obituary OR died OR death ${deathYear}`
-      // Google fallback URL (not used currently, but kept for reference)
-      const _searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`
-
-      // First, try to find the obituary URL via DuckDuckGo HTML (more scraping-friendly)
-      const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
-
-      const searchResponse = await fetch(ddgSearchUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "text/html,application/xhtml+xml",
-        },
+      const { html: searchHtml, error: searchError } = await searchWeb(searchQuery, {
+        userAgent: this.userAgent,
         signal: this.createTimeoutSignal(),
       })
 
-      if (searchResponse.status === 403) {
-        throw new SourceAccessBlockedError(`Search blocked (403)`, this.type, ddgSearchUrl, 403)
-      }
-
-      if (!searchResponse.ok) {
+      if (searchError || !searchHtml) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
-          error: `Search failed: HTTP ${searchResponse.status}`,
+          error: searchError || "Search returned no results",
         }
       }
-
-      const searchHtml = await searchResponse.text()
 
       // Find Variety article URLs in search results
       const varietyUrl = this.extractVarietyUrl(searchHtml, actor)
@@ -90,7 +76,7 @@ export class VarietySource extends BaseDataSource {
       if (!varietyUrl) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
           error: "No Variety obituary found in search results",
         }

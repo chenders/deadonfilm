@@ -23,6 +23,7 @@ import {
   extractNotableFactors,
   extractDeathSentences,
   extractUrlFromSearchResults,
+  searchWeb,
 } from "./news-utils.js"
 
 const _HOLLYWOOD_REPORTER_BASE_URL = "https://www.hollywoodreporter.com"
@@ -65,32 +66,21 @@ export class HollywoodReporterSource extends BaseDataSource {
     }
 
     try {
-      // Search for obituary using DuckDuckGo HTML (more scraping-friendly)
+      // Search for obituary using shared web search (DDG with Google CSE fallback)
       const searchQuery = `site:hollywoodreporter.com "${actor.name}" obituary OR dies OR dead OR death ${deathYear}`
-      const ddgSearchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
-
-      const searchResponse = await fetch(ddgSearchUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "text/html,application/xhtml+xml",
-        },
+      const { html: searchHtml, error: searchError } = await searchWeb(searchQuery, {
+        userAgent: this.userAgent,
         signal: this.createTimeoutSignal(),
       })
 
-      if (searchResponse.status === 403) {
-        throw new SourceAccessBlockedError(`Search blocked (403)`, this.type, ddgSearchUrl, 403)
-      }
-
-      if (!searchResponse.ok) {
+      if (searchError || !searchHtml) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
-          error: `Search failed: HTTP ${searchResponse.status}`,
+          error: searchError || "Search returned no results",
         }
       }
-
-      const searchHtml = await searchResponse.text()
 
       // Find Hollywood Reporter article URLs in search results
       const articleUrl = this.extractArticleUrl(searchHtml, actor)
@@ -98,7 +88,7 @@ export class HollywoodReporterSource extends BaseDataSource {
       if (!articleUrl) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgSearchUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
           error: "No Hollywood Reporter obituary found in search results",
         }
