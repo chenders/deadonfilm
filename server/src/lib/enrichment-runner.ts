@@ -479,16 +479,11 @@ export class EnrichmentRunner {
             deathCategories: cleaned?.categories || null,
             // Fill in cause_of_death if we got one and actor doesn't have it
             causeOfDeath: !actor.causeOfDeath && causeOfDeath ? causeOfDeath : undefined,
-            causeOfDeathSource:
-              !actor.causeOfDeath && causeOfDeath ? "claude-opus-4.5" : undefined,
+            causeOfDeathSource: !actor.causeOfDeath && causeOfDeath ? "claude-opus-4.5" : undefined,
             causeOfDeathDetails:
-              !actor.causeOfDeathDetails && causeOfDeathDetails
-                ? causeOfDeathDetails
-                : undefined,
+              !actor.causeOfDeathDetails && causeOfDeathDetails ? causeOfDeathDetails : undefined,
             causeOfDeathDetailsSource:
-              !actor.causeOfDeathDetails && causeOfDeathDetails
-                ? "claude-opus-4.5"
-                : undefined,
+              !actor.causeOfDeathDetails && causeOfDeathDetails ? "claude-opus-4.5" : undefined,
           }
 
           // Run entity linking on narrative text fields
