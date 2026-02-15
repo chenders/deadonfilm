@@ -28,10 +28,10 @@ describe("matchUrl", () => {
       })
     })
 
-    it("matches /actor/{slug}/death", () => {
+    it("redirects /actor/{slug}/death to /actor/{slug}", () => {
       expect(matchUrl("/actor/john-wayne-2157/death")).toEqual({
-        pageType: "actor-death",
-        params: { actorId: "2157" },
+        pageType: "redirect",
+        params: { target: "/actor/john-wayne-2157" },
       })
     })
 

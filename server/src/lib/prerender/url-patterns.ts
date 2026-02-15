@@ -8,7 +8,7 @@
 export type PageType =
   | "home"
   | "actor"
-  | "actor-death"
+  | "redirect"
   | "movie"
   | "show"
   | "episode"
@@ -108,13 +108,10 @@ export function matchUrl(path: string): MatchResult | null {
     return { pageType: "search", params: {} }
   }
 
-  // Actor death details: /actor/{slug}/death
+  // Actor death details: /actor/{slug}/death → redirect to /actor/{slug}
   const actorDeathMatch = cleanPath.match(/^\/actor\/([^/]+)\/death$/)
   if (actorDeathMatch) {
-    const actorId = extractTrailingId(actorDeathMatch[1])
-    if (actorId) {
-      return { pageType: "actor-death", params: { actorId } }
-    }
+    return { pageType: "redirect", params: { target: `/actor/${actorDeathMatch[1]}` } }
   }
 
   // Actor: /actor/{slug}-{id}

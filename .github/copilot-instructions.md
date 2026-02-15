@@ -111,8 +111,7 @@ npm test
 # Server tests: cd server && npm test (may exit non-zero locally; CI runs reliably)
 
 # Development
-npm run dev:all      # Frontend + Backend
-npm run start:dev    # Hybrid mode (Docker infra + native code)
+npm run dev          # Frontend + Backend (starts Docker containers + HMR)
 ```
 
 ---

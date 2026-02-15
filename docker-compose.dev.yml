@@ -2,11 +2,8 @@
 # Run database and Redis in Docker, frontend/backend natively with full HMR
 #
 # Usage:
-#   npm run docker:dev      # Start db + redis
-#   npm run dev:all         # Start frontend + backend with hot reloading
-#
-# Or use the combined command:
-#   npm run start:dev       # Starts everything
+#   npm run dev             # Start db + redis containers, then frontend + backend with HMR
+#   npm run dev:stop        # Stop db + redis containers
 
 services:
   db:

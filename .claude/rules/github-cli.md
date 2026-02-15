@@ -669,7 +669,7 @@ Keep screenshot file sizes reasonable:
 
 ```bash
 # 1. Start local dev server
-npm run dev:all
+npm run dev
 
 # 2. Create Playwright script (or use interactive browser)
 cat > take-screenshots.ts <<'SCRIPT'
@@ -813,7 +813,7 @@ gh pr edit 123 --add-reviewer Copilot
 # ... code changes ...
 
 # 2. Start dev server
-npm run dev:all
+npm run dev
 
 # 3. Create screenshot script
 cat > screenshots.ts <<'SCRIPT'

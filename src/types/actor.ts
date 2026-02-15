@@ -100,6 +100,7 @@ export interface ActorDeathInfo {
   ageAtDeath: number | null
   yearsLost: number | null
   hasDetailedDeathInfo: boolean
+  notableFactors: string[] | null
 }
 
 export interface ActorProfileResponse {

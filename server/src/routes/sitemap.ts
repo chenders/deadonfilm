@@ -5,7 +5,6 @@ import {
   generateMoviesSitemap,
   generateActorsSitemap,
   generateShowsSitemap,
-  generateDeathDetailsSitemap,
 } from "../lib/sitemap-generator.js"
 
 /**
@@ -124,32 +123,5 @@ export async function getShowsSitemap(req: Request, res: Response) {
   } catch (error) {
     console.error("Shows sitemap generation error:", error)
     res.status(500).send("Error generating shows sitemap")
-  }
-}
-
-/**
- * GET /sitemap-death-details.xml or /sitemap-death-details-{page}.xml
- * Returns sitemap for death details pages (actors with has_detailed_death_info = true)
- */
-export async function getDeathDetailsSitemap(req: Request, res: Response) {
-  try {
-    const page = parseInt(req.params.page || "1", 10)
-    if (isNaN(page) || page < 1) {
-      res.status(400).send("Invalid page number")
-      return
-    }
-
-    const result = await generateDeathDetailsSitemap(page)
-
-    if (result.notFound) {
-      res.status(404).send("Sitemap page not found")
-      return
-    }
-
-    setSitemapHeaders(res)
-    res.send(result.xml)
-  } catch (error) {
-    console.error("Death details sitemap generation error:", error)
-    res.status(500).send("Error generating death details sitemap")
   }
 }

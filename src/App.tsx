@@ -37,7 +37,6 @@ const GenreMoviesPage = lazyWithRetry(() => import("./pages/GenreMoviesPage"))
 const CausesOfDeathPage = lazyWithRetry(() => import("./pages/CausesOfDeathPage"))
 const CauseCategoryPage = lazyWithRetry(() => import("./pages/CauseCategoryPage"))
 const SpecificCausePage = lazyWithRetry(() => import("./pages/SpecificCausePage"))
-const ActorDeathPage = lazyWithRetry(() => import("./pages/ActorDeathPage"))
 const NotableDeathsPage = lazyWithRetry(() => import("./pages/NotableDeathsPage"))
 const AboutPage = lazyWithRetry(() => import("./pages/AboutPage"))
 const FAQPage = lazyWithRetry(() => import("./pages/FAQPage"))
@@ -355,7 +354,10 @@ function App() {
                       <Route path="/show/:slug/season/:seasonNumber" element={<SeasonPage />} />
                       <Route path="/episode/:slug" element={<EpisodePage />} />
                       <Route path="/actor/:slug" element={<ActorPage />} />
-                      <Route path="/actor/:slug/death" element={<ActorDeathPage />} />
+                      <Route
+                        path="/actor/:slug/death"
+                        element={<Navigate to=".." relative="path" replace />}
+                      />
                       {/* Temporarily hidden - see plan in kind-brewing-moore.md */}
                       {/* <Route path="/cursed-movies" element={<CursedMoviesPage />} /> */}
                       {/* <Route path="/cursed-actors" element={<CursedActorsPage />} /> */}
