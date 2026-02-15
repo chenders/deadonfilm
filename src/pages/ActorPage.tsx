@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useParams, useLocation, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import { useActor } from "@/hooks/useActor"
@@ -169,6 +169,9 @@ export default function ActorPage() {
     }))
     return [...movies, ...shows].sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
   }, [data])
+
+  const [showAllFilmography, setShowAllFilmography] = useState(false)
+  const FILMOGRAPHY_PREVIEW_COUNT = 5
 
   // Extract internal actor ID from slug (not the TMDB person ID from the API response)
   const actorId = slug ? extractActorId(slug) : 0
@@ -416,18 +419,34 @@ export default function ActorPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {combinedFilmography.map((item) => (
-                <FilmographyRow
-                  key={
-                    item.type === "movie"
-                      ? `movie-${item.data.movieId}`
-                      : `show-${item.data.showId}`
-                  }
-                  item={item}
-                />
-              ))}
-            </div>
+            <>
+              <div className="space-y-2">
+                {(showAllFilmography
+                  ? combinedFilmography
+                  : combinedFilmography.slice(0, FILMOGRAPHY_PREVIEW_COUNT)
+                ).map((item) => (
+                  <FilmographyRow
+                    key={
+                      item.type === "movie"
+                        ? `movie-${item.data.movieId}`
+                        : `show-${item.data.showId}`
+                    }
+                    item={item}
+                  />
+                ))}
+              </div>
+              {combinedFilmography.length > FILMOGRAPHY_PREVIEW_COUNT && (
+                <button
+                  onClick={() => setShowAllFilmography((prev) => !prev)}
+                  className="mt-3 w-full rounded-md py-2 text-center text-sm font-medium text-brown-dark transition-colors hover:bg-cream"
+                  data-testid="filmography-toggle"
+                >
+                  {showAllFilmography
+                    ? "Show less ▲"
+                    : `Show all ${combinedFilmography.length} titles ▼`}
+                </button>
+              )}
+            </>
           )}
         </div>
 
