@@ -300,7 +300,11 @@ const program = new Command()
     await run(opts)
   })
 
-// Guard against running during test imports
-if (process.env.NODE_ENV !== "test") {
+// Only parse CLI args when run directly (not when imported for computeCategories)
+const isMainModule =
+  process.argv[1] &&
+  new URL(import.meta.url).pathname === new URL(`file://${process.argv[1]}`).pathname
+
+if (isMainModule) {
   program.parse()
 }
