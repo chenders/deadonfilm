@@ -349,6 +349,8 @@ describe("getActor", () => {
         yearsLost: -5,
         hasDetailedDeathInfo: false,
         notableFactors: null,
+        career: null,
+        relatedCelebrities: null,
       },
     })
   })
@@ -374,6 +376,8 @@ describe("getActor", () => {
           yearsLost: null,
           hasDetailedDeathInfo: false,
           notableFactors: null,
+          career: null,
+          relatedCelebrities: null,
         },
       })
     )

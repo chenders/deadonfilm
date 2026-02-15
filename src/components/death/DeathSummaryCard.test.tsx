@@ -35,7 +35,7 @@ describe("DeathSummaryCard", () => {
     expect(screen.getByText(/Died of stomach cancer at age 72/)).toBeInTheDocument()
     expect(screen.getByText(/Wayne died on June 11, 1979/)).toBeInTheDocument()
     expect(screen.getByText(/4\.2 years before life expectancy/)).toBeInTheDocument()
-    expect(screen.getByText("Read full story ▼")).toBeInTheDocument()
+    expect(screen.getByText("Read full story")).toBeInTheDocument()
     expect(screen.queryByTestId("death-details-expanded")).not.toBeInTheDocument()
   })
 
@@ -46,7 +46,7 @@ describe("DeathSummaryCard", () => {
 
     expect(screen.getByTestId("death-details-expanded")).toBeInTheDocument()
     expect(screen.getByTestId("death-details-content")).toBeInTheDocument()
-    expect(screen.getByText("Collapse ▲")).toBeInTheDocument()
+    expect(screen.getByText("Collapse")).toBeInTheDocument()
   })
 
   it("collapses on second click", () => {
@@ -57,7 +57,7 @@ describe("DeathSummaryCard", () => {
     fireEvent.click(toggle) // collapse
 
     expect(screen.queryByTestId("death-details-expanded")).not.toBeInTheDocument()
-    expect(screen.getByText("Read full story ▼")).toBeInTheDocument()
+    expect(screen.getByText("Read full story")).toBeInTheDocument()
   })
 
   it("fires onExpand callback on first expand only", () => {

@@ -19,6 +19,8 @@ import AdminActorToolbar from "@/components/admin/AdminActorToolbar"
 import AdminActorMetadata from "@/components/admin/AdminActorMetadata"
 import DeathSummaryCard from "@/components/death/DeathSummaryCard"
 import FactorBadge from "@/components/death/FactorBadge"
+import ProjectLink from "@/components/death/ProjectLink"
+import RelatedCelebrityCard from "@/components/death/RelatedCelebrityCard"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
 
 type FilmographyItem =
@@ -132,6 +134,14 @@ function FilmographyRow({ item }: { item: FilmographyItem }) {
       </div>
     </Link>
   )
+}
+
+function formatCareerStatus(status: string | null): string | null {
+  if (!status) return null
+  return status
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")
 }
 
 function getSourceDisplayName(type: "wikipedia" | "tmdb" | "imdb" | null): string {
@@ -374,6 +384,58 @@ export default function ActorPage() {
           />
         )}
 
+        {/* Career Context */}
+        {isDeceased && deathInfo?.career && (
+          <div
+            className="mb-6 rounded-lg bg-surface-elevated p-4"
+            data-testid="career-context-section"
+          >
+            <h2 className="mb-2 font-display text-lg text-brown-dark">Career Context</h2>
+            <div className="space-y-2 text-sm text-text-primary">
+              {deathInfo.career.statusAtDeath && (
+                <p>
+                  <span className="font-medium">Status at Death:</span>{" "}
+                  {formatCareerStatus(deathInfo.career.statusAtDeath)}
+                </p>
+              )}
+              {deathInfo.career.lastProject && (
+                <p>
+                  <span className="font-medium">Last Project:</span>{" "}
+                  <ProjectLink project={deathInfo.career.lastProject} />
+                </p>
+              )}
+              {deathInfo.career.posthumousReleases &&
+                deathInfo.career.posthumousReleases.length > 0 && (
+                  <div>
+                    <span className="font-medium">Posthumous Releases:</span>
+                    <ul className="ml-4 mt-1 list-disc">
+                      {deathInfo.career.posthumousReleases.map((project, idx) => (
+                        <li key={idx}>
+                          <ProjectLink project={project} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {/* Related People */}
+        {isDeceased && deathInfo?.relatedCelebrities && deathInfo.relatedCelebrities.length > 0 && (
+          <div
+            className="mb-6 rounded-lg bg-surface-elevated p-4"
+            data-testid="related-people-section"
+          >
+            <h2 className="mb-2 font-display text-lg text-brown-dark">Related People</h2>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {deathInfo.relatedCelebrities.map((celebrity, idx) => (
+                <RelatedCelebrityCard key={idx} celebrity={celebrity} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Biography */}
         {actor.biography && (
           <div className="mb-6 rounded-lg bg-surface-elevated p-4">
@@ -442,8 +504,8 @@ export default function ActorPage() {
                   data-testid="filmography-toggle"
                 >
                   {showAllFilmography
-                    ? "Show less ▲"
-                    : `Show all ${combinedFilmography.length} titles ▼`}
+                    ? "Show less"
+                    : `Show all ${combinedFilmography.length} titles`}
                 </button>
               )}
             </>

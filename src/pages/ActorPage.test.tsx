@@ -82,6 +82,8 @@ const mockDeceasedActor = {
     yearsLost: -5,
     hasDetailedDeathInfo: false,
     notableFactors: ["found_dead", "heart_disease", "media_sensation"],
+    career: null,
+    relatedCelebrities: null,
   },
 }
 

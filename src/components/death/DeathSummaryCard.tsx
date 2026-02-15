@@ -71,9 +71,25 @@ export default function DeathSummaryCard({
           <button
             onClick={handleToggle}
             aria-expanded={isExpanded}
-            className="flex w-full items-center text-left transition-colors hover:text-brown-medium"
+            className="flex w-full items-center gap-2 text-left transition-colors hover:text-brown-medium"
           >
-            <span>{isExpanded ? "▼" : "▶"} Death Circumstances</span>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="currentColor"
+              className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+            >
+              <path
+                d="M4 2l4 4-4 4"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Death Circumstances</span>
           </button>
         ) : (
           <span>Death Circumstances</span>
@@ -99,7 +115,7 @@ export default function DeathSummaryCard({
           className="mt-3 w-full rounded-md py-2 text-center text-sm font-medium text-brown-dark transition-colors hover:bg-cream"
           data-testid="death-details-toggle"
         >
-          {isExpanded ? "Collapse ▲" : "Read full story ▼"}
+          {isExpanded ? "Collapse" : "Read full story"}
         </button>
       )}
 
