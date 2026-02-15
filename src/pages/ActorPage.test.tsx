@@ -81,6 +81,7 @@ const mockDeceasedActor = {
     ageAtDeath: 80,
     yearsLost: -5,
     hasDetailedDeathInfo: false,
+    notableFactors: ["found_dead", "heart_disease", "media_sensation"],
   },
 }
 
@@ -206,7 +207,7 @@ describe("ActorPage", () => {
     })
   })
 
-  it("shows cause of death tooltip with details on click/tap", async () => {
+  it("shows cause of death in header and details in death summary card", async () => {
     vi.mocked(api.getActor).mockResolvedValue(mockDeceasedActor)
 
     renderWithProviders(<ActorPage />, {
@@ -214,18 +215,17 @@ describe("ActorPage", () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByTestId("cause-of-death-trigger")).toBeInTheDocument()
+      expect(screen.getByTestId("actor-page")).toBeInTheDocument()
     })
 
-    // Click to show tooltip (mobile tap behavior)
-    fireEvent.click(screen.getByTestId("cause-of-death-trigger"))
+    // Header shows cause name (no tooltip)
+    expect(screen.getByText(/Cause of Death:/)).toBeInTheDocument()
+    expect(screen.getByText("Natural Causes")).toBeInTheDocument()
+    expect(screen.queryByTestId("death-details-tooltip")).not.toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(screen.getByTestId("death-details-tooltip")).toBeInTheDocument()
-      expect(
-        screen.getByText("Passed peacefully at home surrounded by family.")
-      ).toBeInTheDocument()
-    })
+    // Death summary card shows the details text
+    expect(screen.getByTestId("death-summary-card")).toBeInTheDocument()
+    expect(screen.getByText("Passed peacefully at home surrounded by family.")).toBeInTheDocument()
   })
 
   it("renders external links (TMDB, Wikipedia)", async () => {
@@ -303,7 +303,7 @@ describe("ActorPage", () => {
     ])
   })
 
-  it("shows years lost when positive", async () => {
+  it("shows years lost in death summary card when positive", async () => {
     vi.mocked(api.getActor).mockResolvedValue({
       ...mockDeceasedActor,
       deathInfo: {
@@ -317,8 +317,10 @@ describe("ActorPage", () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText(/Died 15.0 years before life expectancy/)).toBeInTheDocument()
+      expect(screen.getByTestId("death-summary-card")).toBeInTheDocument()
     })
+
+    expect(screen.getByText(/15\.0 years before life expectancy/)).toBeInTheDocument()
   })
 
   it("filmography links to movie pages", async () => {
@@ -442,6 +444,144 @@ describe("ActorPage", () => {
       // Order should be: Another Show (2020), Great TV Show (2018), Great Movie (2015), Another Film (2010)
       const titles = filmRows.map((row) => row.querySelector("h3")?.textContent)
       expect(titles).toEqual(["Another Show", "Great TV Show", "Great Movie", "Another Film"])
+    })
+  })
+
+  describe("collapsible filmography", () => {
+    const mockActorWithManyFilms = {
+      ...mockLivingActor,
+      analyzedFilmography: Array.from({ length: 8 }, (_, i) => ({
+        movieId: 100 + i,
+        title: `Movie ${i + 1}`,
+        releaseYear: 2020 - i,
+        character: `Role ${i + 1}`,
+        posterPath: null,
+        deceasedCount: 1,
+        castCount: 10,
+      })),
+    }
+
+    it("shows only first 5 items when collapsed", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockActorWithManyFilms)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      const filmRows = screen.getAllByTestId("filmography-row")
+      expect(filmRows).toHaveLength(5)
+    })
+
+    it("shows toggle button with total count", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockActorWithManyFilms)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      const toggle = screen.getByTestId("filmography-toggle")
+      expect(toggle).toHaveTextContent("Show all 8 titles")
+    })
+
+    it("expands to show all items when toggle is clicked", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockActorWithManyFilms)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId("filmography-toggle"))
+
+      const filmRows = screen.getAllByTestId("filmography-row")
+      expect(filmRows).toHaveLength(8)
+      expect(screen.getByTestId("filmography-toggle")).toHaveTextContent("Show less")
+    })
+
+    it("collapses back when toggle is clicked again", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockActorWithManyFilms)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      const toggle = screen.getByTestId("filmography-toggle")
+      fireEvent.click(toggle) // expand
+      fireEvent.click(toggle) // collapse
+
+      const filmRows = screen.getAllByTestId("filmography-row")
+      expect(filmRows).toHaveLength(5)
+    })
+
+    it("does not show toggle when filmography has 5 or fewer items", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockLivingActor)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      expect(screen.queryByTestId("filmography-toggle")).not.toBeInTheDocument()
+    })
+  })
+
+  describe("notable factor badges", () => {
+    it("renders factor badges for deceased actors", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockDeceasedActor)
+
+      renderWithProviders(<ActorPage />, {
+        initialEntries: ["/actor/deceased-actor-67890"],
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      const badges = screen.getAllByTestId("factor-badge")
+      expect(badges).toHaveLength(3)
+      expect(screen.getByText("Found Dead")).toBeInTheDocument()
+      expect(screen.getByText("Heart Disease")).toBeInTheDocument()
+      expect(screen.getByText("Media Sensation")).toBeInTheDocument()
+    })
+
+    it("does not render factor badges for living actors", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockLivingActor)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      expect(screen.queryByTestId("factor-badge")).not.toBeInTheDocument()
+    })
+
+    it("does not render factor badges when notableFactors is null", async () => {
+      vi.mocked(api.getActor).mockResolvedValue({
+        ...mockDeceasedActor,
+        deathInfo: {
+          ...mockDeceasedActor.deathInfo!,
+          notableFactors: null,
+        },
+      })
+
+      renderWithProviders(<ActorPage />, {
+        initialEntries: ["/actor/deceased-actor-67890"],
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      expect(screen.queryByTestId("factor-badge")).not.toBeInTheDocument()
     })
   })
 })

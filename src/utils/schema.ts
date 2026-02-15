@@ -62,6 +62,7 @@ interface PersonSchemaInput {
   profilePath: string | null
   placeOfBirth: string | null
   tmdbId?: number | null
+  causeOfDeath?: string | null
 }
 
 /**
@@ -73,7 +74,7 @@ export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Recor
     sameAs.push(`https://www.themoviedb.org/person/${actor.tmdbId}`)
   }
 
-  return {
+  const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Person",
     name: actor.name,
@@ -86,6 +87,16 @@ export function buildPersonSchema(actor: PersonSchemaInput, slug: string): Recor
     url: `${BASE_URL}/actor/${slug}`,
     sameAs: sameAs.length > 0 ? sameAs : undefined,
   }
+
+  if (actor.deathday && actor.causeOfDeath) {
+    // Schema.org doesn't have a causeOfDeath property, but we can embed it in description
+    const deathDesc = `Died ${actor.deathday}. Cause of death: ${actor.causeOfDeath}.`
+    schema.description = actor.biography
+      ? `${actor.biography.slice(0, 150)} ${deathDesc}`
+      : deathDesc
+  }
+
+  return schema
 }
 
 interface BreadcrumbItem {

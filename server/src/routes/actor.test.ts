@@ -14,6 +14,9 @@ vi.mock("../lib/db.js", () => ({
   getActorShowFilmography: vi.fn(),
   getActorByEitherIdWithSlug: vi.fn(),
   hasDetailedDeathInfo: vi.fn().mockResolvedValue(false),
+  getPool: vi.fn().mockReturnValue({
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+  }),
 }))
 
 vi.mock("newrelic", () => ({
@@ -345,6 +348,7 @@ describe("getActor", () => {
         ageAtDeath: 80,
         yearsLost: -5,
         hasDetailedDeathInfo: false,
+        notableFactors: null,
       },
     })
   })
@@ -369,6 +373,7 @@ describe("getActor", () => {
           ageAtDeath: 80, // 2020 - 1940
           yearsLost: null,
           hasDetailedDeathInfo: false,
+          notableFactors: null,
         },
       })
     )

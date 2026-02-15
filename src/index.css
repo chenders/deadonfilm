@@ -24,8 +24,9 @@
   /* Deceased / Accent */
   --deceased-primary: #8b0000;
   --deceased-hover: #6b0000;
-  --deceased-bg: #faf5f5;
+  --deceased-bg: #4a1818;
   --deceased-border: #d4a5a5;
+  --deceased-badge-text: #e8d0d0;
 
   /* Living (gold) */
   --living-primary: #b8860b;
@@ -118,8 +119,9 @@
   /* Deceased / Accent — vivid crimson for dark bg contrast */
   --deceased-primary: #c42020;
   --deceased-hover: #e03030;
-  --deceased-bg: #261414;
+  --deceased-bg: #3a1c1c;
   --deceased-border: #4a2020;
+  --deceased-badge-text: #e8d0d0;
 
   /* Living (gold) — richer, more luminous */
   --living-primary: #d4a020;

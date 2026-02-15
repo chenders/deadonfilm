@@ -66,8 +66,8 @@ export async function fetchPageData(match: MatchResult): Promise<PrerenderPageDa
       return getHomePageData()
     case "actor":
       return getActorPageData(Number(params.actorId))
-    case "actor-death":
-      return getActorDeathPageData(Number(params.actorId))
+    case "redirect":
+      return null // Redirects are handled by middleware before reaching here
     case "movie":
       return getMoviePageData(Number(params.tmdbId))
     case "show":
@@ -238,33 +238,6 @@ async function getActorPageData(actorId: number): Promise<PrerenderPageData | nu
       ]),
     ],
     heading: actor.name,
-    subheading: description,
-  }
-}
-
-async function getActorDeathPageData(actorId: number): Promise<PrerenderPageData | null> {
-  const actor = await getActorById(actorId)
-  if (!actor || !actor.deathday) return null
-
-  const slug = createActorSlug(actor.name, actor.id)
-  const canonicalUrl = `${BASE_URL}/actor/${slug}/death`
-
-  const description = actor.cause_of_death
-    ? `How did ${actor.name} die? ${actor.cause_of_death}. Detailed death information and circumstances.`
-    : `Death details for ${actor.name}. View cause of death, age at death, and circumstances.`
-
-  const imageUrl = actor.tmdb_id
-    ? `${BASE_URL}/og/actor/${actor.tmdb_id}.png`
-    : tmdbProfile(actor.profile_path)
-
-  return {
-    title: `How Did ${actor.name} Die? — Dead on Film`,
-    description,
-    ogType: "profile",
-    imageUrl,
-    canonicalUrl,
-    jsonLd: buildPersonSchema(actor, slug),
-    heading: `How Did ${actor.name} Die?`,
     subheading: description,
   }
 }

@@ -107,6 +107,12 @@ export async function prerenderMiddleware(
       return
     }
 
+    // Handle redirects (e.g. /actor/:slug/death → /actor/:slug)
+    if (match.pageType === "redirect" && match.params.target) {
+      res.redirect(301, match.params.target)
+      return
+    }
+
     // Fetch page data from database
     const pageData = await fetchPageData(match)
     if (!pageData) {

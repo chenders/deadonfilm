@@ -350,7 +350,7 @@ export default function EnrichmentRunDetailsPage() {
                     data-testid={`enrichment-actor-card-${actor.actor_id}`}
                     title={
                       <Link
-                        to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}/death`}
+                        to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}`}
                         className="text-admin-interactive hover:text-admin-interactive-hover hover:underline"
                       >
                         {actor.actor_name}
@@ -428,7 +428,7 @@ export default function EnrichmentRunDetailsPage() {
                       <tr key={actor.actor_id} className="hover:bg-admin-interactive-secondary">
                         <td className="px-3 py-2 text-admin-text-primary">
                           <Link
-                            to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}/death`}
+                            to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}`}
                             className="text-admin-interactive hover:text-admin-interactive-hover hover:underline"
                           >
                             {actor.actor_name}

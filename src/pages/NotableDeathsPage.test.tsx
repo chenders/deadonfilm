@@ -266,7 +266,7 @@ describe("NotableDeathsPage", () => {
     })
 
     const actorCard = screen.getByTestId("notable-death-1")
-    expect(actorCard).toHaveAttribute("href", "/actor/notable-actor-12345/death")
+    expect(actorCard).toHaveAttribute("href", "/actor/notable-actor-12345")
   })
 
   it("renders notable factors as badges", async () => {
