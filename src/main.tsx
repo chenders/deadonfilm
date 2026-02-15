@@ -1,19 +1,13 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
 import { BrowserRouter } from "react-router-dom"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClientProvider } from "@tanstack/react-query"
 import { HelmetProvider } from "react-helmet-async"
+import { createQueryClient } from "./query-client"
 import App from "./App"
 import "./index.css"
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 0, // Always refetch - server Redis cache handles caching
-      retry: 1,
-    },
-  },
-})
+const queryClient = createQueryClient()
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

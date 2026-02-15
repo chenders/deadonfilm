@@ -42,3 +42,5 @@ export function render(
 }
 
 export { createQueryClient } from "./query-client"
+export { matchRouteLoaders } from "./route-loaders"
+export type { PrefetchSpec } from "./route-loaders"

@@ -64,6 +64,11 @@ function resolveDistPaths(): { clientDist: string; serverDist: string } {
   throw new Error(`SSR: Could not find client dist. Tried:\n  ${CLIENT_DIST}\n  ${DEV_CLIENT_DIST}`)
 }
 
+interface PrefetchSpec {
+  queryKey: readonly unknown[]
+  queryFn: () => Promise<unknown>
+}
+
 interface SSRModule {
   render: (
     url: string,
@@ -74,7 +79,13 @@ interface SSRModule {
     helmetContext: { helmet?: HelmetServerState }
     getDehydratedState: () => unknown
   }
-  createQueryClient: () => unknown
+  createQueryClient: () => {
+    prefetchQuery: (opts: {
+      queryKey: readonly unknown[]
+      queryFn: () => Promise<unknown>
+    }) => Promise<void>
+  }
+  matchRouteLoaders: (url: string) => ((fetchBase: string) => PrefetchSpec[]) | null
 }
 
 let cachedTemplate: string | null = null
@@ -136,13 +147,29 @@ function getHelmetHeadTags(helmet: HelmetServerState | undefined): string {
 
 /**
  * Render the React app to a string (non-streaming for cacheability).
- * Uses renderToPipeableStream but collects the output into a string.
+ * Prefetches data via route loaders, then renders using renderToPipeableStream
+ * and collects the output into a string.
  */
 async function renderToString(
   url: string,
-  mod: SSRModule
+  mod: SSRModule,
+  fetchBase: string
 ): Promise<{ html: string; headTags: string; dehydratedState: unknown }> {
   const queryClient = mod.createQueryClient()
+
+  // Prefetch data for the matched route before rendering
+  const getLoaders = mod.matchRouteLoaders(url)
+  if (getLoaders) {
+    const specs = getLoaders(fetchBase)
+    await Promise.allSettled(
+      specs.map((spec) =>
+        queryClient.prefetchQuery({
+          queryKey: spec.queryKey,
+          queryFn: spec.queryFn,
+        })
+      )
+    )
+  }
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -264,8 +291,19 @@ export async function ssrMiddleware(
     const mod = await getSSRModule()
     const template = getTemplate()
 
-    // Render the app
-    const { html: appHtml, headTags, dehydratedState } = await renderToString(normalizedPath, mod)
+    // Build the internal API base URL for prefetching.
+    // Use localhost to call ourselves directly (avoids nginx loop, avoids SSR re-entry).
+    // The SSR middleware skips /api/ paths, so these fetches go straight to API handlers.
+    const urlWithQuery = req.originalUrl
+    const localPort = req.socket.localPort || process.env.PORT || 8080
+    const fetchBase = `http://127.0.0.1:${localPort}`
+
+    // Render the app (prefetches data, then streams React to string)
+    const {
+      html: appHtml,
+      headTags,
+      dehydratedState,
+    } = await renderToString(urlWithQuery, mod, fetchBase)
 
     // Assemble the full HTML document
     const fullHtml = assembleHtml(template, appHtml, headTags, dehydratedState)
