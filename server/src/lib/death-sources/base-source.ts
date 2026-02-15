@@ -355,6 +355,9 @@ export const DEATH_KEYWORDS = [
   "deceased",
   "fatal",
   "killed",
+  "executed",
+  "execution",
+  "hanged",
 ]
 
 /**

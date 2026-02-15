@@ -19,6 +19,7 @@ import {
   extractDeathSentences,
   extractLocation,
   extractUrlFromSearchResults,
+  searchWeb,
 } from "./news-utils.js"
 
 /**
@@ -46,38 +47,28 @@ export class WGASource extends BaseDataSource {
     }
 
     try {
-      // Search via DuckDuckGo HTML
+      // Search via searchWeb (DDG with Google CSE fallback)
       const searchQuery = `site:wga.org "${actor.name}" "in memoriam" OR obituary`
-      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}`
-
-      const searchResponse = await fetch(ddgUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "text/html,application/xhtml+xml",
-        },
+      const { html: searchHtml, error: searchError } = await searchWeb(searchQuery, {
+        userAgent: this.userAgent,
         signal: this.createTimeoutSignal(),
       })
 
-      if (searchResponse.status === 403) {
-        throw new SourceAccessBlockedError("Search blocked (403)", this.type, ddgUrl, 403)
-      }
-
-      if (!searchResponse.ok) {
+      if (searchError || !searchHtml) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
-          error: `Search failed: HTTP ${searchResponse.status}`,
+          error: searchError || "Search returned no results",
         }
       }
 
-      const searchHtml = await searchResponse.text()
       const pageUrl = this.extractPageUrl(searchHtml, actor)
 
       if (!pageUrl) {
         return {
           success: false,
-          source: this.createSourceEntry(startTime, 0, ddgUrl),
+          source: this.createSourceEntry(startTime, 0),
           data: null,
           error: "Not found in WGA",
         }
