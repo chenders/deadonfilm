@@ -37,25 +37,25 @@ export default function EnrichmentRunDetailsPage() {
   const { toast } = useToast()
 
   const { data: run, isLoading: runLoading, error: runError } = useEnrichmentRunDetails(runId)
+  const isRunning = run?.exit_reason === null && run?.completed_at === null
+  const { data: progress } = useEnrichmentRunProgress(runId, isRunning)
+
+  // Pass isRunning to hooks so they poll during active runs
   const {
     data: actors,
     isLoading: actorsLoading,
     error: actorsError,
-  } = useEnrichmentRunActors(runId, actorsPage, actorsPageSize)
+  } = useEnrichmentRunActors(runId, actorsPage, actorsPageSize, isRunning)
   const {
     data: sourceStats,
     isLoading: sourceStatsLoading,
     error: sourceStatsError,
-  } = useRunSourcePerformanceStats(runId)
+  } = useRunSourcePerformanceStats(runId, isRunning)
   const {
     data: logsData,
     isLoading: logsLoading,
     error: logsError,
-  } = useEnrichmentRunLogs(runId, logsPage, logsPageSize, logLevel)
-
-  // Real-time progress tracking for running enrichments
-  const isRunning = run?.exit_reason === null && run?.completed_at === null
-  const { data: progress } = useEnrichmentRunProgress(runId, isRunning)
+  } = useEnrichmentRunLogs(runId, logsPage, logsPageSize, logLevel, isRunning)
 
   // Stop enrichment mutation
   const stopEnrichment = useStopEnrichmentRun()
@@ -96,6 +96,11 @@ export default function EnrichmentRunDetailsPage() {
   const durationSec = hasDuration ? Math.round(durationMs / 1000) : null
   const avgActorTime =
     run.actors_processed > 0 && hasDuration ? Math.round(durationMs / run.actors_processed) : null
+
+  // Overlay progress data on summary stats for real-time updates while running
+  const displayProcessed = isRunning && progress ? progress.actorsProcessed : run.actors_processed
+  const displayEnriched = isRunning && progress ? progress.actorsEnriched : run.actors_enriched
+  const displayCost = isRunning && progress ? progress.totalCostUsd : parseFloat(run.total_cost_usd)
 
   return (
     <AdminLayout>
@@ -185,22 +190,28 @@ export default function EnrichmentRunDetailsPage() {
           </div>
         )}
 
-        {/* Summary Stats */}
+        {/* Summary Stats — overlay progress data for real-time updates while running */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <StatCard
             label="Actors Processed"
-            value={run.actors_processed.toLocaleString()}
-            subtext={`${run.actors_enriched} enriched`}
+            value={displayProcessed.toLocaleString()}
+            subtext={`${displayEnriched} enriched`}
           />
           <StatCard
             label="Fill Rate"
-            value={run.fill_rate ? `${run.fill_rate}%` : "N/A"}
+            value={
+              isRunning && displayProcessed > 0
+                ? `${((displayEnriched / displayProcessed) * 100).toFixed(1)}%`
+                : run.fill_rate
+                  ? `${run.fill_rate}%`
+                  : "N/A"
+            }
             subtext={`${run.actors_with_death_page} with death page`}
           />
           <StatCard
             label="Total Cost"
-            value={`$${parseFloat(run.total_cost_usd).toFixed(2)}`}
-            subtext={`Avg: $${run.actors_processed > 0 ? (parseFloat(run.total_cost_usd) / run.actors_processed).toFixed(3) : "0.000"}/actor`}
+            value={`$${displayCost.toFixed(2)}`}
+            subtext={`Avg: $${displayProcessed > 0 ? (displayCost / displayProcessed).toFixed(3) : "0.000"}/actor`}
           />
           <StatCard
             label="Duration"
