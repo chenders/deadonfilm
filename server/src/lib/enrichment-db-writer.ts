@@ -175,6 +175,20 @@ export async function writeToProduction(
     actorParams.push(enrichment.causeOfDeathDetailsSource)
   }
 
+  // Ensure manner is consistent with categories: if categories contain a
+  // manner-like slug but manner is null or 'undetermined', infer from categories
+  if (enrichment.deathCategories?.length) {
+    const mannerFromCategories = (["homicide", "suicide", "accident", "natural"] as const).find(
+      (m) => enrichment.deathCategories!.includes(m)
+    )
+    if (
+      mannerFromCategories &&
+      (!enrichment.deathManner || enrichment.deathManner === "undetermined")
+    ) {
+      enrichment.deathManner = mannerFromCategories
+    }
+  }
+
   if (enrichment.deathManner) {
     actorUpdates.push(`death_manner = $${actorParamIndex++}`)
     actorParams.push(enrichment.deathManner)
