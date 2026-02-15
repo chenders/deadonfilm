@@ -7,6 +7,7 @@
  *   2. deathday_precision — "day" for all full-date deathdates
  *   3. covid_related    — true when cause_of_death mentions covid/coronavirus
  *   4. death_categories — computed from cause_of_death text + manner
+ *   5. age_at_death / expected_lifespan / years_lost — from birthday + deathday + cohort tables
  *
  * Usage:
  *   npx tsx scripts/sync-actor-death-fields.ts [--dry-run]
@@ -16,7 +17,7 @@ import "dotenv/config"
 import { Command } from "commander"
 import { getPool } from "../src/lib/db/pool.js"
 import { CAUSE_CATEGORIES } from "../src/lib/cause-categories.js"
-import type { CauseCategoryKey } from "../src/lib/cause-categories.js"
+import { calculateYearsLost } from "../src/lib/mortality-stats.js"
 
 interface Options {
   dryRun: boolean
@@ -189,6 +190,74 @@ async function run(options: Options) {
     }
 
     // ---------------------------------------------------------------
+    // 5. Compute age_at_death, expected_lifespan, years_lost
+    // ---------------------------------------------------------------
+    const ageRows = await pool.query<{
+      id: number
+      birthday: string
+      deathday: string
+    }>(`
+      SELECT id, birthday::text, deathday::text
+      FROM actors
+      WHERE birthday IS NOT NULL AND deathday IS NOT NULL
+        AND (age_at_death IS NULL OR expected_lifespan IS NULL OR years_lost IS NULL)
+    `)
+    console.log(
+      `${prefix}age_at_death/expected_lifespan/years_lost: ${ageRows.rows.length} actors to compute`
+    )
+
+    if (!dryRun && ageRows.rows.length > 0) {
+      let updated = 0
+      const batchSize = 500
+      for (let i = 0; i < ageRows.rows.length; i += batchSize) {
+        const batch = ageRows.rows.slice(i, i + batchSize)
+        const cases: { id: number; age: number; lifespan: number; lost: number }[] = []
+
+        for (const row of batch) {
+          const result = await calculateYearsLost(row.birthday, row.deathday)
+          if (result) {
+            cases.push({
+              id: row.id,
+              age: result.ageAtDeath,
+              lifespan: result.expectedLifespan,
+              lost: result.yearsLost,
+            })
+          }
+        }
+
+        if (cases.length > 0) {
+          const ageClauses: string[] = []
+          const lifespanClauses: string[] = []
+          const lostClauses: string[] = []
+          const params: unknown[] = []
+          let paramIdx = 1
+
+          for (const c of cases) {
+            ageClauses.push(`WHEN id = $${paramIdx} THEN $${paramIdx + 1}::int`)
+            lifespanClauses.push(`WHEN id = $${paramIdx} THEN $${paramIdx + 2}::numeric`)
+            lostClauses.push(`WHEN id = $${paramIdx} THEN $${paramIdx + 3}::numeric`)
+            params.push(c.id, c.age, c.lifespan, c.lost)
+            paramIdx += 4
+          }
+
+          const ids = cases.map((c) => c.id)
+          params.push(ids)
+
+          await pool.query(
+            `UPDATE actors SET
+               age_at_death = CASE ${ageClauses.join(" ")} END,
+               expected_lifespan = CASE ${lifespanClauses.join(" ")} END,
+               years_lost = CASE ${lostClauses.join(" ")} END
+             WHERE id = ANY($${paramIdx}::int[])`,
+            params
+          )
+          updated += cases.length
+        }
+      }
+      console.log(`  Updated ${updated} actors`)
+    }
+
+    // ---------------------------------------------------------------
     // Summary
     // ---------------------------------------------------------------
     console.log(`\n${prefix}Done.`)
@@ -206,7 +275,7 @@ async function run(options: Options) {
 const program = new Command()
   .name("sync-actor-death-fields")
   .description(
-    "Sync deterministic death fields (manner, precision, covid, categories) on actors table"
+    "Sync deterministic death fields (manner, precision, covid, categories, age/lifespan) on actors table"
   )
   .option("-n, --dry-run", "Preview changes without applying them")
   .action(async (opts: Options) => {
