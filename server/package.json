@@ -98,6 +98,8 @@
     "compare:imdb-methods": "tsx scripts/compare-imdb-lookup-methods.ts",
     "//backfill:cause-manner": "Classify cause of death strings by manner (natural/accident/suicide/homicide/undetermined)",
     "backfill:cause-manner": "tsx scripts/backfill-cause-manner.ts",
+    "//sync:death-fields": "Sync deterministic death fields (manner, precision, covid, categories) to actors table",
+    "sync:death-fields": "tsx scripts/sync-actor-death-fields.ts",
     "//backfill:movie-popularity": "Backfill TMDB popularity scores for movies",
     "backfill:movie-popularity": "tsx scripts/backfill-movie-popularity.ts",
     "//backfill:ratings": "Master orchestration script - runs all rating backfills in order",
