@@ -826,6 +826,63 @@ describe("getActorDeathDetails", () => {
     )
   })
 
+  it("includes description-only sources and deduplicates them by name", async () => {
+    const circumstancesWithDescriptionOnly = {
+      ...mockCircumstances,
+      sources: {
+        circumstances: {
+          type: "wikidata",
+          url: "https://www.wikidata.org/wiki/Q12345",
+          confidence: 0.6,
+        },
+        cleanupSource: "claude-opus-4-5",
+      },
+      raw_response: [
+        {
+          sourceName: "Wikidata",
+          sourceType: "wikidata",
+          text: "cause of death: cardiac arrest",
+          confidence: 0.6,
+          // No URL
+        },
+        {
+          sourceName: "Wikidata",
+          sourceType: "wikidata",
+          text: "duplicate source without URL",
+          confidence: 0.5,
+          // No URL — duplicate name should be filtered
+        },
+        {
+          sourceName: "Local newspaper",
+          sourceType: "newspaper",
+          text: "Obituary notice",
+          confidence: 0.3,
+          // No URL
+        },
+      ],
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      circumstancesWithDescriptionOnly as any
+    )
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    // Should include both unique names but deduplicate the second "Wikidata"
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          circumstances: [
+            { url: null, archive_url: null, description: "Wikidata" },
+            { url: null, archive_url: null, description: "Local newspaper" },
+          ],
+        }),
+      })
+    )
+  })
+
   it("selects only the best source for career status", async () => {
     const circumstancesWithMultipleCareerStatusSources = {
       ...mockCircumstances,

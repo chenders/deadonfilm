@@ -284,6 +284,7 @@ function buildSourcesResponse(
 
     const entries: SourceEntry[] = []
     const seenUrls = new Set<string>()
+    const seenNames = new Set<string>()
 
     // Sort by confidence descending so highest-confidence sources appear first
     const sorted = [...raw].sort((a, b) => b.confidence - a.confidence)
@@ -317,12 +318,15 @@ function buildSourcesResponse(
         continue
       }
 
-      // Sources without a URL (description only)
-      entries.push({
-        url: null,
-        archive_url: null,
-        description: source.sourceName,
-      })
+      // Sources without a URL (description only, deduplicate by name)
+      if (!seenNames.has(source.sourceName)) {
+        seenNames.add(source.sourceName)
+        entries.push({
+          url: null,
+          archive_url: null,
+          description: source.sourceName,
+        })
+      }
     }
 
     return entries.length > 0 ? entries : null
