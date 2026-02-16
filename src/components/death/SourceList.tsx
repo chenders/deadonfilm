@@ -1,6 +1,7 @@
 /**
  * Renders source entries inline with middot separators.
  * Shows the first 3 sources by default; remaining are behind a toggle.
+ * Uses semantic <ul>/<li> with inline flex layout for accessibility.
  */
 
 import { useState } from "react"
@@ -42,13 +43,19 @@ export default function SourceList({ sources, title }: SourceListProps) {
 
   return (
     <div className="mt-2 text-xs text-text-muted" data-testid={`sources-${title.toLowerCase()}`}>
-      <span className="font-medium">{title}: </span>
-      {visible.map((source, idx) => (
-        <span key={idx}>
-          <SourceItem source={source} />
-          {idx < visible.length - 1 && <span className="mx-1">&middot;</span>}
-        </span>
-      ))}
+      <h4 className="inline font-medium">{title}:</h4>{" "}
+      <ul className="inline">
+        {visible.map((source, idx) => (
+          <li key={idx} className="inline">
+            <SourceItem source={source} />
+            {idx < visible.length - 1 && (
+              <span className="mx-1" aria-hidden="true">
+                &middot;
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
       {hasOverflow && (
         <button
           type="button"
