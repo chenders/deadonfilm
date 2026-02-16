@@ -10,7 +10,8 @@ Uses US SSA actuarial life tables. Implementation: `server/src/lib/mortality-sta
 | Metric | Formula |
 |--------|---------|
 | Expected Deaths | Sum of P(death) for each actor from filming age to current age |
-| Curse Score | `(Actual - Expected) / (Expected + 2)`. Empirical Bayes shrinkage (k=2). Positive = "cursed" |
+| Curse Score (Movies) | `(Actual - Expected) / (Expected + 2)`. Empirical Bayes shrinkage (k=2). Positive = "cursed" |
+| Curse Score (Actors) | `SUM(Actual) - SUM(Expected)` across filmography. Raw difference, no shrinkage |
 | Years Lost | `Expected Lifespan - Actual`. Positive = died early |
 
 ## Rules

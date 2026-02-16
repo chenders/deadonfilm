@@ -2,7 +2,7 @@
 
 Guidance for GitHub Copilot when working with the Dead on Film repository.
 
-**Keep in sync with**: `CLAUDE.md` and `.claude/rules/*.md`
+**Keep in sync with**: `CLAUDE.md` and `.claude/rules/*.md`. When modifying any of these instruction files, update the others to match. See `.claude/rules/documentation-sync.md` for details.
 
 ---
 
@@ -22,8 +22,6 @@ git checkout -b fix/descriptive-name   # or feat/, chore/, docs/
 
 **Common mistake**: Starting to make changes while on main, then trying to commit. STOP. Create a branch FIRST.
 
-**Why this matters**: Direct commits to main bypass CI, skip code review, and can break production. The deployment failure from migration ordering is an example of what happens when branches aren't properly managed.
-
 ### 2. NEVER Fabricate Identifiers
 
 Verify before stating any TMDB ID, URL, database value, or API response. If unverified, provide general guidance. Do NOT guess IDs.
@@ -36,9 +34,6 @@ db.query(`SELECT * FROM actors WHERE id = ${userId}`)
 
 // CORRECT - parameterized
 db.query(`SELECT * FROM actors WHERE id = $1`, [userId])
-
-// Optional filters - use boolean logic, not string interpolation
-// AND ($1 = true OR status = 'active')
 ```
 
 ### 4. NEVER Skip Tests
@@ -54,25 +49,23 @@ All scripts in `server/scripts/` MUST import `dotenv/config` at the top to load 
 import "dotenv/config"  // MUST be first import
 import { Command } from "commander"
 // ... rest of imports
-
-// Script can now access process.env.DATABASE_URL, etc.
 ```
-
-**Why:** Scripts run outside the server context and won't have access to environment variables (DATABASE_URL, API keys, etc.) without explicitly loading dotenv.
 
 ---
 
 ## Project Overview
 
-**Dead on Film** - Look up movies/TV shows to see which actors have passed away. Shows mortality statistics, death dates, and causes of death.
+**Dead on Film** - A web application that tracks deceased actors across movies and TV shows. Combines TMDB data with AI-powered death enrichment to provide mortality statistics, cause of death details, discovery pages, and an admin dashboard. The database contains 572,000+ actors across 152,000+ movies and TV shows.
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
-| Backend | Node.js, Express.js, TypeScript |
-| Database | PostgreSQL 16 |
-| State | TanStack Query |
-| Data Sources | TMDB API, Claude API, Wikidata SPARQL |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, React Router 6 |
+| Backend | Node.js, Express, TypeScript |
+| Database | PostgreSQL 16 (raw SQL via `pg`, no ORM) |
+| Caching | Redis 7 via `ioredis` |
+| Job Queue | BullMQ on separate Redis instance |
+| Data Sources | TMDB API, Claude API, Wikidata SPARQL, 50+ enrichment sources |
+| Monitoring | New Relic APM, Pino logging |
 
 ### URL Patterns
 
@@ -87,6 +80,27 @@ import { Command } from "commander"
 
 ---
 
+## Architecture
+
+### Backend (Node.js/Express/TypeScript)
+- **Entry point**: `server/src/index.ts`
+- **Worker**: `server/src/worker.ts` (BullMQ job processor)
+- **Routes**: `server/src/routes/` (public API) and `server/src/routes/admin/` (authenticated)
+- **Library modules**: `server/src/lib/` — database queries, death sources, jobs, mortality stats, entity linker, Claude batch API
+- **Scripts**: `server/scripts/` — seeding, backfilling, enrichment, sync, monitoring (all use Commander.js)
+- **Migrations**: `server/migrations/*.cjs` (node-pg-migrate)
+
+### Frontend (React 18/TypeScript/Vite)
+- **Entry point**: `src/main.tsx`
+- **Routing**: React Router 6 (`src/App.tsx`)
+- **Data fetching**: TanStack Query — server-side Redis handles caching, client uses `staleTime: 0`
+- **Styling**: Tailwind CSS 3 with CSS custom properties for theming (dark mode via `class` strategy)
+- **Build output**: `dist/`
+- **Path alias**: `@/*` maps to `./src/*`
+- **Vite proxy**: `/api` and `/admin/api` proxy to `localhost:8080`
+
+---
+
 ## Database Schema
 
 | Table | Purpose |
@@ -94,7 +108,9 @@ import { Command } from "commander"
 | `actors` | All actors, death info, popularity. **`tmdb_id` is nullable.** |
 | `movies` / `shows` / `episodes` | Content metadata with mortality stats |
 | `actor_movie_appearances` / `actor_show_appearances` | Links actors to content via `actor_id` (primary key) |
+| `actor_death_circumstances` | Enriched death details: narrative, sources, confidence |
 | `actuarial_life_tables` / `cohort_life_expectancy` | SSA mortality data |
+| `enrichment_runs` / `enrichment_run_actors` | Enrichment batch tracking |
 
 **Important**: Always join actors using `actor_id`, never `tmdb_id`. The `tmdb_id` field can be NULL for actors from non-TMDB sources.
 
@@ -103,15 +119,25 @@ import { Command } from "commander"
 ## Development Commands
 
 ```bash
+# Development
+npm run dev          # Frontend + Backend (starts Docker containers + HMR)
+npm run dev:stop     # Stop Docker containers
+
 # Quality checks (run before every commit)
 npm run format && cd server && npm run format
 npm run lint && cd server && npm run lint
-npm run type-check && cd server && npm run type-check
+npm run type-check
 npm test
-# Server tests: cd server && npm test (may exit non-zero locally; CI runs reliably)
+# Server tests: cd server && npm test
 
-# Development
-npm run dev          # Frontend + Backend (starts Docker containers + HMR)
+# Build
+npm run build        # TypeScript check + Vite production build
+npm run build:all    # Frontend + server builds
+
+# Database
+cd server && npm run migrate:up      # Run pending migrations
+cd server && npm run migrate:down    # Rollback last migration
+cd server && npm run migrate:create -- migration-name  # Create new
 ```
 
 ---
@@ -143,7 +169,7 @@ Longer description here.
 
 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -154,7 +180,7 @@ EOF
 
 Critical rules for PR comments, screenshots, and reviews:
 
-1. **NEVER commit directly to main** - always use feature branches, ask about new branches for substantial new work
+1. **NEVER commit directly to main** - always use feature branches
 2. **ALWAYS use heredoc for multiline commit/PR messages** - prevents bash escaping issues
 3. **ALWAYS verify screenshots before committing** - prevents login screen/wrong page uploads
 4. **ALWAYS use explicit viewport sizes in Playwright** - ensures consistency across CI/local
@@ -201,14 +227,15 @@ Every PR must include tests covering:
 | Formula | Description |
 |---------|-------------|
 | Expected Deaths | Sum of death probabilities for each actor (filming age to current age) |
-| Curse Score | `(Actual - Expected) / (Expected + 2)`. Empirical Bayes shrinkage (k=2). Positive = more deaths than expected |
+| Curse Score (Movies) | `(Actual - Expected) / (Expected + 2)`. Empirical Bayes shrinkage (k=2). Positive = more deaths than expected |
+| Curse Score (Actors) | `SUM(Actual) - SUM(Expected)` across filmography. Raw difference, no shrinkage |
 | Years Lost | `Expected Lifespan - Actual Lifespan`. Positive = died early |
 
 ### Calculation Rules
 
 1. **Archived Footage**: Exclude actors who died >3 years before release
 2. **Same-Year Death**: Count with at least 1 year of death probability
-3. **Cursed Actors**: Sum co-star deaths across filmography, then compute curse score
+3. **Cursed Actors**: Sum co-star deaths across filmography
 
 ### Obscure Filtering
 
@@ -219,18 +246,25 @@ A movie is "obscure" if:
 
 ---
 
-## Cause of Death Lookup Priority
+## Death Enrichment
 
-1. **Claude API** - ALWAYS try first (most accurate)
-2. **Wikidata SPARQL** - Only if Claude returns null/vague
-3. **Wikipedia text** - Last resort
+The enrichment system tries sources in priority order, stopping when confidence threshold (0.5) is reached:
+
+1. **Phase 1: Structured Data** (free) - Wikidata SPARQL, Wikipedia, IMDb, BFI
+2. **Phase 2: Web Search** - Google, Bing, DuckDuckGo, Brave (with link following)
+3. **Phase 3: News Sources** - Guardian, NYTimes, AP News, and others
+4. **Phase 4: Obituary Sites** - Find a Grave, Legacy.com
+5. **Phase 5: Historical Archives** - Trove, Europeana, Internet Archive, Chronicling America
+6. **Phase 6: Genealogy** - FamilySearch
+7. **Phase 7: AI Models** (optional, by ascending cost) - Gemini Flash through GPT-4o
+
+For full details, see `.claude/rules/death-enrichment.md`.
 
 ---
 
 ## Code Quality
 
 - **DRY**: Extract repeated logic, consolidate identical branches
-- **QuickActions.tsx**: Use shared `emojiClass` variable for emoji spans
 - Run format/lint/type-check before committing
 - **Magic numbers**: Extract to named constants at module level
 - **N+1 queries**: Batch database lookups, never query inside loops
@@ -279,6 +313,12 @@ Use `fileURLToPath` instead of `new URL().pathname`:
 import { fileURLToPath } from "url"
 const __filename = fileURLToPath(import.meta.url)
 ```
+
+---
+
+## JavaScript/CommonJS Files
+
+These must remain JS/CJS for tooling compatibility: `eslint.config.js`, `postcss.config.js`, `tailwind.config.js`, `server/migrations/*.cjs`, `server/newrelic.cjs`
 
 ---
 

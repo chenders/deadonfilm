@@ -77,6 +77,27 @@ How each user-displayed death field is set, changed, and guarded.
 - **Set by**: `sync-actor-death-fields.ts` — sets to 'day' for all actors with full deathday dates
 - **Not displayed** directly; affects date formatting
 
+### `enriched_at` (timestamp with time zone)
+- **Set by**: Enrichment script (`enrichment-db-writer.ts`)
+- **Updated by**: Re-enrichment runs
+- **Not displayed** to end users; tracks when enrichment last ran
+
+### `enrichment_source` (text)
+- **Set by**: Enrichment script — tracks which method added data (e.g., "multi-source-enrichment", "claude-batch")
+- **Not displayed** to end users
+
+### `enrichment_version` (text)
+- **Set by**: Enrichment script — version string for potential re-enrichment targeting
+- **Not displayed** to end users
+
+### `actor_awards_data` (jsonb)
+- **Set by**: Actor popularity calculation (`calculate-actor-popularity.ts`), awards sync scripts
+- **Not displayed** directly; used for popularity scoring
+
+### `actor_awards_updated_at` (timestamp)
+- **Set by**: Awards sync scripts
+- **Not displayed** to end users
+
 ## `actor_death_circumstances` Table — Narrative Fields
 
 All fields set by enrichment script via Claude cleanup or Claude batch API. One record per actor (upsert on `actor_id`). Updated by re-enrichment or admin review/approval.
