@@ -39,7 +39,7 @@ export default function SourceList({ sources, title }: SourceListProps) {
 
   const hasOverflow = sources.length > MAX_VISIBLE
   const visible = expanded ? sources : sources.slice(0, MAX_VISIBLE)
-  const hiddenCount = sources.length - MAX_VISIBLE
+  const hiddenCount = Math.max(0, sources.length - MAX_VISIBLE)
 
   return (
     <div className="mt-2 text-xs text-text-muted" data-testid={`sources-${title.toLowerCase()}`}>
@@ -60,7 +60,8 @@ export default function SourceList({ sources, title }: SourceListProps) {
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="ml-1 text-xs text-brown-medium hover:text-brown-dark"
+          aria-expanded={expanded}
+          className="ml-1 text-xs text-brown-medium hover:text-brown-dark focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-brown-medium/50"
           data-testid="sources-toggle"
         >
           {expanded ? "show less" : `+ ${hiddenCount} more`}
