@@ -72,7 +72,7 @@ Short summary
 
 Details here
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -227,7 +227,7 @@ Fix null pointer in actor death date handling
 
 Added null check before accessing death_date property to prevent runtime error.
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 
@@ -377,7 +377,7 @@ The diff shows what changed; the message explains why it was necessary.
 
 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -428,7 +428,7 @@ Fixes runtime error: "Cannot read property 'date' of null"
 
 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -756,7 +756,7 @@ Changes:
 - Update ActorResponse type to mark death_date as optional
 - Add test case for actors without death info
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 
@@ -872,7 +872,7 @@ Changes:
 - Test coverage for all stat calculations
 - Integration with existing actor page layout
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 
@@ -968,7 +968,7 @@ Summary
 
 Details
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 
