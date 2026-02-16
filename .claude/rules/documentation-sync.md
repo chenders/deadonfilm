@@ -3,12 +3,27 @@ globs: ["CLAUDE.md", ".claude/rules/*.md", ".github/copilot-instructions.md"]
 ---
 # Documentation Sync
 
-When modifying instruction files, **update the others to match**:
+When modifying any instruction file, **update the others to match**.
 
-| File | Purpose |
-|------|---------|
-| `CLAUDE.md` | Primary Claude Code instructions |
-| `.claude/rules/*.md` | Topic-specific rules |
-| `.github/copilot-instructions.md` | GitHub Copilot instructions |
+## Files to Keep in Sync
 
-Sync: critical constraints, database schema, testing requirements, mortality rules, code quality standards, security best practices.
+| File | Purpose | Audience |
+|------|---------|----------|
+| `CLAUDE.md` | Project overview, commands, architecture | Claude Code |
+| `.claude/rules/*.md` | Topic-specific detailed rules | Claude Code |
+| `.github/copilot-instructions.md` | Consolidated instructions | GitHub Copilot |
+
+## What to Sync
+
+Copilot instructions consolidate key topics from CLAUDE.md and `.claude/rules/*.md` into a single file. When updating any of these, ensure consistency across all three for:
+
+- Project overview, tech stack, architecture
+- Development commands
+- Database schema and join rules
+- Testing requirements and conventions
+- Mortality formulas and thresholds
+- Death enrichment source priority order
+- Security best practices
+- Code quality standards
+- Git workflow and commit conventions
+- JavaScript/CommonJS file list
