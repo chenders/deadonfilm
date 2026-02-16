@@ -87,7 +87,7 @@ import { Command } from "commander"
 - **Worker**: `server/src/worker.ts` (BullMQ job processor)
 - **Routes**: `server/src/routes/` (public API) and `server/src/routes/admin/` (authenticated)
 - **Library modules**: `server/src/lib/` — database queries, death sources, jobs, mortality stats, entity linker, Claude batch API
-- **Scripts**: `server/scripts/` — seeding, backfilling, enrichment, sync, monitoring (all use Commander.js)
+- **Scripts**: `server/scripts/` — seeding, backfilling, enrichment, sync, monitoring (most use Commander.js)
 - **Migrations**: `server/migrations/*.{cjs,js}` (node-pg-migrate)
 
 ### Frontend (React 18/TypeScript/Vite)

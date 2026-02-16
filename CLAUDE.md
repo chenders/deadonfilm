@@ -46,7 +46,7 @@ Dead on Film is a web application that tracks deceased actors across movies and 
 - **Job queue**: BullMQ on separate Redis instance. Connection: `REDIS_JOBS_URL`
 - **Routes**: `server/src/routes/` (public API) and `server/src/routes/admin/` (authenticated)
 - **Library modules**: `server/src/lib/` — database queries, death sources, jobs, mortality stats, entity linker, Claude batch API
-- **Scripts**: `server/scripts/` — seeding, backfilling, enrichment, sync, monitoring (121 scripts, all use Commander.js)
+- **Scripts**: `server/scripts/` — seeding, backfilling, enrichment, sync, monitoring (most use Commander.js)
 - **Migrations**: `server/migrations/*.{cjs,js}` (node-pg-migrate)
 - **Logging**: Pino
 - **Monitoring**: New Relic APM
