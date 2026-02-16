@@ -88,7 +88,7 @@ import { Command } from "commander"
 - **Routes**: `server/src/routes/` (public API) and `server/src/routes/admin/` (authenticated)
 - **Library modules**: `server/src/lib/` — database queries, death sources, jobs, mortality stats, entity linker, Claude batch API
 - **Scripts**: `server/scripts/` — seeding, backfilling, enrichment, sync, monitoring (all use Commander.js)
-- **Migrations**: `server/migrations/*.cjs` (node-pg-migrate)
+- **Migrations**: `server/migrations/*.{cjs,js}` (node-pg-migrate)
 
 ### Frontend (React 18/TypeScript/Vite)
 - **Entry point**: `src/main.tsx`
@@ -126,7 +126,7 @@ npm run dev:stop     # Stop Docker containers
 # Quality checks (run before every commit)
 npm run format && cd server && npm run format
 npm run lint && cd server && npm run lint
-npm run type-check
+npm run type-check && cd server && npm run type-check
 npm test
 # Server tests: cd server && npm test
 

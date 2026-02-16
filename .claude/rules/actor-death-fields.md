@@ -91,7 +91,7 @@ How each user-displayed death field is set, changed, and guarded.
 - **Not displayed** to end users
 
 ### `actor_awards_data` (jsonb)
-- **Set by**: Actor popularity calculation (`calculate-actor-popularity.ts`), awards sync scripts
+- **Set by**: Actor popularity calculation job handler (`server/src/lib/jobs/handlers/calculate-actor-popularity.ts`), awards sync scripts
 - **Not displayed** directly; used for popularity scoring
 
 ### `actor_awards_updated_at` (timestamp)

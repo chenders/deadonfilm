@@ -47,7 +47,7 @@ Dead on Film is a web application that tracks deceased actors across movies and 
 - **Routes**: `server/src/routes/` (public API) and `server/src/routes/admin/` (authenticated)
 - **Library modules**: `server/src/lib/` — database queries, death sources, jobs, mortality stats, entity linker, Claude batch API
 - **Scripts**: `server/scripts/` — seeding, backfilling, enrichment, sync, monitoring (121 scripts, all use Commander.js)
-- **Migrations**: `server/migrations/*.cjs` (node-pg-migrate)
+- **Migrations**: `server/migrations/*.{cjs,js}` (node-pg-migrate)
 - **Logging**: Pino
 - **Monitoring**: New Relic APM
 
@@ -85,15 +85,15 @@ server/src/                   # Backend
 └── test/                     # Test utilities
 
 server/scripts/               # CLI scripts (seeding, backfilling, enrichment)
-server/migrations/            # Database migrations (.cjs)
+server/migrations/            # Database migrations (.cjs, .js)
 e2e/                          # Playwright tests and screenshots
 ```
 
 ### Key API Routes
-- `/api/movies/:id` - Movie details with deceased cast
-- `/api/actors/:slug` - Actor profile with filmography
-- `/api/shows/:id` - TV show details
-- `/api/search/movies`, `/api/search/shows` - Search
+- `/api/movie/:id` - Movie details with deceased cast
+- `/api/actor/:slug` - Actor profile with filmography
+- `/api/show/:id` - TV show details
+- `/api/search`, `/api/search/tv` - Search
 - `/api/deaths/*` - Death discovery pages (by cause, decade, notable, unnatural)
 - `/api/stats/*` - Recent deaths, COVID deaths, featured movie, trivia
 - `/admin/api/*` - Admin dashboard (auth required)
@@ -110,17 +110,19 @@ e2e/                          # Playwright tests and screenshots
 
 **Required**:
 - `TMDB_API_TOKEN` - TMDB API access
-- `ANTHROPIC_API_KEY` - Claude API for death enrichment
 
-**Infrastructure** (defaults work for local dev via Docker Compose):
+**Strongly recommended** (required for AI enrichment / highest quality results):
+- `ANTHROPIC_API_KEY` - Claude API for death enrichment and biography generation
+
+**Infrastructure**:
 - `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_URL` - Redis cache connection
-- `REDIS_JOBS_URL` - Redis for BullMQ jobs
+- `REDIS_URL` - Redis cache connection (optional in dev; caching is skipped if unavailable)
+- `REDIS_JOBS_URL` - Redis for BullMQ jobs (optional in dev; job queue disabled if unavailable)
 - `PORT` - Server port (default: 8080)
 
 **Optional** (see `server/.env.example` for full list):
 - `OMDB_API_KEY`, `TRAKT_API_KEY` - Ratings data
-- `GOOGLE_SEARCH_API_KEY`, `BING_SEARCH_API_KEY`, `BRAVE_SEARCH_API_KEY` - Web search for enrichment
+- `GOOGLE_SEARCH_API_KEY` + `GOOGLE_SEARCH_CX`, `BING_SEARCH_API_KEY`, `BRAVE_SEARCH_API_KEY` - Web search for enrichment
 - `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `GROQ_API_KEY` - Additional AI providers
 - `NEW_RELIC_LICENSE_KEY` - APM monitoring
 - `GSC_SERVICE_ACCOUNT_EMAIL`, `GSC_PRIVATE_KEY` - Google Search Console
