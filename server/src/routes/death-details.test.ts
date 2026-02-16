@@ -563,29 +563,32 @@ describe("getActorDeathDetails", () => {
         },
         cleanupSource: "claude-opus-4-5",
       },
-      raw_response: [
-        {
-          sourceName: "Wikipedia",
-          sourceType: "wikipedia",
-          text: "He died at his home...",
-          url: "https://en.wikipedia.org/wiki/Famous_Actor",
-          confidence: 0.75,
-        },
-        {
-          sourceName: "Wikidata",
-          sourceType: "wikidata",
-          text: "cause of death: cardiac arrest",
-          url: "https://www.wikidata.org/wiki/Q12345",
-          confidence: 0.6,
-        },
-        {
-          sourceName: "BBC News",
-          sourceType: "google_search",
-          text: "Famous Actor dies at 80...",
-          url: "https://bbc.com/news/famous-actor-dies",
-          confidence: 0.85,
-        },
-      ],
+      raw_response: {
+        rawSources: [
+          {
+            sourceName: "Wikipedia",
+            sourceType: "wikipedia",
+            text: "He died at his home...",
+            url: "https://en.wikipedia.org/wiki/Famous_Actor",
+            confidence: 0.75,
+          },
+          {
+            sourceName: "Wikidata",
+            sourceType: "wikidata",
+            text: "cause of death: cardiac arrest",
+            url: "https://www.wikidata.org/wiki/Q12345",
+            confidence: 0.6,
+          },
+          {
+            sourceName: "BBC News",
+            sourceType: "google_search",
+            text: "Famous Actor dies at 80...",
+            url: "https://bbc.com/news/famous-actor-dies",
+            confidence: 0.85,
+          },
+        ],
+        gatheredAt: "2026-01-15T12:00:00.000Z",
+      },
     }
 
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
@@ -632,14 +635,17 @@ describe("getActorDeathDetails", () => {
         },
         // No cleanupSource
       },
-      raw_response: [
-        {
-          sourceName: "Wikipedia",
-          sourceType: "wikipedia",
-          url: "https://en.wikipedia.org/wiki/Famous_Actor",
-          confidence: 0.75,
-        },
-      ],
+      raw_response: {
+        rawSources: [
+          {
+            sourceName: "Wikipedia",
+            sourceType: "wikipedia",
+            url: "https://en.wikipedia.org/wiki/Famous_Actor",
+            confidence: 0.75,
+          },
+        ],
+        gatheredAt: "2026-01-15T12:00:00.000Z",
+      },
     }
 
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
@@ -713,20 +719,23 @@ describe("getActorDeathDetails", () => {
         },
         cleanupSource: "claude-opus-4-5",
       },
-      raw_response: [
-        {
-          sourceName: "Wikipedia",
-          sourceType: "wikipedia",
-          url: "https://en.wikipedia.org/wiki/Famous_Actor",
-          confidence: 0.75,
-        },
-        {
-          sourceName: "Google Search",
-          sourceType: "google_search",
-          url: "https://en.wikipedia.org/wiki/Famous_Actor",
-          confidence: 0.5,
-        },
-      ],
+      raw_response: {
+        rawSources: [
+          {
+            sourceName: "Wikipedia",
+            sourceType: "wikipedia",
+            url: "https://en.wikipedia.org/wiki/Famous_Actor",
+            confidence: 0.75,
+          },
+          {
+            sourceName: "Google Search",
+            sourceType: "google_search",
+            url: "https://en.wikipedia.org/wiki/Famous_Actor",
+            confidence: 0.5,
+          },
+        ],
+        gatheredAt: "2026-01-15T12:00:00.000Z",
+      },
     }
 
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
@@ -763,41 +772,44 @@ describe("getActorDeathDetails", () => {
         },
         cleanupSource: "claude-opus-4-5",
       },
-      raw_response: [
-        {
-          sourceName: "Gemini Pro",
-          sourceType: "gemini_pro",
-          url: "https://vertexaisearch.cloud.google.com/redirect/ABC",
-          confidence: 0.85,
-          resolvedSources: [
-            {
-              originalUrl: "https://vertexaisearch.cloud.google.com/redirect/ABC",
-              finalUrl: "https://people.com/obituary",
-              domain: "people.com",
-              sourceName: "People",
-            },
-            {
-              originalUrl: "https://vertexaisearch.cloud.google.com/redirect/DEF",
-              finalUrl: "https://variety.com/news",
-              domain: "variety.com",
-              sourceName: "Variety",
-            },
-            {
-              originalUrl: "https://vertexaisearch.cloud.google.com/redirect/FAIL",
-              finalUrl: "https://vertexaisearch.cloud.google.com/redirect/FAIL",
-              domain: "vertexaisearch.cloud.google.com",
-              sourceName: "Unknown",
-              error: "Timeout",
-            },
-          ],
-        },
-        {
-          sourceName: "Wikipedia",
-          sourceType: "wikipedia",
-          url: "https://en.wikipedia.org/wiki/Famous_Actor",
-          confidence: 0.75,
-        },
-      ],
+      raw_response: {
+        rawSources: [
+          {
+            sourceName: "Gemini Pro",
+            sourceType: "gemini_pro",
+            url: "https://vertexaisearch.cloud.google.com/redirect/ABC",
+            confidence: 0.85,
+            resolvedSources: [
+              {
+                originalUrl: "https://vertexaisearch.cloud.google.com/redirect/ABC",
+                finalUrl: "https://people.com/obituary",
+                domain: "people.com",
+                sourceName: "People",
+              },
+              {
+                originalUrl: "https://vertexaisearch.cloud.google.com/redirect/DEF",
+                finalUrl: "https://variety.com/news",
+                domain: "variety.com",
+                sourceName: "Variety",
+              },
+              {
+                originalUrl: "https://vertexaisearch.cloud.google.com/redirect/FAIL",
+                finalUrl: "https://vertexaisearch.cloud.google.com/redirect/FAIL",
+                domain: "vertexaisearch.cloud.google.com",
+                sourceName: "Unknown",
+                error: "Timeout",
+              },
+            ],
+          },
+          {
+            sourceName: "Wikipedia",
+            sourceType: "wikipedia",
+            url: "https://en.wikipedia.org/wiki/Famous_Actor",
+            confidence: 0.75,
+          },
+        ],
+        gatheredAt: "2026-01-15T12:00:00.000Z",
+      },
     }
 
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
@@ -837,29 +849,32 @@ describe("getActorDeathDetails", () => {
         },
         cleanupSource: "claude-opus-4-5",
       },
-      raw_response: [
-        {
-          sourceName: "Wikidata",
-          sourceType: "wikidata",
-          text: "cause of death: cardiac arrest",
-          confidence: 0.6,
-          // No URL
-        },
-        {
-          sourceName: "Wikidata",
-          sourceType: "wikidata",
-          text: "duplicate source without URL",
-          confidence: 0.5,
-          // No URL — duplicate name should be filtered
-        },
-        {
-          sourceName: "Local newspaper",
-          sourceType: "newspaper",
-          text: "Obituary notice",
-          confidence: 0.3,
-          // No URL
-        },
-      ],
+      raw_response: {
+        rawSources: [
+          {
+            sourceName: "Wikidata",
+            sourceType: "wikidata",
+            text: "cause of death: cardiac arrest",
+            confidence: 0.6,
+            // No URL
+          },
+          {
+            sourceName: "Wikidata",
+            sourceType: "wikidata",
+            text: "duplicate source without URL",
+            confidence: 0.5,
+            // No URL — duplicate name should be filtered
+          },
+          {
+            sourceName: "Local newspaper",
+            sourceType: "newspaper",
+            text: "Obituary notice",
+            confidence: 0.3,
+            // No URL
+          },
+        ],
+        gatheredAt: "2026-01-15T12:00:00.000Z",
+      },
     }
 
     vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)

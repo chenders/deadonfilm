@@ -107,17 +107,41 @@ interface RawSources {
 }
 
 /**
- * Shape of the raw_response JSONB column in actor_death_circumstances.
- * Stores the array of all sources that contributed to Claude cleanup synthesis.
+ * Individual raw source entry from enrichment.
  */
-type RawResponse = Array<{
+interface RawResponseEntry {
   sourceName: string
   sourceType: string
   text?: string
   url?: string
   confidence: number
   resolvedSources?: ResolvedUrl[]
-}>
+}
+
+/**
+ * Extract the raw sources array from the raw_response column.
+ * Enrichment writes `{ rawSources: [...], gatheredAt: "..." }`,
+ * batch API writes `{ response: "...", parsed_at: "..." }`.
+ * Safely handles unknown shapes since the column is typed as `unknown`.
+ */
+function extractRawSources(rawResponse: unknown): RawResponseEntry[] | null {
+  if (!rawResponse || typeof rawResponse !== "object") return null
+
+  // Enrichment wrapper: { rawSources: [...] }
+  if (
+    "rawSources" in rawResponse &&
+    Array.isArray((rawResponse as Record<string, unknown>).rawSources)
+  ) {
+    return (rawResponse as Record<string, unknown>).rawSources as RawResponseEntry[]
+  }
+
+  // Direct array (defensive, in case older records stored differently)
+  if (Array.isArray(rawResponse)) {
+    return rawResponse as RawResponseEntry[]
+  }
+
+  return null
+}
 
 /**
  * Transform source entries from database to API response format.
@@ -125,7 +149,7 @@ type RawResponse = Array<{
  */
 function buildSourcesResponse(
   rawSources: RawSources | SourceEntry[] | null | undefined,
-  rawResponse?: RawResponse | null
+  rawResponse?: unknown
 ): DeathDetailsResponse["sources"] {
   if (!rawSources) {
     return {
@@ -278,7 +302,7 @@ function buildSourcesResponse(
    * to Claude cleanup synthesis). Deduplicates by URL, sorted by confidence descending.
    */
   const rawResponseToSourceEntries = (
-    raw: RawResponse | null | undefined
+    raw: RawResponseEntry[] | null | undefined
   ): SourceEntry[] | null => {
     if (!raw || raw.length === 0) return null
 
@@ -347,17 +371,19 @@ function buildSourcesResponse(
   const circumstancesVal = sources.circumstances
   const rumoredVal = sources.rumoredCircumstances
 
+  // Extract raw sources array from the wrapper object (runtime shape check)
+  const extractedRawSources = sources.cleanupSource ? extractRawSources(rawResponse) : null
+
   return {
     cause: isSourceEntryArray(causeVal) ? causeVal : rawToSourceEntry(causeVal as RawSourceEntry),
-    circumstances:
-      sources.cleanupSource && rawResponse
-        ? (rawResponseToSourceEntries(rawResponse) ??
-          (isSourceEntryArray(circumstancesVal)
-            ? circumstancesVal
-            : rawToSourceEntry(circumstancesVal as RawSourceEntry)))
-        : isSourceEntryArray(circumstancesVal)
+    circumstances: extractedRawSources
+      ? (rawResponseToSourceEntries(extractedRawSources) ??
+        (isSourceEntryArray(circumstancesVal)
           ? circumstancesVal
-          : rawToSourceEntry(circumstancesVal as RawSourceEntry),
+          : rawToSourceEntry(circumstancesVal as RawSourceEntry)))
+      : isSourceEntryArray(circumstancesVal)
+        ? circumstancesVal
+        : rawToSourceEntry(circumstancesVal as RawSourceEntry),
     rumored: isSourceEntryArray(rumoredVal)
       ? rumoredVal
       : rawToSourceEntry(rumoredVal as RawSourceEntry),
@@ -500,7 +526,7 @@ export async function getActorDeathDetails(req: Request, res: Response) {
       relatedCelebrities,
       sources: buildSourcesResponse(
         circumstances?.sources as unknown as RawSources,
-        circumstances?.raw_response as RawResponse | null
+        circumstances?.raw_response
       ),
     }
 
