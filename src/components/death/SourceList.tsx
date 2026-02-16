@@ -15,26 +15,25 @@ export default function SourceList({ sources, title }: SourceListProps) {
 
   return (
     <div className="mt-2" data-testid={`sources-${title.toLowerCase()}`}>
-      <h4 className="text-xs font-medium text-text-muted">{title}:</h4>
-      <ul className="mt-1 space-y-1">
-        {sources.map((source, idx) => (
-          <li key={idx} className="text-xs text-text-muted">
-            {source.url || source.archiveUrl ? (
-              <a
-                href={source.archiveUrl || source.url || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-brown-dark"
-              >
-                {source.description}
-                <ExternalLinkIcon size={10} className="ml-1 inline" />
-              </a>
-            ) : (
-              <span>{source.description}</span>
-            )}
-          </li>
-        ))}
-      </ul>
+      <span className="text-xs font-medium text-text-muted">{title}: </span>
+      {sources.map((source, idx) => (
+        <span key={idx} className="text-xs text-text-muted">
+          {source.url || source.archiveUrl ? (
+            <a
+              href={source.archiveUrl || source.url || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-brown-dark"
+            >
+              {source.description}
+              <ExternalLinkIcon size={10} className="ml-1 inline" />
+            </a>
+          ) : (
+            <span>{source.description}</span>
+          )}
+          {idx < sources.length - 1 && <span className="mx-1">&middot;</span>}
+        </span>
+      ))}
     </div>
   )
 }
