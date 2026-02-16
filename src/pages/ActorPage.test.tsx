@@ -82,6 +82,8 @@ const mockDeceasedActor = {
     yearsLost: -5,
     hasDetailedDeathInfo: false,
     notableFactors: ["found_dead", "heart_disease", "media_sensation"],
+    career: null,
+    relatedCelebrities: null,
   },
 }
 
@@ -530,6 +532,99 @@ describe("ActorPage", () => {
       })
 
       expect(screen.queryByTestId("filmography-toggle")).not.toBeInTheDocument()
+    })
+  })
+
+  describe("career context and related people sections", () => {
+    it("renders career context when present for deceased actor", async () => {
+      vi.mocked(api.getActor).mockResolvedValue({
+        ...mockDeceasedActor,
+        deathInfo: {
+          ...mockDeceasedActor.deathInfo!,
+          career: {
+            statusAtDeath: "semi-retired",
+            lastProject: {
+              title: "Final Film",
+              year: 2019,
+              tmdb_id: 999,
+              imdb_id: null,
+              type: "movie" as const,
+            },
+            posthumousReleases: [],
+          },
+        },
+      })
+
+      renderWithProviders(<ActorPage />, {
+        initialEntries: ["/actor/deceased-actor-67890"],
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId("career-context-section")).toBeInTheDocument()
+      })
+
+      expect(screen.getByText("Career Context")).toBeInTheDocument()
+      expect(screen.getByText("Semi Retired")).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: "Final Film (2019)" })).toBeInTheDocument()
+    })
+
+    it("renders related people when present for deceased actor", async () => {
+      vi.mocked(api.getActor).mockResolvedValue({
+        ...mockDeceasedActor,
+        deathInfo: {
+          ...mockDeceasedActor.deathInfo!,
+          relatedCelebrities: [
+            {
+              name: "Famous Friend",
+              tmdbId: 100,
+              relationship: "close friend",
+              slug: "famous-friend-100",
+            },
+            { name: "Co-Star", tmdbId: null, relationship: "co-star", slug: null },
+          ],
+        },
+      })
+
+      renderWithProviders(<ActorPage />, {
+        initialEntries: ["/actor/deceased-actor-67890"],
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId("related-people-section")).toBeInTheDocument()
+      })
+
+      expect(screen.getByText("Related People")).toBeInTheDocument()
+      expect(screen.getByText("Famous Friend")).toBeInTheDocument()
+      expect(screen.getByText("Co-Star")).toBeInTheDocument()
+    })
+
+    it("does not render career context for living actors", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockLivingActor)
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      expect(screen.queryByTestId("career-context-section")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("related-people-section")).not.toBeInTheDocument()
+    })
+
+    it("does not render sections when fields are null", async () => {
+      vi.mocked(api.getActor).mockResolvedValue(mockDeceasedActor)
+
+      renderWithProviders(<ActorPage />, {
+        initialEntries: ["/actor/deceased-actor-67890"],
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      // mockDeceasedActor has career: null and relatedCelebrities: null
+      expect(screen.queryByTestId("career-context-section")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("related-people-section")).not.toBeInTheDocument()
     })
   })
 

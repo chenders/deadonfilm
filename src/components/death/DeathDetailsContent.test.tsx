@@ -121,14 +121,9 @@ describe("DeathDetailsContent", () => {
     expect(screen.getByTestId("context-section")).toBeInTheDocument()
     expect(screen.getByText(/battling cancer for years/)).toBeInTheDocument()
 
-    // Career Context
-    expect(screen.getByTestId("career-section")).toBeInTheDocument()
-    expect(screen.getByText("Semi Retired")).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "The Shootist (1976)" })).toBeInTheDocument()
-
-    // Related People
-    expect(screen.getByTestId("related-section")).toBeInTheDocument()
-    expect(screen.getByText("Maureen O'Hara")).toBeInTheDocument()
+    // Career Context and Related People are now rendered on ActorPage
+    expect(screen.queryByTestId("career-section")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("related-section")).not.toBeInTheDocument()
 
     // Sources
     expect(screen.getByTestId("sources-section")).toBeInTheDocument()
@@ -163,8 +158,6 @@ describe("DeathDetailsContent", () => {
     // Should NOT show optional sections
     expect(screen.queryByTestId("rumored-section")).not.toBeInTheDocument()
     expect(screen.queryByTestId("context-section")).not.toBeInTheDocument()
-    expect(screen.queryByTestId("career-section")).not.toBeInTheDocument()
-    expect(screen.queryByTestId("related-section")).not.toBeInTheDocument()
   })
 
   it("renders with empty data (no circumstances)", () => {

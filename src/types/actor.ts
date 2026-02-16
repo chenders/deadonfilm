@@ -1,6 +1,7 @@
 // Actor/Person types
 
 import type { PaginationInfo } from "./common"
+import type { ProjectInfo, RelatedCelebrity } from "./death"
 
 // Date precision for partial dates (year-only, year+month, full date)
 export type DatePrecision = "year" | "month" | "day"
@@ -101,6 +102,12 @@ export interface ActorDeathInfo {
   yearsLost: number | null
   hasDetailedDeathInfo: boolean
   notableFactors: string[] | null
+  career: {
+    statusAtDeath: string | null
+    lastProject: ProjectInfo | null
+    posthumousReleases: ProjectInfo[] | null
+  } | null
+  relatedCelebrities: RelatedCelebrity[] | null
 }
 
 export interface ActorProfileResponse {
