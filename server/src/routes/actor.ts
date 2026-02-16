@@ -6,11 +6,14 @@ import {
   hasDetailedDeathInfo,
   getActorByEitherIdWithSlug,
   getPool,
+  type ProjectInfo,
+  type RelatedCelebrity,
 } from "../lib/db.js"
 import newrelic from "newrelic"
 import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
 import { calculateAge } from "../lib/date-utils.js"
 import { createActorSlug } from "../lib/slug-utils.js"
+import { resolveRelatedCelebritySlugs } from "../lib/related-celebrity-slugs.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -52,6 +55,17 @@ interface ActorProfileResponse {
     yearsLost: number | null
     hasDetailedDeathInfo: boolean
     notableFactors: string[] | null
+    career: {
+      statusAtDeath: string | null
+      lastProject: ProjectInfo | null
+      posthumousReleases: ProjectInfo[] | null
+    } | null
+    relatedCelebrities: Array<{
+      name: string
+      tmdbId: number | null
+      relationship: string
+      slug: string | null
+    }> | null
   } | null
 }
 
@@ -137,7 +151,7 @@ export async function getActor(req: Request, res: Response) {
     // Get death info if deceased
     let deathInfo: ActorProfileResponse["deathInfo"] = null
     if (person.deathday) {
-      // Fetch detailed death info flag and notable factors in parallel
+      // Fetch detailed death info flag and circumstances in parallel
       const [hasDetailedInfo, circumstancesRow] = await Promise.all([
         actorRecord.tmdb_id !== null
           ? hasDetailedDeathInfo(actorRecord.tmdb_id)
@@ -148,12 +162,32 @@ export async function getActor(req: Request, res: Response) {
               )
               .then((r) => r.rows[0]?.has_detailed_death_info ?? false),
         getPool()
-          .query<{ notable_factors: string[] | null }>(
-            `SELECT notable_factors FROM actor_death_circumstances WHERE actor_id = $1`,
+          .query<{
+            notable_factors: string[] | null
+            career_status_at_death: string | null
+            last_project: ProjectInfo | null
+            posthumous_releases: ProjectInfo[] | null
+            related_celebrities: RelatedCelebrity[] | null
+          }>(
+            `SELECT notable_factors, career_status_at_death, last_project, posthumous_releases, related_celebrities
+             FROM actor_death_circumstances WHERE actor_id = $1`,
             [actorRecord.id]
           )
           .then((r) => r.rows[0] ?? null),
       ])
+
+      // Resolve slugs for related celebrities using shared helper
+      const relatedCelebrityData = circumstancesRow?.related_celebrities || []
+      const resolvedRelatedCelebrities =
+        relatedCelebrityData.length > 0
+          ? await resolveRelatedCelebritySlugs(relatedCelebrityData)
+          : null
+
+      // Build career info if any field is present
+      const hasCareerData =
+        circumstancesRow?.career_status_at_death ||
+        circumstancesRow?.last_project ||
+        (circumstancesRow?.posthumous_releases && circumstancesRow.posthumous_releases.length > 0)
 
       deathInfo = {
         causeOfDeath: actorRecord.cause_of_death,
@@ -163,6 +197,14 @@ export async function getActor(req: Request, res: Response) {
         yearsLost: actorRecord.years_lost,
         hasDetailedDeathInfo: hasDetailedInfo,
         notableFactors: circumstancesRow?.notable_factors ?? null,
+        career: hasCareerData
+          ? {
+              statusAtDeath: circumstancesRow?.career_status_at_death ?? null,
+              lastProject: circumstancesRow?.last_project ?? null,
+              posthumousReleases: circumstancesRow?.posthumous_releases ?? null,
+            }
+          : null,
+        relatedCelebrities: resolvedRelatedCelebrities,
       }
     }
 
