@@ -552,6 +552,280 @@ describe("getActorDeathDetails", () => {
     )
   })
 
+  it("shows all contributing sources from raw_response when cleanupSource is set", async () => {
+    const circumstancesWithRawResponse = {
+      ...mockCircumstances,
+      sources: {
+        circumstances: {
+          type: "wikidata",
+          url: "https://www.wikidata.org/wiki/Q12345",
+          confidence: 0.6,
+        },
+        cleanupSource: "claude-opus-4-5",
+      },
+      raw_response: [
+        {
+          sourceName: "Wikipedia",
+          sourceType: "wikipedia",
+          text: "He died at his home...",
+          url: "https://en.wikipedia.org/wiki/Famous_Actor",
+          confidence: 0.75,
+        },
+        {
+          sourceName: "Wikidata",
+          sourceType: "wikidata",
+          text: "cause of death: cardiac arrest",
+          url: "https://www.wikidata.org/wiki/Q12345",
+          confidence: 0.6,
+        },
+        {
+          sourceName: "BBC News",
+          sourceType: "google_search",
+          text: "Famous Actor dies at 80...",
+          url: "https://bbc.com/news/famous-actor-dies",
+          confidence: 0.85,
+        },
+      ],
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      circumstancesWithRawResponse as any
+    )
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    // Should show all 3 sources sorted by confidence (highest first), not just wikidata
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          circumstances: [
+            {
+              url: "https://bbc.com/news/famous-actor-dies",
+              archive_url: null,
+              description: "BBC News",
+            },
+            {
+              url: "https://en.wikipedia.org/wiki/Famous_Actor",
+              archive_url: null,
+              description: "Wikipedia",
+            },
+            {
+              url: "https://www.wikidata.org/wiki/Q12345",
+              archive_url: null,
+              description: "Wikidata",
+            },
+          ],
+        }),
+      })
+    )
+  })
+
+  it("falls back to single source when no cleanupSource is set", async () => {
+    const circumstancesWithoutCleanup = {
+      ...mockCircumstances,
+      sources: {
+        circumstances: {
+          type: "wikidata",
+          url: "https://www.wikidata.org/wiki/Q12345",
+          confidence: 0.6,
+        },
+        // No cleanupSource
+      },
+      raw_response: [
+        {
+          sourceName: "Wikipedia",
+          sourceType: "wikipedia",
+          url: "https://en.wikipedia.org/wiki/Famous_Actor",
+          confidence: 0.75,
+        },
+      ],
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      circumstancesWithoutCleanup as any
+    )
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    // Should use the single wikidata source, not the raw_response
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          circumstances: [
+            {
+              url: "https://www.wikidata.org/wiki/Q12345",
+              archive_url: null,
+              description: "Source: wikidata",
+            },
+          ],
+        }),
+      })
+    )
+  })
+
+  it("falls back to single source when raw_response is null", async () => {
+    const circumstancesWithNullRawResponse = {
+      ...mockCircumstances,
+      sources: {
+        circumstances: {
+          type: "wikidata",
+          url: "https://www.wikidata.org/wiki/Q12345",
+          confidence: 0.6,
+        },
+        cleanupSource: "claude-opus-4-5",
+      },
+      raw_response: null,
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      circumstancesWithNullRawResponse as any
+    )
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    // Should fall back to the single wikidata source
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          circumstances: [
+            {
+              url: "https://www.wikidata.org/wiki/Q12345",
+              archive_url: null,
+              description: "Source: wikidata",
+            },
+          ],
+        }),
+      })
+    )
+  })
+
+  it("deduplicates URLs from raw_response sources", async () => {
+    const circumstancesWithDuplicates = {
+      ...mockCircumstances,
+      sources: {
+        circumstances: {
+          type: "wikidata",
+          url: "https://www.wikidata.org/wiki/Q12345",
+          confidence: 0.6,
+        },
+        cleanupSource: "claude-opus-4-5",
+      },
+      raw_response: [
+        {
+          sourceName: "Wikipedia",
+          sourceType: "wikipedia",
+          url: "https://en.wikipedia.org/wiki/Famous_Actor",
+          confidence: 0.75,
+        },
+        {
+          sourceName: "Google Search",
+          sourceType: "google_search",
+          url: "https://en.wikipedia.org/wiki/Famous_Actor",
+          confidence: 0.5,
+        },
+      ],
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      circumstancesWithDuplicates as any
+    )
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    // Should only show one Wikipedia entry (higher confidence wins since sorted first)
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          circumstances: [
+            {
+              url: "https://en.wikipedia.org/wiki/Famous_Actor",
+              archive_url: null,
+              description: "Wikipedia",
+            },
+          ],
+        }),
+      })
+    )
+  })
+
+  it("handles raw_response sources with resolvedSources", async () => {
+    const circumstancesWithResolved = {
+      ...mockCircumstances,
+      sources: {
+        circumstances: {
+          type: "wikidata",
+          url: "https://www.wikidata.org/wiki/Q12345",
+          confidence: 0.6,
+        },
+        cleanupSource: "claude-opus-4-5",
+      },
+      raw_response: [
+        {
+          sourceName: "Gemini Pro",
+          sourceType: "gemini_pro",
+          url: "https://vertexaisearch.cloud.google.com/redirect/ABC",
+          confidence: 0.85,
+          resolvedSources: [
+            {
+              originalUrl: "https://vertexaisearch.cloud.google.com/redirect/ABC",
+              finalUrl: "https://people.com/obituary",
+              domain: "people.com",
+              sourceName: "People",
+            },
+            {
+              originalUrl: "https://vertexaisearch.cloud.google.com/redirect/DEF",
+              finalUrl: "https://variety.com/news",
+              domain: "variety.com",
+              sourceName: "Variety",
+            },
+            {
+              originalUrl: "https://vertexaisearch.cloud.google.com/redirect/FAIL",
+              finalUrl: "https://vertexaisearch.cloud.google.com/redirect/FAIL",
+              domain: "vertexaisearch.cloud.google.com",
+              sourceName: "Unknown",
+              error: "Timeout",
+            },
+          ],
+        },
+        {
+          sourceName: "Wikipedia",
+          sourceType: "wikipedia",
+          url: "https://en.wikipedia.org/wiki/Famous_Actor",
+          confidence: 0.75,
+        },
+      ],
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      circumstancesWithResolved as any
+    )
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    // Gemini's resolved sources should be expanded, failed ones filtered out
+    // Wikipedia's direct URL should also appear
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          circumstances: [
+            { url: "https://people.com/obituary", archive_url: null, description: "People" },
+            { url: "https://variety.com/news", archive_url: null, description: "Variety" },
+            {
+              url: "https://en.wikipedia.org/wiki/Famous_Actor",
+              archive_url: null,
+              description: "Wikipedia",
+            },
+          ],
+        }),
+      })
+    )
+  })
+
   it("selects only the best source for career status", async () => {
     const circumstancesWithMultipleCareerStatusSources = {
       ...mockCircumstances,

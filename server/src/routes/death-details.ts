@@ -107,11 +107,25 @@ interface RawSources {
 }
 
 /**
+ * Shape of the raw_response JSONB column in actor_death_circumstances.
+ * Stores the array of all sources that contributed to Claude cleanup synthesis.
+ */
+type RawResponse = Array<{
+  sourceName: string
+  sourceType: string
+  text?: string
+  url?: string
+  confidence: number
+  resolvedSources?: ResolvedUrl[]
+}>
+
+/**
  * Transform source entries from database to API response format.
  * Handles both legacy array format and new enrichment object format.
  */
 function buildSourcesResponse(
-  rawSources: RawSources | SourceEntry[] | null | undefined
+  rawSources: RawSources | SourceEntry[] | null | undefined,
+  rawResponse?: RawResponse | null
 ): DeathDetailsResponse["sources"] {
   if (!rawSources) {
     return {
@@ -259,6 +273,61 @@ function buildSourcesResponse(
     return entries
   }
 
+  /**
+   * Build source entries from the raw_response column (all sources that contributed
+   * to Claude cleanup synthesis). Deduplicates by URL, sorted by confidence descending.
+   */
+  const rawResponseToSourceEntries = (
+    raw: RawResponse | null | undefined
+  ): SourceEntry[] | null => {
+    if (!raw || raw.length === 0) return null
+
+    const entries: SourceEntry[] = []
+    const seenUrls = new Set<string>()
+
+    // Sort by confidence descending so highest-confidence sources appear first
+    const sorted = [...raw].sort((a, b) => b.confidence - a.confidence)
+
+    for (const source of sorted) {
+      // Sources with resolvedSources (e.g., Gemini with grounding URLs)
+      if (source.resolvedSources && source.resolvedSources.length > 0) {
+        for (const resolved of source.resolvedSources) {
+          if (resolved.finalUrl && !resolved.error && !seenUrls.has(resolved.finalUrl)) {
+            seenUrls.add(resolved.finalUrl)
+            entries.push({
+              url: resolved.finalUrl,
+              archive_url: null,
+              description: resolved.sourceName,
+            })
+          }
+        }
+        continue
+      }
+
+      // Sources with a direct URL
+      if (source.url) {
+        if (!seenUrls.has(source.url)) {
+          seenUrls.add(source.url)
+          entries.push({
+            url: source.url,
+            archive_url: null,
+            description: source.sourceName,
+          })
+        }
+        continue
+      }
+
+      // Sources without a URL (description only)
+      entries.push({
+        url: null,
+        archive_url: null,
+        description: source.sourceName,
+      })
+    }
+
+    return entries.length > 0 ? entries : null
+  }
+
   // Check if a value is already a valid SourceEntry array
   const isSourceEntryArray = (val: unknown): val is SourceEntry[] => {
     return (
@@ -276,9 +345,15 @@ function buildSourcesResponse(
 
   return {
     cause: isSourceEntryArray(causeVal) ? causeVal : rawToSourceEntry(causeVal as RawSourceEntry),
-    circumstances: isSourceEntryArray(circumstancesVal)
-      ? circumstancesVal
-      : rawToSourceEntry(circumstancesVal as RawSourceEntry),
+    circumstances:
+      sources.cleanupSource && rawResponse
+        ? (rawResponseToSourceEntries(rawResponse) ??
+          (isSourceEntryArray(circumstancesVal)
+            ? circumstancesVal
+            : rawToSourceEntry(circumstancesVal as RawSourceEntry)))
+        : isSourceEntryArray(circumstancesVal)
+          ? circumstancesVal
+          : rawToSourceEntry(circumstancesVal as RawSourceEntry),
     rumored: isSourceEntryArray(rumoredVal)
       ? rumoredVal
       : rawToSourceEntry(rumoredVal as RawSourceEntry),
@@ -419,7 +494,10 @@ export async function getActorDeathDetails(req: Request, res: Response) {
         posthumousReleases: circumstances?.posthumous_releases || null,
       },
       relatedCelebrities,
-      sources: buildSourcesResponse(circumstances?.sources as unknown as RawSources),
+      sources: buildSourcesResponse(
+        circumstances?.sources as unknown as RawSources,
+        circumstances?.raw_response as RawResponse | null
+      ),
     }
 
     // Cache the response
