@@ -78,6 +78,8 @@ export default function DeathSummaryCard({
               height="12"
               viewBox="0 0 12 12"
               fill="currentColor"
+              aria-hidden="true"
+              focusable="false"
               className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
             >
               <path

@@ -13,6 +13,7 @@ import newrelic from "newrelic"
 import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "../lib/cache.js"
 import { calculateAge } from "../lib/date-utils.js"
 import { createActorSlug } from "../lib/slug-utils.js"
+import { resolveRelatedCelebritySlugs } from "../lib/related-celebrity-slugs.js"
 
 interface ActorProfileResponse {
   actor: {
@@ -175,60 +176,12 @@ export async function getActor(req: Request, res: Response) {
           .then((r) => r.rows[0] ?? null),
       ])
 
-      // Resolve slugs for related celebrities
+      // Resolve slugs for related celebrities using shared helper
       const relatedCelebrityData = circumstancesRow?.related_celebrities || []
-      let resolvedRelatedCelebrities: Array<{
-        name: string
-        tmdbId: number | null
-        relationship: string
-        slug: string | null
-      }> | null = null
-
-      if (relatedCelebrityData.length > 0) {
-        const pool = getPool()
-        const tmdbIds = relatedCelebrityData
-          .map((c) => c.tmdb_id)
-          .filter((id): id is number => id != null)
-        const names = relatedCelebrityData.map((c) => c.name).filter((n): n is string => Boolean(n))
-
-        const tmdbIdToActorId = new Map<number, number>()
-        if (tmdbIds.length > 0) {
-          const result = await pool.query<{ tmdb_id: number | null; id: number }>(
-            "SELECT tmdb_id, id FROM actors WHERE tmdb_id = ANY($1)",
-            [tmdbIds]
-          )
-          for (const row of result.rows) {
-            if (row.tmdb_id != null) tmdbIdToActorId.set(row.tmdb_id, row.id)
-          }
-        }
-
-        const nameToActorId = new Map<string, number>()
-        if (names.length > 0) {
-          const result = await pool.query<{ name: string; id: number }>(
-            "SELECT name, id FROM actors WHERE name = ANY($1)",
-            [names]
-          )
-          for (const row of result.rows) {
-            if (!nameToActorId.has(row.name)) nameToActorId.set(row.name, row.id)
-          }
-        }
-
-        resolvedRelatedCelebrities = relatedCelebrityData.map((celeb) => {
-          let actId: number | null = null
-          if (celeb.tmdb_id != null) {
-            actId = tmdbIdToActorId.get(celeb.tmdb_id) ?? null
-          }
-          if (actId == null) {
-            actId = nameToActorId.get(celeb.name) ?? null
-          }
-          return {
-            name: celeb.name,
-            tmdbId: celeb.tmdb_id,
-            relationship: celeb.relationship,
-            slug: actId ? createActorSlug(celeb.name, actId) : null,
-          }
-        })
-      }
+      const resolvedRelatedCelebrities =
+        relatedCelebrityData.length > 0
+          ? await resolveRelatedCelebritySlugs(relatedCelebrityData)
+          : null
 
       // Build career info if any field is present
       const hasCareerData =
