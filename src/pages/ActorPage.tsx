@@ -384,6 +384,24 @@ export default function ActorPage() {
           />
         )}
 
+        {/* Biography */}
+        {actor.biography && (
+          <div className="mb-6 rounded-lg bg-surface-elevated p-4">
+            <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
+            <p className="text-sm leading-relaxed text-text-primary">{actor.biography}</p>
+            {actor.biographySourceUrl && (
+              <a
+                href={actor.biographySourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-sm text-brown-medium hover:text-brown-dark hover:underline"
+              >
+                Read more on {getSourceDisplayName(actor.biographySourceType)} →
+              </a>
+            )}
+          </div>
+        )}
+
         {/* Career Context */}
         {isDeceased && deathInfo?.career && (
           <div
@@ -433,24 +451,6 @@ export default function ActorPage() {
                 <RelatedCelebrityCard key={idx} celebrity={celebrity} />
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Biography */}
-        {actor.biography && (
-          <div className="mb-6 rounded-lg bg-surface-elevated p-4">
-            <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
-            <p className="text-sm leading-relaxed text-text-primary">{actor.biography}</p>
-            {actor.biographySourceUrl && (
-              <a
-                href={actor.biographySourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block text-sm text-brown-medium hover:text-brown-dark hover:underline"
-              >
-                Read more on {getSourceDisplayName(actor.biographySourceType)} →
-              </a>
-            )}
           </div>
         )}
 
