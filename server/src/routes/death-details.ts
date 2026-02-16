@@ -127,20 +127,32 @@ interface RawResponseEntry {
 function extractRawSources(rawResponse: unknown): RawResponseEntry[] | null {
   if (!rawResponse || typeof rawResponse !== "object") return null
 
+  let candidates: unknown[] | null = null
+
   // Enrichment wrapper: { rawSources: [...] }
   if (
     "rawSources" in rawResponse &&
     Array.isArray((rawResponse as Record<string, unknown>).rawSources)
   ) {
-    return (rawResponse as Record<string, unknown>).rawSources as RawResponseEntry[]
+    candidates = (rawResponse as Record<string, unknown>).rawSources as unknown[]
   }
 
   // Direct array (defensive, in case older records stored differently)
-  if (Array.isArray(rawResponse)) {
-    return rawResponse as RawResponseEntry[]
+  if (!candidates && Array.isArray(rawResponse)) {
+    candidates = rawResponse
   }
 
-  return null
+  if (!candidates || candidates.length === 0) return null
+
+  // Validate individual elements: must have at least a sourceName string
+  const valid = candidates.filter(
+    (entry): entry is RawResponseEntry =>
+      typeof entry === "object" &&
+      entry !== null &&
+      typeof (entry as Record<string, unknown>).sourceName === "string"
+  )
+
+  return valid.length > 0 ? valid : null
 }
 
 /**
@@ -311,18 +323,22 @@ function buildSourcesResponse(
     const seenNames = new Set<string>()
 
     // Sort by confidence descending so highest-confidence sources appear first
-    const sorted = [...raw].sort((a, b) => b.confidence - a.confidence)
+    const sorted = [...raw].sort(
+      (a, b) =>
+        (typeof b.confidence === "number" ? b.confidence : 0) -
+        (typeof a.confidence === "number" ? a.confidence : 0)
+    )
 
     for (const source of sorted) {
       // Sources with resolvedSources (e.g., Gemini with grounding URLs)
-      if (source.resolvedSources && source.resolvedSources.length > 0) {
+      if (Array.isArray(source.resolvedSources) && source.resolvedSources.length > 0) {
         for (const resolved of source.resolvedSources) {
           if (resolved.finalUrl && !resolved.error && !seenUrls.has(resolved.finalUrl)) {
             seenUrls.add(resolved.finalUrl)
             entries.push({
               url: resolved.finalUrl,
               archive_url: null,
-              description: resolved.sourceName,
+              description: resolved.sourceName || source.sourceName,
             })
           }
         }
@@ -343,7 +359,7 @@ function buildSourcesResponse(
       }
 
       // Sources without a URL (description only, deduplicate by name)
-      if (!seenNames.has(source.sourceName)) {
+      if (source.sourceName && !seenNames.has(source.sourceName)) {
         seenNames.add(source.sourceName)
         entries.push({
           url: null,

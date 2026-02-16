@@ -898,6 +898,52 @@ describe("getActorDeathDetails", () => {
     )
   })
 
+  it("falls back to single source when all raw sources are filtered out", async () => {
+    const circumstancesWithInvalidRawSources = {
+      ...mockCircumstances,
+      sources: {
+        circumstances: {
+          type: "wikidata",
+          url: "https://en.wikipedia.org/wiki/Test",
+          confidence: 0.6,
+        },
+        cleanupSource: "claude-opus-4.5",
+      },
+      raw_response: {
+        rawSources: [
+          // Missing sourceName — should be filtered out by extractRawSources validation
+          { text: "some text without source name", confidence: 0.5 },
+          { text: "another entry without source name" },
+        ],
+        gatheredAt: "2026-01-16T12:00:00.000Z",
+      },
+    }
+
+    vi.mocked(db.hasDetailedDeathInfo).mockResolvedValueOnce(true)
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockPerson)
+    vi.mocked(db.getActorDeathCircumstancesByActorId).mockResolvedValueOnce(
+      circumstancesWithInvalidRawSources as any
+    )
+
+    await getActorDeathDetails(mockReq as Request, mockRes as Response)
+
+    // When all raw sources are invalid, extractRawSources returns null,
+    // so it falls back to the single circumstancesVal source
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: expect.objectContaining({
+          circumstances: [
+            {
+              url: "https://en.wikipedia.org/wiki/Test",
+              archive_url: null,
+              description: "Source: wikidata",
+            },
+          ],
+        }),
+      })
+    )
+  })
+
   it("selects only the best source for career status", async () => {
     const circumstancesWithMultipleCareerStatusSources = {
       ...mockCircumstances,
