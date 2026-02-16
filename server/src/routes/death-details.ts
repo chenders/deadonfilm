@@ -107,11 +107,61 @@ interface RawSources {
 }
 
 /**
+ * Individual raw source entry from enrichment.
+ */
+interface RawResponseEntry {
+  sourceName: string
+  sourceType: string
+  text?: string
+  url?: string
+  confidence: number
+  resolvedSources?: ResolvedUrl[]
+}
+
+/**
+ * Extract the raw sources array from the raw_response column.
+ * Enrichment writes `{ rawSources: [...], gatheredAt: "..." }`,
+ * batch API writes `{ response: "...", parsed_at: "..." }`.
+ * Safely handles unknown shapes since the column is typed as `unknown`.
+ */
+function extractRawSources(rawResponse: unknown): RawResponseEntry[] | null {
+  if (!rawResponse || typeof rawResponse !== "object") return null
+
+  let candidates: unknown[] | null = null
+
+  // Enrichment wrapper: { rawSources: [...] }
+  if (
+    "rawSources" in rawResponse &&
+    Array.isArray((rawResponse as Record<string, unknown>).rawSources)
+  ) {
+    candidates = (rawResponse as Record<string, unknown>).rawSources as unknown[]
+  }
+
+  // Direct array (defensive, in case older records stored differently)
+  if (!candidates && Array.isArray(rawResponse)) {
+    candidates = rawResponse
+  }
+
+  if (!candidates || candidates.length === 0) return null
+
+  // Validate individual elements: must have at least a sourceName string
+  const valid = candidates.filter(
+    (entry): entry is RawResponseEntry =>
+      typeof entry === "object" &&
+      entry !== null &&
+      typeof (entry as Record<string, unknown>).sourceName === "string"
+  )
+
+  return valid.length > 0 ? valid : null
+}
+
+/**
  * Transform source entries from database to API response format.
  * Handles both legacy array format and new enrichment object format.
  */
 function buildSourcesResponse(
-  rawSources: RawSources | SourceEntry[] | null | undefined
+  rawSources: RawSources | SourceEntry[] | null | undefined,
+  rawResponse?: unknown
 ): DeathDetailsResponse["sources"] {
   if (!rawSources) {
     return {
@@ -259,6 +309,69 @@ function buildSourcesResponse(
     return entries
   }
 
+  /**
+   * Build source entries from the raw_response column (all sources that contributed
+   * to Claude cleanup synthesis). Deduplicates by URL, sorted by confidence descending.
+   */
+  const rawResponseToSourceEntries = (
+    raw: RawResponseEntry[] | null | undefined
+  ): SourceEntry[] | null => {
+    if (!raw || raw.length === 0) return null
+
+    const entries: SourceEntry[] = []
+    const seenUrls = new Set<string>()
+    const seenNames = new Set<string>()
+
+    // Sort by confidence descending so highest-confidence sources appear first
+    const sorted = [...raw].sort(
+      (a, b) =>
+        (typeof b.confidence === "number" ? b.confidence : 0) -
+        (typeof a.confidence === "number" ? a.confidence : 0)
+    )
+
+    for (const source of sorted) {
+      // Sources with resolvedSources (e.g., Gemini with grounding URLs)
+      if (Array.isArray(source.resolvedSources) && source.resolvedSources.length > 0) {
+        for (const resolved of source.resolvedSources) {
+          if (resolved.finalUrl && !resolved.error && !seenUrls.has(resolved.finalUrl)) {
+            seenUrls.add(resolved.finalUrl)
+            entries.push({
+              url: resolved.finalUrl,
+              archive_url: null,
+              description: resolved.sourceName || source.sourceName,
+            })
+          }
+        }
+        continue
+      }
+
+      // Sources with a direct URL
+      if (source.url) {
+        if (!seenUrls.has(source.url)) {
+          seenUrls.add(source.url)
+          entries.push({
+            url: source.url,
+            archive_url: null,
+            description: source.sourceName,
+          })
+        }
+        continue
+      }
+
+      // Sources without a URL (description only, deduplicate by name)
+      if (source.sourceName && !seenNames.has(source.sourceName)) {
+        seenNames.add(source.sourceName)
+        entries.push({
+          url: null,
+          archive_url: null,
+          description: source.sourceName,
+        })
+      }
+    }
+
+    return entries.length > 0 ? entries : null
+  }
+
   // Check if a value is already a valid SourceEntry array
   const isSourceEntryArray = (val: unknown): val is SourceEntry[] => {
     return (
@@ -274,11 +387,19 @@ function buildSourcesResponse(
   const circumstancesVal = sources.circumstances
   const rumoredVal = sources.rumoredCircumstances
 
+  // Extract raw sources array from the wrapper object (runtime shape check)
+  const extractedRawSources = sources.cleanupSource ? extractRawSources(rawResponse) : null
+
   return {
     cause: isSourceEntryArray(causeVal) ? causeVal : rawToSourceEntry(causeVal as RawSourceEntry),
-    circumstances: isSourceEntryArray(circumstancesVal)
-      ? circumstancesVal
-      : rawToSourceEntry(circumstancesVal as RawSourceEntry),
+    circumstances: extractedRawSources
+      ? (rawResponseToSourceEntries(extractedRawSources) ??
+        (isSourceEntryArray(circumstancesVal)
+          ? circumstancesVal
+          : rawToSourceEntry(circumstancesVal as RawSourceEntry)))
+      : isSourceEntryArray(circumstancesVal)
+        ? circumstancesVal
+        : rawToSourceEntry(circumstancesVal as RawSourceEntry),
     rumored: isSourceEntryArray(rumoredVal)
       ? rumoredVal
       : rawToSourceEntry(rumoredVal as RawSourceEntry),
@@ -419,7 +540,10 @@ export async function getActorDeathDetails(req: Request, res: Response) {
         posthumousReleases: circumstances?.posthumous_releases || null,
       },
       relatedCelebrities,
-      sources: buildSourcesResponse(circumstances?.sources as unknown as RawSources),
+      sources: buildSourcesResponse(
+        circumstances?.sources as unknown as RawSources,
+        circumstances?.raw_response
+      ),
     }
 
     // Cache the response
