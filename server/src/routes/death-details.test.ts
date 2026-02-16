@@ -30,6 +30,10 @@ vi.mock("newrelic", () => ({
   },
 }))
 
+vi.mock("../lib/related-celebrity-slugs.js", () => ({
+  resolveRelatedCelebritySlugs: vi.fn().mockResolvedValue([]),
+}))
+
 vi.mock("../lib/cache.js", () => ({
   getCached: vi.fn().mockResolvedValue(null),
   setCached: vi.fn().mockResolvedValue(undefined),
@@ -46,6 +50,7 @@ vi.mock("../lib/cache.js", () => ({
 
 import newrelic from "newrelic"
 import { getCached, setCached } from "../lib/cache.js"
+import { resolveRelatedCelebritySlugs } from "../lib/related-celebrity-slugs.js"
 
 describe("getActorDeathDetails", () => {
   let mockReq: Partial<Request>
@@ -214,11 +219,15 @@ describe("getActorDeathDetails", () => {
       mockCircumstances as any
     )
 
-    // Mock database queries for related celebrity lookup
-    // First query: SELECT tmdb_id, id FROM actors WHERE tmdb_id = ANY($1)
-    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
-    // Second query: SELECT name, id FROM actors WHERE name = ANY($1)
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    // Mock shared slug resolver for related celebrities
+    vi.mocked(resolveRelatedCelebritySlugs).mockResolvedValueOnce([
+      {
+        name: "Co-Star Name",
+        tmdbId: 54321,
+        relationship: "Frequent co-star",
+        slug: "co-star-name-54321",
+      },
+    ])
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -289,9 +298,15 @@ describe("getActorDeathDetails", () => {
       mockCircumstances as any
     )
 
-    // Mock database queries for related celebrity lookup
-    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    // Mock shared slug resolver for related celebrities
+    vi.mocked(resolveRelatedCelebritySlugs).mockResolvedValueOnce([
+      {
+        name: "Co-Star Name",
+        tmdbId: 54321,
+        relationship: "Frequent co-star",
+        slug: "co-star-name-54321",
+      },
+    ])
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -368,9 +383,15 @@ describe("getActorDeathDetails", () => {
       mockCircumstances as any
     )
 
-    // Mock database queries for related celebrity lookup
-    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    // Mock shared slug resolver for related celebrities
+    vi.mocked(resolveRelatedCelebritySlugs).mockResolvedValueOnce([
+      {
+        name: "Co-Star Name",
+        tmdbId: 54321,
+        relationship: "Frequent co-star",
+        slug: "co-star-name-54321",
+      },
+    ])
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -443,9 +464,15 @@ describe("getActorDeathDetails", () => {
       circumstancesWithResolvedSources as any
     )
 
-    // Mock database queries for related celebrity lookup
-    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    // Mock shared slug resolver for related celebrities
+    vi.mocked(resolveRelatedCelebritySlugs).mockResolvedValueOnce([
+      {
+        name: "Co-Star Name",
+        tmdbId: 54321,
+        relationship: "Frequent co-star",
+        slug: "co-star-name-54321",
+      },
+    ])
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -493,9 +520,15 @@ describe("getActorDeathDetails", () => {
       circumstancesWithParsedSources as any
     )
 
-    // Mock database queries for related celebrity lookup
-    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    // Mock shared slug resolver for related celebrities
+    vi.mocked(resolveRelatedCelebritySlugs).mockResolvedValueOnce([
+      {
+        name: "Co-Star Name",
+        tmdbId: 54321,
+        relationship: "Frequent co-star",
+        slug: "co-star-name-54321",
+      },
+    ])
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 
@@ -559,9 +592,15 @@ describe("getActorDeathDetails", () => {
       circumstancesWithMultipleCareerStatusSources as any
     )
 
-    // Mock database queries for related celebrity lookup
-    mockQuery.mockResolvedValueOnce({ rows: [{ tmdb_id: 54321, id: 54321 }] })
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    // Mock shared slug resolver for related celebrities
+    vi.mocked(resolveRelatedCelebritySlugs).mockResolvedValueOnce([
+      {
+        name: "Co-Star Name",
+        tmdbId: 54321,
+        relationship: "Frequent co-star",
+        slug: "co-star-name-54321",
+      },
+    ])
 
     await getActorDeathDetails(mockReq as Request, mockRes as Response)
 

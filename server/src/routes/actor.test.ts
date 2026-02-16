@@ -27,6 +27,10 @@ vi.mock("newrelic", () => ({
   },
 }))
 
+vi.mock("../lib/related-celebrity-slugs.js", () => ({
+  resolveRelatedCelebritySlugs: vi.fn().mockResolvedValue([]),
+}))
+
 vi.mock("../lib/cache.js", () => ({
   getCached: vi.fn().mockResolvedValue(null), // Always miss cache in tests
   setCached: vi.fn().mockResolvedValue(undefined),
@@ -41,6 +45,7 @@ vi.mock("../lib/cache.js", () => ({
 
 import newrelic from "newrelic"
 import { getCached, setCached, CACHE_TTL } from "../lib/cache.js"
+import { resolveRelatedCelebritySlugs } from "../lib/related-celebrity-slugs.js"
 
 describe("getActor", () => {
   let mockReq: Partial<Request>
@@ -349,8 +354,75 @@ describe("getActor", () => {
         yearsLost: -5,
         hasDetailedDeathInfo: false,
         notableFactors: null,
+        career: null,
+        relatedCelebrities: null,
       },
     })
+  })
+
+  it("returns career and related celebrities when circumstances data exists", async () => {
+    mockReq.params = { slug: "deceased-actor-6" }
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      actor: mockDeceasedRecord,
+      matchedBy: "id",
+    })
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockDeceasedPerson)
+    vi.mocked(db.getActorFilmography).mockResolvedValueOnce([])
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
+
+    // Mock pool.query — only called for the circumstances row
+    // (hasDetailedDeathInfo uses its own mock since tmdb_id is not null)
+    const mockQuery = vi.fn()
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          notable_factors: ["on_set"],
+          career_status_at_death: "semi-retired",
+          last_project: {
+            title: "Final Film",
+            year: 2019,
+            tmdb_id: 999,
+            imdb_id: null,
+            type: "movie",
+          },
+          posthumous_releases: [],
+          related_celebrities: [
+            { name: "Co-Star", tmdb_id: 100, relationship: "frequent co-star" },
+          ],
+        },
+      ],
+    })
+    vi.mocked(db.getPool).mockReturnValueOnce({ query: mockQuery } as unknown as ReturnType<
+      typeof db.getPool
+    >)
+
+    // Mock the shared slug resolver
+    vi.mocked(resolveRelatedCelebritySlugs).mockResolvedValueOnce([
+      { name: "Co-Star", tmdbId: 100, relationship: "frequent co-star", slug: "co-star-500" },
+    ])
+
+    await getActor(mockReq as Request, mockRes as Response)
+
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deathInfo: expect.objectContaining({
+          career: {
+            statusAtDeath: "semi-retired",
+            lastProject: {
+              title: "Final Film",
+              year: 2019,
+              tmdb_id: 999,
+              imdb_id: null,
+              type: "movie",
+            },
+            posthumousReleases: [],
+          },
+          relatedCelebrities: [
+            { name: "Co-Star", tmdbId: 100, relationship: "frequent co-star", slug: "co-star-500" },
+          ],
+        }),
+      })
+    )
   })
 
   it("calculates age at death when deceased record not in database", async () => {
@@ -374,6 +446,8 @@ describe("getActor", () => {
           yearsLost: null,
           hasDetailedDeathInfo: false,
           notableFactors: null,
+          career: null,
+          relatedCelebrities: null,
         },
       })
     )
