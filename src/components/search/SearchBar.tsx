@@ -1,5 +1,5 @@
-import { useState, useRef, useId } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useRef, useId, useEffect } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
 import { useUnifiedSearch } from "@/hooks/useUnifiedSearch"
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation"
 import { createMovieSlug, createShowSlug, createActorSlug } from "@/utils/slugify"
@@ -8,15 +8,22 @@ import SearchInput from "./SearchInput"
 import SearchDropdown from "./SearchDropdown"
 import MediaTypeToggle from "./MediaTypeToggle"
 import EmptySearchState from "./EmptySearchState"
-import InfoPopover from "@/components/common/InfoPopover"
-
 export default function SearchBar() {
   const [query, setQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [mediaType, setMediaType] = useState<SearchMediaType>("all")
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const listboxId = useId()
+
+  useEffect(() => {
+    if (location.pathname === "/") {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus()
+      })
+    }
+  }, [location.pathname])
 
   const { data, isLoading } = useUnifiedSearch(query, mediaType)
   const results = data?.results || []
@@ -46,28 +53,8 @@ export default function SearchBar() {
     },
   })
 
-  const siteExplanation = (
-    <>
-      <h2 className="mb-3 font-display text-lg text-brown-dark">Cast Mortality Database</h2>
-      <div className="space-y-3 text-sm text-text-muted">
-        <p>
-          Dead on Film lets you discover which actors from any film or TV show have passed away.
-        </p>
-        <p>
-          We calculate <strong>expected vs actual deaths</strong> using US Social Security
-          Administration actuarial life tables, accounting for each actor's age at the time of
-          filming to identify productions with statistically unusual mortality rates.
-        </p>
-        <p>
-          Search any movie or TV show to see death dates, causes, and how the cast compares to
-          statistical expectations.
-        </p>
-      </div>
-    </>
-  )
-
   const placeholders: Record<SearchMediaType, string> = {
-    all: "Search movies, shows, and people...",
+    all: "Search anything...",
     movie: "Search for a movie...",
     tv: "Search for a TV show...",
     person: "Search for a person...",
@@ -80,32 +67,27 @@ export default function SearchBar() {
         <MediaTypeToggle value={mediaType} onChange={setMediaType} />
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <SearchInput
-            ref={inputRef}
-            value={query}
-            onChange={(value) => {
-              setQuery(value)
-              setIsOpen(value.length >= 2)
-            }}
-            onFocus={() => {
-              if (query.length >= 2) {
-                setIsOpen(true)
-              }
-            }}
-            onBlur={() => {
-              // Delay to allow click on dropdown items
-              setTimeout(() => setIsOpen(false), 200)
-            }}
-            onKeyDown={handleKeyDown}
-            isLoading={isLoading}
-            placeholder={placeholderText}
-            listboxId={listboxId}
-          />
-        </div>
-        <InfoPopover>{siteExplanation}</InfoPopover>
-      </div>
+      <SearchInput
+        ref={inputRef}
+        value={query}
+        onChange={(value) => {
+          setQuery(value)
+          setIsOpen(value.length >= 2)
+        }}
+        onFocus={() => {
+          if (query.length >= 2) {
+            setIsOpen(true)
+          }
+        }}
+        onBlur={() => {
+          // Delay to allow click on dropdown items
+          setTimeout(() => setIsOpen(false), 200)
+        }}
+        onKeyDown={handleKeyDown}
+        isLoading={isLoading}
+        placeholder={placeholderText}
+        listboxId={listboxId}
+      />
 
       {isOpen && results.length > 0 && (
         <SearchDropdown

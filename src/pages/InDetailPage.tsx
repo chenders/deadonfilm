@@ -1,87 +1,14 @@
-import { useSearchParams, Link } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import PaginationHead from "@/components/seo/PaginationHead"
 import { useInDetail } from "@/hooks/useInDetail"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
-import { getProfileUrl } from "@/services/api"
-import { formatDate } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import SortControl from "@/components/common/SortControl"
-import { PersonIcon } from "@/components/icons"
+import ActorCard from "@/components/common/ActorCard"
 import RelativeTime from "@/components/common/RelativeTime"
-import type { InDetailActor } from "@/types"
-
-function ActorCard({ actor }: { actor: InDetailActor }) {
-  const profileUrl = getProfileUrl(actor.profilePath, "w185")
-
-  return (
-    <Link
-      to={`/actor/${actor.slug}`}
-      data-testid={`in-detail-${actor.id}`}
-      className="block rounded-lg bg-surface-elevated p-4 transition-colors hover:bg-cream"
-    >
-      <div className="flex items-start gap-4">
-        {profileUrl ? (
-          <img
-            src={profileUrl}
-            alt={actor.name}
-            className="h-20 w-16 flex-shrink-0 rounded-lg object-cover shadow-sm"
-          />
-        ) : (
-          <div className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-sm">
-            <PersonIcon size={32} className="text-brown-medium" />
-          </div>
-        )}
-
-        <div className="min-w-0 flex-1">
-          <h3 className="font-display text-lg text-brown-dark">{actor.name}</h3>
-
-          <p className="text-sm text-text-muted">
-            Died {formatDate(actor.deathday)}
-            {actor.ageAtDeath && ` · Age ${actor.ageAtDeath}`}
-          </p>
-
-          {actor.causeOfDeath && (
-            <p className="mt-1 text-sm text-brown-dark">{toTitleCase(actor.causeOfDeath)}</p>
-          )}
-
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {actor.deathManner && (
-              <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
-                {toTitleCase(actor.deathManner)}
-              </span>
-            )}
-            <RelativeTime
-              date={actor.enrichedAt}
-              prefix="Updated"
-              className="text-xs text-text-muted"
-            />
-          </div>
-        </div>
-
-        {actor.topFilms.length > 0 && (
-          <div className="hidden max-w-[180px] flex-shrink-0 flex-col items-end gap-0.5 xl:flex">
-            <span className="mb-0.5 text-[10px] uppercase tracking-wider text-text-muted">
-              Known for
-            </span>
-            {actor.topFilms.map((film, i) => (
-              <span
-                key={i}
-                className="max-w-full truncate text-right text-xs text-brown-dark"
-                title={`${film.title}${film.year ? ` (${film.year})` : ""}`}
-              >
-                {film.title}
-                {film.year && <span className="text-text-muted"> ({film.year})</span>}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </Link>
-  )
-}
 
 export default function InDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -245,9 +172,37 @@ export default function InDetailPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {data.actors.map((actor) => (
-                <ActorCard key={actor.id} actor={actor} />
+                <ActorCard
+                  key={actor.id}
+                  name={actor.name}
+                  slug={actor.slug}
+                  profilePath={actor.profilePath}
+                  deathday={actor.deathday}
+                  ageAtDeath={actor.ageAtDeath}
+                  causeOfDeath={actor.causeOfDeath}
+                  knownFor={actor.topFilms.map((f) => ({
+                    name: f.title,
+                    year: f.year,
+                    type: "movie",
+                  }))}
+                  nameColor="accent"
+                  testId={`in-detail-${actor.id}`}
+                >
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {actor.deathManner && (
+                      <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
+                        {toTitleCase(actor.deathManner)}
+                      </span>
+                    )}
+                    <RelativeTime
+                      date={actor.enrichedAt}
+                      prefix="Updated"
+                      className="text-xs text-text-muted"
+                    />
+                  </div>
+                </ActorCard>
               ))}
             </div>
 

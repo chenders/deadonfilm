@@ -124,7 +124,7 @@ describe("InDetailPage", () => {
       expect(screen.getByTestId("in-detail-1")).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/Age 80/)).toBeInTheDocument()
+    expect(screen.getByText(/Age: 80/)).toBeInTheDocument()
     expect(screen.getByText("Heart Attack")).toBeInTheDocument()
   })
 

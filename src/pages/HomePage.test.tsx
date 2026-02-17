@@ -39,6 +39,25 @@ const mockDeaths = {
       cause_of_death_details: null,
       profile_path: "/path1.jpg",
       fallback_profile_url: null,
+      age_at_death: 75,
+      birthday: "1949-03-15",
+      known_for: [
+        { name: "Famous Movie", year: 1990, type: "movie" as const },
+        { name: "Great Show", year: 2005, type: "tv" as const },
+      ],
+    },
+    {
+      id: 2,
+      tmdb_id: 2,
+      name: "Actor Two",
+      deathday: "2024-11-15",
+      cause_of_death: null,
+      cause_of_death_details: null,
+      profile_path: null,
+      fallback_profile_url: null,
+      age_at_death: null,
+      birthday: null,
+      known_for: null,
     },
   ],
 }
@@ -108,7 +127,7 @@ describe("HomePage", () => {
   it("renders search bar with media type toggle", async () => {
     renderWithProviders(<HomePage />)
 
-    expect(screen.getByPlaceholderText(/search movies, shows, and people/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/search anything/i)).toBeInTheDocument()
     expect(screen.getByTestId("media-type-toggle")).toBeInTheDocument()
   })
 
@@ -116,12 +135,6 @@ describe("HomePage", () => {
     renderWithProviders(<HomePage />)
 
     expect(screen.getByTestId("quick-actions")).toBeInTheDocument()
-  })
-
-  it("renders info popover trigger in search bar", async () => {
-    renderWithProviders(<HomePage />)
-
-    expect(screen.getByRole("button", { name: /about this site/i })).toBeInTheDocument()
   })
 
   it("renders SiteStats when data loads", async () => {
@@ -152,5 +165,14 @@ describe("HomePage", () => {
     expect(screen.getByTestId("in-detail-btn")).toBeInTheDocument()
     expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
     expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
+  })
+
+  it("auto-focuses search input on homepage load", async () => {
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      const input = screen.getByPlaceholderText(/search anything/i)
+      expect(input).toHaveFocus()
+    })
   })
 })

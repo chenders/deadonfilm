@@ -125,7 +125,7 @@ describe("NotableDeathsPage", () => {
     })
 
     // Check that actor info is displayed
-    expect(screen.getByText(/Age 80/)).toBeInTheDocument()
+    expect(screen.getByText(/Age: 80/)).toBeInTheDocument()
     expect(screen.getByText("Heart Attack")).toBeInTheDocument()
   })
 

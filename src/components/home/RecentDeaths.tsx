@@ -1,26 +1,30 @@
 import { Link } from "react-router-dom"
 import { useRecentDeaths } from "@/hooks/useRecentDeaths"
-import { getProfileUrl } from "@/services/api"
 import { createActorSlug } from "@/utils/slugify"
-import { PersonIcon } from "@/components/icons"
-import { formatDate } from "@/utils/formatDate"
-import CauseOfDeathBadge from "@/components/common/CauseOfDeathBadge"
+import ActorCard from "@/components/common/ActorCard"
 
 export default function RecentDeaths() {
-  // Fetch 8 for 2 rows of 4 on desktop, or 2 rows of 2 on mobile
-  const { data, isLoading, error } = useRecentDeaths(8)
+  const { data, isLoading, error } = useRecentDeaths(6)
 
   if (isLoading) {
     return (
-      <div className="mt-6 sm:mt-8">
+      <div className="mt-6 md:mt-8">
         <div className="animate-pulse">
           <div className="mx-auto mb-4 h-6 w-40 rounded bg-brown-medium/20" />
-          <div className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0">
-            {[...Array(8)].map((_, i) => (
+          <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-3">
+            {[...Array(6)].map((_, i) => (
               <div
                 key={i}
-                className="h-32 w-36 flex-shrink-0 rounded-lg bg-brown-medium/20 sm:w-auto sm:flex-shrink"
-              />
+                className={`flex gap-4 rounded-lg bg-brown-medium/20 p-3 ${i >= 3 ? "hidden md:flex" : ""}`}
+              >
+                <div className="h-28 w-20 flex-shrink-0 rounded bg-brown-medium/30" />
+                <div className="flex flex-1 flex-col gap-2">
+                  <div className="h-5 w-3/4 rounded bg-brown-medium/30" />
+                  <div className="h-4 w-full rounded bg-brown-medium/30" />
+                  <div className="h-4 w-1/2 rounded bg-brown-medium/30" />
+                  <div className="h-3 w-2/3 rounded bg-brown-medium/30" />
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -32,8 +36,17 @@ export default function RecentDeaths() {
     return null // Silently fail - this is an enhancement feature
   }
 
+  // Ensure even count so the 2-col desktop grid never has an orphan row,
+  // but still display a single item when only one death is available
+  const deaths =
+    data.deaths.length === 1
+      ? data.deaths
+      : data.deaths.length % 2 === 0
+        ? data.deaths
+        : data.deaths.slice(0, -1)
+
   return (
-    <section data-testid="recent-deaths" className="mt-6 sm:mt-8">
+    <section data-testid="recent-deaths" className="mt-6 md:mt-8">
       <div className="mb-4 flex items-center justify-between">
         <h2 data-testid="recent-deaths-title" className="font-display text-xl text-brown-dark">
           Recent Passings
@@ -49,53 +62,30 @@ export default function RecentDeaths() {
 
       <div
         data-testid="recent-deaths-list"
-        className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0"
+        className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-3"
       >
-        {data.deaths.map((death, index) => (
-          <Link
+        {deaths.map((death, index) => (
+          <div
             key={death.id}
-            to={`/actor/${createActorSlug(death.name, death.id)}`}
-            className="animate-fade-slide-in flex w-36 flex-shrink-0 flex-col items-center rounded-lg bg-beige p-3 text-center transition-colors hover:bg-cream sm:w-auto sm:flex-shrink"
+            className={`animate-fade-slide-in ${index >= 3 ? "hidden md:flex" : ""}`}
             style={{ animationDelay: `${index * 50}ms` }}
           >
-            {death.profile_path ? (
-              <img
-                src={getProfileUrl(death.profile_path, "w185")!}
-                alt={death.name}
-                width={64}
-                height={80}
-                loading="lazy"
-                className="mb-2 h-20 w-16 rounded object-cover"
-              />
-            ) : death.fallback_profile_url ? (
-              <img
-                src={death.fallback_profile_url}
-                alt={death.name}
-                width={64}
-                height={80}
-                loading="lazy"
-                className="mb-2 h-20 w-16 rounded object-cover"
-              />
-            ) : (
-              <div className="mb-2 flex h-20 w-16 items-center justify-center rounded bg-brown-medium/20">
-                <PersonIcon size={28} className="text-text-muted" />
-              </div>
-            )}
-
-            <h3 className="w-full truncate text-sm font-medium text-brown-dark" title={death.name}>
-              {death.name}
-            </h3>
-            <p className="text-xs text-accent">{formatDate(death.deathday)}</p>
-            {death.cause_of_death && (
-              <p className="mt-1 w-full truncate text-xs text-text-muted">
-                <CauseOfDeathBadge
-                  causeOfDeath={death.cause_of_death}
-                  causeOfDeathDetails={death.cause_of_death_details}
-                  testId={`death-details-tooltip-${death.tmdb_id}`}
-                />
-              </p>
-            )}
-          </Link>
+            <ActorCard
+              name={death.name}
+              slug={createActorSlug(death.name, death.id)}
+              profilePath={death.profile_path}
+              fallbackProfileUrl={death.fallback_profile_url}
+              deathday={death.deathday}
+              birthday={death.birthday}
+              ageAtDeath={death.age_at_death}
+              causeOfDeath={death.cause_of_death}
+              causeOfDeathDetails={death.cause_of_death_details}
+              knownFor={death.known_for}
+              showBirthDate
+              useCauseOfDeathBadge
+              nameColor="accent"
+            />
+          </div>
         ))}
       </div>
     </section>

@@ -72,10 +72,10 @@ export default function QuickActions() {
   return (
     <div
       data-testid="quick-actions"
-      className="scrollbar-hide -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mt-6 md:mx-auto md:max-w-xl md:flex-wrap md:justify-center md:overflow-visible md:px-0 md:pb-0"
+      className="scrollbar-hide mt-5 grid auto-cols-max grid-flow-col grid-rows-2 gap-2 overflow-x-auto md:mx-auto md:mt-8 md:flex md:max-w-xl md:flex-wrap md:justify-center md:overflow-visible"
     >
       {QUICK_ACTIONS.map((action) => (
-        <div key={action.testId} className="group relative flex-shrink-0 md:flex-shrink">
+        <div key={action.testId} className="group relative">
           <Link data-testid={action.testId} to={action.to} className={linkClass}>
             {"icon" in action ? (
               <DecadesIcon size={16} />
