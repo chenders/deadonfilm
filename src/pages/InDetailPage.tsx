@@ -60,6 +60,24 @@ function ActorCard({ actor }: { actor: InDetailActor }) {
             />
           </div>
         </div>
+
+        {actor.topFilms.length > 0 && (
+          <div className="hidden max-w-[180px] flex-shrink-0 flex-col items-end gap-0.5 xl:flex">
+            <span className="mb-0.5 text-[10px] uppercase tracking-wider text-text-muted">
+              Known for
+            </span>
+            {actor.topFilms.map((film, i) => (
+              <span
+                key={i}
+                className="max-w-full truncate text-right text-xs text-brown-dark"
+                title={`${film.title}${film.year ? ` (${film.year})` : ""}`}
+              >
+                {film.title}
+                {film.year && <span className="text-text-muted"> ({film.year})</span>}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </Link>
   )

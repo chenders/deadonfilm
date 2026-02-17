@@ -55,7 +55,7 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
   )
   const totalCount = parseInt(countResult.rows[0]?.count || "0", 10)
 
-  // Get paginated actors
+  // Get paginated actors with top films via lateral join
   const result = await db.query<{
     id: number
     tmdb_id: number | null
@@ -67,14 +67,27 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
     death_manner: string | null
     enriched_at: string | null
     circumstances_confidence: string | null
+    top_films: Array<{ title: string; year: number | null }> | null
   }>(
     `SELECT
        a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
        a.age_at_death, a.cause_of_death, a.death_manner,
        a.enriched_at,
-       adc.circumstances_confidence
+       adc.circumstances_confidence,
+       tf.films as top_films
      FROM actors a
      LEFT JOIN actor_death_circumstances adc ON a.id = adc.actor_id
+     LEFT JOIN LATERAL (
+       SELECT json_agg(sub.film) as films
+       FROM (
+         SELECT json_build_object('title', m.title, 'year', m.release_year) as film
+         FROM actor_movie_appearances ama
+         JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+         WHERE ama.actor_id = a.id
+         ORDER BY m.tmdb_popularity DESC NULLS LAST
+         LIMIT 3
+       ) sub
+     ) tf ON true
      WHERE ${whereClause}
      ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, a.name, a.id
      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
@@ -95,6 +108,7 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
         enrichedAt: row.enriched_at,
         circumstancesConfidence: row.circumstances_confidence,
         slug: createActorSlug(row.name, row.id),
+        topFilms: row.top_films || [],
       })
     ),
     pagination: {

@@ -26,6 +26,10 @@ const mockInDetailResponse = {
       enrichedAt: "2025-01-15T12:00:00Z",
       circumstancesConfidence: "high",
       slug: "researched-actor-1",
+      topFilms: [
+        { title: "Famous Movie", year: 1995 },
+        { title: "Another Hit", year: 2001 },
+      ],
     },
     {
       id: 2,
@@ -39,6 +43,7 @@ const mockInDetailResponse = {
       enrichedAt: "2025-01-10T12:00:00Z",
       circumstancesConfidence: "medium",
       slug: "another-actor-2",
+      topFilms: [],
     },
   ],
   pagination: {

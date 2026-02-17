@@ -728,6 +728,7 @@ export interface InDetailActor {
   enrichedAt: string | null
   circumstancesConfidence: string | null
   slug: string
+  topFilms: Array<{ title: string; year: number | null }>
 }
 
 export interface InDetailOptions {
