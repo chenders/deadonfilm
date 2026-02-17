@@ -785,6 +785,7 @@ export class DeathEnrichmentOrchestrator {
         actorStats.finalSource = source.type
         actorStats.confidence = lookupResult.source.confidence
         this.statusBar.log(`    Both thresholds met, accepting result`)
+        break
       } else if (contentMet && !reliabilityMet) {
         this.statusBar.log(
           `    Below reliability threshold (${srcReliability.toFixed(2)} < ${reliabilityThreshold.toFixed(2)}), continuing...`

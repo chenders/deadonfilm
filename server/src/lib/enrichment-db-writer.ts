@@ -204,10 +204,18 @@ export async function writeToProduction(
     actorParams.push(enrichment.violentDeath)
   }
 
-  // Always update enriched_at and updated_at when we have updates
+  // Always update enriched_at, enrichment metadata, and updated_at when we have updates
   if (actorUpdates.length > 0) {
     actorUpdates.push(`enriched_at = NOW()`)
     actorUpdates.push(`updated_at = NOW()`)
+    if (circumstances.enrichmentSource) {
+      actorUpdates.push(`enrichment_source = $${actorParamIndex++}`)
+      actorParams.push(circumstances.enrichmentSource)
+    }
+    if (circumstances.enrichmentVersion) {
+      actorUpdates.push(`enrichment_version = $${actorParamIndex++}`)
+      actorParams.push(circumstances.enrichmentVersion)
+    }
     actorParams.push(enrichment.actorId)
 
     await db.query(
