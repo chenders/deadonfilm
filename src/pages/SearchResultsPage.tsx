@@ -206,9 +206,7 @@ export default function SearchResultsPage() {
       : undefined
 
   const displayQuery = queryParam.trim()
-  const title = displayQuery
-    ? `Search results for "${displayQuery}"`
-    : "Search movies, shows, and people"
+  const title = displayQuery ? `Search results for "${displayQuery}"` : "Search anything"
   const description = displayQuery
     ? `Search results for "${displayQuery}" on Dead on Film. Find movies, TV shows, and actors with mortality statistics.`
     : "Search the Dead on Film database for movies, TV shows, and actors. See which cast members have passed away."
@@ -226,7 +224,7 @@ export default function SearchResultsPage() {
           data-testid="search-page-input"
           value={inputValue}
           onChange={handleInputChange}
-          placeholder="Search movies, shows, and people..."
+          placeholder="Search anything..."
           className="w-full rounded-lg border border-brown-medium/30 bg-surface-elevated px-4 py-3 text-lg text-brown-dark placeholder-text-muted/60 focus:border-brown-dark focus:outline-none focus:ring-1 focus:ring-brown-dark"
         />
       </div>
