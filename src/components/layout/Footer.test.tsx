@@ -17,28 +17,53 @@ describe("Footer", () => {
     expect(screen.getByTestId("footer-nav")).toBeInTheDocument()
   })
 
-  it("renders About link", () => {
+  it("renders category headings", () => {
     renderFooter()
-    const link = screen.getByRole("link", { name: "About" })
-    expect(link).toHaveAttribute("href", "/about")
+    expect(screen.getByText("Explore")).toBeInTheDocument()
+    expect(screen.getByText("Statistics")).toBeInTheDocument()
+    expect(screen.getByText("Information")).toBeInTheDocument()
   })
 
-  it("renders FAQ link", () => {
+  it("renders Explore links", () => {
     renderFooter()
-    const link = screen.getByRole("link", { name: "FAQ" })
-    expect(link).toHaveAttribute("href", "/faq")
+    expect(screen.getByRole("link", { name: "Death Watch" })).toHaveAttribute(
+      "href",
+      "/death-watch"
+    )
+    expect(screen.getByRole("link", { name: "Notable Deaths" })).toHaveAttribute(
+      "href",
+      "/deaths/notable"
+    )
+    expect(screen.getByRole("link", { name: "Causes of Death" })).toHaveAttribute(
+      "href",
+      "/causes-of-death"
+    )
   })
 
-  it("renders Methodology link", () => {
+  it("renders Statistics links", () => {
     renderFooter()
-    const link = screen.getByRole("link", { name: "Methodology" })
-    expect(link).toHaveAttribute("href", "/methodology")
+    expect(screen.getByRole("link", { name: "Deaths by Decade" })).toHaveAttribute(
+      "href",
+      "/deaths/decades"
+    )
+    expect(screen.getByRole("link", { name: "Movie Genres" })).toHaveAttribute(
+      "href",
+      "/movies/genres"
+    )
   })
 
-  it("renders Data Sources link", () => {
+  it("renders Information links", () => {
     renderFooter()
-    const link = screen.getByRole("link", { name: "Data Sources" })
-    expect(link).toHaveAttribute("href", "/data-sources")
+    expect(screen.getByRole("link", { name: "About" })).toHaveAttribute("href", "/about")
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/faq")
+    expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute(
+      "href",
+      "/methodology"
+    )
+    expect(screen.getByRole("link", { name: "Data Sources" })).toHaveAttribute(
+      "href",
+      "/data-sources"
+    )
   })
 
   it("renders TMDB attribution", () => {
