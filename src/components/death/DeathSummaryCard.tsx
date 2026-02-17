@@ -47,11 +47,11 @@ export default function DeathSummaryCard({
 
   // Build teaser text
   let teaserLine: string | null = null
-  if (causeOfDeath && ageAtDeath) {
+  if (causeOfDeath && ageAtDeath !== null) {
     teaserLine = `Died of ${causeOfDeath.toLowerCase()} at age ${ageAtDeath}.`
   } else if (causeOfDeath) {
     teaserLine = `Died of ${causeOfDeath.toLowerCase()}.`
-  } else if (ageAtDeath) {
+  } else if (ageAtDeath !== null) {
     teaserLine = `Died at age ${ageAtDeath}.`
   }
 
