@@ -36,8 +36,14 @@ export default function RecentDeaths() {
     return null // Silently fail - this is an enhancement feature
   }
 
-  // Ensure even count so the 2-col desktop grid never has an orphan row
-  const deaths = data.deaths.length % 2 === 0 ? data.deaths : data.deaths.slice(0, -1)
+  // Ensure even count so the 2-col desktop grid never has an orphan row,
+  // but still display a single item when only one death is available
+  const deaths =
+    data.deaths.length === 1
+      ? data.deaths
+      : data.deaths.length % 2 === 0
+        ? data.deaths
+        : data.deaths.slice(0, -1)
 
   return (
     <section data-testid="recent-deaths" className="mt-6 md:mt-8">

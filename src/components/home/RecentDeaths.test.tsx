@@ -214,6 +214,54 @@ describe("RecentDeaths", () => {
     })
   })
 
+  it("trims odd number of deaths to even count", async () => {
+    const oddDeaths = {
+      deaths: [
+        ...mockDeaths.deaths,
+        {
+          id: 5,
+          tmdb_id: 5,
+          name: "Actor Five",
+          deathday: "2024-08-01",
+          cause_of_death: null,
+          cause_of_death_details: null,
+          profile_path: null,
+          fallback_profile_url: null,
+          age_at_death: 70,
+          birthday: "1954-01-01",
+          known_for: null,
+        },
+      ],
+    }
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(oddDeaths)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recent-deaths")).toBeInTheDocument()
+    })
+
+    // 5 deaths → trimmed to 4 for even grid
+    expect(screen.getByText("Actor One")).toBeInTheDocument()
+    expect(screen.getByText("Actor Four")).toBeInTheDocument()
+    expect(screen.queryByText("Actor Five")).not.toBeInTheDocument()
+  })
+
+  it("displays a single death without trimming", async () => {
+    const singleDeath = {
+      deaths: [mockDeaths.deaths[0]],
+    }
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(singleDeath)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recent-deaths")).toBeInTheDocument()
+    })
+
+    expect(screen.getByText("Actor One")).toBeInTheDocument()
+  })
+
   it("renders View all link to /deaths/all", async () => {
     vi.mocked(api.getRecentDeaths).mockResolvedValue(mockDeaths)
 

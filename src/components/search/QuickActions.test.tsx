@@ -132,14 +132,14 @@ describe("QuickActions", () => {
     expect(screen.getByText("🔍")).toBeInTheDocument()
   })
 
-  it("uses flex-wrap layout for discovery pills", () => {
+  it("uses flex-wrap layout for discovery pills on desktop", () => {
     renderWithRouter(<QuickActions />)
 
     const container = screen.getByTestId("quick-actions")
 
-    expect(container.className).toContain("flex")
-    expect(container.className).toContain("flex-wrap")
-    expect(container.className).toContain("justify-center")
+    expect(container.className).toContain("md:flex")
+    expect(container.className).toContain("md:flex-wrap")
+    expect(container.className).toContain("md:justify-center")
   })
 
   it("all buttons have consistent styling for height", () => {

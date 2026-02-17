@@ -166,4 +166,13 @@ describe("HomePage", () => {
     expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
     expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
   })
+
+  it("auto-focuses search input on homepage load", async () => {
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      const input = screen.getByPlaceholderText(/search anything/i)
+      expect(input).toHaveFocus()
+    })
+  })
 })
