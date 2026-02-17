@@ -20,22 +20,24 @@ export default function MediaTypeToggle({ value, onChange }: MediaTypeToggleProp
       role="radiogroup"
       aria-label="Search type"
     >
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="radio"
-          aria-checked={value === option.value}
-          data-testid={`media-type-${option.value}`}
-          onClick={() => onChange(option.value)}
-          className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-            value === option.value
-              ? "bg-brown-dark text-cream"
-              : "text-brown-medium hover:bg-beige/50 hover:text-brown-dark"
-          }`}
-        >
-          {option.label}
-        </button>
+      {options.map((option, index) => (
+        <span key={option.value} className="flex items-center">
+          {index > 0 && <span className="mx-0.5 h-4 w-px bg-brown-medium/20" aria-hidden="true" />}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={value === option.value}
+            data-testid={`media-type-${option.value}`}
+            onClick={() => onChange(option.value)}
+            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+              value === option.value
+                ? "bg-brown-dark text-cream"
+                : "text-brown-medium hover:bg-beige/50 hover:text-brown-dark"
+            }`}
+          >
+            {option.label}
+          </button>
+        </span>
       ))}
     </div>
   )

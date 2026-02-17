@@ -6,21 +6,36 @@ import { PersonIcon } from "@/components/icons"
 import { formatDate } from "@/utils/formatDate"
 import CauseOfDeathBadge from "@/components/common/CauseOfDeathBadge"
 
+function formatDateRange(birthday: string | null, deathday: string): string {
+  const deathStr = formatDate(deathday)
+  if (birthday) {
+    return `${formatDate(birthday)} – ${deathStr}`
+  }
+  return `Died ${deathStr}`
+}
+
 export default function RecentDeaths() {
-  // Fetch 8 for 2 rows of 4 on desktop, or 2 rows of 2 on mobile
-  const { data, isLoading, error } = useRecentDeaths(8)
+  const { data, isLoading, error } = useRecentDeaths(6)
 
   if (isLoading) {
     return (
       <div className="mt-6 md:mt-8">
         <div className="animate-pulse">
           <div className="mx-auto mb-4 h-6 w-40 rounded bg-brown-medium/20" />
-          <div className="flex flex-col gap-3 md:grid md:grid-cols-4 md:gap-3">
-            {[...Array(8)].map((_, i) => (
+          <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-3">
+            {[...Array(6)].map((_, i) => (
               <div
                 key={i}
-                className={`h-24 rounded-lg bg-brown-medium/20 md:h-32 ${i >= 3 ? "hidden md:block" : ""}`}
-              />
+                className={`flex gap-4 rounded-lg bg-brown-medium/20 p-3 ${i >= 3 ? "hidden md:flex" : ""}`}
+              >
+                <div className="h-28 w-20 flex-shrink-0 rounded bg-brown-medium/30" />
+                <div className="flex flex-1 flex-col gap-2">
+                  <div className="h-5 w-3/4 rounded bg-brown-medium/30" />
+                  <div className="h-4 w-full rounded bg-brown-medium/30" />
+                  <div className="h-4 w-1/2 rounded bg-brown-medium/30" />
+                  <div className="h-3 w-2/3 rounded bg-brown-medium/30" />
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -31,6 +46,9 @@ export default function RecentDeaths() {
   if (error || !data || data.deaths.length === 0) {
     return null // Silently fail - this is an enhancement feature
   }
+
+  // Ensure even count so the 2-col desktop grid never has an orphan row
+  const deaths = data.deaths.length % 2 === 0 ? data.deaths : data.deaths.slice(0, -1)
 
   return (
     <section data-testid="recent-deaths" className="mt-6 md:mt-8">
@@ -49,59 +67,74 @@ export default function RecentDeaths() {
 
       <div
         data-testid="recent-deaths-list"
-        className="flex flex-col gap-3 md:grid md:grid-cols-4 md:gap-3"
+        className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-3"
       >
-        {data.deaths.map((death, index) => (
-          <Link
-            key={death.id}
-            to={`/actor/${createActorSlug(death.name, death.id)}`}
-            className={`animate-fade-slide-in flex items-center gap-4 rounded-lg bg-beige p-3 text-left transition-colors hover:bg-cream md:w-auto md:flex-col md:items-center md:p-3 md:text-center ${index >= 3 ? "hidden md:flex" : ""}`}
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            {death.profile_path ? (
-              <img
-                src={getProfileUrl(death.profile_path, "w185")!}
-                alt={death.name}
-                width={96}
-                height={120}
-                loading="lazy"
-                className="h-[120px] w-24 flex-shrink-0 rounded object-cover md:mb-2 md:h-20 md:w-16"
-              />
-            ) : death.fallback_profile_url ? (
-              <img
-                src={death.fallback_profile_url}
-                alt={death.name}
-                width={96}
-                height={120}
-                loading="lazy"
-                className="h-[120px] w-24 flex-shrink-0 rounded object-cover md:mb-2 md:h-20 md:w-16"
-              />
-            ) : (
-              <div className="flex h-[120px] w-24 flex-shrink-0 items-center justify-center rounded bg-brown-medium/20 md:mb-2 md:h-20 md:w-16">
-                <PersonIcon size={32} className="text-text-muted" />
-              </div>
-            )}
+        {deaths.map((death, index) => {
+          const knownForTitles =
+            death.known_for
+              ?.slice(0, 2)
+              .map((w) => (w.year ? `${w.name} (${w.year})` : w.name))
+              .join(", ") || null
 
-            <div className="min-w-0 md:w-full">
-              <h3
-                className="text-lg font-bold text-brown-dark md:truncate md:text-sm md:font-medium"
-                title={death.name}
-              >
-                {death.name}
-              </h3>
-              <p className="text-sm text-accent md:text-xs">{formatDate(death.deathday)}</p>
-              {death.cause_of_death && (
-                <p className="mt-0.5 text-sm text-text-muted md:mt-1 md:w-full md:truncate md:text-xs">
-                  <CauseOfDeathBadge
-                    causeOfDeath={death.cause_of_death}
-                    causeOfDeathDetails={death.cause_of_death_details}
-                    testId={`death-details-tooltip-${death.tmdb_id}`}
-                  />
-                </p>
+          return (
+            <Link
+              key={death.id}
+              to={`/actor/${createActorSlug(death.name, death.id)}`}
+              className={`animate-fade-slide-in flex items-start gap-4 rounded-lg bg-beige p-3 text-left transition-colors hover:bg-cream ${index >= 3 ? "hidden md:flex" : ""}`}
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              {death.profile_path ? (
+                <img
+                  src={getProfileUrl(death.profile_path, "w185")!}
+                  alt={death.name}
+                  width={80}
+                  height={112}
+                  loading="lazy"
+                  className="h-28 w-20 flex-shrink-0 rounded object-cover"
+                />
+              ) : death.fallback_profile_url ? (
+                <img
+                  src={death.fallback_profile_url}
+                  alt={death.name}
+                  width={80}
+                  height={112}
+                  loading="lazy"
+                  className="h-28 w-20 flex-shrink-0 rounded object-cover"
+                />
+              ) : (
+                <div className="flex h-28 w-20 flex-shrink-0 items-center justify-center rounded bg-brown-medium/20">
+                  <PersonIcon size={32} className="text-text-muted" />
+                </div>
               )}
-            </div>
-          </Link>
-        ))}
+
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-lg font-bold text-accent" title={death.name}>
+                  {death.name}
+                </h3>
+                <p className="text-sm text-text-primary">
+                  {formatDateRange(death.birthday, death.deathday)}
+                </p>
+                {death.age_at_death != null && (
+                  <p className="text-sm text-text-primary">Age: {death.age_at_death}</p>
+                )}
+                {death.cause_of_death && (
+                  <p className="mt-0.5 text-sm text-text-muted">
+                    <CauseOfDeathBadge
+                      causeOfDeath={death.cause_of_death}
+                      causeOfDeathDetails={death.cause_of_death_details}
+                      testId={`death-details-tooltip-${death.tmdb_id}`}
+                    />
+                  </p>
+                )}
+                {knownForTitles && (
+                  <p className="mt-0.5 line-clamp-2 text-sm italic text-text-muted">
+                    {knownForTitles}
+                  </p>
+                )}
+              </div>
+            </Link>
+          )
+        })}
       </div>
     </section>
   )

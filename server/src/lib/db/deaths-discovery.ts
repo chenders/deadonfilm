@@ -74,6 +74,9 @@ export async function getRecentDeaths(limit: number = 5): Promise<
     cause_of_death_details: string | null
     profile_path: string | null
     fallback_profile_url: string | null
+    age_at_death: number | null
+    birthday: string | null
+    known_for: Array<{ name: string; year: number | null; type: string; popularity: number }> | null
   }>
 > {
   const db = getPool()
@@ -93,9 +96,29 @@ export async function getRecentDeaths(limit: number = 5): Promise<
           OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
      )
      SELECT a.id, a.tmdb_id, a.name, a.deathday, a.cause_of_death, a.cause_of_death_details,
-            a.profile_path, a.fallback_profile_url
+            a.profile_path, a.fallback_profile_url, a.age_at_death, a.birthday,
+            kf.known_for
      FROM actors a
      JOIN actor_appearances aa ON aa.id = a.id
+     LEFT JOIN LATERAL (
+       SELECT json_agg(w ORDER BY w.popularity DESC) AS known_for
+       FROM (
+         (SELECT m.title AS name, m.release_year AS year, 'movie' AS type,
+                 COALESCE(m.dof_popularity, m.tmdb_popularity, 0) AS popularity
+          FROM actor_movie_appearances ama
+          JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+          WHERE ama.actor_id = a.id
+          ORDER BY COALESCE(m.dof_popularity, m.tmdb_popularity, 0) DESC LIMIT 2)
+         UNION ALL
+         (SELECT s.name, EXTRACT(YEAR FROM s.first_air_date)::integer AS year, 'tv' AS type,
+                 COALESCE(s.dof_popularity, s.tmdb_popularity, 0) AS popularity
+          FROM actor_show_appearances asa
+          JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
+          WHERE asa.actor_id = a.id
+          GROUP BY s.tmdb_id, s.name, s.first_air_date, s.dof_popularity, s.tmdb_popularity
+          ORDER BY COALESCE(s.dof_popularity, s.tmdb_popularity, 0) DESC LIMIT 2)
+       ) w
+     ) kf ON true
      WHERE a.is_obscure = false
      ORDER BY a.deathday DESC
      LIMIT $1`,

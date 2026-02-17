@@ -8,9 +8,9 @@ export default function Footer() {
       data-testid="site-footer"
       className="mt-auto border-t border-brown-medium/20 bg-cream/50 py-10 sm:py-12"
     >
-      <div className="mx-auto max-w-5xl px-6">
+      <div className="mx-auto max-w-2xl px-6">
         <nav data-testid="footer-nav" aria-label="Footer">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-12">
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 sm:gap-12">
             <div>
               <h3 className="mb-3 border-b border-brown-medium/20 pb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Explore

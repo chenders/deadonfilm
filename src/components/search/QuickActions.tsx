@@ -72,7 +72,7 @@ export default function QuickActions() {
   return (
     <div
       data-testid="quick-actions"
-      className="mt-4 flex flex-wrap justify-center gap-2 md:mx-auto md:mt-6 md:max-w-xl"
+      className="scrollbar-hide mt-5 grid auto-cols-max grid-flow-col grid-rows-2 gap-2 overflow-x-auto md:mx-auto md:mt-8 md:flex md:max-w-xl md:flex-wrap md:justify-center md:overflow-visible"
     >
       {QUICK_ACTIONS.map((action) => (
         <div key={action.testId} className="group relative">
