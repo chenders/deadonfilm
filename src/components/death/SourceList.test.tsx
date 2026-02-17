@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import SourceList from "./SourceList"
 import type { SourceEntry } from "@/types"
 
@@ -48,14 +49,81 @@ describe("SourceList", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument()
   })
 
-  it("renders multiple sources", () => {
+  it("shows all sources when 3 or fewer", () => {
     const sources: SourceEntry[] = [
       { url: "https://a.com", archiveUrl: null, description: "Source A" },
       { url: null, archiveUrl: null, description: "Source B" },
+      { url: "https://c.com", archiveUrl: null, description: "Source C" },
     ]
     render(<SourceList sources={sources} title="References" />)
 
     expect(screen.getByText(/Source A/)).toBeInTheDocument()
     expect(screen.getByText("Source B")).toBeInTheDocument()
+    expect(screen.getByText(/Source C/)).toBeInTheDocument()
+    expect(screen.queryByTestId("sources-toggle")).not.toBeInTheDocument()
+  })
+
+  it("truncates to 3 sources with toggle when more than 3", () => {
+    const sources: SourceEntry[] = [
+      { url: "https://a.com", archiveUrl: null, description: "Source A" },
+      { url: "https://b.com", archiveUrl: null, description: "Source B" },
+      { url: "https://c.com", archiveUrl: null, description: "Source C" },
+      { url: "https://d.com", archiveUrl: null, description: "Source D" },
+      { url: "https://e.com", archiveUrl: null, description: "Source E" },
+    ]
+    render(<SourceList sources={sources} title="Sources" />)
+
+    expect(screen.getByText(/Source A/)).toBeInTheDocument()
+    expect(screen.getByText(/Source B/)).toBeInTheDocument()
+    expect(screen.getByText(/Source C/)).toBeInTheDocument()
+    expect(screen.queryByText(/Source D/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Source E/)).not.toBeInTheDocument()
+    expect(screen.getByTestId("sources-toggle")).toHaveTextContent("+ 2 more")
+  })
+
+  it("renders sources as a vertical list", () => {
+    const sources: SourceEntry[] = [
+      { url: "https://a.com", archiveUrl: null, description: "Source A" },
+      { url: "https://b.com", archiveUrl: null, description: "Source B" },
+      { url: "https://c.com", archiveUrl: null, description: "Source C" },
+    ]
+    render(<SourceList sources={sources} title="Sources" />)
+
+    const items = screen.getAllByRole("listitem")
+    expect(items).toHaveLength(3)
+  })
+
+  it("uses semantic list markup", () => {
+    const sources: SourceEntry[] = [
+      { url: "https://a.com", archiveUrl: null, description: "Source A" },
+    ]
+    render(<SourceList sources={sources} title="Sources" />)
+
+    expect(screen.getByRole("list")).toBeInTheDocument()
+    expect(screen.getAllByRole("listitem")).toHaveLength(1)
+  })
+
+  it("expands and collapses sources on toggle click", async () => {
+    const user = userEvent.setup()
+    const sources: SourceEntry[] = [
+      { url: "https://a.com", archiveUrl: null, description: "Source A" },
+      { url: "https://b.com", archiveUrl: null, description: "Source B" },
+      { url: "https://c.com", archiveUrl: null, description: "Source C" },
+      { url: "https://d.com", archiveUrl: null, description: "Source D" },
+    ]
+    render(<SourceList sources={sources} title="Sources" />)
+
+    // Initially hidden
+    expect(screen.queryByText(/Source D/)).not.toBeInTheDocument()
+
+    // Expand
+    await user.click(screen.getByTestId("sources-toggle"))
+    expect(screen.getByText(/Source D/)).toBeInTheDocument()
+    expect(screen.getByTestId("sources-toggle")).toHaveTextContent("show less")
+
+    // Collapse
+    await user.click(screen.getByTestId("sources-toggle"))
+    expect(screen.queryByText(/Source D/)).not.toBeInTheDocument()
+    expect(screen.getByTestId("sources-toggle")).toHaveTextContent("+ 1 more")
   })
 })

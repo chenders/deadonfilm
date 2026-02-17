@@ -388,7 +388,7 @@ export default function ActorPage() {
         {actor.biography && (
           <div className="mb-6 rounded-lg bg-surface-elevated p-4">
             <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
-            <p className="text-sm leading-relaxed text-text-primary">{actor.biography}</p>
+            <p className="leading-relaxed text-text-primary">{actor.biography}</p>
             {actor.biographySourceUrl && (
               <a
                 href={actor.biographySourceUrl}
@@ -409,7 +409,7 @@ export default function ActorPage() {
             data-testid="career-context-section"
           >
             <h2 className="mb-2 font-display text-lg text-brown-dark">Career Context</h2>
-            <div className="space-y-2 text-sm text-text-primary">
+            <div className="space-y-2 text-text-primary">
               {deathInfo.career.statusAtDeath && (
                 <p>
                   <span className="font-medium">Status at Death:</span>{" "}
