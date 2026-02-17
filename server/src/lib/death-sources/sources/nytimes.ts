@@ -17,7 +17,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult, EnrichmentSourceEntry } from "../types.js"
-import { DataSourceType, DEFAULT_MAX_STORIES_PER_SOURCE } from "../types.js"
+import { DataSourceType, DEFAULT_MAX_STORIES_PER_SOURCE, ReliabilityTier } from "../types.js"
 
 const NYT_API_URL = "https://api.nytimes.com/svc/search/v2/articlesearch.json"
 
@@ -66,6 +66,7 @@ export class NYTimesSource extends BaseDataSource {
   readonly type = DataSourceType.NYTIMES
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
 
   // NYT allows 5 requests/minute = 12 seconds between requests
   protected minDelayMs = 12000

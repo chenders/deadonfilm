@@ -21,7 +21,7 @@
 
 import { BaseDataSource, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 
 const FAMILYSEARCH_API_URL = "https://api.familysearch.org"
 
@@ -69,6 +69,7 @@ export class FamilySearchSource extends BaseDataSource {
   readonly type = DataSourceType.FAMILYSEARCH
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.MARGINAL_MIXED
 
   // Rate limit: be respectful
   protected minDelayMs = 2000

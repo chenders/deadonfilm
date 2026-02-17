@@ -14,7 +14,7 @@
 
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText, htmlToTextClean, looksLikeCode } from "../html-utils.js"
 
 const TV_ACADEMY_BASE_URL = "https://www.televisionacademy.com"
@@ -28,6 +28,7 @@ export class TelevisionAcademySource extends BaseDataSource {
   readonly type = DataSourceType.TELEVISION_ACADEMY
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
 
   // Respectful rate limit
   protected minDelayMs = 1500

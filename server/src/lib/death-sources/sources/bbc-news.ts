@@ -15,7 +15,7 @@
 
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 import { fetchFromArchive } from "../archive-fallback.js"
 import {
@@ -36,6 +36,7 @@ export class BBCNewsSource extends BaseDataSource {
   readonly type = DataSourceType.BBC_NEWS
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
 
   // Respectful rate limiting
   protected minDelayMs = 2000

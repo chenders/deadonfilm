@@ -11,7 +11,7 @@
 
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
 
@@ -63,6 +63,7 @@ export class WikidataSource extends BaseDataSource {
   readonly type = DataSourceType.WIKIDATA
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.STRUCTURED_DATA
 
   // Wikidata is generous but we should still be polite
   protected minDelayMs = 500

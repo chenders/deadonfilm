@@ -18,7 +18,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 
 const EUROPEANA_API_BASE = "https://api.europeana.eu"
 const EUROPEANA_SEARCH_URL = `${EUROPEANA_API_BASE}/record/v2/search.json`
@@ -59,6 +59,7 @@ export class EuropeanaSource extends BaseDataSource {
   readonly type = DataSourceType.EUROPEANA
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.ARCHIVAL
 
   // Be polite to Europeana servers
   protected minDelayMs = 1000

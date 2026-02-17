@@ -1037,6 +1037,7 @@ router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<v
       has_detailed_death_info: boolean | null
       enriched_at: string | null
       enrichment_source: string | null
+      enrichment_version: string | null
       cause_of_death_source: string | null
       biography: string | null
       biography_generated_at: string | null
@@ -1044,8 +1045,8 @@ router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<v
     }>(
       `SELECT id, name, deathday, is_obscure, deathday_confidence,
               has_detailed_death_info, enriched_at, enrichment_source,
-              cause_of_death_source, biography, biography_generated_at,
-              biography_source_type
+              enrichment_version, cause_of_death_source, biography,
+              biography_generated_at, biography_source_type
        FROM actors WHERE id = $1`,
       [actorId]
     )
@@ -1080,6 +1081,7 @@ router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<v
       enrichment: {
         enrichedAt: actor.enriched_at,
         source: actor.enrichment_source,
+        version: actor.enrichment_version,
         causeOfDeathSource: actor.cause_of_death_source,
         hasCircumstances: !!circ?.circumstances?.trim(),
         circumstancesEnrichedAt: circ?.enriched_at || null,
@@ -1297,7 +1299,7 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
         : null,
       entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
       enrichmentSource: "admin-inline-enrichment",
-      enrichmentVersion: "2.0.0",
+      enrichmentVersion: "3.0.0",
     }
 
     await writeToProduction(pool, enrichmentData, circumstancesData)

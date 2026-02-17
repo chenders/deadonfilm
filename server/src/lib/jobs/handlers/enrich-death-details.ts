@@ -272,7 +272,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
             }
           : null,
         enrichmentSource: "single-actor-enrichment",
-        enrichmentVersion: "2.0.0",
+        enrichmentVersion: "3.0.0",
       }
 
       // 9. Write to production

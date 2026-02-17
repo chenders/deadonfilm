@@ -18,7 +18,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 
 const LOC_BASE_URL = "https://www.loc.gov"
 const CHRONICLING_AMERICA_URL = `${LOC_BASE_URL}/collections/chronicling-america/`
@@ -58,6 +58,7 @@ export class ChroniclingAmericaSource extends BaseDataSource {
   readonly type = DataSourceType.CHRONICLING_AMERICA
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.ARCHIVAL
 
   // Library of Congress recommends 1 request per second
   protected minDelayMs = 1000

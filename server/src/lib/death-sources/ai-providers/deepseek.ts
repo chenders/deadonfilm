@@ -17,7 +17,7 @@ import type {
   ProjectReference,
   RelatedCelebrity,
 } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import {
   buildEnrichedDeathPrompt,
   parseEnrichedResponse,
@@ -35,6 +35,7 @@ export class DeepSeekSource extends BaseDataSource {
   readonly type = DataSourceType.DEEPSEEK
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.0005 // ~$0.0005/query - cheapest AI option
+  readonly reliabilityTier = ReliabilityTier.AI_MODEL
 
   private client: OpenAI | null = null
 

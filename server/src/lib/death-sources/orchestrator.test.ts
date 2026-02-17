@@ -55,6 +55,14 @@ describe("DeathEnrichmentOrchestrator", () => {
     it("has no cost limits by default", () => {
       expect(DEFAULT_CONFIG.costLimits).toBeUndefined()
     })
+
+    it("sets reliabilityThreshold to 0.6", () => {
+      expect(DEFAULT_CONFIG.reliabilityThreshold).toBe(0.6)
+    })
+
+    it("enables reliability threshold by default", () => {
+      expect(DEFAULT_CONFIG.useReliabilityThreshold).toBe(true)
+    })
   })
 
   describe("constructor", () => {
@@ -71,6 +79,26 @@ describe("DeathEnrichmentOrchestrator", () => {
             maxCostPerActor: 0.01,
             maxTotalCost: 1.0,
           },
+        },
+        false
+      )
+      expect(orchestrator).toBeDefined()
+    })
+
+    it("accepts useReliabilityThreshold=false for A/B control mode", () => {
+      const orchestrator = new DeathEnrichmentOrchestrator(
+        {
+          useReliabilityThreshold: false,
+        },
+        false
+      )
+      expect(orchestrator).toBeDefined()
+    })
+
+    it("accepts custom reliabilityThreshold", () => {
+      const orchestrator = new DeathEnrichmentOrchestrator(
+        {
+          reliabilityThreshold: 0.8,
         },
         false
       )

@@ -21,7 +21,7 @@ import type {
   ProjectReference,
   RelatedCelebrity,
 } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import {
   buildEnrichedDeathPrompt,
   parseEnrichedResponse,
@@ -39,6 +39,7 @@ export class GrokSource extends BaseDataSource {
   readonly type = DataSourceType.GROK
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.005 // ~$0.005/query for grok-2
+  readonly reliabilityTier = ReliabilityTier.AI_MODEL
 
   private client: OpenAI | null = null
 

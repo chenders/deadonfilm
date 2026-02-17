@@ -17,7 +17,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult, EnrichmentSourceEntry } from "../types.js"
-import { DataSourceType, DEFAULT_MAX_STORIES_PER_SOURCE } from "../types.js"
+import { DataSourceType, DEFAULT_MAX_STORIES_PER_SOURCE, ReliabilityTier } from "../types.js"
 
 const GUARDIAN_API_URL = "https://content.guardianapis.com/search"
 
@@ -55,6 +55,7 @@ export class GuardianSource extends BaseDataSource {
   readonly type = DataSourceType.GUARDIAN
   readonly isFree = true // Free for non-commercial use
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
 
   // Guardian allows 12 requests/second
   protected minDelayMs = 200

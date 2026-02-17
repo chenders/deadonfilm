@@ -13,7 +13,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 
 const SOOMPI_BASE_URL = "https://www.soompi.com"
@@ -27,6 +27,7 @@ export class SoompiSource extends BaseDataSource {
   readonly type = DataSourceType.SOOMPI
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.UNRELIABLE_UGC
 
   // Be polite to Soompi
   protected minDelayMs = 2000

@@ -16,6 +16,7 @@ export interface ActorAdminMetadata {
   enrichment: {
     enrichedAt: string | null
     source: string | null
+    version: string | null
     causeOfDeathSource: string | null
     hasCircumstances: boolean
     circumstancesEnrichedAt: string | null

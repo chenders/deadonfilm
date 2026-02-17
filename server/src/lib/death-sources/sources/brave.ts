@@ -20,7 +20,7 @@
 
 import { WebSearchBase } from "./web-search-base.js"
 import type { ActorForEnrichment, SearchResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import { extractDomain } from "../link-follower.js"
 
 const BRAVE_API_URL = "https://api.search.brave.com/res/v1/web/search"
@@ -59,6 +59,7 @@ export class BraveSearchSource extends WebSearchBase {
   readonly type = DataSourceType.BRAVE_SEARCH
   readonly isFree = false // Free tier is limited
   readonly estimatedCostPerQuery = 0.005 // Approximately $5 per 1000 queries
+  readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
 
   // Brave has reasonable rate limits
   protected minDelayMs = 500

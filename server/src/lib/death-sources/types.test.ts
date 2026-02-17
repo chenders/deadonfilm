@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest"
-import { DataSourceType, SourceAccessBlockedError } from "./types.js"
+import {
+  DataSourceType,
+  ReliabilityTier,
+  RELIABILITY_SCORES,
+  SourceAccessBlockedError,
+} from "./types.js"
 import type {
   CostBreakdown,
   CostLimitConfig,
@@ -262,6 +267,65 @@ describe("Cost Types", () => {
       expect(stats.costBySource[DataSourceType.OPENAI_GPT4O_MINI]).toBe(0.05)
       expect(stats.costBySource[DataSourceType.PERPLEXITY]).toBe(0.1)
     })
+  })
+})
+
+describe("ReliabilityTier", () => {
+  it("has 12 tiers defined", () => {
+    const tiers = Object.values(ReliabilityTier)
+    expect(tiers).toHaveLength(12)
+  })
+
+  it("has a score mapping for every tier", () => {
+    for (const tier of Object.values(ReliabilityTier)) {
+      expect(RELIABILITY_SCORES[tier]).toBeDefined()
+      expect(typeof RELIABILITY_SCORES[tier]).toBe("number")
+    }
+  })
+
+  it("has scores between 0 and 1", () => {
+    for (const [tier, score] of Object.entries(RELIABILITY_SCORES)) {
+      expect(score).toBeGreaterThanOrEqual(0)
+      expect(score).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it("maps STRUCTURED_DATA to 1.0 (highest)", () => {
+    expect(RELIABILITY_SCORES[ReliabilityTier.STRUCTURED_DATA]).toBe(1.0)
+  })
+
+  it("maps TIER_1_NEWS to 0.95", () => {
+    expect(RELIABILITY_SCORES[ReliabilityTier.TIER_1_NEWS]).toBe(0.95)
+  })
+
+  it("maps TRADE_PRESS to 0.9", () => {
+    expect(RELIABILITY_SCORES[ReliabilityTier.TRADE_PRESS]).toBe(0.9)
+  })
+
+  it("maps AI_MODEL to 0.55", () => {
+    expect(RELIABILITY_SCORES[ReliabilityTier.AI_MODEL]).toBe(0.55)
+  })
+
+  it("maps UNRELIABLE_UGC to 0.35 (lowest)", () => {
+    expect(RELIABILITY_SCORES[ReliabilityTier.UNRELIABLE_UGC]).toBe(0.35)
+  })
+
+  it("ranks structured data higher than user-generated content", () => {
+    expect(RELIABILITY_SCORES[ReliabilityTier.STRUCTURED_DATA]).toBeGreaterThan(
+      RELIABILITY_SCORES[ReliabilityTier.UNRELIABLE_UGC]
+    )
+  })
+
+  it("ranks tier 1 news higher than AI models", () => {
+    expect(RELIABILITY_SCORES[ReliabilityTier.TIER_1_NEWS]).toBeGreaterThan(
+      RELIABILITY_SCORES[ReliabilityTier.AI_MODEL]
+    )
+  })
+
+  it("ranks search aggregators higher than unreliable sources", () => {
+    expect(RELIABILITY_SCORES[ReliabilityTier.SEARCH_AGGREGATOR]).toBeGreaterThan(
+      RELIABILITY_SCORES[ReliabilityTier.UNRELIABLE_FAST]
+    )
   })
 })
 

@@ -19,7 +19,12 @@ import type {
   EnrichedDeathInfo,
   WikipediaOptions,
 } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError, DEFAULT_WIKIPEDIA_OPTIONS } from "../types.js"
+import {
+  DataSourceType,
+  ReliabilityTier,
+  SourceAccessBlockedError,
+  DEFAULT_WIKIPEDIA_OPTIONS,
+} from "../types.js"
 import {
   removeScriptTags,
   removeStyleTags,
@@ -67,6 +72,7 @@ export class WikipediaSource extends BaseDataSource {
   readonly type = DataSourceType.WIKIPEDIA
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.SECONDARY_COMPILATION
   protected minDelayMs = 500 // Wikipedia is generous with rate limits
 
   private wikipediaOptions: WikipediaOptions = DEFAULT_WIKIPEDIA_OPTIONS

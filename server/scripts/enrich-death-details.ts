@@ -180,6 +180,7 @@ interface EnrichOptions {
   yes: boolean
   runId?: number // Optional run ID for tracking progress in database
   staging: boolean // Stage 4: Write to staging tables for review workflow
+  disableReliabilityThreshold: boolean // A/B control: disable source reliability threshold
 }
 
 /**
@@ -372,6 +373,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
     yes,
     runId,
     staging,
+    disableReliabilityThreshold,
   } = options
 
   // Configure cache behavior
@@ -818,6 +820,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
             gatherAllSources: gatherAllSources,
           }
         : undefined,
+      useReliabilityThreshold: !disableReliabilityThreshold,
     }
 
     const orchestrator = new DeathEnrichmentOrchestrator(config)
@@ -1029,7 +1032,7 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
             }
           : null,
         enrichmentSource: "multi-source-enrichment",
-        enrichmentVersion: "2.0.0",
+        enrichmentVersion: disableReliabilityThreshold ? "3.0.0-no-reliability" : "3.0.0",
       }
 
       // Stage 4: Route to staging or production based on --staging flag
@@ -1276,6 +1279,10 @@ const program = new Command()
   )
   // Stage 4: Review workflow
   .option("--staging", "Write to staging tables for review before committing to production")
+  .option(
+    "--disable-reliability-threshold",
+    "Disable source reliability threshold (A/B control mode, uses content confidence only)"
+  )
   .action(async (options) => {
     // Validate that only one targeting mode is used at a time
     const targetingModes = [
@@ -1321,6 +1328,7 @@ const program = new Command()
       yes: options.yes || false,
       runId: options.runId,
       staging: options.staging || false,
+      disableReliabilityThreshold: options.disableReliabilityThreshold || false,
     })
   })
 

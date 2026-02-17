@@ -10,9 +10,10 @@ import type {
   DataSourceType,
   EnrichmentSourceEntry,
   LinkFollowConfig,
+  ReliabilityTier,
   SourceLookupResult,
 } from "./types.js"
-import { SourceAccessBlockedError, SourceTimeoutError } from "./types.js"
+import { RELIABILITY_SCORES, SourceAccessBlockedError, SourceTimeoutError } from "./types.js"
 import { getCachedQuery, setCachedQuery } from "./cache.js"
 import { getEnrichmentLogger } from "./logger.js"
 
@@ -51,6 +52,15 @@ export abstract class BaseDataSource implements DataSource {
   abstract readonly type: DataSourceType
   abstract readonly isFree: boolean
   abstract readonly estimatedCostPerQuery: number
+  abstract readonly reliabilityTier: ReliabilityTier
+
+  /**
+   * Numeric reliability score (0.0–1.0) derived from the tier.
+   * Measures source trustworthiness, independent of content confidence.
+   */
+  get reliabilityScore(): number {
+    return RELIABILITY_SCORES[this.reliabilityTier]
+  }
 
   // Rate limiting
   protected lastRequestTime = 0
@@ -302,6 +312,8 @@ export abstract class BaseDataSource implements DataSource {
       url: url ?? null,
       retrievedAt: new Date(),
       confidence,
+      reliabilityTier: this.reliabilityTier,
+      reliabilityScore: this.reliabilityScore,
       costUsd: this.isFree ? 0 : this.estimatedCostPerQuery,
       queryUsed,
       rawData,
