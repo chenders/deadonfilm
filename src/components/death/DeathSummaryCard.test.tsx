@@ -121,6 +121,36 @@ describe("DeathSummaryCard", () => {
     expect(screen.getByText("The actor passed away peacefully.")).toBeInTheDocument()
   })
 
+  it("renders age-only teaser when causeOfDeath is null", () => {
+    renderWithRouter(
+      <DeathSummaryCard
+        causeOfDeath={null}
+        causeOfDeathDetails={null}
+        ageAtDeath={85}
+        yearsLost={null}
+        hasFullDetails={false}
+        slug="test-actor-123"
+      />
+    )
+
+    expect(screen.getByText("Died at age 85.")).toBeInTheDocument()
+  })
+
+  it("renders cause-only teaser when ageAtDeath is null", () => {
+    renderWithRouter(
+      <DeathSummaryCard
+        causeOfDeath="heart failure"
+        causeOfDeathDetails={null}
+        ageAtDeath={null}
+        yearsLost={null}
+        hasFullDetails={false}
+        slug="test-actor-123"
+      />
+    )
+
+    expect(screen.getByText("Died of heart failure.")).toBeInTheDocument()
+  })
+
   it("does not show years lost when zero or negative", () => {
     renderWithRouter(<DeathSummaryCard {...defaultProps} yearsLost={-2.5} />)
     expect(screen.queryByText(/years before life expectancy/)).not.toBeInTheDocument()
