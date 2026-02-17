@@ -15,11 +15,11 @@ export default function RecentDeaths() {
       <div className="mt-6 sm:mt-8">
         <div className="animate-pulse">
           <div className="mx-auto mb-4 h-6 w-40 rounded bg-brown-medium/20" />
-          <div className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0">
+          <div className="flex flex-col gap-2 sm:grid sm:grid-cols-4 sm:gap-3">
             {[...Array(8)].map((_, i) => (
               <div
                 key={i}
-                className="h-32 w-36 flex-shrink-0 rounded-lg bg-brown-medium/20 sm:w-auto sm:flex-shrink"
+                className={`h-[68px] rounded-lg bg-brown-medium/20 sm:h-32 ${i >= 3 ? "hidden sm:block" : ""}`}
               />
             ))}
           </div>
@@ -49,13 +49,13 @@ export default function RecentDeaths() {
 
       <div
         data-testid="recent-deaths-list"
-        className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0"
+        className="flex flex-col gap-2 sm:grid sm:grid-cols-4 sm:gap-3"
       >
         {data.deaths.map((death, index) => (
           <Link
             key={death.id}
             to={`/actor/${createActorSlug(death.name, death.id)}`}
-            className="animate-fade-slide-in flex w-36 flex-shrink-0 flex-col items-center rounded-lg bg-beige p-3 text-center transition-colors hover:bg-cream sm:w-auto sm:flex-shrink"
+            className={`animate-fade-slide-in flex items-center gap-3 rounded-lg bg-beige p-2 text-left transition-colors hover:bg-cream sm:w-auto sm:flex-col sm:items-center sm:p-3 sm:text-center ${index >= 3 ? "hidden sm:flex" : ""}`}
             style={{ animationDelay: `${index * 50}ms` }}
           >
             {death.profile_path ? (
@@ -65,7 +65,7 @@ export default function RecentDeaths() {
                 width={64}
                 height={80}
                 loading="lazy"
-                className="mb-2 h-20 w-16 rounded object-cover"
+                className="h-20 w-16 flex-shrink-0 rounded object-cover sm:mb-2"
               />
             ) : death.fallback_profile_url ? (
               <img
@@ -74,27 +74,32 @@ export default function RecentDeaths() {
                 width={64}
                 height={80}
                 loading="lazy"
-                className="mb-2 h-20 w-16 rounded object-cover"
+                className="h-20 w-16 flex-shrink-0 rounded object-cover sm:mb-2"
               />
             ) : (
-              <div className="mb-2 flex h-20 w-16 items-center justify-center rounded bg-brown-medium/20">
+              <div className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded bg-brown-medium/20 sm:mb-2">
                 <PersonIcon size={28} className="text-text-muted" />
               </div>
             )}
 
-            <h3 className="w-full truncate text-sm font-medium text-brown-dark" title={death.name}>
-              {death.name}
-            </h3>
-            <p className="text-xs text-accent">{formatDate(death.deathday)}</p>
-            {death.cause_of_death && (
-              <p className="mt-1 w-full truncate text-xs text-text-muted">
-                <CauseOfDeathBadge
-                  causeOfDeath={death.cause_of_death}
-                  causeOfDeathDetails={death.cause_of_death_details}
-                  testId={`death-details-tooltip-${death.tmdb_id}`}
-                />
-              </p>
-            )}
+            <div className="min-w-0 sm:w-full">
+              <h3
+                className="text-sm font-medium text-brown-dark sm:w-full sm:truncate"
+                title={death.name}
+              >
+                {death.name}
+              </h3>
+              <p className="text-xs text-accent">{formatDate(death.deathday)}</p>
+              {death.cause_of_death && (
+                <p className="mt-0.5 text-xs text-text-muted sm:mt-1 sm:w-full sm:truncate">
+                  <CauseOfDeathBadge
+                    causeOfDeath={death.cause_of_death}
+                    causeOfDeathDetails={death.cause_of_death_details}
+                    testId={`death-details-tooltip-${death.tmdb_id}`}
+                  />
+                </p>
+              )}
+            </div>
           </Link>
         ))}
       </div>

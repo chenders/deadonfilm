@@ -132,18 +132,14 @@ describe("QuickActions", () => {
     expect(screen.getByText("🔍")).toBeInTheDocument()
   })
 
-  it("uses responsive horizontal scroll / flex layout", () => {
+  it("uses flex-wrap layout for discovery pills", () => {
     renderWithRouter(<QuickActions />)
 
     const container = screen.getByTestId("quick-actions")
 
-    // Mobile: horizontal scroll strip, Desktop: flex-wrap centered
     expect(container.className).toContain("flex")
-    expect(container.className).toContain("overflow-x-auto")
-    expect(container.className).toContain("scrollbar-hide")
-    expect(container.className).toContain("md:flex-wrap")
-    expect(container.className).toContain("md:justify-center")
-    expect(container.className).toContain("md:overflow-visible")
+    expect(container.className).toContain("flex-wrap")
+    expect(container.className).toContain("justify-center")
   })
 
   it("all buttons have consistent styling for height", () => {
