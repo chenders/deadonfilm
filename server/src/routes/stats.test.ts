@@ -142,6 +142,9 @@ describe("getRecentDeathsHandler", () => {
       cause_of_death_details: "Died peacefully at home",
       profile_path: "/path1.jpg",
       fallback_profile_url: null,
+      age_at_death: 75,
+      birthday: "1949-03-15",
+      known_for: [{ name: "Famous Movie", year: 1990, type: "movie", popularity: 50 }],
     },
     {
       id: 2,
@@ -152,6 +155,9 @@ describe("getRecentDeathsHandler", () => {
       cause_of_death_details: null,
       profile_path: null,
       fallback_profile_url: null,
+      age_at_death: null,
+      birthday: null,
+      known_for: null,
     },
   ]
 
