@@ -81,19 +81,16 @@ describe("SourceList", () => {
     expect(screen.getByTestId("sources-toggle")).toHaveTextContent("+ 2 more")
   })
 
-  it("renders middot separators between sources with aria-hidden", () => {
+  it("renders sources as a vertical list", () => {
     const sources: SourceEntry[] = [
       { url: "https://a.com", archiveUrl: null, description: "Source A" },
       { url: "https://b.com", archiveUrl: null, description: "Source B" },
       { url: "https://c.com", archiveUrl: null, description: "Source C" },
     ]
-    const { container } = render(<SourceList sources={sources} title="Sources" />)
+    render(<SourceList sources={sources} title="Sources" />)
 
-    const separators = container.querySelectorAll("span[aria-hidden='true']")
-    expect(separators).toHaveLength(2) // between A·B and B·C, none after C
-    separators.forEach((sep) => {
-      expect(sep.textContent).toBe("·")
-    })
+    const items = screen.getAllByRole("listitem")
+    expect(items).toHaveLength(3)
   })
 
   it("uses semantic list markup", () => {

@@ -1,7 +1,6 @@
 /**
- * Renders source entries inline with middot separators.
+ * Renders source entries as a vertical list.
  * Shows the first 3 sources by default; remaining are behind a toggle.
- * Uses semantic <ul>/<li> with inline flex layout for accessibility.
  */
 
 import { useState } from "react"
@@ -43,16 +42,11 @@ export default function SourceList({ sources, title }: SourceListProps) {
 
   return (
     <div className="mt-2 text-xs text-text-muted" data-testid={`sources-${title.toLowerCase()}`}>
-      <h4 className="inline font-medium">{title}:</h4>{" "}
-      <ul className="inline">
+      <h4 className="font-medium">{title}:</h4>
+      <ul className="mt-1 space-y-0.5">
         {visible.map((source, idx) => (
-          <li key={idx} className="inline">
+          <li key={idx}>
             <SourceItem source={source} />
-            {idx < visible.length - 1 && (
-              <span className="mx-1" aria-hidden="true">
-                &middot;
-              </span>
-            )}
           </li>
         ))}
       </ul>
@@ -61,7 +55,7 @@ export default function SourceList({ sources, title }: SourceListProps) {
           type="button"
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
-          className="ml-1 text-xs text-brown-medium hover:text-brown-dark focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-brown-medium/50"
+          className="mt-1 text-xs text-brown-medium hover:text-brown-dark focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-brown-medium/50"
           data-testid="sources-toggle"
         >
           {expanded ? "show less" : `+ ${hiddenCount} more`}
