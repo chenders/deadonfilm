@@ -21,7 +21,6 @@ import { buildMovieSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import { useRelatedMovies } from "@/hooks/useRelatedContent"
 import { getPosterUrl } from "@/services/api"
 import RelatedContent from "@/components/content/RelatedContent"
-import SeeAlso from "@/components/content/SeeAlso"
 import Breadcrumb from "@/components/layout/Breadcrumb"
 import type { ViewMode } from "@/types"
 
@@ -189,16 +188,6 @@ export default function MoviePage() {
             />
           </div>
         )}
-
-        <div className="mt-4">
-          <SeeAlso
-            links={[
-              { href: "/movies/genres", label: "Browse by Genre" },
-              { href: "/causes-of-death", label: "Deaths by Cause" },
-              { href: "/deaths/decades", label: "Deaths by Decade" },
-            ]}
-          />
-        </div>
       </div>
     </>
   )

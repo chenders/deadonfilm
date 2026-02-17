@@ -20,7 +20,6 @@ import { useRelatedShows } from "@/hooks/useRelatedContent"
 import { getPosterUrl } from "@/services/api"
 import { TVIcon } from "@/components/icons"
 import RelatedContent from "@/components/content/RelatedContent"
-import SeeAlso from "@/components/content/SeeAlso"
 import Breadcrumb from "@/components/layout/Breadcrumb"
 import type { ViewMode } from "@/types"
 
@@ -166,15 +165,6 @@ export default function ShowPage() {
             />
           </div>
         )}
-
-        <div className="mt-4">
-          <SeeAlso
-            links={[
-              { href: "/causes-of-death", label: "Deaths by Cause" },
-              { href: "/deaths/decades", label: "Deaths by Decade" },
-            ]}
-          />
-        </div>
       </div>
     </>
   )
