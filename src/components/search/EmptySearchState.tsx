@@ -46,7 +46,7 @@ const BROWSE_LINKS = [
   { to: "/deaths/notable", label: "Notable Deaths" },
   { to: "/causes-of-death", label: "Causes" },
   { to: "/deaths/decades", label: "Decades" },
-  { to: "/forever-young", label: "Forever Young" },
+  { to: "/in-detail", label: "In Detail" },
 ] as const
 
 export default function EmptySearchState({

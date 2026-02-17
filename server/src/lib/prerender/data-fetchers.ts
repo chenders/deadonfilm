@@ -95,6 +95,12 @@ export async function fetchPageData(match: MatchResult): Promise<PrerenderPageDa
         "Discover movies with a perfect survival record — every cast member is still alive.",
         "/forever-young"
       )
+    case "in-detail":
+      return getStaticPageData(
+        "In Detail — Actors With Thoroughly Researched Death Information",
+        "Actors with thoroughly researched death details, circumstances, and sources.",
+        "/in-detail"
+      )
     case "covid-deaths":
       return getStaticPageData(
         "COVID-19 Deaths in Film & Television",

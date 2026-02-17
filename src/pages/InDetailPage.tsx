@@ -1,7 +1,8 @@
 import { useSearchParams, Link } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import PaginationHead from "@/components/seo/PaginationHead"
-import { useNotableDeaths } from "@/hooks/useDeathDetails"
+import { useInDetail } from "@/hooks/useInDetail"
+import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import { getProfileUrl } from "@/services/api"
 import { formatDate } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
@@ -9,44 +10,19 @@ import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import SortControl from "@/components/common/SortControl"
 import { PersonIcon } from "@/components/icons"
-import type { NotableDeathActor, NotableDeathsFilter } from "@/types"
+import RelativeTime from "@/components/common/RelativeTime"
+import type { InDetailActor } from "@/types"
 
-// Filter tab configuration
-const FILTERS: { id: NotableDeathsFilter; label: string; description: string }[] = [
-  { id: "all", label: "All", description: "All actors with detailed death information" },
-  { id: "strange", label: "Strange", description: "Unusual or mysterious deaths" },
-  { id: "disputed", label: "Disputed", description: "Deaths with conflicting accounts" },
-  { id: "controversial", label: "Controversial", description: "Deaths involving controversy" },
-]
-
-// Notable factor badge
-function FactorBadge({ factor }: { factor: string }) {
-  const formatted = factor
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-
-  return (
-    <span
-      className="inline-block rounded-full bg-beige px-2 py-0.5 text-xs text-brown-dark"
-      data-testid="factor-badge"
-    >
-      {formatted}
-    </span>
-  )
-}
-
-function ActorCard({ actor }: { actor: NotableDeathActor }) {
+function ActorCard({ actor }: { actor: InDetailActor }) {
   const profileUrl = getProfileUrl(actor.profilePath, "w185")
 
   return (
     <Link
       to={`/actor/${actor.slug}`}
-      data-testid={`notable-death-${actor.id}`}
+      data-testid={`in-detail-${actor.id}`}
       className="block rounded-lg bg-surface-elevated p-4 transition-colors hover:bg-cream"
     >
       <div className="flex items-start gap-4">
-        {/* Profile image */}
         {profileUrl ? (
           <img
             src={profileUrl}
@@ -59,19 +35,8 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
           </div>
         )}
 
-        {/* Info */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-display text-lg text-brown-dark">{actor.name}</h3>
-            {actor.strangeDeath && (
-              <span
-                className="flex-shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs text-white"
-                title="Strange or unusual death"
-              >
-                Strange
-              </span>
-            )}
-          </div>
+          <h3 className="font-display text-lg text-brown-dark">{actor.name}</h3>
 
           <p className="text-sm text-text-muted">
             Died {formatDate(actor.deathday)}
@@ -82,57 +47,60 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
             <p className="mt-1 text-sm text-brown-dark">{toTitleCase(actor.causeOfDeath)}</p>
           )}
 
-          {/* Death manner */}
-          {actor.deathManner && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {actor.deathManner && (
               <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
                 {toTitleCase(actor.deathManner)}
               </span>
-            </div>
-          )}
-
-          {/* Notable factors */}
-          {actor.notableFactors && actor.notableFactors.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {actor.notableFactors.slice(0, 3).map((factor) => (
-                <FactorBadge key={factor} factor={factor} />
-              ))}
-              {actor.notableFactors.length > 3 && (
-                <span className="text-xs text-text-muted">
-                  +{actor.notableFactors.length - 3} more
-                </span>
-              )}
-            </div>
-          )}
+            )}
+            <RelativeTime
+              date={actor.enrichedAt}
+              prefix="Updated"
+              className="text-xs text-text-muted"
+            />
+          </div>
         </div>
+
+        {actor.topFilms.length > 0 && (
+          <div className="hidden max-w-[180px] flex-shrink-0 flex-col items-end gap-0.5 xl:flex">
+            <span className="mb-0.5 text-[10px] uppercase tracking-wider text-text-muted">
+              Known for
+            </span>
+            {actor.topFilms.map((film, i) => (
+              <span
+                key={i}
+                className="max-w-full truncate text-right text-xs text-brown-dark"
+                title={`${film.title}${film.year ? ` (${film.year})` : ""}`}
+              >
+                {film.title}
+                {film.year && <span className="text-text-muted"> ({film.year})</span>}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </Link>
   )
 }
 
-export default function NotableDeathsPage() {
+export default function InDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const [searchInput, setSearchInput, searchQuery] = useDebouncedSearchParam()
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10))
-  const filter = (searchParams.get("filter") as NotableDeathsFilter) || "all"
   const includeObscure = searchParams.get("includeObscure") === "true"
-  const validSorts = ["date", "name"]
+  const validSorts = ["updated", "date", "name", "age"]
   const rawSort = searchParams.get("sort")
-  const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "date"
+  const sort = rawSort && validSorts.includes(rawSort) ? rawSort : "updated"
   const dir = searchParams.get("dir") === "asc" ? "asc" : "desc"
 
-  const { data, isLoading, error } = useNotableDeaths({ page, filter, includeObscure, sort, dir })
-
-  const setFilter = (newFilter: NotableDeathsFilter) => {
-    const newParams = new URLSearchParams(searchParams)
-    if (newFilter !== "all") {
-      newParams.set("filter", newFilter)
-    } else {
-      newParams.delete("filter")
-    }
-    newParams.delete("page") // Reset to first page when filter changes
-    setSearchParams(newParams)
-  }
+  const { data, isLoading, error } = useInDetail({
+    page,
+    includeObscure,
+    search: searchQuery || undefined,
+    sort,
+    dir,
+  })
 
   const goToPage = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams)
@@ -157,7 +125,7 @@ export default function NotableDeathsPage() {
 
   const handleSortChange = (newSort: string) => {
     const newParams = new URLSearchParams(searchParams)
-    if (newSort !== "date") {
+    if (newSort !== "updated") {
       newParams.set("sort", newSort)
     } else {
       newParams.delete("sort")
@@ -178,7 +146,7 @@ export default function NotableDeathsPage() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading notable deaths..." />
+    return <LoadingSpinner message="Loading actors..." />
   }
 
   if (error) {
@@ -186,63 +154,55 @@ export default function NotableDeathsPage() {
   }
 
   const noResults = !data || data.actors.length === 0
-  const currentFilter = FILTERS.find((f) => f.id === filter)
 
   return (
     <>
       <Helmet>
-        <title>Notable Deaths | Dead on Film</title>
+        <title>In Detail | Dead on Film</title>
         <meta
           name="description"
-          content="Explore detailed accounts of celebrity deaths - strange circumstances, disputed accounts, and controversial deaths in film and television."
+          content="Actors with thoroughly researched death details, circumstances, and sources — sorted by most recently updated."
         />
-        <meta property="og:title" content="Notable Deaths | Dead on Film" />
+        <meta property="og:title" content="In Detail | Dead on Film" />
         <meta
           property="og:description"
-          content="Strange, disputed, and controversial celebrity deaths"
+          content="Thoroughly researched actor death details with sources"
         />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content="Notable Deaths | Dead on Film" />
+        <meta name="twitter:title" content="In Detail | Dead on Film" />
         <meta
           name="twitter:description"
-          content="Strange, disputed, and controversial celebrity deaths"
+          content="Thoroughly researched actor death details with sources"
         />
       </Helmet>
       {data && (
         <PaginationHead
           currentPage={page}
           totalPages={data.pagination.totalPages}
-          basePath="/deaths/notable"
-          includeLinks={filter === "all" && !includeObscure}
+          basePath="/in-detail"
+          includeLinks={!searchQuery && !includeObscure}
         />
       )}
 
-      <div data-testid="notable-deaths-page" className="mx-auto max-w-3xl">
+      <div data-testid="in-detail-page" className="mx-auto max-w-5xl">
         <div className="mb-6 text-center">
-          <h1 className="font-display text-3xl text-brown-dark">Notable Deaths</h1>
+          <h1 className="font-display text-3xl text-brown-dark">In Detail</h1>
           <p className="mt-2 text-sm text-text-primary">
-            Detailed accounts of celebrity deaths with sources and context
+            Actors with thoroughly researched death details and sources
           </p>
         </div>
 
-        {/* Filter tabs */}
-        <div className="mb-4 flex flex-wrap justify-center gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              title={f.description}
-              data-testid={`filter-${f.id}`}
-              className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
-                filter === f.id
-                  ? "bg-brown-dark text-white"
-                  : "bg-brown-medium/10 text-brown-dark hover:bg-brown-medium/20"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        {/* Search input */}
+        <div className="mb-4 flex justify-center">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search for an actor..."
+            data-testid="search-input"
+            className="w-full max-w-md rounded-lg border border-brown-medium/30 bg-surface-elevated px-4 py-2 text-sm text-brown-dark placeholder-text-muted focus:border-brown-medium focus:outline-none focus:ring-1 focus:ring-brown-medium"
+          />
         </div>
 
         {/* Include obscure checkbox */}
@@ -264,8 +224,10 @@ export default function NotableDeathsPage() {
         <div className="mb-4 flex justify-center">
           <SortControl
             options={[
+              { value: "updated", label: "Updated" },
               { value: "date", label: "Date" },
               { value: "name", label: "Name" },
+              { value: "age", label: "Age" },
             ]}
             currentSort={sort}
             currentDir={dir}
@@ -274,21 +236,16 @@ export default function NotableDeathsPage() {
           />
         </div>
 
-        {/* Filter description */}
-        {currentFilter && filter !== "all" && (
-          <p className="mb-4 text-center text-sm text-text-muted">{currentFilter.description}</p>
-        )}
-
         {noResults ? (
           <div className="text-center text-text-muted">
-            <p>No notable deaths found for this filter.</p>
+            <p>No results found.</p>
             <p className="mt-2 text-xs">
-              Try a different filter or enable "Include lesser-known actors".
+              Try a different search term or enable "Include lesser-known actors".
             </p>
           </div>
         ) : (
           <>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {data.actors.map((actor) => (
                 <ActorCard key={actor.id} actor={actor} />
               ))}

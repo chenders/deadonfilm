@@ -19,7 +19,7 @@ const NAV_GROUPS = [
     label: "Discover",
     links: [
       { to: "/death-watch", label: "Death Watch" },
-      { to: "/forever-young", label: "Forever Young" },
+      { to: "/in-detail", label: "In Detail" },
       { to: "/deaths/notable", label: "Notable Deaths" },
       { to: "/deaths/decades", label: "Deaths by Decade" },
     ],

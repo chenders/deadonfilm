@@ -3,9 +3,11 @@ import {
   getActorDeathCircumstancesByActorId,
   getActorByEitherIdWithSlug,
   getNotableDeaths as getNotableDeathsFromDb,
+  getInDetailActors as getInDetailActorsFromDb,
   hasDetailedDeathInfo,
   type ProjectInfo,
   type SourceEntry,
+  type InDetailResponse,
 } from "../lib/db.js"
 import { getPersonDetails } from "../lib/tmdb.js"
 import { createActorSlug } from "../lib/slug-utils.js"
@@ -664,5 +666,96 @@ export async function getNotableDeaths(req: Request, res: Response) {
   } catch (error) {
     console.error("Notable deaths fetch error:", error)
     res.status(500).json({ error: { message: "Failed to fetch notable deaths" } })
+  }
+}
+
+/**
+ * GET /api/in-detail
+ * Get paginated list of actors with thoroughly researched death information,
+ * sorted by most recently enriched by default.
+ */
+export async function getInDetailHandler(req: Request, res: Response) {
+  try {
+    const startTime = Date.now()
+
+    // Parse query params
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1)
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string, 10) || 50))
+    const includeObscure = req.query.includeObscure === "true"
+    const search = (req.query.search as string) || undefined
+
+    // Normalize sort/dir to valid values to prevent cache key bloat
+    const validSorts = ["updated", "date", "name", "age"]
+    const sort = validSorts.includes(req.query.sort as string)
+      ? (req.query.sort as string)
+      : "updated"
+    const dir = req.query.dir === "asc" ? "asc" : req.query.dir === "desc" ? "desc" : undefined
+
+    // Skip cache when search is present (same pattern as AllDeaths)
+    if (!search) {
+      const cacheKey = buildCacheKey(CACHE_PREFIX.DEATHS, {
+        type: "in-detail",
+        page,
+        pageSize,
+        includeObscure,
+        sort,
+        dir,
+      })
+
+      const cached = await getCached<InDetailResponse>(cacheKey)
+      if (cached) {
+        newrelic.recordCustomEvent("InDetailView", {
+          page,
+          totalCount: cached.pagination.totalCount,
+          responseTimeMs: Date.now() - startTime,
+          cacheHit: true,
+        })
+        return res.set("Cache-Control", "public, max-age=300").json(cached)
+      }
+
+      // Fetch from database
+      const result = await getInDetailActorsFromDb({
+        page,
+        pageSize,
+        includeObscure,
+        sort,
+        dir,
+      })
+
+      // Cache for 5 minutes
+      await setCached(cacheKey, result, CACHE_TTL.SHORT)
+
+      newrelic.recordCustomEvent("InDetailView", {
+        page,
+        totalCount: result.pagination.totalCount,
+        responseTimeMs: Date.now() - startTime,
+        cacheHit: false,
+      })
+
+      return res.set("Cache-Control", "public, max-age=300").json(result)
+    }
+
+    // Search path (no caching)
+    const result = await getInDetailActorsFromDb({
+      page,
+      pageSize,
+      includeObscure,
+      search,
+      sort,
+      dir,
+    })
+
+    newrelic.recordCustomEvent("InDetailView", {
+      page,
+      search: search.slice(0, 50),
+      totalCount: result.pagination.totalCount,
+      responseTimeMs: Date.now() - startTime,
+      cacheHit: false,
+    })
+
+    res.set("Cache-Control", "public, max-age=60").json(result)
+  } catch (error) {
+    console.error("In-detail fetch error:", error)
+    res.status(500).json({ error: { message: "Failed to fetch in-detail actors" } })
   }
 }

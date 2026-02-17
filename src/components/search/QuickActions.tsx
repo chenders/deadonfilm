@@ -3,12 +3,12 @@ import { DecadesIcon } from "@/components/icons"
 
 const QUICK_ACTIONS = [
   {
-    testId: "forever-young-btn",
-    to: "/forever-young",
-    emoji: "👼",
-    label: "Forever Young",
-    tooltip: "Movies featuring actors who died tragically young",
-    shortDesc: "Actors who died under 40",
+    testId: "in-detail-btn",
+    to: "/in-detail",
+    emoji: "📋",
+    label: "In Detail",
+    tooltip: "Actors with thoroughly researched death information",
+    shortDesc: "Full death accounts",
   },
   {
     testId: "covid-deaths-btn",
