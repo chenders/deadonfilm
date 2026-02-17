@@ -71,6 +71,9 @@ export interface RecentDeathsResponse {
     cause_of_death_details: string | null
     profile_path: string | null
     fallback_profile_url: string | null
+    age_at_death: number | null
+    birthday: string | null
+    known_for: Array<{ name: string; year: number | null; type: "movie" | "tv" }> | null
   }>
 }
 

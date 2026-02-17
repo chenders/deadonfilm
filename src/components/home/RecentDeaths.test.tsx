@@ -22,6 +22,12 @@ const mockDeaths = {
       cause_of_death_details: "Died peacefully at home",
       profile_path: "/path1.jpg",
       fallback_profile_url: null,
+      age_at_death: 75,
+      birthday: "1949-03-15",
+      known_for: [
+        { name: "Famous Movie", year: 1990, type: "movie" as const },
+        { name: "Great Show", year: 2005, type: "tv" as const },
+      ],
     },
     {
       id: 2,
@@ -32,6 +38,9 @@ const mockDeaths = {
       cause_of_death_details: null,
       profile_path: null,
       fallback_profile_url: null,
+      age_at_death: null,
+      birthday: null,
+      known_for: null,
     },
     {
       id: 3,
@@ -42,6 +51,22 @@ const mockDeaths = {
       cause_of_death_details: null,
       profile_path: "/path3.jpg",
       fallback_profile_url: null,
+      age_at_death: 62,
+      birthday: "1962-05-10",
+      known_for: [{ name: "Action Film", year: 2000, type: "movie" as const }],
+    },
+    {
+      id: 4,
+      tmdb_id: 4,
+      name: "Actor Four",
+      deathday: "2024-09-05",
+      cause_of_death: "Lung cancer",
+      cause_of_death_details: null,
+      profile_path: "/path4.jpg",
+      fallback_profile_url: null,
+      age_at_death: 81,
+      birthday: "1943-01-20",
+      known_for: [{ name: "Classic Drama", year: 1985, type: "movie" as const }],
     },
   ],
 }
@@ -90,6 +115,7 @@ describe("RecentDeaths", () => {
     expect(screen.getByText("Actor One")).toBeInTheDocument()
     expect(screen.getByText("Actor Two")).toBeInTheDocument()
     expect(screen.getByText("Actor Three")).toBeInTheDocument()
+    expect(screen.getByText("Actor Four")).toBeInTheDocument()
   })
 
   it("renders correct title", async () => {
@@ -123,7 +149,7 @@ describe("RecentDeaths", () => {
     })
 
     const images = screen.getAllByRole("img")
-    expect(images).toHaveLength(2) // Only 2 actors have profile_path
+    expect(images).toHaveLength(3) // Actors 1, 3, 4 have profile_path
     expect(images[0]).toHaveAttribute("src", "https://image.tmdb.org/t/p/w185/path1.jpg")
   })
 
@@ -167,13 +193,13 @@ describe("RecentDeaths", () => {
     expect(container.querySelector("[data-testid='recent-deaths']")).toBeNull()
   })
 
-  it("calls API with limit of 8", async () => {
+  it("calls API with limit of 6", async () => {
     vi.mocked(api.getRecentDeaths).mockResolvedValue(mockDeaths)
 
     renderWithProviders(<RecentDeaths />)
 
     await waitFor(() => {
-      expect(api.getRecentDeaths).toHaveBeenCalledWith(8)
+      expect(api.getRecentDeaths).toHaveBeenCalledWith(6)
     })
   })
 
@@ -184,8 +210,56 @@ describe("RecentDeaths", () => {
 
     await waitFor(() => {
       const nameElements = screen.getAllByTitle(/Actor/)
-      expect(nameElements.length).toBe(3)
+      expect(nameElements.length).toBe(4)
     })
+  })
+
+  it("trims odd number of deaths to even count", async () => {
+    const oddDeaths = {
+      deaths: [
+        ...mockDeaths.deaths,
+        {
+          id: 5,
+          tmdb_id: 5,
+          name: "Actor Five",
+          deathday: "2024-08-01",
+          cause_of_death: null,
+          cause_of_death_details: null,
+          profile_path: null,
+          fallback_profile_url: null,
+          age_at_death: 70,
+          birthday: "1954-01-01",
+          known_for: null,
+        },
+      ],
+    }
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(oddDeaths)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recent-deaths")).toBeInTheDocument()
+    })
+
+    // 5 deaths → trimmed to 4 for even grid
+    expect(screen.getByText("Actor One")).toBeInTheDocument()
+    expect(screen.getByText("Actor Four")).toBeInTheDocument()
+    expect(screen.queryByText("Actor Five")).not.toBeInTheDocument()
+  })
+
+  it("displays a single death without trimming", async () => {
+    const singleDeath = {
+      deaths: [mockDeaths.deaths[0]],
+    }
+    vi.mocked(api.getRecentDeaths).mockResolvedValue(singleDeath)
+
+    renderWithProviders(<RecentDeaths />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recent-deaths")).toBeInTheDocument()
+    })
+
+    expect(screen.getByText("Actor One")).toBeInTheDocument()
   })
 
   it("renders View all link to /deaths/all", async () => {
