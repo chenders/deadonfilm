@@ -99,7 +99,7 @@ export default function DeathSummaryCard({
       </h2>
 
       {/* Teaser content (always visible) */}
-      <div className="mt-3 text-sm leading-relaxed text-text-primary">
+      <div className="mt-3 leading-relaxed text-text-primary">
         {teaserLine && <p>{teaserLine}</p>}
         {causeOfDeathDetails && <p className="mt-1">{causeOfDeathDetails}</p>}
         {yearsLost !== null && yearsLost > 0 && (
