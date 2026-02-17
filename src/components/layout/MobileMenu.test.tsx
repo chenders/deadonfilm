@@ -65,7 +65,7 @@ describe("MobileMenu", () => {
     expect(screen.getByText("Genres")).toBeInTheDocument()
     expect(screen.getByText("Causes of Death")).toBeInTheDocument()
     expect(screen.getByText("Death Watch")).toBeInTheDocument()
-    expect(screen.getByText("Forever Young")).toBeInTheDocument()
+    expect(screen.getByText("In Detail")).toBeInTheDocument()
     expect(screen.getByText("Notable Deaths")).toBeInTheDocument()
     expect(screen.getByText("Deaths by Decade")).toBeInTheDocument()
     expect(screen.getByText("About")).toBeInTheDocument()

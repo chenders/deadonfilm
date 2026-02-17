@@ -48,7 +48,11 @@ import {
   getDeathsByDecadeHandler,
   getAllDeathsHandler,
 } from "./routes/deaths.js"
-import { getActorDeathDetails, getNotableDeaths } from "./routes/death-details.js"
+import {
+  getActorDeathDetails,
+  getNotableDeaths,
+  getInDetailHandler,
+} from "./routes/death-details.js"
 import {
   getCauseCategoryIndexHandler,
   getCauseCategoryHandler,
@@ -291,6 +295,7 @@ app.get("/api/actor/:slug", getActor)
 app.get("/api/actor/:slug/death", getActorDeathDetails)
 app.get("/api/death-watch", getDeathWatchHandler)
 app.get("/api/deaths/notable", getNotableDeaths)
+app.get("/api/in-detail", getInDetailHandler)
 app.get("/api/deaths/causes", getCauseCategoriesHandler)
 app.get("/api/deaths/cause/:cause", getDeathsByCauseHandler)
 app.get("/api/deaths/decades", getDecadeCategoriesHandler)

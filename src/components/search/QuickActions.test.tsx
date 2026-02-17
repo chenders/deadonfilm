@@ -16,7 +16,7 @@ describe("QuickActions", () => {
     renderWithRouter(<QuickActions />)
 
     expect(screen.getByTestId("quick-actions")).toBeInTheDocument()
-    expect(screen.getByTestId("forever-young-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("in-detail-btn")).toBeInTheDocument()
     expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
     expect(screen.getByTestId("unnatural-deaths-btn")).toBeInTheDocument()
     expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
@@ -28,7 +28,7 @@ describe("QuickActions", () => {
   it("displays correct button text", () => {
     renderWithRouter(<QuickActions />)
 
-    expect(screen.getByText("Forever Young")).toBeInTheDocument()
+    expect(screen.getByText("In Detail")).toBeInTheDocument()
     expect(screen.getByText("COVID-19")).toBeInTheDocument()
     expect(screen.getByText("Unnatural Deaths")).toBeInTheDocument()
     expect(screen.getByText("Death Watch")).toBeInTheDocument()
@@ -37,17 +37,17 @@ describe("QuickActions", () => {
     expect(screen.getByText("Deaths by Decade")).toBeInTheDocument()
   })
 
-  it("Forever Young button links to /forever-young", () => {
+  it("In Detail button links to /in-detail", () => {
     renderWithRouter(<QuickActions />)
 
-    const link = screen.getByTestId("forever-young-btn")
-    expect(link).toHaveAttribute("href", "/forever-young")
+    const link = screen.getByTestId("in-detail-btn")
+    expect(link).toHaveAttribute("href", "/in-detail")
   })
 
-  it("has angel emoji for Forever Young button", () => {
+  it("has clipboard emoji for In Detail button", () => {
     renderWithRouter(<QuickActions />)
 
-    expect(screen.getByText("👼")).toBeInTheDocument()
+    expect(screen.getByText("📋")).toBeInTheDocument()
   })
 
   it("displays tooltips explaining each button", () => {
@@ -55,7 +55,7 @@ describe("QuickActions", () => {
 
     // Tooltips are rendered as spans with the tooltip text
     expect(
-      screen.getByText("Movies featuring actors who died tragically young")
+      screen.getByText("Actors with thoroughly researched death information")
     ).toBeInTheDocument()
     expect(screen.getByText("Actors who died from COVID-19")).toBeInTheDocument()
     expect(screen.getByText("Actors who died from unnatural causes")).toBeInTheDocument()
@@ -149,7 +149,7 @@ describe("QuickActions", () => {
   it("all buttons have consistent styling for height", () => {
     renderWithRouter(<QuickActions />)
 
-    const foreverYoungBtn = screen.getByTestId("forever-young-btn")
+    const inDetailBtn = screen.getByTestId("in-detail-btn")
     const covidDeathsBtn = screen.getByTestId("covid-deaths-btn")
     const unnaturalDeathsBtn = screen.getByTestId("unnatural-deaths-btn")
     const deathWatchBtn = screen.getByTestId("death-watch-btn")
@@ -162,7 +162,7 @@ describe("QuickActions", () => {
     const heightClasses = ["py-1.5", "text-xs", "items-center"]
 
     const buttons = [
-      foreverYoungBtn,
+      inDetailBtn,
       covidDeathsBtn,
       unnaturalDeathsBtn,
       deathWatchBtn,
@@ -183,7 +183,7 @@ describe("QuickActions", () => {
     // Each button's emoji should use the same emojiClass for consistent sizing
     const emojiClasses = ["text-base", "leading-none"]
 
-    const emojis = ["👼", "🦠", "⚠️", "⏳", "📊", "🔍"]
+    const emojis = ["📋", "🦠", "⚠️", "⏳", "📊", "🔍"]
     emojis.forEach((emoji) => {
       const emojiSpan = screen.getByText(emoji)
       emojiClasses.forEach((cls) => {
@@ -211,7 +211,7 @@ describe("QuickActions", () => {
   it("does not render short descriptions (removed for mobile declutter)", () => {
     renderWithRouter(<QuickActions />)
 
-    expect(screen.queryByText("Actors who died under 40")).not.toBeInTheDocument()
+    expect(screen.queryByText("Full death accounts")).not.toBeInTheDocument()
     expect(screen.queryByText("Actors lost to the pandemic")).not.toBeInTheDocument()
     expect(screen.queryByText("Accidents, murders, suicides")).not.toBeInTheDocument()
   })
