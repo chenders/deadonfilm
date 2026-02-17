@@ -46,14 +46,14 @@ export default function DeathSummaryCard({
   }, [isExpanded, hasEverExpanded, onExpand])
 
   // Build teaser text
-  const teaserParts: string[] = []
-  if (causeOfDeath) {
-    teaserParts.push(`Died of ${causeOfDeath.toLowerCase()}`)
+  let teaserLine: string | null = null
+  if (causeOfDeath && ageAtDeath) {
+    teaserLine = `Died of ${causeOfDeath.toLowerCase()} at age ${ageAtDeath}.`
+  } else if (causeOfDeath) {
+    teaserLine = `Died of ${causeOfDeath.toLowerCase()}.`
+  } else if (ageAtDeath) {
+    teaserLine = `Died at age ${ageAtDeath}.`
   }
-  if (ageAtDeath) {
-    teaserParts.push(`at age ${ageAtDeath}`)
-  }
-  const teaserLine = teaserParts.length > 0 ? teaserParts.join(" ") + "." : null
 
   // No death info at all — don't render the card
   if (!causeOfDeath && !causeOfDeathDetails && !ageAtDeath) {
