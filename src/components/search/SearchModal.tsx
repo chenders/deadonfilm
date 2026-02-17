@@ -88,7 +88,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   }
 
   const placeholders: Record<SearchMediaType, string> = {
-    all: "Search movies, shows, and people...",
+    all: "Search anything...",
     movie: "Search for a movie...",
     tv: "Search for a TV show...",
     person: "Search for a person...",
