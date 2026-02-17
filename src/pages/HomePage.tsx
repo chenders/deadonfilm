@@ -45,12 +45,12 @@ export default function HomePage() {
         <h1 className="sr-only">Dead on Film - Movie & TV Show Cast Mortality Database</h1>
         <p
           data-testid="home-tagline"
-          className="hidden text-base text-text-primary sm:mb-6 sm:block sm:text-lg"
+          className="hidden text-base text-text-primary md:mb-6 md:block md:text-lg"
         >
           Search for a movie, TV show, or person to see who has passed away
         </p>
 
-        <div className="rounded-xl border border-brown-medium/20 px-4 py-4 sm:border-0 sm:px-0 sm:py-0">
+        <div className="rounded-xl border border-brown-medium/20 px-4 py-4 md:border-0 md:px-0 md:py-0">
           <SearchBar />
           <QuickActions />
         </div>

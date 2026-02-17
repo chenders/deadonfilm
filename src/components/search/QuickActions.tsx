@@ -72,7 +72,7 @@ export default function QuickActions() {
   return (
     <div
       data-testid="quick-actions"
-      className="mt-4 flex flex-wrap justify-center gap-2 sm:mt-6 md:mx-auto md:max-w-xl"
+      className="mt-4 flex flex-wrap justify-center gap-2 md:mx-auto md:mt-6 md:max-w-xl"
     >
       {QUICK_ACTIONS.map((action) => (
         <div key={action.testId} className="group relative">

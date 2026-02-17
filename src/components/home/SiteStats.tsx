@@ -63,9 +63,9 @@ export default function SiteStats() {
   return (
     <section
       data-testid="site-stats"
-      className="mt-6 rounded-xl border border-brown-medium/20 px-4 py-3 sm:mt-10 sm:border-0 sm:px-0 sm:py-0"
+      className="mt-6 rounded-xl border border-brown-medium/20 px-4 py-3 md:mt-10 md:border-0 md:px-0 md:py-0"
     >
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-left sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-6">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-left md:flex md:flex-wrap md:items-center md:justify-center md:gap-x-6">
         <StatCard
           icon={<span className="text-xs">👤</span>}
           value={data.totalActors.toLocaleString()}
