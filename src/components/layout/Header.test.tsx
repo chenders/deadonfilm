@@ -159,7 +159,7 @@ describe("Header", () => {
       expect(screen.getByTestId("mobile-nav-genres")).toBeInTheDocument()
       expect(screen.getByTestId("mobile-nav-causes-of-death")).toBeInTheDocument()
       expect(screen.getByTestId("mobile-nav-death-watch")).toBeInTheDocument()
-      expect(screen.getByTestId("mobile-nav-forever-young")).toBeInTheDocument()
+      expect(screen.getByTestId("mobile-nav-in-detail")).toBeInTheDocument()
       expect(screen.getByTestId("mobile-nav-about")).toBeInTheDocument()
     })
   })

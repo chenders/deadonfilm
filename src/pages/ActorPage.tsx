@@ -540,7 +540,7 @@ export default function ActorPage() {
                 ...(deathInfo?.causeOfDeath
                   ? [{ href: "/causes-of-death", label: "Deaths by Cause" }]
                   : []),
-                { href: "/forever-young", label: "Forever Young" },
+                { href: "/in-detail", label: "In Detail" },
                 { href: "/death-watch", label: "Death Watch" },
               ]}
             />

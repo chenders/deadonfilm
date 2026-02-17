@@ -118,7 +118,7 @@ describe("EmptySearchState", () => {
     expect(screen.getByText("Notable Deaths")).toBeInTheDocument()
     expect(screen.getByText("Causes")).toBeInTheDocument()
     expect(screen.getByText("Decades")).toBeInTheDocument()
-    expect(screen.getByText("Forever Young")).toBeInTheDocument()
+    expect(screen.getByText("In Detail")).toBeInTheDocument()
   })
 
   it("shows popular movies from API", async () => {

@@ -149,7 +149,7 @@ describe("HomePage", () => {
   it("renders quick action buttons", async () => {
     renderWithProviders(<HomePage />)
 
-    expect(screen.getByTestId("forever-young-btn")).toBeInTheDocument()
+    expect(screen.getByTestId("in-detail-btn")).toBeInTheDocument()
     expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
     expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
   })

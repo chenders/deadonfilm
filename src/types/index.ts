@@ -67,6 +67,9 @@ export type {
   NotableDeathActor,
   NotableDeathsResponse,
   NotableDeathsFilter,
+  // In Detail
+  InDetailActor,
+  InDetailResponse,
   // Entity linking
   EntityType,
   MatchMethod,

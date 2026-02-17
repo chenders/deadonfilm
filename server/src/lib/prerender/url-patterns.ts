@@ -14,6 +14,7 @@ export type PageType =
   | "episode"
   | "search"
   | "forever-young"
+  | "in-detail"
   | "covid-deaths"
   | "unnatural-deaths"
   | "death-watch"
@@ -75,6 +76,7 @@ function parseEpisodeSlug(
 /** Static pages (exact matches) — defined at module level to avoid per-call allocation */
 const STATIC_PAGES: Record<string, PageType> = {
   "/forever-young": "forever-young",
+  "/in-detail": "in-detail",
   "/covid-deaths": "covid-deaths",
   "/unnatural-deaths": "unnatural-deaths",
   "/death-watch": "death-watch",
