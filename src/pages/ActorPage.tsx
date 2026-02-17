@@ -13,7 +13,6 @@ import { buildPersonSchema, buildBreadcrumbSchema } from "@/utils/schema"
 import { PersonIcon, FilmReelIcon, TVIcon } from "@/components/icons"
 import { useRelatedActors } from "@/hooks/useRelatedContent"
 import RelatedContent from "@/components/content/RelatedContent"
-import SeeAlso from "@/components/content/SeeAlso"
 import Breadcrumb from "@/components/layout/Breadcrumb"
 import AdminActorToolbar from "@/components/admin/AdminActorToolbar"
 import AdminActorMetadata from "@/components/admin/AdminActorMetadata"
@@ -528,21 +527,6 @@ export default function ActorPage() {
                 imageUrl: getProfileUrl(a.profilePath, "w185"),
               }))}
               placeholderIcon={<PersonIcon size={20} className="text-text-muted" />}
-            />
-          </div>
-        )}
-
-        {/* Hub page links */}
-        {isDeceased && (
-          <div className="mt-4">
-            <SeeAlso
-              links={[
-                ...(deathInfo?.causeOfDeath
-                  ? [{ href: "/causes-of-death", label: "Deaths by Cause" }]
-                  : []),
-                { href: "/in-detail", label: "In Detail" },
-                { href: "/death-watch", label: "Death Watch" },
-              ]}
             />
           </div>
         )}
