@@ -64,6 +64,8 @@ export interface EnrichmentRunnerConfig {
   ignoreCache?: boolean
   runId?: number
   staging?: boolean
+  // Source reliability threshold
+  useReliabilityThreshold?: boolean
   // Wikipedia-specific options
   wikipediaUseAISectionSelection?: boolean
   wikipediaFollowLinkedArticles?: boolean
@@ -185,6 +187,8 @@ export class EnrichmentRunner {
       ignoreCache = false,
       runId,
       staging = false,
+      // Source reliability threshold
+      useReliabilityThreshold = true,
       // Wikipedia-specific options
       wikipediaUseAISectionSelection = false,
       wikipediaFollowLinkedArticles = false,
@@ -296,6 +300,7 @@ export class EnrichmentRunner {
                 maxSections: wikipediaMaxSections,
               }
             : undefined,
+        useReliabilityThreshold,
       }
 
       const orchestrator = new DeathEnrichmentOrchestrator(config)
@@ -535,7 +540,7 @@ export class EnrichmentRunner {
               : null,
             entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
             enrichmentSource: "multi-source-enrichment",
-            enrichmentVersion: "2.0.0",
+            enrichmentVersion: useReliabilityThreshold ? "3.0.0" : "3.0.0-no-reliability",
           }
 
           // Record per-actor results for all runs with a runId

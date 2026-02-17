@@ -21,7 +21,7 @@
 
 import { WebSearchBase } from "./web-search-base.js"
 import type { ActorForEnrichment, SearchResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import { extractDomain } from "../link-follower.js"
 
 const GOOGLE_API_URL = "https://www.googleapis.com/customsearch/v1"
@@ -61,6 +61,7 @@ export class GoogleSearchSource extends WebSearchBase {
   readonly type = DataSourceType.GOOGLE_SEARCH
   readonly isFree = false // Free tier is limited
   readonly estimatedCostPerQuery = 0.005 // $5 per 1000 queries
+  readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
 
   // Google has good rate limits
   protected minDelayMs = 500

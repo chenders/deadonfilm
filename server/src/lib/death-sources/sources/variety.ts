@@ -14,7 +14,7 @@
 
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 import { fetchFromArchive } from "../archive-fallback.js"
 import {
@@ -35,6 +35,7 @@ export class VarietySource extends BaseDataSource {
   readonly type = DataSourceType.VARIETY
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
 
   // Respectful rate limiting
   protected minDelayMs = 2000

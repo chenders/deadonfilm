@@ -13,7 +13,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 
 const FILMIBEAT_BASE_URL = "https://www.filmibeat.com"
@@ -47,6 +47,7 @@ export class FilmiBeatSource extends BaseDataSource {
   readonly type = DataSourceType.FILMIBEAT
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.UNRELIABLE_UGC
 
   // Be polite to FilmiBeat
   protected minDelayMs = 2000

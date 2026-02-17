@@ -20,7 +20,7 @@
 
 import { WebSearchBase } from "./web-search-base.js"
 import type { ActorForEnrichment, SearchResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import { extractDomain } from "../link-follower.js"
 
 const BING_API_URL = "https://api.bing.microsoft.com/v7.0/search"
@@ -64,6 +64,7 @@ export class BingSearchSource extends WebSearchBase {
   readonly type = DataSourceType.BING_SEARCH
   readonly isFree = false // Free tier is limited
   readonly estimatedCostPerQuery = 0.003 // Approximately $3 per 1000 queries
+  readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
 
   // Bing has good rate limits
   protected minDelayMs = 500

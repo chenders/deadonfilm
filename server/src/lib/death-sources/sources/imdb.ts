@@ -12,7 +12,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 import { fetchFromArchive } from "../archive-fallback.js"
 
@@ -27,6 +27,7 @@ export class IMDbSource extends BaseDataSource {
   readonly type = DataSourceType.IMDB
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.UNRELIABLE_UGC
 
   // Respectful rate limit for scraping
   protected minDelayMs = 3000

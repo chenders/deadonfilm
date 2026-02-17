@@ -6,6 +6,62 @@
  */
 
 // ============================================================================
+// Source Reliability Types
+// ============================================================================
+
+/**
+ * Reliability tier based on Wikipedia's Reliable Sources Perennial list (RSP).
+ * Measures source trustworthiness independently from content confidence.
+ *
+ * Content confidence = "does this text contain death information?"
+ * Source reliability = "how trustworthy is this publisher?"
+ */
+export enum ReliabilityTier {
+  /** Wikidata: community-curated structured data (1.0) */
+  STRUCTURED_DATA = "structured_data",
+  /** AP, NYT, BBC, Guardian: independent, fact-checking reputation (0.95) */
+  TIER_1_NEWS = "tier_1_news",
+  /** Variety, HR, Deadline, BFI: reliable within their domain (0.9) */
+  TRADE_PRESS = "trade_press",
+  /** Trove, Europeana, Chronicling America: institutional archives (0.9) */
+  ARCHIVAL = "archival",
+  /** Wikipedia: secondary compilation, varies by article (0.85) */
+  SECONDARY_COMPILATION = "secondary",
+  /** Google/Bing/Brave/DDG, NewsAPI, Google News RSS: depends on linked pages (0.7) */
+  SEARCH_AGGREGATOR = "search_aggregator",
+  /** Internet Archive: mirrors of other sources (0.7) */
+  ARCHIVE_MIRROR = "archive_mirror",
+  /** People Magazine: celebrity magazine, decent for announcements (0.65) */
+  MARGINAL_EDITORIAL = "marginal_editorial",
+  /** Legacy.com, FamilySearch: mix of official and user-submitted (0.6) */
+  MARGINAL_MIXED = "marginal_mixed",
+  /** All AI providers: hallucination risk, no original reporting (0.55) */
+  AI_MODEL = "ai_model",
+  /** TMZ: fast on announcements, weak on cause details (0.5) */
+  UNRELIABLE_FAST = "unreliable_fast",
+  /** IMDb, Find a Grave: user-generated, no editorial oversight (0.35) */
+  UNRELIABLE_UGC = "unreliable_ugc",
+}
+
+/**
+ * Numeric reliability scores for each tier (0.0–1.0).
+ */
+export const RELIABILITY_SCORES: Record<ReliabilityTier, number> = {
+  [ReliabilityTier.STRUCTURED_DATA]: 1.0,
+  [ReliabilityTier.TIER_1_NEWS]: 0.95,
+  [ReliabilityTier.TRADE_PRESS]: 0.9,
+  [ReliabilityTier.ARCHIVAL]: 0.9,
+  [ReliabilityTier.SECONDARY_COMPILATION]: 0.85,
+  [ReliabilityTier.SEARCH_AGGREGATOR]: 0.7,
+  [ReliabilityTier.ARCHIVE_MIRROR]: 0.7,
+  [ReliabilityTier.MARGINAL_EDITORIAL]: 0.65,
+  [ReliabilityTier.MARGINAL_MIXED]: 0.6,
+  [ReliabilityTier.AI_MODEL]: 0.55,
+  [ReliabilityTier.UNRELIABLE_FAST]: 0.5,
+  [ReliabilityTier.UNRELIABLE_UGC]: 0.35,
+}
+
+// ============================================================================
 // Data Source Types
 // ============================================================================
 
@@ -128,7 +184,9 @@ export interface EnrichmentSourceEntry {
   type: DataSourceType
   url?: string | null
   retrievedAt: Date
-  confidence: number // 0.0 - 1.0
+  confidence: number // 0.0 - 1.0 (content confidence)
+  reliabilityTier?: ReliabilityTier // Source reliability classification
+  reliabilityScore?: number // 0.0 - 1.0 (source trustworthiness)
   rawData?: unknown // Original response for debugging
   costUsd?: number // Cost incurred for this lookup
   queryUsed?: string // The query/prompt used
@@ -372,6 +430,8 @@ export interface RawSourceData {
   text: string
   url?: string
   confidence: number
+  reliabilityTier?: ReliabilityTier
+  reliabilityScore?: number
   resolvedSources?: import("./url-resolver.js").ResolvedUrl[]
 }
 
@@ -622,6 +682,10 @@ export interface EnrichmentConfig {
   maxStoriesPerSource?: number
   /** Wikipedia source configuration */
   wikipediaOptions?: WikipediaOptions
+  /** Minimum reliability score to accept a result (default: 0.6) */
+  reliabilityThreshold?: number
+  /** Enable/disable reliability threshold checking (default: true). Set false for A/B control. */
+  useReliabilityThreshold?: boolean
 }
 
 /**
@@ -792,6 +856,8 @@ export interface DataSource {
   readonly type: DataSourceType
   readonly isFree: boolean
   readonly estimatedCostPerQuery: number
+  readonly reliabilityTier: ReliabilityTier
+  readonly reliabilityScore: number
 
   /**
    * Check if this source is available (API key configured, etc.)

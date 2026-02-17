@@ -12,7 +12,7 @@
 import OpenAI from "openai"
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import {
   buildEnrichedDeathPrompt,
   parseEnrichedResponse,
@@ -30,6 +30,7 @@ export class PerplexitySource extends BaseDataSource {
   readonly type = DataSourceType.PERPLEXITY
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.005
+  readonly reliabilityTier = ReliabilityTier.AI_MODEL
 
   private client: OpenAI | null = null
 

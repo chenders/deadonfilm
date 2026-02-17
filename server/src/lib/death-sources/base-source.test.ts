@@ -23,7 +23,7 @@ import {
   NOTABLE_FACTOR_KEYWORDS,
 } from "./base-source.js"
 import type { ActorForEnrichment, SourceLookupResult, EnrichmentSourceEntry } from "./types.js"
-import { DataSourceType } from "./types.js"
+import { DataSourceType, ReliabilityTier, RELIABILITY_SCORES } from "./types.js"
 
 /**
  * Concrete test implementation of BaseDataSource
@@ -33,6 +33,7 @@ class TestSource extends BaseDataSource {
   readonly type = DataSourceType.DUCKDUCKGO // Using an existing type for testing
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
 
   // Expose for testing
   protected minDelayMs = 100
@@ -172,6 +173,56 @@ describe("BaseDataSource", () => {
     it("calculates cost based on estimatedCostPerQuery", () => {
       const entry = source.testCreateSourceEntry(Date.now(), 0.5)
       expect(entry.costUsd).toBe(0) // TestSource has estimatedCostPerQuery = 0
+    })
+
+    it("includes reliabilityTier in source entry", () => {
+      const entry = source.testCreateSourceEntry(Date.now(), 0.5)
+      expect(entry.reliabilityTier).toBe(ReliabilityTier.SEARCH_AGGREGATOR)
+    })
+
+    it("includes reliabilityScore in source entry", () => {
+      const entry = source.testCreateSourceEntry(Date.now(), 0.5)
+      expect(entry.reliabilityScore).toBe(RELIABILITY_SCORES[ReliabilityTier.SEARCH_AGGREGATOR])
+    })
+  })
+
+  describe("reliabilityScore", () => {
+    it("returns the correct score for the source tier", () => {
+      expect(source.reliabilityScore).toBe(RELIABILITY_SCORES[ReliabilityTier.SEARCH_AGGREGATOR])
+      expect(source.reliabilityScore).toBe(0.7)
+    })
+
+    it("varies by tier across different source implementations", () => {
+      // Create separate concrete implementations with different tiers
+      class HighReliabilitySource extends BaseDataSource {
+        readonly name = "High Reliability"
+        readonly type = DataSourceType.DUCKDUCKGO
+        readonly isFree = true
+        readonly estimatedCostPerQuery = 0
+        readonly reliabilityTier = ReliabilityTier.TIER_1_NEWS
+        protected minDelayMs = 100
+        protected async performLookup(): Promise<SourceLookupResult> {
+          return { success: false, source: this.createSourceEntry(Date.now(), 0), data: null }
+        }
+      }
+      class LowReliabilitySource extends BaseDataSource {
+        readonly name = "Low Reliability"
+        readonly type = DataSourceType.DUCKDUCKGO
+        readonly isFree = true
+        readonly estimatedCostPerQuery = 0
+        readonly reliabilityTier = ReliabilityTier.UNRELIABLE_UGC
+        protected minDelayMs = 100
+        protected async performLookup(): Promise<SourceLookupResult> {
+          return { success: false, source: this.createSourceEntry(Date.now(), 0), data: null }
+        }
+      }
+
+      const highSource = new HighReliabilitySource()
+      const lowSource = new LowReliabilitySource()
+
+      expect(highSource.reliabilityScore).toBe(0.95)
+      expect(lowSource.reliabilityScore).toBe(0.35)
+      expect(highSource.reliabilityScore).toBeGreaterThan(lowSource.reliabilityScore)
     })
   })
 })

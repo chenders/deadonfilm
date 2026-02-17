@@ -14,7 +14,7 @@
 
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 import {
   extractDeathSentences,
@@ -31,6 +31,7 @@ export class DGASource extends BaseDataSource {
   readonly type = DataSourceType.DGA
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
 
   // Respectful rate limit
   protected minDelayMs = 1500

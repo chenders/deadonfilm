@@ -134,9 +134,13 @@ export function buildCleanupPrompt(actor: ActorForEnrichment, rawSources: RawSou
   const birthInfo = birthYear ? `born ${birthYear}, ` : ""
 
   const rawDataSection = rawSources
-    .map(
-      (s) => `--- ${s.sourceName} (confidence: ${(s.confidence * 100).toFixed(0)}%) ---\n${s.text}`
-    )
+    .map((s) => {
+      const reliabilityLabel =
+        s.reliabilityScore !== undefined
+          ? `, reliability: ${(s.reliabilityScore * 100).toFixed(0)}%`
+          : ""
+      return `--- ${s.sourceName} (confidence: ${(s.confidence * 100).toFixed(0)}%${reliabilityLabel}) ---\n${s.text}`
+    })
     .join("\n\n")
 
   return `You are extracting death information for ${actor.name} (${birthInfo}died ${deathYear}).
@@ -243,6 +247,7 @@ Extract ALL death-related information into clean, factual prose written in the t
 }
 
 CRITICAL INSTRUCTIONS:
+- When sources CONFLICT on factual claims (cause of death, dates, locations), PREFER data from sources with higher reliability scores. A 95% reliability source (e.g., AP News, NYT) should take precedence over a 35% reliability source (e.g., Find a Grave, IMDb). Confidence measures text relevance; reliability measures publisher trustworthiness.
 - ADAPT narrative structure to manner of death: for violent deaths (homicide, assassination, accident), the violent event IS the story — lead with it. For natural deaths, medical history IS the story — lead with it. Do NOT bury an assassination under paragraphs of medical history.
 - Be THOROUGH in circumstances - capture the full story, not just the medical cause
 - ALWAYS include relevant medical history: heart conditions, cancer battles, transplants, chronic illnesses, medical devices, significant surgeries — but for violent deaths, only include health history if it is independently notable (well-known in its own right), not as a preamble to the actual death event

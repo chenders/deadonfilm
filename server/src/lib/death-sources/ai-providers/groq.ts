@@ -21,7 +21,7 @@ import type {
   ProjectReference,
   RelatedCelebrity,
 } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import {
   buildEnrichedDeathPrompt,
   parseEnrichedResponse,
@@ -39,6 +39,7 @@ export class GroqLlamaSource extends BaseDataSource {
   readonly type = DataSourceType.LLAMA_GROQ
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.0002 // ~$0.0002/query - very cheap
+  readonly reliabilityTier = ReliabilityTier.AI_MODEL
 
   private client: OpenAI | null = null
 

@@ -14,7 +14,7 @@ import type {
   ProjectReference,
   RelatedCelebrity,
 } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import {
   buildEnrichedDeathPrompt,
   parseEnrichedResponse,
@@ -231,6 +231,7 @@ export class GPT4oMiniSource extends OpenAIBaseSource {
   readonly type = DataSourceType.OPENAI_GPT4O_MINI
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.0003
+  readonly reliabilityTier = ReliabilityTier.AI_MODEL
   readonly modelId = "gpt-4o-mini"
 
   // Rate limit: 500 RPM for tier 1
@@ -245,6 +246,7 @@ export class GPT4oSource extends OpenAIBaseSource {
   readonly type = DataSourceType.OPENAI_GPT4O
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.01
+  readonly reliabilityTier = ReliabilityTier.AI_MODEL
   readonly modelId = "gpt-4o"
 
   // Rate limit: 500 RPM for tier 1

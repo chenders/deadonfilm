@@ -15,7 +15,7 @@
 
 import { BaseDataSource } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 import { fetchFromArchive } from "../archive-fallback.js"
 import {
@@ -36,6 +36,7 @@ export class PeopleSource extends BaseDataSource {
   readonly type = DataSourceType.PEOPLE_MAGAZINE
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.MARGINAL_EDITORIAL
 
   // Respectful rate limiting
   protected minDelayMs = 2000

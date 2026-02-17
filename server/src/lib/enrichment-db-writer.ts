@@ -140,7 +140,7 @@ export async function writeToProduction(
       circumstances.rawResponse ? JSON.stringify(circumstances.rawResponse) : null,
       circumstances.entityLinks ? JSON.stringify(circumstances.entityLinks) : null,
       circumstances.enrichmentSource || "multi-source-enrichment",
-      circumstances.enrichmentVersion || "2.0.0",
+      circumstances.enrichmentVersion || "3.0.0",
     ]
   )
 

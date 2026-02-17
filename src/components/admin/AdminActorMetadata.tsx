@@ -66,6 +66,19 @@ function AdminActorMetadataInner({ actorId }: AdminActorMetadataProps) {
           {data.enrichment.enrichedAt
             ? `${formatRelativeDate(data.enrichment.enrichedAt)}${data.enrichment.source ? ` via ${data.enrichment.source}` : ""}`
             : "Never"}
+          {data.enrichment.version && (
+            <span
+              className={`ml-1 rounded px-1 font-medium ${
+                data.enrichment.version.startsWith("3.")
+                  ? data.enrichment.version.includes("no-reliability")
+                    ? "bg-amber-200/60 text-amber-800"
+                    : "bg-green-200/60 text-green-800"
+                  : "bg-gray-200/60 text-gray-600"
+              }`}
+            >
+              v{data.enrichment.version}
+            </span>
+          )}
         </span>
         <span>
           <span className="font-medium">CoD Source:</span>{" "}
