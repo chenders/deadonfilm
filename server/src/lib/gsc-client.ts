@@ -329,6 +329,7 @@ export function categorizeUrl(path: string): string {
   if (path.startsWith("/causes-of-death")) return "causes-of-death"
   if (path.startsWith("/movies/genre")) return "genre"
   if (path === "/forever-young") return "curated"
+  if (path === "/in-detail") return "curated"
   if (path === "/covid-deaths") return "curated"
   if (path === "/unnatural-deaths") return "curated"
   if (path === "/death-watch") return "curated"

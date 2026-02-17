@@ -39,6 +39,7 @@ import type {
   DeathDetailsResponse,
   NotableDeathsResponse,
   NotableDeathsFilter,
+  InDetailResponse,
   RelatedActorsResponse,
   RelatedMoviesResponse,
   RelatedShowsResponse,
@@ -452,6 +453,38 @@ export async function getSpecificCauseDetail(
   return fetchJson(
     `/causes-of-death/${encodeURIComponent(categorySlug)}/${encodeURIComponent(causeSlug)}?${searchParams.toString()}`
   )
+}
+
+// In Detail API functions
+
+export interface InDetailParams {
+  page?: number
+  includeObscure?: boolean
+  search?: string
+  sort?: string
+  dir?: string
+}
+
+/**
+ * Get paginated list of actors with thoroughly researched death information
+ */
+export async function getInDetailActors(params: InDetailParams = {}): Promise<InDetailResponse> {
+  const { page = 1, includeObscure = false, search, sort, dir } = params
+  const searchParams = new URLSearchParams()
+  searchParams.set("page", String(page))
+  if (includeObscure) {
+    searchParams.set("includeObscure", "true")
+  }
+  if (search) {
+    searchParams.set("search", search)
+  }
+  if (sort) {
+    searchParams.set("sort", sort)
+  }
+  if (dir) {
+    searchParams.set("dir", dir)
+  }
+  return fetchJson(`/in-detail?${searchParams.toString()}`)
 }
 
 // Death Details API functions

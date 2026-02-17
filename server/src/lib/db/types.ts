@@ -713,6 +713,44 @@ export interface NotableDeathsResponse {
 }
 
 // ============================================================================
+// In Detail types (actors with thoroughly researched death information)
+// ============================================================================
+
+export interface InDetailActor {
+  id: number
+  tmdbId: number | null
+  name: string
+  profilePath: string | null
+  deathday: string
+  ageAtDeath: number | null
+  causeOfDeath: string | null
+  deathManner: string | null
+  enrichedAt: string | null
+  circumstancesConfidence: string | null
+  slug: string
+  topFilms: Array<{ title: string; year: number | null }>
+}
+
+export interface InDetailOptions {
+  page?: number
+  pageSize?: number
+  includeObscure?: boolean
+  search?: string
+  sort?: string
+  dir?: string
+}
+
+export interface InDetailResponse {
+  actors: InDetailActor[]
+  pagination: {
+    page: number
+    pageSize: number
+    totalCount: number
+    totalPages: number
+  }
+}
+
+// ============================================================================
 // Cursed actors types
 // ============================================================================
 

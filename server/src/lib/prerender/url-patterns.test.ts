@@ -122,6 +122,10 @@ describe("matchUrl", () => {
       expect(matchUrl("/forever-young")).toEqual({ pageType: "forever-young", params: {} })
     })
 
+    it("matches /in-detail", () => {
+      expect(matchUrl("/in-detail")).toEqual({ pageType: "in-detail", params: {} })
+    })
+
     it("matches /covid-deaths", () => {
       expect(matchUrl("/covid-deaths")).toEqual({ pageType: "covid-deaths", params: {} })
     })

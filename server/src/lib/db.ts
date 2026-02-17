@@ -159,6 +159,10 @@ export {
   hasDetailedDeathInfo,
 } from "./db/death-circumstances.js"
 
+// Re-export in-detail functions
+export { getInDetailActors } from "./db/in-detail.js"
+export type { InDetailResponse } from "./db/types.js"
+
 // Re-export death-circumstances types for backward compatibility
 export type {
   ProjectInfo,
