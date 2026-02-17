@@ -187,7 +187,7 @@ export default function InDetailPage() {
         />
       )}
 
-      <div data-testid="in-detail-page" className="mx-auto max-w-3xl">
+      <div data-testid="in-detail-page" className="mx-auto max-w-5xl">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">In Detail</h1>
           <p className="mt-2 text-sm text-text-primary">
@@ -247,7 +247,7 @@ export default function InDetailPage() {
           </div>
         ) : (
           <>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {data.actors.map((actor) => (
                 <ActorCard key={actor.id} actor={actor} />
               ))}
