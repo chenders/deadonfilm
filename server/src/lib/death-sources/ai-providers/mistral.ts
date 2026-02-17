@@ -21,7 +21,7 @@ import type {
   ProjectReference,
   RelatedCelebrity,
 } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import {
   buildEnrichedDeathPrompt,
   parseEnrichedResponse,
@@ -39,6 +39,7 @@ export class MistralSource extends BaseDataSource {
   readonly type = DataSourceType.MISTRAL
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.001 // ~$0.001/query for mistral-large
+  readonly reliabilityTier = ReliabilityTier.AI_MODEL
 
   private client: OpenAI | null = null
 

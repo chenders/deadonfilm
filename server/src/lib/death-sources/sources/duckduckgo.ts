@@ -7,7 +7,7 @@
 
 import { WebSearchBase } from "./web-search-base.js"
 import type { ActorForEnrichment, SearchResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import { decodeHtmlEntities as decodeEntities } from "../html-utils.js"
 import { extractDomain } from "../link-follower.js"
 
@@ -22,6 +22,7 @@ export class DuckDuckGoSource extends WebSearchBase {
   readonly type = DataSourceType.DUCKDUCKGO
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
 
   // Be polite to DuckDuckGo
   protected minDelayMs = 1000

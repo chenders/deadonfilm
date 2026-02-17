@@ -190,6 +190,8 @@ export const DEFAULT_CONFIG: EnrichmentConfig = {
   aiModels: {},
   confidenceThreshold: 0.5,
   linkFollow: DEFAULT_LINK_FOLLOW_CONFIG,
+  reliabilityThreshold: 0.6,
+  useReliabilityThreshold: true,
 }
 
 /**
@@ -322,7 +324,7 @@ export class DeathEnrichmentOrchestrator {
     console.log(`Initialized ${this.sources.length} data sources:`)
     for (const source of this.sources) {
       console.log(
-        `  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`})`
+        `  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`}, reliability: ${source.reliabilityScore.toFixed(2)})`
       )
     }
 
@@ -570,7 +572,10 @@ export class DeathEnrichmentOrchestrator {
       // Log successful fields found
       const fieldsFound = this.getFieldsFromData(lookupResult.data)
       this.logger.sourceSuccess(actor.name, source.type, fieldsFound)
-      this.statusBar.log(`    Success! Confidence: ${lookupResult.source.confidence.toFixed(2)}`)
+      const srcReliability = source.reliabilityScore
+      this.statusBar.log(
+        `    Success! Content: ${lookupResult.source.confidence.toFixed(2)} | Reliability: ${srcReliability.toFixed(2)}`
+      )
       logEntries.push({
         timestamp: new Date().toISOString(),
         level: "info",
@@ -578,6 +583,8 @@ export class DeathEnrichmentOrchestrator {
         data: {
           source: source.name,
           confidence: lookupResult.source.confidence,
+          reliabilityTier: source.reliabilityTier,
+          reliabilityScore: srcReliability,
           fieldsFound,
           costUsd: sourceCost,
         },
@@ -654,6 +661,8 @@ export class DeathEnrichmentOrchestrator {
           text: lookupResult.data.circumstances,
           url: lookupResult.source.url || undefined,
           confidence: lookupResult.source.confidence,
+          reliabilityTier: source.reliabilityTier,
+          reliabilityScore: source.reliabilityScore,
           resolvedSources,
         })
         this.statusBar.log(
@@ -732,6 +741,8 @@ export class DeathEnrichmentOrchestrator {
                 text: additional.data.circumstances,
                 url: additional.source.url || undefined,
                 confidence: additional.source.confidence,
+                reliabilityTier: source.reliabilityTier,
+                reliabilityScore: source.reliabilityScore,
                 resolvedSources: additionalResolvedSources,
               })
             }
@@ -763,10 +774,38 @@ export class DeathEnrichmentOrchestrator {
         continue
       }
 
-      // Update best source if confidence threshold met
-      if (lookupResult.source.confidence >= this.config.confidenceThreshold) {
+      // Dual-threshold stopping logic:
+      // Stop if content confidence meets threshold AND (reliability is disabled OR reliability meets threshold)
+      const contentMet = lookupResult.source.confidence >= this.config.confidenceThreshold
+      const reliabilityThreshold = this.config.reliabilityThreshold ?? 0.6
+      const useReliability = this.config.useReliabilityThreshold !== false
+      const reliabilityMet = !useReliability || srcReliability >= reliabilityThreshold
+
+      if (contentMet && reliabilityMet) {
         actorStats.finalSource = source.type
         actorStats.confidence = lookupResult.source.confidence
+        this.statusBar.log(`    Both thresholds met, accepting result`)
+        break
+      } else if (contentMet && !reliabilityMet) {
+        this.statusBar.log(
+          `    Below reliability threshold (${srcReliability.toFixed(2)} < ${reliabilityThreshold.toFixed(2)}), continuing...`
+        )
+        logEntries.push({
+          timestamp: new Date().toISOString(),
+          level: "info",
+          message: "[RELIABILITY_BELOW_THRESHOLD]",
+          data: {
+            source: source.name,
+            contentConfidence: lookupResult.source.confidence,
+            reliabilityScore: srcReliability,
+            reliabilityThreshold,
+          },
+        })
+        // Track this as best-so-far in case no better source is found
+        if (!actorStats.finalSource || lookupResult.source.confidence > actorStats.confidence) {
+          actorStats.finalSource = source.type
+          actorStats.confidence = lookupResult.source.confidence
+        }
       }
     }
 

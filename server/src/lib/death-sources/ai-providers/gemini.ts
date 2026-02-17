@@ -20,7 +20,7 @@ import type {
   ProjectReference,
   RelatedCelebrity,
 } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import { resolveGeminiUrls, type ResolvedUrl } from "../url-resolver.js"
 import {
   buildEnrichedDeathPrompt,
@@ -334,6 +334,7 @@ export class GeminiFlashSource extends GeminiBaseSource {
   readonly type = DataSourceType.GEMINI_FLASH
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.0001
+  readonly reliabilityTier = ReliabilityTier.AI_MODEL
   readonly modelId = "gemini-2.0-flash"
   readonly useSearchGrounding = false
 
@@ -353,6 +354,7 @@ export class GeminiProSource extends GeminiBaseSource {
   readonly type = DataSourceType.GEMINI_PRO
   readonly isFree = false
   readonly estimatedCostPerQuery = 0.002
+  readonly reliabilityTier = ReliabilityTier.AI_MODEL
   readonly modelId = "gemini-2.5-flash"
   readonly useSearchGrounding = true
 

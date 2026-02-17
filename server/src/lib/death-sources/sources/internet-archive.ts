@@ -18,7 +18,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import { aiSelectLinks, type SearchResultForRanking } from "../ai-helpers.js"
 import { getEnrichmentLogger } from "../logger.js"
 
@@ -69,6 +69,7 @@ export class InternetArchiveSource extends BaseDataSource {
   readonly type = DataSourceType.INTERNET_ARCHIVE
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.ARCHIVE_MIRROR
 
   // Be polite to Internet Archive servers
   protected minDelayMs = 1500

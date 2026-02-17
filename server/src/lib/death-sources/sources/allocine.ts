@@ -13,7 +13,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 
 const ALLOCINE_BASE_URL = "https://www.allocine.fr"
@@ -58,6 +58,7 @@ export class AlloCineSource extends BaseDataSource {
   readonly type = DataSourceType.ALLOCINE
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.UNRELIABLE_UGC
 
   // Be polite to AlloCiné servers
   protected minDelayMs = 2000

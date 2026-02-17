@@ -1037,6 +1037,7 @@ describe("Admin Enrichment Endpoints", () => {
       prod_cause_of_death: "Unknown",
       prod_cause_of_death_details: null,
       prod_has_detailed_death_info: false,
+      prod_enrichment_version: "2.0.0",
     }
 
     it("returns detailed enrichment data", async () => {

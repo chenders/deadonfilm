@@ -12,7 +12,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 import { extractLocation, extractNotableFactors, isAboutActor } from "./news-utils.js"
 
 const NEWSAPI_BASE_URL = "https://newsapi.org/v2"
@@ -25,6 +25,7 @@ export class NewsAPISource extends BaseDataSource {
   readonly type = DataSourceType.NEWSAPI
   readonly isFree = true // Free tier available
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.SEARCH_AGGREGATOR
 
   // Rate limit: be conservative with free tier
   protected minDelayMs = 1000

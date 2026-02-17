@@ -20,7 +20,7 @@ import {
 } from "../base-source.js"
 import { escapeRegex } from "../../text-utils.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType, SourceAccessBlockedError } from "../types.js"
+import { DataSourceType, ReliabilityTier, SourceAccessBlockedError } from "../types.js"
 import { htmlToText } from "../html-utils.js"
 
 const BFI_BASE_URL = "https://www.bfi.org.uk"
@@ -33,6 +33,7 @@ export class BFISightSoundSource extends BaseDataSource {
   readonly type = DataSourceType.BFI_SIGHT_SOUND
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.TRADE_PRESS
 
   // Respectful rate limit
   protected minDelayMs = 1500

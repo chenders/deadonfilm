@@ -18,7 +18,7 @@
 
 import { BaseDataSource, DEATH_KEYWORDS, LOW_PRIORITY_TIMEOUT_MS } from "../base-source.js"
 import type { ActorForEnrichment, SourceLookupResult } from "../types.js"
-import { DataSourceType } from "../types.js"
+import { DataSourceType, ReliabilityTier } from "../types.js"
 
 const TROVE_API_BASE = "https://api.trove.nla.gov.au/v3"
 const TROVE_SEARCH_URL = `${TROVE_API_BASE}/result`
@@ -61,6 +61,7 @@ export class TroveSource extends BaseDataSource {
   readonly type = DataSourceType.TROVE
   readonly isFree = true
   readonly estimatedCostPerQuery = 0
+  readonly reliabilityTier = ReliabilityTier.ARCHIVAL
 
   // Be polite to NLA servers
   protected minDelayMs = 1000

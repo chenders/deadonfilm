@@ -477,6 +477,7 @@ export interface EnrichmentReviewDetail {
   prod_cause_of_death: string | null
   prod_cause_of_death_details: string | null
   prod_has_detailed_death_info: boolean
+  prod_enrichment_version: string | null
 }
 
 export interface PendingReviewFilters {
@@ -645,7 +646,8 @@ export async function getEnrichmentReviewDetail(
       a.deathday as prod_deathday,
       a.cause_of_death as prod_cause_of_death,
       a.cause_of_death_details as prod_cause_of_death_details,
-      a.has_detailed_death_info as prod_has_detailed_death_info
+      a.has_detailed_death_info as prod_has_detailed_death_info,
+      a.enrichment_version as prod_enrichment_version
     FROM enrichment_run_actors era
     JOIN actors a ON a.id = era.actor_id
     LEFT JOIN actor_enrichment_staging aes ON aes.enrichment_run_actor_id = era.id
