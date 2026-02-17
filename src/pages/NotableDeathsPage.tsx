@@ -1,15 +1,13 @@
-import { useSearchParams, Link } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { Helmet } from "react-helmet-async"
 import PaginationHead from "@/components/seo/PaginationHead"
 import { useNotableDeaths } from "@/hooks/useDeathDetails"
-import { getProfileUrl } from "@/services/api"
-import { formatDate } from "@/utils/formatDate"
 import { toTitleCase } from "@/utils/formatText"
 import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import SortControl from "@/components/common/SortControl"
-import { PersonIcon } from "@/components/icons"
-import type { NotableDeathActor, NotableDeathsFilter } from "@/types"
+import ActorCard from "@/components/common/ActorCard"
+import type { NotableDeathsFilter } from "@/types"
 
 // Filter tab configuration
 const FILTERS: { id: NotableDeathsFilter; label: string; description: string }[] = [
@@ -33,80 +31,6 @@ function FactorBadge({ factor }: { factor: string }) {
     >
       {formatted}
     </span>
-  )
-}
-
-function ActorCard({ actor }: { actor: NotableDeathActor }) {
-  const profileUrl = getProfileUrl(actor.profilePath, "w185")
-
-  return (
-    <Link
-      to={`/actor/${actor.slug}`}
-      data-testid={`notable-death-${actor.id}`}
-      className="block rounded-lg bg-surface-elevated p-4 transition-colors hover:bg-cream"
-    >
-      <div className="flex items-start gap-4">
-        {/* Profile image */}
-        {profileUrl ? (
-          <img
-            src={profileUrl}
-            alt={actor.name}
-            className="h-20 w-16 flex-shrink-0 rounded-lg object-cover shadow-sm"
-          />
-        ) : (
-          <div className="flex h-20 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-sm">
-            <PersonIcon size={32} className="text-brown-medium" />
-          </div>
-        )}
-
-        {/* Info */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-display text-lg text-brown-dark">{actor.name}</h3>
-            {actor.strangeDeath && (
-              <span
-                className="flex-shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs text-white"
-                title="Strange or unusual death"
-              >
-                Strange
-              </span>
-            )}
-          </div>
-
-          <p className="text-sm text-text-muted">
-            Died {formatDate(actor.deathday)}
-            {actor.ageAtDeath && ` · Age ${actor.ageAtDeath}`}
-          </p>
-
-          {actor.causeOfDeath && (
-            <p className="mt-1 text-sm text-brown-dark">{toTitleCase(actor.causeOfDeath)}</p>
-          )}
-
-          {/* Death manner */}
-          {actor.deathManner && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
-                {toTitleCase(actor.deathManner)}
-              </span>
-            </div>
-          )}
-
-          {/* Notable factors */}
-          {actor.notableFactors && actor.notableFactors.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {actor.notableFactors.slice(0, 3).map((factor) => (
-                <FactorBadge key={factor} factor={factor} />
-              ))}
-              {actor.notableFactors.length > 3 && (
-                <span className="text-xs text-text-muted">
-                  +{actor.notableFactors.length - 3} more
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </Link>
   )
 }
 
@@ -290,7 +214,47 @@ export default function NotableDeathsPage() {
           <>
             <div className="space-y-3">
               {data.actors.map((actor) => (
-                <ActorCard key={actor.id} actor={actor} />
+                <ActorCard
+                  key={actor.id}
+                  name={actor.name}
+                  slug={actor.slug}
+                  profilePath={actor.profilePath}
+                  deathday={actor.deathday}
+                  ageAtDeath={actor.ageAtDeath}
+                  causeOfDeath={actor.causeOfDeath}
+                  nameColor="accent"
+                  testId={`notable-death-${actor.id}`}
+                  badge={
+                    actor.strangeDeath ? (
+                      <span
+                        className="flex-shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs text-white"
+                        title="Strange or unusual death"
+                      >
+                        Strange
+                      </span>
+                    ) : undefined
+                  }
+                >
+                  {actor.deathManner && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
+                        {toTitleCase(actor.deathManner)}
+                      </span>
+                    </div>
+                  )}
+                  {actor.notableFactors && actor.notableFactors.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {actor.notableFactors.slice(0, 3).map((factor) => (
+                        <FactorBadge key={factor} factor={factor} />
+                      ))}
+                      {actor.notableFactors.length > 3 && (
+                        <span className="text-xs text-text-muted">
+                          +{actor.notableFactors.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </ActorCard>
               ))}
             </div>
 

@@ -1,18 +1,7 @@
 import { Link } from "react-router-dom"
 import { useRecentDeaths } from "@/hooks/useRecentDeaths"
-import { getProfileUrl } from "@/services/api"
 import { createActorSlug } from "@/utils/slugify"
-import { PersonIcon } from "@/components/icons"
-import { formatDate } from "@/utils/formatDate"
-import CauseOfDeathBadge from "@/components/common/CauseOfDeathBadge"
-
-function formatDateRange(birthday: string | null, deathday: string): string {
-  const deathStr = formatDate(deathday)
-  if (birthday) {
-    return `${formatDate(birthday)} – ${deathStr}`
-  }
-  return `Died ${deathStr}`
-}
+import ActorCard from "@/components/common/ActorCard"
 
 export default function RecentDeaths() {
   const { data, isLoading, error } = useRecentDeaths(6)
@@ -69,72 +58,29 @@ export default function RecentDeaths() {
         data-testid="recent-deaths-list"
         className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-3"
       >
-        {deaths.map((death, index) => {
-          const knownForTitles =
-            death.known_for
-              ?.slice(0, 2)
-              .map((w) => (w.year ? `${w.name} (${w.year})` : w.name))
-              .join(", ") || null
-
-          return (
-            <Link
-              key={death.id}
-              to={`/actor/${createActorSlug(death.name, death.id)}`}
-              className={`animate-fade-slide-in flex items-start gap-4 rounded-lg bg-beige p-3 text-left transition-colors hover:bg-cream ${index >= 3 ? "hidden md:flex" : ""}`}
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              {death.profile_path ? (
-                <img
-                  src={getProfileUrl(death.profile_path, "w185")!}
-                  alt={death.name}
-                  width={80}
-                  height={112}
-                  loading="lazy"
-                  className="h-28 w-20 flex-shrink-0 rounded object-cover"
-                />
-              ) : death.fallback_profile_url ? (
-                <img
-                  src={death.fallback_profile_url}
-                  alt={death.name}
-                  width={80}
-                  height={112}
-                  loading="lazy"
-                  className="h-28 w-20 flex-shrink-0 rounded object-cover"
-                />
-              ) : (
-                <div className="flex h-28 w-20 flex-shrink-0 items-center justify-center rounded bg-brown-medium/20">
-                  <PersonIcon size={32} className="text-text-muted" />
-                </div>
-              )}
-
-              <div className="min-w-0 flex-1">
-                <h3 className="truncate text-lg font-bold text-accent" title={death.name}>
-                  {death.name}
-                </h3>
-                <p className="text-sm text-text-primary">
-                  {formatDateRange(death.birthday, death.deathday)}
-                </p>
-                {death.age_at_death != null && (
-                  <p className="text-sm text-text-primary">Age: {death.age_at_death}</p>
-                )}
-                {death.cause_of_death && (
-                  <p className="mt-0.5 text-sm text-text-muted">
-                    <CauseOfDeathBadge
-                      causeOfDeath={death.cause_of_death}
-                      causeOfDeathDetails={death.cause_of_death_details}
-                      testId={`death-details-tooltip-${death.tmdb_id}`}
-                    />
-                  </p>
-                )}
-                {knownForTitles && (
-                  <p className="mt-0.5 line-clamp-2 text-sm italic text-text-muted">
-                    {knownForTitles}
-                  </p>
-                )}
-              </div>
-            </Link>
-          )
-        })}
+        {deaths.map((death, index) => (
+          <div
+            key={death.id}
+            className={`animate-fade-slide-in ${index >= 3 ? "hidden md:flex" : ""}`}
+            style={{ animationDelay: `${index * 50}ms` }}
+          >
+            <ActorCard
+              name={death.name}
+              slug={createActorSlug(death.name, death.id)}
+              profilePath={death.profile_path}
+              fallbackProfileUrl={death.fallback_profile_url}
+              deathday={death.deathday}
+              birthday={death.birthday}
+              ageAtDeath={death.age_at_death}
+              causeOfDeath={death.cause_of_death}
+              causeOfDeathDetails={death.cause_of_death_details}
+              knownFor={death.known_for}
+              showBirthDate
+              useCauseOfDeathBadge
+              nameColor="accent"
+            />
+          </div>
+        ))}
       </div>
     </section>
   )
