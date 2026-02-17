@@ -10,7 +10,6 @@ import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import SortControl from "@/components/common/SortControl"
 import { PersonIcon } from "@/components/icons"
-import ConfidenceIndicator from "@/components/common/ConfidenceIndicator"
 import type { InDetailActor } from "@/types"
 
 function formatRelativeTime(dateStr: string | null): string {
@@ -75,9 +74,6 @@ function ActorCard({ actor }: { actor: InDetailActor }) {
               <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
                 {toTitleCase(actor.deathManner)}
               </span>
-            )}
-            {actor.circumstancesConfidence && (
-              <ConfidenceIndicator level={actor.circumstancesConfidence} variant="badge" />
             )}
             {relativeTime && (
               <span className="text-xs text-text-muted">Updated {relativeTime}</span>

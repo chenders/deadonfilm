@@ -9,7 +9,6 @@ import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import SortControl from "@/components/common/SortControl"
 import { PersonIcon } from "@/components/icons"
-import ConfidenceIndicator from "@/components/common/ConfidenceIndicator"
 import type { NotableDeathActor, NotableDeathsFilter } from "@/types"
 
 // Filter tab configuration
@@ -83,17 +82,14 @@ function ActorCard({ actor }: { actor: NotableDeathActor }) {
             <p className="mt-1 text-sm text-brown-dark">{toTitleCase(actor.causeOfDeath)}</p>
           )}
 
-          {/* Death manner and confidence */}
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {actor.deathManner && (
+          {/* Death manner */}
+          {actor.deathManner && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
                 {toTitleCase(actor.deathManner)}
               </span>
-            )}
-            {actor.circumstancesConfidence && (
-              <ConfidenceIndicator level={actor.circumstancesConfidence} variant="badge" />
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Notable factors */}
           {actor.notableFactors && actor.notableFactors.length > 0 && (
