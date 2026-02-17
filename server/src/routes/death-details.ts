@@ -7,6 +7,7 @@ import {
   hasDetailedDeathInfo,
   type ProjectInfo,
   type SourceEntry,
+  type InDetailResponse,
 } from "../lib/db.js"
 import { getPersonDetails } from "../lib/tmdb.js"
 import { createActorSlug } from "../lib/slug-utils.js"
@@ -701,7 +702,7 @@ export async function getInDetailHandler(req: Request, res: Response) {
         dir,
       })
 
-      const cached = await getCached<NotableDeathsResponse>(cacheKey)
+      const cached = await getCached<InDetailResponse>(cacheKey)
       if (cached) {
         newrelic.recordCustomEvent("InDetailView", {
           page,
