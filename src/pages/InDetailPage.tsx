@@ -10,33 +10,11 @@ import LoadingSpinner from "@/components/common/LoadingSpinner"
 import ErrorMessage from "@/components/common/ErrorMessage"
 import SortControl from "@/components/common/SortControl"
 import { PersonIcon } from "@/components/icons"
+import RelativeTime from "@/components/common/RelativeTime"
 import type { InDetailActor } from "@/types"
-
-function formatRelativeTime(dateStr: string | null): string {
-  if (!dateStr) return ""
-  const date = new Date(dateStr)
-  if (Number.isNaN(date.getTime())) return ""
-  const diffMs = Date.now() - date.getTime()
-  if (diffMs < 0) return "Just now"
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  if (diffDays === 0) return "Today"
-  if (diffDays === 1) return "Yesterday"
-  if (diffDays < 7) return `${diffDays} days ago`
-  if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7)
-    return `${weeks} week${weeks > 1 ? "s" : ""} ago`
-  }
-  if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30)
-    return `${months} month${months > 1 ? "s" : ""} ago`
-  }
-  const years = Math.floor(diffDays / 365)
-  return `${years} year${years > 1 ? "s" : ""} ago`
-}
 
 function ActorCard({ actor }: { actor: InDetailActor }) {
   const profileUrl = getProfileUrl(actor.profilePath, "w185")
-  const relativeTime = formatRelativeTime(actor.enrichedAt)
 
   return (
     <Link
@@ -75,9 +53,11 @@ function ActorCard({ actor }: { actor: InDetailActor }) {
                 {toTitleCase(actor.deathManner)}
               </span>
             )}
-            {relativeTime && (
-              <span className="text-xs text-text-muted">Updated {relativeTime}</span>
-            )}
+            <RelativeTime
+              date={actor.enrichedAt}
+              prefix="Updated"
+              className="text-xs text-text-muted"
+            />
           </div>
         </div>
       </div>
