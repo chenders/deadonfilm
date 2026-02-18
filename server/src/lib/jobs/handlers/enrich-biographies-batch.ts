@@ -167,7 +167,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         if (runId) {
           try {
             await this.updateRunProgress(db, runId, i, actor.name, {
-              actorsProcessed: results.length,
+              actorsProcessed: i,
               actorsEnriched,
               totalCostUsd,
               sourceCostUsd: totalSourceCost,
