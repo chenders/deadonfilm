@@ -51,6 +51,10 @@ interface EnrichmentResponse {
 interface GoldenTestResult {
   averageScore: number
   summary: string
+  actorsFound?: number
+  actorsExpected?: number
+  missingActors?: string[]
+  errors?: string[]
   results: Array<{
     actorName: string
     score: number
@@ -97,8 +101,9 @@ async function enrichSingleActor(actorId: number): Promise<{ success: boolean; m
   })
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error?.message || "Enrichment failed")
+    const data = await response.json().catch(() => null)
+    const serverMsg = data?.error?.message || data?.error || `HTTP ${response.status}`
+    throw new Error(`Enrichment failed: ${serverMsg}`)
   }
 
   return response.json()
@@ -119,8 +124,9 @@ async function queueBatchEnrichment(params: {
   })
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error?.message || "Batch enrichment failed")
+    const data = await response.json().catch(() => null)
+    const serverMsg = data?.error?.message || data?.error || `HTTP ${response.status}`
+    throw new Error(`Batch enrichment failed: ${serverMsg}`)
   }
 
   return response.json()
@@ -134,7 +140,9 @@ async function runGoldenTests(): Promise<GoldenTestResult> {
   })
 
   if (!response.ok) {
-    throw new Error("Golden test failed")
+    const data = await response.json().catch(() => null)
+    const serverMsg = data?.error?.message || data?.error || `HTTP ${response.status}`
+    throw new Error(`Golden test failed: ${serverMsg}`)
   }
 
   return response.json()
@@ -565,6 +573,27 @@ export default function BiographyEnrichmentTab() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          {goldenTestMutation.data.missingActors &&
+            goldenTestMutation.data.missingActors.length > 0 && (
+              <div className="border-admin-warning/30 bg-admin-warning/5 mt-3 rounded border p-3 text-sm text-admin-warning">
+                <span className="font-medium">Missing from database:</span>{" "}
+                {goldenTestMutation.data.missingActors.join(", ")}
+                <span className="ml-1 text-admin-text-muted">
+                  ({goldenTestMutation.data.actorsFound}/{goldenTestMutation.data.actorsExpected}{" "}
+                  found)
+                </span>
+              </div>
+            )}
+          {goldenTestMutation.data.errors && goldenTestMutation.data.errors.length > 0 && (
+            <div className="border-admin-error/30 bg-admin-error/5 mt-3 rounded border p-3 text-sm">
+              <p className="text-admin-error mb-1 font-medium">Per-actor errors:</p>
+              <ul className="list-inside list-disc space-y-0.5 text-admin-text-muted">
+                {goldenTestMutation.data.errors.map((err, idx) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
             </div>
           )}
           {goldenTestMutation.data.summary && (
