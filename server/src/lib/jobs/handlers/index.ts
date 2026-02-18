@@ -61,6 +61,7 @@ import { CalculateContentPopularityHandler } from "./calculate-content-popularit
 import { CalculateActorPopularityHandler } from "./calculate-actor-popularity.js"
 import { RebuildDeathCachesHandler } from "./rebuild-death-caches.js"
 import { GenerateBiographiesBatchHandler } from "./generate-biographies-batch.js"
+import { EnrichBiographiesBatchHandler } from "./enrich-biographies-batch.js"
 
 // Register handlers
 registerHandler(new FetchOMDbRatingsHandler())
@@ -78,3 +79,4 @@ registerHandler(new CalculateContentPopularityHandler())
 registerHandler(new CalculateActorPopularityHandler())
 registerHandler(new RebuildDeathCachesHandler())
 registerHandler(new GenerateBiographiesBatchHandler())
+registerHandler(new EnrichBiographiesBatchHandler())
