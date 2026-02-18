@@ -144,15 +144,15 @@ describe("BiographySection", () => {
     expect(screen.getByText("Paragraph three.")).toBeInTheDocument()
   })
 
-  it("displays life notable factors as pills", () => {
+  it("does not display life notable factors (shown in actor page header instead)", () => {
     const details = makeBiographyDetails({
       narrativeTeaser: "Bio text",
       lifeNotableFactors: ["military_service", "scholar"],
     })
     render(<BiographySection biographyDetails={details} />)
-    expect(screen.getByText("Military Service")).toBeInTheDocument()
-    expect(screen.getByText("Scholar")).toBeInTheDocument()
-    expect(screen.getByTestId("biography-factors")).toBeInTheDocument()
+    expect(screen.queryByText("Military Service")).not.toBeInTheDocument()
+    expect(screen.queryByText("Scholar")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("biography-factors")).not.toBeInTheDocument()
   })
 
   it("displays lesser-known facts", () => {

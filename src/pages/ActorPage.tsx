@@ -334,11 +334,16 @@ export default function ActorPage() {
               )}
             </div>
 
-            {/* Notable factor badges */}
-            {deathInfo?.notableFactors && deathInfo.notableFactors.length > 0 && (
+            {/* Notable factor badges (life + death) */}
+            {((deathInfo?.notableFactors && deathInfo.notableFactors.length > 0) ||
+              (data.biographyDetails?.lifeNotableFactors &&
+                data.biographyDetails.lifeNotableFactors.length > 0)) && (
               <div className="mt-2 flex flex-wrap justify-center gap-1 sm:justify-start">
-                {deathInfo.notableFactors.map((factor) => (
-                  <FactorBadge key={factor} factor={factor} />
+                {data.biographyDetails?.lifeNotableFactors?.map((factor) => (
+                  <FactorBadge key={`life-${factor}`} factor={factor} variant="life" />
+                ))}
+                {deathInfo?.notableFactors?.map((factor) => (
+                  <FactorBadge key={`death-${factor}`} factor={factor} />
                 ))}
               </div>
             )}
