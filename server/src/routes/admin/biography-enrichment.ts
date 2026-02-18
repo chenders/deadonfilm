@@ -127,7 +127,7 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
   // Fetch actor
   const actorResult = await pool.query(
     `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-            wikipedia_url, biography AS biography_raw_tmdb, biography, place_of_birth
+            wikipedia_url, biography AS biography_raw_tmdb, biography
      FROM actors WHERE id = $1`,
     [actorId]
   )
@@ -220,7 +220,7 @@ router.post("/golden-test", async (req: Request, res: Response): Promise<void> =
     const placeholders = names.map((_, i) => `$${i + 1}`).join(", ")
     const actorsResult = await pool.query(
       `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-              wikipedia_url, biography AS biography_raw_tmdb, biography, place_of_birth
+              wikipedia_url, biography AS biography_raw_tmdb, biography
        FROM actors WHERE name IN (${placeholders})`,
       names
     )

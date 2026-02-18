@@ -151,7 +151,7 @@ export interface ActorForBiography {
   wikipedia_url: string | null
   biography_raw_tmdb: string | null
   biography: string | null
-  place_of_birth: string | null
+  place_of_birth?: string | null
 }
 
 // ============================================================================
