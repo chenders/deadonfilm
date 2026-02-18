@@ -495,6 +495,60 @@ describe("BiographyEnrichmentOrchestrator", () => {
   })
 
   // --------------------------------------------------------------------------
+  // earlyStopSourceCount validation
+  // --------------------------------------------------------------------------
+  describe("earlyStopSourceCount validation", () => {
+    it("falls back to default for NaN", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: NaN })
+      // Default is 5 — verify by checking the config was clamped
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(5)
+    })
+
+    it("falls back to default for Infinity", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: Infinity })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(5)
+    })
+
+    it("falls back to default for negative numbers", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: -3 })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(5)
+    })
+
+    it("falls back to default for zero", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 0 })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(5)
+    })
+
+    it("floors non-integer values", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 3.7 })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(3)
+    })
+
+    it("preserves valid positive integers", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 8 })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(8)
+    })
+  })
+
+  // --------------------------------------------------------------------------
   // enrichActor
   // --------------------------------------------------------------------------
   describe("enrichActor", () => {
