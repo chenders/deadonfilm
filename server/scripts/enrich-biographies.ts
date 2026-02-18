@@ -4,6 +4,7 @@ import "dotenv/config" // MUST be first import
 import * as readline from "readline"
 import { Command, InvalidArgumentError } from "commander"
 import { Pool } from "pg"
+import { withNewRelicTransaction } from "../src/lib/newrelic-cli.js"
 import { BiographyEnrichmentOrchestrator } from "../src/lib/biography-sources/orchestrator.js"
 import {
   writeBiographyToProduction,
@@ -208,180 +209,191 @@ async function run(options: CliOptions): Promise<void> {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
   try {
-    // Set cache ignore if requested
-    if (options.ignoreCache) {
-      setIgnoreCache(true)
-      console.log("Cache: IGNORED (fresh requests)")
-    }
+    await withNewRelicTransaction("enrich-biographies", async (recordMetrics) => {
+      // Set cache ignore if requested
+      if (options.ignoreCache) {
+        setIgnoreCache(true)
+        console.log("Cache: IGNORED (fresh requests)")
+      }
 
-    // Build enrichment config from CLI options
-    const config: Partial<BiographyEnrichmentConfig> = {
-      limit: options.limit,
-      confidenceThreshold: options.confidence,
-      costLimits: {
-        maxCostPerActor: options.maxCostPerActor,
-        maxTotalCost: options.maxTotalCost,
-      },
-      sourceCategories: {
-        free: true,
-        reference: true,
-        webSearch: !options.disableWebSearch,
-        news: !options.disableNews,
-        obituary: true,
-        archives: !options.disableArchives,
-        ai: false,
-      },
-      contentCleaning: {
-        haikuEnabled: !options.disableHaikuCleanup,
-        mechanicalOnly: !!options.disableHaikuCleanup,
-      },
-    }
+      // Build enrichment config from CLI options
+      const config: Partial<BiographyEnrichmentConfig> = {
+        limit: options.limit,
+        confidenceThreshold: options.confidence,
+        costLimits: {
+          maxCostPerActor: options.maxCostPerActor,
+          maxTotalCost: options.maxTotalCost,
+        },
+        sourceCategories: {
+          free: true,
+          reference: true,
+          webSearch: !options.disableWebSearch,
+          news: !options.disableNews,
+          obituary: true,
+          archives: !options.disableArchives,
+          ai: false,
+        },
+        contentCleaning: {
+          haikuEnabled: !options.disableHaikuCleanup,
+          mechanicalOnly: !!options.disableHaikuCleanup,
+        },
+      }
 
-    // Query actors based on CLI options
-    let actors: ActorForBiography[]
+      // Query actors based on CLI options
+      let actors: ActorForBiography[]
 
-    if (options.actorId) {
-      console.log(`Querying actors by ID: ${options.actorId.join(", ")}`)
-      actors = await queryActorsByIds(pool, options.actorId)
-    } else if (options.tmdbId) {
-      console.log(`Querying actors by TMDB ID: ${options.tmdbId.join(", ")}`)
-      actors = await queryActorsByTmdbIds(pool, options.tmdbId)
-    } else if (options.goldenTest) {
-      console.log("Querying golden test case actors...")
-      actors = await queryGoldenTestActors(pool)
-    } else {
-      console.log(
-        `Querying top ${options.limit} actors by popularity${options.minPopularity ? ` (min: ${options.minPopularity})` : ""}...`
-      )
-      actors = await queryActorsByPopularity(pool, options.limit, options.minPopularity)
-    }
+      if (options.actorId) {
+        console.log(`Querying actors by ID: ${options.actorId.join(", ")}`)
+        actors = await queryActorsByIds(pool, options.actorId)
+      } else if (options.tmdbId) {
+        console.log(`Querying actors by TMDB ID: ${options.tmdbId.join(", ")}`)
+        actors = await queryActorsByTmdbIds(pool, options.tmdbId)
+      } else if (options.goldenTest) {
+        console.log("Querying golden test case actors...")
+        actors = await queryGoldenTestActors(pool)
+      } else {
+        console.log(
+          `Querying top ${options.limit} actors by popularity${options.minPopularity ? ` (min: ${options.minPopularity})` : ""}...`
+        )
+        actors = await queryActorsByPopularity(pool, options.limit, options.minPopularity)
+      }
 
-    if (actors.length === 0) {
-      console.log("No actors found matching criteria.")
-      return
-    }
+      if (actors.length === 0) {
+        console.log("No actors found matching criteria.")
+        return
+      }
 
-    // Show confirmation summary
-    console.log("\n" + "=".repeat(60))
-    console.log("Biography Enrichment Configuration")
-    console.log("=".repeat(60))
-    console.log(`  Actors to process:    ${actors.length}`)
-    console.log(`  Confidence threshold: ${options.confidence}`)
-    console.log(`  Max cost per actor:   $${options.maxCostPerActor}`)
-    console.log(`  Max total cost:       $${options.maxTotalCost}`)
-    console.log(`  Haiku AI cleanup:     ${options.disableHaikuCleanup ? "DISABLED" : "enabled"}`)
-    console.log(`  Web search:           ${options.disableWebSearch ? "DISABLED" : "enabled"}`)
-    console.log(`  News sources:         ${options.disableNews ? "DISABLED" : "enabled"}`)
-    console.log(`  Archive sources:      ${options.disableArchives ? "DISABLED" : "enabled"}`)
-    console.log(`  Write target:         ${options.staging ? "STAGING" : "PRODUCTION"}`)
-    console.log(`  Dry run:              ${options.dryRun ? "YES" : "no"}`)
-    if (options.goldenTest) {
-      console.log(`  Golden test mode:     YES`)
-    }
-    console.log("=".repeat(60))
+      // Show confirmation summary
+      console.log("\n" + "=".repeat(60))
+      console.log("Biography Enrichment Configuration")
+      console.log("=".repeat(60))
+      console.log(`  Actors to process:    ${actors.length}`)
+      console.log(`  Confidence threshold: ${options.confidence}`)
+      console.log(`  Max cost per actor:   $${options.maxCostPerActor}`)
+      console.log(`  Max total cost:       $${options.maxTotalCost}`)
+      console.log(`  Haiku AI cleanup:     ${options.disableHaikuCleanup ? "DISABLED" : "enabled"}`)
+      console.log(`  Web search:           ${options.disableWebSearch ? "DISABLED" : "enabled"}`)
+      console.log(`  News sources:         ${options.disableNews ? "DISABLED" : "enabled"}`)
+      console.log(`  Archive sources:      ${options.disableArchives ? "DISABLED" : "enabled"}`)
+      console.log(`  Write target:         ${options.staging ? "STAGING" : "PRODUCTION"}`)
+      console.log(`  Dry run:              ${options.dryRun ? "YES" : "no"}`)
+      if (options.goldenTest) {
+        console.log(`  Golden test mode:     YES`)
+      }
+      console.log("=".repeat(60))
 
-    console.log("\nActors:")
-    for (const actor of actors) {
-      console.log(`  - ${actor.name} (ID: ${actor.id}, TMDB: ${actor.tmdb_id})`)
-    }
-
-    // Wait for confirmation
-    const confirmed = await waitForConfirmation(!!options.yes)
-    if (!confirmed) {
-      console.log("Cancelled.")
-      return
-    }
-
-    if (options.dryRun) {
-      console.log("\n[DRY RUN] Would process the following actors:")
+      console.log("\nActors:")
       for (const actor of actors) {
         console.log(`  - ${actor.name} (ID: ${actor.id}, TMDB: ${actor.tmdb_id})`)
       }
-      console.log("\n[DRY RUN] No changes made.")
-      return
-    }
 
-    // Create orchestrator and process actors
-    const orchestrator = new BiographyEnrichmentOrchestrator(config)
-    const startTime = Date.now()
-    const enrichmentResults = new Map<number, BiographyResult>()
-    let totalCost = 0
-    let enrichedCount = 0
+      // Wait for confirmation
+      const confirmed = await waitForConfirmation(!!options.yes)
+      if (!confirmed) {
+        console.log("Cancelled.")
+        return
+      }
 
-    for (let i = 0; i < actors.length; i++) {
-      const actor = actors[i]
-      console.log(`\n[${i + 1}/${actors.length}] Processing ${actor.name}...`)
-
-      try {
-        const result = await orchestrator.enrichActor(actor)
-        enrichmentResults.set(actor.id, result)
-        totalCost += result.stats.totalCostUsd
-
-        if (result.data) {
-          enrichedCount++
-
-          // Write to database
-          const writeFunc = options.staging ? writeBiographyToStaging : writeBiographyToProduction
-          await writeFunc(pool, actor.id, result.data, result.sources)
-          console.log(
-            `  Written to ${options.staging ? "staging" : "production"} | ` +
-              `Sources: ${result.stats.sourcesSucceeded}/${result.stats.sourcesAttempted} | ` +
-              `Cost: $${result.stats.totalCostUsd.toFixed(4)} | ` +
-              `Time: ${result.stats.processingTimeMs}ms`
-          )
-        } else {
-          console.log(
-            `  No data produced | ` +
-              `Sources: ${result.stats.sourcesSucceeded}/${result.stats.sourcesAttempted} | ` +
-              `Error: ${result.error || "unknown"}`
-          )
+      if (options.dryRun) {
+        console.log("\n[DRY RUN] Would process the following actors:")
+        for (const actor of actors) {
+          console.log(`  - ${actor.name} (ID: ${actor.id}, TMDB: ${actor.tmdb_id})`)
         }
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : "Unknown error"
-        console.error(`  Fatal error processing ${actor.name}: ${errorMsg}`)
+        console.log("\n[DRY RUN] No changes made.")
+        return
       }
 
-      // Check total cost limit
-      if (totalCost >= options.maxTotalCost) {
-        console.log(
-          `\nTotal cost limit reached ($${totalCost.toFixed(4)} >= $${options.maxTotalCost})`
-        )
-        console.log(`Processed ${i + 1} of ${actors.length} actors before limit`)
-        break
-      }
+      // Create orchestrator and process actors
+      const orchestrator = new BiographyEnrichmentOrchestrator(config)
+      const startTime = Date.now()
+      const enrichmentResults = new Map<number, BiographyResult>()
+      let totalCost = 0
+      let enrichedCount = 0
 
-      // Delay between actors
-      if (i < actors.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-      }
-    }
+      for (let i = 0; i < actors.length; i++) {
+        const actor = actors[i]
+        console.log(`\n[${i + 1}/${actors.length}] Processing ${actor.name}...`)
 
-    // Golden test scoring
-    if (options.goldenTest && enrichmentResults.size > 0) {
-      const resultsByName = new Map<string, BiographyData>()
-      for (const [actorId, result] of enrichmentResults) {
-        if (result.data) {
-          const actor = actors.find((a) => a.id === actorId)
-          if (actor) resultsByName.set(actor.name, result.data)
+        try {
+          const result = await orchestrator.enrichActor(actor)
+          enrichmentResults.set(actor.id, result)
+          totalCost += result.stats.totalCostUsd
+
+          if (result.data) {
+            enrichedCount++
+
+            // Write to database
+            const writeFunc = options.staging ? writeBiographyToStaging : writeBiographyToProduction
+            await writeFunc(pool, actor.id, result.data, result.sources)
+            console.log(
+              `  Written to ${options.staging ? "staging" : "production"} | ` +
+                `Sources: ${result.stats.sourcesSucceeded}/${result.stats.sourcesAttempted} | ` +
+                `Cost: $${result.stats.totalCostUsd.toFixed(4)} | ` +
+                `Time: ${result.stats.processingTimeMs}ms`
+            )
+          } else {
+            console.log(
+              `  No data produced | ` +
+                `Sources: ${result.stats.sourcesSucceeded}/${result.stats.sourcesAttempted} | ` +
+                `Error: ${result.error || "unknown"}`
+            )
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : "Unknown error"
+          console.error(`  Fatal error processing ${actor.name}: ${errorMsg}`)
+        }
+
+        // Check total cost limit
+        if (totalCost >= options.maxTotalCost) {
+          console.log(
+            `\nTotal cost limit reached ($${totalCost.toFixed(4)} >= $${options.maxTotalCost})`
+          )
+          console.log(`Processed ${i + 1} of ${actors.length} actors before limit`)
+          break
+        }
+
+        // Delay between actors
+        if (i < actors.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500))
         }
       }
-      const { summary } = scoreAllResults(resultsByName)
-      console.log("\n" + summary)
-    }
 
-    // Batch summary
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
-    console.log("\n" + "=".repeat(60))
-    console.log("Biography Enrichment Complete")
-    console.log("=".repeat(60))
-    console.log(`  Actors processed:  ${enrichmentResults.size}`)
-    console.log(`  Actors enriched:   ${enrichedCount}`)
-    console.log(
-      `  Fill rate:         ${enrichmentResults.size > 0 ? ((enrichedCount / enrichmentResults.size) * 100).toFixed(1) : 0}%`
-    )
-    console.log(`  Total cost:        $${totalCost.toFixed(4)}`)
-    console.log(`  Total time:        ${elapsed}s`)
-    console.log("=".repeat(60))
+      // Golden test scoring
+      if (options.goldenTest && enrichmentResults.size > 0) {
+        const resultsByName = new Map<string, BiographyData>()
+        for (const [actorId, result] of enrichmentResults) {
+          if (result.data) {
+            const actor = actors.find((a) => a.id === actorId)
+            if (actor) resultsByName.set(actor.name, result.data)
+          }
+        }
+        const { summary } = scoreAllResults(resultsByName)
+        console.log("\n" + summary)
+      }
+
+      // Record final metrics for New Relic
+      recordMetrics({
+        recordsProcessed: enrichmentResults.size,
+        recordsUpdated: enrichedCount,
+        totalCostUsd: totalCost,
+        goldenTestMode: !!options.goldenTest,
+        dryRun: !!options.dryRun,
+      })
+
+      // Batch summary
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+      console.log("\n" + "=".repeat(60))
+      console.log("Biography Enrichment Complete")
+      console.log("=".repeat(60))
+      console.log(`  Actors processed:  ${enrichmentResults.size}`)
+      console.log(`  Actors enriched:   ${enrichedCount}`)
+      console.log(
+        `  Fill rate:         ${enrichmentResults.size > 0 ? ((enrichedCount / enrichmentResults.size) * 100).toFixed(1) : 0}%`
+      )
+      console.log(`  Total cost:        $${totalCost.toFixed(4)}`)
+      console.log(`  Total time:        ${elapsed}s`)
+      console.log("=".repeat(60))
+    })
   } catch (error) {
     console.error("Fatal error:", error)
     process.exit(1)
