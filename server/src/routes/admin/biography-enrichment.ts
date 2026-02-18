@@ -272,8 +272,7 @@ router.post("/golden-test", async (req: Request, res: Response): Promise<void> =
   } catch (error) {
     logger.error({ error }, "Failed to run golden test cases")
     const errorMsg = error instanceof Error ? error.message : "Unknown error"
-    const stack = error instanceof Error ? error.stack : undefined
-    res.status(500).json({ error: { message: errorMsg, stack } })
+    res.status(500).json({ error: { message: errorMsg } })
   }
 })
 
