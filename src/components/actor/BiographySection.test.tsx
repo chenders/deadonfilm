@@ -242,4 +242,70 @@ describe("BiographySection", () => {
     const { container } = render(<BiographySection biographyDetails={details} />)
     expect(container.innerHTML).toBe("")
   })
+
+  it("shows biography sources when no expandable content", () => {
+    const details = makeBiographyDetails({
+      narrativeTeaser: "Bio text",
+      sources: [
+        {
+          url: "https://en.wikipedia.org/wiki/Actor",
+          type: "wikipedia-bio",
+          publication: "Wikipedia",
+          articleTitle: "Actor - Wikipedia",
+          confidence: 0.9,
+          retrievedAt: "2026-01-01T00:00:00Z",
+        },
+        {
+          url: "https://www.biography.com/actors/actor",
+          type: "biography-com",
+          publication: "Biography.com",
+          articleTitle: null,
+          confidence: 0.8,
+          retrievedAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+    })
+    render(<BiographySection biographyDetails={details} />)
+
+    // Sources visible (no expandable content — always shown)
+    expect(screen.getByTestId("sources-sources")).toBeInTheDocument()
+    expect(screen.getByText("Actor - Wikipedia")).toBeInTheDocument()
+    // Falls back to publication when articleTitle is null
+    expect(screen.getByText("Biography.com")).toBeInTheDocument()
+  })
+
+  it("hides sources when collapsed and shows when expanded", () => {
+    const details = makeBiographyDetails({
+      narrativeTeaser: "Short teaser",
+      narrative: "Full narrative " + "x".repeat(300),
+      sources: [
+        {
+          url: "https://en.wikipedia.org/wiki/Actor",
+          type: "wikipedia-bio",
+          publication: "Wikipedia",
+          articleTitle: "Actor - Wikipedia",
+          confidence: 0.9,
+          retrievedAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+    })
+    render(<BiographySection biographyDetails={details} />)
+
+    // Collapsed — sources hidden
+    expect(screen.queryByTestId("sources-sources")).not.toBeInTheDocument()
+
+    // Expand — sources visible
+    fireEvent.click(screen.getByTestId("biography-toggle"))
+    expect(screen.getByTestId("sources-sources")).toBeInTheDocument()
+    expect(screen.getByText("Actor - Wikipedia")).toBeInTheDocument()
+  })
+
+  it("does not show sources when sources is null", () => {
+    const details = makeBiographyDetails({
+      narrativeTeaser: "Bio text",
+      sources: null,
+    })
+    render(<BiographySection biographyDetails={details} />)
+    expect(screen.queryByTestId("sources-sources")).not.toBeInTheDocument()
+  })
 })

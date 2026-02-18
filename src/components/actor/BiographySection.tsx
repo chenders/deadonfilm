@@ -1,5 +1,7 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import type { BiographyDetails } from "@/types/actor"
+import SourceList from "@/components/death/SourceList"
+import type { SourceEntry } from "@/types"
 
 interface BiographySectionProps {
   biography?: string | null
@@ -28,6 +30,17 @@ export default function BiographySection({
   biographySourceType,
 }: BiographySectionProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+
+  // Convert biography sources to SourceEntry format for SourceList
+  const biographySources = biographyDetails?.sources
+  const sourceEntries: SourceEntry[] | null = useMemo(() => {
+    if (!Array.isArray(biographySources) || biographySources.length === 0) return null
+    return biographySources.map((s) => ({
+      url: s.url || null,
+      archiveUrl: null,
+      description: s.articleTitle || s.publication,
+    }))
+  }, [biographySources])
 
   // Determine which content to show
   const hasEnrichedBio =
@@ -125,6 +138,11 @@ export default function BiographySection({
             ))}
           </ul>
         </div>
+      )}
+
+      {/* Sources (visible when expanded, or always if no expandable content) */}
+      {(isExpanded || !hasExpandableContent) && (
+        <SourceList sources={sourceEntries} title="Sources" />
       )}
     </div>
   )

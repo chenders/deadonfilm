@@ -110,6 +110,15 @@ export interface ActorDeathInfo {
   relatedCelebrities: RelatedCelebrity[] | null
 }
 
+export interface BiographySource {
+  url: string | null
+  type: string
+  publication: string
+  articleTitle: string | null
+  confidence: number
+  retrievedAt: string
+}
+
 export interface BiographyDetails {
   narrativeTeaser: string | null
   narrative: string | null
@@ -123,7 +132,7 @@ export interface BiographyDetails {
   personalStruggles: string | null
   relationships: string | null
   lesserKnownFacts: string[]
-  sources: Record<string, unknown> | null
+  sources: BiographySource[] | null
 }
 
 export interface ActorProfileResponse {
