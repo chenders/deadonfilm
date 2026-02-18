@@ -44,8 +44,12 @@ interface RelatedShowsResponse {
  * Derive the birth decade start year from a birthday string.
  * E.g., "1945-06-15" -> 1940
  */
-function getBirthDecade(birthday: string | null): number | null {
+function getBirthDecade(birthday: string | Date | null): number | null {
   if (!birthday) return null
+  if (birthday instanceof Date) {
+    const year = birthday.getFullYear()
+    return isNaN(year) ? null : Math.floor(year / 10) * 10
+  }
   const year = parseInt(birthday.split("-")[0], 10)
   if (isNaN(year)) return null
   return Math.floor(year / 10) * 10
