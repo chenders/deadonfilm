@@ -784,6 +784,7 @@ export default function BiographiesTab() {
                           setPage(1)
                         }}
                         className={`font-semibold ${sortBy === "name" ? "text-admin-text-primary" : ""}`}
+                        aria-label={`Sort by name${sortBy === "name" ? " (ascending)" : ""}`}
                       >
                         Name{sortBy === "name" ? " \u2191" : ""}
                       </button>
@@ -795,6 +796,7 @@ export default function BiographiesTab() {
                           setPage(1)
                         }}
                         className={`font-semibold ${sortBy === "popularity" ? "text-admin-text-primary" : ""}`}
+                        aria-label={`Sort by popularity${sortBy === "popularity" ? " (descending)" : ""}`}
                       >
                         Popularity{sortBy === "popularity" ? " \u2193" : ""}
                       </button>
@@ -815,6 +817,7 @@ export default function BiographiesTab() {
                           setPage(1)
                         }}
                         className={`font-semibold ${sortBy === "generated_at" ? "text-admin-text-primary" : ""}`}
+                        aria-label={`Sort by generated date${sortBy === "generated_at" ? " (descending)" : ""}`}
                       >
                         Generated{sortBy === "generated_at" ? " \u2193" : ""}
                       </button>

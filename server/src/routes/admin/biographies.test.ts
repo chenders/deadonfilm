@@ -201,6 +201,21 @@ describe("Admin Biographies Routes", () => {
       expect(actorsQuery).toContain("ORDER BY COALESCE(dof_popularity, 0) DESC")
     })
 
+    it("falls back to popularity sort for invalid sortBy values", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "10" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?sortBy=invalid")
+
+      expect(response.status).toBe(200)
+      const actorsQuery = mockQuery.mock.calls[1][0] as string
+      expect(actorsQuery).toContain("ORDER BY COALESCE(dof_popularity, 0) DESC")
+    })
+
     it("supports vitalStatus=alive filter", async () => {
       mockQuery
         .mockResolvedValueOnce({ rows: [{ count: "5" }] })

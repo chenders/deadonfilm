@@ -263,7 +263,7 @@ describe("BiographiesTab", () => {
     })
 
     // Click the "Name" sort header
-    const nameHeader = screen.getByRole("button", { name: /Name/ })
+    const nameHeader = screen.getByRole("button", { name: /sort by name/i })
     fireEvent.click(nameHeader)
 
     await waitFor(() => {
