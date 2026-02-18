@@ -75,7 +75,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
             {
               id: 1,
               name: "John Wayne",
-              tmdb_popularity: "45.2",
+              dof_popularity: "45.2",
               deathday: "1979-06-11",
               bio_id: 10,
               narrative_confidence: "high",

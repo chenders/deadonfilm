@@ -78,22 +78,47 @@ interface JobRun {
   completed_at: string | null
 }
 
+type SortBy = "popularity" | "name" | "generated_at"
+type VitalStatus = "all" | "alive" | "deceased"
+
 async function fetchBiographies(
   page: number,
   pageSize: number,
   minPopularity: number,
   needsGeneration: boolean,
-  searchName: string
+  searchName: string,
+  sortBy: SortBy,
+  vitalStatus: VitalStatus,
+  hasWikipedia: boolean | undefined,
+  hasImdb: boolean | undefined,
+  hasEnrichedBio: boolean | undefined
 ): Promise<BiographyResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
     pageSize: pageSize.toString(),
     minPopularity: minPopularity.toString(),
     needsGeneration: needsGeneration.toString(),
+    sortBy,
   })
 
   if (searchName.trim()) {
     params.set("searchName", searchName.trim())
+  }
+
+  if (vitalStatus !== "all") {
+    params.set("vitalStatus", vitalStatus)
+  }
+
+  if (hasWikipedia !== undefined) {
+    params.set("hasWikipedia", hasWikipedia.toString())
+  }
+
+  if (hasImdb !== undefined) {
+    params.set("hasImdb", hasImdb.toString())
+  }
+
+  if (hasEnrichedBio !== undefined) {
+    params.set("hasEnrichedBio", hasEnrichedBio.toString())
   }
 
   const response = await fetch(`/admin/api/biographies?${params}`, {
@@ -273,6 +298,11 @@ export default function BiographiesTab() {
   const [batchLimit, setBatchLimit] = useState(100)
   const [generatingActorId, setGeneratingActorId] = useState<number | null>(null)
   const [activeBatchJobId, setActiveBatchJobId] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<SortBy>("popularity")
+  const [vitalStatus, setVitalStatus] = useState<VitalStatus>("all")
+  const [hasWikipedia, setHasWikipedia] = useState<boolean | undefined>(undefined)
+  const [hasImdb, setHasImdb] = useState<boolean | undefined>(undefined)
+  const [hasEnrichedBio, setHasEnrichedBio] = useState<boolean | undefined>(undefined)
   const pageSize = 50
 
   // Debounced search input - provides immediate input feedback with 300ms debounced URL updates
@@ -289,8 +319,32 @@ export default function BiographiesTab() {
   }, [searchName])
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-biographies", page, pageSize, minPopularity, needsGeneration, searchName],
-    queryFn: () => fetchBiographies(page, pageSize, minPopularity, needsGeneration, searchName),
+    queryKey: [
+      "admin-biographies",
+      page,
+      pageSize,
+      minPopularity,
+      needsGeneration,
+      searchName,
+      sortBy,
+      vitalStatus,
+      hasWikipedia,
+      hasImdb,
+      hasEnrichedBio,
+    ],
+    queryFn: () =>
+      fetchBiographies(
+        page,
+        pageSize,
+        minPopularity,
+        needsGeneration,
+        searchName,
+        sortBy,
+        vitalStatus,
+        hasWikipedia,
+        hasImdb,
+        hasEnrichedBio
+      ),
   })
 
   const generateMutation = useMutation({
@@ -397,7 +451,7 @@ export default function BiographiesTab() {
           Filters & Batch Actions
         </h2>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* Name Search */}
           <div>
             <label htmlFor="searchName" className="mb-1 block text-sm text-admin-text-muted">
@@ -453,6 +507,93 @@ export default function BiographiesTab() {
             </select>
           </div>
 
+          {/* Vital Status Filter */}
+          <div>
+            <label htmlFor="vitalStatus" className="mb-1 block text-sm text-admin-text-muted">
+              Vital Status
+            </label>
+            <select
+              id="vitalStatus"
+              value={vitalStatus}
+              onChange={(e) => {
+                setVitalStatus(e.target.value as VitalStatus)
+                setPage(1)
+                setSelectedActorIds(new Set())
+              }}
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
+            >
+              <option value="all">All Actors</option>
+              <option value="alive">Alive</option>
+              <option value="deceased">Deceased</option>
+            </select>
+          </div>
+
+          {/* Wikipedia Filter */}
+          <div>
+            <label htmlFor="hasWikipedia" className="mb-1 block text-sm text-admin-text-muted">
+              Wikipedia
+            </label>
+            <select
+              id="hasWikipedia"
+              value={hasWikipedia === undefined ? "" : hasWikipedia.toString()}
+              onChange={(e) => {
+                const val = e.target.value
+                setHasWikipedia(val === "" ? undefined : val === "true")
+                setPage(1)
+                setSelectedActorIds(new Set())
+              }}
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
+            >
+              <option value="">All</option>
+              <option value="true">Has Wikipedia</option>
+              <option value="false">No Wikipedia</option>
+            </select>
+          </div>
+
+          {/* IMDb Filter */}
+          <div>
+            <label htmlFor="hasImdb" className="mb-1 block text-sm text-admin-text-muted">
+              IMDb
+            </label>
+            <select
+              id="hasImdb"
+              value={hasImdb === undefined ? "" : hasImdb.toString()}
+              onChange={(e) => {
+                const val = e.target.value
+                setHasImdb(val === "" ? undefined : val === "true")
+                setPage(1)
+                setSelectedActorIds(new Set())
+              }}
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
+            >
+              <option value="">All</option>
+              <option value="true">Has IMDb</option>
+              <option value="false">No IMDb</option>
+            </select>
+          </div>
+
+          {/* Enriched Bio Filter */}
+          <div>
+            <label htmlFor="hasEnrichedBio" className="mb-1 block text-sm text-admin-text-muted">
+              Enriched Bio
+            </label>
+            <select
+              id="hasEnrichedBio"
+              value={hasEnrichedBio === undefined ? "" : hasEnrichedBio.toString()}
+              onChange={(e) => {
+                const val = e.target.value
+                setHasEnrichedBio(val === "" ? undefined : val === "true")
+                setPage(1)
+                setSelectedActorIds(new Set())
+              }}
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
+            >
+              <option value="">All</option>
+              <option value="true">Has Enriched Bio</option>
+              <option value="false">No Enriched Bio</option>
+            </select>
+          </div>
+
           {/* Batch Limit */}
           <div>
             <label htmlFor="batchLimit" className="mb-1 block text-sm text-admin-text-muted">
@@ -472,11 +613,11 @@ export default function BiographiesTab() {
           </div>
 
           {/* Batch Generate Button */}
-          <div className="flex items-end">
+          <div className="flex items-end lg:col-span-4">
             <button
               onClick={handleGenerateByPopularity}
               disabled={batchQueueMutation.isPending || !!activeBatchJobId}
-              className="w-full rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {batchQueueMutation.isPending
                 ? "Queueing..."
@@ -636,11 +777,29 @@ export default function BiographiesTab() {
                         />
                       </label>
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
-                      Name
+                    <th className="px-4 py-3 text-left text-sm text-admin-text-secondary">
+                      <button
+                        onClick={() => {
+                          setSortBy("name")
+                          setPage(1)
+                        }}
+                        className={`font-semibold ${sortBy === "name" ? "text-admin-text-primary" : ""}`}
+                        aria-label={`Sort by name${sortBy === "name" ? " (ascending)" : ""}`}
+                      >
+                        Name{sortBy === "name" ? " \u2191" : ""}
+                      </button>
                     </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-admin-text-secondary">
-                      Popularity
+                    <th className="px-4 py-3 text-right text-sm text-admin-text-secondary">
+                      <button
+                        onClick={() => {
+                          setSortBy("popularity")
+                          setPage(1)
+                        }}
+                        className={`font-semibold ${sortBy === "popularity" ? "text-admin-text-primary" : ""}`}
+                        aria-label={`Sort by popularity${sortBy === "popularity" ? " (descending)" : ""}`}
+                      >
+                        Popularity{sortBy === "popularity" ? " \u2193" : ""}
+                      </button>
                     </th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
                       Biography
@@ -651,8 +810,17 @@ export default function BiographiesTab() {
                     <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
                       IMDb
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
-                      Generated
+                    <th className="px-4 py-3 text-left text-sm text-admin-text-secondary">
+                      <button
+                        onClick={() => {
+                          setSortBy("generated_at")
+                          setPage(1)
+                        }}
+                        className={`font-semibold ${sortBy === "generated_at" ? "text-admin-text-primary" : ""}`}
+                        aria-label={`Sort by generated date${sortBy === "generated_at" ? " (descending)" : ""}`}
+                      >
+                        Generated{sortBy === "generated_at" ? " \u2193" : ""}
+                      </button>
                     </th>
                     <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
                       Actions

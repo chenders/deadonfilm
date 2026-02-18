@@ -72,8 +72,28 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const minPopularity = Number.parseFloat(req.query.minPopularity as string) || 0
     const needsGeneration = req.query.needsGeneration === "true"
     const searchName = (req.query.searchName as string)?.trim() || ""
+    const sortBy = (req.query.sortBy as string) || "popularity"
+    const vitalStatus = (req.query.vitalStatus as string) || "all"
+    const hasWikipedia = req.query.hasWikipedia as string | undefined
+    const hasImdb = req.query.hasImdb as string | undefined
+    const hasEnrichedBio = req.query.hasEnrichedBio as string | undefined
 
     const offset = (page - 1) * pageSize
+
+    // Build sort clause from whitelist
+    let orderByClause: string
+    switch (sortBy) {
+      case "name":
+        orderByClause = "ORDER BY name ASC, id ASC"
+        break
+      case "generated_at":
+        orderByClause = "ORDER BY biography_generated_at DESC NULLS LAST, id ASC"
+        break
+      case "popularity":
+      default:
+        orderByClause = "ORDER BY COALESCE(dof_popularity, 0) DESC, id ASC"
+        break
+    }
 
     // Build query based on filters
     let whereClause = "WHERE tmdb_id IS NOT NULL"
@@ -92,6 +112,32 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     if (searchName) {
       whereClause += ` AND name ILIKE $${paramIndex++}`
       params.push(`%${searchName}%`)
+    }
+
+    if (vitalStatus === "alive") {
+      whereClause += " AND deathday IS NULL"
+    } else if (vitalStatus === "deceased") {
+      whereClause += " AND deathday IS NOT NULL"
+    }
+
+    if (hasWikipedia === "true") {
+      whereClause += " AND wikipedia_url IS NOT NULL"
+    } else if (hasWikipedia === "false") {
+      whereClause += " AND wikipedia_url IS NULL"
+    }
+
+    if (hasImdb === "true") {
+      whereClause += " AND imdb_person_id IS NOT NULL"
+    } else if (hasImdb === "false") {
+      whereClause += " AND imdb_person_id IS NULL"
+    }
+
+    if (hasEnrichedBio === "true") {
+      whereClause +=
+        " AND EXISTS (SELECT 1 FROM actor_biography_details abd WHERE abd.actor_id = actors.id)"
+    } else if (hasEnrichedBio === "false") {
+      whereClause +=
+        " AND NOT EXISTS (SELECT 1 FROM actor_biography_details abd WHERE abd.actor_id = actors.id)"
     }
 
     // Get total count
@@ -114,7 +160,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         imdb_person_id
       FROM actors
       ${whereClause}
-      ORDER BY COALESCE(dof_popularity, 0) DESC, id ASC
+      ${orderByClause}
       LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
       [...params, pageSize, offset]
     )
