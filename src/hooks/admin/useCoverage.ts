@@ -27,9 +27,13 @@ export interface ActorCoverageInfo {
   enriched_at: string | null
   age_at_death: number | null
   cause_of_death: string | null
-  profile_path: string | null
-  death_manner: string | null
-  has_biography: boolean
+  // Fields below are only returned by the paginated actors endpoint,
+  // not by the enrichment-candidates endpoint
+  profile_path?: string | null
+  death_manner?: string | null
+  has_biography?: boolean
+  has_enriched_bio?: boolean
+  bio_enriched_at?: string | null
 }
 
 export interface CoverageTrendPoint {

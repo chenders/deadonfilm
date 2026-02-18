@@ -9,9 +9,10 @@ import LoadingSpinner from "../common/LoadingSpinner"
 
 interface AdminLayoutProps {
   children: ReactNode
+  fullWidth?: boolean
 }
 
-function AdminLayoutContent({ children }: AdminLayoutProps) {
+function AdminLayoutContent({ children, fullWidth }: AdminLayoutProps) {
   const { isAuthenticated, isLoading } = useAdminAuth()
   const navigate = useNavigate()
   const mobileMenu = useMobileMenu()
@@ -64,16 +65,18 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
 
       {/* Main content */}
       <main className="min-w-0 flex-1 pt-14 md:pt-0">
-        <div className="mx-auto max-w-7xl p-4 md:p-8">{children}</div>
+        <div className={`mx-auto p-4 md:p-8 ${fullWidth ? "max-w-full" : "max-w-7xl"}`}>
+          {children}
+        </div>
       </main>
     </div>
   )
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function AdminLayout({ children, fullWidth }: AdminLayoutProps) {
   return (
     <AdminThemeProvider>
-      <AdminLayoutContent>{children}</AdminLayoutContent>
+      <AdminLayoutContent fullWidth={fullWidth}>{children}</AdminLayoutContent>
     </AdminThemeProvider>
   )
 }
