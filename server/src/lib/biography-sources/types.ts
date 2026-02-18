@@ -234,6 +234,8 @@ export interface BiographyResult {
     sourcesAttempted: number
     sourcesSucceeded: number
     totalCostUsd: number
+    sourceCostUsd: number
+    synthesisCostUsd: number
     processingTimeMs: number
   }
   error?: string

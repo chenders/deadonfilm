@@ -118,4 +118,68 @@ describe("ExpandableSection", () => {
 
     expect(screen.getByTestId("expandable-section")).toHaveClass("mt-4")
   })
+
+  describe("gradient clickability", () => {
+    it("calls onToggle when gradient is clicked while collapsed", () => {
+      const onToggle = vi.fn()
+      render(
+        <ExpandableSection title="Test Section" isExpanded={false} onToggle={onToggle}>
+          <p>Content</p>
+        </ExpandableSection>
+      )
+
+      fireEvent.click(screen.getByTestId("expandable-section-gradient"))
+      expect(onToggle).toHaveBeenCalledTimes(1)
+    })
+
+    it("calls onToggle when Enter is pressed on gradient while collapsed", () => {
+      const onToggle = vi.fn()
+      render(
+        <ExpandableSection title="Test Section" isExpanded={false} onToggle={onToggle}>
+          <p>Content</p>
+        </ExpandableSection>
+      )
+
+      fireEvent.keyDown(screen.getByTestId("expandable-section-gradient"), { key: "Enter" })
+      expect(onToggle).toHaveBeenCalledTimes(1)
+    })
+
+    it("calls onToggle when Space is pressed on gradient while collapsed", () => {
+      const onToggle = vi.fn()
+      render(
+        <ExpandableSection title="Test Section" isExpanded={false} onToggle={onToggle}>
+          <p>Content</p>
+        </ExpandableSection>
+      )
+
+      fireEvent.keyDown(screen.getByTestId("expandable-section-gradient"), { key: " " })
+      expect(onToggle).toHaveBeenCalledTimes(1)
+    })
+
+    it("has role=button, tabIndex=0, and aria-label when collapsed", () => {
+      render(
+        <ExpandableSection title="Test Section" isExpanded={false} onToggle={() => {}}>
+          <p>Content</p>
+        </ExpandableSection>
+      )
+
+      const gradient = screen.getByTestId("expandable-section-gradient")
+      expect(gradient).toHaveAttribute("role", "button")
+      expect(gradient).toHaveAttribute("tabindex", "0")
+      expect(gradient).toHaveAttribute("aria-label", "Expand Test Section section")
+    })
+
+    it("does not have role, tabIndex, or aria-label when expanded", () => {
+      render(
+        <ExpandableSection title="Test Section" isExpanded={true} onToggle={() => {}}>
+          <p>Content</p>
+        </ExpandableSection>
+      )
+
+      const gradient = screen.getByTestId("expandable-section-gradient")
+      expect(gradient).not.toHaveAttribute("role")
+      expect(gradient).not.toHaveAttribute("tabindex")
+      expect(gradient).not.toHaveAttribute("aria-label")
+    })
+  })
 })
