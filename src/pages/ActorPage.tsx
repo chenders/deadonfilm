@@ -390,7 +390,7 @@ export default function ActorPage() {
               <h2 className="mb-2 font-display text-lg text-brown-dark">Lesser-Known Facts</h2>
               <ul className="space-y-1.5">
                 {data.biographyDetails.lesserKnownFacts.map((fact, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-text-primary">
+                  <li key={i} className="flex items-start gap-2 text-text-primary">
                     <span className="mt-1 text-brown-medium">&bull;</span>
                     <span>{fact}</span>
                   </li>
