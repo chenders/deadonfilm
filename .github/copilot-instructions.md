@@ -287,6 +287,13 @@ The biography enrichment system generates personal life narratives (not career p
 
 Biographies should read like personal narratives: childhood, family, education, struggles, relationships. Career mentioned in 1-2 sentences max. No filmography, awards, or box office numbers.
 
+### Actor Page Features
+
+- **Life section**: `BiographySection` component (`src/components/actor/BiographySection.tsx`) — expandable card showing enriched narrative with gradient truncation, sources
+- **Lesser-Known Facts**: Bullet list from `biographyDetails.lesserKnownFacts` — surprising personal details extracted by Claude during synthesis
+- **Life/Death factor badges**: `FactorBadge` component (`src/components/death/FactorBadge.tsx`) with `variant` prop — `"life"` (muted teal `bg-life-factor-bg`) for `biographyDetails.lifeNotableFactors`, `"death"` (reddish `bg-deceased-bg`) for `deathInfo.notableFactors`
+- **Valid life tags**: Controlled vocabulary in `VALID_LIFE_NOTABLE_FACTORS` (`server/src/lib/biography-sources/types.ts`) — orphaned, adopted, military_service, dropout, rags_to_riches, polyglot, philanthropist, etc. (36 tags)
+
 For full details, see `.claude/rules/biography-enrichment.md`.
 
 ---
