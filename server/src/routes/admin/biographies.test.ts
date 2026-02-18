@@ -155,6 +155,187 @@ describe("Admin Biographies Routes", () => {
       )
     })
 
+    it("supports sortBy=name param", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "10" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?sortBy=name")
+
+      expect(response.status).toBe(200)
+      // Second call is the actors query — check ORDER BY
+      const actorsQuery = mockQuery.mock.calls[1][0] as string
+      expect(actorsQuery).toContain("ORDER BY name ASC")
+    })
+
+    it("supports sortBy=generated_at param", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "10" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?sortBy=generated_at")
+
+      expect(response.status).toBe(200)
+      const actorsQuery = mockQuery.mock.calls[1][0] as string
+      expect(actorsQuery).toContain("ORDER BY biography_generated_at DESC NULLS LAST")
+    })
+
+    it("defaults sortBy to popularity", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "10" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies")
+
+      expect(response.status).toBe(200)
+      const actorsQuery = mockQuery.mock.calls[1][0] as string
+      expect(actorsQuery).toContain("ORDER BY COALESCE(dof_popularity, 0) DESC")
+    })
+
+    it("falls back to popularity sort for invalid sortBy values", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "10" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?sortBy=invalid")
+
+      expect(response.status).toBe(200)
+      const actorsQuery = mockQuery.mock.calls[1][0] as string
+      expect(actorsQuery).toContain("ORDER BY COALESCE(dof_popularity, 0) DESC")
+    })
+
+    it("supports vitalStatus=alive filter", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "5" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?vitalStatus=alive")
+
+      expect(response.status).toBe(200)
+      const countQuery = mockQuery.mock.calls[0][0] as string
+      expect(countQuery).toContain("deathday IS NULL")
+    })
+
+    it("supports vitalStatus=deceased filter", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "5" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?vitalStatus=deceased")
+
+      expect(response.status).toBe(200)
+      const countQuery = mockQuery.mock.calls[0][0] as string
+      expect(countQuery).toContain("deathday IS NOT NULL")
+    })
+
+    it("supports hasWikipedia=true filter", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "5" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?hasWikipedia=true")
+
+      expect(response.status).toBe(200)
+      const countQuery = mockQuery.mock.calls[0][0] as string
+      expect(countQuery).toContain("wikipedia_url IS NOT NULL")
+    })
+
+    it("supports hasWikipedia=false filter", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "5" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?hasWikipedia=false")
+
+      expect(response.status).toBe(200)
+      const countQuery = mockQuery.mock.calls[0][0] as string
+      expect(countQuery).toContain("wikipedia_url IS NULL")
+    })
+
+    it("supports hasImdb=true filter", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "5" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?hasImdb=true")
+
+      expect(response.status).toBe(200)
+      const countQuery = mockQuery.mock.calls[0][0] as string
+      expect(countQuery).toContain("imdb_person_id IS NOT NULL")
+    })
+
+    it("supports hasImdb=false filter", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "5" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?hasImdb=false")
+
+      expect(response.status).toBe(200)
+      const countQuery = mockQuery.mock.calls[0][0] as string
+      expect(countQuery).toContain("imdb_person_id IS NULL")
+    })
+
+    it("supports hasEnrichedBio=true filter", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "5" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?hasEnrichedBio=true")
+
+      expect(response.status).toBe(200)
+      const countQuery = mockQuery.mock.calls[0][0] as string
+      expect(countQuery).toContain("EXISTS (SELECT 1 FROM actor_biography_details")
+    })
+
+    it("supports hasEnrichedBio=false filter", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ count: "5" }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ total_actors: "10", with_biography: "5", without_biography: "5" }],
+        })
+
+      const response = await request(app).get("/admin/api/biographies?hasEnrichedBio=false")
+
+      expect(response.status).toBe(200)
+      const countQuery = mockQuery.mock.calls[0][0] as string
+      expect(countQuery).toContain("NOT EXISTS (SELECT 1 FROM actor_biography_details")
+    })
+
     it("handles database errors", async () => {
       mockQuery.mockRejectedValueOnce(new Error("Database error"))
 
