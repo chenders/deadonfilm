@@ -47,6 +47,9 @@ const mockActors = [
     enriched_at: "2024-01-15T10:00:00Z",
     profile_path: "/john-wayne.jpg",
     death_manner: "natural",
+    has_biography: true,
+    has_enriched_bio: true,
+    bio_enriched_at: "2024-03-10T10:00:00Z",
   },
   {
     id: 2,
@@ -59,6 +62,9 @@ const mockActors = [
     enriched_at: null,
     profile_path: null,
     death_manner: "accident",
+    has_biography: false,
+    has_enriched_bio: false,
+    bio_enriched_at: null,
   },
   {
     id: 3,
@@ -71,6 +77,9 @@ const mockActors = [
     enriched_at: "2024-02-01T10:00:00Z",
     profile_path: "/marilyn-monroe.jpg",
     death_manner: null,
+    has_biography: true,
+    has_enriched_bio: false,
+    bio_enriched_at: null,
   },
 ]
 
@@ -315,7 +324,7 @@ describe("ActorManagementTab", () => {
     // Action bar should appear
     expect(screen.getByText("1 actor selected")).toBeInTheDocument()
     expect(screen.getByText("Clear Selection")).toBeInTheDocument()
-    expect(screen.getByText("Enrich Selected")).toBeInTheDocument()
+    expect(screen.getByText("Death Enrich")).toBeInTheDocument()
   })
 
   it("handles select all/deselect all", () => {
@@ -460,13 +469,15 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // John Wayne and James Dean have detailed death info - checkmarks appear inline with names
-    // in both mobile (MobileCard) and desktop (table row) views
-    const checkmarks = screen.getAllByText("✓")
-    // Exactly 2 actors × 2 views (mobile + desktop) = 4 checkmarks
-    expect(checkmarks).toHaveLength(4)
-
-    // Marilyn Monroe does not have death info - no checkmark for her
+    // Verify specific indicators by data-testid instead of counting raw "✓" characters
+    // John Wayne (id=1) and James Dean (id=2) have has_detailed_death_info
+    expect(screen.getByTestId("death-page-icon-1")).toBeInTheDocument()
+    expect(screen.getByTestId("death-page-icon-2")).toBeInTheDocument()
+    // John Wayne and Marilyn have has_biography — check sr-only text
+    expect(screen.getAllByText("Has biography").length).toBeGreaterThanOrEqual(2)
+    // Only John Wayne has enriched bio
+    expect(screen.getByTestId("enriched-bio-icon-1")).toBeInTheDocument()
+    expect(screen.queryByTestId("enriched-bio-icon-2")).not.toBeInTheDocument()
   })
 
   it("displays cause of death or dash when missing", () => {
@@ -961,6 +972,207 @@ describe("ActorManagementTab", () => {
       // After resolution, all rows should show document icons again
       expect(screen.getAllByTestId("biography-icon")).toHaveLength(mockActors.length)
       expect(screen.queryByTestId("biography-spinner")).not.toBeInTheDocument()
+    })
+  })
+
+  describe("Biography Enrichment (AI)", () => {
+    beforeEach(() => {
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: {
+          items: mockActors,
+          total: 3,
+          page: 1,
+          pageSize: 50,
+          totalPages: 1,
+        },
+        isLoading: false,
+        error: null,
+      } as never)
+      vi.mocked(useCausesOfDeath).mockReturnValue({
+        data: [],
+        isLoading: false,
+        error: null,
+      } as never)
+    })
+
+    it("renders enrich bio button for each actor in desktop view", () => {
+      renderComponent()
+
+      const enrichButtons = screen.getAllByRole("button", { name: "Enrich biography (AI)" })
+      expect(enrichButtons).toHaveLength(mockActors.length)
+    })
+
+    it("calls enrich bio API with correct endpoint on button click", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      const enrichButtons = screen.getAllByRole("button", { name: "Enrich biography (AI)" })
+
+      await act(async () => {
+        fireEvent.click(enrichButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockFetch).toHaveBeenCalledWith("/admin/api/actors/1/enrich-bio-inline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      })
+    })
+
+    it("shows spinner on clicked row during enrich bio", async () => {
+      let resolvePromise: (value: unknown) => void
+      const mockFetch = vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = resolve
+          })
+      )
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      expect(screen.getAllByTestId("enrich-bio-icon")).toHaveLength(mockActors.length)
+      expect(screen.queryByTestId("enrich-bio-spinner")).not.toBeInTheDocument()
+
+      const enrichButtons = screen.getAllByRole("button", { name: "Enrich biography (AI)" })
+      await act(async () => {
+        fireEvent.click(enrichButtons[0])
+      })
+
+      expect(screen.getByTestId("enrich-bio-spinner")).toBeInTheDocument()
+      expect(screen.getAllByTestId("enrich-bio-icon")).toHaveLength(mockActors.length - 1)
+
+      await act(async () => {
+        resolvePromise!({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        })
+        await vi.runAllTimersAsync()
+      })
+
+      expect(screen.getAllByTestId("enrich-bio-icon")).toHaveLength(mockActors.length)
+      expect(screen.queryByTestId("enrich-bio-spinner")).not.toBeInTheDocument()
+    })
+
+    it("shows success toast when enrich bio succeeds", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      const enrichButtons = screen.getAllByRole("button", { name: "Enrich biography (AI)" })
+
+      await act(async () => {
+        fireEvent.click(enrichButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(screen.getByText("Biography enrichment complete")).toBeInTheDocument()
+    })
+
+    it("shows error toast when enrich bio fails", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({ error: { message: "Enrichment failed" } }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      const enrichButtons = screen.getAllByRole("button", { name: "Enrich biography (AI)" })
+
+      await act(async () => {
+        fireEvent.click(enrichButtons[0])
+        await vi.runAllTimersAsync()
+      })
+
+      expect(screen.getByText("Enrichment failed")).toBeInTheDocument()
+    })
+  })
+
+  describe("Enriched Bio Indicator", () => {
+    beforeEach(() => {
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: {
+          items: mockActors,
+          total: 3,
+          page: 1,
+          pageSize: 50,
+          totalPages: 1,
+        },
+        isLoading: false,
+        error: null,
+      } as never)
+    })
+
+    it("shows enriched bio icon for actors with enriched bio", () => {
+      renderComponent()
+
+      // John Wayne (id: 1) has enriched bio
+      expect(screen.getByTestId("enriched-bio-icon-1")).toBeInTheDocument()
+
+      // James Dean (id: 2) and Marilyn Monroe (id: 3) do not
+      expect(screen.queryByTestId("enriched-bio-icon-2")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("enriched-bio-icon-3")).not.toBeInTheDocument()
+    })
+  })
+
+  describe("Bulk Actions", () => {
+    beforeEach(() => {
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: {
+          items: mockActors,
+          total: 3,
+          page: 1,
+          pageSize: 50,
+          totalPages: 1,
+        },
+        isLoading: false,
+        error: null,
+      } as never)
+    })
+
+    it("shows three enrichment buttons when actors are selected", () => {
+      renderComponent()
+
+      fireEvent.click(screen.getAllByLabelText("Select John Wayne")[0])
+
+      expect(screen.getByText("Death Enrich")).toBeInTheDocument()
+      expect(screen.getByText("Bio Enrich")).toBeInTheDocument()
+      expect(screen.getByText("Both")).toBeInTheDocument()
+    })
+
+    it("calls bio enrich batch API when Bio Enrich is clicked", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      })
+      vi.stubGlobal("fetch", mockFetch)
+
+      renderComponent()
+
+      fireEvent.click(screen.getAllByLabelText("Select John Wayne")[0])
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Bio Enrich"))
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockFetch).toHaveBeenCalledWith("/admin/api/biography-enrichment/enrich-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ actorIds: [1] }),
+      })
     })
   })
 })

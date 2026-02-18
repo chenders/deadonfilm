@@ -39,6 +39,7 @@ export default function ActorManagementTab() {
   const [causeSearchInput, setCauseSearchInput] = useState("")
   const [showCauseDropdown, setShowCauseDropdown] = useState(false)
   const [regeneratingBiography, setRegeneratingBiography] = useState<number | null>(null)
+  const [enrichingBio, setEnrichingBio] = useState<number | null>(null)
   const pageSize = 50
 
   const updatePage = (newPage: number) => {
@@ -190,6 +191,75 @@ export default function ActorManagementTab() {
       toast.error(err instanceof Error ? err.message : "Failed to regenerate biography")
     } finally {
       setRegeneratingBiography(null)
+    }
+  }
+
+  const handleEnrichBio = async (actorId: number) => {
+    if (enrichingBio !== null) return
+
+    setEnrichingBio(actorId)
+    try {
+      const response = await fetch(`/admin/api/actors/${actorId}/enrich-bio-inline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error?.message || "Failed to enrich biography")
+      }
+
+      const data = await response.json().catch(() => ({}))
+      if (data.enriched === false) {
+        toast.error(data.message || "No biography content found")
+      } else {
+        toast.success("Biography enrichment complete")
+      }
+      await queryClient.invalidateQueries({ queryKey: ["admin", "coverage", "actors"] })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to enrich biography")
+    } finally {
+      setEnrichingBio(null)
+    }
+  }
+
+  const [bulkBioEnriching, setBulkBioEnriching] = useState(false)
+
+  const handleBioEnrichSelected = async (): Promise<boolean> => {
+    if (selectedActorIds.size === 0) return false
+
+    const actorIds = Array.from(selectedActorIds)
+    setBulkBioEnriching(true)
+    try {
+      const response = await fetch("/admin/api/biography-enrichment/enrich-batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ actorIds }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error?.message || "Failed to queue bio enrichment batch")
+      }
+
+      toast.success(
+        `Bio enrichment queued for ${actorIds.length} actor${actorIds.length !== 1 ? "s" : ""}`
+      )
+      return true
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to queue bio enrichment")
+      return false
+    } finally {
+      setBulkBioEnriching(false)
+    }
+  }
+
+  const handleBothEnrichSelected = async () => {
+    const bioSuccess = await handleBioEnrichSelected()
+    if (bioSuccess) {
+      handleEnrichSelected()
     }
   }
 
@@ -450,7 +520,12 @@ export default function ActorManagementTab() {
                       <>
                         {actor.name}
                         {actor.has_detailed_death_info && (
-                          <span className="ml-1 text-admin-success">✓</span>
+                          <span
+                            className="ml-1 text-admin-success"
+                            data-testid={`death-page-icon-mobile-${actor.id}`}
+                          >
+                            ✓
+                          </span>
                         )}
                       </>
                     }
@@ -485,6 +560,15 @@ export default function ActorManagementTab() {
                       ...(actor.death_manner
                         ? [{ label: "Manner", value: actor.death_manner }]
                         : []),
+                      { label: "Bio", value: actor.has_biography ? "✓" : "—" },
+                      ...(actor.has_enriched_bio
+                        ? [
+                            {
+                              label: "Enriched Bio",
+                              value: formatRelativeTime(actor.bio_enriched_at ?? null),
+                            },
+                          ]
+                        : []),
                     ]}
                     actions={
                       <>
@@ -500,6 +584,13 @@ export default function ActorManagementTab() {
                           className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay disabled:opacity-50"
                         >
                           {regeneratingBiography === actor.id ? "..." : "Bio"}
+                        </button>
+                        <button
+                          onClick={() => handleEnrichBio(actor.id)}
+                          disabled={enrichingBio !== null}
+                          className="rounded bg-admin-interactive-secondary px-3 py-1.5 text-xs text-admin-text-primary hover:bg-admin-surface-overlay disabled:opacity-50"
+                        >
+                          {enrichingBio === actor.id ? "..." : "Enrich"}
                         </button>
                         <a
                           href={`/actor/${createActorSlug(actor.name, actor.id)}`}
@@ -577,7 +668,7 @@ export default function ActorManagementTab() {
                     </tr>
                   ) : (
                     data.items.map((actor) => {
-                      const profileUrl = getProfileUrl(actor.profile_path, "w45")
+                      const profileUrl = getProfileUrl(actor.profile_path ?? null, "w45")
                       return (
                         <tr
                           key={actor.id}
@@ -636,7 +727,11 @@ export default function ActorManagementTab() {
                                 </button>
                               </AdminHoverCard>
                               {actor.has_detailed_death_info && (
-                                <span className="text-admin-success" title="Has death page">
+                                <span
+                                  className="text-admin-success"
+                                  title="Has death page"
+                                  data-testid={`death-page-icon-${actor.id}`}
+                                >
                                   ✓
                                 </span>
                               )}
@@ -646,7 +741,7 @@ export default function ActorManagementTab() {
                             <div className="flex items-center justify-center gap-1">
                               <Link
                                 to={`/admin/actors/${actor.id}`}
-                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-3 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-3 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary md:min-h-[32px] md:min-w-[32px] md:p-1.5"
                                 title="Edit actor"
                                 aria-label="Edit actor"
                               >
@@ -668,7 +763,7 @@ export default function ActorManagementTab() {
                               <button
                                 onClick={() => handleRegenerateBiography(actor.id)}
                                 disabled={regeneratingBiography !== null}
-                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-3 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-3 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[32px] md:min-w-[32px] md:p-1.5"
                                 title="Regenerate biography"
                                 aria-label="Regenerate biography"
                               >
@@ -712,11 +807,58 @@ export default function ActorManagementTab() {
                                   </svg>
                                 )}
                               </button>
+                              <button
+                                onClick={() => handleEnrichBio(actor.id)}
+                                disabled={enrichingBio !== null}
+                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-3 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary disabled:cursor-not-allowed disabled:opacity-50 md:min-h-[32px] md:min-w-[32px] md:p-1.5"
+                                title="Enrich biography (AI)"
+                                aria-label="Enrich biography (AI)"
+                              >
+                                {enrichingBio === actor.id ? (
+                                  <svg
+                                    data-testid="enrich-bio-spinner"
+                                    className="h-5 w-5 animate-spin"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle
+                                      className="opacity-25"
+                                      cx="12"
+                                      cy="12"
+                                      r="10"
+                                      stroke="currentColor"
+                                      strokeWidth="4"
+                                    />
+                                    <path
+                                      className="opacity-75"
+                                      fill="currentColor"
+                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    />
+                                  </svg>
+                                ) : (
+                                  <svg
+                                    data-testid="enrich-bio-icon"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
                               <a
                                 href={`/actor/${createActorSlug(actor.name, actor.id)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-3 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary"
+                                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-3 text-admin-text-muted transition-colors hover:bg-admin-interactive-secondary hover:text-admin-text-primary md:min-h-[32px] md:min-w-[32px] md:p-1.5"
                                 title="View public actor page"
                                 aria-label="View public actor page (opens in new tab)"
                               >
@@ -747,17 +889,42 @@ export default function ActorManagementTab() {
                             {actor.age_at_death ?? "—"}
                           </td>
                           <td className="px-3 py-3 text-center text-admin-text-muted">
-                            {actor.has_biography ? (
-                              <span className="text-admin-success">
-                                <span aria-hidden="true">✓</span>
-                                <span className="sr-only">Has biography</span>
-                              </span>
-                            ) : (
-                              <span className="text-admin-text-muted">
-                                <span aria-hidden="true">—</span>
-                                <span className="sr-only">No biography</span>
-                              </span>
-                            )}
+                            <span className="inline-flex items-center gap-1">
+                              {actor.has_biography ? (
+                                <span className="text-admin-success">
+                                  <span aria-hidden="true">✓</span>
+                                  <span className="sr-only">Has biography</span>
+                                </span>
+                              ) : (
+                                <span className="text-admin-text-muted">
+                                  <span aria-hidden="true">—</span>
+                                  <span className="sr-only">No biography</span>
+                                </span>
+                              )}
+                              {actor.has_enriched_bio && (
+                                <span
+                                  className="text-admin-info"
+                                  title={`Enriched bio${actor.bio_enriched_at ? ` (${new Date(actor.bio_enriched_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})` : ""}`}
+                                >
+                                  <svg
+                                    data-testid={`enriched-bio-icon-${actor.id}`}
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="inline h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"
+                                    />
+                                  </svg>
+                                  <span className="sr-only">Has enriched biography</span>
+                                </span>
+                              )}
+                            </span>
                           </td>
                           <td className="px-3 py-3 text-right text-admin-text-muted">
                             {actor.popularity?.toFixed(1) ?? "—"}
@@ -799,7 +966,7 @@ export default function ActorManagementTab() {
       {/* Bulk Actions Bar (Fixed Bottom) */}
       {selectedActorIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-admin-border bg-admin-surface-base p-4 shadow-lg">
-          <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mx-auto flex max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-center text-admin-text-primary sm:text-left">
               {selectedActorIds.size} actor{selectedActorIds.size !== 1 ? "s" : ""} selected
             </div>
@@ -814,7 +981,21 @@ export default function ActorManagementTab() {
                 onClick={handleEnrichSelected}
                 className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
               >
-                Enrich Selected
+                Death Enrich
+              </button>
+              <button
+                onClick={handleBioEnrichSelected}
+                disabled={bulkBioEnriching}
+                className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {bulkBioEnriching ? "Queuing…" : "Bio Enrich"}
+              </button>
+              <button
+                onClick={handleBothEnrichSelected}
+                disabled={bulkBioEnriching}
+                className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {bulkBioEnriching ? "Queuing…" : "Both"}
               </button>
             </div>
           </div>
