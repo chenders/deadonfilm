@@ -116,7 +116,7 @@ export default function ExpandableSection({
 
         {/* Gradient overlay — fades with opacity for smooth transition; clickable to expand */}
         <div
-          className={`absolute bottom-0 left-0 right-0 h-24 transition-opacity duration-300 ${
+          className={`absolute bottom-0 left-0 right-0 h-24 transition-opacity duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown-medium ${
             isExpanded ? "pointer-events-none opacity-0" : "cursor-pointer opacity-100"
           }`}
           style={{
