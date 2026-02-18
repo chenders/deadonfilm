@@ -206,11 +206,16 @@ export default function ActorManagementTab() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error?.message || "Failed to enrich biography")
       }
 
-      toast.success("Biography enrichment complete")
+      const data = await response.json().catch(() => ({}))
+      if (data.enriched === false) {
+        toast.error(data.message || "No biography content found")
+      } else {
+        toast.success("Biography enrichment complete")
+      }
       await queryClient.invalidateQueries({ queryKey: ["admin", "coverage", "actors"] })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to enrich biography")
@@ -235,7 +240,7 @@ export default function ActorManagementTab() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error?.message || "Failed to queue bio enrichment batch")
       }
 
