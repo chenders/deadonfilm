@@ -28,6 +28,10 @@
   --deceased-border: #d4a5a5;
   --deceased-badge-text: #e8d0d0;
 
+  /* Life factor badges (biography) */
+  --life-factor-bg: #1a3a3a;
+  --life-factor-text: #c8e0d8;
+
   /* Living (gold) */
   --living-primary: #b8860b;
   --living-light: #daa520;
@@ -122,6 +126,10 @@
   --deceased-bg: #3a1c1c;
   --deceased-border: #4a2020;
   --deceased-badge-text: #e8d0d0;
+
+  /* Life factor badges (biography) */
+  --life-factor-bg: #1a3535;
+  --life-factor-text: #b8d8d0;
 
   /* Living (gold) — richer, more luminous */
   --living-primary: #d4a020;

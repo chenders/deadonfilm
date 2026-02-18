@@ -197,6 +197,21 @@ describe("getRelatedActorsRoute", () => {
     expect(getRelatedActors).toHaveBeenCalledWith(42, null, 1970)
   })
 
+  it("handles Date object from PostgreSQL for birthday", async () => {
+    const req = createMockReq({ id: "42" })
+    const res = createMockRes()
+
+    // PostgreSQL returns Date objects for date columns
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ tmdb_id: 100, cause_of_death: "Cancer", birthday: new Date("1945-06-15") }],
+    })
+    vi.mocked(getRelatedActors).mockResolvedValueOnce([])
+
+    await getRelatedActorsRoute(req, res)
+
+    expect(getRelatedActors).toHaveBeenCalledWith(42, "Cancer", 1940)
+  })
+
   it("returns cached data when available", async () => {
     const req = createMockReq({ id: "42" })
     const res = createMockRes()

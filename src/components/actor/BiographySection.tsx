@@ -21,17 +21,6 @@ function getSourceDisplayName(type: "wikipedia" | "tmdb" | "imdb" | null): strin
   }
 }
 
-/**
- * Format a life_notable_factor slug for display.
- * E.g., "military_service" -> "Military Service"
- */
-function formatFactor(factor: string): string {
-  return factor
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
-
 export default function BiographySection({
   biography,
   biographyDetails,
@@ -68,7 +57,7 @@ export default function BiographySection({
   }
 
   // Enriched biography
-  const { narrativeTeaser, narrative, lifeNotableFactors, lesserKnownFacts } = biographyDetails
+  const { narrativeTeaser, narrative, lesserKnownFacts } = biographyDetails
 
   // Determine if we need teaser/expand
   const hasLongNarrative = narrative && narrativeTeaser && narrative.length > 300
@@ -99,20 +88,6 @@ export default function BiographySection({
           </button>
         )}
       </div>
-
-      {/* Life Notable Factors */}
-      {lifeNotableFactors && lifeNotableFactors.length > 0 && (
-        <div className="flex flex-wrap gap-2" data-testid="biography-factors">
-          {lifeNotableFactors.map((factor) => (
-            <span
-              key={factor}
-              className="rounded-full bg-brown-light/20 px-3 py-1 text-xs font-medium text-brown-dark"
-            >
-              {formatFactor(factor)}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* Lesser-Known Facts */}
       {lesserKnownFacts && lesserKnownFacts.length > 0 && (
