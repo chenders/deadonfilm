@@ -339,9 +339,9 @@ export class BiographyEnrichmentOrchestrator {
       }
 
       // Check per-actor cost limit
-      if (totalCost >= this.config.costLimits.maxCostPerActor) {
+      if (totalSourceCost >= this.config.costLimits.maxCostPerActor) {
         console.log(
-          `    Per-actor cost limit reached ($${totalCost.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
+          `    Per-actor cost limit reached ($${totalSourceCost.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
         )
         newrelic.recordCustomEvent("BioCostLimitPerActor", {
           actorId: actor.id,
@@ -419,7 +419,7 @@ export class BiographyEnrichmentOrchestrator {
 
     const processingTimeMs = Date.now() - startTime
     console.log(
-      `  Complete in ${processingTimeMs}ms, cost: $${totalCost.toFixed(4)}, sources: ${sourcesSucceeded}/${sourcesAttempted}`
+      `  Complete in ${processingTimeMs}ms, cost: $${totalCost.toFixed(4)} (source: $${totalSourceCost.toFixed(4)}, synthesis: $${totalSynthesisCost.toFixed(4)}), sources: ${sourcesSucceeded}/${sourcesAttempted}`
     )
 
     // Record actor completion in New Relic
