@@ -181,34 +181,14 @@ describe("BiographySection", () => {
     expect(screen.queryByTestId("biography-factors")).not.toBeInTheDocument()
   })
 
-  it("shows lesser-known facts when no expandable content", () => {
+  it("does not render lesser-known facts (rendered by ActorPage instead)", () => {
     const details = makeBiographyDetails({
       narrativeTeaser: "Bio text",
       lesserKnownFacts: ["Was an amateur pilot", "Spoke four languages"],
     })
     render(<BiographySection biographyDetails={details} />)
 
-    // No toggle (teaser-only, no long narrative) — facts always visible
-    expect(screen.getByText("Was an amateur pilot")).toBeInTheDocument()
-    expect(screen.getByText("Spoke four languages")).toBeInTheDocument()
-    expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
-  })
-
-  it("hides lesser-known facts when collapsed and shows when expanded", () => {
-    const details = makeBiographyDetails({
-      narrativeTeaser: "Short teaser",
-      narrative: "Full narrative " + "x".repeat(300),
-      lesserKnownFacts: ["Was an amateur pilot"],
-    })
-    render(<BiographySection biographyDetails={details} />)
-
-    // Collapsed — facts hidden
     expect(screen.queryByTestId("biography-facts")).not.toBeInTheDocument()
-
-    // Expand — facts visible
-    fireEvent.click(screen.getByTestId("expandable-section-toggle"))
-    expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
-    expect(screen.getByText("Was an amateur pilot")).toBeInTheDocument()
   })
 
   it("does not show factors section when empty", () => {

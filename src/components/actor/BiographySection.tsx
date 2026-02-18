@@ -79,7 +79,7 @@ export default function BiographySection({
   }
 
   // Enriched biography
-  const { narrative, narrativeTeaser, lesserKnownFacts } = biographyDetails
+  const { narrative, narrativeTeaser } = biographyDetails
   const displayText = narrative || narrativeTeaser
 
   // If narrative is short (< 300 chars) or no narrative (teaser only), show static card
@@ -96,21 +96,6 @@ export default function BiographySection({
             ))}
           </div>
         </div>
-
-        {/* Lesser-Known Facts (always visible when not expandable) */}
-        {lesserKnownFacts && lesserKnownFacts.length > 0 && (
-          <div className="rounded-lg bg-surface-elevated p-4" data-testid="biography-facts">
-            <h3 className="mb-2 text-sm font-semibold text-brown-dark">Lesser-Known Facts</h3>
-            <ul className="space-y-1.5">
-              {lesserKnownFacts.map((fact, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-text-primary">
-                  <span className="mt-1 text-brown-medium">&bull;</span>
-                  <span>{fact}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         {/* Sources (always visible when not expandable) */}
         <SourceList sources={sourceEntries} title="Sources" />
@@ -132,21 +117,6 @@ export default function BiographySection({
             <p key={i}>{paragraph}</p>
           ))}
         </div>
-
-        {/* Lesser-Known Facts (visible when expanded) */}
-        {isExpanded && lesserKnownFacts && lesserKnownFacts.length > 0 && (
-          <div className="mt-4 rounded-lg bg-surface-inset p-4" data-testid="biography-facts">
-            <h3 className="mb-2 text-sm font-semibold text-brown-dark">Lesser-Known Facts</h3>
-            <ul className="space-y-1.5">
-              {lesserKnownFacts.map((fact, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-text-primary">
-                  <span className="mt-1 text-brown-medium">&bull;</span>
-                  <span>{fact}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         {/* Sources (visible when expanded) */}
         {isExpanded && <SourceList sources={sourceEntries} title="Sources" />}
