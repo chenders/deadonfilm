@@ -151,6 +151,7 @@ describe("BiographySection", () => {
     })
     render(<BiographySection biographyDetails={details} />)
     expect(screen.queryByText("Military Service")).not.toBeInTheDocument()
+    expect(screen.queryByText("Scholar")).not.toBeInTheDocument()
     expect(screen.queryByTestId("biography-factors")).not.toBeInTheDocument()
   })
 

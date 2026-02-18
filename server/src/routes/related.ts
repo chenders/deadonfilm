@@ -49,7 +49,7 @@ interface RelatedShowsResponse {
 function getBirthDecade(birthday: string | Date | null): number | null {
   if (!birthday) return null
   if (birthday instanceof Date) {
-    const year = birthday.getFullYear()
+    const year = birthday.getUTCFullYear()
     return isNaN(year) ? null : Math.floor(year / 10) * 10
   }
   const year = parseInt(birthday.split("-")[0], 10)
