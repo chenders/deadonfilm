@@ -113,7 +113,7 @@ export interface ActorDeathInfo {
 export interface BiographySource {
   url: string | null
   type: string
-  publication: string
+  publication: string | null
   articleTitle: string | null
   confidence: number
   retrievedAt: string

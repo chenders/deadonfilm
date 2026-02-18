@@ -87,13 +87,15 @@ describe("DeathSummaryCard", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true")
   })
 
-  it("shows teaser but no full details when hasFullDetails is false", () => {
+  it("shows teaser but no toggle when hasFullDetails is false", () => {
     renderWithRouter(<DeathSummaryCard {...defaultProps} hasFullDetails={false} />)
 
     // Teaser content is visible
     expect(screen.getByText(/Died of stomach cancer at age 72/)).toBeInTheDocument()
-    // Expanding does not show DeathDetailsContent
-    fireEvent.click(getToggle())
+    // Header is static text, not a button
+    expect(screen.queryByRole("button", { name: /Death Circumstances/ })).not.toBeInTheDocument()
+    expect(screen.getByText("Death Circumstances")).toBeInTheDocument()
+    // No expanded content
     expect(screen.queryByTestId("death-details-content")).not.toBeInTheDocument()
   })
 

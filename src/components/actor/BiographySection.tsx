@@ -35,11 +35,19 @@ export default function BiographySection({
   const biographySources = biographyDetails?.sources
   const sourceEntries: SourceEntry[] | null = useMemo(() => {
     if (!Array.isArray(biographySources) || biographySources.length === 0) return null
-    return biographySources.map((s) => ({
-      url: s.url || null,
-      archiveUrl: null,
-      description: s.articleTitle || s.publication,
-    }))
+    const entries: SourceEntry[] = biographySources
+      .map((s): SourceEntry | null => {
+        const description = (s.articleTitle || s.publication || "").trim()
+        if (!description) return null
+        return {
+          url: s.url || null,
+          archiveUrl: null,
+          description,
+        }
+      })
+      .filter((entry): entry is SourceEntry => entry !== null)
+
+    return entries.length > 0 ? entries : null
   }, [biographySources])
 
   // Determine which content to show
@@ -85,7 +93,7 @@ export default function BiographySection({
         {hasExpandableContent ? (
           <h2 className="font-display text-lg text-brown-dark">
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={() => setIsExpanded((prev) => !prev)}
               aria-expanded={isExpanded}
               className="flex w-full items-center gap-2 text-left transition-colors hover:text-brown-medium"
               data-testid="biography-toggle"

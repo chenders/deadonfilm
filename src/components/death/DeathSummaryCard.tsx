@@ -65,33 +65,37 @@ export default function DeathSummaryCard({
       className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
       data-testid="death-summary-card"
     >
-      {/* Clickable header — single toggle for expand/collapse */}
+      {/* Header — interactive toggle when expandable, static otherwise */}
       <h2 className="font-display text-lg text-brown-dark">
-        <button
-          onClick={handleToggle}
-          aria-expanded={isExpanded}
-          className="flex w-full items-center gap-2 text-left transition-colors hover:text-brown-medium"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="currentColor"
-            aria-hidden="true"
-            focusable="false"
-            className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+        {hasFullDetails ? (
+          <button
+            onClick={handleToggle}
+            aria-expanded={isExpanded}
+            className="flex w-full items-center gap-2 text-left transition-colors hover:text-brown-medium"
           >
-            <path
-              d="M4 2l4 4-4 4"
-              stroke="currentColor"
-              strokeWidth="2"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="currentColor"
+              aria-hidden="true"
+              focusable="false"
+              className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+            >
+              <path
+                d="M4 2l4 4-4 4"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Death Circumstances</span>
+          </button>
+        ) : (
           <span>Death Circumstances</span>
-        </button>
+        )}
       </h2>
 
       {/* Teaser content (always visible) */}
