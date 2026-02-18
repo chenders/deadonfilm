@@ -69,6 +69,8 @@
     "backfill:cause-of-death-batch": "tsx scripts/backfill-cause-of-death-batch.ts",
     "//enrich:death-details": "Enrich death details using multi-source fallbacks (free/paid/AI)",
     "enrich:death-details": "tsx scripts/enrich-death-details.ts",
+    "//enrich:biographies": "Enrich biographies with personal life info from multiple sources + Claude synthesis",
+    "enrich:biographies": "tsx scripts/enrich-biographies.ts",
     "//ab-test:sources": "A/B test AI enrichment with/without source requirement ($10 budget)",
     "ab-test:sources": "tsx scripts/ab-test-source-requirement.ts",
     "//ab-test:providers": "DEPRECATED - use ab-test:comprehensive instead (script file removed)",

@@ -252,6 +252,7 @@ describe("getActor", () => {
       analyzedFilmography: mockFilmography,
       analyzedTVFilmography: mockTVFilmography,
       deathInfo: null,
+      biographyDetails: null,
     })
   })
 
@@ -357,6 +358,7 @@ describe("getActor", () => {
         career: null,
         relatedCelebrities: null,
       },
+      biographyDetails: null,
     })
   })
 
@@ -370,8 +372,12 @@ describe("getActor", () => {
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce([])
     vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce([])
 
-    // Mock pool.query — only called for the circumstances row
+    // Mock pool.query — called for biography details (first) and circumstances (second)
     // (hasDetailedDeathInfo uses its own mock since tmdb_id is not null)
+    const mockBioQuery = vi.fn().mockResolvedValue({ rows: [] })
+    vi.mocked(db.getPool).mockReturnValueOnce({ query: mockBioQuery } as unknown as ReturnType<
+      typeof db.getPool
+    >)
     const mockQuery = vi.fn()
     mockQuery.mockResolvedValueOnce({
       rows: [
@@ -506,6 +512,7 @@ describe("getActor", () => {
       "analyzedFilmography",
       "analyzedTVFilmography",
       "deathInfo",
+      "biographyDetails",
     ])
   })
 
