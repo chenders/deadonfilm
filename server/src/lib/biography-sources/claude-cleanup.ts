@@ -340,7 +340,7 @@ export async function synthesizeBiography(
     actorName: actor.name,
     hasNarrative: !!data.narrative,
     hasTeaser: !!data.narrativeTeaser,
-    narrativeConfidence: data.narrativeConfidence,
+    narrativeConfidence: data.narrativeConfidence ?? "unknown",
     factorCount: data.lifeNotableFactors.length,
     hasSubstantiveContent: data.hasSubstantiveContent,
     lesserKnownFactCount: data.lesserKnownFacts.length,

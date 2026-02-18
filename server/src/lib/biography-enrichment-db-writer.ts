@@ -105,7 +105,7 @@ export async function writeBiographyToProduction(
       actorId,
       hasNarrative: !!data.narrative,
       hasTeaser: !!data.narrativeTeaser,
-      narrativeConfidence: data.narrativeConfidence,
+      narrativeConfidence: data.narrativeConfidence ?? "unknown",
       factorCount: data.lifeNotableFactors.length,
       sourceCount: sources.length,
       archivedLegacy,
