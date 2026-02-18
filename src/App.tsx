@@ -78,6 +78,15 @@ const AdminJobQueuesPage = lazyWithRetry(() => import("./pages/admin/JobQueuesPa
 const AdminJobRunsPage = lazyWithRetry(() => import("./pages/admin/JobRunsPage"))
 const AdminJobDetailsPage = lazyWithRetry(() => import("./pages/admin/JobDetailsPage"))
 const AdminDeadLetterQueuePage = lazyWithRetry(() => import("./pages/admin/DeadLetterQueuePage"))
+const AdminBioEnrichmentRunsPage = lazyWithRetry(
+  () => import("./pages/admin/BioEnrichmentRunsPage")
+)
+const AdminBioEnrichmentRunDetailsPage = lazyWithRetry(
+  () => import("./pages/admin/BioEnrichmentRunDetailsPage")
+)
+const AdminStartBioEnrichmentPage = lazyWithRetry(
+  () => import("./pages/admin/StartBioEnrichmentPage")
+)
 
 function App() {
   useGoogleAnalytics()
@@ -331,6 +340,36 @@ function App() {
                 <AdminThemeProvider>
                   <Suspense fallback={<LoadingSpinner />}>
                     <AdminDeadLetterQueuePage />
+                  </Suspense>
+                </AdminThemeProvider>
+              }
+            />
+            <Route
+              path="/admin/bio-enrichment/runs"
+              element={
+                <AdminThemeProvider>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <AdminBioEnrichmentRunsPage />
+                  </Suspense>
+                </AdminThemeProvider>
+              }
+            />
+            <Route
+              path="/admin/bio-enrichment/runs/:id"
+              element={
+                <AdminThemeProvider>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <AdminBioEnrichmentRunDetailsPage />
+                  </Suspense>
+                </AdminThemeProvider>
+              }
+            />
+            <Route
+              path="/admin/bio-enrichment/start"
+              element={
+                <AdminThemeProvider>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <AdminStartBioEnrichmentPage />
                   </Suspense>
                 </AdminThemeProvider>
               }

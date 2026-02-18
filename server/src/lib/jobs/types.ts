@@ -289,12 +289,25 @@ export const generateBiographiesBatchPayloadSchema = z.object({
 
 // Biography enrichment batch payload
 export const enrichBiographiesBatchPayloadSchema = z.object({
+  runId: z.number().int().positive().optional(),
   actorIds: z.array(z.number().int().positive()).optional(),
   limit: z.number().int().positive().max(500).optional(),
   minPopularity: z.number().min(0).finite().optional(),
   confidenceThreshold: z.number().min(0).max(1).optional(),
+  maxCostPerActor: z.number().optional(),
+  maxTotalCost: z.number().optional(),
   allowRegeneration: z.boolean().default(false),
   useStaging: z.boolean().default(false),
+  sourceCategories: z
+    .object({
+      free: z.boolean().default(true),
+      reference: z.boolean().default(true),
+      webSearch: z.boolean().default(true),
+      news: z.boolean().default(true),
+      obituary: z.boolean().default(true),
+      archives: z.boolean().default(true),
+    })
+    .optional(),
 })
 
 // Content popularity calculation payload

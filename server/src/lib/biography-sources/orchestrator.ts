@@ -222,6 +222,8 @@ export class BiographyEnrichmentOrchestrator {
   async enrichActor(actor: ActorForBiography): Promise<BiographyResult> {
     const startTime = Date.now()
     let totalCost = 0
+    let totalSourceCost = 0
+    let totalSynthesisCost = 0
     let sourcesAttempted = 0
     let sourcesSucceeded = 0
     const allSources: BiographySourceEntry[] = []
@@ -257,6 +259,7 @@ export class BiographyEnrichmentOrchestrator {
         // Track cost
         const sourceCost = lookupResult.source.costUsd || 0
         totalCost += sourceCost
+        totalSourceCost += sourceCost
 
         // Record source attempt
         allSources.push(lookupResult.source)
@@ -367,6 +370,7 @@ export class BiographyEnrichmentOrchestrator {
         )
 
         totalCost += synthesisResult.costUsd
+        totalSynthesisCost += synthesisResult.costUsd
         synthesisData = synthesisResult.data
 
         if (synthesisResult.error) {
@@ -440,6 +444,8 @@ export class BiographyEnrichmentOrchestrator {
         sourcesAttempted,
         sourcesSucceeded,
         totalCostUsd: totalCost,
+        sourceCostUsd: totalSourceCost,
+        synthesisCostUsd: totalSynthesisCost,
         processingTimeMs,
       },
     }
