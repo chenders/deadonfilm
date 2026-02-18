@@ -8,6 +8,17 @@
 import { Request, Response, Router } from "express"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
+import {
+  getBioEnrichmentRuns,
+  getBioEnrichmentRunDetails,
+  getBioEnrichmentRunActors,
+  getBioRunSourcePerformanceStats,
+} from "../../lib/db/admin-bio-enrichment-queries.js"
+import {
+  startBioEnrichmentRun,
+  stopBioEnrichmentRun,
+  getBioEnrichmentRunProgress,
+} from "../../lib/bio-enrichment-process-manager.js"
 
 const router = Router()
 
@@ -272,6 +283,165 @@ router.post("/golden-test", async (req: Request, res: Response): Promise<void> =
   } catch (error) {
     logger.error({ error }, "Failed to run golden test cases")
     const errorMsg = error instanceof Error ? error.message : "Unknown error"
+    res.status(500).json({ error: { message: errorMsg } })
+  }
+})
+
+// ============================================================================
+// Run Tracking Endpoints
+// ============================================================================
+
+// GET /admin/api/biography-enrichment/runs - List runs
+router.get("/runs", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const page = Math.max(1, parseInt(req.query.page as string) || 1)
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20))
+
+    const filters = {
+      startDate: req.query.startDate as string | undefined,
+      endDate: req.query.endDate as string | undefined,
+      exitReason: req.query.exitReason as string | undefined,
+      status: req.query.status as string | undefined,
+      minCost: req.query.minCost ? parseFloat(req.query.minCost as string) : undefined,
+      maxCost: req.query.maxCost ? parseFloat(req.query.maxCost as string) : undefined,
+    }
+
+    const result = await getBioEnrichmentRuns(pool, page, pageSize, filters)
+    res.json(result)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch bio enrichment runs")
+    res.status(500).json({ error: { message: "Failed to fetch bio enrichment runs" } })
+  }
+})
+
+// GET /admin/api/biography-enrichment/runs/:id - Run details
+router.get("/runs/:id", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const run = await getBioEnrichmentRunDetails(pool, runId)
+    if (!run) {
+      res.status(404).json({ error: { message: "Run not found" } })
+      return
+    }
+
+    res.json(run)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch bio enrichment run details")
+    res.status(500).json({ error: { message: "Failed to fetch bio enrichment run details" } })
+  }
+})
+
+// GET /admin/api/biography-enrichment/runs/:id/actors - Per-actor results
+router.get("/runs/:id/actors", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const page = Math.max(1, parseInt(req.query.page as string) || 1)
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20))
+
+    const result = await getBioEnrichmentRunActors(pool, runId, page, pageSize)
+    res.json(result)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch bio enrichment run actors")
+    res.status(500).json({ error: { message: "Failed to fetch bio enrichment run actors" } })
+  }
+})
+
+// GET /admin/api/biography-enrichment/runs/:id/sources/stats - Source performance
+router.get("/runs/:id/sources/stats", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const stats = await getBioRunSourcePerformanceStats(pool, runId)
+    res.json(stats)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch bio enrichment source stats")
+    res.status(500).json({ error: { message: "Failed to fetch source stats" } })
+  }
+})
+
+// GET /admin/api/biography-enrichment/runs/:id/progress - Real-time progress
+router.get("/runs/:id/progress", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const runId = parseInt(req.params.id, 10)
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const progress = await getBioEnrichmentRunProgress(runId)
+    res.json(progress)
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error"
+    logger.error({ error }, "Failed to fetch bio enrichment run progress")
+    res.status(500).json({ error: { message: errorMsg } })
+  }
+})
+
+// POST /admin/api/biography-enrichment/runs/start - Start tracked run
+router.post("/runs/start", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      limit,
+      minPopularity,
+      actorIds,
+      confidenceThreshold,
+      maxCostPerActor,
+      maxTotalCost,
+      allowRegeneration,
+      sourceCategories,
+    } = req.body
+
+    const runId = await startBioEnrichmentRun({
+      limit,
+      minPopularity,
+      actorIds,
+      confidenceThreshold,
+      maxCostPerActor,
+      maxTotalCost,
+      allowRegeneration,
+      sourceCategories,
+    })
+
+    res.json({ success: true, runId })
+  } catch (error) {
+    logger.error({ error }, "Failed to start bio enrichment run")
+    const errorMsg = error instanceof Error ? error.message : "Unknown error"
+    res.status(500).json({ error: { message: errorMsg } })
+  }
+})
+
+// POST /admin/api/biography-enrichment/runs/:id/stop - Stop running run
+router.post("/runs/:id/stop", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const runId = parseInt(req.params.id, 10)
+    if (isNaN(runId)) {
+      res.status(400).json({ error: { message: "Invalid run ID" } })
+      return
+    }
+
+    const stopped = await stopBioEnrichmentRun(runId)
+    res.json({ success: stopped })
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error"
+    logger.error({ error }, "Failed to stop bio enrichment run")
     res.status(500).json({ error: { message: errorMsg } })
   }
 })
