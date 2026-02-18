@@ -184,8 +184,8 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
           const result = await orchestrator.enrichActor(actor)
           const costUsd = result.stats.totalCostUsd
           totalCostUsd += costUsd
-          totalSourceCost += result.stats.sourceCostUsd
-          totalSynthesisCost += result.stats.synthesisCostUsd
+          totalSourceCost += result.stats.sourceCostUsd ?? 0
+          totalSynthesisCost += result.stats.synthesisCostUsd ?? 0
 
           // Track source stats
           for (const source of result.sources) {
@@ -206,7 +206,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
           actorLogs.push({
             timestamp: new Date().toISOString(),
             level: "info",
-            message: `Sources: ${result.stats.sourcesSucceeded}/${result.stats.sourcesAttempted} succeeded, cost: $${costUsd.toFixed(4)} (source: $${result.stats.sourceCostUsd.toFixed(4)}, synthesis: $${result.stats.synthesisCostUsd.toFixed(4)})`,
+            message: `Sources: ${result.stats.sourcesSucceeded}/${result.stats.sourcesAttempted} succeeded, cost: $${costUsd.toFixed(4)} (source: $${(result.stats.sourceCostUsd ?? 0).toFixed(4)}, synthesis: $${(result.stats.synthesisCostUsd ?? 0).toFixed(4)})`,
           })
 
           if (result.data && result.data.hasSubstantiveContent) {
@@ -447,8 +447,8 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         null, // synthesis_model tracked at orchestrator level
         result.stats.processingTimeMs,
         result.stats.totalCostUsd,
-        result.stats.sourceCostUsd,
-        result.stats.synthesisCostUsd,
+        result.stats.sourceCostUsd ?? 0,
+        result.stats.synthesisCostUsd ?? 0,
         result.error || null,
         JSON.stringify(logEntries),
       ]
