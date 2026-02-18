@@ -86,6 +86,12 @@ export default {
           'badge-text': colorVar('--deceased-badge-text'),
         },
 
+        // Life factor badges (biography)
+        'life-factor': {
+          bg: colorVar('--life-factor-bg'),
+          text: colorVar('--life-factor-text'),
+        },
+
         // Overlays
         overlay: colorVar('--overlay'),
         'overlay-text': colorVar('--overlay-text'),
