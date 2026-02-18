@@ -172,7 +172,7 @@ describe("DeathSummaryCard", () => {
 
     expect(screen.getByText(/Died of stomach cancer at age 72/)).toBeInTheDocument()
     expect(screen.queryByTestId("expandable-section-toggle")).not.toBeInTheDocument()
-    expect(screen.getByText("Death Circumstances")).toBeInTheDocument()
+    expect(screen.getByText("Death")).toBeInTheDocument()
   })
 
   it("renders nothing when no death info at all", () => {

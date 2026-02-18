@@ -259,7 +259,7 @@ describe("ActorPage", () => {
     renderWithProviders(<ActorPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Biography")).toBeInTheDocument()
+      expect(screen.getByText("Life")).toBeInTheDocument()
       expect(screen.getByText("A talented performer known for many roles.")).toBeInTheDocument()
     })
   })

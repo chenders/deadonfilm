@@ -62,7 +62,7 @@ export default function BiographySection({
   if (!hasEnrichedBio) {
     return (
       <div className="mb-6 rounded-lg bg-surface-elevated p-4" data-testid="biography-section">
-        <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
+        <h2 className="mb-2 font-display text-lg text-brown-dark">Life</h2>
         <p className="leading-relaxed text-text-primary">{biography}</p>
         {biographySourceUrl && (
           <a
@@ -89,7 +89,7 @@ export default function BiographySection({
     return (
       <div className="mb-6 space-y-4" data-testid="biography-section">
         <div className="rounded-lg bg-surface-elevated p-4 sm:p-6">
-          <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
+          <h2 className="mb-2 font-display text-lg text-brown-dark">Life</h2>
           <div className="space-y-3 leading-relaxed text-text-primary">
             {displayText?.split("\n\n").map((paragraph, i) => (
               <p key={i}>{paragraph}</p>
@@ -122,7 +122,7 @@ export default function BiographySection({
   return (
     <div className="mb-6 space-y-4" data-testid="biography-section">
       <ExpandableSection
-        title="Biography"
+        title="Life"
         isExpanded={isExpanded}
         onToggle={() => setIsExpanded((prev) => !prev)}
       >

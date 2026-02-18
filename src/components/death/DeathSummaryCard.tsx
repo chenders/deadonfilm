@@ -78,7 +78,7 @@ export default function DeathSummaryCard({
         className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
         data-testid="death-summary-card"
       >
-        <h2 className="font-display text-lg text-brown-dark">Death Circumstances</h2>
+        <h2 className="font-display text-lg text-brown-dark">Death</h2>
         <div className="mt-3 leading-relaxed text-text-primary">
           {teaserLine && <p>{teaserLine}</p>}
           {yearsLost !== null && yearsLost > 0 && (
@@ -98,7 +98,7 @@ export default function DeathSummaryCard({
         className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
         data-testid="death-summary-card"
       >
-        <h2 className="font-display text-lg text-brown-dark">Death Circumstances</h2>
+        <h2 className="font-display text-lg text-brown-dark">Death</h2>
         <div className="mt-3 space-y-3" data-testid="death-details-loading">
           <div className="h-4 w-3/4 animate-pulse rounded bg-brown-light/20" />
           <div className="h-4 w-full animate-pulse rounded bg-brown-light/20" />
@@ -114,7 +114,7 @@ export default function DeathSummaryCard({
   return (
     <div className="mb-6" data-testid="death-summary-card">
       <ExpandableSection
-        title="Death Circumstances"
+        title="Death"
         isExpanded={isExpanded}
         onToggle={handleToggle}
         collapsedMaxHeight="10rem"
