@@ -105,7 +105,7 @@ export async function lookupActor(
 interface ActorCandidate {
   id: number
   tmdb_id: number
-  tmdb_popularity: number | null
+  dof_popularity: number | null
 }
 
 /**
@@ -117,9 +117,9 @@ async function findActorByName(
   sourceActorId?: number
 ): Promise<number | null> {
   const candidates = await db.query<ActorCandidate>(
-    `SELECT id, tmdb_id, tmdb_popularity FROM actors
+    `SELECT id, tmdb_id, COALESCE(dof_popularity, 0) as dof_popularity FROM actors
      WHERE LOWER(name) = LOWER($1) AND tmdb_id IS NOT NULL
-     ORDER BY tmdb_popularity DESC NULLS LAST, id ASC`,
+     ORDER BY COALESCE(dof_popularity, 0) DESC, id ASC`,
     [name]
   )
 
@@ -186,7 +186,7 @@ async function disambiguateByCoAppearances(
   }
 
   // Find the best match: most co-appearances, with popularity as tiebreaker.
-  // candidates array is already sorted by tmdb_popularity DESC NULLS LAST.
+  // candidates array is already sorted by dof_popularity DESC.
   const topCount = coAppearanceResult.rows[0].shared_count
   const tiedIds = new Set(
     coAppearanceResult.rows.filter((r) => r.shared_count === topCount).map((r) => r.actor_id)

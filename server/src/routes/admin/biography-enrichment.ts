@@ -36,7 +36,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       params.push(`%${searchName}%`)
     }
     if (minPopularity > 0) {
-      conditions.push(`a.tmdb_popularity >= $${paramIndex++}`)
+      conditions.push(`COALESCE(a.dof_popularity, 0) >= $${paramIndex++}`)
       params.push(minPopularity)
     }
     if (needsEnrichment) {
@@ -56,14 +56,14 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     // Fetch page
     const dataParams = [...params, pageSize, offset]
     const result = await pool.query(
-      `SELECT a.id, a.name, a.tmdb_popularity, a.deathday,
+      `SELECT a.id, a.name, COALESCE(a.dof_popularity, 0) as dof_popularity, a.deathday,
               abd.id as bio_id, abd.narrative_confidence, abd.narrative_teaser,
               abd.life_notable_factors, abd.updated_at as bio_updated_at,
               a.biography_version
        FROM actors a
        LEFT JOIN actor_biography_details abd ON abd.actor_id = a.id
        WHERE ${whereClause}
-       ORDER BY a.tmdb_popularity DESC NULLS LAST
+       ORDER BY COALESCE(a.dof_popularity, 0) DESC
        LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
       dataParams
     )
@@ -81,7 +81,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       actors: result.rows.map((row) => ({
         id: row.id,
         name: row.name,
-        popularity: row.tmdb_popularity ? parseFloat(row.tmdb_popularity) : null,
+        popularity: row.dof_popularity != null ? parseFloat(row.dof_popularity) : null,
         deathday: row.deathday,
         hasEnrichment: row.bio_id !== null,
         narrativeConfidence: row.narrative_confidence,

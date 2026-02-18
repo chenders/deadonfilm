@@ -79,7 +79,7 @@ export async function getRelatedActors(
          AND a.id != $2
          AND a.is_obscure IS NOT TRUE
          AND a.deathday IS NOT NULL
-       ORDER BY a.tmdb_popularity DESC NULLS LAST
+       ORDER BY COALESCE(a.dof_popularity, 0) DESC
        LIMIT $3`,
       [causeOfDeath, actorId, RELATED_ACTORS_LIMIT]
     )
@@ -108,7 +108,7 @@ export async function getRelatedActors(
          AND a.id != $3
          AND a.is_obscure IS NOT TRUE
          AND a.deathday IS NOT NULL
-       ORDER BY a.tmdb_popularity DESC NULLS LAST
+       ORDER BY COALESCE(a.dof_popularity, 0) DESC
        LIMIT $4`,
       [birthDecade, decadeEnd + 1, actorId, RELATED_ACTORS_LIMIT]
     )

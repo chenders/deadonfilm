@@ -71,7 +71,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       }
 
       if (minPopularity !== undefined) {
-        whereClause += ` AND tmdb_popularity >= $${paramIndex++}`
+        whereClause += ` AND COALESCE(dof_popularity, 0) >= $${paramIndex++}`
         params.push(minPopularity)
       }
 
@@ -83,7 +83,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
                 wikipedia_url, biography AS biography_raw_tmdb, biography
          FROM actors
          ${whereClause}
-         ORDER BY tmdb_popularity DESC NULLS LAST
+         ORDER BY COALESCE(dof_popularity, 0) DESC
          LIMIT $${paramIndex}`,
         params
       )
