@@ -127,6 +127,10 @@ export default function StartBioEnrichmentPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (selectionMode === "specific" && selectedActorIds.length === 0) {
+      return
+    }
+
     try {
       const result = await startEnrichment.mutateAsync({
         ...(selectionMode === "specific" && selectedActorIds.length > 0
@@ -363,10 +367,12 @@ export default function StartBioEnrichmentPage() {
 
           {/* Source Categories */}
           <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
-            <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">Source Categories</h2>
+            <h2 className="mb-4 text-lg font-semibold text-admin-text-primary">
+              Source Categories
+            </h2>
             <p className="mb-4 text-sm text-admin-text-muted">
-              Control which types of data sources are used. Disabling categories reduces cost but may
-              lower quality.
+              Control which types of data sources are used. Disabling categories reduces cost but
+              may lower quality.
             </p>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               {[
@@ -501,7 +507,10 @@ export default function StartBioEnrichmentPage() {
           <div className="flex items-center gap-4">
             <button
               type="submit"
-              disabled={startEnrichment.isPending}
+              disabled={
+                startEnrichment.isPending ||
+                (selectionMode === "specific" && selectedActorIds.length === 0)
+              }
               className="rounded-lg bg-admin-danger px-6 py-3 font-semibold text-admin-text-primary transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {startEnrichment.isPending ? "Starting..." : "Start Bio Enrichment Run"}

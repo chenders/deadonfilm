@@ -221,8 +221,9 @@ export class BiographyEnrichmentOrchestrator {
    */
   async enrichActor(actor: ActorForBiography): Promise<BiographyResult> {
     const startTime = Date.now()
-    let sourceCost = 0
-    let synthesisCost = 0
+    let totalCost = 0
+    let totalSourceCost = 0
+    let totalSynthesisCost = 0
     let sourcesAttempted = 0
     let sourcesSucceeded = 0
     const allSources: BiographySourceEntry[] = []
@@ -256,8 +257,9 @@ export class BiographyEnrichmentOrchestrator {
         )
 
         // Track cost
-        const lookupCost = lookupResult.source.costUsd || 0
-        sourceCost += lookupCost
+        const sourceCost = lookupResult.source.costUsd || 0
+        totalCost += sourceCost
+        totalSourceCost += sourceCost
 
         // Record source attempt
         allSources.push(lookupResult.source)
@@ -337,9 +339,9 @@ export class BiographyEnrichmentOrchestrator {
       }
 
       // Check per-actor cost limit
-      if (sourceCost >= this.config.costLimits.maxCostPerActor) {
+      if (totalCost >= this.config.costLimits.maxCostPerActor) {
         console.log(
-          `    Per-actor cost limit reached ($${sourceCost.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
+          `    Per-actor cost limit reached ($${totalCost.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
         )
         newrelic.recordCustomEvent("BioCostLimitPerActor", {
           actorId: actor.id,
@@ -367,7 +369,8 @@ export class BiographyEnrichmentOrchestrator {
           }
         )
 
-        synthesisCost += synthesisResult.costUsd
+        totalCost += synthesisResult.costUsd
+        totalSynthesisCost += synthesisResult.costUsd
         synthesisData = synthesisResult.data
 
         if (synthesisResult.error) {
@@ -414,10 +417,9 @@ export class BiographyEnrichmentOrchestrator {
       })
     }
 
-    const totalCost = sourceCost + synthesisCost
     const processingTimeMs = Date.now() - startTime
     console.log(
-      `  Complete in ${processingTimeMs}ms, cost: $${totalCost.toFixed(4)} (source: $${sourceCost.toFixed(4)}, synthesis: $${synthesisCost.toFixed(4)}), sources: ${sourcesSucceeded}/${sourcesAttempted}`
+      `  Complete in ${processingTimeMs}ms, cost: $${totalCost.toFixed(4)}, sources: ${sourcesSucceeded}/${sourcesAttempted}`
     )
 
     // Record actor completion in New Relic
@@ -442,8 +444,8 @@ export class BiographyEnrichmentOrchestrator {
         sourcesAttempted,
         sourcesSucceeded,
         totalCostUsd: totalCost,
-        sourceCostUsd: sourceCost,
-        synthesisCostUsd: synthesisCost,
+        sourceCostUsd: totalSourceCost,
+        synthesisCostUsd: totalSynthesisCost,
         processingTimeMs,
       },
     }

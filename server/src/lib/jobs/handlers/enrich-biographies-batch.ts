@@ -92,10 +92,10 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
 
       // Update run with actors_queried
       if (runId) {
-        await db.query(
-          `UPDATE bio_enrichment_runs SET actors_queried = $1 WHERE id = $2`,
-          [actors.length, runId]
-        )
+        await db.query(`UPDATE bio_enrichment_runs SET actors_queried = $1 WHERE id = $2`, [
+          actors.length,
+          runId,
+        ])
       }
 
       if (actors.length === 0) {
@@ -165,13 +165,20 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
 
         // Update progress
         if (runId) {
-          await this.updateRunProgress(db, runId, i, actor.name, {
-            actorsProcessed: results.length,
-            actorsEnriched,
-            totalCostUsd,
-            sourceCostUsd: totalSourceCost,
-            synthesisCostUsd: totalSynthesisCost,
-          })
+          try {
+            await this.updateRunProgress(db, runId, i, actor.name, {
+              actorsProcessed: results.length,
+              actorsEnriched,
+              totalCostUsd,
+              sourceCostUsd: totalSourceCost,
+              synthesisCostUsd: totalSynthesisCost,
+            })
+          } catch (progressError) {
+            log.warn(
+              { error: progressError, runId, actorIndex: i },
+              "Failed to update run progress"
+            )
+          }
         }
 
         try {
@@ -195,7 +202,6 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               costBySource[sourceType] = (costBySource[sourceType] || 0) + source.costUsd
             }
           }
-          const succeeded = result.sources.filter((s) => s.confidence > 0).length
           for (const source of result.sources) {
             if (source.confidence > 0) {
               sourceSuccesses[source.type] = (sourceSuccesses[source.type] || 0) + 1
@@ -315,19 +321,26 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
 
       // Complete the run
       if (runId) {
-        await this.completeBioEnrichmentRun(db, runId, {
-          actorsProcessed: actors.length,
-          actorsEnriched,
-          actorsWithSubstantiveContent,
-          totalCostUsd,
-          sourceCostUsd: totalSourceCost,
-          synthesisCostUsd: totalSynthesisCost,
-          exitReason: "completed",
-          costBySource,
-          sourceHitRates: this.computeHitRates(sourceAttempts, sourceSuccesses),
-          errorCount: errors.length,
-          errors,
-        })
+        try {
+          await this.completeBioEnrichmentRun(db, runId, {
+            actorsProcessed: actors.length,
+            actorsEnriched,
+            actorsWithSubstantiveContent,
+            totalCostUsd,
+            sourceCostUsd: totalSourceCost,
+            synthesisCostUsd: totalSynthesisCost,
+            exitReason: "completed",
+            costBySource,
+            sourceHitRates: this.computeHitRates(sourceAttempts, sourceSuccesses),
+            errorCount: errors.length,
+            errors,
+          })
+        } catch (completionError) {
+          log.error(
+            { error: completionError, runId },
+            "Failed to mark bio enrichment run as completed"
+          )
+        }
       }
 
       // Record job completion in New Relic
@@ -351,7 +364,11 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error"
       if (runId) {
-        await this.markRunAsFailed(db, runId, errorMsg)
+        try {
+          await this.markRunAsFailed(db, runId, errorMsg)
+        } catch (failError) {
+          log.error({ error: failError, runId }, "Failed to mark bio enrichment run as failed")
+        }
       }
       throw error
     }

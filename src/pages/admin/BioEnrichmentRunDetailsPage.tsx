@@ -37,7 +37,12 @@ export default function BioEnrichmentRunDetailsPage() {
 
   const [actorsPage, setActorsPage] = useState(1)
   const actorsPageSize = 20
-  const { data: actorsData } = useBioEnrichmentRunActors(runId, actorsPage, actorsPageSize, isRunning)
+  const { data: actorsData } = useBioEnrichmentRunActors(
+    runId,
+    actorsPage,
+    actorsPageSize,
+    isRunning
+  )
   const { data: sourceStats } = useBioRunSourcePerformanceStats(runId, isRunning)
   const { data: progress } = useBioEnrichmentRunProgress(runId, isRunning)
 
@@ -101,7 +106,8 @@ export default function BioEnrichmentRunDetailsPage() {
                 Processing: {progress.currentActorName || "Starting..."}
               </span>
               <span className="text-blue-200">
-                {progress.actorsProcessed} / {progress.actorsQueried} actors ({progress.progressPercentage}%)
+                {progress.actorsProcessed} / {progress.actorsQueried} actors (
+                {progress.progressPercentage}%)
               </span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-blue-950">
@@ -132,7 +138,10 @@ export default function BioEnrichmentRunDetailsPage() {
           <StatCard label="Fill Rate" value={run.fill_rate ? `${run.fill_rate}%` : "-"} />
           <StatCard label="Total Cost" value={`$${parseFloat(run.total_cost_usd).toFixed(4)}`} />
           <StatCard label="Source Cost" value={`$${parseFloat(run.source_cost_usd).toFixed(4)}`} />
-          <StatCard label="Synthesis Cost" value={`$${parseFloat(run.synthesis_cost_usd).toFixed(4)}`} />
+          <StatCard
+            label="Synthesis Cost"
+            value={`$${parseFloat(run.synthesis_cost_usd).toFixed(4)}`}
+          />
         </div>
 
         {/* Source Performance Table */}
@@ -228,9 +237,7 @@ export default function BioEnrichmentRunDetailsPage() {
                       actor={actor}
                       isExpanded={expandedActor === actor.actor_id}
                       onToggle={() =>
-                        setExpandedActor(
-                          expandedActor === actor.actor_id ? null : actor.actor_id
-                        )
+                        setExpandedActor(expandedActor === actor.actor_id ? null : actor.actor_id)
                       }
                     />
                   ))}
@@ -349,7 +356,10 @@ function ActorRow({
           {actor.processing_time_ms ? formatDuration(actor.processing_time_ms) : "-"}
         </td>
         <td className="px-4 py-2">
-          <button className="text-xs text-admin-text-muted hover:text-admin-text-primary">
+          <button
+            className="text-xs text-admin-text-muted hover:text-admin-text-primary"
+            aria-label={`${isExpanded ? "Hide" : "Show"} log entries for ${actor.actor_name}`}
+          >
             {isExpanded ? "Hide" : "Show"} ({actor.log_entries?.length || 0})
           </button>
         </td>
@@ -363,7 +373,7 @@ function ActorRow({
                 <h4 className="mb-1 text-xs font-semibold text-admin-text-muted">Log Entries</h4>
                 <div className="max-h-60 space-y-1 overflow-y-auto rounded bg-admin-surface-elevated p-2">
                   {actor.log_entries.map((entry, i) => (
-                    <div key={i} className="flex gap-2 text-xs font-mono">
+                    <div key={i} className="flex gap-2 font-mono text-xs">
                       <span className="shrink-0 text-admin-text-muted">
                         {new Date(entry.timestamp).toLocaleTimeString()}
                       </span>
@@ -407,9 +417,7 @@ function ActorRow({
                 </div>
               </div>
             )}
-            {actor.error && (
-              <div className="mt-2 text-xs text-red-400">Error: {actor.error}</div>
-            )}
+            {actor.error && <div className="mt-2 text-xs text-red-400">Error: {actor.error}</div>}
           </td>
         </tr>
       )}

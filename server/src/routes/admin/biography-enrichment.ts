@@ -409,6 +409,20 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       sourceCategories,
     } = req.body
 
+    // Validate: must have either actorIds or limit
+    if (!actorIds && !limit) {
+      res.status(400).json({ error: { message: "Either actorIds or limit must be provided" } })
+      return
+    }
+    if (actorIds && !Array.isArray(actorIds)) {
+      res.status(400).json({ error: { message: "actorIds must be an array" } })
+      return
+    }
+    if (limit !== undefined && (typeof limit !== "number" || limit < 1)) {
+      res.status(400).json({ error: { message: "limit must be a positive number" } })
+      return
+    }
+
     const runId = await startBioEnrichmentRun({
       limit,
       minPopularity,

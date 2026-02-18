@@ -130,7 +130,7 @@ export interface StartBioEnrichmentRequest {
 const BASE_URL = "/admin/api/biography-enrichment"
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url)
+  const res = await fetch(url, { credentials: "include" })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body?.error?.message || `HTTP ${res.status}`)
@@ -142,6 +142,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(body),
   })
   if (!res.ok) {
@@ -206,8 +207,7 @@ export function useBioEnrichmentRunActors(
 ) {
   return useQuery<PaginatedResult<BioEnrichmentRunActor>>({
     queryKey: ["bio-enrichment-run-actors", runId, page, pageSize],
-    queryFn: () =>
-      fetchJson(`${BASE_URL}/runs/${runId}/actors?page=${page}&pageSize=${pageSize}`),
+    queryFn: () => fetchJson(`${BASE_URL}/runs/${runId}/actors?page=${page}&pageSize=${pageSize}`),
     enabled: !!runId,
     refetchInterval: isRunning ? 5000 : false,
   })

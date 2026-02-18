@@ -14,6 +14,7 @@ import { getPool } from "./db.js"
 import { logger } from "./logger.js"
 import { queueManager } from "./jobs/queue-manager.js"
 import { JobType } from "./jobs/types.js"
+import newrelic from "newrelic"
 
 /**
  * Configuration for starting a bio enrichment run
@@ -103,6 +104,13 @@ export async function startBioEnrichmentRun(config: BioEnrichmentRunConfig): Pro
     // Store the job ID
     runningJobs.set(runId, jobId)
 
+    newrelic.recordCustomEvent("BioEnrichmentRunCreated", {
+      runId,
+      limit: config.limit ?? 0,
+      minPopularity: config.minPopularity ?? 0,
+      actorCount: config.actorIds?.length ?? 0,
+    })
+
     return runId
   } catch (error) {
     logger.error({ error }, "Failed to start bio enrichment run")
@@ -169,6 +177,8 @@ export async function stopBioEnrichmentRun(runId: number): Promise<boolean> {
       [runId]
     )
 
+    newrelic.recordCustomEvent("BioEnrichmentRunStopped", { runId })
+
     return true
   } catch (error) {
     logger.error({ error, runId, jobId }, "Failed to cancel bio enrichment job")
@@ -218,15 +228,16 @@ export async function getBioEnrichmentRunProgress(runId: number) {
 
   const row = result.rows[0]
 
-  const progressPercentage =
-    row.actors_queried > 0 ? (row.actors_processed / row.actors_queried) * 100 : 0
+  const actorsQueried = row.actors_queried ?? 0
+  const actorsProcessed = row.actors_processed ?? 0
+  const progressPercentage = actorsQueried > 0 ? (actorsProcessed / actorsQueried) * 100 : 0
 
   const elapsedMs = Date.now() - new Date(row.started_at).getTime()
 
   let estimatedTimeRemainingMs: number | null = null
-  if (row.status === "running" && row.actors_processed > 0 && row.actors_queried > 0) {
-    const msPerActor = elapsedMs / row.actors_processed
-    const actorsRemaining = row.actors_queried - row.actors_processed
+  if (row.status === "running" && actorsProcessed > 0 && actorsQueried > 0) {
+    const msPerActor = elapsedMs / actorsProcessed
+    const actorsRemaining = actorsQueried - actorsProcessed
     estimatedTimeRemainingMs = Math.round(msPerActor * actorsRemaining)
   }
 
@@ -234,13 +245,13 @@ export async function getBioEnrichmentRunProgress(runId: number) {
     status: row.status,
     currentActorIndex: row.current_actor_index,
     currentActorName: row.current_actor_name,
-    actorsQueried: row.actors_queried,
-    actorsProcessed: row.actors_processed,
-    actorsEnriched: row.actors_enriched,
-    actorsWithSubstantiveContent: row.actors_with_substantive_content,
-    totalCostUsd: parseFloat(row.total_cost_usd.toString()),
-    synthesisCostUsd: parseFloat(row.synthesis_cost_usd.toString()),
-    sourceCostUsd: parseFloat(row.source_cost_usd.toString()),
+    actorsQueried,
+    actorsProcessed,
+    actorsEnriched: row.actors_enriched ?? 0,
+    actorsWithSubstantiveContent: row.actors_with_substantive_content ?? 0,
+    totalCostUsd: parseFloat((row.total_cost_usd ?? 0).toString()),
+    synthesisCostUsd: parseFloat((row.synthesis_cost_usd ?? 0).toString()),
+    sourceCostUsd: parseFloat((row.source_cost_usd ?? 0).toString()),
     progressPercentage: Math.round(progressPercentage * 10) / 10,
     elapsedMs,
     estimatedTimeRemainingMs,
