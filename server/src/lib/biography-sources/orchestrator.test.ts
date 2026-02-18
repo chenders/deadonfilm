@@ -22,7 +22,7 @@ function makeMockSourceClass(sourceName: string, options?: { isWebSearch?: boole
       type: `mock-${sourceName}`,
       isFree: true,
       estimatedCostPerQuery: 0,
-      reliabilityTier: "tier_1_institutional",
+      reliabilityTier: "structured_data" as ReliabilityTier,
       reliabilityScore: 0.95,
       isAvailable: vi.fn().mockReturnValue(true),
       lookup: vi.fn().mockResolvedValue({
@@ -64,7 +64,7 @@ function resetConstructorMock(
       type: `mock-${sourceName}`,
       isFree: true,
       estimatedCostPerQuery: 0,
-      reliabilityTier: "tier_1_institutional",
+      reliabilityTier: "structured_data" as ReliabilityTier,
       reliabilityScore: 0.95,
       isAvailable: vi.fn().mockReturnValue(true),
       lookup: vi.fn().mockResolvedValue({
@@ -168,6 +168,7 @@ import { WikipediaBiographySource } from "./sources/wikipedia.js"
 import { BritannicaBiographySource } from "./sources/britannica.js"
 import type { ActorForBiography, BiographySourceType } from "./types.js"
 import type { BiographyLookupResult } from "./base-source.js"
+import type { ReliabilityTier } from "../death-sources/types.js"
 
 // ============================================================================
 // Test Fixtures
@@ -217,7 +218,7 @@ function createSuccessfulLookup(options?: {
       type: "wikidata-bio" as BiographySourceType,
       retrievedAt: new Date(),
       confidence,
-      reliabilityTier: "tier_1_institutional",
+      reliabilityTier: "structured_data" as ReliabilityTier,
       reliabilityScore: options?.reliabilityScore ?? 0.95,
       costUsd: options?.cost ?? 0,
     },
@@ -229,7 +230,7 @@ function createSuccessfulLookup(options?: {
         "John Wayne grew up in a small town. His parents were hardworking people. He attended school in California.",
       url: "https://example.com",
       confidence,
-      reliabilityTier: "tier_1_institutional",
+      reliabilityTier: "structured_data" as ReliabilityTier,
       reliabilityScore: options?.reliabilityScore ?? 0.95,
     },
   }
@@ -352,7 +353,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           type: "mock-Google Search",
           isFree: true,
           estimatedCostPerQuery: 0,
-          reliabilityTier: "tier_1_institutional",
+          reliabilityTier: "structured_data" as ReliabilityTier,
           reliabilityScore: 0.95,
           isAvailable: vi.fn().mockReturnValue(false),
           lookup: vi.fn(),
@@ -369,7 +370,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           type: "mock-Bing Search",
           isFree: true,
           estimatedCostPerQuery: 0,
-          reliabilityTier: "tier_1_institutional",
+          reliabilityTier: "structured_data" as ReliabilityTier,
           reliabilityScore: 0.95,
           isAvailable: vi.fn().mockReturnValue(false),
           lookup: vi.fn(),

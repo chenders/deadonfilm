@@ -184,7 +184,7 @@ describe("BaseBiographySource", () => {
         const confidence = source.testCalculateBiographicalConfidence(
           `This text contains the keyword ${keyword} in context.`
         )
-        expect(confidence).toBeGreaterThan(0, `Expected confidence > 0 for keyword "${keyword}"`)
+        expect(confidence, `Expected confidence > 0 for keyword "${keyword}"`).toBeGreaterThan(0)
       }
     })
 
