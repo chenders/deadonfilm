@@ -20,6 +20,7 @@ import DeathSummaryCard from "@/components/death/DeathSummaryCard"
 import FactorBadge from "@/components/death/FactorBadge"
 import ProjectLink from "@/components/death/ProjectLink"
 import RelatedCelebrityCard from "@/components/death/RelatedCelebrityCard"
+import BiographySection from "@/components/actor/BiographySection"
 import type { ActorFilmographyMovie, ActorFilmographyShow } from "@/types"
 
 type FilmographyItem =
@@ -141,19 +142,6 @@ function formatCareerStatus(status: string | null): string | null {
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
-}
-
-function getSourceDisplayName(type: "wikipedia" | "tmdb" | "imdb" | null): string {
-  switch (type) {
-    case "wikipedia":
-      return "Wikipedia"
-    case "tmdb":
-      return "TMDB"
-    case "imdb":
-      return "IMDb"
-    default:
-      return "source"
-  }
 }
 
 export default function ActorPage() {
@@ -384,22 +372,12 @@ export default function ActorPage() {
         )}
 
         {/* Biography */}
-        {actor.biography && (
-          <div className="mb-6 rounded-lg bg-surface-elevated p-4">
-            <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
-            <p className="leading-relaxed text-text-primary">{actor.biography}</p>
-            {actor.biographySourceUrl && (
-              <a
-                href={actor.biographySourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block text-sm text-brown-medium hover:text-brown-dark hover:underline"
-              >
-                Read more on {getSourceDisplayName(actor.biographySourceType)} →
-              </a>
-            )}
-          </div>
-        )}
+        <BiographySection
+          biography={actor.biography}
+          biographyDetails={data.biographyDetails}
+          biographySourceUrl={actor.biographySourceUrl}
+          biographySourceType={actor.biographySourceType}
+        />
 
         {/* Career Context */}
         {isDeceased && deathInfo?.career && (
