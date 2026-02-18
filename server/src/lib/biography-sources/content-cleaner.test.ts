@@ -1,5 +1,17 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { mechanicalPreClean, extractMetadata } from "./content-cleaner.js"
+
+// Shared mock create function accessible from tests
+const mockCreate = vi.fn()
+
+// Mock Anthropic SDK before importing functions that use it
+vi.mock("@anthropic-ai/sdk", () => {
+  return {
+    default: class MockAnthropic {
+      messages = { create: mockCreate }
+    },
+  }
+})
 
 // ============================================================================
 // mechanicalPreClean
@@ -607,5 +619,228 @@ describe("extractMetadata", () => {
     const html = `<html><head><title>Tom &amp; Jerry&apos;s Adventures</title></head></html>`
     const metadata = extractMetadata(html)
     expect(metadata.title).toBe("Tom & Jerry's Adventures")
+  })
+})
+
+// ============================================================================
+// aiExtractBiographicalContent
+// ============================================================================
+
+import {
+  aiExtractBiographicalContent,
+  shouldPassToSynthesis,
+  type MechanicalCleanResult,
+} from "./content-cleaner.js"
+
+function makeMechanicalResult(
+  overrides: Partial<MechanicalCleanResult> = {}
+): MechanicalCleanResult {
+  return {
+    text: "John Wayne was born Marion Robert Morrison in Winterset, Iowa. He grew up in modest circumstances.",
+    metadata: {
+      title: "John Wayne Biography",
+      publication: "The Hollywood Reporter",
+      author: "Jane Smith",
+      publishDate: "2023-05-15",
+    },
+    ...overrides,
+  }
+}
+
+function makeHaikuResponse(
+  jsonBody: Record<string, unknown>,
+  usage = { input_tokens: 500, output_tokens: 200 }
+) {
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(jsonBody) }],
+    usage,
+  }
+}
+
+describe("aiExtractBiographicalContent", () => {
+  beforeEach(() => {
+    mockCreate.mockReset()
+  })
+
+  it("returns CleanedContent with extracted biographical text for high relevance", async () => {
+    mockCreate.mockResolvedValueOnce(
+      makeHaikuResponse({
+        extracted_text: "John Wayne grew up in Iowa with a difficult childhood.",
+        article_title: "John Wayne: A Life Story",
+        publication: "The Hollywood Reporter",
+        author: "Jane Smith",
+        publish_date: "2023-05-15",
+        relevance: "high",
+        content_type: "biography",
+      })
+    )
+
+    const result = await aiExtractBiographicalContent(
+      makeMechanicalResult(),
+      "John Wayne",
+      "https://example.com/article",
+      "example.com"
+    )
+
+    expect(result.extractedText).toBe("John Wayne grew up in Iowa with a difficult childhood.")
+    expect(result.relevance).toBe("high")
+    expect(result.contentType).toBe("biography")
+    expect(result.url).toBe("https://example.com/article")
+    expect(result.domain).toBe("example.com")
+    expect(result.articleTitle).toBe("John Wayne: A Life Story")
+    expect(result.publication).toBe("The Hollywood Reporter")
+    expect(result.author).toBe("Jane Smith")
+    expect(result.publishDate).toBe("2023-05-15")
+  })
+
+  it("returns relevance 'none' for pages with no biographical content", async () => {
+    mockCreate.mockResolvedValueOnce(
+      makeHaikuResponse({
+        extracted_text: null,
+        article_title: "Random Page",
+        publication: null,
+        author: null,
+        publish_date: null,
+        relevance: "none",
+        content_type: "other",
+      })
+    )
+
+    const result = await aiExtractBiographicalContent(
+      makeMechanicalResult(),
+      "John Wayne",
+      "https://example.com/random",
+      "example.com"
+    )
+
+    expect(result.extractedText).toBeNull()
+    expect(result.relevance).toBe("none")
+    expect(result.cleanedBytes).toBe(0)
+  })
+
+  it("handles API failures gracefully with fallback", async () => {
+    mockCreate.mockRejectedValueOnce(new Error("API rate limited"))
+
+    const input = makeMechanicalResult()
+    const result = await aiExtractBiographicalContent(
+      input,
+      "John Wayne",
+      "https://example.com/article",
+      "example.com"
+    )
+
+    // Should return fallback with mechanical text
+    expect(result.extractedText).toBe(input.text)
+    expect(result.relevance).toBe("medium")
+    expect(result.contentType).toBe("other")
+    expect(result.costUsd).toBe(0)
+    expect(result.articleTitle).toBe("John Wayne Biography")
+    expect(result.publication).toBe("The Hollywood Reporter")
+  })
+
+  it("tracks cost correctly based on token usage", async () => {
+    mockCreate.mockResolvedValueOnce(
+      makeHaikuResponse(
+        {
+          extracted_text: "Some bio text.",
+          relevance: "high",
+          content_type: "biography",
+        },
+        { input_tokens: 1000, output_tokens: 500 }
+      )
+    )
+
+    const result = await aiExtractBiographicalContent(
+      makeMechanicalResult(),
+      "John Wayne",
+      "https://example.com/article",
+      "example.com"
+    )
+
+    // Cost = (1000 * $1 / 1M) + (500 * $5 / 1M) = $0.001 + $0.0025 = $0.0035
+    expect(result.costUsd).toBeCloseTo(0.0035, 6)
+  })
+
+  it("handles markdown code fences in JSON response", async () => {
+    const jsonBody = {
+      extracted_text: "Bio text extracted from fenced response.",
+      article_title: "Fenced Title",
+      publication: "Test Pub",
+      author: null,
+      publish_date: null,
+      relevance: "medium",
+      content_type: "profile",
+    }
+
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: "text", text: "```json\n" + JSON.stringify(jsonBody) + "\n```" }],
+      usage: { input_tokens: 100, output_tokens: 50 },
+    })
+
+    const result = await aiExtractBiographicalContent(
+      makeMechanicalResult(),
+      "John Wayne",
+      "https://example.com/article",
+      "example.com"
+    )
+
+    expect(result.extractedText).toBe("Bio text extracted from fenced response.")
+    expect(result.relevance).toBe("medium")
+    expect(result.contentType).toBe("profile")
+  })
+
+  it("fills in metadata from mechanical result when Haiku response omits fields", async () => {
+    mockCreate.mockResolvedValueOnce(
+      makeHaikuResponse({
+        extracted_text: "Some biographical details.",
+        relevance: "high",
+        content_type: "biography",
+        // Omit article_title, publication, author, publish_date
+      })
+    )
+
+    const input = makeMechanicalResult({
+      metadata: {
+        title: "Mechanical Title",
+        publication: "Mechanical Pub",
+        author: "Mechanical Author",
+        publishDate: "2020-01-01",
+      },
+    })
+
+    const result = await aiExtractBiographicalContent(
+      input,
+      "John Wayne",
+      "https://example.com/article",
+      "example.com"
+    )
+
+    // Should fall back to mechanical metadata for omitted fields
+    expect(result.articleTitle).toBe("Mechanical Title")
+    expect(result.publication).toBe("Mechanical Pub")
+    expect(result.author).toBe("Mechanical Author")
+    expect(result.publishDate).toBe("2020-01-01")
+  })
+})
+
+// ============================================================================
+// shouldPassToSynthesis
+// ============================================================================
+
+describe("shouldPassToSynthesis", () => {
+  it('returns true for "high"', () => {
+    expect(shouldPassToSynthesis("high")).toBe(true)
+  })
+
+  it('returns true for "medium"', () => {
+    expect(shouldPassToSynthesis("medium")).toBe(true)
+  })
+
+  it('returns false for "low"', () => {
+    expect(shouldPassToSynthesis("low")).toBe(false)
+  })
+
+  it('returns false for "none"', () => {
+    expect(shouldPassToSynthesis("none")).toBe(false)
   })
 })

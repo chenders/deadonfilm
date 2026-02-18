@@ -10,6 +10,8 @@
  * Reuses utilities from that module where possible.
  */
 
+import Anthropic from "@anthropic-ai/sdk"
+
 import {
   decodeHtmlEntities,
   stripHtmlTags,
@@ -17,6 +19,8 @@ import {
   removeStyleTags,
   looksLikeCode,
 } from "../death-sources/html-utils.js"
+import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
+import type { CleanedContent } from "./types.js"
 
 // ============================================================================
 // Types
@@ -676,4 +680,179 @@ export function mechanicalPreClean(html: string): MechanicalCleanResult {
   text = collapseWhitespace(text)
 
   return { text, metadata }
+}
+
+// ============================================================================
+// Stage 2: Haiku AI extraction
+// ============================================================================
+
+/** Haiku 4.5 pricing per million tokens */
+const HAIKU_INPUT_COST_PER_MILLION = 1.0
+const HAIKU_OUTPUT_COST_PER_MILLION = 5.0
+const HAIKU_MODEL = "claude-haiku-4-5-20251001"
+const HAIKU_MAX_TOKENS = 2000
+
+/**
+ * Build the extraction prompt for Haiku.
+ */
+function buildExtractionPrompt(
+  actorName: string,
+  publication: string | null,
+  articleTitle: string | null,
+  url: string,
+  mechanicallyCleaned: string
+): string {
+  return `You are extracting biographical content about ${actorName} from a web page.
+
+Source: ${publication ?? "Unknown"} — "${articleTitle ?? "Unknown"}"
+URL: ${url}
+
+Raw content:
+${mechanicallyCleaned}
+
+EXTRACT only text that relates to this person's:
+- Childhood, family background, upbringing
+- Education, scholarships, academic life
+- Personal relationships, marriages, children
+- Pre-fame jobs, struggles, pivotal life moments
+- Military service, legal issues, health challenges
+- Personality traits, hobbies, lesser-known facts
+- What launched them into public life
+
+REMOVE completely:
+- Ads, promotions, newsletter signups
+- Navigation text, cookie notices, legal boilerplate
+- Filmography lists, award lists, box office numbers
+- "Related articles" / "You might also like"
+- Social media buttons/text
+- Comments from other users
+- HTML artifacts, JavaScript fragments
+- Repetitive career achievement lists
+
+Return JSON:
+{
+  "extracted_text": "Clean biographical text only",
+  "article_title": "Actual article title",
+  "publication": "Publication name",
+  "author": "Author if found",
+  "publish_date": "Date if found",
+  "relevance": "high|medium|low|none",
+  "content_type": "obituary|profile|news|biography|interview|other"
+}
+
+If the page contains NO biographical information about this person,
+return relevance: "none" and extracted_text: null.`
+}
+
+/**
+ * Stage 2: Use Claude Haiku to extract only biographical content from
+ * mechanically pre-cleaned text.
+ *
+ * Sends the cleaned text to Haiku with a prompt that extracts biographical
+ * content, classifies relevance, and identifies content type. On API failure,
+ * returns a fallback using the mechanical text with relevance "medium".
+ */
+export async function aiExtractBiographicalContent(
+  input: MechanicalCleanResult,
+  actorName: string,
+  url: string,
+  domain: string
+): Promise<CleanedContent> {
+  const originalBytes = Buffer.byteLength(input.text, "utf8")
+
+  // Build fallback result using mechanical clean data
+  const fallback: CleanedContent = {
+    extractedText: input.text || null,
+    articleTitle: input.metadata.title,
+    publication: input.metadata.publication,
+    author: input.metadata.author,
+    publishDate: input.metadata.publishDate,
+    relevance: "medium",
+    contentType: "other",
+    url,
+    domain,
+    originalBytes,
+    cleanedBytes: originalBytes,
+    costUsd: 0,
+  }
+
+  try {
+    const client = new Anthropic()
+    const prompt = buildExtractionPrompt(
+      actorName,
+      input.metadata.publication,
+      input.metadata.title,
+      url,
+      input.text
+    )
+
+    const response = await client.messages.create({
+      model: HAIKU_MODEL,
+      max_tokens: HAIKU_MAX_TOKENS,
+      messages: [{ role: "user", content: prompt }],
+    })
+
+    // Calculate cost from usage
+    const inputTokens = response.usage?.input_tokens ?? 0
+    const outputTokens = response.usage?.output_tokens ?? 0
+    const costUsd =
+      (inputTokens * HAIKU_INPUT_COST_PER_MILLION) / 1_000_000 +
+      (outputTokens * HAIKU_OUTPUT_COST_PER_MILLION) / 1_000_000
+
+    // Extract text content from response
+    const textBlock = response.content.find((b) => b.type === "text")
+    if (!textBlock || textBlock.type !== "text") {
+      return { ...fallback, costUsd }
+    }
+
+    // Parse JSON response, handling markdown code fences
+    const jsonText = stripMarkdownCodeFences(textBlock.text)
+    const parsed = JSON.parse(jsonText)
+
+    const extractedText: string | null = parsed.extracted_text ?? null
+    const cleanedBytes = extractedText ? Buffer.byteLength(extractedText, "utf8") : 0
+
+    // Validate LLM output against known union values to prevent type unsoundness
+    const VALID_RELEVANCE = new Set(["high", "medium", "low", "none"])
+    const VALID_CONTENT_TYPE = new Set([
+      "obituary",
+      "profile",
+      "news",
+      "biography",
+      "interview",
+      "other",
+    ])
+
+    return {
+      extractedText,
+      articleTitle: parsed.article_title ?? input.metadata.title,
+      publication: parsed.publication ?? input.metadata.publication,
+      author: parsed.author ?? input.metadata.author,
+      publishDate: parsed.publish_date ?? input.metadata.publishDate,
+      relevance: VALID_RELEVANCE.has(parsed.relevance)
+        ? (parsed.relevance as CleanedContent["relevance"])
+        : "medium",
+      contentType: VALID_CONTENT_TYPE.has(parsed.content_type)
+        ? (parsed.content_type as CleanedContent["contentType"])
+        : "other",
+      url,
+      domain,
+      originalBytes,
+      cleanedBytes,
+      costUsd,
+    }
+  } catch {
+    // On any failure (API error, JSON parse error, etc.), return fallback
+    return fallback
+  }
+}
+
+/**
+ * Determine whether content with the given relevance score should be
+ * passed to the final synthesis stage.
+ *
+ * Returns true for "high" and "medium" relevance, false for "low" and "none".
+ */
+export function shouldPassToSynthesis(relevance: string): boolean {
+  return relevance === "high" || relevance === "medium"
 }
