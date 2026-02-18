@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { MemoryRouter } from "react-router-dom"
 import BiographiesTab from "./BiographiesTab"
@@ -210,6 +210,93 @@ describe("BiographiesTab", () => {
     // Should show the batch status panel with active state
     await waitFor(() => {
       expect(screen.getByText("Batch processing in progress...")).toBeInTheDocument()
+    })
+  })
+
+  it("renders new filter dropdowns", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          actors: [],
+          pagination: { page: 1, pageSize: 50, totalCount: 0, totalPages: 0 },
+          stats: { totalActors: 0, withBiography: 0, withoutBiography: 0 },
+        }),
+    })
+
+    renderComponent()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Vital Status")).toBeInTheDocument()
+      expect(screen.getByLabelText("Wikipedia")).toBeInTheDocument()
+      expect(screen.getByLabelText("IMDb")).toBeInTheDocument()
+      expect(screen.getByLabelText("Enriched Bio")).toBeInTheDocument()
+    })
+  })
+
+  it("passes sortBy param when clicking column headers", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          actors: [
+            {
+              id: 1,
+              tmdbId: 12345,
+              name: "John Wayne",
+              popularity: 10.5,
+              hasBiography: false,
+              generatedAt: null,
+              hasWikipedia: true,
+              hasImdb: true,
+            },
+          ],
+          pagination: { page: 1, pageSize: 50, totalCount: 1, totalPages: 1 },
+          stats: { totalActors: 1, withBiography: 0, withoutBiography: 1 },
+        }),
+    })
+
+    renderComponent()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("John Wayne").length).toBeGreaterThanOrEqual(1)
+    })
+
+    // Click the "Name" sort header
+    const nameHeader = screen.getByRole("button", { name: /sort by name/i })
+    fireEvent.click(nameHeader)
+
+    await waitFor(() => {
+      const lastCall = mockFetch.mock.calls[mockFetch.mock.calls.length - 1]
+      const url = lastCall[0] as string
+      expect(url).toContain("sortBy=name")
+    })
+  })
+
+  it("passes filter params when changing dropdowns", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          actors: [],
+          pagination: { page: 1, pageSize: 50, totalCount: 0, totalPages: 0 },
+          stats: { totalActors: 0, withBiography: 0, withoutBiography: 0 },
+        }),
+    })
+
+    renderComponent()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Vital Status")).toBeInTheDocument()
+    })
+
+    // Change vital status to "deceased"
+    fireEvent.change(screen.getByLabelText("Vital Status"), { target: { value: "deceased" } })
+
+    await waitFor(() => {
+      const lastCall = mockFetch.mock.calls[mockFetch.mock.calls.length - 1]
+      const url = lastCall[0] as string
+      expect(url).toContain("vitalStatus=deceased")
     })
   })
 
