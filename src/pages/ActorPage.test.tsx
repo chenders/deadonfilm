@@ -681,5 +681,72 @@ describe("ActorPage", () => {
 
       expect(screen.queryByTestId("factor-badge")).not.toBeInTheDocument()
     })
+
+    it("renders life factor badges from biographyDetails", async () => {
+      vi.mocked(api.getActor).mockResolvedValue({
+        ...mockDeceasedActor,
+        biographyDetails: {
+          narrativeTeaser: "A remarkable person.",
+          narrative: null,
+          narrativeConfidence: null,
+          lifeNotableFactors: ["military_service", "scholar"],
+          birthplaceDetails: null,
+          familyBackground: null,
+          education: null,
+          preFameLife: null,
+          fameCatalyst: null,
+          personalStruggles: null,
+          relationships: null,
+          lesserKnownFacts: [],
+          sources: null,
+        },
+      })
+
+      renderWithProviders(<ActorPage />, {
+        initialEntries: ["/actor/deceased-actor-67890"],
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      // Death factors (3) + life factors (2) = 5 total badges
+      const badges = screen.getAllByTestId("factor-badge")
+      expect(badges).toHaveLength(5)
+      expect(screen.getByText("Military Service")).toBeInTheDocument()
+      expect(screen.getByText("Scholar")).toBeInTheDocument()
+    })
+
+    it("renders only life factor badges when no death factors", async () => {
+      vi.mocked(api.getActor).mockResolvedValue({
+        ...mockLivingActor,
+        biographyDetails: {
+          narrativeTeaser: "A remarkable person.",
+          narrative: null,
+          narrativeConfidence: null,
+          lifeNotableFactors: ["prodigy", "multiple_careers"],
+          birthplaceDetails: null,
+          familyBackground: null,
+          education: null,
+          preFameLife: null,
+          fameCatalyst: null,
+          personalStruggles: null,
+          relationships: null,
+          lesserKnownFacts: [],
+          sources: null,
+        },
+      })
+
+      renderWithProviders(<ActorPage />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+      })
+
+      const badges = screen.getAllByTestId("factor-badge")
+      expect(badges).toHaveLength(2)
+      expect(screen.getByText("Prodigy")).toBeInTheDocument()
+      expect(screen.getByText("Multiple Careers")).toBeInTheDocument()
+    })
   })
 })
