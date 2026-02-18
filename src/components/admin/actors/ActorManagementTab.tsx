@@ -560,7 +560,7 @@ export default function ActorManagementTab() {
                         ? [
                             {
                               label: "Enriched Bio",
-                              value: formatRelativeTime(actor.bio_enriched_at),
+                              value: formatRelativeTime(actor.bio_enriched_at ?? null),
                             },
                           ]
                         : []),
@@ -663,7 +663,7 @@ export default function ActorManagementTab() {
                     </tr>
                   ) : (
                     data.items.map((actor) => {
-                      const profileUrl = getProfileUrl(actor.profile_path, "w45")
+                      const profileUrl = getProfileUrl(actor.profile_path ?? null, "w45")
                       return (
                         <tr
                           key={actor.id}
