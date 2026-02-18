@@ -339,9 +339,9 @@ export class BiographyEnrichmentOrchestrator {
       }
 
       // Check per-actor cost limit
-      if (totalSourceCost >= this.config.costLimits.maxCostPerActor) {
+      if (totalCost >= this.config.costLimits.maxCostPerActor) {
         console.log(
-          `    Per-actor cost limit reached ($${totalSourceCost.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
+          `    Per-actor cost limit reached ($${totalCost.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
         )
         newrelic.recordCustomEvent("BioCostLimitPerActor", {
           actorId: actor.id,
