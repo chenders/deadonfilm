@@ -1,0 +1,392 @@
+/**
+ * Biography Enrichment Orchestrator
+ *
+ * Coordinates multiple biography data sources to enrich actor biographies with
+ * personal life information (childhood, education, family, relationships,
+ * pre-fame life). All raw source data is accumulated and sent to Claude
+ * synthesis (Stage 3) for structured narrative generation.
+ *
+ * Simpler than the death enrichment orchestrator:
+ * - No New Relic integration
+ * - No StatusBar
+ * - No URL resolution
+ * - No browser fetching
+ * - No first-wins merge — all raw data goes to Claude synthesis
+ */
+
+import type {
+  ActorForBiography,
+  BiographyEnrichmentConfig,
+  BiographyResult,
+  RawBiographySourceData,
+  BiographySourceEntry,
+} from "./types.js"
+import { DEFAULT_BIOGRAPHY_CONFIG } from "./types.js"
+import { BaseBiographySource } from "./base-source.js"
+import { BiographyWebSearchBase } from "./sources/web-search-base.js"
+import { synthesizeBiography } from "./claude-cleanup.js"
+
+// Source imports — Structured Data (free)
+import { WikidataBiographySource } from "./sources/wikidata.js"
+import { WikipediaBiographySource } from "./sources/wikipedia.js"
+
+// Source imports — Reference Sites
+import { BritannicaBiographySource } from "./sources/britannica.js"
+import { BiographyComSource } from "./sources/biography-com.js"
+
+// Source imports — Web Search
+import { GoogleBiographySearch } from "./sources/google-search.js"
+import { BingBiographySearch } from "./sources/bing-search.js"
+import { DuckDuckGoBiographySearch } from "./sources/duckduckgo.js"
+import { BraveBiographySearch } from "./sources/brave-search.js"
+
+// Source imports — News
+import { GuardianBiographySource } from "./sources/guardian.js"
+import { NYTimesBiographySource } from "./sources/nytimes.js"
+import { APNewsBiographySource } from "./sources/ap-news.js"
+import { BBCNewsBiographySource } from "./sources/bbc-news.js"
+import { PeopleBiographySource } from "./sources/people.js"
+
+// Source imports — Obituary Sites
+import { LegacyBiographySource } from "./sources/legacy.js"
+import { FindAGraveBiographySource } from "./sources/findagrave.js"
+
+// Source imports — Historical Archives
+import { InternetArchiveBiographySource } from "./sources/internet-archive.js"
+import { ChroniclingAmericaBiographySource } from "./sources/chronicling-america.js"
+import { TroveBiographySource } from "./sources/trove.js"
+import { EuropeanaBiographySource } from "./sources/europeana.js"
+
+/** Minimum number of high-quality sources before early stopping */
+const EARLY_STOP_SOURCE_COUNT = 3
+
+/**
+ * Main orchestrator for biography enrichment.
+ *
+ * Tries sources in priority order, accumulates raw data from all successful
+ * sources, then runs Claude synthesis to produce structured BiographyData.
+ */
+export class BiographyEnrichmentOrchestrator {
+  private config: BiographyEnrichmentConfig
+  private sources: BaseBiographySource[]
+
+  constructor(config?: Partial<BiographyEnrichmentConfig>) {
+    this.config = { ...DEFAULT_BIOGRAPHY_CONFIG, ...config }
+    this.sources = this.initializeSources()
+  }
+
+  /**
+   * Initialize data sources based on configuration.
+   * Filters by source category and availability.
+   */
+  private initializeSources(): BaseBiographySource[] {
+    const sources: BaseBiographySource[] = []
+
+    // Phase 1: Free structured data (Wikidata, Wikipedia)
+    if (this.config.sourceCategories.free) {
+      const freeSources: BaseBiographySource[] = [
+        new WikidataBiographySource(),
+        new WikipediaBiographySource(),
+      ]
+      for (const source of freeSources) {
+        if (source.isAvailable()) {
+          sources.push(source)
+        }
+      }
+    }
+
+    // Phase 2: Reference sites (Britannica, Biography.com)
+    if (this.config.sourceCategories.reference) {
+      const referenceSources: BaseBiographySource[] = [
+        new BritannicaBiographySource(),
+        new BiographyComSource(),
+      ]
+      for (const source of referenceSources) {
+        if (source.isAvailable()) {
+          sources.push(source)
+        }
+      }
+    }
+
+    // Phase 3: Web search (Google, Bing, DuckDuckGo, Brave)
+    if (this.config.sourceCategories.webSearch) {
+      const webSearchSources: BaseBiographySource[] = [
+        new GoogleBiographySearch(),
+        new BingBiographySearch(),
+        new DuckDuckGoBiographySearch(),
+        new BraveBiographySearch(),
+      ]
+      for (const source of webSearchSources) {
+        if (source.isAvailable()) {
+          sources.push(source)
+        }
+      }
+    }
+
+    // Phase 4: News sources (Guardian, NYT, AP, BBC, People)
+    if (this.config.sourceCategories.news) {
+      const newsSources: BaseBiographySource[] = [
+        new GuardianBiographySource(),
+        new NYTimesBiographySource(),
+        new APNewsBiographySource(),
+        new BBCNewsBiographySource(),
+        new PeopleBiographySource(),
+      ]
+      for (const source of newsSources) {
+        if (source.isAvailable()) {
+          sources.push(source)
+        }
+      }
+    }
+
+    // Phase 5: Obituary sites (Legacy, FindAGrave)
+    if (this.config.sourceCategories.obituary) {
+      const obituarySources: BaseBiographySource[] = [
+        new LegacyBiographySource(),
+        new FindAGraveBiographySource(),
+      ]
+      for (const source of obituarySources) {
+        if (source.isAvailable()) {
+          sources.push(source)
+        }
+      }
+    }
+
+    // Phase 6: Historical archives
+    if (this.config.sourceCategories.archives) {
+      const archiveSources: BaseBiographySource[] = [
+        new InternetArchiveBiographySource(),
+        new ChroniclingAmericaBiographySource(),
+        new TroveBiographySource(),
+        new EuropeanaBiographySource(),
+      ]
+      for (const source of archiveSources) {
+        if (source.isAvailable()) {
+          sources.push(source)
+        }
+      }
+    }
+
+    // Configure web search AI cleaning if enabled
+    if (this.config.contentCleaning.haikuEnabled && !this.config.contentCleaning.mechanicalOnly) {
+      for (const source of sources) {
+        if (source instanceof BiographyWebSearchBase) {
+          source.setConfig({ useAiCleaning: true })
+        }
+      }
+    }
+
+    console.log(`Initialized ${sources.length} biography sources:`)
+    for (const source of sources) {
+      console.log(
+        `  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`}, reliability: ${source.reliabilityScore.toFixed(2)})`
+      )
+    }
+
+    return sources
+  }
+
+  /**
+   * Enrich a single actor with biography data.
+   *
+   * Tries sources in priority order, accumulates raw data from successful lookups,
+   * then runs Claude synthesis to produce structured BiographyData.
+   */
+  async enrichActor(actor: ActorForBiography): Promise<BiographyResult> {
+    const startTime = Date.now()
+    let totalCost = 0
+    let sourcesAttempted = 0
+    let sourcesSucceeded = 0
+    const allSources: BiographySourceEntry[] = []
+    const rawSources: RawBiographySourceData[] = []
+    let highQualityCount = 0
+
+    console.log(`\nEnriching biography: ${actor.name} (ID: ${actor.id})`)
+
+    // Try each source in order
+    for (const source of this.sources) {
+      sourcesAttempted++
+
+      console.log(`  Trying ${source.name}...`)
+
+      try {
+        const lookupResult = await source.lookup(actor)
+
+        // Track cost
+        const sourceCost = lookupResult.source.costUsd || 0
+        totalCost += sourceCost
+
+        // Record source attempt
+        allSources.push(lookupResult.source)
+
+        if (!lookupResult.success || !lookupResult.data) {
+          console.log(`    Failed: ${lookupResult.error || "No data"}`)
+          continue
+        }
+
+        // Successful lookup
+        sourcesSucceeded++
+        const srcReliability = source.reliabilityScore
+        console.log(
+          `    Success! Content: ${lookupResult.source.confidence.toFixed(2)} | Reliability: ${srcReliability.toFixed(2)}`
+        )
+
+        // Accumulate raw data for synthesis
+        rawSources.push(lookupResult.data)
+
+        // Check dual threshold for high-quality source counting
+        const contentMet = lookupResult.source.confidence >= this.config.confidenceThreshold
+        const reliabilityMet =
+          !this.config.useReliabilityThreshold || srcReliability >= this.config.reliabilityThreshold
+
+        if (contentMet && reliabilityMet) {
+          highQualityCount++
+        }
+
+        // Early stopping: if we have enough high-quality sources, stop to save cost
+        if (highQualityCount >= EARLY_STOP_SOURCE_COUNT) {
+          console.log(
+            `    ${highQualityCount} high-quality sources collected, stopping early to save cost`
+          )
+          break
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Unknown error"
+        console.log(`    Error: ${errorMsg}`)
+        // Continue to next source
+        continue
+      }
+
+      // Check per-actor cost limit
+      if (totalCost >= this.config.costLimits.maxCostPerActor) {
+        console.log(
+          `    Per-actor cost limit reached ($${totalCost.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
+        )
+        break
+      }
+    }
+
+    // Run Claude synthesis if we have raw sources
+    let synthesisData = null
+    if (rawSources.length > 0) {
+      console.log(`  Running Claude synthesis on ${rawSources.length} sources...`)
+      try {
+        const synthesisResult = await synthesizeBiography(actor, rawSources, {
+          model: this.config.synthesisModel,
+        })
+
+        totalCost += synthesisResult.costUsd
+        synthesisData = synthesisResult.data
+
+        if (synthesisResult.error) {
+          console.log(`    Synthesis error: ${synthesisResult.error}`)
+        } else {
+          console.log(`    Synthesis complete, cost: $${synthesisResult.costUsd.toFixed(4)}`)
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Unknown error"
+        console.log(`    Synthesis failed: ${errorMsg}`)
+      }
+    } else {
+      console.log(`  No source data collected, skipping synthesis`)
+    }
+
+    const processingTimeMs = Date.now() - startTime
+    console.log(
+      `  Complete in ${processingTimeMs}ms, cost: $${totalCost.toFixed(4)}, sources: ${sourcesSucceeded}/${sourcesAttempted}`
+    )
+
+    const result: BiographyResult = {
+      actorId: actor.id,
+      data: synthesisData,
+      sources: allSources,
+      rawSources,
+      cleanedData: synthesisData ?? undefined,
+      stats: {
+        sourcesAttempted,
+        sourcesSucceeded,
+        totalCostUsd: totalCost,
+        processingTimeMs,
+      },
+    }
+
+    // Set error if no data at all
+    if (!synthesisData && rawSources.length === 0) {
+      result.error = "No biographical data found from any source"
+    } else if (!synthesisData && rawSources.length > 0) {
+      result.error = "Sources collected but synthesis failed"
+    }
+
+    return result
+  }
+
+  /**
+   * Enrich a batch of actors with biography data.
+   *
+   * Processes actors sequentially to avoid rate limits. Respects batch-level
+   * total cost limit.
+   */
+  async enrichBatch(actors: ActorForBiography[]): Promise<Map<number, BiographyResult>> {
+    const results = new Map<number, BiographyResult>()
+    let batchTotalCost = 0
+
+    console.log(`\n${"=".repeat(60)}`)
+    console.log(`Starting biography batch enrichment for ${actors.length} actors`)
+    console.log(`Sources: ${this.sources.map((s) => s.name).join(", ")}`)
+    console.log(`Per-actor cost limit: $${this.config.costLimits.maxCostPerActor}`)
+    console.log(`Total cost limit: $${this.config.costLimits.maxTotalCost}`)
+    console.log(`${"=".repeat(60)}`)
+
+    for (let i = 0; i < actors.length; i++) {
+      const actor = actors[i]
+      console.log(`\n[${i + 1}/${actors.length}] Processing ${actor.name}`)
+
+      const result = await this.enrichActor(actor)
+      results.set(actor.id, result)
+
+      batchTotalCost += result.stats.totalCostUsd
+
+      // Check batch total cost limit
+      if (batchTotalCost >= this.config.costLimits.maxTotalCost) {
+        console.log(
+          `\nBatch total cost limit reached ($${batchTotalCost.toFixed(4)} >= $${this.config.costLimits.maxTotalCost})`
+        )
+        console.log(`Processed ${i + 1} of ${actors.length} actors before limit`)
+        break
+      }
+
+      // Add delay between actors to be respectful to APIs
+      if (i < actors.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500))
+      }
+    }
+
+    // Log batch summary
+    const enrichedCount = Array.from(results.values()).filter((r) => r.data !== null).length
+    console.log(`\n${"=".repeat(60)}`)
+    console.log(`Biography batch enrichment complete!`)
+    console.log(`  Actors processed: ${results.size}`)
+    console.log(`  Actors enriched:  ${enrichedCount}`)
+    console.log(
+      `  Fill rate:        ${results.size > 0 ? ((enrichedCount / results.size) * 100).toFixed(1) : 0}%`
+    )
+    console.log(`  Total cost:       $${batchTotalCost.toFixed(4)}`)
+    console.log(`${"=".repeat(60)}`)
+
+    return results
+  }
+
+  /**
+   * Get the number of initialized sources (for logging/testing).
+   */
+  getSourceCount(): number {
+    return this.sources.length
+  }
+
+  /**
+   * Get the names of initialized sources (for logging/testing).
+   */
+  getSourceNames(): string[] {
+    return this.sources.map((s) => s.name)
+  }
+}

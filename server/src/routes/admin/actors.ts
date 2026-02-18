@@ -1343,4 +1343,101 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
   }
 })
 
+// ============================================================================
+// POST /admin/api/actors/:id/enrich-bio-inline
+// Run biography enrichment for a single actor inline (no BullMQ)
+// ============================================================================
+
+router.post("/:id(\\d+)/enrich-bio-inline", async (req: Request, res: Response): Promise<void> => {
+  const pool = getPool()
+  const actorId = parseInt(req.params.id, 10)
+
+  if (isNaN(actorId)) {
+    res.status(400).json({ error: { message: "Invalid actor ID" } })
+    return
+  }
+
+  const startTime = Date.now()
+
+  try {
+    // Fetch actor
+    const actorResult = await pool.query(
+      `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
+              wikipedia_url, biography AS biography_raw_tmdb, biography, place_of_birth
+       FROM actors WHERE id = $1`,
+      [actorId]
+    )
+
+    if (actorResult.rows.length === 0) {
+      res.status(404).json({ error: { message: "Actor not found" } })
+      return
+    }
+
+    const actor = actorResult.rows[0]
+
+    // Dynamic imports to avoid loading all sources at route module load
+    const { BiographyEnrichmentOrchestrator } =
+      await import("../../lib/biography-sources/orchestrator.js")
+    const { writeBiographyToProduction } =
+      await import("../../lib/biography-enrichment-db-writer.js")
+
+    // Run orchestrator
+    const orchestrator = new BiographyEnrichmentOrchestrator()
+    const result = await orchestrator.enrichActor(actor)
+
+    const durationMs = Date.now() - startTime
+
+    if (!result.data || !result.data.hasSubstantiveContent) {
+      res.json({
+        success: true,
+        enriched: false,
+        message: result.error || "No substantive biographical content found",
+        durationMs,
+        stats: result.stats,
+      })
+      return
+    }
+
+    // Write to production
+    await writeBiographyToProduction(pool, actorId, result.data, result.sources)
+
+    // Log admin action
+    await logAdminAction({
+      action: "inline-enrich-bio",
+      resourceType: "actor",
+      resourceId: actorId,
+      details: {
+        actorName: actor.name,
+        narrativeLength: result.data.narrative?.length || 0,
+        factorsCount: result.data.lifeNotableFactors.length,
+        sourcesAttempted: result.stats.sourcesAttempted,
+        sourcesSucceeded: result.stats.sourcesSucceeded,
+        costUsd: result.stats.totalCostUsd,
+        durationMs,
+      },
+      ipAddress: req.ip || undefined,
+      userAgent: req.get("user-agent") || undefined,
+    })
+
+    logger.info({ actorId, durationMs }, "Inline biography enrichment completed")
+
+    res.json({
+      success: true,
+      enriched: true,
+      data: {
+        narrativeTeaser: result.data.narrativeTeaser,
+        narrativeConfidence: result.data.narrativeConfidence,
+        lifeNotableFactors: result.data.lifeNotableFactors,
+        hasSubstantiveContent: result.data.hasSubstantiveContent,
+      },
+      durationMs,
+      stats: result.stats,
+    })
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error"
+    logger.error({ error, actorId }, "Failed to run inline biography enrichment")
+    res.status(500).json({ error: { message: `Biography enrichment failed: ${errorMsg}` } })
+  }
+})
+
 export default router

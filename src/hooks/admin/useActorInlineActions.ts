@@ -37,6 +37,25 @@ interface EnrichInlineResult {
   message?: string
 }
 
+interface EnrichBioInlineResult {
+  success: boolean
+  enriched: boolean
+  message?: string
+  data?: {
+    narrativeTeaser: string | null
+    narrativeConfidence: string | null
+    lifeNotableFactors: string[]
+    hasSubstantiveContent: boolean
+  }
+  durationMs: number
+  stats: {
+    sourcesAttempted: number
+    sourcesSucceeded: number
+    totalCostUsd: number
+    processingTimeMs: number
+  }
+}
+
 interface GenerateBiographyResult {
   success: boolean
   result: {
@@ -80,6 +99,21 @@ async function regenerateBiography(actorId: number): Promise<GenerateBiographyRe
   if (!response.ok) {
     const errorData = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
     throw new Error(errorData.error?.message || "Failed to generate biography")
+  }
+
+  return response.json()
+}
+
+async function enrichBioInline(actorId: number): Promise<EnrichBioInlineResult> {
+  const response = await fetch(adminApi(`/actors/${actorId}/enrich-bio-inline`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    const errorData = (await response.json().catch(() => ({}))) as { error?: { message?: string } }
+    throw new Error(errorData.error?.message || `HTTP error ${response.status}`)
   }
 
   return response.json()
@@ -154,6 +188,29 @@ export function useInlineEnrichDeath(actorId: number) {
     },
     onError: (error: Error) => {
       toast.error(error.message)
+    },
+  })
+}
+
+export function useInlineEnrichBio(actorId: number) {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: () => enrichBioInline(actorId),
+    onSuccess: (data: EnrichBioInlineResult) => {
+      queryClient.invalidateQueries({ queryKey: ["actors"] })
+      queryClient.invalidateQueries({ queryKey: ["admin", "actor-metadata", actorId] })
+      queryClient.invalidateQueries({ queryKey: ["actor"] })
+
+      if (data.enriched) {
+        toast.success(`Biography enriched ($${data.stats.totalCostUsd.toFixed(3)})`)
+      } else {
+        toast.info(data.message || "No biographical content found")
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Bio enrichment failed: ${error.message}`)
     },
   })
 }

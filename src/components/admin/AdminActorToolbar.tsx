@@ -1,6 +1,10 @@
 import { useOptionalAdminAuth } from "@/hooks/useAdminAuth"
 import { useOptionalAdminMode } from "@/contexts/AdminModeContext"
-import { useRegenerateBiography, useInlineEnrichDeath } from "@/hooks/admin/useActorInlineActions"
+import {
+  useRegenerateBiography,
+  useInlineEnrichDeath,
+  useInlineEnrichBio,
+} from "@/hooks/admin/useActorInlineActions"
 import AdminActionButton from "./AdminActionButton"
 import { RefreshIcon, GearIcon, PencilIcon } from "@/components/icons"
 
@@ -26,6 +30,7 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
   const { adminModeEnabled, toggleAdminMode } = useOptionalAdminMode()
   const regenBio = useRegenerateBiography(actorId)
   const enrichDeath = useInlineEnrichDeath(actorId)
+  const enrichBio = useInlineEnrichBio(actorId)
 
   return (
     <div className="mb-2 flex items-center justify-end gap-1.5" data-testid="admin-actor-toolbar">
@@ -62,6 +67,16 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
         isPending={enrichDeath.isPending}
         isSuccess={enrichDeath.isSuccess}
         isError={enrichDeath.isError}
+      />
+
+      <AdminActionButton
+        icon={<RefreshIcon size={14} />}
+        label="Enrich bio"
+        title="Enrich biography"
+        onClick={() => enrichBio.mutate()}
+        isPending={enrichBio.isPending}
+        isSuccess={enrichBio.isSuccess}
+        isError={enrichBio.isError}
       />
 
       <a

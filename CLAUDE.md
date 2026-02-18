@@ -45,7 +45,7 @@ Dead on Film is a web application that tracks deceased actors across movies and 
 - **Caching**: Redis 7 via `ioredis`. Connection: `REDIS_URL`
 - **Job queue**: BullMQ on separate Redis instance. Connection: `REDIS_JOBS_URL`
 - **Routes**: `server/src/routes/` (public API) and `server/src/routes/admin/` (authenticated)
-- **Library modules**: `server/src/lib/` — database queries, death sources, jobs, mortality stats, entity linker, Claude batch API
+- **Library modules**: `server/src/lib/` — database queries, death sources, biography sources, jobs, mortality stats, entity linker, Claude batch API
 - **Scripts**: `server/scripts/` — seeding, backfilling, enrichment, sync, monitoring (most use Commander.js)
 - **Migrations**: `server/migrations/*.{cjs,js}` (node-pg-migrate)
 - **Logging**: Pino
@@ -77,6 +77,8 @@ server/src/                   # Backend
 ├── routes/                   # Express routes (public + admin/)
 ├── lib/                      # Core library modules
 │   ├── death-sources/        # Death enrichment system (orchestrator, 50+ sources, AI providers)
+│   ├── biography-sources/    # Biography enrichment system (orchestrator, 19 sources, Claude synthesis)
+│   ├── biography/            # Biography utilities (golden test cases, Wikipedia fetcher)
 │   ├── jobs/                 # BullMQ queue manager, workers, handlers
 │   ├── db/                   # Database query modules
 │   ├── claude-batch/         # Claude Batch API integration
@@ -97,6 +99,7 @@ e2e/                          # Playwright tests and screenshots
 - `/api/deaths/*` - Death discovery pages (by cause, decade, notable, unnatural)
 - `/api/stats/*` - Recent deaths, COVID deaths, featured movie, trivia
 - `/admin/api/*` - Admin dashboard (auth required)
+- `/admin/api/biography-enrichment/*` - Biography enrichment management
 
 ### Key Dependencies
 
@@ -112,7 +115,7 @@ e2e/                          # Playwright tests and screenshots
 - `TMDB_API_TOKEN` - TMDB API access
 
 **Strongly recommended** (required for AI enrichment / highest quality results):
-- `ANTHROPIC_API_KEY` - Claude API for death enrichment and biography generation
+- `ANTHROPIC_API_KEY` - Claude API for death enrichment and biography enrichment synthesis
 
 **Infrastructure**:
 - `DATABASE_URL` - PostgreSQL connection string

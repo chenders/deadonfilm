@@ -110,6 +110,22 @@ export interface ActorDeathInfo {
   relatedCelebrities: RelatedCelebrity[] | null
 }
 
+export interface BiographyDetails {
+  narrativeTeaser: string | null
+  narrative: string | null
+  narrativeConfidence: "high" | "medium" | "low" | null
+  lifeNotableFactors: string[]
+  birthplaceDetails: string | null
+  familyBackground: string | null
+  education: string | null
+  preFameLife: string | null
+  fameCatalyst: string | null
+  personalStruggles: string | null
+  relationships: string | null
+  lesserKnownFacts: string[]
+  sources: Record<string, unknown> | null
+}
+
 export interface ActorProfileResponse {
   actor: {
     id: number
@@ -127,6 +143,7 @@ export interface ActorProfileResponse {
   analyzedFilmography: ActorFilmographyMovie[]
   analyzedTVFilmography: ActorFilmographyShow[]
   deathInfo: ActorDeathInfo | null
+  biographyDetails: BiographyDetails | null
 }
 
 // Death Watch types

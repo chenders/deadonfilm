@@ -67,6 +67,21 @@ interface ActorProfileResponse {
       slug: string | null
     }> | null
   } | null
+  biographyDetails: {
+    narrativeTeaser: string | null
+    narrative: string | null
+    narrativeConfidence: "high" | "medium" | "low" | null
+    lifeNotableFactors: string[]
+    birthplaceDetails: string | null
+    familyBackground: string | null
+    education: string | null
+    preFameLife: string | null
+    fameCatalyst: string | null
+    personalStruggles: string | null
+    relationships: string | null
+    lesserKnownFacts: string[]
+    sources: Record<string, unknown> | null
+  } | null
 }
 
 /**
@@ -142,10 +157,36 @@ export async function getActor(req: Request, res: Response) {
 
     // Fetch actor details from TMDB using tmdb_id (if available, otherwise use actor.id)
     const tmdbIdForFetch = actorRecord.tmdb_id ?? actorRecord.id
-    const [person, filmography, tvFilmography] = await Promise.all([
+    const [person, filmography, tvFilmography, bioRow] = await Promise.all([
       getPersonDetails(tmdbIdForFetch),
       getActorFilmography(tmdbIdForFetch),
       getActorShowFilmography(tmdbIdForFetch),
+      getPool()
+        .query<{
+          narrative_teaser: string | null
+          narrative: string | null
+          narrative_confidence: string | null
+          life_notable_factors: string[] | null
+          birthplace_details: string | null
+          family_background: string | null
+          education: string | null
+          pre_fame_life: string | null
+          fame_catalyst: string | null
+          personal_struggles: string | null
+          relationships: string | null
+          lesser_known_facts: string[] | null
+          sources: Record<string, unknown> | null
+        }>(
+          `SELECT narrative_teaser, narrative, narrative_confidence,
+                  life_notable_factors, birthplace_details, family_background,
+                  education, pre_fame_life, fame_catalyst,
+                  personal_struggles, relationships, lesser_known_facts,
+                  sources
+           FROM actor_biography_details
+           WHERE actor_id = $1`,
+          [actorRecord.id]
+        )
+        .then((r) => r.rows[0] ?? null),
     ])
 
     // Get death info if deceased
@@ -230,6 +271,23 @@ export async function getActor(req: Request, res: Response) {
       analyzedFilmography: filmography,
       analyzedTVFilmography: tvFilmography,
       deathInfo,
+      biographyDetails: bioRow
+        ? {
+            narrativeTeaser: bioRow.narrative_teaser || null,
+            narrative: bioRow.narrative || null,
+            narrativeConfidence: bioRow.narrative_confidence as "high" | "medium" | "low" | null,
+            lifeNotableFactors: bioRow.life_notable_factors || [],
+            birthplaceDetails: bioRow.birthplace_details || null,
+            familyBackground: bioRow.family_background || null,
+            education: bioRow.education || null,
+            preFameLife: bioRow.pre_fame_life || null,
+            fameCatalyst: bioRow.fame_catalyst || null,
+            personalStruggles: bioRow.personal_struggles || null,
+            relationships: bioRow.relationships || null,
+            lesserKnownFacts: bioRow.lesser_known_facts || [],
+            sources: bioRow.sources || null,
+          }
+        : null,
     }
 
     // Cache the response

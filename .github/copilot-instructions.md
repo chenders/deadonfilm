@@ -86,7 +86,7 @@ import { Command } from "commander"
 - **Entry point**: `server/src/index.ts`
 - **Worker**: `server/src/worker.ts` (BullMQ job processor)
 - **Routes**: `server/src/routes/` (public API) and `server/src/routes/admin/` (authenticated)
-- **Library modules**: `server/src/lib/` — database queries, death sources, jobs, mortality stats, entity linker, Claude batch API
+- **Library modules**: `server/src/lib/` — database queries, death sources, biography sources, jobs, mortality stats, entity linker, Claude batch API
 - **Scripts**: `server/scripts/` — seeding, backfilling, enrichment, sync, monitoring (most use Commander.js)
 - **Migrations**: `server/migrations/*.{cjs,js}` (node-pg-migrate)
 
@@ -109,6 +109,8 @@ import { Command } from "commander"
 | `movies` / `shows` / `episodes` | Content metadata with mortality stats |
 | `actor_movie_appearances` / `actor_show_appearances` | Links actors to content via `actor_id` (primary key) |
 | `actor_death_circumstances` | Enriched death details: narrative, sources, confidence |
+| `actor_biography_details` | Enriched biography: narrative, teaser, family, education, factors |
+| `biography_legacy` | One-time archive of old biography text before first enrichment |
 | `actuarial_life_tables` / `cohort_life_expectancy` | SSA mortality data |
 | `enrichment_runs` / `enrichment_run_actors` | Enrichment batch tracking |
 
@@ -259,6 +261,33 @@ The enrichment system tries sources in priority order, stopping when confidence 
 7. **Phase 7: AI Models** (optional, by ascending cost) - Gemini Flash through GPT-4o
 
 For full details, see `.claude/rules/death-enrichment.md`.
+
+---
+
+## Biography Enrichment
+
+The biography enrichment system generates personal life narratives (not career profiles) from ~19 data sources, synthesized by Claude:
+
+1. **Phase 1: Structured Data** (free) - Wikidata SPARQL, Wikipedia (AI section selection)
+2. **Phase 2: Reference Sites** - Britannica, Biography.com
+3. **Phase 3: Web Search** - Google, Bing, DuckDuckGo, Brave (with link following + career filtering)
+4. **Phase 4: News Sources** - Guardian, NYTimes, AP News, BBC, People
+5. **Phase 5: Obituary Sites** - Legacy.com, Find a Grave
+6. **Phase 6: Historical Archives** - Internet Archive, Chronicling America, Trove, Europeana
+
+### Key Differences from Death Enrichment
+
+- **Accumulates ALL raw data** for Claude synthesis (no first-wins merge)
+- **Three-stage content pipeline**: mechanical pre-clean → optional Haiku AI extraction → Claude synthesis
+- **Career content filtering**: `isCareerHeavyContent()` rejects pages dominated by filmography/awards
+- **Early stopping**: After 3+ high-quality sources meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
+- **COALESCE upsert**: DB writer preserves existing non-null values on re-enrichment
+
+### Content Focus
+
+Biographies should read like personal narratives: childhood, family, education, struggles, relationships. Career mentioned in 1-2 sentences max. No filmography, awards, or box office numbers.
+
+For full details, see `.claude/rules/biography-enrichment.md`.
 
 ---
 
