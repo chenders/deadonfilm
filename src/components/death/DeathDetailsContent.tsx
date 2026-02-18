@@ -11,7 +11,7 @@ import { LinkedText } from "@/components/death/LinkedText"
 import ConfidenceIndicator from "@/components/common/ConfidenceIndicator"
 import LowConfidenceWarning from "@/components/death/LowConfidenceWarning"
 import SourceList from "@/components/death/SourceList"
-import type { EntityLink, StoredEntityLinks } from "@/types"
+import type { DeathDetailsResponse, EntityLink, StoredEntityLinks } from "@/types"
 
 function getFieldLinks(
   entityLinks: StoredEntityLinks | undefined,
@@ -22,12 +22,22 @@ function getFieldLinks(
 
 interface DeathDetailsContentProps {
   slug: string
+  /** Pre-fetched data — if provided, skips internal useActorDeathDetails fetch */
+  data?: DeathDetailsResponse
+  /** If true, hides the "What We Know" heading (parent already shows it) */
+  hideOfficialHeading?: boolean
 }
 
-export default function DeathDetailsContent({ slug }: DeathDetailsContentProps) {
-  const { data, isLoading, error } = useActorDeathDetails(slug)
+export default function DeathDetailsContent({
+  slug,
+  data: externalData,
+  hideOfficialHeading,
+}: DeathDetailsContentProps) {
+  const { data: fetchedData, isLoading, error } = useActorDeathDetails(externalData ? "" : slug)
 
-  if (isLoading) {
+  const data = externalData ?? fetchedData
+
+  if (!externalData && isLoading) {
     return (
       <div className="space-y-4 py-4" data-testid="death-details-loading">
         {/* Skeleton loading */}
@@ -39,13 +49,15 @@ export default function DeathDetailsContent({ slug }: DeathDetailsContentProps) 
     )
   }
 
-  if (error || !data) {
+  if (!externalData && (error || !data)) {
     return (
       <p className="py-4 text-sm text-text-muted" data-testid="death-details-error">
         Unable to load death details.
       </p>
     )
   }
+
+  if (!data) return null
 
   const { circumstances, sources, entityLinks } = data
 
@@ -57,7 +69,9 @@ export default function DeathDetailsContent({ slug }: DeathDetailsContentProps) 
       {/* What We Know */}
       {circumstances.official && (
         <section data-testid="official-section">
-          <h3 className="mb-2 font-display text-base text-brown-dark">What We Know</h3>
+          {!hideOfficialHeading && (
+            <h3 className="mb-2 font-display text-base text-brown-dark">What We Know</h3>
+          )}
           <LinkedText
             text={circumstances.official}
             links={getFieldLinks(entityLinks, "circumstances")}

@@ -112,6 +112,7 @@ describe("DeathDetailsContent", () => {
     // What We Know
     expect(screen.getByTestId("official-section")).toBeInTheDocument()
     expect(screen.getByText(/stomach cancer at UCLA/)).toBeInTheDocument()
+    expect(screen.getByText("What We Know")).toBeInTheDocument()
 
     // Alternative Accounts
     expect(screen.getByTestId("rumored-section")).toBeInTheDocument()
@@ -210,5 +211,44 @@ describe("DeathDetailsContent", () => {
     })
     renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" />)
     expect(screen.getByTestId("low-confidence-warning")).toBeInTheDocument()
+  })
+
+  // Tests for new props: data and hideOfficialHeading
+
+  it("uses pre-fetched data and skips internal fetch", () => {
+    // When data prop is provided, useActorDeathDetails should be called with ""
+    mockUseActorDeathDetails.mockReturnValue({ data: undefined, isLoading: false, error: null })
+    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" data={fullData} />)
+
+    // Should render content from the provided data
+    expect(screen.getByTestId("death-details-content")).toBeInTheDocument()
+    expect(screen.getByText(/stomach cancer at UCLA/)).toBeInTheDocument()
+
+    // Hook was called with empty string (disabled)
+    expect(mockUseActorDeathDetails).toHaveBeenCalledWith("")
+  })
+
+  it("does not show loading/error states when data prop is provided", () => {
+    // Even if hook returns loading, pre-fetched data takes precedence
+    mockUseActorDeathDetails.mockReturnValue({ data: undefined, isLoading: true, error: null })
+    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" data={fullData} />)
+
+    expect(screen.queryByTestId("death-details-loading")).not.toBeInTheDocument()
+    expect(screen.getByTestId("death-details-content")).toBeInTheDocument()
+  })
+
+  it("hides What We Know heading when hideOfficialHeading is true", () => {
+    mockUseActorDeathDetails.mockReturnValue({ data: fullData, isLoading: false, error: null })
+    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" hideOfficialHeading />)
+
+    expect(screen.getByTestId("official-section")).toBeInTheDocument()
+    expect(screen.queryByText("What We Know")).not.toBeInTheDocument()
+  })
+
+  it("shows What We Know heading when hideOfficialHeading is false", () => {
+    mockUseActorDeathDetails.mockReturnValue({ data: fullData, isLoading: false, error: null })
+    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" />)
+
+    expect(screen.getByText("What We Know")).toBeInTheDocument()
   })
 })
