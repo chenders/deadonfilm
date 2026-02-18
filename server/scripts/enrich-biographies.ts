@@ -88,7 +88,7 @@ async function queryActorsByIds(pool: Pool, ids: number[]): Promise<ActorForBiog
   const placeholders = ids.map((_, i) => `$${i + 1}`).join(", ")
   const result = await pool.query(
     `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-            wikipedia_url, biography AS biography_raw_tmdb, biography, place_of_birth
+            wikipedia_url, biography AS biography_raw_tmdb, biography
      FROM actors
      WHERE id IN (${placeholders})`,
     ids
@@ -100,7 +100,7 @@ async function queryActorsByTmdbIds(pool: Pool, tmdbIds: number[]): Promise<Acto
   const placeholders = tmdbIds.map((_, i) => `$${i + 1}`).join(", ")
   const result = await pool.query(
     `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-            wikipedia_url, biography AS biography_raw_tmdb, biography, place_of_birth
+            wikipedia_url, biography AS biography_raw_tmdb, biography
      FROM actors
      WHERE tmdb_id IN (${placeholders})`,
     tmdbIds
@@ -113,7 +113,7 @@ async function queryGoldenTestActors(pool: Pool): Promise<ActorForBiography[]> {
   const placeholders = names.map((_, i) => `$${i + 1}`).join(", ")
   const result = await pool.query(
     `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-            wikipedia_url, biography AS biography_raw_tmdb, biography, place_of_birth
+            wikipedia_url, biography AS biography_raw_tmdb, biography
      FROM actors
      WHERE name IN (${placeholders})`,
     names
@@ -140,7 +140,7 @@ async function queryActorsByPopularity(
 
   const result = await pool.query(
     `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-            wikipedia_url, biography AS biography_raw_tmdb, biography, place_of_birth
+            wikipedia_url, biography AS biography_raw_tmdb, biography
      FROM actors
      WHERE ${conditions.join(" AND ")}
      ORDER BY popularity DESC NULLS LAST

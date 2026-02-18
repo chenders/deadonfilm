@@ -54,7 +54,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       const placeholders = actorIds.map((_, i) => `$${i + 1}`).join(", ")
       const result = await db.query(
         `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-                wikipedia_url, biography AS biography_raw_tmdb, biography, place_of_birth
+                wikipedia_url, biography AS biography_raw_tmdb, biography
          FROM actors
          WHERE id IN (${placeholders})
          ${!allowRegeneration ? "AND id NOT IN (SELECT actor_id FROM actor_biography_details)" : ""}`,
@@ -80,7 +80,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
 
       const result = await db.query(
         `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
-                wikipedia_url, biography AS biography_raw_tmdb, biography, place_of_birth
+                wikipedia_url, biography AS biography_raw_tmdb, biography
          FROM actors
          ${whereClause}
          ORDER BY tmdb_popularity DESC NULLS LAST
