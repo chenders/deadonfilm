@@ -225,14 +225,35 @@ router.post("/golden-test", async (req: Request, res: Response): Promise<void> =
       names
     )
 
+    if (actorsResult.rows.length === 0) {
+      res.status(400).json({
+        error: {
+          message: `None of the ${names.length} golden test actors found in database. Expected: ${names.join(", ")}`,
+        },
+      })
+      return
+    }
+
+    const missingActors = names.filter(
+      (name) => !actorsResult.rows.some((r: { name: string }) => r.name === name)
+    )
+
     const orchestrator = new BiographyEnrichmentOrchestrator()
     const resultsByName = new Map()
+    const errors: string[] = []
 
     for (const actor of actorsResult.rows) {
-      const result = await orchestrator.enrichActor(actor)
-      if (result.data && result.data.hasSubstantiveContent) {
-        await writeBiographyToProduction(pool, actor.id, result.data, result.sources)
-        resultsByName.set(actor.name, result.data)
+      try {
+        const result = await orchestrator.enrichActor(actor)
+        if (result.data && result.data.hasSubstantiveContent) {
+          await writeBiographyToProduction(pool, actor.id, result.data, result.sources)
+          resultsByName.set(actor.name, result.data)
+        } else {
+          errors.push(`${actor.name}: ${result.error || "No substantive content produced"}`)
+        }
+      } catch (actorError) {
+        const msg = actorError instanceof Error ? actorError.message : "Unknown error"
+        errors.push(`${actor.name}: ${msg}`)
       }
     }
 
@@ -245,6 +266,8 @@ router.post("/golden-test", async (req: Request, res: Response): Promise<void> =
       summary,
       actorsFound: actorsResult.rows.length,
       actorsExpected: GOLDEN_TEST_CASES.length,
+      missingActors: missingActors.length > 0 ? missingActors : undefined,
+      errors: errors.length > 0 ? errors : undefined,
     })
   } catch (error) {
     logger.error({ error }, "Failed to run golden test cases")
