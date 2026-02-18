@@ -7,6 +7,7 @@
  * Cost: ~$0.01-0.05 per actor using Sonnet (configurable model).
  */
 
+import newrelic from "newrelic"
 import Anthropic from "@anthropic-ai/sdk"
 import type { ActorForBiography, RawBiographySourceData, BiographyData } from "./types.js"
 import { BiographySourceType, VALID_LIFE_NOTABLE_FACTORS } from "./types.js"
@@ -211,19 +212,32 @@ export async function synthesizeBiography(
   let response: Anthropic.Message
   try {
     const anthropic = new Anthropic()
-    response = await anthropic.messages.create({
-      model,
-      max_tokens: MAX_TOKENS,
-      messages: [{ role: "user", content: prompt }],
+    // Wrap Claude API call in New Relic segment
+    response = await newrelic.startSegment("BioClaudeAPI", true, async () => {
+      return anthropic.messages.create({
+        model,
+        max_tokens: MAX_TOKENS,
+        messages: [{ role: "user", content: prompt }],
+      })
     })
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Unknown error"
+    newrelic.recordCustomEvent("BioClaudeAPIError", {
+      actorId: actor.id,
+      actorName: actor.name,
+      model,
+      error: errorMsg,
+    })
+    if (error instanceof Error) {
+      newrelic.noticeError(error, { actorId: actor.id, actorName: actor.name })
+    }
     return {
       data: null,
       costUsd: 0,
       model,
       inputTokens: 0,
       outputTokens: 0,
-      error: `Claude API error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      error: `Claude API error: ${errorMsg}`,
     }
   }
 
@@ -233,6 +247,17 @@ export async function synthesizeBiography(
   const costUsd =
     (inputTokens * INPUT_COST_PER_MILLION) / 1_000_000 +
     (outputTokens * OUTPUT_COST_PER_MILLION) / 1_000_000
+
+  // Record Claude API call in New Relic
+  newrelic.recordCustomEvent("BioClaudeAPICall", {
+    actorId: actor.id,
+    actorName: actor.name,
+    model,
+    inputTokens,
+    outputTokens,
+    costUsd,
+    purpose: "biography_synthesis",
+  })
 
   // Extract text content
   const textBlock = response.content.find((block) => block.type === "text")
@@ -253,13 +278,22 @@ export async function synthesizeBiography(
     const jsonText = stripMarkdownCodeFences(textBlock.text.trim())
     parsed = JSON.parse(jsonText) as Record<string, unknown>
   } catch (error) {
+    const parseErrorMsg = error instanceof Error ? error.message : "Unknown error"
+    newrelic.recordCustomEvent("BioClaudeParseError", {
+      actorId: actor.id,
+      actorName: actor.name,
+      error: parseErrorMsg,
+    })
+    if (error instanceof Error) {
+      newrelic.noticeError(error, { actorId: actor.id, actorName: actor.name })
+    }
     return {
       data: null,
       costUsd,
       model,
       inputTokens,
       outputTokens,
-      error: `Failed to parse Claude response as JSON: ${error instanceof Error ? error.message : "Unknown error"}`,
+      error: `Failed to parse Claude response as JSON: ${parseErrorMsg}`,
     }
   }
 
@@ -299,6 +333,18 @@ export async function synthesizeBiography(
     hasSubstantiveContent:
       typeof parsed.has_substantive_content === "boolean" ? parsed.has_substantive_content : false,
   }
+
+  // Record successful parse in New Relic
+  newrelic.recordCustomEvent("BioClaudeParsed", {
+    actorId: actor.id,
+    actorName: actor.name,
+    hasNarrative: !!data.narrative,
+    hasTeaser: !!data.narrativeTeaser,
+    narrativeConfidence: data.narrativeConfidence ?? "unknown",
+    factorCount: data.lifeNotableFactors.length,
+    hasSubstantiveContent: data.hasSubstantiveContent,
+    lesserKnownFactCount: data.lesserKnownFacts.length,
+  })
 
   return {
     data,

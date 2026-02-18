@@ -11,6 +11,7 @@
  * - Biography-specific keywords and query builder
  */
 
+import newrelic from "newrelic"
 import type {
   BiographySourceType,
   BiographySourceEntry,
@@ -169,6 +170,13 @@ export abstract class BaseBiographySource {
       if (!globalIgnoreCache) {
         const cached = await getCachedQuery(this.type as unknown as DataSourceType, cacheKey)
         if (cached) {
+          newrelic.recordCustomEvent("BioSourceCacheHit", {
+            source: this.name,
+            sourceType: this.type,
+            actorId: actor.id,
+            wasError: !!cached.errorMessage,
+          })
+
           // Reconstruct result from cache
           if (cached.errorMessage) {
             return {
@@ -190,6 +198,12 @@ export abstract class BaseBiographySource {
               },
             }
           }
+        } else {
+          newrelic.recordCustomEvent("BioSourceCacheMiss", {
+            source: this.name,
+            sourceType: this.type,
+            actorId: actor.id,
+          })
         }
       }
 
@@ -216,6 +230,13 @@ export abstract class BaseBiographySource {
     } catch (error) {
       const responseTimeMs = Date.now() - startTime
       const errorMessage = error instanceof Error ? error.message : "Unknown error"
+
+      newrelic.recordCustomEvent("BioSourceLookupError", {
+        source: this.name,
+        sourceType: this.type,
+        actorId: actor.id,
+        error: errorMessage,
+      })
 
       // Cache errors
       await setCachedQuery({
