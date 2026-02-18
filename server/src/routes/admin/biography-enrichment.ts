@@ -56,14 +56,14 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     // Fetch page
     const dataParams = [...params, pageSize, offset]
     const result = await pool.query(
-      `SELECT a.id, a.name, COALESCE(a.dof_popularity, 0) as dof_popularity, a.deathday,
+      `SELECT a.id, a.name, a.dof_popularity, a.deathday,
               abd.id as bio_id, abd.narrative_confidence, abd.narrative_teaser,
               abd.life_notable_factors, abd.updated_at as bio_updated_at,
               a.biography_version
        FROM actors a
        LEFT JOIN actor_biography_details abd ON abd.actor_id = a.id
        WHERE ${whereClause}
-       ORDER BY COALESCE(a.dof_popularity, 0) DESC
+       ORDER BY a.dof_popularity DESC NULLS LAST, a.id ASC
        LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
       dataParams
     )

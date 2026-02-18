@@ -117,9 +117,9 @@ async function findActorByName(
   sourceActorId?: number
 ): Promise<number | null> {
   const candidates = await db.query<ActorCandidate>(
-    `SELECT id, tmdb_id, COALESCE(dof_popularity, 0) as dof_popularity FROM actors
+    `SELECT id, tmdb_id, dof_popularity FROM actors
      WHERE LOWER(name) = LOWER($1) AND tmdb_id IS NOT NULL
-     ORDER BY COALESCE(dof_popularity, 0) DESC, id ASC`,
+     ORDER BY dof_popularity DESC NULLS LAST, id ASC`,
     [name]
   )
 

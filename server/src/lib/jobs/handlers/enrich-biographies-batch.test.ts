@@ -212,7 +212,7 @@ describe("EnrichBiographiesBatchHandler", () => {
       await handler.process(job as any)
 
       const queryCall = mockQuery.mock.calls[0]
-      expect(queryCall[0]).toContain("ORDER BY COALESCE(dof_popularity, 0) DESC")
+      expect(queryCall[0]).toContain("ORDER BY dof_popularity DESC NULLS LAST, id ASC")
       expect(queryCall[0]).toContain("COALESCE(dof_popularity, 0) >= $1")
       expect(queryCall[1]).toEqual([20, 5])
     })

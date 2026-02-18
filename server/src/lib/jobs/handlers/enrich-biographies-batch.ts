@@ -83,7 +83,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
                 wikipedia_url, biography AS biography_raw_tmdb, biography
          FROM actors
          ${whereClause}
-         ORDER BY COALESCE(dof_popularity, 0) DESC
+         ORDER BY dof_popularity DESC NULLS LAST, id ASC
          LIMIT $${paramIndex}`,
         params
       )
