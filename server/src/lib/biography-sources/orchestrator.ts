@@ -21,7 +21,7 @@ import type {
   RawBiographySourceData,
   BiographySourceEntry,
 } from "./types.js"
-import { DEFAULT_BIOGRAPHY_CONFIG } from "./types.js"
+import { DEFAULT_BIOGRAPHY_CONFIG, BiographySourceType } from "./types.js"
 import { BaseBiographySource } from "./base-source.js"
 import { BiographyWebSearchBase } from "./sources/web-search-base.js"
 import { synthesizeBiography } from "./claude-cleanup.js"
@@ -57,8 +57,28 @@ import { ChroniclingAmericaBiographySource } from "./sources/chronicling-america
 import { TroveBiographySource } from "./sources/trove.js"
 import { EuropeanaBiographySource } from "./sources/europeana.js"
 
-/** Minimum number of high-quality sources before early stopping */
-const EARLY_STOP_SOURCE_COUNT = 3
+/**
+ * Source families that share the same upstream data. Sources within the same
+ * family count as a single high-quality source for early-stopping purposes.
+ * This prevents e.g. Wikidata + Wikipedia (both Wikimedia Foundation) from
+ * counting as two distinct sources when they largely overlap.
+ */
+const SOURCE_FAMILIES: Record<string, BiographySourceType[]> = {
+  wikimedia: [BiographySourceType.WIKIDATA_BIO, BiographySourceType.WIKIPEDIA_BIO],
+}
+
+/** Build a reverse lookup from source type → family key */
+function buildFamilyLookup(): Map<BiographySourceType, string> {
+  const lookup = new Map<BiographySourceType, string>()
+  for (const [family, types] of Object.entries(SOURCE_FAMILIES)) {
+    for (const type of types) {
+      lookup.set(type, family)
+    }
+  }
+  return lookup
+}
+
+const SOURCE_FAMILY_LOOKUP = buildFamilyLookup()
 
 /**
  * Main orchestrator for biography enrichment.
@@ -199,7 +219,7 @@ export class BiographyEnrichmentOrchestrator {
     let sourcesSucceeded = 0
     const allSources: BiographySourceEntry[] = []
     const rawSources: RawBiographySourceData[] = []
-    let highQualityCount = 0
+    const highQualityFamilies = new Set<string>()
 
     console.log(`\nEnriching biography: ${actor.name} (ID: ${actor.id})`)
 
@@ -240,13 +260,15 @@ export class BiographyEnrichmentOrchestrator {
           !this.config.useReliabilityThreshold || srcReliability >= this.config.reliabilityThreshold
 
         if (contentMet && reliabilityMet) {
-          highQualityCount++
+          // Use source family key if available, otherwise the source type itself
+          const familyKey = SOURCE_FAMILY_LOOKUP.get(source.type) ?? source.type
+          highQualityFamilies.add(familyKey)
         }
 
-        // Early stopping: if we have enough high-quality sources, stop to save cost
-        if (highQualityCount >= EARLY_STOP_SOURCE_COUNT) {
+        // Early stopping: if we have enough distinct high-quality source families, stop to save cost
+        if (highQualityFamilies.size >= this.config.earlyStopSourceCount) {
           console.log(
-            `    ${highQualityCount} high-quality sources collected, stopping early to save cost`
+            `    ${highQualityFamilies.size} distinct high-quality sources collected, stopping early to save cost`
           )
           break
         }
