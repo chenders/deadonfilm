@@ -36,6 +36,8 @@ export interface ActorCoverageInfo {
   profile_path: string | null
   death_manner: string | null
   has_biography: boolean
+  has_enriched_bio: boolean
+  bio_enriched_at: string | null
 }
 
 export interface CoverageTrendPoint {
@@ -267,8 +269,11 @@ export async function getActorsForCoverage(
        profile_path,
        death_manner,
        (biography IS NOT NULL) as has_biography,
+       (abd.id IS NOT NULL) as has_enriched_bio,
+       abd.updated_at as bio_enriched_at,
        COUNT(*) OVER() as total_count
      FROM actors
+     LEFT JOIN actor_biography_details abd ON abd.actor_id = actors.id
      WHERE ${whereClause}
      ORDER BY ${orderByClause}, id ASC
      LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,

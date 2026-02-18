@@ -30,6 +30,8 @@ export interface ActorCoverageInfo {
   profile_path: string | null
   death_manner: string | null
   has_biography: boolean
+  has_enriched_bio: boolean
+  bio_enriched_at: string | null
 }
 
 export interface CoverageTrendPoint {

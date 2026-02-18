@@ -137,4 +137,21 @@ describe("AdminLayout", () => {
     const contentWrapper = main?.querySelector("div")
     expect(contentWrapper).toHaveClass("mx-auto", "max-w-7xl")
   })
+
+  it("applies max-w-full when fullWidth prop is set", async () => {
+    const { container } = renderWithRouter(
+      <AdminLayout fullWidth>
+        <div data-testid="test-content">Test Content</div>
+      </AdminLayout>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("admin-nav")).toBeInTheDocument()
+    })
+
+    const main = container.querySelector("main")
+    const contentWrapper = main?.querySelector("div")
+    expect(contentWrapper).toHaveClass("mx-auto", "max-w-full")
+    expect(contentWrapper).not.toHaveClass("max-w-7xl")
+  })
 })
