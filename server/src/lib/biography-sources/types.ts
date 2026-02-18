@@ -251,6 +251,7 @@ export interface BiographyEnrichmentConfig {
   confidenceThreshold: number // default 0.6 (higher than death's 0.5)
   reliabilityThreshold: number // default 0.6
   useReliabilityThreshold: boolean // default true
+  earlyStopSourceCount: number // minimum distinct high-quality source families before early stopping (default 5)
   sourceCategories: {
     free: boolean // Wikidata, Wikipedia, TMDB
     reference: boolean // Britannica, Biography.com
@@ -279,6 +280,7 @@ export const DEFAULT_BIOGRAPHY_CONFIG: BiographyEnrichmentConfig = {
   confidenceThreshold: 0.6,
   reliabilityThreshold: 0.6,
   useReliabilityThreshold: true,
+  earlyStopSourceCount: 5,
   sourceCategories: {
     free: true,
     reference: true,

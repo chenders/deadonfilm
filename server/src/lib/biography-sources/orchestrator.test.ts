@@ -166,7 +166,7 @@ import { BingBiographySearch } from "./sources/bing-search.js"
 import { WikidataBiographySource } from "./sources/wikidata.js"
 import { WikipediaBiographySource } from "./sources/wikipedia.js"
 import { BritannicaBiographySource } from "./sources/britannica.js"
-import type { ActorForBiography, BiographySourceType } from "./types.js"
+import { BiographySourceType, type ActorForBiography } from "./types.js"
 import type { BiographyLookupResult } from "./base-source.js"
 import type { ReliabilityTier } from "../death-sources/types.js"
 
@@ -215,7 +215,7 @@ function createSuccessfulLookup(options?: {
   return {
     success: true,
     source: {
-      type: "wikidata-bio" as BiographySourceType,
+      type: BiographySourceType.WIKIDATA_BIO,
       retrievedAt: new Date(),
       confidence,
       reliabilityTier: "structured_data" as ReliabilityTier,
@@ -224,7 +224,7 @@ function createSuccessfulLookup(options?: {
     },
     data: {
       sourceName,
-      sourceType: "wikidata-bio" as BiographySourceType,
+      sourceType: BiographySourceType.WIKIDATA_BIO,
       text:
         options?.text ||
         "John Wayne grew up in a small town. His parents were hardworking people. He attended school in California.",
@@ -495,6 +495,60 @@ describe("BiographyEnrichmentOrchestrator", () => {
   })
 
   // --------------------------------------------------------------------------
+  // earlyStopSourceCount validation
+  // --------------------------------------------------------------------------
+  describe("earlyStopSourceCount validation", () => {
+    it("falls back to default for NaN", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: NaN })
+      // Default is 5 — verify by checking the config was clamped
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(5)
+    })
+
+    it("falls back to default for Infinity", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: Infinity })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(5)
+    })
+
+    it("falls back to default for negative numbers", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: -3 })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(5)
+    })
+
+    it("falls back to default for zero", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 0 })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(5)
+    })
+
+    it("floors non-integer values", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 3.7 })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(3)
+    })
+
+    it("preserves valid positive integers", () => {
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 8 })
+      expect(
+        (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
+          .earlyStopSourceCount
+      ).toBe(8)
+    })
+  })
+
+  // --------------------------------------------------------------------------
   // enrichActor
   // --------------------------------------------------------------------------
   describe("enrichActor", () => {
@@ -593,8 +647,9 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(result.data!.narrative).toBe("Full narrative")
     })
 
-    it("stops collecting after 3+ high-quality sources", async () => {
-      const orchestrator = new BiographyEnrichmentOrchestrator()
+    it("stops collecting after reaching earlyStopSourceCount distinct source families", async () => {
+      // earlyStopSourceCount=3: stop after 3 distinct high-quality sources
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 3 })
 
       // Make first 3 sources succeed with high confidence and reliability
       const wikidataMock = getMock("Wikidata")
@@ -614,7 +669,8 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const result = await orchestrator.enrichActor(testActor)
 
-      // After 3 high-quality sources, remaining sources should NOT be called
+      // After 3 distinct high-quality sources, remaining sources should NOT be called
+      // (mock types are unique per source, so each counts as its own family)
       const biographyComMock = getMock("Biography.com")
       const googleMock = getMock("Google Search")
       const guardianMock = getMock("Guardian")
@@ -623,6 +679,40 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(googleMock.lookup).not.toHaveBeenCalled()
       expect(guardianMock.lookup).not.toHaveBeenCalled()
 
+      expect(result.rawSources).toHaveLength(3)
+    })
+
+    it("groups Wikidata and Wikipedia as one source family for early stopping", async () => {
+      // earlyStopSourceCount=2: need 2 distinct families
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 2 })
+
+      // Wikidata + Wikipedia share the "wikimedia" family, so they count as 1
+      const wikidataMock = getMock("Wikidata")
+      // Set the real BiographySourceType so the family lookup works
+      wikidataMock.type = BiographySourceType.WIKIDATA_BIO
+      ;(wikidataMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
+      )
+      const wikipediaMock = getMock("Wikipedia")
+      wikipediaMock.type = BiographySourceType.WIKIPEDIA_BIO
+      ;(wikipediaMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
+      )
+      // Britannica = 2nd distinct family → triggers early stop
+      const britannicaMock = getMock("Britannica")
+      ;(britannicaMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
+      )
+
+      vi.mocked(synthesizeBiography).mockResolvedValue(createSynthesisResult())
+
+      const result = await orchestrator.enrichActor(testActor)
+
+      // Wikidata + Wikipedia = 1 family, Britannica = 2nd → stop
+      const biographyComMock = getMock("Biography.com")
+      expect(biographyComMock.lookup).not.toHaveBeenCalled()
+
+      // All 3 sources were collected (Wikidata, Wikipedia, Britannica)
       expect(result.rawSources).toHaveLength(3)
     })
 
@@ -938,7 +1028,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       await orchestrator.enrichActor(testActor)
 
-      // Only 2 high-quality sources (Wikidata + Britannica), not enough for early stop
+      // Only 2 distinct high-quality source families (wikimedia + britannica), not enough for early stop
       const biographyComMock = getMock("Biography.com")
       expect(biographyComMock.lookup).toHaveBeenCalled()
     })
