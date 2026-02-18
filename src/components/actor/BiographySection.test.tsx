@@ -64,47 +64,51 @@ describe("BiographySection", () => {
     expect(screen.queryByText(/Read more on/)).not.toBeInTheDocument()
   })
 
-  it("shows teaser collapsed with chevron toggle when long narrative exists", () => {
+  it("shows full narrative with gradient truncation when collapsed", () => {
+    const longNarrative = "This is the beginning of a long narrative. " + "x".repeat(300)
     const details = makeBiographyDetails({
       narrativeTeaser: "Short teaser text",
-      narrative: "This is a much longer narrative that exceeds 300 characters. " + "x".repeat(300),
+      narrative: longNarrative,
     })
     render(<BiographySection biographyDetails={details} />)
 
-    // Teaser is visible in collapsed state
-    expect(screen.getByText("Short teaser text")).toBeInTheDocument()
-    // Toggle chevron is present
-    expect(screen.getByTestId("biography-toggle")).toBeInTheDocument()
-    // Full narrative is not visible
-    expect(screen.queryByText(/This is a much longer narrative/)).not.toBeInTheDocument()
+    // Full narrative text is rendered (gradient handles truncation visually)
+    expect(screen.getByText(/This is the beginning of a long narrative/)).toBeInTheDocument()
+    // Toggle is present via ExpandableSection
+    expect(screen.getByTestId("expandable-section-toggle")).toBeInTheDocument()
+    // Gradient overlay is opaque
+    expect(screen.getByTestId("expandable-section-gradient")).toHaveClass("opacity-100")
   })
 
-  it("expands to full narrative on header click", () => {
-    const fullNarrative = "Full narrative content " + "x".repeat(300)
+  it("expands to show full content on header click", () => {
+    const longNarrative = "Full narrative content " + "x".repeat(300)
     const details = makeBiographyDetails({
       narrativeTeaser: "Short teaser",
-      narrative: fullNarrative,
+      narrative: longNarrative,
     })
     render(<BiographySection biographyDetails={details} />)
 
-    fireEvent.click(screen.getByTestId("biography-toggle"))
-    expect(screen.getByText(fullNarrative)).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId("expandable-section-toggle"))
+
+    // Gradient fades out
+    expect(screen.getByTestId("expandable-section-gradient")).toHaveClass("opacity-0")
+    // Full narrative still visible
+    expect(screen.getByText(/Full narrative content/)).toBeInTheDocument()
   })
 
-  it("collapses back to teaser on second click", () => {
-    const fullNarrative = "Full narrative content " + "x".repeat(300)
+  it("collapses back to gradient view on second click", () => {
+    const longNarrative = "Full narrative content " + "x".repeat(300)
     const details = makeBiographyDetails({
       narrativeTeaser: "Short teaser",
-      narrative: fullNarrative,
+      narrative: longNarrative,
     })
     render(<BiographySection biographyDetails={details} />)
 
-    fireEvent.click(screen.getByTestId("biography-toggle")) // expand
-    expect(screen.getByText(fullNarrative)).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId("expandable-section-toggle")) // expand
+    fireEvent.click(screen.getByTestId("expandable-section-toggle")) // collapse
 
-    fireEvent.click(screen.getByTestId("biography-toggle")) // collapse
-    expect(screen.queryByText(fullNarrative)).not.toBeInTheDocument()
-    expect(screen.getByText("Short teaser")).toBeInTheDocument()
+    // Gradient reappears
+    expect(screen.getByTestId("expandable-section-gradient")).toHaveClass("opacity-100")
   })
 
   it("sets aria-expanded correctly", () => {
@@ -114,7 +118,7 @@ describe("BiographySection", () => {
     })
     render(<BiographySection biographyDetails={details} />)
 
-    const toggle = screen.getByTestId("biography-toggle")
+    const toggle = screen.getByTestId("expandable-section-toggle")
     expect(toggle).toHaveAttribute("aria-expanded", "false")
 
     fireEvent.click(toggle)
@@ -127,9 +131,9 @@ describe("BiographySection", () => {
     })
     render(<BiographySection biographyDetails={details} />)
 
-    // Shown directly with no toggle
+    // Shown directly with no toggle (short narrative, no expandable content)
     expect(screen.getByText("A narrative without a teaser version")).toBeInTheDocument()
-    expect(screen.queryByTestId("biography-toggle")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("expandable-section-toggle")).not.toBeInTheDocument()
   })
 
   it("renders full narrative directly when short (< 300 chars)", () => {
@@ -141,7 +145,7 @@ describe("BiographySection", () => {
 
     // Short narrative shown directly, no toggle
     expect(screen.getByText("Short narrative")).toBeInTheDocument()
-    expect(screen.queryByTestId("biography-toggle")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("expandable-section-toggle")).not.toBeInTheDocument()
   })
 
   it("renders teaser only when narrative is null", () => {
@@ -151,7 +155,7 @@ describe("BiographySection", () => {
     render(<BiographySection biographyDetails={details} />)
 
     expect(screen.getByText("Just a teaser, no full narrative")).toBeInTheDocument()
-    expect(screen.queryByTestId("biography-toggle")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("expandable-section-toggle")).not.toBeInTheDocument()
   })
 
   it("splits narrative into paragraphs on double newlines", () => {
@@ -177,34 +181,14 @@ describe("BiographySection", () => {
     expect(screen.queryByTestId("biography-factors")).not.toBeInTheDocument()
   })
 
-  it("shows lesser-known facts when no expandable content", () => {
+  it("does not render lesser-known facts (rendered by ActorPage instead)", () => {
     const details = makeBiographyDetails({
       narrativeTeaser: "Bio text",
       lesserKnownFacts: ["Was an amateur pilot", "Spoke four languages"],
     })
     render(<BiographySection biographyDetails={details} />)
 
-    // No toggle (teaser-only, no long narrative) — facts always visible
-    expect(screen.getByText("Was an amateur pilot")).toBeInTheDocument()
-    expect(screen.getByText("Spoke four languages")).toBeInTheDocument()
-    expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
-  })
-
-  it("hides lesser-known facts when collapsed and shows when expanded", () => {
-    const details = makeBiographyDetails({
-      narrativeTeaser: "Short teaser",
-      narrative: "Full narrative " + "x".repeat(300),
-      lesserKnownFacts: ["Was an amateur pilot"],
-    })
-    render(<BiographySection biographyDetails={details} />)
-
-    // Collapsed — facts hidden
     expect(screen.queryByTestId("biography-facts")).not.toBeInTheDocument()
-
-    // Expand — facts visible
-    fireEvent.click(screen.getByTestId("biography-toggle"))
-    expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
-    expect(screen.getByText("Was an amateur pilot")).toBeInTheDocument()
   })
 
   it("does not show factors section when empty", () => {
@@ -295,7 +279,7 @@ describe("BiographySection", () => {
     expect(screen.queryByTestId("sources-sources")).not.toBeInTheDocument()
 
     // Expand — sources visible
-    fireEvent.click(screen.getByTestId("biography-toggle"))
+    fireEvent.click(screen.getByTestId("expandable-section-toggle"))
     expect(screen.getByTestId("sources-sources")).toBeInTheDocument()
     expect(screen.getByText("Actor - Wikipedia")).toBeInTheDocument()
   })

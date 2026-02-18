@@ -356,7 +356,6 @@ export default function ActorPage() {
         {isDeceased && deathInfo && (
           <DeathSummaryCard
             causeOfDeath={deathInfo.causeOfDeath}
-            causeOfDeathDetails={deathInfo.causeOfDeathDetails}
             ageAtDeath={deathInfo.ageAtDeath}
             yearsLost={deathInfo.yearsLost ? Number(deathInfo.yearsLost) : null}
             hasFullDetails={deathInfo.hasDetailedDeathInfo}
@@ -383,6 +382,22 @@ export default function ActorPage() {
           biographySourceUrl={actor.biographySourceUrl}
           biographySourceType={actor.biographySourceType}
         />
+
+        {/* Lesser-Known Facts */}
+        {data.biographyDetails?.lesserKnownFacts &&
+          data.biographyDetails.lesserKnownFacts.length > 0 && (
+            <div className="mb-6 rounded-lg bg-surface-elevated p-4" data-testid="biography-facts">
+              <h2 className="mb-2 font-display text-lg text-brown-dark">Lesser-Known Facts</h2>
+              <ul className="space-y-1.5">
+                {data.biographyDetails.lesserKnownFacts.map((fact, i) => (
+                  <li key={i} className="flex items-start gap-2 text-text-primary">
+                    <span className="mt-1 text-brown-medium">&bull;</span>
+                    <span>{fact}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
         {/* Career Context */}
         {isDeceased && deathInfo?.career && (

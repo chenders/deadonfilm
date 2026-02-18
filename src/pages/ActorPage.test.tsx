@@ -227,9 +227,9 @@ describe("ActorPage", () => {
     expect(screen.getByText("Natural Causes")).toBeInTheDocument()
     expect(screen.queryByTestId("death-details-tooltip")).not.toBeInTheDocument()
 
-    // Death summary card shows teaser content
+    // Death summary card shows teaser line (non-expandable fallback)
     expect(screen.getByTestId("death-summary-card")).toBeInTheDocument()
-    expect(screen.getByText("Passed peacefully at home surrounded by family.")).toBeInTheDocument()
+    expect(screen.getByText(/Died of natural causes at age 80/)).toBeInTheDocument()
   })
 
   it("renders external links (TMDB, Wikipedia)", async () => {
@@ -259,7 +259,7 @@ describe("ActorPage", () => {
     renderWithProviders(<ActorPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Biography")).toBeInTheDocument()
+      expect(screen.getByText("Life")).toBeInTheDocument()
       expect(screen.getByText("A talented performer known for many roles.")).toBeInTheDocument()
     })
   })
