@@ -227,7 +227,7 @@ describe("ActorPage", () => {
     expect(screen.getByText("Natural Causes")).toBeInTheDocument()
     expect(screen.queryByTestId("death-details-tooltip")).not.toBeInTheDocument()
 
-    // Death summary card shows the details text
+    // Death summary card shows teaser content
     expect(screen.getByTestId("death-summary-card")).toBeInTheDocument()
     expect(screen.getByText("Passed peacefully at home surrounded by family.")).toBeInTheDocument()
   })

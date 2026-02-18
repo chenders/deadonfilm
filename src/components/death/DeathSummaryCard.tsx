@@ -1,8 +1,8 @@
 /**
  * Expandable death summary card for the actor page.
  *
- * Collapsed: shows a teaser with cause, age, and short summary.
- * Expanded: lazy-loads and renders full death details via DeathDetailsContent.
+ * Collapsed: shows header with chevron + teaser (cause, age, short summary).
+ * Expanded: also shows full death details via DeathDetailsContent.
  */
 
 import { useState, useCallback } from "react"
@@ -65,7 +65,7 @@ export default function DeathSummaryCard({
       className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
       data-testid="death-summary-card"
     >
-      {/* Header */}
+      {/* Header — interactive toggle when expandable, static otherwise */}
       <h2 className="font-display text-lg text-brown-dark">
         {hasFullDetails ? (
           <button
@@ -109,20 +109,8 @@ export default function DeathSummaryCard({
         )}
       </div>
 
-      {/* Expand/Collapse button */}
-      {hasFullDetails && (
-        <button
-          onClick={handleToggle}
-          aria-expanded={isExpanded}
-          className="mt-3 w-full rounded-md py-2 text-center text-sm font-medium text-brown-dark transition-colors hover:bg-cream"
-          data-testid="death-details-toggle"
-        >
-          {isExpanded ? "Collapse" : "Read full story"}
-        </button>
-      )}
-
-      {/* Expanded content (lazy-loaded) */}
-      {isExpanded && (
+      {/* Expanded content — full death details */}
+      {isExpanded && hasFullDetails && (
         <div data-testid="death-details-expanded">
           <div className="my-3 border-t border-brown-light/20" />
           <DeathDetailsContent slug={slug} />

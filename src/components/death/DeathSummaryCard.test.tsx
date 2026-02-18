@@ -27,69 +27,76 @@ const defaultProps = {
   slug: "john-wayne-2157",
 }
 
+function getToggle() {
+  return screen.getByRole("button", { name: /Death Circumstances/ })
+}
+
 describe("DeathSummaryCard", () => {
-  it("renders collapsed teaser by default", () => {
+  it("renders collapsed with teaser visible but full details hidden", () => {
     renderWithRouter(<DeathSummaryCard {...defaultProps} />)
 
     expect(screen.getByTestId("death-summary-card")).toBeInTheDocument()
+    expect(getToggle()).toBeInTheDocument()
+    // Teaser content is always visible
     expect(screen.getByText(/Died of stomach cancer at age 72/)).toBeInTheDocument()
     expect(screen.getByText(/Wayne died on June 11, 1979/)).toBeInTheDocument()
     expect(screen.getByText(/4\.2 years before life expectancy/)).toBeInTheDocument()
-    expect(screen.getByText("Read full story")).toBeInTheDocument()
+    // Full details are hidden when collapsed
     expect(screen.queryByTestId("death-details-expanded")).not.toBeInTheDocument()
   })
 
-  it("expands on click and shows DeathDetailsContent", () => {
+  it("expands on header click and shows full death details", () => {
     renderWithRouter(<DeathSummaryCard {...defaultProps} />)
 
-    fireEvent.click(screen.getByTestId("death-details-toggle"))
+    fireEvent.click(getToggle())
 
     expect(screen.getByTestId("death-details-expanded")).toBeInTheDocument()
     expect(screen.getByTestId("death-details-content")).toBeInTheDocument()
-    expect(screen.getByText("Collapse")).toBeInTheDocument()
   })
 
   it("collapses on second click", () => {
     renderWithRouter(<DeathSummaryCard {...defaultProps} />)
 
-    const toggle = screen.getByTestId("death-details-toggle")
-    fireEvent.click(toggle) // expand
-    fireEvent.click(toggle) // collapse
+    fireEvent.click(getToggle()) // expand
+    fireEvent.click(getToggle()) // collapse
 
     expect(screen.queryByTestId("death-details-expanded")).not.toBeInTheDocument()
-    expect(screen.getByText("Read full story")).toBeInTheDocument()
+    // Teaser is still visible after collapse
+    expect(screen.getByText(/Died of stomach cancer at age 72/)).toBeInTheDocument()
   })
 
   it("fires onExpand callback on first expand only", () => {
     const onExpand = vi.fn()
     renderWithRouter(<DeathSummaryCard {...defaultProps} onExpand={onExpand} />)
 
-    const toggle = screen.getByTestId("death-details-toggle")
-
-    fireEvent.click(toggle) // expand (first time)
+    fireEvent.click(getToggle()) // expand (first time)
     expect(onExpand).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(toggle) // collapse
-    fireEvent.click(toggle) // expand again
+    fireEvent.click(getToggle()) // collapse
+    fireEvent.click(getToggle()) // expand again
     expect(onExpand).toHaveBeenCalledTimes(1) // still only once
   })
 
   it("sets aria-expanded correctly", () => {
     renderWithRouter(<DeathSummaryCard {...defaultProps} />)
 
-    const toggle = screen.getByTestId("death-details-toggle")
+    const toggle = getToggle()
     expect(toggle).toHaveAttribute("aria-expanded", "false")
 
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute("aria-expanded", "true")
   })
 
-  it("renders non-expandable variant when hasFullDetails is false", () => {
+  it("shows teaser but no toggle when hasFullDetails is false", () => {
     renderWithRouter(<DeathSummaryCard {...defaultProps} hasFullDetails={false} />)
 
+    // Teaser content is visible
     expect(screen.getByText(/Died of stomach cancer at age 72/)).toBeInTheDocument()
-    expect(screen.queryByTestId("death-details-toggle")).not.toBeInTheDocument()
-    expect(screen.queryByTestId("death-details-expanded")).not.toBeInTheDocument()
+    // Header is static text, not a button
+    expect(screen.queryByRole("button", { name: /Death Circumstances/ })).not.toBeInTheDocument()
+    expect(screen.getByText("Death Circumstances")).toBeInTheDocument()
+    // No expanded content
+    expect(screen.queryByTestId("death-details-content")).not.toBeInTheDocument()
   })
 
   it("renders nothing when no death info at all", () => {
