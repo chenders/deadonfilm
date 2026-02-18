@@ -120,12 +120,22 @@ export default function DeathSummaryCard({
         collapsedMaxHeight="10rem"
       >
         {/* What We Know narrative (always visible, gradient-truncated when collapsed) */}
-        {circumstances.official && (
+        {circumstances.official ? (
           <LinkedText
             text={circumstances.official}
             links={getFieldLinks(entityLinks, "circumstances")}
             className="leading-relaxed text-text-primary"
           />
+        ) : (
+          <p className="leading-relaxed text-text-primary">
+            {causeOfDeath && ageAtDeath !== null
+              ? `Died of ${causeOfDeath.toLowerCase()} at age ${ageAtDeath}.`
+              : causeOfDeath
+                ? `Died of ${causeOfDeath.toLowerCase()}.`
+                : ageAtDeath !== null
+                  ? `Died at age ${ageAtDeath}.`
+                  : "Death details available."}
+          </p>
         )}
 
         {/* Full death details (visible when expanded, below the narrative) */}
