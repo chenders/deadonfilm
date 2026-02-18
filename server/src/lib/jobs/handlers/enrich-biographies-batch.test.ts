@@ -40,6 +40,7 @@ vi.mock("../../biography-enrichment-db-writer.js", () => ({
 // Mock newrelic
 vi.mock("newrelic", () => ({
   default: {
+    addCustomAttribute: vi.fn(),
     recordCustomEvent: vi.fn(),
   },
 }))

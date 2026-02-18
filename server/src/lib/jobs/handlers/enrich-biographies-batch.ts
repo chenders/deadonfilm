@@ -8,6 +8,7 @@
  * Claude synthesis.
  */
 
+import newrelic from "newrelic"
 import type { Job } from "bullmq"
 import { getPool } from "../../db.js"
 import { BaseJobHandler } from "./base.js"
@@ -47,6 +48,15 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
     const { actorIds, limit, minPopularity, confidenceThreshold, allowRegeneration, useStaging } =
       job.data
     const db = getPool()
+
+    // Add New Relic attributes for this job
+    for (const [key, value] of Object.entries({
+      "bio.job.actorCount": actorIds?.length || limit || 10,
+      "bio.job.allowRegeneration": !!allowRegeneration,
+      "bio.job.useStaging": !!useStaging,
+    })) {
+      newrelic.addCustomAttribute(key, value)
+    }
 
     // 1. Query actors
     let actors: ActorForBiography[]
@@ -152,6 +162,14 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         })
       }
     }
+
+    // Record job completion in New Relic
+    newrelic.recordCustomEvent("BioJobComplete", {
+      actorsProcessed: actors.length,
+      actorsEnriched,
+      actorsFailed,
+      totalCostUsd,
+    })
 
     return {
       success: true,
