@@ -1,0 +1,130 @@
+/**
+ * Shared expandable section with header toggle and gradient truncation.
+ *
+ * Collapsed: shows content clipped to collapsedMaxHeight with a gradient fade.
+ * Expanded: shows full content with no gradient.
+ * Header row: chevron (rotates on expand), title, and +/- indicator.
+ * Expand/collapse animates max-height via ref measurement.
+ */
+
+import { useRef, useState, useEffect, useCallback } from "react"
+
+interface ExpandableSectionProps {
+  title: string
+  isExpanded: boolean
+  onToggle: () => void
+  /** CSS max-height value when collapsed (default "10rem") */
+  collapsedMaxHeight?: string
+  children: React.ReactNode
+  className?: string
+}
+
+export default function ExpandableSection({
+  title,
+  isExpanded,
+  onToggle,
+  collapsedMaxHeight = "10rem",
+  children,
+  className = "",
+}: ExpandableSectionProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [maxHeight, setMaxHeight] = useState<string | undefined>(
+    isExpanded ? undefined : collapsedMaxHeight
+  )
+  const isFirstRender = useRef(true)
+
+  useEffect(() => {
+    // Skip animation on first render
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+
+    const el = contentRef.current
+    if (!el) return
+
+    if (isExpanded) {
+      // Expanding: animate from collapsedMaxHeight → scrollHeight, then remove
+      setMaxHeight(`${el.scrollHeight}px`)
+      const timer = setTimeout(() => setMaxHeight(undefined), 300)
+      return () => clearTimeout(timer)
+    } else {
+      // Collapsing: set scrollHeight first, then animate to collapsedMaxHeight
+      setMaxHeight(`${el.scrollHeight}px`)
+      // Double rAF forces browser to apply the scrollHeight before transitioning
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setMaxHeight(collapsedMaxHeight)
+        })
+      })
+    }
+  }, [isExpanded, collapsedMaxHeight])
+
+  // Re-measure when children change while expanded (e.g. lazy-loaded content)
+  const handleTransitionEnd = useCallback(() => {
+    if (isExpanded) {
+      setMaxHeight(undefined)
+    }
+  }, [isExpanded])
+
+  return (
+    <div
+      className={`rounded-lg bg-surface-elevated p-4 sm:p-6 ${className}`}
+      data-testid="expandable-section"
+    >
+      {/* Header toggle */}
+      <h2 className="font-display text-lg text-brown-dark">
+        <button
+          onClick={onToggle}
+          aria-expanded={isExpanded}
+          className="flex w-full items-center gap-2 text-left transition-colors hover:text-brown-medium"
+          data-testid="expandable-section-toggle"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            aria-hidden="true"
+            focusable="false"
+            className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+          >
+            <path
+              d="M4 2l4 4-4 4"
+              stroke="currentColor"
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span className="flex-1">{title}</span>
+          <span className="text-xl leading-none text-brown-medium" aria-hidden="true">
+            {isExpanded ? "\u2212" : "+"}
+          </span>
+        </button>
+      </h2>
+
+      {/* Content area with animated max-height */}
+      <div
+        ref={contentRef}
+        className="relative mt-3 overflow-hidden transition-[max-height] duration-300 ease-in-out"
+        style={maxHeight !== undefined ? { maxHeight } : undefined}
+        onTransitionEnd={handleTransitionEnd}
+        data-testid="expandable-section-content"
+      >
+        {children}
+
+        {/* Gradient overlay — fades with opacity for smooth transition */}
+        <div
+          className={`pointer-events-none absolute bottom-0 left-0 right-0 h-16 transition-opacity duration-300 ${
+            isExpanded ? "opacity-0" : "opacity-100"
+          }`}
+          style={{
+            background: "linear-gradient(to bottom, transparent, var(--surface-elevated))",
+          }}
+          data-testid="expandable-section-gradient"
+        />
+      </div>
+    </div>
+  )
+}

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react"
 import type { BiographyDetails } from "@/types/actor"
+import ExpandableSection from "@/components/common/ExpandableSection"
 import SourceList from "@/components/death/SourceList"
 import type { SourceEntry } from "@/types"
 
@@ -79,79 +80,77 @@ export default function BiographySection({
 
   // Enriched biography
   const { narrative, narrativeTeaser, lesserKnownFacts } = biographyDetails
+  const displayText = narrative || narrativeTeaser
 
-  // Determine if we have expandable content (full narrative beyond the teaser)
-  const hasExpandableContent = narrative && narrativeTeaser && narrative.length > 300
-  const displayText =
-    hasExpandableContent && !isExpanded ? narrativeTeaser : narrative || narrativeTeaser
+  // If narrative is short (< 300 chars) or no narrative (teaser only), show static card
+  const hasExpandableContent = !!narrative && narrative.length > 300
 
-  return (
-    <div className="mb-6 space-y-4" data-testid="biography-section">
-      {/* Main Narrative Card */}
-      <div className="rounded-lg bg-surface-elevated p-4 sm:p-6">
-        {/* Clickable header — single toggle for expand/collapse */}
-        {hasExpandableContent ? (
-          <h2 className="font-display text-lg text-brown-dark">
-            <button
-              onClick={() => setIsExpanded((prev) => !prev)}
-              aria-expanded={isExpanded}
-              className="flex w-full items-center gap-2 text-left transition-colors hover:text-brown-medium"
-              data-testid="biography-toggle"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
-                fill="currentColor"
-                aria-hidden="true"
-                focusable="false"
-                className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
-              >
-                <path
-                  d="M4 2l4 4-4 4"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span>Biography</span>
-            </button>
-          </h2>
-        ) : (
+  if (!hasExpandableContent) {
+    return (
+      <div className="mb-6 space-y-4" data-testid="biography-section">
+        <div className="rounded-lg bg-surface-elevated p-4 sm:p-6">
           <h2 className="mb-2 font-display text-lg text-brown-dark">Biography</h2>
+          <div className="space-y-3 leading-relaxed text-text-primary">
+            {displayText?.split("\n\n").map((paragraph, i) => (
+              <p key={i}>{paragraph}</p>
+            ))}
+          </div>
+        </div>
+
+        {/* Lesser-Known Facts (always visible when not expandable) */}
+        {lesserKnownFacts && lesserKnownFacts.length > 0 && (
+          <div className="rounded-lg bg-surface-elevated p-4" data-testid="biography-facts">
+            <h3 className="mb-2 text-sm font-semibold text-brown-dark">Lesser-Known Facts</h3>
+            <ul className="space-y-1.5">
+              {lesserKnownFacts.map((fact, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-text-primary">
+                  <span className="mt-1 text-brown-medium">&bull;</span>
+                  <span>{fact}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
-        {/* Narrative text with paragraph splitting (always visible) */}
-        <div
-          className={`space-y-3 leading-relaxed text-text-primary ${hasExpandableContent ? "mt-3" : ""}`}
-        >
-          {displayText?.split("\n\n").map((paragraph, i) => (
+        {/* Sources (always visible when not expandable) */}
+        <SourceList sources={sourceEntries} title="Sources" />
+      </div>
+    )
+  }
+
+  // Expandable: full narrative with gradient truncation
+  return (
+    <div className="mb-6 space-y-4" data-testid="biography-section">
+      <ExpandableSection
+        title="Biography"
+        isExpanded={isExpanded}
+        onToggle={() => setIsExpanded((prev) => !prev)}
+      >
+        {/* Full narrative — gradient truncation handles collapsed preview */}
+        <div className="space-y-3 leading-relaxed text-text-primary">
+          {narrative.split("\n\n").map((paragraph, i) => (
             <p key={i}>{paragraph}</p>
           ))}
         </div>
-      </div>
 
-      {/* Lesser-Known Facts (visible when expanded, or always if no expandable content) */}
-      {(isExpanded || !hasExpandableContent) && lesserKnownFacts && lesserKnownFacts.length > 0 && (
-        <div className="rounded-lg bg-surface-elevated p-4" data-testid="biography-facts">
-          <h3 className="mb-2 text-sm font-semibold text-brown-dark">Lesser-Known Facts</h3>
-          <ul className="space-y-1.5">
-            {lesserKnownFacts.map((fact, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-text-primary">
-                <span className="mt-1 text-brown-medium">&bull;</span>
-                <span>{fact}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        {/* Lesser-Known Facts (visible when expanded) */}
+        {isExpanded && lesserKnownFacts && lesserKnownFacts.length > 0 && (
+          <div className="mt-4 rounded-lg bg-surface-inset p-4" data-testid="biography-facts">
+            <h3 className="mb-2 text-sm font-semibold text-brown-dark">Lesser-Known Facts</h3>
+            <ul className="space-y-1.5">
+              {lesserKnownFacts.map((fact, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-text-primary">
+                  <span className="mt-1 text-brown-medium">&bull;</span>
+                  <span>{fact}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-      {/* Sources (visible when expanded, or always if no expandable content) */}
-      {(isExpanded || !hasExpandableContent) && (
-        <SourceList sources={sourceEntries} title="Sources" />
-      )}
+        {/* Sources (visible when expanded) */}
+        {isExpanded && <SourceList sources={sourceEntries} title="Sources" />}
+      </ExpandableSection>
     </div>
   )
 }

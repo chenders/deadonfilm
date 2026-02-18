@@ -356,7 +356,6 @@ export default function ActorPage() {
         {isDeceased && deathInfo && (
           <DeathSummaryCard
             causeOfDeath={deathInfo.causeOfDeath}
-            causeOfDeathDetails={deathInfo.causeOfDeathDetails}
             ageAtDeath={deathInfo.ageAtDeath}
             yearsLost={deathInfo.yearsLost ? Number(deathInfo.yearsLost) : null}
             hasFullDetails={deathInfo.hasDetailedDeathInfo}
