@@ -64,52 +64,70 @@ describe("BiographySection", () => {
     expect(screen.queryByText(/Read more on/)).not.toBeInTheDocument()
   })
 
-  it("renders narrative teaser with Show more button", () => {
+  it("shows teaser collapsed with chevron toggle when long narrative exists", () => {
     const details = makeBiographyDetails({
       narrativeTeaser: "Short teaser text",
       narrative: "This is a much longer narrative that exceeds 300 characters. " + "x".repeat(300),
-      narrativeConfidence: "high",
     })
     render(<BiographySection biographyDetails={details} />)
+
+    // Teaser is visible in collapsed state
     expect(screen.getByText("Short teaser text")).toBeInTheDocument()
-    expect(screen.getByTestId("biography-toggle")).toHaveTextContent("Show more")
+    // Toggle chevron is present
+    expect(screen.getByTestId("biography-toggle")).toBeInTheDocument()
+    // Full narrative is not visible
+    expect(screen.queryByText(/This is a much longer narrative/)).not.toBeInTheDocument()
   })
 
-  it("expands to full narrative on Show more click", () => {
+  it("expands to full narrative on header click", () => {
     const fullNarrative = "Full narrative content " + "x".repeat(300)
     const details = makeBiographyDetails({
       narrativeTeaser: "Short teaser",
       narrative: fullNarrative,
-      narrativeConfidence: "high",
     })
     render(<BiographySection biographyDetails={details} />)
+
     fireEvent.click(screen.getByTestId("biography-toggle"))
     expect(screen.getByText(fullNarrative)).toBeInTheDocument()
-    expect(screen.getByTestId("biography-toggle")).toHaveTextContent("Show less")
   })
 
-  it("collapses back on Show less click", () => {
+  it("collapses back to teaser on second click", () => {
     const fullNarrative = "Full narrative content " + "x".repeat(300)
     const details = makeBiographyDetails({
       narrativeTeaser: "Short teaser",
       narrative: fullNarrative,
-      narrativeConfidence: "high",
     })
     render(<BiographySection biographyDetails={details} />)
-    // Expand
-    fireEvent.click(screen.getByTestId("biography-toggle"))
+
+    fireEvent.click(screen.getByTestId("biography-toggle")) // expand
     expect(screen.getByText(fullNarrative)).toBeInTheDocument()
-    // Collapse
-    fireEvent.click(screen.getByTestId("biography-toggle"))
+
+    fireEvent.click(screen.getByTestId("biography-toggle")) // collapse
+    expect(screen.queryByText(fullNarrative)).not.toBeInTheDocument()
     expect(screen.getByText("Short teaser")).toBeInTheDocument()
-    expect(screen.getByTestId("biography-toggle")).toHaveTextContent("Show more")
   })
 
-  it("renders full narrative when no teaser", () => {
+  it("sets aria-expanded correctly", () => {
+    const details = makeBiographyDetails({
+      narrativeTeaser: "Teaser",
+      narrative: "Full narrative " + "x".repeat(300),
+    })
+    render(<BiographySection biographyDetails={details} />)
+
+    const toggle = screen.getByTestId("biography-toggle")
+    expect(toggle).toHaveAttribute("aria-expanded", "false")
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute("aria-expanded", "true")
+  })
+
+  it("renders full narrative directly when no teaser", () => {
     const details = makeBiographyDetails({
       narrative: "A narrative without a teaser version",
     })
     render(<BiographySection biographyDetails={details} />)
+
+    // Shown directly with no toggle
     expect(screen.getByText("A narrative without a teaser version")).toBeInTheDocument()
     expect(screen.queryByTestId("biography-toggle")).not.toBeInTheDocument()
   })
@@ -120,6 +138,7 @@ describe("BiographySection", () => {
       narrative: "Short narrative",
     })
     render(<BiographySection biographyDetails={details} />)
+
     // Short narrative shown directly, no toggle
     expect(screen.getByText("Short narrative")).toBeInTheDocument()
     expect(screen.queryByTestId("biography-toggle")).not.toBeInTheDocument()
@@ -130,6 +149,7 @@ describe("BiographySection", () => {
       narrativeTeaser: "Just a teaser, no full narrative",
     })
     render(<BiographySection biographyDetails={details} />)
+
     expect(screen.getByText("Just a teaser, no full narrative")).toBeInTheDocument()
     expect(screen.queryByTestId("biography-toggle")).not.toBeInTheDocument()
   })
@@ -139,6 +159,7 @@ describe("BiographySection", () => {
       narrative: "Paragraph one.\n\nParagraph two.\n\nParagraph three.",
     })
     render(<BiographySection biographyDetails={details} />)
+
     expect(screen.getByText("Paragraph one.")).toBeInTheDocument()
     expect(screen.getByText("Paragraph two.")).toBeInTheDocument()
     expect(screen.getByText("Paragraph three.")).toBeInTheDocument()
@@ -150,20 +171,40 @@ describe("BiographySection", () => {
       lifeNotableFactors: ["military_service", "scholar"],
     })
     render(<BiographySection biographyDetails={details} />)
+
     expect(screen.queryByText("Military Service")).not.toBeInTheDocument()
     expect(screen.queryByText("Scholar")).not.toBeInTheDocument()
     expect(screen.queryByTestId("biography-factors")).not.toBeInTheDocument()
   })
 
-  it("displays lesser-known facts", () => {
+  it("shows lesser-known facts when no expandable content", () => {
     const details = makeBiographyDetails({
       narrativeTeaser: "Bio text",
       lesserKnownFacts: ["Was an amateur pilot", "Spoke four languages"],
     })
     render(<BiographySection biographyDetails={details} />)
+
+    // No toggle (teaser-only, no long narrative) — facts always visible
     expect(screen.getByText("Was an amateur pilot")).toBeInTheDocument()
     expect(screen.getByText("Spoke four languages")).toBeInTheDocument()
     expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+  })
+
+  it("hides lesser-known facts when collapsed and shows when expanded", () => {
+    const details = makeBiographyDetails({
+      narrativeTeaser: "Short teaser",
+      narrative: "Full narrative " + "x".repeat(300),
+      lesserKnownFacts: ["Was an amateur pilot"],
+    })
+    render(<BiographySection biographyDetails={details} />)
+
+    // Collapsed — facts hidden
+    expect(screen.queryByTestId("biography-facts")).not.toBeInTheDocument()
+
+    // Expand — facts visible
+    fireEvent.click(screen.getByTestId("biography-toggle"))
+    expect(screen.getByTestId("biography-facts")).toBeInTheDocument()
+    expect(screen.getByText("Was an amateur pilot")).toBeInTheDocument()
   })
 
   it("does not show factors section when empty", () => {

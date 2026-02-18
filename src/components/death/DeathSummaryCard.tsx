@@ -1,8 +1,8 @@
 /**
  * Expandable death summary card for the actor page.
  *
- * Collapsed: shows a teaser with cause, age, and short summary.
- * Expanded: lazy-loads and renders full death details via DeathDetailsContent.
+ * Collapsed: shows header with chevron + teaser (cause, age, short summary).
+ * Expanded: also shows full death details via DeathDetailsContent.
  */
 
 import { useState, useCallback } from "react"
@@ -65,37 +65,33 @@ export default function DeathSummaryCard({
       className="mb-6 rounded-lg bg-surface-elevated p-4 sm:p-6"
       data-testid="death-summary-card"
     >
-      {/* Header */}
+      {/* Clickable header — single toggle for expand/collapse */}
       <h2 className="font-display text-lg text-brown-dark">
-        {hasFullDetails ? (
-          <button
-            onClick={handleToggle}
-            aria-expanded={isExpanded}
-            className="flex w-full items-center gap-2 text-left transition-colors hover:text-brown-medium"
+        <button
+          onClick={handleToggle}
+          aria-expanded={isExpanded}
+          className="flex w-full items-center gap-2 text-left transition-colors hover:text-brown-medium"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="currentColor"
+            aria-hidden="true"
+            focusable="false"
+            className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
           >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="currentColor"
-              aria-hidden="true"
-              focusable="false"
-              className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
-            >
-              <path
-                d="M4 2l4 4-4 4"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span>Death Circumstances</span>
-          </button>
-        ) : (
+            <path
+              d="M4 2l4 4-4 4"
+              stroke="currentColor"
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
           <span>Death Circumstances</span>
-        )}
+        </button>
       </h2>
 
       {/* Teaser content (always visible) */}
@@ -109,20 +105,8 @@ export default function DeathSummaryCard({
         )}
       </div>
 
-      {/* Expand/Collapse button */}
-      {hasFullDetails && (
-        <button
-          onClick={handleToggle}
-          aria-expanded={isExpanded}
-          className="mt-3 w-full rounded-md py-2 text-center text-sm font-medium text-brown-dark transition-colors hover:bg-cream"
-          data-testid="death-details-toggle"
-        >
-          {isExpanded ? "Collapse" : "Read full story"}
-        </button>
-      )}
-
-      {/* Expanded content (lazy-loaded) */}
-      {isExpanded && (
+      {/* Expanded content — full death details */}
+      {isExpanded && hasFullDetails && (
         <div data-testid="death-details-expanded">
           <div className="my-3 border-t border-brown-light/20" />
           <DeathDetailsContent slug={slug} />
