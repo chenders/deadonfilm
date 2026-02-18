@@ -48,6 +48,7 @@ const mockLivingActor = {
   ],
   analyzedTVFilmography: [],
   deathInfo: null,
+  biographyDetails: null,
 }
 
 const mockDeceasedActor = {
@@ -85,6 +86,7 @@ const mockDeceasedActor = {
     career: null,
     relatedCelebrities: null,
   },
+  biographyDetails: null,
 }
 
 function renderWithProviders(
@@ -302,6 +304,7 @@ describe("ActorPage", () => {
       "analyzedFilmography",
       "analyzedTVFilmography",
       "deathInfo",
+      "biographyDetails",
     ])
   })
 
