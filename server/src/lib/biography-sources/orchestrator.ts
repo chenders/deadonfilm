@@ -92,6 +92,13 @@ export class BiographyEnrichmentOrchestrator {
 
   constructor(config?: Partial<BiographyEnrichmentConfig>) {
     this.config = { ...DEFAULT_BIOGRAPHY_CONFIG, ...config }
+    // Clamp earlyStopSourceCount to a sane minimum
+    const raw = this.config.earlyStopSourceCount
+    if (!Number.isFinite(raw) || raw < 1) {
+      this.config.earlyStopSourceCount = DEFAULT_BIOGRAPHY_CONFIG.earlyStopSourceCount
+    } else {
+      this.config.earlyStopSourceCount = Math.floor(raw)
+    }
     this.sources = this.initializeSources()
   }
 
@@ -268,7 +275,7 @@ export class BiographyEnrichmentOrchestrator {
         // Early stopping: if we have enough distinct high-quality source families, stop to save cost
         if (highQualityFamilies.size >= this.config.earlyStopSourceCount) {
           console.log(
-            `    ${highQualityFamilies.size} distinct high-quality sources collected, stopping early to save cost`
+            `    ${highQualityFamilies.size} distinct high-quality source families collected, stopping early to save cost`
           )
           break
         }

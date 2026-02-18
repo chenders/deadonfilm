@@ -166,7 +166,7 @@ import { BingBiographySearch } from "./sources/bing-search.js"
 import { WikidataBiographySource } from "./sources/wikidata.js"
 import { WikipediaBiographySource } from "./sources/wikipedia.js"
 import { BritannicaBiographySource } from "./sources/britannica.js"
-import type { ActorForBiography, BiographySourceType } from "./types.js"
+import { BiographySourceType, type ActorForBiography } from "./types.js"
 import type { BiographyLookupResult } from "./base-source.js"
 import type { ReliabilityTier } from "../death-sources/types.js"
 
@@ -215,7 +215,7 @@ function createSuccessfulLookup(options?: {
   return {
     success: true,
     source: {
-      type: "wikidata-bio" as BiographySourceType,
+      type: BiographySourceType.WIKIDATA_BIO,
       retrievedAt: new Date(),
       confidence,
       reliabilityTier: "structured_data" as ReliabilityTier,
@@ -224,7 +224,7 @@ function createSuccessfulLookup(options?: {
     },
     data: {
       sourceName,
-      sourceType: "wikidata-bio" as BiographySourceType,
+      sourceType: BiographySourceType.WIKIDATA_BIO,
       text:
         options?.text ||
         "John Wayne grew up in a small town. His parents were hardworking people. He attended school in California.",
@@ -635,12 +635,12 @@ describe("BiographyEnrichmentOrchestrator", () => {
       // Wikidata + Wikipedia share the "wikimedia" family, so they count as 1
       const wikidataMock = getMock("Wikidata")
       // Set the real BiographySourceType so the family lookup works
-      wikidataMock.type = "wikidata-bio"
+      wikidataMock.type = BiographySourceType.WIKIDATA_BIO
       ;(wikidataMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
         createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
       )
       const wikipediaMock = getMock("Wikipedia")
-      wikipediaMock.type = "wikipedia-bio"
+      wikipediaMock.type = BiographySourceType.WIKIPEDIA_BIO
       ;(wikipediaMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
         createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
       )
