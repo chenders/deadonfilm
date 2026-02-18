@@ -103,7 +103,7 @@ Related shows by shared cast members.
 
 ### `GET /api/actor/:slug`
 
-Actor profile with biography, filmography, and mortality data. Slug format: `actor-name-{tmdbId}`.
+Actor profile with biography, filmography, and mortality data. Slug format: `actor-name-{actorId}` (using the internal `actor.id` primary key; legacy `tmdb_id` slugs are 301-redirected).
 
 ### `GET /api/actor/:slug/death`
 
