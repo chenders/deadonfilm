@@ -469,12 +469,15 @@ describe("ActorManagementTab", () => {
 
     renderComponent()
 
-    // John Wayne and James Dean have detailed death info - checkmarks appear inline with names
-    // in both mobile (MobileCard) and desktop (table row) views = 4 checkmarks
-    // John Wayne and Marilyn have has_biography - Bio column ✓ in desktop = 2
-    // Bio field ✓ in mobile cards for John Wayne and Marilyn = 2
-    const checkmarks = screen.getAllByText("✓")
-    expect(checkmarks).toHaveLength(8)
+    // Verify specific indicators by data-testid instead of counting raw "✓" characters
+    // John Wayne (id=1) and James Dean (id=2) have has_detailed_death_info
+    expect(screen.getByTestId("death-page-icon-1")).toBeInTheDocument()
+    expect(screen.getByTestId("death-page-icon-2")).toBeInTheDocument()
+    // John Wayne and Marilyn have has_biography — check sr-only text
+    expect(screen.getAllByText("Has biography").length).toBeGreaterThanOrEqual(2)
+    // Only John Wayne has enriched bio
+    expect(screen.getByTestId("enriched-bio-icon-1")).toBeInTheDocument()
+    expect(screen.queryByTestId("enriched-bio-icon-2")).not.toBeInTheDocument()
   })
 
   it("displays cause of death or dash when missing", () => {

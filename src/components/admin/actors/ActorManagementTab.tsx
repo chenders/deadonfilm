@@ -219,10 +219,13 @@ export default function ActorManagementTab() {
     }
   }
 
-  const handleBioEnrichSelected = async () => {
-    if (selectedActorIds.size === 0) return
+  const [bulkBioEnriching, setBulkBioEnriching] = useState(false)
+
+  const handleBioEnrichSelected = async (): Promise<boolean> => {
+    if (selectedActorIds.size === 0) return false
 
     const actorIds = Array.from(selectedActorIds)
+    setBulkBioEnriching(true)
     try {
       const response = await fetch("/admin/api/biography-enrichment/enrich-batch", {
         method: "POST",
@@ -239,14 +242,20 @@ export default function ActorManagementTab() {
       toast.success(
         `Bio enrichment queued for ${actorIds.length} actor${actorIds.length !== 1 ? "s" : ""}`
       )
+      return true
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to queue bio enrichment")
+      return false
+    } finally {
+      setBulkBioEnriching(false)
     }
   }
 
   const handleBothEnrichSelected = async () => {
-    await handleBioEnrichSelected()
-    handleEnrichSelected()
+    const bioSuccess = await handleBioEnrichSelected()
+    if (bioSuccess) {
+      handleEnrichSelected()
+    }
   }
 
   return (
@@ -506,7 +515,12 @@ export default function ActorManagementTab() {
                       <>
                         {actor.name}
                         {actor.has_detailed_death_info && (
-                          <span className="ml-1 text-admin-success">✓</span>
+                          <span
+                            className="ml-1 text-admin-success"
+                            data-testid={`death-page-icon-mobile-${actor.id}`}
+                          >
+                            ✓
+                          </span>
                         )}
                       </>
                     }
@@ -708,7 +722,11 @@ export default function ActorManagementTab() {
                                 </button>
                               </AdminHoverCard>
                               {actor.has_detailed_death_info && (
-                                <span className="text-admin-success" title="Has death page">
+                                <span
+                                  className="text-admin-success"
+                                  title="Has death page"
+                                  data-testid={`death-page-icon-${actor.id}`}
+                                >
                                   ✓
                                 </span>
                               )}
@@ -962,15 +980,17 @@ export default function ActorManagementTab() {
               </button>
               <button
                 onClick={handleBioEnrichSelected}
-                className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
+                disabled={bulkBioEnriching}
+                className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Bio Enrich
+                {bulkBioEnriching ? "Queuing…" : "Bio Enrich"}
               </button>
               <button
                 onClick={handleBothEnrichSelected}
-                className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
+                disabled={bulkBioEnriching}
+                className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Both
+                {bulkBioEnriching ? "Queuing…" : "Both"}
               </button>
             </div>
           </div>

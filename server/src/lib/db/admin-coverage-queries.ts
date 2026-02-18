@@ -257,25 +257,25 @@ export async function getActorsForCoverage(
   // Cast popularity to float to ensure JavaScript number type (pg returns numeric as string)
   const dataResult = await pool.query<ActorCoverageInfo & { total_count: string }>(
     `SELECT
-       id,
-       name,
-       tmdb_id,
-       deathday,
-       dof_popularity::float as popularity,
-       has_detailed_death_info,
-       enriched_at,
-       age_at_death,
-       cause_of_death,
-       profile_path,
-       death_manner,
-       (biography IS NOT NULL) as has_biography,
+       actors.id,
+       actors.name,
+       actors.tmdb_id,
+       actors.deathday,
+       actors.dof_popularity::float as popularity,
+       actors.has_detailed_death_info,
+       actors.enriched_at,
+       actors.age_at_death,
+       actors.cause_of_death,
+       actors.profile_path,
+       actors.death_manner,
+       (actors.biography IS NOT NULL) as has_biography,
        (abd.id IS NOT NULL) as has_enriched_bio,
        abd.updated_at as bio_enriched_at,
        COUNT(*) OVER() as total_count
      FROM actors
      LEFT JOIN actor_biography_details abd ON abd.actor_id = actors.id
      WHERE ${whereClause}
-     ORDER BY ${orderByClause}, id ASC
+     ORDER BY ${orderByClause}, actors.id ASC
      LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
     [...params, pageSize, offset]
   )
