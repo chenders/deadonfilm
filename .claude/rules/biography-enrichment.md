@@ -29,10 +29,24 @@ Enriches actor records with narrative personal life biographies from ~19 active 
 | DB writer | `server/src/lib/biography-enrichment-db-writer.ts` | COALESCE upsert to `actor_biography_details`, legacy archival |
 | Golden tests | `server/src/lib/biography/golden-test-cases.ts` | 7 test actors with automated scoring (0-100) |
 
+## Text Quality Pipeline
+
+### Source-Level Extraction
+- **Wikipedia**: Uses `wtf_wikipedia` for clean plaintext (no citation markers, footnotes, edit buttons, or HTML artifacts)
+- **Web pages**: Uses `@mozilla/readability` + `jsdom` (Mozilla Reader View algorithm) for article body extraction, falling back to regex-based cleaning
+- **Pre-prompt sanitization**: `sanitizeSourceText()` runs on ALL source text before Claude prompt assembly as a final safety net (strips citation markers, footnote blocks, navigation patterns, boilerplate phrases)
+
+### Shared Utilities
+| File | Purpose |
+|------|---------|
+| `server/src/lib/shared/readability-extract.ts` | Readability + jsdom wrapper for article extraction |
+| `server/src/lib/shared/sanitize-source-text.ts` | Final text sanitization safety net |
+
 ## Three-Stage Content Pipeline
 
 ### Stage 1: Mechanical Pre-Clean
-- Strips HTML, navigation, ads, boilerplate
+- Tries Readability extraction first for full web pages
+- Falls back to regex-based HTML stripping, navigation removal, ad stripping
 - Removes cookie banners, social media widgets
 - Extracts article body text
 - No API cost
@@ -56,7 +70,7 @@ Enriches actor records with narrative personal life biographies from ~19 active 
 | Source | Method | Notes |
 |--------|--------|-------|
 | **Wikidata** | SPARQL query | Structured facts: birthplace, education, family |
-| **Wikipedia** | MediaWiki parse API | Personal life sections via AI section selector |
+| **Wikipedia** | `wtf_wikipedia` parser | Personal life sections via AI section selector; clean plaintext output |
 
 ### Phase 2: Reference Sites
 | Source | Method | Notes |

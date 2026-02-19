@@ -48,6 +48,19 @@ vi.mock("@anthropic-ai/sdk", () => {
   }
 })
 
+// Mock wtf_wikipedia (used by WikipediaBiographySource)
+vi.mock("wtf_wikipedia", () => {
+  const mockFetch = vi.fn()
+  return {
+    default: {
+      fetch: mockFetch,
+      Document: class {},
+      Section: class {},
+    },
+    __mockFetch: mockFetch,
+  }
+})
+
 // ============================================================================
 // Imports — after mocks
 // ============================================================================
@@ -57,6 +70,9 @@ import { writeBiographyToProduction } from "../biography-enrichment-db-writer.js
 import { invalidateActorCache } from "../cache.js"
 import type { ActorForBiography, BiographyData, BiographySourceEntry } from "./types.js"
 import { BiographySourceType } from "./types.js"
+import wtf from "wtf_wikipedia"
+
+const mockWtfFetch = vi.mocked(wtf.fetch)
 
 // ============================================================================
 // Test Fixtures
@@ -206,6 +222,65 @@ const CLAUDE_SYNTHESIS_RESPONSE = {
 }
 
 // ============================================================================
+// wtf_wikipedia Mock Helpers
+// ============================================================================
+
+function mockSection(sectionTitle: string, sectionText: string, sectionDepth = 0) {
+  return {
+    title: () => sectionTitle,
+    text: () => sectionText,
+    depth: () => sectionDepth,
+  }
+}
+
+function mockDocument(
+  docTitle: string,
+  sectionList: ReturnType<typeof mockSection>[],
+  options?: { isDisambig?: boolean }
+) {
+  return {
+    title: () => docTitle,
+    isDisambiguation: () => options?.isDisambig ?? false,
+    sections: () => sectionList,
+  }
+}
+
+/**
+ * Realistic John Wayne Wikipedia document for wtf_wikipedia.
+ */
+function createJohnWayneWtfDoc() {
+  return mockDocument("John Wayne", [
+    mockSection(
+      "",
+      "Marion Robert Morrison (May 26, 1907 – June 11, 1979), known professionally as John Wayne, was an American actor who became one of the biggest box-office draws. Born in Winterset, Iowa, his family moved to Southern California early in his childhood. He grew up in Glendale, California, where he attended school and played football."
+    ),
+    mockSection(
+      "Early life",
+      "Wayne was born Marion Robert Morrison on May 26, 1907, in Winterset, Iowa, to Mary Alberta (Brown) and Clyde Leonard Morrison, a pharmacist. His parents changed his middle name to Mitchell. He had a younger brother, Robert Emmet Morrison. The family lived in Palmdale, California, before moving to Glendale, where his father worked at a drugstore. Wayne attended Glendale Union High School, where he was president of the Latin Society and played on the football team. He was educated at the University of Southern California on a football scholarship."
+    ),
+    mockSection(
+      "Career",
+      "Wayne appeared in many westerns and war films throughout his lengthy career."
+    ),
+    mockSection(
+      "Personal life",
+      "Wayne married three times: first to Josephine Alicia Saenz in 1933, then to Esperanza Baur in 1946, and finally to Pilar Pallete in 1954. He had seven children across his marriages. He struggled with alcoholism during the 1950s. Wayne was a self-described conservative and became a prominent supporter of the Republican Party. In 1964, he was diagnosed with lung cancer and had his entire left lung removed."
+    ),
+    mockSection(
+      "Political views",
+      "Wayne was a conservative and supported the Republican Party throughout his life."
+    ),
+    mockSection(
+      "Death",
+      "Wayne died on June 11, 1979, at UCLA Medical Center from stomach cancer."
+    ),
+    mockSection("Filmography", "A comprehensive list of his film appearances and credits."),
+    mockSection("Awards and nominations", "Wayne received various awards throughout his career."),
+    mockSection("References", "External references and citations."),
+  ])
+}
+
+// ============================================================================
 // Fetch Mock Helpers
 // ============================================================================
 
@@ -318,6 +393,9 @@ describe("Biography Enrichment Integration Test", () => {
     // Configure Anthropic mock to return synthesis response
     anthropicMockCreate.mockResolvedValue(CLAUDE_SYNTHESIS_RESPONSE)
 
+    // Configure wtf_wikipedia mock to return John Wayne document
+    mockWtfFetch.mockResolvedValue(createJohnWayneWtfDoc() as never)
+
     // Ensure ANTHROPIC_API_KEY is set for synthesis
     process.env.ANTHROPIC_API_KEY = "test-key-for-integration-test"
     // Ensure GOOGLE_AI_API_KEY is NOT set (forces regex fallback for section selection)
@@ -357,7 +435,7 @@ describe("Biography Enrichment Integration Test", () => {
 
       // -- Verify HTTP requests were made to expected endpoints --
 
-      // Wikidata SPARQL request
+      // Wikidata SPARQL request (still uses global.fetch)
       const wikidataCalls = mockFetch.mock.calls.filter(
         ([url]) => typeof url === "string" && url.includes("query.wikidata.org")
       )
@@ -368,11 +446,8 @@ describe("Biography Enrichment Integration Test", () => {
       expect(decodedQuery).toContain("John Wayne")
       expect(decodedQuery).toContain("1907")
 
-      // Wikipedia API requests (sections list + section content)
-      const wikiCalls = mockFetch.mock.calls.filter(
-        ([url]) => typeof url === "string" && url.includes("en.wikipedia.org")
-      )
-      expect(wikiCalls.length).toBeGreaterThanOrEqual(3) // sections list + intro + at least 1 bio section
+      // Wikipedia now uses wtf_wikipedia (not global.fetch)
+      expect(mockWtfFetch).toHaveBeenCalled()
 
       // -- Verify orchestrator result structure --
       expect(result.actorId).toBe(42)
@@ -486,10 +561,12 @@ describe("Biography Enrichment Integration Test", () => {
     })
 
     it("returns error when all sources fail and no synthesis occurs", async () => {
-      // Override fetch to return errors for everything
+      // Override fetch to return errors for everything (Wikidata)
       global.fetch = vi.fn(async () => {
         return new Response("Internal Server Error", { status: 500 })
       })
+      // Override wtf.fetch to return null (Wikipedia)
+      mockWtfFetch.mockResolvedValue(null as never)
 
       const orchestrator = new BiographyEnrichmentOrchestrator({
         sourceCategories: {

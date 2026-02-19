@@ -16,7 +16,7 @@ Enriches actor death records with cause, manner, location, and circumstances fro
 | AI providers | `server/src/lib/death-sources/ai-providers/*.ts` | AI model integrations (Gemini, GPT, Groq, etc.) |
 | Types | `server/src/lib/death-sources/types.ts` | `DataSourceType` enum, config interfaces, result types |
 | HTML utils | `server/src/lib/death-sources/html-utils.ts` | `htmlToText()` sanitization pipeline |
-| Link follower | `server/src/lib/death-sources/link-follower.ts` | Follows URLs from web search results |
+| Link follower | `server/src/lib/death-sources/link-follower.ts` | Follows URLs from web search results; uses Readability for article extraction |
 | Archive fallback | `server/src/lib/death-sources/archive-fallback.ts` | archive.org fallback for blocked sites |
 
 ## Orchestrator Flow
@@ -35,7 +35,7 @@ Sources are tried in this order:
 | Source | Method | Can Find Death Cause? | Notes |
 |--------|--------|:---------------------:|-------|
 | **Wikidata** | SPARQL query by name + birth/death year | YES | P509 (cause), P1196 (manner), P20 (place) |
-| **Wikipedia** | API search, extract Death/Health sections | YES | AI section selection optional |
+| **Wikipedia** | `wtf_wikipedia` parser, extract Death/Health sections | YES | AI section selection optional; clean plaintext output |
 | **IMDb** | Scrape `/name/{id}/bio` page | YES | Uses known IMDb ID or suggestion API search |
 | BFI Sight & Sound | Annual memoriam list URL by death year | LOW | Only covers 2015+ deaths |
 
@@ -61,6 +61,18 @@ FamilySearch (requires API key)
 
 ### Phase 7: AI Models (optional, by ascending cost)
 Gemini Flash (~$0.0001) → Groq (~$0.0002) → GPT-4o Mini (~$0.0003) → DeepSeek → Mistral → Gemini Pro → Grok → Perplexity → GPT-4o (~$0.01)
+
+## Text Quality Pipeline
+
+- **Wikipedia**: Uses `wtf_wikipedia` for clean plaintext (no citation markers, footnotes, edit buttons, or HTML artifacts)
+- **Web pages (link-follower)**: Uses `@mozilla/readability` + `jsdom` for article body extraction, falling back to `htmlToText()` regex pipeline
+- **Pre-prompt sanitization**: `sanitizeSourceText()` runs on ALL source text before Claude prompt assembly as a final safety net
+
+### Shared Utilities
+| File | Purpose |
+|------|---------|
+| `server/src/lib/shared/readability-extract.ts` | Readability + jsdom wrapper for article extraction |
+| `server/src/lib/shared/sanitize-source-text.ts` | Final text sanitization safety net |
 
 ## Known Issues & Disabled Sources
 

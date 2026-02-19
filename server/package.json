@@ -143,6 +143,7 @@
     "@bull-board/api": "^6.16.4",
     "@bull-board/express": "^6.16.4",
     "@extra/recaptcha": "^4.2.1-next.587",
+    "@mozilla/readability": "^0.6.0",
     "@resvg/resvg-js": "^2.6.2",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.67.1",
@@ -160,6 +161,7 @@
     "ini": "^6.0.0",
     "ioredis": "^5.8.2",
     "isbot": "^5.1.33",
+    "jsdom": "^28.1.0",
     "jsonrepair": "^3.13.2",
     "jsonwebtoken": "^9.0.3",
     "newrelic": "^13.6.6",
@@ -172,6 +174,7 @@
     "recharts": "^3.7.0",
     "satori": "^0.19.2",
     "slugify": "^1.6.6",
+    "wtf_wikipedia": "^10.4.1",
     "zod": "^4.3.5"
   },
   "devDependencies": {
@@ -184,6 +187,7 @@
     "@types/express": "^5.0.0",
     "@types/he": "^1.2.3",
     "@types/ini": "^4.1.1",
+    "@types/jsdom": "^27.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/newrelic": "^9.14.8",
     "@types/node": "^22.10.1",

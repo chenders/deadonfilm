@@ -400,7 +400,6 @@ export async function detectPaywall(page: Page): Promise<PaywallDetectionResult>
         // Check if it's a soft paywall (dismissable) or hard paywall
         // Note: This callback runs in browser context, not Node.js
         const isSoftPaywall = await page.evaluate((sel) => {
-          // @ts-expect-error - document is available in browser context
           const el = document.querySelector(sel)
           if (!el) return false
           const text = el.textContent?.toLowerCase() || ""

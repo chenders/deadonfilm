@@ -106,14 +106,12 @@ async function extractSiteKey(page: Page, type: CaptchaType): Promise<string | n
         // Try data-sitekey attribute first
         // Note: This callback runs in browser context, not Node.js
         siteKey = await page.evaluate(() => {
-          // @ts-expect-error - document is available in browser context
           const element = document.querySelector("[data-sitekey]")
           if (element) {
             return element.getAttribute("data-sitekey")
           }
 
           // Check for reCAPTCHA script render parameter (for v3 implicit)
-          // @ts-expect-error - document is available in browser context
           const scripts = document.querySelectorAll("script[src*='recaptcha']")
           for (const script of scripts) {
             const src = script.getAttribute("src") || ""
@@ -125,10 +123,11 @@ async function extractSiteKey(page: Page, type: CaptchaType): Promise<string | n
           }
 
           // Check iframe src for sitekey
-          // @ts-expect-error - document is available in browser context
-          const iframe = document.querySelector('iframe[src*="recaptcha"]')
+          const iframe = document.querySelector(
+            'iframe[src*="recaptcha"]'
+          ) as HTMLIFrameElement | null
           if (iframe) {
-            const src = (iframe.src as string) || ""
+            const src = iframe.src || ""
             const match = src.match(/k=([a-zA-Z0-9_-]+)/)
             if (match) {
               return match[1]
@@ -137,7 +136,6 @@ async function extractSiteKey(page: Page, type: CaptchaType): Promise<string | n
 
           // For explicit rendering, search page source for sitekey in JS
           // Common patterns: 'sitekey': '...', sitekey: "...", grecaptcha.render(..., {sitekey: '...'})
-          // @ts-expect-error - document is available in browser context
           const html = document.documentElement.innerHTML
           const patterns = [
             /['"]?sitekey['"]?\s*[:=]\s*['"]([a-zA-Z0-9_-]{40})['"]/, // sitekey: 'xxx' or sitekey = "xxx"
@@ -160,7 +158,6 @@ async function extractSiteKey(page: Page, type: CaptchaType): Promise<string | n
       case "hcaptcha": {
         // Note: This callback runs in browser context, not Node.js
         siteKey = await page.evaluate(() => {
-          // @ts-expect-error - document is available in browser context
           const element = document.querySelector(
             ".h-captcha[data-sitekey], [data-hcaptcha-sitekey]"
           )
@@ -170,10 +167,11 @@ async function extractSiteKey(page: Page, type: CaptchaType): Promise<string | n
             )
           }
 
-          // @ts-expect-error - document is available in browser context
-          const iframe = document.querySelector('iframe[src*="hcaptcha"]')
+          const iframe = document.querySelector(
+            'iframe[src*="hcaptcha"]'
+          ) as HTMLIFrameElement | null
           if (iframe) {
-            const src = (iframe.src as string) || ""
+            const src = iframe.src || ""
             const match = src.match(/sitekey=([a-zA-Z0-9-]+)/)
             if (match) {
               return match[1]

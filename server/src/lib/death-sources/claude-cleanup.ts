@@ -24,6 +24,7 @@ import type {
   CareerStatus,
   RelatedCelebrity,
 } from "./types.js"
+import { sanitizeSourceText } from "../shared/sanitize-source-text.js"
 import { getEnrichmentLogger } from "./logger.js"
 import newrelic from "newrelic"
 
@@ -139,7 +140,8 @@ export function buildCleanupPrompt(actor: ActorForEnrichment, rawSources: RawSou
         s.reliabilityScore !== undefined
           ? `, reliability: ${(s.reliabilityScore * 100).toFixed(0)}%`
           : ""
-      return `--- ${s.sourceName} (confidence: ${(s.confidence * 100).toFixed(0)}%${reliabilityLabel}) ---\n${s.text}`
+      const cleanedText = sanitizeSourceText(s.text)
+      return `--- ${s.sourceName} (confidence: ${(s.confidence * 100).toFixed(0)}%${reliabilityLabel}) ---\n${cleanedText}`
     })
     .join("\n\n")
 

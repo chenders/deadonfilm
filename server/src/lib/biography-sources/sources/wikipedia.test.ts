@@ -11,9 +11,23 @@ vi.mock("../wikipedia-section-selector.js", () => ({
   selectBiographySections: vi.fn(),
 }))
 
+// Mock wtf_wikipedia
+vi.mock("wtf_wikipedia", () => {
+  const mockFetch = vi.fn()
+  return {
+    default: {
+      fetch: mockFetch,
+      Document: class {},
+      Section: class {},
+    },
+    __mockFetch: mockFetch,
+  }
+})
+
 import { WikipediaBiographySource } from "./wikipedia.js"
 import { selectBiographySections } from "../wikipedia-section-selector.js"
 import type { ActorForBiography } from "../types.js"
+import wtf from "wtf_wikipedia"
 
 // ============================================================================
 // Test Fixtures
@@ -33,52 +47,31 @@ const testActor: ActorForBiography = {
 }
 
 /**
- * Build a mock Wikipedia sections API response.
+ * Create a mock wtf_wikipedia Section object.
  */
-function buildSectionsResponse(
-  title: string,
-  sections: Array<{ index: string; line: string; level: string; anchor: string }>
-) {
+function mockSection(sectionTitle: string, sectionText: string, sectionDepth = 0) {
   return {
-    parse: {
-      title,
-      pageid: 123,
-      sections,
-    },
+    title: () => sectionTitle,
+    text: () => sectionText,
+    depth: () => sectionDepth,
   }
 }
 
 /**
- * Build a mock Wikipedia section content API response.
+ * Create a mock wtf_wikipedia Document object.
  */
-function buildContentResponse(title: string, html: string) {
+function mockDocument(
+  docTitle: string,
+  sectionList: ReturnType<typeof mockSection>[],
+  options?: { isDisambig?: boolean }
+) {
   return {
-    parse: {
-      title,
-      pageid: 123,
-      text: {
-        "*": html,
-      },
-    },
+    title: () => docTitle,
+    isDisambiguation: () => options?.isDisambig ?? false,
+    isDisambig: () => options?.isDisambig ?? false,
+    sections: () => sectionList,
   }
 }
-
-const standardSections = [
-  { index: "1", line: "Early life and education", level: "2", anchor: "Early_life" },
-  { index: "2", line: "Career", level: "2", anchor: "Career" },
-  { index: "3", line: "Personal life", level: "2", anchor: "Personal_life" },
-  { index: "4", line: "Filmography", level: "2", anchor: "Filmography" },
-  { index: "5", line: "References", level: "2", anchor: "References" },
-]
-
-const introHtml =
-  "<p>Richard Milhous Nixon (January 9, 1913 &ndash; April 22, 1994) was an American politician who served as president. He grew up in a poor family in Yorba Linda, California.</p>"
-
-const earlyLifeHtml =
-  "<p>Nixon was born in Yorba Linda, California, to Francis A. Nixon and Hannah Milhous Nixon. His childhood was marked by poverty and hardship. He attended Whittier College on a scholarship and later studied at Duke University School of Law.</p>"
-
-const personalLifeHtml =
-  '<p>Nixon married Patricia Ryan in 1940. They had two children: Tricia and Julie. Their family life was private despite his public career.</p><span class="mw-editsection">[edit]</span>'
 
 // ============================================================================
 // Tests
@@ -86,12 +79,11 @@ const personalLifeHtml =
 
 describe("WikipediaBiographySource", () => {
   let source: WikipediaBiographySource
-  const mockFetch = vi.fn()
+  const mockWtfFetch = vi.mocked(wtf.fetch)
   const mockSelectSections = vi.mocked(selectBiographySections)
 
   beforeEach(() => {
     vi.clearAllMocks()
-    global.fetch = mockFetch
     source = new WikipediaBiographySource()
   })
 
@@ -100,35 +92,30 @@ describe("WikipediaBiographySource", () => {
   })
 
   it("fetches section list and selects personal life sections", async () => {
-    // Mock sections response
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon", standardSections),
-    })
+    const doc = mockDocument("Richard Nixon", [
+      mockSection(
+        "",
+        "Richard Milhous Nixon (January 9, 1913 – April 22, 1994) was an American politician. He grew up in a poor family in Yorba Linda, California."
+      ),
+      mockSection(
+        "Early life and education",
+        "Nixon was born in Yorba Linda, California, to Francis A. Nixon and Hannah Milhous Nixon. His childhood was marked by poverty and hardship. He attended Whittier College on a scholarship."
+      ),
+      mockSection("Career", "Nixon served as the 37th president of the United States."),
+      mockSection(
+        "Personal life",
+        "Nixon married Patricia Ryan in 1940. They had two children: Tricia and Julie. Their family life was private despite his public career."
+      ),
+      mockSection("Filmography", "References section here."),
+      mockSection("References", "External links."),
+    ])
 
-    // Mock selectBiographySections to return personal life sections
+    mockWtfFetch.mockResolvedValueOnce(doc as never)
+
     mockSelectSections.mockResolvedValueOnce({
       selectedSections: ["Early life and education", "Personal life"],
       costUsd: 0.0001,
       usedAI: true,
-    })
-
-    // Mock intro content (section 0)
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", introHtml),
-    })
-
-    // Mock Early life section content
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", earlyLifeHtml),
-    })
-
-    // Mock Personal life section content
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", personalLifeHtml),
     })
 
     const result = await source.lookup(testActor)
@@ -145,22 +132,21 @@ describe("WikipediaBiographySource", () => {
   })
 
   it("always includes intro (section 0)", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon", standardSections),
-    })
+    const doc = mockDocument("Richard Nixon", [
+      mockSection(
+        "",
+        "Richard Milhous Nixon (January 9, 1913 – April 22, 1994) was an American politician. He grew up in a poor family in Yorba Linda, California."
+      ),
+      mockSection("Career", "Nixon served as the 37th president."),
+    ])
+
+    mockWtfFetch.mockResolvedValueOnce(doc as never)
 
     // Return no personal sections to verify intro is still fetched
     mockSelectSections.mockResolvedValueOnce({
       selectedSections: [],
       costUsd: 0,
       usedAI: false,
-    })
-
-    // Mock intro content
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", introHtml),
     })
 
     const result = await source.lookup(testActor)
@@ -171,27 +157,20 @@ describe("WikipediaBiographySource", () => {
   })
 
   it("adds section headers to output text", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon", standardSections),
-    })
+    const doc = mockDocument("Richard Nixon", [
+      mockSection("", "Richard Milhous Nixon was an American politician who served as president."),
+      mockSection(
+        "Early life and education",
+        "Nixon was born in Yorba Linda, California, to parents Francis and Hannah. His childhood was marked by poverty."
+      ),
+    ])
+
+    mockWtfFetch.mockResolvedValueOnce(doc as never)
 
     mockSelectSections.mockResolvedValueOnce({
       selectedSections: ["Early life and education"],
       costUsd: 0,
       usedAI: false,
-    })
-
-    // Intro
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", introHtml),
-    })
-
-    // Early life
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", earlyLifeHtml),
     })
 
     const result = await source.lookup(testActor)
@@ -201,161 +180,110 @@ describe("WikipediaBiographySource", () => {
     expect(result.data!.text).toContain("[Early life and education]")
   })
 
-  it("handles articles with no personal sections", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon", standardSections),
-    })
-
-    mockSelectSections.mockResolvedValueOnce({
-      selectedSections: [],
-      costUsd: 0,
-      usedAI: false,
-    })
-
-    // Intro still fetched
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", introHtml),
-    })
-
-    const result = await source.lookup(testActor)
-
-    // Should still succeed with intro only
-    expect(result.success).toBe(true)
-    expect(result.data!.text).toContain("[Introduction]")
-    // Should not have personal life section
-    expect(result.data!.text).not.toContain("[Personal life]")
-  })
-
   it("handles disambiguation pages", async () => {
-    const disambigSections = [
-      { index: "1", line: "People", level: "2", anchor: "People" },
-      { index: "2", line: "Other uses", level: "2", anchor: "Other_uses" },
-      { index: "3", line: "Given name", level: "2", anchor: "Given_name" },
-    ]
-
     // First request: disambiguation page
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon", disambigSections),
-    })
+    const disambigDoc = mockDocument(
+      "Richard Nixon",
+      [
+        mockSection("People", "List of people named Richard Nixon."),
+        mockSection("Other uses", "Other uses for the name."),
+      ],
+      { isDisambig: true }
+    )
 
-    // Second request with _(actor) suffix: real article
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon (actor)", standardSections),
-    })
+    // Second request: real article via _(actor) suffix
+    const realDoc = mockDocument("Richard Nixon (actor)", [
+      mockSection("", "Richard Nixon is an actor known for various roles in film and television."),
+      mockSection(
+        "Early life",
+        "Born and raised in Ohio, Nixon showed early talent for the performing arts."
+      ),
+    ])
+
+    mockWtfFetch.mockResolvedValueOnce(disambigDoc as never).mockResolvedValueOnce(realDoc as never)
 
     mockSelectSections.mockResolvedValueOnce({
-      selectedSections: ["Early life and education"],
+      selectedSections: ["Early life"],
       costUsd: 0,
       usedAI: false,
-    })
-
-    // Intro
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon (actor)", introHtml),
-    })
-
-    // Early life
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon (actor)", earlyLifeHtml),
     })
 
     const result = await source.lookup(testActor)
 
     expect(result.success).toBe(true)
     expect(result.data).not.toBeNull()
-    // Should have tried disambiguation fallback
-    expect(mockFetch).toHaveBeenCalledTimes(4) // sections + alt sections + intro + early life
+    // Should have called wtf.fetch twice: once for disambig, once for _(actor)
+    expect(mockWtfFetch).toHaveBeenCalledTimes(2)
   })
 
-  it("handles Wikipedia API errors", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    })
+  it("handles Wikipedia article not found", async () => {
+    mockWtfFetch.mockResolvedValueOnce(null as never)
+
+    // Also return null for _(actor) and _(actress) suffixes
+    mockWtfFetch.mockResolvedValueOnce(null as never)
+    mockWtfFetch.mockResolvedValueOnce(null as never)
 
     const result = await source.lookup(testActor)
 
     expect(result.success).toBe(false)
-    expect(result.error).toContain("Wikipedia API HTTP 500")
-  })
-
-  it("handles missing articles", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        error: {
-          code: "missingtitle",
-          info: "The page you specified doesn't exist.",
-        },
-      }),
-    })
-
-    const result = await source.lookup(testActor)
-
-    expect(result.success).toBe(false)
-    expect(result.error).toContain("Wikipedia API error")
+    expect(result.error).toContain("Article not found")
   })
 
   it("handles network errors", async () => {
-    mockFetch.mockRejectedValueOnce(new Error("Network timeout"))
+    mockWtfFetch.mockRejectedValueOnce(new Error("Network timeout"))
 
     const result = await source.lookup(testActor)
 
     expect(result.success).toBe(false)
-    expect(result.error).toBe("Network timeout")
+    expect(result.error).toContain("Article not found")
   })
 
-  it("runs content through mechanicalPreClean", async () => {
-    const noisyHtml =
-      '<div class="advertisement">Buy now!</div><p>Nixon was born in Yorba Linda, California, to parents Francis and Hannah. His early life and childhood were shaped by poverty.</p><script>alert("x")</script>'
+  it("text from wtf_wikipedia is clean (no HTML artifacts)", async () => {
+    // wtf_wikipedia returns clean text — no HTML, no citation markers
+    const doc = mockDocument("Richard Nixon", [
+      mockSection(
+        "",
+        "Richard Milhous Nixon was an American politician who served as president. He grew up in Yorba Linda."
+      ),
+      mockSection(
+        "Early life",
+        "Nixon was born in Yorba Linda, California. His early life and childhood were shaped by poverty. He attended Whittier College on a scholarship."
+      ),
+    ])
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon", standardSections),
-    })
+    mockWtfFetch.mockResolvedValueOnce(doc as never)
 
     mockSelectSections.mockResolvedValueOnce({
       selectedSections: [],
       costUsd: 0,
       usedAI: false,
-    })
-
-    // Intro with noisy HTML
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", noisyHtml),
     })
 
     const result = await source.lookup(testActor)
 
     expect(result.success).toBe(true)
-    // Script content should be stripped
-    expect(result.data!.text).not.toContain("alert")
+    // Should not contain any HTML artifacts
+    expect(result.data!.text).not.toContain("<")
+    expect(result.data!.text).not.toContain("[edit]")
+    expect(result.data!.text).not.toContain("[1]")
     // Biographical content should remain
     expect(result.data!.text).toContain("Yorba Linda")
   })
 
   it("sets correct publication metadata", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon", standardSections),
-    })
+    const doc = mockDocument("Richard Nixon", [
+      mockSection(
+        "",
+        "Richard Milhous Nixon was an American politician. He grew up in a poor family in Yorba Linda, California."
+      ),
+    ])
+
+    mockWtfFetch.mockResolvedValueOnce(doc as never)
 
     mockSelectSections.mockResolvedValueOnce({
       selectedSections: [],
       costUsd: 0,
       usedAI: false,
-    })
-
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", introHtml),
     })
 
     const result = await source.lookup(testActor)
@@ -371,14 +299,14 @@ describe("WikipediaBiographySource", () => {
   })
 
   it("calculates biographical confidence from keywords", async () => {
-    // HTML with many biographical keywords
-    const richBioHtml =
-      "<p>He was born in a small town. His parents raised him in poverty. He grew up with siblings and attended school on a scholarship. His early life was marked by family struggles. He married young and had children.</p>"
+    const doc = mockDocument("Richard Nixon", [
+      mockSection(
+        "",
+        "He was born in a small town. His parents raised him in poverty. He grew up with siblings and attended school on a scholarship. His early life was marked by family struggles. He married young and had children."
+      ),
+    ])
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon", standardSections),
-    })
+    mockWtfFetch.mockResolvedValueOnce(doc as never)
 
     mockSelectSections.mockResolvedValueOnce({
       selectedSections: [],
@@ -386,46 +314,25 @@ describe("WikipediaBiographySource", () => {
       usedAI: false,
     })
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", richBioHtml),
-    })
-
     const result = await source.lookup(testActor)
 
     expect(result.success).toBe(true)
-    // Text contains biographical keywords: "born in", "parents", "school", "early life", "family", "married", "children", "scholarship", "siblings", "poverty"
-    // Required keywords hit: "born in", "parents", "school", "early life", "family", "married"
-    // Bonus keywords hit: "scholarship", "siblings", "poverty", "children"
-    // Confidence should be > 0
     expect(result.data!.confidence).toBeGreaterThan(0)
     expect(result.source.confidence).toBeGreaterThan(0)
   })
 
   it("skips sections with less than 50 chars", async () => {
-    const shortHtml = "<p>Short text.</p>"
+    const doc = mockDocument("Richard Nixon", [
+      mockSection("", "Short."),
+      mockSection("Early life", "Also short."),
+    ])
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildSectionsResponse("Richard Nixon", standardSections),
-    })
+    mockWtfFetch.mockResolvedValueOnce(doc as never)
 
     mockSelectSections.mockResolvedValueOnce({
-      selectedSections: ["Early life and education"],
+      selectedSections: ["Early life"],
       costUsd: 0,
       usedAI: false,
-    })
-
-    // Short intro (below 50 char threshold)
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", shortHtml),
-    })
-
-    // Short early life section (below 50 char threshold)
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => buildContentResponse("Richard Nixon", shortHtml),
     })
 
     const result = await source.lookup(testActor)

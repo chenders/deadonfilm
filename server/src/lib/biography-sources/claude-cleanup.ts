@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import type { ActorForBiography, RawBiographySourceData, BiographyData } from "./types.js"
 import { BiographySourceType, VALID_LIFE_NOTABLE_FACTORS } from "./types.js"
 import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
+import { sanitizeSourceText } from "../shared/sanitize-source-text.js"
 
 // Sonnet pricing (per million tokens)
 const INPUT_COST_PER_MILLION = 3
@@ -75,7 +76,8 @@ export function buildBiographySynthesisPrompt(
         ? `${(source.reliabilityScore * 100).toFixed(0)}%`
         : "unknown"
     const publicationLabel = source.publication ? source.publication : source.sourceName
-    const block = `--- ${source.sourceName} (${publicationLabel}, reliability: ${reliabilityPercent}) ---\n${source.text}`
+    const cleanedText = sanitizeSourceText(source.text)
+    const block = `--- ${source.sourceName} (${publicationLabel}, reliability: ${reliabilityPercent}) ---\n${cleanedText}`
 
     if (totalChars + block.length > MAX_SOURCE_CHARS) {
       // Truncate this source or skip it entirely

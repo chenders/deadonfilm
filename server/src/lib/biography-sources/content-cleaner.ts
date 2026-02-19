@@ -20,6 +20,7 @@ import {
   looksLikeCode,
 } from "../death-sources/html-utils.js"
 import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
+import { extractArticleContent } from "../shared/readability-extract.js"
 import type { CleanedContent } from "./types.js"
 
 // ============================================================================
@@ -559,6 +560,43 @@ function collapseWhitespace(text: string): string {
 }
 
 // ============================================================================
+// Readability output noise removal
+// ============================================================================
+
+/**
+ * Noise patterns that Readability may leave in article text.
+ * These are short lines/phrases that appear inside <article> elements
+ * but are not article content (social buttons, newsletter CTAs, etc.).
+ */
+const READABILITY_NOISE_PATTERNS = [
+  /^\s*share this (?:article|story|post)\s*$/i,
+  /^\s*(?:get|sign up for) (?:our|the) (?:weekly )?newsletter\s*$/i,
+  /^\s*(?:we use|this site uses) cookies?\b/i,
+  /^\s*(?:subscribe|sign (?:up|in)|log (?:in|out))\s*$/i,
+  /^\s*(?:related|recommended|more) (?:articles?|stories)\s*$/i,
+  /^\s*(?:comments?|leave a (?:comment|reply))\s*$/i,
+  /^\s*(?:advertisement|sponsored content)\s*$/i,
+]
+
+/**
+ * Remove noise lines from Readability-extracted text.
+ * Strips short lines that match common noise patterns
+ * (social share buttons, newsletter CTAs, etc.).
+ */
+function removeReadabilityNoise(text: string): string {
+  return text
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim()
+      // Keep empty lines (whitespace handling is done elsewhere)
+      if (!trimmed) return true
+      // Remove lines matching noise patterns
+      return !READABILITY_NOISE_PATTERNS.some((pattern) => pattern.test(trimmed))
+    })
+    .join("\n")
+}
+
+// ============================================================================
 // Code fragment removal
 // ============================================================================
 
@@ -608,7 +646,7 @@ function stripCodeParagraphs(text: string): string {
  * 9. Strip code fragments
  * 10. Collapse whitespace
  */
-export function mechanicalPreClean(html: string): MechanicalCleanResult {
+export function mechanicalPreClean(html: string, url?: string): MechanicalCleanResult {
   const emptyResult: MechanicalCleanResult = {
     text: "",
     metadata: { title: null, publication: null, author: null, publishDate: null },
@@ -620,6 +658,31 @@ export function mechanicalPreClean(html: string): MechanicalCleanResult {
 
   // Step 1: Extract metadata before any modifications
   const metadata = extractMetadata(html)
+
+  // Step 1.5: Try Readability extraction for full web pages
+  //           (skip for Wikipedia section HTML which lacks <html>/<body>)
+  if (html.includes("<html") || html.includes("<body") || html.includes("<!DOCTYPE")) {
+    const article = extractArticleContent(html, url)
+    if (article && article.text.length >= 200) {
+      let text = article.text
+      text = removeCitationMarkers(text)
+      text = removeReadabilityNoise(text)
+      text = stripCodeParagraphs(text)
+      text = collapseWhitespace(text)
+
+      return {
+        text,
+        metadata: {
+          title: metadata.title || article.title,
+          publication: article.siteName || metadata.publication,
+          author: article.author || metadata.author,
+          publishDate: metadata.publishDate,
+        },
+      }
+    }
+  }
+
+  // Fallback: regex-based cleaning pipeline
 
   // Step 2: Remove structural noise tags using state machine
   let cleaned = html
