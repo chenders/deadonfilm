@@ -3,6 +3,9 @@
  *
  * Uses DuckDuckGo's HTML search endpoint (free, no API key required).
  * Extends WebSearchBase to support link following for richer results.
+ *
+ * Falls back to browser-based DDG search with stealth mode when the
+ * fetch-based approach hits a CAPTCHA (anomaly-modal).
  */
 
 import { WebSearchBase } from "./web-search-base.js"
@@ -10,6 +13,7 @@ import type { ActorForEnrichment, SearchResult } from "../types.js"
 import { DataSourceType, ReliabilityTier } from "../types.js"
 import { decodeHtmlEntities as decodeEntities } from "../html-utils.js"
 import { extractDomain } from "../link-follower.js"
+import { isDuckDuckGoCaptcha, cleanDuckDuckGoUrl } from "../../shared/duckduckgo-search.js"
 
 const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
 
@@ -36,6 +40,7 @@ export class DuckDuckGoSource extends WebSearchBase {
   }> {
     const query = this.buildSearchQuery(actor)
 
+    // Step 1: Try fetch-based DDG
     try {
       const url = `${DUCKDUCKGO_HTML_URL}?q=${encodeURIComponent(query)}`
 
@@ -45,32 +50,81 @@ export class DuckDuckGoSource extends WebSearchBase {
         },
       })
 
-      if (!response.ok) {
-        return {
-          results: [],
-          error: `HTTP ${response.status}`,
+      if (response.ok) {
+        const html = await response.text()
+
+        if (!isDuckDuckGoCaptcha(html)) {
+          return { results: this.extractResultsFromHtml(html) }
         }
+
+        // CAPTCHA detected — try browser fallback
+        console.log("DuckDuckGo CAPTCHA detected, trying browser fallback...")
       }
+    } catch {
+      // fetch failed — try browser fallback
+    }
 
-      const html = await response.text()
-
-      // Detect CAPTCHA/bot detection page
-      if (html.includes("anomaly-modal") || html.includes("bots use DuckDuckGo too")) {
-        return {
-          results: [],
-          error: "DuckDuckGo CAPTCHA detected (bot rate-limited)",
-        }
+    // Step 2: Try browser-based DDG with stealth mode
+    try {
+      const html = await this.fetchDdgWithBrowser(query)
+      if (html) {
+        return { results: this.extractResultsFromHtml(html) }
       }
-
-      // Extract search results with URLs
-      const results = this.extractResultsFromHtml(html)
-
-      return { results }
     } catch (error) {
+      // Browser fallback failed
       return {
         results: [],
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: `DuckDuckGo search failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       }
+    }
+
+    return {
+      results: [],
+      error: "DuckDuckGo CAPTCHA detected (all fallbacks exhausted)",
+    }
+  }
+
+  /**
+   * Fetch DDG search results using headless browser with stealth mode.
+   * Returns the raw HTML or null if CAPTCHA could not be bypassed.
+   */
+  private async fetchDdgWithBrowser(query: string): Promise<string | null> {
+    const { getBrowserPage } = await import("../browser-fetch.js")
+    const { detectCaptcha, solveCaptcha, getBrowserAuthConfig } =
+      await import("../browser-auth/index.js")
+
+    const { page, context } = await getBrowserPage()
+
+    try {
+      const url = `${DUCKDUCKGO_HTML_URL}?q=${encodeURIComponent(query)}`
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 })
+      await page.waitForTimeout(2000)
+
+      let html = await page.content()
+
+      if (isDuckDuckGoCaptcha(html)) {
+        // Try CAPTCHA solving as last resort
+        const captchaResult = await detectCaptcha(page)
+        if (captchaResult.detected) {
+          const authConfig = getBrowserAuthConfig()
+          if (authConfig.captchaSolver) {
+            const solveResult = await solveCaptcha(page, captchaResult, authConfig.captchaSolver)
+            if (solveResult.success) {
+              await page.waitForTimeout(2000)
+              html = await page.content()
+            }
+          }
+        }
+
+        if (isDuckDuckGoCaptcha(html)) {
+          return null
+        }
+      }
+
+      return html
+    } finally {
+      await page.close().catch(() => {})
+      await context.close().catch(() => {})
     }
   }
 
@@ -96,14 +150,14 @@ export class DuckDuckGoSource extends WebSearchBase {
       // Try result__url first (more reliable)
       const urlMatch = block.match(/class="result__url"[^>]*href="([^"]+)"/)
       if (urlMatch) {
-        resultUrl = this.cleanUrl(urlMatch[1])
+        resultUrl = cleanDuckDuckGoUrl(urlMatch[1])
       }
 
       // Fall back to result__a href
       if (!resultUrl) {
         const linkMatch = block.match(/class="result__a"[^>]*href="([^"]+)"/)
         if (linkMatch) {
-          resultUrl = this.cleanUrl(linkMatch[1])
+          resultUrl = cleanDuckDuckGoUrl(linkMatch[1])
         }
       }
 
@@ -111,14 +165,14 @@ export class DuckDuckGoSource extends WebSearchBase {
       let title = ""
       const titleMatch = block.match(/class="result__a"[^>]*>([^<]+)</)
       if (titleMatch) {
-        title = this.decodeHtmlEntities(titleMatch[1].trim())
+        title = decodeEntities(titleMatch[1].trim())
       }
 
       // Extract snippet
       let snippet = ""
       const snippetMatch = block.match(/class="result__snippet"[^>]*>([^<]+)</)
       if (snippetMatch) {
-        snippet = this.decodeHtmlEntities(snippetMatch[1].trim())
+        snippet = decodeEntities(snippetMatch[1].trim())
       }
 
       // Only include if we have a valid URL and some content
@@ -158,13 +212,13 @@ export class DuckDuckGoSource extends WebSearchBase {
 
     let match
     while ((match = urlRegex.exec(html)) !== null) {
-      urls.push(this.cleanUrl(match[1]))
+      urls.push(cleanDuckDuckGoUrl(match[1]))
     }
     while ((match = snippetRegex.exec(html)) !== null) {
-      snippets.push(this.decodeHtmlEntities(match[1].trim()))
+      snippets.push(decodeEntities(match[1].trim()))
     }
     while ((match = titleRegex.exec(html)) !== null) {
-      titles.push(this.decodeHtmlEntities(match[1].trim()))
+      titles.push(decodeEntities(match[1].trim()))
     }
 
     // Combine - assume they're in order
@@ -183,37 +237,5 @@ export class DuckDuckGoSource extends WebSearchBase {
     }
 
     return results
-  }
-
-  /**
-   * Clean DuckDuckGo redirect URLs to get the actual destination URL.
-   */
-  private cleanUrl(url: string): string {
-    // DuckDuckGo sometimes wraps URLs in a redirect
-    // Format: //duckduckgo.com/l/?uddg=ENCODED_URL&...
-    if (url.includes("duckduckgo.com/l/")) {
-      const uddgMatch = url.match(/uddg=([^&]+)/)
-      if (uddgMatch) {
-        try {
-          return decodeURIComponent(uddgMatch[1])
-        } catch {
-          // Fall through
-        }
-      }
-    }
-
-    // Handle protocol-relative URLs
-    if (url.startsWith("//")) {
-      return "https:" + url
-    }
-
-    return url
-  }
-
-  /**
-   * Decode HTML entities in text.
-   */
-  private decodeHtmlEntities(text: string): string {
-    return decodeEntities(text)
   }
 }

@@ -92,6 +92,16 @@ Guardian, NYTimes, AP News, BBC News, People
 ### Phase 5: Obituary Sites
 Legacy.com, Find a Grave
 
+### DuckDuckGo Browser Fallback
+
+All DDG-dependent sources (Phases 2-5) use a shared search utility (`server/src/lib/shared/duckduckgo-search.ts`) with a multi-tier fallback chain:
+
+1. **fetch-based DDG** — free, fast (~1s)
+2. **Browser-based DDG** — Playwright with `fingerprint-injector` stealth mode, bypasses DDG anomaly-modal CAPTCHA
+3. **CAPTCHA solver** — 2Captcha/CapSolver as last resort (if configured)
+
+Browser stealth uses `fingerprint-injector` (from Apify's fingerprint-suite) for statistically realistic, randomized fingerprints per session — replacing the previous hardcoded Chrome 120 UA / 1920x1080 viewport.
+
 ### Phase 6: Historical Archives
 Internet Archive, Chronicling America, Trove, Europeana
 

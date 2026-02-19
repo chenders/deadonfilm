@@ -7,12 +7,13 @@
 
 import { DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS, NOTABLE_FACTOR_KEYWORDS } from "../base-source.js"
 import type { ActorForEnrichment } from "../types.js"
+import { searchDuckDuckGo, isDuckDuckGoCaptcha } from "../../shared/duckduckgo-search.js"
 
 const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
 const GOOGLE_CSE_URL = "https://www.googleapis.com/customsearch/v1"
 
 const DEFAULT_USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
 export interface WebSearchResult {
   /** Raw HTML-like text containing URLs and snippets (compatible with extractUrlFromSearchResults) */
@@ -24,12 +25,18 @@ export interface WebSearchResult {
 }
 
 /**
- * Search the web using DDG with automatic Google CSE fallback.
+ * Search the web using DDG (with browser fallback) and Google CSE fallback.
  *
- * Tries DuckDuckGo HTML first (free). If CAPTCHA is detected, falls back
- * to Google Custom Search API (requires GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_CX).
+ * Fallback chain:
+ * 1. DuckDuckGo fetch (free, fast)
+ * 2. DuckDuckGo browser with stealth mode (bypasses CAPTCHA)
+ * 3. Google Custom Search API (requires GOOGLE_SEARCH_API_KEY + GOOGLE_SEARCH_CX)
  *
  * Returns HTML-like text compatible with extractUrlFromSearchResults().
+ *
+ * Note: This function returns raw HTML for backward compatibility with death
+ * sources that use extractUrlFromSearchResults(). For biography sources that
+ * only need URLs, use searchDuckDuckGo() from shared/duckduckgo-search.ts directly.
  */
 export async function searchWeb(
   query: string,
@@ -37,7 +44,7 @@ export async function searchWeb(
 ): Promise<WebSearchResult> {
   const userAgent = options?.userAgent || DEFAULT_USER_AGENT
 
-  // Try DuckDuckGo first (free)
+  // Try DuckDuckGo first — fetch-based (free, fast)
   try {
     const url = `${DUCKDUCKGO_HTML_URL}?q=${encodeURIComponent(query)}`
     const response = await fetch(url, {
@@ -48,18 +55,38 @@ export async function searchWeb(
     if (response.ok) {
       const html = await response.text()
 
-      // Detect CAPTCHA/bot detection
-      if (html.includes("anomaly-modal") || html.includes("bots use DuckDuckGo too")) {
-        console.log("DuckDuckGo CAPTCHA detected, falling back to Google CSE")
-      } else {
+      if (!isDuckDuckGoCaptcha(html)) {
         return { html, engine: "duckduckgo" }
       }
+
+      // CAPTCHA detected — try browser fallback before Google CSE
+      console.log("DuckDuckGo CAPTCHA detected, trying browser fallback...")
     }
   } catch {
-    // DDG failed, try Google
+    // DDG fetch failed — try browser fallback
+  }
+
+  // Try DuckDuckGo browser fallback (stealth mode bypasses anomaly-modal)
+  try {
+    const ddgResult = await searchDuckDuckGo({
+      query,
+      userAgent,
+      useBrowserFallback: true,
+      signal: options?.signal,
+    })
+
+    if (ddgResult.urls.length > 0 && ddgResult.engine === "duckduckgo-browser") {
+      // Convert URLs back to HTML-like format for backward compatibility
+      const html = ddgResult.urls.map((u) => `<a href="${u}">${u}</a>`).join("\n")
+      return { html, engine: "duckduckgo" }
+    }
+  } catch {
+    // Browser fallback failed — try Google CSE
   }
 
   // Fall back to Google Custom Search API
+  console.log("DuckDuckGo browser fallback exhausted, falling back to Google CSE")
+
   const apiKey = process.env.GOOGLE_SEARCH_API_KEY
   const cx = process.env.GOOGLE_SEARCH_CX
 

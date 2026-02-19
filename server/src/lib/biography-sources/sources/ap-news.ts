@@ -12,9 +12,8 @@ import type { ActorForBiography, RawBiographySourceData } from "../types.js"
 import { BiographySourceType } from "../types.js"
 import { ReliabilityTier } from "../../death-sources/types.js"
 import { mechanicalPreClean } from "../content-cleaner.js"
-import { decodeHtmlEntities } from "../../death-sources/html-utils.js"
+import { searchDuckDuckGo } from "../../shared/duckduckgo-search.js"
 
-const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
 const MIN_CONTENT_LENGTH = 200
 
 export class APNewsBiographySource extends BaseBiographySource {
@@ -32,7 +31,11 @@ export class APNewsBiographySource extends BaseBiographySource {
 
     // Step 1: Search DuckDuckGo for apnews.com pages about this actor
     const query = `site:apnews.com "${actor.name}" profile OR biography OR interview`
-    const urls = await this.searchDuckDuckGo(query, "apnews.com")
+    const ddgResult = await searchDuckDuckGo({
+      query,
+      domainFilter: "apnews.com",
+    })
+    const urls = ddgResult.urls
 
     if (urls.length === 0) {
       return {
@@ -133,83 +136,6 @@ export class APNewsBiographySource extends BaseBiographySource {
       }),
       data: sourceData,
     }
-  }
-
-  /**
-   * Search DuckDuckGo HTML endpoint and return matching URLs for the target domain.
-   */
-  private async searchDuckDuckGo(query: string, targetDomain: string): Promise<string[]> {
-    const url = `${DUCKDUCKGO_HTML_URL}?q=${encodeURIComponent(query)}`
-
-    const response = await fetch(url, {
-      headers: { "User-Agent": this.userAgent },
-      signal: this.createTimeoutSignal(),
-    })
-
-    if (!response.ok) {
-      throw new Error(`DuckDuckGo search failed: HTTP ${response.status}`)
-    }
-
-    const html = await response.text()
-
-    // Detect CAPTCHA/bot detection
-    if (html.includes("anomaly-modal") || html.includes("bots use DuckDuckGo too")) {
-      throw new Error("DuckDuckGo CAPTCHA detected (bot rate-limited)")
-    }
-
-    return this.extractUrlsFromDuckDuckGoHtml(html, targetDomain)
-  }
-
-  /**
-   * Extract URLs from DuckDuckGo HTML search results.
-   */
-  private extractUrlsFromDuckDuckGoHtml(html: string, targetDomain: string): string[] {
-    const urls: string[] = []
-
-    // Extract from result__url href attributes
-    const urlRegex = /class="result__url"[^>]*href="([^"]+)"/g
-    let match
-    while ((match = urlRegex.exec(html)) !== null) {
-      const cleaned = this.cleanDuckDuckGoUrl(match[1])
-      if (cleaned.includes(targetDomain)) {
-        urls.push(cleaned)
-      }
-    }
-
-    // Fallback: try result__a href attributes
-    if (urls.length === 0) {
-      const linkRegex = /class="result__a"[^>]*href="([^"]+)"/g
-      while ((match = linkRegex.exec(html)) !== null) {
-        const cleaned = this.cleanDuckDuckGoUrl(match[1])
-        if (cleaned.includes(targetDomain)) {
-          urls.push(cleaned)
-        }
-      }
-    }
-
-    return urls
-  }
-
-  /**
-   * Clean DuckDuckGo redirect URLs to extract the actual destination URL.
-   */
-  private cleanDuckDuckGoUrl(url: string): string {
-    if (url.includes("duckduckgo.com/l/")) {
-      const uddgMatch = url.match(/uddg=([^&]+)/)
-      if (uddgMatch) {
-        try {
-          return decodeURIComponent(decodeHtmlEntities(uddgMatch[1]))
-        } catch {
-          // Fall through
-        }
-      }
-    }
-
-    if (url.startsWith("//")) {
-      return "https:" + url
-    }
-
-    return url
   }
 
   /**
