@@ -89,7 +89,7 @@ Source files still exist in `sources/` but are not instantiated in the orchestra
 - **BFI Sight & Sound** — hard fails for deaths before 2015
 
 ### DuckDuckGo HTML Search Fragility
-Legacy.com still uses `https://html.duckduckgo.com/html/?q=site:legacy.com ...` — this deprecated endpoint may block requests.
+DDG's deprecated HTML endpoint (`html.duckduckgo.com/html/`) increasingly returns CAPTCHA (anomaly-modal). All DDG-dependent sources now use a shared utility (`server/src/lib/shared/duckduckgo-search.ts`) with automatic browser fallback: fetch → Playwright with `fingerprint-injector` stealth → CAPTCHA solver. The `news-utils.ts` `searchWeb()` function adds Google CSE as a final fallback after the DDG chain.
 
 ## Configuration
 

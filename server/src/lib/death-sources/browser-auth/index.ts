@@ -47,11 +47,10 @@ export { WashingtonPostLoginHandler } from "./login-handlers/washingtonpost.js"
 
 // Stealth techniques
 export {
+  createStealthContext,
   applyStealthToContext,
   applyStealthToPage,
   getStealthLaunchArgs,
-  getRealisticUserAgent,
-  getRealisticViewport,
 } from "./stealth.js"
 
 // Re-export key types for convenience

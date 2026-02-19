@@ -33,10 +33,8 @@ import {
   solveCaptcha,
   NYTimesLoginHandler,
   WashingtonPostLoginHandler,
-  applyStealthToContext,
+  createStealthContext,
   getStealthLaunchArgs,
-  getRealisticUserAgent,
-  getRealisticViewport,
 } from "./browser-auth/index.js"
 import type {
   LoginHandler,
@@ -332,6 +330,31 @@ export async function shutdownBrowser(): Promise<void> {
   }
 }
 
+/**
+ * Get a new stealth browser page from the singleton browser instance.
+ *
+ * Creates a new context + page so callers (e.g., DDG browser fallback) don't
+ * interfere with other browser sessions. The caller is responsible for closing
+ * the page and context when done.
+ */
+export async function getBrowserPage(): Promise<{
+  page: Page
+  context: BrowserContext
+}> {
+  const browser = await getBrowser()
+  const context = await createStealthContext(browser)
+  const page = await context.newPage()
+
+  // Set common headers
+  await page.setExtraHTTPHeaders({
+    "Accept-Language": "en-US,en;q=0.9",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  })
+
+  resetIdleTimeout()
+  return { page, context }
+}
+
 // ============================================================================
 // Authentication Functions
 // ============================================================================
@@ -470,16 +493,8 @@ export async function getAuthenticatedContext(
   const domain = getDomainFromUrl(url)
   const site = getSiteFromUrl(url)
 
-  // Create a new context with realistic browser properties
-  const context = await browser.newContext({
-    userAgent: getRealisticUserAgent(),
-    viewport: getRealisticViewport(),
-    locale: "en-US",
-    timezoneId: "America/New_York",
-  })
-
-  // Apply stealth techniques to avoid bot detection
-  await applyStealthToContext(context)
+  // Create a new context with fingerprint-injected stealth
+  const context = await createStealthContext(browser)
 
   // If auth is not enabled or no credentials, return basic context
   if (!authConfig.enabled || !site || !hasCredentialsForSite(site)) {
@@ -647,7 +662,9 @@ export async function browserFetchPage(
 
       page = await context.newPage()
     } else {
-      page = await browser.newPage()
+      // Create a stealth context even for non-authenticated requests
+      context = await createStealthContext(browser)
+      page = await context.newPage()
     }
 
     // Set a realistic user agent

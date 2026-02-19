@@ -419,7 +419,7 @@ export class BiographyEnrichmentOrchestrator {
 
     const processingTimeMs = Date.now() - startTime
     console.log(
-      `  Complete in ${processingTimeMs}ms, cost: $${totalCost.toFixed(4)}, sources: ${sourcesSucceeded}/${sourcesAttempted}`
+      `  Complete in ${processingTimeMs}ms, cost: $${totalCost.toFixed(4)} (source: $${totalSourceCost.toFixed(4)}, synthesis: $${totalSynthesisCost.toFixed(4)}), sources: ${sourcesSucceeded}/${sourcesAttempted}`
     )
 
     // Record actor completion in New Relic
