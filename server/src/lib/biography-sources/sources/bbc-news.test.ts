@@ -19,8 +19,9 @@ vi.mock("../../shared/duckduckgo-search.js", async () => {
     ...actual,
     searchDuckDuckGo: vi
       .fn()
-      .mockImplementation((options: Record<string, unknown>) =>
-        actual.searchDuckDuckGo({ ...options, useBrowserFallback: false })
+      .mockImplementation(
+        (options: import("../../shared/duckduckgo-search.js").DuckDuckGoSearchOptions) =>
+          actual.searchDuckDuckGo({ ...options, useBrowserFallback: false })
       ),
   }
 })
