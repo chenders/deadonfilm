@@ -260,8 +260,7 @@ export async function injectCaptchaToken(
       ]
 
       for (const selector of responseSelectors) {
-        // @ts-expect-error - document is available in browser context
-        const textarea = document.querySelector(selector)
+        const textarea = document.querySelector(selector) as HTMLTextAreaElement | null
         if (textarea) {
           // Make visible if hidden (common pattern)
           textarea.style.display = "block"
@@ -276,33 +275,34 @@ export async function injectCaptchaToken(
 
       // Try to trigger the callback function
       if (type === "recaptcha_v2" || type === "recaptcha_v3") {
-        // @ts-expect-error - accessing global grecaptcha in browser context
-        if (typeof window.grecaptcha !== "undefined" && window.grecaptcha.getResponse) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (
+          typeof (window as any).grecaptcha !== "undefined" &&
+          (window as any).grecaptcha.getResponse
+        ) {
           try {
             // Find callback from data attribute
-            // @ts-expect-error - document is available in browser context
             const recaptchaDiv = document.querySelector("[data-callback]")
             const callbackName = recaptchaDiv?.getAttribute("data-callback")
-            // @ts-expect-error - window is available in browser context
-            if (callbackName && typeof window[callbackName] === "function") {
-              // @ts-expect-error - window is available in browser context
-              window[callbackName](token)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (callbackName && typeof (window as any)[callbackName] === "function") {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ;(window as any)[callbackName](token)
             }
           } catch {
             // Callback invocation failed, form submission should still work
           }
         }
       } else if (type === "hcaptcha") {
-        // @ts-expect-error - accessing global hcaptcha in browser context
-        if (typeof window.hcaptcha !== "undefined") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (typeof (window as any).hcaptcha !== "undefined") {
           try {
-            // @ts-expect-error - document is available in browser context
             const hcaptchaDiv = document.querySelector("[data-callback]")
             const callbackName = hcaptchaDiv?.getAttribute("data-callback")
-            // @ts-expect-error - window is available in browser context
-            if (callbackName && typeof window[callbackName] === "function") {
-              // @ts-expect-error - window is available in browser context
-              window[callbackName](token)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (callbackName && typeof (window as any)[callbackName] === "function") {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ;(window as any)[callbackName](token)
             }
           } catch {
             // Callback invocation failed

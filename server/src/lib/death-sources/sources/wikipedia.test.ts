@@ -1,12 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { WikipediaSource } from "./wikipedia.js"
-import { DataSourceType, DEFAULT_WIKIPEDIA_OPTIONS } from "../types.js"
 
-// Mock fetch globally
-const mockFetch = vi.fn()
-global.fetch = mockFetch
-
-// Mock the cache module
+// Mock cache (must be before source import)
 vi.mock("../cache.js", () => ({
   getCachedQuery: vi.fn().mockResolvedValue(null),
   setCachedQuery: vi.fn().mockResolvedValue(undefined),
@@ -24,8 +18,66 @@ vi.mock("../wikipedia-date-extractor.js", () => ({
   isAIDateExtractionAvailable: vi.fn().mockReturnValue(false),
 }))
 
+// Mock wtf_wikipedia
+vi.mock("wtf_wikipedia", () => {
+  const mockFetch = vi.fn()
+  return {
+    default: {
+      fetch: mockFetch,
+      Document: class {},
+      Section: class {},
+    },
+    __mockFetch: mockFetch,
+  }
+})
+
+import { WikipediaSource } from "./wikipedia.js"
+import { DataSourceType, DEFAULT_WIKIPEDIA_OPTIONS } from "../types.js"
+import {
+  selectRelevantSections,
+  isAISectionSelectionAvailable,
+} from "../wikipedia-section-selector.js"
+import wtf from "wtf_wikipedia"
+
+// ============================================================================
+// Test Fixtures
+// ============================================================================
+
+/**
+ * Create a mock wtf_wikipedia Section object.
+ */
+function mockSection(sectionTitle: string, sectionText: string, sectionDepth = 0) {
+  return {
+    title: () => sectionTitle,
+    text: () => sectionText,
+    depth: () => sectionDepth,
+  }
+}
+
+/**
+ * Create a mock wtf_wikipedia Document object.
+ */
+function mockDocument(
+  docTitle: string,
+  sectionList: ReturnType<typeof mockSection>[],
+  options?: { isDisambig?: boolean }
+) {
+  return {
+    title: () => docTitle,
+    isDisambiguation: () => options?.isDisambig ?? false,
+    sections: () => sectionList,
+  }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
 describe("WikipediaSource", () => {
   let source: WikipediaSource
+  const mockWtfFetch = vi.mocked(wtf.fetch)
+  const mockSelectSections = vi.mocked(selectRelevantSections)
+  const mockIsAIAvailable = vi.mocked(isAISectionSelectionAvailable)
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -81,63 +133,23 @@ describe("WikipediaSource", () => {
       popularity: 15.5,
     }
 
-    const mockSectionsResponse = {
-      parse: {
-        title: "John Wayne",
-        pageid: 16231,
-        sections: [
-          { index: "0", line: "Introduction", level: "1" },
-          { index: "1", line: "Early life", level: "2" },
-          { index: "2", line: "Career", level: "2" },
-          { index: "3", line: "Health", level: "2" },
-          { index: "4", line: "Death", level: "2" },
-          { index: "5", line: "Legacy", level: "2" },
-        ],
-      },
-    }
-
-    const mockDeathSectionContent = {
-      parse: {
-        title: "John Wayne",
-        pageid: 16231,
-        text: {
-          "*": `<div class="mw-parser-output">
-            <p>Wayne died on June 11, 1979, at UCLA Medical Center from stomach cancer.
-            He had been battling cancer for several years following lung cancer surgery in 1964.
-            His funeral was held at Our Lady Queen of Angels Catholic Church.</p>
-          </div>`,
-        },
-      },
-    }
-
-    const mockHealthSectionContent = {
-      parse: {
-        title: "John Wayne",
-        pageid: 16231,
-        text: {
-          "*": `<div class="mw-parser-output">
-            <p>Wayne's health declined throughout the 1970s. He had been diagnosed with
-            lung cancer in 1964 and had a lung removed. He later developed stomach cancer
-            which would ultimately cause his death.</p>
-          </div>`,
-        },
-      },
-    }
-
     it("returns results on successful lookup with Death section", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockSectionsResponse,
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockHealthSectionContent,
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockDeathSectionContent,
-        })
+      const doc = mockDocument("John Wayne", [
+        mockSection("", "John Wayne (May 26, 1907 – June 11, 1979) was an American actor."),
+        mockSection("Early life", "Born Marion Robert Morrison in Winterset, Iowa."),
+        mockSection("Career", "Wayne appeared in numerous westerns and war films."),
+        mockSection(
+          "Health",
+          "Wayne's health declined throughout the 1970s. He had been diagnosed with lung cancer in 1964 and had a lung removed. He later developed stomach cancer which would ultimately cause his death."
+        ),
+        mockSection(
+          "Death",
+          "Wayne died on June 11, 1979, at UCLA Medical Center from stomach cancer. He had been battling cancer for several years following lung cancer surgery in 1964. His funeral was held at Our Lady Queen of Angels Catholic Church."
+        ),
+        mockSection("Legacy", "Wayne remains an iconic figure in American cinema."),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup(mockActor)
 
@@ -147,16 +159,8 @@ describe("WikipediaSource", () => {
     })
 
     it("handles article not found error", async () => {
-      // All article lookups (primary + alternates) return not found
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          error: {
-            code: "missingtitle",
-            info: "The page you specified doesn't exist.",
-          },
-        }),
-      })
+      // All article lookups (primary + alternates) return null
+      mockWtfFetch.mockResolvedValue(null as never)
 
       const result = await source.lookup(mockActor)
 
@@ -165,20 +169,19 @@ describe("WikipediaSource", () => {
     })
 
     it("handles no death section found", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          parse: {
-            title: "John Wayne",
-            pageid: 16231,
-            sections: [
-              { index: "0", line: "Introduction", level: "1" },
-              { index: "1", line: "Career", level: "2" },
-              { index: "2", line: "Filmography", level: "2" },
-            ],
-          },
-        }),
-      })
+      const doc = mockDocument("John Wayne", [
+        mockSection("", "John Wayne was an American actor."),
+        mockSection(
+          "Career",
+          "Wayne appeared in many films spanning several decades of Hollywood history."
+        ),
+        mockSection(
+          "Filmography",
+          "A comprehensive list of his many film appearances and credits."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup(mockActor)
 
@@ -186,63 +189,35 @@ describe("WikipediaSource", () => {
       expect(result.error).toContain("No death section found")
     })
 
-    it("handles HTTP 403 as blocked error", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 403,
-      })
-
-      await expect(source.lookup(mockActor)).rejects.toThrow("blocked")
-    })
-
-    it("handles HTTP errors", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      })
+    it("handles fetch errors gracefully", async () => {
+      // wtf.fetch throws on network errors
+      mockWtfFetch.mockRejectedValue(new Error("Network timeout"))
 
       const result = await source.lookup(mockActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("HTTP 500")
+      expect(result.error).toBeDefined()
     })
 
-    it("handles network errors", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network timeout"))
+    it("handles network errors from wtf_wikipedia", async () => {
+      mockWtfFetch.mockRejectedValue(new Error("Network timeout"))
 
       const result = await source.lookup(mockActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("Network timeout")
+      expect(result.error).toBeDefined()
     })
 
     it("extracts notable factors from text", async () => {
-      const mockContentWithSuicide = {
-        parse: {
-          title: "Test Actor",
-          pageid: 12345,
-          text: {
-            "*": `<p>The actor took his own life at his home. The death was ruled a suicide
-            by the coroner after an investigation.</p>`,
-          },
-        },
-      }
+      const doc = mockDocument("Test Actor", [
+        mockSection("", "Test Actor was an American performer who died tragically young."),
+        mockSection(
+          "Death",
+          "The actor took his own life at his home. The death was ruled a suicide by the coroner after an investigation. He had been struggling with depression for several years."
+        ),
+      ])
 
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              sections: [{ index: "1", line: "Death", level: "2" }],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockContentWithSuicide,
-        })
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup({
         ...mockActor,
@@ -254,31 +229,16 @@ describe("WikipediaSource", () => {
     })
 
     it("handles empty section content", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockSectionsResponse,
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "John Wayne",
-              pageid: 16231,
-              text: { "*": "<div></div>" },
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "John Wayne",
-              pageid: 16231,
-              text: { "*": "<div></div>" },
-            },
-          }),
-        })
+      const doc = mockDocument("John Wayne", [
+        mockSection("", "Short intro."),
+        mockSection("Early life", "Brief."),
+        mockSection("Career", "Short."),
+        mockSection("Health", "Brief."),
+        mockSection("Death", "Short."),
+        mockSection("Legacy", "Brief."),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup(mockActor)
 
@@ -287,35 +247,23 @@ describe("WikipediaSource", () => {
     })
 
     it("finds fallback sections like Personal life", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Jane Doe",
-              pageid: 99999,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "Career", level: "2" },
-                { index: "2", line: "Personal life", level: "2" },
-                { index: "3", line: "Filmography", level: "2" },
-              ],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Jane Doe",
-              pageid: 99999,
-              text: {
-                "*": `<p>Jane Doe passed away on December 15, 2023, at her home in Beverly Hills.
-                She died peacefully surrounded by family after a long illness.</p>`,
-              },
-            },
-          }),
-        })
+      const doc = mockDocument("Jane Doe", [
+        mockSection("", "Jane Doe was an American actress known for her many notable roles."),
+        mockSection(
+          "Career",
+          "She appeared in numerous television shows throughout her lengthy career."
+        ),
+        mockSection(
+          "Personal life",
+          "Jane Doe passed away on December 15, 2023, at her home in Beverly Hills. She died peacefully surrounded by family after a long illness."
+        ),
+        mockSection(
+          "Filmography",
+          "A comprehensive list of her film and television appearances and credits."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup({
         ...mockActor,
@@ -327,36 +275,18 @@ describe("WikipediaSource", () => {
     })
 
     it("finds Assassination section for violent deaths", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "John F. Kennedy",
-              pageid: 12345,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "Early life", level: "2" },
-                { index: "2", line: "Presidency", level: "2" },
-                { index: "3", line: "Assassination", level: "2" },
-                { index: "4", line: "Legacy", level: "2" },
-              ],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "John F. Kennedy",
-              pageid: 12345,
-              text: {
-                "*": `<p>Kennedy was assassinated on November 22, 1963, in Dallas, Texas.
-                He was shot while riding in a presidential motorcade through Dealey Plaza.</p>`,
-              },
-            },
-          }),
-        })
+      const doc = mockDocument("John F. Kennedy", [
+        mockSection("", "John F. Kennedy was the 35th president of the United States."),
+        mockSection("Early life", "Kennedy was born in Brookline, Massachusetts in 1917."),
+        mockSection("Presidency", "Kennedy served as president from 1961 until his death in 1963."),
+        mockSection(
+          "Assassination",
+          "Kennedy was assassinated on November 22, 1963, in Dallas, Texas. He was shot while riding in a presidential motorcade through Dealey Plaza."
+        ),
+        mockSection("Legacy", "Kennedy is remembered as one of the most popular presidents."),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup({
         ...mockActor,
@@ -368,34 +298,23 @@ describe("WikipediaSource", () => {
     })
 
     it("finds Murder section for violent deaths", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 11111,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "Career", level: "2" },
-                { index: "2", line: "Murder", level: "2" },
-                { index: "3", line: "Legacy", level: "2" },
-              ],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 11111,
-              text: {
-                "*": `<p>Test Actor was murdered on January 5, 2020, at their home in Los Angeles.</p>`,
-              },
-            },
-          }),
-        })
+      const doc = mockDocument("Test Actor", [
+        mockSection(
+          "",
+          "Test Actor was a performer known for numerous roles in film and television."
+        ),
+        mockSection(
+          "Career",
+          "He appeared in many film productions throughout his lengthy career."
+        ),
+        mockSection(
+          "Murder",
+          "Test Actor was murdered on January 5, 2020, at their home in Los Angeles. The perpetrator was later arrested by police."
+        ),
+        mockSection("Legacy", "He is remembered fondly for his contributions to cinema."),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup({
         ...mockActor,
@@ -407,35 +326,23 @@ describe("WikipediaSource", () => {
     })
 
     it("finds Plane crash section for accident deaths", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Pilot",
-              pageid: 22222,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "Career", level: "2" },
-                { index: "2", line: "Plane crash", level: "2" },
-                { index: "3", line: "Aftermath", level: "2" },
-              ],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Pilot",
-              pageid: 22222,
-              text: {
-                "*": `<p>The plane crashed on takeoff from Van Nuys Airport on March 3, 2019.
-                All three people on board were killed.</p>`,
-              },
-            },
-          }),
-        })
+      const doc = mockDocument("Test Pilot", [
+        mockSection("", "Test Pilot was a stunt performer and aviator known for daring feats."),
+        mockSection(
+          "Career",
+          "He performed many dangerous stunts in numerous action films over the years."
+        ),
+        mockSection(
+          "Plane crash",
+          "The plane crashed on takeoff from Van Nuys Airport on March 3, 2019. All three people on board were killed in the fiery crash."
+        ),
+        mockSection(
+          "Aftermath",
+          "An investigation was launched by the NTSB into the crash and its causes."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup({
         ...mockActor,
@@ -447,48 +354,23 @@ describe("WikipediaSource", () => {
     })
 
     it("finds both Death and Assassination sections when both exist", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Leader",
-              pageid: 33333,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "Death", level: "2" },
-                { index: "2", line: "Assassination", level: "2" },
-                { index: "3", line: "Legacy", level: "2" },
-              ],
-            },
-          }),
-        })
-        // Death section content (must be >=50 chars after HTML stripping)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Leader",
-              pageid: 33333,
-              text: {
-                "*": `<p>Test Leader died on April 14, 1865, at Petersen House in Washington, D.C., surrounded by government officials and family members.</p>`,
-              },
-            },
-          }),
-        })
-        // Assassination section content
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Leader",
-              pageid: 33333,
-              text: {
-                "*": `<p>The assassination was carried out by a gunman at Ford's Theatre during a performance of Our American Cousin on the evening of April 14.</p>`,
-              },
-            },
-          }),
-        })
+      const doc = mockDocument("Test Leader", [
+        mockSection("", "Test Leader was a prominent political figure in American history."),
+        mockSection(
+          "Death",
+          "Test Leader died on April 14, 1865, at Petersen House in Washington, D.C., surrounded by government officials and family members."
+        ),
+        mockSection(
+          "Assassination",
+          "The assassination was carried out by a gunman at Ford's Theatre during a performance of Our American Cousin on the evening of April 14."
+        ),
+        mockSection(
+          "Legacy",
+          "He is remembered as one of the greatest leaders in American history."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup({
         ...mockActor,
@@ -502,34 +384,17 @@ describe("WikipediaSource", () => {
     })
 
     it("matches 'Death and aftermath' pattern (catch-all at end of list)", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 44444,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "Career", level: "2" },
-                { index: "2", line: "Death and controversy", level: "2" },
-                { index: "3", line: "Legacy", level: "2" },
-              ],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 44444,
-              text: {
-                "*": `<p>Test Actor died under controversial circumstances in 2020.</p>`,
-              },
-            },
-          }),
-        })
+      const doc = mockDocument("Test Actor", [
+        mockSection("", "Test Actor was a well-known performer in Hollywood cinema."),
+        mockSection("Career", "He appeared in many critically acclaimed films over the decades."),
+        mockSection(
+          "Death and controversy",
+          "Test Actor died under controversial circumstances in 2020. The investigation revealed several suspicious elements surrounding the death."
+        ),
+        mockSection("Legacy", "His contributions to cinema are widely recognized and celebrated."),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup({
         ...mockActor,
@@ -565,13 +430,9 @@ describe("WikipediaSource", () => {
     })
 
     it("includes linked article metadata in rawData when AI selects linked articles", async () => {
-      // Import the mocked module to control its behavior
-      const { selectRelevantSections, isAISectionSelectionAvailable } =
-        await import("../wikipedia-section-selector.js")
-
       // Enable AI section selection
-      vi.mocked(isAISectionSelectionAvailable).mockReturnValue(true)
-      vi.mocked(selectRelevantSections).mockResolvedValue({
+      mockIsAIAvailable.mockReturnValue(true)
+      mockSelectSections.mockResolvedValue({
         selectedSections: ["Death"],
         linkedArticles: ["2020_plane_crash"],
         usedAI: true,
@@ -588,62 +449,33 @@ describe("WikipediaSource", () => {
         validatePersonDates: false,
       })
 
-      // Mock main article sections response
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              sections: [
-                { index: "1", line: "Career", level: "2" },
-                { index: "2", line: "Death", level: "2" },
-              ],
-            },
-          }),
-        })
-        // Mock death section content
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              text: {
-                "*": `<p>Test Actor died in the 2020 plane crash that killed multiple passengers.</p>`,
-              },
-            },
-          }),
-        })
-        // Mock linked article sections lookup (to verify it exists)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "2020 plane crash",
-              pageid: 99999,
-              sections: [
-                { index: "1", line: "Background", level: "2" },
-                { index: "2", line: "Casualties", level: "2" },
-              ],
-            },
-          }),
-        })
-        // Mock linked article intro content
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "2020 plane crash",
-              pageid: 99999,
-              text: {
-                "*": `<p>The 2020 plane crash occurred on March 10, 2020, killing all 9 people aboard
-                including Test Actor. The helicopter crashed into a hillside in foggy conditions.</p>`,
-              },
-            },
-          }),
-        })
+      // Main article
+      const mainDoc = mockDocument("Test Actor", [
+        mockSection("", "Test Actor was a famous performer who died in a tragic accident."),
+        mockSection("Career", "He appeared in many notable films throughout his long career."),
+        mockSection(
+          "Death",
+          "Test Actor died in the 2020 plane crash that killed multiple passengers and crew members aboard."
+        ),
+      ])
+
+      // Linked article
+      const linkedDoc = mockDocument("2020 plane crash", [
+        mockSection(
+          "",
+          "The 2020 plane crash occurred on March 10, 2020, killing all 9 people aboard including Test Actor. The helicopter crashed into a hillside in foggy conditions."
+        ),
+        mockSection(
+          "Background",
+          "The flight departed from a local airport in poor weather conditions early that morning."
+        ),
+        mockSection(
+          "Casualties",
+          "All nine passengers and crew died in the crash along with the pilot."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(mainDoc as never).mockResolvedValueOnce(linkedDoc as never)
 
       const result = await source.lookup(mockActor)
 
@@ -658,112 +490,9 @@ describe("WikipediaSource", () => {
       expect(aiSelection.linkedArticles).toContain("2020_plane_crash")
     })
 
-    it("handles redirects when fetching linked articles", async () => {
-      // This test verifies that redirects=1 parameter is included
-      const { selectRelevantSections, isAISectionSelectionAvailable } =
-        await import("../wikipedia-section-selector.js")
-
-      vi.mocked(isAISectionSelectionAvailable).mockReturnValue(true)
-      vi.mocked(selectRelevantSections).mockResolvedValue({
-        selectedSections: ["Death"],
-        linkedArticles: ["Kobe_Bryant_helicopter_crash"],
-        usedAI: true,
-        costUsd: 0.001,
-      })
-
-      source.setWikipediaOptions({
-        useAISectionSelection: true,
-        followLinkedArticles: true,
-        maxLinkedArticles: 2,
-        maxSections: 10,
-        handleDisambiguation: false,
-        validatePersonDates: false,
-      })
-
-      // Capture the fetch calls to verify redirect parameter
-      const fetchCalls: string[] = []
-      mockFetch.mockImplementation(async (url: string) => {
-        fetchCalls.push(url)
-
-        if (url.includes("prop=sections") && url.includes("Test_Actor")) {
-          return {
-            ok: true,
-            json: async () => ({
-              parse: {
-                title: "Test Actor",
-                pageid: 12345,
-                sections: [{ index: "1", line: "Death", level: "2" }],
-              },
-            }),
-          }
-        }
-
-        if (url.includes("section=1") && url.includes("Test_Actor")) {
-          return {
-            ok: true,
-            json: async () => ({
-              parse: {
-                title: "Test Actor",
-                pageid: 12345,
-                text: {
-                  "*": "<p>Died in a helicopter crash on January 26, 2020. The helicopter crashed into a hillside in foggy weather conditions in Calabasas, California.</p>",
-                },
-              },
-            }),
-          }
-        }
-
-        // Linked article sections - should include redirects=1
-        if (url.includes("Kobe_Bryant_helicopter_crash") && url.includes("prop=sections")) {
-          return {
-            ok: true,
-            json: async () => ({
-              parse: {
-                title: "Kobe Bryant helicopter crash",
-                pageid: 77777,
-                sections: [],
-              },
-            }),
-          }
-        }
-
-        // Linked article intro
-        if (url.includes("Kobe_Bryant_helicopter_crash") && url.includes("section=0")) {
-          return {
-            ok: true,
-            json: async () => ({
-              parse: {
-                title: "Kobe Bryant helicopter crash",
-                pageid: 77777,
-                text: {
-                  "*": "<p>The Kobe Bryant helicopter crash occurred on January 26, 2020, killing all 9 people aboard including basketball star Kobe Bryant and his daughter Gianna.</p>",
-                },
-              },
-            }),
-          }
-        }
-
-        return { ok: true, json: async () => ({}) }
-      })
-
-      await source.lookup(mockActor)
-
-      // Verify that linked article requests include redirects=1
-      const linkedArticleCalls = fetchCalls.filter((url) =>
-        url.includes("Kobe_Bryant_helicopter_crash")
-      )
-      expect(linkedArticleCalls.length).toBeGreaterThan(0)
-      linkedArticleCalls.forEach((url) => {
-        expect(url).toContain("redirects=1")
-      })
-    })
-
     it("handles missing linked articles gracefully", async () => {
-      const { selectRelevantSections, isAISectionSelectionAvailable } =
-        await import("../wikipedia-section-selector.js")
-
-      vi.mocked(isAISectionSelectionAvailable).mockReturnValue(true)
-      vi.mocked(selectRelevantSections).mockResolvedValue({
+      mockIsAIAvailable.mockReturnValue(true)
+      mockSelectSections.mockResolvedValue({
         selectedSections: ["Death"],
         linkedArticles: ["Nonexistent_Article_12345"],
         usedAI: true,
@@ -779,39 +508,15 @@ describe("WikipediaSource", () => {
         validatePersonDates: false,
       })
 
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              sections: [{ index: "1", line: "Death", level: "2" }],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              text: {
-                "*": "<p>Died peacefully at home after a long illness on December 15, 2020. He was surrounded by family members at the time of his death.</p>",
-              },
-            },
-          }),
-        })
-        // Linked article not found
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            error: {
-              code: "missingtitle",
-              info: "The page you specified doesn't exist.",
-            },
-          }),
-        })
+      const mainDoc = mockDocument("Test Actor", [
+        mockSection("", "Test Actor was a famous performer known worldwide for his roles."),
+        mockSection(
+          "Death",
+          "Died peacefully at home after a long illness on December 15, 2020. He was surrounded by family members at the time of his death."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(mainDoc as never).mockResolvedValueOnce(null as never) // linked article not found
 
       const result = await source.lookup(mockActor)
 
@@ -824,12 +529,9 @@ describe("WikipediaSource", () => {
       expect(rawData.linkedArticleCount).toBeUndefined()
     })
 
-    it("handles HTTP errors when fetching linked articles", async () => {
-      const { selectRelevantSections, isAISectionSelectionAvailable } =
-        await import("../wikipedia-section-selector.js")
-
-      vi.mocked(isAISectionSelectionAvailable).mockReturnValue(true)
-      vi.mocked(selectRelevantSections).mockResolvedValue({
+    it("handles errors when fetching linked articles", async () => {
+      mockIsAIAvailable.mockReturnValue(true)
+      mockSelectSections.mockResolvedValue({
         selectedSections: ["Death"],
         linkedArticles: ["Error_Article"],
         usedAI: true,
@@ -845,34 +547,17 @@ describe("WikipediaSource", () => {
         validatePersonDates: false,
       })
 
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              sections: [{ index: "1", line: "Death", level: "2" }],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              text: {
-                "*": "<p>Died in tragic circumstances that shocked the world on March 15, 2020. The death came as a shock to fans and the entertainment industry.</p>",
-              },
-            },
-          }),
-        })
-        // Linked article returns HTTP error
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-        })
+      const mainDoc = mockDocument("Test Actor", [
+        mockSection("", "Test Actor was a famous performer known worldwide for many roles."),
+        mockSection(
+          "Death",
+          "Died in tragic circumstances that shocked the world on March 15, 2020. The death came as a shock to fans and the entertainment industry."
+        ),
+      ])
+
+      mockWtfFetch
+        .mockResolvedValueOnce(mainDoc as never)
+        .mockRejectedValueOnce(new Error("Network error")) // linked article fetch fails
 
       const result = await source.lookup(mockActor)
 
@@ -895,36 +580,15 @@ describe("WikipediaSource", () => {
     }
 
     it("calculates higher confidence for content with death keywords", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              sections: [{ index: "1", line: "Death", level: "2" }],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              text: {
-                // Long content with many death and circumstance keywords to boost confidence
-                "*": `<p>Test Actor died on March 10, 2020, at UCLA Medical Center from heart failure.
-                The cause of death was confirmed by the Los Angeles County coroner following an autopsy.
-                He had been hospitalized for complications from pneumonia and cardiac issues for several weeks
-                before his passing. The actor passed away peacefully surrounded by his family at the hospital.
-                His death came as a shock to the entertainment industry. He had been dealing with illness
-                for several years and was known to have undergone surgery previously. The funeral was held
-                at Forest Lawn Memorial Park with many celebrities in attendance to pay their respects.</p>`,
-              },
-            },
-          }),
-        })
+      const doc = mockDocument("Test Actor", [
+        mockSection("", "Test Actor was a well-known American performer."),
+        mockSection(
+          "Death",
+          "Test Actor died on March 10, 2020, at UCLA Medical Center from heart failure. The cause of death was confirmed by the Los Angeles County coroner following an autopsy. He had been hospitalized for complications from pneumonia and cardiac issues for several weeks before his passing. The actor passed away peacefully surrounded by his family at the hospital. His death came as a shock to the entertainment industry. He had been dealing with illness for several years and was known to have undergone surgery previously. The funeral was held at Forest Lawn Memorial Park with many celebrities in attendance to pay their respects."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup(mockActor)
 
@@ -934,30 +598,15 @@ describe("WikipediaSource", () => {
     })
 
     it("includes actor name in confidence calculation", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              sections: [{ index: "1", line: "Death", level: "2" }],
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Actor",
-              pageid: 12345,
-              text: {
-                "*": `<p>Test Actor died peacefully at his home on March 10, 2020. He was found by family members
-                in the morning. The death was attributed to natural causes according to the medical examiner.</p>`,
-              },
-            },
-          }),
-        })
+      const doc = mockDocument("Test Actor", [
+        mockSection("", "Test Actor was a famous performer known worldwide."),
+        mockSection(
+          "Death",
+          "Test Actor died peacefully at his home on March 10, 2020. He was found by family members in the morning. The death was attributed to natural causes according to the medical examiner."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const result = await source.lookup(mockActor)
 
@@ -992,8 +641,6 @@ describe("WikipediaSource", () => {
 
     beforeEach(() => {
       // Enable disambiguation handling for these tests
-      // Explicitly disable AI section selection to avoid test isolation issues
-      // (other test files may set GOOGLE_AI_API_KEY via vi.stubEnv)
       source.setWikipediaOptions({
         useAISectionSelection: false,
         handleDisambiguation: true,
@@ -1003,66 +650,42 @@ describe("WikipediaSource", () => {
 
     it("detects disambiguation pages and tries alternate titles", async () => {
       // First request returns a disambiguation page
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Graham Greene",
-              pageid: 12345,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "People", level: "2" },
-                { index: "2", line: "Given name", level: "3" },
-                { index: "3", line: "Surname", level: "3" },
-                { index: "4", line: "Arts, entertainment, and media", level: "2" },
-                { index: "5", line: "Other uses", level: "2" },
-              ],
-            },
-          }),
-        })
-        // Alternate title Graham_Greene_(actor) - returns valid biography
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Graham Greene (actor)",
-              pageid: 67890,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "Early life", level: "2" },
-                { index: "2", line: "Career", level: "2" },
-                { index: "3", line: "Personal life", level: "2" },
-              ],
-            },
-          }),
-        })
-        // Intro fetch for date validation
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Graham Greene (actor)",
-              pageid: 67890,
-              text: {
-                "*": `<p>Graham Greene (born June 22, 1952) is a Canadian actor.</p>`,
-              },
-            },
-          }),
-        })
-        // Personal life section content
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Graham Greene (actor)",
-              pageid: 67890,
-              text: {
-                "*": `<p>Greene is known for his roles in many films and television shows. He continues to act in various productions.</p>`,
-              },
-            },
-          }),
-        })
+      const disambigDoc = mockDocument(
+        "Graham Greene",
+        [
+          mockSection("", "Graham Greene may refer to several different people."),
+          mockSection("People", "A list of people named Graham Greene."),
+          mockSection("Given name", "People with the given name Graham."),
+          mockSection("Surname", "People with the surname Greene."),
+          mockSection("Arts, entertainment, and media", "Various works and artistic entities."),
+          mockSection("Other uses", "Other uses of the name Graham Greene."),
+        ],
+        { isDisambig: true }
+      )
+
+      // Second request: _(actor) alternate — valid article
+      const actorDoc = mockDocument("Graham Greene (actor)", [
+        mockSection(
+          "",
+          "Graham Greene (born June 22, 1952) is a Canadian actor known for his roles."
+        ),
+        mockSection(
+          "Early life",
+          "Greene grew up in Ontario, Canada and showed early talent for acting."
+        ),
+        mockSection(
+          "Career",
+          "Greene is known for his roles in many films and television productions."
+        ),
+        mockSection(
+          "Personal life",
+          "Greene is known for his private personal life. He continues to act in various productions and has appeared in over fifty films throughout his career."
+        ),
+      ])
+
+      mockWtfFetch
+        .mockResolvedValueOnce(disambigDoc as never)
+        .mockResolvedValueOnce(actorDoc as never)
 
       const result = await source.lookup(mockActor)
 
@@ -1071,77 +694,40 @@ describe("WikipediaSource", () => {
     })
 
     it("validates person by comparing birth/death years", async () => {
-      // First request returns a page with wrong dates
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Person",
-              pageid: 11111,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "Early life", level: "2" },
-                { index: "2", line: "Career", level: "2" },
-                { index: "3", line: "Death", level: "2" },
-              ],
-            },
-          }),
-        })
-        // Intro fetch shows wrong birth year (1850 vs 1920)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Person",
-              pageid: 11111,
-              text: {
-                "*": `<p>Test Person (1850-1910) was a famous historical figure.</p>`,
-              },
-            },
-          }),
-        })
-        // Alternate title Test_Person_(actor) - correct person
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Person (actor)",
-              pageid: 22222,
-              sections: [
-                { index: "0", line: "Introduction", level: "1" },
-                { index: "1", line: "Career", level: "2" },
-                { index: "2", line: "Death", level: "2" },
-              ],
-            },
-          }),
-        })
-        // Intro fetch for the actor - correct dates
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Person (actor)",
-              pageid: 22222,
-              text: {
-                "*": `<p>Test Person (1920-1985) was an American actor.</p>`,
-              },
-            },
-          }),
-        })
-        // Death section content
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Test Person (actor)",
-              pageid: 22222,
-              text: {
-                "*": `<p>Test Person died on June 20, 1985, at his home in Los Angeles after a long illness.</p>`,
-              },
-            },
-          }),
-        })
+      // First request returns a page with wrong dates (1850-1910 vs expected 1920-1985)
+      const wrongDoc = mockDocument("Test Person", [
+        mockSection(
+          "",
+          "Test Person (1850-1910) was a famous historical figure who lived in Europe."
+        ),
+        mockSection(
+          "Early life",
+          "Born in a small village in the English countryside in the year 1850."
+        ),
+        mockSection(
+          "Career",
+          "He served as a distinguished diplomat for many decades of public service."
+        ),
+        mockSection(
+          "Death",
+          "He died in 1910 at his estate in the English countryside after many years of service."
+        ),
+      ])
+
+      // Second request: _(actor) alternate — correct person
+      const actorDoc = mockDocument("Test Person (actor)", [
+        mockSection(
+          "",
+          "Test Person (1920-1985) was an American actor known for many roles in film."
+        ),
+        mockSection("Career", "He appeared in numerous Hollywood films over his extensive career."),
+        mockSection(
+          "Death",
+          "Test Person died on June 20, 1985, at his home in Los Angeles after a long illness. He was surrounded by his family."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(wrongDoc as never).mockResolvedValueOnce(actorDoc as never)
 
       const result = await source.lookup(mockDeceasedActor)
 
@@ -1150,112 +736,20 @@ describe("WikipediaSource", () => {
       expect(result.source.url).toContain("Test_Person_(actor)")
     })
 
-    it("uses redirects=1 parameter in main lookup", async () => {
-      const fetchCalls: string[] = []
-      mockFetch.mockImplementation(async (url: string) => {
-        fetchCalls.push(url)
-
-        if (url.includes("prop=sections") && !url.includes("_(actor)")) {
-          return {
-            ok: true,
-            json: async () => ({
-              parse: {
-                title: "Test Actor",
-                pageid: 12345,
-                sections: [
-                  { index: "1", line: "Career", level: "2" },
-                  { index: "2", line: "Death", level: "2" },
-                ],
-              },
-            }),
-          }
-        }
-
-        if (url.includes("section=0")) {
-          return {
-            ok: true,
-            json: async () => ({
-              parse: {
-                title: "Test Actor",
-                pageid: 12345,
-                text: {
-                  "*": `<p>Test Actor (1950-2020) was a well-known performer.</p>`,
-                },
-              },
-            }),
-          }
-        }
-
-        if (url.includes("section=2")) {
-          return {
-            ok: true,
-            json: async () => ({
-              parse: {
-                title: "Test Actor",
-                pageid: 12345,
-                text: {
-                  "*": `<p>Test Actor died on March 10, 2020, after complications from surgery.</p>`,
-                },
-              },
-            }),
-          }
-        }
-
-        return { ok: true, json: async () => ({}) }
-      })
-
-      const testActor = {
-        id: 123,
-        tmdbId: 456,
-        name: "Test Actor",
-        birthday: "1950-01-15",
-        deathday: "2020-03-10",
-        causeOfDeath: null,
-        causeOfDeathDetails: null,
-        popularity: 10.5,
-      }
-
-      await source.lookup(testActor)
-
-      // Verify that the main sections lookup includes redirects=1
-      const sectionsCall = fetchCalls.find(
-        (url) => url.includes("prop=sections") && url.includes("Test_Actor")
-      )
-      expect(sectionsCall).toContain("redirects=1")
-
-      // Verify that section content fetches also include redirects=1
-      const contentCalls = fetchCalls.filter((url) => url.includes("section="))
-      contentCalls.forEach((url) => {
-        expect(url).toContain("redirects=1")
-      })
-    })
-
     it("returns original result when no valid alternate found", async () => {
       // Disambiguation page with no working alternates
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Rare Name",
-              pageid: 12345,
-              sections: [
-                { index: "1", line: "People", level: "2" },
-                { index: "2", line: "Other uses", level: "2" },
-              ],
-            },
-          }),
-        })
-        // All alternate titles return article not found
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({
-            error: {
-              code: "missingtitle",
-              info: "The page you specified doesn't exist.",
-            },
-          }),
-        })
+      const disambigDoc = mockDocument(
+        "Rare Name",
+        [
+          mockSection("", "Rare Name may refer to several different things or people."),
+          mockSection("People", "A list of people named Rare Name."),
+          mockSection("Other uses", "Other uses of the term Rare Name."),
+        ],
+        { isDisambig: true }
+      )
+
+      // All alternate titles return null (not found)
+      mockWtfFetch.mockResolvedValueOnce(disambigDoc as never).mockResolvedValue(null as never)
 
       const rareActor = {
         id: 999,
@@ -1272,58 +766,33 @@ describe("WikipediaSource", () => {
 
       // Should fail because no valid article was found
       expect(result.success).toBe(false)
-      // The error could be either "Article not found" or the fallback error
       expect(result.error).toBeDefined()
     })
 
     it("accepts articles with matching dates within tolerance", async () => {
       // Birthday is off by 1 year (within tolerance)
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Actor Name",
-              pageid: 12345,
-              sections: [
-                { index: "1", line: "Early life", level: "2" },
-                { index: "2", line: "Death", level: "2" },
-              ],
-            },
-          }),
-        })
-        // Intro shows birth year 1951 (actor has 1950 - 1 year off is OK)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Actor Name",
-              pageid: 12345,
-              text: {
-                "*": `<p>Actor Name (January 15, 1951 – March 10, 2020) was a performer.</p>`,
-              },
-            },
-          }),
-        })
-        // Death section
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            parse: {
-              title: "Actor Name",
-              pageid: 12345,
-              text: {
-                "*": `<p>Actor Name died on March 10, 2020, from natural causes at his home.</p>`,
-              },
-            },
-          }),
-        })
+      const doc = mockDocument("Actor Name", [
+        mockSection(
+          "",
+          "Actor Name (January 15, 1951 – March 10, 2020) was a performer known for many roles."
+        ),
+        mockSection(
+          "Early life",
+          "Born in a small midwestern town, he showed early promise as a performer."
+        ),
+        mockSection(
+          "Death",
+          "Actor Name died on March 10, 2020, from natural causes at his home. He was surrounded by his loving family."
+        ),
+      ])
+
+      mockWtfFetch.mockResolvedValueOnce(doc as never)
 
       const toleranceActor = {
         id: 555,
         tmdbId: 666,
         name: "Actor Name",
-        birthday: "1950-01-15", // Wikipedia says 1951
+        birthday: "1950-01-15", // Wikipedia says 1951 — 1 year off is OK
         deathday: "2020-03-10",
         causeOfDeath: null,
         causeOfDeathDetails: null,

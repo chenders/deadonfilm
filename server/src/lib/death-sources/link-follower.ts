@@ -20,6 +20,7 @@ import type {
 } from "./types.js"
 import { DEFAULT_BROWSER_FETCH_CONFIG } from "./types.js"
 import { htmlToText } from "./html-utils.js"
+import { extractArticleContent } from "../shared/readability-extract.js"
 import { DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "./base-source.js"
 import { shouldUseBrowserFetch, isBlockedResponse, browserFetchPage } from "./browser-fetch.js"
 import { shouldUseArchiveFallback, searchArchiveIsWithBrowser } from "./archive-fallback.js"
@@ -449,22 +450,28 @@ async function fetchWithWapoAuth(url: string): Promise<FetchedPage> {
 
     const title = await page.title()
 
-    // Extract article content
-    const articleHtml = await page
-      .locator("article")
-      .first()
-      .innerHTML()
-      .catch(() => null)
+    // Extract article content — try Readability on full page first, fall back to htmlToText
+    const fullPageHtml = await page.content().catch(() => "")
+    const readabilityResult = fullPageHtml ? extractArticleContent(fullPageHtml, url) : null
     let content = ""
-    if (articleHtml) {
-      content = htmlToText(articleHtml)
+    if (readabilityResult && readabilityResult.text.length >= 200) {
+      content = readabilityResult.text
     } else {
-      const mainHtml = await page
-        .locator("main, .article-body, [data-feature='article-body']")
+      const articleHtml = await page
+        .locator("article")
         .first()
         .innerHTML()
-        .catch(() => "")
-      content = htmlToText(mainHtml)
+        .catch(() => null)
+      if (articleHtml) {
+        content = htmlToText(articleHtml)
+      } else {
+        const mainHtml = await page
+          .locator("main, .article-body, [data-feature='article-body']")
+          .first()
+          .innerHTML()
+          .catch(() => "")
+        content = htmlToText(mainHtml)
+      }
     }
 
     // Truncate if too long
@@ -590,8 +597,12 @@ async function fetchPage(url: string, browserConfig?: BrowserFetchConfig): Promi
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
     const title = titleMatch ? titleMatch[1].trim() : ""
 
-    // Convert to text
-    let content = htmlToText(html)
+    // Convert to text — try Readability first, fall back to htmlToText
+    const readabilityArticle = extractArticleContent(html, url)
+    let content =
+      readabilityArticle && readabilityArticle.text.length >= 200
+        ? readabilityArticle.text
+        : htmlToText(html)
 
     // Truncate if too long
     if (content.length > MAX_CONTENT_LENGTH) {

@@ -1,17 +1,18 @@
 /**
  * Wikipedia source for death information.
  *
- * Fetches Wikipedia articles and extracts the Death section (or Personal life
- * section as fallback) to get detailed death circumstances.
+ * Uses wtf_wikipedia to fetch and parse Wikipedia articles, producing clean
+ * plaintext with no citation markers, footnotes, or HTML artifacts.
  *
  * Supports two section selection modes:
  * 1. Regex-based (default): Uses predefined patterns to find Death/Health sections
  * 2. AI-based (opt-in): Uses Gemini Flash to identify non-obvious sections like
  *    "Hunting and Fishing", "Controversies", etc. that may contain relevant info
- *
- * Uses the Wikipedia API to get article content in a parseable format.
  */
 
+import wtf from "wtf_wikipedia"
+
+type WtfDocument = InstanceType<typeof wtf.Document>
 import { BaseDataSource, DEATH_KEYWORDS, CIRCUMSTANCE_KEYWORDS } from "../base-source.js"
 import type {
   ActorForEnrichment,
@@ -19,18 +20,7 @@ import type {
   EnrichedDeathInfo,
   WikipediaOptions,
 } from "../types.js"
-import {
-  DataSourceType,
-  ReliabilityTier,
-  SourceAccessBlockedError,
-  DEFAULT_WIKIPEDIA_OPTIONS,
-} from "../types.js"
-import {
-  removeScriptTags,
-  removeStyleTags,
-  stripHtmlTags,
-  decodeHtmlEntities,
-} from "../html-utils.js"
+import { DataSourceType, ReliabilityTier, DEFAULT_WIKIPEDIA_OPTIONS } from "../types.js"
 import {
   selectRelevantSections,
   isAISectionSelectionAvailable,
@@ -38,34 +28,6 @@ import {
   type WikipediaSection,
 } from "../wikipedia-section-selector.js"
 import { extractDatesWithAI, isAIDateExtractionAvailable } from "../wikipedia-date-extractor.js"
-
-const WIKIPEDIA_API_BASE = "https://en.wikipedia.org/w/api.php"
-
-interface WikipediaSectionsResponse {
-  parse?: {
-    title: string
-    pageid: number
-    sections: WikipediaSection[]
-  }
-  error?: {
-    code: string
-    info: string
-  }
-}
-
-interface WikipediaSectionContentResponse {
-  parse?: {
-    title: string
-    pageid: number
-    text: {
-      "*": string
-    }
-  }
-  error?: {
-    code: string
-    info: string
-  }
-}
 
 export class WikipediaSource extends BaseDataSource {
   readonly name = "Wikipedia"
@@ -98,11 +60,9 @@ export class WikipediaSource extends BaseDataSource {
       const result = await this.tryArticleLookup(actor, articleTitle, startTime)
 
       // Try alternates if needed (disambiguation page, date validation failure, etc.)
-      // This applies regardless of which validation detected the issue
       if (result.needsAlternate) {
         console.log(`  ${result.alternateReason}, trying alternate titles...`)
 
-        // Try alternate titles
         const alternateTitles = this.generateAlternateTitles(actor.name)
         for (const altTitle of alternateTitles) {
           console.log(`  Trying: ${altTitle}`)
@@ -128,7 +88,6 @@ export class WikipediaSource extends BaseDataSource {
         return result.result
       }
 
-      // No SourceLookupResult was produced; construct a deterministic error message
       let errorMessage = "No valid Wikipedia article found"
       if (result.alternateReason) {
         errorMessage = result.alternateReason
@@ -136,7 +95,6 @@ export class WikipediaSource extends BaseDataSource {
         errorMessage = "No valid Wikipedia article found after trying alternates"
       }
 
-      // Carry through the last attempted article URL for debugging/observability
       const lastAttemptedUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(articleTitle)}`
 
       return {
@@ -146,11 +104,7 @@ export class WikipediaSource extends BaseDataSource {
         error: errorMessage,
       }
     } catch (error) {
-      if (error instanceof SourceAccessBlockedError) {
-        throw error
-      }
       const errorMessage = error instanceof Error ? error.message : "Unknown error"
-      // Include the article title in error cases for debugging
       const articleTitle = this.buildArticleTitle(actor.name)
       const lastAttemptedUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(articleTitle)}`
       return {
@@ -164,12 +118,6 @@ export class WikipediaSource extends BaseDataSource {
 
   /**
    * Try to look up death information from a specific Wikipedia article title.
-   * This is called by performLookup for both primary and alternate titles.
-   *
-   * @param actor - The actor to look up
-   * @param articleTitle - The Wikipedia article title to try
-   * @param startTime - Start time for timing metrics
-   * @returns Result with success status and whether an alternate title should be tried
    */
   private async tryArticleLookup(
     actor: ActorForEnrichment,
@@ -181,73 +129,42 @@ export class WikipediaSource extends BaseDataSource {
     needsAlternate: boolean
     alternateReason?: string
   }> {
-    // First, get the list of sections to find Death/Personal life
-    // Use redirects=1 to automatically follow Wikipedia redirects
-    const sectionsUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&prop=sections&format=json&redirects=1`
+    const articleUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(articleTitle)}`
 
-    const sectionsResponse = await fetch(sectionsUrl, {
-      headers: {
-        "User-Agent": this.userAgent,
-        Accept: "application/json",
-      },
-    })
-
-    if (!sectionsResponse.ok) {
-      if (sectionsResponse.status === 403) {
-        throw new SourceAccessBlockedError(
-          "Wikipedia API blocked request",
-          this.type,
-          sectionsUrl,
-          403
-        )
-      }
+    // Fetch the document using wtf_wikipedia
+    let doc: WtfDocument | null
+    try {
+      doc = ((await wtf.fetch(articleTitle)) as WtfDocument | null) ?? null
+    } catch {
       return {
         success: false,
         result: {
           success: false,
-          source: this.createSourceEntry(startTime, 0, sectionsUrl),
+          source: this.createSourceEntry(startTime, 0, articleUrl),
           data: null,
-          error: `HTTP ${sectionsResponse.status}`,
-        },
-        needsAlternate: false,
-      }
-    }
-
-    const sectionsData = (await sectionsResponse.json()) as WikipediaSectionsResponse
-
-    if (sectionsData.error) {
-      // Article not found - this is expected for alternate titles that don't exist
-      return {
-        success: false,
-        result: {
-          success: false,
-          source: this.createSourceEntry(startTime, 0, sectionsUrl),
-          data: null,
-          error: `Article not found: ${sectionsData.error.info}`,
+          error: `Failed to fetch Wikipedia article: ${articleTitle}`,
         },
         needsAlternate: true,
         alternateReason: "Article not found",
       }
     }
 
-    if (!sectionsData.parse?.sections) {
+    if (!doc) {
       return {
         success: false,
         result: {
           success: false,
-          source: this.createSourceEntry(startTime, 0, sectionsUrl),
+          source: this.createSourceEntry(startTime, 0, articleUrl),
           data: null,
-          error: "No sections found in article",
+          error: `Article not found: ${articleTitle}`,
         },
-        needsAlternate: false,
+        needsAlternate: true,
+        alternateReason: "Article not found",
       }
     }
 
     // Check if this is a disambiguation page
-    if (
-      this.wikipediaOptions.handleDisambiguation !== false &&
-      this.isDisambiguationPage(sectionsData.parse.sections)
-    ) {
+    if (this.wikipediaOptions.handleDisambiguation !== false && doc.isDisambiguation()) {
       return {
         success: false,
         result: null,
@@ -256,11 +173,32 @@ export class WikipediaSource extends BaseDataSource {
       }
     }
 
-    // Validate person by dates if enabled and actor has dates to validate
-    // Skip the API call if there are no dates to check against
+    const sections = doc.sections() as wtf.Section[]
+    if (sections.length === 0) {
+      return {
+        success: false,
+        result: {
+          success: false,
+          source: this.createSourceEntry(startTime, 0, articleUrl),
+          data: null,
+          error: "No sections found in article",
+        },
+        needsAlternate: false,
+      }
+    }
+
+    // Map wtf sections to WikipediaSection interface
+    const wikiSections: WikipediaSection[] = sections.map((s: wtf.Section, i: number) => ({
+      index: String(i),
+      line: s.title() || "Introduction",
+      level: String(s.depth()),
+      anchor: (s.title() || "Introduction").replace(/ /g, "_"),
+    }))
+
+    // Validate person by dates if enabled
     let dateValidationCost = 0
     if (this.wikipediaOptions.validatePersonDates !== false && (actor.birthday || actor.deathday)) {
-      const introText = await this.fetchArticleIntro(articleTitle)
+      const introText = (sections[0] as wtf.Section | undefined)?.text({}) || ""
       if (introText) {
         const validation = await this.validatePersonByDates(actor, introText)
         dateValidationCost = validation.costUsd
@@ -287,14 +225,13 @@ export class WikipediaSource extends BaseDataSource {
       console.log(`  Using AI section selection for ${actor.name}`)
       sectionSelectionResult = await selectRelevantSections(
         actor.name,
-        sectionsData.parse.sections,
+        wikiSections,
         this.wikipediaOptions
       )
       sectionSelectionCost = sectionSelectionResult.costUsd
 
       if (sectionSelectionResult.usedAI && sectionSelectionResult.selectedSections.length > 0) {
-        // Map selected section titles back to WikipediaSection objects
-        relevantSections = sectionsData.parse.sections.filter((s) =>
+        relevantSections = wikiSections.filter((s) =>
           sectionSelectionResult!.selectedSections.includes(s.line)
         )
         console.log(
@@ -304,15 +241,13 @@ export class WikipediaSource extends BaseDataSource {
           console.log(`  AI reasoning: ${sectionSelectionResult.reasoning}`)
         }
       } else {
-        // AI selection failed or returned no results, fall back to regex
         console.log(
           `  AI selection failed (${sectionSelectionResult.error || "no sections"}), falling back to regex`
         )
-        relevantSections = this.findRelevantSections(sectionsData.parse.sections)
+        relevantSections = this.findRelevantSections(wikiSections)
       }
     } else {
-      // Use regex-based selection (default)
-      relevantSections = this.findRelevantSections(sectionsData.parse.sections)
+      relevantSections = this.findRelevantSections(wikiSections)
     }
 
     if (relevantSections.length === 0) {
@@ -320,7 +255,7 @@ export class WikipediaSource extends BaseDataSource {
         success: false,
         result: {
           success: false,
-          source: this.createSourceEntry(startTime, 0, sectionsUrl),
+          source: this.createSourceEntry(startTime, 0, articleUrl),
           data: null,
           error: "No death section found in article",
         },
@@ -331,42 +266,17 @@ export class WikipediaSource extends BaseDataSource {
     const sectionNames = relevantSections.map((s) => s.line).join(", ")
     console.log(`  Found ${relevantSections.length} section(s): ${sectionNames}`)
 
-    // Fetch content from all relevant sections
+    // Extract text from relevant sections using wtf_wikipedia
     const sectionTexts: string[] = []
 
-    for (const section of relevantSections) {
-      // Use redirects=1 to automatically follow Wikipedia redirects
-      const contentUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&section=${section.index}&prop=text&format=json&redirects=1`
+    for (const wikiSection of relevantSections) {
+      const sectionIndex = parseInt(wikiSection.index, 10)
+      const section = sections[sectionIndex]
+      if (!section) continue
 
-      const contentResponse = await fetch(contentUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "application/json",
-        },
-      })
-
-      if (!contentResponse.ok) {
-        console.log(
-          `  Warning: Failed to fetch section "${section.line}": HTTP ${contentResponse.status}`
-        )
-        continue
-      }
-
-      const contentData = (await contentResponse.json()) as WikipediaSectionContentResponse
-
-      if (!contentData.parse?.text?.["*"]) {
-        console.log(`  Warning: No content in section "${section.line}"`)
-        continue
-      }
-
-      // Parse the HTML content
-      const htmlContent = contentData.parse.text["*"]
-      const textContent = this.extractTextFromHtml(htmlContent)
-      const cleanedSectionText = this.cleanWikipediaText(textContent)
-
-      if (cleanedSectionText && cleanedSectionText.length >= 50) {
-        // Add section header for context
-        sectionTexts.push(`[${section.line}] ${cleanedSectionText}`)
+      const textContent = section.text({})
+      if (textContent && textContent.length >= 50) {
+        sectionTexts.push(`[${wikiSection.line}] ${textContent}`)
       }
     }
 
@@ -375,7 +285,7 @@ export class WikipediaSource extends BaseDataSource {
         success: false,
         result: {
           success: false,
-          source: this.createSourceEntry(startTime, 0, sectionsUrl),
+          source: this.createSourceEntry(startTime, 0, articleUrl),
           data: null,
           error: "No usable content in relevant sections",
         },
@@ -405,7 +315,6 @@ export class WikipediaSource extends BaseDataSource {
 
     // Extract death information
     const deathInfo = this.extractDeathInfo(cleanedText, actor)
-    const articleUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(articleTitle)}`
 
     // Calculate confidence based on content quality
     const confidence = this.calculateDeathConfidence(cleanedText, actor)
@@ -421,7 +330,6 @@ export class WikipediaSource extends BaseDataSource {
       textLength: cleanedText.length,
     }
 
-    // Include AI section selection metadata if used
     if (sectionSelectionResult) {
       rawData.aiSectionSelection = {
         usedAI: sectionSelectionResult.usedAI,
@@ -432,13 +340,11 @@ export class WikipediaSource extends BaseDataSource {
       }
     }
 
-    // Include linked article metadata
     if (linkedArticleTexts.length > 0) {
       rawData.linkedArticleCount = linkedArticleTexts.length
       rawData.linkedArticlesFollowed = sectionSelectionResult?.linkedArticles || []
     }
 
-    // Create source entry - include AI selection cost in the total cost
     const sourceEntry = this.createSourceEntry(
       startTime,
       confidence,
@@ -464,10 +370,8 @@ export class WikipediaSource extends BaseDataSource {
 
   /**
    * Build Wikipedia article title from actor name.
-   * Wikipedia uses underscores for spaces and specific capitalization.
    */
   private buildArticleTitle(name: string): string {
-    // Replace spaces with underscores, keep original capitalization
     return name.replace(/ /g, "_")
   }
 
@@ -479,8 +383,6 @@ export class WikipediaSource extends BaseDataSource {
     const result: WikipediaSection[] = []
 
     // Primary death sections - always include if found
-    // NOTE: Order matters - the loop breaks on first match, so specific patterns
-    // must come before the catch-all /^death\b/i pattern
     const deathPatterns = [
       /^death$/i,
       /^death and legacy$/i,
@@ -493,13 +395,13 @@ export class WikipediaSource extends BaseDataSource {
       /^final years and death$/i,
       /^illness and death$/i,
       /^decline and death$/i,
-      /^death\b/i, // Catch-all for "Death of...", "Death and ..." variants not listed above
+      /^death\b/i,
     ]
 
-    // Violent death sections - assassination, murder, fatal accident, etc.
+    // Violent death sections
     const violentDeathPatterns = [
       /^assassination$/i,
-      /^assassination\b/i, // "Assassination and aftermath", "Assassination and funeral"
+      /^assassination\b/i,
       /^murder$/i,
       /^killing$/i,
       /^shooting$/i,
@@ -510,7 +412,7 @@ export class WikipediaSource extends BaseDataSource {
       /^car crash$/i,
     ]
 
-    // Health sections - include alongside death sections for medical context
+    // Health sections
     const healthPatterns = [
       /^health$/i,
       /^health issues$/i,
@@ -520,7 +422,7 @@ export class WikipediaSource extends BaseDataSource {
       /^final illness$/i,
     ]
 
-    // Fallback sections - only use if no death or health sections found
+    // Fallback sections
     const fallbackPatterns = [
       /^personal life$/i,
       /^later life$/i,
@@ -533,26 +435,25 @@ export class WikipediaSource extends BaseDataSource {
       const section = sections.find((s) => pattern.test(s.line))
       if (section && !result.some((r) => r.index === section.index)) {
         result.push(section)
-        break // Only take the first matching death section
+        break
       }
     }
 
-    // Find violent death sections (assassination, murder, accident, etc.)
-    // These are treated as primary death sections
+    // Find violent death sections
     for (const pattern of violentDeathPatterns) {
       const section = sections.find((s) => pattern.test(s.line))
       if (section && !result.some((r) => r.index === section.index)) {
         result.push(section)
-        break // Only take the first matching violent death section
+        break
       }
     }
 
-    // Find health sections (include even if death section found)
+    // Find health sections
     for (const pattern of healthPatterns) {
       const section = sections.find((s) => pattern.test(s.line))
       if (section && !result.some((r) => r.index === section.index)) {
         result.push(section)
-        break // Only take the first matching health section
+        break
       }
     }
 
@@ -583,169 +484,55 @@ export class WikipediaSource extends BaseDataSource {
   }
 
   /**
-   * Extract plain text from Wikipedia HTML content.
-   */
-  private extractTextFromHtml(html: string): string {
-    // Remove script and style tags using robust state-machine approach
-    let text = removeScriptTags(html)
-    text = removeStyleTags(text)
-
-    // Remove reference tags [1], [2], etc.
-    text = text.replace(/\[\d+\]/g, "")
-
-    // Remove citation needed tags
-    text = text.replace(/\[citation needed\]/gi, "")
-
-    // Remove edit section links
-    // eslint-disable-next-line security/detect-unsafe-regex -- Acceptable for controlled text scraping
-    text = text.replace(/<span class="mw-editsection">[^<]*(?:(?!<\/span>)<[^<]*)*<\/span>/gi, "")
-
-    // Remove HTML tags but keep content
-    text = stripHtmlTags(text)
-
-    // Decode HTML entities using the 'he' library
-    text = decodeHtmlEntities(text)
-
-    // Normalize whitespace
-    text = text.replace(/\s+/g, " ").trim()
-
-    return text
-  }
-
-  /**
-   * Clean Wikipedia-specific formatting from text.
-   */
-  private cleanWikipediaText(text: string): string {
-    // Remove common Wikipedia artifacts
-    let cleaned = text
-
-    // Remove navigation/header text that sometimes appears
-    cleaned = cleaned.replace(/^(Death|Personal life)\s*/i, "")
-
-    // Remove "See also" and everything after
-    const seeAlsoIndex = cleaned.search(/See also:?/i)
-    if (seeAlsoIndex !== -1) {
-      cleaned = cleaned.substring(0, seeAlsoIndex)
-    }
-
-    // Remove "References" and everything after
-    const referencesIndex = cleaned.search(/References:?/i)
-    if (referencesIndex !== -1) {
-      cleaned = cleaned.substring(0, referencesIndex)
-    }
-
-    // Trim and normalize
-    cleaned = cleaned.trim()
-
-    return cleaned
-  }
-
-  /**
-   * Fetch content from linked Wikipedia articles.
-   * Gets the intro (section 0) and any Death/Health sections.
-   *
-   * @param articleTitles - Wikipedia article titles (with underscores)
-   * @returns Array of text content from each linked article
+   * Fetch content from linked Wikipedia articles using wtf_wikipedia.
    */
   private async fetchLinkedArticlesContent(articleTitles: string[]): Promise<string[]> {
     const results: string[] = []
 
     for (const articleTitle of articleTitles) {
       try {
-        // First check if the article exists by getting its sections
-        // Use redirects=1 to automatically follow Wikipedia redirects
-        const sectionsUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&prop=sections&format=json&redirects=1`
-
-        const sectionsResponse = await fetch(sectionsUrl, {
-          headers: {
-            "User-Agent": this.userAgent,
-            Accept: "application/json",
-          },
-        })
-
-        if (!sectionsResponse.ok) {
-          console.log(
-            `    Linked article "${articleTitle}" not found (HTTP ${sectionsResponse.status})`
-          )
+        const linkedDoc = ((await wtf.fetch(articleTitle)) as WtfDocument | null) ?? null
+        if (!linkedDoc) {
+          console.log(`    Linked article "${articleTitle}" not found`)
           continue
         }
 
-        const sectionsData = (await sectionsResponse.json()) as WikipediaSectionsResponse
-
-        if (sectionsData.error) {
-          console.log(`    Linked article "${articleTitle}" not found: ${sectionsData.error.info}`)
-          continue
-        }
-
-        // Fetch the intro (section 0) which usually has the summary
-        // Use redirects=1 to follow redirects
-        const introUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&section=0&prop=text&format=json&redirects=1`
-
-        const introResponse = await fetch(introUrl, {
-          headers: {
-            "User-Agent": this.userAgent,
-            Accept: "application/json",
-          },
-        })
-
-        if (!introResponse.ok) {
-          continue
-        }
-
-        const introData = (await introResponse.json()) as WikipediaSectionContentResponse
-
-        if (!introData.parse?.text?.["*"]) {
-          continue
-        }
-
-        // Extract intro text
-        const introHtml = introData.parse.text["*"]
-        const introText = this.extractTextFromHtml(introHtml)
-        const cleanedIntro = this.cleanWikipediaText(introText)
-
-        // Build the content with a header
+        const linkedSections = linkedDoc.sections() as wtf.Section[]
         const articleContent: string[] = []
         const humanReadableTitle = articleTitle.replace(/_/g, " ")
 
-        if (cleanedIntro && cleanedIntro.length >= 50) {
-          articleContent.push(`[Linked Article: ${humanReadableTitle}] ${cleanedIntro}`)
+        // Get intro text
+        const introSection = linkedSections[0]
+        if (introSection) {
+          const introText = introSection.text({})
+          if (introText && introText.length >= 50) {
+            articleContent.push(`[Linked Article: ${humanReadableTitle}] ${introText}`)
+          }
         }
 
+        // Map to WikipediaSection for findRelevantSections
+        const linkedWikiSections: WikipediaSection[] = linkedSections.map(
+          (s: wtf.Section, i: number) => ({
+            index: String(i),
+            line: s.title() || "Introduction",
+            level: String(s.depth()),
+            anchor: (s.title() || "Introduction").replace(/ /g, "_"),
+          })
+        )
+
         // Also fetch any Death/Incident sections from the linked article
-        if (sectionsData.parse?.sections) {
-          const deathSections = this.findRelevantSections(sectionsData.parse.sections)
+        const deathSections = this.findRelevantSections(linkedWikiSections)
 
-          for (const section of deathSections.slice(0, 2)) {
-            // Limit to 2 sections
-            // Use redirects=1 to follow redirects
-            const contentUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&section=${section.index}&prop=text&format=json&redirects=1`
+        for (const deathSection of deathSections.slice(0, 2)) {
+          const sectionIndex = parseInt(deathSection.index, 10)
+          const section = linkedSections[sectionIndex]
+          if (!section) continue
 
-            const contentResponse = await fetch(contentUrl, {
-              headers: {
-                "User-Agent": this.userAgent,
-                Accept: "application/json",
-              },
-            })
-
-            if (!contentResponse.ok) {
-              continue
-            }
-
-            const contentData = (await contentResponse.json()) as WikipediaSectionContentResponse
-
-            if (!contentData.parse?.text?.["*"]) {
-              continue
-            }
-
-            const sectionHtml = contentData.parse.text["*"]
-            const sectionText = this.extractTextFromHtml(sectionHtml)
-            const cleanedSection = this.cleanWikipediaText(sectionText)
-
-            if (cleanedSection && cleanedSection.length >= 50) {
-              articleContent.push(
-                `[Linked Article: ${humanReadableTitle} - ${section.line}] ${cleanedSection}`
-              )
-            }
+          const sectionText = section.text({})
+          if (sectionText && sectionText.length >= 50) {
+            articleContent.push(
+              `[Linked Article: ${humanReadableTitle} - ${deathSection.line}] ${sectionText}`
+            )
           }
         }
 
@@ -830,24 +617,20 @@ export class WikipediaSource extends BaseDataSource {
    */
   private calculateDeathConfidence(text: string, actor: ActorForEnrichment): number {
     const lowerText = text.toLowerCase()
-    let confidence = 0.4 // Base confidence for finding a section
+    let confidence = 0.4
 
-    // Increase confidence if actor name is mentioned
     if (lowerText.includes(actor.name.toLowerCase())) {
       confidence += 0.1
     }
 
-    // Increase confidence for death-related keywords
     const deathKeywordsFound = DEATH_KEYWORDS.filter((kw) => lowerText.includes(kw.toLowerCase()))
     confidence += Math.min(0.2, deathKeywordsFound.length * 0.05)
 
-    // Increase confidence for circumstance keywords
     const circumstanceKeywordsFound = CIRCUMSTANCE_KEYWORDS.filter((kw) =>
       lowerText.includes(kw.toLowerCase())
     )
     confidence += Math.min(0.15, circumstanceKeywordsFound.length * 0.03)
 
-    // Bonus for substantial content
     if (text.length > 500) {
       confidence += 0.1
     } else if (text.length > 200) {
@@ -858,57 +641,8 @@ export class WikipediaSource extends BaseDataSource {
   }
 
   /**
-   * Detect if the retrieved page is a disambiguation page rather than a biography.
-   * Disambiguation pages list multiple people/things with the same name.
-   *
-   * Detection signals:
-   * - Sections like "People", "Other uses", "Given name", "Surname", "See also"
-   * - Absence of biography sections like "Early life", "Career", "Death", "Personal life"
-   *
-   * @param sections - The sections from the Wikipedia article
-   * @returns true if this appears to be a disambiguation page
-   */
-  private isDisambiguationPage(sections: WikipediaSection[]): boolean {
-    const sectionTitles = sections.map((s) => s.line.toLowerCase())
-
-    // Disambiguation page signals
-    const disambigSections = [
-      "people",
-      "other uses",
-      "given name",
-      "surname",
-      "places",
-      "arts",
-      "see also",
-    ]
-    const hasDisambigSections = disambigSections.some((d) =>
-      sectionTitles.some((t) => t === d || t.includes(d))
-    )
-
-    // Biography page signals
-    const bioSections = [
-      "early life",
-      "career",
-      "death",
-      "personal life",
-      "biography",
-      "filmography",
-    ]
-    const hasBioSections = bioSections.some((b) =>
-      sectionTitles.some((t) => t === b || t.includes(b))
-    )
-
-    // It's a disambiguation page if it has disambiguation sections and NO biography sections
-    return hasDisambigSections && !hasBioSections
-  }
-
-  /**
    * Validate that the Wikipedia article is about the correct person by comparing
    * birth/death years from the article intro against the actor's known dates.
-   *
-   * @param actor - The actor we're looking up
-   * @param introText - The introduction text from the Wikipedia article
-   * @returns Object with isValid flag, reason, and AI cost
    */
   private async validatePersonByDates(
     actor: ActorForEnrichment,
@@ -943,18 +677,13 @@ export class WikipediaSource extends BaseDataSource {
 
     // Fall back to regex if AI didn't produce results
     if (wikiBirthYear === null && wikiDeathYear === null) {
-      // Extract years from Wikipedia intro using regex
-      // Common patterns: "born January 15, 1952", "(1952-2020)", "1952 – 2020"
-      // Also handles full-date lifespans like "(January 15, 1951 – March 10, 2020)"
       const birthMatch = introText.match(/\bborn\b[^)]*?(\d{4})|^\s*\((\d{4})\s*[-–]/im)
       const deathMatch = introText.match(/\bdied\b[^)]*?(\d{4})|[-–]\s*(\d{4})\s*\)/im)
 
-      // Try to match full-date lifespans first, e.g. "(January 15, 1951 – March 10, 2020)"
       const fullDateLifeSpanMatch = introText.match(
         /\(\s*[A-Z][a-z]+[^)]*?(\d{4})\s*[-–]\s*[A-Z][a-z]+[^)]*?(\d{4})\s*\)/
       )
 
-      // Also try the common "(YYYY-YYYY)" pattern
       const lifeSpanMatch = introText.match(/\((\d{4})\s*[-–]\s*(\d{4})\)/)
 
       if (fullDateLifeSpanMatch) {
@@ -973,7 +702,7 @@ export class WikipediaSource extends BaseDataSource {
       }
     }
 
-    // Compare years (allow 1 year tolerance for edge cases like late December births)
+    // Compare years (allow 1 year tolerance)
     if (actorBirthYear && wikiBirthYear) {
       if (Math.abs(wikiBirthYear - actorBirthYear) > 1) {
         return {
@@ -1000,9 +729,6 @@ export class WikipediaSource extends BaseDataSource {
   /**
    * Generate alternate Wikipedia article titles to try when disambiguation is detected
    * or person validation fails.
-   *
-   * @param name - The actor's name
-   * @returns Array of alternate article titles to try
    */
   private generateAlternateTitles(name: string): string[] {
     const base = name.replace(/ /g, "_")
@@ -1016,38 +742,5 @@ export class WikipediaSource extends BaseDataSource {
       `${base}_(film_actor)`,
       `${base}_(television_actor)`,
     ]
-  }
-
-  /**
-   * Fetch the intro section (section 0) of a Wikipedia article to get birth/death dates.
-   *
-   * @param articleTitle - The Wikipedia article title
-   * @returns The intro text or null if not found
-   */
-  private async fetchArticleIntro(articleTitle: string): Promise<string | null> {
-    const introUrl = `${WIKIPEDIA_API_BASE}?action=parse&page=${encodeURIComponent(articleTitle)}&section=0&prop=text&format=json&redirects=1`
-
-    try {
-      const response = await fetch(introUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        return null
-      }
-
-      const data = (await response.json()) as WikipediaSectionContentResponse
-
-      if (!data.parse?.text?.["*"]) {
-        return null
-      }
-
-      return this.extractTextFromHtml(data.parse.text["*"])
-    } catch {
-      return null
-    }
   }
 }
