@@ -10,6 +10,22 @@ vi.mock("../../death-sources/cache.js", () => ({
   setCachedQuery: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Mock searchDuckDuckGo to disable browser fallback in tests
+vi.mock("../../shared/duckduckgo-search.js", async () => {
+  const actual = await vi.importActual<typeof import("../../shared/duckduckgo-search.js")>(
+    "../../shared/duckduckgo-search.js"
+  )
+  return {
+    ...actual,
+    searchDuckDuckGo: vi
+      .fn()
+      .mockImplementation(
+        (options: import("../../shared/duckduckgo-search.js").DuckDuckGoSearchOptions) =>
+          actual.searchDuckDuckGo({ ...options, useBrowserFallback: false })
+      ),
+  }
+})
+
 import { BBCNewsBiographySource } from "./bbc-news.js"
 import { BiographySourceType } from "../types.js"
 import { ReliabilityTier } from "../../death-sources/types.js"

@@ -1,23 +1,24 @@
 /**
  * Browser stealth techniques to avoid bot detection.
  *
- * Implements common anti-detection measures without external dependencies.
- * Works directly with playwright-core.
+ * Uses fingerprint-injector (from Apify's fingerprint-suite) for statistically
+ * realistic browser fingerprint rotation, combined with supplemental stealth
+ * techniques for ChromeDriver cleanup and chrome.runtime faking.
  *
- * Techniques include:
- * - Hiding navigator.webdriver
- * - Removing automation indicators
- * - Setting realistic browser properties
- * - Fixing Chrome-specific detection points
+ * Replaces the previous hardcoded Chrome 120 UA / 1920x1080 viewport approach
+ * that was trivially fingerprintable (zero variation between sessions).
  */
 
-import type { BrowserContext, Page } from "playwright-core"
+import type { Browser, BrowserContext, Page } from "playwright-core"
 
 /**
- * Script to inject into pages to hide automation indicators.
- * This runs before any page scripts execute.
+ * Supplemental stealth script that covers areas fingerprint-injector doesn't:
+ * - ChromeDriver variable cleanup (window.cdc_*)
+ * - chrome.runtime fake
+ * - console.debug puppeteer filtering
+ * - Function.prototype.toString patching
  */
-const STEALTH_SCRIPT = `
+const SUPPLEMENTAL_STEALTH_SCRIPT = `
 // Hide webdriver property
 Object.defineProperty(navigator, 'webdriver', {
   get: () => undefined,
@@ -26,45 +27,6 @@ Object.defineProperty(navigator, 'webdriver', {
 
 // Remove automation-related properties from navigator
 delete navigator.__proto__.webdriver;
-
-// Fix Chrome-specific automation detection
-if (navigator.userAgent.includes('Chrome')) {
-  // Override navigator.plugins to look normal
-  Object.defineProperty(navigator, 'plugins', {
-    get: () => {
-      const plugins = [
-        { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
-        { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
-        { name: 'Native Client', filename: 'internal-nacl-plugin' }
-      ];
-      plugins.item = (i) => plugins[i];
-      plugins.namedItem = (name) => plugins.find(p => p.name === name);
-      plugins.refresh = () => {};
-      return plugins;
-    },
-    configurable: true
-  });
-
-  // Override navigator.languages to look realistic
-  Object.defineProperty(navigator, 'languages', {
-    get: () => ['en-US', 'en'],
-    configurable: true
-  });
-
-  // Override navigator.mimeTypes
-  Object.defineProperty(navigator, 'mimeTypes', {
-    get: () => {
-      const mimeTypes = [
-        { type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' },
-        { type: 'text/pdf', suffixes: 'pdf', description: 'Portable Document Format' }
-      ];
-      mimeTypes.item = (i) => mimeTypes[i];
-      mimeTypes.namedItem = (type) => mimeTypes.find(m => m.type === type);
-      return mimeTypes;
-    },
-    configurable: true
-  });
-}
 
 // Fix permissions API to not leak automation
 if (navigator.permissions) {
@@ -76,7 +38,7 @@ if (navigator.permissions) {
   );
 }
 
-// Hide automation indicators in window
+// Hide automation indicators in window (ChromeDriver variables)
 delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
 delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
 delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
@@ -113,14 +75,50 @@ Function.prototype.toString = function() {
 `
 
 /**
- * Apply stealth techniques to a browser context.
- * This should be called immediately after creating the context.
+ * Create a new browser context with realistic, randomized fingerprints.
+ *
+ * Uses fingerprint-injector to generate statistically realistic browser
+ * fingerprints (UA, viewport, WebGL, etc.) that vary per session, then
+ * applies supplemental stealth scripts for ChromeDriver cleanup.
+ *
+ * @param browser - Playwright Browser instance
+ * @param options - Optional timezone/locale overrides
+ * @returns BrowserContext with injected fingerprint and stealth scripts
+ */
+export async function createStealthContext(
+  browser: Browser,
+  options?: { timezoneId?: string; locale?: string }
+): Promise<BrowserContext> {
+  const { newInjectedContext } = await import("fingerprint-injector")
+
+  const context = await newInjectedContext(browser, {
+    fingerprintOptions: {
+      devices: ["desktop"],
+      operatingSystems: ["macos", "windows", "linux"],
+      browsers: [{ name: "chrome", minVersion: 125 }],
+      locales: [options?.locale ?? "en-US"],
+    },
+    newContextOptions: {
+      timezoneId: options?.timezoneId ?? "America/New_York",
+      locale: options?.locale ?? "en-US",
+    },
+  })
+
+  // Apply supplemental stealth (ChromeDriver cleanup, chrome.runtime fake)
+  await context.addInitScript(SUPPLEMENTAL_STEALTH_SCRIPT)
+
+  return context
+}
+
+/**
+ * Apply stealth techniques to an existing browser context.
+ * Use createStealthContext() for new contexts when possible — this is a
+ * fallback for contexts that are already created.
  *
  * @param context - Browser context to apply stealth to
  */
 export async function applyStealthToContext(context: BrowserContext): Promise<void> {
-  // Add init script that runs before any page scripts
-  await context.addInitScript(STEALTH_SCRIPT)
+  await context.addInitScript(SUPPLEMENTAL_STEALTH_SCRIPT)
 }
 
 /**
@@ -130,12 +128,13 @@ export async function applyStealthToContext(context: BrowserContext): Promise<vo
  * @param page - Page to apply stealth to
  */
 export async function applyStealthToPage(page: Page): Promise<void> {
-  await page.addInitScript(STEALTH_SCRIPT)
+  await page.addInitScript(SUPPLEMENTAL_STEALTH_SCRIPT)
 }
 
 /**
  * Get browser launch arguments for stealth mode.
  * These should be added to chromium.launch() args.
+ * fingerprint-injector doesn't provide launch args, so we keep these.
  */
 export function getStealthLaunchArgs(): string[] {
   return [
@@ -172,21 +171,4 @@ export function getStealthLaunchArgs(): string[] {
     // Disable extensions (reduces fingerprint)
     "--disable-extensions",
   ]
-}
-
-/**
- * Get a realistic user agent string.
- * Matches common Chrome on macOS configuration.
- */
-export function getRealisticUserAgent(): string {
-  // Chrome 120 on macOS Sonoma (14.0)
-  return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-}
-
-/**
- * Get realistic viewport dimensions.
- * Common desktop resolution.
- */
-export function getRealisticViewport(): { width: number; height: number } {
-  return { width: 1920, height: 1080 }
 }
