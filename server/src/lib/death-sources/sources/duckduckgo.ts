@@ -54,6 +54,7 @@ export class DuckDuckGoSource extends WebSearchBase {
         headers: {
           "User-Agent": this.userAgent,
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (response.ok) {

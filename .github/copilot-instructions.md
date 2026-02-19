@@ -260,6 +260,8 @@ The enrichment system tries sources in priority order, stopping when confidence 
 6. **Phase 6: Genealogy** - FamilySearch
 7. **Phase 7: AI Models** (optional, by ascending cost) - Gemini Flash through GPT-4o
 
+DDG-dependent sources use a shared utility (`server/src/lib/shared/duckduckgo-search.ts`) with automatic browser fallback: fetch → Playwright with `fingerprint-injector` stealth → CAPTCHA solver. The `news-utils.ts` `searchWeb()` adds Google CSE as a final fallback.
+
 For full details, see `.claude/rules/death-enrichment.md`.
 
 ---

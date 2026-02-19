@@ -35,6 +35,9 @@ export interface DuckDuckGoSearchOptions {
   timeoutMs?: number
   /** Whether to try browser-based DDG when fetch is CAPTCHA-blocked (default: true) */
   useBrowserFallback?: boolean
+  /** Skip the initial fetch step and go directly to browser mode.
+   *  Useful when the caller already knows fetch will fail (e.g. CAPTCHA). */
+  skipFetch?: boolean
   /** AbortSignal for cancellation */
   signal?: AbortSignal
 }
@@ -42,7 +45,7 @@ export interface DuckDuckGoSearchOptions {
 export interface DuckDuckGoSearchResult {
   urls: string[]
   /** Which method produced the results */
-  engine: "duckduckgo-fetch" | "duckduckgo-browser" | "google-cse"
+  engine: "duckduckgo-fetch" | "duckduckgo-browser"
   /** Cost incurred (0 for fetch/browser, CAPTCHA solve cost if any) */
   costUsd: number
   /** Error if all methods failed */
@@ -67,36 +70,39 @@ export async function searchDuckDuckGo(
     userAgent = DEFAULT_USER_AGENT,
     timeoutMs = 15000,
     useBrowserFallback = true,
+    skipFetch = false,
     signal,
   } = options
 
-  // Step 1: Try fetch-based DDG (free, fast)
-  let fetchFailureReason: "captcha" | "fetch-error" | null = null
+  // Step 1: Try fetch-based DDG (free, fast) — unless caller already knows fetch will fail
+  let fetchFailureReason: "captcha" | "fetch-error" | null = skipFetch ? "captcha" : null
 
-  try {
-    const url = `${DUCKDUCKGO_HTML_URL}?q=${encodeURIComponent(query)}`
-    const response = await fetch(url, {
-      headers: { "User-Agent": userAgent },
-      signal: signal ?? AbortSignal.timeout(timeoutMs),
-    })
+  if (!skipFetch) {
+    try {
+      const url = `${DUCKDUCKGO_HTML_URL}?q=${encodeURIComponent(query)}`
+      const response = await fetch(url, {
+        headers: { "User-Agent": userAgent },
+        signal: signal ?? AbortSignal.timeout(timeoutMs),
+      })
 
-    if (response.ok) {
-      const html = await response.text()
+      if (response.ok) {
+        const html = await response.text()
 
-      if (!isDuckDuckGoCaptcha(html)) {
-        const urls = extractUrlsFromDuckDuckGoHtml(html, domainFilter, additionalDomainFilters)
-        return { urls, engine: "duckduckgo-fetch", costUsd: 0 }
+        if (!isDuckDuckGoCaptcha(html)) {
+          const urls = extractUrlsFromDuckDuckGoHtml(html, domainFilter, additionalDomainFilters)
+          return { urls, engine: "duckduckgo-fetch", costUsd: 0 }
+        }
+
+        // CAPTCHA detected — fall through to browser fallback
+        fetchFailureReason = "captcha"
+        console.log("DuckDuckGo CAPTCHA detected on fetch, trying browser fallback...")
+      } else {
+        fetchFailureReason = "fetch-error"
       }
-
-      // CAPTCHA detected — fall through to browser fallback
-      fetchFailureReason = "captcha"
-      console.log("DuckDuckGo CAPTCHA detected on fetch, trying browser fallback...")
-    } else {
+    } catch {
+      // fetch failed — fall through to browser fallback
       fetchFailureReason = "fetch-error"
     }
-  } catch {
-    // fetch failed — fall through to browser fallback
-    fetchFailureReason = "fetch-error"
   }
 
   // Step 2: Try browser-based DDG (stealth mode bypasses anomaly-modal)

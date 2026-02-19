@@ -66,16 +66,18 @@ export async function searchWeb(
     // DDG fetch failed — try browser fallback
   }
 
-  // Try DuckDuckGo browser fallback (stealth mode bypasses anomaly-modal)
+  // Try DuckDuckGo browser fallback (stealth mode bypasses anomaly-modal).
+  // Skip the fetch step since we already know it failed/CAPTCHA'd above.
   try {
     const ddgResult = await searchDuckDuckGo({
       query,
       userAgent,
       useBrowserFallback: true,
+      skipFetch: true,
       signal: options?.signal,
     })
 
-    if (ddgResult.urls.length > 0 && ddgResult.engine === "duckduckgo-browser") {
+    if (ddgResult.urls.length > 0) {
       // Convert URLs back to HTML-like format for backward compatibility
       const html = ddgResult.urls.map((u) => `<a href="${u}">${u}</a>`).join("\n")
       return { html, engine: "duckduckgo" }
