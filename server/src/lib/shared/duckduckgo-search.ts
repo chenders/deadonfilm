@@ -65,6 +65,8 @@ export async function searchDuckDuckGo(
   } = options
 
   // Step 1: Try fetch-based DDG (free, fast)
+  let fetchFailureReason: "captcha" | "fetch-error" | null = null
+
   try {
     const url = `${DUCKDUCKGO_HTML_URL}?q=${encodeURIComponent(query)}`
     const response = await fetch(url, {
@@ -81,10 +83,14 @@ export async function searchDuckDuckGo(
       }
 
       // CAPTCHA detected — fall through to browser fallback
+      fetchFailureReason = "captcha"
       console.log("DuckDuckGo CAPTCHA detected on fetch, trying browser fallback...")
+    } else {
+      fetchFailureReason = "fetch-error"
     }
   } catch {
     // fetch failed — fall through to browser fallback
+    fetchFailureReason = "fetch-error"
   }
 
   // Step 2: Try browser-based DDG (stealth mode bypasses anomaly-modal)
@@ -93,7 +99,10 @@ export async function searchDuckDuckGo(
       urls: [],
       engine: "duckduckgo-fetch",
       costUsd: 0,
-      error: "DuckDuckGo CAPTCHA detected and browser fallback is disabled",
+      error:
+        fetchFailureReason === "captcha"
+          ? "DuckDuckGo CAPTCHA detected and browser fallback is disabled"
+          : "DuckDuckGo search failed and browser fallback is disabled",
     }
   }
 

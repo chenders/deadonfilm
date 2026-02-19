@@ -38,6 +38,15 @@ export class BBCNewsBiographySource extends BaseBiographySource {
     })
     const urls = ddgResult.urls
 
+    if (ddgResult.error) {
+      return {
+        success: false,
+        source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
+        data: null,
+        error: ddgResult.error,
+      }
+    }
+
     if (urls.length === 0) {
       return {
         success: false,
