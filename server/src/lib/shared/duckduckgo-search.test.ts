@@ -212,3 +212,87 @@ describe("searchDuckDuckGo", () => {
     expect(result.costUsd).toBe(0)
   })
 })
+
+describe("searchDuckDuckGo - browser fallback", () => {
+  let mockPage: {
+    goto: ReturnType<typeof vi.fn>
+    waitForSelector: ReturnType<typeof vi.fn>
+    waitForLoadState: ReturnType<typeof vi.fn>
+    content: ReturnType<typeof vi.fn>
+    close: ReturnType<typeof vi.fn>
+  }
+  let mockContext: { close: ReturnType<typeof vi.fn> }
+
+  beforeEach(() => {
+    vi.restoreAllMocks()
+
+    mockPage = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      waitForSelector: vi.fn().mockResolvedValue(undefined),
+      waitForLoadState: vi.fn().mockResolvedValue(undefined),
+      content: vi.fn().mockResolvedValue(VALID_DDG_HTML),
+      close: vi.fn().mockResolvedValue(undefined),
+    }
+    mockContext = { close: vi.fn().mockResolvedValue(undefined) }
+
+    // Mock the dynamic imports used by browserDuckDuckGoSearch
+    vi.doMock("../death-sources/browser-fetch.js", () => ({
+      getBrowserPage: vi.fn().mockResolvedValue({ page: mockPage, context: mockContext }),
+    }))
+    vi.doMock("../death-sources/browser-auth/index.js", () => ({
+      detectCaptcha: vi.fn().mockResolvedValue({ detected: false }),
+      solveCaptcha: vi.fn(),
+      getBrowserAuthConfig: vi.fn().mockReturnValue({ captchaSolver: null }),
+    }))
+
+    // Make fetch fail so browser fallback is triggered
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(CAPTCHA_HTML, { status: 200 }))
+  })
+
+  it("falls back to browser when fetch gets CAPTCHA", async () => {
+    // Re-import to pick up mocked modules
+    const { searchDuckDuckGo: search } = await import("./duckduckgo-search.js")
+
+    const result = await search({
+      query: 'site:britannica.com "John Wayne"',
+      domainFilter: "britannica.com",
+      useBrowserFallback: true,
+    })
+
+    expect(result.engine).toBe("duckduckgo-browser")
+    expect(result.urls).toHaveLength(1)
+    expect(result.urls[0]).toContain("britannica.com")
+    expect(mockPage.goto).toHaveBeenCalled()
+    expect(mockPage.close).toHaveBeenCalled()
+    expect(mockContext.close).toHaveBeenCalled()
+  })
+
+  it("returns error when browser also gets CAPTCHA", async () => {
+    mockPage.content.mockResolvedValue(CAPTCHA_HTML)
+
+    const { searchDuckDuckGo: search } = await import("./duckduckgo-search.js")
+
+    const result = await search({
+      query: "test",
+      useBrowserFallback: true,
+    })
+
+    expect(result.urls).toHaveLength(0)
+    expect(result.error).toContain("CAPTCHA")
+  })
+
+  it("cleans up page and context even on error", async () => {
+    mockPage.goto.mockRejectedValue(new Error("Navigation failed"))
+
+    const { searchDuckDuckGo: search } = await import("./duckduckgo-search.js")
+
+    const result = await search({
+      query: "test",
+      useBrowserFallback: true,
+    })
+
+    expect(result.urls).toHaveLength(0)
+    expect(mockPage.close).toHaveBeenCalled()
+    expect(mockContext.close).toHaveBeenCalled()
+  })
+})

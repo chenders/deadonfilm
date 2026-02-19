@@ -16,6 +16,12 @@ import { decodeHtmlEntities } from "../death-sources/html-utils.js"
 
 const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
 
+/** CSS selector for DDG search result elements */
+const DDG_RESULTS_SELECTOR = ".result__url, .result__a, #links"
+
+/** Time to wait after CAPTCHA solve for page reload */
+const POST_CAPTCHA_WAIT_MS = 3000
+
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
@@ -144,8 +150,8 @@ async function browserDuckDuckGoSearch(
       timeout: timeoutMs,
     })
 
-    // Wait for results to render
-    await page.waitForTimeout(2000)
+    // Wait for search results to render (or fall back to short delay)
+    await page.waitForSelector(DDG_RESULTS_SELECTOR, { timeout: 5000 }).catch(() => {})
 
     // Get the page HTML
     let html = await page.content()
@@ -163,7 +169,9 @@ async function browserDuckDuckGoSearch(
           costUsd += solveResult.costUsd
 
           if (solveResult.success) {
-            await page.waitForTimeout(2000)
+            await page
+              .waitForLoadState("networkidle", { timeout: POST_CAPTCHA_WAIT_MS })
+              .catch(() => {})
             html = await page.content()
           } else {
             console.warn(`DDG CAPTCHA solving failed: ${solveResult.error}`)

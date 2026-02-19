@@ -17,6 +17,12 @@ import { isDuckDuckGoCaptcha, cleanDuckDuckGoUrl } from "../../shared/duckduckgo
 
 const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
 
+/** CSS selector for DDG search result elements */
+const DDG_RESULTS_SELECTOR = ".result__url, .result__a, #links"
+
+/** Time to wait after CAPTCHA solve for page reload */
+const POST_CAPTCHA_WAIT_MS = 3000
+
 /**
  * DuckDuckGo search source for death information.
  * Free and doesn't require an API key.
@@ -98,7 +104,7 @@ export class DuckDuckGoSource extends WebSearchBase {
     try {
       const url = `${DUCKDUCKGO_HTML_URL}?q=${encodeURIComponent(query)}`
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 })
-      await page.waitForTimeout(2000)
+      await page.waitForSelector(DDG_RESULTS_SELECTOR, { timeout: 5000 }).catch(() => {})
 
       let html = await page.content()
 
@@ -110,7 +116,9 @@ export class DuckDuckGoSource extends WebSearchBase {
           if (authConfig.captchaSolver) {
             const solveResult = await solveCaptcha(page, captchaResult, authConfig.captchaSolver)
             if (solveResult.success) {
-              await page.waitForTimeout(2000)
+              await page
+                .waitForLoadState("networkidle", { timeout: POST_CAPTCHA_WAIT_MS })
+                .catch(() => {})
               html = await page.content()
             }
           }
