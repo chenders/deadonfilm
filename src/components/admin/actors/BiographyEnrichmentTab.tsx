@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import LoadingSpinner from "../../common/LoadingSpinner"
 import ErrorMessage from "../../common/ErrorMessage"
@@ -391,6 +392,26 @@ export default function BiographyEnrichmentTab() {
           </div>
         </div>
       )}
+
+      {/* Run History & Start Tracked Run */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          to="/admin/bio-enrichment/runs"
+          className="rounded border border-admin-border bg-admin-surface-elevated px-4 py-2 text-sm text-admin-text-primary transition-colors hover:bg-admin-interactive-secondary"
+        >
+          View Run History
+        </Link>
+        <Link
+          to="/admin/bio-enrichment/start"
+          className="rounded bg-admin-danger px-4 py-2 text-sm text-admin-text-primary transition-colors hover:bg-red-700"
+        >
+          Start Tracked Run
+        </Link>
+        <span className="text-xs text-admin-text-muted">
+          Multi-source biography enrichment with full run tracking, per-actor results, and cost
+          breakdown
+        </span>
+      </div>
 
       {/* Filters and Batch Actions */}
       <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 md:p-6">

@@ -13,7 +13,7 @@ interface ExpandableSectionProps {
   title: string
   isExpanded: boolean
   onToggle: () => void
-  /** CSS max-height value when collapsed (default "10rem") */
+  /** CSS max-height value when collapsed (default "13rem") */
   collapsedMaxHeight?: string
   children: React.ReactNode
   className?: string
@@ -23,7 +23,7 @@ export default function ExpandableSection({
   title,
   isExpanded,
   onToggle,
-  collapsedMaxHeight = "10rem",
+  collapsedMaxHeight = "13rem",
   children,
   className = "",
 }: ExpandableSectionProps) {
@@ -114,14 +114,28 @@ export default function ExpandableSection({
       >
         {children}
 
-        {/* Gradient overlay — fades with opacity for smooth transition */}
+        {/* Gradient overlay — fades with opacity for smooth transition; clickable to expand */}
         <div
-          className={`pointer-events-none absolute bottom-0 left-0 right-0 h-16 transition-opacity duration-300 ${
-            isExpanded ? "opacity-0" : "opacity-100"
+          className={`absolute bottom-0 left-0 right-0 h-24 transition-opacity duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brown-medium ${
+            isExpanded ? "pointer-events-none opacity-0" : "cursor-pointer opacity-100"
           }`}
           style={{
             background: "linear-gradient(to bottom, transparent, var(--surface-elevated))",
           }}
+          onClick={isExpanded ? undefined : onToggle}
+          onKeyDown={
+            isExpanded
+              ? undefined
+              : (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    onToggle()
+                  }
+                }
+          }
+          role={isExpanded ? undefined : "button"}
+          tabIndex={isExpanded ? undefined : 0}
+          aria-label={isExpanded ? undefined : `Expand ${title} section`}
           data-testid="expandable-section-gradient"
         />
       </div>

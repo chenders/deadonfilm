@@ -117,7 +117,7 @@ export default function DeathSummaryCard({
         title="Death"
         isExpanded={isExpanded}
         onToggle={handleToggle}
-        collapsedMaxHeight="10rem"
+        collapsedMaxHeight="13rem"
       >
         {/* What We Know narrative (always visible, gradient-truncated when collapsed) */}
         {circumstances.official ? (

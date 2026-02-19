@@ -40,6 +40,7 @@ vi.mock("../../biography-enrichment-db-writer.js", () => ({
 // Mock newrelic
 vi.mock("newrelic", () => ({
   default: {
+    addCustomAttribute: vi.fn(),
     recordCustomEvent: vi.fn(),
   },
 }))
@@ -124,6 +125,8 @@ function makeSuccessfulResult(actorId: number) {
       sourcesAttempted: 3,
       sourcesSucceeded: 2,
       totalCostUsd: 0.005,
+      sourceCostUsd: 0.002,
+      synthesisCostUsd: 0.003,
       processingTimeMs: 1500,
     },
   }
@@ -138,6 +141,8 @@ function makeNoContentResult(actorId: number) {
       sourcesAttempted: 3,
       sourcesSucceeded: 0,
       totalCostUsd: 0.001,
+      sourceCostUsd: 0.001,
+      synthesisCostUsd: 0,
       processingTimeMs: 800,
     },
     error: "No biographical data found from any source",
