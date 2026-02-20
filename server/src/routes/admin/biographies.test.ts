@@ -50,6 +50,7 @@ vi.mock("../../lib/biography/wikipedia-fetcher.js", () => ({
 const mockAddJob = vi.fn()
 vi.mock("../../lib/jobs/queue-manager.js", () => ({
   queueManager: {
+    isReady: true,
     addJob: (...args: unknown[]) => mockAddJob(...args),
   },
 }))

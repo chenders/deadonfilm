@@ -39,6 +39,11 @@ class QueueManager {
   private queueEvents: Map<QueueName, QueueEvents> = new Map()
   private initialized = false
 
+  /** Whether the queue manager has been successfully initialized */
+  get isReady(): boolean {
+    return this.initialized
+  }
+
   /**
    * Initialize all queues
    */

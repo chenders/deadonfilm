@@ -65,6 +65,10 @@ export default function ActorManagementTab() {
       searchParams.get("hasDeathPage") !== null
         ? searchParams.get("hasDeathPage") === "true"
         : undefined,
+    hasEnrichedBio:
+      searchParams.get("hasEnrichedBio") !== null
+        ? searchParams.get("hasEnrichedBio") === "true"
+        : undefined,
     maxPopularity: searchParams.get("maxPopularity")
       ? parseFloat(searchParams.get("maxPopularity")!)
       : undefined,
@@ -101,6 +105,9 @@ export default function ActorManagementTab() {
 
     if (updatedFilters.hasDeathPage !== undefined) {
       params.set("hasDeathPage", updatedFilters.hasDeathPage.toString())
+    }
+    if (updatedFilters.hasEnrichedBio !== undefined) {
+      params.set("hasEnrichedBio", updatedFilters.hasEnrichedBio.toString())
     }
     if (updatedFilters.maxPopularity !== undefined) {
       params.set("maxPopularity", updatedFilters.maxPopularity.toString())
@@ -305,7 +312,28 @@ export default function ActorManagementTab() {
             </select>
           </div>
 
-          {/* 3. Max Popularity */}
+          {/* 3. Bio Status */}
+          <div>
+            <label htmlFor="hasEnrichedBio" className="mb-1 block text-sm text-admin-text-muted">
+              Bio Status
+            </label>
+            <select
+              id="hasEnrichedBio"
+              value={filters.hasEnrichedBio === undefined ? "" : filters.hasEnrichedBio.toString()}
+              onChange={(e) =>
+                handleFilterChange({
+                  hasEnrichedBio: e.target.value === "" ? undefined : e.target.value === "true",
+                })
+              }
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
+            >
+              <option value="">All</option>
+              <option value="true">With Enriched Bio</option>
+              <option value="false">Without Enriched Bio</option>
+            </select>
+          </div>
+
+          {/* 4. Max Popularity */}
           <div>
             <label htmlFor="maxPopularity" className="mb-1 block text-sm text-admin-text-muted">
               Max Popularity

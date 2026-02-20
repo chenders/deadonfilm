@@ -44,6 +44,7 @@ vi.mock("../../lib/biography-enrichment-db-writer.js", () => ({
 
 vi.mock("../../lib/jobs/queue-manager.js", () => ({
   queueManager: {
+    isReady: true,
     addJob: vi.fn().mockResolvedValue("job-123"),
   },
 }))
