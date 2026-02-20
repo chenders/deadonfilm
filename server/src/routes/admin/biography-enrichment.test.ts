@@ -317,5 +317,20 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(res.body.success).toBe(true)
       expect(res.body.jobId).toBe("job-123")
     })
+
+    it("returns 503 when job queue is not available", async () => {
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+      const original = queueManager.isReady
+      ;(queueManager as Record<string, unknown>).isReady = false
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ actorIds: [1, 2] })
+
+      expect(res.status).toBe(503)
+      expect(res.body.error.message).toContain("Job queue is not available")
+      expect(queueManager.addJob).not.toHaveBeenCalled()
+      ;(queueManager as Record<string, unknown>).isReady = original
+    })
   })
 })
