@@ -120,6 +120,23 @@ jobs:
 
           echo "=== Deployment successful ==="
 
+      - name: Update source on server
+        run: |
+          if [ ! -d /opt/deadonfilm/.git ]; then
+            echo "No .git directory found in /opt/deadonfilm; skipping source sync."
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            REF="${{ github.event.workflow_run.head_sha }}"
+          else
+            REF="${{ github.sha }}"
+          fi
+
+          echo "Syncing /opt/deadonfilm to commit ${REF}"
+          git -C /opt/deadonfilm fetch origin "${REF}"
+          git -C /opt/deadonfilm reset --hard "${REF}"
+
       - name: Cleanup old images
         run: docker image prune -f --filter "until=24h"
         continue-on-error: true
