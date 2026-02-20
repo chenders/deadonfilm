@@ -320,7 +320,7 @@ describe("scoreAllResults", () => {
         narrativeTeaser: "A wartime survivor who danced through famine",
         narrative:
           "Hepburn survived starvation during WWII thanks to the Dutch Resistance. She trained in ballet from a young age.",
-        lifeNotableFactors: ["survivor"],
+        lifeNotableFactors: ["disaster_survivor"],
         hasSubstantiveContent: true,
       })
     )
