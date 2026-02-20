@@ -959,6 +959,203 @@ export async function getMovieCastWithDetails(
 }
 
 // ============================================================
+// Death Date Verification via IMDb Dataset
+// ============================================================
+
+export interface ImdbDeathVerification {
+  found: boolean // Actor found in IMDb dataset
+  hasDeathYear: boolean // IMDb has a deathYear for this person
+  imdbDeathYear: number | null
+  yearMatches: boolean // IMDb deathYear matches TMDB year
+}
+
+export type DeathDateConfidence =
+  | "verified"
+  | "imdb_verified"
+  | "unverified"
+  | "suspicious"
+  | "conflicting"
+
+/**
+ * Find a person in the IMDb name.basics.tsv.gz dataset by name and birth year.
+ *
+ * Matches by exact primaryName (case-sensitive, matching IMDb convention).
+ * If birthYear is provided, requires ±1 year match.
+ * Returns the first match, or null if not found.
+ */
+export async function findPersonByName(
+  name: string,
+  birthYear: number | null
+): Promise<ImdbPerson | null> {
+  const filePath = await ensureFileDownloaded("name.basics.tsv.gz")
+
+  const matches = await parseTsvGzFiltered<ImdbPerson>(
+    filePath,
+    (columns, headers) => {
+      if (columns[headers.indexOf("primaryName")] !== name) return false
+      if (birthYear !== null) {
+        const imdbBirthYear = parseNullableInt(columns[headers.indexOf("birthYear")])
+        if (imdbBirthYear === null) return false
+        if (Math.abs(imdbBirthYear - birthYear) > 1) return false
+      }
+      return true
+    },
+    (columns, headers) => ({
+      nconst: columns[headers.indexOf("nconst")],
+      primaryName: columns[headers.indexOf("primaryName")],
+      birthYear: parseNullableInt(columns[headers.indexOf("birthYear")]),
+      deathYear: parseNullableInt(columns[headers.indexOf("deathYear")]),
+      primaryProfession:
+        parseNullable(columns[headers.indexOf("primaryProfession")])?.split(",") || [],
+      knownForTitles: parseNullable(columns[headers.indexOf("knownForTitles")])?.split(",") || [],
+    }),
+    { progressLabel: "names" }
+  )
+
+  return matches[0] ?? null
+}
+
+/**
+ * Find multiple people in the IMDb name.basics.tsv.gz dataset in a single pass.
+ *
+ * For batch validation — avoids re-scanning the ~13M row file per actor.
+ * Matches by exact primaryName (case-sensitive). If birthYear is provided
+ * for a lookup, requires ±1 year match.
+ *
+ * Returns Map keyed by name. For duplicate names, the first match with
+ * the closest birth year is kept.
+ */
+export async function findPersonsByNames(
+  lookups: Array<{ name: string; birthYear: number | null }>
+): Promise<Map<string, ImdbPerson>> {
+  if (lookups.length === 0) return new Map()
+
+  // Build lookup index: name -> birthYear (for matching)
+  const lookupMap = new Map<string, number | null>()
+  for (const { name, birthYear } of lookups) {
+    lookupMap.set(name, birthYear)
+  }
+
+  const filePath = await ensureFileDownloaded("name.basics.tsv.gz")
+
+  const results = new Map<string, ImdbPerson>()
+
+  const matches = await parseTsvGzFiltered<ImdbPerson>(
+    filePath,
+    (columns, headers) => {
+      const primaryName = columns[headers.indexOf("primaryName")]
+      if (!lookupMap.has(primaryName)) return false
+
+      // Already found a match for this name — skip duplicates
+      if (results.has(primaryName)) return false
+
+      const expectedBirthYear = lookupMap.get(primaryName)!
+      if (expectedBirthYear !== null) {
+        const imdbBirthYear = parseNullableInt(columns[headers.indexOf("birthYear")])
+        if (imdbBirthYear === null) return false
+        if (Math.abs(imdbBirthYear - expectedBirthYear) > 1) return false
+      }
+      return true
+    },
+    (columns, headers) => {
+      const person: ImdbPerson = {
+        nconst: columns[headers.indexOf("nconst")],
+        primaryName: columns[headers.indexOf("primaryName")],
+        birthYear: parseNullableInt(columns[headers.indexOf("birthYear")]),
+        deathYear: parseNullableInt(columns[headers.indexOf("deathYear")]),
+        primaryProfession:
+          parseNullable(columns[headers.indexOf("primaryProfession")])?.split(",") || [],
+        knownForTitles: parseNullable(columns[headers.indexOf("knownForTitles")])?.split(",") || [],
+      }
+      results.set(person.primaryName, person)
+      return person
+    },
+    { progressLabel: "names" }
+  )
+
+  // parseTsvGzFiltered collects results but we already built our map via side effect
+  void matches
+
+  return results
+}
+
+/**
+ * Verify an actor's death date against the IMDb name.basics.tsv.gz dataset.
+ *
+ * Looks up the actor by name + birth year, then compares IMDb's deathYear
+ * against the TMDB death year (exact match — year precision means ±0).
+ */
+export async function verifyDeathDateImdb(
+  name: string,
+  birthYear: number | null,
+  tmdbDeathYear: number
+): Promise<ImdbDeathVerification> {
+  const person = await findPersonByName(name, birthYear)
+
+  if (!person) {
+    return { found: false, hasDeathYear: false, imdbDeathYear: null, yearMatches: false }
+  }
+
+  if (person.deathYear === null) {
+    // Found in IMDb but no deathYear — IMDb says they're alive
+    return { found: true, hasDeathYear: false, imdbDeathYear: null, yearMatches: false }
+  }
+
+  return {
+    found: true,
+    hasDeathYear: true,
+    imdbDeathYear: person.deathYear,
+    yearMatches: person.deathYear === tmdbDeathYear,
+  }
+}
+
+/**
+ * Combine Wikidata and IMDb death date verification results into a final confidence.
+ *
+ * Truth table:
+ * | Wikidata      | IMDb             | → Confidence    | → Source          |
+ * |---------------|------------------|-----------------|-------------------|
+ * | verified      | year matches     | verified        | wikidata,imdb     |
+ * | verified      | alive / not found| verified        | wikidata          |
+ * | unverified    | year matches     | imdb_verified   | imdb              |
+ * | unverified    | alive (no death) | suspicious      | imdb              |
+ * | unverified    | not in dataset   | unverified      | (null)            |
+ * | conflicting   | any              | conflicting     | wikidata[,imdb]   |
+ */
+export function combineVerification(
+  wikidata: {
+    confidence: "verified" | "unverified" | "conflicting"
+    wikidataDeathDate: string | null
+  },
+  imdb: ImdbDeathVerification
+): { confidence: DeathDateConfidence; source: string | null } {
+  if (wikidata.confidence === "conflicting") {
+    // Conflicting always wins — Wikidata date significantly differs from TMDB
+    const source = imdb.yearMatches ? "wikidata,imdb" : "wikidata"
+    return { confidence: "conflicting", source }
+  }
+
+  if (wikidata.confidence === "verified") {
+    // Wikidata confirmed — add IMDb as secondary source if it also matches
+    const source = imdb.yearMatches ? "wikidata,imdb" : "wikidata"
+    return { confidence: "verified", source }
+  }
+
+  // Wikidata is unverified — IMDb is the tiebreaker
+  if (imdb.found && imdb.hasDeathYear && imdb.yearMatches) {
+    return { confidence: "imdb_verified", source: "imdb" }
+  }
+
+  if (imdb.found && !imdb.hasDeathYear) {
+    // IMDb knows this person but says they're alive — suspicious
+    return { confidence: "suspicious", source: "imdb" }
+  }
+
+  // Not found in IMDb at all — stays unverified
+  return { confidence: "unverified", source: null }
+}
+
+// ============================================================
 // Cache Utilities
 // ============================================================
 

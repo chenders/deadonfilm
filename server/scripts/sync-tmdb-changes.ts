@@ -50,6 +50,7 @@ import {
   type TMDBPerson,
 } from "../src/lib/tmdb.js"
 import { getCauseOfDeath, verifyDeathDate } from "../src/lib/wikidata.js"
+import { verifyDeathDateImdb, combineVerification } from "../src/lib/imdb.js"
 import { calculateYearsLost, calculateMovieMortality } from "../src/lib/mortality-stats.js"
 import { formatDate, subtractDays, getDateRanges } from "../src/lib/date-utils.js"
 import {
@@ -1112,16 +1113,25 @@ async function syncPeopleChanges(
 
 async function processNewDeath(person: TMDBPerson): Promise<void> {
   const birthYear = person.birthday ? new Date(person.birthday).getFullYear() : null
+  const tmdbDeathYear = new Date(person.deathday!).getFullYear()
 
-  // Verify death date against Wikidata before storing
+  // Verify death date against Wikidata
   const deathVerification = await verifyDeathDate(person.name, birthYear, person.deathday!)
 
-  if (!deathVerification.verified) {
-    if (deathVerification.confidence === "conflicting") {
-      console.log(`  [CONFLICTING] ${person.name}: ${deathVerification.conflictDetails}`)
-    } else {
-      console.log(`  [UNVERIFIED] ${person.name}: No Wikidata record found to verify death date`)
-    }
+  // Verify death date against IMDb dataset
+  const imdbVerification = await verifyDeathDateImdb(person.name, birthYear, tmdbDeathYear)
+
+  // Combine both verification results
+  const { confidence, source } = combineVerification(deathVerification, imdbVerification)
+
+  if (confidence === "conflicting") {
+    console.log(`  [CONFLICTING] ${person.name}: ${deathVerification.conflictDetails}`)
+  } else if (confidence === "suspicious") {
+    console.log(`  [SUSPICIOUS] ${person.name}: IMDb has no death record (may be vandalism)`)
+  } else if (confidence === "unverified") {
+    console.log(`  [UNVERIFIED] ${person.name}: Not found in Wikidata or IMDb`)
+  } else if (confidence === "imdb_verified") {
+    console.log(`  [IMDb VERIFIED] ${person.name}: IMDb confirms death year ${tmdbDeathYear}`)
   }
 
   // Look up cause of death using Opus 4.5
@@ -1152,8 +1162,8 @@ async function processNewDeath(person: TMDBPerson): Promise<void> {
     expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
     years_lost: yearsLostResult?.yearsLost ?? null,
     // Death date verification fields
-    deathday_confidence: deathVerification.confidence,
-    deathday_verification_source: deathVerification.wikidataDeathDate ? "wikidata" : null,
+    deathday_confidence: confidence,
+    deathday_verification_source: source,
     deathday_verified_at: new Date().toISOString(),
   }
 
