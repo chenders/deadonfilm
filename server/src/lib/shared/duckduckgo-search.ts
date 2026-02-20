@@ -132,10 +132,10 @@ async function browserDuckDuckGoSearch(
   query: string,
   domainFilter?: string,
   additionalDomainFilters?: string[],
-  timeoutMs = 30000
+  timeoutMs?: number
 ): Promise<DuckDuckGoSearchResult> {
-  // Browser navigation has more overhead than fetch — enforce a minimum timeout
-  const browserTimeout = Math.max(timeoutMs, 30000)
+  // Browser navigation has more overhead than fetch — enforce a minimum of 30s
+  const browserTimeout = Math.max(timeoutMs ?? 30000, 30000)
 
   // Dynamic import to avoid loading browser infra when not needed
   const { getBrowserPage } = await import("../death-sources/browser-fetch.js")
