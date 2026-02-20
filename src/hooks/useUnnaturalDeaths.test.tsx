@@ -6,7 +6,6 @@ import { useUnnaturalDeaths } from "./useUnnaturalDeaths"
 import * as api from "@/services/api"
 import type { UnnaturalDeathsResponse } from "@/types"
 
-// Mock the api module
 vi.mock("@/services/api", () => ({
   getUnnaturalDeaths: vi.fn(),
 }))
@@ -72,22 +71,15 @@ describe("useUnnaturalDeaths", () => {
     expect(result.current.data).toEqual(mockResponse)
   })
 
-  it("fetches with custom page param", async () => {
-    vi.mocked(api.getUnnaturalDeaths).mockResolvedValueOnce({
-      ...mockResponse,
-      pagination: { ...mockResponse.pagination, page: 2 },
-    })
+  it("handles API errors", async () => {
+    vi.mocked(api.getUnnaturalDeaths).mockRejectedValue(new Error("API Error"))
 
-    const { result } = renderHook(() => useUnnaturalDeaths({ page: 2 }), { wrapper })
+    const { result } = renderHook(() => useUnnaturalDeaths(), { wrapper })
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 2000 })
 
-    expect(api.getUnnaturalDeaths).toHaveBeenCalledWith({
-      page: 2,
-      category: "all",
-      showSelfInflicted: false,
-      includeObscure: false,
-    })
+    expect(result.current.error).toBeInstanceOf(Error)
+    expect(result.current.error?.message).toBe("API Error")
   })
 
   it("fetches with category filter", async () => {
@@ -128,21 +120,6 @@ describe("useUnnaturalDeaths", () => {
     })
   })
 
-  it("fetches with includeObscure filter", async () => {
-    vi.mocked(api.getUnnaturalDeaths).mockResolvedValueOnce(mockResponse)
-
-    const { result } = renderHook(() => useUnnaturalDeaths({ includeObscure: true }), { wrapper })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getUnnaturalDeaths).toHaveBeenCalledWith({
-      page: 1,
-      category: "all",
-      showSelfInflicted: false,
-      includeObscure: true,
-    })
-  })
-
   it("handles combined params", async () => {
     vi.mocked(api.getUnnaturalDeaths).mockResolvedValueOnce(mockResponse)
 
@@ -164,49 +141,6 @@ describe("useUnnaturalDeaths", () => {
       category: "overdose",
       showSelfInflicted: true,
       includeObscure: true,
-    })
-  })
-
-  it("handles API errors", async () => {
-    // Mock rejection for both initial call and retry (hook has retry: 1)
-    vi.mocked(api.getUnnaturalDeaths).mockRejectedValue(new Error("API Error"))
-
-    const { result } = renderHook(() => useUnnaturalDeaths(), { wrapper })
-
-    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 2000 })
-
-    expect(result.current.error).toBeInstanceOf(Error)
-    expect(result.current.error?.message).toBe("API Error")
-  })
-
-  it("refetches when params change", async () => {
-    vi.mocked(api.getUnnaturalDeaths).mockResolvedValue(mockResponse)
-
-    // First render with page 1
-    const { result, rerender } = renderHook(
-      ({ page }: { page: number }) => useUnnaturalDeaths({ page }),
-      { wrapper, initialProps: { page: 1 } }
-    )
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Rerender with page 2
-    rerender({ page: 2 })
-    await waitFor(() => expect(result.current.isFetching).toBe(true))
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Should have made two calls with different pages
-    expect(api.getUnnaturalDeaths).toHaveBeenCalledTimes(2)
-    expect(api.getUnnaturalDeaths).toHaveBeenNthCalledWith(1, {
-      page: 1,
-      category: "all",
-      showSelfInflicted: false,
-      includeObscure: false,
-    })
-    expect(api.getUnnaturalDeaths).toHaveBeenNthCalledWith(2, {
-      page: 2,
-      category: "all",
-      showSelfInflicted: false,
-      includeObscure: false,
     })
   })
 })

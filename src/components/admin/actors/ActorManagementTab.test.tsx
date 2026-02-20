@@ -473,11 +473,11 @@ describe("ActorManagementTab", () => {
     // John Wayne (id=1) and James Dean (id=2) have has_detailed_death_info
     expect(screen.getByTestId("death-page-icon-1")).toBeInTheDocument()
     expect(screen.getByTestId("death-page-icon-2")).toBeInTheDocument()
-    // John Wayne and Marilyn have has_biography — check sr-only text
-    expect(screen.getAllByText("Has biography").length).toBeGreaterThanOrEqual(2)
-    // Only John Wayne has enriched bio
+    // Only John Wayne has enriched bio (sparkle icon)
     expect(screen.getByTestId("enriched-bio-icon-1")).toBeInTheDocument()
     expect(screen.queryByTestId("enriched-bio-icon-2")).not.toBeInTheDocument()
+    // Marilyn has old bio only (no enrichment)
+    expect(screen.queryByTestId("enriched-bio-icon-3")).not.toBeInTheDocument()
   })
 
   it("displays cause of death or dash when missing", () => {

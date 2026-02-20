@@ -46,7 +46,6 @@ import { VarietySource } from "./sources/variety.js"
 import { DeadlineSource } from "./sources/deadline.js"
 import { NewsAPISource } from "./sources/newsapi.js"
 import { ChroniclingAmericaSource } from "./sources/chronicling-america.js"
-// Disabled sources (0% success rate) - AlloCineSource, DoubanSource, SoompiSource, FilmiBeatSource
 import { TroveSource } from "./sources/trove.js"
 import { EuropeanaSource } from "./sources/europeana.js"
 import { InternetArchiveSource } from "./sources/internet-archive.js"
@@ -58,8 +57,6 @@ import { TMZSource } from "./sources/tmz.js"
 import { PeopleSource } from "./sources/people.js"
 import { BBCNewsSource } from "./sources/bbc-news.js"
 import { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
-// Removed: BAFTASource, WGASource, DGASource — career tributes, not obituaries (no death circumstances)
-// Removed: TelevisionAcademySource, IBDBSource — return circumstances: null by design
 import { BraveSearchSource } from "./sources/brave.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
@@ -256,12 +253,6 @@ export class DeathEnrichmentOrchestrator {
       // Phase 4: Obituary sites
       new FindAGraveSource(),
       new LegacySource(), // Legacy.com obituaries (via DuckDuckGo + archive.org)
-
-      // Removed sources:
-      // AlloCineSource, DoubanSource, SoompiSource — 0% success rate
-      // FilmiBeatSource — consistently blocked by anti-scraping (403)
-      // TelevisionAcademySource, IBDBSource — return circumstances: null by design (career DBs)
-      // BAFTASource, WGASource, DGASource — career tributes via fragile DuckDuckGo search, no death causes
 
       // Phase 6: Historical archives (for pre-internet deaths)
       new TroveSource(), // Australian newspapers (requires API key)
