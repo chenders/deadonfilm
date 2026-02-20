@@ -30,10 +30,8 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
   const nullsOrder = sortDirection === "ASC" ? "NULLS FIRST" : "NULLS LAST"
 
   // Build parameterized conditions
-  const conditions: string[] = [
-    `(a.has_detailed_death_info = true
-      OR EXISTS (SELECT 1 FROM actor_biography_details abd_check WHERE abd_check.actor_id = a.id))`,
-  ]
+  // Uses abd from LEFT JOIN below instead of a correlated EXISTS subquery
+  const conditions: string[] = [`(a.has_detailed_death_info = true OR abd.id IS NOT NULL)`]
   const params: (string | number | boolean)[] = []
   let paramIndex = 1
 
@@ -49,10 +47,11 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
 
   const whereClause = conditions.join(" AND ")
 
-  // Get total count
+  // Get total count (needs LEFT JOIN for abd.id IS NOT NULL condition)
   const countResult = await db.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM actors a
+     LEFT JOIN actor_biography_details abd ON a.id = abd.actor_id
      WHERE ${whereClause}`,
     params
   )
@@ -77,7 +76,7 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
     `SELECT
        a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
        a.age_at_death, a.cause_of_death, a.death_manner,
-       GREATEST(a.enriched_at, abd.updated_at) as enriched_at_combined,
+       COALESCE(GREATEST(a.enriched_at, abd.updated_at), a.enriched_at, abd.updated_at) as enriched_at_combined,
        adc.circumstances_confidence,
        COALESCE(a.has_detailed_death_info, false) as has_detailed_death_info,
        (abd.id IS NOT NULL) as has_enriched_bio,
