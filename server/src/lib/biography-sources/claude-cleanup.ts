@@ -160,8 +160,16 @@ pow, scholar, self_taught, dropout, child_star, child_labor,
 incarcerated, wrongfully_convicted, addiction_recovery, disability,
 chronic_illness, civil_rights_activist, political_figure, athlete,
 multiple_careers, turned_down_fame, rags_to_riches, prodigy,
-polyglot, clergy, royalty, nobility, espionage, survivor,
+polyglot, clergy, royalty, nobility, espionage,
+holocaust_survivor, cancer_survivor, disaster_survivor, accident_survivor, abuse_survivor,
 whistleblower, philanthropist]
+
+SURVIVOR TAGS: Use the specific survivor type, not a generic "survivor". Pick the one that best matches:
+- holocaust_survivor: Survived the Holocaust or other genocide
+- cancer_survivor: Beat cancer or achieved remission
+- disaster_survivor: Survived a natural disaster, fire, shipwreck, etc.
+- accident_survivor: Survived a serious accident (plane crash, car crash, etc.)
+- abuse_survivor: Survived domestic violence, sexual abuse, or similar
 
 WHEN SOURCES CONFLICT:
 - Prefer higher reliability sources
