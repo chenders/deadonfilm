@@ -345,7 +345,11 @@ async function fetchWithWapoAuth(url: string): Promise<FetchedPage> {
 
   let browser
   try {
-    browser = await chromium.launch({ headless: true })
+    browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.BROWSER_EXECUTABLE_PATH || undefined,
+      args: ["--no-sandbox", "--disable-dev-shm-usage"],
+    })
   } catch (error) {
     return {
       url,

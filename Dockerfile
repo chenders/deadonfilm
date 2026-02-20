@@ -39,13 +39,17 @@ RUN npm run build
 FROM node:22-alpine AS production
 WORKDIR /app
 
-# Install nginx (for nginx container) and supercronic (for cron container)
-# Checksum from: https://github.com/aptible/supercronic/releases/tag/v0.2.33
+# Install nginx (for nginx container), supercronic (for cron container),
+# and Chromium for browser-based web scraping (DDG fallback, link following)
+# ttf-freefont provides basic fonts required for headless Chromium page rendering
 ENV SUPERCRONIC_SHA1SUM=71b0d58cc53f6bd72cf2f293e09e294b79c666d8
-RUN apk add --no-cache nginx && \
+RUN apk add --no-cache nginx chromium ttf-freefont && \
     wget -qO /usr/local/bin/supercronic https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64 && \
     echo "${SUPERCRONIC_SHA1SUM}  /usr/local/bin/supercronic" | sha1sum -c - && \
     chmod +x /usr/local/bin/supercronic
+
+# Tell Playwright to use system Chromium instead of its own download
+ENV BROWSER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Copy backend
 COPY --from=backend-builder /app/server/dist ./server/dist
