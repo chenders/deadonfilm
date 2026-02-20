@@ -946,7 +946,10 @@ export default function ActorManagementTab() {
                                 old
                               </span>
                             ) : (
-                              <span aria-hidden="true">—</span>
+                              <>
+                                <span aria-hidden="true">—</span>
+                                <span className="sr-only">No biography</span>
+                              </>
                             )}
                           </td>
                           <td className="px-3 py-3 text-right text-admin-text-muted">
