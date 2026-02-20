@@ -134,9 +134,8 @@ jobs:
           fi
 
           echo "Syncing /opt/deadonfilm to commit ${REF}"
-          git config --global --add safe.directory /opt/deadonfilm
-          git -C /opt/deadonfilm fetch origin "${REF}"
-          git -C /opt/deadonfilm reset --hard "${REF}"
+          git -C /opt/deadonfilm -c safe.directory=/opt/deadonfilm fetch origin "${REF}"
+          git -C /opt/deadonfilm -c safe.directory=/opt/deadonfilm reset --hard "${REF}"
 
       - name: Cleanup old images
         run: docker image prune -f --filter "until=24h"
