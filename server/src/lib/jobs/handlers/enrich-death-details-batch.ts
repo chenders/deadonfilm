@@ -147,6 +147,13 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
     const reviewStatus = staging ? "pending_review" : "not_applicable"
 
     try {
+      // Count actors that created death pages from the per-actor tracking
+      const deathPageResult = await db.query<{ cnt: string }>(
+        `SELECT count(*) as cnt FROM enrichment_run_actors WHERE run_id = $1 AND created_death_page = true`,
+        [runId]
+      )
+      const actorsWithDeathPage = parseInt(deathPageResult.rows[0].cnt, 10)
+
       await db.query(
         `UPDATE enrichment_runs
          SET status = $1,
@@ -154,17 +161,18 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
              duration_ms = $2,
              actors_processed = $3,
              actors_enriched = $4,
-             fill_rate = $5,
-             total_cost_usd = $6,
-             cost_by_source = $7,
-             exit_reason = $8,
-             review_status = $9,
-             source_hit_rates = $10,
-             sources_attempted = $11,
+             actors_with_death_page = $5,
+             fill_rate = $6,
+             total_cost_usd = $7,
+             cost_by_source = $8,
+             exit_reason = $9,
+             review_status = $10,
+             source_hit_rates = $11,
+             sources_attempted = $12,
              process_id = NULL,
              current_actor_index = NULL,
              current_actor_name = NULL
-         WHERE id = $12`,
+         WHERE id = $13`,
         [
           stats.exitReason === "completed" || stats.exitReason === "cost_limit"
             ? "completed"
@@ -172,6 +180,7 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
           stats.totalTimeMs,
           stats.actorsProcessed,
           stats.actorsEnriched,
+          actorsWithDeathPage,
           stats.fillRate,
           stats.totalCostUsd,
           JSON.stringify(stats.costBySource),

@@ -304,6 +304,13 @@ async function completeEnrichmentRun(
     // Stage 4: Set review_status for staging runs
     const reviewStatus = staging ? "pending_review" : "not_applicable"
 
+    // Count actors that created death pages from the per-actor tracking
+    const deathPageResult = await db.query<{ cnt: string }>(
+      `SELECT count(*) as cnt FROM enrichment_run_actors WHERE run_id = $1 AND created_death_page = true`,
+      [runId]
+    )
+    const actorsWithDeathPage = parseInt(deathPageResult.rows[0].cnt, 10)
+
     await db.query(
       `UPDATE enrichment_runs
        SET status = $1,
@@ -311,15 +318,16 @@ async function completeEnrichmentRun(
            duration_ms = $2,
            actors_processed = $3,
            actors_enriched = $4,
-           fill_rate = $5,
-           total_cost_usd = $6,
-           cost_by_source = $7,
-           exit_reason = $8,
-           review_status = $9,
+           actors_with_death_page = $5,
+           fill_rate = $6,
+           total_cost_usd = $7,
+           cost_by_source = $8,
+           exit_reason = $9,
+           review_status = $10,
            process_id = NULL,
            current_actor_index = NULL,
            current_actor_name = NULL
-       WHERE id = $10`,
+       WHERE id = $11`,
       [
         stats.exitReason === "completed"
           ? "completed"
@@ -329,6 +337,7 @@ async function completeEnrichmentRun(
         stats.totalTimeMs,
         stats.actorsProcessed,
         stats.actorsEnriched,
+        actorsWithDeathPage,
         stats.fillRate,
         stats.totalCostUsd,
         JSON.stringify(stats.costBySource),
@@ -1044,17 +1053,19 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
             run_id,
             actor_id,
             was_enriched,
+            created_death_page,
             confidence,
             sources_attempted,
             winning_source,
             processing_time_ms,
             cost_usd
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           RETURNING id`,
           [
             runId,
             actorId,
             true, // was_enriched
+            hasDetailedDeathInfo || false, // created_death_page
             enrichment.circumstancesSource?.confidence || null,
             JSON.stringify([enrichment.circumstancesSource?.type].filter(Boolean)),
             enrichment.circumstancesSource?.type || null,
