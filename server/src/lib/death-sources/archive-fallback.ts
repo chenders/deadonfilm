@@ -588,6 +588,7 @@ export async function searchArchiveIsWithBrowser(url: string): Promise<ArchiveFe
     browser = await chromium.launch({
       headless: true, // Run headless in production
       executablePath: process.env.BROWSER_EXECUTABLE_PATH || undefined,
+      args: ["--no-sandbox", "--disable-dev-shm-usage"],
     })
 
     const page = await browser.newPage()
