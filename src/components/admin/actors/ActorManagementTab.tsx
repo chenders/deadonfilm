@@ -231,43 +231,11 @@ export default function ActorManagementTab() {
     }
   }
 
-  const [bulkBioEnriching, setBulkBioEnriching] = useState(false)
-
-  const handleBioEnrichSelected = async (): Promise<boolean> => {
-    if (selectedActorIds.size === 0) return false
+  const handleBioEnrichSelected = () => {
+    if (selectedActorIds.size === 0) return
 
     const actorIds = Array.from(selectedActorIds)
-    setBulkBioEnriching(true)
-    try {
-      const response = await fetch("/admin/api/biography-enrichment/enrich-batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ actorIds }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error?.message || "Failed to queue bio enrichment batch")
-      }
-
-      toast.success(
-        `Bio enrichment queued for ${actorIds.length} actor${actorIds.length !== 1 ? "s" : ""}`
-      )
-      return true
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to queue bio enrichment")
-      return false
-    } finally {
-      setBulkBioEnriching(false)
-    }
-  }
-
-  const handleBothEnrichSelected = async () => {
-    const bioSuccess = await handleBioEnrichSelected()
-    if (bioSuccess) {
-      handleEnrichSelected()
-    }
+    navigate("/admin/bio-enrichment/start", { state: { selectedActorIds: actorIds } })
   }
 
   return (
@@ -1013,17 +981,9 @@ export default function ActorManagementTab() {
               </button>
               <button
                 onClick={handleBioEnrichSelected}
-                disabled={bulkBioEnriching}
-                className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover"
               >
-                {bulkBioEnriching ? "Queuing…" : "Bio Enrich"}
-              </button>
-              <button
-                onClick={handleBothEnrichSelected}
-                disabled={bulkBioEnriching}
-                className="min-h-[44px] rounded bg-admin-interactive px-4 py-2 text-admin-text-primary transition-colors hover:bg-admin-interactive-hover disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {bulkBioEnriching ? "Queuing…" : "Both"}
+                Bio Enrich
               </button>
             </div>
           </div>

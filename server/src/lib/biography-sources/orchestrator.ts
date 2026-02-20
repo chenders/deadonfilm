@@ -91,7 +91,24 @@ export class BiographyEnrichmentOrchestrator {
   private sources: BaseBiographySource[]
 
   constructor(config?: Partial<BiographyEnrichmentConfig>) {
-    this.config = { ...DEFAULT_BIOGRAPHY_CONFIG, ...config }
+    this.config = {
+      ...DEFAULT_BIOGRAPHY_CONFIG,
+      ...config,
+      // Deep-merge nested objects so that passing e.g. { sourceCategories: undefined }
+      // doesn't overwrite the defaults with undefined
+      sourceCategories: {
+        ...DEFAULT_BIOGRAPHY_CONFIG.sourceCategories,
+        ...config?.sourceCategories,
+      },
+      costLimits: {
+        ...DEFAULT_BIOGRAPHY_CONFIG.costLimits,
+        ...config?.costLimits,
+      },
+      contentCleaning: {
+        ...DEFAULT_BIOGRAPHY_CONFIG.contentCleaning,
+        ...config?.contentCleaning,
+      },
+    }
     // Clamp earlyStopSourceCount to a sane minimum
     const raw = this.config.earlyStopSourceCount
     if (!Number.isFinite(raw) || raw < 1) {

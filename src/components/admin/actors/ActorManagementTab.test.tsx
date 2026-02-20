@@ -6,6 +6,13 @@ import { ToastProvider } from "../../../contexts/ToastContext"
 import ToastContainer from "../../common/ToastContainer"
 import ActorManagementTab from "./ActorManagementTab"
 
+// Mock useNavigate
+const mockNavigate = vi.fn()
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom")
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
 // Mock the hooks
 vi.mock("../../../hooks/admin/useCoverage", () => ({
   useActorsForCoverage: vi.fn(),
@@ -1141,37 +1148,23 @@ describe("ActorManagementTab", () => {
       } as never)
     })
 
-    it("shows three enrichment buttons when actors are selected", () => {
+    it("shows enrichment buttons when actors are selected", () => {
       renderComponent()
 
       fireEvent.click(screen.getAllByLabelText("Select John Wayne")[0])
 
       expect(screen.getByText("Death Enrich")).toBeInTheDocument()
       expect(screen.getByText("Bio Enrich")).toBeInTheDocument()
-      expect(screen.getByText("Both")).toBeInTheDocument()
     })
 
-    it("calls bio enrich batch API when Bio Enrich is clicked", async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
-      })
-      vi.stubGlobal("fetch", mockFetch)
-
+    it("navigates to bio enrichment start page when Bio Enrich is clicked", () => {
       renderComponent()
 
       fireEvent.click(screen.getAllByLabelText("Select John Wayne")[0])
+      fireEvent.click(screen.getByText("Bio Enrich"))
 
-      await act(async () => {
-        fireEvent.click(screen.getByText("Bio Enrich"))
-        await vi.runAllTimersAsync()
-      })
-
-      expect(mockFetch).toHaveBeenCalledWith("/admin/api/biography-enrichment/enrich-batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ actorIds: [1] }),
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/bio-enrichment/start", {
+        state: { selectedActorIds: [1] },
       })
     })
   })
