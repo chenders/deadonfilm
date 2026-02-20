@@ -31,6 +31,7 @@ import {
   type EnrichmentData,
   type DeathCircumstancesData,
 } from "./enrichment-db-writer.js"
+import { isViolentDeath } from "./death-sources/claude-cleanup.js"
 import { linkMultipleFields, hasEntityLinks } from "./entity-linker/index.js"
 import { logger } from "./logger.js"
 
@@ -377,14 +378,15 @@ export class EnrichmentRunner {
 
               await db.query(
                 `INSERT INTO enrichment_run_actors (
-                  run_id, actor_id, was_enriched, confidence,
+                  run_id, actor_id, was_enriched, created_death_page, confidence,
                   sources_attempted, winning_source,
                   processing_time_ms, cost_usd, log_entries
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
                 [
                   runId,
                   actor.id,
                   false,
+                  false, // created_death_page
                   null,
                   JSON.stringify(sourcesAttempted),
                   null,
@@ -477,11 +479,14 @@ export class EnrichmentRunner {
             (hasSubstantiveCircumstances || hasSubstantiveRumors || hasRelatedDeaths)
 
           // Only include causeOfDeath if actor doesn't already have one
+          const manner = cleaned?.manner || null
           const enrichmentData: EnrichmentData = {
             actorId: actor.id,
             hasDetailedDeathInfo: hasDetailedDeathInfo || false,
-            deathManner: cleaned?.manner || null,
+            deathManner: manner,
             deathCategories: cleaned?.categories || null,
+            // Derive violent_death from manner
+            violentDeath: isViolentDeath(manner),
             // Fill in cause_of_death if we got one and actor doesn't have it
             causeOfDeath: !actor.causeOfDeath && causeOfDeath ? causeOfDeath : undefined,
             causeOfDeathSource: !actor.causeOfDeath && causeOfDeath ? "claude-opus-4.5" : undefined,
@@ -570,18 +575,20 @@ export class EnrichmentRunner {
               run_id,
               actor_id,
               was_enriched,
+              created_death_page,
               confidence,
               sources_attempted,
               winning_source,
               processing_time_ms,
               cost_usd,
               log_entries
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING id`,
               [
                 runId,
                 actor.id,
                 true,
+                hasDetailedDeathInfo || false, // created_death_page
                 enrichment.circumstancesSource?.confidence || null,
                 JSON.stringify(sourcesAttempted),
                 enrichment.circumstancesSource?.type || null,
