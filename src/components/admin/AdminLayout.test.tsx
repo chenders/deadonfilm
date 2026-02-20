@@ -154,4 +154,33 @@ describe("AdminLayout", () => {
     expect(contentWrapper).toHaveClass("mx-auto", "max-w-full")
     expect(contentWrapper).not.toHaveClass("max-w-7xl")
   })
+
+  it("renders show-sidebar toggle button when hideSidebar is set", async () => {
+    renderWithRouter(
+      <AdminLayout hideSidebar>
+        <div data-testid="test-content">Test Content</div>
+      </AdminLayout>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("test-content")).toBeInTheDocument()
+    })
+
+    const toggleButton = screen.getByRole("button", { name: /show sidebar/i })
+    expect(toggleButton).toBeInTheDocument()
+  })
+
+  it("does not render show-sidebar toggle button without hideSidebar", async () => {
+    renderWithRouter(
+      <AdminLayout>
+        <div data-testid="test-content">Test Content</div>
+      </AdminLayout>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("test-content")).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole("button", { name: /show sidebar/i })).not.toBeInTheDocument()
+  })
 })

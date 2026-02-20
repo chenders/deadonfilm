@@ -60,6 +60,7 @@ export interface PaginatedResult<T> {
 
 export interface ActorCoverageFilters {
   hasDeathPage?: boolean
+  hasEnrichedBio?: boolean
   minPopularity?: number
   maxPopularity?: number
   deathDateStart?: string
@@ -217,6 +218,14 @@ export async function getActorsForCoverage(
   if (filters.deathManner) {
     whereClauses.push(`death_manner = $${paramIndex++}`)
     params.push(filters.deathManner)
+  }
+
+  if (filters.hasEnrichedBio !== undefined) {
+    if (filters.hasEnrichedBio) {
+      whereClauses.push(`abd.id IS NOT NULL`)
+    } else {
+      whereClauses.push(`abd.id IS NULL`)
+    }
   }
 
   const whereClause = whereClauses.join(" AND ")

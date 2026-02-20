@@ -412,6 +412,16 @@ router.post("/generate-batch", async (req: Request, res: Response): Promise<void
       return
     }
 
+    if (!queueManager.isReady) {
+      res.status(503).json({
+        error: {
+          message:
+            "Job queue is not available. Ensure REDIS_JOBS_URL is configured and Redis is running.",
+        },
+      })
+      return
+    }
+
     // Max 500 per batch
     const maxLimit = 500
     const safeLimit = Math.min(limit, maxLimit)

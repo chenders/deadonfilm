@@ -56,6 +56,7 @@ export interface PaginatedResult<T> {
 
 export interface ActorCoverageFilters {
   hasDeathPage?: boolean
+  hasEnrichedBio?: boolean
   minPopularity?: number
   maxPopularity?: number
   deathDateStart?: string
@@ -149,6 +150,9 @@ async function fetchActorsForCoverage(
   }
   if (filters.deathManner) {
     params.append("deathManner", filters.deathManner)
+  }
+  if (filters.hasEnrichedBio !== undefined) {
+    params.append("hasEnrichedBio", filters.hasEnrichedBio.toString())
   }
 
   const response = await fetch(`/admin/api/coverage/actors?${params.toString()}`, {

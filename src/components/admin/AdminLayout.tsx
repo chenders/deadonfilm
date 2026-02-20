@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react"
+import { ReactNode, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAdminAuth } from "../../hooks/useAdminAuth"
 import { AdminThemeProvider } from "../../contexts/AdminThemeContext"
@@ -10,12 +10,15 @@ import LoadingSpinner from "../common/LoadingSpinner"
 interface AdminLayoutProps {
   children: ReactNode
   fullWidth?: boolean
+  /** Start with the sidebar hidden on desktop so content takes full width */
+  hideSidebar?: boolean
 }
 
-function AdminLayoutContent({ children, fullWidth }: AdminLayoutProps) {
+function AdminLayoutContent({ children, fullWidth, hideSidebar }: AdminLayoutProps) {
   const { isAuthenticated, isLoading } = useAdminAuth()
   const navigate = useNavigate()
   const mobileMenu = useMobileMenu()
+  const [sidebarVisible, setSidebarVisible] = useState(!hideSidebar)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -45,6 +48,15 @@ function AdminLayoutContent({ children, fullWidth }: AdminLayoutProps) {
         </div>
       </header>
 
+      {/* Overlay when sidebar is shown as overlay on desktop (hideSidebar mode) */}
+      {hideSidebar && sidebarVisible && (
+        <div
+          className="fixed inset-0 z-40 hidden bg-black/20 md:block"
+          onClick={() => setSidebarVisible(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Mobile menu overlay */}
       {mobileMenu.isOpen && (
         <div
@@ -56,16 +68,46 @@ function AdminLayoutContent({ children, fullWidth }: AdminLayoutProps) {
 
       {/* Sidebar navigation */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out md:relative md:z-auto md:translate-x-0 ${
-          mobileMenu.isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out ${
+          hideSidebar
+            ? sidebarVisible
+              ? "md:translate-x-0"
+              : "md:-translate-x-full"
+            : "md:relative md:z-auto md:translate-x-0"
+        } ${mobileMenu.isOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <AdminNav onNavigate={mobileMenu.close} />
+        <AdminNav
+          onNavigate={() => {
+            mobileMenu.close()
+            if (hideSidebar) setSidebarVisible(false)
+          }}
+        />
       </aside>
 
       {/* Main content */}
       <main className="min-w-0 flex-1 pt-14 md:pt-0">
         <div className={`mx-auto p-4 md:p-8 ${fullWidth ? "max-w-full" : "max-w-7xl"}`}>
+          {hideSidebar && !sidebarVisible && (
+            <button
+              onClick={() => setSidebarVisible(true)}
+              className="mb-4 hidden rounded-md border border-admin-border bg-admin-surface-elevated p-2 text-admin-text-muted shadow-sm transition-colors hover:bg-admin-surface-base hover:text-admin-text-primary md:inline-flex"
+              aria-label="Show sidebar"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                />
+              </svg>
+            </button>
+          )}
           {children}
         </div>
       </main>
@@ -73,10 +115,12 @@ function AdminLayoutContent({ children, fullWidth }: AdminLayoutProps) {
   )
 }
 
-export default function AdminLayout({ children, fullWidth }: AdminLayoutProps) {
+export default function AdminLayout({ children, fullWidth, hideSidebar }: AdminLayoutProps) {
   return (
     <AdminThemeProvider>
-      <AdminLayoutContent fullWidth={fullWidth}>{children}</AdminLayoutContent>
+      <AdminLayoutContent fullWidth={fullWidth} hideSidebar={hideSidebar}>
+        {children}
+      </AdminLayoutContent>
     </AdminThemeProvider>
   )
 }
