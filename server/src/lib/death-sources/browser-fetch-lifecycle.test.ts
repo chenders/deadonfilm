@@ -2,8 +2,9 @@
  * Tests for browser lifecycle management (idle timeout deferral).
  *
  * Separated from browser-fetch.test.ts because these tests require
- * top-level vi.mock() calls to intercept static imports of playwright-core
- * and browser-auth before the module loads.
+ * top-level vi.mock() calls so that playwright-core (loaded via dynamic
+ * import in browser-fetch.ts) and browser-auth are mocked before
+ * browser-fetch.js is imported.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 
@@ -45,8 +46,12 @@ vi.mock("./browser-auth/index.js", () => ({
   loadSession: vi.fn().mockResolvedValue(null),
   saveSession: vi.fn().mockResolvedValue(undefined),
   applySessionToContext: vi.fn().mockResolvedValue(undefined),
-  detectCaptcha: vi.fn().mockResolvedValue({ hasCaptcha: false }),
-  solveCaptcha: vi.fn().mockResolvedValue(false),
+  detectCaptcha: vi
+    .fn()
+    .mockResolvedValue({ detected: false, type: null, siteKey: null, selector: null }),
+  solveCaptcha: vi
+    .fn()
+    .mockResolvedValue({ success: false, token: null, type: "unknown", costUsd: 0 }),
   NYTimesLoginHandler: vi.fn(),
   WashingtonPostLoginHandler: vi.fn(),
   createStealthContext: vi.fn().mockResolvedValue(mockContext),
