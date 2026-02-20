@@ -98,15 +98,15 @@ export class BiographyEnrichmentOrchestrator {
       // doesn't overwrite the defaults with undefined
       sourceCategories: {
         ...DEFAULT_BIOGRAPHY_CONFIG.sourceCategories,
-        ...config?.sourceCategories,
+        ...(config?.sourceCategories ?? {}),
       },
       costLimits: {
         ...DEFAULT_BIOGRAPHY_CONFIG.costLimits,
-        ...config?.costLimits,
+        ...(config?.costLimits ?? {}),
       },
       contentCleaning: {
         ...DEFAULT_BIOGRAPHY_CONFIG.contentCleaning,
-        ...config?.contentCleaning,
+        ...(config?.contentCleaning ?? {}),
       },
     }
     // Clamp earlyStopSourceCount to a sane minimum
