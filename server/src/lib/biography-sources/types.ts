@@ -102,7 +102,11 @@ export const VALID_LIFE_NOTABLE_FACTORS = new Set([
   "royalty",
   "nobility",
   "espionage",
-  "survivor",
+  "holocaust_survivor",
+  "cancer_survivor",
+  "disaster_survivor",
+  "accident_survivor",
+  "abuse_survivor",
   "whistleblower",
   "philanthropist",
 ])
