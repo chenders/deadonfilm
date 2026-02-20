@@ -845,6 +845,12 @@ describe("combineVerification", () => {
       expect(result.confidence).toBe("conflicting")
       expect(result.source).toBe("wikidata")
     })
+
+    it("returns conflicting with wikidata when IMDb has mismatched year", () => {
+      const result = combineVerification(wikidataConflicting, imdbYearMismatch)
+      expect(result.confidence).toBe("conflicting")
+      expect(result.source).toBe("wikidata")
+    })
   })
 })
 
