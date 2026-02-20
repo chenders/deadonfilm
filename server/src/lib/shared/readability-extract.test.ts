@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { extractArticleContent } from "./readability-extract.js"
 
 describe("extractArticleContent", () => {
@@ -109,5 +109,36 @@ describe("extractArticleContent", () => {
     expect(result).not.toBeNull()
     expect(result!.siteName).toBe("Biography.com")
     expect(result!.author).toBe("Jane Smith")
+  })
+
+  it("suppresses jsdom CSS parse errors without logging", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    // HTML with CSS that triggers jsdom parse errors
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <style>@import url("nonexistent.css"); .broken { content: }</style>
+</head>
+<body>
+  <article>
+    <h1>Article with bad CSS</h1>
+    <p>This article has broken CSS stylesheets that jsdom cannot parse. The extraction should still work and not log CSS parse errors to the console.</p>
+  </article>
+</body>
+</html>`
+
+    const result = extractArticleContent(html)
+    expect(result).not.toBeNull()
+    expect(result!.text).toContain("broken CSS stylesheets")
+
+    // CSS parse errors should be suppressed, not forwarded to console.error
+    const cssErrors = consoleSpy.mock.calls.filter((call) => {
+      const msg = String(call[0])
+      return msg.includes("Could not parse CSS stylesheet")
+    })
+    expect(cssErrors).toHaveLength(0)
+
+    consoleSpy.mockRestore()
   })
 })

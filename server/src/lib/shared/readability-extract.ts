@@ -28,15 +28,21 @@ export interface ArticleExtractionResult {
  */
 export function extractArticleContent(html: string, url?: string): ArticleExtractionResult | null {
   const virtualConsole = new VirtualConsole()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  virtualConsole.on("error", (error: any) => {
-    const message = typeof error === "string" ? error : (error?.message ?? "")
+  const handleConsoleError = (error: unknown) => {
+    let message = ""
+    if (typeof error === "string") {
+      message = error
+    } else if (error instanceof Error) {
+      message = error.message
+    }
     if (message.includes("Could not parse CSS stylesheet")) {
       return
     }
     // Forward non-CSS jsdom errors so they are not silently swallowed
     console.error(error)
-  })
+  }
+  virtualConsole.on("jsdomError", handleConsoleError)
+  virtualConsole.on("error", handleConsoleError)
   const dom = new JSDOM(html, { url: url || undefined, virtualConsole })
   const reader = new Readability(dom.window.document)
   const article = reader.parse()
