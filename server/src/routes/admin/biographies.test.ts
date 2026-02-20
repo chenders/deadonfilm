@@ -50,6 +50,7 @@ vi.mock("../../lib/biography/wikipedia-fetcher.js", () => ({
 const mockAddJob = vi.fn()
 vi.mock("../../lib/jobs/queue-manager.js", () => ({
   queueManager: {
+    isReady: true,
     addJob: (...args: unknown[]) => mockAddJob(...args),
   },
 }))
@@ -569,6 +570,21 @@ describe("Admin Biographies Routes", () => {
 
       expect(response.status).toBe(500)
       expect(response.body.error.message).toBe("Failed to queue batch generation")
+    })
+
+    it("returns 503 when job queue is not available", async () => {
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+      const original = queueManager.isReady
+      ;(queueManager as unknown as Record<string, unknown>).isReady = false
+
+      const response = await request(app)
+        .post("/admin/api/biographies/generate-batch")
+        .send({ actorIds: [1, 2] })
+
+      expect(response.status).toBe(503)
+      expect(response.body.error.message).toContain("Job queue is not available")
+      expect(mockAddJob).not.toHaveBeenCalled()
+      ;(queueManager as unknown as Record<string, unknown>).isReady = original
     })
   })
 })

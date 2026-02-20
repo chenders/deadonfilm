@@ -187,6 +187,16 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     const { queueManager } = await import("../../lib/jobs/queue-manager.js")
     const { JobType } = await import("../../lib/jobs/types.js")
 
+    if (!queueManager.isReady) {
+      res.status(503).json({
+        error: {
+          message:
+            "Job queue is not available. Ensure REDIS_JOBS_URL is configured and Redis is running.",
+        },
+      })
+      return
+    }
+
     const jobId = await queueManager.addJob(
       JobType.ENRICH_BIOGRAPHIES_BATCH,
       {

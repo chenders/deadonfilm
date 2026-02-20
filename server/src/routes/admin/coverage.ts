@@ -109,6 +109,10 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
       }
     }
 
+    if (req.query.hasEnrichedBio !== undefined) {
+      filters.hasEnrichedBio = req.query.hasEnrichedBio === "true"
+    }
+
     if (req.query.orderBy) {
       const validOrderBy = ["death_date", "popularity", "name", "enriched_at"]
       const orderBy = req.query.orderBy as string

@@ -27,7 +27,7 @@ export default function ActorHubPage() {
   const [activeTab, setActiveTab] = useTabParam<string>("management")
 
   return (
-    <AdminLayout fullWidth>
+    <AdminLayout fullWidth hideSidebar>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-admin-text-primary md:text-3xl">Actors</h1>

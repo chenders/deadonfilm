@@ -609,6 +609,15 @@ router.post("/omdb/backfill", async (req: Request, res: Response) => {
     }
     const jobPriority = priority ? priorityMap[priority] : JobPriority.LOW
 
+    if (!queueManager.isReady) {
+      return res.status(503).json({
+        error: {
+          message:
+            "Job queue is not available. Ensure REDIS_JOBS_URL is configured and Redis is running.",
+        },
+      })
+    }
+
     const pool = getPool()
     let totalQueued = 0
 
