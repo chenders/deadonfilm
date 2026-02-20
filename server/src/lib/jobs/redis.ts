@@ -27,6 +27,7 @@ export function getRedisJobsClient(): Redis {
 
   redisJobsClient = new Redis(process.env.REDIS_JOBS_URL, {
     maxRetriesPerRequest: null, // Required for BullMQ - allows unlimited retries
+    connectTimeout: 10000,
     enableReadyCheck: false, // Improves performance for BullMQ
     retryStrategy(times: number) {
       // Exponential backoff with max delay of 3 seconds
