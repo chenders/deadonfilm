@@ -13,6 +13,50 @@
  * legacy, ap-news) and available for death sources.
  */
 
+/** HTTP status codes that indicate blocking/access denial */
+const BLOCKED_STATUS_CODES = new Set([401, 403, 429, 451])
+
+/** Soft-block detection patterns in HTML body (CAPTCHA, bot detection) */
+const SOFT_BLOCK_PATTERNS = [
+  "captcha",
+  "please verify you are human",
+  "access denied",
+  "bot detection",
+  "unusual traffic",
+  "automated access",
+  "enable javascript",
+  "browser check",
+  "cloudflare",
+  "ddos protection",
+  "checking your browser",
+  "just a moment",
+  "please wait while we verify",
+  "security check",
+  "recaptcha",
+  "hcaptcha",
+  "px-captcha",
+  "distil",
+  "imperva",
+]
+
+/** Max page size for soft-block detection — larger pages are likely real content */
+const SOFT_BLOCK_PAGE_SIZE_THRESHOLD = 50_000
+
+/**
+ * Check if a response indicates the page is blocked.
+ * Inlined from browser-fetch.ts to avoid pulling in Playwright dependencies.
+ */
+function isBlockedResponse(status: number, body?: string): boolean {
+  if (BLOCKED_STATUS_CODES.has(status)) return true
+
+  if (body && status === 200 && body.length < SOFT_BLOCK_PAGE_SIZE_THRESHOLD) {
+    const lowerBody = body.toLowerCase()
+    return SOFT_BLOCK_PATTERNS.some((pattern) => lowerBody.includes(pattern))
+  }
+
+  return false
+}
+
 const BROWSER_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
@@ -41,8 +85,8 @@ export interface PageFetchResult {
   title: string
   /** Final URL (may differ from input if archive was used) */
   url: string
-  /** Which fetch method succeeded */
-  fetchMethod: "direct" | "archive.org" | "archive.is"
+  /** Which fetch method succeeded, or "none" if all methods failed */
+  fetchMethod: "direct" | "archive.org" | "archive.is" | "none"
   /** Error message if all methods failed */
   error?: string
 }
@@ -70,16 +114,20 @@ export async function fetchPageWithFallbacks(
       ...(options?.headers || {}),
     }
 
+    const timeoutSignal = AbortSignal.timeout(timeoutMs)
+    const combinedSignal = options?.signal
+      ? AbortSignal.any([options.signal, timeoutSignal])
+      : timeoutSignal
+
     const response = await fetch(url, {
       headers,
-      signal: options?.signal ?? AbortSignal.timeout(timeoutMs),
+      signal: combinedSignal,
     })
 
     if (response.ok) {
       const html = await response.text()
 
       // Check for soft blocks (CAPTCHA pages, bot detection)
-      const { isBlockedResponse } = await import("../death-sources/browser-fetch.js")
       if (!isBlockedResponse(response.status, html)) {
         const title = extractTitle(html)
         return { content: html, title, url, fetchMethod: "direct" }
@@ -87,7 +135,6 @@ export async function fetchPageWithFallbacks(
 
       console.log(`Page blocked (soft block detected) for ${url}, trying archive fallbacks...`)
     } else {
-      const { isBlockedResponse } = await import("../death-sources/browser-fetch.js")
       if (isBlockedResponse(response.status)) {
         console.log(
           `Page blocked (HTTP ${response.status}) for ${url}, trying archive fallbacks...`
@@ -98,7 +145,7 @@ export async function fetchPageWithFallbacks(
           content: "",
           title: "",
           url,
-          fetchMethod: "direct",
+          fetchMethod: "none",
           error: `HTTP ${response.status}`,
         }
       }
@@ -179,7 +226,7 @@ export async function fetchPageWithFallbacks(
     content: "",
     title: "",
     url,
-    fetchMethod: "direct",
+    fetchMethod: "none",
     error: "All fetch methods failed (direct + archive.org + archive.is)",
   }
 }

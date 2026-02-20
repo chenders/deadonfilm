@@ -178,9 +178,14 @@ async function searchGoogleCse(
     url.searchParams.set("q", query)
     url.searchParams.set("num", "10")
 
+    const timeoutSignal = AbortSignal.timeout(options?.timeoutMs ?? 15000)
+    const combinedSignal = options?.signal
+      ? AbortSignal.any([options.signal, timeoutSignal])
+      : timeoutSignal
+
     const response = await fetch(url.toString(), {
       headers: { "User-Agent": options?.userAgent || DEFAULT_USER_AGENT },
-      signal: options?.signal ?? AbortSignal.timeout(options?.timeoutMs ?? 15000),
+      signal: combinedSignal,
     })
 
     const data = (await response.json()) as {

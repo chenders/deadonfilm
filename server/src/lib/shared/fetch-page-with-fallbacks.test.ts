@@ -4,12 +4,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 const mockFetch = vi.fn()
 vi.stubGlobal("fetch", mockFetch)
 
-// Mock isBlockedResponse
-const mockIsBlockedResponse = vi.fn()
-vi.mock("../death-sources/browser-fetch.js", () => ({
-  isBlockedResponse: (...args: unknown[]) => mockIsBlockedResponse(...args),
-}))
-
 // Mock archive fallback functions
 const mockFetchFromArchive = vi.fn()
 const mockFetchFromArchiveIs = vi.fn()
@@ -33,8 +27,6 @@ const CAPTCHA_HTML = `<html><head><title>Verify</title></head><body><div>Please 
 describe("fetchPageWithFallbacks", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: not blocked
-    mockIsBlockedResponse.mockReturnValue(false)
     // Default: archive functions fail
     mockFetchFromArchive.mockResolvedValue({ success: false, content: "", title: "" })
     mockFetchFromArchiveIs.mockResolvedValue({ success: false, content: "", title: "" })
@@ -103,7 +95,7 @@ describe("fetchPageWithFallbacks", () => {
 
       expect(result.error).toBe("HTTP 404")
       expect(result.content).toBe("")
-      expect(result.fetchMethod).toBe("direct")
+      expect(result.fetchMethod).toBe("none")
       // Archives should NOT be called for non-blocking errors
       expect(mockFetchFromArchive).not.toHaveBeenCalled()
     })
@@ -117,6 +109,7 @@ describe("fetchPageWithFallbacks", () => {
       const result = await fetchPageWithFallbacks("https://example.com/error")
 
       expect(result.error).toBe("HTTP 500")
+      expect(result.fetchMethod).toBe("none")
       expect(mockFetchFromArchive).not.toHaveBeenCalled()
     })
   })
@@ -127,7 +120,6 @@ describe("fetchPageWithFallbacks", () => {
         ok: false,
         status: 403,
       })
-      mockIsBlockedResponse.mockReturnValue(true)
       mockFetchFromArchive.mockResolvedValueOnce({
         success: true,
         content: "<html><body>Archived content</body></html>",
@@ -148,8 +140,6 @@ describe("fetchPageWithFallbacks", () => {
         status: 200,
         text: async () => CAPTCHA_HTML,
       })
-      // isBlockedResponse returns true when checking HTML content for CAPTCHA markers
-      mockIsBlockedResponse.mockReturnValue(true)
       mockFetchFromArchive.mockResolvedValueOnce({
         success: true,
         content: "<html><body>Real content</body></html>",
@@ -181,7 +171,6 @@ describe("fetchPageWithFallbacks", () => {
   describe("archive cascade", () => {
     it("tries archive.is when archive.org fails", async () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 403 })
-      mockIsBlockedResponse.mockReturnValue(true)
       mockFetchFromArchive.mockResolvedValueOnce({ success: false, content: "", title: "" })
       mockFetchFromArchiveIs.mockResolvedValueOnce({
         success: true,
@@ -198,7 +187,6 @@ describe("fetchPageWithFallbacks", () => {
 
     it("returns error when all methods fail", async () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 403 })
-      mockIsBlockedResponse.mockReturnValue(true)
       mockFetchFromArchive.mockResolvedValueOnce({ success: false, content: "", title: "" })
       mockFetchFromArchiveIs.mockResolvedValueOnce({ success: false, content: "", title: "" })
 
@@ -206,7 +194,7 @@ describe("fetchPageWithFallbacks", () => {
 
       expect(result.error).toContain("All fetch methods failed")
       expect(result.content).toBe("")
-      expect(result.fetchMethod).toBe("direct")
+      expect(result.fetchMethod).toBe("none")
     })
   })
 })

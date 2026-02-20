@@ -21,7 +21,7 @@ export interface WebSearchResult {
 /**
  * Search the web using Google CSE + DDG fallback chain.
  *
- * Delegates to searchDuckDuckGo() which handles:
+ * Delegates to webSearch() from shared/duckduckgo-search.ts which handles:
  * 1. Google CSE (fast, reliable) — if configured
  * 2. DuckDuckGo fetch (free fallback)
  * 3. DuckDuckGo browser with stealth mode (bypasses CAPTCHA)
@@ -29,8 +29,8 @@ export interface WebSearchResult {
  * Returns HTML-like text compatible with extractUrlFromSearchResults().
  *
  * Note: This function returns HTML-wrapped URLs for backward compatibility with
- * death sources that use extractUrlFromSearchResults(). For biography sources
- * that only need URLs, use searchDuckDuckGo() from shared/duckduckgo-search.ts.
+ * death sources that use extractUrlFromSearchResults(). Biography sources
+ * use webSearch() from shared/duckduckgo-search.ts directly for URL arrays.
  */
 export async function searchWeb(
   query: string,
