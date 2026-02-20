@@ -575,7 +575,7 @@ describe("Admin Biographies Routes", () => {
     it("returns 503 when job queue is not available", async () => {
       const { queueManager } = await import("../../lib/jobs/queue-manager.js")
       const original = queueManager.isReady
-      ;(queueManager as Record<string, unknown>).isReady = false
+      ;(queueManager as unknown as Record<string, unknown>).isReady = false
 
       const response = await request(app)
         .post("/admin/api/biographies/generate-batch")
@@ -584,7 +584,7 @@ describe("Admin Biographies Routes", () => {
       expect(response.status).toBe(503)
       expect(response.body.error.message).toContain("Job queue is not available")
       expect(mockAddJob).not.toHaveBeenCalled()
-      ;(queueManager as Record<string, unknown>).isReady = original
+      ;(queueManager as unknown as Record<string, unknown>).isReady = original
     })
   })
 })
