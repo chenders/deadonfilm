@@ -22,6 +22,28 @@ vi.mock("../archive-fallback.js", () => ({
   fetchFromArchive: (...args: unknown[]) => mockFetchFromArchive(...args),
 }))
 
+// Mock searchWeb in news-utils to bypass Google CSE and route through mocked fetch directly
+vi.mock("./news-utils.js", async () => {
+  const actual = await vi.importActual<typeof import("./news-utils.js")>("./news-utils.js")
+  return {
+    ...actual,
+    searchWeb: vi
+      .fn()
+      .mockImplementation(
+        async (query: string, options?: { userAgent?: string; signal?: AbortSignal }) => {
+          const response = await fetch(
+            `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+            { headers: { "User-Agent": options?.userAgent || "test" }, signal: options?.signal }
+          )
+          if (!response.ok)
+            return { html: "", engine: "duckduckgo" as const, error: `HTTP ${response.status}` }
+          const html = await response.text()
+          return { html, engine: "duckduckgo" as const }
+        }
+      ),
+  }
+})
+
 import { VarietySource } from "./variety.js"
 import type { ActorForEnrichment } from "../types.js"
 import { DataSourceType, SourceAccessBlockedError } from "../types.js"

@@ -2,7 +2,8 @@
  * BBC News biography source.
  *
  * Searches for actor profiles and biographical content on bbc.com/bbc.co.uk
- * via DuckDuckGo site-restricted search, then fetches and cleans the article.
+ * via web search (Google CSE with DDG fallback), fetches with archive fallback
+ * on block, and cleans the article.
  *
  * Reliability tier: TIER_1_NEWS (0.95) - authoritative public service broadcaster.
  */
@@ -12,7 +13,8 @@ import type { ActorForBiography, RawBiographySourceData } from "../types.js"
 import { BiographySourceType } from "../types.js"
 import { ReliabilityTier } from "../../death-sources/types.js"
 import { mechanicalPreClean } from "../content-cleaner.js"
-import { searchDuckDuckGo } from "../../shared/duckduckgo-search.js"
+import { webSearch } from "../../shared/duckduckgo-search.js"
+import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
 
 const MIN_CONTENT_LENGTH = 200
 
@@ -29,21 +31,21 @@ export class BBCNewsBiographySource extends BaseBiographySource {
   protected async performLookup(actor: ActorForBiography): Promise<BiographyLookupResult> {
     const startTime = Date.now()
 
-    // Step 1: Search DuckDuckGo for bbc.com pages about this actor
+    // Step 1: Search for bbc.com pages about this actor (Google CSE → DDG fallback)
     const query = `site:bbc.com "${actor.name}" profile OR biography OR "life story"`
-    const ddgResult = await searchDuckDuckGo({
+    const searchResult = await webSearch({
       query,
       domainFilter: "bbc.com",
       additionalDomainFilters: ["bbc.co.uk"],
     })
-    const urls = ddgResult.urls
+    const urls = searchResult.urls
 
-    if (ddgResult.error) {
+    if (searchResult.error) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: ddgResult.error,
+        error: searchResult.error,
       }
     }
 
@@ -52,39 +54,24 @@ export class BBCNewsBiographySource extends BaseBiographySource {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: "No BBC News results found via DuckDuckGo",
+        error: "No BBC News results found via web search",
       }
     }
 
     // Step 2: Pick the first URL
     const targetUrl = urls[0]
 
-    // Step 3: Fetch the page
-    let pageHtml: string
-    try {
-      const response = await fetch(targetUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "text/html,application/xhtml+xml",
-          "Accept-Language": "en-US,en;q=0.9",
-        },
-        signal: this.createTimeoutSignal(),
-      })
+    // Step 3: Fetch the page (with archive fallback on block)
+    const pageResult = await fetchPageWithFallbacks(targetUrl, {
+      userAgent: this.userAgent,
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      timeoutMs: this.requestTimeoutMs,
+    })
 
-      if (!response.ok) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0, {
-            url: targetUrl,
-            queryUsed: query,
-          }),
-          data: null,
-          error: `BBC page fetch failed: HTTP ${response.status}`,
-        }
-      }
-
-      pageHtml = await response.text()
-    } catch (error) {
+    if (pageResult.error || !pageResult.content) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, {
@@ -92,9 +79,11 @@ export class BBCNewsBiographySource extends BaseBiographySource {
           queryUsed: query,
         }),
         data: null,
-        error: `BBC page fetch error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        error: `BBC page fetch failed: ${pageResult.error || "empty content"}`,
       }
     }
+
+    const pageHtml = pageResult.content
 
     // Step 4: Clean through mechanical pre-clean pipeline
     const { text, metadata } = mechanicalPreClean(pageHtml)
@@ -118,7 +107,7 @@ export class BBCNewsBiographySource extends BaseBiographySource {
     const confidence = this.calculateBiographicalConfidence(text)
 
     // Step 7: Build result
-    const articleTitle = metadata.title || `${actor.name} - BBC`
+    const articleTitle = metadata.title || pageResult.title || `${actor.name} - BBC`
 
     const sourceData: RawBiographySourceData = {
       sourceName: "BBC News",

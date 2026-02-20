@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import {
   searchDuckDuckGo,
   isDuckDuckGoCaptcha,
   extractUrlsFromDuckDuckGoHtml,
   cleanDuckDuckGoUrl,
+  webSearch,
 } from "./duckduckgo-search.js"
 
 // Sample DDG HTML with search results
@@ -294,5 +295,176 @@ describe("searchDuckDuckGo - browser fallback", () => {
     expect(result.urls).toHaveLength(0)
     expect(mockPage.close).toHaveBeenCalled()
     expect(mockContext.close).toHaveBeenCalled()
+  })
+})
+
+describe("webSearch", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    delete process.env.GOOGLE_SEARCH_API_KEY
+    delete process.env.GOOGLE_SEARCH_CX
+  })
+
+  afterEach(() => {
+    delete process.env.GOOGLE_SEARCH_API_KEY
+    delete process.env.GOOGLE_SEARCH_CX
+  })
+
+  it("falls through to DDG when Google CSE is not configured", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(VALID_DDG_HTML, { status: 200 })
+    )
+
+    const result = await webSearch({
+      query: 'site:britannica.com "John Wayne"',
+      domainFilter: "britannica.com",
+      useBrowserFallback: false,
+    })
+
+    expect(result.engine).toBe("duckduckgo-fetch")
+    expect(result.urls).toHaveLength(1)
+    expect(result.costUsd).toBe(0)
+  })
+
+  it("uses Google CSE when configured and returns results", async () => {
+    process.env.GOOGLE_SEARCH_API_KEY = "test-key"
+    process.env.GOOGLE_SEARCH_CX = "test-cx"
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              title: "John Wayne",
+              link: "https://www.britannica.com/biography/John-Wayne",
+              snippet: "Bio",
+            },
+          ],
+        }),
+        { status: 200 }
+      )
+    )
+
+    const result = await webSearch({
+      query: 'site:britannica.com "John Wayne"',
+      domainFilter: "britannica.com",
+      useBrowserFallback: false,
+    })
+
+    expect(result.engine).toBe("google-cse")
+    expect(result.urls).toHaveLength(1)
+    expect(result.urls[0]).toBe("https://www.britannica.com/biography/John-Wayne")
+    expect(result.costUsd).toBe(0.005)
+  })
+
+  it("falls through to DDG when Google CSE returns error", async () => {
+    process.env.GOOGLE_SEARCH_API_KEY = "test-key"
+    process.env.GOOGLE_SEARCH_CX = "test-cx"
+
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: { code: 429, message: "Rate limited" } }), {
+          status: 429,
+        })
+      )
+      .mockResolvedValueOnce(new Response(VALID_DDG_HTML, { status: 200 }))
+
+    const result = await webSearch({
+      query: 'site:britannica.com "John Wayne"',
+      domainFilter: "britannica.com",
+      useBrowserFallback: false,
+    })
+
+    expect(result.engine).toBe("duckduckgo-fetch")
+    expect(result.urls).toHaveLength(1)
+  })
+
+  it("falls through to DDG when Google CSE results don't match domain filter", async () => {
+    process.env.GOOGLE_SEARCH_API_KEY = "test-key"
+    process.env.GOOGLE_SEARCH_CX = "test-cx"
+
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            items: [
+              {
+                title: "John Wayne",
+                link: "https://en.wikipedia.org/wiki/John_Wayne",
+                snippet: "Wiki",
+              },
+            ],
+          }),
+          { status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(new Response(VALID_DDG_HTML, { status: 200 }))
+
+    const result = await webSearch({
+      query: 'site:britannica.com "John Wayne"',
+      domainFilter: "britannica.com",
+      useBrowserFallback: false,
+    })
+
+    expect(result.engine).toBe("duckduckgo-fetch")
+  })
+
+  it("applies domain filtering including additionalDomainFilters to Google CSE results", async () => {
+    process.env.GOOGLE_SEARCH_API_KEY = "test-key"
+    process.env.GOOGLE_SEARCH_CX = "test-cx"
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              title: "John Wayne BBC",
+              link: "https://www.bbc.com/news/john-wayne",
+              snippet: "BBC",
+            },
+            {
+              title: "John Wayne Wikipedia",
+              link: "https://en.wikipedia.org/wiki/John_Wayne",
+              snippet: "Wiki",
+            },
+            {
+              title: "John Wayne BBC UK",
+              link: "https://www.bbc.co.uk/programmes/john-wayne",
+              snippet: "BBC UK",
+            },
+          ],
+        }),
+        { status: 200 }
+      )
+    )
+
+    const result = await webSearch({
+      query: '"John Wayne" profile',
+      domainFilter: "bbc.com",
+      additionalDomainFilters: ["bbc.co.uk"],
+      useBrowserFallback: false,
+    })
+
+    expect(result.engine).toBe("google-cse")
+    expect(result.urls).toHaveLength(2)
+    expect(result.urls[0]).toContain("bbc.com")
+    expect(result.urls[1]).toContain("bbc.co.uk")
+  })
+
+  it("falls through to DDG when Google CSE fetch throws", async () => {
+    process.env.GOOGLE_SEARCH_API_KEY = "test-key"
+    process.env.GOOGLE_SEARCH_CX = "test-cx"
+
+    vi.spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new Error("Network error"))
+      .mockResolvedValueOnce(new Response(VALID_DDG_HTML, { status: 200 }))
+
+    const result = await webSearch({
+      query: '"John Wayne"',
+      useBrowserFallback: false,
+    })
+
+    expect(result.engine).toBe("duckduckgo-fetch")
+    expect(result.urls).toHaveLength(2)
   })
 })

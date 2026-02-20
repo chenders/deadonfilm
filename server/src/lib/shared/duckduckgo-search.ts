@@ -1,12 +1,9 @@
 /**
- * Shared DuckDuckGo search utility with browser fallback.
+ * Shared web search utility with Google CSE + DuckDuckGo fallback chain.
  *
- * Consolidates duplicated DDG search logic from 6+ biography sources and
- * death sources into one module with a multi-tier fallback chain:
- *
- * 1. fetch-based DDG (free, fast)
- * 2. Browser-based DDG with stealth fingerprinting (bypasses anomaly-modal)
- * 3. CAPTCHA solver as last resort (if configured)
+ * Two entry points:
+ * - webSearch(): Full fallback chain (Google CSE → DDG fetch → DDG browser)
+ * - searchDuckDuckGo(): DDG-only (fetch → browser)
  *
  * Used by both death enrichment (via news-utils.ts) and biography enrichment
  * (britannica, biography-com, people, legacy, bbc-news, ap-news).
@@ -15,6 +12,7 @@
 import { decodeHtmlEntities } from "../death-sources/html-utils.js"
 
 const DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
+const GOOGLE_CSE_URL = "https://www.googleapis.com/customsearch/v1"
 
 /** CSS selector for DDG search result elements */
 const DDG_RESULTS_SELECTOR = ".result__url, .result__a, #links"
@@ -24,6 +22,19 @@ const POST_CAPTCHA_WAIT_MS = 3000
 
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+
+/**
+ * Check if a URL's hostname matches a domain filter.
+ * Uses hostname parsing to prevent substring spoofing (e.g. britannica.com.evil.example).
+ */
+function urlMatchesDomain(urlStr: string, domain: string): boolean {
+  try {
+    const hostname = new URL(urlStr).hostname
+    return hostname === domain || hostname.endsWith("." + domain)
+  } catch {
+    return urlStr.includes(domain)
+  }
+}
 
 export interface DuckDuckGoSearchOptions {
   query: string
@@ -50,12 +61,41 @@ export interface DuckDuckGoSearchResult {
 }
 
 /**
+ * Search the web with the full fallback chain.
+ *
+ * 1. Google CSE (fast, reliable, no CAPTCHA) — if API keys configured
+ * 2. DDG fetch-based HTML endpoint (free fallback)
+ * 3. DDG browser-based with stealth mode (bypasses anomaly-modal)
+ *
+ * Use this when you want the most reliable search. For DDG-only,
+ * use searchDuckDuckGo() directly.
+ */
+export async function webSearch(options: DuckDuckGoSearchOptions): Promise<DuckDuckGoSearchResult> {
+  const { domainFilter, additionalDomainFilters, userAgent, timeoutMs, signal } = options
+
+  // Step 1: Try Google CSE first (fast, reliable, no CAPTCHA)
+  const cseResult = await searchGoogleCse(options.query, domainFilter, additionalDomainFilters, {
+    userAgent,
+    timeoutMs,
+    signal,
+  })
+  if (cseResult) {
+    return cseResult
+  }
+
+  // Step 2: Fall through to DDG chain
+  return searchDuckDuckGo(options)
+}
+
+/**
  * Search DuckDuckGo with automatic browser fallback on CAPTCHA.
  *
- * Fallback chain:
+ * DDG-only fallback chain:
  * 1. fetch-based DDG HTML endpoint (free, fast)
  * 2. Browser-based DDG with stealth mode (bypasses anomaly-modal)
  * 3. CAPTCHA detection + solving if browser page still blocked
+ *
+ * For Google CSE + DDG combined, use webSearch() instead.
  */
 export async function searchDuckDuckGo(
   options: DuckDuckGoSearchOptions
@@ -125,6 +165,82 @@ export async function searchDuckDuckGo(
 }
 
 /**
+ * Search Google Custom Search Engine.
+ *
+ * Returns null if not configured or if the search fails (so caller falls through to DDG).
+ */
+async function searchGoogleCse(
+  query: string,
+  domainFilter?: string,
+  additionalDomainFilters?: string[],
+  options?: { userAgent?: string; timeoutMs?: number; signal?: AbortSignal }
+): Promise<DuckDuckGoSearchResult | null> {
+  const apiKey = process.env.GOOGLE_SEARCH_API_KEY
+  const cx = process.env.GOOGLE_SEARCH_CX
+
+  if (!apiKey || !cx) {
+    return null
+  }
+
+  try {
+    console.log(`Trying Google CSE for: ${query.substring(0, 80)}...`)
+
+    const url = new URL(GOOGLE_CSE_URL)
+    url.searchParams.set("key", apiKey)
+    url.searchParams.set("cx", cx)
+    url.searchParams.set("q", query)
+    url.searchParams.set("num", "10")
+
+    const timeoutSignal = AbortSignal.timeout(options?.timeoutMs ?? 15000)
+    const combinedSignal = options?.signal
+      ? AbortSignal.any([options.signal, timeoutSignal])
+      : timeoutSignal
+
+    const response = await fetch(url.toString(), {
+      headers: { "User-Agent": options?.userAgent || DEFAULT_USER_AGENT },
+      signal: combinedSignal,
+    })
+
+    const data = (await response.json()) as {
+      items?: Array<{ title: string; link: string; snippet: string }>
+      error?: { code: number; message: string }
+    }
+
+    if (!response.ok || data.error) {
+      console.log(
+        `Google CSE error: ${data.error?.message || response.status}, falling back to DDG`
+      )
+      return null
+    }
+
+    if (!data.items || data.items.length === 0) {
+      console.log("Google CSE returned no results, falling back to DDG")
+      return null
+    }
+
+    // Apply domain filtering to Google CSE results
+    let urls = data.items.map((item) => item.link)
+
+    if (domainFilter) {
+      const allDomains = [domainFilter, ...(additionalDomainFilters || [])]
+      urls = urls.filter((u) => allDomains.some((d) => urlMatchesDomain(u, d)))
+    }
+
+    if (urls.length === 0) {
+      console.log("Google CSE results didn't match domain filter, falling back to DDG")
+      return null
+    }
+
+    return { urls, engine: "google-cse", costUsd: 0.005 }
+  } catch (error) {
+    console.log(
+      `Google CSE fetch failed: ${error instanceof Error ? error.message : "Unknown"}, falling back to DDG`
+    )
+    return null
+  }
+}
+
+/**
  * Perform a DuckDuckGo search using a headless browser with stealth mode.
  * Falls back to CAPTCHA solving if the page still shows anomaly-modal.
  */
@@ -166,6 +282,9 @@ async function browserDuckDuckGoSearch(
       // Try CAPTCHA detection + solving
       const captchaResult = await detectCaptcha(page)
       if (captchaResult.detected) {
+        console.log(
+          `DDG CAPTCHA detected as type="${captchaResult.type}", siteKey=${captchaResult.siteKey ? "found" : "null"}, context="${captchaResult.context}"`
+        )
         const authConfig = getBrowserAuthConfig()
         if (authConfig.captchaSolver) {
           const solveResult = await solveCaptcha(page, captchaResult, authConfig.captchaSolver)
@@ -179,7 +298,15 @@ async function browserDuckDuckGoSearch(
           } else {
             console.warn(`DDG CAPTCHA solving failed: ${solveResult.error}`)
           }
+        } else {
+          console.warn(
+            "DDG CAPTCHA detected but no solver configured (set CAPTCHA_SOLVER_PROVIDER + API key)"
+          )
         }
+      } else {
+        console.warn(
+          "DDG anomaly-modal present but detectCaptcha() found no standard CAPTCHA widget"
+        )
       }
 
       // If still CAPTCHA after solving attempt, give up
@@ -224,11 +351,8 @@ export function extractUrlsFromDuckDuckGoHtml(
 
   const matchesDomain = (url: string): boolean => {
     if (!domainFilter) return true
-    if (url.includes(domainFilter)) return true
-    if (additionalDomainFilters) {
-      return additionalDomainFilters.some((d) => url.includes(d))
-    }
-    return false
+    const allDomains = [domainFilter, ...(additionalDomainFilters || [])]
+    return allDomains.some((d) => urlMatchesDomain(url, d))
   }
 
   // Extract from result__url href attributes

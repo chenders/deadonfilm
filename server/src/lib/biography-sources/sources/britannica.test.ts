@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
-// Mock fetch globally
+// Mock fetch globally (used by DDG search internally)
 const mockFetch = vi.fn()
 vi.stubGlobal("fetch", mockFetch)
 
@@ -10,14 +10,14 @@ vi.mock("../../death-sources/cache.js", () => ({
   setCachedQuery: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Mock searchDuckDuckGo to disable browser fallback in tests
+// Mock webSearch to use DDG-only search with browser fallback disabled in tests
 vi.mock("../../shared/duckduckgo-search.js", async () => {
   const actual = await vi.importActual<typeof import("../../shared/duckduckgo-search.js")>(
     "../../shared/duckduckgo-search.js"
   )
   return {
     ...actual,
-    searchDuckDuckGo: vi
+    webSearch: vi
       .fn()
       .mockImplementation(
         (options: import("../../shared/duckduckgo-search.js").DuckDuckGoSearchOptions) =>
@@ -25,6 +25,12 @@ vi.mock("../../shared/duckduckgo-search.js", async () => {
       ),
   }
 })
+
+// Mock fetchPageWithFallbacks for controlled page fetch responses
+const mockFetchPage = vi.fn()
+vi.mock("../../shared/fetch-page-with-fallbacks.js", () => ({
+  fetchPageWithFallbacks: (...args: unknown[]) => mockFetchPage(...args),
+}))
 
 import { BritannicaBiographySource } from "./britannica.js"
 import { BiographySourceType } from "../types.js"
@@ -141,10 +147,10 @@ describe("BritannicaBiographySource", () => {
   })
 
   describe("lookup", () => {
-    it("succeeds when DuckDuckGo returns Britannica URL and page has content", async () => {
+    it("succeeds when web search returns Britannica URL and page has content", async () => {
       const encodedUrl = encodeURIComponent("https://www.britannica.com/biography/John-Wayne")
 
-      // DuckDuckGo search response
+      // Web search response (DDG fetch internally)
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () =>
@@ -157,10 +163,12 @@ describe("BritannicaBiographySource", () => {
           ]),
       })
 
-      // Britannica page response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBritannicaPage(richBiographicalContent),
+      // Page fetch via fetchPageWithFallbacks mock
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBritannicaPage(richBiographicalContent),
+        title: "John Wayne | Biography",
+        url: "https://www.britannica.com/biography/John-Wayne",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
@@ -177,7 +185,7 @@ describe("BritannicaBiographySource", () => {
       expect(result.data!.confidence).toBeGreaterThan(0)
     })
 
-    it("returns failure when no DuckDuckGo results found", async () => {
+    it("returns failure when no web search results found", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () => `<html><body><div class="no-results">No results</div></body></html>`,
@@ -189,7 +197,7 @@ describe("BritannicaBiographySource", () => {
       expect(result.error).toContain("No Britannica results found")
     })
 
-    it("returns failure when DuckDuckGo results have no britannica.com URLs", async () => {
+    it("returns failure when web search results have no britannica.com URLs", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () =>
@@ -223,9 +231,12 @@ describe("BritannicaBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 403,
+      mockFetchPage.mockResolvedValueOnce({
+        content: "",
+        title: "",
+        url: "https://www.britannica.com/biography/John-Wayne",
+        fetchMethod: "direct",
+        error: "HTTP 403",
       })
 
       const result = await source.lookup(testActor)
@@ -249,9 +260,11 @@ describe("BritannicaBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => `<html><body><p>Short text.</p></body></html>`,
+      mockFetchPage.mockResolvedValueOnce({
+        content: `<html><body><p>Short text.</p></body></html>`,
+        title: "John Wayne",
+        url: "https://www.britannica.com/biography/John-Wayne",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
@@ -260,7 +273,7 @@ describe("BritannicaBiographySource", () => {
       expect(result.error).toContain("content too short")
     })
 
-    it("detects DuckDuckGo CAPTCHA (anomaly-modal)", async () => {
+    it("detects web search CAPTCHA (anomaly-modal)", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () =>
@@ -273,7 +286,7 @@ describe("BritannicaBiographySource", () => {
       expect(result.error).toContain("CAPTCHA")
     })
 
-    it("detects DuckDuckGo CAPTCHA (bots message)", async () => {
+    it("detects web search CAPTCHA (bots message)", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () => `<html><body><p>bots use DuckDuckGo too</p></body></html>`,
@@ -300,9 +313,11 @@ describe("BritannicaBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBritannicaPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBritannicaPage(richBiographicalContent),
+        title: "John Wayne | Biography",
+        url: "https://www.britannica.com/biography/John-Wayne",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
@@ -332,16 +347,18 @@ describe("BritannicaBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBritannicaPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBritannicaPage(richBiographicalContent),
+        title: "John Wayne | Biography",
+        url: targetUrl,
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(true)
-      // The second fetch call should be to the cleaned Britannica URL
-      expect(mockFetch.mock.calls[1][0]).toBe(targetUrl)
+      // fetchPageWithFallbacks should be called with the cleaned Britannica URL
+      expect(mockFetchPage.mock.calls[0][0]).toBe(targetUrl)
     })
 
     it("prefers /biography/ paths over other URLs", async () => {
@@ -365,19 +382,21 @@ describe("BritannicaBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBritannicaPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBritannicaPage(richBiographicalContent),
+        title: "John Wayne | Biography",
+        url: biographyUrl,
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(true)
       // Should have fetched the /biography/ URL
-      expect(mockFetch.mock.calls[1][0]).toBe(biographyUrl)
+      expect(mockFetchPage.mock.calls[0][0]).toBe(biographyUrl)
     })
 
-    it("handles page fetch network errors", async () => {
+    it("handles page fetch errors", async () => {
       const encodedUrl = encodeURIComponent("https://www.britannica.com/biography/John-Wayne")
 
       mockFetch.mockResolvedValueOnce({
@@ -392,15 +411,21 @@ describe("BritannicaBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockRejectedValueOnce(new Error("Connection reset"))
+      mockFetchPage.mockResolvedValueOnce({
+        content: "",
+        title: "",
+        url: "https://www.britannica.com/biography/John-Wayne",
+        fetchMethod: "direct",
+        error: "All fetch methods failed (direct + archive.org + archive.is)",
+      })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("Connection reset")
+      expect(result.error).toContain("page fetch failed")
     })
 
-    it("handles DuckDuckGo search HTTP errors", async () => {
+    it("handles web search HTTP errors", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 503,
@@ -409,7 +434,7 @@ describe("BritannicaBiographySource", () => {
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("DuckDuckGo search failed")
+      expect(result.error).toContain("search failed")
     })
 
     it("calculates biographical confidence from content", async () => {
@@ -427,9 +452,11 @@ describe("BritannicaBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBritannicaPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBritannicaPage(richBiographicalContent),
+        title: "John Wayne | Biography",
+        url: "https://www.britannica.com/biography/John-Wayne",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
