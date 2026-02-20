@@ -9,7 +9,7 @@
  */
 
 import { Readability } from "@mozilla/readability"
-import { JSDOM } from "jsdom"
+import { JSDOM, VirtualConsole } from "jsdom"
 
 export interface ArticleExtractionResult {
   text: string
@@ -27,7 +27,11 @@ export interface ArticleExtractionResult {
  * @param url - Optional URL for resolving relative links
  */
 export function extractArticleContent(html: string, url?: string): ArticleExtractionResult | null {
-  const dom = new JSDOM(html, { url: url || undefined })
+  const virtualConsole = new VirtualConsole()
+  virtualConsole.on("error", () => {
+    // Suppress jsdom CSS parse errors ("Could not parse CSS stylesheet")
+  })
+  const dom = new JSDOM(html, { url: url || undefined, virtualConsole })
   const reader = new Readability(dom.window.document)
   const article = reader.parse()
 
