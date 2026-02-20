@@ -250,6 +250,31 @@ describe("DeathDetailsContent", () => {
     expect(screen.getByTestId("official-meta-section")).toBeInTheDocument()
   })
 
+  it("does not render official meta section when there is no confidence and no sources", () => {
+    const dataWithoutMeta: DeathDetailsResponse = {
+      ...fullData,
+      circumstances: {
+        ...fullData.circumstances,
+        confidence: null,
+      },
+      sources: {
+        ...fullData.sources,
+        circumstances: [],
+      },
+    }
+
+    mockUseActorDeathDetails.mockReturnValue({
+      data: dataWithoutMeta,
+      isLoading: false,
+      error: null,
+    })
+
+    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" hideOfficialNarrative />)
+
+    expect(screen.queryByTestId("official-section")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("official-meta-section")).not.toBeInTheDocument()
+  })
+
   it("shows What We Know heading when hideOfficialNarrative is false", () => {
     mockUseActorDeathDetails.mockReturnValue({ data: fullData, isLoading: false, error: null })
     renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" />)
