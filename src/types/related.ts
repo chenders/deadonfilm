@@ -12,6 +12,7 @@ export interface RelatedActor {
 
 export interface RelatedActorsResponse {
   actors: RelatedActor[]
+  matchType: "cause" | "decade" | "none"
 }
 
 export interface RelatedMovie {
