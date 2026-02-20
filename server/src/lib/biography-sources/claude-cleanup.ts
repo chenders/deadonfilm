@@ -154,18 +154,10 @@ TEASER QUALITY:
 - Good: "Before he became a household name, John Smith spent three years as a coal miner..."
 
 VALID LIFE NOTABLE FACTORS:
-[orphaned, adopted, foster_child, single_parent, poverty, wealth,
-immigrant, refugee, military_service, war_veteran, combat_wounded,
-pow, scholar, self_taught, dropout, child_star, child_labor,
-incarcerated, wrongfully_convicted, addiction_recovery, disability,
-chronic_illness, civil_rights_activist, political_figure, athlete,
-multiple_careers, turned_down_fame, rags_to_riches, prodigy,
-polyglot, clergy, royalty, nobility, espionage,
-holocaust_survivor, cancer_survivor, disaster_survivor, accident_survivor, abuse_survivor,
-whistleblower, philanthropist]
+[${[...VALID_LIFE_NOTABLE_FACTORS].join(", ")}]
 
 SURVIVOR TAGS: Use the specific survivor type, not a generic "survivor". Pick the one that best matches:
-- holocaust_survivor: Survived the Holocaust or other genocide
+- holocaust_survivor: Survived the Holocaust
 - cancer_survivor: Beat cancer or achieved remission
 - disaster_survivor: Survived a natural disaster, fire, shipwreck, etc.
 - accident_survivor: Survived a serious accident (plane crash, car crash, etc.)
