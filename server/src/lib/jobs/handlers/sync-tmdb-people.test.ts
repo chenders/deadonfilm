@@ -54,6 +54,19 @@ vi.mock("../../redis.js", () => ({
   closeRedis: vi.fn(),
 }))
 
+vi.mock("../../imdb.js", () => ({
+  verifyDeathDateImdb: vi.fn().mockResolvedValue({
+    found: false,
+    hasDeathYear: false,
+    imdbDeathYear: null,
+    yearMatches: false,
+  }),
+  combineVerification: vi.fn((wikidata: { confidence: string }, _imdb: unknown) => ({
+    confidence: wikidata.confidence,
+    source: wikidata.confidence === "verified" ? "wikidata" : null,
+  })),
+}))
+
 vi.mock("../queue-manager.js", () => ({
   queueManager: {
     addJob: vi.fn().mockResolvedValue("mock-job-id"),

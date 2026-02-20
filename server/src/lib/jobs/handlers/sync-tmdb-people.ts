@@ -34,6 +34,7 @@ import {
   type TMDBPerson,
 } from "../../tmdb.js"
 import { getCauseOfDeath, verifyDeathDate } from "../../wikidata.js"
+import { verifyDeathDateImdb, combineVerification } from "../../imdb.js"
 import { calculateYearsLost, calculateMovieMortality } from "../../mortality-stats.js"
 import { getDateRanges } from "../../date-utils.js"
 import { invalidateActorCacheRequired } from "../../cache.js"
@@ -302,9 +303,16 @@ export class SyncTMDBPeopleHandler extends BaseJobHandler<
    */
   private async processNewDeath(person: TMDBPerson): Promise<void> {
     const birthYear = person.birthday ? new Date(person.birthday).getFullYear() : null
+    const tmdbDeathYear = new Date(person.deathday!).getFullYear()
 
     // Verify death date against Wikidata
     const deathVerification = await verifyDeathDate(person.name, birthYear, person.deathday!)
+
+    // Verify death date against IMDb dataset
+    const imdbVerification = await verifyDeathDateImdb(person.name, birthYear, tmdbDeathYear)
+
+    // Combine both verification results
+    const { confidence, source } = combineVerification(deathVerification, imdbVerification)
 
     // Look up cause of death using Opus 4.5
     const {
@@ -333,8 +341,8 @@ export class SyncTMDBPeopleHandler extends BaseJobHandler<
       age_at_death: yearsLostResult?.ageAtDeath ?? null,
       expected_lifespan: yearsLostResult?.expectedLifespan ?? null,
       years_lost: yearsLostResult?.yearsLost ?? null,
-      deathday_confidence: deathVerification.confidence,
-      deathday_verification_source: deathVerification.wikidataDeathDate ? "wikidata" : null,
+      deathday_confidence: confidence,
+      deathday_verification_source: source,
       deathday_verified_at: new Date().toISOString(),
     }
 

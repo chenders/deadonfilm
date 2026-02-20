@@ -51,9 +51,15 @@ export interface ActorRecord {
   thetvdb_person_id: number | null
   imdb_person_id: string | null // IMDb uses string IDs like "nm0000001"
 
-  // Death date verification (source-level confidence from TMDB vs Wikidata)
-  deathday_confidence: "verified" | "unverified" | "conflicting" | null
-  deathday_verification_source: string | null // e.g., 'wikidata'
+  // Death date verification (source-level confidence from TMDB vs Wikidata/IMDb)
+  deathday_confidence:
+    | "verified"
+    | "imdb_verified"
+    | "unverified"
+    | "suspicious"
+    | "conflicting"
+    | null
+  deathday_verification_source: string | null // e.g., 'wikidata', 'imdb', 'wikidata,imdb'
   deathday_verified_at: string | null
 
   // Biography fields
