@@ -79,14 +79,14 @@ export interface PageFetchOptions {
 }
 
 export interface PageFetchResult {
-  /** Fetched page content (HTML) */
+  /** Fetched page content (HTML from direct fetch, or extracted text from archive fallbacks) */
   content: string
   /** Page title extracted from HTML */
   title: string
   /** Final URL (may differ from input if archive was used) */
   url: string
   /** Which fetch method succeeded, or "none" if all methods failed */
-  fetchMethod: "direct" | "archive.org" | "archive.is" | "none"
+  fetchMethod: "direct" | "archive.org" | "archive.is" | "archive.is-browser" | "none"
   /** Error message if all methods failed */
   error?: string
 }
@@ -157,6 +157,11 @@ export async function fetchPageWithFallbacks(
     )
   }
 
+  // Respect caller cancellation between fallback steps
+  if (options?.signal?.aborted) {
+    return { content: "", title: "", url, fetchMethod: "none", error: "Aborted" }
+  }
+
   // Step 2: Try archive.org (Wayback Machine)
   try {
     const { fetchFromArchive } = await import("../death-sources/archive-fallback.js")
@@ -175,6 +180,10 @@ export async function fetchPageWithFallbacks(
     console.log(
       `archive.org failed for ${url}: ${error instanceof Error ? error.message : "Unknown"}`
     )
+  }
+
+  if (options?.signal?.aborted) {
+    return { content: "", title: "", url, fetchMethod: "none", error: "Aborted" }
   }
 
   // Step 3: Try archive.is (HTTP)
@@ -197,6 +206,10 @@ export async function fetchPageWithFallbacks(
     )
   }
 
+  if (options?.signal?.aborted) {
+    return { content: "", title: "", url, fetchMethod: "none", error: "Aborted" }
+  }
+
   // Step 4: Try archive.is with browser + CAPTCHA solver
   try {
     const { getBrowserAuthConfig } = await import("../death-sources/browser-auth/config.js")
@@ -212,7 +225,7 @@ export async function fetchPageWithFallbacks(
           content: browserResult.content,
           title: browserResult.title,
           url: browserResult.archiveUrl || url,
-          fetchMethod: "archive.is",
+          fetchMethod: "archive.is-browser",
         }
       }
     }

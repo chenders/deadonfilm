@@ -107,7 +107,7 @@ export class PeopleBiographySource extends BaseBiographySource {
     const confidence = this.calculateBiographicalConfidence(text)
 
     // Step 7: Build result
-    const articleTitle = metadata.title || `${actor.name} - People`
+    const articleTitle = metadata.title || pageResult.title || `${actor.name} - People`
 
     const sourceData: RawBiographySourceData = {
       sourceName: "People",

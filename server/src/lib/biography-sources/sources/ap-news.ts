@@ -106,7 +106,7 @@ export class APNewsBiographySource extends BaseBiographySource {
     const confidence = this.calculateBiographicalConfidence(text)
 
     // Step 7: Build result
-    const articleTitle = metadata.title || `${actor.name} - AP News`
+    const articleTitle = metadata.title || pageResult.title || `${actor.name} - AP News`
 
     const sourceData: RawBiographySourceData = {
       sourceName: "AP News",

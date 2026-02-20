@@ -109,7 +109,7 @@ export class LegacyBiographySource extends BaseBiographySource {
     const confidence = this.calculateBiographicalConfidence(text)
 
     // Step 7: Build result
-    const articleTitle = metadata.title || `${actor.name} Obituary - Legacy.com`
+    const articleTitle = metadata.title || pageResult.title || `${actor.name} Obituary - Legacy.com`
 
     const sourceData: RawBiographySourceData = {
       sourceName: "Legacy.com",

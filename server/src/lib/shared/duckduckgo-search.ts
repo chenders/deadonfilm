@@ -23,6 +23,19 @@ const POST_CAPTCHA_WAIT_MS = 3000
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
+/**
+ * Check if a URL's hostname matches a domain filter.
+ * Uses hostname parsing to prevent substring spoofing (e.g. britannica.com.evil.example).
+ */
+function urlMatchesDomain(urlStr: string, domain: string): boolean {
+  try {
+    const hostname = new URL(urlStr).hostname
+    return hostname === domain || hostname.endsWith("." + domain)
+  } catch {
+    return urlStr.includes(domain)
+  }
+}
+
 export interface DuckDuckGoSearchOptions {
   query: string
   /** Filter results to only include URLs containing this domain */
@@ -210,7 +223,7 @@ async function searchGoogleCse(
 
     if (domainFilter) {
       const allDomains = [domainFilter, ...(additionalDomainFilters || [])]
-      urls = urls.filter((u) => allDomains.some((d) => u.includes(d)))
+      urls = urls.filter((u) => allDomains.some((d) => urlMatchesDomain(u, d)))
     }
 
     if (urls.length === 0) {
@@ -338,11 +351,8 @@ export function extractUrlsFromDuckDuckGoHtml(
 
   const matchesDomain = (url: string): boolean => {
     if (!domainFilter) return true
-    if (url.includes(domainFilter)) return true
-    if (additionalDomainFilters) {
-      return additionalDomainFilters.some((d) => url.includes(d))
-    }
-    return false
+    const allDomains = [domainFilter, ...(additionalDomainFilters || [])]
+    return allDomains.some((d) => urlMatchesDomain(url, d))
   }
 
   // Extract from result__url href attributes
