@@ -179,18 +179,18 @@ Extract ALL death-related information into clean, factual prose written in the t
     FOR SUICIDE:
     1. Lead with the event and discovery
     2. Investigation and medical examiner findings
-    3. Known mental health history, prior attempts
+    3. Brief mental health context and prior attempts (1-2 sentences — detailed history belongs in the biography)
     4. Other contributing factors, preceding events
 
     FOR OVERDOSE:
     1. Lead with the event and discovery
     2. Toxicology findings, substances identified
-    3. History of substance use if publicly known
+    3. Brief context on substance history if publicly known (1-2 sentences — detailed history belongs in the biography)
     4. Accidental vs intentional determination
 
     FOR NATURAL DEATHS:
-    1. Lead with medical history — chronic conditions, major illnesses, surgeries, hospitalizations, medical devices (pacemakers, LVADs), cancer diagnoses, organ transplants
-    2. Notable health incidents during their life (accidents, near-death experiences, long recoveries)
+    1. Lead with the medical conditions that caused or contributed to the death — diagnosis timeline, treatment, and decline
+    2. Other health conditions only if they contributed to or complicated the cause of death
     3. Progression of final illness or decline
     4. The death itself — how, when, where, who was present
 
@@ -201,6 +201,8 @@ Extract ALL death-related information into clean, factual prose written in the t
     - First responder/medical examiner findings
     - Media coverage significance if it was a major news story
     - Anything unusual, tragic, or newsworthy about the circumstances
+
+    IMPORTANT: This narrative will be displayed on the actor's page alongside a separate biography section that covers their personal life, struggles, and history in detail. Keep the death narrative focused on the DEATH EVENT and its direct medical/investigative context. When substance abuse, mental health, or medical history is relevant to the death, provide a brief summary (1-2 sentences) rather than a full biographical account. For example, 'Fisher had publicly discussed her struggles with addiction and bipolar disorder throughout her life' is sufficient context — do not retell the full history of their personal battles.
 
     Write as clean, factual prose in a tone similar to a local news site. Multiple paragraphs are fine.",
   "circumstances_confidence": "high|medium|low|disputed",
@@ -252,8 +254,8 @@ CRITICAL INSTRUCTIONS:
 - When sources CONFLICT on factual claims (cause of death, dates, locations), PREFER data from sources with higher reliability scores. A 95% reliability source (e.g., AP News, NYT) should take precedence over a 35% reliability source (e.g., Find a Grave, IMDb). Confidence measures text relevance; reliability measures publisher trustworthiness.
 - ADAPT narrative structure to manner of death: for violent deaths (homicide, assassination, accident), the violent event IS the story — lead with it. For natural deaths, medical history IS the story — lead with it. Do NOT bury an assassination under paragraphs of medical history.
 - Be THOROUGH in circumstances - capture the full story, not just the medical cause
-- ALWAYS include relevant medical history: heart conditions, cancer battles, transplants, chronic illnesses, medical devices, significant surgeries — but for violent deaths, only include health history if it is independently notable (well-known in its own right), not as a preamble to the actual death event
-- Include notable health incidents even if not directly causing death (accidents, near-death experiences, long-term health struggles)
+- Include medical history that CAUSED or CONTRIBUTED to the death: heart conditions, cancer battles, transplants, chronic illnesses, medical devices, significant surgeries — but for violent deaths, only include health history if it is independently notable (well-known in its own right), not as a preamble to the actual death event
+- For substance abuse, mental health, or personal struggles: provide brief context (1-2 sentences) when relevant to the death, but do NOT retell the full biographical history — that belongs in the separate biography section
 - Be COMPREHENSIVE in rumored_circumstances for controversial or high-profile deaths — a single vague sentence summarizing "there are conspiracy theories" is INSUFFICIENT. Name specific theories, investigations, people, books, and evidence. Multiple detailed paragraphs are expected for deaths like JFK, Marilyn Monroe, Bruce Lee, etc.
 - If the death was a major news story, capture WHY it was newsworthy
 - Include related deaths (spouse, family) if they're part of the story
