@@ -213,7 +213,7 @@ describe("DeathDetailsContent", () => {
     expect(screen.getByTestId("low-confidence-warning")).toBeInTheDocument()
   })
 
-  // Tests for new props: data and hideOfficialHeading
+  // Tests for new props: data and hideOfficialNarrative
 
   it("uses pre-fetched data and skips internal fetch", () => {
     // When data prop is provided, useActorDeathDetails should be called with ""
@@ -237,15 +237,45 @@ describe("DeathDetailsContent", () => {
     expect(screen.getByTestId("death-details-content")).toBeInTheDocument()
   })
 
-  it("hides What We Know heading when hideOfficialHeading is true", () => {
+  it("hides official narrative when hideOfficialNarrative is true (parent renders it)", () => {
     mockUseActorDeathDetails.mockReturnValue({ data: fullData, isLoading: false, error: null })
-    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" hideOfficialHeading />)
+    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" hideOfficialNarrative />)
 
-    expect(screen.getByTestId("official-section")).toBeInTheDocument()
+    // Full official section (with narrative text) should not render
+    expect(screen.queryByTestId("official-section")).not.toBeInTheDocument()
     expect(screen.queryByText("What We Know")).not.toBeInTheDocument()
+    expect(screen.queryByText(/stomach cancer at UCLA/)).not.toBeInTheDocument()
+
+    // Meta section (confidence + sources) should still render
+    expect(screen.getByTestId("official-meta-section")).toBeInTheDocument()
   })
 
-  it("shows What We Know heading when hideOfficialHeading is false", () => {
+  it("does not render official meta section when there is no confidence and no sources", () => {
+    const dataWithoutMeta: DeathDetailsResponse = {
+      ...fullData,
+      circumstances: {
+        ...fullData.circumstances,
+        confidence: null,
+      },
+      sources: {
+        ...fullData.sources,
+        circumstances: [],
+      },
+    }
+
+    mockUseActorDeathDetails.mockReturnValue({
+      data: dataWithoutMeta,
+      isLoading: false,
+      error: null,
+    })
+
+    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" hideOfficialNarrative />)
+
+    expect(screen.queryByTestId("official-section")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("official-meta-section")).not.toBeInTheDocument()
+  })
+
+  it("shows What We Know heading when hideOfficialNarrative is false", () => {
     mockUseActorDeathDetails.mockReturnValue({ data: fullData, isLoading: false, error: null })
     renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" />)
 

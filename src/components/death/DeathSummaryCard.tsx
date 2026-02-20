@@ -141,7 +141,7 @@ export default function DeathSummaryCard({
         {/* Full death details (visible when expanded, below the narrative) */}
         {isExpanded && (
           <div data-testid="death-details-expanded" className="mt-4">
-            <DeathDetailsContent slug={slug} data={data} hideOfficialHeading />
+            <DeathDetailsContent slug={slug} data={data} hideOfficialNarrative />
           </div>
         )}
       </ExpandableSection>
