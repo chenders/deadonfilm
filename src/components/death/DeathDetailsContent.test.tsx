@@ -213,7 +213,7 @@ describe("DeathDetailsContent", () => {
     expect(screen.getByTestId("low-confidence-warning")).toBeInTheDocument()
   })
 
-  // Tests for new props: data and hideOfficialHeading
+  // Tests for new props: data and hideOfficialNarrative
 
   it("uses pre-fetched data and skips internal fetch", () => {
     // When data prop is provided, useActorDeathDetails should be called with ""
@@ -237,9 +237,9 @@ describe("DeathDetailsContent", () => {
     expect(screen.getByTestId("death-details-content")).toBeInTheDocument()
   })
 
-  it("hides official narrative when hideOfficialHeading is true (parent renders it)", () => {
+  it("hides official narrative when hideOfficialNarrative is true (parent renders it)", () => {
     mockUseActorDeathDetails.mockReturnValue({ data: fullData, isLoading: false, error: null })
-    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" hideOfficialHeading />)
+    renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" hideOfficialNarrative />)
 
     // Full official section (with narrative text) should not render
     expect(screen.queryByTestId("official-section")).not.toBeInTheDocument()
@@ -250,7 +250,7 @@ describe("DeathDetailsContent", () => {
     expect(screen.getByTestId("official-meta-section")).toBeInTheDocument()
   })
 
-  it("shows What We Know heading when hideOfficialHeading is false", () => {
+  it("shows What We Know heading when hideOfficialNarrative is false", () => {
     mockUseActorDeathDetails.mockReturnValue({ data: fullData, isLoading: false, error: null })
     renderWithRouter(<DeathDetailsContent slug="john-wayne-2157" />)
 
