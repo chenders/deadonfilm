@@ -108,12 +108,10 @@ async function run(options: {
       } else if (actor.deathday_confidence === "conflicting") {
         wikidataConfidence = "conflicting"
       }
-      const hasWikidata = actor.deathday_verification_source?.includes("wikidata") ?? false
-
       const { confidence, source } = combineVerification(
         {
           confidence: wikidataConfidence,
-          wikidataDeathDate: hasWikidata ? "known" : null,
+          wikidataDeathDate: null,
         },
         imdbVerif
       )
@@ -161,7 +159,7 @@ async function run(options: {
     console.log(`Total actors checked: ${actors.length}`)
     console.log(`Unchanged: ${unchanged}`)
     console.log(`Changes: ${results.length}`)
-    if (verified > 0) console.log(`  verified (wikidata+imdb): ${verified}`)
+    if (verified > 0) console.log(`  verified: ${verified}`)
     if (imdbVerified > 0) console.log(`  imdb_verified: ${imdbVerified}`)
     if (suspicious > 0) console.log(`  suspicious (IMDb says alive): ${suspicious}`)
     if (unverified > 0) console.log(`  unverified: ${unverified}`)
