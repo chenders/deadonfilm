@@ -225,11 +225,18 @@ function detectDataQualityIssues(
   }
 
   // Check for low confidence fields
-  if (actor.deathday_confidence === "unverified" || actor.deathday_confidence === "conflicting") {
+  if (
+    actor.deathday_confidence === "unverified" ||
+    actor.deathday_confidence === "conflicting" ||
+    actor.deathday_confidence === "suspicious"
+  ) {
     issues.push({
       field: "deathday",
       issue: `Death date confidence: ${actor.deathday_confidence}`,
-      severity: actor.deathday_confidence === "conflicting" ? "error" : "warning",
+      severity:
+        actor.deathday_confidence === "conflicting" || actor.deathday_confidence === "suspicious"
+          ? "error"
+          : "warning",
     })
   }
 
