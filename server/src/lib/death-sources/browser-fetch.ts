@@ -255,6 +255,15 @@ function resetIdleTimeout(): void {
   idleTimeoutHandle = setTimeout(async () => {
     const idleTime = Date.now() - lastActivityTime
     if (idleTime >= activeConfig.idleTimeoutMs && browserInstance) {
+      // Don't shut down if there are active contexts (pages still in use)
+      const activeContexts = browserInstance.contexts()
+      if (activeContexts.length > 0) {
+        console.log(
+          `Browser idle for ${Math.round(idleTime / 1000)}s but ${activeContexts.length} context(s) still active, deferring shutdown...`
+        )
+        resetIdleTimeout()
+        return
+      }
       console.log(`Browser idle for ${Math.round(idleTime / 1000)}s, shutting down...`)
       await shutdownBrowser()
     }
