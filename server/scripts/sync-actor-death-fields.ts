@@ -4,10 +4,11 @@
  *
  * Populates fields that can be derived without AI:
  *   1. death_manner     — from cause_manner_mappings via normalizations
- *   2. deathday_precision — "day" for all full-date deathdates
- *   3. covid_related    — true when cause_of_death mentions covid/coronavirus
- *   4. death_categories — computed from cause_of_death text + manner
- *   5. age_at_death / expected_lifespan / years_lost — from birthday + deathday + cohort tables
+ *   2. violent_death    — derived from death_manner (true for homicide/suicide/accident)
+ *   3. deathday_precision — "day" for all full-date deathdates
+ *   4. covid_related    — true when cause_of_death mentions covid/coronavirus
+ *   5. death_categories — computed from cause_of_death text + manner
+ *   6. age_at_death / expected_lifespan / years_lost — from birthday + deathday + cohort tables
  *
  * Usage:
  *   npx tsx scripts/sync-actor-death-fields.ts [--dry-run]
@@ -102,7 +103,29 @@ async function run(options: Options) {
     }
 
     // ---------------------------------------------------------------
-    // 2. Set deathday_precision = 'day' for full dates
+    // 2. Derive violent_death from death_manner
+    // ---------------------------------------------------------------
+    const violentResult = await pool.query(`
+      SELECT count(*) as cnt
+      FROM actors
+      WHERE death_manner IS NOT NULL
+        AND violent_death IS DISTINCT FROM (death_manner IN ('homicide', 'suicide', 'accident'))
+    `)
+    const violentCount = parseInt(violentResult.rows[0].cnt, 10)
+    console.log(`${prefix}violent_death: ${violentCount} actors to sync from death_manner`)
+
+    if (!dryRun && violentCount > 0) {
+      const { rowCount } = await pool.query(`
+        UPDATE actors
+        SET violent_death = (death_manner IN ('homicide', 'suicide', 'accident'))
+        WHERE death_manner IS NOT NULL
+          AND violent_death IS DISTINCT FROM (death_manner IN ('homicide', 'suicide', 'accident'))
+      `)
+      console.log(`  Updated ${rowCount} actors`)
+    }
+
+    // ---------------------------------------------------------------
+    // 3. Set deathday_precision = 'day' for full dates
     // ---------------------------------------------------------------
     const precisionResult = await pool.query(`
       SELECT count(*) as cnt
@@ -122,7 +145,7 @@ async function run(options: Options) {
     }
 
     // ---------------------------------------------------------------
-    // 3. Set covid_related from cause_of_death text
+    // 4. Set covid_related from cause_of_death text
     // ---------------------------------------------------------------
     const covidResult = await pool.query(`
       SELECT count(*) as cnt
@@ -154,7 +177,7 @@ async function run(options: Options) {
     }
 
     // ---------------------------------------------------------------
-    // 4. Compute death_categories from cause_of_death + manner
+    // 5. Compute death_categories from cause_of_death + manner
     // ---------------------------------------------------------------
     const catRows = await pool.query<{
       id: number
@@ -208,7 +231,7 @@ async function run(options: Options) {
     }
 
     // ---------------------------------------------------------------
-    // 5. Compute age_at_death, expected_lifespan, years_lost
+    // 6. Compute age_at_death, expected_lifespan, years_lost
     // ---------------------------------------------------------------
     const ageRows = await pool.query<{
       id: number
