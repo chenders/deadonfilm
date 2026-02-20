@@ -61,7 +61,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-node-22-node-modules-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
         if: steps.cache-frontend-modules.outputs.cache-hit != 'true'
@@ -126,7 +126,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: server/node_modules
-          key: ${{ runner.os }}-server-node-modules-${{ hashFiles('server/package-lock.json') }}
+          key: ${{ runner.os }}-node-22-server-node-modules-${{ hashFiles('server/package-lock.json') }}
 
       - name: Start containers and install deps (parallel)
         run: |
@@ -283,7 +283,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-node-22-node-modules-${{ hashFiles('package-lock.json') }}
 
       - name: Install frontend dependencies
         if: steps.cache-e2e-frontend-modules.outputs.cache-hit != 'true'
@@ -305,7 +305,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: server/node_modules
-          key: ${{ runner.os }}-server-node-modules-${{ hashFiles('server/package-lock.json') }}
+          key: ${{ runner.os }}-node-22-server-node-modules-${{ hashFiles('server/package-lock.json') }}
 
       - name: Install backend dependencies
         if: steps.cache-e2e-backend-modules.outputs.cache-hit != 'true'
