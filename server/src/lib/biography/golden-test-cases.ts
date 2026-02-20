@@ -55,7 +55,7 @@ export const GOLDEN_TEST_CASES: GoldenTestCase[] = [
     actorName: "Audrey Hepburn",
     tmdbId: 4694,
     expectedFacts: ["Dutch Resistance", "starvation", "ballet"],
-    expectedFactors: ["survivor"],
+    expectedFactors: ["disaster_survivor"],
     unexpectedContent: ["filmography", "Academy Award nominations"],
   },
   {
