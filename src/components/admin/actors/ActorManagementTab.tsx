@@ -524,7 +524,7 @@ export default function ActorManagementTab() {
 
       {/* Data Table */}
       {data && (
-        <div className={selectedActorIds.size > 0 ? "pb-24" : ""}>
+        <div className={selectedActorIds.size > 0 ? "pb-80 sm:pb-24" : ""}>
           <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm md:p-6">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-admin-text-muted">
