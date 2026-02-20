@@ -20,6 +20,7 @@ export function getRedisClient(): Redis | null {
   if (!redisClient) {
     redisClient = new Redis(process.env.REDIS_URL, {
       maxRetriesPerRequest: 1,
+      connectTimeout: 10000,
       retryStrategy: (times) => {
         if (times > 3) {
           logger.warn("Redis connection failed after 3 retries, giving up")
@@ -97,6 +98,7 @@ export async function initRedis(): Promise<boolean> {
   if (!redisClient) {
     redisClient = new Redis(process.env.REDIS_URL, {
       maxRetriesPerRequest: 1,
+      connectTimeout: 10000,
       retryStrategy: (times) => {
         if (times > 3) {
           logger.warn("Redis connection failed after 3 retries, giving up")
