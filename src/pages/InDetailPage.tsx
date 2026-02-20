@@ -88,19 +88,19 @@ export default function InDetailPage() {
         <title>In Detail | Dead on Film</title>
         <meta
           name="description"
-          content="Actors with thoroughly researched death details, circumstances, and sources — sorted by most recently updated."
+          content="Actors with thoroughly researched profiles — enriched biographies, death details, circumstances, and sources."
         />
         <meta property="og:title" content="In Detail | Dead on Film" />
         <meta
           property="og:description"
-          content="Thoroughly researched actor death details with sources"
+          content="Thoroughly researched actor profiles with enriched biographies and death details"
         />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content="In Detail | Dead on Film" />
         <meta
           name="twitter:description"
-          content="Thoroughly researched actor death details with sources"
+          content="Thoroughly researched actor profiles with enriched biographies and death details"
         />
       </Helmet>
       {data && (
@@ -116,7 +116,7 @@ export default function InDetailPage() {
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brown-dark">In Detail</h1>
           <p className="mt-2 text-sm text-text-primary">
-            Actors with thoroughly researched death details and sources
+            Actors with thoroughly researched profiles and sources
           </p>
         </div>
 
@@ -194,6 +194,16 @@ export default function InDetailPage() {
                     {actor.deathManner && (
                       <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
                         {toTitleCase(actor.deathManner)}
+                      </span>
+                    )}
+                    {actor.hasDetailedDeathInfo && (
+                      <span className="rounded-full bg-brown-medium/10 px-2 py-0.5 text-xs text-brown-dark">
+                        Death Details
+                      </span>
+                    )}
+                    {actor.hasEnrichedBio && (
+                      <span className="rounded-full bg-[var(--life-factor-bg)] px-2 py-0.5 text-xs text-[var(--life-factor-text)]">
+                        Biography
                       </span>
                     )}
                     <RelativeTime
