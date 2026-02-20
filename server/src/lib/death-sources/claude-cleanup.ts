@@ -252,7 +252,7 @@ Extract ALL death-related information into clean, factual prose written in the t
 
 CRITICAL INSTRUCTIONS:
 - When sources CONFLICT on factual claims (cause of death, dates, locations), PREFER data from sources with higher reliability scores. A 95% reliability source (e.g., AP News, NYT) should take precedence over a 35% reliability source (e.g., Find a Grave, IMDb). Confidence measures text relevance; reliability measures publisher trustworthiness.
-- ADAPT narrative structure to manner of death: for violent deaths (homicide, assassination, accident), the violent event IS the story — lead with it. For natural deaths, medical history IS the story — lead with it. Do NOT bury an assassination under paragraphs of medical history.
+- ADAPT narrative structure to manner of death: for violent deaths (homicide, assassination, accident), the violent event IS the story — lead with it. For natural deaths, the medical conditions that caused or contributed to the death ARE the story — lead with them. Do NOT bury an assassination under paragraphs of medical history.
 - Be THOROUGH in circumstances - capture the full story, not just the medical cause
 - Include medical history that CAUSED or CONTRIBUTED to the death: heart conditions, cancer battles, transplants, chronic illnesses, medical devices, significant surgeries — but for violent deaths, only include health history if it is independently notable (well-known in its own right), not as a preamble to the actual death event
 - For substance abuse, mental health, or personal struggles: provide brief context (1-2 sentences) when relevant to the death, but do NOT retell the full biographical history — that belongs in the separate biography section
