@@ -14,6 +14,7 @@ import {
   getRelatedMovies,
   getRelatedShows,
   type RelatedActor,
+  type RelatedActorsMatchType,
   type RelatedMovie,
   type RelatedShow,
 } from "../lib/db/related-content.js"
@@ -26,6 +27,7 @@ import { sendWithETag } from "../lib/etag.js"
 
 interface RelatedActorsResponse {
   actors: RelatedActor[]
+  matchType: RelatedActorsMatchType
 }
 
 interface RelatedMoviesResponse {
@@ -94,9 +96,9 @@ export async function getRelatedActorsRoute(req: Request, res: Response) {
     const actor = actorResult.rows[0]
     const birthDecade = getBirthDecade(actor.birthday)
 
-    const actors = await getRelatedActors(actorId, actor.cause_of_death, birthDecade)
+    const { actors, matchType } = await getRelatedActors(actorId, actor.cause_of_death, birthDecade)
 
-    const response: RelatedActorsResponse = { actors }
+    const response: RelatedActorsResponse = { actors, matchType }
 
     // Skip caching empty results — data may not be populated yet
     if (actors.length > 0) {

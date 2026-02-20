@@ -144,13 +144,21 @@ describe("getRelatedActorsRoute", () => {
         birthday: "1942-11-05",
       },
     ]
-    vi.mocked(getRelatedActors).mockResolvedValueOnce(mockRelatedActors)
+    vi.mocked(getRelatedActors).mockResolvedValueOnce({
+      actors: mockRelatedActors,
+      matchType: "cause",
+    })
 
     await getRelatedActorsRoute(req, res)
 
     expect(getRelatedActors).toHaveBeenCalledWith(42, "Heart attack", 1940)
-    expect(sendWithETag).toHaveBeenCalledWith(req, res, { actors: mockRelatedActors }, 604800)
-    expect(res.json).toHaveBeenCalledWith({ actors: mockRelatedActors })
+    expect(sendWithETag).toHaveBeenCalledWith(
+      req,
+      res,
+      { actors: mockRelatedActors, matchType: "cause" },
+      604800
+    )
+    expect(res.json).toHaveBeenCalledWith({ actors: mockRelatedActors, matchType: "cause" })
   })
 
   it("passes null birth decade when birthday is null", async () => {
@@ -160,7 +168,7 @@ describe("getRelatedActorsRoute", () => {
     mockQuery.mockResolvedValueOnce({
       rows: [{ tmdb_id: 100, cause_of_death: null, birthday: null }],
     })
-    vi.mocked(getRelatedActors).mockResolvedValueOnce([])
+    vi.mocked(getRelatedActors).mockResolvedValueOnce({ actors: [], matchType: "none" })
 
     await getRelatedActorsRoute(req, res)
 
@@ -174,13 +182,13 @@ describe("getRelatedActorsRoute", () => {
     mockQuery.mockResolvedValueOnce({
       rows: [{ tmdb_id: null, cause_of_death: "Cancer", birthday: "1950-01-01" }],
     })
-    vi.mocked(getRelatedActors).mockResolvedValueOnce([])
+    vi.mocked(getRelatedActors).mockResolvedValueOnce({ actors: [], matchType: "none" })
 
     await getRelatedActorsRoute(req, res)
 
     // Should pass actorId (42) for self-exclusion, not tmdb_id
     expect(getRelatedActors).toHaveBeenCalledWith(42, "Cancer", 1950)
-    expect(res.json).toHaveBeenCalledWith({ actors: [] })
+    expect(res.json).toHaveBeenCalledWith({ actors: [], matchType: "none" })
   })
 
   it("computes birth decade correctly", async () => {
@@ -190,7 +198,7 @@ describe("getRelatedActorsRoute", () => {
     mockQuery.mockResolvedValueOnce({
       rows: [{ tmdb_id: 100, cause_of_death: null, birthday: "1978-12-31" }],
     })
-    vi.mocked(getRelatedActors).mockResolvedValueOnce([])
+    vi.mocked(getRelatedActors).mockResolvedValueOnce({ actors: [], matchType: "none" })
 
     await getRelatedActorsRoute(req, res)
 
@@ -205,7 +213,7 @@ describe("getRelatedActorsRoute", () => {
     mockQuery.mockResolvedValueOnce({
       rows: [{ tmdb_id: 100, cause_of_death: "Cancer", birthday: new Date("1945-06-15") }],
     })
-    vi.mocked(getRelatedActors).mockResolvedValueOnce([])
+    vi.mocked(getRelatedActors).mockResolvedValueOnce({ actors: [], matchType: "none" })
 
     await getRelatedActorsRoute(req, res)
 
@@ -228,6 +236,7 @@ describe("getRelatedActorsRoute", () => {
           birthday: "1950-05-01",
         },
       ],
+      matchType: "cause" as const,
     }
     vi.mocked(getCached).mockResolvedValueOnce(cachedData)
 
@@ -256,11 +265,18 @@ describe("getRelatedActorsRoute", () => {
     mockQuery.mockResolvedValueOnce({
       rows: [{ tmdb_id: 100, cause_of_death: "Cancer", birthday: "1950-01-01" }],
     })
-    vi.mocked(getRelatedActors).mockResolvedValueOnce(mockRelated)
+    vi.mocked(getRelatedActors).mockResolvedValueOnce({
+      actors: mockRelated,
+      matchType: "cause",
+    })
 
     await getRelatedActorsRoute(req, res)
 
-    expect(setCached).toHaveBeenCalledWith(expect.any(String), { actors: mockRelated }, 604800)
+    expect(setCached).toHaveBeenCalledWith(
+      expect.any(String),
+      { actors: mockRelated, matchType: "cause" },
+      604800
+    )
   })
 
   it("does not cache empty results and uses short HTTP TTL", async () => {
@@ -270,13 +286,13 @@ describe("getRelatedActorsRoute", () => {
     mockQuery.mockResolvedValueOnce({
       rows: [{ tmdb_id: 100, cause_of_death: "Cancer", birthday: "1950-01-01" }],
     })
-    vi.mocked(getRelatedActors).mockResolvedValueOnce([])
+    vi.mocked(getRelatedActors).mockResolvedValueOnce({ actors: [], matchType: "none" })
 
     await getRelatedActorsRoute(req, res)
 
     expect(setCached).not.toHaveBeenCalled()
-    expect(sendWithETag).toHaveBeenCalledWith(req, res, { actors: [] }, 300)
-    expect(res.json).toHaveBeenCalledWith({ actors: [] })
+    expect(sendWithETag).toHaveBeenCalledWith(req, res, { actors: [], matchType: "none" }, 300)
+    expect(res.json).toHaveBeenCalledWith({ actors: [], matchType: "none" })
   })
 
   it("returns 500 on database error", async () => {

@@ -514,7 +514,7 @@ export default function ActorPage() {
           <div className="mt-6">
             <RelatedContent
               title={
-                data.deathInfo?.causeOfDeath
+                relatedActors.data.matchType === "cause" && data.deathInfo?.causeOfDeath
                   ? `Also died of ${toTitleCase(data.deathInfo.causeOfDeath)}`
                   : "Similar Era Actors"
               }
