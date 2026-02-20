@@ -1022,40 +1022,51 @@ export async function findPersonByName(
  * Matches by exact primaryName (case-sensitive). If birthYear is provided
  * for a lookup, requires ±1 year match.
  *
- * Returns Map keyed by name. For duplicate names, the first match with
- * the closest birth year is kept.
+ * Each lookup includes a unique key (e.g., actor database ID) to handle
+ * duplicate names correctly. Two actors named "John Smith" with different
+ * birth years will be matched independently.
+ *
+ * Returns Map keyed by the caller-provided key.
  */
 export async function findPersonsByNames(
-  lookups: Array<{ name: string; birthYear: number | null }>
+  lookups: Array<{ key: string; name: string; birthYear: number | null }>
 ): Promise<Map<string, ImdbPerson>> {
   if (lookups.length === 0) return new Map()
 
-  // Build lookup index: name -> birthYear (for matching)
-  const lookupMap = new Map<string, number | null>()
-  for (const { name, birthYear } of lookups) {
-    lookupMap.set(name, birthYear)
+  // Build lookup index: name -> array of {key, birthYear} entries
+  // Multiple actors can share a name but have different birth years
+  const lookupMap = new Map<string, Array<{ key: string; birthYear: number | null }>>()
+  for (const { key, name, birthYear } of lookups) {
+    const existing = lookupMap.get(name) || []
+    existing.push({ key, birthYear })
+    lookupMap.set(name, existing)
   }
 
   const filePath = await ensureFileDownloaded("name.basics.tsv.gz")
 
+  // Track which keys have been matched to avoid duplicate processing
+  const matchedKeys = new Set<string>()
   const results = new Map<string, ImdbPerson>()
 
   const matches = await parseTsvGzFiltered<ImdbPerson>(
     filePath,
     (columns, headers) => {
       const primaryName = columns[headers.indexOf("primaryName")]
-      if (!lookupMap.has(primaryName)) return false
+      const entries = lookupMap.get(primaryName)
+      if (!entries) return false
 
-      // Already found a match for this name — skip duplicates
-      if (results.has(primaryName)) return false
+      const imdbBirthYear = parseNullableInt(columns[headers.indexOf("birthYear")])
 
-      const expectedBirthYear = lookupMap.get(primaryName)!
-      if (expectedBirthYear !== null) {
-        const imdbBirthYear = parseNullableInt(columns[headers.indexOf("birthYear")])
-        if (imdbBirthYear === null) return false
-        if (Math.abs(imdbBirthYear - expectedBirthYear) > 1) return false
+      // Check if this IMDb row matches any unmatched lookup entry
+      for (const entry of entries) {
+        if (matchedKeys.has(entry.key)) continue
+        if (entry.birthYear !== null) {
+          if (imdbBirthYear === null) continue
+          if (Math.abs(imdbBirthYear - entry.birthYear) > 1) continue
+        }
+        return true
       }
-      return true
+      return false
     },
     (columns, headers) => {
       const person: ImdbPerson = {
@@ -1067,7 +1078,20 @@ export async function findPersonsByNames(
           parseNullable(columns[headers.indexOf("primaryProfession")])?.split(",") || [],
         knownForTitles: parseNullable(columns[headers.indexOf("knownForTitles")])?.split(",") || [],
       }
-      results.set(person.primaryName, person)
+
+      // Assign this person to the first matching unmatched entry
+      const entries = lookupMap.get(person.primaryName) || []
+      for (const entry of entries) {
+        if (matchedKeys.has(entry.key)) continue
+        if (entry.birthYear !== null) {
+          if (person.birthYear === null) continue
+          if (Math.abs(person.birthYear - entry.birthYear) > 1) continue
+        }
+        matchedKeys.add(entry.key)
+        results.set(entry.key, person)
+        break
+      }
+
       return person
     },
     { progressLabel: "names" }

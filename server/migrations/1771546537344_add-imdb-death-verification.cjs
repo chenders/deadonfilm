@@ -38,6 +38,13 @@ exports.up = (pgm) => {
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.down = (pgm) => {
+  // Convert new values back to 'unverified' before restoring the original constraint
+  pgm.sql(`
+    UPDATE actors
+    SET deathday_confidence = 'unverified'
+    WHERE deathday_confidence IN ('imdb_verified', 'suspicious')
+  `)
+
   // Drop updated constraint
   pgm.sql(`ALTER TABLE actors DROP CONSTRAINT IF EXISTS actors_deathday_confidence_check`)
 

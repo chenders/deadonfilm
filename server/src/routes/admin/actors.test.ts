@@ -194,6 +194,48 @@ describe("admin actors routes", () => {
       expect(futureIssue).toBeDefined()
       expect(futureIssue.severity).toBe("error")
     })
+
+    it("should flag suspicious confidence as error severity", async () => {
+      const suspiciousActor = {
+        ...mockActor,
+        deathday_confidence: "suspicious",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [suspiciousActor] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+
+      const res = await request(app).get("/admin/api/actors/123")
+
+      expect(res.status).toBe(200)
+      const issue = res.body.dataQualityIssues.find(
+        (i: { field: string }) => i.field === "deathday"
+      )
+      expect(issue).toBeDefined()
+      expect(issue.issue).toBe("Death date confidence: suspicious")
+      expect(issue.severity).toBe("error")
+    })
+
+    it("should not flag imdb_verified confidence as a data quality issue", async () => {
+      const imdbVerifiedActor = {
+        ...mockActor,
+        deathday_confidence: "imdb_verified",
+      }
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [imdbVerifiedActor] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+
+      const res = await request(app).get("/admin/api/actors/123")
+
+      expect(res.status).toBe(200)
+      const deathdayIssue = res.body.dataQualityIssues.find(
+        (i: { field: string }) => i.field === "deathday"
+      )
+      expect(deathdayIssue).toBeUndefined()
+    })
   })
 
   describe("GET /admin/api/actors/:id/history/:field", () => {

@@ -48,15 +48,17 @@ async function run(options: {
       FROM actors
       WHERE deathday IS NOT NULL
     `
+    const params: unknown[] = []
     if (options.unverifiedOnly) {
       query += ` AND (deathday_confidence = 'unverified' OR deathday_confidence IS NULL)`
     }
     query += ` ORDER BY id`
     if (options.limit) {
-      query += ` LIMIT ${options.limit}`
+      params.push(options.limit)
+      query += ` LIMIT $${params.length}`
     }
 
-    const { rows: actors } = await pool.query<ActorRow>(query)
+    const { rows: actors } = await pool.query<ActorRow>(query, params)
     console.log(`Found ${actors.length} deceased actors to validate`)
 
     if (actors.length === 0) {
@@ -64,8 +66,9 @@ async function run(options: {
       return
     }
 
-    // 2. Build lookups for batch IMDb search
+    // 2. Build lookups for batch IMDb search (keyed by actor ID for duplicate name safety)
     const lookups = actors.map((a) => ({
+      key: String(a.id),
       name: a.name,
       birthYear: a.birthday ? new Date(a.birthday).getFullYear() : null,
     }))
@@ -85,7 +88,7 @@ async function run(options: {
 
     for (const actor of actors) {
       const tmdbDeathYear = new Date(actor.deathday).getFullYear()
-      const imdbPerson = imdbResults.get(actor.name)
+      const imdbPerson = imdbResults.get(String(actor.id))
 
       // Build IMDb verification result
       const imdbVerif = imdbPerson
@@ -97,11 +100,14 @@ async function run(options: {
           }
         : { found: false, hasDeathYear: false, imdbDeathYear: null, yearMatches: false }
 
-      // Preserve existing Wikidata verification
-      const wikidataConfidence = (actor.deathday_confidence ?? "unverified") as
-        | "verified"
-        | "unverified"
-        | "conflicting"
+      // Map existing confidence to Wikidata-compatible values.
+      // imdb_verified and suspicious are IMDb-only values — treat as unverified for Wikidata input.
+      let wikidataConfidence: "verified" | "unverified" | "conflicting" = "unverified"
+      if (actor.deathday_confidence === "verified") {
+        wikidataConfidence = "verified"
+      } else if (actor.deathday_confidence === "conflicting") {
+        wikidataConfidence = "conflicting"
+      }
       const hasWikidata = actor.deathday_verification_source?.includes("wikidata") ?? false
 
       const { confidence, source } = combineVerification(
