@@ -24,14 +24,14 @@ interface DeathDetailsContentProps {
   slug: string
   /** Pre-fetched data — if provided, skips internal useActorDeathDetails fetch */
   data?: DeathDetailsResponse
-  /** If true, hides the "What We Know" heading (parent already shows it) */
-  hideOfficialHeading?: boolean
+  /** If true, hides the official narrative section (parent already renders it) */
+  hideOfficialNarrative?: boolean
 }
 
 export default function DeathDetailsContent({
   slug,
   data: externalData,
-  hideOfficialHeading,
+  hideOfficialNarrative,
 }: DeathDetailsContentProps) {
   const { data: fetchedData, isLoading, error } = useActorDeathDetails(externalData ? "" : slug)
 
@@ -67,11 +67,9 @@ export default function DeathDetailsContent({
       <LowConfidenceWarning level={circumstances.confidence} />
 
       {/* What We Know */}
-      {circumstances.official && (
+      {circumstances.official && !hideOfficialNarrative && (
         <section data-testid="official-section">
-          {!hideOfficialHeading && (
-            <h3 className="mb-2 font-display text-base text-brown-dark">What We Know</h3>
-          )}
+          <h3 className="mb-2 font-display text-base text-brown-dark">What We Know</h3>
           <LinkedText
             text={circumstances.official}
             links={getFieldLinks(entityLinks, "circumstances")}
@@ -85,6 +83,17 @@ export default function DeathDetailsContent({
           <SourceList sources={sources.circumstances} title="Sources" />
         </section>
       )}
+
+      {/* Confidence + sources for official narrative (when parent renders the text) */}
+      {circumstances.official &&
+        hideOfficialNarrative &&
+        (circumstances.confidence ||
+          (sources.circumstances && sources.circumstances.length > 0)) && (
+          <section data-testid="official-meta-section">
+            {circumstances.confidence && <ConfidenceIndicator level={circumstances.confidence} />}
+            <SourceList sources={sources.circumstances} title="Sources" />
+          </section>
+        )}
 
       {/* Alternative Accounts */}
       {circumstances.rumored && (
