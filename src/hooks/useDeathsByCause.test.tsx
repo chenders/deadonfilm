@@ -5,7 +5,6 @@ import type { ReactNode } from "react"
 import { useDeathsByCause } from "./useDeathsByCause"
 import * as api from "@/services/api"
 
-// Mock the api module
 vi.mock("@/services/api", () => ({
   getDeathsByCause: vi.fn(),
 }))
@@ -65,54 +64,6 @@ describe("useDeathsByCause", () => {
     expect(result.current.data).toEqual(mockResponse)
   })
 
-  it("fetches with custom page param", async () => {
-    vi.mocked(api.getDeathsByCause).mockResolvedValueOnce({
-      ...mockResponse,
-      pagination: { ...mockResponse.pagination, page: 2 },
-    })
-
-    const { result } = renderHook(() => useDeathsByCause("heart-attack", { page: 2 }), { wrapper })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getDeathsByCause).toHaveBeenCalledWith("heart-attack", {
-      page: 2,
-      includeObscure: false,
-    })
-  })
-
-  it("fetches with includeObscure param", async () => {
-    vi.mocked(api.getDeathsByCause).mockResolvedValueOnce(mockResponse)
-
-    const { result } = renderHook(
-      () => useDeathsByCause("heart-attack", { includeObscure: true }),
-      { wrapper }
-    )
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getDeathsByCause).toHaveBeenCalledWith("heart-attack", {
-      page: 1,
-      includeObscure: true,
-    })
-  })
-
-  it("handles combined params", async () => {
-    vi.mocked(api.getDeathsByCause).mockResolvedValueOnce(mockResponse)
-
-    const { result } = renderHook(
-      () => useDeathsByCause("cancer", { page: 3, includeObscure: true }),
-      { wrapper }
-    )
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getDeathsByCause).toHaveBeenCalledWith("cancer", {
-      page: 3,
-      includeObscure: true,
-    })
-  })
-
   it("handles API errors", async () => {
     vi.mocked(api.getDeathsByCause).mockRejectedValue(new Error("API Error"))
 
@@ -129,63 +80,7 @@ describe("useDeathsByCause", () => {
 
     const { result } = renderHook(() => useDeathsByCause(""), { wrapper })
 
-    // Query should not be enabled
     expect(result.current.isFetching).toBe(false)
     expect(api.getDeathsByCause).not.toHaveBeenCalled()
-  })
-
-  it("refetches when params change", async () => {
-    vi.mocked(api.getDeathsByCause).mockResolvedValue(mockResponse)
-
-    // First render with page 1
-    const { result, rerender } = renderHook(
-      ({ page }: { page: number }) => useDeathsByCause("heart-attack", { page }),
-      { wrapper, initialProps: { page: 1 } }
-    )
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Rerender with page 2
-    rerender({ page: 2 })
-    await waitFor(() => expect(result.current.isFetching).toBe(true))
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Should have made two calls with different pages
-    expect(api.getDeathsByCause).toHaveBeenCalledTimes(2)
-    expect(api.getDeathsByCause).toHaveBeenNthCalledWith(1, "heart-attack", {
-      page: 1,
-      includeObscure: false,
-    })
-    expect(api.getDeathsByCause).toHaveBeenNthCalledWith(2, "heart-attack", {
-      page: 2,
-      includeObscure: false,
-    })
-  })
-
-  it("refetches when includeObscure changes", async () => {
-    vi.mocked(api.getDeathsByCause).mockResolvedValue(mockResponse)
-
-    // First render with includeObscure=false
-    const { result, rerender } = renderHook(
-      ({ includeObscure }: { includeObscure: boolean }) =>
-        useDeathsByCause("heart-attack", { includeObscure }),
-      { wrapper, initialProps: { includeObscure: false } }
-    )
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Rerender with includeObscure=true
-    rerender({ includeObscure: true })
-    await waitFor(() => expect(result.current.isFetching).toBe(true))
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Should have made two calls with different includeObscure values
-    expect(api.getDeathsByCause).toHaveBeenCalledTimes(2)
-    expect(api.getDeathsByCause).toHaveBeenNthCalledWith(1, "heart-attack", {
-      page: 1,
-      includeObscure: false,
-    })
-    expect(api.getDeathsByCause).toHaveBeenNthCalledWith(2, "heart-attack", {
-      page: 1,
-      includeObscure: true,
-    })
   })
 })

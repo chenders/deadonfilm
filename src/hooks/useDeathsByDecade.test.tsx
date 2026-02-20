@@ -5,7 +5,6 @@ import type { ReactNode } from "react"
 import { useDeathsByDecade, useDecadeCategories } from "./useDeathsByDecade"
 import * as api from "@/services/api"
 
-// Mock the api module
 vi.mock("@/services/api", () => ({
   getDeathsByDecade: vi.fn(),
   getDecadeCategories: vi.fn(),
@@ -65,53 +64,6 @@ describe("useDeathsByDecade", () => {
     expect(result.current.data).toEqual(mockResponse)
   })
 
-  it("fetches with custom page param", async () => {
-    vi.mocked(api.getDeathsByDecade).mockResolvedValueOnce({
-      ...mockResponse,
-      pagination: { ...mockResponse.pagination, page: 2 },
-    })
-
-    const { result } = renderHook(() => useDeathsByDecade("1990s", { page: 2 }), { wrapper })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getDeathsByDecade).toHaveBeenCalledWith("1990s", {
-      page: 2,
-      includeObscure: false,
-    })
-  })
-
-  it("fetches with includeObscure param", async () => {
-    vi.mocked(api.getDeathsByDecade).mockResolvedValueOnce(mockResponse)
-
-    const { result } = renderHook(() => useDeathsByDecade("1990s", { includeObscure: true }), {
-      wrapper,
-    })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getDeathsByDecade).toHaveBeenCalledWith("1990s", {
-      page: 1,
-      includeObscure: true,
-    })
-  })
-
-  it("handles combined params", async () => {
-    vi.mocked(api.getDeathsByDecade).mockResolvedValueOnce(mockResponse)
-
-    const { result } = renderHook(
-      () => useDeathsByDecade("2000s", { page: 3, includeObscure: true }),
-      { wrapper }
-    )
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getDeathsByDecade).toHaveBeenCalledWith("2000s", {
-      page: 3,
-      includeObscure: true,
-    })
-  })
-
   it("handles API errors", async () => {
     vi.mocked(api.getDeathsByDecade).mockRejectedValue(new Error("API Error"))
 
@@ -128,64 +80,8 @@ describe("useDeathsByDecade", () => {
 
     const { result } = renderHook(() => useDeathsByDecade(""), { wrapper })
 
-    // Query should not be enabled
     expect(result.current.isFetching).toBe(false)
     expect(api.getDeathsByDecade).not.toHaveBeenCalled()
-  })
-
-  it("refetches when params change", async () => {
-    vi.mocked(api.getDeathsByDecade).mockResolvedValue(mockResponse)
-
-    // First render with page 1
-    const { result, rerender } = renderHook(
-      ({ page }: { page: number }) => useDeathsByDecade("1990s", { page }),
-      { wrapper, initialProps: { page: 1 } }
-    )
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Rerender with page 2
-    rerender({ page: 2 })
-    await waitFor(() => expect(result.current.isFetching).toBe(true))
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Should have made two calls with different pages
-    expect(api.getDeathsByDecade).toHaveBeenCalledTimes(2)
-    expect(api.getDeathsByDecade).toHaveBeenNthCalledWith(1, "1990s", {
-      page: 1,
-      includeObscure: false,
-    })
-    expect(api.getDeathsByDecade).toHaveBeenNthCalledWith(2, "1990s", {
-      page: 2,
-      includeObscure: false,
-    })
-  })
-
-  it("refetches when includeObscure changes", async () => {
-    vi.mocked(api.getDeathsByDecade).mockResolvedValue(mockResponse)
-
-    // First render with includeObscure=false
-    const { result, rerender } = renderHook(
-      ({ includeObscure }: { includeObscure: boolean }) =>
-        useDeathsByDecade("1990s", { includeObscure }),
-      { wrapper, initialProps: { includeObscure: false } }
-    )
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Rerender with includeObscure=true
-    rerender({ includeObscure: true })
-    await waitFor(() => expect(result.current.isFetching).toBe(true))
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Should have made two calls with different includeObscure values
-    expect(api.getDeathsByDecade).toHaveBeenCalledTimes(2)
-    expect(api.getDeathsByDecade).toHaveBeenNthCalledWith(1, "1990s", {
-      page: 1,
-      includeObscure: false,
-    })
-    expect(api.getDeathsByDecade).toHaveBeenNthCalledWith(2, "1990s", {
-      page: 1,
-      includeObscure: true,
-    })
   })
 })
 

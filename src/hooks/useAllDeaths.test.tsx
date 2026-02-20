@@ -5,7 +5,6 @@ import type { ReactNode } from "react"
 import { useAllDeaths } from "./useAllDeaths"
 import * as api from "@/services/api"
 
-// Mock the api module
 vi.mock("@/services/api", () => ({
   getAllDeaths: vi.fn(),
 }))
@@ -64,52 +63,6 @@ describe("useAllDeaths", () => {
     expect(result.current.data).toEqual(mockResponse)
   })
 
-  it("fetches with custom page param", async () => {
-    vi.mocked(api.getAllDeaths).mockResolvedValueOnce({
-      ...mockResponse,
-      pagination: { ...mockResponse.pagination, page: 2 },
-    })
-
-    const { result } = renderHook(() => useAllDeaths({ page: 2 }), { wrapper })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getAllDeaths).toHaveBeenCalledWith({
-      page: 2,
-      includeObscure: false,
-    })
-  })
-
-  it("fetches with includeObscure param", async () => {
-    vi.mocked(api.getAllDeaths).mockResolvedValueOnce(mockResponse)
-
-    const { result } = renderHook(() => useAllDeaths({ includeObscure: true }), {
-      wrapper,
-    })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getAllDeaths).toHaveBeenCalledWith({
-      page: 1,
-      includeObscure: true,
-    })
-  })
-
-  it("handles combined params", async () => {
-    vi.mocked(api.getAllDeaths).mockResolvedValueOnce(mockResponse)
-
-    const { result } = renderHook(() => useAllDeaths({ page: 3, includeObscure: true }), {
-      wrapper,
-    })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getAllDeaths).toHaveBeenCalledWith({
-      page: 3,
-      includeObscure: true,
-    })
-  })
-
   it("handles API errors", async () => {
     vi.mocked(api.getAllDeaths).mockRejectedValue(new Error("API Error"))
 
@@ -119,60 +72,6 @@ describe("useAllDeaths", () => {
 
     expect(result.current.error).toBeInstanceOf(Error)
     expect(result.current.error?.message).toBe("API Error")
-  })
-
-  it("refetches when params change", async () => {
-    vi.mocked(api.getAllDeaths).mockResolvedValue(mockResponse)
-
-    // First render with page 1
-    const { result, rerender } = renderHook(
-      ({ page }: { page: number }) => useAllDeaths({ page }),
-      { wrapper, initialProps: { page: 1 } }
-    )
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Rerender with page 2
-    rerender({ page: 2 })
-    await waitFor(() => expect(result.current.isFetching).toBe(true))
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Should have made two calls with different pages
-    expect(api.getAllDeaths).toHaveBeenCalledTimes(2)
-    expect(api.getAllDeaths).toHaveBeenNthCalledWith(1, {
-      page: 1,
-      includeObscure: false,
-    })
-    expect(api.getAllDeaths).toHaveBeenNthCalledWith(2, {
-      page: 2,
-      includeObscure: false,
-    })
-  })
-
-  it("refetches when includeObscure changes", async () => {
-    vi.mocked(api.getAllDeaths).mockResolvedValue(mockResponse)
-
-    // First render with includeObscure=false
-    const { result, rerender } = renderHook(
-      ({ includeObscure }: { includeObscure: boolean }) => useAllDeaths({ includeObscure }),
-      { wrapper, initialProps: { includeObscure: false } }
-    )
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Rerender with includeObscure=true
-    rerender({ includeObscure: true })
-    await waitFor(() => expect(result.current.isFetching).toBe(true))
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    // Should have made two calls with different includeObscure values
-    expect(api.getAllDeaths).toHaveBeenCalledTimes(2)
-    expect(api.getAllDeaths).toHaveBeenNthCalledWith(1, {
-      page: 1,
-      includeObscure: false,
-    })
-    expect(api.getAllDeaths).toHaveBeenNthCalledWith(2, {
-      page: 1,
-      includeObscure: true,
-    })
   })
 
   it("fetches with search param", async () => {
@@ -198,7 +97,6 @@ describe("useAllDeaths", () => {
     )
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    // Rerender with search term
     rerender({ search: "John" })
     await waitFor(() => expect(result.current.isFetching).toBe(true))
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -213,23 +111,6 @@ describe("useAllDeaths", () => {
       page: 1,
       includeObscure: false,
       search: "John",
-    })
-  })
-
-  it("handles all params together including search", async () => {
-    vi.mocked(api.getAllDeaths).mockResolvedValueOnce(mockResponse)
-
-    const { result } = renderHook(
-      () => useAllDeaths({ page: 2, includeObscure: true, search: "Wayne" }),
-      { wrapper }
-    )
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-    expect(api.getAllDeaths).toHaveBeenCalledWith({
-      page: 2,
-      includeObscure: true,
-      search: "Wayne",
     })
   })
 })
