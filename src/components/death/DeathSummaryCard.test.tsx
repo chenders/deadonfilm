@@ -13,14 +13,14 @@ vi.mock("@/hooks/useDeathDetails", () => ({
 // Mock DeathDetailsContent to avoid deep component tree
 vi.mock("./DeathDetailsContent", () => ({
   default: ({
-    hideOfficialHeading,
+    hideOfficialNarrative,
   }: {
     slug: string
     data?: unknown
-    hideOfficialHeading?: boolean
+    hideOfficialNarrative?: boolean
   }) => (
     <div data-testid="death-details-content">
-      {hideOfficialHeading && <span data-testid="hide-heading-flag" />}
+      {hideOfficialNarrative && <span data-testid="hide-heading-flag" />}
     </div>
   ),
 }))
@@ -121,7 +121,7 @@ describe("DeathSummaryCard", () => {
     expect(screen.getByTestId("death-details-content")).toBeInTheDocument()
   })
 
-  it("passes hideOfficialHeading to DeathDetailsContent", () => {
+  it("passes hideOfficialNarrative to DeathDetailsContent", () => {
     mockUseActorDeathDetails.mockReturnValue({ data: fullData, isLoading: false, error: null })
     renderWithRouter(<DeathSummaryCard {...defaultProps} />)
 

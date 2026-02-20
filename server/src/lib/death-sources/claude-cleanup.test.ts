@@ -78,7 +78,9 @@ describe("claude-cleanup", () => {
       const prompt = buildCleanupPrompt(mockActor, mockSources)
 
       expect(prompt).toContain("FOR NATURAL DEATHS")
-      expect(prompt).toContain("Lead with medical history")
+      expect(prompt).toContain(
+        "Lead with the medical conditions that caused or contributed to the death"
+      )
     })
 
     it("includes guidance for overdose deaths", () => {
@@ -109,6 +111,13 @@ describe("claude-cleanup", () => {
 
       expect(prompt).toContain("tone of a local news site")
       expect(prompt).toContain("tone similar to a local news site")
+    })
+
+    it("includes boundary instruction to keep death narrative focused", () => {
+      const prompt = buildCleanupPrompt(mockActor, mockSources)
+
+      expect(prompt).toContain("alongside a separate biography section")
+      expect(prompt).toContain("do NOT retell the full biographical history")
     })
 
     it("includes instruction to vary opening sentences", () => {

@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { detectAppearanceType, type ImdbMovieBasics } from "./imdb.js"
+import {
+  detectAppearanceType,
+  combineVerification,
+  type ImdbMovieBasics,
+  type ImdbDeathVerification,
+} from "./imdb.js"
 
 /**
  * IMDb Module Tests
@@ -726,5 +731,161 @@ describe("NormalizedImdbMovieCastMember structure", () => {
 
     expect(castMember.appearanceType).toBe("regular")
     expect(castMember.deathYear).toBeNull()
+  })
+})
+
+describe("combineVerification", () => {
+  /**
+   * Tests for the combineVerification() function that merges Wikidata and IMDb
+   * death date verification results into a final confidence + source.
+   *
+   * Uses the production function imported from ./imdb.js.
+   */
+
+  const wikidataVerified = { confidence: "verified" as const, wikidataDeathDate: "2024-01-15" }
+  const wikidataUnverified = { confidence: "unverified" as const, wikidataDeathDate: null }
+  const wikidataConflicting = {
+    confidence: "conflicting" as const,
+    wikidataDeathDate: "2023-06-01",
+  }
+
+  const imdbYearMatches: ImdbDeathVerification = {
+    found: true,
+    hasDeathYear: true,
+    imdbDeathYear: 2024,
+    yearMatches: true,
+  }
+  const imdbAlive: ImdbDeathVerification = {
+    found: true,
+    hasDeathYear: false,
+    imdbDeathYear: null,
+    yearMatches: false,
+  }
+  const imdbNotFound: ImdbDeathVerification = {
+    found: false,
+    hasDeathYear: false,
+    imdbDeathYear: null,
+    yearMatches: false,
+  }
+  const imdbYearMismatch: ImdbDeathVerification = {
+    found: true,
+    hasDeathYear: true,
+    imdbDeathYear: 2023,
+    yearMatches: false,
+  }
+
+  describe("wikidata verified", () => {
+    it("returns verified with wikidata,imdb when IMDb year also matches", () => {
+      const result = combineVerification(wikidataVerified, imdbYearMatches)
+      expect(result.confidence).toBe("verified")
+      expect(result.source).toBe("wikidata,imdb")
+    })
+
+    it("returns verified with wikidata when IMDb says alive", () => {
+      const result = combineVerification(wikidataVerified, imdbAlive)
+      expect(result.confidence).toBe("verified")
+      expect(result.source).toBe("wikidata")
+    })
+
+    it("returns verified with wikidata when not found in IMDb", () => {
+      const result = combineVerification(wikidataVerified, imdbNotFound)
+      expect(result.confidence).toBe("verified")
+      expect(result.source).toBe("wikidata")
+    })
+
+    it("returns verified with wikidata when IMDb year mismatches", () => {
+      const result = combineVerification(wikidataVerified, imdbYearMismatch)
+      expect(result.confidence).toBe("verified")
+      expect(result.source).toBe("wikidata")
+    })
+  })
+
+  describe("wikidata unverified", () => {
+    it("returns imdb_verified when IMDb year matches", () => {
+      const result = combineVerification(wikidataUnverified, imdbYearMatches)
+      expect(result.confidence).toBe("imdb_verified")
+      expect(result.source).toBe("imdb")
+    })
+
+    it("returns suspicious when IMDb says alive (found but no deathYear)", () => {
+      const result = combineVerification(wikidataUnverified, imdbAlive)
+      expect(result.confidence).toBe("suspicious")
+      expect(result.source).toBe("imdb")
+    })
+
+    it("returns unverified when not found in IMDb at all", () => {
+      const result = combineVerification(wikidataUnverified, imdbNotFound)
+      expect(result.confidence).toBe("unverified")
+      expect(result.source).toBeNull()
+    })
+
+    it("returns unverified when IMDb has mismatched year (not a match)", () => {
+      // IMDb found person with death year but it doesn't match TMDB — not a confirmation
+      const result = combineVerification(wikidataUnverified, imdbYearMismatch)
+      expect(result.confidence).toBe("unverified")
+      expect(result.source).toBeNull()
+    })
+  })
+
+  describe("wikidata conflicting", () => {
+    it("returns conflicting with wikidata,imdb when IMDb year matches", () => {
+      const result = combineVerification(wikidataConflicting, imdbYearMatches)
+      expect(result.confidence).toBe("conflicting")
+      expect(result.source).toBe("wikidata,imdb")
+    })
+
+    it("returns conflicting with wikidata when IMDb says alive", () => {
+      const result = combineVerification(wikidataConflicting, imdbAlive)
+      expect(result.confidence).toBe("conflicting")
+      expect(result.source).toBe("wikidata")
+    })
+
+    it("returns conflicting with wikidata when not found in IMDb", () => {
+      const result = combineVerification(wikidataConflicting, imdbNotFound)
+      expect(result.confidence).toBe("conflicting")
+      expect(result.source).toBe("wikidata")
+    })
+
+    it("returns conflicting with wikidata when IMDb has mismatched year", () => {
+      const result = combineVerification(wikidataConflicting, imdbYearMismatch)
+      expect(result.confidence).toBe("conflicting")
+      expect(result.source).toBe("wikidata")
+    })
+  })
+})
+
+describe("ImdbDeathVerification structure", () => {
+  it("represents a person found with matching death year", () => {
+    const result: ImdbDeathVerification = {
+      found: true,
+      hasDeathYear: true,
+      imdbDeathYear: 2024,
+      yearMatches: true,
+    }
+    expect(result.found).toBe(true)
+    expect(result.hasDeathYear).toBe(true)
+    expect(result.yearMatches).toBe(true)
+  })
+
+  it("represents a person found but alive (no deathYear)", () => {
+    const result: ImdbDeathVerification = {
+      found: true,
+      hasDeathYear: false,
+      imdbDeathYear: null,
+      yearMatches: false,
+    }
+    expect(result.found).toBe(true)
+    expect(result.hasDeathYear).toBe(false)
+    expect(result.imdbDeathYear).toBeNull()
+  })
+
+  it("represents a person not found in IMDb", () => {
+    const result: ImdbDeathVerification = {
+      found: false,
+      hasDeathYear: false,
+      imdbDeathYear: null,
+      yearMatches: false,
+    }
+    expect(result.found).toBe(false)
   })
 })
