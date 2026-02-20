@@ -120,6 +120,9 @@ jobs:
 
           echo "=== Deployment successful ==="
 
+      - name: Update source on server
+        run: git -C /opt/deadonfilm pull origin main
+
       - name: Cleanup old images
         run: docker image prune -f --filter "until=24h"
         continue-on-error: true
