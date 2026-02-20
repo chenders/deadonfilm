@@ -1,8 +1,9 @@
 /**
  * Britannica biography source.
  *
- * Searches for actor biographies on britannica.com via DuckDuckGo site-restricted
- * search, fetches the article, and cleans it through the content cleaning pipeline.
+ * Searches for actor biographies on britannica.com via web search (Google CSE
+ * with DDG fallback), fetches the article with archive fallback on block,
+ * and cleans it through the content cleaning pipeline.
  *
  * Reliability tier: TIER_1_NEWS (0.95) - Britannica is an authoritative encyclopedia.
  */
@@ -12,7 +13,8 @@ import type { ActorForBiography, RawBiographySourceData } from "../types.js"
 import { BiographySourceType } from "../types.js"
 import { ReliabilityTier } from "../../death-sources/types.js"
 import { mechanicalPreClean } from "../content-cleaner.js"
-import { searchDuckDuckGo } from "../../shared/duckduckgo-search.js"
+import { webSearch } from "../../shared/duckduckgo-search.js"
+import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
 
 const MIN_CONTENT_LENGTH = 200
 
@@ -29,20 +31,20 @@ export class BritannicaBiographySource extends BaseBiographySource {
   protected async performLookup(actor: ActorForBiography): Promise<BiographyLookupResult> {
     const startTime = Date.now()
 
-    // Step 1: Search DuckDuckGo for britannica.com pages about this actor
+    // Step 1: Search for britannica.com pages about this actor (Google CSE → DDG fallback)
     const query = `site:britannica.com "${actor.name}" biography`
-    const ddgResult = await searchDuckDuckGo({
+    const searchResult = await webSearch({
       query,
       domainFilter: "britannica.com",
     })
-    const urls = ddgResult.urls
+    const urls = searchResult.urls
 
-    if (ddgResult.error) {
+    if (searchResult.error) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: ddgResult.error,
+        error: searchResult.error,
       }
     }
 
@@ -51,35 +53,20 @@ export class BritannicaBiographySource extends BaseBiographySource {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: "No Britannica results found via DuckDuckGo",
+        error: "No Britannica results found via web search",
       }
     }
 
     // Step 2: Pick the best URL (prefer /biography/ paths)
     const targetUrl = this.pickBestUrl(urls)
 
-    // Step 3: Fetch the page
-    let pageHtml: string
-    try {
-      const response = await fetch(targetUrl, {
-        headers: { "User-Agent": this.userAgent },
-        signal: this.createTimeoutSignal(),
-      })
+    // Step 3: Fetch the page (with archive fallback on block)
+    const pageResult = await fetchPageWithFallbacks(targetUrl, {
+      userAgent: this.userAgent,
+      timeoutMs: this.requestTimeoutMs,
+    })
 
-      if (!response.ok) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0, {
-            url: targetUrl,
-            queryUsed: query,
-          }),
-          data: null,
-          error: `Britannica page fetch failed: HTTP ${response.status}`,
-        }
-      }
-
-      pageHtml = await response.text()
-    } catch (error) {
+    if (pageResult.error || !pageResult.content) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, {
@@ -87,9 +74,11 @@ export class BritannicaBiographySource extends BaseBiographySource {
           queryUsed: query,
         }),
         data: null,
-        error: `Britannica page fetch error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        error: `Britannica page fetch failed: ${pageResult.error || "empty content"}`,
       }
     }
+
+    const pageHtml = pageResult.content
 
     // Step 4: Clean through mechanical pre-clean pipeline
     const { text, metadata } = mechanicalPreClean(pageHtml)
@@ -113,7 +102,7 @@ export class BritannicaBiographySource extends BaseBiographySource {
     const confidence = this.calculateBiographicalConfidence(text)
 
     // Step 7: Build result
-    const articleTitle = metadata.title || `${actor.name} - Britannica`
+    const articleTitle = metadata.title || pageResult.title || `${actor.name} - Britannica`
 
     const sourceData: RawBiographySourceData = {
       sourceName: "Britannica",

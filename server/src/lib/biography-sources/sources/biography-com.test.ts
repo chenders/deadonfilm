@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
-// Mock fetch globally
+// Mock fetch globally (used by DDG search internally)
 const mockFetch = vi.fn()
 vi.stubGlobal("fetch", mockFetch)
 
@@ -10,14 +10,14 @@ vi.mock("../../death-sources/cache.js", () => ({
   setCachedQuery: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Mock searchDuckDuckGo to disable browser fallback in tests
+// Mock webSearch to use DDG-only search with browser fallback disabled in tests
 vi.mock("../../shared/duckduckgo-search.js", async () => {
   const actual = await vi.importActual<typeof import("../../shared/duckduckgo-search.js")>(
     "../../shared/duckduckgo-search.js"
   )
   return {
     ...actual,
-    searchDuckDuckGo: vi
+    webSearch: vi
       .fn()
       .mockImplementation(
         (options: import("../../shared/duckduckgo-search.js").DuckDuckGoSearchOptions) =>
@@ -25,6 +25,12 @@ vi.mock("../../shared/duckduckgo-search.js", async () => {
       ),
   }
 })
+
+// Mock fetchPageWithFallbacks for controlled page fetch responses
+const mockFetchPage = vi.fn()
+vi.mock("../../shared/fetch-page-with-fallbacks.js", () => ({
+  fetchPageWithFallbacks: (...args: unknown[]) => mockFetchPage(...args),
+}))
 
 import { BiographyComSource } from "./biography-com.js"
 import { BiographySourceType } from "../types.js"
@@ -142,10 +148,10 @@ describe("BiographyComSource", () => {
   })
 
   describe("lookup", () => {
-    it("succeeds when DuckDuckGo returns Biography.com URL and page has content", async () => {
+    it("succeeds when web search returns Biography.com URL and page has content", async () => {
       const encodedUrl = encodeURIComponent("https://www.biography.com/actors/marlon-brando")
 
-      // DuckDuckGo search response
+      // Web search response (DDG fetch internally)
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () =>
@@ -158,10 +164,12 @@ describe("BiographyComSource", () => {
           ]),
       })
 
-      // Biography.com page response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBiographyComPage(richBiographicalContent),
+      // Page fetch via fetchPageWithFallbacks mock
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBiographyComPage(richBiographicalContent),
+        title: "Marlon Brando",
+        url: "https://www.biography.com/actors/marlon-brando",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
@@ -178,7 +186,7 @@ describe("BiographyComSource", () => {
       expect(result.data!.confidence).toBeGreaterThan(0)
     })
 
-    it("returns failure when no DuckDuckGo results found", async () => {
+    it("returns failure when no web search results found", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () => `<html><body><div class="no-results">No results</div></body></html>`,
@@ -190,7 +198,7 @@ describe("BiographyComSource", () => {
       expect(result.error).toContain("No Biography.com results found")
     })
 
-    it("returns failure when DuckDuckGo results have no biography.com URLs", async () => {
+    it("returns failure when web search results have no biography.com URLs", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () =>
@@ -224,9 +232,12 @@ describe("BiographyComSource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
+      mockFetchPage.mockResolvedValueOnce({
+        content: "",
+        title: "",
+        url: "https://www.biography.com/actors/marlon-brando",
+        fetchMethod: "direct",
+        error: "HTTP 404",
       })
 
       const result = await source.lookup(testActor)
@@ -250,9 +261,11 @@ describe("BiographyComSource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => `<html><body><p>Brief text.</p></body></html>`,
+      mockFetchPage.mockResolvedValueOnce({
+        content: `<html><body><p>Brief text.</p></body></html>`,
+        title: "Marlon Brando",
+        url: "https://www.biography.com/actors/marlon-brando",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
@@ -261,7 +274,7 @@ describe("BiographyComSource", () => {
       expect(result.error).toContain("content too short")
     })
 
-    it("detects DuckDuckGo CAPTCHA (anomaly-modal)", async () => {
+    it("detects web search CAPTCHA (anomaly-modal)", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () =>
@@ -274,7 +287,7 @@ describe("BiographyComSource", () => {
       expect(result.error).toContain("CAPTCHA")
     })
 
-    it("detects DuckDuckGo CAPTCHA (bots message)", async () => {
+    it("detects web search CAPTCHA (bots message)", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () => `<html><body><p>bots use DuckDuckGo too</p></body></html>`,
@@ -301,9 +314,11 @@ describe("BiographyComSource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBiographyComPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBiographyComPage(richBiographicalContent),
+        title: "Marlon Brando",
+        url: "https://www.biography.com/actors/marlon-brando",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
@@ -333,16 +348,18 @@ describe("BiographyComSource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBiographyComPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBiographyComPage(richBiographicalContent),
+        title: "Marlon Brando",
+        url: targetUrl,
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(true)
-      // The second fetch call should be to the cleaned Biography.com URL
-      expect(mockFetch.mock.calls[1][0]).toBe(targetUrl)
+      // fetchPageWithFallbacks should be called with the cleaned Biography.com URL
+      expect(mockFetchPage.mock.calls[0][0]).toBe(targetUrl)
     })
 
     it("avoids list and category pages when multiple URLs available", async () => {
@@ -366,19 +383,21 @@ describe("BiographyComSource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBiographyComPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBiographyComPage(richBiographicalContent),
+        title: "Marlon Brando",
+        url: profileUrl,
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(true)
       // Should have fetched the profile URL, not the list URL
-      expect(mockFetch.mock.calls[1][0]).toBe(profileUrl)
+      expect(mockFetchPage.mock.calls[0][0]).toBe(profileUrl)
     })
 
-    it("handles page fetch network errors", async () => {
+    it("handles page fetch errors", async () => {
       const encodedUrl = encodeURIComponent("https://www.biography.com/actors/marlon-brando")
 
       mockFetch.mockResolvedValueOnce({
@@ -393,15 +412,21 @@ describe("BiographyComSource", () => {
           ]),
       })
 
-      mockFetch.mockRejectedValueOnce(new Error("ECONNREFUSED"))
+      mockFetchPage.mockResolvedValueOnce({
+        content: "",
+        title: "",
+        url: "https://www.biography.com/actors/marlon-brando",
+        fetchMethod: "direct",
+        error: "All fetch methods failed (direct + archive.org + archive.is)",
+      })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("ECONNREFUSED")
+      expect(result.error).toContain("page fetch failed")
     })
 
-    it("handles DuckDuckGo search HTTP errors", async () => {
+    it("handles web search HTTP errors", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 429,
@@ -410,7 +435,7 @@ describe("BiographyComSource", () => {
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("DuckDuckGo search failed")
+      expect(result.error).toContain("search failed")
     })
 
     it("calculates biographical confidence from content", async () => {
@@ -428,9 +453,11 @@ describe("BiographyComSource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildBiographyComPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildBiographyComPage(richBiographicalContent),
+        title: "Marlon Brando",
+        url: "https://www.biography.com/actors/marlon-brando",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)

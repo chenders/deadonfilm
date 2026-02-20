@@ -2,7 +2,8 @@
  * AP News biography source.
  *
  * Searches for actor profiles and biographical content on apnews.com
- * via DuckDuckGo site-restricted search, then fetches and cleans the article.
+ * via web search (Google CSE with DDG fallback), fetches with archive fallback
+ * on block, and cleans the article.
  *
  * Reliability tier: TIER_1_NEWS (0.95) - authoritative wire service.
  */
@@ -12,7 +13,8 @@ import type { ActorForBiography, RawBiographySourceData } from "../types.js"
 import { BiographySourceType } from "../types.js"
 import { ReliabilityTier } from "../../death-sources/types.js"
 import { mechanicalPreClean } from "../content-cleaner.js"
-import { searchDuckDuckGo } from "../../shared/duckduckgo-search.js"
+import { webSearch } from "../../shared/duckduckgo-search.js"
+import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
 
 const MIN_CONTENT_LENGTH = 200
 
@@ -29,20 +31,20 @@ export class APNewsBiographySource extends BaseBiographySource {
   protected async performLookup(actor: ActorForBiography): Promise<BiographyLookupResult> {
     const startTime = Date.now()
 
-    // Step 1: Search DuckDuckGo for apnews.com pages about this actor
+    // Step 1: Search for apnews.com pages about this actor (Google CSE → DDG fallback)
     const query = `site:apnews.com "${actor.name}" profile OR biography OR interview`
-    const ddgResult = await searchDuckDuckGo({
+    const searchResult = await webSearch({
       query,
       domainFilter: "apnews.com",
     })
-    const urls = ddgResult.urls
+    const urls = searchResult.urls
 
-    if (ddgResult.error) {
+    if (searchResult.error) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: ddgResult.error,
+        error: searchResult.error,
       }
     }
 
@@ -51,39 +53,24 @@ export class APNewsBiographySource extends BaseBiographySource {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: "No AP News results found via DuckDuckGo",
+        error: "No AP News results found via web search",
       }
     }
 
     // Step 2: Pick the best URL (prefer /article/ paths)
     const targetUrl = this.pickBestUrl(urls)
 
-    // Step 3: Fetch the page
-    let pageHtml: string
-    try {
-      const response = await fetch(targetUrl, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "text/html,application/xhtml+xml",
-          "Accept-Language": "en-US,en;q=0.9",
-        },
-        signal: this.createTimeoutSignal(),
-      })
+    // Step 3: Fetch the page (with archive fallback on block)
+    const pageResult = await fetchPageWithFallbacks(targetUrl, {
+      userAgent: this.userAgent,
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      timeoutMs: this.requestTimeoutMs,
+    })
 
-      if (!response.ok) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0, {
-            url: targetUrl,
-            queryUsed: query,
-          }),
-          data: null,
-          error: `AP News page fetch failed: HTTP ${response.status}`,
-        }
-      }
-
-      pageHtml = await response.text()
-    } catch (error) {
+    if (pageResult.error || !pageResult.content) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, {
@@ -91,9 +78,11 @@ export class APNewsBiographySource extends BaseBiographySource {
           queryUsed: query,
         }),
         data: null,
-        error: `AP News page fetch error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        error: `AP News page fetch failed: ${pageResult.error || "empty content"}`,
       }
     }
+
+    const pageHtml = pageResult.content
 
     // Step 4: Clean through mechanical pre-clean pipeline
     const { text, metadata } = mechanicalPreClean(pageHtml)
@@ -117,7 +106,7 @@ export class APNewsBiographySource extends BaseBiographySource {
     const confidence = this.calculateBiographicalConfidence(text)
 
     // Step 7: Build result
-    const articleTitle = metadata.title || `${actor.name} - AP News`
+    const articleTitle = metadata.title || pageResult.title || `${actor.name} - AP News`
 
     const sourceData: RawBiographySourceData = {
       sourceName: "AP News",

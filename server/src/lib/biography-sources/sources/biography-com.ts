@@ -1,8 +1,8 @@
 /**
  * Biography.com source.
  *
- * Searches for actor profiles on biography.com via DuckDuckGo site-restricted
- * search, fetches the profile page, and cleans it.
+ * Searches for actor profiles on biography.com via web search (Google CSE with
+ * DDG fallback), fetches with archive fallback on block, and cleans the page.
  *
  * Reliability tier: SECONDARY_COMPILATION (0.85) - curated biographical profiles.
  */
@@ -12,7 +12,8 @@ import type { ActorForBiography, RawBiographySourceData } from "../types.js"
 import { BiographySourceType } from "../types.js"
 import { ReliabilityTier } from "../../death-sources/types.js"
 import { mechanicalPreClean } from "../content-cleaner.js"
-import { searchDuckDuckGo } from "../../shared/duckduckgo-search.js"
+import { webSearch } from "../../shared/duckduckgo-search.js"
+import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
 
 const MIN_CONTENT_LENGTH = 200
 
@@ -29,20 +30,20 @@ export class BiographyComSource extends BaseBiographySource {
   protected async performLookup(actor: ActorForBiography): Promise<BiographyLookupResult> {
     const startTime = Date.now()
 
-    // Step 1: Search DuckDuckGo for biography.com pages about this actor
+    // Step 1: Search for biography.com pages about this actor (Google CSE → DDG fallback)
     const query = `site:biography.com "${actor.name}"`
-    const ddgResult = await searchDuckDuckGo({
+    const searchResult = await webSearch({
       query,
       domainFilter: "biography.com",
     })
-    const urls = ddgResult.urls
+    const urls = searchResult.urls
 
-    if (ddgResult.error) {
+    if (searchResult.error) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: ddgResult.error,
+        error: searchResult.error,
       }
     }
 
@@ -51,35 +52,20 @@ export class BiographyComSource extends BaseBiographySource {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: "No Biography.com results found via DuckDuckGo",
+        error: "No Biography.com results found via web search",
       }
     }
 
     // Step 2: Pick the best URL (prefer profile-like paths, not list pages)
     const targetUrl = this.pickBestUrl(urls)
 
-    // Step 3: Fetch the page
-    let pageHtml: string
-    try {
-      const response = await fetch(targetUrl, {
-        headers: { "User-Agent": this.userAgent },
-        signal: this.createTimeoutSignal(),
-      })
+    // Step 3: Fetch the page (with archive fallback on block)
+    const pageResult = await fetchPageWithFallbacks(targetUrl, {
+      userAgent: this.userAgent,
+      timeoutMs: this.requestTimeoutMs,
+    })
 
-      if (!response.ok) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0, {
-            url: targetUrl,
-            queryUsed: query,
-          }),
-          data: null,
-          error: `Biography.com page fetch failed: HTTP ${response.status}`,
-        }
-      }
-
-      pageHtml = await response.text()
-    } catch (error) {
+    if (pageResult.error || !pageResult.content) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, {
@@ -87,9 +73,11 @@ export class BiographyComSource extends BaseBiographySource {
           queryUsed: query,
         }),
         data: null,
-        error: `Biography.com page fetch error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        error: `Biography.com page fetch failed: ${pageResult.error || "empty content"}`,
       }
     }
+
+    const pageHtml = pageResult.content
 
     // Step 4: Clean through mechanical pre-clean pipeline
     const { text, metadata } = mechanicalPreClean(pageHtml)
@@ -113,7 +101,7 @@ export class BiographyComSource extends BaseBiographySource {
     const confidence = this.calculateBiographicalConfidence(text)
 
     // Step 7: Build result
-    const articleTitle = metadata.title || `${actor.name} - Biography.com`
+    const articleTitle = metadata.title || pageResult.title || `${actor.name} - Biography.com`
 
     const sourceData: RawBiographySourceData = {
       sourceName: "Biography.com",
