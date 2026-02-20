@@ -152,7 +152,7 @@ export class EnrichDeathDetailsBatchHandler extends BaseJobHandler<
         `SELECT count(*) as cnt FROM enrichment_run_actors WHERE run_id = $1 AND created_death_page = true`,
         [runId]
       )
-      const actorsWithDeathPage = parseInt(deathPageResult.rows[0].cnt, 10)
+      const actorsWithDeathPage = parseInt(deathPageResult.rows[0]?.cnt ?? "0", 10)
 
       await db.query(
         `UPDATE enrichment_runs
