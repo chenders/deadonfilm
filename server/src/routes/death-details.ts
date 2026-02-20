@@ -671,8 +671,9 @@ export async function getNotableDeaths(req: Request, res: Response) {
 
 /**
  * GET /api/in-detail
- * Get paginated list of actors with thoroughly researched death information,
- * sorted by most recently enriched by default.
+ * Get paginated list of actors with thoroughly researched profiles — either
+ * detailed death information or enriched biographies, sorted by most recently
+ * enriched by default.
  */
 export async function getInDetailHandler(req: Request, res: Response) {
   try {

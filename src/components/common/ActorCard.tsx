@@ -9,7 +9,7 @@ interface ActorCardProps {
   name: string
   slug: string
   profilePath: string | null
-  deathday: string
+  deathday: string | null
 
   birthday?: string | null
   ageAtDeath?: number | null
@@ -29,7 +29,8 @@ interface ActorCardProps {
   testId?: string
 }
 
-function formatDateRange(birthday: string | null | undefined, deathday: string): string {
+function formatDateRange(birthday: string | null | undefined, deathday: string | null): string {
+  if (!deathday) return ""
   const deathStr = formatDate(deathday)
   if (birthday) {
     return `${formatDate(birthday)} – ${deathStr}`
@@ -110,9 +111,11 @@ export default function ActorCard({
           nameEl
         )}
 
-        <p className="text-sm text-text-primary">
-          {showBirthDate ? formatDateRange(birthday, deathday) : `Died ${formatDate(deathday)}`}
-        </p>
+        {deathday && (
+          <p className="text-sm text-text-primary">
+            {showBirthDate ? formatDateRange(birthday, deathday) : `Died ${formatDate(deathday)}`}
+          </p>
+        )}
 
         {ageAtDeath != null && <p className="text-sm text-text-primary">Age: {ageAtDeath}</p>}
 

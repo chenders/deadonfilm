@@ -719,7 +719,7 @@ export interface NotableDeathsResponse {
 }
 
 // ============================================================================
-// In Detail types (actors with thoroughly researched death information)
+// In Detail types (actors with thoroughly researched profiles)
 // ============================================================================
 
 export interface InDetailActor {
@@ -727,7 +727,7 @@ export interface InDetailActor {
   tmdbId: number | null
   name: string
   profilePath: string | null
-  deathday: string
+  deathday: string | null
   ageAtDeath: number | null
   causeOfDeath: string | null
   deathManner: string | null
@@ -735,6 +735,8 @@ export interface InDetailActor {
   circumstancesConfidence: string | null
   slug: string
   topFilms: Array<{ title: string; year: number | null }>
+  hasDetailedDeathInfo: boolean
+  hasEnrichedBio: boolean
 }
 
 export interface InDetailOptions {
