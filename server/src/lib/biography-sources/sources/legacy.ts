@@ -5,8 +5,8 @@
  * detail including family background, education, military service, career highlights,
  * and personal interests.
  *
- * Uses DuckDuckGo site-restricted search to find obituary pages, then fetches
- * and cleans them through the content cleaning pipeline.
+ * Uses web search (Google CSE with DDG fallback) to find obituary pages, then
+ * fetches with archive fallback on block and cleans through the content pipeline.
  *
  * Reliability tier: MARGINAL_MIXED (0.6) - user-submitted obituaries with
  * editorial oversight; quality varies.
@@ -17,7 +17,8 @@ import type { ActorForBiography, RawBiographySourceData } from "../types.js"
 import { BiographySourceType } from "../types.js"
 import { ReliabilityTier } from "../../death-sources/types.js"
 import { mechanicalPreClean } from "../content-cleaner.js"
-import { searchDuckDuckGo } from "../../shared/duckduckgo-search.js"
+import { webSearch } from "../../shared/duckduckgo-search.js"
+import { fetchPageWithFallbacks } from "../../shared/fetch-page-with-fallbacks.js"
 
 const MIN_CONTENT_LENGTH = 200
 
@@ -37,20 +38,20 @@ export class LegacyBiographySource extends BaseBiographySource {
   protected async performLookup(actor: ActorForBiography): Promise<BiographyLookupResult> {
     const startTime = Date.now()
 
-    // Step 1: Search DuckDuckGo for Legacy.com obituary pages
+    // Step 1: Search for Legacy.com obituary pages (Google CSE → DDG fallback)
     const query = `site:legacy.com "${actor.name}" obituary`
-    const ddgResult = await searchDuckDuckGo({
+    const searchResult = await webSearch({
       query,
       domainFilter: "legacy.com",
     })
-    const urls = ddgResult.urls
+    const urls = searchResult.urls
 
-    if (ddgResult.error) {
+    if (searchResult.error) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: ddgResult.error,
+        error: searchResult.error,
       }
     }
 
@@ -59,35 +60,20 @@ export class LegacyBiographySource extends BaseBiographySource {
         success: false,
         source: this.createSourceEntry(startTime, 0, { queryUsed: query }),
         data: null,
-        error: "No Legacy.com results found via DuckDuckGo",
+        error: "No Legacy.com results found via web search",
       }
     }
 
     // Step 2: Pick the best URL (prefer /obituaries/ paths)
     const targetUrl = this.pickBestUrl(urls)
 
-    // Step 3: Fetch the obituary page
-    let pageHtml: string
-    try {
-      const response = await fetch(targetUrl, {
-        headers: { "User-Agent": this.userAgent },
-        signal: this.createTimeoutSignal(),
-      })
+    // Step 3: Fetch the obituary page (with archive fallback on block)
+    const pageResult = await fetchPageWithFallbacks(targetUrl, {
+      userAgent: this.userAgent,
+      timeoutMs: this.requestTimeoutMs,
+    })
 
-      if (!response.ok) {
-        return {
-          success: false,
-          source: this.createSourceEntry(startTime, 0, {
-            url: targetUrl,
-            queryUsed: query,
-          }),
-          data: null,
-          error: `Legacy.com page fetch failed: HTTP ${response.status}`,
-        }
-      }
-
-      pageHtml = await response.text()
-    } catch (error) {
+    if (pageResult.error || !pageResult.content) {
       return {
         success: false,
         source: this.createSourceEntry(startTime, 0, {
@@ -95,9 +81,11 @@ export class LegacyBiographySource extends BaseBiographySource {
           queryUsed: query,
         }),
         data: null,
-        error: `Legacy.com page fetch error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        error: `Legacy.com page fetch failed: ${pageResult.error || "empty content"}`,
       }
     }
+
+    const pageHtml = pageResult.content
 
     // Step 4: Clean through mechanical pre-clean pipeline
     const { text, metadata } = mechanicalPreClean(pageHtml)

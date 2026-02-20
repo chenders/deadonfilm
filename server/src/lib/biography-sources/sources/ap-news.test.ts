@@ -10,14 +10,14 @@ vi.mock("../../death-sources/cache.js", () => ({
   setCachedQuery: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Mock searchDuckDuckGo to disable browser fallback in tests
+// Mock webSearch to use DDG-only search with browser fallback disabled in tests
 vi.mock("../../shared/duckduckgo-search.js", async () => {
   const actual = await vi.importActual<typeof import("../../shared/duckduckgo-search.js")>(
     "../../shared/duckduckgo-search.js"
   )
   return {
     ...actual,
-    searchDuckDuckGo: vi
+    webSearch: vi
       .fn()
       .mockImplementation(
         (options: import("../../shared/duckduckgo-search.js").DuckDuckGoSearchOptions) =>
@@ -25,6 +25,12 @@ vi.mock("../../shared/duckduckgo-search.js", async () => {
       ),
   }
 })
+
+// Mock fetchPageWithFallbacks for controlled page fetch responses
+const mockFetchPage = vi.fn()
+vi.mock("../../shared/fetch-page-with-fallbacks.js", () => ({
+  fetchPageWithFallbacks: (...args: unknown[]) => mockFetchPage(...args),
+}))
 
 import { APNewsBiographySource } from "./ap-news.js"
 import { BiographySourceType } from "../types.js"
@@ -141,12 +147,12 @@ describe("APNewsBiographySource", () => {
   })
 
   describe("lookup", () => {
-    it("succeeds when DuckDuckGo returns AP News URL and page has content", async () => {
+    it("succeeds when web search returns AP News URL and page has content", async () => {
       const encodedUrl = encodeURIComponent(
         "https://apnews.com/article/john-wayne-profile-biography"
       )
 
-      // DuckDuckGo search response
+      // Web search response (DDG fetch internally)
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () =>
@@ -159,10 +165,12 @@ describe("APNewsBiographySource", () => {
           ]),
       })
 
-      // AP News page response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildAPNewsPage(richBiographicalContent),
+      // Page fetch via fetchPageWithFallbacks mock
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildAPNewsPage(richBiographicalContent),
+        title: "John Wayne | AP News",
+        url: "https://apnews.com/article/john-wayne-profile-biography",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
@@ -178,7 +186,7 @@ describe("APNewsBiographySource", () => {
       expect(result.data!.confidence).toBeGreaterThan(0)
     })
 
-    it("returns failure when no DuckDuckGo results found", async () => {
+    it("returns failure when no web search results found", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () => `<html><body><div class="no-results">No results</div></body></html>`,
@@ -190,7 +198,7 @@ describe("APNewsBiographySource", () => {
       expect(result.error).toContain("No AP News results found")
     })
 
-    it("returns failure when DuckDuckGo results have no apnews.com URLs", async () => {
+    it("returns failure when web search results have no apnews.com URLs", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () =>
@@ -224,9 +232,12 @@ describe("APNewsBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 403,
+      mockFetchPage.mockResolvedValueOnce({
+        content: "",
+        title: "",
+        url: "https://apnews.com/article/john-wayne-profile",
+        fetchMethod: "direct",
+        error: "HTTP 403",
       })
 
       const result = await source.lookup(testActor)
@@ -250,9 +261,11 @@ describe("APNewsBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => `<html><body><p>Short text.</p></body></html>`,
+      mockFetchPage.mockResolvedValueOnce({
+        content: `<html><body><p>Short text.</p></body></html>`,
+        title: "John Wayne",
+        url: "https://apnews.com/article/john-wayne-brief",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
@@ -261,7 +274,7 @@ describe("APNewsBiographySource", () => {
       expect(result.error).toContain("content too short")
     })
 
-    it("detects DuckDuckGo CAPTCHA", async () => {
+    it("detects web search CAPTCHA", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () =>
@@ -289,9 +302,11 @@ describe("APNewsBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildAPNewsPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildAPNewsPage(richBiographicalContent),
+        title: "John Wayne | AP News",
+        url: "https://apnews.com/article/john-wayne-profile",
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
@@ -326,18 +341,20 @@ describe("APNewsBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => buildAPNewsPage(richBiographicalContent),
+      mockFetchPage.mockResolvedValueOnce({
+        content: buildAPNewsPage(richBiographicalContent),
+        title: "John Wayne | AP News",
+        url: articleUrl,
+        fetchMethod: "direct",
       })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(true)
-      expect(mockFetch.mock.calls[1][0]).toBe(articleUrl)
+      expect(mockFetchPage.mock.calls[0][0]).toBe(articleUrl)
     })
 
-    it("handles page fetch network errors", async () => {
+    it("handles page fetch errors", async () => {
       const encodedUrl = encodeURIComponent("https://apnews.com/article/john-wayne")
 
       mockFetch.mockResolvedValueOnce({
@@ -352,15 +369,21 @@ describe("APNewsBiographySource", () => {
           ]),
       })
 
-      mockFetch.mockRejectedValueOnce(new Error("Connection reset"))
+      mockFetchPage.mockResolvedValueOnce({
+        content: "",
+        title: "",
+        url: "https://apnews.com/article/john-wayne",
+        fetchMethod: "direct",
+        error: "All fetch methods failed (direct + archive.org + archive.is)",
+      })
 
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("Connection reset")
+      expect(result.error).toContain("page fetch failed")
     })
 
-    it("handles DuckDuckGo search HTTP errors", async () => {
+    it("handles web search HTTP errors", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 503,
@@ -369,7 +392,7 @@ describe("APNewsBiographySource", () => {
       const result = await source.lookup(testActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("DuckDuckGo search failed")
+      expect(result.error).toContain("search failed")
     })
   })
 })

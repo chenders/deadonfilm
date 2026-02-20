@@ -130,6 +130,15 @@ e2e/                          # Playwright tests and screenshots
 - `NEW_RELIC_LICENSE_KEY` - APM monitoring
 - `GSC_SERVICE_ACCOUNT_EMAIL`, `GSC_PRIVATE_KEY` - Google Search Console
 
+## Code Quality: Naming and Documentation
+
+When renaming functions, changing APIs, or refactoring modules, **always update all references**:
+- **Variable names**: If a function is renamed (e.g., `searchDuckDuckGo` → `webSearch`), rename all variables that referenced the old name (e.g., `ddgResult` → `searchResult`)
+- **Code comments**: Update inline comments that reference old names or old behavior
+- **Doc comments**: Update JSDoc/TSDoc `@param`, `@returns`, and description text
+- **Error messages**: Update user-facing or log error strings (e.g., "No results found via DuckDuckGo" → "No results found via web search")
+- **File-level doc blocks**: Update the module description at the top of each file
+
 ## Development Notes
 
 - `npm run dev` starts Docker Compose (`docker-compose.dev.yml`) for PostgreSQL on port 5437 and Redis on port 6379, then runs Vite (frontend HMR on :5173) and tsx watch (backend auto-restart on :8080) concurrently

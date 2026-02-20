@@ -305,6 +305,7 @@ For full details, see `.claude/rules/biography-enrichment.md`.
 - **Magic numbers**: Extract to named constants at module level
 - **N+1 queries**: Batch database lookups, never query inside loops
 - **Unused variables**: Remove before committing
+- **Naming consistency**: When renaming functions/APIs, update all variable names, comments, doc blocks, and error messages that reference the old name
 
 ---
 
