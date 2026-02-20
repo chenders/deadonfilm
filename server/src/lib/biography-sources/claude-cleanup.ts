@@ -127,7 +127,7 @@ Return JSON only:
   "fame_catalyst": "What single thing catapulted them...",
   "personal_struggles": "Addiction, legal issues, health...",
   "relationships": "Marriages, significant partnerships, children...",
-  "lesser_known_facts": ["Array of surprising facts..."],
+  "lesser_known_facts": ["Array of surprising or little-known facts that are NOT already mentioned in the narrative above. Each fact should add NEW information the reader hasn't already seen."],
   "narrative_confidence": "high|medium|low",
   "has_substantive_content": true/false
 }
@@ -170,7 +170,8 @@ WHEN SOURCES CONFLICT:
 
 CRITICAL:
 - Do NOT list filmography, awards, box office numbers
-- Do NOT include birth/death dates (displayed separately)
+- Do NOT include birth/death dates (displayed separately on the page)
+- Do NOT describe how or when the person died — death circumstances have their own dedicated section on the page. End the narrative before the death event.
 - Mention their career only as context for their personal story
 - If sources are thin, write a shorter biography rather than padding with career achievements
 - Set has_substantive_content to false if you can only produce a generic career summary with no personal details`
