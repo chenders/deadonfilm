@@ -262,6 +262,12 @@ describe("claude-cleanup (biography)", () => {
       expect(prompt).toContain("Do NOT include birth/death dates")
     })
 
+    it("includes instruction to exclude death circumstances from biography", () => {
+      const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
+      expect(prompt).toContain("Do NOT describe how or when the person died")
+      expect(prompt).toContain("death circumstances have their own dedicated section")
+    })
+
     it("includes has_substantive_content field in JSON spec", () => {
       const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
       expect(prompt).toContain('"has_substantive_content"')
@@ -281,7 +287,7 @@ describe("claude-cleanup (biography)", () => {
       }
       const prompt = buildBiographySynthesisPrompt(actorAlive, mockSources)
       expect(prompt).toContain("born 1907")
-      expect(prompt).not.toContain("died")
+      expect(prompt).not.toMatch(/\(born 1907, died \d{4}\)/)
     })
   })
 
