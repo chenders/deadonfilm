@@ -55,11 +55,18 @@ const RELATED_ACTORS_LIMIT = 5
  * @param causeOfDeath - The actor's cause of death (null if unknown)
  * @param birthDecade - The start year of the actor's birth decade (e.g., 1940)
  */
+export type RelatedActorsMatchType = "cause" | "decade" | "none"
+
+export interface RelatedActorsResult {
+  actors: RelatedActor[]
+  matchType: RelatedActorsMatchType
+}
+
 export async function getRelatedActors(
   actorId: number,
   causeOfDeath: string | null,
   birthDecade: number | null
-): Promise<RelatedActor[]> {
+): Promise<RelatedActorsResult> {
   const db = getPool()
 
   // Try cause of death match first (if provided)
@@ -85,7 +92,7 @@ export async function getRelatedActors(
     )
 
     if (result.rows.length > 0) {
-      return result.rows.map(mapActorRow)
+      return { actors: result.rows.map(mapActorRow), matchType: "cause" }
     }
   }
 
@@ -113,10 +120,11 @@ export async function getRelatedActors(
       [birthDecade, decadeEnd + 1, actorId, RELATED_ACTORS_LIMIT]
     )
 
-    return result.rows.map(mapActorRow)
+    const actors = result.rows.map(mapActorRow)
+    return { actors, matchType: actors.length > 0 ? "decade" : "none" }
   }
 
-  return []
+  return { actors: [], matchType: "none" }
 }
 
 function mapActorRow(row: {
