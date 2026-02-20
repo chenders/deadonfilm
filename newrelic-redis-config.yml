@@ -1,9 +1,7 @@
 integrations:
   - name: nri-redis
     env:
-      # Redis connection via host (privileged agent can't use Docker DNS)
-      # host.docker.internal is Docker's alias for the host machine
-      HOSTNAME: host.docker.internal
+      HOSTNAME: redis
       PORT: 6379
       # No password needed (internal Docker network)
 
