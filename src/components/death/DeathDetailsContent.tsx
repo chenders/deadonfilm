@@ -67,11 +67,9 @@ export default function DeathDetailsContent({
       <LowConfidenceWarning level={circumstances.confidence} />
 
       {/* What We Know */}
-      {circumstances.official && (
+      {circumstances.official && !hideOfficialHeading && (
         <section data-testid="official-section">
-          {!hideOfficialHeading && (
-            <h3 className="mb-2 font-display text-base text-brown-dark">What We Know</h3>
-          )}
+          <h3 className="mb-2 font-display text-base text-brown-dark">What We Know</h3>
           <LinkedText
             text={circumstances.official}
             links={getFieldLinks(entityLinks, "circumstances")}
@@ -82,6 +80,14 @@ export default function DeathDetailsContent({
               <ConfidenceIndicator level={circumstances.confidence} />
             </div>
           )}
+          <SourceList sources={sources.circumstances} title="Sources" />
+        </section>
+      )}
+
+      {/* Confidence + sources for official narrative (when parent renders the text) */}
+      {circumstances.official && hideOfficialHeading && (
+        <section data-testid="official-meta-section">
+          {circumstances.confidence && <ConfidenceIndicator level={circumstances.confidence} />}
           <SourceList sources={sources.circumstances} title="Sources" />
         </section>
       )}
