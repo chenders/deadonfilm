@@ -197,9 +197,28 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       return
     }
 
+    // Create a bio_enrichment_runs record so the run appears on the runs page
+    const pool = getPool()
+    const config = {
+      actorIds,
+      limit: limit || 10,
+      minPopularity,
+      confidenceThreshold,
+      allowRegeneration: allowRegeneration || false,
+      useStaging: useStaging || false,
+      source: "enrich-batch",
+    }
+    const runResult = await pool.query<{ id: number }>(
+      `INSERT INTO bio_enrichment_runs (status, config, started_at)
+       VALUES ('pending', $1, NOW()) RETURNING id`,
+      [JSON.stringify(config)]
+    )
+    const runId = runResult.rows[0].id
+
     const jobId = await queueManager.addJob(
       JobType.ENRICH_BIOGRAPHIES_BATCH,
       {
+        runId,
         actorIds,
         limit: limit || 10,
         minPopularity,
@@ -212,7 +231,10 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       }
     )
 
-    res.json({ success: true, jobId })
+    // Mark as running now that job is queued
+    await pool.query(`UPDATE bio_enrichment_runs SET status = 'running' WHERE id = $1`, [runId])
+
+    res.json({ success: true, jobId, runId })
   } catch (error) {
     logger.error({ error }, "Failed to queue biography enrichment batch")
     const errorMsg = error instanceof Error ? error.message : "Unknown error"

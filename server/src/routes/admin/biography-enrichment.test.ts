@@ -309,6 +309,11 @@ describe("Admin Biography Enrichment Endpoints", () => {
 
   describe("POST /enrich-batch", () => {
     it("queues a batch job with provided options", async () => {
+      // Mock INSERT for bio_enrichment_runs record
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 42 }] })
+      // Mock UPDATE to set status = 'running'
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
       const res = await request(app)
         .post("/admin/api/biography-enrichment/enrich-batch")
         .send({ actorIds: [1, 2], limit: 5, useStaging: true })
@@ -316,6 +321,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(res.status).toBe(200)
       expect(res.body.success).toBe(true)
       expect(res.body.jobId).toBe("job-123")
+      expect(res.body.runId).toBe(42)
     })
 
     it("returns 503 when job queue is not available", async () => {
