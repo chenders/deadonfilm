@@ -180,8 +180,15 @@ router.post("/enrich", async (req: Request, res: Response): Promise<void> => {
 // ============================================================================
 
 router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> => {
-  const { actorIds, limit, minPopularity, confidenceThreshold, allowRegeneration, useStaging } =
-    req.body
+  const {
+    actorIds,
+    limit,
+    minPopularity,
+    confidenceThreshold,
+    allowRegeneration,
+    useStaging,
+    sourceCategories,
+  } = req.body
 
   try {
     const { queueManager } = await import("../../lib/jobs/queue-manager.js")
@@ -206,6 +213,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       confidenceThreshold,
       allowRegeneration: allowRegeneration || false,
       useStaging: useStaging || false,
+      sourceCategories,
       source: "enrich-batch",
     }
     const runResult = await pool.query<{ id: number }>(
@@ -225,6 +233,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         confidenceThreshold,
         allowRegeneration: allowRegeneration || false,
         useStaging: useStaging || false,
+        sourceCategories,
       },
       {
         createdBy: "admin",
