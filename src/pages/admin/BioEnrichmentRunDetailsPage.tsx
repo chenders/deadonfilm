@@ -8,6 +8,7 @@
 
 import { useState } from "react"
 import { useParams, Link } from "react-router-dom"
+import { createActorSlug } from "@/utils/slugify"
 import AdminLayout from "../../components/admin/AdminLayout"
 import LoadingSpinner from "../../components/common/LoadingSpinner"
 import ErrorMessage from "../../components/common/ErrorMessage"
@@ -323,7 +324,15 @@ function ActorRow({
         className="cursor-pointer transition-colors hover:bg-admin-interactive-secondary"
         onClick={onToggle}
       >
-        <td className="px-4 py-2 text-sm text-admin-text-primary">{actor.actor_name}</td>
+        <td className="px-4 py-2 text-sm">
+          <Link
+            to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}`}
+            className="text-admin-interactive hover:text-admin-interactive-hover hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {actor.actor_name}
+          </Link>
+        </td>
         <td className="px-4 py-2 text-center">
           {actor.was_enriched ? (
             <span className="inline-block h-2 w-2 rounded-full bg-green-400" title="Enriched" />
