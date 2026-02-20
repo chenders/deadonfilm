@@ -284,13 +284,13 @@ export interface NotableDeathsResponse {
 
 export type NotableDeathsFilter = "all" | "strange" | "disputed" | "controversial"
 
-// In Detail types (actors with thoroughly researched death information)
+// In Detail types (actors with thoroughly researched profiles)
 export interface InDetailActor {
   id: number
   tmdbId: number | null
   name: string
   profilePath: string | null
-  deathday: string
+  deathday: string | null
   ageAtDeath: number | null
   causeOfDeath: string | null
   deathManner: string | null
@@ -298,6 +298,8 @@ export interface InDetailActor {
   circumstancesConfidence: string | null
   slug: string
   topFilms: Array<{ title: string; year: number | null }>
+  hasDetailedDeathInfo: boolean
+  hasEnrichedBio: boolean
 }
 
 export interface InDetailResponse {

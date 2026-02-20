@@ -30,6 +30,8 @@ const mockInDetailResponse = {
         { title: "Famous Movie", year: 1995 },
         { title: "Another Hit", year: 2001 },
       ],
+      hasDetailedDeathInfo: true,
+      hasEnrichedBio: false,
     },
     {
       id: 2,
@@ -44,6 +46,8 @@ const mockInDetailResponse = {
       circumstancesConfidence: "medium",
       slug: "another-actor-2",
       topFilms: [],
+      hasDetailedDeathInfo: true,
+      hasEnrichedBio: true,
     },
   ],
   pagination: {
@@ -239,5 +243,65 @@ describe("InDetailPage", () => {
     expect(screen.getByText("Date")).toBeInTheDocument()
     expect(screen.getByText("Name")).toBeInTheDocument()
     expect(screen.getByText("Age")).toBeInTheDocument()
+  })
+
+  it("shows enrichment type badges", async () => {
+    vi.mocked(api.getInDetailActors).mockResolvedValue(mockInDetailResponse)
+
+    renderWithProviders(<InDetailPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("in-detail-1")).toBeInTheDocument()
+    })
+
+    // First actor has death details only
+    const deathBadges = screen.getAllByText("Death Details")
+    expect(deathBadges.length).toBeGreaterThanOrEqual(1)
+
+    // Second actor has both death details and biography
+    expect(screen.getByText("Biography")).toBeInTheDocument()
+  })
+
+  it("renders bio-only actor without death info gracefully", async () => {
+    const bioOnlyResponse = {
+      actors: [
+        {
+          id: 3,
+          tmdbId: 11111,
+          name: "Living Actor",
+          profilePath: "/living.jpg",
+          deathday: null,
+          ageAtDeath: null,
+          causeOfDeath: null,
+          deathManner: null,
+          enrichedAt: "2026-02-01T12:00:00Z",
+          circumstancesConfidence: null,
+          slug: "living-actor-3",
+          topFilms: [{ title: "Great Film", year: 2020 }],
+          hasDetailedDeathInfo: false,
+          hasEnrichedBio: true,
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 50,
+        totalCount: 1,
+        totalPages: 1,
+      },
+    }
+    vi.mocked(api.getInDetailActors).mockResolvedValue(bioOnlyResponse)
+
+    renderWithProviders(<InDetailPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Living Actor")).toBeInTheDocument()
+    })
+
+    // Should show biography badge
+    expect(screen.getByText("Biography")).toBeInTheDocument()
+
+    // Should NOT show death-related info
+    expect(screen.queryByText("Death Details")).not.toBeInTheDocument()
+    expect(screen.queryByText(/Died/)).not.toBeInTheDocument()
   })
 })

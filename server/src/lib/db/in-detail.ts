@@ -1,8 +1,9 @@
 /**
  * In Detail database functions.
  *
- * Queries for actors with thoroughly researched death information
- * (has_detailed_death_info = true), sorted by enrichment date by default.
+ * Queries for actors with thoroughly researched profiles — either detailed
+ * death information (has_detailed_death_info = true) or enriched biographies
+ * (present in actor_biography_details), sorted by enrichment date by default.
  */
 
 import { createActorSlug } from "../slug-utils.js"
@@ -11,7 +12,7 @@ import type { InDetailActor, InDetailOptions, InDetailResponse } from "./types.j
 
 // Sort column allowlist — maps user-facing sort keys to SQL column names
 const IN_DETAIL_SORT_MAP: Record<string, { column: string; defaultDir: string }> = {
-  updated: { column: "a.enriched_at", defaultDir: "DESC" },
+  updated: { column: "enriched_at_combined", defaultDir: "DESC" },
   date: { column: "a.deathday", defaultDir: "DESC" },
   name: { column: "a.name", defaultDir: "ASC" },
   age: { column: "a.age_at_death", defaultDir: "DESC" },
@@ -29,7 +30,8 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
   const nullsOrder = sortDirection === "ASC" ? "NULLS FIRST" : "NULLS LAST"
 
   // Build parameterized conditions
-  const conditions: string[] = ["a.deathday IS NOT NULL", "a.has_detailed_death_info = true"]
+  // Uses abd from LEFT JOIN below instead of a correlated EXISTS subquery
+  const conditions: string[] = [`(a.has_detailed_death_info = true OR abd.id IS NOT NULL)`]
   const params: (string | number | boolean)[] = []
   let paramIndex = 1
 
@@ -45,11 +47,11 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
 
   const whereClause = conditions.join(" AND ")
 
-  // Get total count
+  // Get total count (needs LEFT JOIN for abd.id IS NOT NULL condition)
   const countResult = await db.query<{ count: string }>(
     `SELECT COUNT(*) as count
      FROM actors a
-     LEFT JOIN actor_death_circumstances adc ON a.id = adc.actor_id
+     LEFT JOIN actor_biography_details abd ON a.id = abd.actor_id
      WHERE ${whereClause}`,
     params
   )
@@ -61,22 +63,27 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
     tmdb_id: number | null
     name: string
     profile_path: string | null
-    deathday: string
+    deathday: string | null
     age_at_death: number | null
     cause_of_death: string | null
     death_manner: string | null
-    enriched_at: string | null
+    enriched_at_combined: string | null
     circumstances_confidence: string | null
+    has_detailed_death_info: boolean
+    has_enriched_bio: boolean
     top_films: Array<{ title: string; year: number | null }> | null
   }>(
     `SELECT
        a.id, a.tmdb_id, a.name, a.profile_path, a.deathday,
        a.age_at_death, a.cause_of_death, a.death_manner,
-       a.enriched_at,
+       COALESCE(GREATEST(a.enriched_at, abd.updated_at), a.enriched_at, abd.updated_at) as enriched_at_combined,
        adc.circumstances_confidence,
+       COALESCE(a.has_detailed_death_info, false) as has_detailed_death_info,
+       (abd.id IS NOT NULL) as has_enriched_bio,
        tf.films as top_films
      FROM actors a
      LEFT JOIN actor_death_circumstances adc ON a.id = adc.actor_id
+     LEFT JOIN actor_biography_details abd ON a.id = abd.actor_id
      LEFT JOIN LATERAL (
        SELECT json_agg(sub.film) as films
        FROM (
@@ -105,10 +112,12 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
         ageAtDeath: row.age_at_death,
         causeOfDeath: row.cause_of_death,
         deathManner: row.death_manner,
-        enrichedAt: row.enriched_at,
+        enrichedAt: row.enriched_at_combined,
         circumstancesConfidence: row.circumstances_confidence,
         slug: createActorSlug(row.name, row.id),
         topFilms: row.top_films || [],
+        hasDetailedDeathInfo: row.has_detailed_death_info,
+        hasEnrichedBio: row.has_enriched_bio,
       })
     ),
     pagination: {
