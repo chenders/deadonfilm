@@ -592,9 +592,25 @@ export default function ActorManagementTab() {
                       </>
                     }
                     subtitle={
-                      actor.deathday
-                        ? `Died ${new Date(actor.deathday).toLocaleDateString()}${actor.age_at_death ? ` (age ${actor.age_at_death})` : ""}`
-                        : "Death date unknown"
+                      <>
+                        <span>
+                          {actor.deathday
+                            ? `Died ${new Date(actor.deathday).toLocaleDateString()}${actor.age_at_death ? ` (age ${actor.age_at_death})` : ""}`
+                            : "Death date unknown"}
+                        </span>
+                        {actor.top_credits && actor.top_credits.length > 0 && (
+                          <span
+                            className="block truncate text-xs"
+                            title={actor.top_credits
+                              .map((c) => c.title + (c.year ? ` (${c.year})` : ""))
+                              .join(", ")}
+                          >
+                            {actor.top_credits
+                              .map((c) => c.title + (c.year ? ` (${c.year})` : ""))
+                              .join(", ")}
+                          </span>
+                        )}
+                      </>
                     }
                     selectable
                     selected={selectedActorIds.has(actor.id)}
@@ -779,23 +795,39 @@ export default function ActorManagementTab() {
                                   </svg>
                                 </span>
                               )}
-                              <AdminHoverCard content={<ActorPreviewCard actorId={actor.id} />}>
-                                <button
-                                  type="button"
-                                  className="cursor-pointer border-0 bg-transparent p-0 text-left text-inherit hover:underline"
-                                >
-                                  {actor.name}
-                                </button>
-                              </AdminHoverCard>
-                              {actor.has_detailed_death_info && (
-                                <span
-                                  className="text-admin-success"
-                                  title="Has death page"
-                                  data-testid={`death-page-icon-${actor.id}`}
-                                >
-                                  ✓
-                                </span>
-                              )}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1">
+                                  <AdminHoverCard content={<ActorPreviewCard actorId={actor.id} />}>
+                                    <button
+                                      type="button"
+                                      className="cursor-pointer border-0 bg-transparent p-0 text-left text-inherit hover:underline"
+                                    >
+                                      {actor.name}
+                                    </button>
+                                  </AdminHoverCard>
+                                  {actor.has_detailed_death_info && (
+                                    <span
+                                      className="text-admin-success"
+                                      title="Has death page"
+                                      data-testid={`death-page-icon-${actor.id}`}
+                                    >
+                                      ✓
+                                    </span>
+                                  )}
+                                </div>
+                                {actor.top_credits && actor.top_credits.length > 0 && (
+                                  <p
+                                    className="max-w-[300px] truncate text-xs text-admin-text-muted"
+                                    title={actor.top_credits
+                                      .map((c) => c.title + (c.year ? ` (${c.year})` : ""))
+                                      .join(", ")}
+                                  >
+                                    {actor.top_credits
+                                      .map((c) => c.title + (c.year ? ` (${c.year})` : ""))
+                                      .join(", ")}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center">
