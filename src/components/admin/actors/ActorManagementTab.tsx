@@ -9,6 +9,7 @@ import {
   useCausesOfDeath,
   useEnrichmentVersions,
   type ActorCoverageFilters,
+  type ActorTopCredit,
 } from "../../../hooks/admin/useCoverage"
 import AdminHoverCard from "../ui/AdminHoverCard"
 import MobileCard from "../ui/MobileCard"
@@ -28,6 +29,10 @@ const DEATH_MANNER_OPTIONS = [
   { value: "undetermined", label: "Undetermined" },
   { value: "pending", label: "Pending" },
 ]
+
+function formatTopCredits(credits: ActorTopCredit[]): string {
+  return credits.map((c) => c.title + (c.year ? ` (${c.year})` : "")).join(", ")
+}
 
 export default function ActorManagementTab() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -592,9 +597,21 @@ export default function ActorManagementTab() {
                       </>
                     }
                     subtitle={
-                      actor.deathday
-                        ? `Died ${new Date(actor.deathday).toLocaleDateString()}${actor.age_at_death ? ` (age ${actor.age_at_death})` : ""}`
-                        : "Death date unknown"
+                      <>
+                        <span>
+                          {actor.deathday
+                            ? `Died ${new Date(actor.deathday).toLocaleDateString()}${actor.age_at_death ? ` (age ${actor.age_at_death})` : ""}`
+                            : "Death date unknown"}
+                        </span>
+                        {actor.top_credits && actor.top_credits.length > 0 && (
+                          <span
+                            className="block truncate text-xs"
+                            title={formatTopCredits(actor.top_credits)}
+                          >
+                            {formatTopCredits(actor.top_credits)}
+                          </span>
+                        )}
+                      </>
                     }
                     selectable
                     selected={selectedActorIds.has(actor.id)}
@@ -779,23 +796,35 @@ export default function ActorManagementTab() {
                                   </svg>
                                 </span>
                               )}
-                              <AdminHoverCard content={<ActorPreviewCard actorId={actor.id} />}>
-                                <button
-                                  type="button"
-                                  className="cursor-pointer border-0 bg-transparent p-0 text-left text-inherit hover:underline"
-                                >
-                                  {actor.name}
-                                </button>
-                              </AdminHoverCard>
-                              {actor.has_detailed_death_info && (
-                                <span
-                                  className="text-admin-success"
-                                  title="Has death page"
-                                  data-testid={`death-page-icon-${actor.id}`}
-                                >
-                                  ✓
-                                </span>
-                              )}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1">
+                                  <AdminHoverCard content={<ActorPreviewCard actorId={actor.id} />}>
+                                    <button
+                                      type="button"
+                                      className="cursor-pointer border-0 bg-transparent p-0 text-left text-inherit hover:underline"
+                                    >
+                                      {actor.name}
+                                    </button>
+                                  </AdminHoverCard>
+                                  {actor.has_detailed_death_info && (
+                                    <span
+                                      className="text-admin-success"
+                                      title="Has death page"
+                                      data-testid={`death-page-icon-${actor.id}`}
+                                    >
+                                      ✓
+                                    </span>
+                                  )}
+                                </div>
+                                {actor.top_credits && actor.top_credits.length > 0 && (
+                                  <p
+                                    className="max-w-[300px] truncate text-xs text-admin-text-muted"
+                                    title={formatTopCredits(actor.top_credits)}
+                                  >
+                                    {formatTopCredits(actor.top_credits)}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center">

@@ -23,6 +23,12 @@ export interface CoverageStats {
   high_priority_count: number
 }
 
+export interface ActorTopCredit {
+  title: string
+  year: number | null
+  type: "movie" | "show"
+}
+
 export interface ActorCoverageInfo {
   id: number
   name: string
@@ -40,6 +46,7 @@ export interface ActorCoverageInfo {
   bio_enriched_at: string | null
   enrichment_version: string | null
   biography_version: number | null
+  top_credits: ActorTopCredit[]
 }
 
 export interface CoverageTrendPoint {
@@ -286,7 +293,9 @@ export async function getActorsForCoverage(
   // Use window function to get total count in same query (performance optimization)
   // Eliminates separate COUNT query - significant speedup for large tables
   // Cast popularity to float to ensure JavaScript number type (pg returns numeric as string)
-  const dataResult = await pool.query<ActorCoverageInfo & { total_count: string }>(
+  const dataResult = await pool.query<
+    ActorCoverageInfo & { total_count: string; top_credits_json: ActorTopCredit[] | null }
+  >(
     `SELECT
        actors.id,
        actors.name,
@@ -304,9 +313,30 @@ export async function getActorsForCoverage(
        abd.updated_at as bio_enriched_at,
        actors.enrichment_version,
        actors.biography_version,
+       tc.top_credits_json,
        COUNT(*) OVER() as total_count
      FROM actors
      LEFT JOIN actor_biography_details abd ON abd.actor_id = actors.id
+     LEFT JOIN LATERAL (
+       SELECT json_agg(
+                json_build_object('title', sub.title, 'year', sub.year, 'type', sub.type)
+                ORDER BY sub.pop DESC
+              ) AS top_credits_json
+       FROM (
+         SELECT m.title, m.release_year AS year, 'movie' AS type, COALESCE(m.dof_popularity, 0) AS pop
+         FROM actor_movie_appearances ama
+         JOIN movies m ON ama.movie_tmdb_id = m.tmdb_id
+         WHERE ama.actor_id = actors.id
+         UNION ALL
+         SELECT s.name AS title, EXTRACT(YEAR FROM s.first_air_date)::integer AS year, 'show' AS type, COALESCE(s.dof_popularity, 0) AS pop
+         FROM actor_show_appearances asa
+         JOIN shows s ON asa.show_tmdb_id = s.tmdb_id
+         WHERE asa.actor_id = actors.id
+         GROUP BY s.tmdb_id, s.name, s.first_air_date, s.dof_popularity
+         ORDER BY pop DESC
+         LIMIT 3
+       ) sub
+     ) tc ON true
      WHERE ${whereClause}
      ORDER BY ${orderByClause}, actors.id ASC
      LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
@@ -315,8 +345,11 @@ export async function getActorsForCoverage(
 
   const total = dataResult.rows.length > 0 ? parseInt(dataResult.rows[0].total_count, 10) : 0
 
-  // Remove total_count from items
-  const items = dataResult.rows.map(({ total_count: _total_count, ...item }) => item)
+  // Remove total_count and raw JSON, parse top_credits
+  const items = dataResult.rows.map(({ total_count: _total_count, top_credits_json, ...item }) => ({
+    ...item,
+    top_credits: top_credits_json ?? [],
+  }))
 
   return {
     items,

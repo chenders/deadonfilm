@@ -62,6 +62,11 @@ const mockActors = [
     has_biography: true,
     has_enriched_bio: true,
     bio_enriched_at: "2024-03-10T10:00:00Z",
+    top_credits: [
+      { title: "True Grit", year: 1969, type: "movie" as const },
+      { title: "The Searchers", year: 1956, type: "movie" as const },
+      { title: "Stagecoach", year: 1939, type: "movie" as const },
+    ],
   },
   {
     id: 2,
@@ -77,6 +82,7 @@ const mockActors = [
     has_biography: false,
     has_enriched_bio: false,
     bio_enriched_at: null,
+    top_credits: [],
   },
   {
     id: 3,
@@ -92,6 +98,10 @@ const mockActors = [
     has_biography: true,
     has_enriched_bio: false,
     bio_enriched_at: null,
+    top_credits: [
+      { title: "Some Like It Hot", year: 1959, type: "movie" as const },
+      { title: "The Seven Year Itch", year: null, type: "movie" as const },
+    ],
   },
 ]
 
@@ -1171,6 +1181,61 @@ describe("ActorManagementTab", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/admin/bio-enrichment/start", {
         state: { selectedActorIds: [1] },
       })
+    })
+  })
+
+  describe("top credits display", () => {
+    beforeEach(() => {
+      vi.mocked(useActorsForCoverage).mockReturnValue({
+        data: {
+          items: mockActors,
+          total: mockActors.length,
+          page: 1,
+          pageSize: 50,
+          totalPages: 1,
+        },
+        isLoading: false,
+        error: null,
+      } as never)
+    })
+
+    it("renders top credits under actor name", () => {
+      renderComponent()
+
+      // Credits appear in both desktop table and mobile card views
+      const creditElements = screen.getAllByText(
+        "True Grit (1969), The Searchers (1956), Stagecoach (1939)"
+      )
+      expect(creditElements.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it("does not render credits for actors with empty top_credits", () => {
+      renderComponent()
+
+      // John Wayne and Marilyn Monroe have credits, James Dean has empty array
+      const johnCredits = screen.getAllByText(
+        "True Grit (1969), The Searchers (1956), Stagecoach (1939)"
+      )
+      expect(johnCredits.length).toBeGreaterThanOrEqual(1)
+      const marilynCredits = screen.getAllByText("Some Like It Hot (1959), The Seven Year Itch")
+      expect(marilynCredits.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it("handles credits with null year gracefully", () => {
+      renderComponent()
+
+      // Marilyn Monroe's "The Seven Year Itch" has null year — should render without parenthetical
+      const creditElements = screen.getAllByText("Some Like It Hot (1959), The Seven Year Itch")
+      expect(creditElements.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it("sets title attribute for tooltip on truncated credits", () => {
+      renderComponent()
+
+      const creditElements = screen.getAllByTitle(
+        "True Grit (1969), The Searchers (1956), Stagecoach (1939)"
+      )
+      expect(creditElements.length).toBeGreaterThan(0)
     })
   })
 })

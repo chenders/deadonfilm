@@ -17,6 +17,12 @@ export interface CoverageStats {
   high_priority_count: number
 }
 
+export interface ActorTopCredit {
+  title: string
+  year: number | null
+  type: "movie" | "show"
+}
+
 export interface ActorCoverageInfo {
   id: number
   name: string
@@ -36,6 +42,7 @@ export interface ActorCoverageInfo {
   bio_enriched_at?: string | null
   enrichment_version?: string | null
   biography_version?: number | null
+  top_credits?: ActorTopCredit[]
 }
 
 export interface CoverageTrendPoint {
