@@ -16,15 +16,17 @@ interface AdminThemeContextValue {
 
 const AdminThemeContext = createContext<AdminThemeContextValue | null>(null)
 
+const isServer = typeof window === "undefined"
+
 const STORAGE_KEY = "admin-theme"
 
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined") return "dark"
+  if (isServer) return "dark"
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
 function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system"
+  if (isServer) return "system"
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored === "dark" || stored === "light" || stored === "system") {
     return stored
@@ -40,18 +42,31 @@ interface AdminThemeProviderProps {
 
 export function AdminThemeProvider({ children, defaultTheme = "dark" }: AdminThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
+    if (isServer) return defaultTheme
     const stored = getStoredTheme()
-    // If no stored preference, use default (dark)
     return stored === "system" ? defaultTheme : stored
   })
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
+    if (isServer) return defaultTheme === "dark" || defaultTheme === "light" ? defaultTheme : "dark"
     const stored = getStoredTheme()
     if (stored === "dark" || stored === "light") return stored
-    // Default to dark instead of system preference
     if (defaultTheme === "dark" || defaultTheme === "light") return defaultTheme
     return getSystemTheme()
   })
+
+  // On mount, sync from localStorage (handles SSR → client hydration)
+  useEffect(() => {
+    const stored = getStoredTheme()
+    setThemeState(stored === "system" ? defaultTheme : stored)
+    if (stored === "dark" || stored === "light") {
+      setResolvedTheme(stored)
+    } else if (defaultTheme === "dark" || defaultTheme === "light") {
+      setResolvedTheme(defaultTheme)
+    } else {
+      setResolvedTheme(getSystemTheme())
+    }
+  }, [defaultTheme])
 
   // Apply theme class and background to document
   useEffect(() => {

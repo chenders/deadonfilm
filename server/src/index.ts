@@ -8,7 +8,7 @@ import rateLimit from "express-rate-limit"
 import cookieParser from "cookie-parser"
 import { logger } from "./lib/logger.js"
 import { initRedis, isRedisAvailable } from "./lib/redis.js"
-import { invalidatePrerenderCache } from "./lib/cache.js"
+import { invalidatePrerenderCache, invalidateSSRCache } from "./lib/cache.js"
 import { skipRateLimitForAdmin } from "./middleware/rate-limit-utils.js"
 import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
@@ -101,6 +101,7 @@ import causeMappingsRoutes from "./routes/admin/cause-mappings.js"
 import { ogImageHandler } from "./routes/og-image.js"
 import { errorHandler } from "./middleware/error-handler.js"
 import { prerenderMiddleware, prerenderRateLimiter } from "./middleware/prerender.js"
+import { ssrMiddleware } from "./middleware/ssr.js"
 
 const app = express()
 const PORT = process.env.PORT || 8080
@@ -356,6 +357,10 @@ app.get("/api/show/:id/season/:seasonNumber", getSeason)
 app.get("/api/show/:id/season/:seasonNumber/episodes", getSeasonEpisodes)
 app.get("/api/show/:showId/season/:season/episode/:episode", getEpisode)
 
+// SSR middleware — renders React on the server for non-API requests.
+// Must be after all API routes. Falls back to SPA shell on error.
+app.use(ssrMiddleware)
+
 // Global error handler - must be registered after all routes
 app.use(errorHandler)
 
@@ -396,8 +401,8 @@ async function startServer() {
         `Server running on port ${PORT}`
       )
 
-      // Flush prerender cache after server is listening so deploys don't
-      // serve stale HTML referencing old hashed asset filenames.
+      // Flush prerender and SSR caches after server is listening so deploys
+      // don't serve stale HTML referencing old hashed asset filenames.
       // Fire-and-forget to avoid blocking request handling.
       if (redisAvailable) {
         invalidatePrerenderCache()
@@ -408,6 +413,15 @@ async function startServer() {
           })
           .catch((err) => {
             logger.warn({ err }, "Failed to flush prerender cache on startup")
+          })
+        invalidateSSRCache()
+          .then((flushed) => {
+            if (flushed > 0) {
+              logger.info({ flushed }, "Flushed stale SSR cache on startup")
+            }
+          })
+          .catch((err) => {
+            logger.warn({ err }, "Failed to flush SSR cache on startup")
           })
       }
     })
