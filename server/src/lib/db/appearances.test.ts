@@ -27,7 +27,7 @@ describe("batchUpsertActorMovieAppearances", () => {
     expect(getPool).not.toHaveBeenCalled()
   })
 
-  it("deduplicates by actor_id and movie_tmdb_id, keeping first entry", async () => {
+  it("deduplicates by actor_id and movie_tmdb_id, keeping lowest billing_order", async () => {
     const appearances: ActorMovieAppearanceRecord[] = [
       {
         actor_id: 1,
@@ -35,7 +35,7 @@ describe("batchUpsertActorMovieAppearances", () => {
         character_name: "Role A",
         billing_order: 0,
         age_at_filming: 30,
-        appearance_type: "cast",
+        appearance_type: "regular",
       },
       {
         actor_id: 1,
@@ -43,7 +43,7 @@ describe("batchUpsertActorMovieAppearances", () => {
         character_name: "Role B",
         billing_order: 5,
         age_at_filming: 30,
-        appearance_type: "cast",
+        appearance_type: "regular",
       },
       {
         actor_id: 2,
@@ -51,7 +51,7 @@ describe("batchUpsertActorMovieAppearances", () => {
         character_name: "Other Actor",
         billing_order: 1,
         age_at_filming: 40,
-        appearance_type: "cast",
+        appearance_type: "regular",
       },
     ]
 
@@ -66,7 +66,7 @@ describe("batchUpsertActorMovieAppearances", () => {
 
     // 2 unique actors × 6 columns = 12 values
     expect(values).toHaveLength(12)
-    // First entry kept (Role A), duplicate (Role B) dropped
+    // Kept Role A (billing_order 0) over Role B (billing_order 5)
     expect(values[2]).toBe("Role A")
     // Second unique actor preserved
     expect(values[6]).toBe(2)
@@ -78,6 +78,35 @@ describe("batchUpsertActorMovieAppearances", () => {
     expect(sql).not.toContain("$13")
   })
 
+  it("prefers non-null billing_order over null", async () => {
+    const appearances: ActorMovieAppearanceRecord[] = [
+      {
+        actor_id: 1,
+        movie_tmdb_id: 100,
+        character_name: "Null Order",
+        billing_order: null,
+        age_at_filming: 30,
+        appearance_type: "regular",
+      },
+      {
+        actor_id: 1,
+        movie_tmdb_id: 100,
+        character_name: "Has Order",
+        billing_order: 3,
+        age_at_filming: 30,
+        appearance_type: "self",
+      },
+    ]
+
+    await batchUpsertActorMovieAppearances(appearances)
+
+    const values = mockClient.query.mock.calls[1][1] as unknown[]
+    // Should keep "Has Order" (billing_order 3) over "Null Order" (null)
+    expect(values).toHaveLength(6)
+    expect(values[2]).toBe("Has Order")
+    expect(values[3]).toBe(3)
+  })
+
   it("passes through non-duplicate entries unchanged", async () => {
     const appearances: ActorMovieAppearanceRecord[] = [
       {
@@ -86,7 +115,7 @@ describe("batchUpsertActorMovieAppearances", () => {
         character_name: "Role A",
         billing_order: 0,
         age_at_filming: 30,
-        appearance_type: "cast",
+        appearance_type: "regular",
       },
       {
         actor_id: 2,
@@ -94,7 +123,7 @@ describe("batchUpsertActorMovieAppearances", () => {
         character_name: "Role B",
         billing_order: 1,
         age_at_filming: 25,
-        appearance_type: "cast",
+        appearance_type: "regular",
       },
     ]
 
@@ -118,7 +147,7 @@ describe("batchUpsertActorMovieAppearances", () => {
         character_name: "Role",
         billing_order: 0,
         age_at_filming: 30,
-        appearance_type: "cast",
+        appearance_type: "regular",
       },
     ]
 
@@ -182,7 +211,7 @@ describe("batchUpsertShowActorAppearances", () => {
 
     // 2 unique entries × 8 columns = 16 values (duplicate S01E01 dropped, S01E02 kept)
     expect(values).toHaveLength(16)
-    // First entry: S01E01 Role A
+    // First entry: S01E01 Role A (kept, lower billing_order)
     expect(values[4]).toBe("Role A")
     // Second entry: S01E02 Role A (different episode, not a duplicate)
     expect(values[11]).toBe(2) // episode_number

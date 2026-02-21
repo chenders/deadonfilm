@@ -43,14 +43,24 @@ export async function batchUpsertActorMovieAppearances(
   if (appearances.length === 0) return
 
   // Deduplicate by (actor_id, movie_tmdb_id) — TMDB credits can list the same
-  // actor multiple times (e.g., dual roles). Keep the first (highest-billed) entry.
-  const seen = new Set<string>()
-  const deduped = appearances.filter((a) => {
-    const key = `${a.actor_id}:${a.movie_tmdb_id}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+  // actor multiple times (e.g., dual roles). Keep the highest-billed entry
+  // (lowest non-null billing_order).
+  const bestByKey = new Map<string, ActorMovieAppearanceRecord>()
+  for (const appearance of appearances) {
+    const key = `${appearance.actor_id}:${appearance.movie_tmdb_id}`
+    const existing = bestByKey.get(key)
+    if (!existing) {
+      bestByKey.set(key, appearance)
+      continue
+    }
+    if (
+      existing.billing_order == null ||
+      (appearance.billing_order != null && appearance.billing_order < existing.billing_order)
+    ) {
+      bestByKey.set(key, appearance)
+    }
+  }
+  const deduped = Array.from(bestByKey.values())
 
   const db = getPool()
   const client = await db.connect()
@@ -160,14 +170,23 @@ export async function batchUpsertShowActorAppearances(
 
   // Deduplicate by (actor_id, show_tmdb_id, season_number, episode_number) —
   // TMDB credits can list the same actor multiple times per episode.
-  // Keep the first (highest-billed) entry.
-  const seen = new Set<string>()
-  const deduped = appearances.filter((a) => {
-    const key = `${a.actor_id}:${a.show_tmdb_id}:${a.season_number}:${a.episode_number}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+  // Keep the highest-billed entry (lowest non-null billing_order).
+  const bestByKey = new Map<string, ShowActorAppearanceRecord>()
+  for (const appearance of appearances) {
+    const key = `${appearance.actor_id}:${appearance.show_tmdb_id}:${appearance.season_number}:${appearance.episode_number}`
+    const existing = bestByKey.get(key)
+    if (!existing) {
+      bestByKey.set(key, appearance)
+      continue
+    }
+    if (
+      existing.billing_order == null ||
+      (appearance.billing_order != null && appearance.billing_order < existing.billing_order)
+    ) {
+      bestByKey.set(key, appearance)
+    }
+  }
+  const deduped = Array.from(bestByKey.values())
 
   const db = getPool()
   const client = await db.connect()
