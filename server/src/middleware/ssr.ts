@@ -17,7 +17,13 @@ import { PassThrough } from "node:stream"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import type { HelmetServerState } from "react-helmet-async"
+/** Minimal Helmet server state type — avoids react-helmet-async peer dep conflict with React 19 */
+interface HelmetServerState {
+  title: { toString(): string }
+  meta: { toString(): string }
+  link: { toString(): string }
+  script: { toString(): string }
+}
 import { getCached, setCached, buildCacheKey, CACHE_TTL } from "../lib/cache.js"
 import { logger } from "../lib/logger.js"
 
