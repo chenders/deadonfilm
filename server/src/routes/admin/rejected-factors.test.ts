@@ -46,10 +46,10 @@ describe("Admin Rejected Factors Endpoints", () => {
       factor_type: "life",
       occurrence_count: 12,
       last_seen: "2026-02-20T10:00:00Z",
-      recent_actors: JSON.stringify([
+      recent_actors: [
         { id: 1, name: "Actor One" },
         { id: 2, name: "Actor Two" },
-      ]),
+      ],
     }
 
     it("returns aggregated rejected factors", async () => {
