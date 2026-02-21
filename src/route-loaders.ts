@@ -41,7 +41,7 @@ const routes: Array<{
 }> = [
   // Actor death details page
   {
-    pattern: /^\/actor\/([^/]+)\/death$/,
+    pattern: /^\/actor\/(?<slug>[^/]+)\/death$/,
     loader: (params) => ({
       loaders: (base) => [
         {
@@ -54,7 +54,7 @@ const routes: Array<{
 
   // Actor page
   {
-    pattern: /^\/actor\/([^/]+)$/,
+    pattern: /^\/actor\/(?<slug>[^/]+)$/,
     loader: (params) => ({
       loaders: (base) => [
         {
@@ -67,7 +67,7 @@ const routes: Array<{
 
   // Movie page
   {
-    pattern: /^\/movie\/([^/]+)$/,
+    pattern: /^\/movie\/(?<slug>[^/]+)$/,
     loader: (params) => {
       const movieId = extractMovieId(params.slug)
       return {
@@ -86,7 +86,7 @@ const routes: Array<{
 
   // Episode page
   {
-    pattern: /^\/episode\/([^/]+)$/,
+    pattern: /^\/episode\/(?<slug>[^/]+)$/,
     loader: (params) => {
       const info = extractEpisodeInfo(params.slug)
       return {
@@ -109,7 +109,7 @@ const routes: Array<{
 
   // Season page
   {
-    pattern: /^\/show\/([^/]+)\/season\/(\d+)$/,
+    pattern: /^\/show\/(?<slug>[^/]+)\/season\/(?<seasonNumber>\d+)$/,
     loader: (params) => {
       const showId = extractShowId(params.slug)
       const seasonNumber = parseInt(params.seasonNumber, 10)
@@ -129,7 +129,7 @@ const routes: Array<{
 
   // Show page
   {
-    pattern: /^\/show\/([^/]+)$/,
+    pattern: /^\/show\/(?<slug>[^/]+)$/,
     loader: (params) => {
       const showId = extractShowId(params.slug)
       return {
@@ -148,7 +148,7 @@ const routes: Array<{
 
   // Causes of death — specific cause (3rd level)
   {
-    pattern: /^\/causes-of-death\/([^/]+)\/([^/]+)$/,
+    pattern: /^\/causes-of-death\/(?<categorySlug>[^/]+)\/(?<causeSlug>[^/]+)$/,
     loader: (params, searchParams) => {
       const page = searchParams.get("page") || "1"
       const includeObscure = searchParams.get("includeObscure") || "false"
@@ -175,7 +175,7 @@ const routes: Array<{
 
   // Causes of death — category (2nd level)
   {
-    pattern: /^\/causes-of-death\/([^/]+)$/,
+    pattern: /^\/causes-of-death\/(?<categorySlug>[^/]+)$/,
     loader: (params, searchParams) => {
       const page = searchParams.get("page") || "1"
       const includeObscure = searchParams.get("includeObscure") || "false"
@@ -215,7 +215,7 @@ const routes: Array<{
 
   // Deaths by decade
   {
-    pattern: /^\/deaths\/decade\/([^/]+)$/,
+    pattern: /^\/deaths\/decade\/(?<decade>[^/]+)$/,
     loader: (params, searchParams) => {
       const page = searchParams.get("page") || "1"
       const includeObscure = searchParams.get("includeObscure") || "false"
@@ -309,7 +309,7 @@ const routes: Array<{
 
   // Deaths — by cause (old route)
   {
-    pattern: /^\/deaths\/([^/]+)$/,
+    pattern: /^\/deaths\/(?<cause>[^/]+)$/,
     loader: (params, searchParams) => {
       const page = searchParams.get("page") || "1"
       const includeObscure = searchParams.get("includeObscure") || "false"
@@ -348,7 +348,7 @@ const routes: Array<{
 
   // Movies by genre
   {
-    pattern: /^\/movies\/genre\/([^/]+)$/,
+    pattern: /^\/movies\/genre\/(?<genre>[^/]+)$/,
     loader: (params, searchParams) => {
       const page = searchParams.get("page") || "1"
       return {
@@ -508,15 +508,13 @@ export function matchRouteLoaders(url: string): ((fetchBase: string) => Prefetch
   for (const route of routes) {
     const match = normalizedPath.match(route.pattern)
     if (match) {
-      // Extract named params from regex groups
+      // Extract params from named capture groups
       const params: Record<string, string> = {}
-      if (match[1]) params.slug = match[1]
-      if (match[1]) params.categorySlug = match[1]
-      if (match[1]) params.decade = match[1]
-      if (match[1]) params.cause = match[1]
-      if (match[1]) params.genre = match[1]
-      if (match[2]) params.causeSlug = match[2]
-      if (match[2]) params.seasonNumber = match[2]
+      if (match.groups) {
+        for (const [key, value] of Object.entries(match.groups)) {
+          if (value != null) params[key] = value
+        }
+      }
 
       const result = route.loader(params, searchParams)
       return result.loaders

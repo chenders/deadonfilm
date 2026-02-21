@@ -223,6 +223,62 @@ describe("ssrMiddleware", () => {
     expect(buildCacheKey).toHaveBeenCalledWith("ssr", { path: "/" })
   })
 
+  // ── Query parameter handling ────────────────────────────────────
+
+  it("includes query parameters in cache key", async () => {
+    vi.mocked(getCached).mockResolvedValue("<html>cached</html>")
+
+    await ssrMiddleware(
+      makeReq({
+        path: "/deaths/notable",
+        originalUrl: "/deaths/notable?page=2&filter=strange",
+        query: { page: "2", filter: "strange" },
+      }),
+      res as Response,
+      next
+    )
+
+    const { buildCacheKey } = await import("../lib/cache.js")
+    expect(buildCacheKey).toHaveBeenCalledWith("ssr", {
+      path: "/deaths/notable?filter=strange&page=2",
+    })
+  })
+
+  it("sorts query parameters for consistent cache keys", async () => {
+    vi.mocked(getCached).mockResolvedValue("<html>cached</html>")
+
+    // Same params in different order should produce the same cache key
+    await ssrMiddleware(
+      makeReq({
+        path: "/deaths/notable",
+        originalUrl: "/deaths/notable?filter=all&page=1",
+        query: { filter: "all", page: "1" },
+      }),
+      res as Response,
+      next
+    )
+
+    const { buildCacheKey } = await import("../lib/cache.js")
+    expect(buildCacheKey).toHaveBeenCalledWith("ssr", {
+      path: "/deaths/notable?filter=all&page=1",
+    })
+  })
+
+  it("uses path-only cache key when no query parameters", async () => {
+    vi.mocked(getCached).mockResolvedValue("<html>cached</html>")
+
+    await ssrMiddleware(
+      makeReq({ path: "/actor/john-wayne-2157", query: {} }),
+      res as Response,
+      next
+    )
+
+    const { buildCacheKey } = await import("../lib/cache.js")
+    expect(buildCacheKey).toHaveBeenCalledWith("ssr", {
+      path: "/actor/john-wayne-2157",
+    })
+  })
+
   // ── Error handling ───────────────────────────────────────────────
 
   it("serves SPA fallback when Redis errors", async () => {

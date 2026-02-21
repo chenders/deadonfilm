@@ -231,7 +231,12 @@ function assembleHtml(
   html = html.replace("<!--app-html-->", appHtml)
 
   // Inject dehydrated React Query state before the closing </body>
-  const stateScript = `<script>window.__REACT_QUERY_STATE__=${JSON.stringify(dehydratedState).replace(/</g, "\\u003c")}</script>`
+  const serializedState = JSON.stringify(dehydratedState)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
+  const stateScript = `<script>window.__REACT_QUERY_STATE__=${serializedState}</script>`
   html = html.replace("</body>", `${stateScript}\n</body>`)
 
   return html
@@ -281,7 +286,16 @@ export async function ssrMiddleware(
   }
 
   const normalizedPath = req.path.replace(/\/$/, "") || "/"
-  const cacheKey = buildSSRCacheKey(normalizedPath)
+
+  // Include sorted query parameters in cache key so different ?page=, ?filter=, etc.
+  // get separate cache entries
+  const sortedSearch = new URLSearchParams(
+    [...new URLSearchParams(req.query as Record<string, string>).entries()].sort(([a], [b]) =>
+      a.localeCompare(b)
+    )
+  ).toString()
+  const cacheKeyPath = sortedSearch ? `${normalizedPath}?${sortedSearch}` : normalizedPath
+  const cacheKey = buildSSRCacheKey(cacheKeyPath)
 
   try {
     // Check Redis cache first
@@ -301,7 +315,7 @@ export async function ssrMiddleware(
     // Use localhost to call ourselves directly (avoids nginx loop, avoids SSR re-entry).
     // The SSR middleware skips /api/ paths, so these fetches go straight to API handlers.
     const urlWithQuery = req.originalUrl
-    const localPort = req.socket.localPort || process.env.PORT || 8080
+    const localPort = process.env.PORT || req.socket.localPort || 8080
     const fetchBase = `http://127.0.0.1:${localPort}`
 
     // Render the app (prefetches data, then streams React to string)
