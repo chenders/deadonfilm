@@ -146,6 +146,15 @@ describe("Admin Rejected Factors Endpoints", () => {
       expect(response.body.items[0].recentActors).toEqual([])
     })
 
+    it("returns 400 for invalid type filter", async () => {
+      const response = await request(app)
+        .get("/admin/api/rejected-factors?type=invalid")
+        .expect(400)
+
+      expect(response.body.error.message).toBe("Invalid type filter. Must be 'life' or 'death'.")
+      expect(mockPool.query).not.toHaveBeenCalled()
+    })
+
     it("returns 500 on database error", async () => {
       mockPool.query.mockRejectedValue(new Error("Database error"))
 

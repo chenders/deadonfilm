@@ -11,6 +11,8 @@ import { logger } from "../../lib/logger.js"
 
 const router = Router()
 
+const VALID_TYPES = new Set(["life", "death"])
+
 // ============================================================================
 // GET /admin/api/rejected-factors
 // Get aggregated rejected factors with occurrence counts and recent actors
@@ -19,7 +21,12 @@ const router = Router()
 interface RejectedFactorsQuery {
   page?: string
   pageSize?: string
-  type?: "life" | "death"
+  type?: string
+}
+
+interface RecentActor {
+  id: number
+  name: string
 }
 
 router.get("/", async (req: Request, res: Response): Promise<void> => {
@@ -29,6 +36,14 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const limit = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 50))
     const offset = (pageNum - 1) * limit
 
+    // Validate type filter
+    if (type && !VALID_TYPES.has(type)) {
+      res
+        .status(400)
+        .json({ error: { message: "Invalid type filter. Must be 'life' or 'death'." } })
+      return
+    }
+
     const pool = getPool()
 
     // Build WHERE clause for optional type filter
@@ -36,7 +51,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const countParams: string[] = []
     const queryParams: (string | number)[] = []
 
-    if (type && (type === "life" || type === "death")) {
+    if (type) {
       conditions.push(`factor_type = $1`)
       countParams.push(type)
     }
@@ -56,7 +71,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 
     // Build query params for the main query
     let paramIdx = 1
-    if (type && (type === "life" || type === "death")) {
+    if (type) {
       queryParams.push(type)
       paramIdx++
     }
@@ -71,7 +86,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       factor_type: string
       occurrence_count: number
       last_seen: string
-      recent_actors: string
+      recent_actors: RecentActor[] | null
     }>(
       `SELECT
         factor_name,
@@ -79,12 +94,20 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         COUNT(*)::int as occurrence_count,
         MAX(created_at) as last_seen,
         (
-          SELECT json_agg(sub)
+          SELECT COALESCE(json_agg(sub), '[]'::json)
           FROM (
-            SELECT DISTINCT ON (actor_id) actor_id as id, actor_name as name
-            FROM rejected_notable_factors r2
-            WHERE r2.factor_name = r.factor_name AND r2.factor_type = r.factor_type
-            ORDER BY actor_id, created_at DESC
+            SELECT id, name
+            FROM (
+              SELECT
+                actor_id as id,
+                actor_name as name,
+                created_at,
+                ROW_NUMBER() OVER (PARTITION BY actor_id ORDER BY created_at DESC) AS rn
+              FROM rejected_notable_factors r2
+              WHERE r2.factor_name = r.factor_name AND r2.factor_type = r.factor_type
+            ) per_actor
+            WHERE rn = 1
+            ORDER BY created_at DESC
             LIMIT 5
           ) sub
         ) as recent_actors

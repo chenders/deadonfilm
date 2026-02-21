@@ -11,8 +11,10 @@ exports.up = (pgm) => {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
-    CREATE INDEX idx_rejected_factors_name ON rejected_notable_factors (factor_name);
-    CREATE INDEX idx_rejected_factors_type ON rejected_notable_factors (factor_type);
+    -- Supports admin queries that filter/group by (factor_name, factor_type)
+    CREATE INDEX idx_rejected_factors_name_type ON rejected_notable_factors (factor_name, factor_type);
+    -- Supports "recent actors" lookups and ordering by recency
+    CREATE INDEX idx_rejected_factors_type_name_created ON rejected_notable_factors (factor_type, factor_name, created_at DESC);
     CREATE INDEX idx_rejected_factors_created ON rejected_notable_factors (created_at DESC);
   `)
 }
