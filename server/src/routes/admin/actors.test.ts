@@ -600,10 +600,12 @@ describe("admin actors routes", () => {
       has_detailed_death_info: true,
       enriched_at: "2026-01-20T00:00:00Z",
       enrichment_source: "multi-source",
+      enrichment_version: "3.0.0",
       cause_of_death_source: "claude",
       biography: "A decorated film actor...",
       biography_generated_at: "2026-01-15T00:00:00Z",
       biography_source_type: "tmdb",
+      biography_version: 2,
     }
 
     const mockCircumstancesRow = {
@@ -616,6 +618,7 @@ describe("admin actors routes", () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [mockActorRow] })
         .mockResolvedValueOnce({ rows: [mockCircumstancesRow] })
+        .mockResolvedValueOnce({ rows: [{ id: 1, updated_at: "2026-02-01T00:00:00Z" }] })
 
       const res = await request(app).get("/admin/api/actors/123/metadata")
 
@@ -657,6 +660,7 @@ describe("admin actors routes", () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [actorNoBio] })
         .mockResolvedValueOnce({ rows: [] }) // no circumstances
+        .mockResolvedValueOnce({ rows: [] }) // no bio enrichment
 
       const res = await request(app).get("/admin/api/actors/123/metadata")
 

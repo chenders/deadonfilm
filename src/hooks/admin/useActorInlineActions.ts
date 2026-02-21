@@ -12,6 +12,9 @@ export interface ActorAdminMetadata {
     hasContent: boolean
     generatedAt: string | null
     sourceType: string | null
+    hasEnrichedBio: boolean
+    bioEnrichedAt: string | null
+    biographyVersion: number | null
   }
   enrichment: {
     enrichedAt: string | null
