@@ -329,7 +329,7 @@ For full details, see `.claude/rules/biography-enrichment.md`.
 - **Null safety**: Always guard `rows[0]` access with optional chaining and fallback (`rows[0]?.cnt ?? 0`)
 - **Type accuracy**: Database JSON columns auto-parse — type as the parsed type (`MyType[]`), not `string`. Use `unknown` over `any`
 - **Accessibility**: Icon-only links/buttons need `aria-label`. Touch targets minimum 44x44px. Don't hide the only content in a cell with `aria-hidden`
-- **AbortSignal**: Combine caller signals with timeouts using `AbortSignal.any()` — never use `??` which defeats the timeout
+- **AbortSignal**: Combine caller signals with timeouts using a ternary + `AbortSignal.any()` — never use `??` which defeats the timeout
 - **Prop naming**: If a prop's behavior changes (e.g., now hides a section, not just a heading), rename to match
 
 ---

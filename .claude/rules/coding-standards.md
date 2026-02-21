@@ -74,9 +74,9 @@ When combining a caller-provided signal with a timeout, use `AbortSignal.any()` 
 // BAD — caller signal disables timeout entirely
 const signal = options?.signal ?? AbortSignal.timeout(30000)
 
-// GOOD — both signal and timeout are enforced
-const signal = AbortSignal.any([
-  options?.signal ?? new AbortController().signal,
-  AbortSignal.timeout(30000),
-].filter(Boolean))
+// GOOD — both caller signal and timeout are enforced when a caller signal is provided
+const timeoutSignal = AbortSignal.timeout(30000)
+const signal = options?.signal
+  ? AbortSignal.any([options.signal, timeoutSignal])
+  : timeoutSignal
 ```

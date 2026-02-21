@@ -138,6 +138,16 @@ When renaming functions, changing APIs, or refactoring modules, **always update 
 - **Doc comments**: Update JSDoc/TSDoc `@param`, `@returns`, and description text
 - **Error messages**: Update user-facing or log error strings (e.g., "No results found via DuckDuckGo" → "No results found via web search")
 - **File-level doc blocks**: Update the module description at the top of each file
+- **Prop names**: If behavior changes (e.g., prop now hides a section, not just a heading), rename the prop to match
+
+## Code Quality: Defensive Coding
+
+- **Null safety**: Always guard `rows[0]` with optional chaining and fallback (`rows[0]?.cnt ?? 0`). Guard config spreads (`...(config?.field ?? {})`)
+- **DRY**: Extract helpers before duplicating logic across views (e.g., desktop table + mobile cards). Extract shared test mocks across files
+- **Accessibility**: Icon-only links/buttons need `aria-label`. Touch targets minimum 44x44px. Don't use `aria-hidden` as the only content in a cell
+- **Type safety**: `pg` auto-parses JSON columns — type as parsed type (`MyType[]`), not `string`. Use `unknown` over `any`
+- **AbortSignal**: Combine caller signals with timeouts using ternary + `AbortSignal.any()` — never `??` which defeats the timeout
+- **Testing**: Ship tests with new code in the same commit. Assert payload contents, not just that functions were called. Mock data types must match real SQL output types
 
 ## Development Notes
 
