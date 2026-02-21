@@ -26,6 +26,8 @@ import type {
 } from "./types.js"
 import { sanitizeSourceText } from "../shared/sanitize-source-text.js"
 import { getEnrichmentLogger } from "./logger.js"
+import { getPool } from "../db/pool.js"
+import { saveRejectedFactors } from "../rejected-factors.js"
 import newrelic from "newrelic"
 
 const MODEL_ID = "claude-opus-4-5-20251101"
@@ -391,6 +393,16 @@ export async function cleanupWithClaude(
       }))
     : null
 
+  // Validate notable_factors against VALID set and capture rejected ones
+  const allNotableFactors = (
+    Array.isArray(parsed.notable_factors) ? parsed.notable_factors : []
+  ).filter((f: unknown): f is string => typeof f === "string")
+  const validNotableFactors = allNotableFactors.filter((f) => VALID_NOTABLE_FACTORS.has(f))
+  const rejectedNotableFactors = allNotableFactors.filter((f) => !VALID_NOTABLE_FACTORS.has(f))
+  if (rejectedNotableFactors.length > 0) {
+    saveRejectedFactors(getPool(), rejectedNotableFactors, "death", actor.id, actor.name)
+  }
+
   // Convert to CleanedDeathInfo
   const cleaned: CleanedDeathInfo = {
     cause: parsed.cause,
@@ -404,9 +416,7 @@ export async function cleanupWithClaude(
     rumoredCircumstances: parsed.rumored_circumstances,
     locationOfDeath: parsed.location_of_death,
     manner: DeathMannerSchema.safeParse(parsed.manner).success ? parsed.manner : null,
-    notableFactors: (Array.isArray(parsed.notable_factors) ? parsed.notable_factors : []).filter(
-      (f: string) => VALID_NOTABLE_FACTORS.has(f)
-    ),
+    notableFactors: validNotableFactors,
     categories: Array.isArray(parsed.categories) ? parsed.categories : null,
     relatedDeaths: parsed.related_deaths,
     relatedCelebrities,
