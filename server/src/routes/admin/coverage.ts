@@ -17,6 +17,7 @@ import {
   getCoverageTrends,
   getEnrichmentCandidates,
   getDistinctCausesOfDeath,
+  getDistinctEnrichmentVersions,
   getActorPreview,
   ActorCoverageFilters,
 } from "../../lib/db/admin-coverage-queries.js"
@@ -54,6 +55,23 @@ router.get("/causes", async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     logger.error({ error }, "Failed to fetch causes of death")
     res.status(500).json({ error: { message: "Failed to fetch causes of death" } })
+  }
+})
+
+// ============================================================================
+// GET /admin/api/coverage/enrichment-versions
+// Distinct enrichment versions for filter dropdowns
+// ============================================================================
+
+router.get("/enrichment-versions", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const versions = await getDistinctEnrichmentVersions(pool)
+
+    res.json(versions)
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch enrichment versions")
+    res.status(500).json({ error: { message: "Failed to fetch enrichment versions" } })
   }
 })
 
@@ -111,6 +129,14 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
 
     if (req.query.hasEnrichedBio !== undefined) {
       filters.hasEnrichedBio = req.query.hasEnrichedBio === "true"
+    }
+
+    if (req.query.deathEnrichmentVersion) {
+      filters.deathEnrichmentVersion = req.query.deathEnrichmentVersion as string
+    }
+
+    if (req.query.bioEnrichmentVersion) {
+      filters.bioEnrichmentVersion = req.query.bioEnrichmentVersion as string
     }
 
     if (req.query.orderBy) {

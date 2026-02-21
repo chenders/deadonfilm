@@ -7,6 +7,7 @@ import DateInput from "../common/DateInput"
 import {
   useActorsForCoverage,
   useCausesOfDeath,
+  useEnrichmentVersions,
   type ActorCoverageFilters,
 } from "../../../hooks/admin/useCoverage"
 import AdminHoverCard from "../ui/AdminHoverCard"
@@ -77,12 +78,15 @@ export default function ActorManagementTab() {
     searchName: searchParams.get("searchName") || undefined,
     causeOfDeath: searchParams.get("causeOfDeath") || undefined,
     deathManner: searchParams.get("deathManner") || undefined,
+    deathEnrichmentVersion: searchParams.get("deathEnrichmentVersion") || undefined,
+    bioEnrichmentVersion: searchParams.get("bioEnrichmentVersion") || undefined,
     orderBy: (searchParams.get("orderBy") as ActorCoverageFilters["orderBy"]) || "popularity",
     orderDirection: (searchParams.get("orderDirection") as "asc" | "desc") || "desc",
   }
 
   const { data, isLoading, error } = useActorsForCoverage(page, pageSize, filters)
   const { data: causesData } = useCausesOfDeath()
+  const { data: versionsData } = useEnrichmentVersions()
 
   // Filter causes based on search input
   const filteredCauses =
@@ -126,6 +130,12 @@ export default function ActorManagementTab() {
     }
     if (updatedFilters.deathManner) {
       params.set("deathManner", updatedFilters.deathManner)
+    }
+    if (updatedFilters.deathEnrichmentVersion) {
+      params.set("deathEnrichmentVersion", updatedFilters.deathEnrichmentVersion)
+    }
+    if (updatedFilters.bioEnrichmentVersion) {
+      params.set("bioEnrichmentVersion", updatedFilters.bioEnrichmentVersion)
     }
     if (updatedFilters.orderBy) {
       params.set("orderBy", updatedFilters.orderBy)
@@ -345,7 +355,63 @@ export default function ActorManagementTab() {
             </select>
           </div>
 
-          {/* 5. Death Date From */}
+          {/* 5. Death Enrichment Version */}
+          <div>
+            <label
+              htmlFor="deathEnrichmentVersion"
+              className="mb-1 block text-sm text-admin-text-muted"
+            >
+              Death Enrich Ver.
+            </label>
+            <select
+              id="deathEnrichmentVersion"
+              value={filters.deathEnrichmentVersion || ""}
+              onChange={(e) =>
+                handleFilterChange({
+                  deathEnrichmentVersion: e.target.value || undefined,
+                })
+              }
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
+            >
+              <option value="">All</option>
+              {versionsData?.deathVersions.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {v.value} ({v.count.toLocaleString()})
+                </option>
+              ))}
+              <option value="__null__">Not enriched</option>
+            </select>
+          </div>
+
+          {/* 6. Bio Enrichment Version */}
+          <div>
+            <label
+              htmlFor="bioEnrichmentVersion"
+              className="mb-1 block text-sm text-admin-text-muted"
+            >
+              Bio Enrich Ver.
+            </label>
+            <select
+              id="bioEnrichmentVersion"
+              value={filters.bioEnrichmentVersion || ""}
+              onChange={(e) =>
+                handleFilterChange({
+                  bioEnrichmentVersion: e.target.value || undefined,
+                })
+              }
+              className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary focus:ring-admin-interactive"
+            >
+              <option value="">All</option>
+              {versionsData?.bioVersions.map((v) => (
+                <option key={v.value} value={v.value}>
+                  v{v.value} ({v.count.toLocaleString()})
+                </option>
+              ))}
+              <option value="__null__">Not enriched</option>
+            </select>
+          </div>
+
+          {/* 7. Death Date From */}
           <DateInput
             id="deathDateStart"
             label="Death Date From"
@@ -874,8 +940,22 @@ export default function ActorManagementTab() {
                               </a>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm text-admin-text-muted">
+                          <td
+                            className="px-4 py-3 text-sm text-admin-text-muted"
+                            title={
+                              actor.enrichment_version
+                                ? `v${actor.enrichment_version}`
+                                : actor.enriched_at
+                                  ? "No version"
+                                  : undefined
+                            }
+                          >
                             {formatRelativeTime(actor.enriched_at)}
+                            {actor.enrichment_version && (
+                              <span className="text-admin-text-muted/60 ml-1 text-xs">
+                                v{actor.enrichment_version}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-sm text-admin-text-muted">
                             {actor.cause_of_death || "—"}
@@ -887,7 +967,7 @@ export default function ActorManagementTab() {
                             {actor.has_enriched_bio ? (
                               <span
                                 className="inline-flex items-center gap-1 text-admin-info"
-                                title={`Enriched bio${actor.bio_enriched_at ? ` (${new Date(actor.bio_enriched_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})` : ""}`}
+                                title={`Enriched bio${actor.biography_version != null ? ` v${actor.biography_version}` : ""}${actor.bio_enriched_at ? ` (${new Date(actor.bio_enriched_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})` : ""}`}
                               >
                                 <svg
                                   data-testid={`enriched-bio-icon-${actor.id}`}

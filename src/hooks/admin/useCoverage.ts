@@ -34,6 +34,8 @@ export interface ActorCoverageInfo {
   has_biography?: boolean
   has_enriched_bio?: boolean
   bio_enriched_at?: string | null
+  enrichment_version?: string | null
+  biography_version?: number | null
 }
 
 export interface CoverageTrendPoint {
@@ -64,6 +66,8 @@ export interface ActorCoverageFilters {
   searchName?: string
   causeOfDeath?: string
   deathManner?: string
+  deathEnrichmentVersion?: string
+  bioEnrichmentVersion?: string
   orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
   orderDirection?: "asc" | "desc"
 }
@@ -72,6 +76,16 @@ export interface CauseOfDeathOption {
   value: string
   label: string
   count: number
+}
+
+export interface EnrichmentVersionOption {
+  value: string
+  count: number
+}
+
+export interface EnrichmentVersionsResult {
+  deathVersions: EnrichmentVersionOption[]
+  bioVersions: EnrichmentVersionOption[]
 }
 
 export interface ActorPreviewMovie {
@@ -154,6 +168,12 @@ async function fetchActorsForCoverage(
   if (filters.hasEnrichedBio !== undefined) {
     params.append("hasEnrichedBio", filters.hasEnrichedBio.toString())
   }
+  if (filters.deathEnrichmentVersion) {
+    params.append("deathEnrichmentVersion", filters.deathEnrichmentVersion)
+  }
+  if (filters.bioEnrichmentVersion) {
+    params.append("bioEnrichmentVersion", filters.bioEnrichmentVersion)
+  }
 
   const response = await fetch(`/admin/api/coverage/actors?${params.toString()}`, {
     credentials: "include",
@@ -195,6 +215,18 @@ async function fetchCausesOfDeath(): Promise<CauseOfDeathOption[]> {
 
   if (!response.ok) {
     throw new Error("Failed to fetch causes of death")
+  }
+
+  return response.json()
+}
+
+async function fetchEnrichmentVersions(): Promise<EnrichmentVersionsResult> {
+  const response = await fetch("/admin/api/coverage/enrichment-versions", {
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch enrichment versions")
   }
 
   return response.json()
@@ -312,5 +344,16 @@ export function useActorPreview(actorId: number | null): UseQueryResult<ActorPre
     queryFn: () => fetchActorPreview(actorId!),
     enabled: actorId !== null,
     staleTime: 300000, // 5 minutes
+  })
+}
+
+/**
+ * Hook to fetch distinct enrichment versions for filter dropdowns.
+ */
+export function useEnrichmentVersions(): UseQueryResult<EnrichmentVersionsResult> {
+  return useQuery({
+    queryKey: ["admin", "coverage", "enrichment-versions"],
+    queryFn: fetchEnrichmentVersions,
+    staleTime: 900000, // 15 minutes
   })
 }
