@@ -9,6 +9,7 @@ import {
   useCausesOfDeath,
   useEnrichmentVersions,
   type ActorCoverageFilters,
+  type ActorTopCredit,
 } from "../../../hooks/admin/useCoverage"
 import AdminHoverCard from "../ui/AdminHoverCard"
 import MobileCard from "../ui/MobileCard"
@@ -28,6 +29,10 @@ const DEATH_MANNER_OPTIONS = [
   { value: "undetermined", label: "Undetermined" },
   { value: "pending", label: "Pending" },
 ]
+
+function formatTopCredits(credits: ActorTopCredit[]): string {
+  return credits.map((c) => c.title + (c.year ? ` (${c.year})` : "")).join(", ")
+}
 
 export default function ActorManagementTab() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -601,13 +606,9 @@ export default function ActorManagementTab() {
                         {actor.top_credits && actor.top_credits.length > 0 && (
                           <span
                             className="block truncate text-xs"
-                            title={actor.top_credits
-                              .map((c) => c.title + (c.year ? ` (${c.year})` : ""))
-                              .join(", ")}
+                            title={formatTopCredits(actor.top_credits)}
                           >
-                            {actor.top_credits
-                              .map((c) => c.title + (c.year ? ` (${c.year})` : ""))
-                              .join(", ")}
+                            {formatTopCredits(actor.top_credits)}
                           </span>
                         )}
                       </>
@@ -818,13 +819,9 @@ export default function ActorManagementTab() {
                                 {actor.top_credits && actor.top_credits.length > 0 && (
                                   <p
                                     className="max-w-[300px] truncate text-xs text-admin-text-muted"
-                                    title={actor.top_credits
-                                      .map((c) => c.title + (c.year ? ` (${c.year})` : ""))
-                                      .join(", ")}
+                                    title={formatTopCredits(actor.top_credits)}
                                   >
-                                    {actor.top_credits
-                                      .map((c) => c.title + (c.year ? ` (${c.year})` : ""))
-                                      .join(", ")}
+                                    {formatTopCredits(actor.top_credits)}
                                   </p>
                                 )}
                               </div>

@@ -294,7 +294,7 @@ export async function getActorsForCoverage(
   // Eliminates separate COUNT query - significant speedup for large tables
   // Cast popularity to float to ensure JavaScript number type (pg returns numeric as string)
   const dataResult = await pool.query<
-    ActorCoverageInfo & { total_count: string; top_credits_json: string | null }
+    ActorCoverageInfo & { total_count: string; top_credits_json: ActorTopCredit[] | null }
   >(
     `SELECT
        actors.id,
@@ -318,7 +318,10 @@ export async function getActorsForCoverage(
      FROM actors
      LEFT JOIN actor_biography_details abd ON abd.actor_id = actors.id
      LEFT JOIN LATERAL (
-       SELECT json_agg(sub ORDER BY sub.pop DESC) AS top_credits_json
+       SELECT json_agg(
+                json_build_object('title', sub.title, 'year', sub.year, 'type', sub.type)
+                ORDER BY sub.pop DESC
+              ) AS top_credits_json
        FROM (
          SELECT m.title, m.release_year AS year, 'movie' AS type, COALESCE(m.dof_popularity, 0) AS pop
          FROM actor_movie_appearances ama
@@ -345,7 +348,7 @@ export async function getActorsForCoverage(
   // Remove total_count and raw JSON, parse top_credits
   const items = dataResult.rows.map(({ total_count: _total_count, top_credits_json, ...item }) => ({
     ...item,
-    top_credits: (top_credits_json as unknown as ActorTopCredit[] | null) ?? [],
+    top_credits: top_credits_json ?? [],
   }))
 
   return {
