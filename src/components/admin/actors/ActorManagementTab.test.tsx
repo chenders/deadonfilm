@@ -21,6 +21,11 @@ vi.mock("../../../hooks/admin/useCoverage", () => ({
     isLoading: false,
     error: null,
   })),
+  useEnrichmentVersions: vi.fn(() => ({
+    data: { deathVersions: [], bioVersions: [] },
+    isLoading: false,
+    error: null,
+  })),
   useActorPreview: vi.fn(() => ({
     data: null,
     isLoading: false,

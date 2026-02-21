@@ -1049,11 +1049,12 @@ router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<v
       biography: string | null
       biography_generated_at: string | null
       biography_source_type: string | null
+      biography_version: number | null
     }>(
       `SELECT id, name, deathday, is_obscure, deathday_confidence,
               has_detailed_death_info, enriched_at, enrichment_source,
               enrichment_version, cause_of_death_source, biography,
-              biography_generated_at, biography_source_type
+              biography_generated_at, biography_source_type, biography_version
        FROM actors WHERE id = $1`,
       [actorId]
     )
@@ -1078,12 +1079,23 @@ router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<v
 
     const circ = circumstancesResult.rows[0] || null
 
+    // Get bio enrichment data
+    const bioResult = await pool.query<{
+      id: number
+      updated_at: string | null
+    }>(`SELECT id, updated_at FROM actor_biography_details WHERE actor_id = $1`, [actorId])
+
+    const bioDetails = bioResult.rows[0] || null
+
     res.json({
       actorId,
       biography: {
         hasContent: actor.biography !== null && actor.biography.length > 0,
         generatedAt: actor.biography_generated_at,
         sourceType: actor.biography_source_type,
+        hasEnrichedBio: !!bioDetails,
+        bioEnrichedAt: bioDetails?.updated_at || null,
+        biographyVersion: actor.biography_version,
       },
       enrichment: {
         enrichedAt: actor.enriched_at,

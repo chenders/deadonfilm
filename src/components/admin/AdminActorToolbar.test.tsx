@@ -7,6 +7,32 @@ import { ToastProvider } from "@/contexts/ToastContext"
 import AdminActorToolbar from "./AdminActorToolbar"
 import { ReactNode } from "react"
 
+const mockMetadata = {
+  actorId: 123,
+  biography: {
+    hasContent: true,
+    generatedAt: "2026-01-15T00:00:00Z",
+    sourceType: "claude",
+    hasEnrichedBio: true,
+    bioEnrichedAt: "2026-01-20T00:00:00Z",
+    biographyVersion: 2,
+  },
+  enrichment: {
+    enrichedAt: "2026-01-10T00:00:00Z",
+    source: "multi-source-enrichment",
+    version: "3.0.0",
+    causeOfDeathSource: "wikipedia",
+    hasCircumstances: true,
+    circumstancesEnrichedAt: "2026-01-10T00:00:00Z",
+  },
+  dataQuality: {
+    hasDetailedDeathInfo: true,
+    isObscure: false,
+    deathdayConfidence: "day",
+  },
+  adminEditorUrl: "/admin/actors/123",
+}
+
 describe("AdminActorToolbar", () => {
   let mockFetch: ReturnType<typeof vi.spyOn>
   let queryClient: QueryClient
@@ -23,12 +49,22 @@ describe("AdminActorToolbar", () => {
   })
 
   function createWrapper(authenticated: boolean) {
-    mockFetch = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      Promise.resolve({
+    mockFetch = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url
+      // Metadata endpoint
+      if (url.includes("/metadata")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockMetadata,
+        } as Response)
+      }
+      // Auth check
+      return Promise.resolve({
         ok: true,
         json: async () => ({ authenticated }),
       } as Response)
-    )
+    })
 
     return ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>
@@ -65,6 +101,7 @@ describe("AdminActorToolbar", () => {
     expect(screen.getByTestId("admin-editor-link")).toBeInTheDocument()
     expect(screen.getByLabelText("Regen bio")).toBeInTheDocument()
     expect(screen.getByLabelText("Re-enrich")).toBeInTheDocument()
+    expect(screen.getByLabelText("Enrich bio")).toBeInTheDocument()
   })
 
   it("has correct admin editor link", async () => {

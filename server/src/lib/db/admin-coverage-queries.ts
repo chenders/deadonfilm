@@ -38,6 +38,8 @@ export interface ActorCoverageInfo {
   has_biography: boolean
   has_enriched_bio: boolean
   bio_enriched_at: string | null
+  enrichment_version: string | null
+  biography_version: number | null
 }
 
 export interface CoverageTrendPoint {
@@ -68,6 +70,8 @@ export interface ActorCoverageFilters {
   searchName?: string
   causeOfDeath?: string
   deathManner?: string
+  deathEnrichmentVersion?: string
+  bioEnrichmentVersion?: string
   orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
   orderDirection?: "asc" | "desc"
 }
@@ -228,6 +232,24 @@ export async function getActorsForCoverage(
     }
   }
 
+  if (filters.deathEnrichmentVersion) {
+    if (filters.deathEnrichmentVersion === "__null__") {
+      whereClauses.push(`enrichment_version IS NULL`)
+    } else {
+      whereClauses.push(`enrichment_version = $${paramIndex++}`)
+      params.push(filters.deathEnrichmentVersion)
+    }
+  }
+
+  if (filters.bioEnrichmentVersion) {
+    if (filters.bioEnrichmentVersion === "__null__") {
+      whereClauses.push(`biography_version IS NULL`)
+    } else {
+      whereClauses.push(`biography_version = $${paramIndex++}`)
+      params.push(parseInt(filters.bioEnrichmentVersion, 10))
+    }
+  }
+
   const whereClause = whereClauses.join(" AND ")
 
   // Build ORDER BY clause without string interpolation
@@ -280,6 +302,8 @@ export async function getActorsForCoverage(
        (actors.biography IS NOT NULL) as has_biography,
        (abd.id IS NOT NULL) as has_enriched_bio,
        abd.updated_at as bio_enriched_at,
+       actors.enrichment_version,
+       actors.biography_version,
        COUNT(*) OVER() as total_count
      FROM actors
      LEFT JOIN actor_biography_details abd ON abd.actor_id = actors.id
@@ -409,6 +433,49 @@ export async function getDistinctCausesOfDeath(pool: Pool): Promise<CauseOfDeath
     label: row.cause,
     count: parseInt(row.count, 10),
   }))
+}
+
+export interface EnrichmentVersionOption {
+  value: string
+  count: number
+}
+
+export interface EnrichmentVersionsResult {
+  deathVersions: EnrichmentVersionOption[]
+  bioVersions: EnrichmentVersionOption[]
+}
+
+/**
+ * Get distinct enrichment versions for filter dropdowns.
+ */
+export async function getDistinctEnrichmentVersions(pool: Pool): Promise<EnrichmentVersionsResult> {
+  const [deathResult, bioResult] = await Promise.all([
+    pool.query<{ version: string; count: string }>(
+      `SELECT enrichment_version as version, COUNT(*)::text as count
+       FROM actors
+       WHERE deathday IS NOT NULL AND enrichment_version IS NOT NULL
+       GROUP BY enrichment_version
+       ORDER BY enrichment_version DESC`
+    ),
+    pool.query<{ version: string; count: string }>(
+      `SELECT biography_version::text as version, COUNT(*)::text as count
+       FROM actors
+       WHERE deathday IS NOT NULL AND biography_version IS NOT NULL
+       GROUP BY biography_version
+       ORDER BY biography_version DESC`
+    ),
+  ])
+
+  return {
+    deathVersions: deathResult.rows.map((row) => ({
+      value: row.version,
+      count: parseInt(row.count, 10),
+    })),
+    bioVersions: bioResult.rows.map((row) => ({
+      value: row.version,
+      count: parseInt(row.count, 10),
+    })),
+  }
 }
 
 /**

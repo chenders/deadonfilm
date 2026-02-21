@@ -4,9 +4,11 @@ import {
   useRegenerateBiography,
   useInlineEnrichDeath,
   useInlineEnrichBio,
+  useActorAdminMetadata,
 } from "@/hooks/admin/useActorInlineActions"
 import AdminActionButton from "./AdminActionButton"
-import { RefreshIcon, GearIcon, PencilIcon } from "@/components/icons"
+import { DocumentIcon, SkullSmallIcon, SparkleIcon, GearIcon, PencilIcon } from "@/components/icons"
+import { formatRelativeTime } from "@/utils/formatRelativeTime"
 
 interface AdminActorToolbarProps {
   actorId: number
@@ -31,6 +33,54 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
   const regenBio = useRegenerateBiography(actorId)
   const enrichDeath = useInlineEnrichDeath(actorId)
   const enrichBio = useInlineEnrichBio(actorId)
+  const { data: metadata } = useActorAdminMetadata(actorId, true)
+
+  // Compute status colors from metadata
+  const regenBioStatusColor = metadata?.biography.hasContent ? "text-amber-600/70" : undefined
+
+  const deathStatusColor = metadata?.dataQuality.hasDetailedDeathInfo
+    ? "text-green-600"
+    : metadata?.enrichment.enrichedAt
+      ? "text-green-600/70"
+      : undefined
+
+  const enrichBioStatusColor = metadata?.biography.hasEnrichedBio ? "text-blue-500" : undefined
+
+  // Compute status tooltips with relative time and version
+  const deathStatusTitle = (() => {
+    if (!metadata) return "Re-enrich death info"
+    const parts = ["Re-enrich death info"]
+    if (metadata.enrichment.enrichedAt) {
+      const relTime = formatRelativeTime(metadata.enrichment.enrichedAt)
+      const version = metadata.enrichment.version ? ` (v${metadata.enrichment.version})` : ""
+      parts.push(`— Enriched ${relTime}${version}`)
+    }
+    return parts.join(" ")
+  })()
+
+  const enrichBioStatusTitle = (() => {
+    if (!metadata) return "Enrich biography"
+    const parts = ["Enrich biography"]
+    if (metadata.biography.bioEnrichedAt) {
+      const relTime = formatRelativeTime(metadata.biography.bioEnrichedAt)
+      const version =
+        metadata.biography.biographyVersion != null
+          ? ` (v${metadata.biography.biographyVersion})`
+          : ""
+      parts.push(`— Enriched ${relTime}${version}`)
+    }
+    return parts.join(" ")
+  })()
+
+  const regenBioStatusTitle = (() => {
+    if (!metadata) return "Regenerate biography"
+    const parts = ["Regenerate biography"]
+    if (metadata.biography.generatedAt) {
+      const relTime = formatRelativeTime(metadata.biography.generatedAt)
+      parts.push(`— Generated ${relTime}`)
+    }
+    return parts.join(" ")
+  })()
 
   return (
     <div className="mb-2 flex items-center justify-end gap-1.5" data-testid="admin-actor-toolbar">
@@ -50,9 +100,11 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
       </button>
 
       <AdminActionButton
-        icon={<RefreshIcon size={14} />}
+        icon={<DocumentIcon size={14} />}
         label="Regen bio"
         title="Regenerate biography"
+        statusColor={regenBioStatusColor}
+        statusTitle={regenBioStatusTitle}
         onClick={() => regenBio.mutate()}
         isPending={regenBio.isPending}
         isSuccess={regenBio.isSuccess}
@@ -60,9 +112,11 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
       />
 
       <AdminActionButton
-        icon={<RefreshIcon size={14} />}
+        icon={<SkullSmallIcon size={14} />}
         label="Re-enrich"
         title="Re-enrich death info"
+        statusColor={deathStatusColor}
+        statusTitle={deathStatusTitle}
         onClick={() => enrichDeath.mutate()}
         isPending={enrichDeath.isPending}
         isSuccess={enrichDeath.isSuccess}
@@ -70,9 +124,11 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
       />
 
       <AdminActionButton
-        icon={<RefreshIcon size={14} />}
+        icon={<SparkleIcon size={14} />}
         label="Enrich bio"
         title="Enrich biography"
+        statusColor={enrichBioStatusColor}
+        statusTitle={enrichBioStatusTitle}
         onClick={() => enrichBio.mutate()}
         isPending={enrichBio.isPending}
         isSuccess={enrichBio.isSuccess}
