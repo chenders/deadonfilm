@@ -309,7 +309,7 @@ export async function synthesizeBiography(
   const validFactors = allFactors.filter((f) => VALID_LIFE_NOTABLE_FACTORS.has(f))
   const rejectedFactors = allFactors.filter((f) => !VALID_LIFE_NOTABLE_FACTORS.has(f))
   if (rejectedFactors.length > 0) {
-    saveRejectedFactors(getPool(), rejectedFactors, "life", actor.id, actor.name).catch(() => {})
+    saveRejectedFactors(getPool(), rejectedFactors, "life", actor.id, actor.name)
   }
 
   // Validate narrative_confidence

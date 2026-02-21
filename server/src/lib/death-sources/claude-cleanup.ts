@@ -400,9 +400,7 @@ export async function cleanupWithClaude(
   const validNotableFactors = allNotableFactors.filter((f) => VALID_NOTABLE_FACTORS.has(f))
   const rejectedNotableFactors = allNotableFactors.filter((f) => !VALID_NOTABLE_FACTORS.has(f))
   if (rejectedNotableFactors.length > 0) {
-    saveRejectedFactors(getPool(), rejectedNotableFactors, "death", actor.id, actor.name).catch(
-      () => {}
-    )
+    saveRejectedFactors(getPool(), rejectedNotableFactors, "death", actor.id, actor.name)
   }
 
   // Convert to CleanedDeathInfo

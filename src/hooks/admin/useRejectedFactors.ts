@@ -58,6 +58,6 @@ export function useRejectedFactors(
   return useQuery({
     queryKey: ["admin", "rejected-factors", page, pageSize, type],
     queryFn: () => fetchRejectedFactors(page, pageSize, type),
-    staleTime: 60000,
+    staleTime: 60000, // 1 minute
   })
 }
