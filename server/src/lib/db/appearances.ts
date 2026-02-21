@@ -8,6 +8,36 @@ import { getPool } from "./pool.js"
 import type { ActorMovieAppearanceRecord, ShowActorAppearanceRecord } from "./types.js"
 
 // ============================================================================
+// Shared deduplication helper
+// ============================================================================
+
+/** Deduplicate records by a composite key, keeping the entry with the lowest
+ *  non-null billing_order. When both entries have null billing_order, keeps the first. */
+function deduplicateByKey<T extends { billing_order: number | null }>(
+  items: T[],
+  keyFn: (item: T) => string
+): T[] {
+  const bestByKey = new Map<string, T>()
+  for (const item of items) {
+    const key = keyFn(item)
+    const existing = bestByKey.get(key)
+    if (!existing) {
+      bestByKey.set(key, item)
+      continue
+    }
+    if (
+      (existing.billing_order == null && item.billing_order != null) ||
+      (existing.billing_order != null &&
+        item.billing_order != null &&
+        item.billing_order < existing.billing_order)
+    ) {
+      bestByKey.set(key, item)
+    }
+  }
+  return Array.from(bestByKey.values())
+}
+
+// ============================================================================
 // Movie actor appearances
 // ============================================================================
 
@@ -42,6 +72,10 @@ export async function batchUpsertActorMovieAppearances(
 ): Promise<void> {
   if (appearances.length === 0) return
 
+  // Deduplicate by (actor_id, movie_tmdb_id) — TMDB credits can list the same
+  // actor multiple times (e.g., dual roles).
+  const deduped = deduplicateByKey(appearances, (a) => `${a.actor_id}:${a.movie_tmdb_id}`)
+
   const db = getPool()
   const client = await db.connect()
 
@@ -50,8 +84,8 @@ export async function batchUpsertActorMovieAppearances(
 
     // Process in chunks of 100 to avoid query size limits
     const CHUNK_SIZE = 100
-    for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
-      const chunk = appearances.slice(i, i + CHUNK_SIZE)
+    for (let i = 0; i < deduped.length; i += CHUNK_SIZE) {
+      const chunk = deduped.slice(i, i + CHUNK_SIZE)
 
       // Build VALUES clause with numbered parameters (6 columns)
       const values: unknown[] = []
@@ -148,6 +182,13 @@ export async function batchUpsertShowActorAppearances(
 ): Promise<void> {
   if (appearances.length === 0) return
 
+  // Deduplicate by (actor_id, show_tmdb_id, season_number, episode_number) —
+  // TMDB credits can list the same actor multiple times per episode.
+  const deduped = deduplicateByKey(
+    appearances,
+    (a) => `${a.actor_id}:${a.show_tmdb_id}:${a.season_number}:${a.episode_number}`
+  )
+
   const db = getPool()
   const client = await db.connect()
 
@@ -156,8 +197,8 @@ export async function batchUpsertShowActorAppearances(
 
     // Process in chunks of 100 to avoid query size limits
     const CHUNK_SIZE = 100
-    for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
-      const chunk = appearances.slice(i, i + CHUNK_SIZE)
+    for (let i = 0; i < deduped.length; i += CHUNK_SIZE) {
+      const chunk = deduped.slice(i, i + CHUNK_SIZE)
 
       // Build VALUES clause with numbered parameters (8 columns now)
       const values: unknown[] = []
