@@ -132,7 +132,10 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.deathEnrichmentVersion) {
-      filters.deathEnrichmentVersion = req.query.deathEnrichmentVersion as string
+      const deathVer = req.query.deathEnrichmentVersion as string
+      if (deathVer === "__null__" || /^[\d.]+/.test(deathVer)) {
+        filters.deathEnrichmentVersion = deathVer
+      }
     }
 
     if (req.query.bioEnrichmentVersion) {

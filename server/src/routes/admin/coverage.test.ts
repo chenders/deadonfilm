@@ -286,6 +286,80 @@ describe("Coverage API Routes", () => {
     })
   })
 
+  describe("GET /admin/api/coverage/enrichment-versions", () => {
+    it("route exists and is properly configured", async () => {
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const versionsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/enrichment-versions" && layer.route?.methods.get
+      )
+
+      expect(versionsRoute).toBeDefined()
+    })
+
+    it("returns distinct death and bio enrichment versions with counts", async () => {
+      const mockDeathVersions = [
+        { version: "3.0.0", count: "1234" },
+        { version: "2.0.0", count: "567" },
+      ]
+      const mockBioVersions = [
+        { version: 2, count: "890" },
+        { version: 1, count: "456" },
+      ]
+
+      vi.mocked(mockPool.query)
+        .mockResolvedValueOnce({ rows: mockDeathVersions } as any)
+        .mockResolvedValueOnce({ rows: mockBioVersions } as any)
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const versionsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/enrichment-versions" && layer.route?.methods.get
+      )
+
+      expect(versionsRoute).toBeDefined()
+
+      const req = { query: {} } as any
+      const jsonFn = vi.fn()
+      const res = { json: jsonFn, status: vi.fn(() => ({ json: vi.fn() })) } as any
+
+      await versionsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+      expect(jsonFn).toHaveBeenCalled()
+    })
+
+    it("handles database errors gracefully", async () => {
+      vi.mocked(mockPool.query).mockRejectedValueOnce(new Error("Connection failed"))
+
+      const { getPool } = await import("../../lib/db/pool.js")
+      vi.mocked(getPool).mockReturnValue(mockPool)
+
+      const coverageModule = await import("./coverage.js")
+      const router = coverageModule.default
+
+      const versionsRoute = router.stack.find(
+        (layer: any) => layer.route?.path === "/enrichment-versions" && layer.route?.methods.get
+      )
+
+      const req = { query: {} } as any
+      const jsonFn = vi.fn()
+      const statusJsonFn = vi.fn()
+      const res = { json: jsonFn, status: vi.fn(() => ({ json: statusJsonFn })) } as any
+
+      await versionsRoute!.route!.stack[0].handle(req, res, vi.fn())
+
+      expect(res.status).toHaveBeenCalledWith(500)
+      expect(statusJsonFn).toHaveBeenCalledWith({
+        error: { message: "Failed to fetch enrichment versions" },
+      })
+    })
+  })
+
   describe("GET /admin/api/coverage/actors/:id/preview", () => {
     it("route exists and is properly configured", async () => {
       const coverageModule = await import("./coverage.js")
