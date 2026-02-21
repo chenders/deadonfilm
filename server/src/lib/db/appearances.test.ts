@@ -107,6 +107,33 @@ describe("batchUpsertActorMovieAppearances", () => {
     expect(values[3]).toBe(3)
   })
 
+  it("keeps first entry when both have null billing_order", async () => {
+    const appearances: ActorMovieAppearanceRecord[] = [
+      {
+        actor_id: 1,
+        movie_tmdb_id: 100,
+        character_name: "First Null",
+        billing_order: null,
+        age_at_filming: 30,
+        appearance_type: "regular",
+      },
+      {
+        actor_id: 1,
+        movie_tmdb_id: 100,
+        character_name: "Second Null",
+        billing_order: null,
+        age_at_filming: 31,
+        appearance_type: "self",
+      },
+    ]
+
+    await batchUpsertActorMovieAppearances(appearances)
+
+    const values = mockClient.query.mock.calls[1][1] as unknown[]
+    expect(values).toHaveLength(6)
+    expect(values[2]).toBe("First Null")
+  })
+
   it("passes through non-duplicate entries unchanged", async () => {
     const appearances: ActorMovieAppearanceRecord[] = [
       {

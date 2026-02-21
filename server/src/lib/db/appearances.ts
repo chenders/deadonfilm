@@ -54,8 +54,10 @@ export async function batchUpsertActorMovieAppearances(
       continue
     }
     if (
-      existing.billing_order == null ||
-      (appearance.billing_order != null && appearance.billing_order < existing.billing_order)
+      (existing.billing_order == null && appearance.billing_order != null) ||
+      (existing.billing_order != null &&
+        appearance.billing_order != null &&
+        appearance.billing_order < existing.billing_order)
     ) {
       bestByKey.set(key, appearance)
     }
@@ -180,8 +182,10 @@ export async function batchUpsertShowActorAppearances(
       continue
     }
     if (
-      existing.billing_order == null ||
-      (appearance.billing_order != null && appearance.billing_order < existing.billing_order)
+      (existing.billing_order == null && appearance.billing_order != null) ||
+      (existing.billing_order != null &&
+        appearance.billing_order != null &&
+        appearance.billing_order < existing.billing_order)
     ) {
       bestByKey.set(key, appearance)
     }
