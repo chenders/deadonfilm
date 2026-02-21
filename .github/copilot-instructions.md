@@ -205,6 +205,26 @@ Every PR must include tests covering:
 3. **Edge cases** - empty results, pagination boundaries, null values
 4. **All branching logic** - every if/else path in new code
 
+### Ship Tests With Code
+
+New functionality must include tests **in the same commit** — never defer to follow-up PRs.
+
+### Assert Deeply
+
+Don't just check that a function was called — verify the actual payload:
+
+```typescript
+// Shallow (insufficient)
+expect(res.json).toHaveBeenCalled()
+
+// Deep (good)
+expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ total: 3 }))
+```
+
+### Mock Data Must Match Real Types
+
+If SQL casts a column (`biography_version::text`), mock data must use strings, not numbers.
+
 ### Test Conventions
 
 - Place test files alongside code: `*.test.ts` or `*.test.tsx`
@@ -300,12 +320,17 @@ For full details, see `.claude/rules/biography-enrichment.md`.
 
 ## Code Quality
 
-- **DRY**: Extract repeated logic, consolidate identical branches
+- **DRY**: Extract repeated logic before duplicating. If the same formatting/transform appears in desktop AND mobile views, extract a helper function first
 - Run format/lint/type-check before committing
 - **Magic numbers**: Extract to named constants at module level
 - **N+1 queries**: Batch database lookups, never query inside loops
 - **Unused variables**: Remove before committing
 - **Naming consistency**: When renaming functions/APIs, update all variable names, comments, doc blocks, and error messages that reference the old name
+- **Null safety**: Always guard `rows[0]` access with optional chaining and fallback (`rows[0]?.cnt ?? 0`)
+- **Type accuracy**: Database JSON columns auto-parse — type as the parsed type (`MyType[]`), not `string`. Use `unknown` over `any`
+- **Accessibility**: Icon-only links/buttons need `aria-label`. Touch targets minimum 44x44px. Don't hide the only content in a cell with `aria-hidden`
+- **AbortSignal**: Combine caller signals with timeouts using a ternary + `AbortSignal.any()` — never use `??` which defeats the timeout
+- **Prop naming**: If a prop's behavior changes (e.g., now hides a section, not just a heading), rename to match
 
 ---
 

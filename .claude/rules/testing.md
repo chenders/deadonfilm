@@ -7,6 +7,39 @@ globs: ["**/*.test.ts", "**/*.test.tsx", "**/e2e/**"]
 
 Every PR must test: happy path, error handling, edge cases, all branching logic.
 
+### New Code Must Ship With Tests
+
+When adding new functionality, **always add tests in the same commit** — don't leave test coverage for a follow-up:
+
+- **New UI features**: Test rendering, conditional display, user interactions, and edge cases (empty arrays, null values)
+- **New API routes/branches**: Test the new branch (e.g., a 503 guard) with assertions on both the status code AND the response body
+- **New utility functions**: Test with representative inputs including edge cases
+
+### Assert Deeply, Not Shallowly
+
+```typescript
+// BAD — only checks the function was called
+expect(res.json).toHaveBeenCalled()
+
+// GOOD — verifies the actual payload shape and values
+expect(res.json).toHaveBeenCalledWith({
+  items: expect.arrayContaining([expect.objectContaining({ id: 1, name: "John" })]),
+  total: 3,
+})
+```
+
+### Test Data Must Match Real Types
+
+Mock data in tests should match the actual database/API return types:
+
+```typescript
+// BAD — version is a number but SQL casts to string
+const mockVersions = [{ version: 1, count: 5 }]
+
+// GOOD — matches the actual SQL output
+const mockVersions = [{ version: "1", count: "5" }]
+```
+
 ## Conventions
 
 - Files: `*.test.ts` / `*.test.tsx` alongside source
