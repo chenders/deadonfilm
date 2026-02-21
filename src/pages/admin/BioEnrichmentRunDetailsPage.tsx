@@ -338,6 +338,7 @@ function ActorRow({
               className="text-admin-text-muted hover:text-admin-interactive"
               onClick={(e) => e.stopPropagation()}
               title="Open in admin editor"
+              aria-label="Open in admin editor"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
