@@ -24,13 +24,13 @@ interface HelmetServerState {
   link: { toString(): string }
   script: { toString(): string }
 }
-import { getCached, setCached, buildCacheKey, CACHE_TTL } from "../lib/cache.js"
+import { getCached, setCached, buildCacheKey, CACHE_TTL, CACHE_PREFIX } from "../lib/cache.js"
 import { logger } from "../lib/logger.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /** Cache key prefix for SSR rendered HTML */
-const SSR_CACHE_PREFIX = "ssr"
+const SSR_CACHE_PREFIX = CACHE_PREFIX.SSR
 
 /** Paths that should NOT be SSR-rendered */
 const SKIP_PREFIXES = [

@@ -20,6 +20,9 @@ vi.mock("../lib/cache.js", () => ({
     PRERENDER: 86400,
     PRERENDER_DYNAMIC: 3600,
   },
+  CACHE_PREFIX: {
+    SSR: "ssr",
+  },
 }))
 
 // Mock logger
