@@ -136,7 +136,10 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.bioEnrichmentVersion) {
-      filters.bioEnrichmentVersion = req.query.bioEnrichmentVersion as string
+      const bioVer = req.query.bioEnrichmentVersion as string
+      if (bioVer === "__null__" || /^\d+$/.test(bioVer)) {
+        filters.bioEnrichmentVersion = bioVer
+      }
     }
 
     if (req.query.orderBy) {

@@ -1049,11 +1049,12 @@ router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<v
       biography: string | null
       biography_generated_at: string | null
       biography_source_type: string | null
+      biography_version: number | null
     }>(
       `SELECT id, name, deathday, is_obscure, deathday_confidence,
               has_detailed_death_info, enriched_at, enrichment_source,
               enrichment_version, cause_of_death_source, biography,
-              biography_generated_at, biography_source_type
+              biography_generated_at, biography_source_type, biography_version
        FROM actors WHERE id = $1`,
       [actorId]
     )
@@ -1094,6 +1095,7 @@ router.get("/:id(\\d+)/metadata", async (req: Request, res: Response): Promise<v
         sourceType: actor.biography_source_type,
         hasEnrichedBio: !!bioDetails,
         bioEnrichedAt: bioDetails?.updated_at || null,
+        biographyVersion: actor.biography_version,
       },
       enrichment: {
         enrichedAt: actor.enriched_at,

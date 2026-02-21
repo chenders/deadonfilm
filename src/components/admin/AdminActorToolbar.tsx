@@ -63,7 +63,11 @@ function AdminActorToolbarInner({ actorId }: AdminActorToolbarProps) {
     const parts = ["Enrich biography"]
     if (metadata.biography.bioEnrichedAt) {
       const relTime = formatRelativeTime(metadata.biography.bioEnrichedAt)
-      parts.push(`— Enriched ${relTime}`)
+      const version =
+        metadata.biography.biographyVersion != null
+          ? ` (v${metadata.biography.biographyVersion})`
+          : ""
+      parts.push(`— Enriched ${relTime}${version}`)
     }
     return parts.join(" ")
   })()

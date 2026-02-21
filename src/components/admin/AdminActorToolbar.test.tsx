@@ -15,6 +15,7 @@ const mockMetadata = {
     sourceType: "claude",
     hasEnrichedBio: true,
     bioEnrichedAt: "2026-01-20T00:00:00Z",
+    biographyVersion: 2,
   },
   enrichment: {
     enrichedAt: "2026-01-10T00:00:00Z",

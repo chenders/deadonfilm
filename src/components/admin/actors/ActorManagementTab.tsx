@@ -379,7 +379,7 @@ export default function ActorManagementTab() {
                   {v.value} ({v.count.toLocaleString()})
                 </option>
               ))}
-              <option value="__null__">Not enriched</option>
+              <option value="__null__">No version</option>
             </select>
           </div>
 
@@ -407,7 +407,7 @@ export default function ActorManagementTab() {
                   v{v.value} ({v.count.toLocaleString()})
                 </option>
               ))}
-              <option value="__null__">Not enriched</option>
+              <option value="__null__">No version</option>
             </select>
           </div>
 
