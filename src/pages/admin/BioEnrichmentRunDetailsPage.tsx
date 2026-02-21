@@ -335,7 +335,7 @@ function ActorRow({
             </Link>
             <Link
               to={`/admin/actors/${actor.actor_id}`}
-              className="text-admin-text-muted hover:text-admin-interactive"
+              className="inline-flex items-center justify-center rounded p-1 text-admin-text-muted hover:bg-admin-interactive-secondary hover:text-admin-interactive"
               onClick={(e) => e.stopPropagation()}
               title="Open in admin editor"
               aria-label="Open in admin editor"
