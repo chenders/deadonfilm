@@ -243,4 +243,90 @@ describe("batchUpsertShowActorAppearances", () => {
     // Second entry: S01E02 Role A (different episode, not a duplicate)
     expect(values[11]).toBe(2) // episode_number
   })
+
+  it("prefers non-null billing_order over null", async () => {
+    const appearances: ShowActorAppearanceRecord[] = [
+      {
+        actor_id: 1,
+        show_tmdb_id: 200,
+        season_number: 1,
+        episode_number: 1,
+        character_name: "Null Order",
+        appearance_type: "cast",
+        billing_order: null,
+        age_at_filming: 30,
+      },
+      {
+        actor_id: 1,
+        show_tmdb_id: 200,
+        season_number: 1,
+        episode_number: 1,
+        character_name: "Has Order",
+        appearance_type: "guest",
+        billing_order: 2,
+        age_at_filming: 30,
+      },
+    ]
+
+    await batchUpsertShowActorAppearances(appearances)
+
+    const values = mockClient.query.mock.calls[1][1] as unknown[]
+    expect(values).toHaveLength(8)
+    expect(values[4]).toBe("Has Order")
+    expect(values[6]).toBe(2) // billing_order
+  })
+
+  it("keeps first entry when both have null billing_order", async () => {
+    const appearances: ShowActorAppearanceRecord[] = [
+      {
+        actor_id: 1,
+        show_tmdb_id: 200,
+        season_number: 1,
+        episode_number: 1,
+        character_name: "First Null",
+        appearance_type: "cast",
+        billing_order: null,
+        age_at_filming: 30,
+      },
+      {
+        actor_id: 1,
+        show_tmdb_id: 200,
+        season_number: 1,
+        episode_number: 1,
+        character_name: "Second Null",
+        appearance_type: "guest",
+        billing_order: null,
+        age_at_filming: 31,
+      },
+    ]
+
+    await batchUpsertShowActorAppearances(appearances)
+
+    const values = mockClient.query.mock.calls[1][1] as unknown[]
+    expect(values).toHaveLength(8)
+    expect(values[4]).toBe("First Null")
+  })
+
+  it("rolls back on error", async () => {
+    mockClient.query
+      .mockResolvedValueOnce(undefined) // BEGIN
+      .mockRejectedValueOnce(new Error("db error")) // INSERT fails
+
+    const appearances: ShowActorAppearanceRecord[] = [
+      {
+        actor_id: 1,
+        show_tmdb_id: 200,
+        season_number: 1,
+        episode_number: 1,
+        character_name: "Role",
+        appearance_type: "cast",
+        billing_order: 0,
+        age_at_filming: 30,
+      },
+    ]
+
+    await expect(batchUpsertShowActorAppearances(appearances)).rejects.toThrow("db error")
+    expect(mockClient.query).toHaveBeenCalledWith("ROLLBACK")
+    expect(mockClient.release).toHaveBeenCalled()
+  })
 })
