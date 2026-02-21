@@ -13,6 +13,7 @@ const STORAGE_KEY = "dof-admin-mode"
 export function AdminModeProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAdminAuth()
   const [stored, setStored] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false
     try {
       return localStorage.getItem(STORAGE_KEY) === "true"
     } catch {

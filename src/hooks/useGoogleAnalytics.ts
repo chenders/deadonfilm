@@ -14,7 +14,7 @@ let isInitialized = false
 let isDelegationSetup = false
 
 function initializeGA() {
-  if (isInitialized || !GA_MEASUREMENT_ID) return
+  if (isInitialized || !GA_MEASUREMENT_ID || typeof window === "undefined") return
 
   // Initialize dataLayer - must use 'arguments' not rest params for GA compatibility
   window.dataLayer = window.dataLayer || []
@@ -69,7 +69,7 @@ function handleTrackableEvent(e: Event, eventType: "click" | "hover") {
 }
 
 function setupEventDelegation() {
-  if (isDelegationSetup) return
+  if (isDelegationSetup || typeof document === "undefined") return
   document.addEventListener("click", (e) => handleTrackableEvent(e, "click"))
   document.addEventListener("mouseenter", (e) => handleTrackableEvent(e, "hover"), true)
   isDelegationSetup = true

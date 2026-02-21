@@ -70,7 +70,8 @@ export function GlobalSearchProvider({ children }: GlobalSearchProviderProps) {
   return (
     <GlobalSearchContext.Provider value={value}>
       {children}
-      {createPortal(<SearchModal isOpen={isOpen} onClose={closeSearch} />, document.body)}
+      {typeof document !== "undefined" &&
+        createPortal(<SearchModal isOpen={isOpen} onClose={closeSearch} />, document.body)}
     </GlobalSearchContext.Provider>
   )
 }

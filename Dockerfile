@@ -61,8 +61,9 @@ COPY server/data ./server/data
 # Copy New Relic config (optional - loaded at runtime if NEW_RELIC_LICENSE_KEY is set)
 COPY server/newrelic.cjs ./server/
 
-# Copy frontend build
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+# Copy frontend builds (client bundle + SSR server bundle)
+COPY --from=frontend-builder /app/frontend/dist/client ./frontend/dist/client
+COPY --from=frontend-builder /app/frontend/dist/server ./frontend/dist/server
 
 # Create sitemaps directory for generated sitemap files
 RUN mkdir -p /app/sitemaps
