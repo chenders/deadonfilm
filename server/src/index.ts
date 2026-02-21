@@ -98,6 +98,7 @@ import biographiesRoutes from "./routes/admin/biographies.js"
 import biographyEnrichmentRoutes from "./routes/admin/biography-enrichment.js"
 import gscRoutes from "./routes/admin/gsc.js"
 import causeMappingsRoutes from "./routes/admin/cause-mappings.js"
+import moviesAdminRoutes from "./routes/admin/movies.js"
 import { ogImageHandler } from "./routes/og-image.js"
 import { errorHandler } from "./middleware/error-handler.js"
 import { prerenderMiddleware, prerenderRateLimiter } from "./middleware/prerender.js"
@@ -345,6 +346,7 @@ app.use(
   adminAuthMiddleware,
   biographyEnrichmentRoutes
 )
+app.use("/admin/api/movies", adminRoutesLimiter, adminAuthMiddleware, moviesAdminRoutes)
 
 // Public page view tracking endpoint (rate limited, bot-filtered)
 app.post("/api/page-views/track", pageViewTrackingLimiter, trackPageViewHandler)
