@@ -5,7 +5,7 @@ exports.up = (pgm) => {
       id SERIAL PRIMARY KEY,
       factor_name TEXT NOT NULL,
       factor_type TEXT NOT NULL CHECK (factor_type IN ('life', 'death')),
-      actor_id INTEGER REFERENCES actors(id),
+      actor_id INTEGER REFERENCES actors(id) ON DELETE CASCADE,
       actor_name TEXT NOT NULL,
       source TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

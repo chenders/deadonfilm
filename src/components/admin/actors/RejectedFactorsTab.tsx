@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useRejectedFactors } from "../../../hooks/admin/useRejectedFactors"
 import MobileCard from "../ui/MobileCard"
+import { formatDate } from "../../../utils/formatDate"
 
 type FilterType = "all" | "life" | "death"
 
@@ -10,15 +11,6 @@ export default function RejectedFactorsTab() {
 
   const typeParam = filterType === "all" ? undefined : filterType
   const { data, isLoading, isError } = useRejectedFactors(page, 50, typeParam)
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
-  }
 
   return (
     <div className="space-y-6">
