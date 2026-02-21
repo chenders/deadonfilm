@@ -376,7 +376,7 @@ export default function ActorManagementTab() {
               <option value="">All</option>
               {versionsData?.deathVersions.map((v) => (
                 <option key={v.value} value={v.value}>
-                  {v.value} ({v.count.toLocaleString()})
+                  v{v.value} ({v.count.toLocaleString()})
                 </option>
               ))}
               <option value="__null__">No version</option>

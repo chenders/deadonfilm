@@ -634,6 +634,10 @@ describe("admin actors routes", () => {
       expect(res.body.dataQuality.hasDetailedDeathInfo).toBe(true)
       expect(res.body.dataQuality.isObscure).toBe(false)
       expect(res.body.dataQuality.deathdayConfidence).toBe("verified")
+      expect(res.body.enrichment.version).toBe("3.0.0")
+      expect(res.body.biography.hasEnrichedBio).toBe(true)
+      expect(res.body.biography.bioEnrichedAt).toBe("2026-02-01T00:00:00Z")
+      expect(res.body.biography.biographyVersion).toBe(2)
       expect(res.body.adminEditorUrl).toBe("/admin/actors/123")
     })
 
@@ -652,8 +656,10 @@ describe("admin actors routes", () => {
         biography: null,
         biography_generated_at: null,
         biography_source_type: null,
+        biography_version: null,
         enriched_at: null,
         enrichment_source: null,
+        enrichment_version: null,
         cause_of_death_source: null,
       }
 
@@ -670,6 +676,9 @@ describe("admin actors routes", () => {
       expect(res.body.enrichment.enrichedAt).toBeNull()
       expect(res.body.enrichment.hasCircumstances).toBe(false)
       expect(res.body.enrichment.circumstancesEnrichedAt).toBeNull()
+      expect(res.body.biography.hasEnrichedBio).toBe(false)
+      expect(res.body.biography.bioEnrichedAt).toBeNull()
+      expect(res.body.biography.biographyVersion).toBeNull()
     })
 
     it("should return 500 on database error", async () => {
