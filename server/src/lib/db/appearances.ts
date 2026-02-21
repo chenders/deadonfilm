@@ -42,6 +42,16 @@ export async function batchUpsertActorMovieAppearances(
 ): Promise<void> {
   if (appearances.length === 0) return
 
+  // Deduplicate by (actor_id, movie_tmdb_id) — TMDB credits can list the same
+  // actor multiple times (e.g., dual roles). Keep the first (highest-billed) entry.
+  const seen = new Set<string>()
+  const deduped = appearances.filter((a) => {
+    const key = `${a.actor_id}:${a.movie_tmdb_id}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
   const db = getPool()
   const client = await db.connect()
 
@@ -50,8 +60,8 @@ export async function batchUpsertActorMovieAppearances(
 
     // Process in chunks of 100 to avoid query size limits
     const CHUNK_SIZE = 100
-    for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
-      const chunk = appearances.slice(i, i + CHUNK_SIZE)
+    for (let i = 0; i < deduped.length; i += CHUNK_SIZE) {
+      const chunk = deduped.slice(i, i + CHUNK_SIZE)
 
       // Build VALUES clause with numbered parameters (6 columns)
       const values: unknown[] = []
@@ -148,6 +158,17 @@ export async function batchUpsertShowActorAppearances(
 ): Promise<void> {
   if (appearances.length === 0) return
 
+  // Deduplicate by (actor_id, show_tmdb_id, season_number, episode_number) —
+  // TMDB credits can list the same actor multiple times per episode.
+  // Keep the first (highest-billed) entry.
+  const seen = new Set<string>()
+  const deduped = appearances.filter((a) => {
+    const key = `${a.actor_id}:${a.show_tmdb_id}:${a.season_number}:${a.episode_number}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
   const db = getPool()
   const client = await db.connect()
 
@@ -156,8 +177,8 @@ export async function batchUpsertShowActorAppearances(
 
     // Process in chunks of 100 to avoid query size limits
     const CHUNK_SIZE = 100
-    for (let i = 0; i < appearances.length; i += CHUNK_SIZE) {
-      const chunk = appearances.slice(i, i + CHUNK_SIZE)
+    for (let i = 0; i < deduped.length; i += CHUNK_SIZE) {
+      const chunk = deduped.slice(i, i + CHUNK_SIZE)
 
       // Build VALUES clause with numbered parameters (8 columns now)
       const values: unknown[] = []
