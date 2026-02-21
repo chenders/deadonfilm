@@ -22,6 +22,7 @@ import { useRelatedMovies } from "@/hooks/useRelatedContent"
 import { getPosterUrl } from "@/services/api"
 import RelatedContent from "@/components/content/RelatedContent"
 import Breadcrumb from "@/components/layout/Breadcrumb"
+import AdminMovieToolbar from "@/components/admin/AdminMovieToolbar"
 import type { ViewMode } from "@/types"
 
 export default function MoviePage() {
@@ -124,6 +125,10 @@ export default function MoviePage() {
             { label: "Movies", href: "/movies/genres" },
             { label: movie.title },
           ]}
+        />
+        <AdminMovieToolbar
+          movieTmdbId={movie.id}
+          deceasedTmdbIds={enrichedDeceased.map((a) => a.id)}
         />
         <MovieHeader movie={movie} hidePoster />
 
