@@ -49,8 +49,13 @@ const DYNAMIC_PREFIXES = ["/death-watch", "/deaths", "/covid-deaths", "/unnatura
 /** SSR render timeout in milliseconds */
 const SSR_TIMEOUT_MS = 5000
 
-// Resolve paths relative to the project root (server/dist/src/middleware/ → project root)
-const PROJECT_ROOT = path.resolve(__dirname, "../../../../")
+// Resolve paths relative to the project root.
+// Compiled: server/dist/src/middleware/ (4 levels up)
+// Dev (tsx watch): server/src/middleware/ (3 levels up)
+const PROJECT_ROOT = path.resolve(
+  __dirname,
+  __dirname.includes("/dist/") ? "../../../../" : "../../../"
+)
 const CLIENT_DIST = path.join(PROJECT_ROOT, "frontend/dist/client")
 const SERVER_DIST = path.join(PROJECT_ROOT, "frontend/dist/server")
 
@@ -60,10 +65,12 @@ const DEV_SERVER_DIST = path.join(PROJECT_ROOT, "dist/server")
 
 function resolveDistPaths(): { clientDist: string; serverDist: string } {
   // Production (Docker): /app/frontend/dist/client and /app/frontend/dist/server
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- trusted build output path
   if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
     return { clientDist: CLIENT_DIST, serverDist: SERVER_DIST }
   }
   // Development: <project>/dist/client and <project>/dist/server
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- trusted build output path
   if (fs.existsSync(path.join(DEV_CLIENT_DIST, "index.html"))) {
     return { clientDist: DEV_CLIENT_DIST, serverDist: DEV_SERVER_DIST }
   }
@@ -178,36 +185,46 @@ async function renderToString(
   }
 
   return new Promise((resolve, reject) => {
+    // Mutable abort ref — set after render returns, called by timeout if needed
+    const renderState = { abort: () => {} }
+
     const timeout = setTimeout(() => {
-      result.stream.abort()
+      renderState.abort()
       reject(new Error(`SSR render timed out after ${SSR_TIMEOUT_MS}ms for ${url}`))
     }, SSR_TIMEOUT_MS)
 
-    const result = mod.render(url, queryClient, {
-      onAllReady() {
-        clearTimeout(timeout)
-        const chunks: Buffer[] = []
-        const passThrough = new PassThrough()
-
-        passThrough.on("data", (chunk: Buffer) => chunks.push(chunk))
-        passThrough.on("end", () => {
-          const appHtml = Buffer.concat(chunks).toString("utf-8")
-          const headTags = getHelmetHeadTags(result.helmetContext.helmet)
-          const dehydratedState = result.getDehydratedState()
-          resolve({ html: appHtml, headTags, dehydratedState })
-        })
-        passThrough.on("error", (err) => {
+    try {
+      const result = mod.render(url, queryClient, {
+        onAllReady() {
           clearTimeout(timeout)
-          reject(err)
-        })
+          const chunks: Buffer[] = []
+          const passThrough = new PassThrough()
 
-        result.stream.pipe(passThrough)
-      },
-      onError(err: unknown) {
-        clearTimeout(timeout)
-        reject(err instanceof Error ? err : new Error(String(err)))
-      },
-    })
+          passThrough.on("data", (chunk: Buffer) => chunks.push(chunk))
+          passThrough.on("end", () => {
+            const appHtml = Buffer.concat(chunks).toString("utf-8")
+            const headTags = getHelmetHeadTags(result.helmetContext.helmet)
+            const dehydratedState = result.getDehydratedState()
+            resolve({ html: appHtml, headTags, dehydratedState })
+          })
+          passThrough.on("error", (err) => {
+            clearTimeout(timeout)
+            reject(err)
+          })
+
+          result.stream.pipe(passThrough)
+        },
+        onError(err: unknown) {
+          clearTimeout(timeout)
+          reject(err instanceof Error ? err : new Error(String(err)))
+        },
+      })
+
+      renderState.abort = () => result.stream.abort()
+    } catch (err) {
+      clearTimeout(timeout)
+      reject(err instanceof Error ? err : new Error(String(err)))
+    }
   })
 }
 

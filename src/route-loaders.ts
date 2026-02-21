@@ -187,7 +187,7 @@ const routes: Array<{
               params.categorySlug,
               parseInt(page, 10),
               includeObscure === "true",
-              null,
+              undefined,
             ],
             queryFn: () =>
               apiFetch(
@@ -277,16 +277,24 @@ const routes: Array<{
     loader: (_params, searchParams) => {
       const page = searchParams.get("page") || "1"
       const includeObscure = searchParams.get("includeObscure") || "false"
+      const search = searchParams.get("search") || ""
       const sort = searchParams.get("sort") || "date"
       const dir = searchParams.get("dir") || "desc"
       return {
         loaders: (base) => [
           {
-            queryKey: ["all-deaths", parseInt(page, 10), includeObscure === "true", "", sort, dir],
+            queryKey: [
+              "all-deaths",
+              parseInt(page, 10),
+              includeObscure === "true",
+              search,
+              sort,
+              dir,
+            ],
             queryFn: () =>
               apiFetch(
                 base,
-                `/api/deaths/all?page=${page}&includeObscure=${includeObscure}&sort=${sort}&dir=${dir}`
+                `/api/deaths/all?page=${page}&includeObscure=${includeObscure}${search ? `&search=${encodeURIComponent(search)}` : ""}&sort=${sort}&dir=${dir}`
               ),
           },
         ],
@@ -419,6 +427,7 @@ const routes: Array<{
     loader: (_params, searchParams) => {
       const page = searchParams.get("page") || "1"
       const category = searchParams.get("category") || "all"
+      const showSelfInflicted = searchParams.get("showSelfInflicted") || "false"
       const includeObscure = searchParams.get("includeObscure") || "false"
       return {
         loaders: (base) => [
@@ -427,13 +436,13 @@ const routes: Array<{
               "unnatural-deaths",
               parseInt(page, 10),
               category,
-              false,
+              showSelfInflicted === "true",
               includeObscure === "true",
             ],
             queryFn: () =>
               apiFetch(
                 base,
-                `/api/unnatural-deaths?page=${page}&category=${category}&includeObscure=${includeObscure}`
+                `/api/unnatural-deaths?page=${page}&category=${category}&showSelfInflicted=${showSelfInflicted}&includeObscure=${includeObscure}`
               ),
           },
         ],
@@ -447,6 +456,7 @@ const routes: Array<{
     loader: (_params, searchParams) => {
       const page = searchParams.get("page") || "1"
       const includeObscure = searchParams.get("includeObscure") || "false"
+      const search = searchParams.get("search") || ""
       const sort = searchParams.get("sort") || "probability"
       const dir = searchParams.get("dir") || "desc"
       return {
@@ -457,7 +467,7 @@ const routes: Array<{
               {
                 page: parseInt(page, 10),
                 includeObscure: includeObscure === "true",
-                search: "",
+                search,
                 sort,
                 dir,
               },
@@ -465,7 +475,7 @@ const routes: Array<{
             queryFn: () =>
               apiFetch(
                 base,
-                `/api/death-watch?page=${page}&includeObscure=${includeObscure}&sort=${sort}&dir=${dir}`
+                `/api/death-watch?page=${page}&includeObscure=${includeObscure}${search ? `&search=${encodeURIComponent(search)}` : ""}&sort=${sort}&dir=${dir}`
               ),
           },
         ],

@@ -86,7 +86,9 @@ describe("matchRouteLoaders", () => {
 
   it("matches causes-of-death category", () => {
     const specs = getSpecs("/causes-of-death/natural")
-    expect(specs).toEqual([{ queryKey: ["causes-of-death-category", "natural", 1, false, null] }])
+    expect(specs).toEqual([
+      { queryKey: ["causes-of-death-category", "natural", 1, false, undefined] },
+    ])
   })
 
   it("matches causes-of-death specific cause", () => {
@@ -119,6 +121,11 @@ describe("matchRouteLoaders", () => {
   it("matches all deaths with sort params", () => {
     const specs = getSpecs("/deaths/all?sort=name&dir=asc&page=2")
     expect(specs).toEqual([{ queryKey: ["all-deaths", 2, false, "", "name", "asc"] }])
+  })
+
+  it("matches all deaths with search param", () => {
+    const specs = getSpecs("/deaths/all?search=cancer")
+    expect(specs).toEqual([{ queryKey: ["all-deaths", 1, false, "cancer", "date", "desc"] }])
   })
 
   it("matches deaths decades index", () => {
@@ -160,6 +167,11 @@ describe("matchRouteLoaders", () => {
     expect(specs).toEqual([{ queryKey: ["unnatural-deaths", 1, "murder", false, false] }])
   })
 
+  it("matches unnatural deaths with showSelfInflicted", () => {
+    const specs = getSpecs("/unnatural-deaths?showSelfInflicted=true&category=all")
+    expect(specs).toEqual([{ queryKey: ["unnatural-deaths", 1, "all", true, false] }])
+  })
+
   it("matches death watch", () => {
     const specs = getSpecs("/death-watch?sort=age&dir=asc&page=3")
     expect(specs).toEqual([
@@ -167,6 +179,18 @@ describe("matchRouteLoaders", () => {
         queryKey: [
           "death-watch",
           { page: 3, includeObscure: false, search: "", sort: "age", dir: "asc" },
+        ],
+      },
+    ])
+  })
+
+  it("matches death watch with search param", () => {
+    const specs = getSpecs("/death-watch?search=wayne")
+    expect(specs).toEqual([
+      {
+        queryKey: [
+          "death-watch",
+          { page: 1, includeObscure: false, search: "wayne", sort: "probability", dir: "desc" },
         ],
       },
     ])

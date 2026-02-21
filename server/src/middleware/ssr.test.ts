@@ -3,7 +3,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { PassThrough } from "node:stream"
 import type { Request, Response, NextFunction } from "express"
 
 // Mock cache module
@@ -44,61 +43,10 @@ vi.mock("node:fs", () => ({
   },
 }))
 
-// Create a mock SSR module that resolves immediately
-function createMockSSRModule() {
-  return {
-    render: vi.fn(
-      (
-        _url: string,
-        _queryClient: unknown,
-        streamOptions: Record<string, (...args: unknown[]) => void>
-      ) => {
-        // Simulate immediate render completion
-        const pt = new PassThrough()
-
-        // Schedule the onAllReady callback to fire after render returns
-        setTimeout(() => {
-          streamOptions.onAllReady()
-          pt.end("<div>SSR content</div>")
-        }, 0)
-
-        return {
-          stream: { pipe: (dest: NodeJS.WritableStream) => pt.pipe(dest), abort: vi.fn() },
-          helmetContext: {
-            helmet: {
-              title: { toString: () => "<title>Test Page</title>" },
-              meta: { toString: () => '<meta name="description" content="Test">' },
-              link: { toString: () => "" },
-              script: { toString: () => "" },
-            },
-          },
-          getDehydratedState: () => ({ queries: [] }),
-        }
-      }
-    ),
-    createQueryClient: vi.fn(() => ({
-      prefetchQuery: vi.fn().mockResolvedValue(undefined),
-    })),
-    matchRouteLoaders: vi.fn().mockReturnValue(null),
-  }
-}
-
-// We need to mock dynamic import for the SSR module
-const mockSSRModule = createMockSSRModule()
-
-// Override the SSR module import path resolution
-vi.mock("node:path", async () => {
-  const actual = await vi.importActual<typeof import("node:path")>("node:path")
-  return {
-    ...actual,
-    default: {
-      ...actual,
-      dirname: actual.dirname,
-      join: actual.join,
-      resolve: actual.resolve,
-    },
-  }
-})
+// Note: Cache-miss tests (full render path) are not included here because
+// ssrMiddleware uses a dynamic import() with a computed path for the SSR module,
+// which cannot be easily mocked in Vitest. The tests below cover skip conditions,
+// cache hit, cache key construction, trailing slash normalization, and error handling.
 
 import { ssrMiddleware } from "./ssr.js"
 import { getCached, setCached } from "../lib/cache.js"
