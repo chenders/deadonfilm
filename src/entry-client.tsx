@@ -20,8 +20,12 @@ const dehydratedState = window.__REACT_QUERY_STATE__
 
 const rootEl = document.getElementById("root")!
 
+// Detect real SSR content — the raw template placeholder <!--app-html--> doesn't count
+const rootHtml = rootEl.innerHTML.trim()
+const hasSSRContent = rootHtml.length > 0 && rootHtml !== "<!--app-html-->"
+
 // If the root has SSR content, hydrate; otherwise do a full client render
-if (rootEl.innerHTML.trim()) {
+if (hasSSRContent) {
   ReactDOM.hydrateRoot(
     rootEl,
     <React.StrictMode>

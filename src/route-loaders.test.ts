@@ -36,9 +36,9 @@ describe("matchRouteLoaders", () => {
     expect(specs).toEqual([{ queryKey: ["actors", "john-wayne-2157"] }])
   })
 
-  it("matches actor death details page", () => {
-    const specs = getSpecs("/actor/john-wayne-2157/death")
-    expect(specs).toEqual([{ queryKey: ["actor-death-details", "john-wayne-2157"] }])
+  it("returns null for actor death redirect route", () => {
+    // /actor/:slug/death is a <Navigate> redirect in App.tsx, no data to prefetch
+    expect(matchRouteLoaders("/actor/john-wayne-2157/death")).toBeNull()
   })
 
   // ── Movie routes ────────────────────────────────────────────────

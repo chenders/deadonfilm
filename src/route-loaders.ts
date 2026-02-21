@@ -39,19 +39,6 @@ const routes: Array<{
   pattern: RegExp
   loader: (params: Record<string, string>, searchParams: URLSearchParams) => RouteMatch
 }> = [
-  // Actor death details page
-  {
-    pattern: /^\/actor\/(?<slug>[^/]+)\/death$/,
-    loader: (params) => ({
-      loaders: (base) => [
-        {
-          queryKey: ["actor-death-details", params.slug],
-          queryFn: () => apiFetch(base, `/api/actor/${encodeURIComponent(params.slug)}/death`),
-        },
-      ],
-    }),
-  },
-
   // Actor page
   {
     pattern: /^\/actor\/(?<slug>[^/]+)$/,
