@@ -57,12 +57,12 @@ describe("ActorHubPage", () => {
     expect(screen.getByRole("heading", { name: /actors/i })).toBeInTheDocument()
     expect(
       screen.getByText(
-        /manage actors, diagnostics, biographies, bio enrichment, data quality, and popularity/i
+        /manage actors, diagnostics, biographies, bio enrichment, data quality, popularity scores, and rejected factors/i
       )
     ).toBeInTheDocument()
   })
 
-  it("renders all six tabs", () => {
+  it("renders all seven tabs", () => {
     renderPage()
     expect(screen.getByRole("tab", { name: /management/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /diagnostic/i })).toBeInTheDocument()
@@ -70,6 +70,7 @@ describe("ActorHubPage", () => {
     expect(screen.getByRole("tab", { name: /bio enrichment/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /data quality/i })).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: /popularity/i })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /rejected factors/i })).toBeInTheDocument()
   })
 
   it("shows management tab by default", () => {
