@@ -325,13 +325,30 @@ function ActorRow({
         onClick={onToggle}
       >
         <td className="px-4 py-2 text-sm">
-          <Link
-            to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}`}
-            className="text-admin-interactive hover:text-admin-interactive-hover hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {actor.actor_name}
-          </Link>
+          <div className="flex items-center gap-1.5">
+            <Link
+              to={`/actor/${createActorSlug(actor.actor_name, actor.actor_id)}`}
+              className="text-admin-interactive hover:text-admin-interactive-hover hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {actor.actor_name}
+            </Link>
+            <Link
+              to={`/admin/actors/${actor.actor_id}`}
+              className="text-admin-text-muted hover:text-admin-interactive"
+              onClick={(e) => e.stopPropagation()}
+              title="Open in admin editor"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </Link>
+          </div>
         </td>
         <td className="px-4 py-2 text-center">
           {actor.was_enriched ? (
