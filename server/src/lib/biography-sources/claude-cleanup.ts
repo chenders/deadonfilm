@@ -13,6 +13,8 @@ import type { ActorForBiography, RawBiographySourceData, BiographyData } from ".
 import { BiographySourceType, VALID_LIFE_NOTABLE_FACTORS } from "./types.js"
 import { stripMarkdownCodeFences } from "../claude-batch/response-parser.js"
 import { sanitizeSourceText } from "../shared/sanitize-source-text.js"
+import { getPool } from "../db/pool.js"
+import { saveRejectedFactors } from "../rejected-factors.js"
 
 // Sonnet pricing (per million tokens)
 const INPUT_COST_PER_MILLION = 3
@@ -301,11 +303,14 @@ export async function synthesizeBiography(
   }
 
   // Validate life_notable_factors against VALID set
-  const validFactors = (
+  const allFactors = (
     Array.isArray(parsed.life_notable_factors) ? parsed.life_notable_factors : []
-  )
-    .filter((f: unknown): f is string => typeof f === "string")
-    .filter((f: string) => VALID_LIFE_NOTABLE_FACTORS.has(f))
+  ).filter((f: unknown): f is string => typeof f === "string")
+  const validFactors = allFactors.filter((f) => VALID_LIFE_NOTABLE_FACTORS.has(f))
+  const rejectedFactors = allFactors.filter((f) => !VALID_LIFE_NOTABLE_FACTORS.has(f))
+  if (rejectedFactors.length > 0) {
+    saveRejectedFactors(getPool(), rejectedFactors, "life", actor.id, actor.name).catch(() => {})
+  }
 
   // Validate narrative_confidence
   const rawConfidence = parsed.narrative_confidence
