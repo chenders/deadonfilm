@@ -13,7 +13,6 @@ import {
  */
 function makeBiographyData(overrides: Partial<BiographyData> = {}): BiographyData {
   return {
-    narrativeTeaser: null,
     narrative: null,
     narrativeConfidence: null,
     lifeNotableFactors: [],
@@ -50,9 +49,8 @@ describe("GOLDEN_TEST_CASES", () => {
 })
 
 describe("scoreResult", () => {
-  it("returns perfect score when all facts found, all factors correct, no unwanted content, and compelling teaser", () => {
+  it("returns perfect score when all facts found, all factors correct, and no unwanted content", () => {
     const data = makeBiographyData({
-      narrativeTeaser: "A Quaker farm boy who turned down a Harvard scholarship to help his family",
       narrative:
         "Nixon grew up in Whittier, California, working at the family store. He was offered a scholarship to Harvard but could not afford to leave home.",
       lifeNotableFactors: ["scholar", "political_figure", "military_service"],
@@ -68,13 +66,11 @@ describe("scoreResult", () => {
     expect(score.factorsCorrect).toBe(3)
     expect(score.factorsMissed).toEqual([])
     expect(score.unwantedContentFound).toEqual([])
-    expect(score.teaserQuality).toBe("compelling")
     expect(score.score).toBe(100)
   })
 
-  it("scores partial fact recall correctly (2 of 4 facts = 30 points)", () => {
+  it("scores partial fact recall correctly (2 of 4 facts = 35 points)", () => {
     const data = makeBiographyData({
-      narrativeTeaser: "A compelling personal story",
       narrative: "Nixon attended Harvard and won a scholarship there.",
       lifeNotableFactors: ["scholar", "political_figure", "military_service"],
       hasSubstantiveContent: true,
@@ -84,13 +80,12 @@ describe("scoreResult", () => {
 
     expect(score.factsFound).toBe(2)
     expect(score.factsMissed).toEqual(["family store", "Whittier"])
-    // 2 * (60/4) = 30
-    expect(score.score).toBe(30 + 20 + 10 + 10)
+    // 2 * (70/4) = 35
+    expect(score.score).toBe(35 + 20 + 10)
   })
 
   it("scores zero for fact recall when no expected facts are found", () => {
     const data = makeBiographyData({
-      narrativeTeaser: "A compelling personal story",
       narrative: "This person lived a quiet life with no notable achievements mentioned here.",
       lifeNotableFactors: ["scholar", "political_figure", "military_service"],
       hasSubstantiveContent: true,
@@ -100,13 +95,12 @@ describe("scoreResult", () => {
 
     expect(score.factsFound).toBe(0)
     expect(score.factsMissed).toEqual(["Harvard", "scholarship", "family store", "Whittier"])
-    // 0 for facts + 20 for factors + 10 for no unwanted + 10 for teaser = 40
-    expect(score.score).toBe(40)
+    // 0 for facts + 20 for factors + 10 for no unwanted = 30
+    expect(score.score).toBe(30)
   })
 
   it("scores factor accuracy correctly (2 of 3 factors = ~13 points)", () => {
     const data = makeBiographyData({
-      narrativeTeaser: "A compelling personal story",
       narrative:
         "Nixon grew up in Whittier, worked at the family store, earned a Harvard scholarship.",
       lifeNotableFactors: ["scholar", "military_service"],
@@ -120,13 +114,12 @@ describe("scoreResult", () => {
     // factors: 2 * (20/3) = 13.33 -> rounded to 13
     const expectedFactorScore = Math.round(2 * (20 / 3))
     expect(expectedFactorScore).toBe(13)
-    // total: 60 (all facts) + 13 (factors) + 10 (no unwanted) + 10 (teaser) = 93
+    // total: 70 (all facts) + 13 (factors) + 10 (no unwanted) = 93
     expect(score.score).toBe(93)
   })
 
   it("scores 0 for unwanted content when filmography detected", () => {
     const data = makeBiographyData({
-      narrativeTeaser: "A compelling personal story",
       narrative:
         "Nixon grew up in Whittier, worked at the family store, earned a Harvard scholarship. His filmography includes several notable appearances.",
       lifeNotableFactors: ["scholar", "political_figure", "military_service"],
@@ -136,39 +129,7 @@ describe("scoreResult", () => {
     const score = scoreResult(nixonCase, data)
 
     expect(score.unwantedContentFound).toEqual(["filmography"])
-    // 60 (facts) + 20 (factors) + 0 (unwanted detected) + 10 (teaser) = 90
-    expect(score.score).toBe(90)
-  })
-
-  it("classifies career-focused teaser as career_focused with 0 points", () => {
-    const data = makeBiographyData({
-      narrativeTeaser: "Was an American actor who appeared in many films throughout his career.",
-      narrative:
-        "Nixon grew up in Whittier, worked at the family store, earned a Harvard scholarship.",
-      lifeNotableFactors: ["scholar", "political_figure", "military_service"],
-      hasSubstantiveContent: true,
-    })
-
-    const score = scoreResult(nixonCase, data)
-
-    expect(score.teaserQuality).toBe("career_focused")
-    // 60 (facts) + 20 (factors) + 10 (no unwanted) + 0 (career teaser) = 90
-    expect(score.score).toBe(90)
-  })
-
-  it("classifies null teaser as generic with 0 points", () => {
-    const data = makeBiographyData({
-      narrativeTeaser: null,
-      narrative:
-        "Nixon grew up in Whittier, worked at the family store, earned a Harvard scholarship.",
-      lifeNotableFactors: ["scholar", "political_figure", "military_service"],
-      hasSubstantiveContent: true,
-    })
-
-    const score = scoreResult(nixonCase, data)
-
-    expect(score.teaserQuality).toBe("generic")
-    // 60 + 20 + 10 + 0 = 90
+    // 70 (facts) + 20 (factors) + 0 (unwanted detected) = 90
     expect(score.score).toBe(90)
   })
 
@@ -182,14 +143,12 @@ describe("scoreResult", () => {
     expect(score.factorsCorrect).toBe(0)
     expect(score.factorsMissed).toEqual(["scholar", "political_figure", "military_service"])
     expect(score.unwantedContentFound).toEqual([])
-    expect(score.teaserQuality).toBe("generic")
     expect(score.narrativeLength).toBe(0)
     expect(score.score).toBe(10) // only 10 for no unwanted content (vacuously true)
   })
 
   it("searches across all text fields including lesserKnownFacts", () => {
     const data = makeBiographyData({
-      narrativeTeaser: "A compelling personal story",
       education: "Attended Harvard on a scholarship",
       preFameLife: "Worked at the family store",
       lesserKnownFacts: ["Grew up in Whittier, California"],
@@ -206,7 +165,6 @@ describe("scoreResult", () => {
 
   it("performs case-insensitive fact matching", () => {
     const data = makeBiographyData({
-      narrativeTeaser: "A compelling story",
       narrative: "nixon attended HARVARD on a SCHOLARSHIP at the FAMILY STORE in WHITTIER",
       lifeNotableFactors: ["scholar", "political_figure", "military_service"],
       hasSubstantiveContent: true,
@@ -227,23 +185,6 @@ describe("scoreResult", () => {
 
     expect(score.narrativeLength).toBe(narrative.length)
   })
-
-  it("detects multiple career teaser phrases", () => {
-    const careerPhrases = [
-      "Was a British actor known for horror films",
-      "Born on May 27, 1922, in London",
-      "Was born in Belgravia, London",
-      "Starred in over 200 films",
-      "Appeared in many horror classics",
-      "Known for his portrayal of Dracula",
-    ]
-
-    for (const phrase of careerPhrases) {
-      const data = makeBiographyData({ narrativeTeaser: phrase })
-      const score = scoreResult(nixonCase, data)
-      expect(score.teaserQuality).toBe("career_focused")
-    }
-  })
 })
 
 describe("scoreAllResults", () => {
@@ -254,7 +195,6 @@ describe("scoreAllResults", () => {
     results.set(
       "Richard Nixon",
       makeBiographyData({
-        narrativeTeaser: "A Quaker farm boy who turned down Harvard",
         narrative:
           "Nixon grew up in Whittier, worked at the family store, earned a Harvard scholarship.",
         lifeNotableFactors: ["scholar", "political_figure", "military_service"],
@@ -266,7 +206,6 @@ describe("scoreAllResults", () => {
     results.set(
       "James Earl Jones",
       makeBiographyData({
-        narrativeTeaser: "The voice behind Darth Vader overcame a stutter",
         narrative: "Jones was nearly mute as a child due to a severe stutter.",
         lifeNotableFactors: ["disability"],
         hasSubstantiveContent: true,
@@ -317,7 +256,6 @@ describe("scoreAllResults", () => {
     results.set(
       "Audrey Hepburn",
       makeBiographyData({
-        narrativeTeaser: "A wartime survivor who danced through famine",
         narrative:
           "Hepburn survived starvation during WWII thanks to the Dutch Resistance. She trained in ballet from a young age.",
         lifeNotableFactors: ["disaster_survivor"],

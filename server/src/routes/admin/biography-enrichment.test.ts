@@ -80,7 +80,6 @@ describe("Admin Biography Enrichment Endpoints", () => {
               deathday: "1979-06-11",
               bio_id: 10,
               narrative_confidence: "high",
-              narrative_teaser: "A legendary actor known for...",
               life_notable_factors: ["military_service"],
               bio_updated_at: "2026-01-15",
               biography_version: "v2",
@@ -102,7 +101,6 @@ describe("Admin Biography Enrichment Endpoints", () => {
         deathday: "1979-06-11",
         hasEnrichment: true,
         narrativeConfidence: "high",
-        narrativeTeaserPreview: "A legendary actor known for..." + "...",
         lifeNotableFactors: ["military_service"],
         bioUpdatedAt: "2026-01-15",
         biographyVersion: "v2",
@@ -123,7 +121,6 @@ describe("Admin Biography Enrichment Endpoints", () => {
               deathday: "2012-04-25",
               bio_id: null,
               narrative_confidence: null,
-              narrative_teaser: null,
               life_notable_factors: null,
               bio_updated_at: null,
               biography_version: null,
@@ -233,7 +230,6 @@ describe("Admin Biography Enrichment Endpoints", () => {
       const enrichedData = {
         hasSubstantiveContent: true,
         narrative: "Test narrative",
-        narrativeTeaser: "Test teaser",
       }
       mockEnrichActor.mockResolvedValueOnce({
         data: enrichedData,

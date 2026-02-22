@@ -17,7 +17,7 @@ import { invalidateActorCache } from "./cache.js"
  * Steps:
  * 1. Archive old biography to biography_legacy (one-time, only if not already archived)
  * 2. Upsert actor_biography_details with COALESCE strategy
- * 3. Update actors table (biography = narrativeTeaser, increment biography_version)
+ * 3. Update actors table (biography = narrative, increment biography_version)
  * 4. Invalidate actor cache
  */
 export async function writeBiographyToProduction(
@@ -48,14 +48,13 @@ export async function writeBiographyToProduction(
     // Step 2: Upsert actor_biography_details
     await db.query(
       `INSERT INTO actor_biography_details (
-        actor_id, narrative_teaser, narrative, narrative_confidence,
+        actor_id, narrative, narrative_confidence,
         life_notable_factors, birthplace_details, family_background,
         education, pre_fame_life, fame_catalyst,
         personal_struggles, relationships, lesser_known_facts,
         sources, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
       ON CONFLICT (actor_id) DO UPDATE SET
-        narrative_teaser = COALESCE(EXCLUDED.narrative_teaser, actor_biography_details.narrative_teaser),
         narrative = COALESCE(EXCLUDED.narrative, actor_biography_details.narrative),
         narrative_confidence = COALESCE(EXCLUDED.narrative_confidence, actor_biography_details.narrative_confidence),
         life_notable_factors = COALESCE(EXCLUDED.life_notable_factors, actor_biography_details.life_notable_factors),
@@ -71,7 +70,6 @@ export async function writeBiographyToProduction(
         updated_at = NOW()`,
       [
         actorId,
-        data.narrativeTeaser,
         data.narrative,
         data.narrativeConfidence,
         data.lifeNotableFactors.length > 0 ? data.lifeNotableFactors : null,
@@ -94,7 +92,7 @@ export async function writeBiographyToProduction(
         biography_version = COALESCE(biography_version, 0) + 1,
         updated_at = NOW()
       WHERE id = $2`,
-      [data.narrativeTeaser, actorId]
+      [data.narrative, actorId]
     )
 
     // Step 4: Invalidate cache
@@ -104,7 +102,6 @@ export async function writeBiographyToProduction(
     newrelic.recordCustomEvent("BioDBWrite", {
       actorId,
       hasNarrative: !!data.narrative,
-      hasTeaser: !!data.narrativeTeaser,
       narrativeConfidence: data.narrativeConfidence ?? "unknown",
       factorCount: data.lifeNotableFactors.length,
       sourceCount: sources.length,

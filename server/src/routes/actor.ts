@@ -68,7 +68,6 @@ interface ActorProfileResponse {
     }> | null
   } | null
   biographyDetails: {
-    narrativeTeaser: string | null
     narrative: string | null
     narrativeConfidence: "high" | "medium" | "low" | null
     lifeNotableFactors: string[]
@@ -163,7 +162,6 @@ export async function getActor(req: Request, res: Response) {
       getActorShowFilmography(tmdbIdForFetch),
       getPool()
         .query<{
-          narrative_teaser: string | null
           narrative: string | null
           narrative_confidence: string | null
           life_notable_factors: string[] | null
@@ -177,7 +175,7 @@ export async function getActor(req: Request, res: Response) {
           lesser_known_facts: string[] | null
           sources: Record<string, unknown> | null
         }>(
-          `SELECT narrative_teaser, narrative, narrative_confidence,
+          `SELECT narrative, narrative_confidence,
                   life_notable_factors, birthplace_details, family_background,
                   education, pre_fame_life, fame_catalyst,
                   personal_struggles, relationships, lesser_known_facts,
@@ -273,7 +271,6 @@ export async function getActor(req: Request, res: Response) {
       deathInfo,
       biographyDetails: bioRow
         ? {
-            narrativeTeaser: bioRow.narrative_teaser || null,
             narrative: bioRow.narrative || null,
             narrativeConfidence: bioRow.narrative_confidence as "high" | "medium" | "low" | null,
             lifeNotableFactors: bioRow.life_notable_factors || [],

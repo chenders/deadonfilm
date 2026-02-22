@@ -45,7 +45,6 @@ interface EnrichBioInlineResult {
   enriched: boolean
   message?: string
   data?: {
-    narrativeTeaser: string | null
     narrativeConfidence: string | null
     lifeNotableFactors: string[]
     hasSubstantiveContent: boolean

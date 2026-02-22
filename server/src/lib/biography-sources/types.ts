@@ -167,7 +167,6 @@ export interface ActorForBiography {
  * These are the user-facing fields for the biography page.
  */
 export interface BiographyData {
-  narrativeTeaser: string | null
   narrative: string | null
   narrativeConfidence: "high" | "medium" | "low" | null
   lifeNotableFactors: string[]

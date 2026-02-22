@@ -263,7 +263,6 @@ function createSynthesisResult(
     data:
       overrides?.narrative !== null
         ? {
-            narrativeTeaser: "A teaser",
             narrative: overrides?.narrative ?? "Full narrative",
             narrativeConfidence: "high" as const,
             lifeNotableFactors: [],
