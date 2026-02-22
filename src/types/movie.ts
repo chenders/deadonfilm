@@ -85,28 +85,6 @@ export interface RandomMovieResponse {
   release_date: string
 }
 
-// Cursed Movies types
-export interface CursedMovie {
-  rank: number
-  id: number
-  title: string
-  releaseYear: number | null
-  posterPath: string | null
-  deceasedCount: number
-  castCount: number
-  expectedDeaths: number
-  mortalitySurpriseScore: number
-}
-
-export interface CursedMoviesResponse {
-  movies: CursedMovie[]
-  pagination: PaginationInfo
-}
-
-export interface CursedMoviesFiltersResponse {
-  maxMinDeaths: number
-}
-
 // Featured Movie types
 export interface FeaturedMovie {
   tmdbId: number

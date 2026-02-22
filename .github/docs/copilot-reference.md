@@ -116,8 +116,6 @@ For detailed GitHub CLI operations, see `.claude/rules/github-cli.md` and `.clau
 | Formula | Description |
 |---------|-------------|
 | Expected Deaths | Sum of death probabilities for each actor (filming age to current age) |
-| Curse Score (Movies) | `(Actual - Expected) / (Expected + 2)`. Empirical Bayes shrinkage (k=2) |
-| Curse Score (Actors) | `SUM(Actual) - SUM(Expected)` across filmography. Raw difference |
 | Years Lost | `Expected Lifespan - Actual Lifespan`. Positive = died early |
 
 ### Obscure Filtering

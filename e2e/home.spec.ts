@@ -25,7 +25,6 @@ test.describe("Home Page", () => {
     await expect(page.getByTestId("in-detail-btn")).toBeVisible()
     await expect(page.getByTestId("covid-deaths-btn")).toBeVisible()
     await expect(page.getByTestId("unnatural-deaths-btn")).toBeVisible()
-    await expect(page.getByTestId("death-watch-btn")).toBeVisible()
 
     // Take screenshot of quick actions for visual regression testing
     await quickActions.screenshot({ path: "e2e/screenshots/quick-actions.png" })

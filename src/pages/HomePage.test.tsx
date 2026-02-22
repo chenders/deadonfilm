@@ -164,7 +164,6 @@ describe("HomePage", () => {
 
     expect(screen.getByTestId("in-detail-btn")).toBeInTheDocument()
     expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
   })
 
   it("auto-focuses search input on homepage load", async () => {

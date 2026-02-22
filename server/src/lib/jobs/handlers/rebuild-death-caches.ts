@@ -3,7 +3,6 @@
  *
  * Rebuilds all death-related caches including:
  * - Recent deaths
- * - Death watch
  * - All deaths
  * - COVID deaths
  * - Unnatural deaths

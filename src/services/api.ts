@@ -6,15 +6,11 @@ import type {
   RandomMovieResponse,
   SiteStatsResponse,
   RecentDeathsResponse,
-  CursedMoviesResponse,
-  CursedMoviesFiltersResponse,
   ForeverYoungResponse,
-  CursedActorsResponse,
   ActorProfileResponse,
   CovidDeathsResponse,
   UnnaturalDeathsResponse,
   UnnaturalDeathCategory,
-  DeathWatchResponse,
   FeaturedMovieResponse,
   TriviaResponse,
   ThisWeekDeathsResponse,
@@ -109,35 +105,6 @@ export async function getRecentDeaths(limit: number = 5): Promise<RecentDeathsRe
   return fetchJson(`/recent-deaths?limit=${limit}`)
 }
 
-export interface CursedMoviesOptions {
-  page?: number
-  limit?: number
-  fromDecade?: number // e.g., 1980
-  toDecade?: number // e.g., 1990
-  minDeadActors?: number
-  includeObscure?: boolean // Include obscure/unknown movies (default: false)
-}
-
-export async function getCursedMovies(
-  options: CursedMoviesOptions = {}
-): Promise<CursedMoviesResponse> {
-  const { page = 1, limit = 50, fromDecade, toDecade, minDeadActors, includeObscure } = options
-  const params = new URLSearchParams()
-
-  params.set("page", String(page))
-  params.set("limit", String(limit))
-  if (fromDecade) params.set("from", String(fromDecade))
-  if (toDecade) params.set("to", String(toDecade))
-  if (minDeadActors) params.set("minDeaths", String(minDeadActors))
-  if (includeObscure) params.set("includeObscure", "true")
-
-  return fetchJson(`/cursed-movies?${params.toString()}`)
-}
-
-export async function getCursedMoviesFilters(): Promise<CursedMoviesFiltersResponse> {
-  return fetchJson("/cursed-movies/filters")
-}
-
 export async function getForeverYoungMovies(
   page: number = 1,
   sort?: string,
@@ -148,31 +115,6 @@ export async function getForeverYoungMovies(
   if (sort) params.set("sort", sort)
   if (dir) params.set("dir", dir)
   return fetchJson(`/forever-young?${params.toString()}`)
-}
-
-export interface CursedActorsOptions {
-  page?: number
-  limit?: number
-  fromDecade?: number
-  toDecade?: number
-  minMovies?: number
-  status?: "living" | "deceased" | "all"
-}
-
-export async function getCursedActors(
-  options: CursedActorsOptions = {}
-): Promise<CursedActorsResponse> {
-  const { page = 1, limit = 50, fromDecade, toDecade, minMovies, status } = options
-  const params = new URLSearchParams()
-
-  params.set("page", String(page))
-  params.set("limit", String(limit))
-  if (fromDecade) params.set("from", String(fromDecade))
-  if (toDecade) params.set("to", String(toDecade))
-  if (minMovies) params.set("minMovies", String(minMovies))
-  if (status) params.set("status", status)
-
-  return fetchJson(`/cursed-actors?${params.toString()}`)
 }
 
 // TMDB image URL helpers
@@ -244,31 +186,6 @@ export async function getUnnaturalDeaths(
     searchParams.set("includeObscure", "true")
   }
   return fetchJson(`/unnatural-deaths?${searchParams.toString()}`)
-}
-
-export interface DeathWatchOptions {
-  page?: number
-  limit?: number
-  minAge?: number
-  includeObscure?: boolean
-  search?: string
-  sort?: string
-  dir?: string
-}
-
-export async function getDeathWatch(options: DeathWatchOptions = {}): Promise<DeathWatchResponse> {
-  const { page = 1, limit = 50, minAge, includeObscure, search, sort, dir } = options
-  const params = new URLSearchParams()
-
-  params.set("page", String(page))
-  params.set("limit", String(limit))
-  if (minAge) params.set("minAge", String(minAge))
-  if (includeObscure) params.set("includeObscure", "true")
-  if (search) params.set("search", search)
-  if (sort) params.set("sort", sort)
-  if (dir) params.set("dir", dir)
-
-  return fetchJson(`/death-watch?${params.toString()}`)
 }
 
 export async function getFeaturedMovie(): Promise<FeaturedMovieResponse> {

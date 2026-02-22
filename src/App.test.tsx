@@ -41,13 +41,6 @@ vi.mock("@/services/api", () => ({
   ),
   getDiscoverMovie: vi.fn(() => Promise.resolve(null)),
   getProfileUrl: vi.fn((path) => (path ? `https://image.tmdb.org/t/p/w185${path}` : null)),
-  getCursedMovies: vi.fn(() =>
-    Promise.resolve({ movies: [], totalCount: 0, page: 1, pageSize: 25, totalPages: 0 })
-  ),
-  getCursedMoviesFilters: vi.fn(() => Promise.resolve({ maxMinDeaths: 10 })),
-  getCursedActors: vi.fn(() =>
-    Promise.resolve({ actors: [], totalCount: 0, page: 1, pageSize: 25, totalPages: 0 })
-  ),
   getMovie: vi.fn(() =>
     Promise.resolve({
       movie: {

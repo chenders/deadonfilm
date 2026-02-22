@@ -17,7 +17,6 @@ export type PageType =
   | "in-detail"
   | "covid-deaths"
   | "unnatural-deaths"
-  | "death-watch"
   | "deaths-index"
   | "deaths-all"
   | "deaths-notable"
@@ -79,7 +78,6 @@ const STATIC_PAGES: Record<string, PageType> = {
   "/in-detail": "in-detail",
   "/covid-deaths": "covid-deaths",
   "/unnatural-deaths": "unnatural-deaths",
-  "/death-watch": "death-watch",
   "/deaths": "deaths-index",
   "/deaths/all": "deaths-all",
   "/deaths/notable": "deaths-notable",

@@ -311,7 +311,7 @@ describe("mortality-stats", () => {
     })
   })
 
-  describe("edge cases for cursed movie calculations", () => {
+  describe("edge cases for movie mortality calculations", () => {
     it("excludes actor who died more than 3 years BEFORE movie was released (archived footage)", async () => {
       // Actor died 4 years before movie, so should be excluded as archived footage
       const actors: ActorForMortality[] = [

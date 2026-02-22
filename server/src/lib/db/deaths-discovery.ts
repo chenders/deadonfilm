@@ -2,7 +2,7 @@
  * Deaths discovery database functions.
  *
  * Functions for death-related discovery features: by decade, recent deaths,
- * forever young, COVID deaths, unnatural deaths, all deaths, death watch.
+ * forever young, COVID deaths, unnatural deaths, all deaths.
  */
 
 import { getPool } from "./pool.js"
@@ -18,8 +18,6 @@ import type {
   UnnaturalDeathsOptions,
   UnnaturalDeathCategory,
   AllDeathsOptions,
-  DeathWatchOptions,
-  DeathWatchActorRecord,
 } from "./types.js"
 
 // ============================================================================
@@ -545,126 +543,4 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
   const persons = result.rows.map(({ total_count: _total_count, ...person }) => person)
 
   return { persons, totalCount }
-}
-
-// ============================================================================
-// Death Watch feature - living actors most likely to die soon
-// ============================================================================
-
-// Sort column allowlist for getDeathWatchActors - maps user-facing sort keys to SQL column names
-const DEATH_WATCH_SORT_MAP: Record<string, string> = {
-  age: "age",
-  probability: "age", // Same column since probability is derived from age
-  name: "actor_name",
-}
-
-// Get living actors for the Death Watch feature
-// Returns actors ordered by age (oldest first = highest death probability)
-// Death probability is calculated in application code using actuarial tables
-// Requires actors to have appeared in 2+ movies OR 10+ TV episodes
-export async function getDeathWatchActors(options: DeathWatchOptions = {}): Promise<{
-  actors: DeathWatchActorRecord[]
-  totalCount: number
-}> {
-  const { limit = 50, offset = 0, minAge, includeObscure = false, search, sort, dir } = options
-
-  const db = getPool()
-
-  // Build dynamic WHERE conditions
-  const conditions: string[] = []
-  const params: (number | boolean | string)[] = []
-  let paramIndex = 1
-
-  // Min age filter (applied in outer WHERE)
-  if (minAge !== undefined) {
-    conditions.push(`age >= $${paramIndex}`)
-    params.push(minAge)
-    paramIndex++
-  }
-
-  // Obscure filter - exclude actors without profile photos or low popularity
-  if (!includeObscure) {
-    conditions.push(`profile_path IS NOT NULL`)
-    conditions.push(`tmdb_popularity >= 5.0`)
-  }
-
-  // Search filter
-  if (search) {
-    const words = splitSearchWords(search)
-    for (const word of words) {
-      conditions.push(`actor_name ILIKE $${paramIndex}`)
-      params.push(`%${word}%`)
-      paramIndex++
-    }
-  }
-
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
-
-  // Sort column comes from hardcoded allowlist, NOT user input (safe for SQL interpolation)
-  const sortColumn = DEATH_WATCH_SORT_MAP[sort || "age"] || DEATH_WATCH_SORT_MAP.age
-  const sortDirection = dir === "asc" ? "ASC" : "DESC"
-  const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
-  const secondarySort = sortColumn === "actor_name" ? "" : ", dof_popularity DESC NULLS LAST"
-
-  // Add pagination params
-  params.push(limit)
-  const limitParamIndex = paramIndex++
-  params.push(offset)
-  const offsetParamIndex = paramIndex++
-
-  const query = `
-    WITH living_actors AS (
-      SELECT
-        a.id as actor_id,
-        a.tmdb_id as actor_tmdb_id,
-        a.name as actor_name,
-        a.birthday,
-        a.profile_path,
-        a.tmdb_popularity,
-        a.dof_popularity,
-        COUNT(DISTINCT ama.movie_tmdb_id) as total_movies,
-        COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) as total_episodes,
-        EXTRACT(YEAR FROM age(a.birthday))::integer as age
-      FROM actors a
-      LEFT JOIN actor_movie_appearances ama ON ama.actor_id = a.id
-      LEFT JOIN actor_show_appearances asa ON asa.actor_id = a.id
-      WHERE a.deathday IS NULL
-        AND a.birthday IS NOT NULL
-      GROUP BY a.id, a.tmdb_id, a.name, a.birthday, a.profile_path, a.tmdb_popularity, a.dof_popularity
-      HAVING COUNT(DISTINCT ama.movie_tmdb_id) >= 2
-         OR COUNT(DISTINCT (asa.show_tmdb_id, asa.season_number, asa.episode_number)) >= 10
-    )
-    SELECT
-      actor_id,
-      actor_tmdb_id,
-      actor_name,
-      birthday::text,
-      age,
-      profile_path,
-      dof_popularity::decimal as popularity,
-      total_movies::integer,
-      total_episodes::integer,
-      COUNT(*) OVER() as total_count
-    FROM living_actors
-    ${whereClause}
-    ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}${secondarySort}, actor_id ASC
-    LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
-  `
-
-  const result = await db.query(query, params)
-
-  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
-
-  // Remove the total_count field from each row
-  const actors = result.rows.map(
-    ({
-      total_count: _,
-      ...actor
-    }: { total_count: string } & DeathWatchActorRecord): DeathWatchActorRecord => ({
-      ...actor,
-      tmdb_popularity: actor.tmdb_popularity ? parseFloat(String(actor.tmdb_popularity)) : null,
-    })
-  )
-
-  return { actors, totalCount }
 }

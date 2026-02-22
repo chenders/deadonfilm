@@ -148,8 +148,8 @@ describe("getStaticSitemap", () => {
     expect(xml).toContain("https://deadonfilm.com/")
     expect(xml).not.toContain("https://deadonfilm.com/cursed-movies")
     expect(xml).not.toContain("https://deadonfilm.com/cursed-actors")
+    expect(xml).not.toContain("https://deadonfilm.com/death-watch")
     expect(xml).toContain("https://deadonfilm.com/covid-deaths")
-    expect(xml).toContain("https://deadonfilm.com/death-watch")
     expect(xml).toContain("<priority>1.0</priority>") // Homepage priority
     expect(xml).toContain("<changefreq>daily</changefreq>")
     expect(xml).toContain("<changefreq>weekly</changefreq>")

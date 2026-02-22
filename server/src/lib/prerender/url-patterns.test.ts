@@ -134,8 +134,8 @@ describe("matchUrl", () => {
       expect(matchUrl("/unnatural-deaths")).toEqual({ pageType: "unnatural-deaths", params: {} })
     })
 
-    it("matches /death-watch", () => {
-      expect(matchUrl("/death-watch")).toEqual({ pageType: "death-watch", params: {} })
+    it("does not match /death-watch (removed)", () => {
+      expect(matchUrl("/death-watch")).toBeNull()
     })
 
     it("matches /deaths", () => {

@@ -56,7 +56,7 @@ export {
 } from "./actors.js"
 
 // Re-export movie functions
-export { getMovie, upsertMovie, getHighMortalityMovies, getMaxValidMinDeaths } from "./movies.js"
+export { getMovie, upsertMovie } from "./movies.js"
 
 // Re-export show functions
 export {
@@ -90,7 +90,6 @@ export {
   UNNATURAL_DEATH_CATEGORIES,
   getUnnaturalDeaths,
   getAllDeaths,
-  getDeathWatchActors,
 } from "./deaths-discovery.js"
 
 // Re-export cause-categories functions

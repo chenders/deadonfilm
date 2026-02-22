@@ -332,7 +332,6 @@ export function categorizeUrl(path: string): string {
   if (path === "/in-detail") return "curated"
   if (path === "/covid-deaths") return "curated"
   if (path === "/unnatural-deaths") return "curated"
-  if (path === "/death-watch") return "curated"
   return "other"
 }
 

@@ -26,10 +26,6 @@ describe("Footer", () => {
 
   it("renders Explore links", () => {
     renderFooter()
-    expect(screen.getByRole("link", { name: "Death Watch" })).toHaveAttribute(
-      "href",
-      "/death-watch"
-    )
     expect(screen.getByRole("link", { name: "Notable Deaths" })).toHaveAttribute(
       "href",
       "/deaths/notable"

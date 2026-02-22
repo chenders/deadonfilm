@@ -27,14 +27,6 @@ const QUICK_ACTIONS = [
     shortDesc: "Accidents, murders, suicides",
   },
   {
-    testId: "death-watch-btn",
-    to: "/death-watch",
-    emoji: "⏳",
-    label: "Death Watch",
-    tooltip: "Living actors most likely to die soon",
-    shortDesc: "Aging actors most at risk",
-  },
-  {
     testId: "causes-of-death-btn",
     to: "/causes-of-death",
     emoji: "📊",

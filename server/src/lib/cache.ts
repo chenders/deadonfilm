@@ -19,9 +19,6 @@ export const CACHE_PREFIX = {
   THIS_WEEK: "this-week",
   STATS: "stats",
   TRIVIA: "trivia",
-  CURSED_MOVIES: "cursed-movies",
-  CURSED_ACTORS: "cursed-actors",
-  DEATH_WATCH: "death-watch",
   CAUSES: "causes",
   DECADES: "decades",
   MOVIE: "movie",
@@ -61,7 +58,7 @@ export const CACHE_TTL = {
   SHORT: 300, // 5 minutes - search results, transient data
   WEEK: 604800, // 1 week - standard TTL for data invalidated on change
   PRERENDER: 86400, // 24 hours - prerendered content pages
-  PRERENDER_DYNAMIC: 3600, // 1 hour - dynamic pages (death-watch, deaths/*)
+  PRERENDER_DYNAMIC: 3600, // 1 hour - dynamic pages (deaths/*, covid-deaths, etc.)
   FOUR_HOURS: 14400, // 4 hours - random popular movies rotation
 } as const
 
@@ -264,8 +261,6 @@ export async function invalidateDeathCaches(): Promise<void> {
   await Promise.all([
     invalidateByPattern(`${CACHE_PREFIX.RECENT_DEATHS}:*`),
     invalidateByPattern(`${CACHE_PREFIX.THIS_WEEK}:*`),
-    invalidateByPattern(`${CACHE_PREFIX.DEATH_WATCH}:*`),
-    invalidateByPattern(`${CACHE_PREFIX.CURSED_ACTORS}:*`),
     invalidateByPattern(`${CACHE_PREFIX.CAUSES}:*`),
     invalidateByPattern(`${CACHE_PREFIX.DECADES}:*`),
     invalidateByPattern(`${CACHE_PREFIX.COVID_DEATHS}:*`),
@@ -273,13 +268,11 @@ export async function invalidateDeathCaches(): Promise<void> {
     // STATS and TRIVIA use simple keys (no parameters), so use invalidateKeys
     invalidateKeys(CACHE_PREFIX.STATS, CACHE_PREFIX.TRIVIA, CACHE_PREFIX.FEATURED_MOVIE),
     // Invalidate prerendered pages that show death data (targeted, not all pages)
-    invalidatePrerenderCache("/death-watch"),
     invalidatePrerenderCache("/deaths"),
     invalidatePrerenderCache("/causes-of-death"),
     invalidatePrerenderCache("/covid-deaths"),
     invalidatePrerenderCache("/unnatural-deaths"),
     // Invalidate SSR-rendered pages with death data
-    invalidateSSRCache("/death-watch"),
     invalidateSSRCache("/deaths"),
     invalidateSSRCache("/causes-of-death"),
     invalidateSSRCache("/covid-deaths"),
@@ -293,7 +286,6 @@ export async function invalidateDeathCaches(): Promise<void> {
  */
 export async function invalidateMovieCaches(): Promise<void> {
   await Promise.all([
-    invalidateByPattern(`${CACHE_PREFIX.CURSED_MOVIES}:*`),
     invalidateByPattern(`${CACHE_PREFIX.POPULAR_MOVIES}:*`),
     invalidateKeys(CACHE_PREFIX.FEATURED_MOVIE),
   ])

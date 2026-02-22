@@ -19,7 +19,6 @@ describe("QuickActions", () => {
     expect(screen.getByTestId("in-detail-btn")).toBeInTheDocument()
     expect(screen.getByTestId("covid-deaths-btn")).toBeInTheDocument()
     expect(screen.getByTestId("unnatural-deaths-btn")).toBeInTheDocument()
-    expect(screen.getByTestId("death-watch-btn")).toBeInTheDocument()
     expect(screen.getByTestId("causes-of-death-btn")).toBeInTheDocument()
     expect(screen.getByTestId("notable-deaths-btn")).toBeInTheDocument()
     expect(screen.getByTestId("deaths-by-decade-btn")).toBeInTheDocument()
@@ -31,7 +30,6 @@ describe("QuickActions", () => {
     expect(screen.getByText("In Detail")).toBeInTheDocument()
     expect(screen.getByText("COVID-19")).toBeInTheDocument()
     expect(screen.getByText("Unnatural Deaths")).toBeInTheDocument()
-    expect(screen.getByText("Death Watch")).toBeInTheDocument()
     expect(screen.getByText("Causes of Death")).toBeInTheDocument()
     expect(screen.getByText("Notable Deaths")).toBeInTheDocument()
     expect(screen.getByText("Deaths by Decade")).toBeInTheDocument()
@@ -59,7 +57,6 @@ describe("QuickActions", () => {
     ).toBeInTheDocument()
     expect(screen.getByText("Actors who died from COVID-19")).toBeInTheDocument()
     expect(screen.getByText("Actors who died from unnatural causes")).toBeInTheDocument()
-    expect(screen.getByText("Living actors most likely to die soon")).toBeInTheDocument()
     expect(screen.getByText("Browse actors by cause of death")).toBeInTheDocument()
     expect(
       screen.getByText("Strange, disputed, and controversial celebrity deaths")
@@ -91,19 +88,6 @@ describe("QuickActions", () => {
     renderWithRouter(<QuickActions />)
 
     expect(screen.getByText("⚠️")).toBeInTheDocument()
-  })
-
-  it("Death Watch button links to /death-watch", () => {
-    renderWithRouter(<QuickActions />)
-
-    const link = screen.getByTestId("death-watch-btn")
-    expect(link).toHaveAttribute("href", "/death-watch")
-  })
-
-  it("Death Watch button has hourglass emoji", () => {
-    renderWithRouter(<QuickActions />)
-
-    expect(screen.getByText("⏳")).toBeInTheDocument()
   })
 
   it("Causes of Death button links to /causes-of-death", () => {
@@ -148,7 +132,6 @@ describe("QuickActions", () => {
     const inDetailBtn = screen.getByTestId("in-detail-btn")
     const covidDeathsBtn = screen.getByTestId("covid-deaths-btn")
     const unnaturalDeathsBtn = screen.getByTestId("unnatural-deaths-btn")
-    const deathWatchBtn = screen.getByTestId("death-watch-btn")
     const causesOfDeathBtn = screen.getByTestId("causes-of-death-btn")
     const notableDeathsBtn = screen.getByTestId("notable-deaths-btn")
     const deathsByDecadeBtn = screen.getByTestId("deaths-by-decade-btn")
@@ -161,7 +144,6 @@ describe("QuickActions", () => {
       inDetailBtn,
       covidDeathsBtn,
       unnaturalDeathsBtn,
-      deathWatchBtn,
       causesOfDeathBtn,
       notableDeathsBtn,
       deathsByDecadeBtn,
@@ -179,7 +161,7 @@ describe("QuickActions", () => {
     // Each button's emoji should use the same emojiClass for consistent sizing
     const emojiClasses = ["text-base", "leading-none"]
 
-    const emojis = ["📋", "🦠", "⚠️", "⏳", "📊", "🔍"]
+    const emojis = ["📋", "🦠", "⚠️", "📊", "🔍"]
     emojis.forEach((emoji) => {
       const emojiSpan = screen.getByText(emoji)
       emojiClasses.forEach((cls) => {
