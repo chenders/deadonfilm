@@ -93,6 +93,7 @@ export class WikidataSource extends BaseDataSource {
           Accept: "application/sparql-results+json",
           "User-Agent": this.userAgent,
         },
+        signal: this.createTimeoutSignal(),
       })
 
       if (!response.ok) {

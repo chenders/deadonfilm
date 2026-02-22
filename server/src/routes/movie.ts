@@ -431,10 +431,16 @@ async function enrichWithWikidata(_movieId: number, deceased: DeceasedActor[]): 
 
   if (toEnrich.length === 0) return
 
-  // Fetch in parallel for speed
-  const results = await Promise.allSettled(
-    toEnrich.map((actor) => getCauseOfDeath(actor.name, actor.birthday, actor.deathday))
-  )
+  // Fetch with limited concurrency to avoid overwhelming Wikidata
+  const CONCURRENCY = 3
+  const results: PromiseSettledResult<Awaited<ReturnType<typeof getCauseOfDeath>>>[] = []
+  for (let i = 0; i < toEnrich.length; i += CONCURRENCY) {
+    const batch = toEnrich.slice(i, i + CONCURRENCY)
+    const batchResults = await Promise.allSettled(
+      batch.map((actor) => getCauseOfDeath(actor.name, actor.birthday, actor.deathday))
+    )
+    results.push(...batchResults)
+  }
 
   // Store results in database
   for (let i = 0; i < toEnrich.length; i++) {
