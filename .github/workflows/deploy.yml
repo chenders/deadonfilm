@@ -59,13 +59,8 @@ jobs:
             VITE_NEW_RELIC_BROWSER_LICENSE_KEY=${{ secrets.VITE_NEW_RELIC_BROWSER_LICENSE_KEY }}
             VITE_NEW_RELIC_BROWSER_APP_ID=${{ secrets.VITE_NEW_RELIC_BROWSER_APP_ID }}
             VITE_NEW_RELIC_BROWSER_ACCOUNT_ID=${{ secrets.VITE_NEW_RELIC_BROWSER_ACCOUNT_ID }}
-          cache-from: type=local,src=/tmp/docker-buildx-cache
-          cache-to: type=local,dest=/tmp/docker-buildx-cache-new,mode=max
-
-      - name: Rotate build cache
-        run: |
-          rm -rf /tmp/docker-buildx-cache
-          mv /tmp/docker-buildx-cache-new /tmp/docker-buildx-cache
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
 
       - name: Deploy application
         run: |
