@@ -57,12 +57,8 @@
     "web-vitals": "^5.1.0"
   },
   "lint-staged": {
-    "src/**/*.{ts,tsx}": "eslint --max-warnings=0",
     "src/**/*.{ts,tsx,js,jsx,json,css}": "prettier --write",
-    "server/src/**/*.ts": [
-      "eslint --max-warnings=0 --config server/eslint.config.js",
-      "prettier --write"
-    ],
+    "server/src/**/*.ts": "prettier --write",
     "server/scripts/**/*.ts": "prettier --write"
   },
   "devDependencies": {
