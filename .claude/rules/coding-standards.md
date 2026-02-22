@@ -66,6 +66,19 @@ Every interactive element must be accessible:
 - **Avoid `any`**: Use `unknown` and narrow with type guards instead
 - **Optional vs required fields**: If a field is always returned by the API, don't mark it optional (`?`) on the frontend type. Only use `?` when some endpoints genuinely omit the field.
 
+## Function Length
+
+Route handlers and library functions should stay under 60 lines. If a function is growing
+beyond that, decompose it:
+
+- **Database queries** → extract to `server/src/lib/db/{entity}.ts`
+- **Response shaping** → helper function in same file or `server/src/lib/`
+- **Validation** → middleware or inline guard clauses at top of function
+- **Complex conditionals** → extract to well-named helper functions
+
+Current violations to address when touching these files:
+- `server/src/routes/actor.ts` → `getActor()` is 215 lines — extract query and transform logic
+
 ## AbortSignal Handling
 
 When combining a caller-provided signal with a timeout, use `AbortSignal.any()` — never `??` which defeats the timeout:
