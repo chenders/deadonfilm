@@ -1,0 +1,31 @@
+# Dependencies (installed fresh inside Docker)
+node_modules
+server/node_modules
+
+# Git
+.git
+
+# Build output (built inside Docker)
+dist
+server/dist
+
+# Tests
+e2e
+
+# Database dumps
+*.dump
+*.sql
+
+# Environment files
+.env*
+
+# Logs
+*.log
+
+# Editor/IDE
+.claude
+.github
+.vscode
+
+# Misc
+gsc.png
