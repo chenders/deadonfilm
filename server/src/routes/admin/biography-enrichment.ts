@@ -208,6 +208,11 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       return
     }
 
+    // When specific actor IDs are provided, default to allowing regeneration
+    // (user explicitly chose these actors, so re-enriching makes sense)
+    const hasSpecificActors = Array.isArray(actorIds) && actorIds.length > 0
+    const effectiveAllowRegeneration = allowRegeneration ?? hasSpecificActors
+
     // Create a bio_enrichment_runs record so the run appears on the runs page
     const pool = getPool()
     const config = {
@@ -215,7 +220,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       limit: limit || 10,
       minPopularity,
       confidenceThreshold,
-      allowRegeneration: allowRegeneration || false,
+      allowRegeneration: effectiveAllowRegeneration,
       useStaging: useStaging || false,
       sourceCategories,
       source: "enrich-batch",
@@ -235,7 +240,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         limit: limit || 10,
         minPopularity,
         confidenceThreshold,
-        allowRegeneration: allowRegeneration || false,
+        allowRegeneration: effectiveAllowRegeneration,
         useStaging: useStaging || false,
         sourceCategories,
       },

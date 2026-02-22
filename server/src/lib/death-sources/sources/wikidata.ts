@@ -15,6 +15,11 @@ import { DataSourceType, ReliabilityTier } from "../types.js"
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
 
+/** Max retries on 429/5xx responses */
+const MAX_RETRIES = 3
+/** Base delay for retry backoff (ms): 2s, 4s, 8s */
+const RETRY_BASE_DELAY_MS = 2000
+
 /**
  * Check if a Wikidata label value is valid (not a URL or blank node identifier).
  * Wikidata sometimes returns genid URLs instead of actual labels when the value
@@ -88,24 +93,16 @@ export class WikidataSource extends BaseDataSource {
     try {
       console.log(`Wikidata death circumstances query for: ${actor.name}`)
 
-      const response = await fetch(`${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(query)}`, {
-        headers: {
-          Accept: "application/sparql-results+json",
-          "User-Agent": this.userAgent,
-        },
-      })
+      const data = await this.fetchWithRetry(query)
 
-      if (!response.ok) {
-        console.log(`Wikidata error: ${response.status} ${response.statusText}`)
+      if (!data) {
         return {
           success: false,
           source: this.createSourceEntry(startTime, 0, undefined, query),
           data: null,
-          error: `HTTP ${response.status}: ${response.statusText}`,
+          error: "Wikidata SPARQL request failed after retries",
         }
       }
-
-      const data = (await response.json()) as WikidataSparqlResponse
       console.log(`Wikidata results for ${actor.name}: ${data.results.bindings.length} bindings`)
 
       const result = this.parseResults(data.results.bindings, actor.name, deathYear)
@@ -152,6 +149,51 @@ export class WikidataSource extends BaseDataSource {
         error: error instanceof Error ? error.message : "Unknown error",
       }
     }
+  }
+
+  /**
+   * Fetch SPARQL results with retry on 429/5xx, matching the retry logic
+   * in lib/wikidata.ts wikidataSparqlFetch().
+   */
+  private async fetchWithRetry(query: string): Promise<WikidataSparqlResponse | null> {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await fetch(`${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(query)}`, {
+          headers: {
+            Accept: "application/sparql-results+json",
+            "User-Agent": this.userAgent,
+          },
+          signal: this.createTimeoutSignal(),
+        })
+
+        if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+          const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+          console.log(
+            `Wikidata ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+          )
+          await new Promise((resolve) => setTimeout(resolve, delay))
+          continue
+        }
+
+        if (!response.ok) {
+          console.log(`Wikidata error: ${response.status} ${response.statusText}`)
+          return null
+        }
+
+        return (await response.json()) as WikidataSparqlResponse
+      } catch (error) {
+        if (attempt < MAX_RETRIES) {
+          const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+          console.log(
+            `Wikidata fetch error, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES}): ${error instanceof Error ? error.message : error}`
+          )
+          await new Promise((resolve) => setTimeout(resolve, delay))
+          continue
+        }
+        throw error
+      }
+    }
+    return null
   }
 
   /**

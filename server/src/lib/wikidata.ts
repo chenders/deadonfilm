@@ -4,6 +4,89 @@ import newrelic from "newrelic"
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql"
 const MAX_DEATH_DETAILS_LENGTH = 200
+const WIKIDATA_USER_AGENT = "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)"
+
+/** Max retries on 429/5xx responses */
+const MAX_RETRIES = 3
+/** Base delay for retry backoff (ms): 2s, 4s, 8s */
+const RETRY_BASE_DELAY_MS = 2000
+/** Timeout for SPARQL requests (ms) */
+const SPARQL_TIMEOUT_MS = 15000
+/** Minimum delay between requests to Wikidata (ms) */
+const MIN_REQUEST_DELAY_MS = 500
+
+/** Rate limiter to prevent hammering Wikidata */
+let lastWikidataRequestTime = 0
+/** Test mode disables retry delays and rate limiting */
+let _testMode = false
+
+/** Reset internal state for testing (zeroes rate limiter, disables retry delays) */
+export function _resetForTesting(): void {
+  lastWikidataRequestTime = 0
+  _testMode = true
+}
+
+async function waitForRateLimit(): Promise<void> {
+  if (_testMode) return
+  const now = Date.now()
+  const elapsed = now - lastWikidataRequestTime
+  if (elapsed < MIN_REQUEST_DELAY_MS) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_DELAY_MS - elapsed))
+  }
+  lastWikidataRequestTime = Date.now()
+}
+
+/**
+ * Execute a SPARQL query against Wikidata with retry, backoff, timeout, and rate limiting.
+ * Returns null on persistent failure instead of throwing.
+ */
+async function wikidataSparqlFetch(query: string): Promise<WikidataSparqlResponse | null> {
+  let lastError: string | null = null
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    await waitForRateLimit()
+
+    try {
+      const response = await fetch(`${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(query)}`, {
+        headers: {
+          Accept: "application/sparql-results+json",
+          "User-Agent": WIKIDATA_USER_AGENT,
+        },
+        signal: AbortSignal.timeout(SPARQL_TIMEOUT_MS),
+      })
+
+      if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+        lastError = `HTTP ${response.status}: ${response.statusText}`
+        const delay = _testMode ? 0 : RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+        console.log(
+          `Wikidata ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+        )
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        continue
+      }
+
+      if (!response.ok) {
+        console.log(`Wikidata error: ${response.status} ${response.statusText}`)
+        return null
+      }
+
+      return (await response.json()) as WikidataSparqlResponse
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error)
+      if (attempt < MAX_RETRIES) {
+        const delay = _testMode ? 0 : RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
+        console.log(
+          `Wikidata fetch error, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES}): ${lastError}`
+        )
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        continue
+      }
+    }
+  }
+
+  console.log(`Wikidata SPARQL failed after ${MAX_RETRIES} retries: ${lastError}`)
+  return null
+}
 
 interface WikidataSparqlResponse {
   results: {
@@ -101,15 +184,9 @@ export async function getCauseOfDeath(
   try {
     console.log(`Wikidata query for: ${name} (born ${birthYear}, died ${deathYear})`)
 
-    const response = await fetch(`${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(query)}`, {
-      headers: {
-        Accept: "application/sparql-results+json",
-        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
-      },
-    })
+    const data = await wikidataSparqlFetch(query)
 
-    if (!response.ok) {
-      console.log(`Wikidata error: ${response.status} ${response.statusText}`)
+    if (!data) {
       const source: DeathInfoSource = claudeResult.causeOfDeath ? "claude" : null
       newrelic.recordCustomEvent("CauseOfDeathLookup", {
         personName: name,
@@ -127,7 +204,6 @@ export async function getCauseOfDeath(
       }
     }
 
-    const data = (await response.json()) as WikidataSparqlResponse
     console.log(`Wikidata results for ${name}: ${data.results.bindings.length} bindings`)
 
     const wikidataResult = parseWikidataResult(data.results.bindings, name, deathYear)
@@ -215,22 +291,11 @@ async function getWikipediaUrl(
 
   const query = buildSparqlQuery(name, birthYear, deathYear)
 
-  try {
-    const response = await fetch(`${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(query)}`, {
-      headers: {
-        Accept: "application/sparql-results+json",
-        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
-      },
-    })
+  const data = await wikidataSparqlFetch(query)
+  if (!data) return null
 
-    if (!response.ok) return null
-
-    const data = (await response.json()) as WikidataSparqlResponse
-    const result = parseWikidataResult(data.results.bindings, name, deathYear)
-    return result.wikipediaUrl
-  } catch {
-    return null
-  }
+  const result = parseWikidataResult(data.results.bindings, name, deathYear)
+  return result.wikipediaUrl
 }
 
 function buildSparqlQuery(name: string, birthYear: number, deathYear: number): string {
@@ -640,18 +705,9 @@ export async function verifyDeathDate(
   const query = buildDeathDateVerificationQuery(name, birthYear, tmdbDeathYear)
 
   try {
-    const response = await fetch(WIKIDATA_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/sparql-results+json",
-        "User-Agent": "DeadOnFilm/1.0 (contact@deadonfilm.com)",
-      },
-      body: `query=${encodeURIComponent(query)}`,
-    })
+    const data = await wikidataSparqlFetch(query)
 
-    if (!response.ok) {
-      console.log(`Wikidata death verification failed: ${response.status}`)
+    if (!data) {
       return {
         verified: false,
         wikidataDeathDate: null,
@@ -659,7 +715,6 @@ export async function verifyDeathDate(
       }
     }
 
-    const data = (await response.json()) as WikidataSparqlResponse
     const result = parseDeathDateVerificationResult(data.results.bindings, name, tmdbDeathDateObj)
 
     newrelic.recordCustomEvent("DeathDateVerification", {
@@ -841,51 +896,33 @@ export async function getActorImageFromWikidata(
     LIMIT 5
   `
 
-  try {
-    const response = await fetch(`${WIKIDATA_ENDPOINT}?query=${encodeURIComponent(query)}`, {
-      headers: {
-        Accept: "application/sparql-results+json",
-        "User-Agent": "DeadOnFilm/1.0 (https://deadonfilm.com; contact@deadonfilm.com)",
-      },
-    })
+  const data = await wikidataSparqlFetch(query)
+  if (!data) return null
 
-    if (!response.ok) {
-      return null
+  // Find matching result
+  for (const binding of (
+    data as {
+      results: { bindings: Array<{ personLabel?: { value: string }; image?: { value: string } }> }
+    }
+  ).results.bindings) {
+    const personName = binding.personLabel?.value || ""
+
+    // Verify name matches
+    if (!isNameMatch(name, personName)) {
+      continue
     }
 
-    const data = (await response.json()) as {
-      results: {
-        bindings: Array<{
-          personLabel?: { value: string }
-          image?: { value: string }
-        }>
-      }
+    // Get the image URL
+    const imageUrl = binding.image?.value
+    if (imageUrl) {
+      // Wikidata returns Commons URL like:
+      // http://commons.wikimedia.org/wiki/Special:FilePath/Example.jpg
+      // We can use this directly or convert to https
+      return imageUrl.replace("http://", "https://")
     }
-
-    // Find matching result
-    for (const binding of data.results.bindings) {
-      const personName = binding.personLabel?.value || ""
-
-      // Verify name matches
-      if (!isNameMatch(name, personName)) {
-        continue
-      }
-
-      // Get the image URL
-      const imageUrl = binding.image?.value
-      if (imageUrl) {
-        // Wikidata returns Commons URL like:
-        // http://commons.wikimedia.org/wiki/Special:FilePath/Example.jpg
-        // We can use this directly or convert to https
-        return imageUrl.replace("http://", "https://")
-      }
-    }
-
-    return null
-  } catch (error) {
-    console.error(`Error fetching Wikidata image for ${name}:`, error)
-    return null
   }
+
+  return null
 }
 
 /**

@@ -220,6 +220,63 @@ describe("getMovie route", () => {
     })
   })
 
+  describe("Wikidata enrichment batching", () => {
+    it("enriches all deceased actors via getCauseOfDeath", async () => {
+      // Set up 5 deceased actors to verify batching (3 + 2)
+      const fiveActors = Array.from({ length: 5 }, (_, i) => ({
+        id: 200 + i,
+        name: `Actor ${i}`,
+        character: `Role ${i}`,
+        profile_path: `/actor${i}.jpg`,
+        order: i,
+        gender: 2,
+        known_for_department: "Acting",
+      }))
+
+      vi.mocked(getMovieCredits).mockResolvedValue({
+        id: 14629,
+        cast: fiveActors,
+        crew: [],
+      })
+
+      const personDetailsMap = new Map(
+        fiveActors.map((a) => [
+          a.id,
+          {
+            id: a.id,
+            name: a.name,
+            birthday: "1920-01-01",
+            deathday: "1980-01-01",
+            profile_path: a.profile_path,
+            popularity: 10,
+            biography: "",
+            place_of_birth: null,
+            imdb_id: null,
+          },
+        ])
+      )
+      vi.mocked(batchGetPersonDetails).mockResolvedValue(personDetailsMap)
+
+      vi.mocked(getCauseOfDeath).mockImplementation(async () => {
+        return {
+          causeOfDeath: "Natural causes",
+          causeOfDeathSource: "claude",
+          causeOfDeathDetails: null,
+          causeOfDeathDetailsSource: null,
+          wikipediaUrl: null,
+        }
+      })
+
+      mockReq = { params: { id: "14629" } }
+      await getMovie(mockReq as Request, mockRes as Response)
+
+      // enrichWithWikidata runs in background — wait for it to complete
+      await vi.waitFor(() => {
+        expect(getCauseOfDeath).toHaveBeenCalledTimes(5)
+      })
+    })
+  })
+
   describe("aggregate score handling", () => {
     it("returns aggregateScore and aggregateConfidence when available in database", async () => {
       mockReq = { params: { id: "14629" } }

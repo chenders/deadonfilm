@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { WikidataSource, isValidLabel, getValidLabel } from "./wikidata.js"
 import { DataSourceType } from "../types.js"
 
@@ -94,6 +94,10 @@ describe("WikidataSource", () => {
     source = new WikidataSource()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   describe("properties", () => {
     it("has correct name", () => {
       expect(source.name).toBe("Wikidata")
@@ -144,23 +148,61 @@ describe("WikidataSource", () => {
       expect(result.error).toContain("Missing birthday or deathday")
     })
 
-    it("handles HTTP errors", async () => {
+    it("handles non-retryable HTTP errors", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        status: 500,
-        statusText: "Internal Server Error",
+        status: 400,
+        statusText: "Bad Request",
       })
 
       const result = await source.lookup(mockActor)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain("HTTP 500")
+      expect(result.error).toContain("Wikidata SPARQL request failed")
     })
 
-    it("handles network errors", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"))
+    it("retries on 5xx then returns failure", async () => {
+      vi.useFakeTimers()
 
-      const result = await source.lookup(mockActor)
+      // Mock all attempts returning 500
+      for (let i = 0; i <= 3; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+        })
+      }
+
+      const resultPromise = source.lookup(mockActor)
+
+      // Advance through retry delays (2s, 4s, 8s)
+      for (let i = 0; i < 3; i++) {
+        await vi.advanceTimersByTimeAsync(10000)
+      }
+
+      const result = await resultPromise
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain("Wikidata SPARQL request failed")
+      expect(mockFetch).toHaveBeenCalledTimes(4) // initial + 3 retries
+    })
+
+    it("handles network errors with retries", async () => {
+      vi.useFakeTimers()
+
+      // Mock all attempts failing
+      for (let i = 0; i <= 3; i++) {
+        mockFetch.mockRejectedValueOnce(new Error("Network error"))
+      }
+
+      const resultPromise = source.lookup(mockActor)
+
+      // Advance through retry delays
+      for (let i = 0; i < 3; i++) {
+        await vi.advanceTimersByTimeAsync(10000)
+      }
+
+      const result = await resultPromise
 
       expect(result.success).toBe(false)
       expect(result.error).toBe("Network error")

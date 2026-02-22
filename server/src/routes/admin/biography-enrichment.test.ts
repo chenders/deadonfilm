@@ -360,6 +360,51 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(res.body.runId).toBe(42)
     })
 
+    it("defaults allowRegeneration to true when actorIds are provided", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 43 }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ actorIds: [1, 2] })
+
+      expect(res.status).toBe(200)
+      const jobPayload = vi.mocked(queueManager.addJob).mock.calls[0][1] as Record<string, unknown>
+      expect(jobPayload.allowRegeneration).toBe(true)
+    })
+
+    it("defaults allowRegeneration to false when no actorIds provided", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 44 }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ limit: 10 })
+
+      expect(res.status).toBe(200)
+      const jobPayload = vi.mocked(queueManager.addJob).mock.calls[0][1] as Record<string, unknown>
+      expect(jobPayload.allowRegeneration).toBe(false)
+    })
+
+    it("respects explicit allowRegeneration=false even with actorIds", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 45 }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ actorIds: [1, 2], allowRegeneration: false })
+
+      expect(res.status).toBe(200)
+      const jobPayload = vi.mocked(queueManager.addJob).mock.calls[0][1] as Record<string, unknown>
+      expect(jobPayload.allowRegeneration).toBe(false)
+    })
+
     it("returns 503 when job queue is not available", async () => {
       const { queueManager } = await import("../../lib/jobs/queue-manager.js")
       const original = queueManager.isReady
