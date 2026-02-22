@@ -149,6 +149,33 @@ When renaming functions, changing APIs, or refactoring modules, **always update 
 - **AbortSignal**: Combine caller signals with timeouts using ternary + `AbortSignal.any()` — never `??` which defeats the timeout
 - **Testing**: Ship tests with new code in the same commit. Assert payload contents, not just that functions were called. Mock data types must match real SQL output types
 
+## GitHub Copilot Review Awareness
+
+Every PR is auto-reviewed by GitHub Copilot. Write code that preemptively addresses
+common Copilot findings:
+
+- Guard ALL `rows[0]` access with optional chaining and fallback/early-return
+- Add explicit return types on all exported functions
+- Keep route handlers under 60 lines — extract queries to `server/src/lib/db/`, transforms to helpers
+- Add JSDoc on exported route handlers describing request params and response shape
+- Never leave `catch` blocks that swallow errors silently — always log with pino
+- Prefer early returns over deep nesting (guard clauses at top of function)
+- All new or modified routes MUST have a corresponding `.test.ts` file
+- When modifying an untested file, create a test file with at least happy-path and error tests
+
+### Test Coverage Enforcement
+
+When modifying any file in `server/src/routes/` or `server/src/lib/`, check if a
+corresponding `.test.ts` file exists. If not, create one with at least:
+- Happy-path test (valid input → expected output)
+- Error-handling test (database error → 500 response)
+- Edge case test (empty results, missing optional params)
+
+Currently untested route files (create tests when touching these):
+- `server/src/routes/on-this-day.ts`
+- `server/src/routes/shows/` (index, show-details, search, season)
+- `server/src/routes/admin/` (sitemap, cache, dashboard)
+
 ## Development Notes
 
 - `npm run dev` starts Docker Compose (`docker-compose.dev.yml`) for PostgreSQL on port 5437 and Redis on port 6379, then runs Vite (frontend HMR on :5173) and tsx watch (backend auto-restart on :8080) concurrently
