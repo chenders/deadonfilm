@@ -7,6 +7,7 @@
 
 import type { Pool } from "pg"
 import type { StoredEntityLinks } from "./entity-linker/index.js"
+import { invalidateActorCache } from "./cache.js"
 
 export interface EnrichmentData {
   actorId: number
@@ -223,6 +224,9 @@ export async function writeToProduction(
       actorParams
     )
   }
+
+  // Invalidate actor cache so stale data isn't served
+  await invalidateActorCache(enrichment.actorId)
 }
 
 /**

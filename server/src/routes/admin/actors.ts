@@ -1322,7 +1322,6 @@ router.post("/:id(\\d+)/enrich-inline", async (req: Request, res: Response): Pro
     }
 
     await writeToProduction(pool, enrichmentData, circumstancesData)
-    await invalidateActorCache(actorId)
 
     const durationMs = Date.now() - startTime
     const fieldsUpdated: string[] = []

@@ -7,7 +7,6 @@ import type { Job } from "bullmq"
 import { EnrichDeathDetailsHandler } from "./enrich-death-details.js"
 import { JobType, QueueName } from "../types.js"
 import * as db from "../../db.js"
-import * as cache from "../../cache.js"
 import * as enrichmentDbWriter from "../../enrichment-db-writer.js"
 
 // Use vi.hoisted to create mock that can be referenced in vi.mock
@@ -27,10 +26,6 @@ const { mockOrchestratorInstance, MockDeathEnrichmentOrchestrator } = vi.hoisted
 // Mock external dependencies
 vi.mock("../../db.js", () => ({
   getPool: vi.fn(),
-}))
-
-vi.mock("../../cache.js", () => ({
-  invalidateActorCache: vi.fn(),
 }))
 
 vi.mock("../../enrichment-db-writer.js", () => ({
@@ -125,7 +120,6 @@ describe("EnrichDeathDetailsHandler", () => {
       expect(result.success).toBe(false)
       expect(result.error).toBe("Actor with ID 999999 not found")
       expect(result.metadata?.isPermanent).toBe(true)
-      expect(cache.invalidateActorCache).not.toHaveBeenCalled()
     })
   })
 
@@ -262,7 +256,6 @@ describe("EnrichDeathDetailsHandler", () => {
       expect(result.data?.enriched).toBe(true)
       expect(mockOrchestratorInstance.enrichActor).toHaveBeenCalled()
       expect(enrichmentDbWriter.writeToProduction).toHaveBeenCalled()
-      expect(cache.invalidateActorCache).toHaveBeenCalledWith(2157)
     })
   })
 
@@ -350,8 +343,6 @@ describe("EnrichDeathDetailsHandler", () => {
           circumstancesConfidence: "high",
         })
       )
-
-      expect(cache.invalidateActorCache).toHaveBeenCalledWith(2157)
     })
 
     it("returns success with no enrichment when no data found", async () => {
@@ -382,7 +373,6 @@ describe("EnrichDeathDetailsHandler", () => {
       expect(result.data?.enriched).toBe(false)
       expect(result.metadata?.noDataFound).toBe(true)
       expect(enrichmentDbWriter.writeToProduction).not.toHaveBeenCalled()
-      expect(cache.invalidateActorCache).not.toHaveBeenCalled()
     })
   })
 

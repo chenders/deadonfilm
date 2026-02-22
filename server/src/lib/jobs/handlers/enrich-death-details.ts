@@ -9,7 +9,6 @@
 import type { Job } from "bullmq"
 import type { Pool } from "pg"
 import { getPool } from "../../db.js"
-import { invalidateActorCache } from "../../cache.js"
 import {
   DeathEnrichmentOrchestrator,
   type ActorForEnrichment,
@@ -279,11 +278,7 @@ export class EnrichDeathDetailsHandler extends BaseJobHandler<
       await writeToProduction(db, enrichmentData, circumstancesData)
       log.info({ actorId, actorName: actor.name }, "Wrote enrichment data to production")
 
-      // 10. Invalidate actor cache
-      await invalidateActorCache(actorId)
-      log.info({ actorId }, "Invalidated actor cache")
-
-      // 11. Return success result
+      // 10. Return success result
       return {
         success: true,
         data: {

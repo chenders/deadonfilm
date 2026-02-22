@@ -12,7 +12,7 @@
 
 import { getPool, getDeceasedActorsFromTopMovies } from "./db.js"
 import { batchGetPersonDetails } from "./tmdb.js"
-import { rebuildDeathCaches, invalidateActorCache } from "./cache.js"
+import { rebuildDeathCaches } from "./cache.js"
 import {
   DeathEnrichmentOrchestrator,
   CostLimitExceededError,
@@ -606,7 +606,6 @@ export class EnrichmentRunner {
             this.log.debug({ actorName: actor.name }, "Staged for review")
           } else {
             await writeToProduction(db, enrichmentData, circumstancesData)
-            await invalidateActorCache(actor.id)
             updatedActors.push({
               name: actor.name,
               id: actor.id,
