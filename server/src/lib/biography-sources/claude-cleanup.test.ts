@@ -71,7 +71,7 @@ function makeValidClaudeResponse(overrides: Record<string, unknown> = {}) {
     narrative_teaser:
       "Before he became the face of the American Western, Marion Morrison was a skinny kid from Iowa whose family could barely afford groceries.",
     narrative:
-      "Growing up in Glendale, California, young Marion Morrison was far from the imposing figure he would later become. His father, a pharmacist who struggled to keep his business afloat, moved the family west from Winterset, Iowa, seeking better prospects.",
+      "Growing up in Glendale, California, young Marion Morrison was a skinny, bookish kid who preferred reading to roughhousing. His father, a pharmacist who struggled to keep his business afloat, moved the family west from Winterset, Iowa, seeking better prospects.",
     life_notable_factors: ["poverty", "rags_to_riches", "multiple_careers"],
     birthplace_details:
       "Winterset, Iowa, a small town in Madison County known for its covered bridges.",
@@ -231,7 +231,7 @@ describe("claude-cleanup (biography)", () => {
     it("includes tone guidelines", () => {
       const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
       expect(prompt).toContain("TONE")
-      expect(prompt).toContain("thoughtful long-form journalist")
+      expect(prompt).toContain("well-researched retrospective, not a magazine profile")
       expect(prompt).toContain("No superlatives")
     })
 
@@ -278,6 +278,26 @@ describe("claude-cleanup (biography)", () => {
       // Wikidata content should only appear in the STRUCTURED DATA section
       const normalSourcePattern = /--- Wikidata \(/
       expect(normalSourcePattern.test(prompt)).toBe(false)
+    })
+
+    it("includes banned patterns section to suppress AI writing habits", () => {
+      const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
+      expect(prompt).toContain("BANNED PATTERNS")
+      expect(prompt).toContain("that would [define/shape/become/later/eventually]")
+      expect(prompt).toContain("marked by")
+      expect(prompt).toContain("instilled in him/her")
+    })
+
+    it("includes factual threshold guidance against inferring motivations", () => {
+      const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
+      expect(prompt).toContain("Do NOT infer motivations, inner thoughts, or")
+      expect(prompt).toContain("that is the writer's invention")
+    })
+
+    it("includes anti-thematic-arc guidance in CRITICAL section", () => {
+      const prompt = buildBiographySynthesisPrompt(mockActor, mockSources)
+      expect(prompt).toContain("Do NOT impose a thematic arc")
+      expect(prompt).toContain("concrete, specific details over abstract characterization")
     })
 
     it("handles actor with birthday but no deathday", () => {
@@ -563,7 +583,7 @@ describe("claude-cleanup (biography)", () => {
     it("returns baseline cost for empty sources", () => {
       const cost = estimateSynthesisCost([])
 
-      // Even with no text, there's prompt overhead (1500 tokens) + output estimate (1500 tokens)
+      // Even with no text, there's prompt overhead (1800 tokens) + output estimate (1500 tokens)
       expect(cost).toBeGreaterThan(0)
       expect(cost).toBeLessThan(0.1)
     })
@@ -572,7 +592,7 @@ describe("claude-cleanup (biography)", () => {
       // ~500 chars of source text
       const cost = estimateSynthesisCost(mockSources)
 
-      // Input: ceil(~500/4) + 1500 = ~1625 tokens * $3/M = ~$0.00488
+      // Input: ceil(~500/4) + 1800 = ~1925 tokens * $3/M = ~$0.00578
       // Output: 1500 tokens * $15/M = $0.0225
       // Total ~$0.027
       expect(cost).toBeGreaterThan(0.01)
