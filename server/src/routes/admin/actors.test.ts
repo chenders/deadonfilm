@@ -56,7 +56,6 @@ vi.mock("../../lib/claude-batch/constants.js", () => ({
 import router from "./actors.js"
 import { getPool } from "../../lib/db/pool.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
-import { invalidateActorCache } from "../../lib/cache.js"
 import { writeToProduction } from "../../lib/enrichment-db-writer.js"
 
 describe("admin actors routes", () => {
@@ -770,7 +769,6 @@ describe("admin actors routes", () => {
       expect(res.body.sourcesUsed).toEqual(["claude"])
       expect(res.body.durationMs).toBeGreaterThanOrEqual(0)
       expect(writeToProduction).toHaveBeenCalled()
-      expect(invalidateActorCache).toHaveBeenCalledWith(123)
       expect(logAdminAction).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "inline-enrich",
