@@ -7,6 +7,10 @@ on:
     types: [completed]
     branches: [main]
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -59,8 +63,8 @@ jobs:
             VITE_NEW_RELIC_BROWSER_LICENSE_KEY=${{ secrets.VITE_NEW_RELIC_BROWSER_LICENSE_KEY }}
             VITE_NEW_RELIC_BROWSER_APP_ID=${{ secrets.VITE_NEW_RELIC_BROWSER_APP_ID }}
             VITE_NEW_RELIC_BROWSER_ACCOUNT_ID=${{ secrets.VITE_NEW_RELIC_BROWSER_ACCOUNT_ID }}
-          cache-from: type=gha,scope=docker-main
-          cache-to: type=gha,mode=max,scope=docker-main
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
 
       - name: Deploy application
         run: |
