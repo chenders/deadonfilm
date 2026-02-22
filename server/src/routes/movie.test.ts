@@ -221,7 +221,7 @@ describe("getMovie route", () => {
   })
 
   describe("Wikidata enrichment batching", () => {
-    it("calls getCauseOfDeath in batches of 3", async () => {
+    it("enriches all deceased actors via getCauseOfDeath", async () => {
       // Set up 5 deceased actors to verify batching (3 + 2)
       const fiveActors = Array.from({ length: 5 }, (_, i) => ({
         id: 200 + i,

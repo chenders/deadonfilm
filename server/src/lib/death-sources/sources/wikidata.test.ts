@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { WikidataSource, isValidLabel, getValidLabel } from "./wikidata.js"
 import { DataSourceType } from "../types.js"
 
@@ -94,6 +94,10 @@ describe("WikidataSource", () => {
     source = new WikidataSource()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   describe("properties", () => {
     it("has correct name", () => {
       expect(source.name).toBe("Wikidata")
@@ -181,8 +185,6 @@ describe("WikidataSource", () => {
       expect(result.success).toBe(false)
       expect(result.error).toContain("Wikidata SPARQL request failed")
       expect(mockFetch).toHaveBeenCalledTimes(4) // initial + 3 retries
-
-      vi.useRealTimers()
     })
 
     it("handles network errors with retries", async () => {
@@ -204,8 +206,6 @@ describe("WikidataSource", () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toBe("Network error")
-
-      vi.useRealTimers()
     })
 
     it("returns failure when no matching person found", async () => {

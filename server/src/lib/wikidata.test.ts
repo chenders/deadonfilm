@@ -889,11 +889,13 @@ describe("verifyDeathDate", () => {
 
   it("returns unverified when Wikidata API fails", async () => {
     // Mock all retry attempts (initial + 3 retries)
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: "Internal Server Error",
-    })
+    for (let i = 0; i <= 3; i++) {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+      })
+    }
 
     const result = await verifyDeathDate("Actor Name", 1960, "2024-05-15")
 
@@ -988,7 +990,9 @@ describe("getActorImageFromWikidata", () => {
 
   it("returns null when API fails", async () => {
     // Mock all retry attempts (initial + 3 retries)
-    mockFetch.mockResolvedValue({ ok: false, status: 503, statusText: "Service Unavailable" })
+    for (let i = 0; i <= 3; i++) {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 503, statusText: "Service Unavailable" })
+    }
 
     const result = await getActorImageFromWikidata("John Wayne", 1907, 1979)
 
@@ -997,7 +1001,9 @@ describe("getActorImageFromWikidata", () => {
 
   it("returns null when network error occurs", async () => {
     // Mock all retry attempts (initial + 3 retries)
-    mockFetch.mockRejectedValue(new Error("Network error"))
+    for (let i = 0; i <= 3; i++) {
+      mockFetch.mockRejectedValueOnce(new Error("Network error"))
+    }
 
     const result = await getActorImageFromWikidata("John Wayne", 1907, 1979)
 
