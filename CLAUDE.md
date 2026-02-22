@@ -163,6 +163,19 @@ common Copilot findings:
 - All new or modified routes MUST have a corresponding `.test.ts` file
 - When modifying an untested file, create a test file with at least happy-path and error tests
 
+### Test Coverage Enforcement
+
+When modifying any file in `server/src/routes/` or `server/src/lib/`, check if a
+corresponding `.test.ts` file exists. If not, create one with at least:
+- Happy-path test (valid input → expected output)
+- Error-handling test (database error → 500 response)
+- Edge case test (empty results, missing optional params)
+
+Currently untested route files (create tests when touching these):
+- `server/src/routes/on-this-day.ts`
+- `server/src/routes/shows/` (index, show-details, search, season)
+- `server/src/routes/admin/` (sitemap, cache, dashboard)
+
 ## Development Notes
 
 - `npm run dev` starts Docker Compose (`docker-compose.dev.yml`) for PostgreSQL on port 5437 and Redis on port 6379, then runs Vite (frontend HMR on :5173) and tsx watch (backend auto-restart on :8080) concurrently
