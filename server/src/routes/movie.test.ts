@@ -257,10 +257,7 @@ describe("getMovie route", () => {
       )
       vi.mocked(batchGetPersonDetails).mockResolvedValue(personDetailsMap)
 
-      // Track call timing to verify sequential batching
-      const callOrder: number[] = []
       vi.mocked(getCauseOfDeath).mockImplementation(async () => {
-        callOrder.push(Date.now())
         return {
           causeOfDeath: "Natural causes",
           causeOfDeathSource: "claude",
