@@ -52,13 +52,13 @@ export default function BiographySection({
   }, [biographySources])
 
   // Determine which content to show
-  const hasEnrichedBio = biographyDetails && biographyDetails.narrative
+  const narrative = biographyDetails?.narrative
 
   // If no biography at all, render nothing
-  if (!hasEnrichedBio && !biography) return null
+  if (!narrative && !biography) return null
 
   // Fallback to old biography (not enriched — no collapsible behavior)
-  if (!hasEnrichedBio) {
+  if (!narrative) {
     return (
       <div className="mb-6 rounded-lg bg-surface-elevated p-4" data-testid="biography-section">
         <h2 className="mb-2 font-display text-lg text-brown-dark">Life</h2>
@@ -76,9 +76,6 @@ export default function BiographySection({
       </div>
     )
   }
-
-  // Enriched biography — narrative is guaranteed non-null by hasEnrichedBio check above
-  const narrative = biographyDetails.narrative!
 
   // If narrative is short (< 300 chars), show static card
   const hasExpandableContent = narrative.length > 300

@@ -85,15 +85,17 @@ export async function writeBiographyToProduction(
       ]
     )
 
-    // Step 3: Update actors table for backwards compatibility
-    await db.query(
-      `UPDATE actors SET
-        biography = $1,
-        biography_version = COALESCE(biography_version, 0) + 1,
-        updated_at = NOW()
-      WHERE id = $2`,
-      [data.narrative, actorId]
-    )
+    // Step 3: Update actors table for backwards compatibility (only if narrative is non-null)
+    if (data.narrative) {
+      await db.query(
+        `UPDATE actors SET
+          biography = $1,
+          biography_version = COALESCE(biography_version, 0) + 1,
+          updated_at = NOW()
+        WHERE id = $2`,
+        [data.narrative, actorId]
+      )
+    }
 
     // Step 4: Invalidate cache
     await invalidateActorCache(actorId)

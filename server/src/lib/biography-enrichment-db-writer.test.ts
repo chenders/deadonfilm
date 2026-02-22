@@ -136,6 +136,19 @@ describe("writeBiographyToProduction", () => {
     expect(updateCall[1]).toEqual(["Full narrative text", 42])
   })
 
+  it("skips actors table update when narrative is null", async () => {
+    const data = makeBiographyData({ narrative: null })
+
+    await writeBiographyToProduction(mockPool, 42, data, makeSources())
+
+    // Should only have SELECT + UPSERT calls (no UPDATE actors)
+    const allQueries = mockQuery.mock.calls.map((c: unknown[]) => c[0] as string)
+    const updateActorsCall = allQueries.find(
+      (q: string) => q.includes("biography = $1") && q.includes("biography_version")
+    )
+    expect(updateActorsCall).toBeUndefined()
+  })
+
   it("invalidates actor cache after all writes", async () => {
     await writeBiographyToProduction(mockPool, 42, makeBiographyData(), makeSources())
 
