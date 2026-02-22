@@ -176,6 +176,23 @@ Currently untested route files (create tests when touching these):
 - `server/src/routes/shows/` (index, show-details, search, season)
 - `server/src/routes/admin/` (sitemap, cache, dashboard)
 
+## CI Workflow (`ci.yml`)
+
+The CI workflow splits build from tests to minimize E2E critical path:
+
+| Job | Blocks E2E? | Notes |
+|-----|-------------|-------|
+| `frontend-build` | Yes | Quality checks + Vite build + artifact |
+| `backend-build` | Yes | Quality checks + tsc build + artifact |
+| `frontend-test` | No | Unit tests (+ coverage on push) |
+| `backend-test` | No | Containers + migrations + unit tests |
+| `security-audit` | No | `continue-on-error: true` at job level |
+| `e2e` | — | Downloads build artifacts, sharded 3-way |
+
+### `continue-on-error` in GitHub Actions
+
+**Job-level `continue-on-error: true`** makes the workflow succeed even if the job fails, but does NOT prevent individual steps from aborting the job. If a multi-step job needs all steps to run regardless of earlier failures, each step also needs `continue-on-error: true`.
+
 ## Development Notes
 
 - `npm run dev` starts Docker Compose (`docker-compose.dev.yml`) for PostgreSQL on port 5437 and Redis on port 6379, then runs Vite (frontend HMR on :5173) and tsx watch (backend auto-restart on :8080) concurrently
