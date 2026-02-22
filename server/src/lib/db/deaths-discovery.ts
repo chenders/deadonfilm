@@ -6,6 +6,7 @@
  */
 
 import { getPool } from "./pool.js"
+import { splitSearchWords } from "../shared/search-utils.js"
 import type {
   ActorRecord,
   DeathByDecadeRecord,
@@ -503,8 +504,18 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
   const sortDirection = dir === "asc" ? "ASC" : "DESC"
   const nullsOrder = dir === "asc" ? "NULLS FIRST" : "NULLS LAST"
 
-  // Always pass search parameter (null if not searching) - avoids SQL string interpolation
-  const searchPattern = search ? `%${search}%` : null
+  // Build search conditions — split multi-word search into independent ILIKE clauses
+  const params: (number | boolean | string)[] = [limit, offset, includeObscure]
+  let paramIndex = 4
+  let searchClause = ""
+  if (search) {
+    const words = splitSearchWords(search)
+    const searchConditions = words.map((word) => {
+      params.push(`%${word}%`)
+      return `actors.name ILIKE $${paramIndex++}`
+    })
+    searchClause = `AND ${searchConditions.join(" AND ")}`
+  }
 
   const result = await db.query<ActorRecord & { total_count: string }>(
     `WITH actor_appearances AS (
@@ -524,10 +535,10 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
      FROM actors
      JOIN actor_appearances aa ON aa.id = actors.id
      WHERE ($3 = true OR is_obscure = false)
-       AND ($4::text IS NULL OR actors.name ILIKE $4)
+       ${searchClause}
      ORDER BY ${sortColumn} ${sortDirection} ${nullsOrder}, actors.name, actors.id
      LIMIT $1 OFFSET $2`,
-    [limit, offset, includeObscure, searchPattern]
+    params
   )
 
   const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0
@@ -579,9 +590,12 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
 
   // Search filter
   if (search) {
-    conditions.push(`actor_name ILIKE $${paramIndex}`)
-    params.push(`%${search}%`)
-    paramIndex++
+    const words = splitSearchWords(search)
+    for (const word of words) {
+      conditions.push(`actor_name ILIKE $${paramIndex}`)
+      params.push(`%${word}%`)
+      paramIndex++
+    }
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""

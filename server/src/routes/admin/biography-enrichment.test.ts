@@ -111,6 +111,42 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(res.body.stats.enriched).toBe(40)
     })
 
+    it("splits multi-word search into independent ILIKE conditions", async () => {
+      mockPoolQuery
+        .mockResolvedValueOnce({ rows: [{ total: "1" }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 25991,
+              name: "Paul L. Smith",
+              dof_popularity: "12.5",
+              deathday: "2012-04-25",
+              bio_id: null,
+              narrative_confidence: null,
+              narrative_teaser: null,
+              life_notable_factors: null,
+              bio_updated_at: null,
+              biography_version: null,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [{ total_deceased: "100", enriched: "40", needs_enrichment: "60" }],
+        })
+
+      const res = await request(app).get("/admin/api/biography-enrichment?searchName=paul+smith")
+
+      expect(res.status).toBe(200)
+      expect(res.body.actors).toHaveLength(1)
+      expect(res.body.actors[0].name).toBe("Paul L. Smith")
+
+      // Verify the count query used two separate ILIKE params
+      const countCall = mockPoolQuery.mock.calls[0]
+      expect(countCall[0]).toContain("a.name ILIKE $1")
+      expect(countCall[0]).toContain("a.name ILIKE $2")
+      expect(countCall[1]).toEqual(["%paul%", "%smith%"])
+    })
+
     it("returns 500 on database error", async () => {
       mockPoolQuery.mockRejectedValueOnce(new Error("DB connection failed"))
 

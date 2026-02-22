@@ -9,6 +9,7 @@
  */
 
 import { Pool } from "pg"
+import { splitSearchWords } from "../shared/search-utils.js"
 
 // ============================================================================
 // Types
@@ -204,8 +205,11 @@ export async function getActorsForCoverage(
   }
 
   if (filters.searchName) {
-    whereClauses.push(`name ILIKE $${paramIndex++}`)
-    params.push(`%${filters.searchName}%`)
+    const words = splitSearchWords(filters.searchName)
+    for (const word of words) {
+      whereClauses.push(`name ILIKE $${paramIndex++}`)
+      params.push(`%${word}%`)
+    }
   }
 
   if (filters.causeOfDeath) {

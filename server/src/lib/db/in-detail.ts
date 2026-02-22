@@ -7,6 +7,7 @@
  */
 
 import { createActorSlug } from "../slug-utils.js"
+import { splitSearchWords } from "../shared/search-utils.js"
 import { getPool } from "./pool.js"
 import type { InDetailActor, InDetailOptions, InDetailResponse } from "./types.js"
 
@@ -40,9 +41,12 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
   }
 
   if (search) {
-    conditions.push(`a.name ILIKE $${paramIndex}`)
-    params.push(`%${search}%`)
-    paramIndex++
+    const words = splitSearchWords(search)
+    for (const word of words) {
+      conditions.push(`a.name ILIKE $${paramIndex}`)
+      params.push(`%${word}%`)
+      paramIndex++
+    }
   }
 
   const whereClause = conditions.join(" AND ")
