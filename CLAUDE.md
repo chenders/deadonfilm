@@ -191,7 +191,7 @@ The CI workflow splits build from tests to minimize E2E critical path:
 
 ### `continue-on-error` in GitHub Actions
 
-**Job-level `continue-on-error: true`** makes the workflow succeed even if the job fails, but does NOT prevent individual steps from aborting the job. If a multi-step job needs all steps to run regardless of earlier failures, each step also needs `continue-on-error: true`.
+**Job-level `continue-on-error: true`** allows the workflow to continue and ultimately succeed even if that job fails (whether from a single step or multiple steps). Individual steps can still fail and stop any *later* steps in the same job from running. If you need all steps in a multi-step job to run regardless of earlier failures, add `continue-on-error: true` at the step level for those steps.
 
 ## Development Notes
 

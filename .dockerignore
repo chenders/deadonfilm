@@ -12,9 +12,9 @@ server/dist
 # Tests
 e2e
 
-# Database dumps
+# Database dumps (keep init-newrelic-extensions.sql for Dockerfile.postgres)
 *.dump
-*.sql
+deadonfilm_*.sql
 
 # Environment files
 .env*
