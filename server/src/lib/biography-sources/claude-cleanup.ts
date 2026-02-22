@@ -139,21 +139,57 @@ NARRATIVE STRUCTURE:
 - Weave in education, early struggles, formative experiences
 - Mention what launched them into public life in 1-2 sentences MAX
 - Include personal life: relationships, family, challenges
-- End with something human, not a career summary
+- Describe events as they happened at the time, in their own context. Do NOT frame early events
+  as precursors to later identity. A childhood on a farm is just a childhood on a farm — not
+  "the early seeds of" anything.
+- End with something human and specific, not a career summary. But do NOT circle back to a
+  childhood image or theme to create literary closure. Just stop at a natural resting point.
 - VARY openings
 
 TONE:
-- Write like a thoughtful long-form journalist, not an encyclopedia
-- Factual but warm
+- Write like a well-researched retrospective, not a magazine profile. You are working from
+  published sources, not a personal interview — so report what is documented, not what the
+  person might have felt or thought.
+- Factual but warm — let vivid, specific details carry the emotional weight instead of
+  dramatic adjectives
 - No superlatives: avoid "renowned", "acclaimed", "legendary", "beloved", "masterful"
 - No Wikipedia-isms: avoid "is widely regarded as", "is best known for"
+- No purple prose: avoid "profound", "devastating", "fierce", "relentless", "unwavering",
+  "tumultuous", "indomitable". If you need an adjective, choose one that is specific and
+  precise rather than dramatic.
+- Report what happened and what people said. Do NOT infer motivations, inner thoughts, or
+  emotional states unless directly quoted from the person or attributed to a named source.
+  "He later said he joined the Navy to escape his father" is fine. "His drive came from
+  someplace deeper than ambition" is not — that is the writer's invention.
+- Trust the reader. Present facts and let them draw their own connections. Do not editorialize
+  with phrases like "little did he know" or "it was this very quality that..."
 - Specific details over vague praise
+
+BANNED PATTERNS — these appear in AI-generated text and make biographies sound formulaic:
+- "that would [define/shape/become/later/eventually]" — foreshadowing. Describe events when
+  they happened, not as setup for what came later.
+  BAD: "a scrappy resourcefulness that would define his adult life"
+  GOOD: "he learned to fix cars, cook meals, and talk his way out of trouble"
+- "would [become/go on to/later/eventually]" — same foreshadowing with different construction
+- "marked by" — vague literary shorthand. Name what actually happened.
+  BAD: "a childhood marked by poverty and loss"
+  GOOD: "his family moved four times before he was ten, always one step ahead of the landlord"
+- "both [X] and [Y]" to manufacture paradox — e.g., "both fiercely independent and deeply
+  loyal." Real people are complex without the narrator pointing it out.
+- "instilled in him/her" — speculative causation. You don't know what was instilled unless
+  someone said so.
+- "shaped his/her" — same problem. Describe what happened; don't narrate what it did to
+  the person's character.
+- "the [noun] who [past tense verb]" as a closing device — e.g., "The boy who stole apples
+  never lost his instinct to help people." This is literary fiction technique, not journalism.
 
 TEASER QUALITY:
 - The teaser is shown before "show more" — it must hook the reader
 - Lead with whatever is most surprising, human, or little-known
 - Bad: "John Smith was born in Ohio and attended college."
 - Good: "Before he became a household name, John Smith spent three years as a coal miner..."
+- The teaser should be a window into something specific, not a summary statement about the
+  person's character or legacy
 
 VALID LIFE NOTABLE FACTORS:
 [${[...VALID_LIFE_NOTABLE_FACTORS].join(", ")}]
@@ -176,7 +212,12 @@ CRITICAL:
 - Do NOT describe how or when the person died — death circumstances have their own dedicated section on the page. End the narrative before the death event.
 - Mention their career only as context for their personal story
 - If sources are thin, write a shorter biography rather than padding with career achievements
-- Set has_substantive_content to false if you can only produce a generic career summary with no personal details`
+- Set has_substantive_content to false if you can only produce a generic career summary with no personal details
+- Do NOT impose a thematic arc. Real lives are not stories with a thesis. Events can be
+  presented chronologically without arguing they all connect to one defining quality.
+- Prefer concrete, specific details over abstract characterization. "He ate sardine sandwiches
+  for lunch every day for thirty years" tells the reader more than "he was a man of simple
+  habits."`
 }
 
 /**
@@ -372,7 +413,7 @@ export async function synthesizeBiography(
 export function estimateSynthesisCost(rawSources: RawBiographySourceData[]): number {
   // Rough estimate: 4 chars per token for input
   const totalChars = rawSources.reduce((sum, s) => sum + s.text.length, 0)
-  const estimatedInputTokens = Math.ceil(totalChars / 4) + 1500 // Add overhead for prompt template
+  const estimatedInputTokens = Math.ceil(totalChars / 4) + 1800 // Add overhead for prompt template
   const estimatedOutputTokens = 1500 // Average expected output for biography
 
   return (
