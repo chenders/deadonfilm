@@ -145,7 +145,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
       `SELECT COUNT(*) as count FROM actors ${whereClause}`,
       params
     )
-    const totalCount = parseInt(countResult.rows[0].count, 10)
+    const totalCount = parseInt(countResult.rows[0]?.count ?? "0", 10)
 
     // Get actors
     const result = await pool.query<ActorNeedingBiography>(
@@ -198,9 +198,9 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         totalPages: Math.ceil(totalCount / pageSize),
       },
       stats: {
-        totalActors: parseInt(stats.total_actors, 10),
-        withBiography: parseInt(stats.with_biography, 10),
-        withoutBiography: parseInt(stats.without_biography, 10),
+        totalActors: parseInt(stats?.total_actors ?? "0", 10),
+        withBiography: parseInt(stats?.with_biography ?? "0", 10),
+        withoutBiography: parseInt(stats?.without_biography ?? "0", 10),
       },
     })
   } catch (error) {

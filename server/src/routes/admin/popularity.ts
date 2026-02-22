@@ -92,26 +92,30 @@ router.get("/stats", async (req: Request, res: Response): Promise<void> => {
       ORDER BY bucket DESC
     `)
 
+    const actors = actorStats.rows[0]
+    const movies = movieStats.rows[0]
+    const shows = showStats.rows[0]
+
     res.json({
       actors: {
-        total: parseInt(actorStats.rows[0].total, 10),
-        withScore: parseInt(actorStats.rows[0].with_score, 10),
-        avgScore: parseFloat(actorStats.rows[0].avg_score) || 0,
-        avgConfidence: parseFloat(actorStats.rows[0].avg_confidence) || 0,
-        highConfidence: parseInt(actorStats.rows[0].high_confidence, 10),
-        lowConfidence: parseInt(actorStats.rows[0].low_confidence, 10),
+        total: parseInt(actors?.total ?? "0", 10),
+        withScore: parseInt(actors?.with_score ?? "0", 10),
+        avgScore: parseFloat(actors?.avg_score ?? "0") || 0,
+        avgConfidence: parseFloat(actors?.avg_confidence ?? "0") || 0,
+        highConfidence: parseInt(actors?.high_confidence ?? "0", 10),
+        lowConfidence: parseInt(actors?.low_confidence ?? "0", 10),
       },
       movies: {
-        total: parseInt(movieStats.rows[0].total, 10),
-        withScore: parseInt(movieStats.rows[0].with_score, 10),
-        avgScore: parseFloat(movieStats.rows[0].avg_score) || 0,
-        avgWeight: parseFloat(movieStats.rows[0].avg_weight) || 0,
+        total: parseInt(movies?.total ?? "0", 10),
+        withScore: parseInt(movies?.with_score ?? "0", 10),
+        avgScore: parseFloat(movies?.avg_score ?? "0") || 0,
+        avgWeight: parseFloat(movies?.avg_weight ?? "0") || 0,
       },
       shows: {
-        total: parseInt(showStats.rows[0].total, 10),
-        withScore: parseInt(showStats.rows[0].with_score, 10),
-        avgScore: parseFloat(showStats.rows[0].avg_score) || 0,
-        avgWeight: parseFloat(showStats.rows[0].avg_weight) || 0,
+        total: parseInt(shows?.total ?? "0", 10),
+        withScore: parseInt(shows?.with_score ?? "0", 10),
+        avgScore: parseFloat(shows?.avg_score ?? "0") || 0,
+        avgWeight: parseFloat(shows?.avg_weight ?? "0") || 0,
       },
       distribution: distributionResult.rows.map((row) => ({
         bucket: row.bucket,
@@ -278,7 +282,7 @@ router.get("/missing", async (req: Request, res: Response): Promise<void> => {
     `)
 
     res.json({
-      totalMissing: parseInt(countResult.rows[0].count, 10),
+      totalMissing: parseInt(countResult.rows[0]?.count ?? "0", 10),
       actors: result.rows.map((row) => ({
         id: row.id,
         tmdbId: row.tmdb_id,
