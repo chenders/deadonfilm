@@ -166,9 +166,6 @@ interface ItemListItem {
   position: number
 }
 
-/**
- * Build ItemList schema for list pages
- */
 interface FAQItem {
   question: string
   answer: string
@@ -193,6 +190,9 @@ export function buildFAQPageSchema(items: FAQItem[]): Record<string, unknown> {
   }
 }
 
+/**
+ * Build ItemList schema for list pages
+ */
 export function buildItemListSchema(
   name: string,
   description: string,
