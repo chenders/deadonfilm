@@ -9,6 +9,7 @@
  */
 
 import { Pool } from "pg"
+import { splitSearchWords } from "../shared/search-utils.js"
 
 // ============================================================================
 // Types
@@ -204,7 +205,7 @@ export async function getActorsForCoverage(
   }
 
   if (filters.searchName) {
-    const words = filters.searchName.trim().split(/\s+/)
+    const words = splitSearchWords(filters.searchName)
     for (const word of words) {
       whereClauses.push(`name ILIKE $${paramIndex++}`)
       params.push(`%${word}%`)

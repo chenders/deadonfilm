@@ -6,6 +6,7 @@
  */
 
 import { Request, Response, Router } from "express"
+import { splitSearchWords } from "../../lib/shared/search-utils.js"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
 import {
@@ -43,7 +44,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const conditions: string[] = ["a.deathday IS NOT NULL"]
 
     if (searchName) {
-      const words = searchName.trim().split(/\s+/)
+      const words = splitSearchWords(searchName)
       for (const word of words) {
         conditions.push(`a.name ILIKE $${paramIndex++}`)
         params.push(`%${word}%`)

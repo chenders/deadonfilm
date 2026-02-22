@@ -6,6 +6,7 @@
  */
 
 import { Request, Response, Router } from "express"
+import { splitSearchWords } from "../../lib/shared/search-utils.js"
 import { getPool } from "../../lib/db/pool.js"
 import { logger } from "../../lib/logger.js"
 import { logAdminAction } from "../../lib/admin-auth.js"
@@ -110,7 +111,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (searchName) {
-      const words = searchName.trim().split(/\s+/)
+      const words = splitSearchWords(searchName)
       for (const word of words) {
         whereClause += ` AND name ILIKE $${paramIndex++}`
         params.push(`%${word}%`)

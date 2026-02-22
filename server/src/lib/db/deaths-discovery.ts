@@ -6,6 +6,7 @@
  */
 
 import { getPool } from "./pool.js"
+import { splitSearchWords } from "../shared/search-utils.js"
 import type {
   ActorRecord,
   DeathByDecadeRecord,
@@ -508,7 +509,7 @@ export async function getAllDeaths(options: AllDeathsOptions = {}): Promise<{
   let paramIndex = 4
   let searchClause = ""
   if (search) {
-    const words = search.trim().split(/\s+/)
+    const words = splitSearchWords(search)
     const searchConditions = words.map((word) => {
       params.push(`%${word}%`)
       return `actors.name ILIKE $${paramIndex++}`
@@ -589,7 +590,7 @@ export async function getDeathWatchActors(options: DeathWatchOptions = {}): Prom
 
   // Search filter
   if (search) {
-    const words = search.trim().split(/\s+/)
+    const words = splitSearchWords(search)
     for (const word of words) {
       conditions.push(`actor_name ILIKE $${paramIndex}`)
       params.push(`%${word}%`)
