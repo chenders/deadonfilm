@@ -11,7 +11,8 @@ When modifying any instruction file, **update the others to match**.
 |------|---------|----------|
 | `CLAUDE.md` | Project overview, commands, architecture | Claude Code |
 | `.claude/rules/*.md` | Topic-specific detailed rules | Claude Code |
-| `.github/copilot-instructions.md` | Consolidated instructions | GitHub Copilot |
+| `.github/copilot-instructions.md` | Focused code review rules (~100 lines) | GitHub Copilot |
+| `.github/docs/copilot-reference.md` | Extended reference (architecture, enrichment, etc.) | Developers |
 
 ## What to Sync
 
