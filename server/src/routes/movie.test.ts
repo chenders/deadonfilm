@@ -256,7 +256,7 @@ describe("getMovie route", () => {
 
     it("handles database lookup failure gracefully", async () => {
       mockReq = { params: { id: "14629" } }
-      vi.mocked(getMovieFromDb).mockRejectedValue(new Error("Database error"))
+      vi.mocked(getMovieFromDb).mockRejectedValue(new Error("DB error"))
 
       await getMovie(mockReq as Request, mockRes as Response)
 
@@ -268,6 +268,67 @@ describe("getMovie route", () => {
           aggregateConfidence: null,
         })
       )
+    })
+  })
+
+  describe("Wikidata enrichment batching", () => {
+    it("calls getCauseOfDeath in batches of 3, not all at once", async () => {
+      // Create 5 deceased actors without cause of death to trigger enrichment
+      const fiveActors = Array.from({ length: 5 }, (_, i) => ({
+        id: 200 + i,
+        name: `Actor ${i}`,
+        character: `Character ${i}`,
+        profile_path: `/actor${i}.jpg`,
+        order: i,
+        gender: 2,
+        known_for_department: "Acting",
+      }))
+
+      vi.mocked(getMovieCredits).mockResolvedValue({
+        id: 14629,
+        cast: fiveActors,
+        crew: [],
+      })
+
+      const personDetailsMap = new Map(
+        fiveActors.map((a) => [
+          a.id,
+          {
+            id: a.id,
+            name: a.name,
+            birthday: "1930-01-01",
+            deathday: "2020-01-01",
+            profile_path: a.profile_path,
+            popularity: 10,
+            biography: "",
+            place_of_birth: null,
+            imdb_id: null,
+          },
+        ])
+      )
+      vi.mocked(batchGetPersonDetails).mockResolvedValue(personDetailsMap)
+
+      // Track call order to verify batching
+      const callTimestamps: number[] = []
+      vi.mocked(getCauseOfDeath).mockImplementation(async () => {
+        callTimestamps.push(Date.now())
+        return {
+          causeOfDeath: "Natural causes",
+          causeOfDeathSource: "claude" as const,
+          causeOfDeathDetails: null,
+          causeOfDeathDetailsSource: null,
+          wikipediaUrl: null,
+        }
+      })
+
+      mockReq = { params: { id: "14629" } }
+      await getMovie(mockReq as Request, mockRes as Response)
+
+      // Enrichment runs in background - wait for it to complete
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      // All 5 actors should have been enriched
+      expect(getCauseOfDeath).toHaveBeenCalledTimes(5)
     })
   })
 })

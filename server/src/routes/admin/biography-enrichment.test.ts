@@ -360,6 +360,69 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(res.body.runId).toBe(42)
     })
 
+    it("defaults allowRegeneration to true when actorIds are provided", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 43 }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+
+      await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ actorIds: [7278] })
+
+      // Config stored in DB should have allowRegeneration: true
+      const insertCall = mockPoolQuery.mock.calls[0]
+      const storedConfig = JSON.parse(insertCall[1][0])
+      expect(storedConfig.allowRegeneration).toBe(true)
+
+      // Job payload should also have allowRegeneration: true
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        "enrich-biographies-batch",
+        expect.objectContaining({ allowRegeneration: true }),
+        expect.any(Object)
+      )
+    })
+
+    it("defaults allowRegeneration to false when no actorIds provided", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 44 }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+
+      await request(app).post("/admin/api/biography-enrichment/enrich-batch").send({ limit: 10 })
+
+      const insertCall = mockPoolQuery.mock.calls[0]
+      const storedConfig = JSON.parse(insertCall[1][0])
+      expect(storedConfig.allowRegeneration).toBe(false)
+
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        "enrich-biographies-batch",
+        expect.objectContaining({ allowRegeneration: false }),
+        expect.any(Object)
+      )
+    })
+
+    it("respects explicit allowRegeneration=false even with actorIds", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 45 }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+
+      await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ actorIds: [7278], allowRegeneration: false })
+
+      const insertCall = mockPoolQuery.mock.calls[0]
+      const storedConfig = JSON.parse(insertCall[1][0])
+      expect(storedConfig.allowRegeneration).toBe(false)
+
+      expect(queueManager.addJob).toHaveBeenCalledWith(
+        "enrich-biographies-batch",
+        expect.objectContaining({ allowRegeneration: false }),
+        expect.any(Object)
+      )
+    })
+
     it("returns 503 when job queue is not available", async () => {
       const { queueManager } = await import("../../lib/jobs/queue-manager.js")
       const original = queueManager.isReady
