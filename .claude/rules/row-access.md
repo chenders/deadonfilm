@@ -14,7 +14,7 @@ const count = parseInt(result.rows[0]?.count ?? "0", 10)
 ```typescript
 const actor = result.rows[0]
 if (!actor) {
-  return res.status(404).json({ error: "Actor not found" })
+  return res.status(404).json({ error: { message: "Actor not found" } })
 }
 ```
 

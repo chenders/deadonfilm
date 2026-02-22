@@ -123,5 +123,14 @@ describe("Admin Popularity Endpoints", () => {
       expect(res.body.totalMissing).toBe(0)
       expect(res.body.actors).toHaveLength(0)
     })
+
+    it("returns 500 on database error", async () => {
+      mockPoolQuery.mockRejectedValueOnce(new Error("DB down"))
+
+      const res = await request(app).get("/admin/api/popularity/missing")
+
+      expect(res.status).toBe(500)
+      expect(res.body.error.message).toBe("Failed to fetch missing popularity actors")
+    })
   })
 })

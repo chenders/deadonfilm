@@ -1,5 +1,5 @@
 ---
-globs: ["CLAUDE.md", ".claude/rules/*.md", ".github/copilot-instructions.md"]
+globs: ["CLAUDE.md", ".claude/rules/*.md", ".github/copilot-instructions.md", ".github/docs/copilot-reference.md"]
 ---
 # Documentation Sync
 
@@ -16,7 +16,7 @@ When modifying any instruction file, **update the others to match**.
 
 ## What to Sync
 
-Copilot instructions consolidate key topics from CLAUDE.md and `.claude/rules/*.md` into a single file. When updating any of these, ensure consistency across all three for:
+Copilot instructions (focused review rules) and the extended reference doc draw from CLAUDE.md and `.claude/rules/*.md`. When updating any of these, ensure consistency across all files for:
 
 - Project overview, tech stack, architecture
 - Development commands

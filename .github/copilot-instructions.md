@@ -27,7 +27,7 @@ const count = parseInt(result.rows[0]?.count ?? "0", 10)
 // Lookup queries (may return no rows):
 const actor = result.rows[0]
 if (!actor) {
-  return res.status(404).json({ error: "Actor not found" })
+  return res.status(404).json({ error: { message: "Actor not found" } })
 }
 
 // Stats queries (destructure with fallback):
