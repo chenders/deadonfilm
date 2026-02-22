@@ -4,6 +4,7 @@ import {
   getWikipediaDeathDetails,
   verifyDeathDate,
   getActorImageFromWikidata,
+  _resetForTesting,
   type DeathInfoSource,
 } from "./wikidata.js"
 
@@ -30,6 +31,7 @@ global.fetch = mockFetch
 describe("getCauseOfDeath", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    _resetForTesting()
     // Default: Claude returns non-vague cause
     vi.mocked(isVagueCause).mockReturnValue(false)
   })
@@ -794,6 +796,7 @@ He died in Paris&#44; France on January 15&#44; 2020.`,
 describe("verifyDeathDate", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    _resetForTesting()
   })
 
   it("returns verified with high confidence when dates match within 30 days", async () => {
@@ -885,10 +888,14 @@ describe("verifyDeathDate", () => {
   })
 
   it("returns unverified when Wikidata API fails", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-    })
+    // Mock all retry attempts (initial + 3 retries)
+    for (let i = 0; i <= 3; i++) {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+      })
+    }
 
     const result = await verifyDeathDate("Actor Name", 1960, "2024-05-15")
 
@@ -944,6 +951,7 @@ describe("verifyDeathDate", () => {
 describe("getActorImageFromWikidata", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    _resetForTesting()
   })
 
   it("returns image URL when found", async () => {
@@ -981,7 +989,10 @@ describe("getActorImageFromWikidata", () => {
   })
 
   it("returns null when API fails", async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false })
+    // Mock all retry attempts (initial + 3 retries)
+    for (let i = 0; i <= 3; i++) {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 503, statusText: "Service Unavailable" })
+    }
 
     const result = await getActorImageFromWikidata("John Wayne", 1907, 1979)
 
@@ -989,7 +1000,10 @@ describe("getActorImageFromWikidata", () => {
   })
 
   it("returns null when network error occurs", async () => {
-    mockFetch.mockRejectedValueOnce(new Error("Network error"))
+    // Mock all retry attempts (initial + 3 retries)
+    for (let i = 0; i <= 3; i++) {
+      mockFetch.mockRejectedValueOnce(new Error("Network error"))
+    }
 
     const result = await getActorImageFromWikidata("John Wayne", 1907, 1979)
 
