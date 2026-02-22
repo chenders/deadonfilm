@@ -290,7 +290,7 @@ export async function getMovie(req: Request, res: Response) {
     }
 
     // Cache movie and actor appearances in background (on-demand seeding)
-    // This populates the movies and actor_movie_appearances tables for cursed movies/actors features
+    // This populates the movies and actor_movie_appearances tables for mortality stats
     cacheMovieInBackground({
       movie,
       deceased,

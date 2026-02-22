@@ -177,30 +177,6 @@ describe("prerenderMiddleware", () => {
 
   // ── Dynamic TTLs ─────────────────────────────────────────────────
 
-  it("uses dynamic TTL for /death-watch", async () => {
-    vi.mocked(getCached).mockResolvedValue(null)
-    vi.mocked(matchUrl).mockReturnValue({ pageType: "death-watch", params: {} })
-    vi.mocked(fetchPageData).mockResolvedValue({
-      title: "Death Watch",
-      description: "Oldest living actors",
-      ogType: "website",
-      canonicalUrl: "https://deadonfilm.com/death-watch",
-      heading: "Death Watch",
-    })
-    vi.mocked(renderPrerenderHtml).mockReturnValue("<html>death-watch</html>")
-
-    const { setCached: mockSetCached } = await import("../lib/cache.js")
-
-    await prerenderMiddleware(
-      makeReq({ path: "/death-watch", originalUrl: "/death-watch" }),
-      res as Response,
-      next
-    )
-
-    // setCached is called synchronously (fire-and-forget) — mock records call immediately
-    expect(mockSetCached).toHaveBeenCalledWith(expect.any(String), "<html>death-watch</html>", 3600)
-  })
-
   it("uses dynamic TTL for home page", async () => {
     vi.mocked(getCached).mockResolvedValue(null)
     vi.mocked(matchUrl).mockReturnValue({ pageType: "home", params: {} })

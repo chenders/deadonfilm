@@ -162,17 +162,17 @@ describe("buildCollectionPageSchema", () => {
     ]
 
     const result = buildCollectionPageSchema(
-      "Death Watch",
-      "Living actors ranked by death probability",
-      "https://deadonfilm.com/death-watch",
+      "Forever Young",
+      "Movies featuring actors who died young",
+      "https://deadonfilm.com/forever-young",
       items
     )
 
     expect(result["@context"]).toBe("https://schema.org")
     expect(result["@type"]).toBe("CollectionPage")
-    expect(result.name).toBe("Death Watch")
-    expect(result.description).toBe("Living actors ranked by death probability")
-    expect(result.url).toBe("https://deadonfilm.com/death-watch")
+    expect(result.name).toBe("Forever Young")
+    expect(result.description).toBe("Movies featuring actors who died young")
+    expect(result.url).toBe("https://deadonfilm.com/forever-young")
 
     const mainEntity = result.mainEntity as Record<string, unknown>
     expect(mainEntity["@type"]).toBe("ItemList")

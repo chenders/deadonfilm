@@ -9,14 +9,10 @@ export type {
   PersonDetails,
   DeceasedActor,
   LivingActor,
-  CursedActor,
-  CursedActorsResponse,
   ActorFilmographyMovie,
   ActorFilmographyShow,
   ActorDeathInfo,
   ActorProfileResponse,
-  DeathWatchActor,
-  DeathWatchResponse,
 } from "./actor"
 
 // Movie types
@@ -30,9 +26,6 @@ export type {
   MovieResponse,
   DeathInfoResponse,
   RandomMovieResponse,
-  CursedMovie,
-  CursedMoviesResponse,
-  CursedMoviesFiltersResponse,
   FeaturedMovie,
   FeaturedMovieResponse,
   PopularMovie,

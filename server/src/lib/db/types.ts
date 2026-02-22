@@ -173,15 +173,6 @@ export interface MovieRecord {
   aggregate_updated_at?: Date | null
 }
 
-export interface HighMortalityOptions {
-  limit?: number
-  offset?: number
-  fromYear?: number
-  toYear?: number
-  minDeadActors?: number
-  includeObscure?: boolean
-}
-
 export interface FeaturedMovieRecord {
   tmdb_id: number
   title: string
@@ -392,28 +383,6 @@ export interface AllDeathsOptions {
   search?: string
   sort?: string
   dir?: string
-}
-
-export interface DeathWatchOptions {
-  limit?: number
-  offset?: number
-  minAge?: number
-  includeObscure?: boolean
-  search?: string
-  sort?: string
-  dir?: string
-}
-
-export interface DeathWatchActorRecord {
-  actor_id: number
-  actor_tmdb_id: number | null
-  actor_name: string
-  birthday: string
-  age: number
-  profile_path: string | null
-  tmdb_popularity: number | null // Renamed from 'popularity' for clarity
-  total_movies: number
-  total_episodes: number
 }
 
 export interface ForeverYoungMovie {
@@ -756,30 +725,6 @@ export interface InDetailResponse {
     totalCount: number
     totalPages: number
   }
-}
-
-// ============================================================================
-// Cursed actors types
-// ============================================================================
-
-export interface CursedActorsOptions {
-  limit?: number
-  offset?: number
-  minMovies?: number
-  actorStatus?: "living" | "deceased" | "all"
-  fromYear?: number
-  toYear?: number
-}
-
-export interface CursedActorRecord {
-  actor_id: number
-  actor_tmdb_id: number | null
-  actor_name: string
-  is_deceased: boolean
-  total_movies: number
-  total_actual_deaths: number
-  total_expected_deaths: number
-  curse_score: number
 }
 
 // ============================================================================

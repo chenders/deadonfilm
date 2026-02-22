@@ -44,7 +44,7 @@ const SKIP_PREFIXES = [
 ]
 
 /** Paths with frequently changing content — shorter cache TTL */
-const DYNAMIC_PREFIXES = ["/death-watch", "/deaths", "/covid-deaths", "/unnatural-deaths"]
+const DYNAMIC_PREFIXES = ["/deaths", "/covid-deaths", "/unnatural-deaths"]
 
 /** SSR render timeout in milliseconds */
 const SSR_TIMEOUT_MS = 5000

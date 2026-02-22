@@ -38,7 +38,7 @@ export const prerenderRateLimiter = rateLimit({
 const SKIP_PATH_PREFIXES = ["/api/", "/admin", "/health", "/sitemap", "/nr-browser.js", "/assets/"]
 
 /** Paths with frequently changing content get shorter cache TTL */
-const DYNAMIC_PATH_PREFIXES = ["/death-watch", "/deaths", "/covid-deaths", "/unnatural-deaths"]
+const DYNAMIC_PATH_PREFIXES = ["/deaths", "/covid-deaths", "/unnatural-deaths"]
 
 function shouldSkip(path: string): boolean {
   return SKIP_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))

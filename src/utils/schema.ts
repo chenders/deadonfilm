@@ -167,7 +167,7 @@ interface ItemListItem {
 }
 
 /**
- * Build ItemList schema for list pages (cursed movies, cursed actors)
+ * Build ItemList schema for list pages
  */
 interface FAQItem {
   question: string

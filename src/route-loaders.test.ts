@@ -172,30 +172,6 @@ describe("matchRouteLoaders", () => {
     expect(specs).toEqual([{ queryKey: ["unnatural-deaths", 1, "all", true, false] }])
   })
 
-  it("matches death watch", () => {
-    const specs = getSpecs("/death-watch?sort=age&dir=asc&page=3")
-    expect(specs).toEqual([
-      {
-        queryKey: [
-          "death-watch",
-          { page: 3, includeObscure: false, search: "", sort: "age", dir: "asc" },
-        ],
-      },
-    ])
-  })
-
-  it("matches death watch with search param", () => {
-    const specs = getSpecs("/death-watch?search=wayne")
-    expect(specs).toEqual([
-      {
-        queryKey: [
-          "death-watch",
-          { page: 1, includeObscure: false, search: "wayne", sort: "probability", dir: "desc" },
-        ],
-      },
-    ])
-  })
-
   // ── Home page ───────────────────────────────────────────────────
 
   it("matches home page with 3 prefetch specs", () => {

@@ -1,12 +1,6 @@
 import type { Request, Response } from "express"
-import {
-  getHighMortalityMovies,
-  getMaxValidMinDeaths,
-  getForeverYoungMovies,
-  getForeverYoungMoviesPaginated,
-} from "../lib/db.js"
+import { getForeverYoungMovies, getForeverYoungMoviesPaginated } from "../lib/db.js"
 import { sendWithETag } from "../lib/etag.js"
-import newrelic from "newrelic"
 
 interface DiscoverMovieResponse {
   id: number
@@ -51,95 +45,6 @@ export async function getDiscoverMovie(req: Request, res: Response) {
   } catch (error) {
     console.error("Discover movie error:", error)
     res.status(500).json({ error: { message: "Failed to fetch movie" } })
-  }
-}
-
-// Get list of high-mortality movies for leaderboard page
-// Supports pagination and filtering by decade range and minimum deaths
-export async function getCursedMovies(req: Request, res: Response) {
-  try {
-    const startTime = Date.now()
-    const page = Math.max(1, parseInt(req.query.page as string) || 1)
-    const pageSize = Math.min(parseInt(req.query.limit as string) || 50, 100)
-    const offset = (page - 1) * pageSize
-
-    // Parse filter parameters
-    const fromDecade = req.query.from ? parseInt(req.query.from as string) : undefined
-    const toDecade = req.query.to ? parseInt(req.query.to as string) : undefined
-    const minDeadActors = req.query.minDeaths ? parseInt(req.query.minDeaths as string) : 3
-    const includeObscure = req.query.includeObscure === "true"
-
-    // Convert decades to year ranges
-    const fromYear = fromDecade || undefined
-    const toYear = toDecade ? toDecade + 9 : undefined
-
-    const { movies, totalCount } = await getHighMortalityMovies({
-      limit: pageSize,
-      offset,
-      fromYear,
-      toYear,
-      minDeadActors,
-      includeObscure,
-    })
-
-    // Calculate rank based on global position (page offset + index)
-    const result = movies.map((movie, index) => ({
-      rank: offset + index + 1,
-      id: movie.tmdb_id,
-      title: movie.title,
-      releaseYear: movie.release_year,
-      posterPath: movie.poster_path,
-      deceasedCount: movie.deceased_count,
-      castCount: movie.cast_count,
-      expectedDeaths: movie.expected_deaths,
-      mortalitySurpriseScore: movie.mortality_surprise_score,
-    }))
-
-    // Enforce max 20 pages
-    const totalPages = Math.min(Math.ceil(totalCount / pageSize), 20)
-
-    const response = {
-      movies: result,
-      pagination: {
-        page,
-        pageSize,
-        totalCount,
-        totalPages,
-      },
-    }
-
-    newrelic.recordCustomEvent("CursedMoviesQuery", {
-      page,
-      fromDecade: fromDecade ?? 0,
-      toDecade: toDecade ?? 0,
-      minDeaths: minDeadActors,
-      includeObscure,
-      resultCount: result.length,
-      totalCount,
-      responseTimeMs: Date.now() - startTime,
-    })
-
-    sendWithETag(req, res, response, 300) // 5 min cache
-  } catch (error) {
-    console.error("Cursed movies error:", error)
-    res.status(500).json({ error: { message: "Failed to fetch cursed movies" } })
-  }
-}
-
-// Get filter options for cursed movies page
-export async function getCursedMoviesFilters(req: Request, res: Response) {
-  try {
-    // Check if database is available
-    if (!process.env.DATABASE_URL) {
-      return res.json({ maxMinDeaths: 3 })
-    }
-
-    const maxMinDeaths = await getMaxValidMinDeaths()
-    sendWithETag(req, res, { maxMinDeaths }, 3600) // 1 hour cache
-  } catch (error) {
-    console.error("Cursed movies filters error:", error)
-    // Return default on error
-    res.json({ maxMinDeaths: 3 })
   }
 }
 

@@ -37,15 +37,11 @@
 - Detailed death circumstances with source citations and confidence levels
 - Cause of death research across 80+ sources — Wikidata, Wikipedia, Library of Congress, Find a Grave, news archives, 11 AI models
 - Actuarial mortality analysis using SSA life tables for every production
-- Mortality Surprise Score — a statistical measure of abnormally high cast death rates ("cursed" means math, not superstition)
-
 ## Explore
 
 | Feature | What It Shows |
 |---|---|
 | [**Actor Profiles**](https://deadonfilm.com/actor/audrey-hepburn-6834) | Life stories, death narratives, filmography with mortality data |
-| [**Cursed Movies**](https://deadonfilm.com/cursed-movies) | Productions with abnormally high cast mortality |
-| [**Death Watch**](https://deadonfilm.com/death-watch) | Living actors ranked by actuarial mortality probability |
 | [**Notable Deaths**](https://deadonfilm.com/deaths/notable) | Detailed death circumstances with source citations |
 | [**Strange Deaths**](https://deadonfilm.com/deaths/strange) | Unusual or mysterious death circumstances |
 | [**Forever Young**](https://deadonfilm.com/forever-young) | Actors who died young, ranked by years of life lost |
@@ -160,7 +156,7 @@ If you're browsing this codebase to learn from it, here are the parts worth stud
 
 - **Biography generation** — Claude-powered pipeline that rewrites TMDB/Wikipedia content into personal narratives with strict editorial policy and substantive content gates.
 - **Biography enrichment** — Multi-source research pipeline (19+ sources) that builds rich personal narratives, extracts lesser-known facts, and assigns life circumstance tags. Three-stage content pipeline: mechanical pre-clean, Haiku AI extraction, Claude synthesis.
-- **Actuarial engine** — SSA life table lookups and Mortality Surprise Score calculation. The most mathematically interesting part of the codebase.
+- **Actuarial engine** — SSA life table lookups and mortality statistics calculation. The most mathematically interesting part of the codebase.
 - **Death research orchestration** — Multi-provider pipeline dispatching across 80+ sources with result reconciliation, confidence scoring, and cheapest-first cost optimization.
 - **TMDB sync pipeline** — Daily automated detection of newly reported deaths with enrichment triggers.
 - **SEO architecture** — Dynamic sitemap generation and slug-based routing for 572K+ entities.

@@ -30,8 +30,6 @@ describe("cache", () => {
       expect(CACHE_PREFIX.RECENT_DEATHS).toBe("recent-deaths")
       expect(CACHE_PREFIX.STATS).toBe("stats")
       expect(CACHE_PREFIX.TRIVIA).toBe("trivia")
-      expect(CACHE_PREFIX.CURSED_MOVIES).toBe("cursed-movies")
-      expect(CACHE_PREFIX.CURSED_ACTORS).toBe("cursed-actors")
     })
   })
 
@@ -52,8 +50,8 @@ describe("cache", () => {
     })
 
     it("includes sorted params in key", () => {
-      const key = buildCacheKey(CACHE_PREFIX.CURSED_MOVIES, { page: 1, limit: 50 })
-      expect(key).toBe("cursed-movies:limit:50:page:1")
+      const key = buildCacheKey(CACHE_PREFIX.RECENT_DEATHS, { page: 1, limit: 50 })
+      expect(key).toBe("recent-deaths:limit:50:page:1")
     })
 
     it("sorts params alphabetically for consistent keys", () => {
@@ -64,8 +62,8 @@ describe("cache", () => {
     })
 
     it("handles boolean params", () => {
-      const key = buildCacheKey(CACHE_PREFIX.CURSED_ACTORS, { includeObscure: true })
-      expect(key).toBe("cursed-actors:includeObscure:true")
+      const key = buildCacheKey(CACHE_PREFIX.CAUSES, { includeObscure: true })
+      expect(key).toBe("causes:includeObscure:true")
     })
 
     it("handles string params", () => {
@@ -90,13 +88,13 @@ describe("cache", () => {
     })
 
     it("handles multiple params of different types", () => {
-      const key = buildCacheKey(CACHE_PREFIX.CURSED_ACTORS, {
+      const key = buildCacheKey(CACHE_PREFIX.CAUSES, {
         page: 2,
         status: "living",
         minMovies: 5,
         includeObscure: false,
       })
-      expect(key).toBe("cursed-actors:includeObscure:false:minMovies:5:page:2:status:living")
+      expect(key).toBe("causes:includeObscure:false:minMovies:5:page:2:status:living")
     })
   })
 })
@@ -413,8 +411,6 @@ describe("cache operations with mocked Redis", () => {
       // Should call scan for each pattern-based cache
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.RECENT_DEATHS}:*`, 100)
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.THIS_WEEK}:*`, 100)
-      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.DEATH_WATCH}:*`, 100)
-      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.CURSED_ACTORS}:*`, 100)
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.CAUSES}:*`, 100)
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.DECADES}:*`, 100)
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.COVID_DEATHS}:*`, 100)
@@ -426,10 +422,6 @@ describe("cache operations with mocked Redis", () => {
         CACHE_PREFIX.FEATURED_MOVIE
       )
       // Should invalidate prerender caches for death-related pages
-      expect(mockInstrumentedScan).toHaveBeenCalledWith(
-        `${CACHE_PREFIX.PRERENDER}:*/death-watch*`,
-        100
-      )
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.PRERENDER}:*/deaths*`, 100)
       expect(mockInstrumentedScan).toHaveBeenCalledWith(
         `${CACHE_PREFIX.PRERENDER}:*/causes-of-death*`,
@@ -447,7 +439,6 @@ describe("cache operations with mocked Redis", () => {
       await invalidateMovieCaches()
 
       // Should call scan for each pattern
-      expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.CURSED_MOVIES}:*`, 100)
       expect(mockInstrumentedScan).toHaveBeenCalledWith(`${CACHE_PREFIX.POPULAR_MOVIES}:*`, 100)
       // Should also delete the featured-movie key directly
       expect(mockInstrumentedDel).toHaveBeenCalledWith(CACHE_PREFIX.FEATURED_MOVIE)

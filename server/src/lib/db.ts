@@ -61,10 +61,10 @@ export type {
 } from "./db/types.js"
 
 // Re-export movie functions for backward compatibility
-export { getMovie, upsertMovie, getHighMortalityMovies, getMaxValidMinDeaths } from "./db/movies.js"
+export { getMovie, upsertMovie } from "./db/movies.js"
 
 // Re-export movie types for backward compatibility
-export type { MovieRecord, HighMortalityOptions } from "./db/types.js"
+export type { MovieRecord } from "./db/types.js"
 
 // Re-export show functions for backward compatibility
 export {
@@ -104,7 +104,6 @@ export {
   UNNATURAL_DEATH_CATEGORIES,
   getUnnaturalDeaths,
   getAllDeaths,
-  getDeathWatchActors,
 } from "./db/deaths-discovery.js"
 
 // Re-export deaths-discovery types for backward compatibility
@@ -118,8 +117,6 @@ export type {
   UnnaturalDeathsOptions,
   UnnaturalDeathCategory,
   AllDeathsOptions,
-  DeathWatchOptions,
-  DeathWatchActorRecord,
 } from "./db/types.js"
 
 // Re-export cause-categories functions for backward compatibility
@@ -180,105 +177,6 @@ import { getPool } from "./db/pool.js"
 
 // Import types for local use (also re-exported above)
 import type { DeathInfoSource } from "./db/types.js"
-// Options for getCursedActors query
-export interface CursedActorsOptions {
-  limit?: number
-  offset?: number
-  minMovies?: number
-  actorStatus?: "living" | "deceased" | "all"
-  fromYear?: number
-  toYear?: number
-}
-
-// Cursed actor record returned from database
-export interface CursedActorRecord {
-  actor_id: number
-  actor_tmdb_id: number | null
-  actor_name: string
-  is_deceased: boolean
-  total_movies: number
-  total_actual_deaths: number
-  total_expected_deaths: number
-  curse_score: number
-}
-
-// Get "cursed actors" - actors with high co-star mortality
-// Ranks actors by total excess deaths (actual - expected) across their filmography
-export async function getCursedActors(options: CursedActorsOptions = {}): Promise<{
-  actors: CursedActorRecord[]
-  totalCount: number
-}> {
-  const { limit = 50, offset = 0, minMovies = 2, actorStatus = "all", fromYear, toYear } = options
-
-  const db = getPool()
-
-  // Build dynamic WHERE clause
-  const conditions: string[] = ["m.expected_deaths IS NOT NULL"]
-  const params: (number | string)[] = []
-  let paramIndex = 1
-
-  // Actor status filter (is_deceased derived from actors.deathday IS NOT NULL)
-  if (actorStatus === "living") {
-    conditions.push(`a.deathday IS NULL`)
-  } else if (actorStatus === "deceased") {
-    conditions.push(`a.deathday IS NOT NULL`)
-  }
-  // "all" means no filter on deceased status
-
-  // Year range filters
-  if (fromYear !== undefined) {
-    conditions.push(`m.release_year >= $${paramIndex}`)
-    params.push(fromYear)
-    paramIndex++
-  }
-  if (toYear !== undefined) {
-    conditions.push(`m.release_year <= $${paramIndex}`)
-    params.push(toYear)
-    paramIndex++
-  }
-
-  const whereClause = conditions.join(" AND ")
-
-  // Add pagination params
-  params.push(minMovies) // for HAVING clause
-  const minMoviesParamIndex = paramIndex++
-  params.push(limit)
-  const limitParamIndex = paramIndex++
-  params.push(offset)
-  const offsetParamIndex = paramIndex++
-
-  const query = `
-    SELECT
-      aa.actor_id,
-      a.tmdb_id as actor_tmdb_id,
-      a.name as actor_name,
-      (a.deathday IS NOT NULL) as is_deceased,
-      COUNT(DISTINCT aa.movie_tmdb_id)::integer as total_movies,
-      SUM(m.deceased_count)::integer as total_actual_deaths,
-      ROUND(SUM(m.expected_deaths)::numeric, 1) as total_expected_deaths,
-      ROUND((SUM(m.deceased_count) - SUM(m.expected_deaths))::numeric, 1) as curse_score,
-      COUNT(*) OVER() as total_count
-    FROM actor_movie_appearances aa
-    JOIN movies m ON aa.movie_tmdb_id = m.tmdb_id
-    JOIN actors a ON aa.actor_id = a.id
-    WHERE ${whereClause}
-    GROUP BY aa.actor_id, a.tmdb_id, a.name, a.deathday
-    HAVING COUNT(DISTINCT aa.movie_tmdb_id) >= $${minMoviesParamIndex}
-    ORDER BY curse_score DESC
-    LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
-  `
-
-  const result = await db.query(query, params)
-
-  const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0
-
-  // Remove the total_count field from each row
-  const actors = result.rows.map(
-    ({ total_count: _, ...actor }: { total_count: string } & CursedActorRecord) => actor
-  )
-
-  return { actors, totalCount }
-}
 
 // ============================================================================
 // Movies by Genre functions (SEO category pages)
@@ -348,7 +246,7 @@ export async function getMoviesByGenre(
   )
   const totalCount = parseInt(countResult.rows[0].count, 10)
 
-  // Get paginated results, sorted by mortality surprise score (cursed movies first)
+  // Get paginated results, sorted by mortality surprise score (highest mortality first)
   const result = await db.query<MovieByGenreRecord>(
     `SELECT tmdb_id, title, release_year, poster_path, deceased_count,
             cast_count, expected_deaths, mortality_surprise_score

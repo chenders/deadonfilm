@@ -17,11 +17,6 @@ export default function Footer() {
               </h3>
               <ul className="space-y-2">
                 <li>
-                  <Link to="/death-watch" className={linkClass}>
-                    Death Watch
-                  </Link>
-                </li>
-                <li>
                   <Link to="/deaths/notable" className={linkClass}>
                     Notable Deaths
                   </Link>

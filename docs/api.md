@@ -113,53 +113,9 @@ Detailed death circumstances, narrative, sources, related celebrities. Only avai
 
 Related actors by cause of death or decade.
 
-### `GET /api/cursed-actors`
-
-Actors ranked by co-star mortality (Mortality Surprise Score across filmography).
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `page` | number | 1 | Page number |
-| `limit` | number | 50 | Results per page (max 100) |
-| `from` | number | — | Decade start filter |
-| `to` | number | — | Decade end filter |
-| `minMovies` | number | 2 | Minimum filmography size |
-| `status` | string | — | `living`, `deceased`, or `all` |
-
 ---
 
 ## Discovery
-
-### `GET /api/cursed-movies`
-
-Movies ranked by Mortality Surprise Score (abnormally high cast mortality).
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `page` | number | 1 | Page number |
-| `limit` | number | 50 | Results per page (max 100) |
-| `from` | number | — | Decade start filter |
-| `to` | number | — | Decade end filter |
-| `minDeaths` | number | 3 | Minimum actual deaths |
-| `includeObscure` | boolean | false | Include obscure productions |
-
-### `GET /api/cursed-movies/filters`
-
-Filter options for cursed movies (decades, etc.).
-
-### `GET /api/death-watch`
-
-Living actors ranked by actuarial mortality probability.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `page` | number | 1 | Page number |
-| `limit` | number | 50 | Results per page (max 100) |
-| `minAge` | number | — | Minimum age filter |
-| `includeObscure` | boolean | false | Include lesser-known actors |
-| `search` | string | — | Name search |
-| `sort` | string | `age` | `age`, `probability`, or `name` |
-| `dir` | string | `desc` | `asc` or `desc` |
 
 ### `GET /api/forever-young`
 

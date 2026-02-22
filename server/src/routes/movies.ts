@@ -52,7 +52,7 @@ export async function getMoviesByGenreHandler(req: Request, res: Response) {
     const limit = 50
     const offset = (page - 1) * limit
 
-    const cacheKey = buildCacheKey(CACHE_PREFIX.CURSED_MOVIES, { genre: genreSlug, page })
+    const cacheKey = buildCacheKey(CACHE_PREFIX.GENRES, { genre: genreSlug, page })
 
     type MoviesByGenreResponse = {
       genre: string

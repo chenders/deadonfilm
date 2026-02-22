@@ -437,39 +437,6 @@ const routes: Array<{
     },
   },
 
-  // Death watch
-  {
-    pattern: /^\/death-watch$/,
-    loader: (_params, searchParams) => {
-      const page = searchParams.get("page") || "1"
-      const includeObscure = searchParams.get("includeObscure") || "false"
-      const search = searchParams.get("search") || ""
-      const sort = searchParams.get("sort") || "probability"
-      const dir = searchParams.get("dir") || "desc"
-      return {
-        loaders: (base) => [
-          {
-            queryKey: [
-              "death-watch",
-              {
-                page: parseInt(page, 10),
-                includeObscure: includeObscure === "true",
-                search,
-                sort,
-                dir,
-              },
-            ],
-            queryFn: () =>
-              apiFetch(
-                base,
-                `/api/death-watch?page=${page}&includeObscure=${includeObscure}${search ? `&search=${encodeURIComponent(search)}` : ""}&sort=${sort}&dir=${dir}`
-              ),
-          },
-        ],
-      }
-    },
-  },
-
   // Home page — prefetch stats, recent deaths, featured movie
   {
     pattern: /^\/$/,

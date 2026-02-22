@@ -14,12 +14,7 @@ import { searchMovies } from "./routes/search.js"
 import { getMovie } from "./routes/movie.js"
 import { getOnThisDay } from "./routes/on-this-day.js"
 import { getDeathInfoRoute } from "./routes/death-info.js"
-import {
-  getDiscoverMovie,
-  getCursedMovies,
-  getCursedMoviesFilters,
-  getForeverYoungMoviesHandler,
-} from "./routes/discover.js"
+import { getDiscoverMovie, getForeverYoungMoviesHandler } from "./routes/discover.js"
 import {
   getStats,
   getRecentDeathsHandler,
@@ -31,9 +26,7 @@ import {
   getPopularMoviesHandler,
   getRandomPopularMoviesHandler,
 } from "./routes/stats.js"
-import { getCursedActorsRoute } from "./routes/actors.js"
 import { getActor } from "./routes/actor.js"
-import { getDeathWatchHandler } from "./routes/death-watch.js"
 import {
   getSitemapIndex,
   getStaticSitemap,
@@ -282,8 +275,6 @@ app.get("/api/movie/:id", getMovie)
 app.get("/api/movie/:id/death-info", getDeathInfoRoute)
 app.get("/api/on-this-day", getOnThisDay)
 app.get("/api/discover/:type", getDiscoverMovie)
-app.get("/api/cursed-movies", getCursedMovies)
-app.get("/api/cursed-movies/filters", getCursedMoviesFilters)
 app.get("/api/forever-young", getForeverYoungMoviesHandler)
 app.get("/api/stats", getStats)
 app.get("/api/recent-deaths", getRecentDeathsHandler)
@@ -294,10 +285,8 @@ app.get("/api/trivia", getTriviaHandler)
 app.get("/api/this-week", getThisWeekDeathsHandler)
 app.get("/api/popular-movies", getPopularMoviesHandler)
 app.get("/api/popular-movies/random", getRandomPopularMoviesHandler)
-app.get("/api/cursed-actors", getCursedActorsRoute)
 app.get("/api/actor/:slug", getActor)
 app.get("/api/actor/:slug/death", getActorDeathDetails)
-app.get("/api/death-watch", getDeathWatchHandler)
 app.get("/api/deaths/notable", getNotableDeaths)
 app.get("/api/in-detail", getInDetailHandler)
 app.get("/api/deaths/causes", getCauseCategoriesHandler)

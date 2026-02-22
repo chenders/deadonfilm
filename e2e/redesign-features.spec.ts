@@ -124,7 +124,6 @@ test.describe("Frontend Redesign Features", () => {
       await expect(page.getByTestId("quick-actions")).toBeVisible()
       await expect(page.getByTestId("in-detail-btn")).toBeVisible()
       await expect(page.getByTestId("covid-deaths-btn")).toBeVisible()
-      await expect(page.getByTestId("death-watch-btn")).toBeVisible()
 
       await page.screenshot({
         path: "e2e/screenshots/quick-actions.png",

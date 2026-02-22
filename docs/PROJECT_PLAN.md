@@ -24,25 +24,10 @@ Based on actuarial data from US Social Security Administration life tables, the 
 - [x] Added database functions for movies and actor appearances
 - [x] Created seed script: `npm run seed:movies -- <startYear> [endYear]`
 
-#### Phase 4: Cursed Movies
-- [x] Created `/cursed-movies` page with pagination and filters
-- [x] Filter by decade, minimum deaths, include/exclude obscure movies
-- [x] Rank movies by mortality surprise score
-
-#### Phase 5: Cursed Actors
-- [x] Query actors across all movies in database
-- [x] Calculate co-star mortality across filmography
-- [x] Compare to expected mortality for those movies
-- [x] Rank by "curse score" (actual - expected deaths)
-- [x] Created `/cursed-actors` page with filters
-
-#### Phase 6: Discovery Pages
-- [x] `/cursed-movies` - Movies with high mortality surprise scores
-- [x] `/cursed-actors` - Actors with high co-star mortality
+#### Phase 4: Discovery Pages
 - [x] `/forever-young` - Actors who died tragically young (years lost)
 - [x] `/covid-deaths` - Actors who died from COVID-19
 - [x] `/unnatural-deaths` - Accidents, suicides, overdoses, homicides
-- [x] `/death-watch` - Living actors with highest mortality probability
 - [x] `/deaths` - Browse deaths by cause or decade
 
 #### Phase 7: TV Show Support

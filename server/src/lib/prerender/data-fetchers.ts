@@ -113,12 +113,6 @@ export async function fetchPageData(match: MatchResult): Promise<PrerenderPageDa
         "Actors who died from accidents, homicides, suicides, and other unnatural causes.",
         "/unnatural-deaths"
       )
-    case "death-watch":
-      return getStaticPageData(
-        "Death Watch — Oldest Living Actors",
-        "The oldest living actors from popular movies and TV shows.",
-        "/death-watch"
-      )
     case "deaths-index":
       return getStaticPageData(
         "Deaths in Film & Television",

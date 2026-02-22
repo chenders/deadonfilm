@@ -1,6 +1,5 @@
 // Actor/Person types
 
-import type { PaginationInfo } from "./common"
 import type { ProjectInfo, RelatedCelebrity } from "./death"
 
 // Date precision for partial dates (year-only, year+month, full date)
@@ -52,23 +51,6 @@ export interface LivingActor {
   birthday: string | null
   birthdayPrecision?: DatePrecision | null
   age: number | null
-}
-
-// Cursed Actors types
-export interface CursedActor {
-  rank: number
-  id: number
-  name: string
-  isDeceased: boolean
-  totalMovies: number
-  totalActualDeaths: number
-  totalExpectedDeaths: number
-  curseScore: number
-}
-
-export interface CursedActorsResponse {
-  actors: CursedActor[]
-  pagination: PaginationInfo
 }
 
 // Actor Profile types
@@ -153,22 +135,4 @@ export interface ActorProfileResponse {
   analyzedTVFilmography: ActorFilmographyShow[]
   deathInfo: ActorDeathInfo | null
   biographyDetails: BiographyDetails | null
-}
-
-// Death Watch types
-export interface DeathWatchActor {
-  rank: number
-  id: number
-  name: string
-  age: number
-  birthday: string
-  profilePath: string | null
-  deathProbability: number // 0-1, probability of dying in next year
-  yearsRemaining: number | null // Life expectancy - current age
-  totalMovies: number
-}
-
-export interface DeathWatchResponse {
-  actors: DeathWatchActor[]
-  pagination: PaginationInfo
 }

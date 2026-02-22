@@ -37,7 +37,7 @@ describe("TopNavigationPathsTable", () => {
     },
     {
       referrer_path: "/",
-      visited_path: "/cursed-movies",
+      visited_path: "/forever-young",
       count: 75,
       percentage: 15.0,
     },
@@ -141,7 +141,7 @@ describe("TopNavigationPathsTable", () => {
       expect(deathsPaths.length).toBeGreaterThan(0)
 
       expect(screen.getAllByText("/movie/inception-2010-27205").length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText("/cursed-movies").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("/forever-young").length).toBeGreaterThanOrEqual(1)
     })
 
     it("renders counts with locale formatting", () => {
