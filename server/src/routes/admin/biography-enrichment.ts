@@ -43,8 +43,11 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const conditions: string[] = ["a.deathday IS NOT NULL"]
 
     if (searchName) {
-      conditions.push(`a.name ILIKE $${paramIndex++}`)
-      params.push(`%${searchName}%`)
+      const words = searchName.trim().split(/\s+/)
+      for (const word of words) {
+        conditions.push(`a.name ILIKE $${paramIndex++}`)
+        params.push(`%${word}%`)
+      }
     }
     if (minPopularity > 0) {
       conditions.push(`COALESCE(a.dof_popularity, 0) >= $${paramIndex++}`)

@@ -110,8 +110,11 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (searchName) {
-      whereClause += ` AND name ILIKE $${paramIndex++}`
-      params.push(`%${searchName}%`)
+      const words = searchName.trim().split(/\s+/)
+      for (const word of words) {
+        whereClause += ` AND name ILIKE $${paramIndex++}`
+        params.push(`%${word}%`)
+      }
     }
 
     if (vitalStatus === "alive") {

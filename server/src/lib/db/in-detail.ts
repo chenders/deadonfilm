@@ -40,9 +40,12 @@ export async function getInDetailActors(options: InDetailOptions = {}): Promise<
   }
 
   if (search) {
-    conditions.push(`a.name ILIKE $${paramIndex}`)
-    params.push(`%${search}%`)
-    paramIndex++
+    const words = search.trim().split(/\s+/)
+    for (const word of words) {
+      conditions.push(`a.name ILIKE $${paramIndex}`)
+      params.push(`%${word}%`)
+      paramIndex++
+    }
   }
 
   const whereClause = conditions.join(" AND ")
