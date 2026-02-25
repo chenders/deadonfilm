@@ -24,7 +24,7 @@ interface ActorProfileResponse {
     deathday: string | null
     biography: string
     biographySourceUrl: string | null
-    biographySourceType: "wikipedia" | "tmdb" | "imdb" | null
+    biographySourceType: "wikipedia" | "tmdb" | "imdb" | "enriched" | null
     profilePath: string | null
     placeOfBirth: string | null
   }
@@ -250,10 +250,13 @@ export async function getActor(req: Request, res: Response) {
 
     // Use DB biography if available, fall back to TMDB
     const biography = actorRecord.biography || person.biography
-    const biographySourceUrl =
-      actorRecord.biography_source_url ||
-      (actorRecord.tmdb_id ? `https://www.themoviedb.org/person/${actorRecord.tmdb_id}` : null)
     const biographySourceType = actorRecord.biography_source_type || (biography ? "tmdb" : null)
+    // Enriched bios don't have a single source URL; only show source link for tmdb/wikipedia/imdb
+    const biographySourceUrl =
+      biographySourceType === "enriched"
+        ? null
+        : actorRecord.biography_source_url ||
+          (actorRecord.tmdb_id ? `https://www.themoviedb.org/person/${actorRecord.tmdb_id}` : null)
 
     const response: ActorProfileResponse = {
       actor: {
