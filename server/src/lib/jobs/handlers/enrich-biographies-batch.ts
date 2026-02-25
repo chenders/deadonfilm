@@ -65,6 +65,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       confidenceThreshold,
       maxCostPerActor,
       maxTotalCost,
+      earlyStopSourceCount,
       allowRegeneration,
       useStaging,
       sourceCategories,
@@ -130,6 +131,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       // 2. Create orchestrator with config
       const orchestrator = new BiographyEnrichmentOrchestrator({
         confidenceThreshold: confidenceThreshold ?? 0.6,
+        ...(earlyStopSourceCount !== undefined && { earlyStopSourceCount }),
         costLimits: {
           maxCostPerActor: maxCostPerActor ?? 0.5,
           maxTotalCost: maxTotalCost ?? 10.0,

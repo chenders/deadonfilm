@@ -401,6 +401,37 @@ describe("Admin Biography Enrichment Endpoints", () => {
       expect(jobPayload.allowRegeneration).toBe(false)
     })
 
+    it("forwards earlyStopSourceCount to job payload and run config", async () => {
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ id: 46 }] })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [] })
+
+      const { queueManager } = await import("../../lib/jobs/queue-manager.js")
+
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ actorIds: [1], earlyStopSourceCount: 3 })
+
+      expect(res.status).toBe(200)
+
+      // Verify forwarded to addJob payload
+      const jobPayload = vi.mocked(queueManager.addJob).mock.calls[0][1] as Record<string, unknown>
+      expect(jobPayload.earlyStopSourceCount).toBe(3)
+
+      // Verify included in persisted run config
+      const insertCall = mockPoolQuery.mock.calls[0]
+      const configJson = JSON.parse(insertCall[1][0] as string)
+      expect(configJson.earlyStopSourceCount).toBe(3)
+    })
+
+    it("returns 400 for invalid earlyStopSourceCount", async () => {
+      const res = await request(app)
+        .post("/admin/api/biography-enrichment/enrich-batch")
+        .send({ actorIds: [1], earlyStopSourceCount: -1 })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.message).toContain("earlyStopSourceCount")
+    })
+
     it("returns 503 when job queue is not available", async () => {
       const { queueManager } = await import("../../lib/jobs/queue-manager.js")
       const original = queueManager.isReady
@@ -467,20 +498,18 @@ describe("Admin Biography Enrichment Endpoints", () => {
     })
 
     it("filters by level query param", async () => {
-      mockPoolQuery
-        .mockResolvedValueOnce({ rows: [{ total: "1" }] })
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              id: 3,
-              timestamp: "2026-02-24T10:02:00Z",
-              level: "error",
-              message: "Source failed",
-              data: null,
-              source: null,
-            },
-          ],
-        })
+      mockPoolQuery.mockResolvedValueOnce({ rows: [{ total: "1" }] }).mockResolvedValueOnce({
+        rows: [
+          {
+            id: 3,
+            timestamp: "2026-02-24T10:02:00Z",
+            level: "error",
+            message: "Source failed",
+            data: null,
+            source: null,
+          },
+        ],
+      })
 
       const res = await request(app).get(
         "/admin/api/biography-enrichment/runs/42/run-logs?level=error"
@@ -500,9 +529,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
         .mockResolvedValueOnce({ rows: [{ total: "0" }] })
         .mockResolvedValueOnce({ rows: [] })
 
-      const res = await request(app).get(
-        "/admin/api/biography-enrichment/runs/99/run-logs"
-      )
+      const res = await request(app).get("/admin/api/biography-enrichment/runs/99/run-logs")
 
       expect(res.status).toBe(200)
       expect(res.body.logs).toHaveLength(0)
@@ -511,9 +538,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
     })
 
     it("returns 400 for invalid run ID", async () => {
-      const res = await request(app).get(
-        "/admin/api/biography-enrichment/runs/abc/run-logs"
-      )
+      const res = await request(app).get("/admin/api/biography-enrichment/runs/abc/run-logs")
 
       expect(res.status).toBe(400)
       expect(res.body.error.message).toBe("Invalid or missing run ID")
@@ -538,9 +563,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
         ],
       })
 
-      const res = await request(app).get(
-        "/admin/api/biography-enrichment/runs/42/actors/123/logs"
-      )
+      const res = await request(app).get("/admin/api/biography-enrichment/runs/42/actors/123/logs")
 
       expect(res.status).toBe(200)
       expect(res.body.actorName).toBe("John Wayne")
@@ -554,18 +577,14 @@ describe("Admin Biography Enrichment Endpoints", () => {
     })
 
     it("returns 400 for invalid run ID", async () => {
-      const res = await request(app).get(
-        "/admin/api/biography-enrichment/runs/abc/actors/123/logs"
-      )
+      const res = await request(app).get("/admin/api/biography-enrichment/runs/abc/actors/123/logs")
 
       expect(res.status).toBe(400)
       expect(res.body.error.message).toBe("Invalid run ID or actor ID")
     })
 
     it("returns 400 for invalid actor ID", async () => {
-      const res = await request(app).get(
-        "/admin/api/biography-enrichment/runs/42/actors/xyz/logs"
-      )
+      const res = await request(app).get("/admin/api/biography-enrichment/runs/42/actors/xyz/logs")
 
       expect(res.status).toBe(400)
       expect(res.body.error.message).toBe("Invalid run ID or actor ID")
@@ -592,9 +611,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
         ],
       })
 
-      const res = await request(app).get(
-        "/admin/api/biography-enrichment/runs/42/actors/456/logs"
-      )
+      const res = await request(app).get("/admin/api/biography-enrichment/runs/42/actors/456/logs")
 
       expect(res.status).toBe(200)
       expect(res.body.actorName).toBe("Jane Doe")
@@ -604,9 +621,7 @@ describe("Admin Biography Enrichment Endpoints", () => {
     it("returns 500 on database error", async () => {
       mockPoolQuery.mockRejectedValueOnce(new Error("Connection lost"))
 
-      const res = await request(app).get(
-        "/admin/api/biography-enrichment/runs/42/actors/123/logs"
-      )
+      const res = await request(app).get("/admin/api/biography-enrichment/runs/42/actors/123/logs")
 
       expect(res.status).toBe(500)
       expect(res.body.error.message).toBe("Failed to fetch bio actor enrichment logs")

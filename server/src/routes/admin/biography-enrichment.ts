@@ -187,10 +187,22 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     limit,
     minPopularity,
     confidenceThreshold,
+    earlyStopSourceCount,
     allowRegeneration,
     useStaging,
     sourceCategories,
   } = req.body
+
+  // Validate earlyStopSourceCount before inserting run record
+  if (earlyStopSourceCount !== undefined) {
+    const n = Number(earlyStopSourceCount)
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+      res.status(400).json({
+        error: { message: "earlyStopSourceCount must be a non-negative integer" },
+      })
+      return
+    }
+  }
 
   try {
     const { queueManager } = await import("../../lib/jobs/queue-manager.js")
@@ -218,6 +230,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
       limit: limit || 10,
       minPopularity,
       confidenceThreshold,
+      earlyStopSourceCount,
       allowRegeneration: effectiveAllowRegeneration,
       useStaging: useStaging || false,
       sourceCategories,
@@ -238,6 +251,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         limit: limit || 10,
         minPopularity,
         confidenceThreshold,
+        earlyStopSourceCount,
         allowRegeneration: effectiveAllowRegeneration,
         useStaging: useStaging || false,
         sourceCategories,

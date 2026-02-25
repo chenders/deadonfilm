@@ -50,6 +50,14 @@ function parsePositiveInt(value: string): number {
   return n
 }
 
+export function parseNonNegativeInt(value: string): number {
+  const n = parseInt(value, 10)
+  if (isNaN(n) || !Number.isInteger(n) || n < 0) {
+    throw new InvalidArgumentError("Must be a non-negative integer")
+  }
+  return n
+}
+
 function parsePositiveFloat(value: string): number {
   const n = parseFloat(value)
   if (isNaN(n) || n <= 0) {
@@ -180,6 +188,11 @@ const program = new Command()
   .option("--disable-news", "Disable news sources")
   .option("--disable-archives", "Disable archive sources")
   .option("--disable-books", "Disable book sources (Google Books, Open Library, IA Books)")
+  .option(
+    "--early-stop-sources <n>",
+    "Min high-quality source families before early stopping (default 5, 0 = disable early stopping)",
+    parseNonNegativeInt
+  )
   .option("--staging", "Write to staging table for admin review")
   .option("--ignore-cache", "Ignore cached responses")
   .option("-y, --yes", "Skip confirmation prompt")
@@ -202,6 +215,7 @@ interface CliOptions {
   disableNews?: boolean
   disableArchives?: boolean
   disableBooks?: boolean
+  earlyStopSources?: number
   staging?: boolean
   ignoreCache?: boolean
   yes?: boolean
@@ -240,6 +254,9 @@ async function run(options: CliOptions): Promise<void> {
           haikuEnabled: !options.disableHaikuCleanup,
           mechanicalOnly: !!options.disableHaikuCleanup,
         },
+        ...(options.earlyStopSources !== undefined && {
+          earlyStopSourceCount: options.earlyStopSources,
+        }),
       }
 
       // Query actors based on CLI options

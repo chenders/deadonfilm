@@ -296,6 +296,7 @@ export const enrichBiographiesBatchPayloadSchema = z.object({
   confidenceThreshold: z.number().min(0).max(1).optional(),
   maxCostPerActor: z.number().optional(),
   maxTotalCost: z.number().optional(),
+  earlyStopSourceCount: z.number().int().min(0).optional(), // 0 = disable early stopping (try all sources)
   allowRegeneration: z.boolean().default(false),
   useStaging: z.boolean().default(false),
   sourceCategories: z
