@@ -194,6 +194,9 @@ export default function ActorPage() {
   const profileUrl = getProfileUrl(actor.profilePath, "h632")
   const currentAge = actor.deathday ? null : calculateCurrentAge(actor.birthday)
   const isDeceased = !!actor.deathday
+  const profileLinkUrl =
+    actor.biographySourceUrl ||
+    (actor.tmdbId ? `https://www.themoviedb.org/person/${actor.tmdbId}` : null)
   // Build a descriptive meta description based on death status
   const metaDescription = isDeceased
     ? `${actor.name} died on ${formatDate(actor.deathday, actor.deathdayPrecision)}${deathInfo?.ageAtDeath ? ` at age ${deathInfo.ageAtDeath}` : ""}.${deathInfo?.causeOfDeath ? ` Cause of death: ${deathInfo.causeOfDeath}.` : ""} See complete filmography and mortality statistics.`
@@ -256,24 +259,34 @@ export default function ActorPage() {
         <div className="mb-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           {/* Profile photo */}
           {profileUrl ? (
-            <a
-              href={
-                actor.biographySourceUrl ||
-                (actor.tmdbId ? `https://www.themoviedb.org/person/${actor.tmdbId}` : undefined)
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-shrink-0"
-            >
-              <img
-                src={profileUrl}
-                alt={actor.name}
-                width={144}
-                height={192}
-                className="h-48 w-36 rounded-lg object-cover shadow-md transition-opacity hover:opacity-90"
-                data-testid="actor-profile-photo"
-              />
-            </a>
+            profileLinkUrl ? (
+              <a
+                href={profileLinkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0"
+              >
+                <img
+                  src={profileUrl}
+                  alt={actor.name}
+                  width={144}
+                  height={192}
+                  className="h-48 w-36 rounded-lg object-cover shadow-md transition-opacity hover:opacity-90"
+                  data-testid="actor-profile-photo"
+                />
+              </a>
+            ) : (
+              <div className="flex-shrink-0">
+                <img
+                  src={profileUrl}
+                  alt={actor.name}
+                  width={144}
+                  height={192}
+                  className="h-48 w-36 rounded-lg object-cover shadow-md transition-opacity hover:opacity-90"
+                  data-testid="actor-profile-photo"
+                />
+              </div>
+            )
           ) : (
             <div
               className="flex h-48 w-36 flex-shrink-0 items-center justify-center rounded-lg bg-beige shadow-md"

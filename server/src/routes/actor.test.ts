@@ -36,7 +36,7 @@ vi.mock("../lib/cache.js", () => ({
   setCached: vi.fn().mockResolvedValue(undefined),
   CACHE_KEYS: {
     actor: (id: number) => ({
-      profile: `actor:id:${id}`,
+      profile: `actor:id:${id}:v:2`,
       death: `actor:id:${id}:type:death`,
     }),
   },
@@ -266,7 +266,7 @@ describe("getActor", () => {
 
     // Cache key should be constructed via CACHE_KEYS.actor().profile using internal actor.id
     expect(setCached).toHaveBeenCalledWith(
-      "actor:id:1",
+      "actor:id:1:v:2",
       expect.objectContaining({
         actor: expect.objectContaining({ id: 1, tmdbId: 12345, name: "Living Actor" }),
         analyzedFilmography: mockFilmography,

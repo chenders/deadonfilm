@@ -234,6 +234,30 @@ describe("ActorPage", () => {
     expect(screen.getByText(/Died of natural causes at age 80/)).toBeInTheDocument()
   })
 
+  it("omits TMDB link and OG image when tmdbId is null", async () => {
+    vi.mocked(api.getActor).mockResolvedValue({
+      ...mockLivingActor,
+      actor: {
+        ...mockLivingActor.actor,
+        tmdbId: null,
+        biographySourceUrl: null,
+      },
+    })
+
+    renderWithProviders(<ActorPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("actor-page")).toBeInTheDocument()
+    })
+
+    // TMDB link should not be present
+    expect(screen.queryByText("TMDB")).not.toBeInTheDocument()
+
+    // Profile photo should not be wrapped in a link
+    const photo = screen.getByTestId("actor-profile-photo")
+    expect(photo.closest("a")).toBeNull()
+  })
+
   it("renders external links (TMDB, Wikipedia)", async () => {
     vi.mocked(api.getActor).mockResolvedValue(mockDeceasedActor)
 
