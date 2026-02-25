@@ -64,6 +64,16 @@ import { OpenLibraryBiographySource } from "./sources/open-library.js"
 import { IABooksBiographySource } from "./sources/ia-books.js"
 
 /**
+ * Book source types — these are always tried regardless of early stopping.
+ * Books provide unique archival content not found in web sources.
+ */
+const BOOK_SOURCE_TYPES = new Set<BiographySourceType>([
+  BiographySourceType.GOOGLE_BOOKS_BIO,
+  BiographySourceType.OPEN_LIBRARY_BIO,
+  BiographySourceType.IA_BOOKS_BIO,
+])
+
+/**
  * Source families that share the same upstream data. Sources within the same
  * family count as a single high-quality source for early-stopping purposes.
  * This prevents e.g. Wikidata + Wikipedia (both Wikimedia Foundation) from
@@ -285,6 +295,15 @@ export class BiographyEnrichmentOrchestrator {
     const rawSources: RawBiographySourceData[] = []
     const highQualityFamilies = new Set<string>()
 
+    // Find the last book source index so early stopping is deferred until after all books
+    let lastBookSourceIndex = -1
+    for (let i = this.sources.length - 1; i >= 0; i--) {
+      if (BOOK_SOURCE_TYPES.has(this.sources[i].type)) {
+        lastBookSourceIndex = i
+        break
+      }
+    }
+
     // Add New Relic attributes for this actor
     for (const [key, value] of Object.entries({
       "bio.actor.id": actor.id,
@@ -297,7 +316,35 @@ export class BiographyEnrichmentOrchestrator {
     this.runLogger?.info("Processing actor", { actorId: actor.id, actorName: actor.name })
 
     // Try each source in order
-    for (const source of this.sources) {
+    for (let sourceIndex = 0; sourceIndex < this.sources.length; sourceIndex++) {
+      const source = this.sources[sourceIndex]
+
+      // Early stopping gate: skip remaining non-book sources once threshold is met
+      // and all book sources have been processed
+      if (
+        highQualityFamilies.size >= this.config.earlyStopSourceCount &&
+        sourceIndex > lastBookSourceIndex &&
+        !BOOK_SOURCE_TYPES.has(source.type)
+      ) {
+        console.log(
+          `    ${highQualityFamilies.size} distinct high-quality source families collected, stopping early to save cost`
+        )
+        this.runLogger?.info("Early stop triggered", {
+          actorId: actor.id,
+          highQualityFamilies: highQualityFamilies.size,
+          sourcesAttempted,
+          costUsd: totalCost,
+        })
+        newrelic.recordCustomEvent("BioEarlyStop", {
+          actorId: actor.id,
+          actorName: actor.name,
+          highQualityFamilyCount: highQualityFamilies.size,
+          sourcesAttempted,
+          totalCostUsd: totalCost,
+        })
+        break
+      }
+
       sourcesAttempted++
 
       console.log(`  Trying ${source.name}...`)
@@ -376,26 +423,6 @@ export class BiographyEnrichmentOrchestrator {
           highQualityFamilies.add(familyKey)
         }
 
-        // Early stopping: if we have enough distinct high-quality source families, stop to save cost
-        if (highQualityFamilies.size >= this.config.earlyStopSourceCount) {
-          console.log(
-            `    ${highQualityFamilies.size} distinct high-quality source families collected, stopping early to save cost`
-          )
-          this.runLogger?.info("Early stop triggered", {
-            actorId: actor.id,
-            highQualityFamilies: highQualityFamilies.size,
-            sourcesAttempted,
-            costUsd: totalCost,
-          })
-          newrelic.recordCustomEvent("BioEarlyStop", {
-            actorId: actor.id,
-            actorName: actor.name,
-            highQualityFamilyCount: highQualityFamilies.size,
-            sourcesAttempted,
-            totalCostUsd: totalCost,
-          })
-          break
-        }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown error"
         console.log(`    Error: ${errorMsg}`)

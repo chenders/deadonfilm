@@ -733,6 +733,42 @@ describe("BiographyEnrichmentOrchestrator", () => {
       expect(result.rawSources).toHaveLength(3)
     })
 
+    it("always tries book sources even when early stop threshold is met", async () => {
+      // earlyStopSourceCount=2: would normally stop after 2 distinct families
+      const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: 2 })
+
+      // Make Wikidata and Britannica succeed (2 distinct families → threshold met)
+      const wikidataMock = getMock("Wikidata")
+      ;(wikidataMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
+      )
+      const britannicaMock = getMock("Britannica")
+      ;(britannicaMock.lookup as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createSuccessfulLookup({ confidence: 0.8, reliabilityScore: 0.95 })
+      )
+
+      // Set real book source types so the exemption logic recognizes them
+      const googleBooksMock = getMock("Google Books")
+      googleBooksMock.type = BiographySourceType.GOOGLE_BOOKS_BIO
+      const openLibraryMock = getMock("Open Library")
+      openLibraryMock.type = BiographySourceType.OPEN_LIBRARY_BIO
+      const iaBooksMock = getMock("IA Books")
+      iaBooksMock.type = BiographySourceType.IA_BOOKS_BIO
+
+      vi.mocked(synthesizeBiography).mockResolvedValue(createSynthesisResult())
+
+      await orchestrator.enrichActor(testActor)
+
+      // Book sources should still be tried despite early stop threshold being met
+      expect(googleBooksMock.lookup).toHaveBeenCalled()
+      expect(openLibraryMock.lookup).toHaveBeenCalled()
+      expect(iaBooksMock.lookup).toHaveBeenCalled()
+
+      // But sources after books should NOT be tried (early stop fires after books)
+      const googleSearchMock = getMock("Google Search")
+      expect(googleSearchMock.lookup).not.toHaveBeenCalled()
+    })
+
     it("does not stop early if sources do not meet both thresholds", async () => {
       // Reconfigure source constructors to have LOW reliability on the source object
       // (the orchestrator reads source.reliabilityScore, not the lookup result's)
