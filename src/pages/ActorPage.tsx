@@ -211,13 +211,15 @@ export default function ActorPage() {
         <meta property="og:type" content="profile" />
         <meta property="og:description" content={metaDescription} />
         {actor.tmdbId && (
-          <meta
-            property="og:image"
-            content={`https://deadonfilm.com/og/actor/${actor.tmdbId}.png`}
-          />
+          <>
+            <meta
+              property="og:image"
+              content={`https://deadonfilm.com/og/actor/${actor.tmdbId}.png`}
+            />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+          </>
         )}
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${actor.name} - Dead on Film`} />

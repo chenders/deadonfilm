@@ -19,8 +19,8 @@ export interface ResolvedRelatedCelebrity {
  * their internal actor IDs via tmdb_id or name match.
  * Uses canonical actor names from the database for slug generation.
  */
-// Read tmdb_id from a related celebrity, handling legacy camelCase JSONB entries
-function getCelebTmdbId(c: RelatedCelebrity): number | null {
+/** Read tmdb_id from a related celebrity, handling legacy camelCase JSONB entries */
+export function getCelebTmdbId(c: RelatedCelebrity): number | null {
   return c.tmdb_id ?? ((c as unknown as Record<string, unknown>).tmdbId as number | null) ?? null
 }
 
