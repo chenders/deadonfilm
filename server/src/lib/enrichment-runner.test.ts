@@ -39,7 +39,12 @@ vi.mock("./death-sources/orchestrator.js", () => {
 
       enrichActor = vi.fn().mockImplementation(async () => {
         this.actorsProcessed++
-        this.actorsEnriched++
+        const hasSubstantiveEnrichment =
+          mockEnrichResult != null &&
+          Object.values(mockEnrichResult).some((value) => value !== null && value !== undefined)
+        if (hasSubstantiveEnrichment) {
+          this.actorsEnriched++
+        }
         this.totalCost += 0.1
         return mockEnrichResult
       })
@@ -334,8 +339,17 @@ describe("EnrichmentRunner", () => {
     })
 
     it("should use ON CONFLICT upsert for non-enriched actor INSERT to handle retries", async () => {
-      // Return no enrichment data so we hit the non-enriched INSERT path
-      mockEnrichResult = { date: null, location: null, causeOfDeath: null }
+      // Clear the fields that actually drive hasEnrichmentData to ensure
+      // we hit the non-enriched INSERT path regardless of future logic changes
+      mockEnrichResult = {
+        ...defaultEnrichResult,
+        date: null,
+        location: null,
+        causeOfDeath: null,
+        circumstances: null,
+        notableFactors: null,
+        cleanedDeathInfo: null,
+      }
 
       mockQuery
         .mockResolvedValueOnce({
