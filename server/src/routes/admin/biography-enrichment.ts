@@ -20,6 +20,7 @@ import {
   stopBioEnrichmentRun,
   getBioEnrichmentRunProgress,
 } from "../../lib/bio-enrichment-process-manager.js"
+import { createRunLogsHandler } from "./run-logs-handler.js"
 
 const router = Router()
 
@@ -421,6 +422,45 @@ router.get("/runs/:id/sources/stats", async (req: Request, res: Response): Promi
   } catch (error) {
     logger.error({ error }, "Failed to fetch bio enrichment source stats")
     res.status(500).json({ error: { message: "Failed to fetch source stats" } })
+  }
+})
+
+// GET /admin/api/biography-enrichment/runs/:id/run-logs - All-level run logs
+router.get("/runs/:id/run-logs", createRunLogsHandler("biography"))
+
+// GET /admin/api/biography-enrichment/runs/:id/actors/:actorId/logs - Per-actor logs
+router.get("/runs/:id/actors/:actorId/logs", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = getPool()
+    const runId = parseInt(req.params.id, 10)
+    const actorId = parseInt(req.params.actorId, 10)
+
+    if (isNaN(runId) || isNaN(actorId)) {
+      res.status(400).json({ error: { message: "Invalid run ID or actor ID" } })
+      return
+    }
+
+    const result = await pool.query<{ log_entries: unknown[]; actor_name: string }>(
+      `SELECT bra.log_entries, a.name AS actor_name
+       FROM bio_enrichment_run_actors bra
+       JOIN actors a ON a.id = bra.actor_id
+       WHERE bra.run_id = $1 AND bra.actor_id = $2`,
+      [runId, actorId]
+    )
+
+    const row = result.rows[0]
+    if (!row) {
+      res.status(404).json({ error: { message: "Not found" } })
+      return
+    }
+
+    res.json({
+      actorName: row.actor_name,
+      logEntries: row.log_entries || [],
+    })
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch bio actor enrichment logs")
+    res.status(500).json({ error: { message: "Failed to fetch bio actor enrichment logs" } })
   }
 })
 

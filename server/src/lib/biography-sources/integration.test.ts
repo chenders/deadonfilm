@@ -61,6 +61,12 @@ vi.mock("wtf_wikipedia", () => {
   }
 })
 
+// Mock the database pool (used by saveRejectedFactors when invalid factors are stripped)
+const mockPoolQuery = vi.fn().mockResolvedValue({ rows: [] })
+vi.mock("../db/pool.js", () => ({
+  getPool: () => ({ query: mockPoolQuery }),
+}))
+
 // ============================================================================
 // Imports — after mocks
 // ============================================================================

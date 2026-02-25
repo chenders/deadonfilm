@@ -249,6 +249,9 @@ export async function injectCaptchaToken(
   // Note: This callback runs in browser context, not Node.js
   await page.evaluate(
     ({ token, type }) => {
+      // Browser globals injected by third-party CAPTCHA scripts
+      const win = window as unknown as Record<string, unknown>
+
       // Find and fill the response textarea
       const responseSelectors = [
         "#g-recaptcha-response",
@@ -275,34 +278,26 @@ export async function injectCaptchaToken(
 
       // Try to trigger the callback function
       if (type === "recaptcha_v2" || type === "recaptcha_v3") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (
-          typeof (window as any).grecaptcha !== "undefined" &&
-          (window as any).grecaptcha.getResponse
-        ) {
+        const grecaptcha = win.grecaptcha as { getResponse?: () => string } | undefined
+        if (typeof grecaptcha !== "undefined" && grecaptcha?.getResponse) {
           try {
             // Find callback from data attribute
             const recaptchaDiv = document.querySelector("[data-callback]")
             const callbackName = recaptchaDiv?.getAttribute("data-callback")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (callbackName && typeof (window as any)[callbackName] === "function") {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ;(window as any)[callbackName](token)
+            if (callbackName && typeof win[callbackName] === "function") {
+              ;(win[callbackName] as (t: string) => void)(token)
             }
           } catch {
             // Callback invocation failed, form submission should still work
           }
         }
       } else if (type === "hcaptcha") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (typeof (window as any).hcaptcha !== "undefined") {
+        if (typeof win.hcaptcha !== "undefined") {
           try {
             const hcaptchaDiv = document.querySelector("[data-callback]")
             const callbackName = hcaptchaDiv?.getAttribute("data-callback")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (callbackName && typeof (window as any)[callbackName] === "function") {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ;(window as any)[callbackName](token)
+            if (callbackName && typeof win[callbackName] === "function") {
+              ;(win[callbackName] as (t: string) => void)(token)
             }
           } catch {
             // Callback invocation failed
