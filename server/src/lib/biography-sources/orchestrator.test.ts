@@ -521,12 +521,12 @@ describe("BiographyEnrichmentOrchestrator", () => {
       ).toBe(5)
     })
 
-    it("falls back to default for Infinity", () => {
+    it("preserves Infinity to disable early stopping", () => {
       const orchestrator = new BiographyEnrichmentOrchestrator({ earlyStopSourceCount: Infinity })
       expect(
         (orchestrator as unknown as { config: { earlyStopSourceCount: number } }).config
           .earlyStopSourceCount
-      ).toBe(5)
+      ).toBe(Infinity)
     })
 
     it("falls back to default for negative numbers", () => {

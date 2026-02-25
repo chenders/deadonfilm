@@ -139,9 +139,11 @@ export class BiographyEnrichmentOrchestrator {
         ...(config?.contentCleaning ?? {}),
       },
     }
-    // Clamp earlyStopSourceCount to a sane minimum
+    // Clamp earlyStopSourceCount to a sane minimum (Infinity = disable early stopping)
     const raw = this.config.earlyStopSourceCount
-    if (!Number.isFinite(raw) || raw < 1) {
+    if (raw === Infinity) {
+      // Infinity is deliberate: disable early stopping, try all sources
+    } else if (!Number.isFinite(raw) || raw < 1) {
       this.config.earlyStopSourceCount = DEFAULT_BIOGRAPHY_CONFIG.earlyStopSourceCount
     } else {
       this.config.earlyStopSourceCount = Math.floor(raw)
@@ -369,10 +371,14 @@ export class BiographyEnrichmentOrchestrator {
 
         if (!lookupResult.success || !lookupResult.data) {
           console.log(`    Failed: ${lookupResult.error || "No data"}`)
-          this.runLogger?.debug("Source failed", {
-            actorId: actor.id,
-            error: lookupResult.error || "No data",
-          }, source.name)
+          this.runLogger?.debug(
+            "Source failed",
+            {
+              actorId: actor.id,
+              error: lookupResult.error || "No data",
+            },
+            source.name
+          )
           newrelic.recordCustomEvent("BioSourceFailed", {
             actorId: actor.id,
             actorName: actor.name,
@@ -389,12 +395,16 @@ export class BiographyEnrichmentOrchestrator {
         console.log(
           `    Success! Content: ${lookupResult.source.confidence.toFixed(2)} | Reliability: ${srcReliability.toFixed(2)}`
         )
-        this.runLogger?.info("Source success", {
-          actorId: actor.id,
-          confidence: lookupResult.source.confidence,
-          reliability: srcReliability,
-          costUsd: sourceCost,
-        }, source.name)
+        this.runLogger?.info(
+          "Source success",
+          {
+            actorId: actor.id,
+            confidence: lookupResult.source.confidence,
+            reliability: srcReliability,
+            costUsd: sourceCost,
+          },
+          source.name
+        )
 
         // Accumulate raw data for synthesis
         rawSources.push(lookupResult.data)
@@ -422,14 +432,17 @@ export class BiographyEnrichmentOrchestrator {
           const familyKey = SOURCE_FAMILY_LOOKUP.get(source.type) ?? source.type
           highQualityFamilies.add(familyKey)
         }
-
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown error"
         console.log(`    Error: ${errorMsg}`)
-        this.runLogger?.error("Source error", {
-          actorId: actor.id,
-          error: errorMsg,
-        }, source.name)
+        this.runLogger?.error(
+          "Source error",
+          {
+            actorId: actor.id,
+            error: errorMsg,
+          },
+          source.name
+        )
         newrelic.recordCustomEvent("BioSourceFailed", {
           actorId: actor.id,
           actorName: actor.name,
