@@ -257,6 +257,33 @@ describe("getActor", () => {
     })
   })
 
+  it("returns null biographySourceUrl when biography_source_type is enriched", async () => {
+    vi.mocked(db.getActorByEitherIdWithSlug).mockResolvedValueOnce({
+      actor: {
+        ...mockActorRecord,
+        biography: "Enriched narrative biography",
+        biography_source_type: "enriched",
+        biography_source_url: null,
+      },
+      matchedBy: "id",
+    })
+    vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
+    vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)
+    vi.mocked(db.getActorShowFilmography).mockResolvedValueOnce(mockTVFilmography)
+
+    await getActor(mockReq as Request, mockRes as Response)
+
+    expect(jsonSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: expect.objectContaining({
+          biography: "Enriched narrative biography",
+          biographySourceUrl: null,
+          biographySourceType: "enriched",
+        }),
+      })
+    )
+  })
+
   it("sets response in cache on cache miss", async () => {
     vi.mocked(tmdb.getPersonDetails).mockResolvedValueOnce(mockLivingPerson)
     vi.mocked(db.getActorFilmography).mockResolvedValueOnce(mockFilmography)

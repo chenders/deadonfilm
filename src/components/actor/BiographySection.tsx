@@ -8,10 +8,10 @@ interface BiographySectionProps {
   biography?: string | null
   biographyDetails?: BiographyDetails | null
   biographySourceUrl?: string | null
-  biographySourceType?: "wikipedia" | "tmdb" | "imdb" | null
+  biographySourceType?: "wikipedia" | "tmdb" | "imdb" | "enriched" | null
 }
 
-function getSourceDisplayName(type: "wikipedia" | "tmdb" | "imdb" | null): string {
+function getSourceDisplayName(type: "wikipedia" | "tmdb" | "imdb" | "enriched" | null): string {
   switch (type) {
     case "wikipedia":
       return "Wikipedia"

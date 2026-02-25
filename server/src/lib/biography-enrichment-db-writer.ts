@@ -91,6 +91,7 @@ export async function writeBiographyToProduction(
         `UPDATE actors SET
           biography = $1,
           biography_version = COALESCE(biography_version, 0) + 1,
+          biography_source_type = 'enriched',
           updated_at = NOW()
         WHERE id = $2`,
         [data.narrative, actorId]
