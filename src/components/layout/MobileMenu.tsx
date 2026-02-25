@@ -11,7 +11,7 @@ const NAV_GROUPS = [
     label: "Explore",
     links: [
       { to: "/deaths/all", label: "Deaths" },
-      { to: "/genres", label: "Genres" },
+      { to: "/movies/genres", label: "Genres" },
       { to: "/causes-of-death", label: "Causes of Death" },
     ],
   },

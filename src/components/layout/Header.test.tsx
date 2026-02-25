@@ -89,7 +89,10 @@ describe("Header", () => {
         "href",
         "/deaths/all"
       )
-      expect(within(desktopNav).getByText("Genres").closest("a")).toHaveAttribute("href", "/genres")
+      expect(within(desktopNav).getByText("Genres").closest("a")).toHaveAttribute(
+        "href",
+        "/movies/genres"
+      )
       expect(within(desktopNav).getByText("Causes").closest("a")).toHaveAttribute(
         "href",
         "/causes-of-death"
@@ -156,7 +159,7 @@ describe("Header", () => {
 
       // Check specific links
       expect(screen.getByTestId("mobile-nav-deaths-all")).toBeInTheDocument()
-      expect(screen.getByTestId("mobile-nav-genres")).toBeInTheDocument()
+      expect(screen.getByTestId("mobile-nav-movies-genres")).toBeInTheDocument()
       expect(screen.getByTestId("mobile-nav-causes-of-death")).toBeInTheDocument()
       expect(screen.getByTestId("mobile-nav-in-detail")).toBeInTheDocument()
       expect(screen.getByTestId("mobile-nav-about")).toBeInTheDocument()
