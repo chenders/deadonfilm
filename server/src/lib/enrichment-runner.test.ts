@@ -15,6 +15,20 @@ vi.mock("./db.js", () => ({
   })),
 }))
 
+// Default enrichment result (enriched path: has circumstances)
+const defaultEnrichResult = {
+  date: "2020-01-15",
+  location: "Los Angeles, California, USA",
+  causeOfDeath: "heart attack",
+  circumstances: "Died peacefully at home",
+  confidence: 0.9,
+  sources: ["wikipedia", "imdb"],
+  cost: 0.1,
+}
+
+// Module-level variable tests can override to control enrichActor return value
+let mockEnrichResult: Record<string, unknown> = { ...defaultEnrichResult }
+
 // Mock orchestrator as a proper class
 vi.mock("./death-sources/orchestrator.js", () => {
   return {
@@ -27,15 +41,7 @@ vi.mock("./death-sources/orchestrator.js", () => {
         this.actorsProcessed++
         this.actorsEnriched++
         this.totalCost += 0.1
-        return {
-          date: "2020-01-15",
-          location: "Los Angeles, California, USA",
-          causeOfDeath: "heart attack",
-          circumstances: "Died peacefully at home",
-          confidence: 0.9,
-          sources: ["wikipedia", "imdb"],
-          cost: 0.1,
-        }
+        return mockEnrichResult
       })
 
       getStats = vi.fn().mockImplementation(() => ({
@@ -87,6 +93,8 @@ describe("EnrichmentRunner", () => {
     vi.clearAllMocks()
     // Reset mock query to return empty by default
     mockQuery.mockResolvedValue({ rows: [] })
+    // Reset enrichment result to default (enriched path)
+    mockEnrichResult = { ...defaultEnrichResult }
   })
 
   describe("constructor", () => {
@@ -297,7 +305,7 @@ describe("EnrichmentRunner", () => {
   })
 
   describe("run with runId (non-staging)", () => {
-    it("should use ON CONFLICT upsert for enrichment_run_actors to handle retries", async () => {
+    it("should use ON CONFLICT upsert for enriched actor INSERT to handle retries", async () => {
       mockQuery
         .mockResolvedValueOnce({
           rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
@@ -315,7 +323,6 @@ describe("EnrichmentRunner", () => {
 
       await runner.run()
 
-      // All enrichment_run_actors INSERTs should use ON CONFLICT for retry safety
       const insertCalls = mockQuery.mock.calls.filter(
         (call) =>
           typeof call[0] === "string" && call[0].includes("INSERT INTO enrichment_run_actors")
@@ -324,6 +331,39 @@ describe("EnrichmentRunner", () => {
       for (const call of insertCalls) {
         expect(call[0]).toContain("ON CONFLICT (run_id, actor_id) DO UPDATE SET")
       }
+    })
+
+    it("should use ON CONFLICT upsert for non-enriched actor INSERT to handle retries", async () => {
+      // Return no enrichment data so we hit the non-enriched INSERT path
+      mockEnrichResult = { date: null, location: null, causeOfDeath: null }
+
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
+        })
+        .mockResolvedValue({ rows: [] })
+
+      const runner = new EnrichmentRunner({
+        actorIds: [1],
+        runId: 42,
+        staging: false,
+        free: true,
+        paid: false,
+        ai: false,
+      })
+
+      await runner.run()
+
+      const insertCalls = mockQuery.mock.calls.filter(
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("INSERT INTO enrichment_run_actors")
+      )
+      expect(insertCalls.length).toBeGreaterThan(0)
+      for (const call of insertCalls) {
+        expect(call[0]).toContain("ON CONFLICT (run_id, actor_id) DO UPDATE SET")
+      }
+      // Non-enriched path sets was_enriched = false (param index 2, 0-based)
+      expect(insertCalls[0][1][2]).toBe(false)
     })
 
     it("should insert into enrichment_run_actors and write to production when runId is provided with staging: false", async () => {
