@@ -104,11 +104,14 @@ export default function ExpandableSection({
         </button>
       </h2>
 
-      {/* Content area with animated max-height */}
+      {/* Content area with animated max-height — clickable when collapsed */}
       <div
         ref={contentRef}
-        className="relative mt-3 overflow-hidden transition-[max-height] duration-300 ease-in-out"
+        className={`relative mt-3 overflow-hidden transition-[max-height] duration-300 ease-in-out ${
+          !isExpanded ? "cursor-pointer" : ""
+        }`}
         style={maxHeight !== undefined ? { maxHeight } : undefined}
+        onClick={!isExpanded ? onToggle : undefined}
         onTransitionEnd={handleTransitionEnd}
         data-testid="expandable-section-content"
       >
@@ -122,7 +125,14 @@ export default function ExpandableSection({
           style={{
             background: "linear-gradient(to bottom, transparent, var(--surface-elevated))",
           }}
-          onClick={isExpanded ? undefined : onToggle}
+          onClick={
+            isExpanded
+              ? undefined
+              : (e) => {
+                  e.stopPropagation()
+                  onToggle()
+                }
+          }
           onKeyDown={
             isExpanded
               ? undefined
