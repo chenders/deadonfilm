@@ -306,6 +306,7 @@ export const enrichBiographiesBatchPayloadSchema = z.object({
       news: z.boolean().default(true),
       obituary: z.boolean().default(true),
       archives: z.boolean().default(true),
+      books: z.boolean().default(true),
     })
     .optional(),
 })

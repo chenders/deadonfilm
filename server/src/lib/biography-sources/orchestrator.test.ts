@@ -396,6 +396,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -417,6 +418,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -436,6 +438,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: true,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -560,6 +563,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -589,6 +593,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -621,6 +626,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
         synthesisModel: "claude-sonnet-4-20250514",
@@ -770,6 +776,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -800,6 +807,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -831,6 +839,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -868,6 +877,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -890,6 +900,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -917,6 +928,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -946,6 +958,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -972,6 +985,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1046,6 +1060,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1085,6 +1100,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1116,6 +1132,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1135,6 +1152,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1159,6 +1177,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1175,6 +1194,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
