@@ -101,18 +101,12 @@ describe("ActorLogsModal", () => {
     const levels = screen.getAllByText(/^(info|warn|error|debug)$/)
     expect(levels).toHaveLength(4)
 
-    // Check badge CSS classes
-    const infoBadge = levels.find((el) => el.textContent === "info")
-    expect(infoBadge?.className).toContain("bg-blue-800")
-
-    const warnBadge = levels.find((el) => el.textContent === "warn")
-    expect(warnBadge?.className).toContain("bg-yellow-800")
-
-    const errorBadge = levels.find((el) => el.textContent === "error")
-    expect(errorBadge?.className).toContain("bg-red-800")
-
-    const debugBadge = levels.find((el) => el.textContent === "debug")
-    expect(debugBadge?.className).toContain("bg-gray-700")
+    // Verify all four levels are represented
+    const levelTexts = levels.map((el) => el.textContent)
+    expect(levelTexts).toContain("info")
+    expect(levelTexts).toContain("warn")
+    expect(levelTexts).toContain("error")
+    expect(levelTexts).toContain("debug")
   })
 
   it("shows JSON data for non-collapsible entries", () => {

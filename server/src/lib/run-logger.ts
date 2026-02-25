@@ -7,6 +7,7 @@
  */
 
 import { getPool } from "./db/pool.js"
+import { logger } from "./logger.js"
 
 interface LogEntry {
   timestamp: Date
@@ -95,7 +96,7 @@ export class RunLogger {
         [this.runType, this.runId, timestamps, levels, messages, dataArr, sources]
       )
     } catch (err) {
-      console.error("[RunLogger] Failed to flush logs:", err)
+      logger.error({ err, runType: this.runType, runId: this.runId }, "[RunLogger] Failed to flush logs")
     }
   }
 }
