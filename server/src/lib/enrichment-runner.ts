@@ -545,7 +545,7 @@ export class EnrichmentRunner {
               : null,
             entityLinks: hasEntityLinks(entityLinks) ? entityLinks : null,
             enrichmentSource: "multi-source-enrichment",
-            enrichmentVersion: useReliabilityThreshold ? "3.0.0" : "3.0.0-no-reliability",
+            enrichmentVersion: useReliabilityThreshold ? "4.0.0" : "4.0.0-no-reliability",
           }
 
           // Record per-actor results for all runs with a runId

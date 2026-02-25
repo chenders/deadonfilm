@@ -57,6 +57,11 @@ import { ChroniclingAmericaBiographySource } from "./sources/chronicling-america
 import { TroveBiographySource } from "./sources/trove.js"
 import { EuropeanaBiographySource } from "./sources/europeana.js"
 
+// Source imports — Books/Publications
+import { GoogleBooksBiographySource } from "./sources/google-books.js"
+import { OpenLibraryBiographySource } from "./sources/open-library.js"
+import { IABooksBiographySource } from "./sources/ia-books.js"
+
 /**
  * Source families that share the same upstream data. Sources within the same
  * family count as a single high-quality source for early-stopping purposes.
@@ -65,6 +70,11 @@ import { EuropeanaBiographySource } from "./sources/europeana.js"
  */
 const SOURCE_FAMILIES: Record<string, BiographySourceType[]> = {
   wikimedia: [BiographySourceType.WIKIDATA_BIO, BiographySourceType.WIKIPEDIA_BIO],
+  books: [
+    BiographySourceType.GOOGLE_BOOKS_BIO,
+    BiographySourceType.OPEN_LIBRARY_BIO,
+    BiographySourceType.IA_BOOKS_BIO,
+  ],
 }
 
 /** Build a reverse lookup from source type → family key */
@@ -146,6 +156,20 @@ export class BiographyEnrichmentOrchestrator {
         new BiographyComSource(),
       ]
       for (const source of referenceSources) {
+        if (source.isAvailable()) {
+          sources.push(source)
+        }
+      }
+    }
+
+    // Phase 2.5: Books/Publications (Google Books, Open Library, IA Books)
+    if (this.config.sourceCategories.books) {
+      const bookSources: BaseBiographySource[] = [
+        new GoogleBooksBiographySource(),
+        new OpenLibraryBiographySource(),
+        new IABooksBiographySource(),
+      ]
+      for (const source of bookSources) {
         if (source.isAvailable()) {
           sources.push(source)
         }

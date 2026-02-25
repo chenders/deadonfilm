@@ -78,6 +78,13 @@ Enriches actor records with narrative personal life biographies from ~19 active 
 | **Britannica** | DuckDuckGo `site:britannica.com` search | High-quality biographical content |
 | **Biography.com** | DuckDuckGo `site:biography.com` search | Dedicated biography resource |
 
+### Phase 2.5: Books/Publications
+| Source | Method | Notes |
+|--------|--------|-------|
+| **Google Books** | Google Books API v1 snippets + descriptions | Requires `GOOGLE_BOOKS_API_KEY`, 1,000 req/day |
+| **Open Library** | Person-subject search + Search Inside API | Free, no API key |
+| **IA Books** | Internet Archive advanced search + OCR | Free, public domain full text |
+
 ### Phase 3: Web Search (with link following)
 | Source | Method | Notes |
 |--------|--------|-------|
@@ -107,7 +114,7 @@ Internet Archive, Chronicling America, Trove, Europeana
 
 ## Orchestrator Flow
 
-1. Initialize sources by category (free → reference → web search → news → obituary → archives)
+1. Initialize sources by category (free → reference → books → web search → news → obituary → archives)
 2. For each actor, try sources sequentially, accumulating ALL successful results
 3. **Early stopping**: After 3+ high-quality sources meeting dual threshold (confidence ≥ 0.6 AND reliability ≥ 0.6)
 4. Send all accumulated raw data to Claude synthesis (Stage 3)
@@ -125,6 +132,7 @@ Internet Archive, Chronicling America, Trove, Europeana
   sourceCategories: {
     free: true,                  // Wikidata, Wikipedia
     reference: true,             // Britannica, Biography.com
+    books: true,                 // Google Books, Open Library, IA Books
     webSearch: true,             // Google, Bing, DuckDuckGo, Brave
     news: true,                  // Guardian, NYT, AP, BBC, People
     obituary: true,              // Legacy, FindAGrave

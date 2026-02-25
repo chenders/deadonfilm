@@ -151,6 +151,15 @@ vi.mock("./sources/trove.js", () => ({
 vi.mock("./sources/europeana.js", () => ({
   EuropeanaBiographySource: makeMockSourceClass("Europeana"),
 }))
+vi.mock("./sources/google-books.js", () => ({
+  GoogleBooksBiographySource: makeMockSourceClass("Google Books"),
+}))
+vi.mock("./sources/open-library.js", () => ({
+  OpenLibraryBiographySource: makeMockSourceClass("Open Library"),
+}))
+vi.mock("./sources/ia-books.js", () => ({
+  IABooksBiographySource: makeMockSourceClass("IA Books"),
+}))
 
 // Mock Claude synthesis
 vi.mock("./claude-cleanup.js", () => ({
@@ -313,8 +322,8 @@ describe("BiographyEnrichmentOrchestrator", () => {
     it("initializes all source categories by default", () => {
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      // All 19 sources should be initialized (all categories enabled except AI)
-      expect(orchestrator.getSourceCount()).toBe(19)
+      // All 22 sources should be initialized (all categories enabled except AI)
+      expect(orchestrator.getSourceCount()).toBe(22)
     })
 
     it("initializes sources in correct priority order", () => {
@@ -322,26 +331,29 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const names = orchestrator.getSourceNames()
 
-      // Verify order: free -> reference -> web search -> news -> obituary -> archives
+      // Verify order: free -> reference -> books -> web search -> news -> obituary -> archives
       expect(names[0]).toBe("Wikidata")
       expect(names[1]).toBe("Wikipedia")
       expect(names[2]).toBe("Britannica")
       expect(names[3]).toBe("Biography.com")
-      expect(names[4]).toBe("Google Search")
-      expect(names[5]).toBe("Bing Search")
-      expect(names[6]).toBe("DuckDuckGo")
-      expect(names[7]).toBe("Brave Search")
-      expect(names[8]).toBe("Guardian")
-      expect(names[9]).toBe("NYTimes")
-      expect(names[10]).toBe("AP News")
-      expect(names[11]).toBe("BBC News")
-      expect(names[12]).toBe("People")
-      expect(names[13]).toBe("Legacy")
-      expect(names[14]).toBe("FindAGrave")
-      expect(names[15]).toBe("Internet Archive")
-      expect(names[16]).toBe("Chronicling America")
-      expect(names[17]).toBe("Trove")
-      expect(names[18]).toBe("Europeana")
+      expect(names[4]).toBe("Google Books")
+      expect(names[5]).toBe("Open Library")
+      expect(names[6]).toBe("IA Books")
+      expect(names[7]).toBe("Google Search")
+      expect(names[8]).toBe("Bing Search")
+      expect(names[9]).toBe("DuckDuckGo")
+      expect(names[10]).toBe("Brave Search")
+      expect(names[11]).toBe("Guardian")
+      expect(names[12]).toBe("NYTimes")
+      expect(names[13]).toBe("AP News")
+      expect(names[14]).toBe("BBC News")
+      expect(names[15]).toBe("People")
+      expect(names[16]).toBe("Legacy")
+      expect(names[17]).toBe("FindAGrave")
+      expect(names[18]).toBe("Internet Archive")
+      expect(names[19]).toBe("Chronicling America")
+      expect(names[20]).toBe("Trove")
+      expect(names[21]).toBe("Europeana")
     })
 
     it("filters out unavailable sources", () => {
@@ -382,7 +394,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
 
       const orchestrator = new BiographyEnrichmentOrchestrator()
 
-      expect(orchestrator.getSourceCount()).toBe(17)
+      expect(orchestrator.getSourceCount()).toBe(20)
       expect(orchestrator.getSourceNames()).not.toContain("Google Search")
       expect(orchestrator.getSourceNames()).not.toContain("Bing Search")
     })
@@ -396,6 +408,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -417,6 +430,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -436,6 +450,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: true,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -560,6 +575,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -589,6 +605,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -621,6 +638,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
         synthesisModel: "claude-sonnet-4-20250514",
@@ -770,6 +788,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -800,6 +819,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -831,6 +851,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -868,6 +889,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -890,6 +912,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -917,6 +940,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -946,6 +970,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -972,6 +997,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1046,6 +1072,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1085,6 +1112,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1116,6 +1144,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1135,6 +1164,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1159,6 +1189,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -1175,6 +1206,7 @@ describe("BiographyEnrichmentOrchestrator", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })

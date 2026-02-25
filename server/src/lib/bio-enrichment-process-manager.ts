@@ -34,6 +34,7 @@ export interface BioEnrichmentRunConfig {
     news?: boolean
     obituary?: boolean
     archives?: boolean
+    books?: boolean
   }
 }
 
@@ -85,6 +86,7 @@ export async function startBioEnrichmentRun(config: BioEnrichmentRunConfig): Pro
               news: config.sourceCategories.news ?? true,
               obituary: config.sourceCategories.obituary ?? true,
               archives: config.sourceCategories.archives ?? true,
+              books: config.sourceCategories.books ?? true,
             }
           : undefined,
       },

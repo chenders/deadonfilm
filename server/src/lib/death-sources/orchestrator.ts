@@ -59,6 +59,9 @@ import { BBCNewsSource } from "./sources/bbc-news.js"
 import { GoogleNewsRSSSource } from "./sources/google-news-rss.js"
 import { BraveSearchSource } from "./sources/brave.js"
 import { FamilySearchSource } from "./sources/familysearch.js"
+import { GoogleBooksDeathSource } from "./sources/google-books.js"
+import { OpenLibraryDeathSource } from "./sources/open-library.js"
+import { IABooksDeathSource } from "./sources/ia-books.js"
 import { GPT4oMiniSource, GPT4oSource } from "./ai-providers/openai.js"
 import { PerplexitySource } from "./ai-providers/perplexity.js"
 import { DeepSeekSource } from "./ai-providers/deepseek.js"
@@ -253,6 +256,11 @@ export class DeathEnrichmentOrchestrator {
       // Phase 4: Obituary sites
       new FindAGraveSource(),
       new LegacySource(), // Legacy.com obituaries (via DuckDuckGo + archive.org)
+
+      // Phase 5: Books/Publications
+      ...(this.config.sourceCategories.books !== false
+        ? [new GoogleBooksDeathSource(), new OpenLibraryDeathSource(), new IABooksDeathSource()]
+        : []),
 
       // Phase 6: Historical archives (for pre-internet deaths)
       new TroveSource(), // Australian newspapers (requires API key)

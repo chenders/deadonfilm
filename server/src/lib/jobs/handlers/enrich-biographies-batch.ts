@@ -141,6 +141,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               news: sourceCategories.news ?? true,
               obituary: sourceCategories.obituary ?? true,
               archives: sourceCategories.archives ?? true,
+              books: sourceCategories.books ?? true,
               ai: false,
             }
           : undefined,

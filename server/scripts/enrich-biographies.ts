@@ -179,6 +179,7 @@ const program = new Command()
   .option("--disable-web-search", "Disable web search sources")
   .option("--disable-news", "Disable news sources")
   .option("--disable-archives", "Disable archive sources")
+  .option("--disable-books", "Disable book sources (Google Books, Open Library, IA Books)")
   .option("--staging", "Write to staging table for admin review")
   .option("--ignore-cache", "Ignore cached responses")
   .option("-y, --yes", "Skip confirmation prompt")
@@ -200,6 +201,7 @@ interface CliOptions {
   disableWebSearch?: boolean
   disableNews?: boolean
   disableArchives?: boolean
+  disableBooks?: boolean
   staging?: boolean
   ignoreCache?: boolean
   yes?: boolean
@@ -231,6 +233,7 @@ async function run(options: CliOptions): Promise<void> {
           news: !options.disableNews,
           obituary: true,
           archives: !options.disableArchives,
+          books: !options.disableBooks,
           ai: false,
         },
         contentCleaning: {

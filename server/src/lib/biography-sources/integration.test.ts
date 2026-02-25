@@ -421,6 +421,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -535,6 +536,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -573,6 +575,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -596,6 +599,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -641,6 +645,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -662,6 +667,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
@@ -691,6 +697,7 @@ describe("Biography Enrichment Integration Test", () => {
           news: false,
           obituary: false,
           archives: false,
+          books: false,
           ai: false,
         },
       })
