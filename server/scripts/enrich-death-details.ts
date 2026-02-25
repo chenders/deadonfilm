@@ -1359,6 +1359,7 @@ const program = new Command()
       topBilledYear: options.topBilledYear,
       maxBilling: options.maxBilling,
       topMovies: options.topMovies,
+      sortBy: options.sortBy || "popularity",
       usActorsOnly: options.usActorsOnly || false,
       ignoreCache: options.ignoreCache || false,
       yes: options.yes || false,

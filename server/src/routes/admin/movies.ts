@@ -157,6 +157,7 @@ router.post("/:tmdbId/enrich-bios", async (req: Request, res: Response): Promise
         actorIds,
         limit: actorIds.length,
         allowRegeneration: false,
+        sortBy: "popularity",
         useStaging: false,
       },
       { createdBy: "admin" }

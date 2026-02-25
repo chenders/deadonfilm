@@ -80,7 +80,7 @@ export interface ActorCoverageFilters {
   deathManner?: string
   deathEnrichmentVersion?: string
   bioEnrichmentVersion?: string
-  orderBy?: "death_date" | "popularity" | "name" | "enriched_at"
+  orderBy?: "death_date" | "popularity" | "name" | "enriched_at" | "interestingness"
   orderDirection?: "asc" | "desc"
 }
 

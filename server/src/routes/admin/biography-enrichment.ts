@@ -253,6 +253,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         confidenceThreshold,
         earlyStopSourceCount,
         allowRegeneration: effectiveAllowRegeneration,
+        sortBy: "popularity",
         useStaging: useStaging || false,
         sourceCategories,
       },
