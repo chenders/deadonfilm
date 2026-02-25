@@ -121,6 +121,18 @@ export default function ExpandableSection({
               }
             : undefined
         }
+        onKeyDown={
+          !isExpanded
+            ? (e: React.KeyboardEvent) => {
+                // Only handle direct events — gradient overlay has its own keyboard handler
+                if (e.target !== e.currentTarget) return
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onToggle()
+                }
+              }
+            : undefined
+        }
         onTransitionEnd={handleTransitionEnd}
         data-testid="expandable-section-content"
       >
