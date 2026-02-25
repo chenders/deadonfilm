@@ -282,7 +282,7 @@ export interface EnrichmentResult {
  */
 export interface RelatedCelebrity {
   name: string
-  tmdbId: number | null
+  tmdb_id: number | null
   relationship: string
 }
 

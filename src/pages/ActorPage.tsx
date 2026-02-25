@@ -207,14 +207,24 @@ export default function ActorPage() {
         <meta property="og:title" content={`${actor.name} - Dead on Film`} />
         <meta property="og:type" content="profile" />
         <meta property="og:description" content={metaDescription} />
-        <meta property="og:image" content={`https://deadonfilm.com/og/actor/${actor.id}.png`} />
+        {actor.tmdbId && (
+          <meta
+            property="og:image"
+            content={`https://deadonfilm.com/og/actor/${actor.tmdbId}.png`}
+          />
+        )}
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${actor.name} - Dead on Film`} />
         <meta name="twitter:description" content={metaDescription} />
-        <meta name="twitter:image" content={`https://deadonfilm.com/og/actor/${actor.id}.png`} />
+        {actor.tmdbId && (
+          <meta
+            name="twitter:image"
+            content={`https://deadonfilm.com/og/actor/${actor.tmdbId}.png`}
+          />
+        )}
         <link rel="canonical" href={`https://deadonfilm.com${location.pathname}`} />
       </Helmet>
       <JsonLd
@@ -247,7 +257,10 @@ export default function ActorPage() {
           {/* Profile photo */}
           {profileUrl ? (
             <a
-              href={actor.biographySourceUrl || `https://www.themoviedb.org/person/${actor.id}`}
+              href={
+                actor.biographySourceUrl ||
+                (actor.tmdbId ? `https://www.themoviedb.org/person/${actor.tmdbId}` : undefined)
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="flex-shrink-0"
@@ -314,14 +327,16 @@ export default function ActorPage() {
 
             {/* External links */}
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
-              <a
-                href={`https://www.themoviedb.org/person/${actor.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
-              >
-                TMDB
-              </a>
+              {actor.tmdbId && (
+                <a
+                  href={`https://www.themoviedb.org/person/${actor.tmdbId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full bg-beige px-3 py-1.5 text-xs text-brown-dark transition-colors hover:bg-cream"
+                >
+                  TMDB
+                </a>
+              )}
               {deathInfo?.wikipediaUrl && (
                 <a
                   href={deathInfo.wikipediaUrl}

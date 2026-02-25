@@ -17,11 +17,12 @@ vi.mock("@/services/api", () => ({
 const mockLivingActor = {
   actor: {
     id: 12345,
+    tmdbId: 99001,
     name: "Living Actor",
     birthday: "1980-05-15",
     deathday: null,
     biography: "A talented performer known for many roles.",
-    biographySourceUrl: "https://www.themoviedb.org/person/12345",
+    biographySourceUrl: "https://www.themoviedb.org/person/99001",
     biographySourceType: "tmdb" as const,
     profilePath: "/profile.jpg",
     placeOfBirth: "Los Angeles, California, USA",
@@ -54,6 +55,7 @@ const mockLivingActor = {
 const mockDeceasedActor = {
   actor: {
     id: 67890,
+    tmdbId: 99002,
     name: "Deceased Actor",
     birthday: "1940-03-10",
     deathday: "2020-08-15",
@@ -244,9 +246,9 @@ describe("ActorPage", () => {
       expect(screen.getByText("Wikipedia")).toBeInTheDocument()
     })
 
-    // Check TMDB link
+    // Check TMDB link (uses tmdbId, not id)
     const tmdbLink = screen.getByText("TMDB").closest("a")
-    expect(tmdbLink).toHaveAttribute("href", "https://www.themoviedb.org/person/67890")
+    expect(tmdbLink).toHaveAttribute("href", "https://www.themoviedb.org/person/99002")
 
     // Check Wikipedia link
     const wikiLink = screen.getByText("Wikipedia").closest("a")

@@ -119,6 +119,7 @@ export interface BiographyDetails {
 export interface ActorProfileResponse {
   actor: {
     id: number
+    tmdbId: number | null
     name: string
     birthday: string | null
     birthdayPrecision?: DatePrecision | null
