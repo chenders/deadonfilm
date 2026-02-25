@@ -56,10 +56,7 @@ export default function BioEnrichmentRunDetailsPage() {
     id: number
     name: string
   } | null>(null)
-  const actorLogsQuery = useBioActorEnrichmentLogs(
-    runId!,
-    selectedActorForLogs?.id ?? null
-  )
+  const actorLogsQuery = useBioActorEnrichmentLogs(runId, selectedActorForLogs?.id ?? null)
 
   if (isLoading) {
     return (

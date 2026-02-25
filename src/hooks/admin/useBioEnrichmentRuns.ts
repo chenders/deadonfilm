@@ -270,7 +270,7 @@ export function useStopBioEnrichmentRun() {
  * Fetches from /runs/:id/actors/:actorId/logs on demand.
  */
 export function useBioActorEnrichmentLogs(
-  runId: number,
+  runId: number | undefined,
   actorId: number | null
 ): UseQueryResult<ActorLogsResponse> {
   return useQuery({

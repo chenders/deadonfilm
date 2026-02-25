@@ -6,6 +6,7 @@
 
 import { useState } from "react"
 import { useRunLogs } from "../../hooks/admin/useEnrichmentRuns"
+import ErrorMessage from "../common/ErrorMessage"
 
 const LEVEL_COLORS: Record<string, string> = {
   info: "bg-blue-800 text-blue-200",
@@ -22,7 +23,7 @@ interface RunLogsSectionProps {
 export function RunLogsSection({ runType, runId }: RunLogsSectionProps) {
   const [page, setPage] = useState(1)
   const [level, setLevel] = useState<string | undefined>(undefined)
-  const { data, isLoading } = useRunLogs(runType, runId, page, 50, level)
+  const { data, isLoading, error } = useRunLogs(runType, runId, page, 50, level)
 
   return (
     <div className="rounded-lg border border-admin-border bg-admin-surface-elevated p-4 shadow-admin-sm">
@@ -47,6 +48,8 @@ export function RunLogsSection({ runType, runId }: RunLogsSectionProps) {
 
       {isLoading ? (
         <p className="text-sm text-admin-text-muted">Loading logs...</p>
+      ) : error ? (
+        <ErrorMessage message="Failed to load run logs" />
       ) : !data || data.logs.length === 0 ? (
         <p className="text-sm text-admin-text-muted">
           No run logs found. Run logs will appear here for new enrichment runs.
@@ -87,14 +90,15 @@ export function RunLogsSection({ runType, runId }: RunLogsSectionProps) {
           {data.pagination.totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between">
               <p className="text-xs text-admin-text-muted">
-                Page {data.pagination.page} of {data.pagination.totalPages} (
-                {data.pagination.total} total)
+                Page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total}{" "}
+                total)
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
                   className="rounded border border-admin-border px-3 py-1 text-xs text-admin-text-primary disabled:opacity-50"
+                  aria-label="Go to previous page"
                 >
                   Previous
                 </button>
@@ -102,6 +106,7 @@ export function RunLogsSection({ runType, runId }: RunLogsSectionProps) {
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page >= (data?.pagination.totalPages ?? 1)}
                   className="rounded border border-admin-border px-3 py-1 text-xs text-admin-text-primary disabled:opacity-50"
+                  aria-label="Go to next page"
                 >
                   Next
                 </button>
