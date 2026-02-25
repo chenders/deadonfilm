@@ -452,11 +452,13 @@ export default function BiographyEnrichmentTab() {
               min="0"
               step="0.1"
               value={minPopularity}
-              onChange={(e) => setMinPopularity(e.target.value)}
+              onChange={(e) => {
+                setMinPopularity(e.target.value)
+                setPage(1)
+              }}
               onBlur={() => {
                 const n = parseFloat(minPopularity)
                 setMinPopularity(String(isNaN(n) ? 0 : Math.max(0, n)))
-                setPage(1)
               }}
               className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
               placeholder="0"

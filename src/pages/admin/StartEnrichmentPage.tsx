@@ -143,20 +143,30 @@ export default function StartEnrichmentPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Parse and clamp all string inputs to prevent NaN in the API payload
+    const parsedLimit = parseInt(limit, 10)
+    const parsedMinPopularity = parseInt(minPopularity, 10)
+    const parsedMaxTotalCost = parseFloat(maxTotalCost)
+    const parsedConfidence = parseFloat(confidence)
+    const parsedMaxLinkedArticles = parseInt(wikipediaMaxLinkedArticles, 10)
+    const parsedMaxSections = parseInt(wikipediaMaxSections, 10)
+
     try {
       const result = await startEnrichment.mutateAsync({
         // If specific actors selected, use those; otherwise use batch selection
         ...(selectionMode === "specific" && selectedActorIds.length > 0
           ? { actorIds: selectedActorIds }
           : {
-              limit: parseInt(limit, 10),
-              minPopularity: parseInt(minPopularity, 10),
+              limit: isNaN(parsedLimit) ? 100 : Math.max(1, Math.min(1000, parsedLimit)),
+              minPopularity: isNaN(parsedMinPopularity)
+                ? 0
+                : Math.max(0, Math.min(100, parsedMinPopularity)),
               recentOnly,
               usActorsOnly,
             }),
-        maxTotalCost: parseFloat(maxTotalCost),
+        maxTotalCost: isNaN(parsedMaxTotalCost) ? 10 : Math.max(0.01, parsedMaxTotalCost),
         maxCostPerActor,
-        confidence: parseFloat(confidence),
+        confidence: isNaN(parsedConfidence) ? 0.5 : Math.max(0, Math.min(1, parsedConfidence)),
         free,
         paid,
         ai,
@@ -169,8 +179,10 @@ export default function StartEnrichmentPage() {
         wikipedia: {
           useAISectionSelection: wikipediaUseAISectionSelection,
           followLinkedArticles: wikipediaFollowLinkedArticles,
-          maxLinkedArticles: parseInt(wikipediaMaxLinkedArticles, 10),
-          maxSections: parseInt(wikipediaMaxSections, 10),
+          maxLinkedArticles: isNaN(parsedMaxLinkedArticles)
+            ? 2
+            : Math.max(1, Math.min(10, parsedMaxLinkedArticles)),
+          maxSections: isNaN(parsedMaxSections) ? 10 : Math.max(1, Math.min(20, parsedMaxSections)),
         },
       })
 

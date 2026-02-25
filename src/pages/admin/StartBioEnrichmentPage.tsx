@@ -132,14 +132,23 @@ export default function StartBioEnrichmentPage() {
       return
     }
 
+    // Parse and clamp all string inputs to prevent NaN in the API payload
+    const parsedLimit = parseInt(limit, 10)
+    const parsedMinPopularity = parseFloat(minPopularity)
+    const parsedMaxCostPerActor = parseFloat(maxCostPerActor)
+    const parsedMaxTotalCost = parseFloat(maxTotalCost)
+
     try {
       const result = await startEnrichment.mutateAsync({
         ...(selectionMode === "specific" && selectedActorIds.length > 0
           ? { actorIds: selectedActorIds }
-          : { limit: parseInt(limit, 10), minPopularity: parseFloat(minPopularity) }),
+          : {
+              limit: isNaN(parsedLimit) ? 50 : Math.max(1, Math.min(500, parsedLimit)),
+              minPopularity: isNaN(parsedMinPopularity) ? 0 : Math.max(0, parsedMinPopularity),
+            }),
         confidenceThreshold,
-        maxCostPerActor: parseFloat(maxCostPerActor),
-        maxTotalCost: parseFloat(maxTotalCost),
+        maxCostPerActor: isNaN(parsedMaxCostPerActor) ? 0.5 : Math.max(0.01, parsedMaxCostPerActor),
+        maxTotalCost: isNaN(parsedMaxTotalCost) ? 25 : Math.max(0.01, parsedMaxTotalCost),
         allowRegeneration,
         sourceCategories: { free, reference, books, webSearch, news, obituary, archives },
       })

@@ -155,7 +155,15 @@ function OMDbBackfillCard() {
   const [minPopStr, setMinPopStr] = useState("0")
 
   const handleSubmit = () => {
-    backfill.mutate(config)
+    // Derive numeric values from string state to avoid stale config
+    const parsedLimit = parseInt(limitStr, 10)
+    const parsedMinPopularity = parseFloat(minPopStr)
+
+    backfill.mutate({
+      ...config,
+      limit: isNaN(parsedLimit) ? 100 : Math.max(1, Math.min(1000, parsedLimit)),
+      minPopularity: isNaN(parsedMinPopularity) ? 0 : Math.max(0, parsedMinPopularity),
+    })
   }
 
   const totalNeedsData = (coverage?.movies.needsData ?? 0) + (coverage?.shows.needsData ?? 0)

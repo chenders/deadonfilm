@@ -75,8 +75,9 @@ export default function SyncTab() {
       return
     }
 
+    const parsedDays = parseInt(syncDays, 10)
     triggerMutation.mutate({
-      days: parseInt(syncDays, 10),
+      days: isNaN(parsedDays) ? 1 : Math.max(1, Math.min(14, parsedDays)),
       types,
       dryRun,
     })
