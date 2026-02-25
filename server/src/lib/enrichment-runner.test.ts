@@ -297,6 +297,35 @@ describe("EnrichmentRunner", () => {
   })
 
   describe("run with runId (non-staging)", () => {
+    it("should use ON CONFLICT upsert for enrichment_run_actors to handle retries", async () => {
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [{ id: 1, name: "Actor One", tmdb_id: 1001, tmdb_popularity: 50 }],
+        })
+        .mockResolvedValue({ rows: [{ id: 123 }] })
+
+      const runner = new EnrichmentRunner({
+        actorIds: [1],
+        runId: 42,
+        staging: false,
+        free: true,
+        paid: false,
+        ai: false,
+      })
+
+      await runner.run()
+
+      // All enrichment_run_actors INSERTs should use ON CONFLICT for retry safety
+      const insertCalls = mockQuery.mock.calls.filter(
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("INSERT INTO enrichment_run_actors")
+      )
+      expect(insertCalls.length).toBeGreaterThan(0)
+      for (const call of insertCalls) {
+        expect(call[0]).toContain("ON CONFLICT (run_id, actor_id) DO UPDATE SET")
+      }
+    })
+
     it("should insert into enrichment_run_actors and write to production when runId is provided with staging: false", async () => {
       // Mock: first call returns actors, subsequent calls return empty or INSERT result
       mockQuery
