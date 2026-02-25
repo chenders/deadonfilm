@@ -39,6 +39,7 @@ export default function StartBioEnrichmentPage() {
   // Source category toggles
   const [free, setFree] = useState(true)
   const [reference, setReference] = useState(true)
+  const [books, setBooks] = useState(true)
   const [webSearch, setWebSearch] = useState(true)
   const [news, setNews] = useState(true)
   const [obituary, setObituary] = useState(true)
@@ -140,7 +141,7 @@ export default function StartBioEnrichmentPage() {
         maxCostPerActor,
         maxTotalCost,
         allowRegeneration,
-        sourceCategories: { free, reference, webSearch, news, obituary, archives },
+        sourceCategories: { free, reference, books, webSearch, news, obituary, archives },
       })
 
       navigate(`/admin/bio-enrichment/runs/${result.runId}`)
@@ -385,6 +386,11 @@ export default function StartBioEnrichmentPage() {
                   label: "Reference (Britannica, Bio.com)",
                   checked: reference,
                   onChange: setReference,
+                },
+                {
+                  label: "Books (Google Books, Open Library)",
+                  checked: books,
+                  onChange: setBooks,
                 },
                 {
                   label: "Web Search (Google, Bing, etc.)",

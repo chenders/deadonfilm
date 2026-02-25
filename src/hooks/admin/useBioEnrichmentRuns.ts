@@ -3,7 +3,8 @@
  * Pattern: src/hooks/admin/useEnrichmentRuns.ts
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient, type UseQueryResult } from "@tanstack/react-query"
+import type { ActorLogsResponse } from "./useEnrichmentRuns"
 
 // ============================================================================
 // Types
@@ -116,6 +117,7 @@ export interface StartBioEnrichmentRequest {
   sourceCategories?: {
     free?: boolean
     reference?: boolean
+    books?: boolean
     webSearch?: boolean
     news?: boolean
     obituary?: boolean
@@ -261,5 +263,21 @@ export function useStopBioEnrichmentRun() {
       queryClient.invalidateQueries({ queryKey: ["bio-enrichment-runs"] })
       queryClient.invalidateQueries({ queryKey: ["bio-enrichment-run"] })
     },
+  })
+}
+
+/**
+ * Per-actor enrichment log entries for a bio enrichment run.
+ * Fetches from /runs/:id/actors/:actorId/logs on demand.
+ */
+export function useBioActorEnrichmentLogs(
+  runId: number | undefined,
+  actorId: number | null
+): UseQueryResult<ActorLogsResponse> {
+  return useQuery({
+    queryKey: ["bio-enrichment-run", runId, "actors", actorId, "logs"],
+    queryFn: () => fetchJson<ActorLogsResponse>(`${BASE_URL}/runs/${runId}/actors/${actorId}/logs`),
+    staleTime: 60000,
+    enabled: !!runId && !!actorId,
   })
 }

@@ -31,6 +31,7 @@ import newrelic from "newrelic"
 import { cleanupWithClaude } from "./claude-cleanup.js"
 import { StatusBar } from "./status-bar.js"
 import { EnrichmentLogger, getEnrichmentLogger, setActiveStatusBar } from "./logger.js"
+import { RunLogger } from "../run-logger.js"
 import { resolveRedirectUrls, type ResolvedUrl } from "./url-resolver.js"
 import { WikidataSource } from "./sources/wikidata.js"
 import { DuckDuckGoSource } from "./sources/duckduckgo.js"
@@ -203,6 +204,7 @@ export class DeathEnrichmentOrchestrator {
   private stats: BatchEnrichmentStats
   private statusBar: StatusBar
   private logger: EnrichmentLogger
+  private runLogger: RunLogger | null = null
 
   constructor(
     config: Partial<EnrichmentConfig> = {},
@@ -216,6 +218,14 @@ export class DeathEnrichmentOrchestrator {
     this.statusBar = new StatusBar(enableStatusBar)
     // Set the active status bar so other modules can route console logs through it
     setActiveStatusBar(enableStatusBar ? this.statusBar : null)
+  }
+
+  /**
+   * Set the RunLogger for capturing structured logs to the run_logs DB table.
+   * Call this once the enrichment run_id is known (after creating the enrichment_runs record).
+   */
+  setRunLogger(runLogger: RunLogger): void {
+    this.runLogger = runLogger
   }
 
   /**
@@ -326,6 +336,10 @@ export class DeathEnrichmentOrchestrator {
         `  - ${source.name} (${source.isFree ? "free" : `$${source.estimatedCostPerQuery}/query`}, reliability: ${source.reliabilityScore.toFixed(2)})`
       )
     }
+    this.runLogger?.info("Sources initialized", {
+      sourceCount: this.sources.length,
+      sourceNames: this.sources.map((s) => s.name),
+    })
 
     // Log link following configuration
     if (this.config.linkFollow?.enabled) {
@@ -411,6 +425,7 @@ export class DeathEnrichmentOrchestrator {
     }
 
     this.statusBar.log(`\nEnriching: ${actor.name} (ID: ${actor.id})`)
+    this.runLogger?.info("Processing actor", { actorId: actor.id, actorName: actor.name })
 
     const result: ExtendedEnrichmentResult = {}
 
@@ -449,6 +464,11 @@ export class DeathEnrichmentOrchestrator {
         if (error instanceof SourceAccessBlockedError) {
           this.logger.sourceBlocked(actor.name, source.type, error.statusCode, error.url)
           this.statusBar.log(`    BLOCKED (${error.statusCode}) - flagged for review`)
+          this.runLogger?.warn("Source blocked", {
+            actorId: actor.id,
+            statusCode: error.statusCode,
+            url: error.url,
+          }, source.name)
           logEntries.push({
             timestamp: new Date().toISOString(),
             level: "warn",
@@ -477,6 +497,11 @@ export class DeathEnrichmentOrchestrator {
           } else {
             this.statusBar.log(`    TIMEOUT (${error.timeoutMs}ms) - low-priority source, skipping`)
           }
+          this.runLogger?.warn("Source timeout", {
+            actorId: actor.id,
+            timeoutMs: error.timeoutMs,
+            highPriority: error.isHighPriority,
+          }, source.name)
           logEntries.push({
             timestamp: new Date().toISOString(),
             level: "warn",
@@ -531,6 +556,12 @@ export class DeathEnrichmentOrchestrator {
           this.statusBar.log(
             `    Cost limit reached for actor ($${actorStats.totalCostUsd.toFixed(4)} >= $${this.config.costLimits.maxCostPerActor})`
           )
+          this.runLogger?.warn("Per-actor cost limit reached", {
+            actorId: actor.id,
+            actorName: actor.name,
+            costUsd: actorStats.totalCostUsd,
+            limit: this.config.costLimits.maxCostPerActor,
+          })
           // Update stats before stopping
           actorStats.totalTimeMs = Date.now() - startTime
           actorStats.fieldsFilledAfter = this.getFilledFieldsFromResult(result)
@@ -543,6 +574,10 @@ export class DeathEnrichmentOrchestrator {
       if (!lookupResult.success || !lookupResult.data) {
         this.logger.sourceFailed(actor.name, source.type, lookupResult.error || "No data")
         this.statusBar.log(`    Failed: ${lookupResult.error || "No data"}`)
+        this.runLogger?.debug("Source failed", {
+          actorId: actor.id,
+          error: lookupResult.error || "No data",
+        }, source.name)
         logEntries.push({
           timestamp: new Date().toISOString(),
           level: "warn",
@@ -575,6 +610,13 @@ export class DeathEnrichmentOrchestrator {
       this.statusBar.log(
         `    Success! Content: ${lookupResult.source.confidence.toFixed(2)} | Reliability: ${srcReliability.toFixed(2)}`
       )
+      this.runLogger?.info("Source success", {
+        actorId: actor.id,
+        confidence: lookupResult.source.confidence,
+        reliability: srcReliability,
+        fieldsFound,
+        costUsd: sourceCost,
+      }, source.name)
       logEntries.push({
         timestamp: new Date().toISOString(),
         level: "info",
@@ -860,6 +902,12 @@ export class DeathEnrichmentOrchestrator {
         }
 
         this.statusBar.log(`    Cleanup complete, cost: $${costUsd.toFixed(4)}`)
+        this.runLogger?.info("Claude cleanup complete", {
+          actorId: actor.id,
+          sourceCount: rawSources.length,
+          costUsd,
+          hasCircumstances: !!cleaned.circumstances,
+        })
 
         // Record Claude cleanup success in New Relic
         newrelic.recordCustomEvent("EnrichmentClaudeCleanup", {
@@ -873,6 +921,10 @@ export class DeathEnrichmentOrchestrator {
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown cleanup error"
         this.statusBar.log(`    Cleanup failed: ${errorMsg}`)
+        this.runLogger?.error("Claude cleanup failed", {
+          actorId: actor.id,
+          error: errorMsg,
+        })
         logEntries.push({
           timestamp: new Date().toISOString(),
           level: "error",
@@ -907,6 +959,15 @@ export class DeathEnrichmentOrchestrator {
       `  Complete in ${actorStats.totalTimeMs}ms, cost: $${actorStats.totalCostUsd.toFixed(4)}`
     )
     this.statusBar.log(`  Fields filled: ${actorStats.fieldsFilledAfter.join(", ") || "none"}`)
+    this.runLogger?.info("Actor complete", {
+      actorId: actor.id,
+      actorName: actor.name,
+      timeMs: actorStats.totalTimeMs,
+      costUsd: actorStats.totalCostUsd,
+      sourcesAttempted: actorStats.sourcesAttempted.length,
+      sourcesSucceeded: actorStats.sourcesAttempted.filter((s) => s.success).length,
+      fieldsEnriched: actorStats.fieldsFilledAfter,
+    })
 
     // Log enrichment completion
     this.logger.enrichmentComplete(
@@ -1003,6 +1064,12 @@ export class DeathEnrichmentOrchestrator {
       this.statusBar.log(`Per-actor cost limit: $${this.config.costLimits.maxCostPerActor}`)
     }
     this.statusBar.log(`${"=".repeat(60)}`)
+    this.runLogger?.info("Batch started", {
+      actorCount: actors.length,
+      sourceCount: this.sources.length,
+      maxTotalCost: this.config.costLimits?.maxTotalCost,
+      maxCostPerActor: this.config.costLimits?.maxCostPerActor,
+    })
 
     try {
       for (let i = 0; i < actors.length; i++) {
@@ -1027,6 +1094,13 @@ export class DeathEnrichmentOrchestrator {
             )
             console.log(`Processed ${i + 1} of ${actors.length} actors before limit`)
             console.log(`${"!".repeat(60)}`)
+            this.runLogger?.warn("Total cost limit reached", {
+              costUsd: this.stats.totalCostUsd,
+              limit: this.config.costLimits.maxTotalCost,
+              actorsProcessed: i + 1,
+              totalActors: actors.length,
+            })
+            await this.runLogger?.flush()
 
             // Print stats before throwing
             this.printBatchStats()
@@ -1058,6 +1132,14 @@ export class DeathEnrichmentOrchestrator {
     console.log("Batch enrichment complete!")
     this.printBatchStats()
     console.log(`${"=".repeat(60)}`)
+    this.runLogger?.info("Batch complete", {
+      actorsProcessed: this.stats.actorsProcessed,
+      actorsEnriched: this.stats.actorsEnriched,
+      fillRate: this.stats.fillRate,
+      totalCostUsd: this.stats.totalCostUsd,
+      totalTimeMs: this.stats.totalTimeMs,
+    })
+    await this.runLogger?.flush()
 
     // Log batch completion
     this.logger.batchComplete(

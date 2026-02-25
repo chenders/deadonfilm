@@ -17,6 +17,7 @@ import { getPool } from "../../db.js"
 import { BaseJobHandler } from "./base.js"
 import { JobType, QueueName, type JobResult, type EnrichBiographiesBatchPayload } from "../types.js"
 import { BiographyEnrichmentOrchestrator } from "../../biography-sources/orchestrator.js"
+import { RunLogger } from "../../run-logger.js"
 import {
   writeBiographyToProduction,
   writeBiographyToStaging,
@@ -146,6 +147,11 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
             }
           : undefined,
       })
+
+      // Wire up RunLogger for DB log capture if we have a run ID
+      if (runId) {
+        orchestrator.setRunLogger(new RunLogger("biography", runId))
+      }
 
       // 3. Process each actor
       const results: EnrichBiographiesBatchResult["results"] = []

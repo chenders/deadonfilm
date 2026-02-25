@@ -540,6 +540,63 @@ export function useActorEnrichmentLogs(
 }
 
 // ============================================================================
+// Run Logs (run_logs table) Types & Hooks
+// ============================================================================
+
+export interface RunLogEntry {
+  id: number
+  timestamp: string
+  level: string
+  message: string
+  data: Record<string, unknown> | null
+  source: string | null
+}
+
+export interface RunLogsResponse {
+  logs: RunLogEntry[]
+  pagination: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+  }
+}
+
+/**
+ * Hook to fetch structured run-level logs from the run_logs table.
+ * These capture enrichment-specific events (source attempts, costs, Claude I/O),
+ * distinct from the Pino server logs returned by useEnrichmentRunLogs.
+ */
+export function useRunLogs(
+  runType: "death" | "biography",
+  runId: number | undefined,
+  page: number = 1,
+  pageSize: number = 50,
+  level?: string
+): UseQueryResult<RunLogsResponse> {
+  const baseUrl =
+    runType === "death" ? "/admin/api/enrichment" : "/admin/api/biography-enrichment"
+
+  return useQuery({
+    queryKey: ["run-logs", runType, runId, page, pageSize, level],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      })
+      if (level) params.set("level", level)
+      const res = await fetch(`${baseUrl}/runs/${runId}/run-logs?${params}`, {
+        credentials: "include",
+      })
+      if (!res.ok) throw new Error("Failed to fetch run logs")
+      return res.json()
+    },
+    staleTime: 30000,
+    enabled: !!runId,
+  })
+}
+
+// ============================================================================
 // Batch API Types
 // ============================================================================
 
