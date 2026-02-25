@@ -255,8 +255,7 @@ async function run(options: CliOptions): Promise<void> {
           mechanicalOnly: !!options.disableHaikuCleanup,
         },
         ...(options.earlyStopSources !== undefined && {
-          earlyStopSourceCount:
-            options.earlyStopSources === 0 ? Infinity : options.earlyStopSources,
+          earlyStopSourceCount: options.earlyStopSources,
         }),
       }
 

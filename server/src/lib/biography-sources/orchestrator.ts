@@ -139,10 +139,10 @@ export class BiographyEnrichmentOrchestrator {
         ...(config?.contentCleaning ?? {}),
       },
     }
-    // Clamp earlyStopSourceCount to a sane minimum (Infinity = disable early stopping)
+    // Normalize earlyStopSourceCount: 0 = disable early stopping (Infinity internally)
     const raw = this.config.earlyStopSourceCount
-    if (raw === Infinity) {
-      // Infinity is deliberate: disable early stopping, try all sources
+    if (raw === 0 || raw === Infinity) {
+      this.config.earlyStopSourceCount = Infinity
     } else if (!Number.isFinite(raw) || raw < 1) {
       this.config.earlyStopSourceCount = DEFAULT_BIOGRAPHY_CONFIG.earlyStopSourceCount
     } else {
@@ -636,7 +636,9 @@ export class BiographyEnrichmentOrchestrator {
       totalActors: actors.length,
       maxTotalCost: this.config.costLimits.maxTotalCost,
       maxCostPerActor: this.config.costLimits.maxCostPerActor,
-      earlyStopSourceCount: this.config.earlyStopSourceCount,
+      earlyStopSourceCount: Number.isFinite(this.config.earlyStopSourceCount)
+        ? this.config.earlyStopSourceCount
+        : -1,
       confidenceThreshold: this.config.confidenceThreshold,
       sourceCount: this.sources.length,
       sourceNames: this.sources.map((s) => s.name).join(","),
