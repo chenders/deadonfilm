@@ -65,7 +65,7 @@ export interface ActorRecord {
   // Biography fields
   biography: string | null
   biography_source_url: string | null
-  biography_source_type: "wikipedia" | "tmdb" | "imdb" | null
+  biography_source_type: "wikipedia" | "tmdb" | "imdb" | "enriched" | null
   biography_generated_at: string | null
   biography_raw_tmdb: string | null
   biography_has_content: boolean | null
