@@ -23,11 +23,11 @@ export default function StartEnrichmentPage() {
   // Get pre-selected actor IDs from navigation state
   const preSelectedActorIds = (location.state?.selectedActorIds as number[]) || []
 
-  const [limit, setLimit] = useState<number>(100)
-  const [maxTotalCost, setMaxTotalCost] = useState<number>(10)
+  const [limit, setLimit] = useState("100")
+  const [maxTotalCost, setMaxTotalCost] = useState("10")
   const [maxCostPerActor, setMaxCostPerActor] = useState<number | undefined>(undefined)
-  const [minPopularity, setMinPopularity] = useState<number>(0)
-  const [confidence, setConfidence] = useState<number>(0.5)
+  const [minPopularity, setMinPopularity] = useState("0")
+  const [confidence, setConfidence] = useState("0.5")
   const [recentOnly, setRecentOnly] = useState<boolean>(false)
   const [usActorsOnly, setUsActorsOnly] = useState<boolean>(false)
 
@@ -47,8 +47,8 @@ export default function StartEnrichmentPage() {
   const [wikipediaUseAISectionSelection, setWikipediaUseAISectionSelection] =
     useState<boolean>(true)
   const [wikipediaFollowLinkedArticles, setWikipediaFollowLinkedArticles] = useState<boolean>(true)
-  const [wikipediaMaxLinkedArticles, setWikipediaMaxLinkedArticles] = useState<number>(2)
-  const [wikipediaMaxSections, setWikipediaMaxSections] = useState<number>(10)
+  const [wikipediaMaxLinkedArticles, setWikipediaMaxLinkedArticles] = useState("2")
+  const [wikipediaMaxSections, setWikipediaMaxSections] = useState("10")
 
   // Actor selection mode and state
   const [selectionMode, setSelectionMode] = useState<"batch" | "specific">(
@@ -143,15 +143,30 @@ export default function StartEnrichmentPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Parse and clamp all string inputs to prevent NaN in the API payload
+    const parsedLimit = parseInt(limit, 10)
+    const parsedMinPopularity = parseInt(minPopularity, 10)
+    const parsedMaxTotalCost = parseFloat(maxTotalCost)
+    const parsedConfidence = parseFloat(confidence)
+    const parsedMaxLinkedArticles = parseInt(wikipediaMaxLinkedArticles, 10)
+    const parsedMaxSections = parseInt(wikipediaMaxSections, 10)
+
     try {
       const result = await startEnrichment.mutateAsync({
         // If specific actors selected, use those; otherwise use batch selection
         ...(selectionMode === "specific" && selectedActorIds.length > 0
           ? { actorIds: selectedActorIds }
-          : { limit, minPopularity, recentOnly, usActorsOnly }),
-        maxTotalCost,
+          : {
+              limit: isNaN(parsedLimit) ? 100 : Math.max(1, Math.min(1000, parsedLimit)),
+              minPopularity: isNaN(parsedMinPopularity)
+                ? 0
+                : Math.max(0, Math.min(100, parsedMinPopularity)),
+              recentOnly,
+              usActorsOnly,
+            }),
+        maxTotalCost: isNaN(parsedMaxTotalCost) ? 10 : Math.max(0.01, parsedMaxTotalCost),
         maxCostPerActor,
-        confidence,
+        confidence: isNaN(parsedConfidence) ? 0.5 : Math.max(0, Math.min(1, parsedConfidence)),
         free,
         paid,
         ai,
@@ -164,8 +179,10 @@ export default function StartEnrichmentPage() {
         wikipedia: {
           useAISectionSelection: wikipediaUseAISectionSelection,
           followLinkedArticles: wikipediaFollowLinkedArticles,
-          maxLinkedArticles: wikipediaMaxLinkedArticles,
-          maxSections: wikipediaMaxSections,
+          maxLinkedArticles: isNaN(parsedMaxLinkedArticles)
+            ? 2
+            : Math.max(1, Math.min(10, parsedMaxLinkedArticles)),
+          maxSections: isNaN(parsedMaxSections) ? 10 : Math.max(1, Math.min(20, parsedMaxSections)),
         },
       })
 
@@ -285,9 +302,10 @@ export default function StartEnrichmentPage() {
                     min="1"
                     max="1000"
                     value={limit}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value, 10)
-                      setLimit(isNaN(value) ? 1 : value)
+                    onChange={(e) => setLimit(e.target.value)}
+                    onBlur={() => {
+                      const n = parseInt(limit, 10)
+                      setLimit(String(isNaN(n) ? 100 : Math.max(1, Math.min(1000, n))))
                     }}
                     className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                     required={selectionMode === "batch"}
@@ -311,14 +329,10 @@ export default function StartEnrichmentPage() {
                     min="0"
                     max="100"
                     value={minPopularity}
-                    onChange={(e) => {
-                      const rawValue = e.target.value
-                      if (rawValue === "") {
-                        setMinPopularity(0)
-                        return
-                      }
-                      const parsed = parseInt(rawValue, 10)
-                      setMinPopularity(Number.isNaN(parsed) ? 0 : parsed)
+                    onChange={(e) => setMinPopularity(e.target.value)}
+                    onBlur={() => {
+                      const n = parseInt(minPopularity, 10)
+                      setMinPopularity(String(isNaN(n) ? 0 : Math.max(0, Math.min(100, n))))
                     }}
                     className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   />
@@ -666,10 +680,11 @@ export default function StartEnrichmentPage() {
                       min="1"
                       max="10"
                       value={wikipediaMaxLinkedArticles}
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value, 10)
+                      onChange={(e) => setWikipediaMaxLinkedArticles(e.target.value)}
+                      onBlur={() => {
+                        const n = parseInt(wikipediaMaxLinkedArticles, 10)
                         setWikipediaMaxLinkedArticles(
-                          isNaN(value) ? 2 : Math.min(10, Math.max(1, value))
+                          String(isNaN(n) ? 2 : Math.max(1, Math.min(10, n)))
                         )
                       }}
                       className="mt-1 block w-32 rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
@@ -692,9 +707,10 @@ export default function StartEnrichmentPage() {
                     min="1"
                     max="20"
                     value={wikipediaMaxSections}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value, 10)
-                      setWikipediaMaxSections(isNaN(value) ? 10 : Math.min(20, Math.max(1, value)))
+                    onChange={(e) => setWikipediaMaxSections(e.target.value)}
+                    onBlur={() => {
+                      const n = parseInt(wikipediaMaxSections, 10)
+                      setWikipediaMaxSections(String(isNaN(n) ? 10 : Math.max(1, Math.min(20, n))))
                     }}
                     className="mt-1 block w-32 rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   />
@@ -720,12 +736,10 @@ export default function StartEnrichmentPage() {
                   min="0.01"
                   step="0.01"
                   value={maxTotalCost}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    const parsed = parseFloat(value)
-                    setMaxTotalCost((prev) =>
-                      value === "" || Number.isNaN(parsed) ? prev : parsed
-                    )
+                  onChange={(e) => setMaxTotalCost(e.target.value)}
+                  onBlur={() => {
+                    const n = parseFloat(maxTotalCost)
+                    setMaxTotalCost(isNaN(n) || n < 0.01 ? "10" : String(n))
                   }}
                   className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   required
@@ -781,17 +795,10 @@ export default function StartEnrichmentPage() {
                   max="1"
                   step="0.1"
                   value={confidence}
-                  onChange={(e) => {
-                    const rawValue = e.target.value
-                    const parsed = parseFloat(rawValue)
-                    if (Number.isNaN(parsed)) {
-                      // Fallback to default confidence if input is empty or invalid
-                      setConfidence(0.5)
-                    } else {
-                      // Clamp to allowed range just in case
-                      const clamped = Math.min(1, Math.max(0, parsed))
-                      setConfidence(clamped)
-                    }
+                  onChange={(e) => setConfidence(e.target.value)}
+                  onBlur={() => {
+                    const n = parseFloat(confidence)
+                    setConfidence(String(isNaN(n) ? 0.5 : Math.max(0, Math.min(1, n))))
                   }}
                   className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                 />
@@ -844,7 +851,7 @@ export default function StartEnrichmentPage() {
               : `--limit ${limit}`}{" "}
             --max-total-cost {maxTotalCost}
             {maxCostPerActor ? ` --max-cost-per-actor ${maxCostPerActor}` : ""}
-            {selectionMode === "batch" && minPopularity > 0
+            {selectionMode === "batch" && minPopularity !== "0"
               ? ` --min-popularity ${minPopularity}`
               : ""}
             {selectionMode === "batch" && recentOnly ? " --recent-only" : ""}
@@ -857,7 +864,7 @@ export default function StartEnrichmentPage() {
             {followLinks ? "" : " --disable-follow-links"}
             {aiLinkSelection ? "" : " --disable-ai-link-selection"}
             {aiContentExtraction ? "" : " --disable-ai-content-extraction"}
-            {confidence !== 0.5 ? ` --confidence ${confidence}` : ""}
+            {confidence !== "0.5" ? ` --confidence ${confidence}` : ""}
           </pre>
         </div>
       </div>

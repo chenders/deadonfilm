@@ -26,15 +26,15 @@ export default function StartBioEnrichmentPage() {
   const preSelectedActorIds = (location.state?.selectedActorIds as number[]) || []
 
   // Batch settings
-  const [limit, setLimit] = useState<number>(50)
-  const [minPopularity, setMinPopularity] = useState<number>(0)
+  const [limit, setLimit] = useState("50")
+  const [minPopularity, setMinPopularity] = useState("0")
 
   // Quality settings
   const [confidenceThreshold, setConfidenceThreshold] = useState<number>(0.6)
 
   // Cost limits
-  const [maxCostPerActor, setMaxCostPerActor] = useState<number>(0.5)
-  const [maxTotalCost, setMaxTotalCost] = useState<number>(25)
+  const [maxCostPerActor, setMaxCostPerActor] = useState("0.50")
+  const [maxTotalCost, setMaxTotalCost] = useState("25")
 
   // Source category toggles
   const [free, setFree] = useState(true)
@@ -132,14 +132,23 @@ export default function StartBioEnrichmentPage() {
       return
     }
 
+    // Parse and clamp all string inputs to prevent NaN in the API payload
+    const parsedLimit = parseInt(limit, 10)
+    const parsedMinPopularity = parseFloat(minPopularity)
+    const parsedMaxCostPerActor = parseFloat(maxCostPerActor)
+    const parsedMaxTotalCost = parseFloat(maxTotalCost)
+
     try {
       const result = await startEnrichment.mutateAsync({
         ...(selectionMode === "specific" && selectedActorIds.length > 0
           ? { actorIds: selectedActorIds }
-          : { limit, minPopularity }),
+          : {
+              limit: isNaN(parsedLimit) ? 50 : Math.max(1, Math.min(500, parsedLimit)),
+              minPopularity: isNaN(parsedMinPopularity) ? 0 : Math.max(0, parsedMinPopularity),
+            }),
         confidenceThreshold,
-        maxCostPerActor,
-        maxTotalCost,
+        maxCostPerActor: isNaN(parsedMaxCostPerActor) ? 0.5 : Math.max(0.01, parsedMaxCostPerActor),
+        maxTotalCost: isNaN(parsedMaxTotalCost) ? 25 : Math.max(0.01, parsedMaxTotalCost),
         allowRegeneration,
         sourceCategories: { free, reference, books, webSearch, news, obituary, archives },
       })
@@ -253,7 +262,11 @@ export default function StartBioEnrichmentPage() {
                     min="1"
                     max="500"
                     value={limit}
-                    onChange={(e) => setLimit(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    onChange={(e) => setLimit(e.target.value)}
+                    onBlur={() => {
+                      const n = parseInt(limit, 10)
+                      setLimit(String(isNaN(n) ? 50 : Math.max(1, Math.min(500, n))))
+                    }}
                     className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   />
                 </div>
@@ -270,7 +283,11 @@ export default function StartBioEnrichmentPage() {
                     min="0"
                     step="0.1"
                     value={minPopularity}
-                    onChange={(e) => setMinPopularity(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setMinPopularity(e.target.value)}
+                    onBlur={() => {
+                      const n = parseFloat(minPopularity)
+                      setMinPopularity(String(isNaN(n) ? 0 : Math.max(0, n)))
+                    }}
                     className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                   />
                   <p className="mt-1 text-xs text-admin-text-muted">
@@ -468,7 +485,11 @@ export default function StartBioEnrichmentPage() {
                   min="0.01"
                   step="0.01"
                   value={maxCostPerActor}
-                  onChange={(e) => setMaxCostPerActor(parseFloat(e.target.value) || 0.5)}
+                  onChange={(e) => setMaxCostPerActor(e.target.value)}
+                  onBlur={() => {
+                    const n = parseFloat(maxCostPerActor)
+                    setMaxCostPerActor(isNaN(n) || n < 0.01 ? "0.50" : String(n))
+                  }}
                   className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                 />
               </div>
@@ -485,7 +506,11 @@ export default function StartBioEnrichmentPage() {
                   min="0.01"
                   step="0.01"
                   value={maxTotalCost}
-                  onChange={(e) => setMaxTotalCost(parseFloat(e.target.value) || 25)}
+                  onChange={(e) => setMaxTotalCost(e.target.value)}
+                  onBlur={() => {
+                    const n = parseFloat(maxTotalCost)
+                    setMaxTotalCost(isNaN(n) || n < 0.01 ? "25" : String(n))
+                  }}
                   className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
                 />
               </div>
