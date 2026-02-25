@@ -392,8 +392,8 @@ export default function StartEnrichmentPage() {
                     <option value="interestingness">Most Interesting First</option>
                   </select>
                   <p className="mt-1 text-xs text-admin-text-muted">
-                    Interestingness score considers era, demographics, death drama, and life
-                    complexity
+                    Interestingness score uses multiple factors including era, demographics, death
+                    drama, life complexity, and Wikipedia/cultural interest signals
                   </p>
                 </div>
               </div>

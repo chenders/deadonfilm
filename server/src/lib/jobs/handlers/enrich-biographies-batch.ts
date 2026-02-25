@@ -424,12 +424,17 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
     const limitValue = opts.limit || 10
     params.push(limitValue)
 
+    const orderByClause =
+      opts.sortBy === "interestingness"
+        ? "ORDER BY interestingness_score DESC NULLS LAST, id ASC"
+        : "ORDER BY dof_popularity DESC NULLS LAST, id ASC"
+
     const result = await db.query(
       `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
               wikipedia_url, biography AS biography_raw_tmdb, biography
        FROM actors
        ${whereClause}
-       ORDER BY ${opts.sortBy === "interestingness" ? "interestingness_score" : "dof_popularity"} DESC NULLS LAST, id ASC
+       ${orderByClause}
        LIMIT $${paramIndex}`,
       params
     )

@@ -625,13 +625,15 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
           )`
 
         // When filtering for US actors, sort by US/English appearances instead of total
-        const usOrderPrimary =
+        query +=
           sortBy === "interestingness"
-            ? "a.interestingness_score DESC NULLS LAST"
-            : "a.popularity DESC NULLS LAST"
-        query += `
+            ? `
           ORDER BY
-            ${usOrderPrimary},
+            a.interestingness_score DESC NULLS LAST,`
+            : `
+          ORDER BY
+            a.popularity DESC NULLS LAST,`
+        query += `
             a.birthday DESC NULLS LAST,
             (
               SELECT COUNT(*) FROM actor_show_appearances asa
@@ -644,11 +646,10 @@ async function enrichMissingDetails(options: EnrichOptions): Promise<void> {
               AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
             ) DESC`
       } else {
-        const orderPrimary =
+        query +=
           sortBy === "interestingness"
-            ? "a.interestingness_score DESC NULLS LAST"
-            : "a.popularity DESC NULLS LAST"
-        query += ` ORDER BY ${orderPrimary}, a.birthday DESC NULLS LAST, appearance_count DESC`
+            ? ` ORDER BY a.interestingness_score DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+            : ` ORDER BY a.popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
       }
 
       if (limit) {
@@ -1317,6 +1318,12 @@ const program = new Command()
   .option(
     "--sort-by <field>",
     "Sort actors by: popularity (default) or interestingness",
+    (value: string) => {
+      if (value !== "popularity" && value !== "interestingness") {
+        throw new InvalidArgumentError('Must be "popularity" or "interestingness"')
+      }
+      return value as "popularity" | "interestingness"
+    },
     "popularity"
   )
   .action(async (options) => {

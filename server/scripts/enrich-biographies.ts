@@ -148,17 +148,17 @@ async function queryActorsByPopularity(
 
   params.push(limit)
 
-  const orderBy =
+  const orderByClause =
     sortBy === "interestingness"
-      ? "interestingness_score DESC NULLS LAST"
-      : "popularity DESC NULLS LAST"
+      ? "ORDER BY interestingness_score DESC NULLS LAST"
+      : "ORDER BY popularity DESC NULLS LAST"
 
   const result = await pool.query(
     `SELECT id, tmdb_id, imdb_person_id, name, birthday, deathday,
             wikipedia_url, biography AS biography_raw_tmdb, biography
      FROM actors
      WHERE ${conditions.join(" AND ")}
-     ORDER BY ${orderBy}
+     ${orderByClause}
      LIMIT $${paramIdx}`,
     params
   )
@@ -204,6 +204,12 @@ const program = new Command()
   .option(
     "--sort-by <field>",
     "Sort actors by: popularity (default) or interestingness",
+    (value: string) => {
+      if (value !== "popularity" && value !== "interestingness") {
+        throw new InvalidArgumentError('Must be "popularity" or "interestingness"')
+      }
+      return value as "popularity" | "interestingness"
+    },
     "popularity"
   )
   .option("-y, --yes", "Skip confirmation prompt")

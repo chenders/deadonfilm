@@ -906,13 +906,15 @@ export class EnrichmentRunner {
           )
         )`
 
-      const usPrimary =
+      query +=
         sortBy === "interestingness"
-          ? "a.interestingness_score DESC NULLS LAST"
-          : "a.dof_popularity DESC NULLS LAST"
-      query += `
+          ? `
         ORDER BY
-          ${usPrimary},
+          a.interestingness_score DESC NULLS LAST,`
+          : `
+        ORDER BY
+          a.dof_popularity DESC NULLS LAST,`
+      query += `
           a.birthday DESC NULLS LAST,
           (
             SELECT COUNT(*) FROM actor_show_appearances asa
@@ -925,11 +927,10 @@ export class EnrichmentRunner {
             AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
           ) DESC`
     } else {
-      const primary =
+      query +=
         sortBy === "interestingness"
-          ? "a.interestingness_score DESC NULLS LAST"
-          : "a.dof_popularity DESC NULLS LAST"
-      query += ` ORDER BY ${primary}, a.birthday DESC NULLS LAST, appearance_count DESC`
+          ? ` ORDER BY a.interestingness_score DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+          : ` ORDER BY a.dof_popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
     }
 
     if (limit) {

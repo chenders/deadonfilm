@@ -319,9 +319,9 @@ async function run(options: CliOptions): Promise<void> {
       // Phase 2: Calculate interestingness score
       const scoreInput = buildScoreInput(actor)
       const result = calculateInterestingnessScore(scoreInput)
-      scoresUpdated++
 
       if (!options.recalculateScoresOnly || result.score !== Number(actor.interestingness_score)) {
+        scoresUpdated++
         const b = result.breakdown
         if (!options.recalculateScoresOnly) {
           console.log(

@@ -78,9 +78,6 @@ const ENGLISH_SPEAKING_COUNTRIES = new Set([
   "ireland",
 ])
 
-/** English-speaking European countries use a lower crossover score */
-const ENGLISH_SPEAKING_EUROPEAN = new Set(["united kingdom", "ireland"])
-
 /** Non-English-speaking European countries get a partial crossover score */
 const EUROPEAN_COUNTRIES = new Set([
   "france",

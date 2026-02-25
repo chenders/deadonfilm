@@ -457,7 +457,7 @@ router.post("/start", async (req: Request, res: Response): Promise<void> => {
       // Cache control - default true for admin (get fresh data)
       ignoreCache: config.ignoreCache ?? true,
       // Sort/priority - default to popularity
-      sortBy: config.sortBy ?? "popularity",
+      sortBy: config.sortBy === "interestingness" ? "interestingness" : "popularity",
       // Wikipedia-specific options
       wikipedia: config.wikipedia,
     }
