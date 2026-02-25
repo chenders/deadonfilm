@@ -78,6 +78,7 @@ export default function EnrichmentRunsPage() {
                   <option value="">All</option>
                   <option value="completed">Completed</option>
                   <option value="cost_limit">Cost Limit</option>
+                  <option value="no_actors_matched">No Actors Matched</option>
                   <option value="error">Error</option>
                   <option value="interrupted">Interrupted</option>
                 </select>
@@ -272,6 +273,12 @@ function StatusBadge({
       return (
         <span className="inline-flex items-center rounded bg-yellow-900 px-2.5 py-0.5 text-xs font-medium text-yellow-200">
           Cost Limit
+        </span>
+      )
+    case "no_actors_matched":
+      return (
+        <span className="inline-flex items-center rounded bg-yellow-900 px-2.5 py-0.5 text-xs font-medium text-yellow-200">
+          No Actors Matched
         </span>
       )
     case "error":
