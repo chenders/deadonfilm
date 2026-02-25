@@ -67,6 +67,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       maxTotalCost,
       earlyStopSourceCount,
       allowRegeneration,
+      sortBy,
       useStaging,
       sourceCategories,
     } = job.data
@@ -88,6 +89,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
         limit,
         minPopularity,
         allowRegeneration,
+        sortBy,
       })
 
       log.info({ actorCount: actors.length }, "Found actors for biography enrichment")
@@ -390,6 +392,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
       limit?: number
       minPopularity?: number
       allowRegeneration?: boolean
+      sortBy?: "popularity" | "interestingness"
     }
   ): Promise<ActorForBiography[]> {
     if (opts.actorIds && opts.actorIds.length > 0) {
@@ -426,7 +429,7 @@ export class EnrichBiographiesBatchHandler extends BaseJobHandler<
               wikipedia_url, biography AS biography_raw_tmdb, biography
        FROM actors
        ${whereClause}
-       ORDER BY dof_popularity DESC NULLS LAST, id ASC
+       ORDER BY ${opts.sortBy === "interestingness" ? "interestingness_score" : "dof_popularity"} DESC NULLS LAST, id ASC
        LIMIT $${paramIndex}`,
       params
     )

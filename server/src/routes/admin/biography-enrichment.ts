@@ -508,6 +508,7 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       maxTotalCost,
       allowRegeneration,
       sourceCategories,
+      sortBy,
     } = req.body
 
     // Validate: must have either actorIds or limit
@@ -533,6 +534,7 @@ router.post("/runs/start", async (req: Request, res: Response): Promise<void> =>
       maxTotalCost,
       allowRegeneration,
       sourceCategories,
+      sortBy: sortBy === "interestingness" ? "interestingness" : "popularity",
     })
 
     res.json({ success: true, runId })

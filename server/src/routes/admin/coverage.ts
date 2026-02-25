@@ -143,10 +143,15 @@ router.get("/actors", async (req: Request, res: Response): Promise<void> => {
     }
 
     if (req.query.orderBy) {
-      const validOrderBy = ["death_date", "popularity", "name", "enriched_at"]
+      const validOrderBy = ["death_date", "popularity", "name", "enriched_at", "interestingness"]
       const orderBy = req.query.orderBy as string
       if (validOrderBy.includes(orderBy)) {
-        filters.orderBy = orderBy as "death_date" | "popularity" | "name" | "enriched_at"
+        filters.orderBy = orderBy as
+          | "death_date"
+          | "popularity"
+          | "name"
+          | "enriched_at"
+          | "interestingness"
       }
     }
 

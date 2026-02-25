@@ -194,6 +194,7 @@ export const enrichDeathDetailsBatchPayloadSchema = z.object({
   maxBilling: z.number().int().positive().optional(),
   topMovies: z.number().int().positive().optional(),
   usActorsOnly: z.boolean().default(false),
+  sortBy: z.enum(["popularity", "interestingness"]).default("popularity"),
   ignoreCache: z.boolean().default(false),
   staging: z.boolean().default(false),
   // Wikipedia-specific options
@@ -298,6 +299,7 @@ export const enrichBiographiesBatchPayloadSchema = z.object({
   maxTotalCost: z.number().optional(),
   earlyStopSourceCount: z.number().int().min(0).optional(), // 0 = disable early stopping (try all sources)
   allowRegeneration: z.boolean().default(false),
+  sortBy: z.enum(["popularity", "interestingness"]).default("popularity"),
   useStaging: z.boolean().default(false),
   sourceCategories: z
     .object({

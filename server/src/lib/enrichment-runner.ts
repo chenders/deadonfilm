@@ -62,6 +62,7 @@ export interface EnrichmentRunnerConfig {
   maxBilling?: number
   topMovies?: number
   usActorsOnly?: boolean
+  sortBy?: "popularity" | "interestingness"
   ignoreCache?: boolean
   runId?: number
   staging?: boolean
@@ -185,6 +186,7 @@ export class EnrichmentRunner {
       maxBilling,
       topMovies,
       usActorsOnly = false,
+      sortBy = "popularity" as const,
       ignoreCache = false,
       runId,
       staging = false,
@@ -225,7 +227,8 @@ export class EnrichmentRunner {
           limit,
           minPopularity,
           recentOnly,
-          usActorsOnly
+          usActorsOnly,
+          sortBy
         )
       }
 
@@ -834,7 +837,8 @@ export class EnrichmentRunner {
     limit: number,
     minPopularity: number,
     recentOnly: boolean,
-    usActorsOnly: boolean
+    usActorsOnly: boolean,
+    sortBy: "popularity" | "interestingness" = "popularity"
   ): Promise<ActorRow[]> {
     const db = getPool()
 
@@ -902,9 +906,13 @@ export class EnrichmentRunner {
           )
         )`
 
+      const usPrimary =
+        sortBy === "interestingness"
+          ? "a.interestingness_score DESC NULLS LAST"
+          : "a.dof_popularity DESC NULLS LAST"
       query += `
         ORDER BY
-          a.dof_popularity DESC NULLS LAST,
+          ${usPrimary},
           a.birthday DESC NULLS LAST,
           (
             SELECT COUNT(*) FROM actor_show_appearances asa
@@ -917,7 +925,11 @@ export class EnrichmentRunner {
             AND (m.production_countries @> ARRAY['US']::text[] OR m.original_language = 'en')
           ) DESC`
     } else {
-      query += ` ORDER BY a.dof_popularity DESC NULLS LAST, a.birthday DESC NULLS LAST, appearance_count DESC`
+      const primary =
+        sortBy === "interestingness"
+          ? "a.interestingness_score DESC NULLS LAST"
+          : "a.dof_popularity DESC NULLS LAST"
+      query += ` ORDER BY ${primary}, a.birthday DESC NULLS LAST, appearance_count DESC`
     }
 
     if (limit) {

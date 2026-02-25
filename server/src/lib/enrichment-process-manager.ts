@@ -40,6 +40,8 @@ export interface EnrichmentRunConfig {
   maxBilling?: number
   topMovies?: number
   usActorsOnly?: boolean
+  /** Sort actors by: popularity (default) or interestingness score */
+  sortBy?: "popularity" | "interestingness"
   /** Bypass source query cache for fresh data. Default: true for admin API */
   ignoreCache?: boolean
   /** Wikipedia-specific options */
@@ -121,6 +123,7 @@ export async function startEnrichmentRun(config: EnrichmentRunConfig): Promise<n
         maxBilling: config.maxBilling,
         topMovies: config.topMovies,
         usActorsOnly: config.usActorsOnly ?? false,
+        sortBy: config.sortBy ?? "popularity",
         ignoreCache: config.ignoreCache ?? true, // Default: bypass cache for admin runs (reset at end of each run)
         staging: false,
         // Wikipedia-specific options

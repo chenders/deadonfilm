@@ -45,6 +45,9 @@ export default function StartBioEnrichmentPage() {
   const [obituary, setObituary] = useState(true)
   const [archives, setArchives] = useState(true)
 
+  // Sort/priority
+  const [sortBy, setSortBy] = useState<"popularity" | "interestingness">("popularity")
+
   // Other options
   const [allowRegeneration, setAllowRegeneration] = useState(false)
 
@@ -145,6 +148,7 @@ export default function StartBioEnrichmentPage() {
           : {
               limit: isNaN(parsedLimit) ? 50 : Math.max(1, Math.min(500, parsedLimit)),
               minPopularity: isNaN(parsedMinPopularity) ? 0 : Math.max(0, parsedMinPopularity),
+              sortBy,
             }),
         confidenceThreshold,
         maxCostPerActor: isNaN(parsedMaxCostPerActor) ? 0.5 : Math.max(0.01, parsedMaxCostPerActor),
@@ -292,6 +296,27 @@ export default function StartBioEnrichmentPage() {
                   />
                   <p className="mt-1 text-xs text-admin-text-muted">
                     Only process actors with dof_popularity above this threshold
+                  </p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="sortBy"
+                    className="block text-sm font-medium text-admin-text-secondary"
+                  >
+                    Sort By
+                  </label>
+                  <select
+                    id="sortBy"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as "popularity" | "interestingness")}
+                    className="mt-1 block w-full rounded-md border-admin-border bg-admin-surface-overlay px-3 py-2 text-admin-text-primary shadow-sm focus:border-admin-interactive focus:outline-none focus:ring-1 focus:ring-admin-interactive"
+                  >
+                    <option value="popularity">Most Popular First</option>
+                    <option value="interestingness">Most Interesting First</option>
+                  </select>
+                  <p className="mt-1 text-xs text-admin-text-muted">
+                    Interestingness score considers era, demographics, death drama, and life
+                    complexity
                   </p>
                 </div>
               </div>

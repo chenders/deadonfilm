@@ -27,6 +27,7 @@ export interface BioEnrichmentRunConfig {
   maxCostPerActor?: number
   maxTotalCost?: number
   allowRegeneration?: boolean
+  sortBy?: "popularity" | "interestingness"
   sourceCategories?: {
     free?: boolean
     reference?: boolean
@@ -77,6 +78,7 @@ export async function startBioEnrichmentRun(config: BioEnrichmentRunConfig): Pro
         maxCostPerActor: config.maxCostPerActor,
         maxTotalCost: config.maxTotalCost,
         allowRegeneration: config.allowRegeneration ?? false,
+        sortBy: config.sortBy ?? "popularity",
         useStaging: false,
         sourceCategories: config.sourceCategories
           ? {
