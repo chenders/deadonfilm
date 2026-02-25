@@ -111,7 +111,16 @@ export default function ExpandableSection({
           !isExpanded ? "cursor-pointer" : ""
         }`}
         style={maxHeight !== undefined ? { maxHeight } : undefined}
-        onClick={!isExpanded ? onToggle : undefined}
+        onClick={
+          !isExpanded
+            ? (e: React.MouseEvent) => {
+                // Don't trigger expand when clicking interactive children (links, buttons)
+                const target = e.target as HTMLElement
+                if (target.closest("a, button, input, select, textarea, [role='button']")) return
+                onToggle()
+              }
+            : undefined
+        }
         onTransitionEnd={handleTransitionEnd}
         data-testid="expandable-section-content"
       >

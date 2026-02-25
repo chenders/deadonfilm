@@ -154,6 +154,22 @@ describe("ExpandableSection", () => {
       expect(screen.getByTestId("expandable-section-content")).toHaveClass("cursor-pointer")
     })
 
+    it("does not trigger onToggle when clicking interactive children while collapsed", () => {
+      const onToggle = vi.fn()
+      render(
+        <ExpandableSection title="Test Section" isExpanded={false} onToggle={onToggle}>
+          <p>
+            Some text with <a href="/actor/test">a link</a> and{" "}
+            <button type="button">a button</button>
+          </p>
+        </ExpandableSection>
+      )
+
+      fireEvent.click(screen.getByText("a link"))
+      fireEvent.click(screen.getByText("a button"))
+      expect(onToggle).not.toHaveBeenCalled()
+    })
+
     it("does not have cursor-pointer on content area when expanded", () => {
       render(
         <ExpandableSection title="Test Section" isExpanded={true} onToggle={() => {}}>
