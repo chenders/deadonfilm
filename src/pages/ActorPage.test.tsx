@@ -686,8 +686,7 @@ describe("ActorPage", () => {
       vi.mocked(api.getActor).mockResolvedValue({
         ...mockDeceasedActor,
         biographyDetails: {
-          narrativeTeaser: "A remarkable person.",
-          narrative: null,
+          narrative: "A remarkable person.",
           narrativeConfidence: null,
           lifeNotableFactors: ["military_service", "scholar"],
           birthplaceDetails: null,
@@ -721,8 +720,7 @@ describe("ActorPage", () => {
       vi.mocked(api.getActor).mockResolvedValue({
         ...mockLivingActor,
         biographyDetails: {
-          narrativeTeaser: "A remarkable person.",
-          narrative: null,
+          narrative: "A remarkable person.",
           narrativeConfidence: null,
           lifeNotableFactors: ["prodigy", "multiple_careers"],
           birthplaceDetails: null,

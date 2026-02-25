@@ -102,7 +102,6 @@ export interface BiographySource {
 }
 
 export interface BiographyDetails {
-  narrativeTeaser: string | null
   narrative: string | null
   narrativeConfidence: "high" | "medium" | "low" | null
   lifeNotableFactors: string[]

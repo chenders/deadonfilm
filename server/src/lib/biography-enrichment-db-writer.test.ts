@@ -19,7 +19,6 @@ const mockPool = { query: mockQuery } as unknown as Pool
 
 function makeBiographyData(overrides: Partial<BiographyData> = {}): BiographyData {
   return {
-    narrativeTeaser: "A brief teaser about the actor.",
     narrative: "A full narrative biography of the actor.",
     narrativeConfidence: "high",
     lifeNotableFactors: ["military_service", "rags_to_riches"],
@@ -67,19 +66,18 @@ describe("writeBiographyToProduction", () => {
 
     const params = upsertCall[1]
     expect(params[0]).toBe(42) // actor_id
-    expect(params[1]).toBe(data.narrativeTeaser)
-    expect(params[2]).toBe(data.narrative)
-    expect(params[3]).toBe("high")
-    expect(params[4]).toEqual(["military_service", "rags_to_riches"])
-    expect(params[5]).toBe(data.birthplaceDetails)
-    expect(params[6]).toBe(data.familyBackground)
-    expect(params[7]).toBe(data.education)
-    expect(params[8]).toBe(data.preFameLife)
-    expect(params[9]).toBe(data.fameCatalyst)
-    expect(params[10]).toBe(data.personalStruggles)
-    expect(params[11]).toBe(data.relationships)
-    expect(params[12]).toEqual(["Played college football", "Was a chess champion"])
-    expect(params[13]).toBe(JSON.stringify(sources))
+    expect(params[1]).toBe(data.narrative)
+    expect(params[2]).toBe("high")
+    expect(params[3]).toEqual(["military_service", "rags_to_riches"])
+    expect(params[4]).toBe(data.birthplaceDetails)
+    expect(params[5]).toBe(data.familyBackground)
+    expect(params[6]).toBe(data.education)
+    expect(params[7]).toBe(data.preFameLife)
+    expect(params[8]).toBe(data.fameCatalyst)
+    expect(params[9]).toBe(data.personalStruggles)
+    expect(params[10]).toBe(data.relationships)
+    expect(params[11]).toEqual(["Played college football", "Was a chess champion"])
+    expect(params[12]).toBe(JSON.stringify(sources))
   })
 
   it("archives old biography on first enrichment", async () => {
@@ -124,8 +122,8 @@ describe("writeBiographyToProduction", () => {
     expect(mockQuery.mock.calls[1][0]).toContain("INSERT INTO actor_biography_details")
   })
 
-  it("updates actors table with narrativeTeaser and increments biography_version", async () => {
-    const data = makeBiographyData({ narrativeTeaser: "Teaser text" })
+  it("updates actors table with narrative and increments biography_version", async () => {
+    const data = makeBiographyData({ narrative: "Full narrative text" })
 
     await writeBiographyToProduction(mockPool, 42, data, makeSources())
 
@@ -135,7 +133,20 @@ describe("writeBiographyToProduction", () => {
     expect(updateCall[0]).toContain("biography = $1")
     expect(updateCall[0]).toContain("biography_version = COALESCE(biography_version, 0) + 1")
     expect(updateCall[0]).toContain("updated_at = NOW()")
-    expect(updateCall[1]).toEqual(["Teaser text", 42])
+    expect(updateCall[1]).toEqual(["Full narrative text", 42])
+  })
+
+  it("skips actors table update when narrative is null", async () => {
+    const data = makeBiographyData({ narrative: null })
+
+    await writeBiographyToProduction(mockPool, 42, data, makeSources())
+
+    // Should only have SELECT + UPSERT calls (no UPDATE actors)
+    const allQueries = mockQuery.mock.calls.map((c: unknown[]) => c[0] as string)
+    const updateActorsCall = allQueries.find(
+      (q: string) => q.includes("biography = $1") && q.includes("biography_version")
+    )
+    expect(updateActorsCall).toBeUndefined()
   })
 
   it("invalidates actor cache after all writes", async () => {
@@ -147,7 +158,6 @@ describe("writeBiographyToProduction", () => {
 
   it("handles null BiographyData fields correctly", async () => {
     const data = makeBiographyData({
-      narrativeTeaser: null,
       narrative: null,
       narrativeConfidence: null,
       birthplaceDetails: null,
@@ -164,16 +174,15 @@ describe("writeBiographyToProduction", () => {
     await writeBiographyToProduction(mockPool, 42, data, makeSources())
 
     const upsertParams = mockQuery.mock.calls[1][1]
-    expect(upsertParams[1]).toBeNull() // narrativeTeaser
-    expect(upsertParams[2]).toBeNull() // narrative
-    expect(upsertParams[3]).toBeNull() // narrativeConfidence
-    expect(upsertParams[5]).toBeNull() // birthplaceDetails
-    expect(upsertParams[6]).toBeNull() // familyBackground
-    expect(upsertParams[7]).toBeNull() // education
-    expect(upsertParams[8]).toBeNull() // preFameLife
-    expect(upsertParams[9]).toBeNull() // fameCatalyst
-    expect(upsertParams[10]).toBeNull() // personalStruggles
-    expect(upsertParams[11]).toBeNull() // relationships
+    expect(upsertParams[1]).toBeNull() // narrative
+    expect(upsertParams[2]).toBeNull() // narrativeConfidence
+    expect(upsertParams[4]).toBeNull() // birthplaceDetails
+    expect(upsertParams[5]).toBeNull() // familyBackground
+    expect(upsertParams[6]).toBeNull() // education
+    expect(upsertParams[7]).toBeNull() // preFameLife
+    expect(upsertParams[8]).toBeNull() // fameCatalyst
+    expect(upsertParams[9]).toBeNull() // personalStruggles
+    expect(upsertParams[10]).toBeNull() // relationships
   })
 
   it("passes null for empty arrays", async () => {
@@ -185,8 +194,8 @@ describe("writeBiographyToProduction", () => {
     await writeBiographyToProduction(mockPool, 42, data, makeSources())
 
     const upsertParams = mockQuery.mock.calls[1][1]
-    expect(upsertParams[4]).toBeNull() // lifeNotableFactors (empty → null)
-    expect(upsertParams[12]).toBeNull() // lesserKnownFacts (empty → null)
+    expect(upsertParams[3]).toBeNull() // lifeNotableFactors (empty → null)
+    expect(upsertParams[11]).toBeNull() // lesserKnownFacts (empty → null)
   })
 })
 

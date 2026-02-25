@@ -406,7 +406,6 @@ export class BiographyEnrichmentOrchestrator {
             sourceCount: rawSources.length,
             costUsd: synthesisResult.costUsd,
             hasNarrative: !!synthesisData?.narrative,
-            hasTeaser: !!synthesisData?.narrativeTeaser,
             narrativeConfidence: synthesisData?.narrativeConfidence || "unknown",
             factorCount: synthesisData?.lifeNotableFactors?.length || 0,
             lesserKnownFactCount: synthesisData?.lesserKnownFacts?.length || 0,

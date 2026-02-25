@@ -119,7 +119,6 @@ ${sourceSection}
 ${structuredDataSection}
 Return JSON only:
 {
-  "narrative_teaser": "2-3 sentences — the most compelling snapshot of this person's life...",
   "narrative": "Full biography. Adaptive length...",
   "life_notable_factors": ["tags from the VALID set"],
   "birthplace_details": "Rich context about where they grew up...",
@@ -182,14 +181,6 @@ BANNED PATTERNS — these appear in AI-generated text and make biographies sound
   the person's character.
 - "the [noun] who [past tense verb]" as a closing device — e.g., "The boy who stole apples
   never lost his instinct to help people." This is literary fiction technique, not journalism.
-
-TEASER QUALITY:
-- The teaser is shown before "show more" — it must hook the reader
-- Lead with whatever is most surprising, human, or little-known
-- Bad: "John Smith was born in Ohio and attended college."
-- Good: "Before he became a household name, John Smith spent three years as a coal miner..."
-- The teaser should be a window into something specific, not a summary statement about the
-  person's character or legacy
 
 VALID LIFE NOTABLE FACTORS:
 [${[...VALID_LIFE_NOTABLE_FACTORS].join(", ")}]
@@ -362,7 +353,6 @@ export async function synthesizeBiography(
 
   // Build BiographyData
   const data: BiographyData = {
-    narrativeTeaser: typeof parsed.narrative_teaser === "string" ? parsed.narrative_teaser : null,
     narrative: typeof parsed.narrative === "string" ? parsed.narrative : null,
     narrativeConfidence: confidence,
     lifeNotableFactors: validFactors,
@@ -388,7 +378,6 @@ export async function synthesizeBiography(
     actorId: actor.id,
     actorName: actor.name,
     hasNarrative: !!data.narrative,
-    hasTeaser: !!data.narrativeTeaser,
     narrativeConfidence: data.narrativeConfidence ?? "unknown",
     factorCount: data.lifeNotableFactors.length,
     hasSubstantiveContent: data.hasSubstantiveContent,

@@ -52,14 +52,13 @@ export default function BiographySection({
   }, [biographySources])
 
   // Determine which content to show
-  const hasEnrichedBio =
-    biographyDetails && (biographyDetails.narrative || biographyDetails.narrativeTeaser)
+  const narrative = biographyDetails?.narrative
 
   // If no biography at all, render nothing
-  if (!hasEnrichedBio && !biography) return null
+  if (!narrative && !biography) return null
 
   // Fallback to old biography (not enriched — no collapsible behavior)
-  if (!hasEnrichedBio) {
+  if (!narrative) {
     return (
       <div className="mb-6 rounded-lg bg-surface-elevated p-4" data-testid="biography-section">
         <h2 className="mb-2 font-display text-lg text-brown-dark">Life</h2>
@@ -78,12 +77,8 @@ export default function BiographySection({
     )
   }
 
-  // Enriched biography
-  const { narrative, narrativeTeaser } = biographyDetails
-  const displayText = narrative || narrativeTeaser
-
-  // If narrative is short (< 300 chars) or no narrative (teaser only), show static card
-  const hasExpandableContent = !!narrative && narrative.length > 300
+  // If narrative is short (< 300 chars), show static card
+  const hasExpandableContent = narrative.length > 300
 
   if (!hasExpandableContent) {
     return (
@@ -91,7 +86,7 @@ export default function BiographySection({
         <div className="rounded-lg bg-surface-elevated p-4 sm:p-6">
           <h2 className="mb-2 font-display text-lg text-brown-dark">Life</h2>
           <div className="space-y-3 leading-relaxed text-text-primary">
-            {displayText?.split("\n\n").map((paragraph, i) => (
+            {narrative.split("\n\n").map((paragraph, i) => (
               <p key={i}>{paragraph}</p>
             ))}
           </div>

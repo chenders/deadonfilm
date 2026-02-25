@@ -1443,7 +1443,6 @@ router.post("/:id(\\d+)/enrich-bio-inline", async (req: Request, res: Response):
       success: true,
       enriched: true,
       data: {
-        narrativeTeaser: result.data.narrativeTeaser,
         narrativeConfidence: result.data.narrativeConfidence,
         lifeNotableFactors: result.data.lifeNotableFactors,
         hasSubstantiveContent: result.data.hasSubstantiveContent,

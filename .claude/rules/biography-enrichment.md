@@ -59,7 +59,7 @@ Enriches actor records with narrative personal life biographies from ~19 active 
 
 ### Stage 3: Claude Synthesis
 - Takes ALL accumulated raw source data
-- Produces structured JSON: narrative, teaser, family, education, etc.
+- Produces structured JSON: narrative, family, education, etc.
 - Enforces personal life focus over career achievements
 - Model: Claude Sonnet (configurable)
 - Cost: ~$0.01-0.05 per actor
@@ -157,16 +157,15 @@ The biography system is designed to produce **personal narratives**, not career 
 
 | Table | Purpose |
 |-------|---------|
-| `actor_biography_details` | Enriched biography: narrative, teaser, family, education, factors, sources |
+| `actor_biography_details` | Enriched biography: narrative, family, education, factors, sources |
 | `biography_legacy` | One-time archive of old `actors.biography` before first enrichment |
-| `actors.biography` | Updated with `narrativeTeaser` from enrichment |
+| `actors.biography` | Updated with `narrative` from enrichment |
 | `actors.biography_version` | Incremented on each enrichment |
 
 ## BiographyData Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `narrativeTeaser` | string | 2-3 sentence hook for "show more" preview |
 | `narrative` | string | Full personal life biography |
 | `narrativeConfidence` | enum | `high`, `medium`, `low` |
 | `lifeNotableFactors` | string[] | Tags: orphaned, military_service, immigrant, etc. |
@@ -225,7 +224,7 @@ cd server && npm run enrich:biographies -- \
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| `BiographySection` | `src/components/actor/BiographySection.tsx` | Teaser/expand, life factors pills, lesser-known facts |
+| `BiographySection` | `src/components/actor/BiographySection.tsx` | Expandable narrative, life factors pills, lesser-known facts |
 | `BiographyEnrichmentTab` | `src/components/admin/actors/BiographyEnrichmentTab.tsx` | Admin tab for managing biography enrichment |
 
 ## Golden Test Framework
@@ -242,4 +241,4 @@ cd server && npm run enrich:biographies -- \
 | Hedy Lamarr | Frequency-hopping patent, fled Nazi husband |
 | James Earl Jones | Childhood stutter overcome through poetry |
 
-Scoring algorithm (0-100): fact recall (60pts), factor accuracy (20pts), unwanted content penalty (10pts), teaser quality (10pts).
+Scoring algorithm (0-100): fact recall (70pts), factor accuracy (20pts), unwanted content penalty (10pts).

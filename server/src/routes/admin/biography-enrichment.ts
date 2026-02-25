@@ -72,7 +72,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const dataParams = [...params, pageSize, offset]
     const result = await pool.query(
       `SELECT a.id, a.name, a.dof_popularity, a.deathday,
-              abd.id as bio_id, abd.narrative_confidence, abd.narrative_teaser,
+              abd.id as bio_id, abd.narrative_confidence,
               abd.life_notable_factors, abd.updated_at as bio_updated_at,
               a.biography_version
        FROM actors a
@@ -100,9 +100,6 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         deathday: row.deathday,
         hasEnrichment: row.bio_id !== null,
         narrativeConfidence: row.narrative_confidence,
-        narrativeTeaserPreview: row.narrative_teaser
-          ? row.narrative_teaser.substring(0, 100) + "..."
-          : null,
         lifeNotableFactors: row.life_notable_factors || [],
         bioUpdatedAt: row.bio_updated_at,
         biographyVersion: row.biography_version,

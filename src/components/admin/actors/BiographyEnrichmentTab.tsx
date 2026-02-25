@@ -24,7 +24,6 @@ interface EnrichmentActor {
   deathday: string
   hasEnrichment: boolean
   narrativeConfidence: string | null
-  narrativeTeaserPreview: string | null
   lifeNotableFactors: string[]
   bioUpdatedAt: string | null
   biographyVersion: number | null
@@ -727,9 +726,6 @@ export default function BiographyEnrichmentTab() {
                     Factors
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
-                    Teaser Preview
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-admin-text-secondary">
                     Updated
                   </th>
                   <th className="px-4 py-3 text-center text-sm font-semibold text-admin-text-secondary">
@@ -798,9 +794,6 @@ export default function BiographyEnrichmentTab() {
                         ) : (
                           <span className="text-admin-text-muted">---</span>
                         )}
-                      </td>
-                      <td className="max-w-[200px] truncate px-4 py-3 text-sm text-admin-text-muted">
-                        {actor.narrativeTeaserPreview || "---"}
                       </td>
                       <td className="px-4 py-3 text-sm text-admin-text-muted">
                         {formatRelativeTime(actor.bioUpdatedAt)}
