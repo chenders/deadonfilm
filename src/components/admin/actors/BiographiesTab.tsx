@@ -292,7 +292,7 @@ function BatchStatusPanel({
 export default function BiographiesTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
-  const [minPopularity, setMinPopularity] = useState(0)
+  const [minPopularity, setMinPopularity] = useState("0")
   const [needsGeneration, setNeedsGeneration] = useState(true)
   const [selectedActorIds, setSelectedActorIds] = useState<Set<number>>(new Set())
   const [batchLimit, setBatchLimit] = useState(100)
@@ -336,7 +336,7 @@ export default function BiographiesTab() {
       fetchBiographies(
         page,
         pageSize,
-        minPopularity,
+        parseFloat(minPopularity) || 0,
         needsGeneration,
         searchName,
         sortBy,
@@ -385,7 +385,10 @@ export default function BiographiesTab() {
 
   const handleGenerateByPopularity = async () => {
     try {
-      await batchQueueMutation.mutateAsync({ limit: batchLimit, minPopularity })
+      await batchQueueMutation.mutateAsync({
+        limit: batchLimit,
+        minPopularity: parseFloat(minPopularity) || 0,
+      })
     } catch {
       // Error state handled by mutation
     }
@@ -478,8 +481,10 @@ export default function BiographiesTab() {
               min="0"
               step="0.1"
               value={minPopularity}
-              onChange={(e) => {
-                setMinPopularity(parseFloat(e.target.value) || 0)
+              onChange={(e) => setMinPopularity(e.target.value)}
+              onBlur={() => {
+                const n = parseFloat(minPopularity)
+                setMinPopularity(String(isNaN(n) ? 0 : Math.max(0, n)))
                 setPage(1)
               }}
               className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"

@@ -200,3 +200,17 @@
   background-color: var(--admin-overlay-bg);
   backdrop-filter: blur(4px);
 }
+
+/* ============================================
+   HIDE NUMBER INPUT SPINNERS
+   Remove browser-native up/down arrows
+   ============================================ */
+.admin-layout input[type="number"]::-webkit-inner-spin-button,
+.admin-layout input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.admin-layout input[type="number"] {
+  -moz-appearance: textfield;
+}

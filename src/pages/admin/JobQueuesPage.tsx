@@ -151,6 +151,8 @@ function OMDbBackfillCard() {
     minPopularity: 0,
     priority: "low",
   })
+  const [limitStr, setLimitStr] = useState("100")
+  const [minPopStr, setMinPopStr] = useState("0")
 
   const handleSubmit = () => {
     backfill.mutate(config)
@@ -228,8 +230,14 @@ function OMDbBackfillCard() {
               type="number"
               min={1}
               max={1000}
-              value={config.limit}
-              onChange={(e) => setConfig({ ...config, limit: parseInt(e.target.value) || 100 })}
+              value={limitStr}
+              onChange={(e) => setLimitStr(e.target.value)}
+              onBlur={() => {
+                const n = parseInt(limitStr, 10)
+                const clamped = isNaN(n) ? 100 : Math.max(1, Math.min(1000, n))
+                setLimitStr(String(clamped))
+                setConfig((prev) => ({ ...prev, limit: clamped }))
+              }}
               className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
             />
           </div>
@@ -246,10 +254,14 @@ function OMDbBackfillCard() {
               type="number"
               min={0}
               step={0.1}
-              value={config.minPopularity}
-              onChange={(e) =>
-                setConfig({ ...config, minPopularity: parseFloat(e.target.value) || 0 })
-              }
+              value={minPopStr}
+              onChange={(e) => setMinPopStr(e.target.value)}
+              onBlur={() => {
+                const n = parseFloat(minPopStr)
+                const clamped = isNaN(n) ? 0 : Math.max(0, n)
+                setMinPopStr(String(clamped))
+                setConfig((prev) => ({ ...prev, minPopularity: clamped }))
+              }}
               className="w-full rounded-md border border-admin-border bg-admin-surface-overlay px-3 py-2 text-sm text-admin-text-primary focus:border-admin-interactive focus:outline-none"
             />
           </div>

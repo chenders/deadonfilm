@@ -290,7 +290,7 @@ function BatchStatusPanel({
 export default function BiographyEnrichmentTab() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
-  const [minPopularity, setMinPopularity] = useState(0)
+  const [minPopularity, setMinPopularity] = useState("0")
   const [needsEnrichment, setNeedsEnrichment] = useState(true)
   const [batchLimit, setBatchLimit] = useState(10)
   const [enrichingActorId, setEnrichingActorId] = useState<number | null>(null)
@@ -319,7 +319,13 @@ export default function BiographyEnrichmentTab() {
       searchName,
     ],
     queryFn: () =>
-      fetchEnrichmentActors(page, pageSize, minPopularity, needsEnrichment, searchName),
+      fetchEnrichmentActors(
+        page,
+        pageSize,
+        parseFloat(minPopularity) || 0,
+        needsEnrichment,
+        searchName
+      ),
   })
 
   const enrichMutation = useMutation({
@@ -351,7 +357,10 @@ export default function BiographyEnrichmentTab() {
 
   const handleBatchEnrich = async () => {
     try {
-      await batchMutation.mutateAsync({ limit: batchLimit, minPopularity })
+      await batchMutation.mutateAsync({
+        limit: batchLimit,
+        minPopularity: parseFloat(minPopularity) || 0,
+      })
     } catch {
       // Error state handled by mutation
     }
@@ -443,8 +452,10 @@ export default function BiographyEnrichmentTab() {
               min="0"
               step="0.1"
               value={minPopularity}
-              onChange={(e) => {
-                setMinPopularity(parseFloat(e.target.value) || 0)
+              onChange={(e) => setMinPopularity(e.target.value)}
+              onBlur={() => {
+                const n = parseFloat(minPopularity)
+                setMinPopularity(String(isNaN(n) ? 0 : Math.max(0, n)))
                 setPage(1)
               }}
               className="w-full rounded border border-admin-border bg-admin-surface-base px-3 py-2 text-admin-text-primary"
