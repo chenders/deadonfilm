@@ -14,6 +14,12 @@ vi.mock("@anthropic-ai/sdk", () => {
   }
 })
 
+// Mock the database pool (used by saveRejectedFactors when invalid factors are stripped)
+const mockPoolQuery = vi.fn().mockResolvedValue({ rows: [] })
+vi.mock("../db/pool.js", () => ({
+  getPool: () => ({ query: mockPoolQuery }),
+}))
+
 // Import after mocking
 import {
   buildBiographySynthesisPrompt,
