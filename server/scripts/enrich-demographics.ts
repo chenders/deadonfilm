@@ -320,7 +320,13 @@ async function run(options: CliOptions): Promise<void> {
       const scoreInput = buildScoreInput(actor)
       const result = calculateInterestingnessScore(scoreInput)
 
-      if (!options.recalculateScoresOnly || result.score !== Number(actor.interestingness_score)) {
+      const existingScore =
+        actor.interestingness_score != null ? Number(actor.interestingness_score) : null
+      if (
+        !options.recalculateScoresOnly ||
+        existingScore === null ||
+        result.score !== existingScore
+      ) {
         scoresUpdated++
         const b = result.breakdown
         if (!options.recalculateScoresOnly) {

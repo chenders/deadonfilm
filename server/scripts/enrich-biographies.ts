@@ -130,7 +130,7 @@ async function queryGoldenTestActors(pool: Pool): Promise<ActorForBiography[]> {
   return result.rows
 }
 
-async function queryActorsByPopularity(
+async function queryActorsForEnrichment(
   pool: Pool,
   limit: number,
   minPopularity?: number,
@@ -294,7 +294,7 @@ async function run(options: CliOptions): Promise<void> {
         console.log(
           `Querying top ${options.limit} actors by ${sortLabel}${options.minPopularity ? ` (min popularity: ${options.minPopularity})` : ""}...`
         )
-        actors = await queryActorsByPopularity(
+        actors = await queryActorsForEnrichment(
           pool,
           options.limit,
           options.minPopularity,
