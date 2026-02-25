@@ -381,7 +381,11 @@ export class EnrichmentRunner {
                   run_id, actor_id, was_enriched, created_death_page, confidence,
                   sources_attempted, winning_source,
                   processing_time_ms, cost_usd, log_entries
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                ON CONFLICT (run_id, actor_id) DO UPDATE SET
+                  was_enriched = $3, created_death_page = $4, confidence = $5,
+                  sources_attempted = $6, winning_source = $7,
+                  processing_time_ms = $8, cost_usd = $9, log_entries = $10`,
                 [
                   runId,
                   actor.id,
@@ -583,6 +587,10 @@ export class EnrichmentRunner {
               cost_usd,
               log_entries
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (run_id, actor_id) DO UPDATE SET
+              was_enriched = $3, created_death_page = $4, confidence = $5,
+              sources_attempted = $6, winning_source = $7,
+              processing_time_ms = $8, cost_usd = $9, log_entries = $10
             RETURNING id`,
               [
                 runId,
