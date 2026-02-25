@@ -117,6 +117,7 @@ export interface StartBioEnrichmentRequest {
   sourceCategories?: {
     free?: boolean
     reference?: boolean
+    books?: boolean
     webSearch?: boolean
     news?: boolean
     obituary?: boolean
