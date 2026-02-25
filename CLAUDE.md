@@ -126,6 +126,7 @@ e2e/                          # Playwright tests and screenshots
 **Optional** (see `server/.env.example` for full list):
 - `OMDB_API_KEY`, `TRAKT_API_KEY` - Ratings data
 - `GOOGLE_SEARCH_API_KEY` + `GOOGLE_SEARCH_CX`, `BING_SEARCH_API_KEY`, `BRAVE_SEARCH_API_KEY` - Web search for enrichment
+- `GOOGLE_BOOKS_API_KEY` - Google Books API for book-based enrichment (1,000 req/day free)
 - `OPENAI_API_KEY`, `GOOGLE_AI_API_KEY`, `GROQ_API_KEY` - Additional AI providers
 - `NEW_RELIC_LICENSE_KEY` - APM monitoring
 - `GSC_SERVICE_ACCOUNT_EMAIL`, `GSC_PRIVATE_KEY` - Google Search Console

@@ -53,13 +53,20 @@ Guardian, NYTimes, AP News, NewsAPI, Deadline, Variety, Hollywood Reporter, TMZ,
 ### Phase 4: Obituary Sites
 Find a Grave (direct API), Legacy.com (DuckDuckGo search)
 
-### Phase 5: Historical Archives
+### Phase 5: Books/Publications
+| Source | Method | Notes |
+|--------|--------|-------|
+| Google Books | Google Books API v1 snippets + descriptions | Requires `GOOGLE_BOOKS_API_KEY`, 1,000 req/day |
+| Open Library | Person-subject search + Search Inside API | Free, no API key |
+| IA Books | Internet Archive advanced search + OCR | Free, public domain full text |
+
+### Phase 6: Historical Archives
 Trove (Australian newspapers), Europeana, Internet Archive, Chronicling America (1756-1963 only)
 
-### Phase 6: Genealogy
+### Phase 7: Genealogy
 FamilySearch (requires API key)
 
-### Phase 7: AI Models (optional, by ascending cost)
+### Phase 8: AI Models (optional, by ascending cost)
 Gemini Flash (~$0.0001) → Groq (~$0.0002) → GPT-4o Mini (~$0.0003) → DeepSeek → Mistral → Gemini Pro → Grok → Perplexity → GPT-4o (~$0.01)
 
 ## Text Quality Pipeline
