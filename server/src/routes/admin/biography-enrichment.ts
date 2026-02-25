@@ -193,6 +193,17 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     sourceCategories,
   } = req.body
 
+  // Validate earlyStopSourceCount before inserting run record
+  if (earlyStopSourceCount !== undefined) {
+    const n = Number(earlyStopSourceCount)
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+      res.status(400).json({
+        error: { message: "earlyStopSourceCount must be a non-negative integer" },
+      })
+      return
+    }
+  }
+
   try {
     const { queueManager } = await import("../../lib/jobs/queue-manager.js")
     const { JobType } = await import("../../lib/jobs/types.js")
