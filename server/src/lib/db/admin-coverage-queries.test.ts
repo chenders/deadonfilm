@@ -152,6 +152,22 @@ describe("Admin Coverage Queries", () => {
       expect(calls[0][1]).toEqual([1, 0, 50, 0]) // isAsc=1, isDesc=0, LIMIT, OFFSET
     })
 
+    it("applies interestingness ordering", async () => {
+      vi.mocked(mockPool.query).mockResolvedValueOnce({ rows: [] } as any)
+
+      await getActorsForCoverage(
+        mockPool,
+        { orderBy: "interestingness", orderDirection: "desc" },
+        1,
+        50
+      )
+
+      const calls = vi.mocked(mockPool.query).mock.calls
+      expect(calls[0][0]).toContain("CASE WHEN")
+      expect(calls[0][0]).toContain("interestingness_score")
+      expect(calls[0][1]).toEqual([0, 1, 50, 0]) // isAsc=0, isDesc=1, LIMIT, OFFSET
+    })
+
     it("calculates correct pagination", async () => {
       vi.mocked(mockPool.query).mockResolvedValueOnce({
         rows: [{ total_count: "125" }],

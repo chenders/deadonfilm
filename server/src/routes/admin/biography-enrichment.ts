@@ -191,6 +191,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
     allowRegeneration,
     useStaging,
     sourceCategories,
+    sortBy,
   } = req.body
 
   // Validate earlyStopSourceCount before inserting run record
@@ -253,7 +254,7 @@ router.post("/enrich-batch", async (req: Request, res: Response): Promise<void> 
         confidenceThreshold,
         earlyStopSourceCount,
         allowRegeneration: effectiveAllowRegeneration,
-        sortBy: "popularity",
+        sortBy: sortBy === "interestingness" ? "interestingness" : "popularity",
         useStaging: useStaging || false,
         sourceCategories,
       },
