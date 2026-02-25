@@ -187,12 +187,14 @@ describe("BioEnrichmentRunDetailsPage", () => {
       data: mockRunLogsData,
       isLoading: false,
       error: null,
-    } as ReturnType<typeof enrichmentHooks.useRunLogs>)
+    } as unknown as ReturnType<typeof enrichmentHooks.useRunLogs>)
 
     vi.mocked(adminAuthHook.useAdminAuth).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
       logout: vi.fn(),
+      login: vi.fn(),
+      checkAuth: vi.fn(),
     } as ReturnType<typeof adminAuthHook.useAdminAuth>)
   })
 
@@ -305,7 +307,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
         data: mockActorLogsResponse,
         isLoading: false,
         error: null,
-      } as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
+      } as unknown as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
 
       const user = userEvent.setup()
       renderPage()
@@ -318,9 +320,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
 
       // The modal should now be visible with the actor name in the title
       await waitFor(() => {
-        expect(
-          screen.getByText("Enrichment Logs \u2014 Humphrey Bogart")
-        ).toBeInTheDocument()
+        expect(screen.getByText("Enrichment Logs \u2014 Humphrey Bogart")).toBeInTheDocument()
       })
     })
 
@@ -329,7 +329,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
         data: mockActorLogsResponse,
         isLoading: false,
         error: null,
-      } as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
+      } as unknown as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
 
       const user = userEvent.setup()
       renderPage()
@@ -350,7 +350,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
         data: mockActorLogsResponse,
         isLoading: false,
         error: null,
-      } as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
+      } as unknown as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
 
       const user = userEvent.setup()
       renderPage()
@@ -363,9 +363,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
 
       // Verify the modal is visible
       await waitFor(() => {
-        expect(
-          screen.getByText("Enrichment Logs \u2014 Humphrey Bogart")
-        ).toBeInTheDocument()
+        expect(screen.getByText("Enrichment Logs \u2014 Humphrey Bogart")).toBeInTheDocument()
       })
 
       // Click the close button (has aria-label="Close modal")
@@ -374,9 +372,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
 
       // The modal title should no longer be present
       await waitFor(() => {
-        expect(
-          screen.queryByText("Enrichment Logs \u2014 Humphrey Bogart")
-        ).not.toBeInTheDocument()
+        expect(screen.queryByText("Enrichment Logs \u2014 Humphrey Bogart")).not.toBeInTheDocument()
       })
     })
 
@@ -385,7 +381,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
         data: { actorName: "Lauren Bacall", logEntries: [] },
         isLoading: false,
         error: null,
-      } as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
+      } as unknown as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
 
       const user = userEvent.setup()
       renderPage()
@@ -396,9 +392,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
       await user.click(viewButton)
 
       await waitFor(() => {
-        expect(
-          screen.getByText("Enrichment Logs \u2014 Lauren Bacall")
-        ).toBeInTheDocument()
+        expect(screen.getByText("Enrichment Logs \u2014 Lauren Bacall")).toBeInTheDocument()
       })
     })
 
@@ -407,7 +401,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
         data: mockActorLogsResponse,
         isLoading: false,
         error: null,
-      } as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
+      } as unknown as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
 
       const user = userEvent.setup()
       renderPage()
@@ -427,7 +421,7 @@ describe("BioEnrichmentRunDetailsPage", () => {
         data: { actorName: "Humphrey Bogart", logEntries: [] },
         isLoading: false,
         error: null,
-      } as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
+      } as unknown as ReturnType<typeof bioHooks.useBioActorEnrichmentLogs>)
 
       const user = userEvent.setup()
       renderPage()
