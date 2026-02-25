@@ -18,6 +18,7 @@ import { resolveRelatedCelebritySlugs } from "../lib/related-celebrity-slugs.js"
 interface ActorProfileResponse {
   actor: {
     id: number
+    tmdbId: number | null
     name: string
     birthday: string | null
     deathday: string | null
@@ -256,7 +257,8 @@ export async function getActor(req: Request, res: Response) {
 
     const response: ActorProfileResponse = {
       actor: {
-        id: person.id,
+        id: actorRecord.id,
+        tmdbId: actorRecord.tmdb_id ?? null,
         name: person.name,
         birthday: person.birthday,
         deathday: person.deathday,

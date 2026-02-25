@@ -36,7 +36,7 @@ vi.mock("../lib/cache.js", () => ({
   setCached: vi.fn().mockResolvedValue(undefined),
   CACHE_KEYS: {
     actor: (id: number) => ({
-      profile: `actor:id:${id}`,
+      profile: `actor:id:${id}:v:2`,
       death: `actor:id:${id}:type:death`,
     }),
   },
@@ -239,7 +239,8 @@ describe("getActor", () => {
     expect(setSpy).toHaveBeenCalledWith("Cache-Control", "public, max-age=600")
     expect(jsonSpy).toHaveBeenCalledWith({
       actor: {
-        id: 12345,
+        id: 1,
+        tmdbId: 12345,
         name: "Living Actor",
         birthday: "1980-05-15",
         deathday: null,
@@ -265,9 +266,9 @@ describe("getActor", () => {
 
     // Cache key should be constructed via CACHE_KEYS.actor().profile using internal actor.id
     expect(setCached).toHaveBeenCalledWith(
-      "actor:id:1",
+      "actor:id:1:v:2",
       expect.objectContaining({
-        actor: expect.objectContaining({ id: 12345, name: "Living Actor" }),
+        actor: expect.objectContaining({ id: 1, tmdbId: 12345, name: "Living Actor" }),
         analyzedFilmography: mockFilmography,
         analyzedTVFilmography: mockTVFilmography,
         deathInfo: null,
@@ -335,7 +336,8 @@ describe("getActor", () => {
     expect(db.getActorShowFilmography).toHaveBeenCalledWith(67890)
     expect(jsonSpy).toHaveBeenCalledWith({
       actor: {
-        id: 67890,
+        id: 1,
+        tmdbId: 67890,
         name: "Deceased Actor",
         birthday: "1940-03-10",
         deathday: "2020-08-15",

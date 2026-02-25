@@ -224,7 +224,7 @@ export class GuardianSource extends BaseDataSource {
         notableFactors,
         relatedCelebrities: [] as Array<{
           name: string
-          tmdbId: number | null
+          tmdb_id: number | null
           relationship: string
         }>,
         locationOfDeath,
