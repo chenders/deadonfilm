@@ -184,10 +184,10 @@ function filterNonActingOccupations(occupations: string | null): string | null {
 
 /**
  * Execute a SPARQL query with retry, backoff, timeout, and rate limiting.
- * Returns null on persistent failure.
+ * Throws on persistent failure so callers can distinguish "not found" from "request failed".
  */
-async function sparqlFetch(query: string): Promise<WikidataDemoSparqlResponse | null> {
-  let lastError: string | null = null
+async function sparqlFetch(query: string): Promise<WikidataDemoSparqlResponse> {
+  let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     await waitForRateLimit()
@@ -202,19 +202,19 @@ async function sparqlFetch(query: string): Promise<WikidataDemoSparqlResponse | 
       })
 
       if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
-        lastError = `HTTP ${response.status}: ${response.statusText}`
+        lastError = new Error(`HTTP ${response.status}: ${response.statusText}`)
         const delay = _testMode ? 0 : RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
         await new Promise((resolve) => setTimeout(resolve, delay))
         continue
       }
 
       if (!response.ok) {
-        return null
+        throw new Error(`Wikidata SPARQL error: ${response.status} ${response.statusText}`)
       }
 
       return (await response.json()) as WikidataDemoSparqlResponse
     } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error)
+      lastError = error instanceof Error ? error : new Error(String(error))
       if (attempt < MAX_RETRIES) {
         const delay = _testMode ? 0 : RETRY_BASE_DELAY_MS * Math.pow(2, attempt)
         await new Promise((resolve) => setTimeout(resolve, delay))
@@ -223,8 +223,7 @@ async function sparqlFetch(query: string): Promise<WikidataDemoSparqlResponse | 
     }
   }
 
-  console.log(`Wikidata demographics SPARQL failed after ${MAX_RETRIES} retries: ${lastError}`)
-  return null
+  throw lastError ?? new Error(`Wikidata SPARQL: max retries exhausted`)
 }
 
 /**
@@ -264,10 +263,11 @@ export function parseDemographicsResults(
 
 /**
  * Fetch demographic data for an actor from Wikidata.
+ * Throws on network/HTTP errors so callers can distinguish "not found" from "request failed".
  *
  * @param name - Actor name (English)
  * @param birthYear - Year of birth for matching
- * @returns Demographic data or null if not found
+ * @returns Demographic data or null if not found (successful query with no match)
  */
 export async function fetchActorDemographics(
   name: string,
@@ -275,8 +275,5 @@ export async function fetchActorDemographics(
 ): Promise<ActorDemographics | null> {
   const query = buildDemographicsSparqlQuery(name, birthYear)
   const data = await sparqlFetch(query)
-
-  if (!data) return null
-
   return parseDemographicsResults(data.results.bindings, name)
 }

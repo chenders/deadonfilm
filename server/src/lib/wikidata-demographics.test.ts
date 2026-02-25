@@ -213,22 +213,22 @@ describe("fetchActorDemographics", () => {
     expect(result!.occupations).toBeNull() // all acting occupations filtered
   })
 
-  it("returns null on HTTP error", async () => {
+  it("throws on HTTP error", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 400,
       statusText: "Bad Request",
     } as Response)
 
-    const result = await fetchActorDemographics("Unknown Person", 1900)
-    expect(result).toBeNull()
+    await expect(fetchActorDemographics("Unknown Person", 1900)).rejects.toThrow(
+      "Wikidata SPARQL error: 400 Bad Request"
+    )
   })
 
-  it("returns null on network error after retries", async () => {
+  it("throws on network error after retries", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"))
 
-    const result = await fetchActorDemographics("Unknown Person", 1900)
-    expect(result).toBeNull()
+    await expect(fetchActorDemographics("Unknown Person", 1900)).rejects.toThrow("Network error")
   })
 
   it("returns null when no bindings match the name", async () => {

@@ -261,7 +261,15 @@ async function run(options: CliOptions): Promise<void> {
       if (!options.recalculateScoresOnly && birthYear) {
         console.log(`\n[${processed}/${actors.length}] ${actor.name} (born ${birthYear})`)
 
-        const demographics = await fetchActorDemographics(actor.name, birthYear)
+        let demographics: Awaited<ReturnType<typeof fetchActorDemographics>> = null
+        let fetchFailed = false
+        try {
+          demographics = await fetchActorDemographics(actor.name, birthYear)
+        } catch (error) {
+          fetchFailed = true
+          const msg = error instanceof Error ? error.message : String(error)
+          console.log(`  Wikidata: fetch error (will retry next run): ${msg}`)
+        }
 
         if (demographics) {
           wikidataHits++
@@ -299,11 +307,11 @@ async function run(options: CliOptions): Promise<void> {
               ]
             )
           }
-        } else {
+        } else if (!fetchFailed) {
           wikidataMisses++
           console.log(`  Wikidata: no match found`)
 
-          // Mark as fetched even on miss so we don't retry
+          // Only mark as fetched on confirmed no-match, not on network errors
           if (!options.dryRun) {
             await pool.query(`UPDATE actors SET demographics_fetched_at = NOW() WHERE id = $1`, [
               actor.id,
