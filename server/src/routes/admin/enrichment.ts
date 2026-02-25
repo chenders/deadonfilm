@@ -30,6 +30,7 @@ import {
   getEnrichmentRunProgress,
   type EnrichmentRunConfig,
 } from "../../lib/enrichment-process-manager.js"
+import { createRunLogsHandler } from "./run-logs-handler.js"
 
 const router = Router()
 
@@ -302,6 +303,12 @@ router.get("/runs/:id/logs", async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ error: { message: "Failed to fetch enrichment run logs" } })
   }
 })
+
+// ============================================================================
+// GET /admin/api/enrichment/runs/:id/run-logs
+// Get all-level logs from the run_logs table for a specific enrichment run
+// ============================================================================
+router.get("/runs/:id/run-logs", createRunLogsHandler("death"))
 
 // ============================================================================
 // GET /admin/api/enrichment/runs/:id/actors/:actorId/logs
