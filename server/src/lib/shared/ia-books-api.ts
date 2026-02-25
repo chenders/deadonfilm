@@ -45,7 +45,8 @@ export async function searchIABooks(
   maxResults: number = 20,
   signal?: AbortSignal
 ): Promise<IABookResult[]> {
-  const query = `(creator:"${personName}" OR subject:"${personName}" OR title:"${personName}") AND mediatype:texts`
+  const safeName = personName.replace(/"/g, '\\"')
+  const query = `(creator:"${safeName}" OR subject:"${safeName}" OR title:"${safeName}") AND mediatype:texts`
 
   const url = new URL(IA_SEARCH_BASE)
   url.searchParams.set("q", query)

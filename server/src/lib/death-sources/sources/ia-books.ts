@@ -14,6 +14,9 @@ import { DataSourceType, ReliabilityTier } from "../types.js"
 import { searchIABooks, searchInsideIA, getPageOCR } from "../../shared/ia-books-api.js"
 import { sanitizeSourceText } from "../../shared/sanitize-source-text.js"
 
+/** Maximum number of OCR pages to retrieve across all books. */
+const MAX_OCR_PAGES = 10
+
 /**
  * Internet Archive Books source for death information from digitized public domain books.
  */
@@ -74,8 +77,9 @@ export class IABooksDeathSource extends BaseDataSource {
           continue
         }
 
-        // For matching pages, try to get full OCR text
+        // For matching pages, try to get full OCR text (capped to prevent excessive requests)
         for (const hit of hits) {
+          if (textParts.length >= MAX_OCR_PAGES) break
           if (hit.pageNum > 0) {
             try {
               const ocrText = await getPageOCR(

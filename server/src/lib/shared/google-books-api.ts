@@ -115,6 +115,8 @@ export async function getGoogleBooksVolume(
  * @returns Combined text content, or null if neither snippet nor description exists
  */
 export function extractVolumeText(volume: GoogleBooksVolume): string | null {
+  // Google Books API only adds simple <b> highlight tags to snippets — safe to strip
+  // with a basic regex. The result is subsequently passed through sanitizeSourceText().
   const snippet = volume.searchInfo?.textSnippet?.replace(/<[^>]+>/g, "") ?? null
   const description = volume.volumeInfo.description ?? null
 
