@@ -50,7 +50,7 @@ function parsePositiveInt(value: string): number {
   return n
 }
 
-function parseNonNegativeInt(value: string): number {
+export function parseNonNegativeInt(value: string): number {
   const n = parseInt(value, 10)
   if (isNaN(n) || !Number.isInteger(n) || n < 0) {
     throw new InvalidArgumentError("Must be a non-negative integer")
