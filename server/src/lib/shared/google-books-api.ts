@@ -8,6 +8,8 @@
  * Requires GOOGLE_BOOKS_API_KEY environment variable.
  */
 
+import { decodeHtmlEntities } from "../death-sources/html-utils.js"
+
 const GOOGLE_BOOKS_API_BASE = "https://www.googleapis.com/books/v1"
 
 export interface GoogleBooksSearchResult {
@@ -115,9 +117,10 @@ export async function getGoogleBooksVolume(
  * @returns Combined text content, or null if neither snippet nor description exists
  */
 export function extractVolumeText(volume: GoogleBooksVolume): string | null {
-  // Google Books API only adds simple <b> highlight tags to snippets — safe to strip
-  // with a basic regex. The result is subsequently passed through sanitizeSourceText().
-  const snippet = volume.searchInfo?.textSnippet?.replace(/<[^>]+>/g, "") ?? null
+  // Google Books API adds simple <b> highlight tags and HTML entities to snippets.
+  // Strip tags then decode entities for clean plaintext.
+  const rawSnippet = volume.searchInfo?.textSnippet
+  const snippet = rawSnippet ? decodeHtmlEntities(rawSnippet.replace(/<[^>]+>/g, "")) : null
   const description = volume.volumeInfo.description ?? null
 
   if (!snippet && !description) {

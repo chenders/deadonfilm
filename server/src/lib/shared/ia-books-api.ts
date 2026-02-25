@@ -91,7 +91,8 @@ export async function getPageOCR(
   pageNum: number,
   signal?: AbortSignal
 ): Promise<string | null> {
-  const url = `${IA_DOWNLOAD_BASE}/${identifier}/${identifier}_djvu_txt/${identifier}_${String(pageNum).padStart(4, "0")}.txt`
+  const safeId = encodeURIComponent(identifier)
+  const url = `${IA_DOWNLOAD_BASE}/${safeId}/${safeId}_djvu_txt/${safeId}_${String(pageNum).padStart(4, "0")}.txt`
 
   const response = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
@@ -126,7 +127,7 @@ export async function searchInsideIA(
   query: string,
   signal?: AbortSignal
 ): Promise<IASearchInsideHit[]> {
-  const url = `${ARCHIVELAB_BASE}/${identifier}/searchinside?q=${encodeURIComponent(query).replace(/%20/g, "+")}`
+  const url = `${ARCHIVELAB_BASE}/${encodeURIComponent(identifier)}/searchinside?q=${encodeURIComponent(query).replace(/%20/g, "+")}`
 
   const response = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
